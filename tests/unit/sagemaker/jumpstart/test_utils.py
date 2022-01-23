@@ -19,8 +19,14 @@ from sagemaker.jumpstart.constants import (
     JUMPSTART_BUCKET_NAME_SET,
     JUMPSTART_REGION_NAME_SET,
     JumpStartTag,
+    JumpStartScriptScope,
+)
+from sagemaker.jumpstart.exceptions import (
+    DeprecatedJumpStartModelError,
+    VulnerableJumpStartModelError,
 )
 from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartVersionedModelId
+from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
 
 
 def random_jumpstart_s3_uri(key):
@@ -761,3 +767,121 @@ def test_update_inference_tags_with_jumpstart_training_model_tags_inference():
     assert [js_tag] == utils.update_inference_tags_with_jumpstart_training_tags(
         inference_tags=None, training_tags=[random_tag_1, js_tag]
     )
+
+
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+def test_jumpstart_vulnerable_model(patched_get_model_specs):
+    def make_vulnerable_inference_spec(*largs, **kwargs):
+        spec = get_spec_from_base_spec(*largs, **kwargs)
+        spec.inference_vulnerable = True
+        spec.inference_vulnerabilities = ["some", "vulnerability"]
+        return spec
+
+    patched_get_model_specs.side_effect = make_vulnerable_inference_spec
+
+    with pytest.raises(VulnerableJumpStartModelError) as e:
+        utils.verify_model_region_and_return_specs(
+            model_id="pytorch-eqa-bert-base-cased",
+            version="*",
+            scope=JumpStartScriptScope.INFERENCE.value,
+            region="us-west-2",
+        )
+    assert (
+        "Version '*' of JumpStart model 'pytorch-eqa-bert-base-cased' has at least 1 "
+        "vulnerable dependency in the inference script. "
+        "Please try targetting a higher version of the model. "
+        "List of vulnerabilities: some, vulnerability"
+    ) == str(e.value.message)
+
+    with patch("logging.Logger.warning") as mocked_warning_log:
+        assert (
+            utils.verify_model_region_and_return_specs(
+                model_id="pytorch-eqa-bert-base-cased",
+                version="*",
+                scope=JumpStartScriptScope.INFERENCE.value,
+                region="us-west-2",
+                tolerate_vulnerable_model=True,
+            )
+            is not None
+        )
+        mocked_warning_log.assert_called_once_with(
+            "Using vulnerable JumpStart model '%s' and version '%s' (inference).",
+            "pytorch-eqa-bert-base-cased",
+            "*",
+        )
+
+    def make_vulnerable_training_spec(*largs, **kwargs):
+        spec = get_spec_from_base_spec(*largs, **kwargs)
+        spec.training_vulnerable = True
+        spec.training_vulnerabilities = ["some", "vulnerability"]
+        return spec
+
+    patched_get_model_specs.side_effect = make_vulnerable_training_spec
+
+    with pytest.raises(VulnerableJumpStartModelError) as e:
+        utils.verify_model_region_and_return_specs(
+            model_id="pytorch-eqa-bert-base-cased",
+            version="*",
+            scope=JumpStartScriptScope.TRAINING.value,
+            region="us-west-2",
+        )
+    assert (
+        "Version '*' of JumpStart model 'pytorch-eqa-bert-base-cased' has at least 1 "
+        "vulnerable dependency in the training script. "
+        "Please try targetting a higher version of the model. "
+        "List of vulnerabilities: some, vulnerability"
+    ) == str(e.value.message)
+
+    with patch("logging.Logger.warning") as mocked_warning_log:
+        assert (
+            utils.verify_model_region_and_return_specs(
+                model_id="pytorch-eqa-bert-base-cased",
+                version="*",
+                scope=JumpStartScriptScope.TRAINING.value,
+                region="us-west-2",
+                tolerate_vulnerable_model=True,
+            )
+            is not None
+        )
+        mocked_warning_log.assert_called_once_with(
+            "Using vulnerable JumpStart model '%s' and version '%s' (training).",
+            "pytorch-eqa-bert-base-cased",
+            "*",
+        )
+
+
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+def test_jumpstart_deprecated_model(patched_get_model_specs):
+    def make_deprecated_spec(*largs, **kwargs):
+        spec = get_spec_from_base_spec(*largs, **kwargs)
+        spec.deprecated = True
+        return spec
+
+    patched_get_model_specs.side_effect = make_deprecated_spec
+
+    with pytest.raises(DeprecatedJumpStartModelError) as e:
+        utils.verify_model_region_and_return_specs(
+            model_id="pytorch-eqa-bert-base-cased",
+            version="*",
+            scope=JumpStartScriptScope.INFERENCE.value,
+            region="us-west-2",
+        )
+    assert "Version '*' of JumpStart model 'pytorch-eqa-bert-base-cased' is deprecated. "
+    "Please try targetting a higher version of the model." == str(e.value.message)
+
+    with patch("logging.Logger.warning") as mocked_warning_log:
+        assert (
+            utils.verify_model_region_and_return_specs(
+                model_id="pytorch-eqa-bert-base-cased",
+                version="*",
+                scope=JumpStartScriptScope.INFERENCE.value,
+                region="us-west-2",
+                tolerate_deprecated_model=True,
+            )
+            is not None
+        )
+        mocked_warning_log.assert_called_once_with(
+            "Using deprecated JumpStart model '%s' and version '%s'.",
+            "pytorch-eqa-bert-base-cased",
+            "*",
+        )

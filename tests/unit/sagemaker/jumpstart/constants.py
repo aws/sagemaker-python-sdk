@@ -1167,6 +1167,13 @@ BASE_SPEC = {
             "scope": "container",
         },
     ],
+    "inference_vulnerable": False,
+    "inference_dependencies": [],
+    "inference_vulnerabilities": [],
+    "training_vulnerable": False,
+    "training_dependencies": [],
+    "training_vulnerabilities": [],
+    "deprecated": False,
 }
 
 BASE_HEADER = {

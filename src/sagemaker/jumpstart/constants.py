@@ -118,12 +118,19 @@ JUMPSTART_DEFAULT_REGION_NAME = boto3.session.Session().region_name or "us-west-
 
 JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY = "models_manifest.json"
 
-INFERENCE = "inference"
-TRAINING = "training"
-SUPPORTED_JUMPSTART_SCOPES = set([INFERENCE, TRAINING])
 
 INFERENCE_ENTRYPOINT_SCRIPT_NAME = "inference.py"
 TRAINING_ENTRYPOINT_SCRIPT_NAME = "transfer_learning.py"
+
+
+class JumpStartScriptScope(str, Enum):
+    """Enum class for JumpStart script scopes."""
+
+    INFERENCE = "inference"
+    TRAINING = "training"
+
+
+SUPPORTED_JUMPSTART_SCOPES = set(scope.value for scope in JumpStartScriptScope)
 
 
 class ModelFramework(str, Enum):
