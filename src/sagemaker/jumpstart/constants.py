@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 from typing import Set
 import boto3
+from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.types import JumpStartLaunchedRegionInfo
 
 
@@ -110,14 +111,11 @@ JUMPSTART_REGION_NAME_TO_LAUNCHED_REGION_DICT = {
     region.region_name: region for region in JUMPSTART_LAUNCHED_REGIONS
 }
 JUMPSTART_REGION_NAME_SET = {region.region_name for region in JUMPSTART_LAUNCHED_REGIONS}
-
 JUMPSTART_DEFAULT_REGION_NAME = boto3.session.Session().region_name or "us-west-2"
 
 JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY = "models_manifest.json"
 
-INFERENCE = "inference"
-TRAINING = "training"
-SUPPORTED_JUMPSTART_SCOPES = set([INFERENCE, TRAINING])
+INFERENCE_ENTRY_POINT_SCRIPT_NAME = "inference.py"
+TRAINING_ENTRY_POINT_SCRIPT_NAME = "transfer_learning.py"
 
-INFERENCE_ENTRYPOINT_SCRIPT_NAME = "inference.py"
-TRAINING_ENTRYPOINT_SCRIPT_NAME = "transfer_learning.py"
+SUPPORTED_JUMPSTART_SCOPES = set(scope.value for scope in JumpStartScriptScope)

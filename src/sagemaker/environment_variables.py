@@ -48,8 +48,4 @@ def retrieve_default(
             "Must specify `model_id` and `model_version` when retrieving environment variables."
         )
 
-    # mypy type checking require these assertions
-    assert model_id is not None
-    assert model_version is not None
-
     return artifacts._retrieve_default_environment_variables(model_id, model_version, region)

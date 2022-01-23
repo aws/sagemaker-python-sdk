@@ -28,6 +28,8 @@ def retrieve(
     model_id=None,
     model_version: Optional[str] = None,
     model_scope: Optional[str] = None,
+    tolerate_vulnerable_model: bool = False,
+    tolerate_deprecated_model: bool = False,
 ) -> str:
     """Retrieves the model artifact S3 URI for the model matching the given arguments.
 
@@ -39,17 +41,31 @@ def retrieve(
             the model artifact S3 URI.
         model_scope (str): The model type, i.e. what it is used for.
             Valid values: "training" and "inference".
+        tolerate_vulnerable_model (bool): True if vulnerable versions of model
+            specifications should be tolerated (exception not raised). If False, raises an
+            exception if the script used by this version of the model has dependencies with known
+            security vulnerabilities. (Default: False).
+        tolerate_deprecated_model (bool): True if deprecated versions of model
+            specifications should be tolerated (exception not raised). If False, raises
+            an exception if the version of the model is deprecated. (Default: False).
     Returns:
         str: the model artifact S3 URI for the corresponding model.
 
     Raises:
+        NotImplementedError: If the scope is not supported.
         ValueError: If the combination of arguments specified is not supported.
+        VulnerableJumpStartModelError: If any of the dependencies required by the script have
+            known security vulnerabilities.
+        DeprecatedJumpStartModelError: If the version of the model is deprecated.
     """
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
         raise ValueError("Must specify `model_id` and `model_version` when retrieving model URIs.")
 
-    # mypy type checking require these assertions
-    assert model_id is not None
-    assert model_version is not None
-
-    return artifacts._retrieve_model_uri(model_id, model_version, model_scope, region)
+    return artifacts._retrieve_model_uri(
+        model_id,
+        model_version,  # type: ignore
+        model_scope,
+        region,
+        tolerate_vulnerable_model,
+        tolerate_deprecated_model,
+    )

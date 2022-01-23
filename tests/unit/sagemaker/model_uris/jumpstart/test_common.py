@@ -16,14 +16,19 @@ from mock.mock import patch
 import pytest
 
 from sagemaker import model_uris
+from sagemaker.jumpstart.utils import verify_model_region_and_return_specs
 
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
 from sagemaker.jumpstart import constants as sagemaker_constants
 
 
+@patch("sagemaker.jumpstart.artifacts.verify_model_region_and_return_specs")
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-def test_jumpstart_common_model_uri(patched_get_model_specs):
+def test_jumpstart_common_model_uri(
+    patched_get_model_specs, patched_verify_model_region_and_return_specs
+):
 
+    patched_verify_model_region_and_return_specs.side_effect = verify_model_region_and_return_specs
     patched_get_model_specs.side_effect = get_spec_from_base_spec
 
     model_uris.retrieve(
@@ -36,8 +41,10 @@ def test_jumpstart_common_model_uri(patched_get_model_specs):
         model_id="pytorch-ic-mobilenet-v2",
         version="*",
     )
+    patched_verify_model_region_and_return_specs.assert_called_once()
 
     patched_get_model_specs.reset_mock()
+    patched_verify_model_region_and_return_specs.reset_mock()
 
     model_uris.retrieve(
         model_scope="inference",
@@ -49,8 +56,10 @@ def test_jumpstart_common_model_uri(patched_get_model_specs):
         model_id="pytorch-ic-mobilenet-v2",
         version="1.*",
     )
+    patched_verify_model_region_and_return_specs.assert_called_once()
 
     patched_get_model_specs.reset_mock()
+    patched_verify_model_region_and_return_specs.reset_mock()
 
     model_uris.retrieve(
         region="us-west-2",
@@ -61,8 +70,10 @@ def test_jumpstart_common_model_uri(patched_get_model_specs):
     patched_get_model_specs.assert_called_once_with(
         region="us-west-2", model_id="pytorch-ic-mobilenet-v2", version="*"
     )
+    patched_verify_model_region_and_return_specs.assert_called_once()
 
     patched_get_model_specs.reset_mock()
+    patched_verify_model_region_and_return_specs.reset_mock()
 
     model_uris.retrieve(
         region="us-west-2",
@@ -73,8 +84,9 @@ def test_jumpstart_common_model_uri(patched_get_model_specs):
     patched_get_model_specs.assert_called_once_with(
         region="us-west-2", model_id="pytorch-ic-mobilenet-v2", version="1.*"
     )
+    patched_verify_model_region_and_return_specs.assert_called_once()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(NotImplementedError):
         model_uris.retrieve(
             region="us-west-2",
             model_scope="BAD_SCOPE",

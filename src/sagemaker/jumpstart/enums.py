@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """This module stores enums related to SageMaker JumpStart."""
+
 from __future__ import absolute_import
 
 from enum import Enum
@@ -41,6 +42,13 @@ class VariableScope(str, Enum):
 
     CONTAINER = "container"
     ALGORITHM = "algorithm"
+
+
+class JumpStartScriptScope(str, Enum):
+    """Enum class for JumpStart script scopes."""
+
+    INFERENCE = "inference"
+    TRAINING = "training"
 
 
 class HyperparameterValidationMode(str, Enum):
