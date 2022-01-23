@@ -12,12 +12,24 @@
 # language governing permissions and limitations under the License.
 """This module contains utilities related to SageMaker JumpStart."""
 from __future__ import absolute_import
+import logging
 from typing import Dict, List, Optional
 from packaging.version import Version
 import sagemaker
 from sagemaker.jumpstart import constants
 from sagemaker.jumpstart import accessors
-from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartVersionedModelId
+from sagemaker.jumpstart.exceptions import (
+    DeprecatedJumpStartModelError,
+    VulnerableJumpStartModelError,
+)
+from sagemaker.jumpstart.types import (
+    JumpStartModelHeader,
+    JumpStartModelSpecs,
+    JumpStartVersionedModelId,
+)
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 def get_jumpstart_launched_regions_message() -> str:
@@ -136,3 +148,94 @@ def is_jumpstart_model_input(model_id: Optional[str], version: Optional[str]) ->
             )
         return True
     return False
+
+
+def verify_model_region_and_return_specs(
+    model_id: Optional[str],
+    version: Optional[str],
+    scope: Optional[str],
+    region: str,
+    tolerate_vulnerable_model: bool = False,
+    tolerate_deprecated_model: bool = False,
+) -> JumpStartModelSpecs:
+    """Verifies that an acceptable model_id, version, scope, and region combination is provided.
+
+    Args:
+        model_id (Optional[str]): model id of the JumpStart model to verify and
+            obtains specs.
+        version (Optional[str]): version of the JumpStart model to verify and
+            obtains specs.
+        scope (Optional[str]): scope of the JumpStart model to verify.
+        region (Optional[str]): region of the JumpStart model to verify and
+            obtains specs.
+        tolerate_vulnerable_model (bool): True if vulnerable versions of model
+            specifications should be tolerated (exception not raised). If False, raises an
+            exception if the script used by this version of the model has dependencies with known
+            security vulnerabilities. (Default: False).
+        tolerate_deprecated_model (bool): True if deprecated models should be tolerated
+            (exception not raised). False if these models should raise an exception.
+            (Default: False).
+
+
+    Raises:
+        NotImplementedError: If the scope is not supported.
+        ValueError: If the combination of arguments specified is not supported.
+        VulnerableJumpStartModelError: If any of the dependencies required by the script have
+            known security vulnerabilities.
+        DeprecatedJumpStartModelError: If the version of the model is deprecated.
+    """
+
+    if scope is None:
+        raise ValueError(
+            "Must specify `model_scope` argument to retrieve model "
+            "artifact uri for JumpStart models."
+        )
+
+    if scope not in constants.SUPPORTED_JUMPSTART_SCOPES:
+        raise NotImplementedError(
+            "JumpStart models only support scopes: "
+            f"{', '.join(constants.SUPPORTED_JUMPSTART_SCOPES)}."
+        )
+
+    model_specs = accessors.JumpStartModelsAccessor.get_model_specs(
+        region=region, model_id=model_id, version=version  # type: ignore
+    )
+
+    if (
+        scope == constants.JumpStartScriptScope.TRAINING.value
+        and not model_specs.training_supported
+    ):
+        raise ValueError(
+            f"JumpStart model ID '{model_id}' and version '{version}' " "does not support training."
+        )
+
+    if model_specs.deprecated:
+        if not tolerate_deprecated_model:
+            raise DeprecatedJumpStartModelError(model_id=model_id, version=version)
+        LOGGER.warning("Using deprecated JumpStart model '%s' and version '%s'.", model_id, version)
+
+    if scope == constants.JumpStartScriptScope.INFERENCE.value and model_specs.inference_vulnerable:
+        if not tolerate_vulnerable_model:
+            raise VulnerableJumpStartModelError(
+                model_id=model_id,
+                version=version,
+                vulnerabilities=model_specs.inference_vulnerabilities,
+                scope=constants.JumpStartScriptScope.INFERENCE,
+            )
+        LOGGER.warning(
+            "Using vulnerable JumpStart model '%s' and version '%s' (inference).", model_id, version
+        )
+
+    if scope == constants.JumpStartScriptScope.TRAINING.value and model_specs.training_vulnerable:
+        if not tolerate_vulnerable_model:
+            raise VulnerableJumpStartModelError(
+                model_id=model_id,
+                version=version,
+                vulnerabilities=model_specs.training_vulnerabilities,
+                scope=constants.JumpStartScriptScope.TRAINING,
+            )
+        LOGGER.warning(
+            "Using vulnerable JumpStart model '%s' and version '%s' (training).", model_id, version
+        )
+
+    return model_specs

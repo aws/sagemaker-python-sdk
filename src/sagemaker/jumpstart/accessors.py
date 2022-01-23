@@ -56,7 +56,6 @@ class JumpStartModelsAccessor(object):
             region (str): The region to validate along with the kwargs.
         """
         cache_kwargs_dict = {} if cache_kwargs is None else cache_kwargs
-        assert isinstance(cache_kwargs_dict, dict)
         if region is not None and "region" in cache_kwargs_dict:
             if region != cache_kwargs_dict["region"]:
                 raise ValueError(
@@ -92,8 +91,7 @@ class JumpStartModelsAccessor(object):
             JumpStartModelsAccessor._cache_kwargs, region
         )
         JumpStartModelsAccessor._set_cache_and_region(region, cache_kwargs)
-        assert JumpStartModelsAccessor._cache is not None
-        return JumpStartModelsAccessor._cache.get_header(
+        return JumpStartModelsAccessor._cache.get_header(  # type: ignore
             model_id=model_id, semantic_version_str=version
         )
 
@@ -110,8 +108,7 @@ class JumpStartModelsAccessor(object):
             JumpStartModelsAccessor._cache_kwargs, region
         )
         JumpStartModelsAccessor._set_cache_and_region(region, cache_kwargs)
-        assert JumpStartModelsAccessor._cache is not None
-        return JumpStartModelsAccessor._cache.get_specs(
+        return JumpStartModelsAccessor._cache.get_specs(  # type: ignore
             model_id=model_id, semantic_version_str=version
         )
 
