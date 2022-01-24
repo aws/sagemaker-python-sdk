@@ -12,25 +12,21 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import json
 import time
-from typing import Any, Dict, List
 import boto3
 import os
 from botocore.config import Config
-import pandas as pd
 
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
-from tests.integ.sagemaker.jumpstart.retrieve_uri.utils import (
+from tests.integ.sagemaker.jumpstart.utils import (
     get_test_artifact_bucket,
     get_sm_session,
 )
 
 from sagemaker.utils import repack_model
-from tests.integ.sagemaker.jumpstart.retrieve_uri.constants import (
+from tests.integ.sagemaker.jumpstart.constants import (
     ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID,
     JUMPSTART_TAG,
-    ContentType,
 )
 
 
@@ -188,44 +184,4 @@ class InferenceJobLauncher:
                     "Value": self.test_suite_id,
                 }
             ],
-        )
-
-
-class EndpointInvoker:
-    def __init__(
-        self,
-        endpoint_name,
-        region=JUMPSTART_DEFAULT_REGION_NAME,
-        boto_config=Config(retries={"max_attempts": 10, "mode": "standard"}),
-    ) -> None:
-        self.endpoint_name = endpoint_name
-        self.region = region
-        self.config = boto_config
-        self.sagemaker_runtime_client = self.get_sagemaker_runtime_client()
-
-    def _invoke_endpoint(
-        self,
-        body: Any,
-        content_type: ContentType,
-    ) -> Dict[str, Any]:
-        response = self.sagemaker_runtime_client.invoke_endpoint(
-            EndpointName=self.endpoint_name, ContentType=content_type.value, Body=body
-        )
-        return json.loads(response["Body"].read())
-
-    def invoke_tabular_endpoint(self, data: pd.DataFrame) -> Dict[str, Any]:
-        return self._invoke_endpoint(
-            body=data.to_csv(header=False, index=False).encode("utf-8"),
-            content_type=ContentType.TEXT_CSV,
-        )
-
-    def invoke_spc_endpoint(self, text: List[str]) -> Dict[str, Any]:
-        return self._invoke_endpoint(
-            body=json.dumps(text).encode("utf-8"),
-            content_type=ContentType.LIST_TEXT,
-        )
-
-    def get_sagemaker_runtime_client(self) -> boto3.client:
-        return boto3.client(
-            service_name="runtime.sagemaker", config=self.config, region_name=self.region
         )
