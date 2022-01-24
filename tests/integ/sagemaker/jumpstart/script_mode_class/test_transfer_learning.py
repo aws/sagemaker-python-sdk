@@ -69,6 +69,7 @@ def test_jumpstart_transfer_learning_estimator_class(setup):
     estimator = Estimator(
         image_uri=image_uri,
         source_dir=script_uri,
+        model_uri=model_uri,
         entry_point=TRAINING_ENTRYPOINT_SCRIPT_NAME,
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
@@ -83,7 +84,6 @@ def test_jumpstart_transfer_learning_estimator_class(setup):
         {
             "training": f"s3://{get_jumpstart_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)}/"
             f"{get_training_dataset_for_model_and_version(model_id, model_version)}",
-            "model": model_uri,
         }
     )
 
