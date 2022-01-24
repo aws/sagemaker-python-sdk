@@ -111,6 +111,9 @@ JUMPSTART_REGION_NAME_TO_LAUNCHED_REGION_DICT = {
     region.region_name: region for region in JUMPSTART_LAUNCHED_REGIONS
 }
 JUMPSTART_REGION_NAME_SET = {region.region_name for region in JUMPSTART_LAUNCHED_REGIONS}
+
+JUMPSTART_BUCKET_NAME_SET = {region.content_bucket for region in JUMPSTART_LAUNCHED_REGIONS}
+
 JUMPSTART_DEFAULT_REGION_NAME = boto3.session.Session().region_name or "us-west-2"
 
 JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY = "models_manifest.json"

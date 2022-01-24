@@ -34,6 +34,7 @@ from sagemaker.inputs import CompilationInput
 from sagemaker.deprecations import removed_kwargs
 from sagemaker.predictor import PredictorBase
 from sagemaker.transformer import Transformer
+from sagemaker.jumpstart.utils import add_jumpstart_tags
 
 LOGGER = logging.getLogger("sagemaker")
 
@@ -984,6 +985,10 @@ class Model(ModelBase):
         """
         removed_kwargs("update_endpoint", kwargs)
         self._init_sagemaker_session_if_does_not_exist(instance_type)
+
+        tags = add_jumpstart_tags(
+            tags=tags, inference_model_uri=self.model_data, inference_script_uri=self.source_dir
+        )
 
         if self.role is None:
             raise ValueError("Role can not be null for deploying a model")
