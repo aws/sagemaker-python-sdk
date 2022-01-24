@@ -128,21 +128,24 @@ def get_child_process_ids(pid):
             return pids + get_child_process_ids(child_pid)
     else:
         return []
-    
+
+
 def get_docker_host():
     """Discover remote docker host address (if applicable) or use "localhost"
-    
-    Use "docker context inspect" to read current docker host endpoint url
-    
+
+    Use "docker context inspect" to read current docker host endpoint url,
+    url must start with "tcp://"
+
     Args:
 
     Returns:
-        docker_host (str): Docker host DNS or IP
+        docker_host (str): Docker host DNS or IP address
     """
-    try:
-        docker_context_string = os.popen("docker context inspect").read()
-        docker_context_host_url = json.loads(docker_context_string)[0]['Endpoints']['docker']['Host']
-        docker_host = docker_context_host_url.split("//")[1].rsplit(":")[0] if not docker_context_host_url.startswith("unix") else "localhost"
-    except:
+    docker_context_string = os.popen("docker context inspect").read()
+    docker_context_host_url = json.loads(docker_context_string)[0]["Endpoints"]["docker"]["Host"]
+    parsed_url = urlparse(docker_context_host_url)
+    if parsed_url.hostname and parsed_url.scheme == "tcp":
+        docker_host = parsed_url.hostname
+    else:
         docker_host = "localhost"
     return docker_host
