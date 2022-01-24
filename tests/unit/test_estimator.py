@@ -23,6 +23,8 @@ from sagemaker.fw_utils import UploadedCode
 import pytest
 from botocore.exceptions import ClientError
 from mock import ANY, MagicMock, Mock, patch
+from sagemaker.huggingface.estimator import HuggingFace
+from sagemaker.jumpstart.constants import JUMPSTART_BUCKET_NAME_SET, JumpStartTag
 
 import sagemaker.local
 from sagemaker import TrainingInput, utils, vpc_utils
@@ -40,8 +42,13 @@ from sagemaker.estimator import Estimator, EstimatorBase, Framework, _TrainingJo
 from sagemaker.fw_utils import PROFILER_UNSUPPORTED_REGIONS
 from sagemaker.inputs import ShuffleConfig
 from sagemaker.model import FrameworkModel
+from sagemaker.mxnet.estimator import MXNet
 from sagemaker.predictor import Predictor
+from sagemaker.pytorch.estimator import PyTorch
+from sagemaker.sklearn.estimator import SKLearn
+from sagemaker.tensorflow.estimator import TensorFlow
 from sagemaker.transformer import Transformer
+from sagemaker.xgboost.estimator import XGBoost
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -3461,3 +3468,322 @@ def test_script_mode_estimator_same_calls_as_framework(
     assert len(generic_estimator_train_args) == 1
     assert generic_estimator_tar_and_upload_dir_args == patched_tar_and_upload_dir.call_args_list
     assert generic_estimator_train_args == sagemaker_session.train.call_args_list
+
+
+@patch("time.time", return_value=TIME)
+@patch("sagemaker.estimator.tar_and_upload_dir")
+@patch("sagemaker.model.Model._upload_code")
+def test_script_mode_estimator_tags_jumpstart_estimators_and_models(
+    patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+):
+    patched_tar_and_upload_dir.return_value = UploadedCode(
+        s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
+    )
+    sagemaker_session.boto_region_name = REGION
+
+    instance_type = "ml.p2.xlarge"
+    instance_count = 1
+
+    training_data_uri = "s3://bucket/mydata"
+
+    jumpstart_source_dir = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[0]}/source_dirs/source.tar.gz"
+    jumpstart_source_dir_2 = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[1]}/source_dirs/source.tar.gz"
+
+    generic_estimator = Estimator(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        region=REGION,
+        sagemaker_session=sagemaker_session,
+        instance_count=instance_count,
+        instance_type=instance_type,
+        source_dir=jumpstart_source_dir,
+        image_uri=IMAGE_URI,
+        model_uri=jumpstart_source_dir_2,
+        tags=[{"Key": "some", "Value": "tag"}],
+    )
+    generic_estimator.fit(training_data_uri)
+
+    assert [
+        {"Key": "some", "Value": "tag"},
+        {
+            "Key": JumpStartTag.TRAINING_MODEL_URI.value,
+            "Value": jumpstart_source_dir_2,
+        },
+        {
+            "Key": JumpStartTag.TRAINING_SCRIPT_URI.value,
+            "Value": jumpstart_source_dir,
+        },
+    ] == sagemaker_session.train.call_args_list[0][1]["tags"]
+
+    sagemaker_session.reset_mock()
+    sagemaker_session.sagemaker_client.describe_training_job.return_value = {
+        "ModelArtifacts": {"S3ModelArtifacts": "some-uri"}
+    }
+
+    inference_jumpstart_source_dir = (
+        f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[0]}/source_dirs/inference/source.tar.gz"
+    )
+
+    generic_estimator.deploy(
+        initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        image_uri=IMAGE_URI,
+        source_dir=inference_jumpstart_source_dir,
+        entry_point="inference.py",
+        role=ROLE,
+        tags=[{"Key": "deploys", "Value": "tag"}],
+    )
+
+    assert sagemaker_session.create_model.call_args_list[0][1]["tags"] == [
+        {"Key": "deploys", "Value": "tag"},
+        {
+            "Key": JumpStartTag.TRAINING_MODEL_URI.value,
+            "Value": jumpstart_source_dir_2,
+        },
+        {
+            "Key": JumpStartTag.TRAINING_SCRIPT_URI.value,
+            "Value": jumpstart_source_dir,
+        },
+        {
+            "Key": JumpStartTag.INFERENCE_SCRIPT_URI.value,
+            "Value": inference_jumpstart_source_dir,
+        },
+    ]
+    assert sagemaker_session.endpoint_from_production_variants.call_args_list[0][1]["tags"] == [
+        {"Key": "deploys", "Value": "tag"},
+        {
+            "Key": JumpStartTag.TRAINING_MODEL_URI.value,
+            "Value": jumpstart_source_dir_2,
+        },
+        {
+            "Key": JumpStartTag.TRAINING_SCRIPT_URI.value,
+            "Value": jumpstart_source_dir,
+        },
+        {
+            "Key": JumpStartTag.INFERENCE_SCRIPT_URI.value,
+            "Value": inference_jumpstart_source_dir,
+        },
+    ]
+
+
+@patch("time.time", return_value=TIME)
+@patch("sagemaker.estimator.tar_and_upload_dir")
+@patch("sagemaker.model.Model._upload_code")
+def test_script_mode_estimator_tags_jumpstart_models(
+    patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+):
+    patched_tar_and_upload_dir.return_value = UploadedCode(
+        s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
+    )
+    sagemaker_session.boto_region_name = REGION
+
+    instance_type = "ml.p2.xlarge"
+    instance_count = 1
+
+    training_data_uri = "s3://bucket/mydata"
+
+    jumpstart_source_dir = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[0]}/source_dirs/source.tar.gz"
+
+    generic_estimator = Estimator(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        region=REGION,
+        sagemaker_session=sagemaker_session,
+        instance_count=instance_count,
+        instance_type=instance_type,
+        source_dir=jumpstart_source_dir,
+        image_uri=IMAGE_URI,
+        model_uri=MODEL_DATA,
+    )
+    generic_estimator.fit(training_data_uri)
+
+    assert [
+        {
+            "Key": JumpStartTag.TRAINING_SCRIPT_URI.value,
+            "Value": jumpstart_source_dir,
+        },
+    ] == sagemaker_session.train.call_args_list[0][1]["tags"]
+
+    sagemaker_session.reset_mock()
+    sagemaker_session.sagemaker_client.describe_training_job.return_value = {
+        "ModelArtifacts": {"S3ModelArtifacts": "some-uri"}
+    }
+
+    inference_source_dir = "s3://dsfsdfsd/sdfsdfs/sdfsd"
+
+    generic_estimator.deploy(
+        initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        image_uri=IMAGE_URI,
+        source_dir=inference_source_dir,
+        entry_point="inference.py",
+        role=ROLE,
+    )
+
+    assert sagemaker_session.create_model.call_args_list[0][1]["tags"] == [
+        {
+            "Key": JumpStartTag.TRAINING_SCRIPT_URI.value,
+            "Value": jumpstart_source_dir,
+        },
+    ]
+    assert sagemaker_session.endpoint_from_production_variants.call_args_list[0][1]["tags"] == [
+        {
+            "Key": JumpStartTag.TRAINING_SCRIPT_URI.value,
+            "Value": jumpstart_source_dir,
+        },
+    ]
+
+
+@patch("time.time", return_value=TIME)
+@patch("sagemaker.estimator.tar_and_upload_dir")
+@patch("sagemaker.model.Model._upload_code")
+def test_script_mode_estimator_tags_jumpstart_models_with_no_estimator_js_tags(
+    patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+):
+    patched_tar_and_upload_dir.return_value = UploadedCode(
+        s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
+    )
+    sagemaker_session.boto_region_name = REGION
+
+    instance_type = "ml.p2.xlarge"
+    instance_count = 1
+
+    training_data_uri = "s3://bucket/mydata"
+
+    source_dir = "s3://dsfsdfsd/sdfsdfs/sdfsd"
+
+    generic_estimator = Estimator(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        region=REGION,
+        sagemaker_session=sagemaker_session,
+        instance_count=instance_count,
+        instance_type=instance_type,
+        source_dir=source_dir,
+        image_uri=IMAGE_URI,
+        model_uri=MODEL_DATA,
+    )
+    generic_estimator.fit(training_data_uri)
+
+    assert None is sagemaker_session.train.call_args_list[0][1]["tags"]
+
+    sagemaker_session.reset_mock()
+    sagemaker_session.sagemaker_client.describe_training_job.return_value = {
+        "ModelArtifacts": {"S3ModelArtifacts": "some-uri"}
+    }
+
+    inference_jumpstart_source_dir = (
+        f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[0]}/source_dirs/inference/source.tar.gz"
+    )
+
+    generic_estimator.deploy(
+        initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        image_uri=IMAGE_URI,
+        source_dir=inference_jumpstart_source_dir,
+        entry_point="inference.py",
+        role=ROLE,
+    )
+
+    assert sagemaker_session.create_model.call_args_list[0][1]["tags"] == [
+        {
+            "Key": JumpStartTag.INFERENCE_SCRIPT_URI.value,
+            "Value": inference_jumpstart_source_dir,
+        },
+    ]
+    assert sagemaker_session.endpoint_from_production_variants.call_args_list[0][1]["tags"] == [
+        {
+            "Key": JumpStartTag.INFERENCE_SCRIPT_URI.value,
+            "Value": inference_jumpstart_source_dir,
+        },
+    ]
+
+
+@patch("time.time", return_value=TIME)
+@patch("sagemaker.estimator.tar_and_upload_dir")
+@patch("sagemaker.model.Model._upload_code")
+@patch("sagemaker.utils.repack_model")
+def test_all_framework_estimators_add_jumpstart_tags(
+    patched_repack_model, patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+):
+
+    sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_client.describe_training_job.return_value = {
+        "ModelArtifacts": {"S3ModelArtifacts": "some-uri"}
+    }
+
+    patched_tar_and_upload_dir.return_value = UploadedCode(
+        s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
+    )
+
+    framework_estimator_classes_to_kwargs = {
+        PyTorch: {
+            "framework_version": "1.5.0",
+            "py_version": "py3",
+            "instance_type": "ml.p2.xlarge",
+        },
+        TensorFlow: {
+            "framework_version": "2.3",
+            "py_version": "py37",
+            "instance_type": "ml.p2.xlarge",
+        },
+        HuggingFace: {
+            "pytorch_version": "1.7.1",
+            "py_version": "py36",
+            "transformers_version": "4.6.1",
+            "instance_type": "ml.p2.xlarge",
+        },
+        MXNet: {"framework_version": "1.7.0", "py_version": "py3", "instance_type": "ml.p2.xlarge"},
+        SKLearn: {"framework_version": "0.23-1", "instance_type": "ml.m2.xlarge"},
+        XGBoost: {"framework_version": "1.3-1", "instance_type": "ml.m2.xlarge"},
+    }
+    jumpstart_model_uri = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[0]}/model_dirs/model.tar.gz"
+    jumpstart_model_uri_2 = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[1]}/model_dirs/model.tar.gz"
+    for framework_estimator_class, kwargs in framework_estimator_classes_to_kwargs.items():
+        estimator = framework_estimator_class(
+            entry_point=ENTRY_POINT,
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            model_uri=jumpstart_model_uri,
+            instance_count=INSTANCE_COUNT,
+            **kwargs,
+        )
+
+        estimator.fit()
+
+        assert {
+            "Key": JumpStartTag.TRAINING_MODEL_URI.value,
+            "Value": jumpstart_model_uri,
+        } in sagemaker_session.train.call_args_list[0][1]["tags"]
+
+        estimator.deploy(
+            initial_instance_count=INSTANCE_COUNT,
+            instance_type=kwargs["instance_type"],
+            image_uri=IMAGE_URI,
+            source_dir=jumpstart_model_uri_2,
+            entry_point="inference.py",
+            role=ROLE,
+        )
+
+        assert sagemaker_session.create_model.call_args_list[0][1]["tags"] == [
+            {
+                "Key": JumpStartTag.TRAINING_MODEL_URI.value,
+                "Value": jumpstart_model_uri,
+            },
+            {
+                "Key": JumpStartTag.INFERENCE_SCRIPT_URI.value,
+                "Value": jumpstart_model_uri_2,
+            },
+        ]
+        assert sagemaker_session.endpoint_from_production_variants.call_args_list[0][1]["tags"] == [
+            {
+                "Key": JumpStartTag.TRAINING_MODEL_URI.value,
+                "Value": jumpstart_model_uri,
+            },
+            {
+                "Key": JumpStartTag.INFERENCE_SCRIPT_URI.value,
+                "Value": jumpstart_model_uri_2,
+            },
+        ]
+
+        sagemaker_session.train.reset_mock()

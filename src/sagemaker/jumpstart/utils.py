@@ -14,10 +14,12 @@
 from __future__ import absolute_import
 import logging
 from typing import Dict, List, Optional
+from urllib.parse import urlparse
 from packaging.version import Version
 import sagemaker
 from sagemaker.jumpstart import constants
 from sagemaker.jumpstart import accessors
+from sagemaker.s3 import parse_s3_url
 from sagemaker.jumpstart.exceptions import (
     DeprecatedJumpStartModelError,
     VulnerableJumpStartModelError,
@@ -148,6 +150,145 @@ def is_jumpstart_model_input(model_id: Optional[str], version: Optional[str]) ->
             )
         return True
     return False
+
+
+def is_jumpstart_model_uri(uri: Optional[str]) -> bool:
+    """Returns True if URI corresponds to a JumpStart-hosted model.
+
+    Args:
+        uri (Optional[str]): uri for inference/training job.
+    """
+
+    bucket = None
+    if urlparse(uri).scheme == "s3":
+        bucket, _ = parse_s3_url(uri)
+
+    return bucket in constants.JUMPSTART_BUCKET_NAME_SET
+
+
+def tag_key_in_array(tag_key: str, tag_array: List[Dict[str, str]]) -> bool:
+    """Returns True if ``tag_key`` is in the ``tag_array``.
+
+    Args:
+        tag_key (str): the tag key to check if it's already in the ``tag_array``.
+        tag_array (List[Dict[str, str]]): array of tags to check for ``tag_key``.
+    """
+    for tag in tag_array:
+        if tag_key == tag["Key"]:
+            return True
+    return False
+
+
+def get_tag_value(tag_key: str, tag_array: List[Dict[str, str]]) -> str:
+    """Return the value of a tag whose key matches the given ``tag_key``.
+
+    Args:
+        tag_key (str): AWS tag for which to search.
+        tag_array (List[Dict[str, str]]): List of AWS tags, each formatted as dicts.
+
+    Raises:
+        KeyError: If the number of matches for the ``tag_key`` is not equal to 1.
+    """
+    tag_values = [tag["Value"] for tag in tag_array if tag_key == tag["Key"]]
+    if len(tag_values) != 1:
+        raise KeyError(
+            f"Cannot get value of tag for tag key '{tag_key}' -- found {len(tag_values)} "
+            f"number of matches in the tag list."
+        )
+
+    return tag_values[0]
+
+
+def add_single_jumpstart_tag(
+    uri: str, tag_key: constants.JumpStartTag, curr_tags: Optional[List[Dict[str, str]]]
+) -> Optional[List]:
+    """Adds ``tag_key`` to ``curr_tags`` if ``uri`` corresponds to a JumpStart model.
+
+    Args:
+        uri (str): URI which may correspond to a JumpStart model.
+        tag_key (constants.JumpStartTag): Custom tag to apply to current tags if the URI
+            corresponds to a JumpStart model.
+        curr_tags (Optional[List]): Current tags associated with ``Estimator`` or ``Model``.
+    """
+    if is_jumpstart_model_uri(uri):
+        if curr_tags is None:
+            curr_tags = []
+        if not tag_key_in_array(tag_key, curr_tags):
+            curr_tags.append(
+                {
+                    "Key": tag_key,
+                    "Value": uri,
+                }
+            )
+    return curr_tags
+
+
+def add_jumpstart_tags(
+    tags: Optional[List[Dict[str, str]]] = None,
+    inference_model_uri: Optional[str] = None,
+    inference_script_uri: Optional[str] = None,
+    training_model_uri: Optional[str] = None,
+    training_script_uri: Optional[str] = None,
+) -> Optional[List[Dict[str, str]]]:
+    """Add custom tags to JumpStart models, return the updated tags.
+
+    No-op if this is not a JumpStart model related resource.
+
+    Args:
+        tags (Optional[List[Dict[str,str]]): Current tags for JumpStart inference
+            or training job. (Default: None).
+        inference_model_uri (Optional[str]): S3 URI for inference model artifact.
+            (Default: None).
+        inference_script_uri (Optional[str]): S3 URI for inference script tarball.
+            (Default: None).
+        training_model_uri (Optional[str]): S3 URI for training model artifact.
+            (Default: None).
+        training_script_uri (Optional[str]): S3 URI for training script tarball.
+            (Default: None).
+    """
+
+    if inference_model_uri:
+        tags = add_single_jumpstart_tag(
+            inference_model_uri, constants.JumpStartTag.INFERENCE_MODEL_URI, tags
+        )
+
+    if inference_script_uri:
+        tags = add_single_jumpstart_tag(
+            inference_script_uri, constants.JumpStartTag.INFERENCE_SCRIPT_URI, tags
+        )
+
+    if training_model_uri:
+        tags = add_single_jumpstart_tag(
+            training_model_uri, constants.JumpStartTag.TRAINING_MODEL_URI, tags
+        )
+
+    if training_script_uri:
+        tags = add_single_jumpstart_tag(
+            training_script_uri, constants.JumpStartTag.TRAINING_SCRIPT_URI, tags
+        )
+
+    return tags
+
+
+def update_inference_tags_with_jumpstart_training_tags(
+    inference_tags: Optional[List[Dict[str, str]]], training_tags: Optional[List[Dict[str, str]]]
+) -> Optional[List[Dict[str, str]]]:
+    """Updates the tags for the ``sagemaker.model.Model.deploy`` command with any JumpStart tags.
+
+    Args:
+        inference_tags (Optional[List[Dict[str, str]]]): Custom tags to appy to inference job.
+        training_tags (Optional[List[Dict[str, str]]]): Tags from training job.
+    """
+    if training_tags:
+        for tag_key in constants.JumpStartTag:
+            if tag_key_in_array(tag_key, training_tags):
+                tag_value = get_tag_value(tag_key, training_tags)
+                if inference_tags is None:
+                    inference_tags = []
+                if not tag_key_in_array(tag_key, inference_tags):
+                    inference_tags.append({"Key": tag_key, "Value": tag_value})
+
+    return inference_tags
 
 
 def verify_model_region_and_return_specs(
