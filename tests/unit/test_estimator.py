@@ -3499,17 +3499,19 @@ def test_script_mode_estimator_tags_jumpstart_estimators_and_models(
         source_dir=jumpstart_source_dir,
         image_uri=IMAGE_URI,
         model_uri=jumpstart_source_dir_2,
-        tags=[{"some": "tag"}],
+        tags=[{"Key": "some", "Value": "tag"}],
     )
     generic_estimator.fit(training_data_uri)
 
     assert [
-        {"some": "tag"},
+        {"Key": "some", "Value": "tag"},
         {
-            JumpStartTag.TRAINING_MODEL_URI.value: jumpstart_source_dir_2,
+            "Key": JumpStartTag.TRAINING_MODEL_URI.value,
+            "Value": jumpstart_source_dir_2,
         },
         {
-            JumpStartTag.TRAINING_SCRIPT_URI.value: jumpstart_source_dir,
+            "Key": JumpStartTag.TRAINING_SCRIPT_URI.value,
+            "Value": jumpstart_source_dir,
         },
     ] == sagemaker_session.train.call_args_list[0][1]["tags"]
 
@@ -3529,31 +3531,37 @@ def test_script_mode_estimator_tags_jumpstart_estimators_and_models(
         source_dir=inference_jumpstart_source_dir,
         entry_point="inference.py",
         role=ROLE,
-        tags=[{"deploys": "tag"}],
+        tags=[{"Key": "deploys", "Value": "tag"}],
     )
 
     assert sagemaker_session.create_model.call_args_list[0][1]["tags"] == [
-        {"deploys": "tag"},
+        {"Key": "deploys", "Value": "tag"},
         {
-            JumpStartTag.TRAINING_MODEL_URI.value: jumpstart_source_dir_2,
+            "Key": JumpStartTag.TRAINING_MODEL_URI.value,
+            "Value": jumpstart_source_dir_2,
         },
         {
-            JumpStartTag.TRAINING_SCRIPT_URI.value: jumpstart_source_dir,
+            "Key": JumpStartTag.TRAINING_SCRIPT_URI.value,
+            "Value": jumpstart_source_dir,
         },
         {
-            JumpStartTag.INFERENCE_SCRIPT_URI.value: inference_jumpstart_source_dir,
+            "Key": JumpStartTag.INFERENCE_SCRIPT_URI.value,
+            "Value": inference_jumpstart_source_dir,
         },
     ]
     assert sagemaker_session.endpoint_from_production_variants.call_args_list[0][1]["tags"] == [
-        {"deploys": "tag"},
+        {"Key": "deploys", "Value": "tag"},
         {
-            JumpStartTag.TRAINING_MODEL_URI.value: jumpstart_source_dir_2,
+            "Key": JumpStartTag.TRAINING_MODEL_URI.value,
+            "Value": jumpstart_source_dir_2,
         },
         {
-            JumpStartTag.TRAINING_SCRIPT_URI.value: jumpstart_source_dir,
+            "Key": JumpStartTag.TRAINING_SCRIPT_URI.value,
+            "Value": jumpstart_source_dir,
         },
         {
-            JumpStartTag.INFERENCE_SCRIPT_URI.value: inference_jumpstart_source_dir,
+            "Key": JumpStartTag.INFERENCE_SCRIPT_URI.value,
+            "Value": inference_jumpstart_source_dir,
         },
     ]
 
@@ -3591,7 +3599,8 @@ def test_script_mode_estimator_tags_jumpstart_models(
 
     assert [
         {
-            JumpStartTag.TRAINING_SCRIPT_URI.value: jumpstart_source_dir,
+            "Key": JumpStartTag.TRAINING_SCRIPT_URI.value,
+            "Value": jumpstart_source_dir,
         },
     ] == sagemaker_session.train.call_args_list[0][1]["tags"]
 
@@ -3613,12 +3622,14 @@ def test_script_mode_estimator_tags_jumpstart_models(
 
     assert sagemaker_session.create_model.call_args_list[0][1]["tags"] == [
         {
-            JumpStartTag.TRAINING_SCRIPT_URI.value: jumpstart_source_dir,
+            "Key": JumpStartTag.TRAINING_SCRIPT_URI.value,
+            "Value": jumpstart_source_dir,
         },
     ]
     assert sagemaker_session.endpoint_from_production_variants.call_args_list[0][1]["tags"] == [
         {
-            JumpStartTag.TRAINING_SCRIPT_URI.value: jumpstart_source_dir,
+            "Key": JumpStartTag.TRAINING_SCRIPT_URI.value,
+            "Value": jumpstart_source_dir,
         },
     ]
 
@@ -3676,12 +3687,14 @@ def test_script_mode_estimator_tags_jumpstart_models_with_no_estimator_js_tags(
 
     assert sagemaker_session.create_model.call_args_list[0][1]["tags"] == [
         {
-            JumpStartTag.INFERENCE_SCRIPT_URI.value: inference_jumpstart_source_dir,
+            "Key": JumpStartTag.INFERENCE_SCRIPT_URI.value,
+            "Value": inference_jumpstart_source_dir,
         },
     ]
     assert sagemaker_session.endpoint_from_production_variants.call_args_list[0][1]["tags"] == [
         {
-            JumpStartTag.INFERENCE_SCRIPT_URI.value: inference_jumpstart_source_dir,
+            "Key": JumpStartTag.INFERENCE_SCRIPT_URI.value,
+            "Value": inference_jumpstart_source_dir,
         },
     ]
 
@@ -3738,11 +3751,10 @@ def test_all_framework_estimators_add_jumpstart_tags(
 
         estimator.fit()
 
-        assert [
-            {
-                JumpStartTag.TRAINING_MODEL_URI.value: jumpstart_model_uri,
-            },
-        ] == sagemaker_session.train.call_args_list[0][1]["tags"]
+        assert {
+            "Key": JumpStartTag.TRAINING_MODEL_URI.value,
+            "Value": jumpstart_model_uri,
+        } in sagemaker_session.train.call_args_list[0][1]["tags"]
 
         estimator.deploy(
             initial_instance_count=INSTANCE_COUNT,
@@ -3755,18 +3767,22 @@ def test_all_framework_estimators_add_jumpstart_tags(
 
         assert sagemaker_session.create_model.call_args_list[0][1]["tags"] == [
             {
-                JumpStartTag.TRAINING_MODEL_URI.value: jumpstart_model_uri,
+                "Key": JumpStartTag.TRAINING_MODEL_URI.value,
+                "Value": jumpstart_model_uri,
             },
             {
-                JumpStartTag.INFERENCE_SCRIPT_URI.value: jumpstart_model_uri_2,
+                "Key": JumpStartTag.INFERENCE_SCRIPT_URI.value,
+                "Value": jumpstart_model_uri_2,
             },
         ]
         assert sagemaker_session.endpoint_from_production_variants.call_args_list[0][1]["tags"] == [
             {
-                JumpStartTag.TRAINING_MODEL_URI.value: jumpstart_model_uri,
+                "Key": JumpStartTag.TRAINING_MODEL_URI.value,
+                "Value": jumpstart_model_uri,
             },
             {
-                JumpStartTag.INFERENCE_SCRIPT_URI.value: jumpstart_model_uri_2,
+                "Key": JumpStartTag.INFERENCE_SCRIPT_URI.value,
+                "Value": jumpstart_model_uri_2,
             },
         ]
 

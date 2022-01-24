@@ -174,7 +174,7 @@ def tag_key_in_array(tag_key: str, tag_array: List[Dict[str, str]]) -> bool:
         tag_array (List[Dict[str, str]]): array of tags to check for ``tag_key``.
     """
     for tag in tag_array:
-        if tag_key in tag.keys():
+        if tag_key == tag["Key"]:
             return True
     return False
 
@@ -189,7 +189,7 @@ def get_tag_value(tag_key: str, tag_array: List[Dict[str, str]]) -> str:
     Raises:
         KeyError: If the number of matches for the ``tag_key`` is not equal to 1.
     """
-    tag_values = [tag[tag_key] for tag in tag_array if tag_key in tag]
+    tag_values = [tag["Value"] for tag in tag_array if tag_key == tag["Key"]]
     if len(tag_values) != 1:
         raise KeyError(
             f"Cannot get value of tag for tag key '{tag_key}' -- found {len(tag_values)} "
@@ -216,7 +216,8 @@ def add_single_jumpstart_tag(
         if not tag_key_in_array(tag_key, curr_tags):
             curr_tags.append(
                 {
-                    tag_key: uri,
+                    "Key": tag_key,
+                    "Value": uri,
                 }
             )
     return curr_tags
@@ -285,7 +286,7 @@ def update_inference_tags_with_jumpstart_training_tags(
                 if inference_tags is None:
                     inference_tags = []
                 if not tag_key_in_array(tag_key, inference_tags):
-                    inference_tags.append({tag_key: tag_value})
+                    inference_tags.append({"Key": tag_key, "Value": tag_value})
 
     return inference_tags
 

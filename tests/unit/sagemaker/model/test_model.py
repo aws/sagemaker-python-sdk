@@ -472,12 +472,14 @@ def test_script_mode_model_tags_jumpstart_models(repack_model, sagemaker_session
 
     assert sagemaker_session.create_model.call_args_list[0][1]["tags"] == [
         {
-            JumpStartTag.INFERENCE_SCRIPT_URI.value: jumpstart_source_dir,
+            "Key": JumpStartTag.INFERENCE_SCRIPT_URI.value,
+            "Value": jumpstart_source_dir,
         },
     ]
     assert sagemaker_session.endpoint_from_production_variants.call_args_list[0][1]["tags"] == [
         {
-            JumpStartTag.INFERENCE_SCRIPT_URI.value: jumpstart_source_dir,
+            "Key": JumpStartTag.INFERENCE_SCRIPT_URI.value,
+            "Value": jumpstart_source_dir,
         },
     ]
 
@@ -493,11 +495,13 @@ def test_script_mode_model_tags_jumpstart_models(repack_model, sagemaker_session
     t.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT)
 
     assert {
-        JumpStartTag.INFERENCE_SCRIPT_URI.value: non_jumpstart_source_dir,
+        "Key": JumpStartTag.INFERENCE_SCRIPT_URI.value,
+        "Value": non_jumpstart_source_dir,
     } not in sagemaker_session.create_model.call_args_list[0][1]["tags"]
 
     assert {
-        JumpStartTag.INFERENCE_SCRIPT_URI.value: non_jumpstart_source_dir,
+        "Key": JumpStartTag.INFERENCE_SCRIPT_URI.value,
+        "Value": non_jumpstart_source_dir,
     } not in sagemaker_session.create_model.call_args_list[0][1]["tags"]
 
 
@@ -535,11 +539,13 @@ def test_all_framework_models_add_jumpstart_tags(
         ).deploy(instance_type="ml.m2.xlarge", initial_instance_count=INSTANCE_COUNT)
 
         assert {
-            JumpStartTag.INFERENCE_MODEL_URI.value: jumpstart_model_dir,
+            "Key": JumpStartTag.INFERENCE_MODEL_URI.value,
+            "Value": jumpstart_model_dir,
         } in sagemaker_session.create_model.call_args_list[0][1]["tags"]
 
         assert {
-            JumpStartTag.INFERENCE_MODEL_URI.value: jumpstart_model_dir,
+            "Key": JumpStartTag.INFERENCE_MODEL_URI.value,
+            "Value": jumpstart_model_dir,
         } in sagemaker_session.endpoint_from_production_variants.call_args_list[0][1]["tags"]
 
         sagemaker_session.create_model.reset_mock()
