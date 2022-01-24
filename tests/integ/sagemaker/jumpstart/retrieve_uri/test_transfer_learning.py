@@ -12,8 +12,6 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import pandas as pd
-
 
 from tests.integ.sagemaker.jumpstart.retrieve_uri.utils import (
     get_model_tarball_full_uri_from_base_uri,
@@ -114,10 +112,5 @@ def test_jumpstart_transfer_learning_retrieve_functions(setup):
     )
 
     response = endpoint_invoker.invoke_spc_endpoint(["hello", "world"])
-    entail, no_entail = response[0][0], response[0][1]
 
-    assert entail is not None
-    assert no_entail is not None
-
-    assert pd.isna(entail) is False
-    assert pd.isna(no_entail) is False
+    assert response is not None
