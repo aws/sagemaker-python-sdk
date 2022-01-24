@@ -83,9 +83,9 @@ def download_file(local_download_path, s3_bucket, s3_key, s3_client) -> None:
 class EndpointInvoker:
     def __init__(
         self,
-        endpoint_name,
-        region=JUMPSTART_DEFAULT_REGION_NAME,
-        boto_config=Config(retries={"max_attempts": 10, "mode": "standard"}),
+        endpoint_name: str,
+        region: str = JUMPSTART_DEFAULT_REGION_NAME,
+        boto_config: Config = Config(retries={"max_attempts": 10, "mode": "standard"}),
     ) -> None:
         self.endpoint_name = endpoint_name
         self.region = region

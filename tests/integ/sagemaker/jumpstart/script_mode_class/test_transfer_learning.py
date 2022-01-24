@@ -31,7 +31,6 @@ from tests.integ.sagemaker.jumpstart.utils import (
     get_sm_session,
     get_training_dataset_for_model_and_version,
 )
-import pandas as pd
 
 
 def test_jumpstart_transfer_learning_estimator_class(setup):
@@ -123,10 +122,5 @@ def test_jumpstart_transfer_learning_estimator_class(setup):
     )
 
     response = endpoint_invoker.invoke_spc_endpoint(["hello", "world"])
-    entail, no_entail = response[0][0], response[0][1]
 
-    assert entail is not None
-    assert no_entail is not None
-
-    assert pd.isna(entail) is False
-    assert pd.isna(no_entail) is False
+    assert response is not None
