@@ -11,28 +11,28 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+import os
 
-
-from tests.integ.sagemaker.jumpstart.retrieve_uri.inference import (
-    InferenceJobLauncher,
+from sagemaker import image_uris, model_uris, script_uris
+from sagemaker.jumpstart.constants import INFERENCE_ENTRYPOINT_SCRIPT_NAME
+from sagemaker.model import Model
+from tests.integ.sagemaker.jumpstart.constants import (
+    ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID,
+    JUMPSTART_TAG,
+    InferenceTabularDataname,
 )
-from sagemaker import environment_variables, image_uris
-from sagemaker import script_uris
-from sagemaker import model_uris
-
-from tests.integ.sagemaker.jumpstart.constants import InferenceTabularDataname
-
 from tests.integ.sagemaker.jumpstart.utils import (
-    download_inference_assets,
-    get_tabular_data,
     EndpointInvoker,
+    download_inference_assets,
+    get_sm_session,
+    get_tabular_data,
 )
 
 
-def test_jumpstart_inference_retrieve_functions(setup):
+def test_jumpstart_inference_model_class(setup):
 
     model_id, model_version = "catboost-classification-model", "1.0.0"
-    instance_type = "ml.m5.xlarge"
+    instance_type, instance_count = "ml.m5.xlarge", 1
 
     print("Starting inference...")
 
@@ -53,24 +53,24 @@ def test_jumpstart_inference_retrieve_functions(setup):
         model_id=model_id, model_version=model_version, model_scope="inference"
     )
 
-    environment_vars = environment_variables.retrieve_default(
-        model_id=model_id, model_version=model_version
-    )
-
-    inference_job = InferenceJobLauncher(
+    model = Model(
         image_uri=image_uri,
-        script_uri=script_uri,
-        model_uri=model_uri,
-        instance_type=instance_type,
-        base_name="catboost",
-        environment_variables=environment_vars,
+        model_data=model_uri,
+        source_dir=script_uri,
+        entry_point=INFERENCE_ENTRYPOINT_SCRIPT_NAME,
+        role=get_sm_session().get_caller_identity_arn(),
+        sagemaker_session=get_sm_session(),
+        enable_network_isolation=True,
     )
 
-    inference_job.launch_inference_job()
-    inference_job.wait_until_endpoint_in_service()
+    model.deploy(
+        initial_instance_count=instance_count,
+        instance_type=instance_type,
+        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+    )
 
     endpoint_invoker = EndpointInvoker(
-        endpoint_name=inference_job.endpoint_name,
+        endpoint_name=model.endpoint_name,
     )
 
     download_inference_assets()
