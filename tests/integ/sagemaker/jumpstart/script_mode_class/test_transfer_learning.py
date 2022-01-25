@@ -11,33 +11,37 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+import os
 
-
-from tests.integ.sagemaker.jumpstart.retrieve_uri.utils import (
-    get_model_tarball_full_uri_from_base_uri,
+from sagemaker import hyperparameters, image_uris, model_uris, script_uris
+from sagemaker.estimator import Estimator
+from sagemaker.jumpstart.constants import (
+    INFERENCE_ENTRYPOINT_SCRIPT_NAME,
+    JUMPSTART_DEFAULT_REGION_NAME,
+    TRAINING_ENTRYPOINT_SCRIPT_NAME,
+)
+from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
+from sagemaker.utils import name_from_base
+from tests.integ.sagemaker.jumpstart.constants import (
+    ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID,
+    JUMPSTART_TAG,
 )
 from tests.integ.sagemaker.jumpstart.utils import (
-    get_training_dataset_for_model_and_version,
     EndpointInvoker,
+    get_sm_session,
+    get_training_dataset_for_model_and_version,
 )
-from tests.integ.sagemaker.jumpstart.retrieve_uri.inference import (
-    InferenceJobLauncher,
-)
-from tests.integ.sagemaker.jumpstart.retrieve_uri.training import TrainingJobLauncher
-from sagemaker import environment_variables, image_uris
-from sagemaker import script_uris
-from sagemaker import model_uris
-from sagemaker import hyperparameters
 
 
-def test_jumpstart_transfer_learning_retrieve_functions(setup):
+def test_jumpstart_transfer_learning_estimator_class(setup):
 
     model_id, model_version = "huggingface-spc-bert-base-cased", "1.0.0"
     training_instance_type = "ml.p3.2xlarge"
     inference_instance_type = "ml.p2.xlarge"
+    instance_count = 1
 
-    # training
     print("Starting training...")
+
     image_uri = image_uris.retrieve(
         region=None,
         framework=None,
@@ -56,26 +60,35 @@ def test_jumpstart_transfer_learning_retrieve_functions(setup):
     )
 
     default_hyperparameters = hyperparameters.retrieve_default(
-        model_id=model_id, model_version=model_version, include_container_hyperparameters=True
+        model_id=model_id,
+        model_version=model_version,
     )
 
     default_hyperparameters["epochs"] = "1"
 
-    training_job = TrainingJobLauncher(
+    estimator = Estimator(
         image_uri=image_uri,
-        script_uri=script_uri,
+        source_dir=script_uri,
         model_uri=model_uri,
+        entry_point=TRAINING_ENTRYPOINT_SCRIPT_NAME,
+        role=get_sm_session().get_caller_identity_arn(),
+        sagemaker_session=get_sm_session(),
+        enable_network_isolation=True,
         hyperparameters=default_hyperparameters,
+        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+        instance_count=instance_count,
         instance_type=training_instance_type,
-        training_dataset_s3_key=get_training_dataset_for_model_and_version(model_id, model_version),
-        base_name="huggingface",
     )
 
-    training_job.create_training_job()
-    training_job.wait_until_training_job_complete()
+    estimator.fit(
+        {
+            "training": f"s3://{get_jumpstart_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)}/"
+            f"{get_training_dataset_for_model_and_version(model_id, model_version)}",
+        }
+    )
 
-    # inference
     print("Starting inference...")
+
     image_uri = image_uris.retrieve(
         region=None,
         framework=None,
@@ -89,26 +102,23 @@ def test_jumpstart_transfer_learning_retrieve_functions(setup):
         model_id=model_id, model_version=model_version, script_scope="inference"
     )
 
-    environment_vars = environment_variables.retrieve_default(
-        model_id=model_id, model_version=model_version
+    model_uri = model_uris.retrieve(
+        model_id=model_id, model_version=model_version, model_scope="inference"
     )
 
-    inference_job = InferenceJobLauncher(
-        image_uri=image_uri,
-        script_uri=script_uri,
-        model_uri=get_model_tarball_full_uri_from_base_uri(
-            training_job.output_tarball_base_path, training_job.training_job_name
-        ),
+    endpoint_name = name_from_base(f"{model_id}-transfer-learning")
+
+    estimator.deploy(
+        initial_instance_count=instance_count,
         instance_type=inference_instance_type,
-        base_name="huggingface",
-        environment_variables=environment_vars,
+        entry_point=INFERENCE_ENTRYPOINT_SCRIPT_NAME,
+        image_uri=image_uri,
+        source_dir=script_uri,
+        endpoint_name=endpoint_name,
     )
-
-    inference_job.launch_inference_job()
-    inference_job.wait_until_endpoint_in_service()
 
     endpoint_invoker = EndpointInvoker(
-        endpoint_name=inference_job.endpoint_name,
+        endpoint_name=endpoint_name,
     )
 
     response = endpoint_invoker.invoke_spc_endpoint(["hello", "world"])

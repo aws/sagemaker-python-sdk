@@ -18,14 +18,16 @@ import boto3
 from botocore.config import Config
 
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
-from tests.integ.sagemaker.jumpstart.retrieve_uri.utils import (
-    get_full_hyperparameters,
+from tests.integ.sagemaker.jumpstart.utils import (
     get_test_artifact_bucket,
     get_sm_session,
 )
+from tests.integ.sagemaker.jumpstart.retrieve_uri.utils import (
+    get_full_hyperparameters,
+)
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 
-from tests.integ.sagemaker.jumpstart.retrieve_uri.constants import (
+from tests.integ.sagemaker.jumpstart.constants import (
     ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID,
 )
 

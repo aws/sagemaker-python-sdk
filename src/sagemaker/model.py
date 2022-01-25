@@ -406,7 +406,10 @@ class Model(ModelBase):
             self._upload_code(deploy_key_prefix, repack=is_repack)
             deploy_env.update(self._script_mode_env_vars())
         return sagemaker.container_def(
-            self.image_uri, self.model_data, deploy_env, image_config=self.image_config
+            self.image_uri,
+            self.repacked_model_data or self.model_data,
+            deploy_env,
+            image_config=self.image_config,
         )
 
     def _upload_code(self, key_prefix: str, repack: bool = False) -> None:
