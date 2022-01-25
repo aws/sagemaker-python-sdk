@@ -181,6 +181,8 @@ class JumpStartHyperparameter(JumpStartDataHolderType):
         "scope",
         "min",
         "max",
+        "exclusive_min",
+        "exclusive_max",
     }
 
     def __init__(self, spec: Dict[str, Any]):
@@ -214,6 +216,14 @@ class JumpStartHyperparameter(JumpStartDataHolderType):
         max_val = json_obj.get("max")
         if max_val is not None:
             self.max = max_val
+
+        exclusive_min_val = json_obj.get("exclusive_min")
+        if exclusive_min_val is not None:
+            self.exclusive_min = exclusive_min_val
+
+        exclusive_max_val = json_obj.get("exclusive_max")
+        if exclusive_max_val is not None:
+            self.exclusive_max = exclusive_max_val
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartHyperparameter object."""

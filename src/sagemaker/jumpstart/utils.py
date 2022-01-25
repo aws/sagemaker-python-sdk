@@ -17,7 +17,7 @@ from typing import Dict, List, Optional
 from urllib.parse import urlparse
 from packaging.version import Version
 import sagemaker
-from sagemaker.jumpstart import constants
+from sagemaker.jumpstart import constants, enums
 from sagemaker.jumpstart import accessors
 from sagemaker.s3 import parse_s3_url
 from sagemaker.jumpstart.exceptions import (
@@ -200,13 +200,13 @@ def get_tag_value(tag_key: str, tag_array: List[Dict[str, str]]) -> str:
 
 
 def add_single_jumpstart_tag(
-    uri: str, tag_key: constants.JumpStartTag, curr_tags: Optional[List[Dict[str, str]]]
+    uri: str, tag_key: enums.JumpStartTag, curr_tags: Optional[List[Dict[str, str]]]
 ) -> Optional[List]:
     """Adds ``tag_key`` to ``curr_tags`` if ``uri`` corresponds to a JumpStart model.
 
     Args:
         uri (str): URI which may correspond to a JumpStart model.
-        tag_key (constants.JumpStartTag): Custom tag to apply to current tags if the URI
+        tag_key (enums.JumpStartTag): Custom tag to apply to current tags if the URI
             corresponds to a JumpStart model.
         curr_tags (Optional[List]): Current tags associated with ``Estimator`` or ``Model``.
     """
@@ -249,22 +249,22 @@ def add_jumpstart_tags(
 
     if inference_model_uri:
         tags = add_single_jumpstart_tag(
-            inference_model_uri, constants.JumpStartTag.INFERENCE_MODEL_URI, tags
+            inference_model_uri, enums.JumpStartTag.INFERENCE_MODEL_URI, tags
         )
 
     if inference_script_uri:
         tags = add_single_jumpstart_tag(
-            inference_script_uri, constants.JumpStartTag.INFERENCE_SCRIPT_URI, tags
+            inference_script_uri, enums.JumpStartTag.INFERENCE_SCRIPT_URI, tags
         )
 
     if training_model_uri:
         tags = add_single_jumpstart_tag(
-            training_model_uri, constants.JumpStartTag.TRAINING_MODEL_URI, tags
+            training_model_uri, enums.JumpStartTag.TRAINING_MODEL_URI, tags
         )
 
     if training_script_uri:
         tags = add_single_jumpstart_tag(
-            training_script_uri, constants.JumpStartTag.TRAINING_SCRIPT_URI, tags
+            training_script_uri, enums.JumpStartTag.TRAINING_SCRIPT_URI, tags
         )
 
     return tags
@@ -280,7 +280,7 @@ def update_inference_tags_with_jumpstart_training_tags(
         training_tags (Optional[List[Dict[str, str]]]): Tags from training job.
     """
     if training_tags:
-        for tag_key in constants.JumpStartTag:
+        for tag_key in enums.JumpStartTag:
             if tag_key_in_array(tag_key, training_tags):
                 tag_value = get_tag_value(tag_key, training_tags)
                 if inference_tags is None:

@@ -16,6 +16,8 @@ from typing import Dict, Optional
 from sagemaker import image_uris
 from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_REGION_NAME,
+)
+from sagemaker.jumpstart.enums import (
     JumpStartScriptScope,
     ModelFramework,
     VariableScope,

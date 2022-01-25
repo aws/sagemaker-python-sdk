@@ -24,7 +24,8 @@ import pytest
 from botocore.exceptions import ClientError
 from mock import ANY, MagicMock, Mock, patch
 from sagemaker.huggingface.estimator import HuggingFace
-from sagemaker.jumpstart.constants import JUMPSTART_BUCKET_NAME_SET, JumpStartTag
+from sagemaker.jumpstart.constants import JUMPSTART_BUCKET_NAME_SET
+from sagemaker.jumpstart.enums import JumpStartTag
 
 import sagemaker.local
 from sagemaker import TrainingInput, utils, vpc_utils

@@ -44,6 +44,8 @@ def retrieve_default(
         ValueError: If the combination of arguments specified is not supported.
     """
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
-        raise ValueError("Must specify `model_id` and `model_version` when retrieving script URIs.")
+        raise ValueError(
+            "Must specify `model_id` and `model_version` when retrieving environment variables."
+        )
 
     return artifacts._retrieve_default_environment_variables(model_id, model_version, region)

@@ -19,7 +19,8 @@ from mock import Mock, patch
 import sagemaker
 from sagemaker.model import FrameworkModel, Model
 from sagemaker.huggingface.model import HuggingFaceModel
-from sagemaker.jumpstart.constants import JUMPSTART_BUCKET_NAME_SET, JumpStartTag
+from sagemaker.jumpstart.constants import JUMPSTART_BUCKET_NAME_SET
+from sagemaker.jumpstart.enums import JumpStartTag
 from sagemaker.mxnet.model import MXNetModel
 from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.sklearn.model import SKLearnModel

@@ -18,9 +18,9 @@ from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.constants import (
     JUMPSTART_BUCKET_NAME_SET,
     JUMPSTART_REGION_NAME_SET,
-    JumpStartTag,
     JumpStartScriptScope,
 )
+from sagemaker.jumpstart.enums import JumpStartTag
 from sagemaker.jumpstart.exceptions import (
     DeprecatedJumpStartModelError,
     VulnerableJumpStartModelError,

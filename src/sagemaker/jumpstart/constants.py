@@ -13,8 +13,8 @@
 """This module stores constants related to SageMaker JumpStart."""
 from __future__ import absolute_import
 from typing import Set
-from enum import Enum
 import boto3
+from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.types import JumpStartLaunchedRegionInfo
 
 
@@ -118,52 +118,7 @@ JUMPSTART_DEFAULT_REGION_NAME = boto3.session.Session().region_name or "us-west-
 
 JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY = "models_manifest.json"
 
-
-INFERENCE_ENTRYPOINT_SCRIPT_NAME = "inference.py"
-TRAINING_ENTRYPOINT_SCRIPT_NAME = "transfer_learning.py"
-
-
-class JumpStartScriptScope(str, Enum):
-    """Enum class for JumpStart script scopes."""
-
-    INFERENCE = "inference"
-    TRAINING = "training"
-
+INFERENCE_ENTRY_POINT_SCRIPT_NAME = "inference.py"
+TRAINING_ENTRY_POINT_SCRIPT_NAME = "transfer_learning.py"
 
 SUPPORTED_JUMPSTART_SCOPES = set(scope.value for scope in JumpStartScriptScope)
-
-
-class ModelFramework(str, Enum):
-    """Enum class for JumpStart model framework.
-
-    The ML framework as referenced in the prefix of the model ID.
-    This value does not necessarily correspond to the container name.
-    """
-
-    PYTORCH = "pytorch"
-    TENSORFLOW = "tensorflow"
-    MXNET = "mxnet"
-    HUGGINGFACE = "huggingface"
-    LIGHTGBM = "lightgbm"
-    CATBOOST = "catboost"
-    XGBOOST = "xgboost"
-    SKLEARN = "sklearn"
-
-
-class VariableScope(str, Enum):
-    """Possible value of the ``scope`` attribute for a hyperparameter or environment variable.
-
-    Used for hosting environment variables and training hyperparameters.
-    """
-
-    CONTAINER = "container"
-    ALGORITHM = "algorithm"
-
-
-class JumpStartTag(str, Enum):
-    """Enum class for tag keys to apply to JumpStart models."""
-
-    INFERENCE_MODEL_URI = "aws-jumpstart-inference-model-uri"
-    INFERENCE_SCRIPT_URI = "aws-jumpstart-inference-script-uri"
-    TRAINING_MODEL_URI = "aws-jumpstart-training-model-uri"
-    TRAINING_SCRIPT_URI = "aws-jumpstart-training-script-uri"

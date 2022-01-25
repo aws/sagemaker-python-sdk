@@ -16,9 +16,9 @@ import os
 from sagemaker import hyperparameters, image_uris, model_uris, script_uris
 from sagemaker.estimator import Estimator
 from sagemaker.jumpstart.constants import (
-    INFERENCE_ENTRYPOINT_SCRIPT_NAME,
+    INFERENCE_ENTRY_POINT_SCRIPT_NAME,
     JUMPSTART_DEFAULT_REGION_NAME,
-    TRAINING_ENTRYPOINT_SCRIPT_NAME,
+    TRAINING_ENTRY_POINT_SCRIPT_NAME,
 )
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 from sagemaker.utils import name_from_base
@@ -70,7 +70,7 @@ def test_jumpstart_transfer_learning_estimator_class(setup):
         image_uri=image_uri,
         source_dir=script_uri,
         model_uri=model_uri,
-        entry_point=TRAINING_ENTRYPOINT_SCRIPT_NAME,
+        entry_point=TRAINING_ENTRY_POINT_SCRIPT_NAME,
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
         enable_network_isolation=True,
@@ -111,7 +111,7 @@ def test_jumpstart_transfer_learning_estimator_class(setup):
     estimator.deploy(
         initial_instance_count=instance_count,
         instance_type=inference_instance_type,
-        entry_point=INFERENCE_ENTRYPOINT_SCRIPT_NAME,
+        entry_point=INFERENCE_ENTRY_POINT_SCRIPT_NAME,
         image_uri=image_uri,
         source_dir=script_uri,
         endpoint_name=endpoint_name,

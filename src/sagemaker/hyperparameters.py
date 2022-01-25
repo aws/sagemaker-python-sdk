@@ -15,10 +15,12 @@
 from __future__ import absolute_import
 
 import logging
-from typing import Dict
+from typing import Dict, Optional
 
 from sagemaker.jumpstart import utils as jumpstart_utils
 from sagemaker.jumpstart import artifacts
+from sagemaker.jumpstart.enums import HyperparameterValidationMode
+from sagemaker.jumpstart.validators import validate_hyperparameters
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +53,58 @@ def retrieve_default(
         ValueError: If the combination of arguments specified is not supported.
     """
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
-        raise ValueError("Must specify `model_id` and `model_version` when retrieving script URIs.")
+        raise ValueError(
+            "Must specify `model_id` and `model_version` when retrieving hyperparameters."
+        )
 
     return artifacts._retrieve_default_hyperparameters(
         model_id, model_version, region, include_container_hyperparameters
+    )
+
+
+def validate(
+    region: Optional[str] = None,
+    model_id: Optional[str] = None,
+    model_version: Optional[str] = None,
+    hyperparameters: Optional[dict] = None,
+    validation_mode: Optional[HyperparameterValidationMode] = None,
+) -> None:
+    """Validate hyperparameters for models.
+
+    Args:
+        region (str): Region for which to validate hyperparameters. (Default: None).
+        model_id (str): Model ID of the model for which to validate hyperparameters.
+            (Default: None)
+        model_version (str): Version of the model for which to validate hyperparameters.
+            (Default: None)
+        hyperparameters (dict): Hyperparameters to validate.
+            (Default: None)
+        validation_mode (HyperparameterValidationMode): Method of validation to use with
+          hyperparameters. If set to ``VALIDATE_PROVIDED``, only hyperparameters provided
+          to this function will be validated, the missing hyperparameters will be ignored.
+          If set to``VALIDATE_ALGORITHM``, all algorithm hyperparameters will be validated.
+          If set to ``VALIDATE_ALL``, all hyperparameters for the model will be validated.
+          (Default: None)
+
+    Raises:
+        JumpStartHyperparametersError: If the hyperparameter is not formatted correctly,
+            according to its specs in the model metadata.
+        ValueError: If the combination of arguments specified is not supported.
+
+    """
+
+    if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
+        raise ValueError(
+            "Must specify `model_id` and `model_version` when validating hyperparameters."
+        )
+
+    if hyperparameters is None:
+        raise ValueError("Must specify hyperparameters.")
+
+    return validate_hyperparameters(
+        model_id=model_id,
+        model_version=model_version,
+        hyperparameters=hyperparameters,
+        validation_mode=validation_mode,
+        region=region,
     )
