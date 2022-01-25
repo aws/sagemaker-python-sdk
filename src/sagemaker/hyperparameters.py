@@ -89,6 +89,7 @@ def validate(
     Raises:
         JumpStartHyperparametersError: If the hyperparameter is not formatted correctly,
             according to its specs in the model metadata.
+        ValueError: If the combination of arguments specified is not supported.
 
     """
 
