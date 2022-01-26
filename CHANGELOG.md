@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.74.0 (2022-01-26)
+
+### Features
+
+ * Add support for SageMaker lineage queries context
+
+### Bug Fixes and Other Changes
+
+ * support specifying a facet by its column index
+
+### Documentation Changes
+
+ * more documentation for serverless inference
+
 ## v2.73.0 (2022-01-19)
 
 ### Features
