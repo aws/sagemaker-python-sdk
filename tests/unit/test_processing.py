@@ -99,9 +99,7 @@ def mock_fw_tar_and_upload_dir():
 def test_sklearn_processor_with_required_parameters(
     exists_mock, isfile_mock, botocore_resolver, sagemaker_session, sklearn_version
 ):
-    botocore_resolver.return_value.construct_endpoint.return_value = {
-        "hostname": ECR_HOSTNAME
-    }
+    botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
     processor = SKLearnProcessor(
         role=ROLE,
         instance_type="ml.m4.xlarge",
@@ -127,9 +125,7 @@ def test_sklearn_processor_with_required_parameters(
 def test_sklearn_with_all_parameters(
     exists_mock, isfile_mock, botocore_resolver, sklearn_version, sagemaker_session
 ):
-    botocore_resolver.return_value.construct_endpoint.return_value = {
-        "hostname": ECR_HOSTNAME
-    }
+    botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
     processor = SKLearnProcessor(
         role=ROLE,
@@ -196,9 +192,7 @@ def test_local_mode_disables_local_code_by_default(localsession_mock):
 def test_sklearn_with_all_parameters_via_run_args(
     exists_mock, isfile_mock, botocore_resolver, sklearn_version, sagemaker_session
 ):
-    botocore_resolver.return_value.construct_endpoint.return_value = {
-        "hostname": ECR_HOSTNAME
-    }
+    botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
     processor = SKLearnProcessor(
         role=ROLE,
@@ -257,9 +251,7 @@ def test_sklearn_with_all_parameters_via_run_args(
 def test_sklearn_with_all_parameters_via_run_args_called_twice(
     exists_mock, isfile_mock, botocore_resolver, sklearn_version, sagemaker_session
 ):
-    botocore_resolver.return_value.construct_endpoint.return_value = {
-        "hostname": ECR_HOSTNAME
-    }
+    botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
     processor = SKLearnProcessor(
         role=ROLE,
@@ -324,9 +316,7 @@ def test_normalize_args_prepares_framework_processor(
     sagemaker_session,
     mock_fw_tar_and_upload_dir,
 ):
-    botocore_resolver.return_value.construct_endpoint.return_value = {
-        "hostname": ECR_HOSTNAME
-    }
+    botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
     processor = PyTorchProcessor(
         role=ROLE,
@@ -361,9 +351,7 @@ def test_normalize_args_prepares_framework_processor(
     assert code_inputs[0].source == "/".join(
         ("s3:/", BUCKET_NAME, process_args["job_name"], "source/sourcedir.tar.gz")
     )
-    entrypoint_inputs = list(
-        filter(lambda i: i.input_name == "entrypoint", normalized_inputs)
-    )
+    entrypoint_inputs = list(filter(lambda i: i.input_name == "entrypoint", normalized_inputs))
     assert len(entrypoint_inputs) == 1
 
     # Outputs should be as per raw:
@@ -390,9 +378,7 @@ def test_pytorch_processor_with_all_parameters(
     pytorch_training_py_version,
     mock_fw_tar_and_upload_dir,
 ):
-    botocore_resolver.return_value.construct_endpoint.return_value = {
-        "hostname": ECR_HOSTNAME
-    }
+    botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
     processor = PyTorchProcessor(
         role=ROLE,
@@ -437,12 +423,16 @@ def test_pytorch_processor_with_all_parameters(
     )
 
     if version.parse(pytorch_training_version) < version.parse("1.2"):
-        pytorch_image_uri = "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-pytorch:{}-cpu-{}".format(
-            pytorch_training_version, pytorch_training_py_version
+        pytorch_image_uri = (
+            "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-pytorch:{}-cpu-{}".format(
+                pytorch_training_version, pytorch_training_py_version
+            )
         )
     else:
-        pytorch_image_uri = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:{}-cpu-{}".format(
-            pytorch_training_version, pytorch_training_py_version
+        pytorch_image_uri = (
+            "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:{}-cpu-{}".format(
+                pytorch_training_version, pytorch_training_py_version
+            )
         )
 
     expected_args["app_specification"]["ImageUri"] = pytorch_image_uri
@@ -461,9 +451,7 @@ def test_xgboost_processor_with_source_dir_bundle(
     xgboost_framework_version,
     mock_fw_tar_and_upload_dir,
 ):
-    botocore_resolver.return_value.construct_endpoint.return_value = {
-        "hostname": ECR_HOSTNAME
-    }
+    botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
     processor = XGBoostProcessor(
         role=ROLE,
@@ -506,9 +494,7 @@ def test_mxnet_processor_via_run_args(
     mxnet_training_py_version,
     mock_fw_tar_and_upload_dir,
 ):
-    botocore_resolver.return_value.construct_endpoint.return_value = {
-        "hostname": ECR_HOSTNAME
-    }
+    botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
     processor = MXNetProcessor(
         role=ROLE,
@@ -591,9 +577,7 @@ def test_tensorflow_processor_with_required_parameters(
     mock_fw_tar_and_upload_dir,
 ):
 
-    botocore_resolver.return_value.construct_endpoint.return_value = {
-        "hostname": ECR_HOSTNAME
-    }
+    botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
     if version.parse(tensorflow_training_version) <= version.parse("1.13.1"):
 
@@ -637,9 +621,7 @@ def test_tensorflow_processor_with_required_parameters(
 
 
 @patch("os.path.exists", return_value=False)
-def test_script_processor_errors_with_nonexistent_local_code(
-    exists_mock, sagemaker_session
-):
+def test_script_processor_errors_with_nonexistent_local_code(exists_mock, sagemaker_session):
     processor = _get_script_processor(sagemaker_session)
     with pytest.raises(ValueError):
         processor.run(code="/local/path/to/processing_code.py")
@@ -647,9 +629,7 @@ def test_script_processor_errors_with_nonexistent_local_code(
 
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=False)
-def test_script_processor_errors_with_code_directory(
-    exists_mock, isfile_mock, sagemaker_session
-):
+def test_script_processor_errors_with_code_directory(exists_mock, isfile_mock, sagemaker_session):
     processor = _get_script_processor(sagemaker_session)
     with pytest.raises(ValueError):
         processor.run(code="/local/path/to/code")
@@ -715,16 +695,12 @@ def test_script_processor_works_with_file_code_url_scheme(
 
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
-def test_script_processor_works_with_s3_code_url(
-    exists_mock, isfile_mock, sagemaker_session
-):
+def test_script_processor_works_with_s3_code_url(exists_mock, isfile_mock, sagemaker_session):
     processor = _get_script_processor(sagemaker_session)
     processor.run(code="s3://bucket/path/to/processing_code.py")
 
     expected_args = _get_expected_args(processor._current_job_name)
-    expected_args["inputs"][0]["S3Input"][
-        "S3Uri"
-    ] = "s3://bucket/path/to/processing_code.py"
+    expected_args["inputs"][0]["S3Input"]["S3Uri"] = "s3://bucket/path/to/processing_code.py"
     sagemaker_session.process.assert_called_with(**expected_args)
 
 
@@ -735,9 +711,7 @@ def test_script_processor_with_one_input(exists_mock, isfile_mock, sagemaker_ses
     processor.run(
         code="/local/path/to/processing_code.py",
         inputs=[
-            ProcessingInput(
-                source="/local/path/to/my/dataset/census.csv", destination="/data/"
-            )
+            ProcessingInput(source="/local/path/to/my/dataset/census.csv", destination="/data/")
         ],
     )
 
@@ -771,9 +745,7 @@ def test_script_processor_with_one_input(exists_mock, isfile_mock, sagemaker_ses
 
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
-def test_script_processor_with_required_parameters(
-    exists_mock, isfile_mock, sagemaker_session
-):
+def test_script_processor_with_required_parameters(exists_mock, isfile_mock, sagemaker_session):
     processor = _get_script_processor(sagemaker_session)
 
     processor.run(code="/local/path/to/processing_code.py")
@@ -784,9 +756,7 @@ def test_script_processor_with_required_parameters(
 
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
-def test_script_processor_with_all_parameters(
-    exists_mock, isfile_mock, sagemaker_session
-):
+def test_script_processor_with_all_parameters(exists_mock, isfile_mock, sagemaker_session):
     processor = ScriptProcessor(
         role=ROLE,
         image_uri=CUSTOM_IMAGE_URI,
@@ -994,18 +964,14 @@ def test_processing_job_from_processing_arn(sagemaker_session):
 
     assert isinstance(processing_job, ProcessingJob)
     assert [
-        processing_input._to_request_dict()
-        for processing_input in processing_job.inputs
+        processing_input._to_request_dict() for processing_input in processing_job.inputs
     ] == _get_describe_response_inputs_and_ouputs()["ProcessingInputs"]
     assert [
-        processing_output._to_request_dict()
-        for processing_output in processing_job.outputs
+        processing_output._to_request_dict() for processing_output in processing_job.outputs
     ] == _get_describe_response_inputs_and_ouputs()["ProcessingOutputConfig"]["Outputs"]
     assert (
         processing_job.output_kms_key
-        == _get_describe_response_inputs_and_ouputs()["ProcessingOutputConfig"][
-            "KmsKeyId"
-        ]
+        == _get_describe_response_inputs_and_ouputs()["ProcessingOutputConfig"]["KmsKeyId"]
     )
 
 
@@ -1215,9 +1181,7 @@ def _get_data_outputs_all_parameters():
         ProcessingOutput(
             output_name="feature_store_output",
             app_managed=True,
-            feature_store_output=FeatureStoreOutput(
-                feature_group_name="FeatureGroupName"
-            ),
+            feature_store_output=FeatureStoreOutput(feature_group_name="FeatureGroupName"),
         ),
     ]
 
@@ -1514,7 +1478,5 @@ def _get_expected_args_all_parameters(job_name, code_location=None):
 def _get_describe_response_inputs_and_ouputs():
     return {
         "ProcessingInputs": _get_expected_args_all_parameters(None)["inputs"],
-        "ProcessingOutputConfig": _get_expected_args_all_parameters(None)[
-            "output_config"
-        ],
+        "ProcessingOutputConfig": _get_expected_args_all_parameters(None)["output_config"],
     }

@@ -701,7 +701,11 @@ def test_sklearn_with_network_config(sagemaker_session, sklearn_latest_version, 
 
 
 def test_processing_job_inputs_and_output_config(
-    sagemaker_session, image_uri, cpu_instance_type, output_kms_key, custom_bucket_name,
+    sagemaker_session,
+    image_uri,
+    cpu_instance_type,
+    output_kms_key,
+    custom_bucket_name,
 ):
     custom_code_location = f"s3://{custom_bucket_name}/customized-processing-code"
     script_processor = ScriptProcessor(

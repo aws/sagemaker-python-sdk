@@ -454,9 +454,7 @@ class ScriptProcessor(Processor):
         self._CODE_CONTAINER_INPUT_NAME = "code"
         self.command = command
         self.code_location = (
-            code_location[:-1]
-            if (code_location and code_location.endswith("/"))
-            else code_location
+            code_location[:-1] if (code_location and code_location.endswith("/")) else code_location
         )
 
         super(ScriptProcessor, self).__init__(
