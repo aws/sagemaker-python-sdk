@@ -17,8 +17,7 @@ import uuid
 
 import pytest
 
-from sagemaker.s3 import S3Uploader
-from sagemaker.s3 import S3Downloader
+from sagemaker.s3 import S3Downloader, S3Uploader, s3_path_join
 
 from tests.integ.kms_utils import get_or_create_kms_key
 
@@ -238,3 +237,8 @@ def test_s3_uploader_and_downloader_downloads_files_when_given_directory_uris_wi
 
     with open(os.path.join(TMP_BASE_PATH, my_inner_directory_uuid, file_2_name), "r") as f:
         assert file_2_body == f.read()
+
+
+def test_s3_path_join_ignores_empty_elements():
+    # (At writing, ScriptProcessor code upload expects/requires this)
+    assert s3_path_join("s3://", "mybucket", "", "a", "b", "", "c") == "s3://mybucket/a/b/c"

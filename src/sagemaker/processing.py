@@ -399,6 +399,7 @@ class ScriptProcessor(Processor):
         env=None,
         tags=None,
         network_config=None,
+        code_location=None,
     ):
         """Initializes a ``ScriptProcessor`` instance.
 
@@ -443,10 +444,20 @@ class ScriptProcessor(Processor):
                 A :class:`~sagemaker.network.NetworkConfig`
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
+            code_location (str): The S3 prefix URI where custom code will be uploaded
+                (default: None) - don't include a trailing slash since a string prepended
+                with a "/" is appended to ``code_location``. Code will be uploaded to
+                folder 'code_location/job-name/input/code'. If not specified, the default
+                ``code location`` is 's3://{sagemaker-default-bucket}'.
         """
         self._CODE_CONTAINER_BASE_PATH = "/opt/ml/processing/input/"
         self._CODE_CONTAINER_INPUT_NAME = "code"
         self.command = command
+        self.code_location = (
+            code_location[:-1]
+            if (code_location and code_location.endswith("/"))
+            else code_location
+        )
 
         super(ScriptProcessor, self).__init__(
             role=role,
@@ -653,9 +664,15 @@ class ScriptProcessor(Processor):
             str: The S3 URI of the uploaded file or directory.
 
         """
+        if self.code_location:
+            code_bucket, key_prefix = s3.parse_s3_url(self.code_location)
+        else:
+            code_bucket = self.sagemaker_session.default_bucket()
+            key_prefix = ""
         desired_s3_uri = s3.s3_path_join(
             "s3://",
-            self.sagemaker_session.default_bucket(),
+            code_bucket,
+            key_prefix,
             self._current_job_name,
             "input",
             self._CODE_CONTAINER_INPUT_NAME,
@@ -1373,14 +1390,11 @@ class FrameworkProcessor(ScriptProcessor):
             env=env,
             tags=tags,
             network_config=network_config,
+            code_location=code_location,
         )
 
         self._FRAMEWORK_ENTRYPOINT_CONTAINER_INPUT_NAME = "entrypoint"
         self._FRAMEWORK_ENTRYPOINT_SCRIPT_NAME = "runproc.sh"
-
-        self.code_location = (
-            code_location[:-1] if (code_location and code_location.endswith("/")) else code_location
-        )
 
         if image_uri is None or base_job_name is None:
             # For these default configuration purposes, we don't need the optional args:

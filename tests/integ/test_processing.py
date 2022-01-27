@@ -701,8 +701,9 @@ def test_sklearn_with_network_config(sagemaker_session, sklearn_latest_version, 
 
 
 def test_processing_job_inputs_and_output_config(
-    sagemaker_session, image_uri, cpu_instance_type, output_kms_key
+    sagemaker_session, image_uri, cpu_instance_type, output_kms_key, custom_bucket_name,
 ):
+    custom_code_location = f"s3://{custom_bucket_name}/customized-processing-code"
     script_processor = ScriptProcessor(
         role=ROLE,
         image_uri=image_uri,
@@ -716,6 +717,7 @@ def test_processing_job_inputs_and_output_config(
         base_job_name="test-script-processor",
         env={"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"},
         tags=[{"Key": "dummy-tag", "Value": "dummy-tag-value"}],
+        code_location=custom_code_location,
         sagemaker_session=sagemaker_session,
     )
 
@@ -733,6 +735,10 @@ def test_processing_job_inputs_and_output_config(
     )
     assert (
         job_description["ProcessingInputs"][:-1] == expected_inputs_and_outputs["ProcessingInputs"]
+    )
+    assert job_description["ProcessingInputs"][-1]["InputName"] == "code"
+    assert job_description["ProcessingInputs"][-1]["S3Input"]["S3Uri"].startswith(
+        custom_code_location
     )
     assert (
         job_description["ProcessingOutputConfig"]

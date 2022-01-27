@@ -64,21 +64,33 @@ def sagemaker_session():
     )
     session_mock.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
 
-    session_mock.upload_data = Mock(name="upload_data", return_value=MOCKED_S3_URI)
+    def upload_data_mock(path, bucket=BUCKET_NAME, key_prefix="data", *args, **kwargs):
+        filename = path.rpartition("/")[2]
+        return "/".join(("s3:/", bucket, key_prefix, filename))
+
+    session_mock.upload_data = Mock(name="upload_data", wraps=upload_data_mock)
     session_mock.download_data = Mock(name="download_data")
     session_mock.expand_role.return_value = ROLE
     session_mock.describe_processing_job = MagicMock(
-        name="describe_processing_job", return_value=_get_describe_response_inputs_and_ouputs()
+        name="describe_processing_job",
+        return_value=_get_describe_response_inputs_and_ouputs(),
     )
     return session_mock
 
 
 @pytest.fixture()
-def uploaded_code(
-    s3_prefix="s3://mocked_s3_uri_from_upload_data/my_job_name/source/sourcedir.tar.gz",
-    script_name="processing_code.py",
-):
-    return UploadedCode(s3_prefix=s3_prefix, script_name=script_name)
+def mock_fw_tar_and_upload_dir():
+    def tar_and_upload_dir(session, bucket, s3_key_prefix, script, *args, **kwargs):
+        return UploadedCode(
+            s3_prefix="/".join(("s3:/", bucket, s3_key_prefix, "sourcedir.tar.gz")),
+            script_name=script,
+        )
+
+    with patch(
+        "sagemaker.estimator.tar_and_upload_dir",
+        Mock(name="tar_and_upload_dir", wraps=tar_and_upload_dir),
+    ) as tar_and_upload_dir_mock:
+        yield tar_and_upload_dir_mock
 
 
 @patch("sagemaker.utils._botocore_resolver")
@@ -87,7 +99,9 @@ def uploaded_code(
 def test_sklearn_processor_with_required_parameters(
     exists_mock, isfile_mock, botocore_resolver, sagemaker_session, sklearn_version
 ):
-    botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
+    botocore_resolver.return_value.construct_endpoint.return_value = {
+        "hostname": ECR_HOSTNAME
+    }
     processor = SKLearnProcessor(
         role=ROLE,
         instance_type="ml.m4.xlarge",
@@ -113,7 +127,9 @@ def test_sklearn_processor_with_required_parameters(
 def test_sklearn_with_all_parameters(
     exists_mock, isfile_mock, botocore_resolver, sklearn_version, sagemaker_session
 ):
-    botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
+    botocore_resolver.return_value.construct_endpoint.return_value = {
+        "hostname": ECR_HOSTNAME
+    }
 
     processor = SKLearnProcessor(
         role=ROLE,
@@ -133,6 +149,7 @@ def test_sklearn_with_all_parameters(
             enable_network_isolation=True,
             encrypt_inter_container_traffic=True,
         ),
+        code_location="s3://a-customized-bucket/a-customized-prefix",
         sagemaker_session=sagemaker_session,
     )
 
@@ -147,7 +164,10 @@ def test_sklearn_with_all_parameters(
         experiment_config={"ExperimentName": "AnExperiment"},
     )
 
-    expected_args = _get_expected_args_all_parameters(processor._current_job_name)
+    expected_args = _get_expected_args_all_parameters(
+        processor._current_job_name,
+        code_location="s3://a-customized-bucket/a-customized-prefix",
+    )
     sklearn_image_uri = (
         "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
     ).format(sklearn_version)
@@ -176,7 +196,9 @@ def test_local_mode_disables_local_code_by_default(localsession_mock):
 def test_sklearn_with_all_parameters_via_run_args(
     exists_mock, isfile_mock, botocore_resolver, sklearn_version, sagemaker_session
 ):
-    botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
+    botocore_resolver.return_value.construct_endpoint.return_value = {
+        "hostname": ECR_HOSTNAME
+    }
 
     processor = SKLearnProcessor(
         role=ROLE,
@@ -196,6 +218,7 @@ def test_sklearn_with_all_parameters_via_run_args(
             enable_network_isolation=True,
             encrypt_inter_container_traffic=True,
         ),
+        code_location="s3://a-customized-bucket/a-customized-prefix",
         sagemaker_session=sagemaker_session,
     )
 
@@ -216,7 +239,10 @@ def test_sklearn_with_all_parameters_via_run_args(
         experiment_config={"ExperimentName": "AnExperiment"},
     )
 
-    expected_args = _get_expected_args_all_parameters(processor._current_job_name)
+    expected_args = _get_expected_args_all_parameters(
+        processor._current_job_name,
+        code_location="s3://a-customized-bucket/a-customized-prefix",
+    )
     sklearn_image_uri = (
         "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
     ).format(sklearn_version)
@@ -231,7 +257,9 @@ def test_sklearn_with_all_parameters_via_run_args(
 def test_sklearn_with_all_parameters_via_run_args_called_twice(
     exists_mock, isfile_mock, botocore_resolver, sklearn_version, sagemaker_session
 ):
-    botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
+    botocore_resolver.return_value.construct_endpoint.return_value = {
+        "hostname": ECR_HOSTNAME
+    }
 
     processor = SKLearnProcessor(
         role=ROLE,
@@ -251,6 +279,7 @@ def test_sklearn_with_all_parameters_via_run_args_called_twice(
             enable_network_isolation=True,
             encrypt_inter_container_traffic=True,
         ),
+        code_location="s3://a-customized-bucket/a-customized-prefix",
         sagemaker_session=sagemaker_session,
     )
 
@@ -270,7 +299,10 @@ def test_sklearn_with_all_parameters_via_run_args_called_twice(
         experiment_config={"ExperimentName": "AnExperiment"},
     )
 
-    expected_args = _get_expected_args_all_parameters(processor._current_job_name)
+    expected_args = _get_expected_args_all_parameters(
+        processor._current_job_name,
+        code_location="s3://a-customized-bucket/a-customized-prefix",
+    )
 
     sklearn_image_uri = (
         "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
@@ -290,9 +322,11 @@ def test_normalize_args_prepares_framework_processor(
     pytorch_training_latest_version,
     pytorch_training_latest_py_version,
     sagemaker_session,
-    uploaded_code,
+    mock_fw_tar_and_upload_dir,
 ):
-    botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
+    botocore_resolver.return_value.construct_endpoint.return_value = {
+        "hostname": ECR_HOSTNAME
+    }
 
     processor = PyTorchProcessor(
         role=ROLE,
@@ -306,16 +340,15 @@ def test_normalize_args_prepares_framework_processor(
     raw_job_inputs = _get_data_inputs_all_parameters()
     raw_job_outputs = _get_data_outputs_all_parameters()
 
-    with patch("sagemaker.estimator.tar_and_upload_dir", return_value=uploaded_code):
-        # sagemaker.workflow.steps.ProcessingStep assumes that calling _normalize_args() on a
-        # Processor is sufficient to ensure it packages whatever code might be to S3 and prepares
-        # final ProcessingInputs for the job:
-        normalized_inputs, normalized_outputs = processor._normalize_args(
-            inputs=raw_job_inputs,
-            outputs=raw_job_outputs,
-            code="processing_code.py",
-            source_dir="/local/path/to/source_dir",
-        )
+    # sagemaker.workflow.steps.ProcessingStep assumes that calling _normalize_args() on a
+    # Processor is sufficient to ensure it packages whatever code might be to S3 and prepares
+    # final ProcessingInputs for the job:
+    normalized_inputs, normalized_outputs = processor._normalize_args(
+        inputs=raw_job_inputs,
+        outputs=raw_job_outputs,
+        code="processing_code.py",
+        source_dir="/local/path/to/source_dir",
+    )
     process_args = ProcessingJob._get_process_args(
         processor, normalized_inputs, normalized_outputs, experiment_config=dict()
     )
@@ -325,8 +358,12 @@ def test_normalize_args_prepares_framework_processor(
     normalized_inputs[0].input_name == "code"
     code_inputs = list(filter(lambda i: i.input_name == "code", normalized_inputs))
     assert len(code_inputs) == 1
-    assert code_inputs[0].source == uploaded_code.s3_prefix
-    entrypoint_inputs = list(filter(lambda i: i.input_name == "entrypoint", normalized_inputs))
+    assert code_inputs[0].source == "/".join(
+        ("s3:/", BUCKET_NAME, process_args["job_name"], "source/sourcedir.tar.gz")
+    )
+    entrypoint_inputs = list(
+        filter(lambda i: i.input_name == "entrypoint", normalized_inputs)
+    )
     assert len(entrypoint_inputs) == 1
 
     # Outputs should be as per raw:
@@ -351,9 +388,11 @@ def test_pytorch_processor_with_all_parameters(
     sagemaker_session,
     pytorch_training_version,
     pytorch_training_py_version,
-    uploaded_code,
+    mock_fw_tar_and_upload_dir,
 ):
-    botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
+    botocore_resolver.return_value.construct_endpoint.return_value = {
+        "hostname": ECR_HOSTNAME
+    }
 
     processor = PyTorchProcessor(
         role=ROLE,
@@ -374,40 +413,36 @@ def test_pytorch_processor_with_all_parameters(
             enable_network_isolation=True,
             encrypt_inter_container_traffic=True,
         ),
+        code_location="s3://a-customized-bucket/a-customized-prefix",
         sagemaker_session=sagemaker_session,
     )
 
-    with patch("sagemaker.estimator.tar_and_upload_dir", return_value=uploaded_code):
-        processor.run(code="/local/path/to/processing_code.py")
-        processor.run(
-            code="processing_code.py",
-            source_dir="/local/path/to/source_dir",
-            inputs=_get_data_inputs_all_parameters(),
-            outputs=_get_data_outputs_all_parameters(),
-            arguments=["--drop-columns", "'SelfEmployed'"],
-            dependencies=["/local/path/to/dep_01"],
-            git_config=None,
-            wait=True,
-            logs=False,
-            experiment_config={"ExperimentName": "AnExperiment"},
-        )
+    processor.run(code="/local/path/to/processing_code.py")
+    processor.run(
+        code="processing_code.py",
+        source_dir="/local/path/to/source_dir",
+        inputs=_get_data_inputs_all_parameters(),
+        outputs=_get_data_outputs_all_parameters(),
+        arguments=["--drop-columns", "'SelfEmployed'"],
+        dependencies=["/local/path/to/dep_01"],
+        git_config=None,
+        wait=True,
+        logs=False,
+        experiment_config={"ExperimentName": "AnExperiment"},
+    )
 
     expected_args = _get_expected_args_all_parameters_modular_code(
         processor._current_job_name,
-        code_s3_prefix=uploaded_code.s3_prefix.rpartition("/")[0],
+        code_location="s3://a-customized-bucket/a-customized-prefix",
     )
 
     if version.parse(pytorch_training_version) < version.parse("1.2"):
-        pytorch_image_uri = (
-            "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-pytorch:{}-cpu-{}".format(
-                pytorch_training_version, pytorch_training_py_version
-            )
+        pytorch_image_uri = "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-pytorch:{}-cpu-{}".format(
+            pytorch_training_version, pytorch_training_py_version
         )
     else:
-        pytorch_image_uri = (
-            "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:{}-cpu-{}".format(
-                pytorch_training_version, pytorch_training_py_version
-            )
+        pytorch_image_uri = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:{}-cpu-{}".format(
+            pytorch_training_version, pytorch_training_py_version
         )
 
     expected_args["app_specification"]["ImageUri"] = pytorch_image_uri
@@ -424,9 +459,11 @@ def test_xgboost_processor_with_source_dir_bundle(
     botocore_resolver,
     sagemaker_session,
     xgboost_framework_version,
-    uploaded_code,
+    mock_fw_tar_and_upload_dir,
 ):
-    botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
+    botocore_resolver.return_value.construct_endpoint.return_value = {
+        "hostname": ECR_HOSTNAME
+    }
 
     processor = XGBoostProcessor(
         role=ROLE,
@@ -436,16 +473,12 @@ def test_xgboost_processor_with_source_dir_bundle(
         sagemaker_session=sagemaker_session,
     )
 
-    with patch("sagemaker.estimator.tar_and_upload_dir", return_value=uploaded_code):
-        processor.run(
-            code="processing_code.py",
-            source_dir="/local/path/to/code/folder",
-        )
-
-    expected_args = _get_expected_args_modular_code(
-        processor._current_job_name,
-        code_s3_prefix=uploaded_code.s3_prefix.rpartition("/")[0],
+    processor.run(
+        code="processing_code.py",
+        source_dir="/local/path/to/code/folder",
     )
+
+    expected_args = _get_expected_args_modular_code(processor._current_job_name)
 
     if version.parse(xgboost_framework_version) < version.parse("1.2-1"):
         xgboost_image_uri = (
@@ -471,9 +504,11 @@ def test_mxnet_processor_via_run_args(
     sagemaker_session,
     mxnet_training_version,
     mxnet_training_py_version,
-    uploaded_code,
+    mock_fw_tar_and_upload_dir,
 ):
-    botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
+    botocore_resolver.return_value.construct_endpoint.return_value = {
+        "hostname": ECR_HOSTNAME
+    }
 
     processor = MXNetProcessor(
         role=ROLE,
@@ -494,6 +529,7 @@ def test_mxnet_processor_via_run_args(
             enable_network_isolation=True,
             encrypt_inter_container_traffic=True,
         ),
+        code_location="s3://a-customized-bucket/a-customized-prefix",
         sagemaker_session=sagemaker_session,
     )
 
@@ -504,21 +540,20 @@ def test_mxnet_processor_via_run_args(
         arguments=["--drop-columns", "'SelfEmployed'"],
     )
 
-    with patch("sagemaker.estimator.tar_and_upload_dir", return_value=uploaded_code):
-        processor.run(
-            code=run_args.code,
-            source_dir="/local/path/to/code/folder",
-            inputs=run_args.inputs,
-            outputs=run_args.outputs,
-            arguments=run_args.arguments,
-            wait=True,
-            logs=False,
-            experiment_config={"ExperimentName": "AnExperiment"},
-        )
+    processor.run(
+        code=run_args.code,
+        source_dir="/local/path/to/code/folder",
+        inputs=run_args.inputs,
+        outputs=run_args.outputs,
+        arguments=run_args.arguments,
+        wait=True,
+        logs=False,
+        experiment_config={"ExperimentName": "AnExperiment"},
+    )
 
     expected_args = _get_expected_args_all_parameters_modular_code(
         processor._current_job_name,
-        code_s3_prefix=uploaded_code.s3_prefix.rpartition("/")[0],
+        code_location="s3://a-customized-bucket/a-customized-prefix",
     )
 
     if (mxnet_training_py_version == "py3") & (
@@ -553,9 +588,12 @@ def test_tensorflow_processor_with_required_parameters(
     sagemaker_session,
     tensorflow_training_version,
     tensorflow_training_py_version,
+    mock_fw_tar_and_upload_dir,
 ):
 
-    botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
+    botocore_resolver.return_value.construct_endpoint.return_value = {
+        "hostname": ECR_HOSTNAME
+    }
 
     if version.parse(tensorflow_training_version) <= version.parse("1.13.1"):
 
@@ -599,7 +637,9 @@ def test_tensorflow_processor_with_required_parameters(
 
 
 @patch("os.path.exists", return_value=False)
-def test_script_processor_errors_with_nonexistent_local_code(exists_mock, sagemaker_session):
+def test_script_processor_errors_with_nonexistent_local_code(
+    exists_mock, sagemaker_session
+):
     processor = _get_script_processor(sagemaker_session)
     with pytest.raises(ValueError):
         processor.run(code="/local/path/to/processing_code.py")
@@ -607,7 +647,9 @@ def test_script_processor_errors_with_nonexistent_local_code(exists_mock, sagema
 
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=False)
-def test_script_processor_errors_with_code_directory(exists_mock, isfile_mock, sagemaker_session):
+def test_script_processor_errors_with_code_directory(
+    exists_mock, isfile_mock, sagemaker_session
+):
     processor = _get_script_processor(sagemaker_session)
     with pytest.raises(ValueError):
         processor.run(code="/local/path/to/code")
@@ -631,7 +673,7 @@ def test_script_processor_works_with_absolute_local_path(
     processor = _get_script_processor(sagemaker_session)
     processor.run(code="/local/path/to/processing_code.py")
 
-    expected_args = _get_expected_args(processor._current_job_name, code_s3_uri=MOCKED_S3_URI)
+    expected_args = _get_expected_args(processor._current_job_name)
 
     sagemaker_session.process.assert_called_with(**expected_args)
 
@@ -644,7 +686,7 @@ def test_script_processor_works_with_relative_local_path(
     processor = _get_script_processor(sagemaker_session)
     processor.run(code="processing_code.py")
 
-    expected_args = _get_expected_args(processor._current_job_name, code_s3_uri=MOCKED_S3_URI)
+    expected_args = _get_expected_args(processor._current_job_name)
     sagemaker_session.process.assert_called_with(**expected_args)
 
 
@@ -655,7 +697,7 @@ def test_script_processor_works_with_relative_local_path_with_directories(
 ):
     processor = _get_script_processor(sagemaker_session)
     processor.run(code="path/to/processing_code.py")
-    expected_args = _get_expected_args(processor._current_job_name, code_s3_uri=MOCKED_S3_URI)
+    expected_args = _get_expected_args(processor._current_job_name)
     sagemaker_session.process.assert_called_with(**expected_args)
 
 
@@ -667,19 +709,22 @@ def test_script_processor_works_with_file_code_url_scheme(
     processor = _get_script_processor(sagemaker_session)
     processor.run(code="file:///path/to/processing_code.py")
 
-    expected_args = _get_expected_args(processor._current_job_name, code_s3_uri=MOCKED_S3_URI)
+    expected_args = _get_expected_args(processor._current_job_name)
     sagemaker_session.process.assert_called_with(**expected_args)
 
 
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
-def test_script_processor_works_with_s3_code_url(exists_mock, isfile_mock, sagemaker_session):
+def test_script_processor_works_with_s3_code_url(
+    exists_mock, isfile_mock, sagemaker_session
+):
     processor = _get_script_processor(sagemaker_session)
     processor.run(code="s3://bucket/path/to/processing_code.py")
 
-    expected_args = _get_expected_args(
-        processor._current_job_name, "s3://bucket/path/to/processing_code.py"
-    )
+    expected_args = _get_expected_args(processor._current_job_name)
+    expected_args["inputs"][0]["S3Input"][
+        "S3Uri"
+    ] = "s3://bucket/path/to/processing_code.py"
     sagemaker_session.process.assert_called_with(**expected_args)
 
 
@@ -690,30 +735,58 @@ def test_script_processor_with_one_input(exists_mock, isfile_mock, sagemaker_ses
     processor.run(
         code="/local/path/to/processing_code.py",
         inputs=[
-            ProcessingInput(source="/local/path/to/my/dataset/census.csv", destination="/data/")
+            ProcessingInput(
+                source="/local/path/to/my/dataset/census.csv", destination="/data/"
+            )
         ],
     )
 
-    expected_args = _get_expected_args(processor._current_job_name, code_s3_uri=MOCKED_S3_URI)
-    expected_args["inputs"].insert(0, _get_data_input())
+    expected_args = _get_expected_args(processor._current_job_name)
+    expected_args["inputs"].insert(
+        0,
+        {
+            "InputName": "input-1",
+            "AppManaged": False,
+            "S3Input": {
+                "S3Uri": "/".join(
+                    (
+                        "s3:/",
+                        BUCKET_NAME,
+                        processor._current_job_name,
+                        "input/input-1",
+                        "census.csv",
+                    )
+                ),
+                "LocalPath": "/data/",
+                "S3DataType": "S3Prefix",
+                "S3InputMode": "File",
+                "S3DataDistributionType": "FullyReplicated",
+                "S3CompressionType": "None",
+            },
+        },
+    )
 
     sagemaker_session.process.assert_called_with(**expected_args)
 
 
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
-def test_script_processor_with_required_parameters(exists_mock, isfile_mock, sagemaker_session):
+def test_script_processor_with_required_parameters(
+    exists_mock, isfile_mock, sagemaker_session
+):
     processor = _get_script_processor(sagemaker_session)
 
     processor.run(code="/local/path/to/processing_code.py")
 
-    expected_args = _get_expected_args(processor._current_job_name, code_s3_uri=MOCKED_S3_URI)
+    expected_args = _get_expected_args(processor._current_job_name)
     sagemaker_session.process.assert_called_with(**expected_args)
 
 
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
-def test_script_processor_with_all_parameters(exists_mock, isfile_mock, sagemaker_session):
+def test_script_processor_with_all_parameters(
+    exists_mock, isfile_mock, sagemaker_session
+):
     processor = ScriptProcessor(
         role=ROLE,
         image_uri=CUSTOM_IMAGE_URI,
@@ -733,6 +806,7 @@ def test_script_processor_with_all_parameters(exists_mock, isfile_mock, sagemake
             enable_network_isolation=True,
             encrypt_inter_container_traffic=True,
         ),
+        code_location="s3://a-customized-bucket/a-customized-prefix",
         sagemaker_session=sagemaker_session,
     )
 
@@ -747,7 +821,10 @@ def test_script_processor_with_all_parameters(exists_mock, isfile_mock, sagemake
         experiment_config={"ExperimentName": "AnExperiment"},
     )
 
-    expected_args = _get_expected_args_all_parameters(processor._current_job_name)
+    expected_args = _get_expected_args_all_parameters(
+        processor._current_job_name,
+        code_location="s3://a-customized-bucket/a-customized-prefix",
+    )
 
     sagemaker_session.process.assert_called_with(**expected_args)
     assert "my_job_name" in processor._current_job_name
@@ -777,6 +854,7 @@ def test_script_processor_with_all_parameters_via_run_args(
             enable_network_isolation=True,
             encrypt_inter_container_traffic=True,
         ),
+        code_location="s3://a-customized-bucket/a-customized-prefix",
         sagemaker_session=sagemaker_session,
     )
 
@@ -798,7 +876,10 @@ def test_script_processor_with_all_parameters_via_run_args(
         experiment_config={"ExperimentName": "AnExperiment"},
     )
 
-    expected_args = _get_expected_args_all_parameters(processor._current_job_name)
+    expected_args = _get_expected_args_all_parameters(
+        processor._current_job_name,
+        code_location="s3://a-customized-bucket/a-customized-prefix",
+    )
 
     sagemaker_session.process.assert_called_with(**expected_args)
     assert "my_job_name" in processor._current_job_name
@@ -913,14 +994,18 @@ def test_processing_job_from_processing_arn(sagemaker_session):
 
     assert isinstance(processing_job, ProcessingJob)
     assert [
-        processing_input._to_request_dict() for processing_input in processing_job.inputs
+        processing_input._to_request_dict()
+        for processing_input in processing_job.inputs
     ] == _get_describe_response_inputs_and_ouputs()["ProcessingInputs"]
     assert [
-        processing_output._to_request_dict() for processing_output in processing_job.outputs
+        processing_output._to_request_dict()
+        for processing_output in processing_job.outputs
     ] == _get_describe_response_inputs_and_ouputs()["ProcessingOutputConfig"]["Outputs"]
     assert (
         processing_job.output_kms_key
-        == _get_describe_response_inputs_and_ouputs()["ProcessingOutputConfig"]["KmsKeyId"]
+        == _get_describe_response_inputs_and_ouputs()["ProcessingOutputConfig"][
+            "KmsKeyId"
+        ]
     )
 
 
@@ -954,14 +1039,20 @@ def _get_script_processor(sagemaker_session):
     )
 
 
-def _get_expected_args(job_name, code_s3_uri=MOCKED_S3_URI):
+def _get_expected_args(job_name, code_location=None):
+    if code_location is None:
+        code_location = BUCKET_NAME
+    if code_location.lower().startswith("s3://"):
+        code_location = code_location[len("s3://") :]
+    code_filename = "processing_code.py"
+
     return {
         "inputs": [
             {
                 "InputName": "code",
                 "AppManaged": False,
                 "S3Input": {
-                    "S3Uri": code_s3_uri,
+                    "S3Uri": f"s3://{code_location}/{job_name}/input/code/{code_filename}",
                     "LocalPath": "/opt/ml/processing/input/code",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
@@ -982,7 +1073,10 @@ def _get_expected_args(job_name, code_s3_uri=MOCKED_S3_URI):
         "stopping_condition": None,
         "app_specification": {
             "ImageUri": CUSTOM_IMAGE_URI,
-            "ContainerEntrypoint": ["python3", "/opt/ml/processing/input/code/processing_code.py"],
+            "ContainerEntrypoint": [
+                "python3",
+                "/opt/ml/processing/input/code/processing_code.py",
+            ],
         },
         "environment": None,
         "network_config": None,
@@ -992,21 +1086,14 @@ def _get_expected_args(job_name, code_s3_uri=MOCKED_S3_URI):
     }
 
 
-def _get_expected_args_modular_code(
-    job_name,
-    code_s3_uri=f"s3://{BUCKET_NAME}",
-    code_s3_prefix=None,
-):
-    if code_s3_prefix is None:
-        code_s3_prefix = f"{code_s3_uri}/{job_name}/source"
-
+def _get_expected_args_modular_code(job_name):
     return {
         "inputs": [
             {
                 "InputName": "code",
                 "AppManaged": False,
                 "S3Input": {
-                    "S3Uri": f"{code_s3_prefix}/sourcedir.tar.gz",
+                    "S3Uri": f"s3://{BUCKET_NAME}/{job_name}/source/sourcedir.tar.gz",
                     "LocalPath": "/opt/ml/processing/input/code",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
@@ -1018,7 +1105,7 @@ def _get_expected_args_modular_code(
                 "InputName": "entrypoint",
                 "AppManaged": False,
                 "S3Input": {
-                    "S3Uri": f"{code_s3_prefix}/runproc.sh",
+                    "S3Uri": f"s3://{BUCKET_NAME}/{job_name}/source/runproc.sh",
                     "LocalPath": "/opt/ml/processing/input/entrypoint",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
@@ -1051,22 +1138,6 @@ def _get_expected_args_modular_code(
         "tags": None,
         "experiment_config": None,
     }
-
-
-def _get_data_input():
-    data_input = {
-        "InputName": "input-1",
-        "AppManaged": False,
-        "S3Input": {
-            "S3Uri": MOCKED_S3_URI,
-            "LocalPath": "/data/",
-            "S3DataType": "S3Prefix",
-            "S3InputMode": "File",
-            "S3DataDistributionType": "FullyReplicated",
-            "S3CompressionType": "None",
-        },
-    }
-    return data_input
 
 
 def _get_data_inputs_all_parameters():
@@ -1144,19 +1215,22 @@ def _get_data_outputs_all_parameters():
         ProcessingOutput(
             output_name="feature_store_output",
             app_managed=True,
-            feature_store_output=FeatureStoreOutput(feature_group_name="FeatureGroupName"),
+            feature_store_output=FeatureStoreOutput(
+                feature_group_name="FeatureGroupName"
+            ),
         ),
     ]
 
 
 def _get_expected_args_all_parameters_modular_code(
     job_name,
-    code_s3_uri=MOCKED_S3_URI,
+    code_location=None,
     instance_count=1,
-    code_s3_prefix=None,
 ):
-    if code_s3_prefix is None:
-        code_s3_prefix = f"{code_s3_uri}/{job_name}/source"
+    if code_location is None:
+        code_location = BUCKET_NAME
+    if code_location.lower().startswith("s3://"):
+        code_location = code_location[len("s3://") :]
 
     return {
         "inputs": [
@@ -1227,7 +1301,7 @@ def _get_expected_args_all_parameters_modular_code(
                 "InputName": "code",
                 "AppManaged": False,
                 "S3Input": {
-                    "S3Uri": f"{code_s3_prefix}/sourcedir.tar.gz",
+                    "S3Uri": f"s3://{code_location}/{job_name}/source/sourcedir.tar.gz",
                     "LocalPath": "/opt/ml/processing/input/code",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
@@ -1239,7 +1313,7 @@ def _get_expected_args_all_parameters_modular_code(
                 "InputName": "entrypoint",
                 "AppManaged": False,
                 "S3Input": {
-                    "S3Uri": f"{code_s3_prefix}/runproc.sh",
+                    "S3Uri": f"s3://{code_location}/{job_name}/source/runproc.sh",
                     "LocalPath": "/opt/ml/processing/input/entrypoint",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
@@ -1300,7 +1374,13 @@ def _get_expected_args_all_parameters_modular_code(
     }
 
 
-def _get_expected_args_all_parameters(job_name):
+def _get_expected_args_all_parameters(job_name, code_location=None):
+    if code_location is None:
+        code_location = BUCKET_NAME
+    if code_location.lower().startswith("s3://"):
+        code_location = code_location[len("s3://") :]
+    code_filename = "processing_code.py"
+
     return {
         "inputs": [
             {
@@ -1370,7 +1450,7 @@ def _get_expected_args_all_parameters(job_name):
                 "InputName": "code",
                 "AppManaged": False,
                 "S3Input": {
-                    "S3Uri": MOCKED_S3_URI,
+                    "S3Uri": f"s3://{code_location}/{job_name}/input/code/{code_filename}",
                     "LocalPath": "/opt/ml/processing/input/code",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
@@ -1411,7 +1491,10 @@ def _get_expected_args_all_parameters(job_name):
         "app_specification": {
             "ImageUri": "012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri",
             "ContainerArguments": ["--drop-columns", "'SelfEmployed'"],
-            "ContainerEntrypoint": ["python3", "/opt/ml/processing/input/code/processing_code.py"],
+            "ContainerEntrypoint": [
+                "python3",
+                "/opt/ml/processing/input/code/processing_code.py",
+            ],
         },
         "environment": {"my_env_variable": "my_env_variable_value"},
         "network_config": {
@@ -1431,5 +1514,7 @@ def _get_expected_args_all_parameters(job_name):
 def _get_describe_response_inputs_and_ouputs():
     return {
         "ProcessingInputs": _get_expected_args_all_parameters(None)["inputs"],
-        "ProcessingOutputConfig": _get_expected_args_all_parameters(None)["output_config"],
+        "ProcessingOutputConfig": _get_expected_args_all_parameters(None)[
+            "output_config"
+        ],
     }

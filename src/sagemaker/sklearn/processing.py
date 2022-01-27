@@ -41,6 +41,7 @@ class SKLearnProcessor(ScriptProcessor):
         env=None,
         tags=None,
         network_config=None,
+        code_location=None,
     ):
         """Initialize an ``SKLearnProcessor`` instance.
 
@@ -80,6 +81,11 @@ class SKLearnProcessor(ScriptProcessor):
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
+            code_location (str): The S3 prefix URI where custom code will be uploaded
+                (default: None) - don't include a trailing slash since a string prepended
+                with a "/" is appended to ``code_location``. Code will be uploaded to
+                folder 'code_location/job-name/input/code'. If not specified, the default
+                ``code location`` is 's3://{sagemaker-default-bucket}'.
         """
         if not command:
             command = ["python3"]
@@ -106,4 +112,5 @@ class SKLearnProcessor(ScriptProcessor):
             env=env,
             tags=tags,
             network_config=network_config,
+            code_location=code_location,
         )
