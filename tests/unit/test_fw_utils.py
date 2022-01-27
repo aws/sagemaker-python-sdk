@@ -684,6 +684,8 @@ def test_validate_smdataparallel_args_not_raises():
         ("ml.p3.16xlarge", "tensorflow", "2.5", "py37", smdataparallel_enabled),
         ("ml.p3.16xlarge", "tensorflow", "2.6.0", "py38", smdataparallel_enabled),
         ("ml.p3.16xlarge", "tensorflow", "2.6", "py38", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "tensorflow", "2.7.0", "py38", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "tensorflow", "2.7", "py38", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.6.0", "py3", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.6", "py3", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.7.1", "py3", smdataparallel_enabled),
