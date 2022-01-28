@@ -133,15 +133,16 @@ class Model(ModelBase):
                 ECR. (default: None).
             source_dir (str): The absolute, relative, or S3 URI Path to a directory
                 with any other training source code dependencies aside from the entry
-                point file (default: ``None``). If ``source_dir`` is an S3 URI, it must
+                point file (default: None). If ``source_dir`` is an S3 URI, it must
                 point to a tar.gz file. Structure within this directory is preserved
                 when training on Amazon SageMaker. If 'git_config' is provided,
-                'source_dir' should be a relative location to a directory in the Git
-                repo.
+                'source_dir' should be a relative location to a directory in the Git repo.
+                If the directory points to S3, no code is uploaded and the S3 location
+                is used instead.
 
                 .. admonition:: Example
 
-                    With the following GitHub repo directory structure
+                    With the following GitHub repo directory structure:
 
                     >>> |----- README.md
                     >>> |----- src
@@ -160,9 +161,8 @@ class Model(ModelBase):
                 If 'git_config' is provided, 'entry_point' should be
                 a relative location to the Python source file in the Git repo.
 
-                .. admonition:: Example
-
-                    With the following GitHub repo directory structure
+                Example:
+                    With the following GitHub repo directory structure:
 
                     >>> |----- README.md
                     >>> |----- src
@@ -179,11 +179,13 @@ class Model(ModelBase):
                 copied to SageMaker in the same folder where the entrypoint is
                 copied. If 'git_config' is provided, 'dependencies' should be a
                 list of relative locations to directories with any additional
-                libraries needed in the Git repo.
+                libraries needed in the Git repo. If the ```source_dir``` points
+                to S3, code will be uploaded and the S3 location will be used
+                instead.
 
                 .. admonition:: Example
 
-                    The following call:
+                    The following call
 
                     >>> Model(entry_point='inference.py',
                     ...       dependencies=['my/libs/common', 'virtual-env'])
@@ -197,7 +199,6 @@ class Model(ModelBase):
                     >>>     |------ common
                     >>>     |------ virtual-env
 
-
                 This is not supported with "local code" in Local Mode.
             git_config (dict[str, str]): Git configurations used for cloning
                 files, including ``repo``, ``branch``, ``commit``,
@@ -206,11 +207,11 @@ class Model(ModelBase):
                 ``repo`` specifies the Git repository where your training script
                 is stored. If you don't provide ``branch``, the default value
                 'master' is used. If you don't provide ``commit``, the latest
-                commit in the specified branch is used.
+                commit in the specified branch is used. 
                 
                 .. admonition:: Example
 
-                    The following config
+                    The following config:
 
                     >>> git_config = {'repo': 'https://github.com/aws/sagemaker-python-sdk.git',
                     >>>               'branch': 'test-branch-git-config',
@@ -219,6 +220,7 @@ class Model(ModelBase):
                     results in cloning the repo specified in 'repo', then
                     checking out the 'master' branch, and checking out the specified
                     commit.
+
                 ``2FA_enabled``, ``username``, ``password`` and ``token`` are
                 used for authentication. For GitHub (or other Git) accounts, set
                 ``2FA_enabled`` to 'True' if two-factor authentication is
@@ -228,7 +230,7 @@ class Model(ModelBase):
                 authentication, so do not provide "2FA_enabled" with CodeCommit
                 repositories.
 
-                 For GitHub and other Git repos, when SSH URLs are provided, it
+                For GitHub and other Git repos, when SSH URLs are provided, it
                 doesn't matter whether 2FA is enabled or disabled. You should
                 either have no passphrase for the SSH key pairs or have the
                 ssh-agent configured so that you will not be prompted for the SSH
@@ -1189,7 +1191,6 @@ class FrameworkModel(Model):
                     >>>         |----- inference.py
                     >>>         |----- test.py
 
-
                     You can assign entry_point='inference.py', source_dir='src'.
             predictor_cls (callable[string, sagemaker.session.Session]): A
                 function to call to create a predictor (default: None). If not
@@ -1235,7 +1236,6 @@ class FrameworkModel(Model):
                     >>>     |------ common
                     >>>     |------ virtual-env
 
-
                 This is not supported with "local code" in Local Mode.
             git_config (dict[str, str]): Git configurations used for cloning
                 files, including ``repo``, ``branch``, ``commit``,
@@ -1257,7 +1257,6 @@ class FrameworkModel(Model):
                     results in cloning the repo specified in 'repo', then
                     checkout the 'master' branch, and checkout the specified
                     commit.
-
 
                 ``2FA_enabled``, ``username``, ``password`` and ``token`` are
                 used for authentication. For GitHub (or other Git) accounts, set

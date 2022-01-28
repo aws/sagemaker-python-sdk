@@ -237,7 +237,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 complete (default: None).
             checkpoint_s3_uri (str): The S3 URI in which to persist checkpoints
                 that the algorithm persists (if any) during training. (default:
-                None).
+                ``None``).
             checkpoint_local_path (str): The local path that the algorithm
                 writes its checkpoints to. SageMaker will persist all files
                 under this path to `checkpoint_s3_uri` continually during
@@ -249,7 +249,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             rules (list[:class:`~sagemaker.debugger.RuleBase`]): A list of
                 :class:`~sagemaker.debugger.RuleBase` objects used to define
                 SageMaker Debugger rules for real-time analysis
-                (default: None). For more information,
+                (default: ``None``). For more information,
                 see `Continuous analyses through rules
                 <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html
                 #continuous-analyses-through-rules)>`_.
@@ -308,16 +308,16 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
                 .. admonition:: Example
 
-                    With the following GitHub repo directory structure,
-                    if you need 'train.py' as the entry point and 'test.py' as
-                    the training source code, you can assign
-                    entry_point='train.py' and source_dir='src'.
+                    With the following GitHub repo directory structure:
 
                     >>> |----- README.md
                     >>> |----- src
                     >>>         |----- train.py
                     >>>         |----- test.py
 
+                    if you need 'train.py' as the entry point and 'test.py' as
+                    the training source code, you can assign
+                    entry_point='train.py' and source_dir='src'.
             git_config (dict[str, str]): Git configurations used for cloning
                 files, including ``repo``, ``branch``, ``commit``,
                 ``2FA_enabled``, ``username``, ``password``, and ``token``. The
@@ -325,24 +325,26 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 ``repo`` specifies the Git repository where your training script
                 is stored. If you don't provide ``branch``, the default value
                 'master' is used. If you don't provide ``commit``, the latest
-                commit in the specified branch is used.
+                commit in the specified branch is used. 
                 
                 .. admonition:: Example
 
-                    The following config results in cloning the repo specified in 'repo', then
-                    checking out the 'master' branch, and checking out the specified
-                    commit.
+                    The following config:
 
                     >>> git_config = {'repo': 'https://github.com/aws/sagemaker-python-sdk.git',
                     >>>               'branch': 'test-branch-git-config',
                     >>>               'commit': '329bfcf884482002c05ff7f44f62599ebc9f445a'}
 
-                ``2FA_enabled``, ``username``, ``password`` and ``token`` are
+                    results in cloning the repo specified in 'repo', then
+                    checking out the 'master' branch, and checking out the specified
+                    commit.
+
+                ``2FA_enabled``, ``username``, ``password``, and ``token`` are
                 used for authentication. For GitHub (or other Git) accounts, set
-                ``2FA_enabled`` to ``True`` if two-factor authentication is
-                enabled for the account, otherwise set it to ``False``. If you do
+                ``2FA_enabled`` to 'True' if two-factor authentication is
+                enabled for the account, otherwise set it to 'False'. If you do
                 not provide a value for ``2FA_enabled``, a default value of
-                ``False`` is used. CodeCommit does not support two-factor
+                'False' is used. CodeCommit does not support two-factor
                 authentication, so do not provide "2FA_enabled" with CodeCommit
                 repositories.
 
@@ -358,7 +360,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 is not provided, the SageMaker Python SDK attempts to use local credentials
                 to authenticate. If that fails, an error message is thrown.
 
-                For CodeCommit repos, 2FA is not supported, so ``2FA_enabled``
+                For CodeCommit repos, 2FA is not supported, so '2FA_enabled'
                 should not be provided. There is no token in CodeCommit, so
                 ``token`` should also not be provided. When ``repo`` is an SSH URL,
                 the requirements are the same as GitHub  repos. When ``repo``
@@ -369,7 +371,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             hyperparameters (dict): A dictionary containing the hyperparameters to
                 initialize this estimator with. (Default: None).
             container_log_level (int): The log level to use within the container
-                (default: ``logging.INFO``). Valid values are defined in the Python
+                (default: logging.INFO). Valid values are defined in the Python
                 logging module.
             code_location (str): The S3 prefix URI where custom code is
                 uploaded (default: None). You must not include a trailing slash because
@@ -384,14 +386,14 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 a relative location to the Python source file in the Git repo.
 
                 Example:
-                    With the following GitHub repo directory structure, you can assign 
-                    entry_point='src/train.py'.
+                    With the following GitHub repo directory structure:
 
                     >>> |----- README.md
                     >>> |----- src
                     >>>         |----- train.py
                     >>>         |----- test.py
 
+                    You can assign entry_point='src/train.py'.
             dependencies (list[str]): A list of absolute or relative paths to directories
                 with any additional libraries that should be exported
                 to the container (default: []). The library folders are
@@ -588,7 +590,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
     @staticmethod
     def _json_encode_hyperparameters(hyperparameters: Dict[str, Any]) -> Dict[str, Any]:
-        """Applies Json encoding for certain hyperparameter types, returns hyperparameters.
+        """Applies JSON encoding for certain hyperparameter types, returns hyperparameters.
 
         Args:
             hyperparameters (dict): Dictionary of hyperparameters.
@@ -667,7 +669,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self._prepare_profiler_for_training()
 
     def _script_mode_hyperparam_update(self, code_dir: str, script: str) -> None:
-        """Applies in-place updates to hyperparameters required for training with script mode.
+        """Applies in-place updates to hyperparameters required for script mode with training.
 
         Args:
             code_dir (str): The directory hosting the training scripts.
@@ -2147,7 +2149,7 @@ class Estimator(EstimatorBase):
                 (default: None)
             source_dir (str): The absolute, relative, or S3 URI Path to a directory
                 with any other training source code dependencies aside from the entry
-                point file (default: ``None``). If ``source_dir`` is an S3 URI, it must
+                point file (default: None). If ``source_dir`` is an S3 URI, it must
                 point to a tar.gz file. Structure within this directory is preserved
                 when training on Amazon SageMaker. If 'git_config' is provided,
                 'source_dir' should be a relative location to a directory in the Git
@@ -2155,15 +2157,16 @@ class Estimator(EstimatorBase):
 
                 .. admonition:: Example
 
-                    With the following GitHub repo directory structure, if you need 'train.py'
-                    as the entry point and 'test.py' as the training source code, you can assign
-                    entry_point='train.py', source_dir='src'.
+                    With the following GitHub repo directory structure:
 
                     >>> |----- README.md
                     >>> |----- src
                     >>>         |----- train.py
                     >>>         |----- test.py
 
+                    if you need 'train.py'
+                    as the entry point and 'test.py' as the training source code, you can assign
+                    entry_point='train.py', source_dir='src'.
             git_config (dict[str, str]): Git configurations used for cloning
                 files, including ``repo``, ``branch``, ``commit``,
                 ``2FA_enabled``, ``username``, ``password`` and ``token``. The
@@ -2171,17 +2174,19 @@ class Estimator(EstimatorBase):
                 ``repo`` specifies the Git repository where your training script
                 is stored. If you don't provide ``branch``, the default value
                 'master' is used. If you don't provide ``commit``, the latest
-                commit in the specified branch is used.
+                commit in the specified branch is used. 
                 
                 .. admonition:: Example
 
-                    The following config results in cloning the repo specified in 'repo', then
-                    checking out the 'master' branch, and checking out the specified
-                    commit.
+                    The following config:
 
                     >>> git_config = {'repo': 'https://github.com/aws/sagemaker-python-sdk.git',
                     >>>               'branch': 'test-branch-git-config',
                     >>>               'commit': '329bfcf884482002c05ff7f44f62599ebc9f445a'}
+
+                    results in cloning the repo specified in 'repo', then
+                    checking out the 'master' branch, and checking out the specified
+                    commit.
 
                 ``2FA_enabled``, ``username``, ``password`` and ``token`` are
                 used for authentication. For GitHub (or other Git) accounts, set
@@ -2192,7 +2197,7 @@ class Estimator(EstimatorBase):
                 authentication, so do not provide "2FA_enabled" with CodeCommit
                 repositories.
 
-                 For GitHub and other Git repos, when SSH URLs are provided, it
+                For GitHub and other Git repos, when SSH URLs are provided, it
                 doesn't matter whether 2FA is enabled or disabled. You should
                 either have no passphrase for the SSH key pairs or have the
                 ssh-agent configured so that you will not be prompted for the SSH
@@ -2222,20 +2227,20 @@ class Estimator(EstimatorBase):
                 If not specified, the default ``code location`` is 's3://output_bucket/job-name/'.
             entry_point (str): The absolute or relative path to the local Python
                 source file that should be executed as the entry point to
-                training. (Default: None). If ``source_dir`` is specified, then ``entry_point``
+                training. If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
                 If 'git_config' is provided, 'entry_point' should be
                 a relative location to the Python source file in the Git repo.
 
                 Example:
-                    With the following GitHub repo directory structure, you can assign 
-                    entry_point='src/train.py'.
+                    With the following GitHub repo directory structure:
 
                     >>> |----- README.md
                     >>> |----- src
                     >>>         |----- train.py
                     >>>         |----- test.py
 
+                    You can assign entry_point='src/train.py'.
             dependencies (list[str]): A list of absolute or relative paths to directories
                 with any additional libraries that should be exported
                 to the container (default: []). The library folders are
@@ -2623,7 +2628,7 @@ class Framework(EstimatorBase):
         self._validate_and_set_debugger_configs()
 
     def _script_mode_hyperparam_update(self, code_dir: str, script: str) -> None:
-        """Applies in-place updates to hyperparameters required for training with script mode.
+        """Applies in-place updates to hyperparameters required for script mode with training.
 
         Args:
             code_dir (str): The directory hosting the training scripts.
@@ -2758,7 +2763,7 @@ class Framework(EstimatorBase):
         training.
 
         Args:
-            region (str): Optional. The AWS Region to use for image URI. Default: AWS region associated
+            region (str): Optional. The AWS Region to use for image URI. Default: AWS Region associated
                 with the SageMaker session.
 
         Returns:
