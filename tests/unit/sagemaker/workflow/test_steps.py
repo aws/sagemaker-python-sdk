@@ -13,6 +13,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import json
+
 import pytest
 import sagemaker
 import os
@@ -43,7 +45,8 @@ from sagemaker.tuner import (
 )
 from sagemaker.network import NetworkConfig
 from sagemaker.transformer import Transformer
-from sagemaker.workflow.properties import Properties
+from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.properties import Properties, PropertyFile
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
 from sagemaker.workflow.retry import (
     StepRetryPolicy,
@@ -535,6 +538,9 @@ def test_processing_step(sagemaker_session):
         )
     ]
     cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
+    evaluation_report = PropertyFile(
+        name="EvaluationReport", output_name="evaluation", path="evaluation.json"
+    )
     step = ProcessingStep(
         name="MyProcessingStep",
         description="ProcessingStep description",
@@ -544,9 +550,20 @@ def test_processing_step(sagemaker_session):
         inputs=inputs,
         outputs=[],
         cache_config=cache_config,
+        property_files=[evaluation_report],
     )
     step.add_depends_on(["ThirdTestStep"])
-    assert step.to_request() == {
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[
+            processing_input_data_uri_parameter,
+            instance_type_parameter,
+            instance_count_parameter,
+        ],
+        steps=[step],
+        sagemaker_session=sagemaker_session,
+    )
+    assert json.loads(pipeline.definition())["Steps"][0] == {
         "Name": "MyProcessingStep",
         "Description": "ProcessingStep description",
         "DisplayName": "MyProcessingStep",
@@ -564,20 +581,27 @@ def test_processing_step(sagemaker_session):
                         "S3DataDistributionType": "FullyReplicated",
                         "S3DataType": "S3Prefix",
                         "S3InputMode": "File",
-                        "S3Uri": processing_input_data_uri_parameter,
+                        "S3Uri": {"Get": "Parameters.ProcessingInputDataUri"},
                     },
                 }
             ],
             "ProcessingResources": {
                 "ClusterConfig": {
-                    "InstanceCount": instance_count_parameter,
-                    "InstanceType": instance_type_parameter,
+                    "InstanceCount": {"Get": "Parameters.InstanceCount"},
+                    "InstanceType": {"Get": "Parameters.InstanceType"},
                     "VolumeSizeInGB": 30,
                 }
             },
             "RoleArn": "DummyRole",
         },
         "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
+        "PropertyFiles": [
+            {
+                "FilePath": "evaluation.json",
+                "OutputName": "evaluation",
+                "PropertyFileName": "EvaluationReport",
+            }
+        ],
     }
     assert step.properties.ProcessingJobName.expr == {
         "Get": "Steps.MyProcessingStep.ProcessingJobName"
