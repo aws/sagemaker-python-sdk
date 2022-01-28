@@ -13,11 +13,12 @@
 """The step definitions for workflow."""
 from __future__ import absolute_import
 
-from typing import List
+from typing import List, Union
 
 import attr
 
 from sagemaker.workflow.entities import Expression
+from sagemaker.workflow.properties import PropertyFile
 
 
 @attr.s
@@ -53,4 +54,37 @@ class Join(Expression):
                     value.expr if hasattr(value, "expr") else value for value in self.values
                 ],
             },
+        }
+
+
+@attr.s
+class JsonGet(Expression):
+    """Get JSON properties from PropertyFiles.
+
+    Attributes:
+        step_name (str): The step name from which to get the property file.
+        property_file (Union[PropertyFile, str]): Either a PropertyFile instance
+            or the name of a property file.
+        json_path (str): The JSON path expression to the requested value.
+    """
+
+    step_name: str = attr.ib()
+    property_file: Union[PropertyFile, str] = attr.ib()
+    json_path: str = attr.ib()
+
+    @property
+    def expr(self):
+        """The expression dict for a `JsonGet` function."""
+        if not isinstance(self.step_name, str):
+            raise ValueError("Please give step name as a string")
+
+        if isinstance(self.property_file, PropertyFile):
+            name = self.property_file.name
+        else:
+            name = self.property_file
+        return {
+            "Std:JsonGet": {
+                "PropertyFile": {"Get": f"Steps.{self.step_name}.PropertyFiles.{name}"},
+                "Path": self.json_path,
+            }
         }

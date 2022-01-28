@@ -38,8 +38,12 @@ def retrieve(
     container_version=None,
     distribution=None,
     base_framework_version=None,
+    training_compiler_config=None,
 ):
     """Retrieves the ECR URI for the Docker image matching the given arguments.
+
+    Ideally this function should not be called directly, rather it should be called from the
+    fit() function inside framework estimator.
 
     Args:
         framework (str): The name of the framework or algorithm.
@@ -49,15 +53,21 @@ def retrieve(
         py_version (str): The Python version. This is required if there is
             more than one supported Python version for the given framework version.
         instance_type (str): The SageMaker instance type. For supported types, see
-            https://aws.amazon.com/sagemaker/pricing/instance-types. This is required if
+            https://aws.amazon.com/sagemaker/pricing. This is required if
             there are different images for different processor types.
         accelerator_type (str): Elastic Inference accelerator type. For more, see
             https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html.
         image_scope (str): The image type, i.e. what it is used for.
             Valid values: "training", "inference", "eia". If ``accelerator_type`` is set,
             ``image_scope`` is ignored.
-        container_version (str): the version of docker image
+        container_version (str): the version of docker image.
+            Ideally the value of parameter should be created inside the framework.
+            For custom use, see the list of supported container versions:
+            https://github.com/aws/deep-learning-containers/blob/master/available_images.md
+            (default: None).
         distribution (dict): A dictionary with information on how to run distributed training
+        training_compiler_config (:class:`~sagemaker.training_compiler.TrainingCompilerConfig`):
+            A configuration class for the SageMaker Training Compiler
             (default: None).
 
     Returns:
@@ -66,10 +76,20 @@ def retrieve(
     Raises:
         ValueError: If the combination of arguments specified is not supported.
     """
-    config = _config_for_framework_and_scope(framework, image_scope, accelerator_type)
+    if training_compiler_config is None:
+        config = _config_for_framework_and_scope(framework, image_scope, accelerator_type)
+    elif framework == HUGGING_FACE_FRAMEWORK:
+        config = _config_for_framework_and_scope(
+            framework + "-training-compiler", image_scope, accelerator_type
+        )
+    else:
+        raise ValueError(
+            "Unsupported Configuration: Training Compiler is only supported with HuggingFace"
+        )
     original_version = version
     version = _validate_version_and_set_if_needed(version, config, framework)
     version_config = config["versions"][_version_for_config(version, config)]
+
     if framework == HUGGING_FACE_FRAMEWORK:
         if version_config.get("version_aliases"):
             full_base_framework_version = version_config["version_aliases"].get(
@@ -81,7 +101,6 @@ def retrieve(
 
     py_version = _validate_py_version_and_set_if_needed(py_version, version_config, framework)
     version_config = version_config.get(py_version) or version_config
-
     registry = _registry_from_region(region, version_config["registries"])
     hostname = utils._botocore_resolver().construct_endpoint("ecr", region)["hostname"]
 
@@ -91,11 +110,24 @@ def retrieve(
         instance_type, config.get("processors") or version_config.get("processors")
     )
 
+    # if container version is available in .json file, utilize that
+    if version_config.get("container_version"):
+        container_version = version_config["container_version"][processor]
+
     if framework == HUGGING_FACE_FRAMEWORK:
         pt_or_tf_version = (
             re.compile("^(pytorch|tensorflow)(.*)$").match(base_framework_version).group(2)
         )
-        tag_prefix = f"{pt_or_tf_version}-transformers{original_version}"
+
+        _version = original_version
+        if repo in [
+            "huggingface-pytorch-trcomp-training",
+            "huggingface-tensorflow-trcomp-training",
+        ]:
+            _version = version
+
+        tag_prefix = f"{pt_or_tf_version}-transformers{_version}"
+
     else:
         tag_prefix = version_config.get("tag_prefix", version)
 
@@ -105,6 +137,7 @@ def retrieve(
         py_version,
         container_version,
     )
+
     if _should_auto_select_container_version(instance_type, distribution):
         container_versions = {
             "tensorflow-2.3-gpu-py37": "cu110-ubuntu18.04-v3",

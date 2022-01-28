@@ -71,8 +71,6 @@ htmlhelp_basename = "%sdoc" % project
 # For Adobe Analytics
 html_js_files = [
     "https://a0.awsstatic.com/s_code/js/3.0/awshome_s_code.js",
-    "aws-ux-shortbread/index.js",
-    "aws-ux-shortbread/init.js",
 ]
 
 html_context = {"css_files": ["_static/theme_overrides.css"]}

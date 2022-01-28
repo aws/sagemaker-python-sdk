@@ -20,6 +20,10 @@ from __future__ import print_function, absolute_import
 
 import os
 import pathlib
+import logging
+from textwrap import dedent
+from typing import Dict, List, Optional
+
 import attr
 
 from six.moves.urllib.parse import urlparse
@@ -28,13 +32,17 @@ from six.moves.urllib.request import url2pathname
 from sagemaker import s3
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
-from sagemaker.utils import base_name_from_image, name_from_base
+from sagemaker.utils import base_name_from_image, get_config_value, name_from_base
 from sagemaker.session import Session
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.parameters import Parameter
 from sagemaker.workflow.entities import Expression
 from sagemaker.dataset_definition.inputs import S3Input, DatasetDefinition
 from sagemaker.apiutils._base_types import ApiObject
+from sagemaker.s3 import S3Uploader
+
+
+logger = logging.getLogger(__name__)
 
 
 class Processor(object):
@@ -120,7 +128,8 @@ class Processor(object):
 
         if self.instance_type in ("local", "local_gpu"):
             if not isinstance(sagemaker_session, LocalSession):
-                sagemaker_session = LocalSession()
+                # Until Local Mode Processing supports local code, we need to disable it:
+                sagemaker_session = LocalSession(disable_local_code=True)
 
         self.sagemaker_session = sagemaker_session or Session()
 
@@ -152,8 +161,16 @@ class Processor(object):
             job_name (str): Processing job name. If not specified, the processor generates
                 a default job name, based on the base job name and current timestamp.
             experiment_config (dict[str, str]): Experiment management configuration.
-                Dictionary contains three optional keys:
+                Optionally, the dict can contain three keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
 
@@ -505,10 +522,16 @@ class ScriptProcessor(Processor):
             job_name (str): Processing job name. If not specified, the processor generates
                 a default job name, based on the base job name and current timestamp.
             experiment_config (dict[str, str]): Experiment management configuration.
-                Dictionary contains three optional keys:
+                Optionally, the dict can contain three keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
-            kms_key (str): The ARN of the KMS key that is used to encrypt the
-                user code file (default: None).
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
         """
         normalized_inputs, normalized_outputs = self._normalize_args(
             job_name=job_name,
@@ -719,8 +742,16 @@ class ProcessingJob(_Job):
             outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): A list of
                 :class:`~sagemaker.processing.ProcessingOutput` objects.
             experiment_config (dict[str, str]): Experiment management configuration.
-                Dictionary contains three optional keys:
+                Optionally, the dict can contain three keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
 
         Returns:
             :class:`~sagemaker.processing.ProcessingJob`: The instance of ``ProcessingJob`` created
@@ -757,8 +788,16 @@ class ProcessingJob(_Job):
             outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): A list of
                 :class:`~sagemaker.processing.ProcessingOutput` objects.
             experiment_config (dict[str, str]): Experiment management configuration.
-                Dictionary contains three optional keys:
+                Optionally, the dict can contain three keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
 
         Returns:
             Dict: dict for `sagemaker.session.Session.process` method
@@ -1056,9 +1095,9 @@ class ProcessingInput(object):
             s3_data_distribution_type (str): Valid options are "FullyReplicated"
                 or "ShardedByS3Key".
             s3_compression_type (str): Valid options are "None" or "Gzip".
-            s3_input (:class:`~sagemaker.dataset_definition.S3Input`)
+            s3_input (:class:`~sagemaker.dataset_definition.inputs.S3Input`)
                 Metadata of data objects stored in S3
-            dataset_definition (:class:`~sagemaker.dataset_definition.DatasetDefinition`)
+            dataset_definition (:class:`~sagemaker.dataset_definition.inputs.DatasetDefinition`)
                 DatasetDefinition input
             app_managed (bool): Whether the input are managed by SageMaker or application
         """
@@ -1221,3 +1260,496 @@ class FeatureStoreOutput(ApiObject):
     """Configuration for processing job outputs in Amazon SageMaker Feature Store."""
 
     feature_group_name = None
+
+
+class FrameworkProcessor(ScriptProcessor):
+    """Handles Amazon SageMaker processing tasks for jobs using a machine learning framework."""
+
+    framework_entrypoint_command = ["/bin/bash"]
+
+    # Added new (kw)args for estimator. The rest are from ScriptProcessor with same defaults.
+    def __init__(
+        self,
+        estimator_cls,
+        framework_version,
+        role,
+        instance_count,
+        instance_type,
+        py_version="py3",
+        image_uri=None,
+        command=None,
+        volume_size_in_gb=30,
+        volume_kms_key=None,
+        output_kms_key=None,
+        code_location=None,
+        max_runtime_in_seconds=None,
+        base_job_name=None,
+        sagemaker_session=None,
+        env=None,
+        tags=None,
+        network_config=None,
+    ):
+        """Initializes a ``FrameworkProcessor`` instance.
+
+        The ``FrameworkProcessor`` handles Amazon SageMaker Processing tasks for jobs
+        using a machine learning framework, which allows for a set of Python scripts
+        to be run as part of the Processing Job.
+
+        Args:
+            estimator_cls (type): A subclass of the :class:`~sagemaker.estimator.Framework`
+                estimator
+            framework_version (str): The version of the framework. Value is ignored when
+                ``image_uri`` is provided.
+            role (str): An AWS IAM role name or ARN. Amazon SageMaker Processing uses
+                this role to access AWS resources, such as data stored in Amazon S3.
+            instance_count (int): The number of instances to run a processing job with.
+            instance_type (str): The type of EC2 instance to use for processing, for
+                example, 'ml.c4.xlarge'.
+            py_version (str): Python version you want to use for executing your
+                model training code. One of 'py2' or 'py3'. Defaults to 'py3'. Value
+                is ignored when ``image_uri`` is provided.
+            image_uri (str): The URI of the Docker image to use for the
+                processing jobs (default: None).
+            command ([str]): The command to run, along with any command-line flags
+                to *precede* the ```code script```. Example: ["python3", "-v"]. If not
+                provided, ["python"] will be chosen (default: None).
+            volume_size_in_gb (int): Size in GB of the EBS volume
+                to use for storing data during processing (default: 30).
+            volume_kms_key (str): A KMS key for the processing volume (default: None).
+            output_kms_key (str): The KMS key ID for processing job outputs (default: None).
+            code_location (str): The S3 prefix URI where custom code will be
+                uploaded (default: None). The code file uploaded to S3 is
+                'code_location/job-name/source/sourcedir.tar.gz'. If not specified, the
+                default ``code location`` is 's3://{sagemaker-default-bucket}'
+            max_runtime_in_seconds (int): Timeout in seconds (default: None).
+                After this amount of time, Amazon SageMaker terminates the job,
+                regardless of its current status. If `max_runtime_in_seconds` is not
+                specified, the default value is 24 hours.
+            base_job_name (str): Prefix for processing name. If not specified,
+                the processor generates a default job name, based on the
+                processing image name and current timestamp (default: None).
+            sagemaker_session (:class:`~sagemaker.session.Session`):
+                Session object which manages interactions with Amazon SageMaker and
+                any other AWS services needed. If not specified, the processor creates
+                one using the default AWS configuration chain (default: None).
+            env (dict[str, str]): Environment variables to be passed to
+                the processing jobs (default: None).
+            tags (list[dict]): List of tags to be passed to the processing job
+                (default: None). For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            network_config (:class:`~sagemaker.network.NetworkConfig`):
+                A :class:`~sagemaker.network.NetworkConfig`
+                object that configures network isolation, encryption of
+                inter-container traffic, security group IDs, and subnets (default: None).
+        """
+        if not command:
+            command = ["python"]
+
+        self.estimator_cls = estimator_cls
+        self.framework_version = framework_version
+        self.py_version = py_version
+
+        # 1. To finalize/normalize the image_uri or base_job_name, we need to create an
+        #    estimator_cls instance.
+        # 2. We want to make it easy for children of FrameworkProcessor to override estimator
+        #    creation via a function (to create FrameworkProcessors for Estimators that may have
+        #    different signatures - like HuggingFace or others in future).
+        # 3. Super-class __init__ doesn't (currently) do anything with these params besides
+        #    storing them
+        #
+        # Therefore we'll init the superclass first and then customize the setup after:
+        super().__init__(
+            role=role,
+            image_uri=image_uri,
+            command=command,
+            instance_count=instance_count,
+            instance_type=instance_type,
+            volume_size_in_gb=volume_size_in_gb,
+            volume_kms_key=volume_kms_key,
+            output_kms_key=output_kms_key,
+            max_runtime_in_seconds=max_runtime_in_seconds,
+            base_job_name=base_job_name,
+            sagemaker_session=sagemaker_session,
+            env=env,
+            tags=tags,
+            network_config=network_config,
+        )
+
+        # This subclass uses the "code" input for actual payload and the ScriptProcessor parent's
+        # functionality for uploading just a small entrypoint script to invoke it.
+        self._CODE_CONTAINER_INPUT_NAME = "entrypoint"
+
+        self.code_location = (
+            code_location[:-1] if (code_location and code_location.endswith("/")) else code_location
+        )
+
+        if image_uri is None or base_job_name is None:
+            # For these default configuration purposes, we don't need the optional args:
+            est = self._create_estimator()
+            if image_uri is None:
+                self.image_uri = est.training_image_uri()
+            if base_job_name is None:
+                self.base_job_name = est.base_job_name or estimator_cls._framework_name
+                if base_job_name is None:
+                    base_job_name = "framework-processor"
+
+    def _create_estimator(
+        self,
+        entry_point="",
+        source_dir=None,
+        dependencies=None,
+        git_config=None,
+    ):
+        """Instantiate the Framework Estimator that backs this Processor"""
+        return self.estimator_cls(
+            framework_version=self.framework_version,
+            py_version=self.py_version,
+            entry_point=entry_point,
+            source_dir=source_dir,
+            dependencies=dependencies,
+            git_config=git_config,
+            code_location=self.code_location,
+            enable_network_isolation=False,  # True -> uploads to input channel. Not what we want!
+            image_uri=self.image_uri,
+            role=self.role,
+            # Estimator instance_count doesn't currently matter to FrameworkProcessor, and the
+            # SKLearn Framework Estimator requires instance_type==1. So here we hard-wire it to 1,
+            # but if it matters in future perhaps we could take self.instance_count here and have
+            # SKLearnProcessor override this function instead:
+            instance_count=1,
+            instance_type=self.instance_type,
+            sagemaker_session=self.sagemaker_session,
+            debugger_hook_config=False,
+            disable_profiler=True,
+        )
+
+    def get_run_args(
+        self,
+        code,
+        source_dir=None,
+        dependencies=None,
+        git_config=None,
+        inputs=None,
+        outputs=None,
+        arguments=None,
+        job_name=None,
+    ):
+        """Returns a RunArgs object.
+
+        This object contains the normalized inputs, outputs and arguments needed
+        when using a ``FrameworkProcessor`` in a :class:`~sagemaker.workflow.steps.ProcessingStep`.
+
+        Args:
+            code (str): This can be an S3 URI or a local path to a file with the framework
+                script to run. See the ``code`` argument in
+                `sagemaker.processing.FrameworkProcessor.run()`.
+            source_dir (str): Path (absolute, relative, or an S3 URI) to a directory wit
+                any other processing source code dependencies aside from the entrypoint
+                file (default: None). See the ``source_dir`` argument in
+                `sagemaker.processing.FrameworkProcessor.run()`
+            dependencies (list[str]): A list of paths to directories (absolute or relative)
+                with any additional libraries that will be exported to the container
+                (default: []). See the ``dependencies`` argument in
+                `sagemaker.processing.FrameworkProcessor.run()`.
+            git_config (dict[str, str]): Git configurations used for cloning files. See the
+                `git_config` argument in `sagemaker.processing.FrameworkProcessor.run()`.
+            inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
+                the processing job. These must be provided as
+                :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
+            outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
+                the processing job. These can be specified as either path strings or
+                :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
+            arguments (list[str]): A list of string arguments to be passed to a
+                processing job (default: None).
+            job_name (str): Processing job name. If not specified, the processor generates
+                a default job name, based on the base job name and current timestamp.
+        """
+        # When job_name is None, the job_name to upload code (+payload) will
+        # differ from job_name used by run().
+        s3_runproc_sh, inputs, job_name = self._pack_and_upload_code(
+            code, source_dir, dependencies, git_config, job_name, inputs
+        )
+
+        return RunArgs(
+            s3_runproc_sh,
+            inputs=inputs,
+            outputs=outputs,
+            arguments=arguments,
+        )
+
+    def run(  # type: ignore[override]
+        self,
+        code,
+        source_dir=None,
+        dependencies=None,
+        git_config=None,
+        inputs=None,
+        outputs=None,
+        arguments=None,
+        wait=True,
+        logs=True,
+        job_name=None,
+        experiment_config=None,
+        kms_key=None,
+    ):
+        """Runs a processing job.
+
+        Args:
+            code (str): This can be an S3 URI or a local path to a file with the
+                framework script to run.Path (absolute or relative) to the local
+                Python source file which should be executed as the entry point
+                to training. When `code` is an S3 URI, ignore `source_dir`,
+                `dependencies, and `git_config`. If ``source_dir`` is specified,
+                then ``code`` must point to a file located at the root of ``source_dir``.
+            source_dir (str): Path (absolute, relative or an S3 URI) to a directory
+                with any other processing source code dependencies aside from the entry
+                point file (default: None). If ``source_dir`` is an S3 URI, it must
+                point to a tar.gz file. Structure within this directory are preserved
+                when processing on Amazon SageMaker (default: None).
+            dependencies (list[str]): A list of paths to directories (absolute
+                or relative) with any additional libraries that will be exported
+                to the container (default: []). The library folders will be
+                copied to SageMaker in the same folder where the entrypoint is
+                copied. If 'git_config' is provided, 'dependencies' should be a
+                list of relative locations to directories with any additional
+                libraries needed in the Git repo (default: None).
+            git_config (dict[str, str]): Git configurations used for cloning
+                files, including ``repo``, ``branch``, ``commit``,
+                ``2FA_enabled``, ``username``, ``password`` and ``token``. The
+                ``repo`` field is required. All other fields are optional.
+                ``repo`` specifies the Git repository where your training script
+                is stored. If you don't provide ``branch``, the default value
+                'master' is used. If you don't provide ``commit``, the latest
+                commit in the specified branch is used. .. admonition:: Example
+
+                    The following config:
+
+                    >>> git_config = {'repo': 'https://github.com/aws/sagemaker-python-sdk.git',
+                    >>>               'branch': 'test-branch-git-config',
+                    >>>               'commit': '329bfcf884482002c05ff7f44f62599ebc9f445a'}
+
+                    results in cloning the repo specified in 'repo', then
+                    checkout the 'master' branch, and checkout the specified
+                    commit.
+
+                ``2FA_enabled``, ``username``, ``password`` and ``token`` are
+                used for authentication. For GitHub (or other Git) accounts, set
+                ``2FA_enabled`` to 'True' if two-factor authentication is
+                enabled for the account, otherwise set it to 'False'. If you do
+                not provide a value for ``2FA_enabled``, a default value of
+                'False' is used. CodeCommit does not support two-factor
+                authentication, so do not provide "2FA_enabled" with CodeCommit
+                repositories.
+
+                For GitHub and other Git repos, when SSH URLs are provided, it
+                doesn't matter whether 2FA is enabled or disabled; you should
+                either have no passphrase for the SSH key pairs, or have the
+                ssh-agent configured so that you will not be prompted for SSH
+                passphrase when you do 'git clone' command with SSH URLs. When
+                HTTPS URLs are provided: if 2FA is disabled, then either token
+                or username+password will be used for authentication if provided
+                (token prioritized); if 2FA is enabled, only token will be used
+                for authentication if provided. If required authentication info
+                is not provided, python SDK will try to use local credentials
+                storage to authenticate. If that fails either, an error message
+                will be thrown.
+
+                For CodeCommit repos, 2FA is not supported, so '2FA_enabled'
+                should not be provided. There is no token in CodeCommit, so
+                'token' should not be provided too. When 'repo' is an SSH URL,
+                the requirements are the same as GitHub-like repos. When 'repo'
+                is an HTTPS URL, username+password will be used for
+                authentication if they are provided; otherwise, python SDK will
+                try to use either CodeCommit credential helper or local
+                credential storage for authentication.
+            inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
+                the processing job. These must be provided as
+                :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
+            outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
+                the processing job. These can be specified as either path strings or
+                :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
+            arguments (list[str]): A list of string arguments to be passed to a
+                processing job (default: None).
+            wait (bool): Whether the call should wait until the job completes (default: True).
+            logs (bool): Whether to show the logs produced by the job.
+                Only meaningful when wait is True (default: True).
+            job_name (str): Processing job name. If not specified, the processor generates
+                a default job name, based on the base job name and current timestamp.
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Optionally, the dict can contain three keys:
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file (default: None).
+        """
+        s3_runproc_sh, inputs, job_name = self._pack_and_upload_code(
+            code, source_dir, dependencies, git_config, job_name, inputs
+        )
+
+        # Submit a processing job.
+        super().run(
+            code=s3_runproc_sh,
+            inputs=inputs,
+            outputs=outputs,
+            arguments=arguments,
+            wait=wait,
+            logs=logs,
+            job_name=job_name,
+            experiment_config=experiment_config,
+            kms_key=kms_key,
+        )
+
+    def _pack_and_upload_code(self, code, source_dir, dependencies, git_config, job_name, inputs):
+        """Pack local code bundle and upload to Amazon S3."""
+        if code.startswith("s3://"):
+            return code, inputs, job_name
+
+        if job_name is None:
+            job_name = self._generate_current_job_name(job_name)
+
+        estimator = self._upload_payload(
+            code,
+            source_dir,
+            dependencies,
+            git_config,
+            job_name,
+        )
+        inputs = self._patch_inputs_with_payload(
+            inputs,
+            estimator._hyperparameters["sagemaker_submit_directory"],
+        )
+
+        local_code = get_config_value("local.local_code", self.sagemaker_session.config)
+        if self.sagemaker_session.local_mode and local_code:
+            raise RuntimeError(
+                "SageMaker Processing Local Mode does not currently support 'local code' mode. "
+                "Please use a LocalSession created with disable_local_code=True, or leave "
+                "sagemaker_session unspecified when creating your Processor to have one set up "
+                "automatically."
+            )
+
+        # Upload the bootstrapping code as s3://.../jobname/source/runproc.sh.
+        entrypoint_s3_uri = estimator.uploaded_code.s3_prefix.replace(
+            "sourcedir.tar.gz",
+            "runproc.sh",
+        )
+        script = estimator.uploaded_code.script_name
+        s3_runproc_sh = S3Uploader.upload_string_as_file_body(
+            self._generate_framework_script(script),
+            desired_s3_uri=entrypoint_s3_uri,
+            sagemaker_session=self.sagemaker_session,
+        )
+        logger.info("runproc.sh uploaded to %s", s3_runproc_sh)
+
+        return s3_runproc_sh, inputs, job_name
+
+    def _generate_framework_script(self, user_script: str) -> str:
+        """Generate the framework entrypoint file (as text) for a processing job.
+
+        This script implements the "framework" functionality for setting up your code:
+        Untar-ing the sourcedir bundle in the ```code``` input; installing extra
+        runtime dependencies if specified; and then invoking the ```command``` and
+        ```code``` configured for the job.
+
+        Args:
+            user_script (str): Relative path to ```code``` in the source bundle
+                - e.g. 'process.py'.
+        """
+        return dedent(
+            """\
+            #!/bin/bash
+
+            cd /opt/ml/processing/input/code/
+            tar -xzf sourcedir.tar.gz
+
+            # Exit on any error. SageMaker uses error code to mark failed job.
+            set -e
+
+            if [[ -f 'requirements.txt' ]]; then
+                # Some py3 containers has typing, which may breaks pip install
+                pip uninstall --yes typing
+
+                pip install -r requirements.txt
+            fi
+
+            {entry_point_command} {entry_point} "$@"
+        """
+        ).format(
+            entry_point_command=" ".join(self.command),
+            entry_point=user_script,
+        )
+
+    def _upload_payload(
+        self,
+        entry_point: str,
+        source_dir: Optional[str],
+        dependencies: Optional[List[str]],
+        git_config: Optional[Dict[str, str]],
+        job_name: str,
+    ) -> "sagemaker.estimator.Framework":  # type: ignore[name-defined]   # noqa: F821
+        """Upload payload sourcedir.tar.gz to S3."""
+        # A new estimator instance is required, because each call to ScriptProcessor.run() can
+        # use different codes.
+        estimator = self._create_estimator(
+            entry_point=entry_point,
+            source_dir=source_dir,
+            dependencies=dependencies,
+            git_config=git_config,
+        )
+
+        estimator._prepare_for_training(job_name=job_name)
+        logger.info(
+            "Uploaded %s to %s",
+            estimator.source_dir,
+            estimator._hyperparameters["sagemaker_submit_directory"],
+        )
+
+        return estimator
+
+    def _patch_inputs_with_payload(self, inputs, s3_payload) -> List[ProcessingInput]:
+        """Add payload sourcedir.tar.gz to processing input.
+
+        This method follows the same mechanism in ScriptProcessor.
+        """
+        # Follow the exact same mechanism that ScriptProcessor does, which
+        # is to inject the S3 code artifact as a processing input. Note that
+        # framework processor take-over /opt/ml/processing/input/code for
+        # sourcedir.tar.gz, and let ScriptProcessor to place runproc.sh under
+        # /opt/ml/processing/input/{self._CODE_CONTAINER_INPUT_NAME}.
+        #
+        # See:
+        # - ScriptProcessor._CODE_CONTAINER_BASE_PATH, ScriptProcessor._CODE_CONTAINER_INPUT_NAME.
+        # - https://github.com/aws/sagemaker-python-sdk/blob/ \
+        #   a7399455f5386d83ddc5cb15c0db00c04bd518ec/src/sagemaker/processing.py#L425-L426
+        if inputs is None:
+            inputs = []
+        inputs.append(
+            ProcessingInput(
+                input_name="code",
+                source=s3_payload,
+                destination="/opt/ml/processing/input/code/",
+            )
+        )
+        return inputs
+
+    def _set_entrypoint(self, command, user_script_name):
+        """Framework processor override for setting processing job entrypoint.
+
+        Args:
+            command ([str]): Ignored in favor of self.framework_entrypoint_command
+            user_script_name (str): A filename with an extension.
+        """
+
+        user_script_location = str(
+            pathlib.PurePosixPath(
+                self._CODE_CONTAINER_BASE_PATH, self._CODE_CONTAINER_INPUT_NAME, user_script_name
+            )
+        )
+        self.entrypoint = self.framework_entrypoint_command + [user_script_location]

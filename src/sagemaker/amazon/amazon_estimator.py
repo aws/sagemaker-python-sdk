@@ -229,9 +229,16 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
                 generates a default job name, based on the training image name
                 and current timestamp.
             experiment_config (dict[str, str]): Experiment management configuration.
-                Dictionary contains three optional keys, 'ExperimentName',
-                'TrialName', and 'TrialComponentName'
-                (default: ``None``).
+                Optionally, the dict can contain three keys:
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
         """
         self._prepare_for_training(records, job_name=job_name, mini_batch_size=mini_batch_size)
 

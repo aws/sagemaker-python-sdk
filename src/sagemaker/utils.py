@@ -29,6 +29,7 @@ import botocore
 from six.moves.urllib import parse
 
 from sagemaker import deprecations
+from sagemaker.session_settings import SessionSettings
 
 
 ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(.*)(/)(.*:.*)$"
@@ -331,7 +332,7 @@ def create_tar_file(source_files, target=None):
     else:
         _, filename = tempfile.mkstemp()
 
-    with tarfile.open(filename, mode="w:gz") as t:
+    with tarfile.open(filename, mode="w:gz", dereference=True) as t:
         for sf in source_files:
             # Add all files from the directory into the root of the directory structure of the tar
             t.add(sf, arcname=os.path.basename(sf))
@@ -429,8 +430,15 @@ def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session, kms_key):
         bucket, key = url.netloc, url.path.lstrip("/")
         new_key = key.replace(os.path.basename(key), os.path.basename(repacked_model_uri))
 
+        settings = (
+            sagemaker_session.settings if sagemaker_session is not None else SessionSettings()
+        )
+        encrypt_artifact = settings.encrypt_repacked_artifacts
+
         if kms_key:
             extra_args = {"ServerSideEncryption": "aws:kms", "SSEKMSKeyId": kms_key}
+        elif encrypt_artifact:
+            extra_args = {"ServerSideEncryption": "aws:kms"}
         else:
             extra_args = None
         sagemaker_session.boto_session.resource(

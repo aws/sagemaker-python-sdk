@@ -18,6 +18,7 @@ import tempfile
 import shutil
 import pytest
 
+from sagemaker.drift_check_baselines import DriftCheckBaselines
 from tests.unit import DATA_DIR
 
 import sagemaker
@@ -29,7 +30,7 @@ from mock import (
 
 from sagemaker import PipelineModel
 from sagemaker.estimator import Estimator
-from sagemaker.model import Model
+from sagemaker.model import Model, FrameworkModel
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.inputs import CreateModelInput, TransformInput
 from sagemaker.model_metrics import (
@@ -46,6 +47,7 @@ from sagemaker.workflow.step_collections import (
     StepCollection,
     RegisterModel,
 )
+from sagemaker.workflow.retry import StepRetryPolicy, StepExceptionTypeEnum
 from tests.unit.sagemaker.workflow.helpers import ordered
 
 REGION = "us-west-2"
@@ -59,8 +61,8 @@ MODEL_REPACKING_IMAGE_URI = (
 
 
 class CustomStep(Step):
-    def __init__(self, name):
-        super(CustomStep, self).__init__(name, StepTypeEnum.TRAINING)
+    def __init__(self, name, display_name=None, description=None):
+        super(CustomStep, self).__init__(name, display_name, description, StepTypeEnum.TRAINING)
         self._properties = Properties(path=f"Steps.{name}")
 
     @property
@@ -120,6 +122,31 @@ def estimator(sagemaker_session):
         instance_count=1,
         instance_type="ml.c4.4xlarge",
         sagemaker_session=sagemaker_session,
+        subnets=["abc", "def"],
+        security_group_ids=["123", "456"],
+    )
+
+
+@pytest.fixture
+def model(sagemaker_session):
+    return FrameworkModel(
+        image_uri=IMAGE_URI,
+        model_data=f"s3://{BUCKET}/model.tar.gz",
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        entry_point=f"{DATA_DIR}/dummy_script.py",
+        name="modelName",
+        vpc_config={"Subnets": ["abc", "def"], "SecurityGroupIds": ["123", "456"]},
+    )
+
+
+@pytest.fixture
+def pipeline_model(sagemaker_session, model):
+    return PipelineModel(
+        models=[model],
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        vpc_config={"Subnets": ["abc", "def"], "SecurityGroupIds": ["123", "456"]},
     )
 
 
@@ -141,6 +168,16 @@ def model_metrics():
     return ModelMetrics(
         model_statistics=MetricsSource(
             s3_uri=f"s3://{BUCKET}/metrics.csv",
+            content_type="text/csv",
+        )
+    )
+
+
+@pytest.fixture
+def drift_check_baselines():
+    return DriftCheckBaselines(
+        model_constraints=MetricsSource(
+            s3_uri=f"s3://{BUCKET}/constraints_metrics.csv",
             content_type="text/csv",
         )
     )
@@ -169,7 +206,7 @@ def test_step_collection():
     ]
 
 
-def test_register_model(estimator, model_metrics):
+def test_register_model(estimator, model_metrics, drift_check_baselines):
     model_data = f"s3://{BUCKET}/model.tar.gz"
     register_model = RegisterModel(
         name="RegisterModelStep",
@@ -181,8 +218,10 @@ def test_register_model(estimator, model_metrics):
         transform_instances=["transform_instance"],
         model_package_group_name="mpg",
         model_metrics=model_metrics,
+        drift_check_baselines=drift_check_baselines,
         approval_status="Approved",
         description="description",
+        display_name="RegisterModelStep",
         depends_on=["TestStep"],
         tags=[{"Key": "myKey", "Value": "myValue"}],
     )
@@ -192,6 +231,8 @@ def test_register_model(estimator, model_metrics):
                 "Name": "RegisterModelStep",
                 "Type": "RegisterModel",
                 "DependsOn": ["TestStep"],
+                "DisplayName": "RegisterModelStep",
+                "Description": "description",
                 "Arguments": {
                     "InferenceSpecification": {
                         "Containers": [
@@ -204,12 +245,22 @@ def test_register_model(estimator, model_metrics):
                     },
                     "ModelApprovalStatus": "Approved",
                     "ModelMetrics": {
+                        "Bias": {},
+                        "Explainability": {},
                         "ModelQuality": {
                             "Statistics": {
                                 "ContentType": "text/csv",
                                 "S3Uri": f"s3://{BUCKET}/metrics.csv",
                             },
                         },
+                    },
+                    "DriftCheckBaselines": {
+                        "ModelQuality": {
+                            "Constraints": {
+                                "ContentType": "text/csv",
+                                "S3Uri": f"s3://{BUCKET}/constraints_metrics.csv",
+                            }
+                        }
                     },
                     "ModelPackageDescription": "description",
                     "ModelPackageGroupName": "mpg",
@@ -220,7 +271,7 @@ def test_register_model(estimator, model_metrics):
     )
 
 
-def test_register_model_tf(estimator_tf, model_metrics):
+def test_register_model_tf(estimator_tf, model_metrics, drift_check_baselines):
     model_data = f"s3://{BUCKET}/model.tar.gz"
     register_model = RegisterModel(
         name="RegisterModelStep",
@@ -232,6 +283,7 @@ def test_register_model_tf(estimator_tf, model_metrics):
         transform_instances=["transform_instance"],
         model_package_group_name="mpg",
         model_metrics=model_metrics,
+        drift_check_baselines=drift_check_baselines,
         approval_status="Approved",
         description="description",
     )
@@ -240,6 +292,7 @@ def test_register_model_tf(estimator_tf, model_metrics):
             {
                 "Name": "RegisterModelStep",
                 "Type": "RegisterModel",
+                "Description": "description",
                 "Arguments": {
                     "InferenceSpecification": {
                         "Containers": [
@@ -255,12 +308,22 @@ def test_register_model_tf(estimator_tf, model_metrics):
                     },
                     "ModelApprovalStatus": "Approved",
                     "ModelMetrics": {
+                        "Bias": {},
+                        "Explainability": {},
                         "ModelQuality": {
                             "Statistics": {
                                 "ContentType": "text/csv",
                                 "S3Uri": f"s3://{BUCKET}/metrics.csv",
                             },
                         },
+                    },
+                    "DriftCheckBaselines": {
+                        "ModelQuality": {
+                            "Constraints": {
+                                "ContentType": "text/csv",
+                                "S3Uri": f"s3://{BUCKET}/constraints_metrics.csv",
+                            }
+                        }
                     },
                     "ModelPackageDescription": "description",
                     "ModelPackageGroupName": "mpg",
@@ -270,7 +333,7 @@ def test_register_model_tf(estimator_tf, model_metrics):
     )
 
 
-def test_register_model_sip(estimator, model_metrics):
+def test_register_model_sip(estimator, model_metrics, drift_check_baselines):
     model_list = [
         Model(image_uri="fakeimage1", model_data="Url1", env=[{"k1": "v1"}, {"k2": "v2"}]),
         Model(image_uri="fakeimage2", model_data="Url2", env=[{"k3": "v3"}, {"k4": "v4"}]),
@@ -287,6 +350,7 @@ def test_register_model_sip(estimator, model_metrics):
         transform_instances=["transform_instance"],
         model_package_group_name="mpg",
         model_metrics=model_metrics,
+        drift_check_baselines=drift_check_baselines,
         approval_status="Approved",
         description="description",
         model=pipeline_model,
@@ -297,6 +361,7 @@ def test_register_model_sip(estimator, model_metrics):
             {
                 "Name": "RegisterModelStep",
                 "Type": "RegisterModel",
+                "Description": "description",
                 "DependsOn": ["TestStep"],
                 "Arguments": {
                     "InferenceSpecification": {
@@ -319,12 +384,22 @@ def test_register_model_sip(estimator, model_metrics):
                     },
                     "ModelApprovalStatus": "Approved",
                     "ModelMetrics": {
+                        "Bias": {},
+                        "Explainability": {},
                         "ModelQuality": {
                             "Statistics": {
                                 "ContentType": "text/csv",
                                 "S3Uri": f"s3://{BUCKET}/metrics.csv",
                             },
                         },
+                    },
+                    "DriftCheckBaselines": {
+                        "ModelQuality": {
+                            "Constraints": {
+                                "ContentType": "text/csv",
+                                "S3Uri": f"s3://{BUCKET}/constraints_metrics.csv",
+                            }
+                        }
                     },
                     "ModelPackageDescription": "description",
                     "ModelPackageGroupName": "mpg",
@@ -334,8 +409,11 @@ def test_register_model_sip(estimator, model_metrics):
     )
 
 
-def test_register_model_with_model_repack(estimator, model_metrics):
+def test_register_model_with_model_repack_with_estimator(
+    estimator, model_metrics, drift_check_baselines
+):
     model_data = f"s3://{BUCKET}/model.tar.gz"
+    dummy_requirements = f"{DATA_DIR}/dummy_requirements.txt"
     register_model = RegisterModel(
         name="RegisterModelStep",
         estimator=estimator,
@@ -346,10 +424,13 @@ def test_register_model_with_model_repack(estimator, model_metrics):
         transform_instances=["transform_instance"],
         model_package_group_name="mpg",
         model_metrics=model_metrics,
+        drift_check_baselines=drift_check_baselines,
         approval_status="Approved",
         description="description",
         entry_point=f"{DATA_DIR}/dummy_script.py",
+        dependencies=[dummy_requirements],
         depends_on=["TestStep"],
+        tags=[{"Key": "myKey", "Value": "myValue"}],
     )
 
     request_dicts = register_model.request_dicts()
@@ -374,6 +455,7 @@ def test_register_model_with_model_repack(estimator, model_metrics):
                     },
                     "HyperParameters": {
                         "inference_script": '"dummy_script.py"',
+                        "dependencies": f'"{dummy_requirements}"',
                         "model_archive": '"model.tar.gz"',
                         "sagemaker_submit_directory": '"s3://{}/{}/source/sourcedir.tar.gz"'.format(
                             BUCKET, repacker_job_name.replace('"', "")
@@ -382,6 +464,7 @@ def test_register_model_with_model_repack(estimator, model_metrics):
                         "sagemaker_container_log_level": "20",
                         "sagemaker_job_name": repacker_job_name,
                         "sagemaker_region": f'"{REGION}"',
+                        "source_dir": "null",
                     },
                     "InputDataConfig": [
                         {
@@ -403,6 +486,11 @@ def test_register_model_with_model_repack(estimator, model_metrics):
                     },
                     "RoleArn": ROLE,
                     "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
+                    "Tags": [{"Key": "myKey", "Value": "myValue"}],
+                    "VpcConfig": [
+                        ("SecurityGroupIds", ["123", "456"]),
+                        ("Subnets", ["abc", "def"]),
+                    ],
                 }
             )
         elif request_dict["Type"] == "RegisterModel":
@@ -428,6 +516,8 @@ def test_register_model_with_model_repack(estimator, model_metrics):
                     },
                     "ModelApprovalStatus": "Approved",
                     "ModelMetrics": {
+                        "Bias": {},
+                        "Explainability": {},
                         "ModelQuality": {
                             "Statistics": {
                                 "ContentType": "text/csv",
@@ -435,8 +525,277 @@ def test_register_model_with_model_repack(estimator, model_metrics):
                             },
                         },
                     },
+                    "DriftCheckBaselines": {
+                        "ModelQuality": {
+                            "Constraints": {
+                                "ContentType": "text/csv",
+                                "S3Uri": f"s3://{BUCKET}/constraints_metrics.csv",
+                            }
+                        }
+                    },
                     "ModelPackageDescription": "description",
                     "ModelPackageGroupName": "mpg",
+                    "Tags": [{"Key": "myKey", "Value": "myValue"}],
+                }
+            )
+        else:
+            raise Exception("A step exists in the collection of an invalid type.")
+
+
+def test_register_model_with_model_repack_with_model(model, model_metrics, drift_check_baselines):
+    model_data = f"s3://{BUCKET}/model.tar.gz"
+    register_model = RegisterModel(
+        name="RegisterModelStep",
+        model=model,
+        model_data=model_data,
+        content_types=["content_type"],
+        response_types=["response_type"],
+        inference_instances=["inference_instance"],
+        transform_instances=["transform_instance"],
+        model_package_group_name="mpg",
+        model_metrics=model_metrics,
+        drift_check_baselines=drift_check_baselines,
+        approval_status="Approved",
+        description="description",
+        depends_on=["TestStep"],
+        tags=[{"Key": "myKey", "Value": "myValue"}],
+    )
+
+    request_dicts = register_model.request_dicts()
+    assert len(request_dicts) == 2
+
+    for request_dict in request_dicts:
+        if request_dict["Type"] == "Training":
+            assert request_dict["Name"] == "modelNameRepackModel"
+            assert len(request_dict["DependsOn"]) == 1
+            assert request_dict["DependsOn"][0] == "TestStep"
+            arguments = request_dict["Arguments"]
+            repacker_job_name = arguments["HyperParameters"]["sagemaker_job_name"]
+            assert ordered(arguments) == ordered(
+                {
+                    "AlgorithmSpecification": {
+                        "TrainingImage": MODEL_REPACKING_IMAGE_URI,
+                        "TrainingInputMode": "File",
+                    },
+                    "DebugHookConfig": {
+                        "CollectionConfigurations": [],
+                        "S3OutputPath": f"s3://{BUCKET}/",
+                    },
+                    "HyperParameters": {
+                        "inference_script": '"dummy_script.py"',
+                        "model_archive": '"model.tar.gz"',
+                        "sagemaker_submit_directory": '"s3://{}/{}/source/sourcedir.tar.gz"'.format(
+                            BUCKET, repacker_job_name.replace('"', "")
+                        ),
+                        "sagemaker_program": '"_repack_model.py"',
+                        "sagemaker_container_log_level": "20",
+                        "sagemaker_job_name": repacker_job_name,
+                        "sagemaker_region": f'"{REGION}"',
+                        "dependencies": "null",
+                        "source_dir": "null",
+                    },
+                    "InputDataConfig": [
+                        {
+                            "ChannelName": "training",
+                            "DataSource": {
+                                "S3DataSource": {
+                                    "S3DataDistributionType": "FullyReplicated",
+                                    "S3DataType": "S3Prefix",
+                                    "S3Uri": f"s3://{BUCKET}",
+                                }
+                            },
+                        }
+                    ],
+                    "OutputDataConfig": {"S3OutputPath": f"s3://{BUCKET}/"},
+                    "ResourceConfig": {
+                        "InstanceCount": 1,
+                        "InstanceType": "ml.m5.large",
+                        "VolumeSizeInGB": 30,
+                    },
+                    "RoleArn": ROLE,
+                    "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
+                    "Tags": [{"Key": "myKey", "Value": "myValue"}],
+                    "VpcConfig": [
+                        ("SecurityGroupIds", ["123", "456"]),
+                        ("Subnets", ["abc", "def"]),
+                    ],
+                }
+            )
+        elif request_dict["Type"] == "RegisterModel":
+            assert request_dict["Name"] == "RegisterModelStep"
+            assert "DependsOn" not in request_dict
+            arguments = request_dict["Arguments"]
+            assert len(arguments["InferenceSpecification"]["Containers"]) == 1
+            assert arguments["InferenceSpecification"]["Containers"][0]["Image"] == model.image_uri
+            assert isinstance(
+                arguments["InferenceSpecification"]["Containers"][0]["ModelDataUrl"], Properties
+            )
+            del arguments["InferenceSpecification"]["Containers"]
+            assert ordered(arguments) == ordered(
+                {
+                    "InferenceSpecification": {
+                        "SupportedContentTypes": ["content_type"],
+                        "SupportedRealtimeInferenceInstanceTypes": ["inference_instance"],
+                        "SupportedResponseMIMETypes": ["response_type"],
+                        "SupportedTransformInstanceTypes": ["transform_instance"],
+                    },
+                    "ModelApprovalStatus": "Approved",
+                    "ModelMetrics": {
+                        "Bias": {},
+                        "Explainability": {},
+                        "ModelQuality": {
+                            "Statistics": {
+                                "ContentType": "text/csv",
+                                "S3Uri": f"s3://{BUCKET}/metrics.csv",
+                            },
+                        },
+                    },
+                    "DriftCheckBaselines": {
+                        "ModelQuality": {
+                            "Constraints": {
+                                "ContentType": "text/csv",
+                                "S3Uri": f"s3://{BUCKET}/constraints_metrics.csv",
+                            }
+                        }
+                    },
+                    "ModelPackageDescription": "description",
+                    "ModelPackageGroupName": "mpg",
+                    "Tags": [{"Key": "myKey", "Value": "myValue"}],
+                }
+            )
+        else:
+            raise Exception("A step exists in the collection of an invalid type.")
+
+
+def test_register_model_with_model_repack_with_pipeline_model(
+    pipeline_model, model_metrics, drift_check_baselines
+):
+    model_data = f"s3://{BUCKET}/model.tar.gz"
+    service_fault_retry_policy = StepRetryPolicy(
+        exception_types=[StepExceptionTypeEnum.SERVICE_FAULT], max_attempts=10
+    )
+    register_model = RegisterModel(
+        name="RegisterModelStep",
+        model=pipeline_model,
+        model_data=model_data,
+        content_types=["content_type"],
+        response_types=["response_type"],
+        inference_instances=["inference_instance"],
+        transform_instances=["transform_instance"],
+        model_package_group_name="mpg",
+        model_metrics=model_metrics,
+        drift_check_baselines=drift_check_baselines,
+        approval_status="Approved",
+        description="description",
+        depends_on=["TestStep"],
+        repack_model_step_retry_policies=[service_fault_retry_policy],
+        register_model_step_retry_policies=[service_fault_retry_policy],
+        tags=[{"Key": "myKey", "Value": "myValue"}],
+    )
+
+    request_dicts = register_model.request_dicts()
+    assert len(request_dicts) == 2
+
+    for request_dict in request_dicts:
+        if request_dict["Type"] == "Training":
+            assert request_dict["Name"] == "modelNameRepackModel"
+            assert len(request_dict["DependsOn"]) == 1
+            assert request_dict["DependsOn"][0] == "TestStep"
+            arguments = request_dict["Arguments"]
+            repacker_job_name = arguments["HyperParameters"]["sagemaker_job_name"]
+            assert ordered(arguments) == ordered(
+                {
+                    "AlgorithmSpecification": {
+                        "TrainingImage": MODEL_REPACKING_IMAGE_URI,
+                        "TrainingInputMode": "File",
+                    },
+                    "DebugHookConfig": {
+                        "CollectionConfigurations": [],
+                        "S3OutputPath": f"s3://{BUCKET}/",
+                    },
+                    "HyperParameters": {
+                        "dependencies": "null",
+                        "inference_script": '"dummy_script.py"',
+                        "model_archive": '"model.tar.gz"',
+                        "sagemaker_submit_directory": '"s3://{}/{}/source/sourcedir.tar.gz"'.format(
+                            BUCKET, repacker_job_name.replace('"', "")
+                        ),
+                        "sagemaker_program": '"_repack_model.py"',
+                        "sagemaker_container_log_level": "20",
+                        "sagemaker_job_name": repacker_job_name,
+                        "sagemaker_region": f'"{REGION}"',
+                        "source_dir": "null",
+                    },
+                    "InputDataConfig": [
+                        {
+                            "ChannelName": "training",
+                            "DataSource": {
+                                "S3DataSource": {
+                                    "S3DataDistributionType": "FullyReplicated",
+                                    "S3DataType": "S3Prefix",
+                                    "S3Uri": f"s3://{BUCKET}",
+                                }
+                            },
+                        }
+                    ],
+                    "OutputDataConfig": {"S3OutputPath": f"s3://{BUCKET}/"},
+                    "ResourceConfig": {
+                        "InstanceCount": 1,
+                        "InstanceType": "ml.m5.large",
+                        "VolumeSizeInGB": 30,
+                    },
+                    "RoleArn": ROLE,
+                    "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
+                    "Tags": [{"Key": "myKey", "Value": "myValue"}],
+                    "VpcConfig": [
+                        ("SecurityGroupIds", ["123", "456"]),
+                        ("Subnets", ["abc", "def"]),
+                    ],
+                }
+            )
+        elif request_dict["Type"] == "RegisterModel":
+            assert request_dict["Name"] == "RegisterModelStep"
+            assert "DependsOn" not in request_dict
+            arguments = request_dict["Arguments"]
+            assert len(arguments["InferenceSpecification"]["Containers"]) == 1
+            assert (
+                arguments["InferenceSpecification"]["Containers"][0]["Image"]
+                == pipeline_model.models[0].image_uri
+            )
+            assert isinstance(
+                arguments["InferenceSpecification"]["Containers"][0]["ModelDataUrl"], Properties
+            )
+            del arguments["InferenceSpecification"]["Containers"]
+            assert ordered(arguments) == ordered(
+                {
+                    "InferenceSpecification": {
+                        "SupportedContentTypes": ["content_type"],
+                        "SupportedRealtimeInferenceInstanceTypes": ["inference_instance"],
+                        "SupportedResponseMIMETypes": ["response_type"],
+                        "SupportedTransformInstanceTypes": ["transform_instance"],
+                    },
+                    "ModelApprovalStatus": "Approved",
+                    "ModelMetrics": {
+                        "Bias": {},
+                        "Explainability": {},
+                        "ModelQuality": {
+                            "Statistics": {
+                                "ContentType": "text/csv",
+                                "S3Uri": f"s3://{BUCKET}/metrics.csv",
+                            },
+                        },
+                    },
+                    "DriftCheckBaselines": {
+                        "ModelQuality": {
+                            "Constraints": {
+                                "ContentType": "text/csv",
+                                "S3Uri": f"s3://{BUCKET}/constraints_metrics.csv",
+                            }
+                        }
+                    },
+                    "ModelPackageDescription": "description",
+                    "ModelPackageGroupName": "mpg",
+                    "Tags": [{"Key": "myKey", "Value": "myValue"}],
                 }
             )
         else:
@@ -449,6 +808,9 @@ def test_estimator_transformer(estimator):
         instance_type="c4.4xlarge",
         accelerator_type="ml.eia1.medium",
     )
+    service_fault_retry_policy = StepRetryPolicy(
+        exception_types=[StepExceptionTypeEnum.SERVICE_FAULT], max_attempts=10
+    )
     transform_inputs = TransformInput(data=f"s3://{BUCKET}/transform_manifest")
     estimator_transformer = EstimatorTransformer(
         name="EstimatorTransformerStep",
@@ -459,15 +821,20 @@ def test_estimator_transformer(estimator):
         instance_type="ml.c4.4xlarge",
         transform_inputs=transform_inputs,
         depends_on=["TestStep"],
+        model_step_retry_policies=[service_fault_retry_policy],
+        transform_step_retry_policies=[service_fault_retry_policy],
+        repack_model_step_retry_policies=[service_fault_retry_policy],
     )
     request_dicts = estimator_transformer.request_dicts()
     assert len(request_dicts) == 2
+
     for request_dict in request_dicts:
         if request_dict["Type"] == "Model":
             assert request_dict == {
                 "Name": "EstimatorTransformerStepCreateModelStep",
                 "Type": "Model",
                 "DependsOn": ["TestStep"],
+                "RetryPolicies": [service_fault_retry_policy.to_request()],
                 "Arguments": {
                     "ExecutionRoleArn": "DummyRole",
                     "PrimaryContainer": {
@@ -479,6 +846,7 @@ def test_estimator_transformer(estimator):
             }
         elif request_dict["Type"] == "Transform":
             assert request_dict["Name"] == "EstimatorTransformerStepTransformStep"
+            assert request_dict["RetryPolicies"] == [service_fault_retry_policy.to_request()]
             arguments = request_dict["Arguments"]
             assert isinstance(arguments["ModelName"], Properties)
             arguments.pop("ModelName")

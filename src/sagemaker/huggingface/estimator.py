@@ -26,6 +26,8 @@ from sagemaker.fw_utils import (
 from sagemaker.huggingface.model import HuggingFaceModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
+from sagemaker.training_compiler.config import TrainingCompilerConfig
+
 logger = logging.getLogger("sagemaker")
 
 
@@ -45,7 +47,8 @@ class HuggingFace(Framework):
         hyperparameters=None,
         image_uri=None,
         distribution=None,
-        **kwargs
+        compiler_config=None,
+        **kwargs,
     ):
         """This ``Estimator`` executes a HuggingFace script in a managed execution environment.
 
@@ -135,6 +138,8 @@ class HuggingFace(Framework):
                             }
                         }
                     }
+            compiler_config (:class:`~sagemaker.huggingface.TrainingCompilerConfig`):
+                Configures SageMaker Training Compiler to accelerate training.
 
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework`
                 constructor.
@@ -152,16 +157,16 @@ class HuggingFace(Framework):
 
         self._validate_args(image_uri=image_uri)
 
+        instance_type = renamed_kwargs(
+            "train_instance_type", "instance_type", kwargs.get("instance_type"), kwargs
+        )
+
+        base_framework_name = "tensorflow" if tensorflow_version is not None else "pytorch"
+        base_framework_version = (
+            tensorflow_version if tensorflow_version is not None else pytorch_version
+        )
+
         if distribution is not None:
-            instance_type = renamed_kwargs(
-                "train_instance_type", "instance_type", kwargs.get("instance_type"), kwargs
-            )
-
-            base_framework_name = "tensorflow" if tensorflow_version is not None else "pytorch"
-            base_framework_version = (
-                tensorflow_version if tensorflow_version is not None else pytorch_version
-            )
-
             validate_smdistributed(
                 instance_type=instance_type,
                 framework_name=base_framework_name,
@@ -178,10 +183,29 @@ class HuggingFace(Framework):
         if "enable_sagemaker_metrics" not in kwargs:
             kwargs["enable_sagemaker_metrics"] = True
 
+        kwargs["py_version"] = self.py_version
+
         super(HuggingFace, self).__init__(
             entry_point, source_dir, hyperparameters, image_uri=image_uri, **kwargs
         )
+
+        if compiler_config is not None:
+            if not isinstance(compiler_config, TrainingCompilerConfig):
+                error_string = (
+                    f"Expected instance of type {TrainingCompilerConfig}"
+                    f"for argument compiler_config. "
+                    f"Instead got {type(compiler_config)}"
+                )
+                raise ValueError(error_string)
+            if compiler_config:
+                compiler_config.validate(
+                    image_uri=image_uri,
+                    instance_type=instance_type,
+                    distribution=distribution,
+                )
+
         self.distribution = distribution or {}
+        self.compiler_config = compiler_config
 
     def _validate_args(self, image_uri):
         """Placeholder docstring"""
@@ -218,10 +242,19 @@ class HuggingFace(Framework):
     def hyperparameters(self):
         """Return hyperparameters used by your custom PyTorch code during model training."""
         hyperparameters = super(HuggingFace, self).hyperparameters()
-        additional_hyperparameters = self._distribution_configuration(
+        distributed_training_hyperparameters = self._distribution_configuration(
             distribution=self.distribution
         )
-        hyperparameters.update(Framework._json_encode_hyperparameters(additional_hyperparameters))
+        hyperparameters.update(
+            Framework._json_encode_hyperparameters(distributed_training_hyperparameters)
+        )
+
+        if self.compiler_config:
+            training_compiler_hyperparameters = self.compiler_config._to_hyperparameter_dict()
+            hyperparameters.update(
+                Framework._json_encode_hyperparameters(training_compiler_hyperparameters)
+            )
+
         return hyperparameters
 
     def create_model(
@@ -232,7 +265,7 @@ class HuggingFace(Framework):
         entry_point=None,
         source_dir=None,
         dependencies=None,
-        **kwargs
+        **kwargs,
     ):
         """Create a SageMaker ``HuggingFaceModel`` object that can be deployed to an ``Endpoint``.
 
@@ -284,7 +317,7 @@ class HuggingFace(Framework):
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             dependencies=(dependencies or self.dependencies),
-            **kwargs
+            **kwargs,
         )
 
     @classmethod
@@ -309,8 +342,8 @@ class HuggingFace(Framework):
         if tag is None:
             framework_version = None
         else:
-            framework, pt_or_tf = framework.split("-")
-            tag_pattern = re.compile("^(.*)-transformers(.*)-(cpu|gpu)-(py2|py3[67]?)$")
+            framework, pt_or_tf = framework.split("-")[:2]
+            tag_pattern = re.compile(r"^(.*)-transformers(.*)-(cpu|gpu)-(py2|py3\d*)$")
             tag_match = tag_pattern.match(tag)
             pt_or_tf_version = tag_match.group(1)
             framework_version = tag_match.group(2)

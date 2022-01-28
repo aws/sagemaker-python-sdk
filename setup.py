@@ -34,7 +34,7 @@ def read_version():
 # Declare minimal set for installation
 required_packages = [
     "attrs",
-    "boto3>=1.16.32",
+    "boto3>=1.20.21",
     "google-pasta",
     "numpy>=1.9.0",
     "protobuf>=3.1",
@@ -51,6 +51,7 @@ extras = {
     "local": [
         "urllib3>=1.21.1,!=1.25,!=1.25.1",
         "docker-compose>=1.25.2",
+        "docker==5.0.0",
         "PyYAML>=5.3, <6",  # PyYAML version has to match docker-compose requirements
     ],
     "scipy": ["scipy>=0.19.0"],
@@ -68,6 +69,7 @@ extras["test"] = (
         "pytest-rerunfailures",
         "pytest-timeout",
         "pytest-xdist",
+        "coverage<6.2",
         "mock",
         "contextlib2",
         "awslogs",
@@ -102,6 +104,7 @@ setup(
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
     ],
     install_requires=required_packages,
     extras_require=extras,

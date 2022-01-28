@@ -18,11 +18,12 @@ import time
 import pytest
 import numpy
 
-from sagemaker.sklearn import SKLearn
-from sagemaker.sklearn import SKLearnModel
+from sagemaker.sklearn import SKLearn, SKLearnModel, SKLearnProcessor
 from sagemaker.utils import sagemaker_timestamp, unique_name_from_base
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
+
+ROLE = "SageMakerRole"
 
 
 @pytest.fixture(scope="module")
@@ -57,7 +58,7 @@ def test_training_with_additional_hyperparameters(
 
         sklearn = SKLearn(
             entry_point=script_path,
-            role="SageMakerRole",
+            role=ROLE,
             instance_type=cpu_instance_type,
             framework_version=sklearn_latest_version,
             py_version=sklearn_latest_py_version,
@@ -88,7 +89,7 @@ def test_training_with_network_isolation(
 
         sklearn = SKLearn(
             entry_point=script_path,
-            role="SageMakerRole",
+            role=ROLE,
             instance_type=cpu_instance_type,
             framework_version=sklearn_latest_version,
             py_version=sklearn_latest_py_version,
@@ -145,7 +146,7 @@ def test_deploy_model(
         script_path = os.path.join(DATA_DIR, "sklearn_mnist", "mnist.py")
         model = SKLearnModel(
             model_data,
-            "SageMakerRole",
+            ROLE,
             entry_point=script_path,
             framework_version=sklearn_latest_version,
             sagemaker_session=sagemaker_session,
@@ -198,7 +199,7 @@ def test_failed_training_job(
 
         sklearn = SKLearn(
             entry_point=script_path,
-            role="SageMakerRole",
+            role=ROLE,
             framework_version=sklearn_latest_version,
             py_version=sklearn_latest_py_version,
             instance_count=1,
@@ -215,6 +216,31 @@ def test_failed_training_job(
             sklearn.fit(train_input, job_name=job_name)
 
 
+def _run_processing_job(sagemaker_session, instance_type, sklearn_version, py_version, wait=True):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+
+        code_path = os.path.join(DATA_DIR, "dummy_code_bundle_with_reqs")
+        entry_point = "main_script.py"
+
+        processor = SKLearnProcessor(
+            framework_version=sklearn_version,
+            py_version=py_version,
+            role=ROLE,
+            instance_count=1,
+            instance_type=instance_type,
+            sagemaker_session=sagemaker_session,
+            base_job_name="test-sklearn",
+        )
+
+        processor.run(
+            code=entry_point,
+            source_dir=code_path,
+            inputs=[],
+            wait=wait,
+        )
+        return processor.latest_job.name
+
+
 def _run_mnist_training_job(
     sagemaker_session, instance_type, sklearn_version, py_version, wait=True
 ):
@@ -226,7 +252,7 @@ def _run_mnist_training_job(
 
         sklearn = SKLearn(
             entry_point=script_path,
-            role="SageMakerRole",
+            role=ROLE,
             framework_version=sklearn_version,
             py_version=py_version,
             instance_type=instance_type,

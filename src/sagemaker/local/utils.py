@@ -15,6 +15,7 @@ from __future__ import absolute_import
 
 import os
 import shutil
+import subprocess
 
 from distutils.dir_util import copy_tree
 from six.moves.urllib.parse import urlparse
@@ -63,7 +64,8 @@ def move_to_destination(source, destination, job_name, sagemaker_session):
     """
     parsed_uri = urlparse(destination)
     if parsed_uri.scheme == "file":
-        recursive_copy(source, parsed_uri.path)
+        dir_path = os.path.abspath(parsed_uri.netloc + parsed_uri.path)
+        recursive_copy(source, dir_path)
         final_uri = destination
     elif parsed_uri.scheme == "s3":
         bucket = parsed_uri.netloc
@@ -88,3 +90,40 @@ def recursive_copy(source, destination):
     """
     if os.path.isdir(source):
         copy_tree(source, destination)
+
+
+def kill_child_processes(pid):
+    """Kill child processes
+
+    Kills all nested child process ids for a specific pid
+
+    Args:
+        pid (int): process id
+    """
+    child_pids = get_child_process_ids(pid)
+    for child_pid in child_pids:
+        os.kill(child_pid, 15)
+
+
+def get_child_process_ids(pid):
+    """Retrieve all child pids for a certain pid
+
+    Recursively scan each childs process tree and add it to the output
+
+    Args:
+        pid (int): process id
+
+    Returns:
+        (List[int]): Child process ids
+    """
+    cmd = f"pgrep -P {pid}".split()
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output, err = process.communicate()
+    if err:
+        return []
+    pids = [int(pid) for pid in output.decode("utf-8").split()]
+    if pids:
+        for child_pid in pids:
+            return pids + get_child_process_ids(child_pid)
+    else:
+        return []

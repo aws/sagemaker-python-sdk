@@ -288,10 +288,6 @@ def test_sklearn_with_custom_default_bucket(
 
     assert job_description["ProcessingInputs"][0]["InputName"] == "dummy_input"
     assert custom_bucket_name in job_description["ProcessingInputs"][0]["S3Input"]["S3Uri"]
-
-    assert job_description["ProcessingInputs"][1]["InputName"] == "code"
-    assert custom_bucket_name in job_description["ProcessingInputs"][1]["S3Input"]["S3Uri"]
-
     assert job_description["ProcessingJobName"].startswith("test-sklearn-with-customizations")
 
     assert job_description["ProcessingJobStatus"] == "Completed"
@@ -681,9 +677,9 @@ def test_sklearn_with_network_config(sagemaker_session, sklearn_latest_version, 
     sklearn_processor = SKLearnProcessor(
         framework_version=sklearn_latest_version,
         role=ROLE,
+        command=["python3"],
         instance_type=cpu_instance_type,
         instance_count=1,
-        command=["python3"],
         sagemaker_session=sagemaker_session,
         base_job_name="test-sklearn-with-network-config",
         network_config=NetworkConfig(
@@ -750,6 +746,14 @@ def _get_processing_inputs_with_all_parameters(bucket):
             source=f"s3://{bucket}",
             destination="/opt/ml/processing/input/data/",
             input_name="my_dataset",
+        ),
+        ProcessingInput(
+            input_name="s3_input_wo_defaults",
+            s3_input=S3Input(
+                s3_uri=f"s3://{bucket}",
+                local_path="/opt/ml/processing/input/s3_input_wo_defaults",
+                s3_data_type="S3Prefix",
+            ),
         ),
         ProcessingInput(
             input_name="s3_input",
@@ -824,6 +828,17 @@ def _get_processing_job_inputs_and_outputs(bucket, output_kms_key):
                     "S3InputMode": "File",
                     "S3DataDistributionType": "FullyReplicated",
                     "S3CompressionType": "None",
+                },
+            },
+            {
+                "InputName": "s3_input_wo_defaults",
+                "AppManaged": False,
+                "S3Input": {
+                    "S3Uri": f"s3://{bucket}",
+                    "LocalPath": "/opt/ml/processing/input/s3_input_wo_defaults",
+                    "S3DataType": "S3Prefix",
+                    "S3InputMode": "File",
+                    "S3DataDistributionType": "FullyReplicated",
                 },
             },
             {

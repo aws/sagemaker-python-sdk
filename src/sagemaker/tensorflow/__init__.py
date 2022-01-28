@@ -15,3 +15,4 @@ from __future__ import absolute_import
 
 from sagemaker.tensorflow.estimator import TensorFlow  # noqa: F401 (imported but unused)
 from sagemaker.tensorflow.model import TensorFlowModel, TensorFlowPredictor  # noqa: F401
+from sagemaker.tensorflow.processing import TensorFlowProcessor  # noqa: F401

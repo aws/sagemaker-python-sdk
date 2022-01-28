@@ -312,4 +312,4 @@ def cleanup_feature_group(feature_group: FeatureGroup):
         try:
             feature_group.delete()
         except Exception:
-            pass
+            raise RuntimeError(f"Failed to delete feature group with name {feature_group.name}")
