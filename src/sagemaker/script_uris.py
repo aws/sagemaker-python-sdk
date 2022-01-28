@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Accessors to retrieve the script S3 URI to run pretrained ML models."""
+"""Accessors to retrieve the script Amazon S3 URI to run pretrained machine learning models."""
 
 from __future__ import absolute_import
 
@@ -33,22 +33,22 @@ def retrieve(
     """Retrieves the script S3 URI associated with the model matching the given arguments.
 
     Args:
-        region (str): Region for which to retrieve model script S3 URI.
-        model_id (str): JumpStart model ID of the JumpStart model for which to
+        region (str): The AWS Region for which to retrieve the model script S3 URI.
+        model_id (str): The model ID of the JumpStart model for which to
             retrieve the script S3 URI.
-        model_version (str): Version of the JumpStart model for which to retrieve the
+        model_version (str): The version of the JumpStart model for which to retrieve the
             model script S3 URI.
-        script_scope (str): The script type, i.e. what it is used for.
+        script_scope (str): The script type.
             Valid values: "training" and "inference".
-        tolerate_vulnerable_model (bool): True if vulnerable versions of model
-            specifications should be tolerated (exception not raised). If False, raises an
+        tolerate_vulnerable_model (bool): ``True`` if vulnerable versions of model
+            specifications should be tolerated without raising an exception. If ``False``, raises an
             exception if the script used by this version of the model has dependencies with known
             security vulnerabilities. (Default: False).
-        tolerate_deprecated_model (bool): True if deprecated models should be tolerated
-            (exception not raised). False if these models should raise an exception.
+        tolerate_deprecated_model (bool): ``True`` if deprecated models should be tolerated
+            without raising an exception. ``False`` if these models should raise an exception.
             (Default: False).
     Returns:
-        str: the model script URI for the corresponding model.
+        str: The model script URI for the corresponding model.
 
     Raises:
         NotImplementedError: If the scope is not supported.

@@ -165,7 +165,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 the job regardless of its current status.
             input_mode (str): The input mode that the algorithm supports
                 (default: 'File'). Valid modes:
-                'File' - Amazon SageMaker copiesthe training dataset from the
+                'File' - Amazon SageMaker copies the training dataset from the
                 S3 location to a local directory.
                 'Pipe' - Amazon SageMaker streams data directly from S3 to the
                 container via a Unix-named pipe.
@@ -234,10 +234,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             max_wait (int): Timeout in seconds waiting for spot training
                 job (default: None). After this amount of time Amazon
                 SageMaker will stop waiting for managed spot training job to
-                complete (default: ``None``).
+                complete (default: None).
             checkpoint_s3_uri (str): The S3 URI in which to persist checkpoints
                 that the algorithm persists (if any) during training. (default:
-                ``None``).
+                None).
             checkpoint_local_path (str): The local path that the algorithm
                 writes its checkpoints to. SageMaker will persist all files
                 under this path to `checkpoint_s3_uri` continually during
@@ -245,11 +245,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 s3 location is downloaded to this path before the algorithm is
                 started. If the path is unset then SageMaker assumes the
                 checkpoints will be provided under `/opt/ml/checkpoints/`.
-                (default: ``None``).
+                (default: None).
             rules (list[:class:`~sagemaker.debugger.RuleBase`]): A list of
                 :class:`~sagemaker.debugger.RuleBase` objects used to define
                 SageMaker Debugger rules for real-time analysis
-                (default: ``None``). For more information,
+                (default: None). For more information,
                 see `Continuous analyses through rules
                 <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html
                 #continuous-analyses-through-rules)>`_.
@@ -264,7 +264,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 capture-real-time-debugging-data-during-model-training-in-amazon-sagemaker>`_.
             tensorboard_output_config (:class:`~sagemaker.debugger.TensorBoardOutputConfig`):
                 Configuration for customizing debugging visualization using TensorBoard
-                (default: ``None``). For more information,
+                (default: None). For more information,
                 see `Capture real time tensorboard data
                 <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html#
                 capture-real-time-tensorboard-data-from-the-debugging-hook>`_.
@@ -273,7 +273,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 <https://docs.aws.amazon.com/sagemaker/latest/dg/
                 API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-
                 EnableSageMakerMetricsTimeSeries>`_.
-                (default: ``None``).
+                (default: None).
             enable_network_isolation (bool): Specifies whether container will
                 run in network isolation mode (default: ``False``). Network
                 isolation mode restricts the container access to outside networks
@@ -290,112 +290,111 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             disable_profiler (bool): Specifies whether Debugger monitoring and profiling
                 will be disabled (default: ``False``).
             environment (dict[str, str]) : Environment variables to be set for
-                use during training job (default: ``None``)
+                use during training job (default: None)
             max_retry_attempts (int): The number of times to move a job to the STARTING status.
                 You can specify between 1 and 30 attempts.
                 If the value of attempts is greater than zero,
                 the job is retried on InternalServerFailure
                 the same number of attempts as the value.
                 You can cap the total duration for your job by setting ``max_wait`` and ``max_run``
-                (default: ``None``)
-            source_dir (str): Path (absolute, relative or an S3 URI) to a directory
+                (default: None)
+            source_dir (str): The absolute, relative, or  S3 URI Path to a directory
                 with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
-                point to a tar.gz file. Structure within this directory are preserved
+                point to a tar.gz file. The structure within this directory is preserved
                 when training on Amazon SageMaker. If 'git_config' is provided,
                 'source_dir' should be a relative location to a directory in the Git
                 repo.
 
                 .. admonition:: Example
 
-                    With the following GitHub repo directory structure:
+                    With the following GitHub repo directory structure,
+                    if you need 'train.py' as the entry point and 'test.py' as
+                    the training source code, you can assign
+                    entry_point='train.py' and source_dir='src'.
 
                     >>> |----- README.md
                     >>> |----- src
                     >>>         |----- train.py
                     >>>         |----- test.py
 
-                    and you need 'train.py' as entry point and 'test.py' as
-                    training source code as well, you can assign
-                    entry_point='train.py', source_dir='src'.
             git_config (dict[str, str]): Git configurations used for cloning
                 files, including ``repo``, ``branch``, ``commit``,
-                ``2FA_enabled``, ``username``, ``password`` and ``token``. The
+                ``2FA_enabled``, ``username``, ``password``, and ``token``. The
                 ``repo`` field is required. All other fields are optional.
                 ``repo`` specifies the Git repository where your training script
                 is stored. If you don't provide ``branch``, the default value
                 'master' is used. If you don't provide ``commit``, the latest
-                commit in the specified branch is used. .. admonition:: Example
+                commit in the specified branch is used.
+                
+                .. admonition:: Example
 
-                    The following config:
+                    The following config results in cloning the repo specified in 'repo', then
+                    checking out the 'master' branch, and checking out the specified
+                    commit.
 
                     >>> git_config = {'repo': 'https://github.com/aws/sagemaker-python-sdk.git',
                     >>>               'branch': 'test-branch-git-config',
                     >>>               'commit': '329bfcf884482002c05ff7f44f62599ebc9f445a'}
 
-                    results in cloning the repo specified in 'repo', then
-                    checkout the 'master' branch, and checkout the specified
-                    commit.
-
                 ``2FA_enabled``, ``username``, ``password`` and ``token`` are
                 used for authentication. For GitHub (or other Git) accounts, set
-                ``2FA_enabled`` to 'True' if two-factor authentication is
-                enabled for the account, otherwise set it to 'False'. If you do
+                ``2FA_enabled`` to ``True`` if two-factor authentication is
+                enabled for the account, otherwise set it to ``False``. If you do
                 not provide a value for ``2FA_enabled``, a default value of
-                'False' is used. CodeCommit does not support two-factor
+                ``False`` is used. CodeCommit does not support two-factor
                 authentication, so do not provide "2FA_enabled" with CodeCommit
                 repositories.
 
                 For GitHub and other Git repos, when SSH URLs are provided, it
-                doesn't matter whether 2FA is enabled or disabled; you should
-                either have no passphrase for the SSH key pairs, or have the
-                ssh-agent configured so that you will not be prompted for SSH
-                passphrase when you do 'git clone' command with SSH URLs. When
-                HTTPS URLs are provided: if 2FA is disabled, then either token
-                or username+password will be used for authentication if provided
-                (token prioritized); if 2FA is enabled, only token will be used
+                doesn't matter whether 2FA is enabled or disabled. You should
+                either have no passphrase for the SSH key pairs or have the
+                ssh-agent configured so that you will not be prompted for the SSH
+                passphrase when you run the 'git clone' command with SSH URLs. When
+                HTTPS URLs are provided, if 2FA is disabled, then either ``token``
+                or ``username`` and ``password`` are be used for authentication if provided.
+                ``Token`` is prioritized. If 2FA is enabled, only ``token`` is used
                 for authentication if provided. If required authentication info
-                is not provided, python SDK will try to use local credentials
-                storage to authenticate. If that fails either, an error message
-                will be thrown.
+                is not provided, the SageMaker Python SDK attempts to use local credentials
+                to authenticate. If that fails, an error message is thrown.
 
-                For CodeCommit repos, 2FA is not supported, so '2FA_enabled'
+                For CodeCommit repos, 2FA is not supported, so ``2FA_enabled``
                 should not be provided. There is no token in CodeCommit, so
-                'token' should not be provided too. When 'repo' is an SSH URL,
-                the requirements are the same as GitHub-like repos. When 'repo'
-                is an HTTPS URL, username+password will be used for
-                authentication if they are provided; otherwise, python SDK will
-                try to use either CodeCommit credential helper or local
-                credential storage for authentication.
-            hyperparameters (dict): Dictionary containing the hyperparameters to
+                ``token`` should also not be provided. When ``repo`` is an SSH URL,
+                the requirements are the same as GitHub  repos. When ``repo``
+                is an HTTPS URL, ``username`` and ``password`` are used for
+                authentication if they are provided. If they are not provided,
+                the SageMaker Python SDK attempts to use either the CodeCommit
+                credential helper or local credential storage for authentication.
+            hyperparameters (dict): A dictionary containing the hyperparameters to
                 initialize this estimator with. (Default: None).
-            container_log_level (int): Log level to use within the container
-                (default: logging.INFO). Valid values are defined in the Python
+            container_log_level (int): The log level to use within the container
+                (default: ``logging.INFO``). Valid values are defined in the Python
                 logging module.
-            code_location (str): The S3 prefix URI where custom code will be
-                uploaded (default: None) - don't include a trailing slash since
+            code_location (str): The S3 prefix URI where custom code is
+                uploaded (default: None). You must not include a trailing slash because
                 a string prepended with a "/" is appended to ``code_location``. The code
                 file uploaded to S3 is 'code_location/job-name/source/sourcedir.tar.gz'.
-                If not specified, the default ``code location`` is s3://output_bucket/job-name/.
-            entry_point (str): Path (absolute or relative) to the local Python
-                source file which should be executed as the entry point to
+                If not specified, the default ``code location`` is 's3://output_bucket/job-name/'.
+            entry_point (str): The absolute or relative path to the local Python
+                source file that should be executed as the entry point to
                 training. (Default: None). If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
                 If 'git_config' is provided, 'entry_point' should be
                 a relative location to the Python source file in the Git repo.
 
                 Example:
-                    With the following GitHub repo directory structure:
+                    With the following GitHub repo directory structure, you can assign 
+                    entry_point='src/train.py'.
 
                     >>> |----- README.md
                     >>> |----- src
                     >>>         |----- train.py
                     >>>         |----- test.py
 
-                    You can assign entry_point='src/train.py'.
-            dependencies (list[str]): A list of paths to directories (absolute
-                or relative) with any additional libraries that will be exported
-                to the container (default: []). The library folders will be
+            dependencies (list[str]): A list of absolute or relative paths to directories
+                with any additional libraries that should be exported
+                to the container (default: []). The library folders are
                 copied to SageMaker in the same folder where the entrypoint is
                 copied. If 'git_config' is provided, 'dependencies' should be a
                 list of relative locations to directories with any additional
@@ -403,12 +402,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
                 .. admonition:: Example
 
-                    The following call
+                    The following Estimator call:
 
                     >>> Estimator(entry_point='train.py',
                     ...           dependencies=['my/libs/common', 'virtual-env'])
 
-                    results in the following inside the container:
+                    results in the following structure inside the container:
 
                     >>> $ ls
 
@@ -589,7 +588,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
     @staticmethod
     def _json_encode_hyperparameters(hyperparameters: Dict[str, Any]) -> Dict[str, Any]:
-        """Applies Json encoding for certain Hyperparameter types, returns hyperparameters.
+        """Applies Json encoding for certain hyperparameter types, returns hyperparameters.
 
         Args:
             hyperparameters (dict): Dictionary of hyperparameters.
@@ -668,7 +667,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self._prepare_profiler_for_training()
 
     def _script_mode_hyperparam_update(self, code_dir: str, script: str) -> None:
-        """Applies in-place update to hyperparameters required for script mode with training.
+        """Applies in-place updates to hyperparameters required for training with script mode.
 
         Args:
             code_dir (str): The directory hosting the training scripts.
@@ -684,9 +683,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self._hyperparameters.update(EstimatorBase._json_encode_hyperparameters(hyperparams))
 
     def _stage_user_code_in_s3(self) -> str:
-        """Upload the user training script to s3 and return the s3 URI.
+        """Uploads the user training script to S3 and returns the S3 URI.
 
-        Returns: s3 uri
+        Returns: S3 URI
         """
         local_mode = self.output_path.startswith("file://")
 
@@ -1633,17 +1632,17 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             rules (list[:class:`~sagemaker.debugger.ProfilerRule`]): A list of
                 :class:`~sagemaker.debugger.ProfilerRule` objects to define
                 rules for continuous analysis with SageMaker Debugger. Currently, you can
-                only add new profiler rules during the training job. (default: ``None``)
+                only add new profiler rules during the training job. (default: None)
             s3_output_path (str): The location in S3 to store the output. If profiler is enabled
-                once, s3_output_path cannot be changed. (default: ``None``)
+                once, s3_output_path cannot be changed. (default: None)
             system_monitor_interval_millis (int): How often profiling system metrics are
-                collected; Unit: Milliseconds (default: ``None``)
+                collected; Unit: Milliseconds (default: None)
             framework_profile_params (:class:`~sagemaker.debugger.FrameworkProfile`):
                 A parameter object for framework metrics profiling. Configure it using
                 the :class:`~sagemaker.debugger.FrameworkProfile` class.
                 To use the default framework profile parameters, pass ``FrameworkProfile()``.
                 For more information about the default values,
-                see :class:`~sagemaker.debugger.FrameworkProfile`. (default: ``None``)
+                see :class:`~sagemaker.debugger.FrameworkProfile`. (default: None)
             disable_framework_metrics (bool): Specify whether to disable all the framework metrics.
                 This won't update system metrics and the Debugger built-in rules for monitoring.
                 To stop both monitoring and profiling,
@@ -1868,9 +1867,9 @@ class _TrainingJob(_Job):
         Args:
             estimator (sagemaker.estimator.EstimatorBase): Estimator object created by the user.
             profiler_rule_configs (list): List of profiler rule configurations to be
-                updated in the training job. (default: ``None``).
+                updated in the training job. (default: None).
             profiler_config (dict): Configuration for how profiling information is emitted with
-                SageMaker Debugger. (default: ``None``).
+                SageMaker Debugger. (default: None).
 
         Returns:
             sagemaker.estimator._TrainingJob: Constructed object that captures
@@ -1889,9 +1888,9 @@ class _TrainingJob(_Job):
             estimator (sagemaker.estimator.EstimatorBase): Estimator object
                 created by the user.
             profiler_rule_configs (list): List of profiler rule configurations to be
-                updated in the training job. (default: ``None``).
+                updated in the training job. (default: None).
             profiler_config (dict): Configuration for how profiling information is emitted with
-                SageMaker Debugger. (default: ``None``).
+                SageMaker Debugger. (default: None).
 
         Returns:
             Dict: dict for `sagemaker.session.Session.update_training_job` method
@@ -2081,10 +2080,10 @@ class Estimator(EstimatorBase):
             max_wait (int): Timeout in seconds waiting for spot training
                 instances (default: None). After this amount of time Amazon
                 SageMaker will stop waiting for Spot instances to become
-                available (default: ``None``).
+                available (default: None).
             checkpoint_s3_uri (str): The S3 URI in which to persist checkpoints
                 that the algorithm persists (if any) during training. (default:
-                ``None``).
+                None).
             checkpoint_local_path (str): The local path that the algorithm
                 writes its checkpoints to. SageMaker will persist all files
                 under this path to `checkpoint_s3_uri` continually during
@@ -2092,7 +2091,7 @@ class Estimator(EstimatorBase):
                 s3 location is downloaded to this path before the algorithm is
                 started. If the path is unset then SageMaker assumes the
                 checkpoints will be provided under `/opt/ml/checkpoints/`.
-                (default: ``None``).
+                (default: None).
             enable_network_isolation (bool): Specifies whether container will
                 run in network isolation mode (default: ``False``). Network
                 isolation mode restricts the container access to outside networks
@@ -2101,7 +2100,7 @@ class Estimator(EstimatorBase):
             rules (list[:class:`~sagemaker.debugger.RuleBase`]): A list of
                 :class:`~sagemaker.debugger.RuleBase` objects used to define
                 SageMaker Debugger rules for real-time analysis
-                (default: ``None``). For more information,
+                (default: None). For more information,
                 see `Continuous analyses through rules
                 <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html
                 #continuous-analyses-through-rules)>`_.
@@ -2116,7 +2115,7 @@ class Estimator(EstimatorBase):
                 capture-real-time-debugging-data-during-model-training-in-amazon-sagemaker>`_.
             tensorboard_output_config (:class:`~sagemaker.debugger.TensorBoardOutputConfig`):
                 Configuration for customizing debugging visualization using TensorBoard
-                (default: ``None``). For more information,
+                (default: None). For more information,
                 see `Capture real time tensorboard data
                 <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html#
                 capture-real-time-tensorboard-data-from-the-debugging-hook>`_.
@@ -2125,7 +2124,7 @@ class Estimator(EstimatorBase):
                 <https://docs.aws.amazon.com/sagemaker/latest/dg/
                 API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-
                 EnableSageMakerMetricsTimeSeries>`_.
-                (default: ``None``).
+                (default: None).
             profiler_config (:class:`~sagemaker.debugger.ProfilerConfig`):
                 Configuration for how SageMaker Debugger collects
                 monitoring and profiling information from your training job.
@@ -2138,34 +2137,33 @@ class Estimator(EstimatorBase):
             disable_profiler (bool): Specifies whether Debugger monitoring and profiling
                 will be disabled (default: ``False``).
             environment (dict[str, str]) : Environment variables to be set for
-                use during training job (default: ``None``)
+                use during training job (default: None)
             max_retry_attempts (int): The number of times to move a job to the STARTING status.
                 You can specify between 1 and 30 attempts.
                 If the value of attempts is greater than zero,
                 the job is retried on InternalServerFailure
                 the same number of attempts as the value.
                 You can cap the total duration for your job by setting ``max_wait`` and ``max_run``
-                (default: ``None``)
-            source_dir (str): Path (absolute, relative or an S3 URI) to a directory
+                (default: None)
+            source_dir (str): The absolute, relative, or S3 URI Path to a directory
                 with any other training source code dependencies aside from the entry
-                point file (default: None). If ``source_dir`` is an S3 URI, it must
-                point to a tar.gz file. Structure within this directory are preserved
+                point file (default: ``None``). If ``source_dir`` is an S3 URI, it must
+                point to a tar.gz file. Structure within this directory is preserved
                 when training on Amazon SageMaker. If 'git_config' is provided,
                 'source_dir' should be a relative location to a directory in the Git
                 repo.
 
                 .. admonition:: Example
 
-                    With the following GitHub repo directory structure:
+                    With the following GitHub repo directory structure, if you need 'train.py'
+                    as the entry point and 'test.py' as the training source code, you can assign
+                    entry_point='train.py', source_dir='src'.
 
                     >>> |----- README.md
                     >>> |----- src
                     >>>         |----- train.py
                     >>>         |----- test.py
 
-                    and you need 'train.py' as entry point and 'test.py' as
-                    training source code as well, you can assign
-                    entry_point='train.py', source_dir='src'.
             git_config (dict[str, str]): Git configurations used for cloning
                 files, including ``repo``, ``branch``, ``commit``,
                 ``2FA_enabled``, ``username``, ``password`` and ``token``. The
@@ -2173,17 +2171,17 @@ class Estimator(EstimatorBase):
                 ``repo`` specifies the Git repository where your training script
                 is stored. If you don't provide ``branch``, the default value
                 'master' is used. If you don't provide ``commit``, the latest
-                commit in the specified branch is used. .. admonition:: Example
+                commit in the specified branch is used.
+                
+                .. admonition:: Example
 
-                    The following config:
+                    The following config results in cloning the repo specified in 'repo', then
+                    checking out the 'master' branch, and checking out the specified
+                    commit.
 
                     >>> git_config = {'repo': 'https://github.com/aws/sagemaker-python-sdk.git',
                     >>>               'branch': 'test-branch-git-config',
                     >>>               'commit': '329bfcf884482002c05ff7f44f62599ebc9f445a'}
-
-                    results in cloning the repo specified in 'repo', then
-                    checkout the 'master' branch, and checkout the specified
-                    commit.
 
                 ``2FA_enabled``, ``username``, ``password`` and ``token`` are
                 used for authentication. For GitHub (or other Git) accounts, set
@@ -2194,54 +2192,53 @@ class Estimator(EstimatorBase):
                 authentication, so do not provide "2FA_enabled" with CodeCommit
                 repositories.
 
-                For GitHub and other Git repos, when SSH URLs are provided, it
-                doesn't matter whether 2FA is enabled or disabled; you should
-                either have no passphrase for the SSH key pairs, or have the
-                ssh-agent configured so that you will not be prompted for SSH
-                passphrase when you do 'git clone' command with SSH URLs. When
-                HTTPS URLs are provided: if 2FA is disabled, then either token
-                or username+password will be used for authentication if provided
-                (token prioritized); if 2FA is enabled, only token will be used
+                 For GitHub and other Git repos, when SSH URLs are provided, it
+                doesn't matter whether 2FA is enabled or disabled. You should
+                either have no passphrase for the SSH key pairs or have the
+                ssh-agent configured so that you will not be prompted for the SSH
+                passphrase when you run the 'git clone' command with SSH URLs. When
+                HTTPS URLs are provided, if 2FA is disabled, then either ``token``
+                or ``username`` and ``password`` are be used for authentication if provided.
+                ``Token`` is prioritized. If 2FA is enabled, only ``token`` is used
                 for authentication if provided. If required authentication info
-                is not provided, python SDK will try to use local credentials
-                storage to authenticate. If that fails either, an error message
-                will be thrown.
+                is not provided, the SageMaker Python SDK attempts to use local credentials
+                to authenticate. If that fails, an error message is thrown.
 
-                For CodeCommit repos, 2FA is not supported, so '2FA_enabled'
+                For CodeCommit repos, 2FA is not supported, so ``2FA_enabled``
                 should not be provided. There is no token in CodeCommit, so
-                'token' should not be provided too. When 'repo' is an SSH URL,
-                the requirements are the same as GitHub-like repos. When 'repo'
-                is an HTTPS URL, username+password will be used for
-                authentication if they are provided; otherwise, python SDK will
-                try to use either CodeCommit credential helper or local
-                credential storage for authentication.
-            container_log_level (int): Log level to use within the container
+                ``token`` should also not be provided. When ``repo`` is an SSH URL,
+                the requirements are the same as GitHub  repos. When ``repo``
+                is an HTTPS URL, ``username`` and ``password`` are used for
+                authentication if they are provided. If they are not provided,
+                the SageMaker Python SDK attempts to use either the CodeCommit
+                credential helper or local credential storage for authentication.
+            container_log_level (int): The log level to use within the container
                 (default: logging.INFO). Valid values are defined in the Python
                 logging module.
-            code_location (str): The S3 prefix URI where custom code will be
-                uploaded (default: None) - don't include a trailing slash since
+            code_location (str): The S3 prefix URI where custom code is
+                uploaded (default: None). You must not include a trailing slash because
                 a string prepended with a "/" is appended to ``code_location``. The code
                 file uploaded to S3 is 'code_location/job-name/source/sourcedir.tar.gz'.
-                If not specified, the default ``code location`` is s3://output_bucket/job-name/.
-            entry_point (str): Path (absolute or relative) to the local Python
-                source file which should be executed as the entry point to
-                training. If ``source_dir`` is specified, then ``entry_point``
+                If not specified, the default ``code location`` is 's3://output_bucket/job-name/'.
+            entry_point (str): The absolute or relative path to the local Python
+                source file that should be executed as the entry point to
+                training. (Default: None). If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
                 If 'git_config' is provided, 'entry_point' should be
                 a relative location to the Python source file in the Git repo.
 
                 Example:
-                    With the following GitHub repo directory structure:
+                    With the following GitHub repo directory structure, you can assign 
+                    entry_point='src/train.py'.
 
                     >>> |----- README.md
                     >>> |----- src
                     >>>         |----- train.py
                     >>>         |----- test.py
 
-                    You can assign entry_point='src/train.py'.
-            dependencies (list[str]): A list of paths to directories (absolute
-                or relative) with any additional libraries that will be exported
-                to the container (default: []). The library folders will be
+            dependencies (list[str]): A list of absolute or relative paths to directories
+                with any additional libraries that should be exported
+                to the container (default: []). The library folders are
                 copied to SageMaker in the same folder where the entrypoint is
                 copied. If 'git_config' is provided, 'dependencies' should be a
                 list of relative locations to directories with any additional
@@ -2249,12 +2246,12 @@ class Estimator(EstimatorBase):
 
                 .. admonition:: Example
 
-                    The following call
+                    The following Estimator call:
 
                     >>> Estimator(entry_point='train.py',
                     ...           dependencies=['my/libs/common', 'virtual-env'])
 
-                    results in the following inside the container:
+                    results in the following structure inside the container:
 
                     >>> $ ls
 
@@ -2569,7 +2566,7 @@ class Framework(EstimatorBase):
                 credential storage for authentication.
             checkpoint_s3_uri (str): The S3 URI in which to persist checkpoints
                 that the algorithm persists (if any) during training. (default:
-                ``None``).
+                None).
             checkpoint_local_path (str): The local path that the algorithm
                 writes its checkpoints to. SageMaker will persist all files
                 under this path to `checkpoint_s3_uri` continually during
@@ -2577,11 +2574,11 @@ class Framework(EstimatorBase):
                 s3 location is downloaded to this path before the algorithm is
                 started. If the path is unset then SageMaker assumes the
                 checkpoints will be provided under `/opt/ml/checkpoints/`.
-                (default: ``None``).
+                (default: None).
             enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
                 Series. For more information see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
-                (default: ``None``).
+                (default: None).
             **kwargs: Additional kwargs passed to the ``EstimatorBase``
                 constructor.
 
@@ -2626,7 +2623,7 @@ class Framework(EstimatorBase):
         self._validate_and_set_debugger_configs()
 
     def _script_mode_hyperparam_update(self, code_dir: str, script: str) -> None:
-        """Applies in-place update to hyperparameters required for script mode with training.
+        """Applies in-place updates to hyperparameters required for training with script mode.
 
         Args:
             code_dir (str): The directory hosting the training scripts.
@@ -2700,11 +2697,11 @@ class Framework(EstimatorBase):
         return None
 
     def set_hyperparameters(self, **kwargs):
-        """Escape the dict argument as JSON, update the private hyperparameter attribute."""
+        """Escapes the dict argument as JSON, updates the private hyperparameter attribute."""
         self._hyperparameters.update(EstimatorBase._json_encode_hyperparameters(kwargs))
 
     def hyperparameters(self):
-        """Return the hyperparameters as a dictionary to use for training.
+        """Returns the hyperparameters as a dictionary to use for training.
 
         The :meth:`~sagemaker.estimator.EstimatorBase.fit` method, which
         trains the model, calls this method to find the hyperparameters.
@@ -2761,7 +2758,7 @@ class Framework(EstimatorBase):
         training.
 
         Args:
-            region (str): Optional. AWS region to use for image URI. Default: AWS region associated
+            region (str): Optional. The AWS Region to use for image URI. Default: AWS region associated
                 with the SageMaker session.
 
         Returns:

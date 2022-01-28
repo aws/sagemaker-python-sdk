@@ -131,70 +131,66 @@ class Model(ModelBase):
                 model container is pulled from ECR, or private registry in your
                 VPC. By default it is set to pull model container image from
                 ECR. (default: None).
-            source_dir (str): Path (absolute, relative or an S3 URI) to a directory
+            source_dir (str): The absolute, relative, or S3 URI Path to a directory
                 with any other training source code dependencies aside from the entry
-                point file (default: None). If ``source_dir`` is an S3 URI, it must
-                point to a tar.gz file. Structure within this directory are preserved
+                point file (default: ``None``). If ``source_dir`` is an S3 URI, it must
+                point to a tar.gz file. Structure within this directory is preserved
                 when training on Amazon SageMaker. If 'git_config' is provided,
-                'source_dir' should be a relative location to a directory in the Git repo.
-                If the directory points to S3, no code will be uploaded and the S3 location
-                will be used instead.
+                'source_dir' should be a relative location to a directory in the Git
+                repo.
 
                 .. admonition:: Example
 
-                    With the following GitHub repo directory structure:
+                    With the following GitHub repo directory structure, if you need 'train.py'
+                    as the entry point and 'test.py' as the training source code, you can assign
+                    entry_point='train.py', source_dir='src'.
 
                     >>> |----- README.md
                     >>> |----- src
-                    >>>         |----- inference.py
+                    >>>         |----- train.py
                     >>>         |----- test.py
-
-                    You can assign entry_point='inference.py', source_dir='src'.
             code_location (str): Name of the S3 bucket where custom code is
-                uploaded (default: None). If not specified, default bucket
+                uploaded (default: None). If not specified, the default bucket
                 created by ``sagemaker.session.Session`` is used.
-            entry_point (str): Path (absolute or relative) to the Python source
-                file which should be executed as the entry point to model
-                hosting (default: None). If ``source_dir`` is specified,
-                then ``entry_point`` must point to a file located at the root of
-                ``source_dir``. If 'git_config' is provided, 'entry_point' should
-                be a relative location to the Python source file in the Git repo.
+            entry_point (str): The absolute or relative path to the local Python
+                source file that should be executed as the entry point to
+                training. (Default: None). If ``source_dir`` is specified, then ``entry_point``
+                must point to a file located at the root of ``source_dir``.
+                If 'git_config' is provided, 'entry_point' should be
+                a relative location to the Python source file in the Git repo.
 
                 Example:
-                    With the following GitHub repo directory structure:
+                    With the following GitHub repo directory structure, you can assign 
+                    entry_point='src/train.py'.
 
                     >>> |----- README.md
                     >>> |----- src
-                    >>>         |----- inference.py
+                    >>>         |----- train.py
                     >>>         |----- test.py
-
-                    You can assign entry_point='src/inference.py'.
             container_log_level (int): Log level to use within the container
                 (default: logging.INFO). Valid values are defined in the Python
                 logging module.
-            dependencies (list[str]): A list of paths to directories (absolute
-                or relative) with any additional libraries that will be exported
-                to the container (default: []). The library folders will be
+            dependencies (list[str]): A list of absolute or relative paths to directories
+                with any additional libraries that should be exported
+                to the container (default: []). The library folders are
                 copied to SageMaker in the same folder where the entrypoint is
                 copied. If 'git_config' is provided, 'dependencies' should be a
                 list of relative locations to directories with any additional
-                libraries needed in the Git repo. If the ```source_dir``` points
-                to S3, code will be uploaded and the S3 location will be used
-                instead.
+                libraries needed in the Git repo.
 
                 .. admonition:: Example
 
-                    The following call
+                    The following Estimator call:
 
-                    >>> Model(entry_point='inference.py',
-                    ...       dependencies=['my/libs/common', 'virtual-env'])
+                    >>> Estimator(entry_point='train.py',
+                    ...           dependencies=['my/libs/common', 'virtual-env'])
 
-                    results in the following inside the container:
+                    results in the following structure inside the container:
 
                     >>> $ ls
 
                     >>> opt/ml/code
-                    >>>     |------ inference.py
+                    >>>     |------ train.py
                     >>>     |------ common
                     >>>     |------ virtual-env
 
@@ -206,17 +202,17 @@ class Model(ModelBase):
                 ``repo`` specifies the Git repository where your training script
                 is stored. If you don't provide ``branch``, the default value
                 'master' is used. If you don't provide ``commit``, the latest
-                commit in the specified branch is used. .. admonition:: Example
+                commit in the specified branch is used.
+                
+                .. admonition:: Example
 
-                    The following config:
+                    The following config results in cloning the repo specified in 'repo', then
+                    checking out the 'master' branch, and checking out the specified
+                    commit.
 
                     >>> git_config = {'repo': 'https://github.com/aws/sagemaker-python-sdk.git',
                     >>>               'branch': 'test-branch-git-config',
                     >>>               'commit': '329bfcf884482002c05ff7f44f62599ebc9f445a'}
-
-                    results in cloning the repo specified in 'repo', then
-                    checkout the 'master' branch, and checkout the specified
-                    commit.
 
                 ``2FA_enabled``, ``username``, ``password`` and ``token`` are
                 used for authentication. For GitHub (or other Git) accounts, set
@@ -227,27 +223,26 @@ class Model(ModelBase):
                 authentication, so do not provide "2FA_enabled" with CodeCommit
                 repositories.
 
-                For GitHub and other Git repos, when SSH URLs are provided, it
-                doesn't matter whether 2FA is enabled or disabled; you should
-                either have no passphrase for the SSH key pairs, or have the
-                ssh-agent configured so that you will not be prompted for SSH
-                passphrase when you do 'git clone' command with SSH URLs. When
-                HTTPS URLs are provided: if 2FA is disabled, then either token
-                or username+password will be used for authentication if provided
-                (token prioritized); if 2FA is enabled, only token will be used
+                 For GitHub and other Git repos, when SSH URLs are provided, it
+                doesn't matter whether 2FA is enabled or disabled. You should
+                either have no passphrase for the SSH key pairs or have the
+                ssh-agent configured so that you will not be prompted for the SSH
+                passphrase when you run the 'git clone' command with SSH URLs. When
+                HTTPS URLs are provided, if 2FA is disabled, then either ``token``
+                or ``username`` and ``password`` are be used for authentication if provided.
+                ``Token`` is prioritized. If 2FA is enabled, only ``token`` is used
                 for authentication if provided. If required authentication info
-                is not provided, python SDK will try to use local credentials
-                storage to authenticate. If that fails either, an error message
-                will be thrown.
+                is not provided, the SageMaker Python SDK attempts to use local credentials
+                to authenticate. If that fails, an error message is thrown.
 
-                For CodeCommit repos, 2FA is not supported, so '2FA_enabled'
+                For CodeCommit repos, 2FA is not supported, so ``2FA_enabled``
                 should not be provided. There is no token in CodeCommit, so
-                'token' should not be provided too. When 'repo' is an SSH URL,
-                the requirements are the same as GitHub-like repos. When 'repo'
-                is an HTTPS URL, username+password will be used for
-                authentication if they are provided; otherwise, python SDK will
-                try to use either CodeCommit credential helper or local
-                credential storage for authentication.
+                ``token`` should also not be provided. When ``repo`` is an SSH URL,
+                the requirements are the same as GitHub  repos. When ``repo``
+                is an HTTPS URL, ``username`` and ``password`` are used for
+                authentication if they are provided. If they are not provided,
+                the SageMaker Python SDK attempts to use either the CodeCommit
+                credential helper or local credential storage for authentication.
 
         """
         self.model_data = model_data

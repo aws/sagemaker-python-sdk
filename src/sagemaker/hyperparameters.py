@@ -34,20 +34,20 @@ def retrieve_default(
     """Retrieves the default training hyperparameters for the model matching the given arguments.
 
     Args:
-        region (str): Region for which to retrieve default hyperparameters. (Default: None).
-        model_id (str): Model ID of the model for which to
+        region (str): The AWS Region for which to retrieve the default hyperparameters. Defaults to ``None``.
+        model_id (str): The model ID of the model for which to
             retrieve the default hyperparameters. (Default: None).
-        model_version (str): Version of the model for which to retrieve the
+        model_version (str): The version of the model for which to retrieve the
             default hyperparameters. (Default: None).
-        include_container_hyperparameters (bool): True if container hyperparameters
-            should be returned as well. Container hyperparameters are not used to tune
-            the specific algorithm, but rather by SageMaker Training to setup
+        include_container_hyperparameters (bool): ``True`` if the container hyperparameters
+            should be returned. Container hyperparameters are not used to tune
+            the specific algorithm. They are used by SageMaker Training jobs to set up
             the training container environment. For example, there is a container hyperparameter
             that indicates the entrypoint script to use. These hyperparameters may be required
             when creating a training job with boto3, however the ``Estimator`` classes
-            should take care of adding container hyperparameters to the job. (Default: False).
+            add required container hyperparameters to the job. (Default: False).
     Returns:
-        dict: the hyperparameters to use for the model.
+        dict: The hyperparameters to use for the model.
 
     Raises:
         ValueError: If the combination of arguments specified is not supported.
@@ -69,22 +69,22 @@ def validate(
     hyperparameters: Optional[dict] = None,
     validation_mode: Optional[HyperparameterValidationMode] = None,
 ) -> None:
-    """Validate hyperparameters for models.
+    """Validates hyperparameters for models.
 
     Args:
-        region (str): Region for which to validate hyperparameters. (Default: None).
-        model_id (str): Model ID of the model for which to validate hyperparameters.
-            (Default: None)
-        model_version (str): Version of the model for which to validate hyperparameters.
-            (Default: None)
+        region (str): The AWS Region for which to validate hyperparameters. (Default: None).
+        model_id (str): The model ID of the model for which to validate hyperparameters.
+            (Default: None).
+        model_version (str): The version of the model for which to validate hyperparameters.
+            (Default: None).
         hyperparameters (dict): Hyperparameters to validate.
-            (Default: None)
+            (Default: None).
         validation_mode (HyperparameterValidationMode): Method of validation to use with
           hyperparameters. If set to ``VALIDATE_PROVIDED``, only hyperparameters provided
           to this function will be validated, the missing hyperparameters will be ignored.
           If set to``VALIDATE_ALGORITHM``, all algorithm hyperparameters will be validated.
           If set to ``VALIDATE_ALL``, all hyperparameters for the model will be validated.
-          (Default: None)
+          (Default: None).
 
     Raises:
         JumpStartHyperparametersError: If the hyperparameter is not formatted correctly,
