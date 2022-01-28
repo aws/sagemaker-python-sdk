@@ -207,8 +207,8 @@ class Model(ModelBase):
                 ``repo`` specifies the Git repository where your training script
                 is stored. If you don't provide ``branch``, the default value
                 'master' is used. If you don't provide ``commit``, the latest
-                commit in the specified branch is used. 
-                
+                commit in the specified branch is used.
+
                 .. admonition:: Example
 
                     The following config:
@@ -1244,8 +1244,8 @@ class FrameworkModel(Model):
                 ``repo`` specifies the Git repository where your training script
                 is stored. If you don't provide ``branch``, the default value
                 'master' is used. If you don't provide ``commit``, the latest
-                commit in the specified branch is used. 
-                
+                commit in the specified branch is used.
+
                 .. admonition:: Example
 
                     The following config:
