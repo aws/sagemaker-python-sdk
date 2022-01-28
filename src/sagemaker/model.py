@@ -141,32 +141,35 @@ class Model(ModelBase):
 
                 .. admonition:: Example
 
-                    With the following GitHub repo directory structure, if you need 'train.py'
-                    as the entry point and 'test.py' as the training source code, you can assign
-                    entry_point='train.py', source_dir='src'.
+                    With the following GitHub repo directory structure
 
                     >>> |----- README.md
                     >>> |----- src
-                    >>>         |----- train.py
+                    >>>         |----- inference.py
                     >>>         |----- test.py
+
+                    If you need 'train.py' as the entry point and 'test.py' as the training source code,
+                    you can assign entry_point='train.py', source_dir='src'.
             code_location (str): Name of the S3 bucket where custom code is
                 uploaded (default: None). If not specified, the default bucket
                 created by ``sagemaker.session.Session`` is used.
             entry_point (str): The absolute or relative path to the local Python
                 source file that should be executed as the entry point to
-                training. (Default: None). If ``source_dir`` is specified, then ``entry_point``
+                model hosting. (Default: None). If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
                 If 'git_config' is provided, 'entry_point' should be
                 a relative location to the Python source file in the Git repo.
 
-                Example:
-                    With the following GitHub repo directory structure, you can assign 
-                    entry_point='src/train.py'.
+                .. admonition:: Example
+
+                    With the following GitHub repo directory structure
 
                     >>> |----- README.md
                     >>> |----- src
-                    >>>         |----- train.py
+                    >>>         |----- inference.py
                     >>>         |----- test.py
+
+                    You can assign entry_point='src/inference.py'.
             container_log_level (int): Log level to use within the container
                 (default: logging.INFO). Valid values are defined in the Python
                 logging module.
@@ -180,19 +183,20 @@ class Model(ModelBase):
 
                 .. admonition:: Example
 
-                    The following Estimator call:
+                    The following call:
 
-                    >>> Estimator(entry_point='train.py',
-                    ...           dependencies=['my/libs/common', 'virtual-env'])
+                    >>> Model(entry_point='inference.py',
+                    ...       dependencies=['my/libs/common', 'virtual-env'])
 
                     results in the following structure inside the container:
 
                     >>> $ ls
 
                     >>> opt/ml/code
-                    >>>     |------ train.py
+                    >>>     |------ inference.py
                     >>>     |------ common
                     >>>     |------ virtual-env
+
 
                 This is not supported with "local code" in Local Mode.
             git_config (dict[str, str]): Git configurations used for cloning
@@ -206,14 +210,15 @@ class Model(ModelBase):
                 
                 .. admonition:: Example
 
-                    The following config results in cloning the repo specified in 'repo', then
-                    checking out the 'master' branch, and checking out the specified
-                    commit.
+                    The following config
 
                     >>> git_config = {'repo': 'https://github.com/aws/sagemaker-python-sdk.git',
                     >>>               'branch': 'test-branch-git-config',
                     >>>               'commit': '329bfcf884482002c05ff7f44f62599ebc9f445a'}
 
+                    results in cloning the repo specified in 'repo', then
+                    checking out the 'master' branch, and checking out the specified
+                    commit.
                 ``2FA_enabled``, ``username``, ``password`` and ``token`` are
                 used for authentication. For GitHub (or other Git) accounts, set
                 ``2FA_enabled`` to 'True' if two-factor authentication is
@@ -1184,6 +1189,7 @@ class FrameworkModel(Model):
                     >>>         |----- inference.py
                     >>>         |----- test.py
 
+
                     You can assign entry_point='inference.py', source_dir='src'.
             predictor_cls (callable[string, sagemaker.session.Session]): A
                 function to call to create a predictor (default: None). If not
@@ -1229,6 +1235,7 @@ class FrameworkModel(Model):
                     >>>     |------ common
                     >>>     |------ virtual-env
 
+
                 This is not supported with "local code" in Local Mode.
             git_config (dict[str, str]): Git configurations used for cloning
                 files, including ``repo``, ``branch``, ``commit``,
@@ -1237,7 +1244,9 @@ class FrameworkModel(Model):
                 ``repo`` specifies the Git repository where your training script
                 is stored. If you don't provide ``branch``, the default value
                 'master' is used. If you don't provide ``commit``, the latest
-                commit in the specified branch is used. .. admonition:: Example
+                commit in the specified branch is used. 
+                
+                .. admonition:: Example
 
                     The following config:
 
@@ -1248,6 +1257,7 @@ class FrameworkModel(Model):
                     results in cloning the repo specified in 'repo', then
                     checkout the 'master' branch, and checkout the specified
                     commit.
+
 
                 ``2FA_enabled``, ``username``, ``password`` and ``token`` are
                 used for authentication. For GitHub (or other Git) accounts, set
