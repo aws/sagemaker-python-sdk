@@ -59,7 +59,6 @@ def test_hvd_gpu(
         sagemaker_session,
         tensorflow_training_latest_version,
         tensorflow_training_latest_py_version,
-#         "ml.p2.xlarge",
         "ml.p3.2xlarge",
         tmpdir,
     )
