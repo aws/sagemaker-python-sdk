@@ -366,9 +366,6 @@ def gpu_instance_type(request):
     return "ml.p3.2xlarge"
 
 
-#     return "ml.p2.xlarge"
-
-
 @pytest.fixture(scope="session")
 def inf_instance_type(sagemaker_session, request):
     return "ml.inf1.xlarge"
@@ -411,7 +408,6 @@ def pytest_generate_tests(metafunc):
             region in tests.integ.HOSTING_NO_P2_REGIONS
             or region in tests.integ.TRAINING_NO_P2_REGIONS
         ):
-
             params.append("ml.p3.2xlarge")
         metafunc.parametrize("instance_type", params, scope="session")
 
