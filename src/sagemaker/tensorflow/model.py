@@ -269,6 +269,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         wait=True,
         data_capture_config=None,
         update_endpoint=None,
+        async_inference_config=None,
         serverless_inference_config=None,
     ):
         """Deploy a Tensorflow ``Model`` to a SageMaker ``Endpoint``."""
@@ -288,6 +289,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             kms_key=kms_key,
             wait=wait,
             data_capture_config=data_capture_config,
+            async_inference_config=async_inference_config,
             serverless_inference_config=serverless_inference_config,
             update_endpoint=update_endpoint,
         )
