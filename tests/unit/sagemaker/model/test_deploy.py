@@ -19,6 +19,7 @@ from mock import Mock, patch
 
 import sagemaker
 from sagemaker.model import Model
+from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.serverless import ServerlessInferenceConfig
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
@@ -81,6 +82,7 @@ def test_deploy(name_from_base, prepare_container_def, production_variant, sagem
         kms_key=None,
         wait=True,
         data_capture_config_dict=None,
+        async_inference_config_dict=None,
     )
 
 
@@ -120,6 +122,7 @@ def test_deploy_accelerator_type(
         kms_key=None,
         wait=True,
         data_capture_config_dict=None,
+        async_inference_config_dict=None,
     )
 
 
@@ -143,6 +146,7 @@ def test_deploy_endpoint_name(sagemaker_session):
         kms_key=None,
         wait=True,
         data_capture_config_dict=None,
+        async_inference_config_dict=None,
     )
 
 
@@ -216,6 +220,7 @@ def test_deploy_tags(create_sagemaker_model, production_variant, name_from_base,
         kms_key=None,
         wait=True,
         data_capture_config_dict=None,
+        async_inference_config_dict=None,
     )
 
 
@@ -237,6 +242,7 @@ def test_deploy_kms_key(production_variant, name_from_base, sagemaker_session):
         kms_key=key,
         wait=True,
         data_capture_config_dict=None,
+        async_inference_config_dict=None,
     )
 
 
@@ -257,6 +263,7 @@ def test_deploy_async(production_variant, name_from_base, sagemaker_session):
         kms_key=None,
         wait=False,
         data_capture_config_dict=None,
+        async_inference_config_dict=None,
     )
 
 
@@ -285,6 +292,39 @@ def test_deploy_data_capture_config(production_variant, name_from_base, sagemake
         kms_key=None,
         wait=True,
         data_capture_config_dict=data_capture_config_dict,
+        async_inference_config_dict=None,
+    )
+
+
+@patch("sagemaker.model.Model._create_sagemaker_model", Mock())
+@patch("sagemaker.utils.name_from_base", return_value=ENDPOINT_NAME)
+@patch("sagemaker.production_variant", return_value=BASE_PRODUCTION_VARIANT)
+def test_deploy_async_inference(production_variant, name_from_base, sagemaker_session):
+    model = Model(
+        MODEL_IMAGE, MODEL_DATA, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
+    )
+
+    async_inference_config = AsyncInferenceConfig(output_path="s3://some-path")
+    async_inference_config_dict = {
+        "OutputConfig": {
+            "S3OutputPath": "s3://some-path",
+        },
+    }
+
+    model.deploy(
+        instance_type=INSTANCE_TYPE,
+        initial_instance_count=INSTANCE_COUNT,
+        async_inference_config=async_inference_config,
+    )
+
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        name=ENDPOINT_NAME,
+        production_variants=[BASE_PRODUCTION_VARIANT],
+        tags=None,
+        kms_key=None,
+        wait=True,
+        data_capture_config_dict=None,
+        async_inference_config_dict=async_inference_config_dict,
     )
 
 
@@ -325,6 +365,7 @@ def test_deploy_serverless_inference(production_variant, create_sagemaker_model,
         kms_key=None,
         wait=True,
         data_capture_config_dict=None,
+        async_inference_config_dict=None,
     )
 
 
@@ -376,6 +417,19 @@ def test_deploy_no_role(sagemaker_session):
         model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT)
 
 
+def test_deploy_wrong_async_inferenc_config(sagemaker_session):
+    model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session, role=ROLE)
+
+    with pytest.raises(
+        ValueError, match="async_inference_config needs to be a AsyncInferenceConfig object"
+    ):
+        model.deploy(
+            instance_type=INSTANCE_TYPE,
+            initial_instance_count=INSTANCE_COUNT,
+            async_inference_config={},
+        )
+
+
 @patch("sagemaker.model.Model._create_sagemaker_model", Mock())
 @patch("sagemaker.predictor.Predictor._get_endpoint_config_name", Mock())
 @patch("sagemaker.predictor.Predictor._get_model_names", Mock())
@@ -400,3 +454,16 @@ def test_deploy_predictor_cls(production_variant, sagemaker_session):
     assert isinstance(predictor, sagemaker.predictor.Predictor)
     assert predictor.endpoint_name == endpoint_name
     assert predictor.sagemaker_session == sagemaker_session
+
+    endpoint_name_async = "foo-async"
+    predictor_async = model.deploy(
+        instance_type=INSTANCE_TYPE,
+        initial_instance_count=INSTANCE_COUNT,
+        endpoint_name=endpoint_name_async,
+        async_inference_config=AsyncInferenceConfig(),
+    )
+
+    assert isinstance(predictor_async, sagemaker.predictor_async.AsyncPredictor)
+    assert predictor_async.name == model.name
+    assert predictor_async.endpoint_name == endpoint_name_async
+    assert predictor_async.sagemaker_session == sagemaker_session

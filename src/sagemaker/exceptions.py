@@ -21,3 +21,41 @@ class UnexpectedStatusException(ValueError):
         self.allowed_statuses = allowed_statuses
         self.actual_status = actual_status
         super(UnexpectedStatusException, self).__init__(message)
+
+
+class AsyncInferenceError(Exception):
+    """The base exception class for Async Inference exceptions."""
+
+    fmt = "An unspecified error occurred"
+
+    def __init__(self, **kwargs):
+        msg = self.fmt.format(**kwargs)
+        Exception.__init__(self, msg)
+        self.kwargs = kwargs
+
+
+class ObjectNotExistedError(AsyncInferenceError):
+    """Raised when Amazon S3 object not exist in the given path"""
+
+    fmt = "Object not exist at {output_path}. {message}"
+
+    def __init__(self, message, output_path):
+        super().__init__(message=message, output_path=output_path)
+
+
+class PollingTimeoutError(AsyncInferenceError):
+    """Raised when wait longer than expected and no result object in Amazon S3 bucket yet"""
+
+    fmt = "No result at {output_path} after polling for {seconds} seconds. {message}"
+
+    def __init__(self, message, output_path, seconds):
+        super().__init__(message=message, output_path=output_path, seconds=seconds)
+
+
+class UnexpectedClientError(AsyncInferenceError):
+    """Raised when ClientError's error code is not expected"""
+
+    fmt = "Encountered unexpected client error: {message}"
+
+    def __init__(self, message):
+        super().__init__(message=message)
