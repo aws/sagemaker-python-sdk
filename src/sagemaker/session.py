@@ -3543,6 +3543,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         kms_key=None,
         wait=True,
         data_capture_config_dict=None,
+        async_inference_config_dict=None,
     ):
         """Create an SageMaker ``Endpoint`` from a list of production variants.
 
@@ -3557,7 +3558,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 (default: True).
             data_capture_config_dict (dict): Specifies configuration related to Endpoint data
                 capture for use with Amazon SageMaker Model Monitoring. Default: None.
-
+            async_inference_config_dict (dict) : specifies configuration related to async endpoint.
+                Use this configuration when trying to create async endpoint and make async inference
+                (default: None)
         Returns:
             str: The name of the created ``Endpoint``.
         """
@@ -3569,6 +3572,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             config_options["KmsKeyId"] = kms_key
         if data_capture_config_dict is not None:
             config_options["DataCaptureConfig"] = data_capture_config_dict
+        if async_inference_config_dict is not None:
+            config_options["AsyncInferenceConfig"] = async_inference_config_dict
 
         LOGGER.info("Creating endpoint-config with name %s", name)
         self.sagemaker_client.create_endpoint_config(**config_options)

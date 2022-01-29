@@ -865,6 +865,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         data_capture_config=None,
         tags=None,
         serverless_inference_config=None,
+        async_inference_config=None,
         **kwargs,
     ):
         """Deploy the trained model to an Amazon SageMaker endpoint.
@@ -915,11 +916,17 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             data_capture_config (sagemaker.model_monitor.DataCaptureConfig): Specifies
                 configuration related to Endpoint data capture for use with
                 Amazon SageMaker Model Monitoring. Default: None.
+            async_inference_config (sagemaker.model_monitor.AsyncInferenceConfig): Specifies
+                configuration related to async inference. Use this configuration when trying
+                to create async endpoint and make async inference. If empty config object
+                passed through, will use default config to deploy async endpoint. Deploy a
+                real-time endpoint if it's None. (default: None)
             serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
                 Specifies configuration related to serverless endpoint. Use this configuration
                 when trying to create serverless endpoint and make serverless inference. If
-                empty object passed through, we will use pre-defined values in
-                ``ServerlessInferenceConfig`` class to deploy serverless endpoint (default: None)
+                empty object passed through, will use pre-defined values in
+                ``ServerlessInferenceConfig`` class to deploy serverless endpoint. Deploy an
+                instance based endpoint if it's None. (default: None)
             tags(List[dict[str, str]]): Optional. The list of tags to attach to this specific
                 endpoint. Example:
                 >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]
@@ -971,6 +978,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             kms_key=kms_key,
             data_capture_config=data_capture_config,
             serverless_inference_config=serverless_inference_config,
+            async_inference_config=async_inference_config,
         )
 
     def register(
