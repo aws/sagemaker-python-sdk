@@ -13,3 +13,6 @@
 """Classes for performing machine learning on serverless compute."""
 from sagemaker.serverless.model import LambdaModel  # noqa: F401
 from sagemaker.serverless.predictor import LambdaPredictor  # noqa: F401
+from sagemaker.serverless.serverless_inference_config import (  # noqa: F401
+    ServerlessInferenceConfig,
+)

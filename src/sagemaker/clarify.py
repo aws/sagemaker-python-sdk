@@ -22,11 +22,17 @@ import re
 import tempfile
 from abc import ABC, abstractmethod
 from sagemaker import image_uris, s3, utils
+from sagemaker.deprecations import deprecation_warning
 from sagemaker.processing import ProcessingInput, ProcessingOutput, Processor
 
 logger = logging.getLogger(__name__)
 
 
+@deprecation_warning(
+    msg="s3_data_distribution_type parameter will no longer be supported. Everything else will"
+    " remain as is",
+    date="15 Mar 2022",
+)
 class DataConfig:
     """Config object related to configurations of the input and output dataset."""
 
@@ -58,8 +64,8 @@ class DataConfig:
                 dataset format is JSONLines.
             dataset_type (str): Format of the dataset. Valid values are "text/csv" for CSV,
                 "application/jsonlines" for JSONLines, and "application/x-parquet" for Parquet.
-            s3_data_distribution_type (str): Valid options are "FullyReplicated" or
-                "ShardedByS3Key".
+            s3_data_distribution_type (str): Deprecated. Only valid option is "FullyReplicated".
+                Any other value is ignored.
             s3_compression_type (str): Valid options are "None" or "Gzip".
             joinsource (str): The name or index of the column in the dataset that acts as an
                 identifier column (for instance, while performing a join). This column is only
@@ -80,7 +86,13 @@ class DataConfig:
         self.s3_data_input_path = s3_data_input_path
         self.s3_output_path = s3_output_path
         self.s3_analysis_config_output_path = s3_analysis_config_output_path
-        self.s3_data_distribution_type = s3_data_distribution_type
+        if s3_data_distribution_type != "FullyReplicated":
+            logger.warning(
+                "s3_data_distribution_type parameter, set to %s, is being ignored. Only"
+                " valid option is FullyReplicated",
+                s3_data_distribution_type,
+            )
+        self.s3_data_distribution_type = "FullyReplicated"
         self.s3_compression_type = s3_compression_type
         self.label = label
         self.headers = headers
@@ -111,33 +123,58 @@ class BiasConfig:
         """Initializes a configuration of the sensitive groups in the dataset.
 
         Args:
-            label_values_or_threshold (Any): List of label values or threshold to indicate positive
-                outcome used for bias metrics.
-            facet_name (str or [str]): String or List of strings of sensitive attribute(s) in the
-            input data for which we like to compare metrics.
-            facet_values_or_threshold (list): Optional list of values to form a sensitive group or
-                threshold for a numeric facet column that defines the lower bound of a sensitive
-                group. Defaults to considering each possible value as sensitive group and
-                computing metrics vs all the other examples.
-                If facet_name is a list, this needs to be None or a List consisting of lists or None
-                with the same length as facet_name list.
+            label_values_or_threshold ([int or float or str]): List of label value(s) or threshold
+                to indicate positive outcome used for bias metrics. Dependency on the problem type,
+
+                * Binary problem: The list shall include one positive value.
+                * Categorical problem: The list shall include one or more (but not all) categories
+                  which are the positive values.
+                * Regression problem: The list shall include one threshold that defines the lower
+                  bound of positive values.
+
+            facet_name (str or int or [str] or [int]): Sensitive attribute column name (or index in
+                the input data) for which you like to compute bias metrics. It can also be a list
+                of names (or indexes) if you like to compute for multiple sensitive attributes.
+            facet_values_or_threshold ([int or float or str] or [[int or float or str]]):
+                The parameter indicates the sensitive group. If facet_name is a scalar, then it can
+                be None or a list. Depending on the data type of the facet column,
+
+                * Binary: None means computing the bias metrics for each binary value. Or add one
+                  binary value to the list, to compute its bias metrics only.
+                * Categorical: None means computing the bias metrics for each category. Or add one
+                  or more (but not all) categories to the list, to compute their bias metrics v.s.
+                  the other categories.
+                * Continuous: The list shall include one and only one threshold which defines the
+                  lower bound of a sensitive group.
+
+                If facet_name is a list, then it can be None if all facets are of binary type or
+                categorical type. Otherwise it shall be a list, and each element is the values or
+                threshold of the corresponding facet.
             group_name (str): Optional column name or index to indicate a group column to be used
                 for the bias metric 'Conditional Demographic Disparity in Labels - CDDL' or
                 'Conditional Demographic Disparity in Predicted Labels - CDDPL'.
         """
-        if isinstance(facet_name, str):
+        if isinstance(facet_name, list):
+            assert len(facet_name) > 0, "Please provide at least one facet"
+            if facet_values_or_threshold is None:
+                facet_list = [
+                    {"name_or_index": single_facet_name} for single_facet_name in facet_name
+                ]
+            elif len(facet_values_or_threshold) == len(facet_name):
+                facet_list = []
+                for i, single_facet_name in enumerate(facet_name):
+                    facet = {"name_or_index": single_facet_name}
+                    if facet_values_or_threshold is not None:
+                        _set(facet_values_or_threshold[i], "value_or_threshold", facet)
+                    facet_list.append(facet)
+            else:
+                raise ValueError(
+                    "The number of facet names doesn't match the number of facet values"
+                )
+        else:
             facet = {"name_or_index": facet_name}
             _set(facet_values_or_threshold, "value_or_threshold", facet)
             facet_list = [facet]
-        elif facet_values_or_threshold is None or len(facet_name) == len(facet_values_or_threshold):
-            facet_list = []
-            for i, single_facet_name in enumerate(facet_name):
-                facet = {"name_or_index": single_facet_name}
-                if facet_values_or_threshold is not None:
-                    _set(facet_values_or_threshold[i], "value_or_threshold", facet)
-                facet_list.append(facet)
-        else:
-            raise ValueError("Wrong combination of argument values passed")
         self.analysis_config = {
             "label_values_or_threshold": label_values_or_threshold,
             "facet": facet_list,

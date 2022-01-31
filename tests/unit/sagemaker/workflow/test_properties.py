@@ -70,6 +70,19 @@ def test_properties_tuning_job():
     }
 
 
+def test_properties_emr_step():
+    prop = Properties("Steps.MyStep", "Step", service_name="emr")
+    some_prop_names = ["Id", "Name", "Config", "ActionOnFailure", "Status"]
+    for name in some_prop_names:
+        assert name in prop.__dict__.keys()
+
+    assert prop.Id.expr == {"Get": "Steps.MyStep.Id"}
+    assert prop.Name.expr == {"Get": "Steps.MyStep.Name"}
+    assert prop.ActionOnFailure.expr == {"Get": "Steps.MyStep.ActionOnFailure"}
+    assert prop.Config.Jar.expr == {"Get": "Steps.MyStep.Config.Jar"}
+    assert prop.Status.State.expr == {"Get": "Steps.MyStep.Status.State"}
+
+
 def test_properties_describe_model_package_output():
     prop = Properties("Steps.MyStep", "DescribeModelPackageOutput")
     some_prop_names = ["ModelPackageName", "ModelPackageGroupName", "ModelPackageArn"]

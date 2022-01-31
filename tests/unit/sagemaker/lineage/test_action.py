@@ -16,6 +16,7 @@ import datetime
 import unittest.mock
 
 from sagemaker.lineage import action, _api_types
+from sagemaker.lineage._api_types import ActionSource
 
 
 def test_create(sagemaker_session):
@@ -332,4 +333,24 @@ def test_create_delete_with_association(sagemaker_session):
     assert (
         delete_with_association_expected_calls
         == sagemaker_session.sagemaker_client.delete_association.mock_calls
+    )
+
+
+def test_model_package(sagemaker_session):
+    obj = action.ModelPackageApprovalAction(
+        sagemaker_session,
+        action_name="abcd-aws-model-package",
+        source=ActionSource(
+            source_uri="arn:aws:sagemaker:us-west-2:123456789012:model-package/pipeline88modelpackage/1",
+            source_type="ARN",
+        ),
+        status="updated-status",
+        properties={"k1": "v1"},
+        properties_to_remove=["k2"],
+    )
+    sagemaker_session.sagemaker_client.describe_model_package.return_value = {}
+    obj.model_package()
+
+    sagemaker_session.sagemaker_client.describe_model_package.assert_called_with(
+        ModelPackageName="pipeline88modelpackage",
     )

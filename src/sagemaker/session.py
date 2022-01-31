@@ -3543,6 +3543,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         kms_key=None,
         wait=True,
         data_capture_config_dict=None,
+        async_inference_config_dict=None,
     ):
         """Create an SageMaker ``Endpoint`` from a list of production variants.
 
@@ -3557,7 +3558,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 (default: True).
             data_capture_config_dict (dict): Specifies configuration related to Endpoint data
                 capture for use with Amazon SageMaker Model Monitoring. Default: None.
-
+            async_inference_config_dict (dict) : specifies configuration related to async endpoint.
+                Use this configuration when trying to create async endpoint and make async inference
+                (default: None)
         Returns:
             str: The name of the created ``Endpoint``.
         """
@@ -3569,6 +3572,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             config_options["KmsKeyId"] = kms_key
         if data_capture_config_dict is not None:
             config_options["DataCaptureConfig"] = data_capture_config_dict
+        if async_inference_config_dict is not None:
+            config_options["AsyncInferenceConfig"] = async_inference_config_dict
 
         LOGGER.info("Creating endpoint-config with name %s", name)
         self.sagemaker_client.create_endpoint_config(**config_options)
@@ -4382,11 +4387,12 @@ def pipeline_container_def(models, instance_type=None):
 
 def production_variant(
     model_name,
-    instance_type,
-    initial_instance_count=1,
+    instance_type=None,
+    initial_instance_count=None,
     variant_name="AllTraffic",
     initial_weight=1,
     accelerator_type=None,
+    serverless_inference_config=None,
 ):
     """Create a production variant description suitable for use in a ``ProductionVariant`` list.
 
@@ -4405,20 +4411,28 @@ def production_variant(
         accelerator_type (str): Type of Elastic Inference accelerator for this production variant.
             For example, 'ml.eia1.medium'.
             For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
+        serverless_inference_config (dict): Specifies configuration dict related to serverless
+            endpoint. The dict is converted from sagemaker.model_monitor.ServerlessInferenceConfig
+            object (default: None)
 
     Returns:
         dict[str, str]: An SageMaker ``ProductionVariant`` description
     """
     production_variant_configuration = {
         "ModelName": model_name,
-        "InstanceType": instance_type,
-        "InitialInstanceCount": initial_instance_count,
         "VariantName": variant_name,
         "InitialVariantWeight": initial_weight,
     }
 
     if accelerator_type:
         production_variant_configuration["AcceleratorType"] = accelerator_type
+
+    if serverless_inference_config:
+        production_variant_configuration["ServerlessConfig"] = serverless_inference_config
+    else:
+        initial_instance_count = initial_instance_count or 1
+        production_variant_configuration["InitialInstanceCount"] = initial_instance_count
+        production_variant_configuration["InstanceType"] = instance_type
 
     return production_variant_configuration
 

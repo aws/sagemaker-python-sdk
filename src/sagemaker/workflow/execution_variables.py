@@ -37,7 +37,15 @@ class ExecutionVariable(Expression):
 
 
 class ExecutionVariables:
-    """All available ExecutionVariable."""
+    """Provide access to all available execution variables:
+
+    - ExecutionVariables.START_DATETIME
+    - ExecutionVariables.CURRENT_DATETIME
+    - ExecutionVariables.PIPELINE_NAME
+    - ExecutionVariables.PIPELINE_ARN
+    - ExecutionVariables.PIPELINE_EXECUTION_ID
+    - ExecutionVariables.PIPELINE_EXECUTION_ARN
+    """
 
     START_DATETIME = ExecutionVariable("StartDateTime")
     CURRENT_DATETIME = ExecutionVariable("CurrentDateTime")
