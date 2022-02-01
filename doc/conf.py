@@ -17,10 +17,11 @@ import pkg_resources
 from datetime import datetime
 import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), '/doc/'))
 from jumpstart.utils import create_jumpstart_model_table
 
-project = u"sagemaker"
+sys.path.append(os.path.join(os.path.dirname(__file__), "/doc/"))
+
+project = "sagemaker"
 version = pkg_resources.require(project)[0].version
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
@@ -42,7 +43,7 @@ templates_path = ["_templates"]
 source_suffix = ".rst"  # The suffix of source filenames.
 master_doc = "index"  # The master toctree document.
 
-copyright = u"%s, Amazon" % datetime.now().year
+copyright = "%s, Amazon" % datetime.now().year
 
 # The full version, including alpha/beta/rc tags.
 release = version
@@ -80,7 +81,7 @@ html_js_files = [
 ]
 
 html_css_files = [
-    'https://cdn.datatables.net/1.10.23/css/jquery.dataTables.min.css',
+    "https://cdn.datatables.net/1.10.23/css/jquery.dataTables.min.css",
 ]
 
 html_context = {"css_files": ["_static/theme_overrides.css"]}
@@ -93,6 +94,7 @@ autosummary_generate = True
 
 # autosectionlabel
 autosectionlabel_prefix_document = True
+
 
 def setup(app):
     create_jumpstart_model_table()
