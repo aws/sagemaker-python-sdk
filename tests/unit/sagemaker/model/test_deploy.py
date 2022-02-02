@@ -19,6 +19,7 @@ from mock import Mock, patch
 
 import sagemaker
 from sagemaker.model import Model
+from sagemaker.serverless import ServerlessInferenceConfig
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -62,7 +63,11 @@ def test_deploy(name_from_base, prepare_container_def, production_variant, sagem
 
     prepare_container_def.assert_called_with(INSTANCE_TYPE, accelerator_type=None)
     production_variant.assert_called_with(
-        MODEL_NAME, INSTANCE_TYPE, INSTANCE_COUNT, accelerator_type=None
+        MODEL_NAME,
+        INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        accelerator_type=None,
+        serverless_inference_config=None,
     )
 
     sagemaker_session.create_model.assert_called_with(
@@ -101,7 +106,11 @@ def test_deploy_accelerator_type(
 
     create_sagemaker_model.assert_called_with(INSTANCE_TYPE, ACCELERATOR_TYPE, None)
     production_variant.assert_called_with(
-        MODEL_NAME, INSTANCE_TYPE, INSTANCE_COUNT, accelerator_type=ACCELERATOR_TYPE
+        MODEL_NAME,
+        INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        accelerator_type=ACCELERATOR_TYPE,
+        serverless_inference_config=None,
     )
 
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
@@ -277,6 +286,71 @@ def test_deploy_data_capture_config(production_variant, name_from_base, sagemake
         wait=True,
         data_capture_config_dict=data_capture_config_dict,
     )
+
+
+@patch("sagemaker.utils.name_from_base", return_value=ENDPOINT_NAME)
+@patch("sagemaker.model.Model._create_sagemaker_model")
+@patch("sagemaker.production_variant")
+def test_deploy_serverless_inference(production_variant, create_sagemaker_model, sagemaker_session):
+    model = Model(
+        MODEL_IMAGE, MODEL_DATA, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
+    )
+
+    production_variant_result = copy.deepcopy(BASE_PRODUCTION_VARIANT)
+    production_variant.return_value = production_variant_result
+
+    serverless_inference_config = ServerlessInferenceConfig()
+    serverless_inference_config_dict = {
+        "MemorySizeInMB": 2048,
+        "MaxConcurrency": 5,
+    }
+
+    model.deploy(
+        serverless_inference_config=serverless_inference_config,
+    )
+
+    create_sagemaker_model.assert_called_with(None, None, None)
+    production_variant.assert_called_with(
+        MODEL_NAME,
+        None,
+        None,
+        accelerator_type=None,
+        serverless_inference_config=serverless_inference_config_dict,
+    )
+
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        name=ENDPOINT_NAME,
+        production_variants=[production_variant_result],
+        tags=None,
+        kms_key=None,
+        wait=True,
+        data_capture_config_dict=None,
+    )
+
+
+def test_deploy_wrong_inference_type(sagemaker_session):
+    model = Model(MODEL_IMAGE, MODEL_DATA, role=ROLE)
+
+    bad_args = (
+        {"instance_type": INSTANCE_TYPE},
+        {"initial_instance_count": INSTANCE_COUNT},
+        {"instance_type": None, "initial_instance_count": None},
+    )
+    for args in bad_args:
+        with pytest.raises(
+            ValueError,
+            match="Must specify instance type and instance count unless using serverless inference",
+        ):
+            model.deploy(args)
+
+
+def test_deploy_wrong_serverless_config(sagemaker_session):
+    model = Model(MODEL_IMAGE, MODEL_DATA, role=ROLE)
+    with pytest.raises(
+        ValueError,
+        match="serverless_inference_config needs to be a ServerlessInferenceConfig object",
+    ):
+        model.deploy(serverless_inference_config={})
 
 
 @patch("sagemaker.session.Session")

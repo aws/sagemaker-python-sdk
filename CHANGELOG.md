@@ -1,5 +1,299 @@
 # Changelog
 
+## v2.74.0 (2022-01-26)
+
+### Features
+
+ * Add support for SageMaker lineage queries context
+
+### Bug Fixes and Other Changes
+
+ * support specifying a facet by its column index
+
+### Documentation Changes
+
+ * more documentation for serverless inference
+
+## v2.73.0 (2022-01-19)
+
+### Features
+
+ * Add EMRStep support in Sagemaker pipeline
+ * Adds Lineage queries in artifact, context and trial components
+ * Add support for SageMaker lineage queries in action
+ * Adds support for Serverless inference
+ * support checkpoint to be passed from estimator
+ * support JsonGet/Join parameterization in tuning step Hyperparameters
+ * Support model pipelines in CreateModelStep
+ * enable python 3.9
+ * Add models_v2 under lineage context
+
+### Bug Fixes and Other Changes
+
+ * allow kms_key to be passed for processing step
+ * Remove duplicate vertex/edge in query lineage
+ * update pricing link
+ * Update CHANGELOG.md
+ * fixes unnecessary session call while generating pipeline definition for lambda step
+
+### Documentation Changes
+
+ * Enhance smddp 1.2.2 doc
+ * Document the available ExecutionVariables
+
+## v2.72.3 (2022-01-10)
+
+### Features
+
+ * default repack encryption
+ * support large pipeline
+ * add support for pytorch 1.10.0
+ 
+### Documentation Changes
+
+ * SageMaker model parallel library 1.6.0 API doc
+
+### Bug Fixes and Other Changes
+
+ * Model Registration with BYO scripts
+ * Add ContentType in test_auto_ml_describe
+ * Re-deploy static integ test endpoint if it is not found
+ * fix kmeans test deletion sequence, increment lineage statics
+ * Increment static lineage pipeline
+ * Fix lineage query integ tests
+ * Add label_headers option for Clarify ModelExplainabilityMonitor
+ * Add action type to lineage object
+ * Collapse cross-account artifacts in query lineage response
+ * Update CHANGELOG.md to remove defaulting dot characters
+
+## v2.72.2 (2022-01-06)
+
+### Bug Fixes and Other Changes
+
+ * Update CHANGELOG.md
+ * Increment static lineage pipeline
+ * fix kmeans test deletion sequence, increment lineage statics
+ * Re-deploy static integ test endpoint if it is not found
+ * Add ContentType in test_auto_ml_describe
+ * Model Registration with BYO scripts
+
+### Documentation Changes
+
+ * SageMaker model parallel library 1.6.0 API doc
+
+## v2.72.1 (2021-12-20)
+
+### Bug Fixes and Other Changes
+
+ * typos and broken link
+ * S3Input - add support for instance attributes
+ * Prevent repack_model script from referencing nonexistent directories
+ * Set ProcessingStep upload locations deterministically to avoid cache
+
+## v2.72.0 (2021-12-13)
+
+### Features
+
+ * allow conditional parellel builds
+
+### Bug Fixes and Other Changes
+
+ * local mode - support relative file structure
+ * fix endpoint bug
+
+## v2.71.0 (2021-12-06)
+
+### Features
+
+ * Add support for TF 2.6
+ * Adding PT 17/18 Repo
+ * Add profile_name support for Feature Store ingestion
+
+### Bug Fixes and Other Changes
+
+ * Fix non-existent variable name
+ * Add TF 2.6.2 on training
+ * Recreate static lineage test data
+
+## v2.70.0 (2021-12-02)
+
+### Features
+
+ * update boto3 minor version >= 1.20.18
+ * Add support for SageMaker lineage queries
+ * add CV shap explainability for SageMaker Clarify
+ * add NLP support for SageMaker Clarify
+ * Add support for ModelMonitor/Clarify integration in model building pipelines
+ * adding support for transformers 4.11 for SM Training Compiler
+ * SM Training Compiler with an UI to enable/disable compilation for HuggingFace DLCs to speedup training
+
+### Bug Fixes and Other Changes
+
+ * pin coveragepy
+ * Add support for PyTorch 1.9.1
+ * Update s3 path of scheduling analysis config on ClarifyCheckStep
+ * documentation/logging to indicate correct place for DEBUG artifacts from SM trcomp
+ * validate requested transformers version and use the best available version
+ * Install custom pkgs
+
+## v2.69.0 (2021-11-12)
+
+### Features
+
+ * Hugging Face Transformers 4.12 for Pt1.9/TF2.5
+
+## v2.68.0 (2021-11-02)
+
+### Features
+
+ * CompilationStep support for Sagemaker Pipelines
+
+## v2.67.0 (2021-11-01)
+
+### Deprecations and Removals
+
+ * deprecate Serverless Lambda model-predictor
+
+### Features
+
+ * add joinsource to DataConfig
+ * Add support for Partial Dependence Plots(PDP) in SageMaker Clarify
+
+### Bug Fixes and Other Changes
+
+ * localmode subprocess parent process not sending SIGTERM to child
+ * remove buildspec from repo
+
+## v2.66.2.post0 (2021-10-28)
+
+### Documentation Changes
+
+ * Update estimator docstrings to add Fast File Mode
+
+## v2.66.2 (2021-10-27)
+
+### Bug Fixes and Other Changes
+
+ * expose num_clusters parameter for clarify shap in shapconfig
+ * Update cron job to run hourly
+
+## v2.66.1 (2021-10-26)
+
+### Bug Fixes and Other Changes
+
+ * HuggingFace image_uri generation for inference
+ * Update '_' and '/' with '-' in filename creation
+
+## v2.66.0 (2021-10-25)
+
+### Features
+
+ * Add image_uris.retrieve() support for AutoGluon
+
+### Documentation Changes
+
+ * fix documentation for input types in estimator.fit
+ * Add JsonGet v2 deprecation
+
+## v2.65.0 (2021-10-21)
+
+### Features
+
+ * modify RLEstimator to use newly generated Ray image (1.6.0)
+ * network isolation mode for xgboost
+ * update clarify imageURI for PDT
+
+### Bug Fixes and Other Changes
+
+ * retry downstream_trials test
+ * Add retries to pipeline execution
+
+## v2.64.0 (2021-10-20)
+
+### Deprecations and Removals
+
+ * warn for deprecation - Lambda model-predictor
+
+### Features
+
+ * Add support for TF 2.5
+ * Add a pre-push git hook
+
+### Bug Fixes and Other Changes
+
+ * add s3_analysis_config_output_path field in DataConfig constructor
+ * make marketplace jobnames random
+
+## v2.63.2 (2021-10-18)
+
+### Bug Fixes and Other Changes
+
+ * Update timeouts for integ tests from 20 to 40
+
+## v2.63.1 (2021-10-14)
+
+### Bug Fixes and Other Changes
+
+ * HF estimator attach modified to work with py38
+
+## v2.63.0 (2021-10-13)
+
+### Features
+
+ * support configurable retry for pipeline steps
+
+## v2.62.0 (2021-10-12)
+
+### Features
+
+ * Hugging Face Transformers 4.10 for Pt1.8/TF2.4 & Transformers 4.11 for PT1.9&TF2.5
+
+### Bug Fixes and Other Changes
+
+ * repack_model script used in pipelines to support source_dir and dependencies
+
+## v2.61.0 (2021-10-11)
+
+### Features
+
+ * add support for PyTorch 1.9.0
+
+### Bug Fixes and Other Changes
+
+ * Update TRAINING_DEFAULT_TIMEOUT_MINUTES to 40 min
+ * notebook test for parallel PRs
+
+## v2.60.0 (2021-10-08)
+
+### Features
+
+ * Add support for Hugging Face 4.10.2
+
+## v2.59.8 (2021-10-07)
+
+### Bug Fixes and Other Changes
+
+ * fix feature store ingestion via data wrangler test
+
+## v2.59.7 (2021-10-04)
+
+### Bug Fixes and Other Changes
+
+ * update feature request label
+ * update bug template
+
+## v2.59.6 (2021-09-30)
+
+### Bug Fixes and Other Changes
+
+ * ParamValidationError when scheduling a Clarify model monitor
+
+## v2.59.5 (2021-09-29)
+
+### Bug Fixes and Other Changes
+
+ * support maps in step parameters
+
 ## v2.59.4 (2021-09-27)
 
 ### Bug Fixes and Other Changes

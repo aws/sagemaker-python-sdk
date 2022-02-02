@@ -32,6 +32,7 @@ from sagemaker.workflow._utils import (
     _RegisterModelStep,
     _RepackModelStep,
 )
+from sagemaker.workflow.retry import RetryPolicy
 
 
 @attr.s
@@ -62,6 +63,8 @@ class RegisterModel(StepCollection):
         estimator: EstimatorBase = None,
         model_data=None,
         depends_on: Union[List[str], List[Step]] = None,
+        repack_model_step_retry_policies: List[RetryPolicy] = None,
+        register_model_step_retry_policies: List[RetryPolicy] = None,
         model_package_group_name=None,
         model_metrics=None,
         approval_status=None,
@@ -71,6 +74,7 @@ class RegisterModel(StepCollection):
         description=None,
         tags=None,
         model: Union[Model, PipelineModel] = None,
+        drift_check_baselines=None,
         **kwargs,
     ):
         """Construct steps `_RepackModelStep` and `_RegisterModelStep` based on the estimator.
@@ -87,6 +91,10 @@ class RegisterModel(StepCollection):
                 job can be run or on which an endpoint can be deployed (default: None).
             depends_on (List[str] or List[Step]): The list of step names or step instances
                 the first step in the collection depends on
+            repack_model_step_retry_policies (List[RetryPolicy]): The list of retry policies
+                for the repack model step
+            register_model_step_retry_policies (List[RetryPolicy]): The list of retry policies
+                for register model step
             model_package_group_name (str): The Model Package Group name, exclusive to
                 `model_package_name`, using `model_package_group_name` makes the Model Package
                 versioned (default: None).
@@ -104,6 +112,7 @@ class RegisterModel(StepCollection):
                 tags will not be applied.
             model (object or Model): A PipelineModel object that comprises a list of models
                 which gets executed as a serial inference pipeline or a Model object.
+            drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
             **kwargs: additional arguments to `create_model`.
         """
         steps: List[Step] = []
@@ -130,6 +139,7 @@ class RegisterModel(StepCollection):
             repack_model_step = _RepackModelStep(
                 name=f"{name}RepackModel",
                 depends_on=depends_on,
+                retry_policies=repack_model_step_retry_policies,
                 sagemaker_session=estimator.sagemaker_session,
                 role=estimator.role,
                 model_data=model_data,
@@ -173,6 +183,7 @@ class RegisterModel(StepCollection):
                     repack_model_step = _RepackModelStep(
                         name=f"{model_name}RepackModel",
                         depends_on=depends_on,
+                        retry_policies=repack_model_step_retry_policies,
                         sagemaker_session=sagemaker_session,
                         role=role,
                         model_data=model_entity.model_data,
@@ -209,6 +220,7 @@ class RegisterModel(StepCollection):
             transform_instances=transform_instances,
             model_package_group_name=model_package_group_name,
             model_metrics=model_metrics,
+            drift_check_baselines=drift_check_baselines,
             approval_status=approval_status,
             image_uri=image_uri,
             compile_model_family=compile_model_family,
@@ -216,6 +228,7 @@ class RegisterModel(StepCollection):
             display_name=display_name,
             tags=tags,
             container_def_list=self.container_def_list,
+            retry_policies=register_model_step_retry_policies,
             **kwargs,
         )
         if not repack_model:
@@ -254,6 +267,10 @@ class EstimatorTransformer(StepCollection):
         tags=None,
         volume_kms_key=None,
         depends_on: Union[List[str], List[Step]] = None,
+        # step retry policies
+        repack_model_step_retry_policies: List[RetryPolicy] = None,
+        model_step_retry_policies: List[RetryPolicy] = None,
+        transform_step_retry_policies: List[RetryPolicy] = None,
         **kwargs,
     ):
         """Construct steps required for a Transformer step collection:
@@ -292,6 +309,12 @@ class EstimatorTransformer(StepCollection):
                 transform job (default: None).
             depends_on (List[str] or List[Step]): The list of step names or step instances
                 the first step in the collection depends on
+            repack_model_step_retry_policies (List[RetryPolicy]): The list of retry policies
+                for the repack model step
+            model_step_retry_policies (List[RetryPolicy]): The list of retry policies for
+                model step
+            transform_step_retry_policies (List[RetryPolicy]): The list of retry policies for
+                transform step
         """
         steps = []
         if "entry_point" in kwargs:
@@ -301,6 +324,7 @@ class EstimatorTransformer(StepCollection):
             repack_model_step = _RepackModelStep(
                 name=f"{name}RepackModel",
                 depends_on=depends_on,
+                retry_policies=repack_model_step_retry_policies,
                 sagemaker_session=estimator.sagemaker_session,
                 role=estimator.sagemaker_session,
                 model_data=model_data,
@@ -336,6 +360,7 @@ class EstimatorTransformer(StepCollection):
             inputs=model_inputs,
             description=description,
             display_name=display_name,
+            retry_policies=model_step_retry_policies,
         )
         if "entry_point" not in kwargs and depends_on:
             # if the CreateModelStep is the first step in the collection
@@ -365,6 +390,7 @@ class EstimatorTransformer(StepCollection):
             inputs=transform_inputs,
             description=description,
             display_name=display_name,
+            retry_policies=transform_step_retry_policies,
         )
         steps.append(transform_step)
 

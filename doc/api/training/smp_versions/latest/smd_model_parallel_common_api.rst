@@ -1,14 +1,16 @@
-.. admonition:: Contents
-
-   - :ref:`communication_api`
-   - :ref:`mpi_basics`
-
 Common API
 ==========
 
 The following SageMaker distribute model parallel APIs are common across all frameworks.
 
-**Important**: This API document assumes you use the following import statement in your training scripts.
+.. contents:: Table of Contents
+  :depth: 3
+  :local:
+
+The Library's Core APIs
+-----------------------
+
+This API document assumes you use the following import statement in your training scripts.
 
 **TensorFlow**
 
@@ -254,30 +256,78 @@ The following SageMaker distribute model parallel APIs are common across all fra
 .. _mpi_basics:
 
 MPI Basics
-^^^^^^^^^^
+----------
 
 The library exposes the following basic MPI primitives to its Python API:
 
--  ``smp.rank()``: The rank of the current process.
--  ``smp.size()``: The total number of processes.
--  ``smp.mp_rank()``: The rank of the process among the processes that
-   hold the current model replica.
--  ``smp.dp_rank()``: The rank of the process among the processes that
-   hold different replicas of the same model partition.
--  ``smp.dp_size()``: The total number of model replicas.
--  ``smp.local_rank()``: The rank among the processes on the current
-   instance.
--  ``smp.local_size()``: The total number of processes on the current
-   instance.
--  ``smp.get_mp_group()``: The list of ranks over which the current
-   model replica is partitioned.
--  ``smp.get_dp_group()``: The list of ranks that hold different
-   replicas of the same model partition.
+**Global**
 
-   .. _communication_api:
+-  ``smp.rank()`` : The global rank of the current process.
+-  ``smp.size()`` : The total number of processes.
+-  ``smp.get_world_process_group()`` :
+   ``torch.distributed.ProcessGroup`` that contains all processes.
+-  ``smp.CommGroup.WORLD``: The communication group corresponding to all processes.
+-  ``smp.local_rank()``: The rank among the processes on the current instance.
+-  ``smp.local_size()``: The total number of processes on the current instance.
+-  ``smp.get_mp_group()``: The list of ranks over which the current model replica is partitioned.
+-  ``smp.get_dp_group()``: The list of ranks that hold different replicas of the same model partition.
+
+**Tensor Parallelism**
+
+-  ``smp.tp_rank()`` : The rank of the process within its
+   tensor-parallelism group.
+-  ``smp.tp_size()`` : The size of the tensor-parallelism group.
+-  ``smp.get_tp_process_group()`` : Equivalent to
+   ``torch.distributed.ProcessGroup`` that contains the processes in the
+   current tensor-parallelism group.
+-  ``smp.CommGroup.TP_GROUP`` : The communication group corresponding to
+   the current tensor parallelism group.
+
+**Pipeline Parallelism**
+
+-  ``smp.pp_rank()`` : The rank of the process within its
+   pipeline-parallelism group.
+-  ``smp.pp_size()`` : The size of the pipeline-parallelism group.
+-  ``smp.get_pp_process_group()`` : ``torch.distributed.ProcessGroup``
+   that contains the processes in the current pipeline-parallelism group.
+-  ``smp.CommGroup.PP_GROUP`` : The communication group corresponding to
+   the current pipeline parallelism group.
+
+**Reduced-Data Parallelism**
+
+-  ``smp.rdp_rank()`` : The rank of the process within its
+   reduced-data-parallelism group.
+-  ``smp.rdp_size()`` : The size of the reduced-data-parallelism group.
+-  ``smp.get_rdp_process_group()`` : ``torch.distributed.ProcessGroup``
+   that contains the processes in the current reduced data parallelism
+   group.
+-  ``smp.CommGroup.RDP_GROUP`` : The communication group corresponding
+   to the current reduced data parallelism group.
+
+**Model Parallelism**
+
+-  ``smp.mp_rank()`` : The rank of the process within its model-parallelism
+   group.
+-  ``smp.mp_size()`` : The size of the model-parallelism group.
+-  ``smp.get_mp_process_group()`` : ``torch.distributed.ProcessGroup``
+   that contains the processes in the current model-parallelism group.
+-  ``smp.CommGroup.MP_GROUP`` : The communication group corresponding to
+   the current model parallelism group.
+
+**Data Parallelism**
+
+-  ``smp.dp_rank()`` : The rank of the process within its data-parallelism
+   group.
+-  ``smp.dp_size()`` : The size of the data-parallelism group.
+-  ``smp.get_dp_process_group()`` : ``torch.distributed.ProcessGroup``
+   that contains the processes in the current data-parallelism group.
+-  ``smp.CommGroup.DP_GROUP`` : The communication group corresponding to
+   the current data-parallelism group.
+
+.. _communication_api:
 
 Communication API
-^^^^^^^^^^^^^^^^^
+-----------------
 
 The library provides a few communication primitives which can be helpful while
 developing the training script. These primitives use the following

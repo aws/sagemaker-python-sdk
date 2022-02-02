@@ -186,6 +186,7 @@ class HuggingFaceModel(FrameworkModel):
         marketplace_cert=False,
         approval_status=None,
         description=None,
+        drift_check_baselines=None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -212,6 +213,7 @@ class HuggingFaceModel(FrameworkModel):
             approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
                 or "PendingManualApproval". Defaults to ``PendingManualApproval``.
             description (str): Model Package description. Defaults to ``None``.
+            drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -239,6 +241,7 @@ class HuggingFaceModel(FrameworkModel):
             marketplace_cert,
             approval_status,
             description,
+            drift_check_baselines=drift_check_baselines,
         )
 
     def prepare_container_def(self, instance_type=None, accelerator_type=None):
@@ -293,10 +296,6 @@ class HuggingFaceModel(FrameworkModel):
             str: The appropriate image URI based on the given parameters.
 
         """
-        if image_uris._processor(instance_type, ["cpu", "gpu"]) == "gpu":
-            container_version = "cu110-ubuntu18.04"
-        else:
-            container_version = "ubuntu18.04"
         if self.tensorflow_version is not None:  # pylint: disable=no-member
             base_framework_version = (
                 f"tensorflow{self.tensorflow_version}"  # pylint: disable=no-member
@@ -312,5 +311,4 @@ class HuggingFaceModel(FrameworkModel):
             accelerator_type=accelerator_type,
             image_scope="inference",
             base_framework_version=base_framework_version,
-            container_version=container_version,
         )

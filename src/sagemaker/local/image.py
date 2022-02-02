@@ -32,7 +32,6 @@ import tempfile
 
 from distutils.spawn import find_executable
 from threading import Thread
-
 from six.moves.urllib.parse import urlparse
 
 import sagemaker
@@ -278,7 +277,8 @@ class _SageMakerContainer(object):
             script_dir = environment[sagemaker.estimator.DIR_PARAM_NAME.upper()]
             parsed_uri = urlparse(script_dir)
             if parsed_uri.scheme == "file":
-                volumes.append(_Volume(parsed_uri.path, "/opt/ml/code"))
+                host_dir = os.path.abspath(parsed_uri.netloc + parsed_uri.path)
+                volumes.append(_Volume(host_dir, "/opt/ml/code"))
                 # Update path to mount location
                 environment = environment.copy()
                 environment[sagemaker.estimator.DIR_PARAM_NAME.upper()] = "/opt/ml/code"
@@ -496,7 +496,8 @@ class _SageMakerContainer(object):
             training_dir = json.loads(hyperparameters[sagemaker.estimator.DIR_PARAM_NAME])
             parsed_uri = urlparse(training_dir)
             if parsed_uri.scheme == "file":
-                volumes.append(_Volume(parsed_uri.path, "/opt/ml/code"))
+                host_dir = os.path.abspath(parsed_uri.netloc + parsed_uri.path)
+                volumes.append(_Volume(host_dir, "/opt/ml/code"))
                 # Also mount a directory that all the containers can access.
                 volumes.append(_Volume(shared_dir, "/opt/ml/shared"))
 
@@ -505,7 +506,8 @@ class _SageMakerContainer(object):
             parsed_uri.scheme == "file"
             and sagemaker.model.SAGEMAKER_OUTPUT_LOCATION in hyperparameters
         ):
-            intermediate_dir = os.path.join(parsed_uri.path, "output", "intermediate")
+            dir_path = os.path.abspath(parsed_uri.netloc + parsed_uri.path)
+            intermediate_dir = os.path.join(dir_path, "output", "intermediate")
             if not os.path.exists(intermediate_dir):
                 os.makedirs(intermediate_dir)
             volumes.append(_Volume(intermediate_dir, "/opt/ml/output/intermediate"))
@@ -841,6 +843,8 @@ class _HostingContainer(Thread):
 
     def down(self):
         """Placeholder docstring"""
+        if os.name != "nt":
+            sagemaker.local.utils.kill_child_processes(self.process.pid)
         self.process.terminate()
 
 

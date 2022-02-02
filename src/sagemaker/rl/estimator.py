@@ -45,6 +45,7 @@ TOOLKIT_FRAMEWORK_VERSION_MAP = {
         "0.6": {"tensorflow": "1.12"},
         "0.8.2": {"tensorflow": "2.1"},
         "0.8.5": {"tensorflow": "2.1", "pytorch": "1.5"},
+        "1.6.0": {"tensorflow": "2.5.0", "pytorch": "1.8.1"},
     },
 }
 
@@ -69,7 +70,7 @@ class RLEstimator(Framework):
 
     COACH_LATEST_VERSION_TF = "0.11.1"
     COACH_LATEST_VERSION_MXNET = "0.11.0"
-    RAY_LATEST_VERSION = "0.8.5"
+    RAY_LATEST_VERSION = "1.6.0"
 
     def __init__(
         self,

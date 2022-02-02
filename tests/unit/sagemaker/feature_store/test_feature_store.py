@@ -17,6 +17,7 @@ from __future__ import absolute_import
 import pandas as pd
 import pytest
 from mock import Mock, patch, MagicMock
+from botocore.exceptions import ProfileNotFound
 
 from sagemaker.feature_store.feature_definition import (
     FractionalFeatureDefinition,
@@ -227,6 +228,34 @@ def test_ingest(ingestion_manager_init, sagemaker_session_mock, fs_runtime_clien
         sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
         max_workers=10,
         max_processes=1,
+        profile_name=None,
+    )
+    mock_ingestion_manager_instance.run.assert_called_once_with(
+        data_frame=df, wait=True, timeout=None
+    )
+
+
+@patch("sagemaker.feature_store.feature_group.IngestionManagerPandas")
+def test_ingest_with_profile_name(
+    ingestion_manager_init, sagemaker_session_mock, fs_runtime_client_config_mock
+):
+    sagemaker_session_mock.sagemaker_featurestore_runtime_client.meta.config = (
+        fs_runtime_client_config_mock
+    )
+
+    feature_group = FeatureGroup(name="MyGroup", sagemaker_session=sagemaker_session_mock)
+    df = pd.DataFrame(dict((f"float{i}", pd.Series([2.0], dtype="float64")) for i in range(300)))
+
+    mock_ingestion_manager_instance = Mock()
+    ingestion_manager_init.return_value = mock_ingestion_manager_instance
+    feature_group.ingest(data_frame=df, max_workers=10, profile_name="profile_name")
+
+    ingestion_manager_init.assert_called_once_with(
+        feature_group_name="MyGroup",
+        sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
+        max_workers=10,
+        max_processes=1,
+        profile_name="profile_name",
     )
     mock_ingestion_manager_instance.run.assert_called_once_with(
         data_frame=df, wait=True, timeout=None
@@ -338,6 +367,25 @@ def test_ingestion_manager_run_failure():
     assert "Failed to ingest some data into FeatureGroup MyGroup" in str(error)
     assert error.value.failed_rows == [1]
     assert manager.failed_rows == [1]
+
+
+@patch(
+    "sagemaker.feature_store.feature_group.IngestionManagerPandas._ingest_single_batch",
+    MagicMock(side_effect=ProfileNotFound(profile="non_exist")),
+)
+def test_ingestion_manager_with_profile_name_run_failure():
+    df = pd.DataFrame({"float": pd.Series([2.0], dtype="float64")})
+    manager = IngestionManagerPandas(
+        feature_group_name="MyGroup",
+        sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
+        max_workers=1,
+        profile_name="non_exist",
+    )
+
+    try:
+        manager.run(df)
+    except Exception as e:
+        assert "The config profile (non_exist) could not be found" in str(e)
 
 
 @patch(

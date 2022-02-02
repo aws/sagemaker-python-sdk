@@ -69,6 +69,7 @@ def test_huggingface_processor_with_required_parameters(
     sagemaker_session,
     huggingface_training_version,
     huggingface_pytorch_training_version,
+    huggingface_pytorch_training_py_version,
 ):
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
@@ -77,6 +78,7 @@ def test_huggingface_processor_with_required_parameters(
         instance_type=GPU_INSTANCE_TYPE,
         transformers_version=huggingface_training_version,
         pytorch_version=huggingface_pytorch_training_version,
+        py_version=huggingface_pytorch_training_py_version,
         instance_count=1,
         sagemaker_session=sagemaker_session,
     )

@@ -36,6 +36,7 @@ def test_framework_processing_job_with_deps(
     gpu_instance_type,
     huggingface_training_latest_version,
     huggingface_training_pytorch_latest_version,
+    huggingface_pytorch_latest_training_py_version,
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         code_path = os.path.join(DATA_DIR, "dummy_code_bundle_with_reqs")
@@ -44,7 +45,7 @@ def test_framework_processing_job_with_deps(
         processor = HuggingFaceProcessor(
             transformers_version=huggingface_training_latest_version,
             pytorch_version=huggingface_training_pytorch_latest_version,
-            py_version="py36",
+            py_version=huggingface_pytorch_latest_training_py_version,
             role=ROLE,
             instance_count=1,
             instance_type=gpu_instance_type,
@@ -70,12 +71,13 @@ def test_huggingface_training(
     gpu_instance_type,
     huggingface_training_latest_version,
     huggingface_training_pytorch_latest_version,
+    huggingface_pytorch_latest_training_py_version,
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, "huggingface")
 
         hf = HuggingFace(
-            py_version="py36",
+            py_version=huggingface_pytorch_latest_training_py_version,
             entry_point=os.path.join(data_path, "run_glue.py"),
             role="SageMakerRole",
             transformers_version=huggingface_training_latest_version,
@@ -113,12 +115,13 @@ def test_huggingface_training_tf(
     gpu_instance_type,
     huggingface_training_latest_version,
     huggingface_training_tensorflow_latest_version,
+    huggingface_tensorflow_latest_training_py_version,
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, "huggingface")
 
         hf = HuggingFace(
-            py_version="py37",
+            py_version=huggingface_tensorflow_latest_training_py_version,
             entry_point=os.path.join(data_path, "run_tf.py"),
             role=ROLE,
             transformers_version=huggingface_training_latest_version,
@@ -152,9 +155,10 @@ def test_huggingface_inference(
     gpu_instance_type,
     huggingface_inference_latest_version,
     huggingface_inference_pytorch_latest_version,
+    huggingface_pytorch_latest_inference_py_version,
 ):
     env = {
-        "HF_MODEL_ID": "sshleifer/tiny-distilbert-base-uncased-finetuned-sst-2-english",
+        "HF_MODEL_ID": "philschmid/tiny-distilbert-classification",
         "HF_TASK": "text-classification",
     }
     endpoint_name = unique_name_from_base("test-hf-inference")
@@ -163,7 +167,7 @@ def test_huggingface_inference(
         sagemaker_session=sagemaker_session,
         role="SageMakerRole",
         env=env,
-        py_version="py36",
+        py_version=huggingface_pytorch_latest_inference_py_version,
         transformers_version=huggingface_inference_latest_version,
         pytorch_version=huggingface_inference_pytorch_latest_version,
     )
