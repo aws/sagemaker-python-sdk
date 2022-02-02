@@ -1,0 +1,177 @@
+---
+ pipeline_parallel_degree:
+   type: int
+   default: 1
+   lower_bound: 1
+   alias: partitions
+ tensor_parallel_degree:
+   type: int
+   default: 1
+   lower_bound: 1
+   requires:
+     ddp: True
+   dependencies:
+     - ddp
+ microbatches:
+   type: int
+   default: 1
+   lower_bound: 1
+ pipeline:
+   type: str
+   default: interleaved
+   options:
+     - simple
+     - interleaved
+     - _only_forward
+ horovod:
+   type: bool
+   default: False
+ ddp:
+   type: bool
+   default: False
+   requires:
+     horovod: False
+   dependencies:
+     - horovod
+ ddp_port:
+   type: int
+   default: null
+   lower_bound: 0
+   requires:
+     ddp: True
+   dependencies:
+     - ddp
+ ddp_dist_backend:
+   type: str
+   default: nccl
+   requires:
+     ddp: True
+   options:
+     - nccl
+   dependencies:
+     - ddp
+ contiguous:
+   type: bool
+   default: True
+ placement_strategy:
+   type: str
+   default: cluster
+   options:
+     - cluster
+     - spread
+     - PDT
+     - PTD
+     - DPT
+     - DTP
+     - TPD
+     - TDP
+ optimize:
+   type: str
+   default: speed
+   options:
+     - speed
+     - memory
+ auto_partition:
+   type: bool
+   default: True
+   requires_not:
+     default_partition: null
+   dependencies:
+     - default_partition
+ default_partition:
+   type: int
+   default: null
+   lower_bound: 0
+   upper_bound: (pipeline_parallel_degree) - 1
+   dependencies:
+     - pipeline_parallel_degree
+ prescaled_batch:
+   type: bool
+   default: False
+   requires:
+     optimize: speed
+   dependencies:
+     - optimize
+ memory_weight:
+   type: float
+   default: 0.8
+   lower_bound: 0.0
+   upper_bound: 1.0
+ active_microbatches:
+   type: int
+   default: (pipeline_parallel_degree) + 2
+   lower_bound: 1
+   upper_bound: (microbatches)
+   dependencies:
+     - microbatches
+     - pipeline_parallel_degree
+ fast_mode:
+   type: bool
+   default: False
+   internal: True
+ static_mode:
+   type: bool
+   default: False
+   internal: True
+ fp16_params:
+   type: bool
+   default: False
+ tensor_parallel_seed:
+   type: int
+   default: 0
+   lower_bound: 0
+ offload_activations:
+   type: bool
+   default: False
+ _shard_offloaded_activations:
+   type: bool
+   default: True
+   requires:
+    offload_activations: True
+   internal: True
+   dependencies:
+     - offload_activations
+ shard_optimizer_state:
+   type: bool
+   default: False
+ skip_tracing:
+   type: bool
+   default: False
+ activation_loading_horizon:
+   type: int
+   default: 4
+   lower_bound: 1
+ herring:
+   type: bool
+   default: False
+   requires:
+     ddp: False
+     horovod: False
+   dependencies:
+     - ddp
+     - horovod
+   internal: True
+ _match_weights:
+   type: bool
+   default: False
+   internal: True
+ _fp32_grad_accumulation:
+   type: bool
+   default: False
+   internal: True
+   requires:
+     fp16_params: True
+   dependencies:
+     - fp16_params
+ checkpoint_attentions:
+   type: bool
+   default: False
+   internal: True
+ load_partition:
+   type: bool
+   default: False
+   internal: True
+ partition_file:
+   type: str
+   default: null
+   internal: True
