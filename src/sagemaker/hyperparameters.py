@@ -34,7 +34,8 @@ def retrieve_default(
     """Retrieves the default training hyperparameters for the model matching the given arguments.
 
     Args:
-        region (str): The AWS Region for which to retrieve the default hyperparameters. Defaults to ``None``.
+        region (str): The AWS Region for which to retrieve the default hyperparameters.
+            Defaults to ``None``.
         model_id (str): The model ID of the model for which to
             retrieve the default hyperparameters. (Default: None).
         model_version (str): The version of the model for which to retrieve the

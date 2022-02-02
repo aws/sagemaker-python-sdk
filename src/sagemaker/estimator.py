@@ -2763,8 +2763,8 @@ class Framework(EstimatorBase):
         training.
 
         Args:
-            region (str): Optional. The AWS Region to use for image URI. Default: AWS Region associated
-                with the SageMaker session.
+            region (str): Optional. The AWS Region to use for image URI. Default: AWS Region
+            associated with the SageMaker session.
 
         Returns:
             str: The URI of the Docker image.

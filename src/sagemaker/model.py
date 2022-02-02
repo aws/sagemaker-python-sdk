@@ -149,8 +149,8 @@ class Model(ModelBase):
                     >>>         |----- inference.py
                     >>>         |----- test.py
 
-                    If you need 'train.py' as the entry point and 'test.py' as the training source code,
-                    you can assign entry_point='train.py', source_dir='src'.
+                    If you need 'train.py' as the entry point and 'test.py' as the training
+                    source code, you can assign entry_point='train.py', source_dir='src'.
             code_location (str): Name of the S3 bucket where custom code is
                 uploaded (default: None). If not specified, the default bucket
                 created by ``sagemaker.session.Session`` is used.

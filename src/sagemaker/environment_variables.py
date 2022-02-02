@@ -31,8 +31,8 @@ def retrieve_default(
     """Retrieves the default container environment variables for the model matching the arguments.
 
     Args:
-        region (str): Optional. The AWS Region for which to retrieve the default environment variables.
-            (Default: None).
+        region (str): Optional. The AWS Region for which to retrieve the default environment
+             variables. (Default: None).
         model_id (str): Optional. The model ID of the model for which to
             retrieve the default environment variables. (Default: None).
         model_version (str): Optional. The version of the model for which to retrieve the
