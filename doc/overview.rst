@@ -591,7 +591,7 @@ prebuilt model from the model zoo to train on custom data or deploy
 to a SageMaker endpoint for inference without signing up for
 SageMaker Studio.
 
-The following topic give you information about Jumpstart components,
+The following topic give you information about JumpStart components,
 as well as how to use the SageMaker Python SDK for these workflows.
 
 Prerequisites
@@ -608,7 +608,7 @@ Prerequisites
 JumpStart Components
 ====================
 
-The following sections give information about the main Jumpstart
+The following sections give information about the main JumpStart
 components and their function.
 
 JumpStart models
@@ -619,7 +619,7 @@ open source datasets. You can use the SageMaker Python SDK
 to fine-tune a model on your own dataset or deploy it directly to a
 SageMaker endpoint for inference.
 
-Jumpstart model artifacts are stored as tarballs in the JumpStart S3
+JumpStart model artifacts are stored as tarballs in the JumpStart S3
 bucket. Each model is versioned and contains a unique ID which can be
 used to retrieve the model URI. The following information describes
 the ``model_id`` and ``model_version`` needed to retrieve the URI.
@@ -696,14 +696,14 @@ Deploy a  Pre-Trained Model Directly to a SageMaker Endpoint
 
 In this section, you learn how to take a pre-trained JumpStart model
 and deploy it directly to a SageMaker Endpoint. This is the fastest
-way to start machine learning with a Jumpstart model. The following
+way to start machine learning with a JumpStart model. The following
 assumes familiarity with `SageMaker
 models <https://sagemaker.readthedocs.io/en/stable/api/inference/model.html>`__
 and their deploy functions.
 
 To begin, select a ``model_id`` and ``version`` from the JumpStart
 models table, as well as a model scope of either “inference” or
-“training”. For this example, you use a pre-trained Jumpstart model,
+“training”. For this example, you use a pre-trained JumpStart model,
 so select “inference”  for your model scope. Use the utility
 functions to retrieve the URI of each of the three components you
 need to continue.
@@ -792,7 +792,7 @@ Fine-tune a Model and Deploy to a SageMaker Endpoint
 ====================================================
 
 In this section, you initiate a training job to further train one of
-the pretrained Jumpstart models for your use case, then deploy it to
+the pretrained JumpStart models for your use case, then deploy it to
 a SageMaker Endpoint for inference. This lets you fine tune the model
 for your use case with your custom dataset. The following assumes
 familiarity with `SageMaker training jobs and their
