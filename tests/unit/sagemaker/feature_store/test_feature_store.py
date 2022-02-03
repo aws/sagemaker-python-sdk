@@ -175,7 +175,11 @@ def test_load_feature_definition(sagemaker_session_mock):
     names = [fd.feature_name for fd in feature_definitions]
     types = [fd.feature_type for fd in feature_definitions]
     assert names == ["float", "int", "string"]
-    assert types == [FeatureTypeEnum.FRACTIONAL, FeatureTypeEnum.INTEGRAL, FeatureTypeEnum.STRING]
+    assert types == [
+        FeatureTypeEnum.FRACTIONAL,
+        FeatureTypeEnum.INTEGRAL,
+        FeatureTypeEnum.STRING,
+    ]
 
 
 def test_load_feature_definition_unsupported_types(sagemaker_session_mock):
