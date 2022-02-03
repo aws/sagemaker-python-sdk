@@ -304,16 +304,13 @@ def test_as_hive_ddl(create_table_ddl, feature_group_dummy_definitions, sagemake
 
     feature_group = FeatureGroup(name="MyGroup", sagemaker_session=sagemaker_session_mock)
     feature_group.feature_definitions = feature_group_dummy_definitions
-    assert (
-        create_table_ddl.format(
-            database="MyDatabase",
-            table_name="MyTable",
-            account="1234",
-            region="us-west-2",
-            feature_group_name="MyGroup",
-        )
-        == feature_group.as_hive_ddl(database="MyDatabase", table_name="MyTable")
-    )
+    assert create_table_ddl.format(
+        database="MyDatabase",
+        table_name="MyTable",
+        account="1234",
+        region="us-west-2",
+        feature_group_name="MyGroup",
+    ) == feature_group.as_hive_ddl(database="MyDatabase", table_name="MyTable")
 
 
 @patch(

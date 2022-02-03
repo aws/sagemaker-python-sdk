@@ -443,7 +443,7 @@ def test_three_step_definition(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
     finally:
@@ -506,14 +506,14 @@ def test_one_step_sklearn_processing_pipeline(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
 
         pipeline.parameters = [ParameterInteger(name="InstanceCount", default_value=1)]
         execution = pipeline.start(parameters={})
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
 
@@ -597,7 +597,7 @@ def test_one_step_framework_processing_pipeline(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
 
@@ -605,13 +605,13 @@ def test_one_step_framework_processing_pipeline(
         response = pipeline.update(role)
         update_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             update_arn,
         )
 
         execution = pipeline.start(parameters={})
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
 
@@ -699,7 +699,7 @@ def test_one_step_pyspark_processing_pipeline(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
 
@@ -707,13 +707,13 @@ def test_one_step_pyspark_processing_pipeline(
         response = pipeline.update(role)
         update_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             update_arn,
         )
 
         execution = pipeline.start(parameters={})
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
 
@@ -796,7 +796,7 @@ def test_one_step_sparkjar_processing_pipeline(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
 
@@ -804,13 +804,13 @@ def test_one_step_sparkjar_processing_pipeline(
         response = pipeline.update(role)
         update_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             update_arn,
         )
 
         execution = pipeline.start(parameters={})
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
 
@@ -858,7 +858,7 @@ def test_one_step_callback_pipeline(sagemaker_session, role, pipeline_name, regi
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
 
@@ -866,7 +866,7 @@ def test_one_step_callback_pipeline(sagemaker_session, role, pipeline_name, regi
         response = pipeline.update(role)
         update_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             update_arn,
         )
     finally:
@@ -1007,7 +1007,7 @@ def test_steps_with_map_params_pipeline(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
 
@@ -1049,7 +1049,7 @@ def test_two_step_callback_pipeline_with_output_reference(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
     finally:
@@ -1084,7 +1084,7 @@ def test_one_step_lambda_pipeline(sagemaker_session, role, pipeline_name, region
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
 
@@ -1092,7 +1092,7 @@ def test_one_step_lambda_pipeline(sagemaker_session, role, pipeline_name, region
         response = pipeline.update(role)
         update_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             update_arn,
         )
     finally:
@@ -1139,7 +1139,7 @@ def test_two_step_lambda_pipeline_with_output_reference(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
     finally:
@@ -1184,7 +1184,7 @@ def test_two_steps_emr_pipeline(sagemaker_session, role, pipeline_name, region_n
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
         )
     finally:
         try:
@@ -1276,18 +1276,18 @@ def test_conditional_pytorch_training_model_registration(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
         )
 
         execution = pipeline.start(parameters={})
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
 
         execution = pipeline.start(parameters={"GoodEnoughInput": 0})
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
     finally:
@@ -1395,12 +1395,12 @@ def test_tuning_single_algo(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
         )
 
         execution = pipeline.start(parameters={})
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
     finally:
@@ -1522,12 +1522,12 @@ def test_tuning_multi_algos(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
         )
 
         execution = pipeline.start(parameters={})
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
     finally:
@@ -1583,18 +1583,18 @@ def test_mxnet_model_registration(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
         )
 
         execution = pipeline.start(parameters={})
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
 
         execution = pipeline.start()
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
     finally:
@@ -1775,18 +1775,18 @@ def test_sklearn_xgboost_sip_model_registration(
         response = pipeline.upsert(role_arn=role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
         )
 
         execution = pipeline.start(parameters={})
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
 
         execution = pipeline.start()
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
     finally:
@@ -2070,18 +2070,18 @@ def test_model_registration_with_model_repack(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
         )
 
         execution = pipeline.start(parameters={})
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
 
         execution = pipeline.start(parameters={"GoodEnoughInput": 0})
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
     finally:
@@ -2260,7 +2260,7 @@ def test_two_processing_job_depends_on(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
 
@@ -2268,13 +2268,13 @@ def test_two_processing_job_depends_on(
         response = pipeline.update(role)
         update_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             update_arn,
         )
 
         execution = pipeline.start(parameters={})
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
 
@@ -2869,7 +2869,7 @@ def test_large_pipeline(sagemaker_session, role, pipeline_name, region_name):
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
         response = pipeline.describe()
@@ -2879,7 +2879,7 @@ def test_large_pipeline(sagemaker_session, role, pipeline_name, region_name):
         response = pipeline.update(role)
         update_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             update_arn,
         )
     finally:
@@ -2916,7 +2916,7 @@ def test_create_and_update_with_parallelism_config(
         response = pipeline.create(role, parallelism_config={"MaxParallelExecutionSteps": 50})
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
         response = pipeline.describe()
@@ -2926,7 +2926,7 @@ def test_create_and_update_with_parallelism_config(
         response = pipeline.update(role, parallelism_config={"MaxParallelExecutionSteps": 55})
         update_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             update_arn,
         )
 

@@ -18,6 +18,7 @@ from datetime import datetime
 import sys
 import os
 from doc_utils.jumpstart_doc_utils import create_jumpstart_model_table
+
 sys.path.append(os.path.join(os.path.dirname(__file__), "/doc/"))
 
 project = "sagemaker"

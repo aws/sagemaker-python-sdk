@@ -17,18 +17,20 @@ from packaging.version import Version
 
 JUMPSTART_REGION = "eu-west-2"
 SDK_MANIFEST_FILE = "models_manifest.json"
-JUMPSTART_BUCKET_BASE_URL = 'https://jumpstart-cache-prod-{}.s3.{}.amazonaws.com'.format(JUMPSTART_REGION, JUMPSTART_REGION)
+JUMPSTART_BUCKET_BASE_URL = "https://jumpstart-cache-prod-{}.s3.{}.amazonaws.com".format(
+    JUMPSTART_REGION, JUMPSTART_REGION
+)
 
 
 def get_jumpstart_sdk_manifest():
-    url = '{}/{}'.format(JUMPSTART_BUCKET_BASE_URL, SDK_MANIFEST_FILE)
+    url = "{}/{}".format(JUMPSTART_BUCKET_BASE_URL, SDK_MANIFEST_FILE)
     with request.urlopen(url) as f:
         models_manifest = f.read().decode("utf-8")
     return json.loads(models_manifest)
 
 
 def get_jumpstart_sdk_spec(key):
-    url = '{}/{}'.format(JUMPSTART_BUCKET_BASE_URL, key)
+    url = "{}/{}".format(JUMPSTART_BUCKET_BASE_URL, key)
     with request.urlopen(url) as f:
         model_spec = f.read().decode("utf-8")
     return json.loads(model_spec)
