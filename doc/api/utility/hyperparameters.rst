@@ -5,4 +5,3 @@ Hyperparameters
     :members:
     :undoc-members:
     :show-inheritance:
-    
