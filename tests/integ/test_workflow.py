@@ -166,7 +166,7 @@ def athena_dataset_definition(sagemaker_session):
             catalog="AwsDataCatalog",
             database="default",
             work_group="workgroup",
-            query_string='SELECT * FROM "default"."s3_test_table_$STAGE_$REGIONUNDERSCORED";',
+            query_string=('SELECT * FROM "default"."s3_test_table_$STAGE_$REGIONUNDERSCORED";'),
             output_s3_uri=f"s3://{sagemaker_session.default_bucket()}/add",
             output_format="JSON",
             output_compression="GZIP",
@@ -1107,7 +1107,7 @@ def test_one_step_lambda_pipeline(sagemaker_session, role, pipeline_name, region
     step_lambda = LambdaStep(
         name="lambda-step",
         lambda_func=Lambda(
-            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
+            function_arn=("arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda"),
             session=sagemaker_session,
         ),
         inputs={"arg1": "foo"},
@@ -1152,7 +1152,7 @@ def test_two_step_lambda_pipeline_with_output_reference(
     step_lambda1 = LambdaStep(
         name="lambda-step1",
         lambda_func=Lambda(
-            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
+            function_arn=("arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda"),
             session=sagemaker_session,
         ),
         inputs={"arg1": "foo"},
@@ -1162,7 +1162,7 @@ def test_two_step_lambda_pipeline_with_output_reference(
     step_lambda2 = LambdaStep(
         name="lambda-step2",
         lambda_func=Lambda(
-            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
+            function_arn=("arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda"),
             session=sagemaker_session,
         ),
         inputs={"arg1": outputParam1},
@@ -1848,7 +1848,9 @@ def test_sklearn_xgboost_sip_model_registration(
 
 @pytest.mark.skipif(
     tests.integ.test_region() not in tests.integ.DRIFT_CHECK_BASELINES_SUPPORTED_REGIONS,
-    reason=f"DriftCheckBaselines changes are not fully deployed in {tests.integ.test_region()}.",
+    reason=(
+        "DriftCheckBaselines changes are not fully deployed in" f" {tests.integ.test_region()}."
+    ),
 )
 def test_model_registration_with_drift_check_baselines(
     sagemaker_session,
@@ -2003,7 +2005,9 @@ def test_model_registration_with_drift_check_baselines(
             assert len(execution_steps) == 1
             failure_reason = execution_steps[0].get("FailureReason", "")
             if failure_reason != "":
-                logging.error(f"Pipeline execution failed with error: {failure_reason}. Retrying..")
+                logging.error(
+                    f"Pipeline execution failed with error: {failure_reason}." " Retrying.."
+                )
                 continue
             assert execution_steps[0]["StepStatus"] == "Succeeded"
             assert execution_steps[0]["StepName"] == "MyRegisterModelStep"
@@ -2159,7 +2163,7 @@ def test_training_job_with_debugger_and_profiler(
         Rule.sagemaker(rule_configs.loss_not_decreasing()),
     ]
     debugger_hook_config = DebuggerHookConfig(
-        s3_output_path=f"s3://{sagemaker_session.default_bucket()}/{uuid.uuid4()}/tensors"
+        s3_output_path=(f"s3://{sagemaker_session.default_bucket()}/{uuid.uuid4()}/tensors")
     )
 
     base_dir = os.path.join(DATA_DIR, "pytorch_mnist")

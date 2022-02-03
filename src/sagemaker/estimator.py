@@ -16,6 +16,7 @@ from __future__ import absolute_import, print_function
 import json
 import logging
 import os
+from typing import Any, Dict
 import uuid
 from abc import ABCMeta, abstractmethod
 
@@ -47,6 +48,10 @@ from sagemaker.fw_utils import (
 )
 from sagemaker.inputs import TrainingInput
 from sagemaker.job import _Job
+from sagemaker.jumpstart.utils import (
+    add_jumpstart_tags,
+    update_inference_tags_with_jumpstart_training_tags,
+)
 from sagemaker.local import LocalSession
 from sagemaker.model import (
     CONTAINER_LOG_LEVEL_PARAM_NAME,
@@ -86,6 +91,15 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
     instance.
     """
 
+    LAUNCH_PS_ENV_NAME = "sagemaker_parameter_server_enabled"
+    LAUNCH_MPI_ENV_NAME = "sagemaker_mpi_enabled"
+    LAUNCH_SM_DDP_ENV_NAME = "sagemaker_distributed_dataparallel_enabled"
+    INSTANCE_TYPE = "sagemaker_instance_type"
+    MPI_NUM_PROCESSES_PER_HOST = "sagemaker_mpi_num_of_processes_per_host"
+    MPI_CUSTOM_MPI_OPTIONS = "sagemaker_mpi_custom_mpi_options"
+    SM_DDP_CUSTOM_MPI_OPTIONS = "sagemaker_distributed_dataparallel_custom_mpi_options"
+    CONTAINER_CODE_CHANNEL_SOURCEDIR_PATH = "/opt/ml/input/data/code/sourcedir.tar.gz"
+
     def __init__(
         self,
         role,
@@ -119,6 +133,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         disable_profiler=False,
         environment=None,
         max_retry_attempts=None,
+        source_dir=None,
+        git_config=None,
+        hyperparameters=None,
+        container_log_level=logging.INFO,
+        code_location=None,
+        entry_point=None,
+        dependencies=None,
         **kwargs,
     ):
         """Initialize an ``EstimatorBase`` instance.
@@ -270,13 +291,133 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 will be disabled (default: ``False``).
             environment (dict[str, str]) : Environment variables to be set for
                 use during training job (default: ``None``)
-             max_retry_attempts (int): The number of times to move a job to the STARTING status.
+            max_retry_attempts (int): The number of times to move a job to the STARTING status.
                 You can specify between 1 and 30 attempts.
                 If the value of attempts is greater than zero,
                 the job is retried on InternalServerFailure
                 the same number of attempts as the value.
                 You can cap the total duration for your job by setting ``max_wait`` and ``max_run``
                 (default: ``None``)
+            source_dir (str): Path (absolute, relative or an S3 URI) to a directory
+                with any other training source code dependencies aside from the entry
+                point file (default: None). If ``source_dir`` is an S3 URI, it must
+                point to a tar.gz file. Structure within this directory are preserved
+                when training on Amazon SageMaker. If 'git_config' is provided,
+                'source_dir' should be a relative location to a directory in the Git
+                repo.
+
+                .. admonition:: Example
+
+                    With the following GitHub repo directory structure:
+
+                    >>> |----- README.md
+                    >>> |----- src
+                    >>>         |----- train.py
+                    >>>         |----- test.py
+
+                    and you need 'train.py' as entry point and 'test.py' as
+                    training source code as well, you can assign
+                    entry_point='train.py', source_dir='src'.
+            git_config (dict[str, str]): Git configurations used for cloning
+                files, including ``repo``, ``branch``, ``commit``,
+                ``2FA_enabled``, ``username``, ``password`` and ``token``. The
+                ``repo`` field is required. All other fields are optional.
+                ``repo`` specifies the Git repository where your training script
+                is stored. If you don't provide ``branch``, the default value
+                'master' is used. If you don't provide ``commit``, the latest
+                commit in the specified branch is used. .. admonition:: Example
+
+                    The following config:
+
+                    >>> git_config = {'repo': 'https://github.com/aws/sagemaker-python-sdk.git',
+                    >>>               'branch': 'test-branch-git-config',
+                    >>>               'commit': '329bfcf884482002c05ff7f44f62599ebc9f445a'}
+
+                    results in cloning the repo specified in 'repo', then
+                    checkout the 'master' branch, and checkout the specified
+                    commit.
+
+                ``2FA_enabled``, ``username``, ``password`` and ``token`` are
+                used for authentication. For GitHub (or other Git) accounts, set
+                ``2FA_enabled`` to 'True' if two-factor authentication is
+                enabled for the account, otherwise set it to 'False'. If you do
+                not provide a value for ``2FA_enabled``, a default value of
+                'False' is used. CodeCommit does not support two-factor
+                authentication, so do not provide "2FA_enabled" with CodeCommit
+                repositories.
+
+                For GitHub and other Git repos, when SSH URLs are provided, it
+                doesn't matter whether 2FA is enabled or disabled; you should
+                either have no passphrase for the SSH key pairs, or have the
+                ssh-agent configured so that you will not be prompted for SSH
+                passphrase when you do 'git clone' command with SSH URLs. When
+                HTTPS URLs are provided: if 2FA is disabled, then either token
+                or username+password will be used for authentication if provided
+                (token prioritized); if 2FA is enabled, only token will be used
+                for authentication if provided. If required authentication info
+                is not provided, python SDK will try to use local credentials
+                storage to authenticate. If that fails either, an error message
+                will be thrown.
+
+                For CodeCommit repos, 2FA is not supported, so '2FA_enabled'
+                should not be provided. There is no token in CodeCommit, so
+                'token' should not be provided too. When 'repo' is an SSH URL,
+                the requirements are the same as GitHub-like repos. When 'repo'
+                is an HTTPS URL, username+password will be used for
+                authentication if they are provided; otherwise, python SDK will
+                try to use either CodeCommit credential helper or local
+                credential storage for authentication.
+            hyperparameters (dict): Dictionary containing the hyperparameters to
+                initialize this estimator with. (Default: None).
+            container_log_level (int): Log level to use within the container
+                (default: logging.INFO). Valid values are defined in the Python
+                logging module.
+            code_location (str): The S3 prefix URI where custom code will be
+                uploaded (default: None) - don't include a trailing slash since
+                a string prepended with a "/" is appended to ``code_location``. The code
+                file uploaded to S3 is 'code_location/job-name/source/sourcedir.tar.gz'.
+                If not specified, the default ``code location`` is s3://output_bucket/job-name/.
+            entry_point (str): Path (absolute or relative) to the local Python
+                source file which should be executed as the entry point to
+                training. (Default: None). If ``source_dir`` is specified, then ``entry_point``
+                must point to a file located at the root of ``source_dir``.
+                If 'git_config' is provided, 'entry_point' should be
+                a relative location to the Python source file in the Git repo.
+
+                Example:
+                    With the following GitHub repo directory structure:
+
+                    >>> |----- README.md
+                    >>> |----- src
+                    >>>         |----- train.py
+                    >>>         |----- test.py
+
+                    You can assign entry_point='src/train.py'.
+            dependencies (list[str]): A list of paths to directories (absolute
+                or relative) with any additional libraries that will be exported
+                to the container (default: []). The library folders will be
+                copied to SageMaker in the same folder where the entrypoint is
+                copied. If 'git_config' is provided, 'dependencies' should be a
+                list of relative locations to directories with any additional
+                libraries needed in the Git repo.
+
+                .. admonition:: Example
+
+                    The following call
+
+                    >>> Estimator(entry_point='train.py',
+                    ...           dependencies=['my/libs/common', 'virtual-env'])
+
+                    results in the following inside the container:
+
+                    >>> $ ls
+
+                    >>> opt/ml/code
+                    >>>     |------ train.py
+                    >>>     |------ common
+                    >>>     |------ virtual-env
+
+                This is not supported with "local code" in Local Mode.
 
         """
         instance_count = renamed_kwargs(
@@ -305,13 +446,22 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.volume_kms_key = volume_kms_key
         self.max_run = max_run
         self.input_mode = input_mode
-        self.tags = tags
         self.metric_definitions = metric_definitions
         self.model_uri = model_uri
         self.model_channel_name = model_channel_name
         self.code_uri = None
         self.code_channel_name = "code"
-
+        self.source_dir = source_dir
+        self.git_config = git_config
+        self.container_log_level = container_log_level
+        self._hyperparameters = hyperparameters.copy() if hyperparameters else {}
+        self.code_location = code_location
+        self.entry_point = entry_point
+        self.dependencies = dependencies
+        self.uploaded_code = None
+        self.tags = add_jumpstart_tags(
+            tags=tags, training_model_uri=self.model_uri, training_script_uri=self.source_dir
+        )
         if self.instance_type in ("local", "local_gpu"):
             if self.instance_type == "local_gpu" and self.instance_count > 1:
                 raise RuntimeError("Distributed Training in Local GPU is not supported")
@@ -437,6 +587,21 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self._ensure_base_job_name()
         return name_from_base(self.base_job_name)
 
+    @staticmethod
+    def _json_encode_hyperparameters(hyperparameters: Dict[str, Any]) -> Dict[str, Any]:
+        """Applies Json encoding for certain Hyperparameter types, returns hyperparameters.
+
+        Args:
+            hyperparameters (dict): Dictionary of hyperparameters.
+        """
+        current_hyperparameters = hyperparameters
+        if current_hyperparameters is not None:
+            hyperparameters = {
+                str(k): (v if isinstance(v, (Parameter, Expression, Properties)) else json.dumps(v))
+                for (k, v) in current_hyperparameters.items()
+            }
+        return hyperparameters
+
     def _prepare_for_training(self, job_name=None):
         """Set any values in the estimator that need to be set before training.
 
@@ -456,9 +621,104 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             else:
                 self.output_path = "s3://{}/".format(self.sagemaker_session.default_bucket())
 
+        if self.git_config:
+            updated_paths = git_utils.git_clone_repo(
+                self.git_config, self.entry_point, self.source_dir, self.dependencies
+            )
+            self.entry_point = updated_paths["entry_point"]
+            self.source_dir = updated_paths["source_dir"]
+            self.dependencies = updated_paths["dependencies"]
+
+        if self.source_dir or self.entry_point or self.dependencies:
+
+            # validate source dir will raise a ValueError if there is something wrong with
+            # the source directory. We are intentionally not handling it because this is a
+            # critical error.
+            if self.source_dir and not self.source_dir.lower().startswith("s3://"):
+                validate_source_dir(self.entry_point, self.source_dir)
+
+            # if we are in local mode with local_code=True. We want the container to just
+            # mount the source dir instead of uploading to S3.
+            local_code = get_config_value("local.local_code", self.sagemaker_session.config)
+
+            if self.sagemaker_session.local_mode and local_code:
+                # if there is no source dir, use the directory containing the entry point.
+                if self.source_dir is None:
+                    self.source_dir = os.path.dirname(self.entry_point)
+                self.entry_point = os.path.basename(self.entry_point)
+
+                code_dir = "file://" + self.source_dir
+                script = self.entry_point
+            elif self.enable_network_isolation() and self.entry_point:
+                self.uploaded_code = self._stage_user_code_in_s3()
+                code_dir = self.CONTAINER_CODE_CHANNEL_SOURCEDIR_PATH
+                script = self.uploaded_code.script_name
+                self.code_uri = self.uploaded_code.s3_prefix
+            else:
+                self.uploaded_code = self._stage_user_code_in_s3()
+                code_dir = self.uploaded_code.s3_prefix
+                script = self.uploaded_code.script_name
+
+            # Modify hyperparameters in-place to point to the right code directory and
+            # script URIs
+            self._script_mode_hyperparam_update(code_dir, script)
+
         self._prepare_rules()
         self._prepare_debugger_for_training()
         self._prepare_profiler_for_training()
+
+    def _script_mode_hyperparam_update(self, code_dir: str, script: str) -> None:
+        """Applies in-place update to hyperparameters required for script mode with training.
+
+        Args:
+            code_dir (str): The directory hosting the training scripts.
+            script (str): The relative filepath of the training entry-point script.
+        """
+        hyperparams: Dict[str, str] = {}
+        hyperparams[DIR_PARAM_NAME] = code_dir
+        hyperparams[SCRIPT_PARAM_NAME] = script
+        hyperparams[CONTAINER_LOG_LEVEL_PARAM_NAME] = self.container_log_level
+        hyperparams[JOB_NAME_PARAM_NAME] = self._current_job_name
+        hyperparams[SAGEMAKER_REGION_PARAM_NAME] = self.sagemaker_session.boto_region_name
+
+        self._hyperparameters.update(EstimatorBase._json_encode_hyperparameters(hyperparams))
+
+    def _stage_user_code_in_s3(self) -> str:
+        """Upload the user training script to s3 and return the s3 URI.
+
+        Returns: s3 uri
+        """
+        local_mode = self.output_path.startswith("file://")
+
+        if self.code_location is None and local_mode:
+            code_bucket = self.sagemaker_session.default_bucket()
+            code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
+            kms_key = None
+        elif self.code_location is None:
+            code_bucket, _ = parse_s3_url(self.output_path)
+            code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
+            kms_key = self.output_kms_key
+        elif local_mode:
+            code_bucket, key_prefix = parse_s3_url(self.code_location)
+            code_s3_prefix = "/".join(filter(None, [key_prefix, self._current_job_name, "source"]))
+            kms_key = None
+        else:
+            code_bucket, key_prefix = parse_s3_url(self.code_location)
+            code_s3_prefix = "/".join(filter(None, [key_prefix, self._current_job_name, "source"]))
+
+            output_bucket, _ = parse_s3_url(self.output_path)
+            kms_key = self.output_kms_key if code_bucket == output_bucket else None
+
+        return tar_and_upload_dir(
+            session=self.sagemaker_session.boto_session,
+            bucket=code_bucket,
+            s3_key_prefix=code_s3_prefix,
+            script=self.entry_point,
+            directory=self.source_dir,
+            dependencies=self.dependencies,
+            kms_key=kms_key,
+            s3_resource=self.sagemaker_session.s3_resource,
+        )
 
     def _prepare_rules(self):
         """Rules list includes both debugger and profiler rules.
@@ -965,6 +1225,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             model = self.create_model(**kwargs)
 
         model.name = model_name
+
+        tags = update_inference_tags_with_jumpstart_training_tags(
+            inference_tags=tags, training_tags=self.tags
+        )
 
         return model.deploy(
             instance_type=instance_type,
@@ -1739,6 +2003,12 @@ class Estimator(EstimatorBase):
         disable_profiler=False,
         environment=None,
         max_retry_attempts=None,
+        source_dir=None,
+        git_config=None,
+        container_log_level=logging.INFO,
+        code_location=None,
+        entry_point=None,
+        dependencies=None,
         **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
@@ -1896,9 +2166,127 @@ class Estimator(EstimatorBase):
                 the same number of attempts as the value.
                 You can cap the total duration for your job by setting ``max_wait`` and ``max_run``
                 (default: ``None``)
+            source_dir (str): Path (absolute, relative or an S3 URI) to a directory
+                with any other training source code dependencies aside from the entry
+                point file (default: None). If ``source_dir`` is an S3 URI, it must
+                point to a tar.gz file. Structure within this directory are preserved
+                when training on Amazon SageMaker. If 'git_config' is provided,
+                'source_dir' should be a relative location to a directory in the Git
+                repo.
+
+                .. admonition:: Example
+
+                    With the following GitHub repo directory structure:
+
+                    >>> |----- README.md
+                    >>> |----- src
+                    >>>         |----- train.py
+                    >>>         |----- test.py
+
+                    and you need 'train.py' as entry point and 'test.py' as
+                    training source code as well, you can assign
+                    entry_point='train.py', source_dir='src'.
+            git_config (dict[str, str]): Git configurations used for cloning
+                files, including ``repo``, ``branch``, ``commit``,
+                ``2FA_enabled``, ``username``, ``password`` and ``token``. The
+                ``repo`` field is required. All other fields are optional.
+                ``repo`` specifies the Git repository where your training script
+                is stored. If you don't provide ``branch``, the default value
+                'master' is used. If you don't provide ``commit``, the latest
+                commit in the specified branch is used. .. admonition:: Example
+
+                    The following config:
+
+                    >>> git_config = {'repo': 'https://github.com/aws/sagemaker-python-sdk.git',
+                    >>>               'branch': 'test-branch-git-config',
+                    >>>               'commit': '329bfcf884482002c05ff7f44f62599ebc9f445a'}
+
+                    results in cloning the repo specified in 'repo', then
+                    checkout the 'master' branch, and checkout the specified
+                    commit.
+
+                ``2FA_enabled``, ``username``, ``password`` and ``token`` are
+                used for authentication. For GitHub (or other Git) accounts, set
+                ``2FA_enabled`` to 'True' if two-factor authentication is
+                enabled for the account, otherwise set it to 'False'. If you do
+                not provide a value for ``2FA_enabled``, a default value of
+                'False' is used. CodeCommit does not support two-factor
+                authentication, so do not provide "2FA_enabled" with CodeCommit
+                repositories.
+
+                For GitHub and other Git repos, when SSH URLs are provided, it
+                doesn't matter whether 2FA is enabled or disabled; you should
+                either have no passphrase for the SSH key pairs, or have the
+                ssh-agent configured so that you will not be prompted for SSH
+                passphrase when you do 'git clone' command with SSH URLs. When
+                HTTPS URLs are provided: if 2FA is disabled, then either token
+                or username+password will be used for authentication if provided
+                (token prioritized); if 2FA is enabled, only token will be used
+                for authentication if provided. If required authentication info
+                is not provided, python SDK will try to use local credentials
+                storage to authenticate. If that fails either, an error message
+                will be thrown.
+
+                For CodeCommit repos, 2FA is not supported, so '2FA_enabled'
+                should not be provided. There is no token in CodeCommit, so
+                'token' should not be provided too. When 'repo' is an SSH URL,
+                the requirements are the same as GitHub-like repos. When 'repo'
+                is an HTTPS URL, username+password will be used for
+                authentication if they are provided; otherwise, python SDK will
+                try to use either CodeCommit credential helper or local
+                credential storage for authentication.
+            container_log_level (int): Log level to use within the container
+                (default: logging.INFO). Valid values are defined in the Python
+                logging module.
+            code_location (str): The S3 prefix URI where custom code will be
+                uploaded (default: None) - don't include a trailing slash since
+                a string prepended with a "/" is appended to ``code_location``. The code
+                file uploaded to S3 is 'code_location/job-name/source/sourcedir.tar.gz'.
+                If not specified, the default ``code location`` is s3://output_bucket/job-name/.
+            entry_point (str): Path (absolute or relative) to the local Python
+                source file which should be executed as the entry point to
+                training. If ``source_dir`` is specified, then ``entry_point``
+                must point to a file located at the root of ``source_dir``.
+                If 'git_config' is provided, 'entry_point' should be
+                a relative location to the Python source file in the Git repo.
+
+                Example:
+                    With the following GitHub repo directory structure:
+
+                    >>> |----- README.md
+                    >>> |----- src
+                    >>>         |----- train.py
+                    >>>         |----- test.py
+
+                    You can assign entry_point='src/train.py'.
+            dependencies (list[str]): A list of paths to directories (absolute
+                or relative) with any additional libraries that will be exported
+                to the container (default: []). The library folders will be
+                copied to SageMaker in the same folder where the entrypoint is
+                copied. If 'git_config' is provided, 'dependencies' should be a
+                list of relative locations to directories with any additional
+                libraries needed in the Git repo.
+
+                .. admonition:: Example
+
+                    The following call
+
+                    >>> Estimator(entry_point='train.py',
+                    ...           dependencies=['my/libs/common', 'virtual-env'])
+
+                    results in the following inside the container:
+
+                    >>> $ ls
+
+                    >>> opt/ml/code
+                    >>>     |------ train.py
+                    >>>     |------ common
+                    >>>     |------ virtual-env
+
+                This is not supported with "local code" in Local Mode.
         """
         self.image_uri = image_uri
-        self.hyperparam_dict = hyperparameters.copy() if hyperparameters else {}
+        self._hyperparameters = hyperparameters.copy() if hyperparameters else {}
         super(Estimator, self).__init__(
             role,
             instance_count,
@@ -1931,6 +2319,13 @@ class Estimator(EstimatorBase):
             disable_profiler=disable_profiler,
             environment=environment,
             max_retry_attempts=max_retry_attempts,
+            container_log_level=container_log_level,
+            source_dir=source_dir,
+            git_config=git_config,
+            code_location=code_location,
+            entry_point=entry_point,
+            dependencies=dependencies,
+            hyperparameters=hyperparameters,
             **kwargs,
         )
 
@@ -1951,7 +2346,7 @@ class Estimator(EstimatorBase):
         training.
         """
         for k, v in kwargs.items():
-            self.hyperparam_dict[k] = v
+            self._hyperparameters[k] = v
 
     def hyperparameters(self):
         """Returns the hyperparameters as a dictionary to use for training.
@@ -1959,7 +2354,7 @@ class Estimator(EstimatorBase):
         The fit() method, that does the model training, calls this method to
         find the hyperparameters you specified.
         """
-        return self.hyperparam_dict
+        return self._hyperparameters
 
     def create_model(
         self,
@@ -2034,15 +2429,6 @@ class Framework(EstimatorBase):
     """
 
     _framework_name = None
-
-    LAUNCH_PS_ENV_NAME = "sagemaker_parameter_server_enabled"
-    LAUNCH_MPI_ENV_NAME = "sagemaker_mpi_enabled"
-    LAUNCH_SM_DDP_ENV_NAME = "sagemaker_distributed_dataparallel_enabled"
-    INSTANCE_TYPE = "sagemaker_instance_type"
-    MPI_NUM_PROCESSES_PER_HOST = "sagemaker_mpi_num_of_processes_per_host"
-    MPI_CUSTOM_MPI_OPTIONS = "sagemaker_mpi_custom_mpi_options"
-    SM_DDP_CUSTOM_MPI_OPTIONS = "sagemaker_distributed_dataparallel_custom_mpi_options"
-    CONTAINER_CODE_CHANNEL_SOURCEDIR_PATH = "/opt/ml/input/data/code/sourcedir.tar.gz"
 
     def __init__(
         self,
@@ -2257,48 +2643,23 @@ class Framework(EstimatorBase):
         """
         super(Framework, self)._prepare_for_training(job_name=job_name)
 
-        if self.git_config:
-            updated_paths = git_utils.git_clone_repo(
-                self.git_config, self.entry_point, self.source_dir, self.dependencies
-            )
-            self.entry_point = updated_paths["entry_point"]
-            self.source_dir = updated_paths["source_dir"]
-            self.dependencies = updated_paths["dependencies"]
-
-        # validate source dir will raise a ValueError if there is something wrong with the
-        # source directory. We are intentionally not handling it because this is a critical error.
-        if self.source_dir and not self.source_dir.lower().startswith("s3://"):
-            validate_source_dir(self.entry_point, self.source_dir)
-
-        # if we are in local mode with local_code=True. We want the container to just
-        # mount the source dir instead of uploading to S3.
-        local_code = get_config_value("local.local_code", self.sagemaker_session.config)
-        if self.sagemaker_session.local_mode and local_code:
-            # if there is no source dir, use the directory containing the entry point.
-            if self.source_dir is None:
-                self.source_dir = os.path.dirname(self.entry_point)
-            self.entry_point = os.path.basename(self.entry_point)
-
-            code_dir = "file://" + self.source_dir
-            script = self.entry_point
-        elif self.enable_network_isolation() and self.entry_point:
-            self.uploaded_code = self._stage_user_code_in_s3()
-            code_dir = self.CONTAINER_CODE_CHANNEL_SOURCEDIR_PATH
-            script = self.uploaded_code.script_name
-            self.code_uri = self.uploaded_code.s3_prefix
-        else:
-            self.uploaded_code = self._stage_user_code_in_s3()
-            code_dir = self.uploaded_code.s3_prefix
-            script = self.uploaded_code.script_name
-
-        # Modify hyperparameters in-place to point to the right code directory and script URIs
-        self._hyperparameters[DIR_PARAM_NAME] = code_dir
-        self._hyperparameters[SCRIPT_PARAM_NAME] = script
-        self._hyperparameters[CONTAINER_LOG_LEVEL_PARAM_NAME] = self.container_log_level
-        self._hyperparameters[JOB_NAME_PARAM_NAME] = self._current_job_name
-        self._hyperparameters[SAGEMAKER_REGION_PARAM_NAME] = self.sagemaker_session.boto_region_name
-
         self._validate_and_set_debugger_configs()
+
+    def _script_mode_hyperparam_update(self, code_dir: str, script: str) -> None:
+        """Applies in-place update to hyperparameters required for script mode with training.
+
+        Args:
+            code_dir (str): The directory hosting the training scripts.
+            script (str): The relative filepath of the training entry-point script.
+        """
+        hyperparams: Dict[str, str] = {}
+        hyperparams[DIR_PARAM_NAME] = code_dir
+        hyperparams[SCRIPT_PARAM_NAME] = script
+        hyperparams[CONTAINER_LOG_LEVEL_PARAM_NAME] = self.container_log_level
+        hyperparams[JOB_NAME_PARAM_NAME] = self._current_job_name
+        hyperparams[SAGEMAKER_REGION_PARAM_NAME] = self.sagemaker_session.boto_region_name
+
+        self._hyperparameters.update(hyperparams)
 
     def _validate_and_set_debugger_configs(self):
         """Set defaults for debugging."""
@@ -2327,44 +2688,6 @@ class Framework(EstimatorBase):
             if self.environment is None:
                 self.environment = {}
             self.environment[DEBUGGER_FLAG] = "0"
-
-    def _stage_user_code_in_s3(self):
-        """Upload the user training script to s3 and return the location.
-
-        Returns: s3 uri
-        """
-        local_mode = self.output_path.startswith("file://")
-
-        if self.code_location is None and local_mode:
-            code_bucket = self.sagemaker_session.default_bucket()
-            code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
-            kms_key = None
-        elif self.code_location is None:
-            code_bucket, _ = parse_s3_url(self.output_path)
-            code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
-            kms_key = self.output_kms_key
-        elif local_mode:
-            code_bucket, key_prefix = parse_s3_url(self.code_location)
-            code_s3_prefix = "/".join(filter(None, [key_prefix, self._current_job_name, "source"]))
-            kms_key = None
-        else:
-            code_bucket, key_prefix = parse_s3_url(self.code_location)
-            code_s3_prefix = "/".join(filter(None, [key_prefix, self._current_job_name, "source"]))
-
-            output_bucket, _ = parse_s3_url(self.output_path)
-            kms_key = self.output_kms_key if code_bucket == output_bucket else None
-
-        return tar_and_upload_dir(
-            session=self.sagemaker_session.boto_session,
-            bucket=code_bucket,
-            s3_key_prefix=code_s3_prefix,
-            script=self.entry_point,
-            directory=self.source_dir,
-            dependencies=self.dependencies,
-            kms_key=kms_key,
-            s3_resource=self.sagemaker_session.s3_resource,
-            settings=self.sagemaker_session.settings,
-        )
 
     def _model_source_dir(self):
         """Get the appropriate value to pass as ``source_dir`` to a model constructor.
@@ -2396,6 +2719,10 @@ class Framework(EstimatorBase):
 
         return None
 
+    def set_hyperparameters(self, **kwargs):
+        """Escape the dict argument as JSON, update the private hyperparameter attribute."""
+        self._hyperparameters.update(EstimatorBase._json_encode_hyperparameters(kwargs))
+
     def hyperparameters(self):
         """Return the hyperparameters as a dictionary to use for training.
 
@@ -2405,7 +2732,7 @@ class Framework(EstimatorBase):
         Returns:
             dict[str, str]: The hyperparameters.
         """
-        return self._json_encode_hyperparameters(self._hyperparameters)
+        return EstimatorBase._json_encode_hyperparameters(self._hyperparameters)
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
@@ -2446,51 +2773,32 @@ class Framework(EstimatorBase):
 
         return init_params
 
-    def training_image_uri(self):
+    def training_image_uri(self, region=None):
         """Return the Docker image to use for training.
 
         The :meth:`~sagemaker.estimator.EstimatorBase.fit` method, which does
         the model training, calls this method to find the image to use for model
         training.
 
+        Args:
+            region (str): Optional. AWS region to use for image URI. Default: AWS region associated
+                with the SageMaker session.
+
         Returns:
             str: The URI of the Docker image.
         """
-        if self.image_uri:
-            return self.image_uri
-        if hasattr(self, "distribution"):
-            distribution = self.distribution  # pylint: disable=no-member
-        else:
-            distribution = None
-        compiler_config = getattr(self, "compiler_config", None)
 
-        if hasattr(self, "tensorflow_version") or hasattr(self, "pytorch_version"):
-            processor = image_uris._processor(self.instance_type, ["cpu", "gpu"])
-            is_native_huggingface_gpu = processor == "gpu" and not compiler_config
-            container_version = "cu110-ubuntu18.04" if is_native_huggingface_gpu else None
-            if self.tensorflow_version is not None:  # pylint: disable=no-member
-                base_framework_version = (
-                    f"tensorflow{self.tensorflow_version}"  # pylint: disable=no-member
-                )
-            else:
-                base_framework_version = (
-                    f"pytorch{self.pytorch_version}"  # pylint: disable=no-member
-                )
-        else:
-            container_version = None
-            base_framework_version = None
-
-        return image_uris.retrieve(
-            self._framework_name,
-            self.sagemaker_session.boto_region_name,
-            instance_type=self.instance_type,
-            version=self.framework_version,  # pylint: disable=no-member
+        return image_uris.get_training_image_uri(
+            region=region or self.sagemaker_session.boto_region_name,
+            framework=self._framework_name,
+            framework_version=self.framework_version,  # pylint: disable=no-member
             py_version=self.py_version,  # pylint: disable=no-member
-            image_scope="training",
-            distribution=distribution,
-            base_framework_version=base_framework_version,
-            container_version=container_version,
-            training_compiler_config=compiler_config,
+            image_uri=self.image_uri,
+            distribution=getattr(self, "distribution", None),
+            compiler_config=getattr(self, "compiler_config", None),
+            tensorflow_version=getattr(self, "tensorflow_version", None),
+            pytorch_version=getattr(self, "pytorch_version", None),
+            instance_type=self.instance_type,
         )
 
     @classmethod
@@ -2542,17 +2850,6 @@ class Framework(EstimatorBase):
             estimator.source_dir, estimator.entry_point  # pylint: disable=no-member
         )
         return estimator
-
-    @staticmethod
-    def _json_encode_hyperparameters(hyperparameters):
-        """Placeholder docstring"""
-        current_hyperparameters = hyperparameters
-        if current_hyperparameters is not None:
-            hyperparameters = {
-                str(k): (v if isinstance(v, (Parameter, Expression, Properties)) else json.dumps(v))
-                for (k, v) in current_hyperparameters.items()
-            }
-        return hyperparameters
 
     @classmethod
     def _update_init_params(cls, hp, tf_arguments):
