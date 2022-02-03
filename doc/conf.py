@@ -15,7 +15,11 @@ from __future__ import absolute_import
 
 import pkg_resources
 from datetime import datetime
-from doc_utils import jumpstart_doc_utils
+import sys
+import os
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "/doc/"))
+from doc_utils.jumpstart_doc_utils import create_jumpstart_model_table  # noqa: E402
 
 project = "sagemaker"
 version = pkg_resources.require(project)[0].version
@@ -93,4 +97,4 @@ autosectionlabel_prefix_document = True
 
 
 def setup(app):
-    jumpstart_doc_utils.create_jumpstart_model_table()
+    create_jumpstart_model_table()
