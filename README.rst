@@ -154,6 +154,18 @@ You can also run them in parallel:
     tox -- -n auto tests/integ
 
 
+Git Hooks
+~~~~~~~~~
+
+to enable all git hooks in the .githooks directory, run these commands in the repository directory:
+
+::
+
+    find .git/hooks -type l -exec rm {} \;
+    find .githooks -type f -exec ln -sf ../../{} .git/hooks/ \;
+
+To enable an individual git hook, simply move it from the .githooks/ directory to the .git/hooks/ directory.
+
 Building Sphinx docs
 ~~~~~~~~~~~~~~~~~~~~
 

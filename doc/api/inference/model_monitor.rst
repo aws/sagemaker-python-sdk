@@ -31,3 +31,13 @@ Model Monitor
     :members:
     :undoc-members:
     :show-inheritance:
+
+.. automodule:: sagemaker.model_metrics
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+.. automodule:: sagemaker.drift_check_baselines
+    :members:
+    :undoc-members:
+    :show-inheritance:

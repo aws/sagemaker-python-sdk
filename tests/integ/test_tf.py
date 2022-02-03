@@ -24,7 +24,7 @@ from sagemaker.utils import unique_name_from_base, sagemaker_timestamp
 import tests.integ
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES, kms_utils, timeout
 from tests.integ.retry import retries
-from tests.integ.s3_utils import assert_s3_files_exist
+from tests.integ.s3_utils import assert_s3_file_patterns_exist
 
 ROLE = "SageMakerRole"
 
@@ -32,7 +32,7 @@ RESOURCE_PATH = os.path.join(os.path.dirname(__file__), "..", "data")
 MNIST_RESOURCE_PATH = os.path.join(RESOURCE_PATH, "tensorflow_mnist")
 TFS_RESOURCE_PATH = os.path.join(RESOURCE_PATH, "tfs", "tfs-test-entrypoint-with-handler")
 
-SCRIPT = os.path.join(MNIST_RESOURCE_PATH, "mnist.py")
+SCRIPT = "mnist.py"
 PARAMETER_SERVER_DISTRIBUTION = {"parameter_server": {"enabled": True}}
 MPI_DISTRIBUTION = {"mpi": {"enabled": True}}
 TAGS = [{"Key": "some-key", "Value": "some-value"}]
@@ -80,6 +80,7 @@ def test_mnist_with_checkpoint_config(
     checkpoint_local_path = "/test/checkpoint/path"
     estimator = TensorFlow(
         entry_point=SCRIPT,
+        source_dir=MNIST_RESOURCE_PATH,
         role=ROLE,
         instance_count=1,
         instance_type=instance_type,
@@ -100,10 +101,10 @@ def test_mnist_with_checkpoint_config(
     training_job_name = unique_name_from_base("test-tf-sm-mnist")
     with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
         estimator.fit(inputs=inputs, job_name=training_job_name)
-    assert_s3_files_exist(
+    assert_s3_file_patterns_exist(
         sagemaker_session,
         estimator.model_dir,
-        ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"],
+        [r"model\.ckpt-\d+\.index", r"checkpoint"],
     )
     # remove dataframe assertion to unblock PR build
     # TODO: add independent integration test for `training_job_analytics`
@@ -181,6 +182,7 @@ def test_mnist_distributed(
 ):
     estimator = TensorFlow(
         entry_point=SCRIPT,
+        source_dir=MNIST_RESOURCE_PATH,
         role=ROLE,
         instance_count=2,
         instance_type=instance_type,
@@ -196,10 +198,10 @@ def test_mnist_distributed(
 
     with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
         estimator.fit(inputs=inputs, job_name=unique_name_from_base("test-tf-sm-distributed"))
-    assert_s3_files_exist(
+    assert_s3_file_patterns_exist(
         sagemaker_session,
         estimator.model_dir,
-        ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"],
+        [r"model\.ckpt-\d+\.index", r"checkpoint"],
     )
 
 
@@ -207,6 +209,7 @@ def test_mnist_distributed(
 def test_mnist_async(sagemaker_session, cpu_instance_type, tf_full_version, tf_full_py_version):
     estimator = TensorFlow(
         entry_point=SCRIPT,
+        source_dir=MNIST_RESOURCE_PATH,
         role=ROLE,
         instance_count=1,
         instance_type="ml.c5.4xlarge",

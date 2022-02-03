@@ -82,6 +82,8 @@ class LambdaStep(Step):
         self,
         name: str,
         lambda_func: Lambda,
+        display_name: str = None,
+        description: str = None,
         inputs: dict = None,
         outputs: List[LambdaOutput] = None,
         cache_config: CacheConfig = None,
@@ -91,6 +93,8 @@ class LambdaStep(Step):
 
         Args:
             name (str): The name of the lambda step.
+            display_name (str): The display name of the Lambda step.
+            description (str): The description of the Lambda step.
             lambda_func (str): An instance of sagemaker.lambda_helper.Lambda.
                 If lambda arn is specified in the instance, LambdaStep just invokes the function,
                 else lambda function will be created while creating the pipeline.
@@ -101,7 +105,9 @@ class LambdaStep(Step):
             depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.LambdaStep`
                 depends on
         """
-        super(LambdaStep, self).__init__(name, StepTypeEnum.LAMBDA, depends_on)
+        super(LambdaStep, self).__init__(
+            name, display_name, description, StepTypeEnum.LAMBDA, depends_on
+        )
         self.lambda_func = lambda_func
         self.outputs = outputs if outputs is not None else []
         self.cache_config = cache_config
@@ -148,7 +154,6 @@ class LambdaStep(Step):
         Method creates a lambda function and returns it's arn.
         If the lambda is already present, it will build it's arn and return that.
         """
-        account_id = self.lambda_func.session.account_id()
         region = self.lambda_func.session.boto_region_name
         if region.lower() == "cn-north-1" or region.lower() == "cn-northwest-1":
             partition = "aws-cn"
@@ -157,6 +162,7 @@ class LambdaStep(Step):
 
         if self.lambda_func.function_arn is None:
             try:
+                account_id = self.lambda_func.session.account_id()
                 response = self.lambda_func.create()
                 return response["FunctionArn"]
             except ValueError as error:

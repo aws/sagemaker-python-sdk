@@ -551,6 +551,20 @@ def test_describe_transform_job_does_not_exist(LocalSession, _LocalTransformJob)
         local_sagemaker_client.describe_transform_job("transform-job-does-not-exist")
 
 
+@patch("sagemaker.local.image._SageMakerContainer.process")
+@patch("sagemaker.local.local_session.LocalSession")
+def test_logs_for_job(process, LocalSession):
+    local_job_logs = LocalSession.logs_for_job("my-processing-job")
+    assert local_job_logs is not None
+
+
+@patch("sagemaker.local.image._SageMakerContainer.process")
+@patch("sagemaker.local.local_session.LocalSession")
+def test_logs_for_processing_job(process, LocalSession):
+    local_processing_job_logs = LocalSession.logs_for_processing_job("my-processing-job")
+    assert local_processing_job_logs is not None
+
+
 @patch("sagemaker.local.local_session.LocalSession")
 def test_describe_endpoint_config(LocalSession):
     local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()

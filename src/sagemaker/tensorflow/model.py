@@ -200,6 +200,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         marketplace_cert=False,
         approval_status=None,
         description=None,
+        drift_check_baselines=None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -224,6 +225,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
                 or "PendingManualApproval" (default: "PendingManualApproval").
             description (str): Model Package description (default: None).
+            drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -251,12 +253,13 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             marketplace_cert,
             approval_status,
             description,
+            drift_check_baselines=drift_check_baselines,
         )
 
     def deploy(
         self,
-        initial_instance_count,
-        instance_type,
+        initial_instance_count=None,
+        instance_type=None,
         serializer=None,
         deserializer=None,
         accelerator_type=None,
@@ -266,6 +269,8 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         wait=True,
         data_capture_config=None,
         update_endpoint=None,
+        async_inference_config=None,
+        serverless_inference_config=None,
     ):
         """Deploy a Tensorflow ``Model`` to a SageMaker ``Endpoint``."""
 
@@ -284,6 +289,8 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             kms_key=kms_key,
             wait=wait,
             data_capture_config=data_capture_config,
+            async_inference_config=async_inference_config,
+            serverless_inference_config=serverless_inference_config,
             update_endpoint=update_endpoint,
         )
 

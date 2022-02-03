@@ -10,3 +10,13 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Defines Types etc. used in workflow."""
+from __future__ import absolute_import
+from typing import Union
+
+from sagemaker.workflow.entities import Expression
+from sagemaker.workflow.execution_variables import ExecutionVariable
+from sagemaker.workflow.parameters import Parameter
+from sagemaker.workflow.properties import Properties
+
+PipelineNonPrimitiveInputTypes = Union[ExecutionVariable, Expression, Parameter, Properties]

@@ -163,12 +163,15 @@ class IngestionManagerPandas:
         max_workers (int): number of threads to create.
         max_processes (int): number of processes to create. Each process spawns
             ``max_workers`` threads.
+        profile_name (str): the profile credential should be used for ``PutRecord``
+            (default: None).
     """
 
     feature_group_name: str = attr.ib()
     sagemaker_fs_runtime_client_config: Config = attr.ib()
     max_workers: int = attr.ib(default=1)
     max_processes: int = attr.ib(default=1)
+    profile_name: str = attr.ib(default=None)
     _async_result: AsyncResult = attr.ib(default=None)
     _processing_pool: ProcessingPool = attr.ib(default=None)
     _failed_indices: List[int] = attr.ib(factory=list)
@@ -180,6 +183,7 @@ class IngestionManagerPandas:
         client_config: Config,
         start_index: int,
         end_index: int,
+        profile_name: str = None,
     ) -> List[int]:
         """Ingest a single batch of DataFrame rows into FeatureStore.
 
@@ -190,6 +194,8 @@ class IngestionManagerPandas:
                 client to perform boto calls.
             start_index (int): starting position to ingest in this batch.
             end_index (int): ending position to ingest in this batch.
+            profile_name (str): the profile credential should be used for ``PutRecord``
+                (default: None).
 
         Returns:
             List of row indices that failed to be ingested.
@@ -198,7 +204,7 @@ class IngestionManagerPandas:
         if "max_attempts" not in retry_config and "total_max_attempts" not in retry_config:
             client_config = copy.deepcopy(client_config)
             client_config.retries = {"max_attempts": 10, "mode": "standard"}
-        sagemaker_featurestore_runtime_client = boto3.Session().client(
+        sagemaker_featurestore_runtime_client = boto3.Session(profile_name=profile_name).client(
             service_name="sagemaker-featurestore-runtime", config=client_config
         )
 
@@ -207,7 +213,8 @@ class IngestionManagerPandas:
         for row in data_frame[start_index:end_index].itertuples():
             record = [
                 FeatureValue(
-                    feature_name=data_frame.columns[index - 1], value_as_string=str(row[index])
+                    feature_name=data_frame.columns[index - 1],
+                    value_as_string=str(row[index]),
                 )
                 for index in range(1, len(row))
                 if pd.notna(row[index])
@@ -270,13 +277,25 @@ class IngestionManagerPandas:
             timeout (Union[int, float]): ``concurrent.futures.TimeoutError`` will be raised
                 if timeout is reached.
         """
+        # pylint: disable=I1101
         batch_size = math.ceil(data_frame.shape[0] / self.max_processes)
+        # pylint: enable=I1101
 
         args = []
         for i in range(self.max_processes):
             start_index = min(i * batch_size, data_frame.shape[0])
             end_index = min(i * batch_size + batch_size, data_frame.shape[0])
-            args += [(data_frame[start_index:end_index], start_index, timeout)]
+            args += [
+                (
+                    self.max_workers,
+                    self.feature_group_name,
+                    self.sagemaker_fs_runtime_client_config,
+                    data_frame[start_index:end_index],
+                    start_index,
+                    timeout,
+                    self.profile_name,
+                )
+            ]
 
         def init_worker():
             # ignore keyboard interrupts in child processes.
@@ -285,13 +304,22 @@ class IngestionManagerPandas:
         self._processing_pool = ProcessingPool(self.max_processes, init_worker)
         self._processing_pool.restart(force=True)
 
-        f = lambda x: self._run_multi_threaded(*x)  # noqa: E731
+        f = lambda x: IngestionManagerPandas._run_multi_threaded(*x)  # noqa: E731
         self._async_result = self._processing_pool.amap(f, args)
 
         if wait:
             self.wait(timeout=timeout)
 
-    def _run_multi_threaded(self, data_frame: DataFrame, row_offset=0, timeout=None) -> List[int]:
+    @staticmethod
+    def _run_multi_threaded(
+        max_workers: int,
+        feature_group_name: str,
+        sagemaker_fs_runtime_client_config: Config,
+        data_frame: DataFrame,
+        row_offset=0,
+        timeout=None,
+        profile_name=None,
+    ) -> List[int]:
         """Start the ingestion process.
 
         Args:
@@ -301,25 +329,30 @@ class IngestionManagerPandas:
             wait (bool): whether to wait for the ingestion to finish or not.
             timeout (Union[int, float]): ``concurrent.futures.TimeoutError`` will be raised
                 if timeout is reached.
+            profile_name (str): the profile credential should be used for ``PutRecord``
+                (default: None).
 
         Returns:
             List of row indices that failed to be ingested.
         """
-        executor = ThreadPoolExecutor(max_workers=self.max_workers)
-        batch_size = math.ceil(data_frame.shape[0] / self.max_workers)
+        executor = ThreadPoolExecutor(max_workers=max_workers)
+        # pylint: disable=I1101
+        batch_size = math.ceil(data_frame.shape[0] / max_workers)
+        # pylint: enable=I1101
 
         futures = {}
-        for i in range(self.max_workers):
+        for i in range(max_workers):
             start_index = min(i * batch_size, data_frame.shape[0])
             end_index = min(i * batch_size + batch_size, data_frame.shape[0])
             futures[
                 executor.submit(
-                    self._ingest_single_batch,
-                    feature_group_name=self.feature_group_name,
+                    IngestionManagerPandas._ingest_single_batch,
+                    feature_group_name=feature_group_name,
                     data_frame=data_frame,
                     start_index=start_index,
                     end_index=end_index,
-                    client_config=self.sagemaker_fs_runtime_client_config,
+                    client_config=sagemaker_fs_runtime_client_config,
+                    profile_name=profile_name,
                 )
             ] = (start_index + row_offset, end_index + row_offset)
 
@@ -435,6 +468,13 @@ class FeatureGroup:
             online_store_kms_key_id (str): KMS key id for online store.
             enable_online_store (bool): whether to enable online store or not.
             offline_store_kms_key_id (str): KMS key id for offline store.
+                If a KMS encryption key is not specified, SageMaker encrypts all data at
+                rest using the default AWS KMS key. By defining your bucket-level key for
+                SSE, you can reduce the cost of AWS KMS requests.
+                For more information, see
+                `Bucket Key
+                <https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-key.html>`_
+                in the Amazon S3 User Guide.
             disable_glue_table_creation (bool): whether to turn off Glue table creation no not.
             data_catalog_config (DataCatalogConfig): configuration for Metadata store.
             description (str): description of the FeatureGroup.
@@ -552,6 +592,7 @@ class FeatureGroup:
         max_processes: int = 1,
         wait: bool = True,
         timeout: Union[int, float] = None,
+        profile_name: str = None,
     ) -> IngestionManagerPandas:
         """Ingest the content of a pandas DataFrame to feature store.
 
@@ -570,6 +611,11 @@ class FeatureGroup:
         They can also be found from the IngestionManagerPandas' ``failed_rows`` function after
         the exception is thrown.
 
+        `profile_name` argument is an optional one. It will use the default credential if None is
+        passed. This `profile_name` is used in the sagemaker_featurestore_runtime client only. See
+        https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html for more
+        about the default credential.
+
         Args:
             data_frame (DataFrame): data_frame to be ingested to feature store.
             max_workers (int): number of threads to be created.
@@ -578,6 +624,8 @@ class FeatureGroup:
             wait (bool): whether to wait for the ingestion to finish or not.
             timeout (Union[int, float]): ``concurrent.futures.TimeoutError`` will be raised
                 if timeout is reached.
+            profile_name (str): the profile credential should be used for ``PutRecord``
+                (default: None).
 
         Returns:
             An instance of IngestionManagerPandas.
@@ -593,6 +641,7 @@ class FeatureGroup:
             sagemaker_fs_runtime_client_config=self.sagemaker_session.sagemaker_featurestore_runtime_client.meta.config,
             max_workers=max_workers,
             max_processes=max_processes,
+            profile_name=profile_name,
         )
 
         manager.run(data_frame=data_frame, wait=wait, timeout=timeout)

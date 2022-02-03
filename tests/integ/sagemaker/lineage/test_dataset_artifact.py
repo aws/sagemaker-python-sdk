@@ -15,7 +15,6 @@ from __future__ import absolute_import
 
 
 def test_trained_models(
-    sagemaker_session,
     dataset_artifact_associated_models,
     trial_component_obj,
     model_artifact_obj1,
@@ -26,3 +25,29 @@ def test_trained_models(
         assert model.source_arn == trial_component_obj.trial_component_arn
         assert model.destination_arn == model_artifact_obj1.artifact_arn
         assert model.destination_type == "Context"
+
+
+def test_endpoint_contexts(
+    static_dataset_artifact,
+):
+    contexts_from_query = static_dataset_artifact.endpoint_contexts()
+
+    assert len(contexts_from_query) > 0
+    for context in contexts_from_query:
+        assert context.context_type == "Endpoint"
+
+
+def test_get_upstream_datasets(static_dataset_artifact, sagemaker_session):
+    artifacts_from_query = static_dataset_artifact.upstream_datasets()
+    assert len(artifacts_from_query) > 0
+    for artifact in artifacts_from_query:
+        assert artifact.artifact_type == "DataSet"
+        assert "artifact" in artifact.artifact_arn
+
+
+def test_get_down_datasets(static_dataset_artifact, sagemaker_session):
+    artifacts_from_query = static_dataset_artifact.downstream_datasets()
+    assert len(artifacts_from_query) > 0
+    for artifact in artifacts_from_query:
+        assert artifact.artifact_type == "DataSet"
+        assert "artifact" in artifact.artifact_arn

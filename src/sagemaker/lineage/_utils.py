@@ -52,3 +52,15 @@ def get_module(module_name):
         return import_module(module_name)
     except ImportError:
         raise Exception("Cannot import module {}, please try again.".format(module_name))
+
+
+def get_resource_name_from_arn(arn):
+    """Extract the resource name from an ARN string.
+
+    Args:
+        arn (str): An ARN.
+
+    Returns:
+        str: The resource name.
+    """
+    return arn.split(":", 5)[5].split("/", 1)[1]

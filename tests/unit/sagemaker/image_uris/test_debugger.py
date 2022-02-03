@@ -13,13 +13,14 @@
 from __future__ import absolute_import
 
 from sagemaker import image_uris
-from tests.unit.sagemaker.image_uris import expected_uris, regions
+from tests.unit.sagemaker.image_uris import expected_uris
 
 ACCOUNTS = {
     "af-south-1": "314341159256",
     "ap-east-1": "199566480951",
     "ap-northeast-1": "430734990657",
     "ap-northeast-2": "578805364391",
+    "ap-northeast-3": "479947661362",
     "ap-south-1": "904829902805",
     "ap-southeast-1": "972752614525",
     "ap-southeast-2": "184798709955",
@@ -43,11 +44,9 @@ ACCOUNTS = {
 
 
 def test_debugger():
-    for region in regions.regions():
-        if region in ACCOUNTS.keys():
-            uri = image_uris.retrieve("debugger", region=region)
-
-            expected = expected_uris.algo_uri(
-                "sagemaker-debugger-rules", ACCOUNTS[region], region, version="latest"
-            )
-            assert expected == uri
+    for region in ACCOUNTS.keys():
+        uri = image_uris.retrieve("debugger", region=region)
+        expected = expected_uris.algo_uri(
+            "sagemaker-debugger-rules", ACCOUNTS[region], region, version="latest"
+        )
+        assert expected == uri

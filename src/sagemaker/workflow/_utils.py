@@ -28,13 +28,14 @@ from sagemaker.estimator import EstimatorBase
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.workflow.entities import RequestType
 from sagemaker.workflow.properties import Properties
-from sagemaker.session import get_create_model_package_request
-from sagemaker.session import get_model_package_args
+from sagemaker.session import get_create_model_package_request, get_model_package_args
 from sagemaker.workflow.steps import (
     StepTypeEnum,
     TrainingStep,
     Step,
+    ConfigurableRetryStep,
 )
+from sagemaker.workflow.retry import RetryPolicy
 
 FRAMEWORK_VERSION = "0.23-1"
 INSTANCE_TYPE = "ml.m5.large"
@@ -42,13 +43,10 @@ REPACK_SCRIPT = "_repack_model.py"
 
 
 class _RepackModelStep(TrainingStep):
-    """Repacks model artifacts with inference entry point.
+    """Repacks model artifacts with custom inference entry points.
 
-    Attributes:
-        name (str): The name of the training step.
-        step_type (StepTypeEnum): The type of the step with value `StepTypeEnum.Training`.
-        estimator (EstimatorBase): A `sagemaker.estimator.EstimatorBase` instance.
-        inputs (TrainingInput): A `sagemaker.inputs.TrainingInput` instance. Defaults to `None`.
+    The SDK automatically adds this step to pipelines that have RegisterModelSteps with models
+    that have a custom entry point.
     """
 
     def __init__(
@@ -58,22 +56,84 @@ class _RepackModelStep(TrainingStep):
         role,
         model_data: str,
         entry_point: str,
+        display_name: str = None,
+        description: str = None,
         source_dir: str = None,
         dependencies: List = None,
         depends_on: Union[List[str], List[Step]] = None,
+        retry_policies: List[RetryPolicy] = None,
+        subnets=None,
+        security_group_ids=None,
         **kwargs,
     ):
-        """Constructs a TrainingStep, given an `EstimatorBase` instance.
-
-        In addition to the estimator instance, the other arguments are those that are supplied to
-        the `fit` method of the `sagemaker.estimator.Estimator`.
+        """Base class initializer.
 
         Args:
             name (str): The name of the training step.
-            estimator (EstimatorBase): A `sagemaker.estimator.EstimatorBase` instance.
-            inputs (TrainingInput): A `sagemaker.inputs.TrainingInput` instance. Defaults to `None`.
+            sagemaker_session (sagemaker.session.Session): Session object which manages
+                    interactions with Amazon SageMaker APIs and any other AWS services needed. If
+                    not specified, the estimator creates one using the default
+                    AWS configuration chain.
+            role (str): An AWS IAM role (either name or full ARN). The Amazon
+                    SageMaker training jobs and APIs that create Amazon SageMaker
+                    endpoints use this role to access training data and model
+                    artifacts. After the endpoint is created, the inference code
+                    might use the IAM role, if it needs to access an AWS resource.
+            model_data (str): The S3 location of a SageMaker model data
+                    ``.tar.gz`` file (default: None).
+            entry_point (str): Path (absolute or relative) to the local Python
+                    source file which should be executed as the entry point to
+                    inference. If ``source_dir`` is specified, then ``entry_point``
+                    must point to a file located at the root of ``source_dir``.
+                    If 'git_config' is provided, 'entry_point' should be
+                    a relative location to the Python source file in the Git repo.
+
+                    Example:
+                        With the following GitHub repo directory structure:
+
+                        >>> |----- README.md
+                        >>> |----- src
+                        >>>         |----- train.py
+                        >>>         |----- test.py
+
+                        You can assign entry_point='src/train.py'.
+            source_dir (str): A relative location to a directory with other training
+                or model hosting source code dependencies aside from the entry point
+                file in the Git repo (default: None). Structure within this
+                directory are preserved when training on Amazon SageMaker.
+            dependencies (list[str]): A list of paths to directories (absolute
+                    or relative) with any additional libraries that will be exported
+                    to the container (default: []). The library folders will be
+                    copied to SageMaker in the same folder where the entrypoint is
+                    copied. If 'git_config' is provided, 'dependencies' should be a
+                    list of relative locations to directories with any additional
+                    libraries needed in the Git repo.
+
+                    .. admonition:: Example
+
+                        The following call
+
+                        >>> Estimator(entry_point='train.py',
+                        ...           dependencies=['my/libs/common', 'virtual-env'])
+
+                        results in the following inside the container:
+
+                        >>> $ ls
+
+                        >>> opt/ml/code
+                        >>>     |------ train.py
+                        >>>     |------ common
+                        >>>     |------ virtual-env
+
+                    This is not supported with "local code" in Local Mode.
+            depends_on (List[str] or List[Step]): A list of step names or instances
+                    this step depends on
+            retry_policies (List[RetryPolicy]): The list of retry policies for the current step
+            subnets (list[str]): List of subnet ids. If not specified, the re-packing
+                    job will be created without VPC config.
+            security_group_ids (list[str]): List of security group ids. If not
+                specified, the re-packing job will be created without VPC config.
         """
-        # yeah, go ahead and save the originals for now
         self._model_data = model_data
         self.sagemaker_session = sagemaker_session
         self.role = role
@@ -88,6 +148,11 @@ class _RepackModelStep(TrainingStep):
         self._source_dir = source_dir
         self._dependencies = dependencies
 
+        # convert dependencies array into space-delimited string
+        dependencies_hyperparameter = None
+        if self._dependencies:
+            dependencies_hyperparameter = " ".join(self._dependencies)
+
         # the real estimator and inputs
         repacker = SKLearn(
             framework_version=FRAMEWORK_VERSION,
@@ -100,7 +165,11 @@ class _RepackModelStep(TrainingStep):
             hyperparameters={
                 "inference_script": self._entry_point_basename,
                 "model_archive": self._model_archive,
+                "dependencies": dependencies_hyperparameter,
+                "source_dir": self._source_dir,
             },
+            subnets=subnets,
+            security_group_ids=security_group_ids,
             **kwargs,
         )
         repacker.disable_profiler = True
@@ -108,7 +177,13 @@ class _RepackModelStep(TrainingStep):
 
         # super!
         super(_RepackModelStep, self).__init__(
-            name=name, depends_on=depends_on, estimator=repacker, inputs=inputs
+            name=name,
+            display_name=display_name,
+            description=description,
+            depends_on=depends_on,
+            retry_policies=retry_policies,
+            estimator=repacker,
+            inputs=inputs,
         )
 
     def _prepare_for_repacking(self):
@@ -188,7 +263,7 @@ class _RepackModelStep(TrainingStep):
         return self._properties
 
 
-class _RegisterModelStep(Step):
+class _RegisterModelStep(ConfigurableRetryStep):
     """Register model step in workflow that creates a model package.
 
     Attributes:
@@ -228,10 +303,13 @@ class _RegisterModelStep(Step):
         approval_status="PendingManualApproval",
         image_uri=None,
         compile_model_family=None,
+        display_name: str = None,
         description=None,
         depends_on: Union[List[str], List[Step]] = None,
+        retry_policies: List[RetryPolicy] = None,
         tags=None,
         container_def_list=None,
+        drift_check_baselines=None,
         **kwargs,
     ):
         """Constructor of a register model step.
@@ -267,9 +345,13 @@ class _RegisterModelStep(Step):
             description (str): Model Package description (default: None).
             depends_on (List[str] or List[Step]): A list of step names or instances
                 this step depends on
+            retry_policies (List[RetryPolicy]): The list of retry policies for the current step
+            drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
             **kwargs: additional arguments to `create_model`.
         """
-        super(_RegisterModelStep, self).__init__(name, StepTypeEnum.REGISTER_MODEL, depends_on)
+        super(_RegisterModelStep, self).__init__(
+            name, StepTypeEnum.REGISTER_MODEL, display_name, description, depends_on, retry_policies
+        )
         self.estimator = estimator
         self.model_data = model_data
         self.content_types = content_types
@@ -279,6 +361,7 @@ class _RegisterModelStep(Step):
         self.model_package_group_name = model_package_group_name
         self.tags = tags
         self.model_metrics = model_metrics
+        self.drift_check_baselines = drift_check_baselines
         self.metadata_properties = metadata_properties
         self.approval_status = approval_status
         self.image_uri = image_uri
@@ -346,6 +429,7 @@ class _RegisterModelStep(Step):
             model_data=self.model_data,
             image_uri=self.image_uri,
             model_metrics=self.model_metrics,
+            drift_check_baselines=self.drift_check_baselines,
             metadata_properties=self.metadata_properties,
             approval_status=self.approval_status,
             description=self.description,

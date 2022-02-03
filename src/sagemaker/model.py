@@ -29,9 +29,14 @@ from sagemaker import (
     utils,
     git_utils,
 )
+from sagemaker.inputs import CompilationInput
 from sagemaker.deprecations import removed_kwargs
 from sagemaker.predictor import PredictorBase
+from sagemaker.serverless import ServerlessInferenceConfig
 from sagemaker.transformer import Transformer
+from sagemaker.utils import unique_name_from_base
+from sagemaker.async_inference import AsyncInferenceConfig
+from sagemaker.predictor_async import AsyncPredictor
 
 LOGGER = logging.getLogger("sagemaker")
 
@@ -145,6 +150,7 @@ class Model(ModelBase):
         marketplace_cert=False,
         approval_status=None,
         description=None,
+        drift_check_baselines=None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -169,27 +175,34 @@ class Model(ModelBase):
             approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
                 or "PendingManualApproval" (default: "PendingManualApproval").
             description (str): Model Package description (default: None).
+            drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
         """
         if self.model_data is None:
             raise ValueError("SageMaker Model Package cannot be created without model data.")
+        if image_uri is not None:
+            self.image_uri = image_uri
+        if model_package_group_name is not None:
+            container_def = self.prepare_container_def()
+        else:
+            container_def = {"Image": self.image_uri, "ModelDataUrl": self.model_data}
 
         model_pkg_args = sagemaker.get_model_package_args(
             content_types,
             response_types,
             inference_instances,
             transform_instances,
-            model_package_name,
-            model_package_group_name,
-            self.model_data,
-            image_uri or self.image_uri,
-            model_metrics,
-            metadata_properties,
-            marketplace_cert,
-            approval_status,
-            description,
+            model_package_name=model_package_name,
+            model_package_group_name=model_package_group_name,
+            model_metrics=model_metrics,
+            metadata_properties=metadata_properties,
+            marketplace_cert=marketplace_cert,
+            approval_status=approval_status,
+            description=description,
+            container_def_list=[container_def],
+            drift_check_baselines=drift_check_baselines,
         )
         model_package = self.sagemaker_session.create_model_package_from_containers(
             **model_pkg_args
@@ -200,7 +213,7 @@ class Model(ModelBase):
             model_package_arn=model_package.get("ModelPackageArn"),
         )
 
-    def _init_sagemaker_session_if_does_not_exist(self, instance_type):
+    def _init_sagemaker_session_if_does_not_exist(self, instance_type=None):
         """Set ``self.sagemaker_session`` to ``LocalSession`` or ``Session`` if it's not already.
 
         The type of session object is determined by the instance type.
@@ -409,6 +422,58 @@ class Model(ModelBase):
             "tags": tags,
             "job_name": job_name,
         }
+
+    def _get_compilation_args(self, estimator, inputs):
+        """Constructs a dict of arguments for an Amazon SageMaker compilation job from estimator.
+
+        Args:
+            estimator (sagemaker.estimator.EstimatorBase): Estimator object
+                created by the user.
+            inputs (CompilationInput): class containing all the parameters that
+                can be used when calling ``sagemaker.model.Model.compile_model()``
+        """
+
+        if not isinstance(inputs, CompilationInput):
+            raise TypeError("Your inputs must be provided as CompilationInput objects.")
+        target_instance_family = inputs.target_instance_type
+        input_shape = inputs.input_shape
+        output_path = inputs.output_path
+        role = estimator.role
+        compile_max_run = inputs.compile_max_run
+        job_name = estimator._compilation_job_name()
+        framework = inputs.framework or self._framework()
+        if framework is None:
+            raise ValueError(
+                "You must specify framework, allowed values {}".format(NEO_ALLOWED_FRAMEWORKS)
+            )
+        if framework not in NEO_ALLOWED_FRAMEWORKS:
+            raise ValueError(
+                "You must provide valid framework, allowed values {}".format(NEO_ALLOWED_FRAMEWORKS)
+            )
+        if self.model_data is None:
+            raise ValueError("You must provide an S3 path to the compressed model artifacts.")
+        tags = inputs.tags
+        target_platform_os = inputs.target_platform_os
+        target_platform_arch = inputs.target_platform_arch
+        target_platform_accelerator = inputs.target_platform_accelerator
+        compiler_options = inputs.compiler_options
+        framework_version = inputs.framework_version or self._get_framework_version()
+
+        return self._compilation_job_config(
+            target_instance_family,
+            input_shape,
+            output_path,
+            role,
+            compile_max_run,
+            job_name,
+            framework,
+            tags,
+            target_platform_os,
+            target_platform_arch,
+            target_platform_accelerator,
+            compiler_options,
+            framework_version,
+        )
 
     def _compilation_image_uri(self, region, target_instance_type, framework, framework_version):
         """Retrieve the Neo or Inferentia image URI.
@@ -627,8 +692,8 @@ class Model(ModelBase):
 
     def deploy(
         self,
-        initial_instance_count,
-        instance_type,
+        initial_instance_count=None,
+        instance_type=None,
         serializer=None,
         deserializer=None,
         accelerator_type=None,
@@ -637,6 +702,8 @@ class Model(ModelBase):
         kms_key=None,
         wait=True,
         data_capture_config=None,
+        async_inference_config=None,
+        serverless_inference_config=None,
         **kwargs,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
@@ -654,9 +721,13 @@ class Model(ModelBase):
 
         Args:
             initial_instance_count (int): The initial number of instances to run
-                in the ``Endpoint`` created from this ``Model``.
+                in the ``Endpoint`` created from this ``Model``. If not using
+                serverless inference, then it need to be a number larger or equals
+                to 1 (default: None)
             instance_type (str): The EC2 instance type to deploy this Model to.
-                For example, 'ml.p2.xlarge', or 'local' for local mode.
+                For example, 'ml.p2.xlarge', or 'local' for local mode. If not using
+                serverless inference, then it is required to deploy a model.
+                (default: None)
             serializer (:class:`~sagemaker.serializers.BaseSerializer`): A
                 serializer object, used to encode data for an inference endpoint
                 (default: None). If ``serializer`` is not None, then
@@ -685,7 +756,24 @@ class Model(ModelBase):
             data_capture_config (sagemaker.model_monitor.DataCaptureConfig): Specifies
                 configuration related to Endpoint data capture for use with
                 Amazon SageMaker Model Monitoring. Default: None.
-
+            async_inference_config (sagemaker.model_monitor.AsyncInferenceConfig): Specifies
+                configuration related to async endpoint. Use this configuration when trying
+                to create async endpoint and make async inference. If empty config object
+                passed through, will use default config to deploy async endpoint. Deploy a
+                real-time endpoint if it's None. (default: None)
+            serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
+                Specifies configuration related to serverless endpoint. Use this configuration
+                when trying to create serverless endpoint and make serverless inference. If
+                empty object passed through, will use pre-defined values in
+                ``ServerlessInferenceConfig`` class to deploy serverless endpoint. Deploy an
+                instance based endpoint if it's None. (default: None)
+        Raises:
+             ValueError: If arguments combination check failed in these circumstances:
+                - If no role is specified or
+                - If serverless inference config is not specified and instance type and instance
+                    count are also not specified or
+                - If a wrong type of object is provided as serverless inference config or async
+                    inference config
         Returns:
             callable[string, sagemaker.session.Session] or None: Invocation of
                 ``self.predictor_cls`` on the created endpoint name, if ``self.predictor_cls``
@@ -697,32 +785,64 @@ class Model(ModelBase):
         if self.role is None:
             raise ValueError("Role can not be null for deploying a model")
 
-        if instance_type.startswith("ml.inf") and not self._is_compiled_model:
+        is_async = async_inference_config is not None
+        if is_async and not isinstance(async_inference_config, AsyncInferenceConfig):
+            raise ValueError("async_inference_config needs to be a AsyncInferenceConfig object")
+
+        is_serverless = serverless_inference_config is not None
+        if not is_serverless and not (instance_type and initial_instance_count):
+            raise ValueError(
+                "Must specify instance type and instance count unless using serverless inference"
+            )
+
+        if is_serverless and not isinstance(serverless_inference_config, ServerlessInferenceConfig):
+            raise ValueError(
+                "serverless_inference_config needs to be a ServerlessInferenceConfig object"
+            )
+
+        if instance_type and instance_type.startswith("ml.inf") and not self._is_compiled_model:
             LOGGER.warning(
                 "Your model is not compiled. Please compile your model before using Inferentia."
             )
 
-        compiled_model_suffix = "-".join(instance_type.split(".")[:-1])
-        if self._is_compiled_model:
+        compiled_model_suffix = None if is_serverless else "-".join(instance_type.split(".")[:-1])
+        if self._is_compiled_model and not is_serverless:
             self._ensure_base_name_if_needed(self.image_uri)
             if self._base_name is not None:
                 self._base_name = "-".join((self._base_name, compiled_model_suffix))
 
         self._create_sagemaker_model(instance_type, accelerator_type, tags)
+
+        serverless_inference_config_dict = (
+            serverless_inference_config._to_request_dict() if is_serverless else None
+        )
         production_variant = sagemaker.production_variant(
-            self.name, instance_type, initial_instance_count, accelerator_type=accelerator_type
+            self.name,
+            instance_type,
+            initial_instance_count,
+            accelerator_type=accelerator_type,
+            serverless_inference_config=serverless_inference_config_dict,
         )
         if endpoint_name:
             self.endpoint_name = endpoint_name
         else:
             base_endpoint_name = self._base_name or utils.base_from_name(self.name)
-            if self._is_compiled_model and not base_endpoint_name.endswith(compiled_model_suffix):
-                base_endpoint_name = "-".join((base_endpoint_name, compiled_model_suffix))
+            if self._is_compiled_model and not is_serverless:
+                if not base_endpoint_name.endswith(compiled_model_suffix):
+                    base_endpoint_name = "-".join((base_endpoint_name, compiled_model_suffix))
             self.endpoint_name = utils.name_from_base(base_endpoint_name)
 
         data_capture_config_dict = None
         if data_capture_config is not None:
             data_capture_config_dict = data_capture_config._to_request_dict()
+
+        async_inference_config_dict = None
+        if is_async:
+            if async_inference_config.output_path is None:
+                async_inference_config = self._build_default_async_inference_config(
+                    async_inference_config
+                )
+            async_inference_config_dict = async_inference_config._to_request_dict()
 
         self.sagemaker_session.endpoint_from_production_variants(
             name=self.endpoint_name,
@@ -731,6 +851,7 @@ class Model(ModelBase):
             kms_key=kms_key,
             wait=wait,
             data_capture_config_dict=data_capture_config_dict,
+            async_inference_config_dict=async_inference_config_dict,
         )
 
         if self.predictor_cls:
@@ -739,8 +860,19 @@ class Model(ModelBase):
                 predictor.serializer = serializer
             if deserializer:
                 predictor.deserializer = deserializer
+            if is_async:
+                return AsyncPredictor(predictor, self.name)
             return predictor
         return None
+
+    def _build_default_async_inference_config(self, async_inference_config):
+        """Build default async inference config and return ``AsyncInferenceConfig``"""
+        async_output_folder = unique_name_from_base(self.name)
+        async_output_s3uri = "s3://{}/async-endpoint-outputs/{}".format(
+            self.sagemaker_session.default_bucket(), async_output_folder
+        )
+        async_inference_config.output_path = async_output_s3uri
+        return async_inference_config
 
     def transformer(
         self,
@@ -1070,6 +1202,7 @@ class FrameworkModel(Model):
                 script=self.entry_point,
                 directory=self.source_dir,
                 dependencies=self.dependencies,
+                settings=self.sagemaker_session.settings,
             )
 
         if repack and self.model_data is not None and self.entry_point is not None:
@@ -1097,6 +1230,8 @@ class FrameworkModel(Model):
 
     def _framework_env_vars(self):
         """Placeholder docstring"""
+        script_name = None
+        dir_name = None
         if self.uploaded_code:
             script_name = self.uploaded_code.script_name
             if self.enable_network_isolation():
@@ -1105,10 +1240,8 @@ class FrameworkModel(Model):
                 dir_name = self.uploaded_code.s3_prefix
         elif self.entry_point is not None:
             script_name = self.entry_point
-            dir_name = "file://" + self.source_dir
-        else:
-            script_name = None
-            dir_name = None
+            if self.source_dir is not None:
+                dir_name = "file://" + self.source_dir
 
         return {
             SCRIPT_PARAM_NAME.upper(): script_name or str(),

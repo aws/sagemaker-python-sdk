@@ -262,7 +262,7 @@ def test_framework_training_config_all_args(retrieve_image_uri, sagemaker_sessio
         py_version="py3",
         framework_version="1.15.2",
         role="{{ role }}",
-        instance_count="{{ instance_count }}",
+        instance_count=1,
         instance_type="ml.c4.2xlarge",
         volume_size="{{ volume_size }}",
         volume_kms_key="{{ volume_kms_key }}",
@@ -276,6 +276,8 @@ def test_framework_training_config_all_args(retrieve_image_uri, sagemaker_sessio
         security_group_ids=["{{ security_group_ids }}"],
         metric_definitions=[{"Name": "{{ name }}", "Regex": "{{ regex }}"}],
         sagemaker_session=sagemaker_session,
+        checkpoint_local_path="{{ checkpoint_local_path }}",
+        checkpoint_s3_uri="{{ checkpoint_s3_uri }}",
     )
 
     data = "{{ training_data }}"
@@ -294,7 +296,7 @@ def test_framework_training_config_all_args(retrieve_image_uri, sagemaker_sessio
         "TrainingJobName": "{{ base_job_name }}-%s" % TIME_STAMP,
         "StoppingCondition": {"MaxRuntimeInSeconds": "{{ max_run }}"},
         "ResourceConfig": {
-            "InstanceCount": "{{ instance_count }}",
+            "InstanceCount": 1,
             "InstanceType": "ml.c4.2xlarge",
             "VolumeSizeInGB": "{{ volume_size }}",
             "VolumeKmsKeyId": "{{ volume_kms_key }}",
@@ -337,6 +339,10 @@ def test_framework_training_config_all_args(retrieve_image_uri, sagemaker_sessio
                     "Tar": True,
                 }
             ]
+        },
+        "CheckpointConfig": {
+            "LocalPath": "{{ checkpoint_local_path }}",
+            "S3Uri": "{{ checkpoint_s3_uri }}",
         },
     }
     assert config == expected_config

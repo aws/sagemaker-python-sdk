@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import pytest
 
 from sagemaker import image_uris
-from tests.unit.sagemaker.image_uris import expected_uris, regions
+from tests.unit.sagemaker.image_uris import expected_uris
 
 ACCOUNTS = {
     "af-south-1": "510948584623",
@@ -48,7 +48,7 @@ VERSIONS = ["2.2", "2.4"]
 
 @pytest.mark.parametrize("version", VERSIONS)
 def test_sparkml(version):
-    for region in regions.regions():
+    for region in ACCOUNTS.keys():
         uri = image_uris.retrieve("sparkml-serving", region=region, version=version)
 
         expected = expected_uris.algo_uri(

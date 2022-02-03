@@ -29,6 +29,7 @@ import botocore
 from six.moves.urllib import parse
 
 from sagemaker import deprecations
+from sagemaker.session_settings import SessionSettings
 
 
 ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(.*)(/)(.*:.*)$"
@@ -78,7 +79,7 @@ def name_from_base(base, max_length=63, short=False):
 
 def unique_name_from_base(base, max_length=63):
     """Placeholder Docstring"""
-    unique = "%04x" % random.randrange(16 ** 4)  # 4-digit hex
+    unique = "%04x" % random.randrange(16**4)  # 4-digit hex
     ts = str(int(time.time()))
     available_length = max_length - 2 - len(ts) - len(unique)
     trimmed = base[:available_length]
@@ -331,7 +332,7 @@ def create_tar_file(source_files, target=None):
     else:
         _, filename = tempfile.mkstemp()
 
-    with tarfile.open(filename, mode="w:gz") as t:
+    with tarfile.open(filename, mode="w:gz", dereference=True) as t:
         for sf in source_files:
             # Add all files from the directory into the root of the directory structure of the tar
             t.add(sf, arcname=os.path.basename(sf))
@@ -412,7 +413,12 @@ def repack_model(
         model_dir = _extract_model(model_uri, sagemaker_session, tmp)
 
         _create_or_update_code_dir(
-            model_dir, inference_script, source_directory, dependencies, sagemaker_session, tmp
+            model_dir,
+            inference_script,
+            source_directory,
+            dependencies,
+            sagemaker_session,
+            tmp,
         )
 
         tmp_model_path = os.path.join(tmp, "temp-model.tar.gz")
@@ -429,8 +435,15 @@ def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session, kms_key):
         bucket, key = url.netloc, url.path.lstrip("/")
         new_key = key.replace(os.path.basename(key), os.path.basename(repacked_model_uri))
 
+        settings = (
+            sagemaker_session.settings if sagemaker_session is not None else SessionSettings()
+        )
+        encrypt_artifact = settings.encrypt_repacked_artifacts
+
         if kms_key:
             extra_args = {"ServerSideEncryption": "aws:kms", "SSEKMSKeyId": kms_key}
+        elif encrypt_artifact:
+            extra_args = {"ServerSideEncryption": "aws:kms"}
         else:
             extra_args = None
         sagemaker_session.boto_session.resource(
@@ -536,7 +549,11 @@ def sts_regional_endpoint(region):
     return "https://{}".format(endpoint_data["hostname"])
 
 
-def retries(max_retry_count, exception_message_prefix, seconds_to_sleep=DEFAULT_SLEEP_TIME_SECONDS):
+def retries(
+    max_retry_count,
+    exception_message_prefix,
+    seconds_to_sleep=DEFAULT_SLEEP_TIME_SECONDS,
+):
     """Retries until max retry count is reached.
 
     Args:

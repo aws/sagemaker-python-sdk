@@ -195,6 +195,11 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
     if s3_operations:
         train_config["S3Operations"] = s3_operations
 
+    if (estimator.checkpoint_local_path is not None) & (estimator.checkpoint_s3_uri is not None):
+        train_config["CheckpointConfig"] = {
+            "LocalPath": estimator.checkpoint_local_path,
+            "S3Uri": estimator.checkpoint_s3_uri,
+        }
     return train_config
 
 
@@ -1102,9 +1107,17 @@ def processing_config(
             :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
         job_name (str): Processing job name. If not specified, the processor generates
             a default job name, based on the base job name and current timestamp.
-        experiment_config (dict[str, str]): Experiment management configuration.
-            Dictionary contains three optional keys:
-            'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Optionally, the dict can contain three keys:
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
         container_arguments ([str]): The arguments for a container used to run a processing job.
         container_entrypoint ([str]): The entrypoint for a container used to run a processing job.
         kms_key_id (str): The AWS Key Management Service (AWS KMS) key that Amazon SageMaker

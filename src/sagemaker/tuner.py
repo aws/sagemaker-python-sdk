@@ -38,6 +38,10 @@ from sagemaker.parameter import (
     IntegerParameter,
     ParameterRange,
 )
+from sagemaker.workflow.parameters import Parameter as PipelineParameter
+from sagemaker.workflow.functions import JsonGet as PipelineJsonGet
+from sagemaker.workflow.functions import Join as PipelineJoin
+
 from sagemaker.session import Session
 from sagemaker.utils import base_from_name, base_name_from_image, name_from_base
 
@@ -57,6 +61,18 @@ PARENT_HYPERPARAMETER_TUNING_JOBS = "ParentHyperParameterTuningJobs"
 WARM_START_TYPE = "WarmStartType"
 
 logger = logging.getLogger(__name__)
+
+
+def is_pipeline_parameters(value):
+    """Determine if a value is a pipeline parameter or function representation
+
+    Args:
+        value (float or int): The value to be verified.
+
+    Returns:
+        bool: True if it is, False otherwise.
+    """
+    return isinstance(value, (PipelineParameter, PipelineJsonGet, PipelineJoin))
 
 
 class WarmStartTypes(Enum):
@@ -359,7 +375,12 @@ class HyperparameterTuner(object):
     ):
         """Prepare static hyperparameters for one estimator before tuning."""
         # Remove any hyperparameter that will be tuned
-        static_hyperparameters = {str(k): str(v) for (k, v) in estimator.hyperparameters().items()}
+        static_hyperparameters = {
+            str(k): str(v)
+            if not isinstance(v, (PipelineParameter, PipelineJsonGet, PipelineJoin))
+            else v
+            for (k, v) in estimator.hyperparameters().items()
+        }
         for hyperparameter_name in hyperparameter_ranges.keys():
             static_hyperparameters.pop(hyperparameter_name, None)
 
@@ -1507,7 +1528,10 @@ class _TuningJob(_Job):
 
         if tuner.estimator is not None:
             tuner_args["training_config"] = cls._prepare_training_config(
-                inputs, tuner.estimator, tuner.static_hyperparameters, tuner.metric_definitions
+                inputs=inputs,
+                estimator=tuner.estimator,
+                static_hyperparameters=tuner.static_hyperparameters,
+                metric_definitions=tuner.metric_definitions,
             )
 
         if tuner.estimator_dict is not None:
@@ -1579,6 +1603,9 @@ class _TuningJob(_Job):
 
         if parameter_ranges is not None:
             training_config["parameter_ranges"] = parameter_ranges
+
+        if estimator.max_retry_attempts is not None:
+            training_config["max_retry_attempts"] = estimator.max_retry_attempts
 
         return training_config
 
