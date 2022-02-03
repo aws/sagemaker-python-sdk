@@ -166,7 +166,9 @@ def athena_dataset_definition(sagemaker_session):
             catalog="AwsDataCatalog",
             database="default",
             work_group="workgroup",
-            query_string='SELECT * FROM "default"."s3_test_table_$STAGE_$REGIONUNDERSCORED";',
+            query_string=(
+                'SELECT * FROM "default"."s3_test_table_$STAGE_$REGIONUNDERSCORED";'
+            ),
             output_s3_uri=f"s3://{sagemaker_session.default_bucket()}/add",
             output_format="JSON",
             output_compression="GZIP",
@@ -261,9 +263,9 @@ def build_jar():
     java_version_pattern = r"(\d+\.\d+).*"
     jar_file_path = os.path.join(spark_path, "code", "java", "hello-java-spark")
     # compile java file
-    java_version = subprocess.check_output(["java", "-version"], stderr=subprocess.STDOUT).decode(
-        "utf-8"
-    )
+    java_version = subprocess.check_output(
+        ["java", "-version"], stderr=subprocess.STDOUT
+    ).decode("utf-8")
     java_version = re.search(java_version_pattern, java_version).groups()[0]
 
     if float(java_version) > 1.8:
@@ -296,7 +298,9 @@ def build_jar():
     )
     yield
     subprocess.run(["rm", os.path.join(jar_file_path, "hello-spark-java.jar")])
-    subprocess.run(["rm", os.path.join(jar_file_path, java_file_path, "HelloJavaSparkApp.class")])
+    subprocess.run(
+        ["rm", os.path.join(jar_file_path, java_file_path, "HelloJavaSparkApp.class")]
+    )
 
 
 def test_three_step_definition(
@@ -312,7 +316,9 @@ def test_three_step_definition(
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
     output_prefix = ParameterString(name="OutputPrefix", default_value="output")
 
-    input_data = f"s3://sagemaker-sample-data-{region_name}/processing/census/census-income.csv"
+    input_data = (
+        f"s3://sagemaker-sample-data-{region_name}/processing/census/census-income.csv"
+    )
 
     sklearn_processor = SKLearnProcessor(
         framework_version=framework_version,
@@ -332,7 +338,9 @@ def test_three_step_definition(
             ProcessingInput(dataset_definition=athena_dataset_definition),
         ],
         outputs=[
-            ProcessingOutput(output_name="train_data", source="/opt/ml/processing/train"),
+            ProcessingOutput(
+                output_name="train_data", source="/opt/ml/processing/train"
+            ),
             ProcessingOutput(
                 output_name="test_data",
                 source="/opt/ml/processing/test",
@@ -407,7 +415,9 @@ def test_three_step_definition(
                     "DefaultValue": "ml.m5.xlarge",
                 }.items()
             ),
-            tuple({"Name": "InstanceCount", "Type": "Integer", "DefaultValue": 1}.items()),
+            tuple(
+                {"Name": "InstanceCount", "Type": "Integer", "DefaultValue": 1}.items()
+            ),
             tuple(
                 {
                     "Name": "OutputPrefix",
@@ -461,7 +471,9 @@ def test_three_step_definition(
         "InstanceType": {"Get": "Parameters.InstanceType"},
         "VolumeSizeInGB": 30,
     }
-    assert training_args["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"] == {
+    assert training_args["InputDataConfig"][0]["DataSource"]["S3DataSource"][
+        "S3Uri"
+    ] == {
         "Get": "Steps.my-process.ProcessingOutputConfig.Outputs['train_data'].S3Output.S3Uri"
     }
     assert model_args["PrimaryContainer"]["ModelDataUrl"] == {
@@ -494,7 +506,9 @@ def test_one_step_sklearn_processing_pipeline(
     script_path = os.path.join(DATA_DIR, "dummy_script.py")
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
     inputs = [
-        ProcessingInput(source=input_file_path, destination="/opt/ml/processing/inputs/"),
+        ProcessingInput(
+            source=input_file_path, destination="/opt/ml/processing/inputs/"
+        ),
         ProcessingInput(dataset_definition=athena_dataset_definition),
     ]
 
@@ -549,7 +563,9 @@ def test_one_step_sklearn_processing_pipeline(
         assert response["PipelineArn"] == create_arn
 
         # Check CacheConfig
-        response = json.loads(pipeline.describe()["PipelineDefinition"])["Steps"][0]["CacheConfig"]
+        response = json.loads(pipeline.describe()["PipelineDefinition"])["Steps"][0][
+            "CacheConfig"
+        ]
         assert response["Enabled"] == cache_config.enable_caching
         assert response["ExpireAfter"] == cache_config.expire_after
 
@@ -582,7 +598,9 @@ def test_one_step_framework_processing_pipeline(
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
 
     inputs = [
-        ProcessingInput(source=input_file_path, destination="/opt/ml/processing/inputs/"),
+        ProcessingInput(
+            source=input_file_path, destination="/opt/ml/processing/inputs/"
+        ),
         ProcessingInput(dataset_definition=athena_dataset_definition),
     ]
 
@@ -647,7 +665,9 @@ def test_one_step_framework_processing_pipeline(
         assert response["PipelineArn"] == create_arn
 
         # Check CacheConfig
-        response = json.loads(pipeline.describe()["PipelineDefinition"])["Steps"][0]["CacheConfig"]
+        response = json.loads(pipeline.describe()["PipelineDefinition"])["Steps"][0][
+            "CacheConfig"
+        ]
         assert response["Enabled"] == cache_config.enable_caching
         assert response["ExpireAfter"] == cache_config.expire_after
 
@@ -749,7 +769,9 @@ def test_one_step_pyspark_processing_pipeline(
         assert response["PipelineArn"] == create_arn
 
         # Check CacheConfig
-        response = json.loads(pipeline.describe()["PipelineDefinition"])["Steps"][0]["CacheConfig"]
+        response = json.loads(pipeline.describe()["PipelineDefinition"])["Steps"][0][
+            "CacheConfig"
+        ]
         assert response["Enabled"] == cache_config.enable_caching
         assert response["ExpireAfter"] == cache_config.expire_after
 
@@ -854,7 +876,9 @@ def test_one_step_sparkjar_processing_pipeline(
         assert response["PipelineArn"] == create_arn
 
         # Check CacheConfig
-        response = json.loads(pipeline.describe()["PipelineDefinition"])["Steps"][0]["CacheConfig"]
+        response = json.loads(pipeline.describe()["PipelineDefinition"])["Steps"][0][
+            "CacheConfig"
+        ]
         assert response["Enabled"] == cache_config.enable_caching
         assert response["ExpireAfter"] == cache_config.expire_after
 
@@ -872,10 +896,14 @@ def test_one_step_sparkjar_processing_pipeline(
             pass
 
 
-def test_one_step_callback_pipeline(sagemaker_session, role, pipeline_name, region_name):
+def test_one_step_callback_pipeline(
+    sagemaker_session, role, pipeline_name, region_name
+):
     instance_count = ParameterInteger(name="InstanceCount", default_value=2)
 
-    outputParam1 = CallbackOutput(output_name="output1", output_type=CallbackOutputTypeEnum.String)
+    outputParam1 = CallbackOutput(
+        output_name="output1", output_type=CallbackOutputTypeEnum.String
+    )
     step_callback = CallbackStep(
         name="callback-step",
         sqs_queue_url="https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue",
@@ -924,7 +952,9 @@ def test_steps_with_map_params_pipeline(
     framework_version = "0.20.0"
     instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
     output_prefix = ParameterString(name="OutputPrefix", default_value="output")
-    input_data = f"s3://sagemaker-sample-data-{region_name}/processing/census/census-income.csv"
+    input_data = (
+        f"s3://sagemaker-sample-data-{region_name}/processing/census/census-income.csv"
+    )
 
     sklearn_processor = SKLearnProcessor(
         framework_version=framework_version,
@@ -944,7 +974,9 @@ def test_steps_with_map_params_pipeline(
             ProcessingInput(dataset_definition=athena_dataset_definition),
         ],
         outputs=[
-            ProcessingOutput(output_name="train_data", source="/opt/ml/processing/train"),
+            ProcessingOutput(
+                output_name="train_data", source="/opt/ml/processing/train"
+            ),
             ProcessingOutput(
                 output_name="test_data",
                 source="/opt/ml/processing/test",
@@ -1037,7 +1069,9 @@ def test_steps_with_map_params_pipeline(
         if step["Type"] == "Condition":
             condition_args = step["Arguments"]
 
-    assert training_args["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"] == {
+    assert training_args["InputDataConfig"][0]["DataSource"]["S3DataSource"][
+        "S3Uri"
+    ] == {
         "Get": "Steps.my-process.ProcessingOutputConfig.Outputs['train_data'].S3Output.S3Uri"
     }
     assert condition_args["Conditions"][0]["LeftValue"] == {
@@ -1064,7 +1098,9 @@ def test_two_step_callback_pipeline_with_output_reference(
 ):
     instance_count = ParameterInteger(name="InstanceCount", default_value=2)
 
-    outputParam1 = CallbackOutput(output_name="output1", output_type=CallbackOutputTypeEnum.String)
+    outputParam1 = CallbackOutput(
+        output_name="output1", output_type=CallbackOutputTypeEnum.String
+    )
     step_callback1 = CallbackStep(
         name="callback-step1",
         sqs_queue_url="https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue",
@@ -1103,11 +1139,15 @@ def test_two_step_callback_pipeline_with_output_reference(
 def test_one_step_lambda_pipeline(sagemaker_session, role, pipeline_name, region_name):
     instance_count = ParameterInteger(name="InstanceCount", default_value=2)
 
-    outputParam1 = LambdaOutput(output_name="output1", output_type=LambdaOutputTypeEnum.String)
+    outputParam1 = LambdaOutput(
+        output_name="output1", output_type=LambdaOutputTypeEnum.String
+    )
     step_lambda = LambdaStep(
         name="lambda-step",
         lambda_func=Lambda(
-            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
+            function_arn=(
+                "arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda"
+            ),
             session=sagemaker_session,
         ),
         inputs={"arg1": "foo"},
@@ -1148,11 +1188,15 @@ def test_two_step_lambda_pipeline_with_output_reference(
 ):
     instance_count = ParameterInteger(name="InstanceCount", default_value=2)
 
-    outputParam1 = LambdaOutput(output_name="output1", output_type=LambdaOutputTypeEnum.String)
+    outputParam1 = LambdaOutput(
+        output_name="output1", output_type=LambdaOutputTypeEnum.String
+    )
     step_lambda1 = LambdaStep(
         name="lambda-step1",
         lambda_func=Lambda(
-            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
+            function_arn=(
+                "arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda"
+            ),
             session=sagemaker_session,
         ),
         inputs={"arg1": "foo"},
@@ -1162,7 +1206,9 @@ def test_two_step_lambda_pipeline_with_output_reference(
     step_lambda2 = LambdaStep(
         name="lambda-step2",
         lambda_func=Lambda(
-            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
+            function_arn=(
+                "arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda"
+            ),
             session=sagemaker_session,
         ),
         inputs={"arg1": outputParam1},
@@ -1386,7 +1432,9 @@ def test_tuning_single_algo(
         objective_metric_name="test:acc",
         objective_type="Maximize",
         hyperparameter_ranges=hyperparameter_ranges,
-        metric_definitions=[{"Name": "test:acc", "Regex": "Overall test accuracy: (.*?);"}],
+        metric_definitions=[
+            {"Name": "test:acc", "Regex": "Overall test accuracy: (.*?);"}
+        ],
         max_jobs=2,
         max_parallel_jobs=2,
     )
@@ -1478,7 +1526,9 @@ def test_tuning_multi_algos(
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
     instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
 
-    input_data = f"s3://sagemaker-sample-data-{region_name}/processing/census/census-income.csv"
+    input_data = (
+        f"s3://sagemaker-sample-data-{region_name}/processing/census/census-income.csv"
+    )
 
     sklearn_processor = SKLearnProcessor(
         framework_version="0.20.0",
@@ -1503,8 +1553,12 @@ def test_tuning_multi_algos(
             ProcessingInput(dataset_definition=athena_dataset_definition),
         ],
         outputs=[
-            ProcessingOutput(output_name="train_data", source="/opt/ml/processing/train"),
-            ProcessingOutput(output_name="attributes", source="/opt/ml/processing/attributes.json"),
+            ProcessingOutput(
+                output_name="train_data", source="/opt/ml/processing/train"
+            ),
+            ProcessingOutput(
+                output_name="attributes", source="/opt/ml/processing/attributes.json"
+            ),
         ],
         property_files=[property_file],
         code=os.path.join(script_dir, "preprocessing.py"),
@@ -1540,12 +1594,20 @@ def test_tuning_multi_algos(
             "estimator-2": "test:acc",
         },
         hyperparameter_ranges_dict={
-            "estimator-1": {"batch-size": IntegerParameter(min_batch_size, max_batch_size)},
-            "estimator-2": {"batch-size": IntegerParameter(min_batch_size, max_batch_size)},
+            "estimator-1": {
+                "batch-size": IntegerParameter(min_batch_size, max_batch_size)
+            },
+            "estimator-2": {
+                "batch-size": IntegerParameter(min_batch_size, max_batch_size)
+            },
         },
         metric_definitions_dict={
-            "estimator-1": [{"Name": "test:acc", "Regex": "Overall test accuracy: (.*?);"}],
-            "estimator-2": [{"Name": "test:acc", "Regex": "Overall test accuracy: (.*?);"}],
+            "estimator-1": [
+                {"Name": "test:acc", "Regex": "Overall test accuracy: (.*?);"}
+            ],
+            "estimator-2": [
+                {"Name": "test:acc", "Regex": "Overall test accuracy: (.*?);"}
+            ],
         },
     )
 
@@ -1571,7 +1633,8 @@ def test_tuning_multi_algos(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
         )
 
         execution = pipeline.start(parameters={})
@@ -1672,15 +1735,23 @@ def test_sklearn_xgboost_sip_model_registration(
 
     # The path to the raw data.
     raw_data_path = "s3://{0}/{1}/data/raw/".format(bucket_name, prefix)
-    raw_data_path_param = ParameterString(name="raw_data_path", default_value=raw_data_path)
+    raw_data_path_param = ParameterString(
+        name="raw_data_path", default_value=raw_data_path
+    )
 
     # The output path to the training data.
-    train_data_path = "s3://{0}/{1}/data/preprocessed/train/".format(bucket_name, prefix)
-    train_data_path_param = ParameterString(name="train_data_path", default_value=train_data_path)
+    train_data_path = "s3://{0}/{1}/data/preprocessed/train/".format(
+        bucket_name, prefix
+    )
+    train_data_path_param = ParameterString(
+        name="train_data_path", default_value=train_data_path
+    )
 
     # The output path to the validation data.
     val_data_path = "s3://{0}/{1}/data/preprocessed/val/".format(bucket_name, prefix)
-    val_data_path_param = ParameterString(name="val_data_path", default_value=val_data_path)
+    val_data_path_param = ParameterString(
+        name="val_data_path", default_value=val_data_path
+    )
 
     # The training output path for the model.
     output_path = "s3://{0}/{1}/output/".format(bucket_name, prefix)
@@ -1852,8 +1923,12 @@ def test_sklearn_xgboost_sip_model_registration(
 
 
 @pytest.mark.skipif(
-    tests.integ.test_region() not in tests.integ.DRIFT_CHECK_BASELINES_SUPPORTED_REGIONS,
-    reason=f"DriftCheckBaselines changes are not fully deployed in {tests.integ.test_region()}.",
+    tests.integ.test_region()
+    not in tests.integ.DRIFT_CHECK_BASELINES_SUPPORTED_REGIONS,
+    reason=(
+        "DriftCheckBaselines changes are not fully deployed in"
+        f" {tests.integ.test_region()}."
+    ),
 )
 def test_model_registration_with_drift_check_baselines(
     sagemaker_session,
@@ -2008,7 +2083,10 @@ def test_model_registration_with_drift_check_baselines(
             assert len(execution_steps) == 1
             failure_reason = execution_steps[0].get("FailureReason", "")
             if failure_reason != "":
-                logging.error(f"Pipeline execution failed with error: {failure_reason}. Retrying..")
+                logging.error(
+                    f"Pipeline execution failed with error: {failure_reason}."
+                    " Retrying.."
+                )
                 continue
             assert execution_steps[0]["StepStatus"] == "Succeeded"
             assert execution_steps[0]["StepName"] == "MyRegisterModelStep"
@@ -2022,19 +2100,27 @@ def test_model_registration_with_drift_check_baselines(
                 == "application/json"
             )
             assert (
-                response["DriftCheckBaselines"]["Bias"]["PreTrainingConstraints"]["ContentType"]
+                response["DriftCheckBaselines"]["Bias"]["PreTrainingConstraints"][
+                    "ContentType"
+                ]
                 == "application/json"
             )
             assert (
-                response["DriftCheckBaselines"]["Explainability"]["Constraints"]["ContentType"]
+                response["DriftCheckBaselines"]["Explainability"]["Constraints"][
+                    "ContentType"
+                ]
                 == "application/json"
             )
             assert (
-                response["DriftCheckBaselines"]["ModelQuality"]["Statistics"]["ContentType"]
+                response["DriftCheckBaselines"]["ModelQuality"]["Statistics"][
+                    "ContentType"
+                ]
                 == "application/json"
             )
             assert (
-                response["DriftCheckBaselines"]["ModelDataQuality"]["Statistics"]["ContentType"]
+                response["DriftCheckBaselines"]["ModelDataQuality"]["Statistics"][
+                    "ContentType"
+                ]
                 == "application/json"
             )
             break
@@ -2161,11 +2247,15 @@ def test_training_job_with_debugger_and_profiler(
 
     rules = [
         Rule.sagemaker(rule_configs.vanishing_gradient()),
-        Rule.sagemaker(base_config=rule_configs.all_zero(), rule_parameters={"tensor_regex": ".*"}),
+        Rule.sagemaker(
+            base_config=rule_configs.all_zero(), rule_parameters={"tensor_regex": ".*"}
+        ),
         Rule.sagemaker(rule_configs.loss_not_decreasing()),
     ]
     debugger_hook_config = DebuggerHookConfig(
-        s3_output_path=f"s3://{sagemaker_session.default_bucket()}/{uuid.uuid4()}/tensors"
+        s3_output_path=(
+            f"s3://{sagemaker_session.default_bucket()}/{uuid.uuid4()}/tensors"
+        )
     )
 
     base_dir = os.path.join(DATA_DIR, "pytorch_mnist")
@@ -2223,7 +2313,9 @@ def test_training_job_with_debugger_and_profiler(
             assert len(execution_steps) == 1
             failure_reason = execution_steps[0].get("FailureReason", "")
             if failure_reason != "":
-                logging.error(f"Pipeline execution failed with error: {failure_reason}.Retrying..")
+                logging.error(
+                    f"Pipeline execution failed with error: {failure_reason}.Retrying.."
+                )
                 continue
             assert execution_steps[0]["StepName"] == "pytorch-train"
             assert execution_steps[0]["StepStatus"] == "Succeeded"
@@ -2242,10 +2334,16 @@ def test_training_job_with_debugger_and_profiler(
                     config["RuleParameters"]["rule_to_invoke"]
                     == rule.rule_parameters["rule_to_invoke"]
                 )
-            assert job_description["DebugHookConfig"] == debugger_hook_config._to_request_dict()
+            assert (
+                job_description["DebugHookConfig"]
+                == debugger_hook_config._to_request_dict()
+            )
 
             assert job_description["ProfilingStatus"] == "Enabled"
-            assert job_description["ProfilerConfig"]["ProfilingIntervalInMilliseconds"] == 500
+            assert (
+                job_description["ProfilerConfig"]["ProfilingIntervalInMilliseconds"]
+                == 500
+            )
             break
         finally:
             try:
@@ -2361,7 +2459,9 @@ def test_two_processing_job_depends_on(
             pass
 
 
-def test_one_step_data_wrangler_processing_pipeline(sagemaker_session, role, pipeline_name):
+def test_one_step_data_wrangler_processing_pipeline(
+    sagemaker_session, role, pipeline_name
+):
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
     instance_type = ParameterString(name="InstanceType", default_value="ml.m5.4xlarge")
 
@@ -2420,8 +2520,13 @@ def test_one_step_data_wrangler_processing_pipeline(sagemaker_session, role, pip
         "data-wrangler", region=sagemaker_session.boto_region_name
     )
     assert len(definition["Steps"]) == 1
-    assert definition["Steps"][0]["Arguments"]["AppSpecification"]["ImageUri"] is not None
-    assert definition["Steps"][0]["Arguments"]["AppSpecification"]["ImageUri"] == expected_image_uri
+    assert (
+        definition["Steps"][0]["Arguments"]["AppSpecification"]["ImageUri"] is not None
+    )
+    assert (
+        definition["Steps"][0]["Arguments"]["AppSpecification"]["ImageUri"]
+        == expected_image_uri
+    )
 
     assert definition["Steps"][0]["Arguments"]["ProcessingInputs"] is not None
     processing_inputs = definition["Steps"][0]["Arguments"]["ProcessingInputs"]
@@ -2432,11 +2537,16 @@ def test_one_step_data_wrangler_processing_pipeline(sagemaker_session, role, pip
             assert processing_input["S3Input"]["LocalPath"] == "/opt/ml/processing/flow"
         elif processing_input["InputName"] == "dummy_data.csv":
             assert processing_input["S3Input"]["S3Uri"].endswith(".csv")
-            assert processing_input["S3Input"]["LocalPath"] == "/opt/ml/processing/dummy_data.csv"
+            assert (
+                processing_input["S3Input"]["LocalPath"]
+                == "/opt/ml/processing/dummy_data.csv"
+            )
         else:
             raise AssertionError("Unknown input name")
     assert definition["Steps"][0]["Arguments"]["ProcessingOutputConfig"] is not None
-    processing_outputs = definition["Steps"][0]["Arguments"]["ProcessingOutputConfig"]["Outputs"]
+    processing_outputs = definition["Steps"][0]["Arguments"]["ProcessingOutputConfig"][
+        "Outputs"
+    ]
     assert len(processing_outputs) == 1
     assert processing_outputs[0]["OutputName"] == output_name
     assert processing_outputs[0]["S3Output"] is not None
@@ -2514,7 +2624,9 @@ def test_one_step_ingestion_pipeline(
         ProcessingOutput(
             output_name=output_name,
             app_managed=True,
-            feature_store_output=FeatureStoreOutput(feature_group_name=feature_group_name),
+            feature_store_output=FeatureStoreOutput(
+                feature_group_name=feature_group_name
+            ),
         )
     ]
 
@@ -2588,9 +2700,9 @@ def test_one_step_ingestion_pipeline(
                     output_location=f"{offline_store_s3_uri}/query_results",
                 )
                 athena_query.wait()
-                assert "SUCCEEDED" == athena_query.get_query_execution().get("QueryExecution").get(
-                    "Status"
-                ).get("State")
+                assert "SUCCEEDED" == athena_query.get_query_execution().get(
+                    "QueryExecution"
+                ).get("Status").get("State")
 
                 df = athena_query.as_dataframe()
                 assert pd.read_csv(input_file_path).shape[0] == df.shape[0]
@@ -2649,14 +2761,18 @@ def test_end_to_end_pipeline_successful_execution(
         )
 
     # define parameters
-    processing_instance_count = ParameterInteger(name="ProcessingInstanceCount", default_value=1)
+    processing_instance_count = ParameterInteger(
+        name="ProcessingInstanceCount", default_value=1
+    )
     processing_instance_type = ParameterString(
         name="ProcessingInstanceType", default_value="ml.m5.xlarge"
     )
     training_instance_type = ParameterString(
         name="TrainingInstanceType", default_value="ml.m5.xlarge"
     )
-    model_approval_status = ParameterString(name="ModelApprovalStatus", default_value="Approved")
+    model_approval_status = ParameterString(
+        name="ModelApprovalStatus", default_value="Approved"
+    )
     input_data = ParameterString(
         name="InputData",
         default_value=input_data_uri,
@@ -2684,7 +2800,9 @@ def test_end_to_end_pipeline_successful_execution(
         ],
         outputs=[
             ProcessingOutput(output_name="train", source="/opt/ml/processing/train"),
-            ProcessingOutput(output_name="validation", source="/opt/ml/processing/validation"),
+            ProcessingOutput(
+                output_name="validation", source="/opt/ml/processing/validation"
+            ),
             ProcessingOutput(output_name="test", source="/opt/ml/processing/test"),
         ],
         code=os.path.join(data_path, "abalone/preprocessing.py"),
@@ -2765,7 +2883,9 @@ def test_end_to_end_pipeline_successful_execution(
             ),
         ],
         outputs=[
-            ProcessingOutput(output_name="evaluation", source="/opt/ml/processing/evaluation"),
+            ProcessingOutput(
+                output_name="evaluation", source="/opt/ml/processing/evaluation"
+            ),
         ],
         code=os.path.join(data_path, "abalone/evaluation.py"),
         property_files=[evaluation_report],
@@ -2806,7 +2926,9 @@ def test_end_to_end_pipeline_successful_execution(
     model_metrics = ModelMetrics(
         model_statistics=MetricsSource(
             s3_uri="{}/evaluation.json".format(
-                step_eval.arguments["ProcessingOutputConfig"]["Outputs"][0]["S3Output"]["S3Uri"]
+                step_eval.arguments["ProcessingOutputConfig"]["Outputs"][0]["S3Output"][
+                    "S3Uri"
+                ]
             ),
             content_type="application/json",
         )
@@ -2911,7 +3033,9 @@ def cleanup_feature_group(feature_group: FeatureGroup):
 def test_large_pipeline(sagemaker_session, role, pipeline_name, region_name):
     instance_count = ParameterInteger(name="InstanceCount", default_value=2)
 
-    outputParam = CallbackOutput(output_name="output", output_type=CallbackOutputTypeEnum.String)
+    outputParam = CallbackOutput(
+        output_name="output", output_type=CallbackOutputTypeEnum.String
+    )
 
     callback_steps = [
         CallbackStep(
@@ -2937,7 +3061,9 @@ def test_large_pipeline(sagemaker_session, role, pipeline_name, region_name):
             create_arn,
         )
         response = pipeline.describe()
-        assert len(json.loads(pipeline.describe()["PipelineDefinition"])["Steps"]) == 2000
+        assert (
+            len(json.loads(pipeline.describe()["PipelineDefinition"])["Steps"]) == 2000
+        )
 
         pipeline.parameters = [ParameterInteger(name="InstanceCount", default_value=1)]
         response = pipeline.update(role)
@@ -2958,7 +3084,9 @@ def test_create_and_update_with_parallelism_config(
 ):
     instance_count = ParameterInteger(name="InstanceCount", default_value=2)
 
-    outputParam = CallbackOutput(output_name="output", output_type=CallbackOutputTypeEnum.String)
+    outputParam = CallbackOutput(
+        output_name="output", output_type=CallbackOutputTypeEnum.String
+    )
 
     callback_steps = [
         CallbackStep(
@@ -2977,7 +3105,9 @@ def test_create_and_update_with_parallelism_config(
     )
 
     try:
-        response = pipeline.create(role, parallelism_config={"MaxParallelExecutionSteps": 50})
+        response = pipeline.create(
+            role, parallelism_config={"MaxParallelExecutionSteps": 50}
+        )
         create_arn = response["PipelineArn"]
         assert re.match(
             rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
@@ -2987,7 +3117,9 @@ def test_create_and_update_with_parallelism_config(
         assert response["ParallelismConfiguration"]["MaxParallelExecutionSteps"] == 50
 
         pipeline.parameters = [ParameterInteger(name="InstanceCount", default_value=1)]
-        response = pipeline.update(role, parallelism_config={"MaxParallelExecutionSteps": 55})
+        response = pipeline.update(
+            role, parallelism_config={"MaxParallelExecutionSteps": 55}
+        )
         update_arn = response["PipelineArn"]
         assert re.match(
             rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
