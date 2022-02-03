@@ -22,7 +22,10 @@ from botocore.exceptions import WaiterError
 from sagemaker.processing import ProcessingInput
 from sagemaker.session import get_execution_role
 from sagemaker.sklearn.processing import SKLearnProcessor
-from sagemaker.dataset_definition.inputs import DatasetDefinition, AthenaDatasetDefinition
+from sagemaker.dataset_definition.inputs import (
+    DatasetDefinition,
+    AthenaDatasetDefinition,
+)
 from sagemaker.workflow.parameters import (
     ParameterInteger,
     ParameterString,
@@ -134,7 +137,8 @@ def test_pipeline_execution_processing_step_with_retry(
                 expire_after_mins=5,
             ),
             SageMakerJobStepRetryPolicy(
-                exception_types=[SageMakerJobExceptionTypeEnum.CAPACITY_ERROR], max_attempts=10
+                exception_types=[SageMakerJobExceptionTypeEnum.CAPACITY_ERROR],
+                max_attempts=10,
             ),
         ],
     )
@@ -252,18 +256,19 @@ def test_model_registration_with_model_repack(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
         )
 
         execution = pipeline.start(parameters={})
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
 
         execution = pipeline.start(parameters={"GoodEnoughInput": 0})
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
     finally:
