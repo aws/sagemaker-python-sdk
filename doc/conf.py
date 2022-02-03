@@ -16,7 +16,7 @@ from __future__ import absolute_import
 import pkg_resources
 from datetime import datetime
 
-project = u"sagemaker"
+project = "sagemaker"
 version = pkg_resources.require(project)[0].version
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
@@ -38,7 +38,7 @@ templates_path = ["_templates"]
 source_suffix = ".rst"  # The suffix of source filenames.
 master_doc = "index"  # The master toctree document.
 
-copyright = u"%s, Amazon" % datetime.now().year
+copyright = "%s, Amazon" % datetime.now().year
 
 # The full version, including alpha/beta/rc tags.
 release = version

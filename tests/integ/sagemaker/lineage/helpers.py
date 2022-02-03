@@ -42,7 +42,7 @@ def retry(callable, num_attempts=8):
             if i == num_attempts - 1:
                 raise ex
             print("Retrying", ex)
-            time.sleep(2 ** i)
+            time.sleep(2**i)
     assert False, "logic error in retry"
 
 
