@@ -577,6 +577,11 @@ Here is an example:
 Use Prebuilt Models with SageMaker JumpStart
 ********************************************
 
+.. toctree::
+    :maxdepth: 2
+
+    doc_utils/jumpstart
+
 `Amazon SageMaker JumpStart <https://aws.amazon.com/sagemaker/getting-started/>`__ is a
 SageMaker feature that helps users bring machine learning (ML)
 applications to market using prebuilt solutions for common use cases,
