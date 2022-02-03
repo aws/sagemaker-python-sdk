@@ -34,11 +34,13 @@ from sagemaker.debugger import (
     ProfilerRule,
     Rule,
 )
+from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.estimator import Estimator, EstimatorBase, Framework, _TrainingJob
 from sagemaker.fw_utils import PROFILER_UNSUPPORTED_REGIONS
 from sagemaker.inputs import ShuffleConfig
 from sagemaker.model import FrameworkModel
 from sagemaker.predictor import Predictor
+from sagemaker.predictor_async import AsyncPredictor
 from sagemaker.transformer import Transformer
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
@@ -2474,6 +2476,7 @@ def test_fit_deploy_tags_in_estimator(name_from_base, sagemaker_session):
         kms_key=None,
         wait=True,
         data_capture_config_dict=None,
+        async_inference_config_dict=None,
     )
 
     sagemaker_session.create_model.assert_called_with(
@@ -2519,6 +2522,7 @@ def test_fit_deploy_tags(name_from_base, sagemaker_session):
         kms_key=None,
         wait=True,
         data_capture_config_dict=None,
+        async_inference_config_dict=None,
     )
 
     sagemaker_session.create_model.assert_called_with(
@@ -2801,6 +2805,32 @@ def test_generic_to_deploy(time, sagemaker_session):
     assert predictor.sagemaker_session == sagemaker_session
 
 
+def test_generic_to_deploy_async(sagemaker_session):
+    e = Estimator(
+        IMAGE_URI,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+    )
+
+    e.fit()
+    s3_output_path = "s3://some-s3-path"
+
+    predictor_async = e.deploy(
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        async_inference_config=AsyncInferenceConfig(output_path=s3_output_path),
+    )
+
+    sagemaker_session.create_model.assert_called_once()
+    _, kwargs = sagemaker_session.create_model.call_args
+    assert isinstance(predictor_async, AsyncPredictor)
+    assert predictor_async.endpoint_name.startswith(IMAGE_URI)
+    assert predictor_async.sagemaker_session == sagemaker_session
+
+
 def test_generic_to_deploy_bad_arguments_combination(sagemaker_session):
     e = Estimator(
         IMAGE_URI,
@@ -2881,6 +2911,7 @@ def test_generic_to_deploy_kms(create_model, sagemaker_session):
         wait=True,
         kms_key=kms_key,
         data_capture_config=None,
+        async_inference_config=None,
         serverless_inference_config=None,
     )
 
