@@ -1,4 +1,4 @@
 [run]
-concurrency = thread
+concurrency = threading
 omit = sagemaker/tests/*
 timid = True
