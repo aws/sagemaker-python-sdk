@@ -5,4 +5,3 @@ Model URIs
     :members:
     :undoc-members:
     :show-inheritance:
-    
