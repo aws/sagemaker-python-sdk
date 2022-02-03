@@ -693,40 +693,6 @@ def test_processing_step_normalizes_args_with_no_code(mock_normalize_args, scrip
     )
 
 
-@patch("sagemaker.processing.ScriptProcessor._normalize_args")
-def test_processing_step_normalizes_args_with_no_code(mock_normalize_args, script_processor):
-    cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
-    inputs = [
-        ProcessingInput(
-            source=f"s3://{BUCKET}/processing_manifest",
-            destination="processing_manifest",
-        )
-    ]
-    outputs = [
-        ProcessingOutput(
-            source=f"s3://{BUCKET}/processing_manifest",
-            destination="processing_manifest",
-        )
-    ]
-    step = ProcessingStep(
-        name="MyProcessingStep",
-        processor=script_processor,
-        inputs=inputs,
-        outputs=outputs,
-        job_arguments=["arg1", "arg2"],
-        cache_config=cache_config,
-    )
-    mock_normalize_args.return_value = [step.inputs, step.outputs]
-    step.to_request()
-    mock_normalize_args.assert_called_with(
-        job_name=None,
-        arguments=step.job_arguments,
-        inputs=step.inputs,
-        outputs=step.outputs,
-        code=None,
-    )
-
-
 def test_create_model_step(sagemaker_session):
     model = Model(
         image_uri=IMAGE_URI,
