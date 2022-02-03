@@ -102,6 +102,13 @@ def test_list_by_type(artifact_objs, sagemaker_session):
     assert artifact_names_listed[0] == expected_name
 
 
+def test_get_artifact(static_dataset_artifact):
+    s3_uri = static_dataset_artifact.source.source_uri
+    expected_artifact = static_dataset_artifact.s3_uri_artifacts(s3_uri=s3_uri)
+    for ar in expected_artifact["ArtifactSummaries"]:
+        assert ar.get("Source")["SourceUri"] == s3_uri
+
+
 def test_downstream_trials(trial_associated_artifact, trial_obj, sagemaker_session):
     # allow trial components to index, 30 seconds max
     def validate():
@@ -118,6 +125,18 @@ def test_downstream_trials(trial_associated_artifact, trial_obj, sagemaker_sessi
         assert trial_obj.trial_name in trials
 
     retry(validate, num_attempts=3)
+
+
+def test_downstream_trials_v2(trial_associated_artifact, trial_obj, sagemaker_session):
+    trials = trial_associated_artifact.downstream_trials_v2()
+    assert len(trials) == 1
+    assert trial_obj.trial_name in trials
+
+
+def test_upstream_trials(upstream_trial_associated_artifact, trial_obj, sagemaker_session):
+    trials = upstream_trial_associated_artifact.upstream_trials()
+    assert len(trials) == 1
+    assert trial_obj.trial_name in trials
 
 
 @pytest.mark.timeout(30)

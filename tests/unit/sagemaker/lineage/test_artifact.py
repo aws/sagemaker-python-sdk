@@ -377,3 +377,143 @@ def test_downstream_trials(sagemaker_session):
         ),
     ]
     assert expected_calls == sagemaker_session.sagemaker_client.list_associations.mock_calls
+
+
+def test_downstream_trials_v2(sagemaker_session):
+    sagemaker_session.sagemaker_client.query_lineage.return_value = {
+        "Vertices": [
+            {"Arn": "B" + str(i), "Type": "DataSet", "LineageType": "Artifact"} for i in range(10)
+        ],
+        "Edges": [{"SourceArn": "arn1", "DestinationArn": "arn2", "AssociationType": "Produced"}],
+    }
+    sagemaker_session.sagemaker_client.search.return_value = {
+        "Results": [
+            {
+                "TrialComponent": {
+                    "TrialComponentName": "tc-1",
+                    "TrialComponentArn": "arn::tc-1",
+                    "DisplayName": "TC1",
+                    "Parents": [{"TrialName": "test-trial-name"}],
+                }
+            }
+        ]
+    }
+
+    obj = artifact.Artifact(
+        sagemaker_session=sagemaker_session,
+        artifact_arn="test-arn",
+        artifact_name="foo",
+        properties={"k1": "v1", "k2": "v2"},
+        properties_to_remove=["r1"],
+    )
+
+    result = obj.downstream_trials_v2()
+
+    expected_trials = ["test-trial-name"]
+
+    assert expected_trials == result
+
+    expected_calls = [
+        unittest.mock.call(
+            Direction="Descendants",
+            Filters={"LineageTypes": ["TrialComponent"]},
+            IncludeEdges=False,
+            MaxDepth=10,
+            StartArns=["test-arn"],
+        ),
+    ]
+    assert expected_calls == sagemaker_session.sagemaker_client.query_lineage.mock_calls
+
+
+def test_upstream_trials(sagemaker_session):
+    sagemaker_session.sagemaker_client.query_lineage.return_value = {
+        "Vertices": [
+            {"Arn": "B" + str(i), "Type": "DataSet", "LineageType": "Artifact"} for i in range(10)
+        ],
+        "Edges": [{"SourceArn": "arn1", "DestinationArn": "arn2", "AssociationType": "Produced"}],
+    }
+    sagemaker_session.sagemaker_client.search.return_value = {
+        "Results": [
+            {
+                "TrialComponent": {
+                    "TrialComponentName": "tc-1",
+                    "TrialComponentArn": "arn::tc-1",
+                    "DisplayName": "TC1",
+                    "Parents": [{"TrialName": "test-trial-name"}],
+                }
+            }
+        ]
+    }
+
+    obj = artifact.Artifact(
+        sagemaker_session=sagemaker_session,
+        artifact_arn="test-arn",
+        artifact_name="foo",
+        properties={"k1": "v1", "k2": "v2"},
+        properties_to_remove=["r1"],
+    )
+
+    result = obj.upstream_trials()
+
+    expected_trials = ["test-trial-name"]
+
+    assert expected_trials == result
+
+    expected_calls = [
+        unittest.mock.call(
+            Direction="Ascendants",
+            Filters={"LineageTypes": ["TrialComponent"]},
+            IncludeEdges=False,
+            MaxDepth=10,
+            StartArns=["test-arn"],
+        ),
+    ]
+    assert expected_calls == sagemaker_session.sagemaker_client.query_lineage.mock_calls
+
+
+def test_s3_uri_artifacts(sagemaker_session):
+    obj = artifact.Artifact(
+        sagemaker_session=sagemaker_session,
+        artifact_arn="test-arn",
+        artifact_name="foo",
+        source_uri="s3://abced",
+        properties={"k1": "v1", "k2": "v2"},
+        properties_to_remove=["r1"],
+    )
+    sagemaker_session.sagemaker_client.list_artifacts.side_effect = [
+        {
+            "ArtifactSummaries": [
+                {
+                    "ArtifactArn": "A",
+                    "ArtifactName": "B",
+                    "Source": {
+                        "SourceUri": "D",
+                        "source_types": [{"SourceIdType": "source_id_type", "Value": "value1"}],
+                    },
+                    "ArtifactType": "test-type",
+                }
+            ],
+            "NextToken": "100",
+        },
+    ]
+    result = obj.s3_uri_artifacts(s3_uri="s3://abced")
+
+    expected_calls = [
+        unittest.mock.call(SourceUri="s3://abced"),
+    ]
+    expected_result = {
+        "ArtifactSummaries": [
+            {
+                "ArtifactArn": "A",
+                "ArtifactName": "B",
+                "Source": {
+                    "SourceUri": "D",
+                    "source_types": [{"SourceIdType": "source_id_type", "Value": "value1"}],
+                },
+                "ArtifactType": "test-type",
+            }
+        ],
+        "NextToken": "100",
+    }
+    assert expected_calls == sagemaker_session.sagemaker_client.list_artifacts.mock_calls
+    assert result == expected_result

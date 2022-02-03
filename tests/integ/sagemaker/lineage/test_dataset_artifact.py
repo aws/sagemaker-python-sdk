@@ -35,3 +35,19 @@ def test_endpoint_contexts(
     assert len(contexts_from_query) > 0
     for context in contexts_from_query:
         assert context.context_type == "Endpoint"
+
+
+def test_get_upstream_datasets(static_dataset_artifact, sagemaker_session):
+    artifacts_from_query = static_dataset_artifact.upstream_datasets()
+    assert len(artifacts_from_query) > 0
+    for artifact in artifacts_from_query:
+        assert artifact.artifact_type == "DataSet"
+        assert "artifact" in artifact.artifact_arn
+
+
+def test_get_down_datasets(static_dataset_artifact, sagemaker_session):
+    artifacts_from_query = static_dataset_artifact.downstream_datasets()
+    assert len(artifacts_from_query) > 0
+    for artifact in artifacts_from_query:
+        assert artifact.artifact_type == "DataSet"
+        assert "artifact" in artifact.artifact_arn

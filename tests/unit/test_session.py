@@ -24,6 +24,7 @@ from mock import ANY, MagicMock, Mock, patch, call, mock_open
 
 import sagemaker
 from sagemaker import TrainingInput, Session, get_execution_role
+from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.session import (
     _tuning_job_status,
     _transform_job_status,
@@ -748,6 +749,11 @@ STOPPED_DESCRIBE_TRANSFORM_JOB_RESULT.update({"TransformJobStatus": "Stopped"})
 
 IN_PROGRESS_DESCRIBE_TRANSFORM_JOB_RESULT = dict(COMPLETED_DESCRIBE_TRANSFORM_JOB_RESULT)
 IN_PROGRESS_DESCRIBE_TRANSFORM_JOB_RESULT.update({"TransformJobStatus": "InProgress"})
+
+SERVERLESS_INFERENCE_CONFIG = {
+    "MemorySizeInMB": 2048,
+    "MaxConcurrency": 2,
+}
 
 
 @pytest.fixture()
@@ -1908,6 +1914,57 @@ def test_endpoint_from_production_variants_with_accelerator_type(sagemaker_sessi
     )
     sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
         EndpointConfigName="some-endpoint", ProductionVariants=pvs, Tags=tags
+    )
+
+
+def test_endpoint_from_production_variants_with_serverless_inference_config(sagemaker_session):
+    ims = sagemaker_session
+    ims.sagemaker_client.describe_endpoint = Mock(return_value={"EndpointStatus": "InService"})
+    pvs = [
+        sagemaker.production_variant(
+            "A", "ml.p2.xlarge", serverless_inference_config=SERVERLESS_INFERENCE_CONFIG
+        ),
+        sagemaker.production_variant(
+            "B", "p299.4096xlarge", serverless_inference_config=SERVERLESS_INFERENCE_CONFIG
+        ),
+    ]
+    ex = ClientError(
+        {"Error": {"Code": "ValidationException", "Message": "Could not find your thing"}}, "b"
+    )
+    ims.sagemaker_client.describe_endpoint_config = Mock(side_effect=ex)
+    tags = [{"ModelName": "TestModel"}]
+    sagemaker_session.endpoint_from_production_variants("some-endpoint", pvs, tags)
+    sagemaker_session.sagemaker_client.create_endpoint.assert_called_with(
+        EndpointConfigName="some-endpoint", EndpointName="some-endpoint", Tags=tags
+    )
+    sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
+        EndpointConfigName="some-endpoint", ProductionVariants=pvs, Tags=tags
+    )
+
+
+def test_endpoint_from_production_variants_with_async_config(sagemaker_session):
+    ims = sagemaker_session
+    ims.sagemaker_client.describe_endpoint = Mock(return_value={"EndpointStatus": "InService"})
+    pvs = [
+        sagemaker.production_variant("A", "ml.p2.xlarge"),
+        sagemaker.production_variant("B", "p299.4096xlarge"),
+    ]
+    ex = ClientError(
+        {"Error": {"Code": "ValidationException", "Message": "Could not find your thing"}}, "b"
+    )
+    ims.sagemaker_client.describe_endpoint_config = Mock(side_effect=ex)
+    sagemaker_session.endpoint_from_production_variants(
+        "some-endpoint",
+        pvs,
+        async_inference_config_dict=AsyncInferenceConfig,
+    )
+    sagemaker_session.sagemaker_client.create_endpoint.assert_called_with(
+        EndpointConfigName="some-endpoint", EndpointName="some-endpoint", Tags=[]
+    )
+    sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
+        EndpointConfigName="some-endpoint",
+        ProductionVariants=pvs,
+        AsyncInferenceConfig=AsyncInferenceConfig,
     )
 
 

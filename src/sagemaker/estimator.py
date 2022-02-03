@@ -1113,8 +1113,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
     def deploy(
         self,
-        initial_instance_count,
-        instance_type,
+        initial_instance_count=None,
+        instance_type=None,
         serializer=None,
         deserializer=None,
         accelerator_type=None,
@@ -1125,6 +1125,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         kms_key=None,
         data_capture_config=None,
         tags=None,
+        serverless_inference_config=None,
+        async_inference_config=None,
         **kwargs,
     ):
         """Deploy the trained model to an Amazon SageMaker endpoint.
@@ -1135,10 +1137,14 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         http://docs.aws.amazon.com/sagemaker/latest/dg/how-it-works-training.html
 
         Args:
-            initial_instance_count (int): Minimum number of EC2 instances to
-                deploy to an endpoint for prediction.
-            instance_type (str): Type of EC2 instance to deploy to an endpoint
-                for prediction, for example, 'ml.c4.xlarge'.
+            initial_instance_count (int): The initial number of instances to run
+                in the ``Endpoint`` created from this ``Model``. If not using
+                serverless inference, then it need to be a number larger or equals
+                to 1 (default: None)
+            instance_type (str): The EC2 instance type to deploy this Model to.
+                For example, 'ml.p2.xlarge', or 'local' for local mode. If not using
+                serverless inference, then it is required to deploy a model.
+                (default: None)
             serializer (:class:`~sagemaker.serializers.BaseSerializer`): A
                 serializer object, used to encode data for an inference endpoint
                 (default: None). If ``serializer`` is not None, then
@@ -1171,6 +1177,17 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             data_capture_config (sagemaker.model_monitor.DataCaptureConfig): Specifies
                 configuration related to Endpoint data capture for use with
                 Amazon SageMaker Model Monitoring. Default: None.
+            async_inference_config (sagemaker.model_monitor.AsyncInferenceConfig): Specifies
+                configuration related to async inference. Use this configuration when trying
+                to create async endpoint and make async inference. If empty config object
+                passed through, will use default config to deploy async endpoint. Deploy a
+                real-time endpoint if it's None. (default: None)
+            serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
+                Specifies configuration related to serverless endpoint. Use this configuration
+                when trying to create serverless endpoint and make serverless inference. If
+                empty object passed through, will use pre-defined values in
+                ``ServerlessInferenceConfig`` class to deploy serverless endpoint. Deploy an
+                instance based endpoint if it's None. (default: None)
             tags(List[dict[str, str]]): Optional. The list of tags to attach to this specific
                 endpoint. Example:
                 >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]
@@ -1188,6 +1205,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 endpoint and obtain inferences.
         """
         removed_kwargs("update_endpoint", kwargs)
+        is_serverless = serverless_inference_config is not None
         self._ensure_latest_training_job()
         self._ensure_base_job_name()
         default_name = name_from_base(self.base_job_name)
@@ -1195,7 +1213,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         model_name = model_name or default_name
 
         self.deploy_instance_type = instance_type
-        if use_compiled_model:
+        if use_compiled_model and not is_serverless:
             family = "_".join(instance_type.split(".")[:-1])
             if family not in self._compiled_models:
                 raise ValueError(
@@ -1224,6 +1242,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             wait=wait,
             kms_key=kms_key,
             data_capture_config=data_capture_config,
+            serverless_inference_config=serverless_inference_config,
+            async_inference_config=async_inference_config,
         )
 
     def register(

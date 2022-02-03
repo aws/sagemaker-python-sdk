@@ -1,5 +1,46 @@
 # Changelog
 
+## v2.74.0 (2022-01-26)
+
+### Features
+
+ * Add support for SageMaker lineage queries context
+
+### Bug Fixes and Other Changes
+
+ * support specifying a facet by its column index
+
+### Documentation Changes
+
+ * more documentation for serverless inference
+
+## v2.73.0 (2022-01-19)
+
+### Features
+
+ * Add EMRStep support in Sagemaker pipeline
+ * Adds Lineage queries in artifact, context and trial components
+ * Add support for SageMaker lineage queries in action
+ * Adds support for Serverless inference
+ * support checkpoint to be passed from estimator
+ * support JsonGet/Join parameterization in tuning step Hyperparameters
+ * Support model pipelines in CreateModelStep
+ * enable python 3.9
+ * Add models_v2 under lineage context
+
+### Bug Fixes and Other Changes
+
+ * allow kms_key to be passed for processing step
+ * Remove duplicate vertex/edge in query lineage
+ * update pricing link
+ * Update CHANGELOG.md
+ * fixes unnecessary session call while generating pipeline definition for lambda step
+
+### Documentation Changes
+
+ * Enhance smddp 1.2.2 doc
+ * Document the available ExecutionVariables
+
 ## v2.72.3 (2022-01-10)
 
 ### Features
