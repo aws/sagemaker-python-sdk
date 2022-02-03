@@ -244,7 +244,7 @@ class MXNetModel(FrameworkModel):
         deploy_key_prefix = model_code_key_prefix(self.key_prefix, self.name, deploy_image)
         self._upload_code(deploy_key_prefix, self._is_mms_version())
         deploy_env = dict(self.env)
-        deploy_env.update(self._framework_env_vars())
+        deploy_env.update(self._script_mode_env_vars())
 
         if self.model_server_workers:
             deploy_env[MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = str(self.model_server_workers)
