@@ -632,7 +632,7 @@ the ``model_id`` and ``model_version`` needed to retrieve the URI.
       required parameter.
 
 To retrieve a model, first select a ``model id`` and ``version`` from
-the Available Models.
+the :doc:`Available Models <./doc_utils/jumpstart>`.
 
 .. code:: python
 
