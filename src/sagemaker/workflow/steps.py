@@ -30,6 +30,7 @@ from sagemaker.inputs import (
     TransformInput,
 )
 from sagemaker.model import Model
+from sagemaker.pipeline import PipelineModel
 from sagemaker.processing import (
     ProcessingInput,
     ProcessingJob,
@@ -59,6 +60,7 @@ class StepTypeEnum(Enum, metaclass=DefaultEnumMeta):
     LAMBDA = "Lambda"
     QUALITY_CHECK = "QualityCheck"
     CLARIFY_CHECK = "ClarifyCheck"
+    EMR = "EMR"
 
 
 @attr.s
@@ -319,7 +321,7 @@ class CreateModelStep(ConfigurableRetryStep):
     def __init__(
         self,
         name: str,
-        model: Model,
+        model: Union[Model, PipelineModel],
         inputs: CreateModelInput,
         depends_on: Union[List[str], List[Step]] = None,
         retry_policies: List[RetryPolicy] = None,
@@ -333,7 +335,8 @@ class CreateModelStep(ConfigurableRetryStep):
 
         Args:
             name (str): The name of the CreateModel step.
-            model (Model): A `sagemaker.model.Model` instance.
+            model (Model or PipelineModel): A `sagemaker.model.Model`
+                or `sagemaker.pipeline.PipelineModel` instance.
             inputs (CreateModelInput): A `sagemaker.inputs.CreateModelInput` instance.
                 Defaults to `None`.
             depends_on (List[str] or List[Step]): A list of step names or step instances
@@ -358,16 +361,25 @@ class CreateModelStep(ConfigurableRetryStep):
         ModelName cannot be included in the arguments.
         """
 
-        request_dict = self.model.sagemaker_session._create_model_request(
-            name="",
-            role=self.model.role,
-            container_defs=self.model.prepare_container_def(
-                instance_type=self.inputs.instance_type,
-                accelerator_type=self.inputs.accelerator_type,
-            ),
-            vpc_config=self.model.vpc_config,
-            enable_network_isolation=self.model.enable_network_isolation(),
-        )
+        if isinstance(self.model, PipelineModel):
+            request_dict = self.model.sagemaker_session._create_model_request(
+                name="",
+                role=self.model.role,
+                container_defs=self.model.pipeline_container_def(self.inputs.instance_type),
+                vpc_config=self.model.vpc_config,
+                enable_network_isolation=self.model.enable_network_isolation,
+            )
+        else:
+            request_dict = self.model.sagemaker_session._create_model_request(
+                name="",
+                role=self.model.role,
+                container_defs=self.model.prepare_container_def(
+                    instance_type=self.inputs.instance_type,
+                    accelerator_type=self.inputs.accelerator_type,
+                ),
+                vpc_config=self.model.vpc_config,
+                enable_network_isolation=self.model.enable_network_isolation(),
+            )
         request_dict.pop("ModelName")
 
         return request_dict
@@ -475,6 +487,7 @@ class ProcessingStep(ConfigurableRetryStep):
         cache_config: CacheConfig = None,
         depends_on: Union[List[str], List[Step]] = None,
         retry_policies: List[RetryPolicy] = None,
+        kms_key=None,
     ):
         """Construct a ProcessingStep, given a `Processor` instance.
 
@@ -500,6 +513,8 @@ class ProcessingStep(ConfigurableRetryStep):
             depends_on (List[str] or List[Step]): A list of step names or step instance
                 this `sagemaker.workflow.steps.ProcessingStep` depends on
             retry_policies (List[RetryPolicy]):  A list of retry policy
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file. Defaults to `None`.
         """
         super(ProcessingStep, self).__init__(
             name, StepTypeEnum.PROCESSING, display_name, description, depends_on, retry_policies
@@ -511,6 +526,7 @@ class ProcessingStep(ConfigurableRetryStep):
         self.code = code
         self.property_files = property_files
         self.job_name = None
+        self.kms_key = kms_key
 
         # Examine why run method in sagemaker.processing.Processor mutates the processor instance
         # by setting the instance's arguments attribute. Refactor Processor.run, if possible.
@@ -545,8 +561,8 @@ class ProcessingStep(ConfigurableRetryStep):
             inputs=self.inputs,
             outputs=self.outputs,
             code=self.code,
+            kms_key=self.kms_key,
         )
-
         process_args = ProcessingJob._get_process_args(
             self.processor, normalized_inputs, normalized_outputs, experiment_config=dict()
         )
