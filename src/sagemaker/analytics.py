@@ -261,7 +261,11 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
             )
             new_output = raw_result["TrainingJobSummaries"]
             output.extend(new_output)
-            logger.debug("Got %d more TrainingJobs. Total so far: %d", len(new_output), len(output))
+            logger.debug(
+                "Got %d more TrainingJobs. Total so far: %d",
+                len(new_output),
+                len(output),
+            )
             if ("NextToken" in raw_result) and (len(new_output) > 0):
                 next_args["NextToken"] = raw_result["NextToken"]
             else:

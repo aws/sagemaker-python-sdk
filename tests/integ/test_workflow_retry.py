@@ -22,7 +22,10 @@ from botocore.exceptions import WaiterError
 from sagemaker.processing import ProcessingInput
 from sagemaker.session import get_execution_role
 from sagemaker.sklearn.processing import SKLearnProcessor
-from sagemaker.dataset_definition.inputs import DatasetDefinition, AthenaDatasetDefinition
+from sagemaker.dataset_definition.inputs import (
+    DatasetDefinition,
+    AthenaDatasetDefinition,
+)
 from sagemaker.workflow.parameters import (
     ParameterInteger,
     ParameterString,
@@ -134,7 +137,8 @@ def test_pipeline_execution_processing_step_with_retry(
                 expire_after_mins=5,
             ),
             SageMakerJobStepRetryPolicy(
-                exception_types=[SageMakerJobExceptionTypeEnum.CAPACITY_ERROR], max_attempts=10
+                exception_types=[SageMakerJobExceptionTypeEnum.CAPACITY_ERROR],
+                max_attempts=10,
             ),
         ],
     )
