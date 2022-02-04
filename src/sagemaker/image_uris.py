@@ -77,20 +77,20 @@ def retrieve(
         training_compiler_config (:class:`~sagemaker.training_compiler.TrainingCompilerConfig`):
             A configuration class for the SageMaker Training Compiler
             (default: None).
-        model_id (str): JumpStart model ID for which to retrieve image URI
+        model_id (str): The JumpStart model ID for which to retrieve the image URI
             (default: None).
-        model_version (str): Version of the JumpStart model for which to retrieve the
+        model_version (str): The version of the JumpStart model for which to retrieve the
             image URI (default: None).
-        tolerate_vulnerable_model (bool): True if vulnerable versions of model specifications
-            should be tolerated (exception not raised). If False, raises an exception if
+        tolerate_vulnerable_model (bool): ``True`` if vulnerable versions of model specifications
+            should be tolerated without an exception raised. If ``False``, raises an exception if
             the script used by this version of the model has dependencies with known security
             vulnerabilities. (Default: False).
         tolerate_deprecated_model (bool): True if deprecated versions of model specifications
-            should be tolerated (exception not raised). If False, raises an exception
+            should be tolerated without an exception raised. If False, raises an exception
             if the version of the model is deprecated. (Default: False).
 
     Returns:
-        str: the ECR URI for the corresponding SageMaker Docker image.
+        str: The ECR URI for the corresponding SageMaker Docker image.
 
     Raises:
         NotImplementedError: If the scope is not supported.
@@ -404,26 +404,26 @@ def get_training_image_uri(
     pytorch_version=None,
     instance_type=None,
 ) -> str:
-    """Retrieve image uri for training.
+    """Retrieves the image URI for training.
 
     Args:
-        region (str): AWS region to use for image URI.
+        region (str): The AWS region to use for image URI.
         framework (str): The framework for which to retrieve an image URI.
         framework_version (str): The framework version for which to retrieve an
             image URI (default: None).
         py_version (str): The python version to use for the image (default: None).
-        image_uri (str): If an image URI is supplied, it will be returned (default: None).
+        image_uri (str): If an image URI is supplied, it is returned (default: None).
         distribution (dict): A dictionary with information on how to run distributed
             training (default: None).
         compiler_config (:class:`~sagemaker.training_compiler.TrainingCompilerConfig`):
             A configuration class for the SageMaker Training Compiler
             (default: None).
-        tensorflow_version (str): Version of tensorflow to use. (default: None)
-        pytorch_version (str): Version of pytorch to use. (default: None)
-        instance_type (str): Instance type fo use. (default: None)
+        tensorflow_version (str): The version of TensorFlow to use. (default: None)
+        pytorch_version (str): The version of PyTorch to use. (default: None)
+        instance_type (str): The instance type to use. (default: None)
 
     Returns:
-        str: the image URI string.
+        str: The image URI string.
     """
 
     if image_uri:
