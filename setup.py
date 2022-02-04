@@ -68,7 +68,7 @@ extras["test"] = (
         "pytest-cov",
         "pytest-rerunfailures",
         "pytest-timeout",
-        "pytest-xdist",
+        "pytest-xdist==2.4.0",
         "coverage<6.2",
         "mock",
         "contextlib2",
