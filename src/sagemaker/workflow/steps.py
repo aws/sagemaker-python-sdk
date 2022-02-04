@@ -15,6 +15,7 @@ from __future__ import absolute_import
 
 import abc
 import warnings
+
 from enum import Enum
 from typing import Dict, List, Union
 from urllib.parse import urlparse
@@ -22,13 +23,7 @@ from urllib.parse import urlparse
 import attr
 
 from sagemaker.estimator import EstimatorBase, _TrainingJob
-from sagemaker.inputs import (
-    CompilationInput,
-    CreateModelInput,
-    FileSystemInput,
-    TrainingInput,
-    TransformInput,
-)
+from sagemaker.inputs import CreateModelInput, TrainingInput, TransformInput, FileSystemInput
 from sagemaker.model import Model
 from sagemaker.pipeline import PipelineModel
 from sagemaker.processing import (
@@ -39,9 +34,16 @@ from sagemaker.processing import (
 )
 from sagemaker.transformer import Transformer, _TransformJob
 from sagemaker.tuner import HyperparameterTuner, _TuningJob
-from sagemaker.workflow.entities import DefaultEnumMeta, Entity, RequestType
+from sagemaker.workflow.entities import (
+    DefaultEnumMeta,
+    Entity,
+    RequestType,
+)
+from sagemaker.workflow.properties import (
+    PropertyFile,
+    Properties,
+)
 from sagemaker.workflow.functions import Join
-from sagemaker.workflow.properties import Properties, PropertyFile
 from sagemaker.workflow.retry import RetryPolicy
 
 
@@ -56,7 +58,6 @@ class StepTypeEnum(Enum, metaclass=DefaultEnumMeta):
     TRANSFORM = "Transform"
     CALLBACK = "Callback"
     TUNING = "Tuning"
-    COMPILATION = "Compilation"
     LAMBDA = "Lambda"
     QUALITY_CHECK = "QualityCheck"
     CLARIFY_CHECK = "ClarifyCheck"
@@ -730,81 +731,3 @@ class TuningStep(ConfigurableRetryStep):
                 "output/model.tar.gz",
             ],
         )
-
-
-class CompilationStep(ConfigurableRetryStep):
-    """Compilation step for workflow."""
-
-    def __init__(
-        self,
-        name: str,
-        estimator: EstimatorBase,
-        model: Model,
-        inputs: CompilationInput = None,
-        job_arguments: List[str] = None,
-        depends_on: Union[List[str], List[Step]] = None,
-        retry_policies: List[RetryPolicy] = None,
-        display_name: str = None,
-        description: str = None,
-        cache_config: CacheConfig = None,
-    ):
-        """Construct a CompilationStep.
-
-        Given an `EstimatorBase` and a `sagemaker.model.Model` instance construct a CompilationStep.
-
-        In addition to the estimator and Model instances, the other arguments are those that are
-        supplied to the `compile_model` method of the `sagemaker.model.Model.compile_model`.
-
-        Args:
-            name (str): The name of the compilation step.
-            estimator (EstimatorBase): A `sagemaker.estimator.EstimatorBase` instance.
-            model (Model): A `sagemaker.model.Model` instance.
-            inputs (CompilationInput): A `sagemaker.inputs.CompilationInput` instance.
-                Defaults to `None`.
-            job_arguments (List[str]): A list of strings to be passed into the processing job.
-                Defaults to `None`.
-            depends_on (List[str] or List[Step]): A list of step names or step instances
-                this `sagemaker.workflow.steps.CompilationStep` depends on
-            retry_policies (List[RetryPolicy]):  A list of retry policy
-            display_name (str): The display name of the compilation step.
-            description (str): The description of the compilation step.
-            cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
-        """
-        super(CompilationStep, self).__init__(
-            name, StepTypeEnum.COMPILATION, display_name, description, depends_on, retry_policies
-        )
-        self.estimator = estimator
-        self.model = model
-        self.inputs = inputs
-        self.job_arguments = job_arguments
-        self._properties = Properties(
-            path=f"Steps.{name}", shape_name="DescribeCompilationJobResponse"
-        )
-        self.cache_config = cache_config
-
-    @property
-    def arguments(self) -> RequestType:
-        """The arguments dict that is used to call `create_compilation_job`.
-
-        NOTE: The CreateTrainingJob request is not quite the args list that workflow needs.
-        The TrainingJobName and ExperimentConfig attributes cannot be included.
-        """
-
-        compilation_args = self.model._get_compilation_args(self.estimator, self.inputs)
-        request_dict = self.model.sagemaker_session._get_compilation_request(**compilation_args)
-        request_dict.pop("CompilationJobName")
-
-        return request_dict
-
-    @property
-    def properties(self):
-        """A Properties object representing the DescribeTrainingJobResponse data model."""
-        return self._properties
-
-    def to_request(self) -> RequestType:
-        """Updates the dictionary with cache configuration."""
-        request_dict = super().to_request()
-        if self.cache_config:
-            request_dict.update(self.cache_config.config)
-
-        return request_dict

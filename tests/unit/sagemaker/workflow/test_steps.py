@@ -27,7 +27,7 @@ from mock import (
 from sagemaker.debugger import DEBUGGER_FLAG, ProfilerConfig
 from sagemaker.estimator import Estimator
 from sagemaker.tensorflow import TensorFlow
-from sagemaker.inputs import TrainingInput, TransformInput, CreateModelInput, CompilationInput
+from sagemaker.inputs import TrainingInput, TransformInput, CreateModelInput
 from sagemaker.model import Model
 from sagemaker.processing import (
     Processor,
@@ -53,7 +53,6 @@ from sagemaker.workflow.retry import (
 )
 from sagemaker.workflow.steps import (
     ProcessingStep,
-    CompilationStep,
     ConfigurableRetryStep,
     StepTypeEnum,
     TrainingStep,
@@ -1276,52 +1275,5 @@ def test_multi_algo_tuning_step(sagemaker_session):
                     },
                 },
             ],
-        },
-    }
-
-
-def test_compilation_step(sagemaker_session):
-    estimator = Estimator(
-        image_uri=IMAGE_URI,
-        role=ROLE,
-        instance_count=1,
-        instance_type="ml.c5.4xlarge",
-        profiler_config=ProfilerConfig(system_monitor_interval_millis=500),
-        rules=[],
-        sagemaker_session=sagemaker_session,
-    )
-
-    model = Model(
-        image_uri=IMAGE_URI,
-        model_data="s3://output/tensorflow.tar.gz",
-        sagemaker_session=sagemaker_session,
-    )
-
-    compilation_input = CompilationInput(
-        target_instance_type="ml_inf",
-        input_shape={"data": [1, 3, 1024, 1024]},
-        output_path="s3://output",
-        compile_max_run=100,
-        framework="tensorflow",
-        job_name="compile-model",
-        compiler_options=None,
-    )
-    compilation_step = CompilationStep(
-        name="MyCompilationStep", estimator=estimator, model=model, inputs=compilation_input
-    )
-
-    assert compilation_step.to_request() == {
-        "Name": "MyCompilationStep",
-        "Type": "Compilation",
-        "Arguments": {
-            "InputConfig": {
-                "DataInputConfig": '{"data": [1, 3, 1024, 1024]}',
-                "Framework": "TENSORFLOW",
-                "S3Uri": "s3://output/tensorflow.tar.gz",
-            },
-            "OutputConfig": {"S3OutputLocation": "s3://output", "TargetDevice": "ml_inf"},
-            "RoleArn": ROLE,
-            "StoppingCondition": {"MaxRuntimeInSeconds": 100},
-            "Tags": [],
         },
     }
