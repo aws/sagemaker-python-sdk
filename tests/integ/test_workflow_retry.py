@@ -256,7 +256,8 @@ def test_model_registration_with_model_repack(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
         )
 
         execution = pipeline.start(parameters={})

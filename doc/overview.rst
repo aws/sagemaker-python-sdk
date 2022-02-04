@@ -633,11 +633,11 @@ the ``model_id`` and ``model_version`` needed to retrieve the URI.
 
    -  ``model_id``: A unique identifier for the JumpStart model.
    -  ``model_version``: The version of the specifications for the
-      model. To use the latest version, enter ``*``. This is a
+      model. To use the latest version, enter ``"*"``. This is a
       required parameter.
 
 To retrieve a model, first select a ``model id`` and ``version`` from
-the :doc:`Available Models <./doc_utils/jumpstart>`.
+the :doc:`available models <./doc_utils/jumpstart>`.
 
 .. code:: python
 
@@ -975,45 +975,45 @@ ContentType of ``application/list-text``.
 
 .. container::
 
-   +-----------------------+-----------------------+-----------------------+
-   | Task                  | Identifier            | ContentType           |
-   +-----------------------+-----------------------+-----------------------+
-   | Image Classification  | ic                    | "application/x-image" |
-   +-----------------------+-----------------------+-----------------------+
-   | Object Detection      | od, od1               | "application/x-image" |
-   +-----------------------+-----------------------+-----------------------+
-   | Semantic Segmentation | semseg                | "application/x-image" |
-   +-----------------------+-----------------------+-----------------------+
-   | Instance Segmentation | is                    | "application/x-image" |
-   +-----------------------+-----------------------+-----------------------+
-   | Text Classification   | tc                    | "application/x-text"  |
-   +-----------------------+-----------------------+-----------------------+
-   | Sentence Pair         | spc                   | "a                    |
-   | Classification        |                       | pplication/list-text" |
-   +-----------------------+-----------------------+-----------------------+
-   | Extractive Question   | eqa                   | "a                    |
-   | Answering             |                       | pplication/list-text" |
-   +-----------------------+-----------------------+-----------------------+
-   | Text Generation       | textgeneration        | "application/x-text"  |
-   +-----------------------+-----------------------+-----------------------+
-   | Image Classification  | icembedding           | "application/x-image" |
-   | Embedding             |                       |                       |
-   +-----------------------+-----------------------+-----------------------+
-   | Text Classification   | tcembedding           | "application/x-text"  |
-   | Embedding             |                       |                       |
-   +-----------------------+-----------------------+-----------------------+
-   | Named-entity          | ner                   | "application/x-text"  |
-   | Recognition           |                       |                       |
-   +-----------------------+-----------------------+-----------------------+
-   | Text Summarization    | summarization         | "application/x-text"  |
-   +-----------------------+-----------------------+-----------------------+
-   | Text Translation      | translation           | "application/x-text"  |
-   +-----------------------+-----------------------+-----------------------+
-   | Tabular Regression    | regression            | "text/csv"            |
-   +-----------------------+-----------------------+-----------------------+
-   | Tabular               | classification        | "text/csv"            |
-   | Classification        |                       |                       |
-   +-----------------------+-----------------------+-----------------------+
+   +-----------------------+-----------------------+-------------------------+
+   | Task                  | Identifier            | ContentType             |
+   +-----------------------+-----------------------+-------------------------+
+   | Image Classification  | ic                    | "application/x-image"   |
+   +-----------------------+-----------------------+-------------------------+
+   | Object Detection      | od, od1               | "application/x-image"   |
+   +-----------------------+-----------------------+-------------------------+
+   | Semantic Segmentation | semseg                | "application/x-image"   |
+   +-----------------------+-----------------------+-------------------------+
+   | Instance Segmentation | is                    | "application/x-image"   |
+   +-----------------------+-----------------------+-------------------------+
+   | Text Classification   | tc                    | "application/x-text"    |
+   +-----------------------+-----------------------+-------------------------+
+   | Sentence Pair         | spc                   | "application/list-text" |
+   | Classification        |                       |                         |
+   +-----------------------+-----------------------+-------------------------+
+   | Extractive Question   | eqa                   | "application/list-text" |
+   | Answering             |                       |                         |
+   +-----------------------+-----------------------+-------------------------+
+   | Text Generation       | textgeneration        | "application/x-text"    |
+   +-----------------------+-----------------------+-------------------------+
+   | Image Classification  | icembedding           | "application/x-image"   |
+   | Embedding             |                       |                         |
+   +-----------------------+-----------------------+-------------------------+
+   | Text Classification   | tcembedding           | "application/x-text"    |
+   | Embedding             |                       |                         |
+   +-----------------------+-----------------------+-------------------------+
+   | Named-entity          | ner                   | "application/x-text"    |
+   | Recognition           |                       |                         |
+   +-----------------------+-----------------------+-------------------------+
+   | Text Summarization    | summarization         | "application/x-text"    |
+   +-----------------------+-----------------------+-------------------------+
+   | Text Translation      | translation           | "application/x-text"    |
+   +-----------------------+-----------------------+-------------------------+
+   | Tabular Regression    | regression            | "text/csv"              |
+   +-----------------------+-----------------------+-------------------------+
+   | Tabular               | classification        | "text/csv"              |
+   | Classification        |                       |                         |
+   +-----------------------+-----------------------+-------------------------+
 
 ********************************
 SageMaker Automatic Model Tuning
