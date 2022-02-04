@@ -13,6 +13,7 @@
 """This module contains utilities related to SageMaker JumpStart."""
 from __future__ import absolute_import
 import logging
+import os
 from typing import Dict, List, Optional
 from urllib.parse import urlparse
 from packaging.version import Version
@@ -60,6 +61,12 @@ def get_jumpstart_content_bucket(region: str) -> str:
     Raises:
         RuntimeError: If JumpStart is not launched in ``region``.
     """
+
+    if (
+        constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE in os.environ
+        and len(os.environ[constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE]) > 0
+    ):
+        return os.environ[constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE]
     try:
         return constants.JUMPSTART_REGION_NAME_TO_LAUNCHED_REGION_DICT[region].content_bucket
     except KeyError:

@@ -11,11 +11,13 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+import os
 from mock.mock import Mock, patch
 import pytest
 import random
 from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.constants import (
+    ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE,
     JUMPSTART_BUCKET_NAME_SET,
     JUMPSTART_REGION_NAME_SET,
     JumpStartScriptScope,
@@ -38,6 +40,12 @@ def test_get_jumpstart_content_bucket():
     assert bad_region not in JUMPSTART_REGION_NAME_SET
     with pytest.raises(ValueError):
         utils.get_jumpstart_content_bucket(bad_region)
+
+
+def test_get_jumpstart_content_bucket_override():
+    with patch.dict(os.environ, {ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE: "some-val"}):
+        random_region = "random_region"
+        assert "some-val" == utils.get_jumpstart_content_bucket(random_region)
 
 
 def test_get_jumpstart_launched_regions_message():
