@@ -47,19 +47,22 @@ def test_hvd_cpu(
 
 @pytest.mark.release
 @pytest.mark.skipif(
-    integ.test_region() in integ.TRAINING_NO_P2_REGIONS, reason="no ml.p2 instances in this region"
+    integ.test_region() in integ.TRAINING_NO_P2_REGIONS
+    and integ.test_region() in integ.TRAINING_NO_P3_REGIONS,
+    reason="no ml.p2 or ml.p3 instances in this region",
 )
 def test_hvd_gpu(
     sagemaker_session,
     tensorflow_training_latest_version,
     tensorflow_training_latest_py_version,
+    gpu_instance_type,
     tmpdir,
 ):
     _create_and_fit_estimator(
         sagemaker_session,
         tensorflow_training_latest_version,
         tensorflow_training_latest_py_version,
-        "ml.p3.2xlarge",
+        gpu_instance_type,
         tmpdir,
     )
 
