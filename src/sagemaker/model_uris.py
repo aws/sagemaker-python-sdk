@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Accessors to retrieve the model artifact S3 URI of pretrained ML models."""
+"""Accessors to retrieve the model artifact S3 URI of pretrained machine learning models."""
 from __future__ import absolute_import
 
 import logging
@@ -31,25 +31,25 @@ def retrieve(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
 ) -> str:
-    """Retrieves the model artifact S3 URI for the model matching the given arguments.
+    """Retrieves the model artifact Amazon S3 URI for the model matching the given arguments.
 
     Args:
-        region (str): Region for which to retrieve model S3 URI.
-        model_id (str): JumpStart model ID of the JumpStart model for which to retrieve
+        region (str): The AWS Region for which to retrieve the Jumpstart model S3 URI.
+        model_id (str): The model ID of the JumpStart model for which to retrieve
             the model artifact S3 URI.
-        model_version (str): Version of the JumpStart model for which to retrieve
+        model_version (str): The version of the JumpStart model for which to retrieve
             the model artifact S3 URI.
-        model_scope (str): The model type, i.e. what it is used for.
+        model_scope (str): The model type.
             Valid values: "training" and "inference".
-        tolerate_vulnerable_model (bool): True if vulnerable versions of model
-            specifications should be tolerated (exception not raised). If False, raises an
+        tolerate_vulnerable_model (bool): ``True`` if vulnerable versions of model
+            specifications should be tolerated without raising an exception. If ``False``, raises an
             exception if the script used by this version of the model has dependencies with known
             security vulnerabilities. (Default: False).
-        tolerate_deprecated_model (bool): True if deprecated versions of model
-            specifications should be tolerated (exception not raised). If False, raises
+        tolerate_deprecated_model (bool): ``True`` if deprecated versions of model
+            specifications should be tolerated without raising an exception. If ``False``, raises
             an exception if the version of the model is deprecated. (Default: False).
     Returns:
-        str: the model artifact S3 URI for the corresponding model.
+        str: The model artifact S3 URI for the corresponding model.
 
     Raises:
         NotImplementedError: If the scope is not supported.
