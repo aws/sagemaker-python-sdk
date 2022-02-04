@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""The step definitions for workflow."""
+"""The `Step` definitions for SageMaker Pipelines Workflows."""
 from __future__ import absolute_import
 
 from typing import List, Union
@@ -23,7 +23,7 @@ from sagemaker.workflow.steps import Step, StepTypeEnum
 
 
 class FailStep(Step):
-    """Fail step for workflow."""
+    """`FailStep` for SageMaker Pipelines Workflows."""
 
     def __init__(
         self,
@@ -33,17 +33,17 @@ class FailStep(Step):
         description: str = None,
         depends_on: Union[List[str], List[Step]] = None,
     ):
-        """Constructs a FailStep.
+        """Constructs a `FailStep`.
 
         Args:
-            name (str): The name of the Fail step.
-            error_message (str or PipelineNonPrimitiveInputTypes): Error message defined by user.
-                Once the Fail step is reached the execution will fail and the
-                error message will be set as the failure reason (default: None).
-            display_name (str): The display name of the Fail step (default: None).
-            description (str): The description of the Fail step (default: None).
-            depends_on (List[str] or List[Step]): A list of step names or step instances
-                this `sagemaker.workflow.steps.FailStep` depends on (default: None).
+            name (str): The name of the `FailStep`. A name is required and must be unique within a pipeline.
+            error_message (str or PipelineNonPrimitiveInputTypes): An error message defined by the user.
+                Once the `FailStep` is reached, the execution fails and the
+                error message is set as the failure reason (default: None).
+            display_name (str): The display name of the `FailStep`. The display name provides better UI readability. (default: None).
+            description (str): The description of the `FailStep` (default: None).
+            depends_on (List[str] or List[Step]): A list of `Step` names or `Step` instances that this `FailStep` depends on. 
+                If a listed `Step` name does not exist, an error is returned (default: None).
         """
         super(FailStep, self).__init__(
             name, display_name, description, StepTypeEnum.FAIL, depends_on
@@ -52,13 +52,14 @@ class FailStep(Step):
 
     @property
     def arguments(self) -> RequestType:
-        """The arguments dict that is used to define the Fail step."""
+        """The arguments dictionary that is used to define the `FailStep`."""
         return dict(ErrorMessage=self.error_message)
 
     @property
     def properties(self):
-        """A Properties object is not available for the Fail step"""
+        """A `Properties` object is not available for the `FailStep`. Executing a `FailStep` will terminate the pipeline. 
+            `FailStep` properties should not be referenced and no other `Step` should depend on the `FailStep`."""
         raise RuntimeError(
-            "The Properties object is not available for the Fail step "
+            "The Properties object is not available for the FailStep "
             + "as it cannot be referenced by other steps."
         )
