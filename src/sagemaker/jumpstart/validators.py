@@ -152,7 +152,7 @@ def _validate_hyperparameter(
         if hasattr(hyperparameter_spec, "exclusive_max"):
             if numeric_hyperparam_value >= hyperparameter_spec.exclusive_max:
                 raise JumpStartHyperparametersError(
-                    f"Hyperparameter '{hyperparameter_name}' must be less than than "
+                    f"Hyperparameter '{hyperparameter_name}' must be less than "
                     "{hyperparameter_spec.exclusive_max}."
                 )
 
