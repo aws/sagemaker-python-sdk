@@ -13,6 +13,7 @@
 """This module defines the JumpStartModelsCache class."""
 from __future__ import absolute_import
 import datetime
+from difflib import get_close_matches
 from typing import List, Optional
 import json
 import boto3
@@ -211,7 +212,23 @@ class JumpStartModelsCache:
                 f"{model_version_to_use_incompatible_with_sagemaker} of {model_id}."
             )
             raise KeyError(error_msg)
-        error_msg = f"Unable to find model manifest for {model_id} with version {version}."
+
+        error_msg = f"Unable to find model manifest for {model_id} with version {version}. "
+
+        other_model_id_version = self._select_version(
+            "*", versions_incompatible_with_sagemaker
+        )
+        if other_model_id_version is not None:
+            error_msg += (
+                f"Consider using model id {model_id} with version "
+                f"{other_model_id_version}."
+            )
+
+        else:
+            possible_model_ids = [header.model_id for header in manifest.values()]
+            closest_model_id = get_close_matches(model_id, possible_model_ids, n=1, cutoff=0)[0]
+            error_msg += f"Did you mean to use model id {closest_model_id}?"
+
         raise KeyError(error_msg)
 
     def _get_file_from_s3(
