@@ -36,13 +36,17 @@ class FailStep(Step):
         """Constructs a `FailStep`.
 
         Args:
-            name (str): The name of the `FailStep`. A name is required and must be unique within a pipeline.
-            error_message (str or PipelineNonPrimitiveInputTypes): An error message defined by the user.
+            name (str): The name of the `FailStep`. A name is required and must be
+                unique within a pipeline.
+            error_message (str or PipelineNonPrimitiveInputTypes):
+                An error message defined by the user.
                 Once the `FailStep` is reached, the execution fails and the
                 error message is set as the failure reason (default: None).
-            display_name (str): The display name of the `FailStep`. The display name provides better UI readability. (default: None).
+            display_name (str): The display name of the `FailStep`.
+                The display name provides better UI readability. (default: None).
             description (str): The description of the `FailStep` (default: None).
-            depends_on (List[str] or List[Step]): A list of `Step` names or `Step` instances that this `FailStep` depends on. 
+            depends_on (List[str] or List[Step]): A list of `Step` names or `Step` instances
+                that this `FailStep` depends on.
                 If a listed `Step` name does not exist, an error is returned (default: None).
         """
         super(FailStep, self).__init__(
@@ -57,9 +61,11 @@ class FailStep(Step):
 
     @property
     def properties(self):
-        """A `Properties` object is not available for the `FailStep`. Executing a `FailStep` will terminate the pipeline. 
-            `FailStep` properties should not be referenced and no other `Step` should depend on the `FailStep`."""
+        """A `Properties` object is not available for the `FailStep`.
+
+        Executing a `FailStep` will terminate the pipeline.
+        `FailStep` properties should not be referenced.
+        """
         raise RuntimeError(
-            "The Properties object is not available for the FailStep "
-            + "as it cannot be referenced by other steps."
+            "FailStep is a terminal step and the Properties object is not available for it."
         )

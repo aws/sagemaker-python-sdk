@@ -116,6 +116,6 @@ def test_fail_step_with_properties_ref():
         fail_step.properties()
 
     assert (
-        str(error.value) == "The Properties object is not available for the Fail step "
-        "as it cannot be referenced by other steps."
+        str(error.value)
+        == "FailStep is a terminal step and the Properties object is not available for it."
     )

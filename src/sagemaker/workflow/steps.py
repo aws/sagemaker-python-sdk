@@ -147,8 +147,9 @@ class CacheConfig:
     If caching is enabled, the pipeline attempts to find a previous execution of a `Step`
     that was called with the same arguments. `Step` caching only considers successful execution.
     If a successful previous execution is found, the pipeline propagates the values
-    from the previous execution rather than recomputing the `Step`. When multiple successful executions
-    exist within the timeout period, it uses the result for the most recent successful execution.
+    from the previous execution rather than recomputing the `Step`.
+    When multiple successful executions exist within the timeout period,
+    it uses the result for the most recent successful execution.
 
 
     Attributes:
@@ -237,8 +238,8 @@ class TrainingStep(ConfigurableRetryStep):
     ):
         """Construct a `TrainingStep`, given an `EstimatorBase` instance.
 
-        In addition to the `EstimatorBase` instance, the other arguments are those that are supplied to
-        the `fit` method of the `sagemaker.estimator.Estimator`.
+        In addition to the `EstimatorBase` instance, the other arguments are those
+        that are supplied to the `fit` method of the `sagemaker.estimator.Estimator`.
 
         Args:
             name (str): The name of the `TrainingStep`.
@@ -408,8 +409,8 @@ class TransformStep(ConfigurableRetryStep):
     ):
         """Constructs a `TransformStep`, given a `Transformer` instance.
 
-        In addition to the `Transformer` instance, the other arguments are those that are supplied to
-        the `transform` method of the `sagemaker.transformer.Transformer`.
+        In addition to the `Transformer` instance, the other arguments are those
+        that are supplied to the `transform` method of the `sagemaker.transformer.Transformer`.
 
         Args:
             name (str): The name of the `TransformStep`.
@@ -614,8 +615,8 @@ class TuningStep(ConfigurableRetryStep):
     ):
         """Construct a `TuningStep`, given a `HyperparameterTuner` instance.
 
-        In addition to the `HyperparameterTuner` instance, the other arguments are those that are supplied to
-        the `fit` method of the `sagemaker.tuner.HyperparameterTuner`.
+        In addition to the `HyperparameterTuner` instance, the other arguments are those
+        that are supplied to the `fit` method of the `sagemaker.tuner.HyperparameterTuner`.
 
         Args:
             name (str): The name of the `TuningStep`.
@@ -652,7 +653,7 @@ class TuningStep(ConfigurableRetryStep):
             job_arguments (List[str]): A list of strings to be passed into the processing job.
                 Defaults to `None`.
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
-            depends_on (List[str] or List[Step]): A list of `Step` names or `Step` instances that 
+            depends_on (List[str] or List[Step]): A list of `Step` names or `Step` instances that
                 this `sagemaker.workflow.steps.ProcessingStep` depends on.
             retry_policies (List[RetryPolicy]):  A list of retry policies.
         """
@@ -694,8 +695,9 @@ class TuningStep(ConfigurableRetryStep):
 
     @property
     def properties(self):
-        """A `Properties` object representing
-        `DescribeHyperParameterTuningJobResponse` and
+        """A `Properties` object
+
+        A `Properties` object representing `DescribeHyperParameterTuningJobResponse` and
         `ListTrainingJobsForHyperParameterTuningJobResponse` data model.
         """
         return self._properties
@@ -713,7 +715,7 @@ class TuningStep(ConfigurableRetryStep):
 
         Args:
             top_k (int): The index of the top performing training job
-                tuning step stores up to 50 top performing training jobs. 
+                tuning step stores up to 50 top performing training jobs.
                 A valid top_k value is from 0 to 49. The best training job
                 model is at index 0.
             s3_bucket (str): The S3 bucket to store the training job output artifact.
