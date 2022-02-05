@@ -54,6 +54,7 @@ NO_P3_REGIONS = [
     "ap-northeast-1",  # it has p3, but not enough
     "ap-south-1",
     "ap-northeast-2",  # it has p3, but not enough
+    "us-east-2",  # it has p3, but not enough
 ]
 
 NO_T2_REGIONS = ["eu-north-1", "ap-east-1", "me-south-1"]
