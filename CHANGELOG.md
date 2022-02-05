@@ -1,5 +1,28 @@
 # Changelog
 
+## v2.75.0 (2022-02-05)
+
+### Features
+
+ * JumpStart Integration
+ * Adds support for async inference
+ * Update instance types for integ test
+
+### Bug Fixes and Other Changes
+
+ * Revert "feature: CompilationStep support for Sagemaker Pipelines
+ * gpu use p3/p2 per avail for region
+ * jumpstart typo
+ * pin pytest-xdist to avoid release failures
+ * set sagemaker_connection and image_uri in register method
+ * update to incorporate black v22, pin tox versions
+ * Add deprecation warning in Clarify DataConfig
+
+### Documentation Changes
+
+ * Jumpstart doc strings and added new sections
+ * Add Jumpstart support documentation
+
 ## v2.74.0 (2022-01-26)
 
 ### Features
