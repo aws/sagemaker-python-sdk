@@ -18,6 +18,7 @@ from typing import List, Union
 import attr
 
 from sagemaker.estimator import EstimatorBase
+from sagemaker.inputs import CreateModelInput, TransformInput
 from sagemaker.model import Model
 from sagemaker import PipelineModel
 from sagemaker.predictor import Predictor
@@ -244,16 +245,17 @@ class EstimatorTransformer(StepCollection):
     def __init__(
         self,
         name: str,
-        estimator: EstimatorBase,
-        model_data,
-        model_inputs,
-        instance_count,
-        instance_type,
-        transform_inputs,
+        model_data: str,
+        model_inputs: CreateModelInput,
+        instance_count: int,
+        instance_type: str,
+        transform_inputs: TransformInput,
+        image_uri: str,
+        sagemaker_session: str,
+        role: str,
         description: str = None,
         display_name: str = None,
         # model arguments
-        image_uri=None,
         predictor_cls=None,
         env=None,
         # transformer arguments
@@ -318,22 +320,27 @@ class EstimatorTransformer(StepCollection):
         """
         steps = []
         if "entry_point" in kwargs:
-            entry_point = kwargs["entry_point"]
-            source_dir = kwargs.get("source_dir")
-            dependencies = kwargs.get("dependencies")
+            entry_point = kwargs.pop("entry_point", None)
+            source_dir = kwargs.pop("source_dir", None)
+            dependencies = kwargs.pop("dependencies", None)
+            code_location = kwargs.pop("code_location", None)
+            subnets = kwargs.pop("subnets", None)
+            security_group_ids = kwargs.pop("security_group_ids", None)
+
             repack_model_step = _RepackModelStep(
                 name=f"{name}RepackModel",
                 depends_on=depends_on,
                 retry_policies=repack_model_step_retry_policies,
-                sagemaker_session=estimator.sagemaker_session,
-                role=estimator.sagemaker_session,
+                sagemaker_session=sagemaker_session,
+                role=role,
                 model_data=model_data,
                 entry_point=entry_point,
                 source_dir=source_dir,
                 dependencies=dependencies,
+                code_location=code_location,
                 tags=tags,
-                subnets=estimator.subnets,
-                security_group_ids=estimator.security_group_ids,
+                subnets=subnets,
+                security_group_ids=security_group_ids,
                 description=description,
                 display_name=display_name,
             )
@@ -346,12 +353,12 @@ class EstimatorTransformer(StepCollection):
         predictor_cls = predictor_cls or predict_wrapper
 
         model = Model(
-            image_uri=image_uri or estimator.training_image_uri(),
+            image_uri=image_uri,
             model_data=model_data,
             predictor_cls=predictor_cls,
             vpc_config=None,
-            sagemaker_session=estimator.sagemaker_session,
-            role=estimator.role,
+            sagemaker_session=sagemaker_session,
+            role=role,
             **kwargs,
         )
         model_step = CreateModelStep(
@@ -382,7 +389,7 @@ class EstimatorTransformer(StepCollection):
             tags=tags,
             base_transform_job_name=name,
             volume_kms_key=volume_kms_key,
-            sagemaker_session=estimator.sagemaker_session,
+            sagemaker_session=sagemaker_session,
         )
         transform_step = TransformStep(
             name=f"{name}TransformStep",
