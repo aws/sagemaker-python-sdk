@@ -825,7 +825,7 @@ def test_estimator_transformer(sagemaker_session):
         repack_model_step_retry_policies=[service_fault_retry_policy],
         image_uri=IMAGE_URI,
         sagemaker_session=sagemaker_session,
-        role=ROLE
+        role=ROLE,
     )
     request_dicts = estimator_transformer.request_dicts()
     assert len(request_dicts) == 2
@@ -868,6 +868,7 @@ def test_estimator_transformer(sagemaker_session):
         else:
             raise Exception("A step exists in the collection of an invalid type.")
 
+
 def test_estimator_transformer_with_model_repack(sagemaker_session):
     model_data = f"s3://{BUCKET}/model.tar.gz"
     model_inputs = CreateModelInput(
@@ -894,7 +895,7 @@ def test_estimator_transformer_with_model_repack(sagemaker_session):
         sagemaker_session=sagemaker_session,
         role=ROLE,
         entry_point=f"{DATA_DIR}/dummy_script.py",
-        dependencies=[dummy_requirements]
+        dependencies=[dummy_requirements],
     )
     request_dicts = estimator_transformer.request_dicts()
     assert len(request_dicts) == 3
@@ -959,11 +960,11 @@ def test_estimator_transformer_with_model_repack(sagemaker_session):
             assert isinstance(arguments["PrimaryContainer"]["ModelDataUrl"], Properties)
             arguments["PrimaryContainer"].pop("ModelDataUrl")
             assert arguments == {
-                    "ExecutionRoleArn": "DummyRole",
-                    "PrimaryContainer": {
-                        "Environment": {},
-                        "Image": "fakeimage",
-                }
+                "ExecutionRoleArn": "DummyRole",
+                "PrimaryContainer": {
+                    "Environment": {},
+                    "Image": "fakeimage",
+                },
             }
 
         elif request_dict["Type"] == "Transform":
