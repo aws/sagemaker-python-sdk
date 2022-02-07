@@ -813,7 +813,7 @@ retrieve the URI of each of the three components you need to
 continue. The HuggingFace model in this example requires a GPU
 instance, so use the ``ml.p3.2xlarge`` instance type. For a complete
 list of available SageMaker instance types, see the `SageMaker On-Demand Pricing
-Table <https://aws.amazon.com/sagemaker/pricing/#On-Demand_Pricing>`__ and select 'Training'. 
+Table <https://aws.amazon.com/sagemaker/pricing/#On-Demand_Pricing>`__ and select 'Training'.
 
 .. code:: python
 
