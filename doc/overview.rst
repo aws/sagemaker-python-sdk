@@ -657,7 +657,7 @@ Then use those values to retrieve the model as follows.
 JumpStart scripts
 -----------------
 
-To adapt JumpStart models for the SageMaker Python SDK, a custom
+To adapt JumpStart models for SageMaker, a custom
 script is needed to perform training or inference. JumpStart
 maintains a suite of scripts used for each of the models in the
 JumpStart S3 bucket, which can be accessed using the SageMaker Python
@@ -774,7 +774,7 @@ Deployment may take about 5 minutes.
        predictor_cls=Predictor
    )
 
-Because ``catboost`` relies on the PyTorch Deep Learning Containers
+Because ``catboost`` and ``lightgbm`` rely on the PyTorch Deep Learning Containers
 image, the corresponding Models and Endpoints display the “pytorch”
 prefix when viewed in the AWS console. To verify that these models
 were created successfully with your desired base model, refer to
@@ -785,7 +785,7 @@ Perform Inference
 
 Finally, use the ``predictor`` instance to query your endpoint. For
 ``catboost-classification-model``, for example, the predictor accepts
-a string. For more information about how to use the predictor, see
+a csv. For more information about how to use the predictor, see
 the
 `Appendix <https://sagemaker.readthedocs.io/en/stable/overview.html#appendix>`__.
 
@@ -812,9 +812,7 @@ using “training” as the model scope. Use the utility functions to
 retrieve the URI of each of the three components you need to
 continue. The HuggingFace model in this example requires a GPU
 instance, so use the ``ml.p3.2xlarge`` instance type. For a complete
-list of available SageMaker instance types , see `Available SageMaker
-Studio Instance
-Types <https://docs.aws.amazon.com/sagemaker/latest/dg/notebooks-available-instance-types.html>`__.
+list of available SageMaker instance types, see the `SageMaker On-Demand Pricing Table <https://aws.amazon.com/sagemaker/pricing/#On-Demand_Pricing>`__ and select 'Training'. 
 
 .. code:: python
 
