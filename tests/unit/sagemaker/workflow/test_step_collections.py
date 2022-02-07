@@ -802,7 +802,7 @@ def test_register_model_with_model_repack_with_pipeline_model(
             raise Exception("A step exists in the collection of an invalid type.")
 
 
-def test_estimator_transformer(estimator):
+def test_estimator_transformer(sagemaker_session):
     model_data = f"s3://{BUCKET}/model.tar.gz"
     model_inputs = CreateModelInput(
         instance_type="c4.4xlarge",
@@ -814,7 +814,6 @@ def test_estimator_transformer(estimator):
     transform_inputs = TransformInput(data=f"s3://{BUCKET}/transform_manifest")
     estimator_transformer = EstimatorTransformer(
         name="EstimatorTransformerStep",
-        estimator=estimator,
         model_data=model_data,
         model_inputs=model_inputs,
         instance_count=1,
@@ -824,6 +823,9 @@ def test_estimator_transformer(estimator):
         model_step_retry_policies=[service_fault_retry_policy],
         transform_step_retry_policies=[service_fault_retry_policy],
         repack_model_step_retry_policies=[service_fault_retry_policy],
+        image_uri=IMAGE_URI,
+        sagemaker_session=sagemaker_session,
+        role=ROLE
     )
     request_dicts = estimator_transformer.request_dicts()
     assert len(request_dicts) == 2
