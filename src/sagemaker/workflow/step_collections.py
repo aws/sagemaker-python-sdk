@@ -17,6 +17,7 @@ from typing import List, Union
 
 import attr
 
+import sagemaker
 from sagemaker.estimator import EstimatorBase
 from sagemaker.inputs import CreateModelInput, TransformInput
 from sagemaker.model import Model
@@ -251,8 +252,8 @@ class EstimatorTransformer(StepCollection):
         instance_type: str,
         transform_inputs: TransformInput,
         image_uri: str,
-        sagemaker_session: str,
-        role: str,
+        sagemaker_session: sagemaker.session.Session = None,
+        role: str = None,
         description: str = None,
         display_name: str = None,
         # model arguments
@@ -292,9 +293,29 @@ class EstimatorTransformer(StepCollection):
 
         Args:
             name (str): The name of the Transform Step.
-            estimator: The estimator instance.
+            model_data (str): The S3 location of a SageMaker model data
+                ``.tar.gz`` file.
+            model_inputs (CreateModelInput): A `sagemaker.inputs.CreateModelInput` instance.
             instance_count (int): The number of EC2 instances to use.
             instance_type (str): The type of EC2 instance to use.
+            transform_inputs (TransformInput): A `sagemaker.inputs.TransformInput` instance.
+            image_uri (str): A Docker image URI.
+            sagemaker_session (sagemaker.session.Session): A SageMaker Session
+                object, used for SageMaker interactions (default: None). If not
+                specified, one is created using the default AWS configuration
+                chain.
+            role (str): An AWS IAM role (either name or full ARN) (default:
+                None).
+            description (str): A description of all steps constructed in the
+                step collection (default: None).
+            display_name (str): The display name of all steps constructed in the
+                step collection (default: None).
+            predictor_cls (callable[string, sagemaker.session.Session]): A
+                function to call to create a predictor (default: None). If not
+                None, ``deploy`` will return the result of invoking this
+                function on the created endpoint name.
+            env (dict[str, str]): The Environment variables to be set for use during the
+                transform job (default: None).
             strategy (str): The strategy used to decide how to batch records in
                 a single request (default: None). Valid values: 'MultiRecord'
                 and 'SingleRecord'.
@@ -307,16 +328,24 @@ class EstimatorTransformer(StepCollection):
             accept (str): The accept header passed by the client to
                 the inference endpoint. If it is supported by the endpoint,
                 it will be the format of the batch transform output.
-            env (dict): The Environment variables to be set for use during the
-                transform job (default: None).
+            max_concurrent_transforms (int): The maximum number of HTTP requests
+                to be made to each individual transform container at one time.
+            max_payload (int): Maximum size of the payload in a single HTTP
+                request to the container in MB.
+            tags (list[dict]): List of tags for labeling a transform job
+                (default: None). For more, see the SageMaker API documentation for
+                `Tag <https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html>`_.
+            volume_kms_key (str): Optional. KMS key ID for encrypting the volume
+                attached to the ML compute instance (default: None).
             depends_on (List[str] or List[Step]): The list of step names or step instances
-                the first step in the collection depends on
+                the first step in the collection depends on.
             repack_model_step_retry_policies (List[RetryPolicy]): The list of retry policies
-                for the repack model step
+                for the repack model step.
             model_step_retry_policies (List[RetryPolicy]): The list of retry policies for
-                model step
+                model step.
             transform_step_retry_policies (List[RetryPolicy]): The list of retry policies for
-                transform step
+                transform step.
+            **kwargs: Extra keyword arguments for `_RepackModelStep` or `Model`.
         """
         steps = []
         if "entry_point" in kwargs:
