@@ -205,29 +205,29 @@ class JumpStartModelsCache:
             sm_version_to_use = sm_version_to_use_list[0]
 
             error_msg = (
-                f"Unable to find model manifest for {model_id} with version {version} "
-                f"compatible with your SageMaker version ({sm_version}). "
+                f"Unable to find model manifest for '{model_id}' with version '{version}' "
+                f"compatible with your SageMaker version ('{sm_version}'). "
                 f"Consider upgrading your SageMaker library to at least version "
-                f"{sm_version_to_use} so you can use version "
-                f"{model_version_to_use_incompatible_with_sagemaker} of {model_id}."
+                f"'{sm_version_to_use}' so you can use version "
+                f"'{model_version_to_use_incompatible_with_sagemaker}' of '{model_id}'."
             )
             raise KeyError(error_msg)
 
-        error_msg = f"Unable to find model manifest for {model_id} with version {version}. "
+        error_msg = f"Unable to find model manifest for '{model_id}' with version '{version}'. "
 
         other_model_id_version = self._select_version(
             "*", versions_incompatible_with_sagemaker
-        )
+        )  # all versions here are incompatible with sagemaker
         if other_model_id_version is not None:
             error_msg += (
-                f"Consider using model id {model_id} with version "
-                f"{other_model_id_version}."
+                f"Consider using model ID '{model_id}' with version "
+                f"'{other_model_id_version}'."
             )
 
         else:
             possible_model_ids = [header.model_id for header in manifest.values()]
             closest_model_id = get_close_matches(model_id, possible_model_ids, n=1, cutoff=0)[0]
-            error_msg += f"Did you mean to use model id {closest_model_id}?"
+            error_msg += f"Did you mean to use model ID '{closest_model_id}'?"
 
         raise KeyError(error_msg)
 

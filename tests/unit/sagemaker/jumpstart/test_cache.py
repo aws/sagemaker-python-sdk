@@ -151,10 +151,10 @@ def test_jumpstart_cache_get_header():
             semantic_version_str="3.*",
         )
     assert (
-        "Unable to find model manifest for tensorflow-ic-imagenet-inception-v3-classification-4 "
-        "with version 3.* compatible with your SageMaker version (2.68.3). Consider upgrading "
-        "your SageMaker library to at least version 4.49.0 so you can use version 3.0.0 of "
-        "tensorflow-ic-imagenet-inception-v3-classification-4." in str(e.value)
+        "Unable to find model manifest for 'tensorflow-ic-imagenet-inception-v3-classification-4' "
+        "with version '3.*' compatible with your SageMaker version ('2.68.3'). Consider upgrading "
+        "your SageMaker library to at least version '4.49.0' so you can use version '3.0.0' of "
+        "'tensorflow-ic-imagenet-inception-v3-classification-4'." in str(e.value)
     )
 
     with pytest.raises(KeyError) as e:
@@ -162,24 +162,24 @@ def test_jumpstart_cache_get_header():
             model_id="pytorch-ic-imagenet-inception-v3-classification-4", semantic_version_str="3.*"
         )
     assert (
-        "Unable to find model manifest for pytorch-ic-imagenet-inception-v3-classification-4 with "
-        "version 3.*. Consider using model id pytorch-ic-imagenet-inception-v3-classification-4 with "
-        "version 2.0.0."
+        "Unable to find model manifest for 'pytorch-ic-imagenet-inception-v3-classification-4' with "
+        "version '3.*'. Consider using model ID 'pytorch-ic-imagenet-inception-v3-classification-4' with "
+        "version '2.0.0'."
     ) in str(e.value)
 
     with pytest.raises(KeyError) as e:
         cache.get_header(model_id="pytorch-ic-", semantic_version_str="*")
     assert (
-        "Unable to find model manifest for pytorch-ic- with version *. "
-        "Did you mean to use model id pytorch-ic-imagenet-inception-v3-classification-4?"
+        "Unable to find model manifest for 'pytorch-ic-' with version '*'. "
+        "Did you mean to use model ID 'pytorch-ic-imagenet-inception-v3-classification-4'?"
     ) in str(e.value)
 
     with pytest.raises(KeyError) as e:
         cache.get_header(model_id="tensorflow-ic-", semantic_version_str="*")
     assert (
-        "Unable to find model manifest for tensorflow-ic- with version *. "
-        "Did you mean to use model id tensorflow-ic-imagenet-inception-"
-        "v3-classification-4?"
+        "Unable to find model manifest for 'tensorflow-ic-' with version '*'. "
+        "Did you mean to use model ID 'tensorflow-ic-imagenet-inception-"
+        "v3-classification-4'?"
     ) in str(e.value)
 
     with pytest.raises(KeyError):
