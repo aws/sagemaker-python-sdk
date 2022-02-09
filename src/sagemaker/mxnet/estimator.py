@@ -72,20 +72,17 @@ class MXNet(Framework):
                 file which should be executed as the entry point to training.
                 If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
-            framework_version (str): MXNet version you want to use for executing
-                your model training code. Defaults to `None`. Required unless
-                ``image_uri`` is provided. List of supported versions.
-                https://github.com/aws/sagemaker-python-sdk#mxnet-sagemaker-estimators.
+            framework_version (str): The MXNet version that you want to use for executing
+                your model training code (default: ``None``).
             py_version (str): Python version you want to use for executing your
-                model training code. One of 'py2' or 'py3'. Defaults to ``None``. Required
-                unless ``image_uri`` is provided.
+                model training code. One of 'py2' or 'py3' (default: ``None``). 
             source_dir (str): Path (absolute, relative or an S3 URI) to a directory
                 with any other training source code dependencies aside from the entry
-                point file (default: None). If ``source_dir`` is an S3 URI, it must
-                point to a tar.gz file. Structure within this directory are preserved
+                point file (default: ``None``). If ``source_dir`` is an S3 URI, it must
+                point to a tar.gz file. The structure within this directory is preserved
                 when training on Amazon SageMaker.
             hyperparameters (dict): Hyperparameters that will be used for
-                training (default: None). The hyperparameters are made
+                training (default: ``None``). The hyperparameters are made
                 accessible as a dict[str, str] to the training code on
                 SageMaker. For convenience, this accepts other types for keys
                 and values, but ``str()`` will be called to convert them before
@@ -99,7 +96,7 @@ class MXNet(Framework):
                     * ``custom-image:latest``
 
                 If ``framework_version`` or ``py_version`` are ``None``, then
-                ``image_uri`` is required. If also ``None``, then a ``ValueError``
+                ``image_uri`` is required. If ``image_uri`` is also ``None``, then a ``ValueError``
                 will be raised.
             distribution (dict): A dictionary with information on how to run distributed
                 training (default: None). Currently we support distributed training with
