@@ -2778,6 +2778,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         approval_status="PendingManualApproval",
         description=None,
         drift_check_baselines=None,
+        validation_specification=None
     ):
         """Get request dictionary for CreateModelPackage API.
 
@@ -2819,6 +2820,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             approval_status,
             description,
             drift_check_baselines=drift_check_baselines,
+            validation_specification=validation_specification
         )
         return self.sagemaker_client.create_model_package(**request)
 
@@ -4120,6 +4122,7 @@ def get_model_package_args(
     tags=None,
     container_def_list=None,
     drift_check_baselines=None,
+    validation_specification=None
 ):
     """Get arguments for create_model_package method.
 
@@ -4185,6 +4188,8 @@ def get_model_package_args(
         model_package_args["description"] = description
     if tags is not None:
         model_package_args["tags"] = tags
+    if validation_specification is not None:
+        model_package_args["validation_specification"] = validation_specification
     return model_package_args
 
 
@@ -4203,6 +4208,7 @@ def get_create_model_package_request(
     description=None,
     tags=None,
     drift_check_baselines=None,
+    validation_specification=None
 ):
     """Get request dictionary for CreateModelPackage API.
 
@@ -4250,6 +4256,8 @@ def get_create_model_package_request(
         request_dict["DriftCheckBaselines"] = drift_check_baselines
     if metadata_properties:
         request_dict["MetadataProperties"] = metadata_properties
+    if validation_specification:
+        request_dict["ValidationSpecification"] = validation_specification
     if containers is not None:
         if not all([content_types, response_types, inference_instances, transform_instances]):
             raise ValueError(

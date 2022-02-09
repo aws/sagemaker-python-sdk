@@ -304,6 +304,7 @@ class Model(ModelBase):
         approval_status=None,
         description=None,
         drift_check_baselines=None,
+        validation_specification=None
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -356,6 +357,7 @@ class Model(ModelBase):
             description=description,
             container_def_list=[container_def],
             drift_check_baselines=drift_check_baselines,
+            validation_specification=validation_specification
         )
         model_package = self.sagemaker_session.create_model_package_from_containers(
             **model_pkg_args
