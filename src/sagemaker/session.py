@@ -2787,6 +2787,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         description=None,
         drift_check_baselines=None,
         customer_metadata_properties=None,
+        validation_specification=None
     ):
         """Get request dictionary for CreateModelPackage API.
 
@@ -2832,6 +2833,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             description,
             drift_check_baselines=drift_check_baselines,
             customer_metadata_properties=customer_metadata_properties,
+            validation_specification=validation_specification
         )
         if model_package_group_name is not None:
             try:
@@ -4180,6 +4182,7 @@ def get_model_package_args(
     container_def_list=None,
     drift_check_baselines=None,
     customer_metadata_properties=None,
+    validation_specification=None
 ):
     """Get arguments for create_model_package method.
 
@@ -4249,6 +4252,8 @@ def get_model_package_args(
         model_package_args["tags"] = tags
     if customer_metadata_properties is not None:
         model_package_args["customer_metadata_properties"] = customer_metadata_properties
+    if validation_specification is not None:
+        model_package_args["validation_specification"] = validation_specification
     return model_package_args
 
 
@@ -4268,6 +4273,7 @@ def get_create_model_package_request(
     tags=None,
     drift_check_baselines=None,
     customer_metadata_properties=None,
+    validation_specification=None
 ):
     """Get request dictionary for CreateModelPackage API.
 
@@ -4319,6 +4325,8 @@ def get_create_model_package_request(
         request_dict["MetadataProperties"] = metadata_properties
     if customer_metadata_properties is not None:
         request_dict["CustomerMetadataProperties"] = customer_metadata_properties
+    if validation_specification:
+        request_dict["ValidationSpecification"] = validation_specification
     if containers is not None:
         if not all([content_types, response_types, inference_instances, transform_instances]):
             raise ValueError(
