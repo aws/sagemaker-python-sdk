@@ -22,9 +22,9 @@ import attr
 from sagemaker import s3
 from sagemaker.model_monitor import ModelMonitor
 from sagemaker.processing import ProcessingOutput, ProcessingJob, Processor, ProcessingInput
-from sagemaker.workflow import PipelineNonPrimitiveInputTypes, ExecutionVariable, Parameter
+from sagemaker.workflow import PipelineNonPrimitiveInputTypes
 
-from sagemaker.workflow.entities import RequestType, Expression
+from sagemaker.workflow.entities import RequestType, PipelineVariable
 from sagemaker.workflow.properties import (
     Properties,
 )
@@ -279,7 +279,7 @@ class QualityCheckStep(Step):
                 _CONTAINER_BASE_PATH, _CONTAINER_INPUT_PATH, _BASELINE_DATASET_INPUT_NAME
             )
         )
-        if isinstance(baseline_dataset, (ExecutionVariable, Expression, Parameter, Properties)):
+        if isinstance(baseline_dataset, PipelineVariable):
             baseline_dataset_input = ProcessingInput(
                 source=self.quality_check_config.baseline_dataset,
                 destination=baseline_dataset_des,

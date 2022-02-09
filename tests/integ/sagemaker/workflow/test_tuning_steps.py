@@ -16,7 +16,9 @@ import os
 import re
 
 import pytest
+from botocore.exceptions import WaiterError
 
+from tests.integ.retry import retries
 from sagemaker import TrainingInput, Model, get_execution_role, utils
 from sagemaker.dataset_definition import DatasetDefinition, AthenaDatasetDefinition
 from sagemaker.inputs import CreateModelInput
@@ -154,6 +156,8 @@ def test_tuning_single_algo(
         ),
         sagemaker_session=sagemaker_session,
         role=role,
+        entry_point=entry_point,
+        source_dir=base_dir,
     )
 
     step_second_best_model = CreateModelStep(
@@ -177,11 +181,26 @@ def test_tuning_single_algo(
             create_arn,
         )
 
-        execution = pipeline.start(parameters={})
-        assert re.match(
-            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
-            execution.arn,
-        )
+        for _ in retries(
+            max_retry_count=5,
+            exception_message_prefix="Waiting for a successful execution of pipeline",
+            seconds_to_sleep=10,
+        ):
+            execution = pipeline.start(parameters={})
+            assert re.match(
+                rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+                execution.arn,
+            )
+            try:
+                execution.wait(delay=30, max_attempts=60)
+            except WaiterError:
+                pass
+            execution_steps = execution.list_steps()
+
+            assert len(execution_steps) == 3
+            for step in execution_steps:
+                assert step["StepStatus"] == "Succeeded"
+            break
     finally:
         try:
             pipeline.delete()

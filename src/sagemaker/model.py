@@ -37,6 +37,7 @@ from sagemaker.jumpstart.utils import add_jumpstart_tags, get_jumpstart_base_nam
 from sagemaker.utils import unique_name_from_base
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.predictor_async import AsyncPredictor
+from sagemaker.workflow.entities import PipelineVariable
 
 LOGGER = logging.getLogger("sagemaker")
 
@@ -443,7 +444,7 @@ class Model(ModelBase):
             )
 
         if repack and self.model_data is not None and self.entry_point is not None:
-            if isinstance(self.model_data, sagemaker.workflow.properties.Properties):
+            if isinstance(self.model_data, PipelineVariable):
                 # model is not yet there, defer repacking to later during pipeline execution
                 return
 
