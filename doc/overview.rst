@@ -741,6 +741,7 @@ see `Model <https://sagemaker.readthedocs.io/en/stable/api/inference/model.html
 .. code:: python
 
    from sagemaker.model import Model
+   from sagemaker.predictor import Predictor
    from sagemaker.session import Session
 
    # Create the SageMaker model instance
@@ -750,6 +751,7 @@ see `Model <https://sagemaker.readthedocs.io/en/stable/api/inference/model.html
        source_dir=script_uri,
        entry_point="inference.py",
        role=Session().get_caller_identity_arn(),
+       predictor_cls=Predictor,
    )
 
 Save the output from deploying the model to a variable named
@@ -761,12 +763,9 @@ Deployment may take about 5 minutes.
 
 .. code:: python
 
-   from sagemaker.predictor import Predictor
-
    predictor = model.deploy(
        initial_instance_count=instance_count,
        instance_type=instance_type,
-       predictor_cls=Predictor
    )
 
 Because ``catboost`` relies on the PyTorch Deep Learning Containers
