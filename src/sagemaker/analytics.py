@@ -17,6 +17,7 @@ from abc import ABCMeta, abstractmethod
 from collections import defaultdict, OrderedDict
 import datetime
 import logging
+import time
 
 from six import with_metaclass
 
@@ -501,6 +502,7 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
     """Fetch trial component data and make them accessible for analytics."""
 
     MAX_TRIAL_COMPONENTS = 10000
+    POLL = 10
 
     def __init__(
         self,
@@ -740,5 +742,6 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
                 search_args["NextToken"] = search_response["NextToken"]
             else:
                 break
+            time.sleep(self.POLL)
 
         return trial_components
