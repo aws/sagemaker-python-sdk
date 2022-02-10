@@ -742,6 +742,6 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
                 search_args["NextToken"] = search_response["NextToken"]
             else:
                 break
-            time.sleep(POLL)
+            time.sleep(self.POLL)
 
         return trial_components
