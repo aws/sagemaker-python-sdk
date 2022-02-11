@@ -33,7 +33,7 @@ def read_version():
 
 # Declare minimal set for installation
 required_packages = [
-    "attrs==21.4.0",
+    "attrs==20.3.0",
     "boto3>=1.20.21",
     "google-pasta",
     "numpy>=1.9.0",
@@ -75,8 +75,8 @@ extras["test"] = (
         "awslogs==0.14.0",
         "black==22.1.0",
         "stopit==1.1.2",
-        "apache-airflow==1.10.11",
-        "attrs==21.4.0",
+        "apache-airflow==2.2.3",
+        "attrs==20.3.0",
         "cattrs==1.0.0",
         "flask==2.0.2",
         "fabric==2.6.0",
