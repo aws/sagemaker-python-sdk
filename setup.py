@@ -33,7 +33,7 @@ def read_version():
 
 # Declare minimal set for installation
 required_packages = [
-    "attrs~=19.3",
+    "attrs==21.4.0",
     "boto3>=1.20.21",
     "google-pasta",
     "numpy>=1.9.0",
@@ -76,7 +76,9 @@ extras["test"] = (
         "black==22.1.0",
         "stopit==1.1.2",
         "apache-airflow==1.10.11",
-        "attrs~=19.3",
+        "attrs==21.4.0",
+        "cattrs==1.0.0",
+        "flask==2.0.2",
         "fabric==2.6.0",
         "requests==2.27.1",
         "sagemaker-experiments==0.1.35",
