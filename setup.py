@@ -54,7 +54,7 @@ extras = {
         "docker==5.0.0",
         "PyYAML==5.4.1",  # PyYAML version has to match docker-compose requirements
     ],
-    "scipy": ["scipy==1.8.0"],
+    "scipy": ["scipy==1.5.4"],
 }
 # Meta dependency groups
 extras["all"] = [item for group in extras.values() for item in group]
