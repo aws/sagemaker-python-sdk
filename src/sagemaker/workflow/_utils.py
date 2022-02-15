@@ -365,7 +365,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
         self.tags = tags
         self.model_metrics = model_metrics
         self.drift_check_baselines = drift_check_baselines
-        self.customer_metadata_properties = customer_metadata_properties,
+        self.customer_metadata_properties = customer_metadata_properties
         self.metadata_properties = metadata_properties
         self.approval_status = approval_status
         self.image_uri = image_uri
