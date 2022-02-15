@@ -2416,7 +2416,7 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
         "CertifyForMarketplace": marketplace_cert,
         "ModelApprovalStatus": approval_status,
         "DriftCheckBaselines": drift_check_baselines,
-        "CustomerMetadataProperties": customer_metadata_properties
+        "CustomerMetadataProperties": customer_metadata_properties,
     }
     sagemaker_session.sagemaker_client.create_model_package.assert_called_with(**expected_args)
 

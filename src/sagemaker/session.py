@@ -2827,10 +2827,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
         try:
             self.sagemaker_client.describe_model_package_group(
-                ModelPackageGroupName=request["ModelPackageGroupName"])
+                ModelPackageGroupName=request["ModelPackageGroupName"]
+            )
         except ClientError:
             self.sagemaker_client.create_model_package_group(
-                ModelPackageGroupName=request["ModelPackageGroupName"])
+                ModelPackageGroupName=request["ModelPackageGroupName"]
+            )
         return self.sagemaker_client.create_model_package(**request)
 
     def wait_for_model_package(self, model_package_name, poll=5):

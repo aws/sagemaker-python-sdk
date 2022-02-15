@@ -253,7 +253,9 @@ def test_register_model_package_via_group(
             sagemaker_session=sagemaker_session,
             framework_version=mxnet_inference_latest_version,
         )
-        model_package_group_name = "register-model-package-{}".format(sagemaker_timestamp())
+        model_package_group_name = "register-model-package-{}".format(
+            sagemaker_timestamp()
+        )
         model_pkg = model.register(
             content_types=["application/json"],
             response_types=["application/json"],
@@ -266,12 +268,16 @@ def test_register_model_package_via_group(
         data = numpy.zeros(shape=(1, 1, 28, 28))
         result = predictor.predict(data)
         assert result is not None
-        model_packages = \
-            sagemaker_session.sagemaker_client.list_model_packages(ModelPackageGroupName=model_package_group_name)[
-                'ModelPackageSummaryList']
+        model_packages = sagemaker_session.sagemaker_client.list_model_packages(
+            ModelPackageGroupName=model_package_group_name
+        )["ModelPackageSummaryList"]
         for model_package in model_packages:
-            sagemaker_session.sagemaker_client.delete_model_package(ModelPackageName=model_package['ModelPackageArn'])
-        sagemaker_session.sagemaker_client.delete_model_package_group(ModelPackageGroupName=model_package_group_name)
+            sagemaker_session.sagemaker_client.delete_model_package(
+                ModelPackageName=model_package["ModelPackageArn"]
+            )
+        sagemaker_session.sagemaker_client.delete_model_package_group(
+            ModelPackageGroupName=model_package_group_name
+        )
 
 
 def test_register_model_package_versioned(
