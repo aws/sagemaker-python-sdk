@@ -2825,14 +2825,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
             drift_check_baselines=drift_check_baselines,
             customer_metadata_properties=customer_metadata_properties,
         )
-        try:
-            self.sagemaker_client.describe_model_package_group(
-                ModelPackageGroupName=request["ModelPackageGroupName"]
-            )
-        except ClientError:
-            self.sagemaker_client.create_model_package_group(
-                ModelPackageGroupName=request["ModelPackageGroupName"]
-            )
+        if model_package_group_name is not None:
+            try:
+                self.sagemaker_client.describe_model_package_group(
+                    ModelPackageGroupName=request["ModelPackageGroupName"]
+                )
+            except ClientError:
+                self.sagemaker_client.create_model_package_group(
+                    ModelPackageGroupName=request["ModelPackageGroupName"]
+                )
         return self.sagemaker_client.create_model_package(**request)
 
     def wait_for_model_package(self, model_package_name, poll=5):
