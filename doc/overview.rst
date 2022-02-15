@@ -1601,7 +1601,7 @@ see the following documentation:
 - `Protect Data in Batch Transform Jobs by Using an Amazon Virtual Private Cloud <https://docs.aws.amazon.com/sagemaker/latest/dg/batch-vpc.html>`__
 - `Working with VPCs and Subnets <https://docs.aws.amazon.com/vpc/latest/userguide/working-with-vpcs.html>`__
 
-You can also reference or reuse the example VPC created for integration tests: `tests/integ/vpc_test_utils.py <tests/integ/vpc_test_utils.py>`__
+You can also reference or reuse the example VPC created for integration tests: `tests/integ/vpc_test_utils.py <../tests/integ/vpc_test_utils.py>`__
 
 To train a model using your own VPC, set the optional parameters ``subnets`` and ``security_group_ids`` on an ``Estimator``:
 
