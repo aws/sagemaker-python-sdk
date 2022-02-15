@@ -147,49 +147,54 @@ def test_jumpstart_validate_provided_hyperparameters(patched_get_model_specs):
     )
 
     hyperparameter_to_test["batch-size"] = "0"
-    with pytest.raises(JumpStartHyperparametersError):
+    with pytest.raises(JumpStartHyperparametersError) as e:
         hyperparameters.validate(
             region=region,
             model_id=model_id,
             model_version=model_version,
             hyperparameters=hyperparameter_to_test,
         )
+    assert str(e.value) == ("Hyperparameter 'batch-size' " "can be no less than 1.")
 
     hyperparameter_to_test["batch-size"] = "-1"
-    with pytest.raises(JumpStartHyperparametersError):
+    with pytest.raises(JumpStartHyperparametersError) as e:
         hyperparameters.validate(
             region=region,
             model_id=model_id,
             model_version=model_version,
             hyperparameters=hyperparameter_to_test,
         )
+    assert str(e.value) == ("Hyperparameter 'batch-size' can be no " "less than 1.")
 
     hyperparameter_to_test["batch-size"] = "-1.5"
-    with pytest.raises(JumpStartHyperparametersError):
+    with pytest.raises(JumpStartHyperparametersError) as e:
         hyperparameters.validate(
             region=region,
             model_id=model_id,
             model_version=model_version,
             hyperparameters=hyperparameter_to_test,
         )
+    assert str(e.value) == ("Hyperparameter 'batch-size' must be " "integer type ('-1.5').")
 
     hyperparameter_to_test["batch-size"] = "1.5"
-    with pytest.raises(JumpStartHyperparametersError):
+    with pytest.raises(JumpStartHyperparametersError) as e:
         hyperparameters.validate(
             region=region,
             model_id=model_id,
             model_version=model_version,
             hyperparameters=hyperparameter_to_test,
         )
+    assert str(e.value) == ("Hyperparameter 'batch-size' must be integer " "type ('1.5').")
 
     hyperparameter_to_test["batch-size"] = "99999"
-    with pytest.raises(JumpStartHyperparametersError):
+    with pytest.raises(JumpStartHyperparametersError) as e:
         hyperparameters.validate(
             region=region,
             model_id=model_id,
             model_version=model_version,
             hyperparameters=hyperparameter_to_test,
         )
+    assert str(e.value) == ("Hyperparameter 'batch-size' can be no greater " "than 1024.")
 
     hyperparameter_to_test["batch-size"] = 5
     hyperparameters.validate(
@@ -210,13 +215,17 @@ def test_jumpstart_validate_provided_hyperparameters(patched_get_model_specs):
         )
     for val in [None, "", 5, "Truesday", "Falsehood"]:
         hyperparameter_to_test["test_bool_param"] = val
-        with pytest.raises(JumpStartHyperparametersError):
+        with pytest.raises(JumpStartHyperparametersError) as e:
             hyperparameters.validate(
                 region=region,
                 model_id=model_id,
                 model_version=model_version,
                 hyperparameters=hyperparameter_to_test,
             )
+        assert str(e.value) == (
+            "Expecting boolean valued hyperparameter, " f"but got '{str(val)}'."
+        )
+
     hyperparameter_to_test["test_bool_param"] = original_bool_val
 
     original_exclusive_min_val = hyperparameter_to_test["test_exclusive_min_param"]
@@ -230,13 +239,16 @@ def test_jumpstart_validate_provided_hyperparameters(patched_get_model_specs):
         )
     for val in [1, 1 - 1e-99, -99]:
         hyperparameter_to_test["test_exclusive_min_param"] = val
-        with pytest.raises(JumpStartHyperparametersError):
+        with pytest.raises(JumpStartHyperparametersError) as e:
             hyperparameters.validate(
                 region=region,
                 model_id=model_id,
                 model_version=model_version,
                 hyperparameters=hyperparameter_to_test,
             )
+        assert str(e.value) == (
+            "Hyperparameter 'test_exclusive_min_param' must " "be greater than 1."
+        )
     hyperparameter_to_test["test_exclusive_min_param"] = original_exclusive_min_val
 
     original_exclusive_max_val = hyperparameter_to_test["test_exclusive_max_param"]
@@ -250,13 +262,15 @@ def test_jumpstart_validate_provided_hyperparameters(patched_get_model_specs):
         )
     for val in [4, 5, 99]:
         hyperparameter_to_test["test_exclusive_max_param"] = val
-        with pytest.raises(JumpStartHyperparametersError):
+        with pytest.raises(JumpStartHyperparametersError) as e:
             hyperparameters.validate(
                 region=region,
                 model_id=model_id,
                 model_version=model_version,
                 hyperparameters=hyperparameter_to_test,
             )
+        assert str(e.value) == "Hyperparameter 'test_exclusive_max_param' must be less than 4."
+
     hyperparameter_to_test["test_exclusive_max_param"] = original_exclusive_max_val
 
     original_exclusive_max_text_val = hyperparameter_to_test["test_exclusive_max_param_text"]
@@ -270,13 +284,17 @@ def test_jumpstart_validate_provided_hyperparameters(patched_get_model_specs):
         )
     for val in ["123456", "123456789"]:
         hyperparameter_to_test["test_exclusive_max_param_text"] = val
-        with pytest.raises(JumpStartHyperparametersError):
+        with pytest.raises(JumpStartHyperparametersError) as e:
             hyperparameters.validate(
                 region=region,
                 model_id=model_id,
                 model_version=model_version,
                 hyperparameters=hyperparameter_to_test,
             )
+        assert (
+            str(e.value)
+            == "Hyperparameter 'test_exclusive_max_param_text' must have length less than 6."
+        )
     hyperparameter_to_test["test_exclusive_max_param_text"] = original_exclusive_max_text_val
 
     original_max_text_val = hyperparameter_to_test["test_max_param_text"]
@@ -290,13 +308,17 @@ def test_jumpstart_validate_provided_hyperparameters(patched_get_model_specs):
         )
     for val in ["1234567", "123456789"]:
         hyperparameter_to_test["test_max_param_text"] = val
-        with pytest.raises(JumpStartHyperparametersError):
+        with pytest.raises(JumpStartHyperparametersError) as e:
             hyperparameters.validate(
                 region=region,
                 model_id=model_id,
                 model_version=model_version,
                 hyperparameters=hyperparameter_to_test,
             )
+        assert (
+            str(e.value)
+            == "Hyperparameter 'test_max_param_text' must have length no greater than 6."
+        )
     hyperparameter_to_test["test_max_param_text"] = original_max_text_val
 
     original_exclusive_min_text_val = hyperparameter_to_test["test_exclusive_min_param_text"]
@@ -310,13 +332,16 @@ def test_jumpstart_validate_provided_hyperparameters(patched_get_model_specs):
         )
     for val in ["1", "d", ""]:
         hyperparameter_to_test["test_exclusive_min_param_text"] = val
-        with pytest.raises(JumpStartHyperparametersError):
+        with pytest.raises(JumpStartHyperparametersError) as e:
             hyperparameters.validate(
                 region=region,
                 model_id=model_id,
                 model_version=model_version,
                 hyperparameters=hyperparameter_to_test,
             )
+        assert str(e.value) == (
+            "Hyperparameter 'test_exclusive_min_param_text' must have length greater " "than 1."
+        )
     hyperparameter_to_test["test_exclusive_min_param_text"] = original_exclusive_min_text_val
 
     original_min_text_val = hyperparameter_to_test["test_min_param_text"]
@@ -330,24 +355,31 @@ def test_jumpstart_validate_provided_hyperparameters(patched_get_model_specs):
         )
     for val in [""]:
         hyperparameter_to_test["test_min_param_text"] = val
-        with pytest.raises(JumpStartHyperparametersError):
+        with pytest.raises(JumpStartHyperparametersError) as e:
             hyperparameters.validate(
                 region=region,
                 model_id=model_id,
                 model_version=model_version,
                 hyperparameters=hyperparameter_to_test,
             )
+        assert str(e.value) == (
+            "Hyperparameter 'test_min_param_text' " "must have length no less than 1."
+        )
     hyperparameter_to_test["test_min_param_text"] = original_min_text_val
 
     del hyperparameter_to_test["batch-size"]
     hyperparameter_to_test["penalty"] = "blah"
-    with pytest.raises(JumpStartHyperparametersError):
+    with pytest.raises(JumpStartHyperparametersError) as e:
         hyperparameters.validate(
             region=region,
             model_id=model_id,
             model_version=model_version,
             hyperparameters=hyperparameter_to_test,
         )
+    assert str(e.value) == (
+        "Hyperparameter 'penalty' must have one of the following values: l1, l2, elasticnet,"
+        " none."
+    )
 
     hyperparameter_to_test["penalty"] = "elasticnet"
     hyperparameters.validate(
@@ -411,7 +443,7 @@ def test_jumpstart_validate_algorithm_hyperparameters(patched_get_model_specs):
     )
 
     del hyperparameter_to_test["adam-learning-rate"]
-    with pytest.raises(JumpStartHyperparametersError):
+    with pytest.raises(JumpStartHyperparametersError) as e:
         hyperparameters.validate(
             region=region,
             model_id=model_id,
@@ -419,6 +451,7 @@ def test_jumpstart_validate_algorithm_hyperparameters(patched_get_model_specs):
             hyperparameters=hyperparameter_to_test,
             validation_mode=HyperparameterValidationMode.VALIDATE_ALGORITHM,
         )
+    assert str(e.value) == "Cannot find algorithm hyperparameter for 'adam-learning-rate'."
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -454,7 +487,7 @@ def test_jumpstart_validate_all_hyperparameters(patched_get_model_specs):
 
     del hyperparameter_to_test["sagemaker_submit_directory"]
 
-    with pytest.raises(JumpStartHyperparametersError):
+    with pytest.raises(JumpStartHyperparametersError) as e:
         hyperparameters.validate(
             region=region,
             model_id=model_id,
@@ -462,13 +495,14 @@ def test_jumpstart_validate_all_hyperparameters(patched_get_model_specs):
             hyperparameters=hyperparameter_to_test,
             validation_mode=HyperparameterValidationMode.VALIDATE_ALL,
         )
+    assert str(e.value) == "Cannot find hyperparameter for 'sagemaker_submit_directory'."
 
     hyperparameter_to_test[
         "sagemaker_submit_directory"
     ] = "/opt/ml/input/data/code/sourcedir.tar.gz"
     del hyperparameter_to_test["epochs"]
 
-    with pytest.raises(JumpStartHyperparametersError):
+    with pytest.raises(JumpStartHyperparametersError) as e:
         hyperparameters.validate(
             region=region,
             model_id=model_id,
@@ -476,6 +510,7 @@ def test_jumpstart_validate_all_hyperparameters(patched_get_model_specs):
             hyperparameters=hyperparameter_to_test,
             validation_mode=HyperparameterValidationMode.VALIDATE_ALL,
         )
+    assert str(e.value) == "Cannot find hyperparameter for 'epochs'."
 
     hyperparameter_to_test["epochs"] = "3"
 
