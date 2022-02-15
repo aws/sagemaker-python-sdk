@@ -45,9 +45,9 @@ from tests.integ.sagemaker.lineage.helpers import name, names
 
 SLEEP_TIME_SECONDS = 1
 SLEEP_TIME_TWO_SECONDS = 2
-STATIC_PIPELINE_NAME = "SdkIntegTestStaticPipeline17"
-STATIC_ENDPOINT_NAME = "SdkIntegTestStaticEndpoint17"
-STATIC_MODEL_PACKAGE_GROUP_NAME = "SdkIntegTestStaticPipeline17ModelPackageGroup"
+STATIC_PIPELINE_NAME = "SdkIntegTestStaticPipeline20"
+STATIC_ENDPOINT_NAME = "SdkIntegTestStaticEndpoint20"
+STATIC_MODEL_PACKAGE_GROUP_NAME = "SdkIntegTestStaticPipeline20ModelPackageGroup"
 
 
 @pytest.fixture
