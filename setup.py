@@ -76,6 +76,7 @@ extras["test"] = (
         "black==22.1.0",
         "stopit==1.1.2",
         "apache-airflow==2.2.3",
+        "apache-airflow-providers-amazon==3.0.0",
         "attrs==20.3.0",
         "fabric==2.6.0",
         "requests==2.27.1",
