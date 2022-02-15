@@ -2778,6 +2778,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         approval_status="PendingManualApproval",
         description=None,
         drift_check_baselines=None,
+        customer_metadata_properties=customer_metadata_properties,
     ):
         """Get request dictionary for CreateModelPackage API.
 
@@ -2803,6 +2804,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 or "PendingManualApproval" (default: "PendingManualApproval").
             description (str): Model Package description (default: None).
             drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
+            customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
+                metadata properties (default: None).
+
         """
 
         request = get_create_model_package_request(
@@ -2819,7 +2823,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
             approval_status,
             description,
             drift_check_baselines=drift_check_baselines,
+            customer_metadata_properties=customer_metadata_properties,
         )
+        try:
+            self.sagemaker_client.describe_model_package_group(
+                ModelPackageGroupName=request["ModelPackageGroupName"])
+        except ClientError as e:
+            self.sagemaker_client.create_model_package_group(
+                ModelPackageGroupName=request["ModelPackageGroupName"])
         return self.sagemaker_client.create_model_package(**request)
 
     def wait_for_model_package(self, model_package_name, poll=5):
@@ -4120,6 +4131,7 @@ def get_model_package_args(
     tags=None,
     container_def_list=None,
     drift_check_baselines=None,
+    customer_metadata_properties=None,
 ):
     """Get arguments for create_model_package method.
 
@@ -4148,6 +4160,8 @@ def get_model_package_args(
             (default: None).
         container_def_list (list): A list of container defintiions (default: None).
         drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
+        customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
+            metadata properties (default: None).
     Returns:
         dict: A dictionary of method argument names and values.
     """
@@ -4185,6 +4199,8 @@ def get_model_package_args(
         model_package_args["description"] = description
     if tags is not None:
         model_package_args["tags"] = tags
+    if customer_metadata_properties is not None:
+        model_package_args["customer_metadata_properties"] = customer_metadata_properties
     return model_package_args
 
 
@@ -4203,6 +4219,7 @@ def get_create_model_package_request(
     description=None,
     tags=None,
     drift_check_baselines=None,
+    customer_metadata_properties=None,
 ):
     """Get request dictionary for CreateModelPackage API.
 
@@ -4229,6 +4246,8 @@ def get_create_model_package_request(
         tags (List[dict[str, str]]): A list of dictionaries containing key-value pairs
             (default: None).
         drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
+        customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
+            metadata properties (default: None).
     """
 
     if all([model_package_name, model_package_group_name]):
@@ -4250,6 +4269,8 @@ def get_create_model_package_request(
         request_dict["DriftCheckBaselines"] = drift_check_baselines
     if metadata_properties:
         request_dict["MetadataProperties"] = metadata_properties
+    if customer_metadata_properties is not None:
+        request_dict["CustomerMetadataProperties"] = customer_metadata_properties
     if containers is not None:
         if not all([content_types, response_types, inference_instances, transform_instances]):
             raise ValueError(

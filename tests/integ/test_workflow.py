@@ -1951,6 +1951,7 @@ def test_model_registration_with_drift_check_baselines(
             content_type="application/json",
         ),
     )
+    customer_metadata_properties = {"key1": "value1"}
     estimator = XGBoost(
         entry_point="training.py",
         source_dir=os.path.join(DATA_DIR, "sip"),
@@ -1972,6 +1973,7 @@ def test_model_registration_with_drift_check_baselines(
         model_package_group_name="testModelPackageGroup",
         model_metrics=model_metrics,
         drift_check_baselines=drift_check_baselines,
+        customer_metadata_properties=customer_metadata_properties,
     )
 
     pipeline = Pipeline(
@@ -2042,6 +2044,7 @@ def test_model_registration_with_drift_check_baselines(
                 response["DriftCheckBaselines"]["ModelDataQuality"]["Statistics"]["ContentType"]
                 == "application/json"
             )
+            assert response["CustomerMetadataProperties"] == customer_metadata_properties
             break
     finally:
         try:
