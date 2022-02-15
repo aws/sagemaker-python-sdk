@@ -2778,7 +2778,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         approval_status="PendingManualApproval",
         description=None,
         drift_check_baselines=None,
-        customer_metadata_properties=customer_metadata_properties,
+        customer_metadata_properties=None,
     ):
         """Get request dictionary for CreateModelPackage API.
 
