@@ -268,7 +268,7 @@ def test_register_model_package_via_group(
         assert result is not None
         model_packages = \
             sagemaker_session.sagemaker_client.list_model_packages(ModelPackageGroupName=model_package_group_name)[
-            'ModelPackageSummaryList']
+                'ModelPackageSummaryList']
         for model_package in model_packages:
             sagemaker_session.sagemaker_client.delete_model_package(ModelPackageName=model_package['ModelPackageArn'])
         sagemaker_session.sagemaker_client.delete_model_package_group(ModelPackageGroupName=model_package_group_name)
