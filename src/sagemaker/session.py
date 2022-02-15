@@ -2828,7 +2828,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         try:
             self.sagemaker_client.describe_model_package_group(
                 ModelPackageGroupName=request["ModelPackageGroupName"])
-        except ClientError as e:
+        except ClientError:
             self.sagemaker_client.create_model_package_group(
                 ModelPackageGroupName=request["ModelPackageGroupName"])
         return self.sagemaker_client.create_model_package(**request)

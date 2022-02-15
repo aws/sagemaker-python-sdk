@@ -359,7 +359,7 @@ class Model(ModelBase):
             description=description,
             container_def_list=[container_def],
             drift_check_baselines=drift_check_baselines,
-            customer_metadata_properties = customer_metadata_properties,
+            customer_metadata_properties=customer_metadata_properties,
         )
         model_package = self.sagemaker_session.create_model_package_from_containers(
             **model_pkg_args
