@@ -195,6 +195,11 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
     if s3_operations:
         train_config["S3Operations"] = s3_operations
 
+    if (estimator.checkpoint_local_path is not None) & (estimator.checkpoint_s3_uri is not None):
+        train_config["CheckpointConfig"] = {
+            "LocalPath": estimator.checkpoint_local_path,
+            "S3Uri": estimator.checkpoint_s3_uri,
+        }
     return train_config
 
 
@@ -549,7 +554,7 @@ def prepare_framework_container_def(model, instance_type, s3_operations):
             ]
 
     deploy_env = dict(model.env)
-    deploy_env.update(model._framework_env_vars())
+    deploy_env.update(model._script_mode_env_vars())
 
     try:
         if model.model_server_workers:

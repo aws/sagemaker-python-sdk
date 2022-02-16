@@ -258,8 +258,8 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
 
     def deploy(
         self,
-        initial_instance_count,
-        instance_type,
+        initial_instance_count=None,
+        instance_type=None,
         serializer=None,
         deserializer=None,
         accelerator_type=None,
@@ -269,6 +269,8 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         wait=True,
         data_capture_config=None,
         update_endpoint=None,
+        async_inference_config=None,
+        serverless_inference_config=None,
     ):
         """Deploy a Tensorflow ``Model`` to a SageMaker ``Endpoint``."""
 
@@ -287,6 +289,8 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             kms_key=kms_key,
             wait=wait,
             data_capture_config=data_capture_config,
+            async_inference_config=async_inference_config,
+            serverless_inference_config=serverless_inference_config,
             update_endpoint=update_endpoint,
         )
 
@@ -352,14 +356,14 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         env[self.LOG_LEVEL_PARAM_NAME] = self.LOG_LEVEL_MAP[self._container_log_level]
         return env
 
-    def _get_image_uri(self, instance_type, accelerator_type=None):
+    def _get_image_uri(self, instance_type, accelerator_type=None, region_name=None):
         """Placeholder docstring."""
         if self.image_uri:
             return self.image_uri
 
         return image_uris.retrieve(
             self._framework_name,
-            self.sagemaker_session.boto_region_name,
+            region_name or self.sagemaker_session.boto_region_name,
             version=self.framework_version,
             instance_type=instance_type,
             accelerator_type=accelerator_type,
@@ -383,4 +387,6 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             str: The appropriate image URI based on the given parameters.
 
         """
-        return self._get_image_uri(instance_type=instance_type, accelerator_type=accelerator_type)
+        return self._get_image_uri(
+            instance_type=instance_type, accelerator_type=accelerator_type, region_name=region_name
+        )

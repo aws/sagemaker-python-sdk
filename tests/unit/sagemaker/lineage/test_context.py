@@ -17,6 +17,9 @@ import unittest.mock
 
 import pytest
 from sagemaker.lineage import context, _api_types
+from sagemaker.lineage.action import Action
+from sagemaker.lineage.lineage_trial_component import LineageTrialComponent
+from sagemaker.lineage.query import LineageQueryDirectionEnum
 
 
 @pytest.fixture
@@ -327,4 +330,183 @@ def test_create_delete_with_association(sagemaker_session):
     assert (
         delete_with_association_expected_calls
         == sagemaker_session.sagemaker_client.delete_association.mock_calls
+    )
+
+
+def test_actions(sagemaker_session):
+    context_arn = "arn:aws:sagemaker:us-west-2:123456789012:context/lineage-unit-3b05f017-0d87-4c37"
+    action_arn = "arn:aws:sagemaker:us-west-2:123456789012:action/lineage-unit-3b05f017-0d87-4c37"
+    obj = context.EndpointContext(sagemaker_session, context_name="foo", context_arn=context_arn)
+
+    sagemaker_session.sagemaker_client.query_lineage.return_value = {
+        "Vertices": [
+            {"Arn": action_arn, "Type": "Approval", "LineageType": "Action"},
+        ],
+        "Edges": [{"SourceArn": "arn1", "DestinationArn": "arn2", "AssociationType": "Produced"}],
+    }
+
+    sagemaker_session.sagemaker_client.describe_action.return_value = {
+        "ActionName": "MyAction",
+        "ActionArn": action_arn,
+    }
+
+    action_list = obj.actions(direction=LineageQueryDirectionEnum.DESCENDANTS)
+
+    expected_calls = [
+        unittest.mock.call(
+            Direction="Descendants",
+            Filters={"LineageTypes": ["Action"]},
+            IncludeEdges=False,
+            MaxDepth=10,
+            StartArns=[context_arn],
+        ),
+    ]
+    assert expected_calls == sagemaker_session.sagemaker_client.query_lineage.mock_calls
+
+    expected_action_list = [
+        Action(
+            action_arn=action_arn,
+            action_name="MyAction",
+        )
+    ]
+
+    assert expected_action_list[0].action_arn == action_list[0].action_arn
+    assert expected_action_list[0].action_name == action_list[0].action_name
+
+
+def test_processing_jobs(sagemaker_session):
+    context_arn = "arn:aws:sagemaker:us-west-2:123456789012:context/lineage-unit-3b05f017-0d87-4c37"
+    processing_job_arn = (
+        "arn:aws:sagemaker:us-west-2:123456789012:trial_component/lineage-unit-3b05f017-0d87-4c37"
+    )
+    obj = context.EndpointContext(sagemaker_session, context_name="foo", context_arn=context_arn)
+
+    sagemaker_session.sagemaker_client.query_lineage.return_value = {
+        "Vertices": [
+            {"Arn": processing_job_arn, "Type": "ProcessingJob", "LineageType": "TrialComponent"},
+        ],
+        "Edges": [{"SourceArn": "arn1", "DestinationArn": "arn2", "AssociationType": "Produced"}],
+    }
+    sagemaker_session.sagemaker_client.describe_trial_component.return_value = {
+        "TrialComponentName": "MyProcessingJob",
+        "TrialComponentArn": processing_job_arn,
+    }
+
+    trial_component_list = obj.processing_jobs(direction=LineageQueryDirectionEnum.ASCENDANTS)
+    expected_calls = [
+        unittest.mock.call(
+            Direction="Ascendants",
+            Filters={"Types": ["ProcessingJob"], "LineageTypes": ["TrialComponent"]},
+            IncludeEdges=False,
+            MaxDepth=10,
+            StartArns=[context_arn],
+        ),
+    ]
+    assert expected_calls == sagemaker_session.sagemaker_client.query_lineage.mock_calls
+    expected_trial_component_list = [
+        LineageTrialComponent(
+            trial_component_name="MyProcessingJob",
+            trial_component_arn=processing_job_arn,
+        )
+    ]
+
+    assert (
+        expected_trial_component_list[0].trial_component_arn
+        == trial_component_list[0].trial_component_arn
+    )
+    assert (
+        expected_trial_component_list[0].trial_component_name
+        == trial_component_list[0].trial_component_name
+    )
+
+
+def test_transform_jobs(sagemaker_session):
+    context_arn = "arn:aws:sagemaker:us-west-2:123456789012:context/lineage-unit-3b05f017-0d87-4c37"
+    transform_job_arn = (
+        "arn:aws:sagemaker:us-west-2:123456789012:trial_component/lineage-unit-3b05f017-0d87-4c37"
+    )
+    obj = context.EndpointContext(sagemaker_session, context_name="foo", context_arn=context_arn)
+
+    sagemaker_session.sagemaker_client.query_lineage.return_value = {
+        "Vertices": [
+            {"Arn": transform_job_arn, "Type": "TransformJob", "LineageType": "TrialComponent"},
+        ],
+        "Edges": [{"SourceArn": "arn1", "DestinationArn": "arn2", "AssociationType": "Produced"}],
+    }
+    sagemaker_session.sagemaker_client.describe_trial_component.return_value = {
+        "TrialComponentName": "MyTransformJob",
+        "TrialComponentArn": transform_job_arn,
+    }
+
+    trial_component_list = obj.transform_jobs(direction=LineageQueryDirectionEnum.ASCENDANTS)
+    expected_calls = [
+        unittest.mock.call(
+            Direction="Ascendants",
+            Filters={"Types": ["TransformJob"], "LineageTypes": ["TrialComponent"]},
+            IncludeEdges=False,
+            MaxDepth=10,
+            StartArns=[context_arn],
+        ),
+    ]
+    assert expected_calls == sagemaker_session.sagemaker_client.query_lineage.mock_calls
+    expected_trial_component_list = [
+        LineageTrialComponent(
+            trial_component_name="MyTransformJob",
+            trial_component_arn=transform_job_arn,
+        )
+    ]
+
+    assert (
+        expected_trial_component_list[0].trial_component_arn
+        == trial_component_list[0].trial_component_arn
+    )
+    assert (
+        expected_trial_component_list[0].trial_component_name
+        == trial_component_list[0].trial_component_name
+    )
+
+
+def test_trial_components(sagemaker_session):
+    context_arn = "arn:aws:sagemaker:us-west-2:123456789012:context/lineage-unit-3b05f017-0d87-4c37"
+    trial_component_arn = (
+        "arn:aws:sagemaker:us-west-2:123456789012:trial_component/lineage-unit-3b05f017-0d87-4c37"
+    )
+    obj = context.EndpointContext(sagemaker_session, context_name="foo", context_arn=context_arn)
+
+    sagemaker_session.sagemaker_client.query_lineage.return_value = {
+        "Vertices": [
+            {"Arn": trial_component_arn, "Type": "TransformJob", "LineageType": "TrialComponent"},
+        ],
+        "Edges": [{"SourceArn": "arn1", "DestinationArn": "arn2", "AssociationType": "Produced"}],
+    }
+    sagemaker_session.sagemaker_client.describe_trial_component.return_value = {
+        "TrialComponentName": "MyTransformJob",
+        "TrialComponentArn": trial_component_arn,
+    }
+
+    trial_component_list = obj.trial_components(direction=LineageQueryDirectionEnum.ASCENDANTS)
+    expected_calls = [
+        unittest.mock.call(
+            Direction="Ascendants",
+            Filters={"LineageTypes": ["TrialComponent"]},
+            IncludeEdges=False,
+            MaxDepth=10,
+            StartArns=[context_arn],
+        ),
+    ]
+    assert expected_calls == sagemaker_session.sagemaker_client.query_lineage.mock_calls
+    expected_trial_component_list = [
+        LineageTrialComponent(
+            trial_component_name="MyTransformJob",
+            trial_component_arn=trial_component_arn,
+        )
+    ]
+
+    assert (
+        expected_trial_component_list[0].trial_component_arn
+        == trial_component_list[0].trial_component_arn
+    )
+    assert (
+        expected_trial_component_list[0].trial_component_name
+        == trial_component_list[0].trial_component_name
     )
