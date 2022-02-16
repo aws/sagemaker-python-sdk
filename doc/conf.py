@@ -15,6 +15,11 @@ from __future__ import absolute_import
 
 import pkg_resources
 from datetime import datetime
+import sys
+import os
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "."))
+from doc_utils.jumpstart_doc_utils import create_jumpstart_model_table  # noqa: E402
 
 project = "sagemaker"
 version = pkg_resources.require(project)[0].version
@@ -71,6 +76,12 @@ htmlhelp_basename = "%sdoc" % project
 # For Adobe Analytics
 html_js_files = [
     "https://a0.awsstatic.com/s_code/js/3.0/awshome_s_code.js",
+    "https://cdn.datatables.net/1.10.23/js/jquery.dataTables.min.js",
+    "js/datatable.js",
+]
+
+html_css_files = [
+    "https://cdn.datatables.net/1.10.23/css/jquery.dataTables.min.css",
 ]
 
 html_context = {"css_files": ["_static/theme_overrides.css"]}
@@ -83,3 +94,7 @@ autosummary_generate = True
 
 # autosectionlabel
 autosectionlabel_prefix_document = True
+
+
+def setup(app):
+    create_jumpstart_model_table()
