@@ -1,5 +1,12 @@
 .. _sdp_1.2.2_release_note:
 
+#############
+Release Notes
+#############
+
+New features, bug fixes, and improvements are regularly made to the SageMaker
+distributed data parallel library.
+
 SageMaker Distributed Data Parallel 1.2.2 Release Notes
 =======================================================
 
