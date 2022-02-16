@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.75.1 (2022-02-08)
+
+### Bug Fixes and Other Changes
+
+ * Add CMH to the non-P3 list
+
 ## v2.75.0 (2022-02-05)
 
 ### Features
