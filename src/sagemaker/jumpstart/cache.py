@@ -214,6 +214,10 @@ class JumpStartModelsCache:
             raise KeyError(error_msg)
 
         error_msg = f"Unable to find model manifest for '{model_id}' with version '{version}'. "
+        error_msg += (
+            "Visit https://sagemaker.readthedocs.io/en/stable/doc_utils/jumpstart.html"
+            " for updated list of models. "
+        )
 
         other_model_id_version = self._select_version(
             "*", versions_incompatible_with_sagemaker
