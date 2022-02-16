@@ -1845,57 +1845,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
         LOGGER.info("Creating compilation-job with name: %s", job_name)
         self.sagemaker_client.create_compilation_job(**compilation_job_request)
 
-    def _get_compilation_request(
-        self,
-        job_name,
-        input_model_config,
-        output_model_config,
-        role,
-        stop_condition,
-        tags=None,
-        vpc_config=None,
-    ):
-        """Construct CreateCompilationJob request
-
-        Args:
-            input_model_config (dict): the trained model and the Amazon S3 location where it is
-                stored.
-            output_model_config (dict): Identifies the Amazon S3 location where you want Amazon
-                SageMaker Neo to save the results of compilation job
-            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker Neo
-                compilation jobs use this role to access model artifacts. You must grant
-                sufficient permissions to this role.
-            job_name (str): Name of the compilation job being created.
-            stop_condition (dict): Defines when compilation job shall finish. Contains entries
-                that can be understood by the service like ``MaxRuntimeInSeconds``.
-            tags (list[dict]): List of tags for labeling a compile model job. For more, see
-                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
-            vpc_config (dict): Contains values for VpcConfig:
-                * subnets (list[str]): List of subnet ids.
-                The key in vpc_config is 'Subnets'.
-                * security_group_ids (list[str]): List of security group ids.
-                The key in vpc_config is 'SecurityGroupIds'.
-        Returns:
-            dict: A dictionary for CreateCompilationJob request
-        """
-
-        compilation_request = {
-            "InputConfig": input_model_config,
-            "OutputConfig": output_model_config,
-            "RoleArn": role,
-            "StoppingCondition": stop_condition,
-            "CompilationJobName": job_name,
-        }
-
-        tags = _append_project_tags(tags)
-        if tags is not None:
-            compilation_request["Tags"] = tags
-
-        if vpc_config is not None:
-            compilation_request["VpcConfig"] = vpc_config
-
-        return compilation_request
-
     def package_model_for_edge(
         self,
         output_model_config,
