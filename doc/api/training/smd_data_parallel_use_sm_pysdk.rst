@@ -1,7 +1,8 @@
 Use with the SageMaker Python SDK
 =================================
 
-To use the SageMaker distributed data parallel library with the SageMaker Python SDK, you will need the following:
+To use the SageMaker distributed data parallel library with the SageMaker Python SDK,
+you will need the following:
 
 -  A TensorFlow or PyTorch training script that is
    adapted to use the distributed data parallel library. The :ref:`sdp_api_docs` includes

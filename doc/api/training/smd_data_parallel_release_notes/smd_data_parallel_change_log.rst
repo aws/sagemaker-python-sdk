@@ -7,8 +7,54 @@ Release Notes
 New features, bug fixes, and improvements are regularly made to the SageMaker
 distributed data parallel library.
 
-SageMaker Distributed Data Parallel 1.2.2 Release Notes
+SageMaker Distributed Data Parallel 1.4.0 Release Notes
 =======================================================
+
+*Date: Feb. 18. 2022*
+
+**New Features**
+
+* Integrated to PyTorch DDP as a backend option
+* Added support for PyTorch 1.10.2
+
+**Bug Fixes**
+
+*
+
+**Improvements**
+
+*
+
+**Migration to AWS Deep Learning Containers**
+
+This version passed benchmark testing and is migrated to the following AWS Deep Learning Containers (DLC):
+
+- PyTorch 1.10.2 DLC
+
+  .. code::
+
+    763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.10.2-gpu-py38-cu113-ubuntu20.04-sagemaker
+
+- PyTorch 1.10.0 DLC
+
+  .. code::
+
+    763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.10.0-gpu-py38-cu113-ubuntu20.04-sagemaker
+
+- PyTorch 1.9.1 DLC
+
+  .. code::
+
+    763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.9.1-gpu-py38-cu111-ubuntu20.04
+
+
+----
+
+Release History
+===============
+
+SageMaker Distributed Data Parallel 1.2.2 Release Notes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 *Date: November. 24. 2021*
 
@@ -37,10 +83,6 @@ This version passed benchmark testing and is migrated to the following AWS Deep 
 
     763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.10.0-gpu-py38-cu113-ubuntu20.04-sagemaker
 
-----
-
-Release History
-===============
 
 SageMaker Distributed Data Parallel 1.2.1 Release Notes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
