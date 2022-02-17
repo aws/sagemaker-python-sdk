@@ -1,5 +1,23 @@
 # Changelog
 
+## v2.76.0 (2022-02-17)
+
+### Features
+
+ * Add FailStep Support for Sagemaker Pipeline
+
+### Bug Fixes and Other Changes
+
+ * use recommended inference image uri from Neo API
+ * pin test dependencies
+ * Add exception in test_action
+ * Update Static Endpoint
+ * Add CMH to the non-P3 list
+
+### Documentation Changes
+
+ * Support for generation of Jumpstart model table on build
+
 ## v2.75.1 (2022-02-08)
 
 ### Bug Fixes and Other Changes
