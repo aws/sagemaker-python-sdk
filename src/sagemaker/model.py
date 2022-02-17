@@ -23,7 +23,6 @@ import copy
 import sagemaker
 from sagemaker import (
     fw_utils,
-    image_uris,
     local,
     s3,
     session,
@@ -661,34 +660,6 @@ class Model(ModelBase):
             "job_name": job_name,
         }
 
-    def _compilation_image_uri(self, region, target_instance_type, framework, framework_version):
-        """Retrieve the Neo or Inferentia image URI.
-
-        Args:
-            region (str): The AWS region.
-            target_instance_type (str): Identifies the device on which you want to run
-                your model after compilation, for example: ml_c5. For valid values, see
-                https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
-            framework (str): The framework name.
-            framework_version (str): The framework version.
-        """
-        framework_prefix = ""
-        framework_suffix = ""
-
-        if framework == "xgboost":
-            framework_suffix = "-neo"
-        elif target_instance_type.startswith("ml_inf"):
-            framework_prefix = "inferentia-"
-        else:
-            framework_prefix = "neo-"
-
-        return image_uris.retrieve(
-            "{}{}{}".format(framework_prefix, framework, framework_suffix),
-            region,
-            instance_type=target_instance_type,
-            version=framework_version,
-        )
-
     def package_for_edge(
         self,
         output_path,
@@ -853,12 +824,7 @@ class Model(ModelBase):
             if target_instance_family == "ml_eia2":
                 pass
             elif target_instance_family.startswith("ml_"):
-                self.image_uri = self._compilation_image_uri(
-                    self.sagemaker_session.boto_region_name,
-                    target_instance_family,
-                    framework,
-                    framework_version,
-                )
+                self.image_uri = job_status.get("InferenceImage", None)
                 self._is_compiled_model = True
             else:
                 LOGGER.warning(
