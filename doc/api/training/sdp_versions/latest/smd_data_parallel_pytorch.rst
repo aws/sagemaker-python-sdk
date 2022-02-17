@@ -1,8 +1,8 @@
-##############################################################
-PyTorch Guide to SageMaker's distributed data parallel library
-##############################################################
+#################
+Guide for PyTorch
+#################
 
-Use this guide to learn about the SageMaker distributed
+Use this guide to learn how to use the SageMaker distributed
 data parallel library API for PyTorch.
 
 .. contents:: Topics
@@ -21,63 +21,73 @@ The distributed data parallel library works as a backend of the PyTorch distribu
 See `SageMaker distributed data parallel PyTorch examples <https://sagemaker-examples.readthedocs.io/en/latest/training/distributed_training/index.html#pytorch-distributed>`__ 
 for additional details on how to use the library.
 
-1. Import the SageMaker distributed data parallel library’s PyTorch client.
+1.  Import the SageMaker distributed data parallel library’s PyTorch client.
 
-  .. code:: python
+    .. code:: python
 
-    import smdistributed.dataparallel.torch.torch_smddp
+      import smdistributed.dataparallel.torch.torch_smddp
 
-2. Import the PyTorch distributed modules.
+2.  Import the PyTorch distributed modules.
 
-  .. code:: python
+    .. code:: python
 
-    import torch
-    import torch.distributed as dist
-    from torch.nn.parallel import DistributedDataParallel as DDP
+      import torch
+      import torch.distributed as dist
+      from torch.nn.parallel import DistributedDataParallel as DDP
 
-3. Set the backend of torch.distributed as smddp.
+3.  Set the backend of ``torch.distributed`` as ``smddp``.
 
-  .. code:: python
+    .. code:: python
 
-    dist.init_process_group(backend='smddp')
+      dist.init_process_group(backend='smddp')
 
-4. After parsing arguments and defining a batch size parameter (for example, batch_size=args.batch_size), add a two-line of code to resize the batch size per worker (GPU). PyTorch's DataLoader operation does not automatically handle the batch resizing for distributed training.
+4.  After parsing arguments and defining a batch size parameter
+    (for example, ``batch_size=args.batch_size``), add a two-line of code to
+    resize the batch size per worker (GPU). PyTorch's DataLoader operation
+    does not automatically handle the batch resizing for distributed training.
 
-  .. code:: python
+    .. code:: python
 
-    batch_size //= dist.get_world_size()
-    batch_size = max(batch_size, 1)
+      batch_size //= dist.get_world_size()
+      batch_size = max(batch_size, 1)
 
-5. Pin each GPU to a single SageMaker data parallel library process with local_rank—this refers to the relative rank of the process within a given node.
+5.  Pin each GPU to a single SageMaker data parallel library process with
+    ``local_rank``. This refers to the relative rank of the process within a given node.
 
-  You can retreive the rank of the process from the LOCAL_RANK environment variable.
+    You can retrieve the rank of the process from the ``LOCAL_RANK`` environment variable.
 
-  .. code:: python
+    .. code:: python
 
-    import os
-    local_rank = os.environ["LOCAL_RANK"]
-    torch.cuda.set_device(local_rank)
+      import os
+      local_rank = os.environ["LOCAL_RANK"]
+      torch.cuda.set_device(local_rank)
 
-6. After defining a model, wrap it with the PyTorch DDP.
+6.  After defining a model, wrap it with the PyTorch DDP.
 
-  .. code:: python
+    .. code:: python
 
-    model = ...
+      model = ...
 
-    # Wrap the model with the PyTorch DistributedDataParallel API
-    model = DDP(model)
+      # Wrap the model with the PyTorch DistributedDataParallel API
+      model = DDP(model)
 
-7. When you call the torch.utils.data.distributed.DistributedSampler API, specify the total number of processes (GPUs) participating in training across all the nodes in the cluster. This is called world_size, and you can retrieve the number from the torch.distributed.get_world_size() API. Also, specify the rank of each process among all processes using the torch.distributed.get_rank() API.
+7.  When you call the ``torch.utils.data.distributed.DistributedSampler`` API,
+    specify the total number of processes (GPUs) participating in training across
+    all the nodes in the cluster. This is called ``world_size``, and you can retrieve
+    the number from the ``torch.distributed.get_world_size()`` API. Also, specify
+    the rank of each process among all processes using the ``torch.distributed.get_rank()`` API.
 
-  .. code:: python
+    .. code:: python
 
-    train_sampler = DistributedSampler(
-      train_dataset,
-      num_replicas = dist.get_world_size(),
-      rank = dist.get_rank()
-    )
+      train_sampler = DistributedSampler(
+          train_dataset,
+          num_replicas = dist.get_world_size(),
+          rank = dist.get_rank()
+      )
 
-8. Modify your script to save checkpoints only on the leader process (rank 0). The leader process has a synchronized model. This also avoids other processes overwriting the checkpoints and possibly corrupting the checkpoints.
+8.  Modify your script to save checkpoints only on the leader process (rank 0).
+    The leader process has a synchronized model. This also avoids other processes
+    overwriting the checkpoints and possibly corrupting the checkpoints.
 
 The following example code shows the structure of a PyTorch training script with DDP and smddp as the backend.
 
@@ -142,7 +152,7 @@ The following example code shows the structure of a PyTorch training script with
               test(...)
           scheduler.step()
 
-      # SageMaker data parallel: Save model on the main node (rank 0).
+      # SageMaker data parallel: Save model on the leader node (rank 0).
       if dist.get_rank() == 0:
           torch.save(...)
 
@@ -171,8 +181,8 @@ that are supported in the library v1.3.0 and before.
 
 .. warning::
 
-  The following ``smdistributed`` APIs for its implementation of distributed data parallelism
-  for PyTorch is deprecated.
+  The following APIs for ``smdistributed`` implementation of the PyTorch distributed modules
+  are deprecated.
 
 
 .. class:: smdistributed.dataparallel.torch.parallel.DistributedDataParallel(module, device_ids=None, output_device=None, broadcast_buffers=True, process_group=None, bucket_cap_mb=None)
@@ -180,7 +190,7 @@ that are supported in the library v1.3.0 and before.
    .. deprecated:: 1.4.0
 
       Use the `torch.nn.parallel.DistributedDataParallel <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html>`_
-      instead.
+      API instead.
 
 
 .. function:: smdistributed.dataparallel.torch.distributed.is_available()

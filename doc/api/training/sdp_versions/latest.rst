@@ -15,7 +15,7 @@ Select the latest or one of the previous versions of the API documentation
 depending on the version of the library you use.
 
 .. important::
-   The distributed data parallel library only supports training jobs using CUDA 11 or later.
+   The distributed data parallel library supports training jobs using CUDA 11 or later.
    When you define a SageMaker ``PyTorch`` or ``TensorFlow``
    estimator with ``dataparallel`` parameter ``enabled`` set to ``True``,
    it uses CUDA 11. When you extend or customize your own training image,

@@ -1,12 +1,14 @@
-Use with the SageMaker Python SDK
-=================================
+Run a Distributed Training Job Using the SageMaker Python SDK
+=============================================================
 
 To use the SageMaker distributed data parallel library with the SageMaker Python SDK,
 you will need the following:
 
 -  A TensorFlow or PyTorch training script that is
-   adapted to use the distributed data parallel library. The :ref:`sdp_api_docs` includes
-   framework specific examples of training scripts that are adapted to use this library.
+   adapted to use the distributed data parallel library. Make sure you read through
+   the previous topic at
+   :ref:`sdp_api_docs`, which includes instructions on how to modify your script and
+   framework-specific examples.
 -  Your input data must be in an S3 bucket or in FSx in the AWS region
    that you will use to launch your training job. If you use the Jupyter
    notebooks provided, create a SageMaker notebook instance in the same

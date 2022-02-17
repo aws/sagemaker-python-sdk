@@ -1,16 +1,18 @@
-#################################################################
-TensorFlow Guide to SageMaker's distributed data parallel library
-#################################################################
+####################
+Guide for TensorFlow
+####################
 
-.. admonition:: Contents
+Use this guide to learn how to use the SageMaker distributed
+data parallel library API for TensorFlow.
 
-   - :ref:`tensorflow-sdp-modify`
-   - :ref:`tensorflow-sdp-api`
+.. contents:: Topics
+  :depth: 3
+  :local:
 
 .. _tensorflow-sdp-modify:
 
-Modify a TensorFlow 2.x training script to use SageMaker data parallel
-======================================================================
+Modify a TensorFlow 2.x training script to use the SageMaker data parallel library
+==================================================================================
 
 The following steps show you how to convert a TensorFlow 2.x training
 script to utilize the distributed data parallel library.

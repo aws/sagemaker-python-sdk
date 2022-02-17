@@ -1,6 +1,6 @@
-#################################
-Use with the SageMaker Python SDK
-#################################
+#############################################################
+Run a Distributed Training Job Using the SageMaker Python SDK
+#############################################################
 
 Walk through the following pages to learn about the SageMaker model parallel library's APIs
 to configure and enable distributed model parallelism
