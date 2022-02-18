@@ -135,12 +135,12 @@ class JumpStartModelHeader(JumpStartDataHolderType):
 class JumpStartECRSpecs(JumpStartDataHolderType):
     """Data class for JumpStart ECR specs."""
 
-    __slots__ = {
+    __slots__ = [
         "framework",
         "framework_version",
         "py_version",
         "huggingface_transformers_version",
-    }
+    ]
 
     def __init__(self, spec: Dict[str, Any]):
         """Initializes a JumpStartECRSpecs object from its json representation.
@@ -173,7 +173,7 @@ class JumpStartECRSpecs(JumpStartDataHolderType):
 class JumpStartHyperparameter(JumpStartDataHolderType):
     """Data class for JumpStart hyperparameter definition in the training container."""
 
-    __slots__ = {
+    __slots__ = [
         "name",
         "type",
         "options",
@@ -183,7 +183,7 @@ class JumpStartHyperparameter(JumpStartDataHolderType):
         "max",
         "exclusive_min",
         "exclusive_max",
-    }
+    ]
 
     def __init__(self, spec: Dict[str, Any]):
         """Initializes a JumpStartHyperparameter object from its json representation.
@@ -234,12 +234,12 @@ class JumpStartHyperparameter(JumpStartDataHolderType):
 class JumpStartEnvironmentVariable(JumpStartDataHolderType):
     """Data class for JumpStart environment variable definitions in the hosting container."""
 
-    __slots__ = {
+    __slots__ = [
         "name",
         "type",
         "default",
         "scope",
-    }
+    ]
 
     def __init__(self, spec: Dict[str, Any]):
         """Initializes a JumpStartEnvironmentVariable object from its json representation.
