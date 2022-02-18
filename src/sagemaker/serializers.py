@@ -364,6 +364,7 @@ class ImageSerializer(IdentitySerializer):
 
     def __init__(self, content_type="image/jpg"):
         """Initialize a ``ImageSerializer`` instance.
+
         Args:
             content_type (str): The MIME type to signal to the inference endpoint when sending
                 request data (default: "image/jpg").
@@ -372,6 +373,7 @@ class ImageSerializer(IdentitySerializer):
 
     def serialize(self, data):
         """Serialize image of various formats to a raw bytes.
+
         Args:
             data (object): Data to be serialized. The data can be a string,
                 representing file-path or the raw bytes form an image.
