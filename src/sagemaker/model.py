@@ -23,7 +23,6 @@ import copy
 import sagemaker
 from sagemaker import (
     fw_utils,
-    image_uris,
     local,
     s3,
     session,
@@ -304,6 +303,7 @@ class Model(ModelBase):
         approval_status=None,
         description=None,
         drift_check_baselines=None,
+        customer_metadata_properties=None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -329,6 +329,8 @@ class Model(ModelBase):
                 or "PendingManualApproval" (default: "PendingManualApproval").
             description (str): Model Package description (default: None).
             drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
+            customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
+                metadata properties (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -356,6 +358,7 @@ class Model(ModelBase):
             description=description,
             container_def_list=[container_def],
             drift_check_baselines=drift_check_baselines,
+            customer_metadata_properties=customer_metadata_properties,
         )
         model_package = self.sagemaker_session.create_model_package_from_containers(
             **model_pkg_args
@@ -657,34 +660,6 @@ class Model(ModelBase):
             "job_name": job_name,
         }
 
-    def _compilation_image_uri(self, region, target_instance_type, framework, framework_version):
-        """Retrieve the Neo or Inferentia image URI.
-
-        Args:
-            region (str): The AWS region.
-            target_instance_type (str): Identifies the device on which you want to run
-                your model after compilation, for example: ml_c5. For valid values, see
-                https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
-            framework (str): The framework name.
-            framework_version (str): The framework version.
-        """
-        framework_prefix = ""
-        framework_suffix = ""
-
-        if framework == "xgboost":
-            framework_suffix = "-neo"
-        elif target_instance_type.startswith("ml_inf"):
-            framework_prefix = "inferentia-"
-        else:
-            framework_prefix = "neo-"
-
-        return image_uris.retrieve(
-            "{}{}{}".format(framework_prefix, framework, framework_suffix),
-            region,
-            instance_type=target_instance_type,
-            version=framework_version,
-        )
-
     def package_for_edge(
         self,
         output_path,
@@ -849,12 +824,7 @@ class Model(ModelBase):
             if target_instance_family == "ml_eia2":
                 pass
             elif target_instance_family.startswith("ml_"):
-                self.image_uri = self._compilation_image_uri(
-                    self.sagemaker_session.boto_region_name,
-                    target_instance_family,
-                    framework,
-                    framework_version,
-                )
+                self.image_uri = job_status.get("InferenceImage", None)
                 self._is_compiled_model = True
             else:
                 LOGGER.warning(
