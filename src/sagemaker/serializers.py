@@ -385,3 +385,4 @@ class ImageSerializer(IdentitySerializer):
             return data
 
         raise ValueError("Object of type %s is not Image serializable." % type(data))
+
