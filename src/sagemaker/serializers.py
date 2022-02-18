@@ -366,12 +366,12 @@ class ImageSerializer(IdentitySerializer):
         """Initialize a ``ImageSerializer`` instance.
         Args:
             content_type (str): The MIME type to signal to the inference endpoint when sending
-                request data (default: "file-path/byte-stream").
+                request data (default: "image/jpg").
         """
         super(ImageSerializer, self).__init__(content_type=content_type)
 
     def serialize(self, data):
-        """Serialize data of various formats to a JSON Lines formatted string.
+        """Serialize image of various formats to a raw bytes.
         Args:
             data (object): Data to be serialized. The data can be a string,
                 representing file-path or the raw bytes form an image.
