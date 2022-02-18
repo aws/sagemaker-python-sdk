@@ -357,3 +357,31 @@ class LibSVMSerializer(SimpleBaseSerializer):
             return data.read()
 
         raise ValueError("Unable to handle input format: %s" % type(data))
+
+class ImageSerializer(IdentitySerializer):
+    """Serialize data in a image file by returning raw bytes rom an image file.
+    """
+
+    def __init__(self, content_type="image/jpg"):
+        """Initialize a ``ImageSerializer`` instance.
+        Args:
+            content_type (str): The MIME type to signal to the inference endpoint when sending
+                request data (default: "file-path/byte-stream").
+        """
+        super(ImageSerializer, self).__init__(content_type=content_type)
+
+    def serialize(self, data):
+        """Serialize data of various formats to a JSON Lines formatted string.
+        Args:
+            data (object): Data to be serialized. The data can be a string,
+                representing file-path or the raw bytes form an image.
+        Returns:
+            raw-bytes: The data serialized as a raw-bytes from the image file.
+        """
+        if isinstance(data, str):
+            image = open(data, "rb")
+            return image.read()
+        if isinstance(data, bytes):
+            return data
+
+        raise ValueError("Object of type %s is not Image serializable." % type(data))
