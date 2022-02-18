@@ -358,9 +358,9 @@ class LibSVMSerializer(SimpleBaseSerializer):
 
         raise ValueError("Unable to handle input format: %s" % type(data))
 
+
 class ImageSerializer(IdentitySerializer):
-    """Serialize data in a image file by returning raw bytes rom an image file.
-    """
+    """Serialize data in a image file by returning raw bytes rom an image file."""
 
     def __init__(self, content_type="image/jpg"):
         """Initialize a ``ImageSerializer`` instance.
@@ -385,4 +385,3 @@ class ImageSerializer(IdentitySerializer):
             return data
 
         raise ValueError("Object of type %s is not Image serializable." % type(data))
-
