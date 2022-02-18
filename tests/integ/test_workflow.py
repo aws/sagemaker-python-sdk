@@ -68,6 +68,7 @@ from sagemaker.workflow.conditions import (
     ConditionLessThanOrEqualTo,
 )
 from sagemaker.workflow.condition_step import ConditionStep
+from sagemaker.workflow.condition_step import JsonGet as ConditionStepJsonGet
 from sagemaker.workflow.callback_step import (
     CallbackStep,
     CallbackOutput,
@@ -1958,6 +1959,7 @@ def test_model_registration_with_drift_check_baselines(
             content_type="application/json",
         ),
     )
+    customer_metadata_properties = {"key1": "value1"}
     estimator = XGBoost(
         entry_point="training.py",
         source_dir=os.path.join(DATA_DIR, "sip"),
@@ -1979,6 +1981,7 @@ def test_model_registration_with_drift_check_baselines(
         model_package_group_name="testModelPackageGroup",
         model_metrics=model_metrics,
         drift_check_baselines=drift_check_baselines,
+        customer_metadata_properties=customer_metadata_properties,
     )
 
     pipeline = Pipeline(
@@ -2049,6 +2052,7 @@ def test_model_registration_with_drift_check_baselines(
                 response["DriftCheckBaselines"]["ModelDataQuality"]["Statistics"]["ContentType"]
                 == "application/json"
             )
+            assert response["CustomerMetadataProperties"] == customer_metadata_properties
             break
     finally:
         try:
@@ -2838,7 +2842,7 @@ def test_end_to_end_pipeline_successful_execution(
 
     # define condition step
     cond_lte = ConditionLessThanOrEqualTo(
-        left=JsonGet(
+        left=ConditionStepJsonGet(
             step=step_eval,
             property_file=evaluation_report,
             json_path="regression_metrics.mse.value",
