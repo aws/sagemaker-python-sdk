@@ -233,3 +233,5 @@ def test_add_func_of_json_get():
         json_get_func1 + json_get_func2
 
     assert str(error.value) == "Pipeline variables do not support concatenation."
+=======
+>>>>>>> 0e4fd556 (fix: Improve Pipeline workflow unit test branch coverage (#2878))
