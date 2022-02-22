@@ -141,11 +141,15 @@ def get_docker_host():
     Returns:
         docker_host (str): Docker host DNS or IP address
     """
-    docker_context_string = os.popen("docker context inspect").read()
+    cmd = "docker context inspect".split()
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output, err = process.communicate()
+    if err:
+        return "localhost"
+    docker_context_string = output.decode("utf-8")
     docker_context_host_url = json.loads(docker_context_string)[0]["Endpoints"]["docker"]["Host"]
     parsed_url = urlparse(docker_context_host_url)
     if parsed_url.hostname and parsed_url.scheme == "tcp":
-        docker_host = parsed_url.hostname
+        return parsed_url.hostname
     else:
-        docker_host = "localhost"
-    return docker_host
+        return "localhost"

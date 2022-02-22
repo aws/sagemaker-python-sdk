@@ -163,3 +163,28 @@ def test_local_transform_job_perform_batch_inference(
     assert len(output_files) == 2
     assert "file1.out" in output_files
     assert "file2.out" in output_files
+
+
+@patch("sagemaker.local.entities._SageMakerContainer", Mock())
+@patch("sagemaker.local.entities.get_docker_host")
+@patch("sagemaker.local.entities._perform_request")
+@patch("sagemaker.local.entities._LocalTransformJob._perform_batch_inference")
+def test_start_local_transform_job_from_remote_docker_host(
+    m_perform_batch_inference, m_perform_request, m_get_docker_host, local_transform_job
+):
+    input_data = {}
+    output_data = {}
+    transform_resources = {"InstanceType": "local"}
+    m_get_docker_host.return_value = "some_host"
+    perform_request_mock = Mock()
+    m_perform_request.return_value = (perform_request_mock, 200)
+    perform_request_mock.read.return_value = '{"BatchStrategy": "SingleRecord"}'
+    local_transform_job.primary_container["ModelDataUrl"] = "file:///some/model"
+    local_transform_job.start(input_data, output_data, transform_resources, Environment={})
+    endpoints = [
+        "http://%s:%d/ping" % ("some_host", 8080),
+        "http://%s:%d/execution-parameters" % ("some_host", 8080),
+    ]
+    calls = m_perform_request.call_args_list
+    for call, endpoint in zip(calls, endpoints):
+        assert call[0][0] == endpoint
