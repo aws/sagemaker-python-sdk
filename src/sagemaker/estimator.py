@@ -598,7 +598,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         current_hyperparameters = hyperparameters
         if current_hyperparameters is not None:
             hyperparameters = {
-                str(k): (v if isinstance(v, (Parameter, Expression, Properties)) else json.dumps(v))
+               str(k): (v if isinstance(
+                    v, (str, int, float, bool, Parameter, Expression, Properties)
+                    ) else json.dumps(v))
                 for (k, v) in current_hyperparameters.items()
             }
         return hyperparameters
