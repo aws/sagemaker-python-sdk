@@ -67,11 +67,22 @@ from sagemaker.workflow.conditions import (
     ConditionLessThanOrEqualTo,
 )
 from sagemaker.workflow.condition_step import ConditionStep
-from sagemaker.workflow.callback_step import CallbackStep, CallbackOutput, CallbackOutputTypeEnum
-from sagemaker.workflow.lambda_step import LambdaStep, LambdaOutput, LambdaOutputTypeEnum
+from sagemaker.workflow.callback_step import (
+    CallbackStep,
+    CallbackOutput,
+    CallbackOutputTypeEnum,
+)
+from sagemaker.workflow.lambda_step import (
+    LambdaStep,
+    LambdaOutput,
+    LambdaOutputTypeEnum,
+)
 from sagemaker.workflow.emr_step import EMRStep, EMRStepConfig
 from sagemaker.wrangler.processing import DataWranglerProcessor
-from sagemaker.dataset_definition.inputs import DatasetDefinition, AthenaDatasetDefinition
+from sagemaker.dataset_definition.inputs import (
+    DatasetDefinition,
+    AthenaDatasetDefinition,
+)
 from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.functions import Join, JsonGet
 from sagemaker.wrangler.ingestion import generate_data_ingestion_flow_from_s3_input
@@ -92,7 +103,11 @@ from sagemaker.workflow.steps import (
 from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.lambda_helper import Lambda
-from sagemaker.feature_store.feature_group import FeatureGroup, FeatureDefinition, FeatureTypeEnum
+from sagemaker.feature_store.feature_group import (
+    FeatureGroup,
+    FeatureDefinition,
+    FeatureTypeEnum,
+)
 from tests.integ import DATA_DIR
 from tests.integ.kms_utils import get_or_create_kms_key
 from tests.integ.retry import retries
@@ -151,7 +166,7 @@ def athena_dataset_definition(sagemaker_session):
             catalog="AwsDataCatalog",
             database="default",
             work_group="workgroup",
-            query_string='SELECT * FROM "default"."s3_test_table_$STAGE_$REGIONUNDERSCORED";',
+            query_string=('SELECT * FROM "default"."s3_test_table_$STAGE_$REGIONUNDERSCORED";'),
             output_s3_uri=f"s3://{sagemaker_session.default_bucket()}/add",
             output_format="JSON",
             output_compression="GZIP",
@@ -262,7 +277,10 @@ def build_jar():
         )
     else:
         subprocess.run(
-            ["javac", os.path.join(jar_file_path, java_file_path, "HelloJavaSparkApp.java")]
+            [
+                "javac",
+                os.path.join(jar_file_path, java_file_path, "HelloJavaSparkApp.java"),
+            ]
         )
 
     subprocess.run(
@@ -383,10 +401,20 @@ def test_three_step_definition(
     assert set(tuple(param.items()) for param in definition["Parameters"]) == set(
         [
             tuple(
-                {"Name": "InstanceType", "Type": "String", "DefaultValue": "ml.m5.xlarge"}.items()
+                {
+                    "Name": "InstanceType",
+                    "Type": "String",
+                    "DefaultValue": "ml.m5.xlarge",
+                }.items()
             ),
             tuple({"Name": "InstanceCount", "Type": "Integer", "DefaultValue": 1}.items()),
-            tuple({"Name": "OutputPrefix", "Type": "String", "DefaultValue": "output"}.items()),
+            tuple(
+                {
+                    "Name": "OutputPrefix",
+                    "Type": "String",
+                    "DefaultValue": "output",
+                }.items()
+            ),
         ]
     )
 
@@ -443,7 +471,7 @@ def test_three_step_definition(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
     finally:
@@ -506,14 +534,14 @@ def test_one_step_sklearn_processing_pipeline(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
 
         pipeline.parameters = [ParameterInteger(name="InstanceCount", default_value=1)]
         execution = pipeline.start(parameters={})
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
 
@@ -597,7 +625,7 @@ def test_one_step_framework_processing_pipeline(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
 
@@ -605,13 +633,13 @@ def test_one_step_framework_processing_pipeline(
         response = pipeline.update(role)
         update_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             update_arn,
         )
 
         execution = pipeline.start(parameters={})
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
 
@@ -699,7 +727,7 @@ def test_one_step_pyspark_processing_pipeline(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
 
@@ -707,13 +735,13 @@ def test_one_step_pyspark_processing_pipeline(
         response = pipeline.update(role)
         update_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             update_arn,
         )
 
         execution = pipeline.start(parameters={})
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
 
@@ -740,7 +768,13 @@ def test_one_step_pyspark_processing_pipeline(
 
 
 def test_one_step_sparkjar_processing_pipeline(
-    sagemaker_session, role, cpu_instance_type, pipeline_name, region_name, configuration, build_jar
+    sagemaker_session,
+    role,
+    cpu_instance_type,
+    pipeline_name,
+    region_name,
+    configuration,
+    build_jar,
 ):
     instance_count = ParameterInteger(name="InstanceCount", default_value=2)
     cache_config = CacheConfig(enable_caching=True, expire_after="T30m")
@@ -758,7 +792,9 @@ def test_one_step_sparkjar_processing_pipeline(
         body = data.read()
         input_data_uri = f"s3://{bucket}/spark/input/data.jsonl"
         S3Uploader.upload_string_as_file_body(
-            body=body, desired_s3_uri=input_data_uri, sagemaker_session=sagemaker_session
+            body=body,
+            desired_s3_uri=input_data_uri,
+            sagemaker_session=sagemaker_session,
         )
     output_data_uri = f"s3://{bucket}/spark/output/sales/{datetime.now().isoformat()}"
 
@@ -796,7 +832,7 @@ def test_one_step_sparkjar_processing_pipeline(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
 
@@ -804,13 +840,13 @@ def test_one_step_sparkjar_processing_pipeline(
         response = pipeline.update(role)
         update_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             update_arn,
         )
 
         execution = pipeline.start(parameters={})
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
 
@@ -858,7 +894,7 @@ def test_one_step_callback_pipeline(sagemaker_session, role, pipeline_name, regi
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
 
@@ -866,7 +902,7 @@ def test_one_step_callback_pipeline(sagemaker_session, role, pipeline_name, regi
         response = pipeline.update(role)
         update_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             update_arn,
         )
     finally:
@@ -877,7 +913,12 @@ def test_one_step_callback_pipeline(sagemaker_session, role, pipeline_name, regi
 
 
 def test_steps_with_map_params_pipeline(
-    sagemaker_session, role, script_dir, pipeline_name, region_name, athena_dataset_definition
+    sagemaker_session,
+    role,
+    script_dir,
+    pipeline_name,
+    region_name,
+    athena_dataset_definition,
 ):
     instance_count = ParameterInteger(name="InstanceCount", default_value=2)
     framework_version = "0.20.0"
@@ -1007,7 +1048,7 @@ def test_steps_with_map_params_pipeline(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
 
@@ -1049,7 +1090,7 @@ def test_two_step_callback_pipeline_with_output_reference(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
     finally:
@@ -1066,7 +1107,7 @@ def test_one_step_lambda_pipeline(sagemaker_session, role, pipeline_name, region
     step_lambda = LambdaStep(
         name="lambda-step",
         lambda_func=Lambda(
-            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
+            function_arn=("arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda"),
             session=sagemaker_session,
         ),
         inputs={"arg1": "foo"},
@@ -1084,7 +1125,7 @@ def test_one_step_lambda_pipeline(sagemaker_session, role, pipeline_name, region
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
 
@@ -1092,7 +1133,7 @@ def test_one_step_lambda_pipeline(sagemaker_session, role, pipeline_name, region
         response = pipeline.update(role)
         update_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             update_arn,
         )
     finally:
@@ -1111,7 +1152,7 @@ def test_two_step_lambda_pipeline_with_output_reference(
     step_lambda1 = LambdaStep(
         name="lambda-step1",
         lambda_func=Lambda(
-            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
+            function_arn=("arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda"),
             session=sagemaker_session,
         ),
         inputs={"arg1": "foo"},
@@ -1121,7 +1162,7 @@ def test_two_step_lambda_pipeline_with_output_reference(
     step_lambda2 = LambdaStep(
         name="lambda-step2",
         lambda_func=Lambda(
-            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
+            function_arn=("arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda"),
             session=sagemaker_session,
         ),
         inputs={"arg1": outputParam1},
@@ -1139,7 +1180,7 @@ def test_two_step_lambda_pipeline_with_output_reference(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
     finally:
@@ -1184,7 +1225,8 @@ def test_two_steps_emr_pipeline(sagemaker_session, role, pipeline_name, region_n
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
         )
     finally:
         try:
@@ -1267,7 +1309,12 @@ def test_conditional_pytorch_training_model_registration(
 
     pipeline = Pipeline(
         name=pipeline_name,
-        parameters=[in_condition_input, good_enough_input, instance_count, instance_type],
+        parameters=[
+            in_condition_input,
+            good_enough_input,
+            instance_count,
+            instance_type,
+        ],
         steps=[step_cond],
         sagemaker_session=sagemaker_session,
     )
@@ -1276,18 +1323,19 @@ def test_conditional_pytorch_training_model_registration(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
         )
 
         execution = pipeline.start(parameters={})
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
 
         execution = pipeline.start(parameters={"GoodEnoughInput": 0})
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
     finally:
@@ -1395,12 +1443,13 @@ def test_tuning_single_algo(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
         )
 
         execution = pipeline.start(parameters={})
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
     finally:
@@ -1522,12 +1571,13 @@ def test_tuning_multi_algos(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
         )
 
         execution = pipeline.start(parameters={})
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
     finally:
@@ -1583,18 +1633,19 @@ def test_mxnet_model_registration(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
         )
 
         execution = pipeline.start(parameters={})
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
 
         execution = pipeline.start()
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
     finally:
@@ -1655,10 +1706,14 @@ def test_sklearn_xgboost_sip_model_registration(
             destination=train_data_path_param,
         ),
         ProcessingOutput(
-            output_name="val_data", source="/opt/ml/processing/val", destination=val_data_path_param
+            output_name="val_data",
+            source="/opt/ml/processing/val",
+            destination=val_data_path_param,
         ),
         ProcessingOutput(
-            output_name="model", source="/opt/ml/processing/model", destination=model_path_param
+            output_name="model",
+            source="/opt/ml/processing/model",
+            destination=model_path_param,
         ),
     ]
 
@@ -1775,18 +1830,19 @@ def test_sklearn_xgboost_sip_model_registration(
         response = pipeline.upsert(role_arn=role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
         )
 
         execution = pipeline.start(parameters={})
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
 
         execution = pipeline.start()
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
     finally:
@@ -1798,7 +1854,9 @@ def test_sklearn_xgboost_sip_model_registration(
 
 @pytest.mark.skipif(
     tests.integ.test_region() not in tests.integ.DRIFT_CHECK_BASELINES_SUPPORTED_REGIONS,
-    reason=f"DriftCheckBaselines changes are not fully deployed in {tests.integ.test_region()}.",
+    reason=(
+        "DriftCheckBaselines changes are not fully deployed in" f" {tests.integ.test_region()}."
+    ),
 )
 def test_model_registration_with_drift_check_baselines(
     sagemaker_session,
@@ -1831,7 +1889,9 @@ def test_model_registration_with_drift_check_baselines(
         utils.unique_name_from_base("metrics"),
     )
     metrics_uri = S3Uploader.upload_string_as_file_body(
-        body=metrics_data, desired_s3_uri=metrics_base_uri, sagemaker_session=sagemaker_session
+        body=metrics_data,
+        desired_s3_uri=metrics_base_uri,
+        sagemaker_session=sagemaker_session,
     )
     metrics_uri_param = ParameterString(name="metrics_uri", default_value=metrics_uri)
 
@@ -1891,6 +1951,7 @@ def test_model_registration_with_drift_check_baselines(
             content_type="application/json",
         ),
     )
+    customer_metadata_properties = {"key1": "value1"}
     estimator = XGBoost(
         entry_point="training.py",
         source_dir=os.path.join(DATA_DIR, "sip"),
@@ -1912,6 +1973,7 @@ def test_model_registration_with_drift_check_baselines(
         model_package_group_name="testModelPackageGroup",
         model_metrics=model_metrics,
         drift_check_baselines=drift_check_baselines,
+        customer_metadata_properties=customer_metadata_properties,
     )
 
     pipeline = Pipeline(
@@ -1951,7 +2013,9 @@ def test_model_registration_with_drift_check_baselines(
             assert len(execution_steps) == 1
             failure_reason = execution_steps[0].get("FailureReason", "")
             if failure_reason != "":
-                logging.error(f"Pipeline execution failed with error: {failure_reason}. Retrying..")
+                logging.error(
+                    f"Pipeline execution failed with error: {failure_reason}." " Retrying.."
+                )
                 continue
             assert execution_steps[0]["StepStatus"] == "Succeeded"
             assert execution_steps[0]["StepName"] == "MyRegisterModelStep"
@@ -1980,6 +2044,7 @@ def test_model_registration_with_drift_check_baselines(
                 response["DriftCheckBaselines"]["ModelDataQuality"]["Statistics"]["ContentType"]
                 == "application/json"
             )
+            assert response["CustomerMetadataProperties"] == customer_metadata_properties
             break
     finally:
         try:
@@ -2070,18 +2135,19 @@ def test_model_registration_with_model_repack(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
         )
 
         execution = pipeline.start(parameters={})
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
 
         execution = pipeline.start(parameters={"GoodEnoughInput": 0})
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
     finally:
@@ -2107,7 +2173,7 @@ def test_training_job_with_debugger_and_profiler(
         Rule.sagemaker(rule_configs.loss_not_decreasing()),
     ]
     debugger_hook_config = DebuggerHookConfig(
-        s3_output_path=f"s3://{sagemaker_session.default_bucket()}/{uuid.uuid4()}/tensors"
+        s3_output_path=(f"s3://{sagemaker_session.default_bucket()}/{uuid.uuid4()}/tensors")
     )
 
     base_dir = os.path.join(DATA_DIR, "pytorch_mnist")
@@ -2260,7 +2326,7 @@ def test_two_processing_job_depends_on(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
 
@@ -2268,13 +2334,13 @@ def test_two_processing_job_depends_on(
         response = pipeline.update(role)
         update_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             update_arn,
         )
 
         execution = pipeline.start(parameters={})
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
 
@@ -2417,13 +2483,17 @@ def test_one_step_ingestion_pipeline(
     input_name = "features.csv"
     input_file_path = os.path.join(DATA_DIR, "workflow", "features.csv")
     input_data_uri = os.path.join(
-        "s3://", sagemaker_session.default_bucket(), "py-sdk-ingestion-test-input/features.csv"
+        "s3://",
+        sagemaker_session.default_bucket(),
+        "py-sdk-ingestion-test-input/features.csv",
     )
 
     with open(input_file_path, "r") as data:
         body = data.read()
         S3Uploader.upload_string_as_file_body(
-            body=body, desired_s3_uri=input_data_uri, sagemaker_session=sagemaker_session
+            body=body,
+            desired_s3_uri=input_data_uri,
+            sagemaker_session=sagemaker_session,
         )
 
     inputs = [
@@ -2735,7 +2805,9 @@ def test_end_to_end_pipeline_successful_execution(
         sagemaker_session=sagemaker_session,
     )
     step_transform = TransformStep(
-        name="AbaloneTransform", transformer=transformer, inputs=TransformInput(data=batch_data)
+        name="AbaloneTransform",
+        transformer=transformer,
+        inputs=TransformInput(data=batch_data),
     )
 
     # define register model step
@@ -2763,7 +2835,7 @@ def test_end_to_end_pipeline_successful_execution(
     # define condition step
     cond_lte = ConditionLessThanOrEqualTo(
         left=JsonGet(
-            step=step_eval,
+            step_name=step_eval.name,
             property_file=evaluation_report,
             json_path="regression_metrics.mse.value",
         ),
@@ -2869,7 +2941,7 @@ def test_large_pipeline(sagemaker_session, role, pipeline_name, region_name):
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
         response = pipeline.describe()
@@ -2879,7 +2951,7 @@ def test_large_pipeline(sagemaker_session, role, pipeline_name, region_name):
         response = pipeline.update(role)
         update_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             update_arn,
         )
     finally:
@@ -2916,7 +2988,7 @@ def test_create_and_update_with_parallelism_config(
         response = pipeline.create(role, parallelism_config={"MaxParallelExecutionSteps": 50})
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
         response = pipeline.describe()
@@ -2926,7 +2998,7 @@ def test_create_and_update_with_parallelism_config(
         response = pipeline.update(role, parallelism_config={"MaxParallelExecutionSteps": 55})
         update_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             update_arn,
         )
 

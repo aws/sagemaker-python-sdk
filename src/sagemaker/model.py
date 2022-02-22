@@ -18,22 +18,25 @@ import json
 import logging
 import os
 import re
+import copy
 
 import sagemaker
 from sagemaker import (
     fw_utils,
-    image_uris,
     local,
     s3,
     session,
     utils,
     git_utils,
 )
-from sagemaker.inputs import CompilationInput
 from sagemaker.deprecations import removed_kwargs
 from sagemaker.predictor import PredictorBase
 from sagemaker.serverless import ServerlessInferenceConfig
 from sagemaker.transformer import Transformer
+from sagemaker.jumpstart.utils import add_jumpstart_tags
+from sagemaker.utils import unique_name_from_base
+from sagemaker.async_inference import AsyncInferenceConfig
+from sagemaker.predictor_async import AsyncPredictor
 
 LOGGER = logging.getLogger("sagemaker")
 
@@ -58,6 +61,15 @@ class ModelBase(abc.ABC):
         """Destroy resources associated with this model."""
 
 
+SCRIPT_PARAM_NAME = "sagemaker_program"
+DIR_PARAM_NAME = "sagemaker_submit_directory"
+CONTAINER_LOG_LEVEL_PARAM_NAME = "sagemaker_container_log_level"
+JOB_NAME_PARAM_NAME = "sagemaker_job_name"
+MODEL_SERVER_WORKERS_PARAM_NAME = "sagemaker_model_server_workers"
+SAGEMAKER_REGION_PARAM_NAME = "sagemaker_region"
+SAGEMAKER_OUTPUT_LOCATION = "sagemaker_s3_output"
+
+
 class Model(ModelBase):
     """A SageMaker ``Model`` that can be deployed to an ``Endpoint``."""
 
@@ -74,6 +86,12 @@ class Model(ModelBase):
         enable_network_isolation=False,
         model_kms_key=None,
         image_config=None,
+        source_dir=None,
+        code_location=None,
+        entry_point=None,
+        container_log_level=logging.INFO,
+        dependencies=None,
+        git_config=None,
     ):
         """Initialize an SageMaker ``Model``.
 
@@ -115,6 +133,125 @@ class Model(ModelBase):
                 model container is pulled from ECR, or private registry in your
                 VPC. By default it is set to pull model container image from
                 ECR. (default: None).
+            source_dir (str): The absolute, relative, or S3 URI Path to a directory
+                with any other training source code dependencies aside from the entry
+                point file (default: None). If ``source_dir`` is an S3 URI, it must
+                point to a tar.gz file. Structure within this directory is preserved
+                when training on Amazon SageMaker. If 'git_config' is provided,
+                'source_dir' should be a relative location to a directory in the Git repo.
+                If the directory points to S3, no code is uploaded and the S3 location
+                is used instead.
+
+                .. admonition:: Example
+
+                    With the following GitHub repo directory structure:
+
+                    >>> |----- README.md
+                    >>> |----- src
+                    >>>         |----- inference.py
+                    >>>         |----- test.py
+
+                    You can assign entry_point='inference.py', source_dir='src'.
+            code_location (str): Name of the S3 bucket where custom code is
+                uploaded (default: None). If not specified, the default bucket
+                created by ``sagemaker.session.Session`` is used.
+            entry_point (str): The absolute or relative path to the local Python
+                source file that should be executed as the entry point to
+                model hosting. (Default: None). If ``source_dir`` is specified, then ``entry_point``
+                must point to a file located at the root of ``source_dir``.
+                If 'git_config' is provided, 'entry_point' should be
+                a relative location to the Python source file in the Git repo.
+
+                Example:
+                    With the following GitHub repo directory structure:
+
+                    >>> |----- README.md
+                    >>> |----- src
+                    >>>         |----- inference.py
+                    >>>         |----- test.py
+
+                    You can assign entry_point='src/inference.py'.
+            container_log_level (int): Log level to use within the container
+                (default: logging.INFO). Valid values are defined in the Python
+                logging module.
+            dependencies (list[str]): A list of absolute or relative paths to directories
+                with any additional libraries that should be exported
+                to the container (default: []). The library folders are
+                copied to SageMaker in the same folder where the entrypoint is
+                copied. If 'git_config' is provided, 'dependencies' should be a
+                list of relative locations to directories with any additional
+                libraries needed in the Git repo. If the ```source_dir``` points
+                to S3, code will be uploaded and the S3 location will be used
+                instead.
+
+                .. admonition:: Example
+
+                    The following call
+
+                    >>> Model(entry_point='inference.py',
+                    ...       dependencies=['my/libs/common', 'virtual-env'])
+
+                    results in the following structure inside the container:
+
+                    >>> $ ls
+
+                    >>> opt/ml/code
+                    >>>     |------ inference.py
+                    >>>     |------ common
+                    >>>     |------ virtual-env
+
+                This is not supported with "local code" in Local Mode.
+            git_config (dict[str, str]): Git configurations used for cloning
+                files, including ``repo``, ``branch``, ``commit``,
+                ``2FA_enabled``, ``username``, ``password`` and ``token``. The
+                ``repo`` field is required. All other fields are optional.
+                ``repo`` specifies the Git repository where your training script
+                is stored. If you don't provide ``branch``, the default value
+                'master' is used. If you don't provide ``commit``, the latest
+                commit in the specified branch is used.
+
+                .. admonition:: Example
+
+                    The following config:
+
+                    >>> git_config = {'repo': 'https://github.com/aws/sagemaker-python-sdk.git',
+                    >>>               'branch': 'test-branch-git-config',
+                    >>>               'commit': '329bfcf884482002c05ff7f44f62599ebc9f445a'}
+
+                    results in cloning the repo specified in 'repo', then
+                    checking out the 'master' branch, and checking out the specified
+                    commit.
+
+                ``2FA_enabled``, ``username``, ``password`` and ``token`` are
+                used for authentication. For GitHub (or other Git) accounts, set
+                ``2FA_enabled`` to 'True' if two-factor authentication is
+                enabled for the account, otherwise set it to 'False'. If you do
+                not provide a value for ``2FA_enabled``, a default value of
+                'False' is used. CodeCommit does not support two-factor
+                authentication, so do not provide "2FA_enabled" with CodeCommit
+                repositories.
+
+                For GitHub and other Git repos, when SSH URLs are provided, it
+                doesn't matter whether 2FA is enabled or disabled. You should
+                either have no passphrase for the SSH key pairs or have the
+                ssh-agent configured so that you will not be prompted for the SSH
+                passphrase when you run the 'git clone' command with SSH URLs. When
+                HTTPS URLs are provided, if 2FA is disabled, then either ``token``
+                or ``username`` and ``password`` are be used for authentication if provided.
+                ``Token`` is prioritized. If 2FA is enabled, only ``token`` is used
+                for authentication if provided. If required authentication info
+                is not provided, the SageMaker Python SDK attempts to use local credentials
+                to authenticate. If that fails, an error message is thrown.
+
+                For CodeCommit repos, 2FA is not supported, so ``2FA_enabled``
+                should not be provided. There is no token in CodeCommit, so
+                ``token`` should also not be provided. When ``repo`` is an SSH URL,
+                the requirements are the same as GitHub  repos. When ``repo``
+                is an HTTPS URL, ``username`` and ``password`` are used for
+                authentication if they are provided. If they are not provided,
+                the SageMaker Python SDK attempts to use either the CodeCommit
+                credential helper or local credential storage for authentication.
+
         """
         self.model_data = model_data
         self.image_uri = image_uri
@@ -132,6 +269,24 @@ class Model(ModelBase):
         self._enable_network_isolation = enable_network_isolation
         self.model_kms_key = model_kms_key
         self.image_config = image_config
+        self.entry_point = entry_point
+        self.source_dir = source_dir
+        self.dependencies = dependencies or []
+        self.git_config = git_config
+        self.container_log_level = container_log_level
+        if code_location:
+            self.bucket, self.key_prefix = s3.parse_s3_url(code_location)
+        else:
+            self.bucket, self.key_prefix = None, None
+        if self.git_config:
+            updates = git_utils.git_clone_repo(
+                self.git_config, self.entry_point, self.source_dir, self.dependencies
+            )
+            self.entry_point = updates["entry_point"]
+            self.source_dir = updates["source_dir"]
+            self.dependencies = updates["dependencies"]
+        self.uploaded_code = None
+        self.repacked_model_data = None
 
     def register(
         self,
@@ -148,6 +303,7 @@ class Model(ModelBase):
         approval_status=None,
         description=None,
         drift_check_baselines=None,
+        customer_metadata_properties=None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -173,6 +329,8 @@ class Model(ModelBase):
                 or "PendingManualApproval" (default: "PendingManualApproval").
             description (str): Model Package description (default: None).
             drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
+            customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
+                metadata properties (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -200,6 +358,7 @@ class Model(ModelBase):
             description=description,
             container_def_list=[container_def],
             drift_check_baselines=drift_check_baselines,
+            customer_metadata_properties=customer_metadata_properties,
         )
         model_package = self.sagemaker_session.create_model_package_from_containers(
             **model_pkg_args
@@ -243,9 +402,90 @@ class Model(ModelBase):
         Returns:
             dict: A container definition object usable with the CreateModel API.
         """
-        return sagemaker.container_def(
-            self.image_uri, self.model_data, self.env, image_config=self.image_config
+        deploy_key_prefix = fw_utils.model_code_key_prefix(
+            self.key_prefix, self.name, self.image_uri
         )
+        deploy_env = copy.deepcopy(self.env)
+        if self.source_dir or self.dependencies or self.entry_point or self.git_config:
+            is_repack = (
+                self.source_dir and self.entry_point and not (self.key_prefix or self.git_config)
+            )
+            self._upload_code(deploy_key_prefix, repack=is_repack)
+            deploy_env.update(self._script_mode_env_vars())
+        return sagemaker.container_def(
+            self.image_uri,
+            self.repacked_model_data or self.model_data,
+            deploy_env,
+            image_config=self.image_config,
+        )
+
+    def _upload_code(self, key_prefix: str, repack: bool = False) -> None:
+        """Uploads code to S3 to be used with script mode with SageMaker inference.
+
+        Args:
+            key_prefix (str): The S3 key associated with the ``code_location`` parameter of the
+                ``Model`` class.
+            repack (bool): Optional. Set to ``True`` to indicate that the source code and model
+                artifact should be repackaged into a new S3 object. (default: False).
+        """
+        local_code = utils.get_config_value("local.local_code", self.sagemaker_session.config)
+        if (self.sagemaker_session.local_mode and local_code) or self.entry_point is None:
+            self.uploaded_code = None
+        elif not repack:
+            bucket = self.bucket or self.sagemaker_session.default_bucket()
+            self.uploaded_code = fw_utils.tar_and_upload_dir(
+                session=self.sagemaker_session.boto_session,
+                bucket=bucket,
+                s3_key_prefix=key_prefix,
+                script=self.entry_point,
+                directory=self.source_dir,
+                dependencies=self.dependencies,
+            )
+
+        if repack and self.model_data is not None and self.entry_point is not None:
+            if isinstance(self.model_data, sagemaker.workflow.properties.Properties):
+                # model is not yet there, defer repacking to later during pipeline execution
+                return
+
+            bucket = self.bucket or self.sagemaker_session.default_bucket()
+            repacked_model_data = "s3://" + "/".join([bucket, key_prefix, "model.tar.gz"])
+
+            utils.repack_model(
+                inference_script=self.entry_point,
+                source_directory=self.source_dir,
+                dependencies=self.dependencies,
+                model_uri=self.model_data,
+                repacked_model_uri=repacked_model_data,
+                sagemaker_session=self.sagemaker_session,
+                kms_key=self.model_kms_key,
+            )
+
+            self.repacked_model_data = repacked_model_data
+            self.uploaded_code = fw_utils.UploadedCode(
+                s3_prefix=self.repacked_model_data, script_name=os.path.basename(self.entry_point)
+            )
+
+    def _script_mode_env_vars(self):
+        """Placeholder docstring"""
+        script_name = None
+        dir_name = None
+        if self.uploaded_code:
+            script_name = self.uploaded_code.script_name
+            if self.enable_network_isolation():
+                dir_name = "/opt/ml/model/code"
+            else:
+                dir_name = self.uploaded_code.s3_prefix
+        elif self.entry_point is not None:
+            script_name = self.entry_point
+            if self.source_dir is not None:
+                dir_name = "file://" + self.source_dir
+
+        return {
+            SCRIPT_PARAM_NAME.upper(): script_name or str(),
+            DIR_PARAM_NAME.upper(): dir_name or str(),
+            CONTAINER_LOG_LEVEL_PARAM_NAME.upper(): str(self.container_log_level),
+            SAGEMAKER_REGION_PARAM_NAME.upper(): self.sagemaker_session.boto_region_name,
+        }
 
     def enable_network_isolation(self):
         """Whether to enable network isolation when creating this Model
@@ -420,86 +660,6 @@ class Model(ModelBase):
             "job_name": job_name,
         }
 
-    def _get_compilation_args(self, estimator, inputs):
-        """Constructs a dict of arguments for an Amazon SageMaker compilation job from estimator.
-
-        Args:
-            estimator (sagemaker.estimator.EstimatorBase): Estimator object
-                created by the user.
-            inputs (CompilationInput): class containing all the parameters that
-                can be used when calling ``sagemaker.model.Model.compile_model()``
-        """
-
-        if not isinstance(inputs, CompilationInput):
-            raise TypeError("Your inputs must be provided as CompilationInput objects.")
-        target_instance_family = inputs.target_instance_type
-        input_shape = inputs.input_shape
-        output_path = inputs.output_path
-        role = estimator.role
-        compile_max_run = inputs.compile_max_run
-        job_name = estimator._compilation_job_name()
-        framework = inputs.framework or self._framework()
-        if framework is None:
-            raise ValueError(
-                "You must specify framework, allowed values {}".format(NEO_ALLOWED_FRAMEWORKS)
-            )
-        if framework not in NEO_ALLOWED_FRAMEWORKS:
-            raise ValueError(
-                "You must provide valid framework, allowed values {}".format(NEO_ALLOWED_FRAMEWORKS)
-            )
-        if self.model_data is None:
-            raise ValueError("You must provide an S3 path to the compressed model artifacts.")
-        tags = inputs.tags
-        target_platform_os = inputs.target_platform_os
-        target_platform_arch = inputs.target_platform_arch
-        target_platform_accelerator = inputs.target_platform_accelerator
-        compiler_options = inputs.compiler_options
-        framework_version = inputs.framework_version or self._get_framework_version()
-
-        return self._compilation_job_config(
-            target_instance_family,
-            input_shape,
-            output_path,
-            role,
-            compile_max_run,
-            job_name,
-            framework,
-            tags,
-            target_platform_os,
-            target_platform_arch,
-            target_platform_accelerator,
-            compiler_options,
-            framework_version,
-        )
-
-    def _compilation_image_uri(self, region, target_instance_type, framework, framework_version):
-        """Retrieve the Neo or Inferentia image URI.
-
-        Args:
-            region (str): The AWS region.
-            target_instance_type (str): Identifies the device on which you want to run
-                your model after compilation, for example: ml_c5. For valid values, see
-                https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
-            framework (str): The framework name.
-            framework_version (str): The framework version.
-        """
-        framework_prefix = ""
-        framework_suffix = ""
-
-        if framework == "xgboost":
-            framework_suffix = "-neo"
-        elif target_instance_type.startswith("ml_inf"):
-            framework_prefix = "inferentia-"
-        else:
-            framework_prefix = "neo-"
-
-        return image_uris.retrieve(
-            "{}{}{}".format(framework_prefix, framework, framework_suffix),
-            region,
-            instance_type=target_instance_type,
-            version=framework_version,
-        )
-
     def package_for_edge(
         self,
         output_path,
@@ -664,12 +824,7 @@ class Model(ModelBase):
             if target_instance_family == "ml_eia2":
                 pass
             elif target_instance_family.startswith("ml_"):
-                self.image_uri = self._compilation_image_uri(
-                    self.sagemaker_session.boto_region_name,
-                    target_instance_family,
-                    framework,
-                    framework_version,
-                )
+                self.image_uri = job_status.get("InferenceImage", None)
                 self._is_compiled_model = True
             else:
                 LOGGER.warning(
@@ -699,6 +854,7 @@ class Model(ModelBase):
         kms_key=None,
         wait=True,
         data_capture_config=None,
+        async_inference_config=None,
         serverless_inference_config=None,
         **kwargs,
     ):
@@ -752,17 +908,24 @@ class Model(ModelBase):
             data_capture_config (sagemaker.model_monitor.DataCaptureConfig): Specifies
                 configuration related to Endpoint data capture for use with
                 Amazon SageMaker Model Monitoring. Default: None.
+            async_inference_config (sagemaker.model_monitor.AsyncInferenceConfig): Specifies
+                configuration related to async endpoint. Use this configuration when trying
+                to create async endpoint and make async inference. If empty config object
+                passed through, will use default config to deploy async endpoint. Deploy a
+                real-time endpoint if it's None. (default: None)
             serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
                 Specifies configuration related to serverless endpoint. Use this configuration
                 when trying to create serverless endpoint and make serverless inference. If
-                empty object passed through, we will use pre-defined values in
-                ``ServerlessInferenceConfig`` class to deploy serverless endpoint (default: None)
+                empty object passed through, will use pre-defined values in
+                ``ServerlessInferenceConfig`` class to deploy serverless endpoint. Deploy an
+                instance based endpoint if it's None. (default: None)
         Raises:
              ValueError: If arguments combination check failed in these circumstances:
                 - If no role is specified or
                 - If serverless inference config is not specified and instance type and instance
                     count are also not specified or
-                - If a wrong type of object is provided as serverless inference config
+                - If a wrong type of object is provided as serverless inference config or async
+                    inference config
         Returns:
             callable[string, sagemaker.session.Session] or None: Invocation of
                 ``self.predictor_cls`` on the created endpoint name, if ``self.predictor_cls``
@@ -771,8 +934,16 @@ class Model(ModelBase):
         removed_kwargs("update_endpoint", kwargs)
         self._init_sagemaker_session_if_does_not_exist(instance_type)
 
+        tags = add_jumpstart_tags(
+            tags=tags, inference_model_uri=self.model_data, inference_script_uri=self.source_dir
+        )
+
         if self.role is None:
             raise ValueError("Role can not be null for deploying a model")
+
+        is_async = async_inference_config is not None
+        if is_async and not isinstance(async_inference_config, AsyncInferenceConfig):
+            raise ValueError("async_inference_config needs to be a AsyncInferenceConfig object")
 
         is_serverless = serverless_inference_config is not None
         if not is_serverless and not (instance_type and initial_instance_count):
@@ -821,6 +992,14 @@ class Model(ModelBase):
         if data_capture_config is not None:
             data_capture_config_dict = data_capture_config._to_request_dict()
 
+        async_inference_config_dict = None
+        if is_async:
+            if async_inference_config.output_path is None:
+                async_inference_config = self._build_default_async_inference_config(
+                    async_inference_config
+                )
+            async_inference_config_dict = async_inference_config._to_request_dict()
+
         self.sagemaker_session.endpoint_from_production_variants(
             name=self.endpoint_name,
             production_variants=[production_variant],
@@ -828,6 +1007,7 @@ class Model(ModelBase):
             kms_key=kms_key,
             wait=wait,
             data_capture_config_dict=data_capture_config_dict,
+            async_inference_config_dict=async_inference_config_dict,
         )
 
         if self.predictor_cls:
@@ -836,8 +1016,19 @@ class Model(ModelBase):
                 predictor.serializer = serializer
             if deserializer:
                 predictor.deserializer = deserializer
+            if is_async:
+                return AsyncPredictor(predictor, self.name)
             return predictor
         return None
+
+    def _build_default_async_inference_config(self, async_inference_config):
+        """Build default async inference config and return ``AsyncInferenceConfig``"""
+        async_output_folder = unique_name_from_base(self.name)
+        async_output_s3uri = "s3://{}/async-endpoint-outputs/{}".format(
+            self.sagemaker_session.default_bucket(), async_output_folder
+        )
+        async_inference_config.output_path = async_output_s3uri
+        return async_inference_config
 
     def transformer(
         self,
@@ -919,15 +1110,6 @@ class Model(ModelBase):
                 "The SageMaker model must be created first before attempting to delete."
             )
         self.sagemaker_session.delete_model(self.name)
-
-
-SCRIPT_PARAM_NAME = "sagemaker_program"
-DIR_PARAM_NAME = "sagemaker_submit_directory"
-CONTAINER_LOG_LEVEL_PARAM_NAME = "sagemaker_container_log_level"
-JOB_NAME_PARAM_NAME = "sagemaker_job_name"
-MODEL_SERVER_WORKERS_PARAM_NAME = "sagemaker_model_server_workers"
-SAGEMAKER_REGION_PARAM_NAME = "sagemaker_region"
-SAGEMAKER_OUTPUT_LOCATION = "sagemaker_s3_output"
 
 
 class FrameworkModel(Model):
@@ -1049,7 +1231,9 @@ class FrameworkModel(Model):
                 ``repo`` specifies the Git repository where your training script
                 is stored. If you don't provide ``branch``, the default value
                 'master' is used. If you don't provide ``commit``, the latest
-                commit in the specified branch is used. .. admonition:: Example
+                commit in the specified branch is used.
+
+                .. admonition:: Example
 
                     The following config:
 
@@ -1107,113 +1291,14 @@ class FrameworkModel(Model):
             env=env,
             name=name,
             sagemaker_session=sagemaker_session,
+            source_dir=source_dir,
+            code_location=code_location,
+            entry_point=entry_point,
+            container_log_level=container_log_level,
+            dependencies=dependencies,
+            git_config=git_config,
             **kwargs,
         )
-        self.entry_point = entry_point
-        self.source_dir = source_dir
-        self.dependencies = dependencies or []
-        self.git_config = git_config
-        self.container_log_level = container_log_level
-        if code_location:
-            self.bucket, self.key_prefix = s3.parse_s3_url(code_location)
-        else:
-            self.bucket, self.key_prefix = None, None
-        if self.git_config:
-            updates = git_utils.git_clone_repo(
-                self.git_config, self.entry_point, self.source_dir, self.dependencies
-            )
-            self.entry_point = updates["entry_point"]
-            self.source_dir = updates["source_dir"]
-            self.dependencies = updates["dependencies"]
-        self.uploaded_code = None
-        self.repacked_model_data = None
-
-    def prepare_container_def(self, instance_type=None, accelerator_type=None):
-        """Return a container definition with framework configuration.
-
-        Framework configuration is set in model environment variables.
-        This also uploads user-supplied code to S3.
-
-        Args:
-            instance_type (str): The EC2 instance type to deploy this Model to.
-                For example, 'ml.p2.xlarge'.
-            accelerator_type (str): The Elastic Inference accelerator type to
-                deploy to the instance for loading and making inferences to the
-                model. For example, 'ml.eia1.medium'.
-
-        Returns:
-            dict[str, str]: A container definition object usable with the
-            CreateModel API.
-        """
-        deploy_key_prefix = fw_utils.model_code_key_prefix(
-            self.key_prefix, self.name, self.image_uri
-        )
-        self._upload_code(deploy_key_prefix)
-        deploy_env = dict(self.env)
-        deploy_env.update(self._framework_env_vars())
-        return sagemaker.container_def(self.image_uri, self.model_data, deploy_env)
-
-    def _upload_code(self, key_prefix, repack=False):
-        """Placeholder Docstring"""
-        local_code = utils.get_config_value("local.local_code", self.sagemaker_session.config)
-        if (self.sagemaker_session.local_mode and local_code) or self.entry_point is None:
-            self.uploaded_code = None
-        elif not repack:
-            bucket = self.bucket or self.sagemaker_session.default_bucket()
-            self.uploaded_code = fw_utils.tar_and_upload_dir(
-                session=self.sagemaker_session.boto_session,
-                bucket=bucket,
-                s3_key_prefix=key_prefix,
-                script=self.entry_point,
-                directory=self.source_dir,
-                dependencies=self.dependencies,
-                settings=self.sagemaker_session.settings,
-            )
-
-        if repack and self.model_data is not None and self.entry_point is not None:
-            if isinstance(self.model_data, sagemaker.workflow.properties.Properties):
-                # model is not yet there, defer repacking to later during pipeline execution
-                return
-
-            bucket = self.bucket or self.sagemaker_session.default_bucket()
-            repacked_model_data = "s3://" + "/".join([bucket, key_prefix, "model.tar.gz"])
-
-            utils.repack_model(
-                inference_script=self.entry_point,
-                source_directory=self.source_dir,
-                dependencies=self.dependencies,
-                model_uri=self.model_data,
-                repacked_model_uri=repacked_model_data,
-                sagemaker_session=self.sagemaker_session,
-                kms_key=self.model_kms_key,
-            )
-
-            self.repacked_model_data = repacked_model_data
-            self.uploaded_code = fw_utils.UploadedCode(
-                s3_prefix=self.repacked_model_data, script_name=os.path.basename(self.entry_point)
-            )
-
-    def _framework_env_vars(self):
-        """Placeholder docstring"""
-        script_name = None
-        dir_name = None
-        if self.uploaded_code:
-            script_name = self.uploaded_code.script_name
-            if self.enable_network_isolation():
-                dir_name = "/opt/ml/model/code"
-            else:
-                dir_name = self.uploaded_code.s3_prefix
-        elif self.entry_point is not None:
-            script_name = self.entry_point
-            if self.source_dir is not None:
-                dir_name = "file://" + self.source_dir
-
-        return {
-            SCRIPT_PARAM_NAME.upper(): script_name or str(),
-            DIR_PARAM_NAME.upper(): dir_name or str(),
-            CONTAINER_LOG_LEVEL_PARAM_NAME.upper(): str(self.container_log_level),
-            SAGEMAKER_REGION_PARAM_NAME.upper(): self.sagemaker_session.boto_region_name,
-        }
 
 
 class ModelPackage(Model):

@@ -15,7 +15,7 @@ from __future__ import absolute_import
 
 import logging
 
-from sagemaker.estimator import Framework
+from sagemaker.estimator import Framework, EstimatorBase
 from sagemaker.fw_utils import (
     framework_name_from_image,
     framework_version_from_tag,
@@ -158,7 +158,9 @@ class Chainer(Framework):
 
         # remove unset keys.
         additional_hyperparameters = {k: v for k, v in additional_hyperparameters.items() if v}
-        hyperparameters.update(Framework._json_encode_hyperparameters(additional_hyperparameters))
+        hyperparameters.update(
+            EstimatorBase._json_encode_hyperparameters(additional_hyperparameters)
+        )
         return hyperparameters
 
     def create_model(

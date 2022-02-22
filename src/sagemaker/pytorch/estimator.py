@@ -18,7 +18,7 @@ import logging
 from packaging.version import Version
 
 from sagemaker.deprecations import renamed_kwargs
-from sagemaker.estimator import Framework
+from sagemaker.estimator import Framework, EstimatorBase
 from sagemaker.fw_utils import (
     framework_name_from_image,
     framework_version_from_tag,
@@ -221,9 +221,12 @@ class PyTorch(Framework):
     def hyperparameters(self):
         """Return hyperparameters used by your custom PyTorch code during model training."""
         hyperparameters = super(PyTorch, self).hyperparameters()
-        additional_hyperparameters = self._pytorch_distribution_configuration()
-
-        hyperparameters.update(Framework._json_encode_hyperparameters(additional_hyperparameters))
+        additional_hyperparameters = self._distribution_configuration(
+            distribution=self.distribution
+        )
+        hyperparameters.update(
+            EstimatorBase._json_encode_hyperparameters(additional_hyperparameters)
+        )
         return hyperparameters
 
     def create_model(

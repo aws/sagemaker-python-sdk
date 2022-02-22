@@ -158,6 +158,7 @@ class MXNetModel(FrameworkModel):
         approval_status=None,
         description=None,
         drift_check_baselines=None,
+        customer_metadata_properties=None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -183,6 +184,8 @@ class MXNetModel(FrameworkModel):
                 or "PendingManualApproval" (default: "PendingManualApproval").
             description (str): Model Package description (default: None).
             drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
+            customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
+                metadata properties (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -211,6 +214,7 @@ class MXNetModel(FrameworkModel):
             approval_status,
             description,
             drift_check_baselines=drift_check_baselines,
+            customer_metadata_properties=customer_metadata_properties,
         )
 
     def prepare_container_def(self, instance_type=None, accelerator_type=None):
@@ -244,7 +248,7 @@ class MXNetModel(FrameworkModel):
         deploy_key_prefix = model_code_key_prefix(self.key_prefix, self.name, deploy_image)
         self._upload_code(deploy_key_prefix, self._is_mms_version())
         deploy_env = dict(self.env)
-        deploy_env.update(self._framework_env_vars())
+        deploy_env.update(self._script_mode_env_vars())
 
         if self.model_server_workers:
             deploy_env[MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = str(self.model_server_workers)
