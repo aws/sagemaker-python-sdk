@@ -34,7 +34,7 @@ import tempfile
 from distutils.dir_util import copy_tree
 
 
-def repack(inference_script, model_archive, dependencies=None, source_dir=None):
+def repack(inference_script, model_archive, dependencies=None, source_dir=None):  # pragma: no cover
     """Repack custom dependencies and code into an existing model TAR archive
 
     Args:
@@ -95,7 +95,7 @@ def repack(inference_script, model_archive, dependencies=None, source_dir=None):
         copy_tree(src_dir, "/opt/ml/model")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     parser = argparse.ArgumentParser()
     parser.add_argument("--inference_script", type=str, default="inference.py")
     parser.add_argument("--dependencies", type=str, default=None)

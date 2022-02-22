@@ -323,15 +323,15 @@ class EstimatorTransformer(StepCollection):
         """
         steps = []
         if "entry_point" in kwargs:
-            entry_point = kwargs["entry_point"]
-            source_dir = kwargs.get("source_dir")
-            dependencies = kwargs.get("dependencies")
+            entry_point = kwargs.get("entry_point", None)
+            source_dir = kwargs.get("source_dir", None)
+            dependencies = kwargs.get("dependencies", None)
             repack_model_step = _RepackModelStep(
                 name=f"{name}RepackModel",
                 depends_on=depends_on,
                 retry_policies=repack_model_step_retry_policies,
                 sagemaker_session=estimator.sagemaker_session,
-                role=estimator.sagemaker_session,
+                role=estimator.role,
                 model_data=model_data,
                 entry_point=entry_point,
                 source_dir=source_dir,
@@ -357,7 +357,11 @@ class EstimatorTransformer(StepCollection):
             vpc_config=None,
             sagemaker_session=estimator.sagemaker_session,
             role=estimator.role,
-            **kwargs,
+            env=kwargs.get("env", None),
+            name=kwargs.get("name", None),
+            enable_network_isolation=kwargs.get("enable_network_isolation", None),
+            model_kms_key=kwargs.get("model_kms_key", None),
+            image_config=kwargs.get("image_config", None),
         )
         model_step = CreateModelStep(
             name=f"{name}CreateModelStep",
