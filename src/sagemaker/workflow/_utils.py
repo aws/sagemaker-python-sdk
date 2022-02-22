@@ -80,7 +80,7 @@ class _RepackModelStep(TrainingStep):
                     artifacts. After the endpoint is created, the inference code
                     might use the IAM role, if it needs to access an AWS resource.
             model_data (str): The S3 location of a SageMaker model data
-                    ``.tar.gz`` file (default: None).
+                    ``.tar.gz`` file.
             entry_point (str): Path (absolute or relative) to the local Python
                     source file which should be executed as the entry point to
                     inference. If ``source_dir`` is specified, then ``entry_point``

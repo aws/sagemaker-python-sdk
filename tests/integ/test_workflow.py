@@ -67,7 +67,6 @@ from sagemaker.workflow.conditions import (
     ConditionLessThanOrEqualTo,
 )
 from sagemaker.workflow.condition_step import ConditionStep
-from sagemaker.workflow.condition_step import JsonGet as ConditionStepJsonGet
 from sagemaker.workflow.callback_step import (
     CallbackStep,
     CallbackOutput,
@@ -2835,8 +2834,8 @@ def test_end_to_end_pipeline_successful_execution(
 
     # define condition step
     cond_lte = ConditionLessThanOrEqualTo(
-        left=ConditionStepJsonGet(
-            step=step_eval,
+        left=JsonGet(
+            step_name=step_eval.name,
             property_file=evaluation_report,
             json_path="regression_metrics.mse.value",
         ),
