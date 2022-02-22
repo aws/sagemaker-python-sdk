@@ -151,5 +151,4 @@ def get_docker_host():
     parsed_url = urlparse(docker_context_host_url)
     if parsed_url.hostname and parsed_url.scheme == "tcp":
         return parsed_url.hostname
-    else:
-        return "localhost"
+    return "localhost"
