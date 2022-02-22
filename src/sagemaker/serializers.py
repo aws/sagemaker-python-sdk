@@ -18,7 +18,7 @@ from collections.abc import Iterable
 import csv
 import io
 import json
-
+import os
 import numpy as np
 from six import with_metaclass
 
@@ -360,7 +360,7 @@ class LibSVMSerializer(SimpleBaseSerializer):
 
 
 class ImageSerializer(IdentitySerializer):
-    """Serialize data in a image file by returning raw bytes rom an image file."""
+    """Serialize data in an image file by returning raw bytes from an image file."""
 
     def __init__(self, content_type="image/jpeg"):
         """Initialize a ``ImageSerializer`` instance.
@@ -376,14 +376,16 @@ class ImageSerializer(IdentitySerializer):
 
         Args:
             data (object): Data to be serialized. The data can be a string,
-                representing file-path or the raw bytes form an image.
+                representing file-path or the raw bytes from an image.
         Returns:
             raw-bytes: The data serialized as a raw-bytes from the image file.
         """
         if isinstance(data, str):
+            if not os.path.exists(data):
+                raise ValueError(f"{data} is not a valid file path.")
             image = open(data, "rb")
             return image.read()
         if isinstance(data, bytes):
             return data
 
-        raise ValueError("Object of type %s is not Image serializable." % type(data))
+        raise ValueError(f"Object of type {type(data)} is not Image serializable.")
