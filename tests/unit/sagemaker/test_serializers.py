@@ -28,7 +28,7 @@ from sagemaker.serializers import (
     SparseMatrixSerializer,
     JSONLinesSerializer,
     LibSVMSerializer,
-    ImageSerializer,
+    DataSerializer,
 )
 from tests.unit import DATA_DIR
 
@@ -335,23 +335,23 @@ def test_libsvm_serializer_file_like(libsvm_serializer):
 
 
 @pytest.fixture
-def image_serializer():
-    return ImageSerializer()
+def data_serializer():
+    return DataSerializer()
 
 
-def test_image_serializer_raw(image_serializer):
+def test_data_serializer_raw(data_serializer):
     input_image_file_path = os.path.join(DATA_DIR, "", "cuteCat.jpg")
     with open(input_image_file_path, "rb") as image:
         input_image = image.read()
-    input_image_data = image_serializer.serialize(input_image)
+    input_image_data = data_serializer.serialize(input_image)
     validation_image_file_path = os.path.join(DATA_DIR, "", "cuteCat.raw")
     validation_image_data = open(validation_image_file_path, "rb").read()
     assert input_image_data == validation_image_data
 
 
-def test_image_serializer_file_like(image_serializer):
+def test_data_serializer_file_like(data_serializer):
     input_image_file_path = os.path.join(DATA_DIR, "", "cuteCat.jpg")
     validation_image_file_path = os.path.join(DATA_DIR, "", "cuteCat.raw")
-    input_image_data = image_serializer.serialize(input_image_file_path)
+    input_image_data = data_serializer.serialize(input_image_file_path)
     validation_image_data = open(validation_image_file_path, "rb").read()
     assert input_image_data == validation_image_data

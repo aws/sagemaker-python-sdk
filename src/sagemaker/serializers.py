@@ -82,6 +82,17 @@ class SimpleBaseSerializer(with_metaclass(abc.ABCMeta, BaseSerializer)):
         """The data MIME type set in the Content-Type header on prediction endpoint requests."""
         return self.content_type
 
+    def serialize(self, data):
+        """Return data without modification.
+
+        Args:
+            data (object): Data to be serialized.
+
+        Returns:
+            object: The unmodified data.
+        """
+        return data
+
 
 class CSVSerializer(SimpleBaseSerializer):
     """Serialize data of various formats to a CSV-formatted string."""
@@ -359,26 +370,26 @@ class LibSVMSerializer(SimpleBaseSerializer):
         raise ValueError("Unable to handle input format: %s" % type(data))
 
 
-class ImageSerializer(IdentitySerializer):
-    """Serialize data in an image file by returning raw bytes from an image file."""
+class DataSerializer(SimpleBaseSerializer):
+    """Serialize data in any file by extracting raw bytes from the file."""
 
-    def __init__(self, content_type="image/jpeg"):
-        """Initialize a ``ImageSerializer`` instance.
+    def __init__(self, content_type="file-path/raw-bytes"):
+        """Initialize a ``DataSerializer`` instance.
 
         Args:
             content_type (str): The MIME type to signal to the inference endpoint when sending
-                request data (default: "image/jpeg").
+                request data (default: "file-path/raw-bytes").
         """
-        super(ImageSerializer, self).__init__(content_type=content_type)
+        super(DataSerializer, self).__init__(content_type=content_type)
 
     def serialize(self, data):
-        """Serialize image of various formats to a raw bytes.
+        """Serialize file of various formats to a raw bytes.
 
         Args:
             data (object): Data to be serialized. The data can be a string,
-                representing file-path or the raw bytes from an image.
+                representing file-path or the raw bytes from a file.
         Returns:
-            raw-bytes: The data serialized as a raw-bytes from the image file.
+            raw-bytes: The data serialized as a raw-bytes from the input.
         """
         if isinstance(data, str):
             if not os.path.exists(data):
@@ -388,4 +399,4 @@ class ImageSerializer(IdentitySerializer):
         if isinstance(data, bytes):
             return data
 
-        raise ValueError(f"Object of type {type(data)} is not Image serializable.")
+        raise ValueError(f"Object of type {type(data)} is not Data serializable.")
