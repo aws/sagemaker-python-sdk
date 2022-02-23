@@ -13,6 +13,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import json
+
 import pytest
 import sagemaker
 import os
@@ -27,7 +29,7 @@ from mock import (
 from sagemaker.debugger import DEBUGGER_FLAG, ProfilerConfig
 from sagemaker.estimator import Estimator
 from sagemaker.tensorflow import TensorFlow
-from sagemaker.inputs import TrainingInput, TransformInput, CreateModelInput, CompilationInput
+from sagemaker.inputs import TrainingInput, TransformInput, CreateModelInput
 from sagemaker.model import Model
 from sagemaker.processing import (
     Processor,
@@ -43,7 +45,8 @@ from sagemaker.tuner import (
 )
 from sagemaker.network import NetworkConfig
 from sagemaker.transformer import Transformer
-from sagemaker.workflow.properties import Properties
+from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.properties import Properties, PropertyFile
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
 from sagemaker.workflow.retry import (
     StepRetryPolicy,
@@ -53,7 +56,6 @@ from sagemaker.workflow.retry import (
 )
 from sagemaker.workflow.steps import (
     ProcessingStep,
-    CompilationStep,
     ConfigurableRetryStep,
     StepTypeEnum,
     TrainingStep,
@@ -62,6 +64,10 @@ from sagemaker.workflow.steps import (
     CreateModelStep,
     CacheConfig,
 )
+from sagemaker.pipeline import PipelineModel
+from sagemaker.sparkml import SparkMLModel
+from sagemaker.predictor import Predictor
+from sagemaker.model import FrameworkModel
 from tests.unit import DATA_DIR
 
 DUMMY_SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
@@ -87,6 +93,21 @@ class CustomStep(ConfigurableRetryStep):
     @property
     def properties(self):
         return self._properties
+
+
+class DummyFrameworkModel(FrameworkModel):
+    def __init__(self, sagemaker_session, **kwargs):
+        super(DummyFrameworkModel, self).__init__(
+            "s3://bucket/model_1.tar.gz",
+            "mi-1",
+            ROLE,
+            os.path.join(DATA_DIR, "dummy_script.py"),
+            sagemaker_session=sagemaker_session,
+            **kwargs,
+        )
+
+    def create_predictor(self, endpoint_name):
+        return Predictor(endpoint_name, self.sagemaker_session)
 
 
 @pytest.fixture
@@ -517,6 +538,9 @@ def test_processing_step(sagemaker_session):
         )
     ]
     cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
+    evaluation_report = PropertyFile(
+        name="EvaluationReport", output_name="evaluation", path="evaluation.json"
+    )
     step = ProcessingStep(
         name="MyProcessingStep",
         description="ProcessingStep description",
@@ -526,9 +550,20 @@ def test_processing_step(sagemaker_session):
         inputs=inputs,
         outputs=[],
         cache_config=cache_config,
+        property_files=[evaluation_report],
     )
     step.add_depends_on(["ThirdTestStep"])
-    assert step.to_request() == {
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[
+            processing_input_data_uri_parameter,
+            instance_type_parameter,
+            instance_count_parameter,
+        ],
+        steps=[step],
+        sagemaker_session=sagemaker_session,
+    )
+    assert json.loads(pipeline.definition())["Steps"][0] == {
         "Name": "MyProcessingStep",
         "Description": "ProcessingStep description",
         "DisplayName": "MyProcessingStep",
@@ -546,20 +581,27 @@ def test_processing_step(sagemaker_session):
                         "S3DataDistributionType": "FullyReplicated",
                         "S3DataType": "S3Prefix",
                         "S3InputMode": "File",
-                        "S3Uri": processing_input_data_uri_parameter,
+                        "S3Uri": {"Get": "Parameters.ProcessingInputDataUri"},
                     },
                 }
             ],
             "ProcessingResources": {
                 "ClusterConfig": {
-                    "InstanceCount": instance_count_parameter,
-                    "InstanceType": instance_type_parameter,
+                    "InstanceCount": {"Get": "Parameters.InstanceCount"},
+                    "InstanceType": {"Get": "Parameters.InstanceType"},
                     "VolumeSizeInGB": 30,
                 }
             },
             "RoleArn": "DummyRole",
         },
         "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
+        "PropertyFiles": [
+            {
+                "FilePath": "evaluation.json",
+                "OutputName": "evaluation",
+                "PropertyFileName": "EvaluationReport",
+            }
+        ],
     }
     assert step.properties.ProcessingJobName.expr == {
         "Get": "Steps.MyProcessingStep.ProcessingJobName"
@@ -598,6 +640,7 @@ def test_processing_step_normalizes_args_with_local_code(mock_normalize_args, sc
         inputs=step.inputs,
         outputs=step.outputs,
         code=step.code,
+        kms_key=None,
     )
 
 
@@ -624,6 +667,7 @@ def test_processing_step_normalizes_args_with_s3_code(mock_normalize_args, scrip
         outputs=outputs,
         job_arguments=["arg1", "arg2"],
         cache_config=cache_config,
+        kms_key="arn:aws:kms:us-west-2:012345678901:key/s3-kms-key",
     )
     mock_normalize_args.return_value = [step.inputs, step.outputs]
     step.to_request()
@@ -633,6 +677,7 @@ def test_processing_step_normalizes_args_with_s3_code(mock_normalize_args, scrip
         inputs=step.inputs,
         outputs=step.outputs,
         code=step.code,
+        kms_key=step.kms_key,
     )
 
 
@@ -667,6 +712,7 @@ def test_processing_step_normalizes_args_with_no_code(mock_normalize_args, scrip
         inputs=step.inputs,
         outputs=step.outputs,
         code=None,
+        kms_key=None,
     )
 
 
@@ -699,6 +745,63 @@ def test_create_model_step(sagemaker_session):
         "Arguments": {
             "ExecutionRoleArn": "DummyRole",
             "PrimaryContainer": {"Environment": {}, "Image": "fakeimage"},
+        },
+    }
+    assert step.properties.ModelName.expr == {"Get": "Steps.MyCreateModelStep.ModelName"}
+
+
+@patch("tarfile.open")
+@patch("time.strftime", return_value="2017-10-10-14-14-15")
+def test_create_model_step_with_model_pipeline(tfo, time, sagemaker_session):
+    framework_model = DummyFrameworkModel(sagemaker_session)
+    sparkml_model = SparkMLModel(
+        model_data="s3://bucket/model_2.tar.gz",
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        env={"SAGEMAKER_DEFAULT_INVOCATIONS_ACCEPT": "text/csv"},
+    )
+    model = PipelineModel(
+        models=[framework_model, sparkml_model], role=ROLE, sagemaker_session=sagemaker_session
+    )
+    inputs = CreateModelInput(
+        instance_type="c4.4xlarge",
+        accelerator_type="ml.eia1.medium",
+    )
+    step = CreateModelStep(
+        name="MyCreateModelStep",
+        depends_on=["TestStep"],
+        display_name="MyCreateModelStep",
+        description="TestDescription",
+        model=model,
+        inputs=inputs,
+    )
+    step.add_depends_on(["SecondTestStep"])
+
+    assert step.to_request() == {
+        "Name": "MyCreateModelStep",
+        "Type": "Model",
+        "Description": "TestDescription",
+        "DisplayName": "MyCreateModelStep",
+        "DependsOn": ["TestStep", "SecondTestStep"],
+        "Arguments": {
+            "Containers": [
+                {
+                    "Environment": {
+                        "SAGEMAKER_PROGRAM": "dummy_script.py",
+                        "SAGEMAKER_SUBMIT_DIRECTORY": "s3://my-bucket/mi-1-2017-10-10-14-14-15/sourcedir.tar.gz",
+                        "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
+                        "SAGEMAKER_REGION": "us-west-2",
+                    },
+                    "Image": "mi-1",
+                    "ModelDataUrl": "s3://bucket/model_1.tar.gz",
+                },
+                {
+                    "Environment": {"SAGEMAKER_DEFAULT_INVOCATIONS_ACCEPT": "text/csv"},
+                    "Image": "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-sparkml-serving:2.4",
+                    "ModelDataUrl": "s3://bucket/model_2.tar.gz",
+                },
+            ],
+            "ExecutionRoleArn": "DummyRole",
         },
     }
     assert step.properties.ModelName.expr == {"Get": "Steps.MyCreateModelStep.ModelName"}
@@ -1196,52 +1299,5 @@ def test_multi_algo_tuning_step(sagemaker_session):
                     },
                 },
             ],
-        },
-    }
-
-
-def test_compilation_step(sagemaker_session):
-    estimator = Estimator(
-        image_uri=IMAGE_URI,
-        role=ROLE,
-        instance_count=1,
-        instance_type="ml.c5.4xlarge",
-        profiler_config=ProfilerConfig(system_monitor_interval_millis=500),
-        rules=[],
-        sagemaker_session=sagemaker_session,
-    )
-
-    model = Model(
-        image_uri=IMAGE_URI,
-        model_data="s3://output/tensorflow.tar.gz",
-        sagemaker_session=sagemaker_session,
-    )
-
-    compilation_input = CompilationInput(
-        target_instance_type="ml_inf",
-        input_shape={"data": [1, 3, 1024, 1024]},
-        output_path="s3://output",
-        compile_max_run=100,
-        framework="tensorflow",
-        job_name="compile-model",
-        compiler_options=None,
-    )
-    compilation_step = CompilationStep(
-        name="MyCompilationStep", estimator=estimator, model=model, inputs=compilation_input
-    )
-
-    assert compilation_step.to_request() == {
-        "Name": "MyCompilationStep",
-        "Type": "Compilation",
-        "Arguments": {
-            "InputConfig": {
-                "DataInputConfig": '{"data": [1, 3, 1024, 1024]}',
-                "Framework": "TENSORFLOW",
-                "S3Uri": "s3://output/tensorflow.tar.gz",
-            },
-            "OutputConfig": {"S3OutputLocation": "s3://output", "TargetDevice": "ml_inf"},
-            "RoleArn": ROLE,
-            "StoppingCondition": {"MaxRuntimeInSeconds": 100},
-            "Tags": [],
         },
     }

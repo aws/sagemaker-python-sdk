@@ -16,31 +16,48 @@ import json
 
 import pytest
 
-from mock import Mock
+from mock import Mock, MagicMock
 
 from sagemaker.workflow.parameters import ParameterInteger, ParameterString
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.lambda_step import LambdaStep, LambdaOutput, LambdaOutputTypeEnum
 from sagemaker.lambda_helper import Lambda
+from sagemaker.workflow.steps import CacheConfig
 
 
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name="us-west-2")
-    session_mock = Mock(
+    session_mock = MagicMock(
         name="sagemaker_session",
         boto_session=boto_mock,
         boto_region_name="us-west-2",
         config=None,
         local_mode=False,
+        account_id=Mock(),
     )
+    return session_mock
+
+
+@pytest.fixture()
+def sagemaker_session_cn():
+    boto_mock = Mock(name="boto_session", region_name="cn-north-1")
+    session_mock = MagicMock(
+        name="sagemaker_session",
+        boto_session=boto_mock,
+        boto_region_name="cn-north-1",
+        config=None,
+        local_mode=False,
+    )
+    session_mock.account_id.return_value = "234567890123"
     return session_mock
 
 
 def test_lambda_step(sagemaker_session):
     param = ParameterInteger(name="MyInt")
-    outputParam1 = LambdaOutput(output_name="output1", output_type=LambdaOutputTypeEnum.String)
-    outputParam2 = LambdaOutput(output_name="output2", output_type=LambdaOutputTypeEnum.Boolean)
+    output_param1 = LambdaOutput(output_name="output1", output_type=LambdaOutputTypeEnum.String)
+    output_param2 = LambdaOutput(output_name="output2", output_type=LambdaOutputTypeEnum.Boolean)
+    cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
     lambda_step = LambdaStep(
         name="MyLambdaStep",
         depends_on=["TestStep"],
@@ -51,10 +68,17 @@ def test_lambda_step(sagemaker_session):
         display_name="MyLambdaStep",
         description="MyLambdaStepDescription",
         inputs={"arg1": "foo", "arg2": 5, "arg3": param},
-        outputs=[outputParam1, outputParam2],
+        outputs=[output_param1, output_param2],
+        cache_config=cache_config,
     )
     lambda_step.add_depends_on(["SecondTestStep"])
-    assert lambda_step.to_request() == {
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[param],
+        steps=[lambda_step],
+        sagemaker_session=sagemaker_session,
+    )
+    assert json.loads(pipeline.definition())["Steps"][0] == {
         "Name": "MyLambdaStep",
         "Type": "Lambda",
         "DependsOn": ["TestStep", "SecondTestStep"],
@@ -65,7 +89,8 @@ def test_lambda_step(sagemaker_session):
             {"OutputName": "output1", "OutputType": "String"},
             {"OutputName": "output2", "OutputType": "Boolean"},
         ],
-        "Arguments": {"arg1": "foo", "arg2": 5, "arg3": param},
+        "Arguments": {"arg1": "foo", "arg2": 5, "arg3": {"Get": "Parameters.MyInt"}},
+        "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
     }
 
 
@@ -94,8 +119,8 @@ def test_lambda_step_output_expr(sagemaker_session):
 
 def test_pipeline_interpolates_lambda_outputs(sagemaker_session):
     parameter = ParameterString("MyStr")
-    outputParam1 = LambdaOutput(output_name="output1", output_type=LambdaOutputTypeEnum.String)
-    outputParam2 = LambdaOutput(output_name="output2", output_type=LambdaOutputTypeEnum.String)
+    output_param1 = LambdaOutput(output_name="output1", output_type=LambdaOutputTypeEnum.String)
+    output_param2 = LambdaOutput(output_name="output2", output_type=LambdaOutputTypeEnum.String)
     lambda_step1 = LambdaStep(
         name="MyLambdaStep1",
         depends_on=["TestStep"],
@@ -104,7 +129,7 @@ def test_pipeline_interpolates_lambda_outputs(sagemaker_session):
             session=sagemaker_session,
         ),
         inputs={"arg1": "foo"},
-        outputs=[outputParam1],
+        outputs=[output_param1],
     )
     lambda_step2 = LambdaStep(
         name="MyLambdaStep2",
@@ -113,8 +138,8 @@ def test_pipeline_interpolates_lambda_outputs(sagemaker_session):
             function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
             session=sagemaker_session,
         ),
-        inputs={"arg1": outputParam1},
-        outputs=[outputParam2],
+        inputs={"arg1": output_param1},
+        outputs=[output_param2],
     )
 
     pipeline = Pipeline(
@@ -173,3 +198,70 @@ def test_lambda_step_no_inputs_outputs(sagemaker_session):
         "OutputParameters": [],
         "Arguments": {},
     }
+
+
+def test_lambda_step_with_function_arn(sagemaker_session):
+    lambda_step = LambdaStep(
+        name="MyLambdaStep",
+        depends_on=["TestStep"],
+        lambda_func=Lambda(
+            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
+            session=sagemaker_session,
+        ),
+        inputs={},
+        outputs=[],
+    )
+    lambda_step._get_function_arn()
+    sagemaker_session.account_id.assert_not_called()
+
+
+def test_lambda_step_without_function_arn(sagemaker_session):
+    lambda_step = LambdaStep(
+        name="MyLambdaStep",
+        depends_on=["TestStep"],
+        lambda_func=Lambda(
+            function_name="name",
+            execution_role_arn="arn:aws:lambda:us-west-2:123456789012:execution_role",
+            zipped_code_dir="",
+            handler="",
+            session=sagemaker_session,
+        ),
+        inputs={},
+        outputs=[],
+    )
+    lambda_step._get_function_arn()
+    sagemaker_session.account_id.assert_called_once()
+
+
+def test_lambda_step_without_function_arn_and_with_error(sagemaker_session_cn):
+    lambda_func = MagicMock(
+        function_arn=None,
+        function_name="name",
+        execution_role_arn="arn:aws:lambda:us-west-2:123456789012:execution_role",
+        zipped_code_dir="",
+        handler="",
+        session=sagemaker_session_cn,
+    )
+    # The raised ValueError contains ResourceConflictException
+    lambda_func.create.side_effect = ValueError("ResourceConflictException")
+    lambda_step1 = LambdaStep(
+        name="MyLambdaStep1",
+        depends_on=["TestStep"],
+        lambda_func=lambda_func,
+        inputs={},
+        outputs=[],
+    )
+    function_arn = lambda_step1._get_function_arn()
+    assert function_arn == "arn:aws-cn:lambda:cn-north-1:234567890123:function:name"
+
+    # The raised ValueError does not contain ResourceConflictException
+    lambda_func.create.side_effect = ValueError()
+    lambda_step2 = LambdaStep(
+        name="MyLambdaStep2",
+        depends_on=["TestStep"],
+        lambda_func=lambda_func,
+        inputs={},
+        outputs=[],
+    )
+    with pytest.raises(ValueError):
+        lambda_step2._get_function_arn()

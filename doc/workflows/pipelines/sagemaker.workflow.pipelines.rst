@@ -140,8 +140,6 @@ Steps
 
 .. autoclass:: sagemaker.workflow.lambda_step.LambdaStep
 
-.. autoclass:: sagemaker.workflow.steps.CompilationStep
-
 .. autoclass:: sagemaker.workflow.quality_check_step.QualityCheckConfig
 
 .. autoclass:: sagemaker.workflow.quality_check_step.QualityCheckStep
@@ -149,3 +147,5 @@ Steps
 .. autoclass:: sagemaker.workflow.clarify_check_step.ClarifyCheckConfig
 
 .. autoclass:: sagemaker.workflow.clarify_check_step.ClarifyCheckStep
+
+.. autoclass:: sagemaker.workflow.fail_step.FailStep

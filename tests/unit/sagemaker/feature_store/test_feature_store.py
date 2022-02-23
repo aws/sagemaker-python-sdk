@@ -175,7 +175,11 @@ def test_load_feature_definition(sagemaker_session_mock):
     names = [fd.feature_name for fd in feature_definitions]
     types = [fd.feature_type for fd in feature_definitions]
     assert names == ["float", "int", "string"]
-    assert types == [FeatureTypeEnum.FRACTIONAL, FeatureTypeEnum.INTEGRAL, FeatureTypeEnum.STRING]
+    assert types == [
+        FeatureTypeEnum.FRACTIONAL,
+        FeatureTypeEnum.INTEGRAL,
+        FeatureTypeEnum.STRING,
+    ]
 
 
 def test_load_feature_definition_unsupported_types(sagemaker_session_mock):
@@ -304,16 +308,13 @@ def test_as_hive_ddl(create_table_ddl, feature_group_dummy_definitions, sagemake
 
     feature_group = FeatureGroup(name="MyGroup", sagemaker_session=sagemaker_session_mock)
     feature_group.feature_definitions = feature_group_dummy_definitions
-    assert (
-        create_table_ddl.format(
-            database="MyDatabase",
-            table_name="MyTable",
-            account="1234",
-            region="us-west-2",
-            feature_group_name="MyGroup",
-        )
-        == feature_group.as_hive_ddl(database="MyDatabase", table_name="MyTable")
-    )
+    assert create_table_ddl.format(
+        database="MyDatabase",
+        table_name="MyTable",
+        account="1234",
+        region="us-west-2",
+        feature_group_name="MyGroup",
+    ) == feature_group.as_hive_ddl(database="MyDatabase", table_name="MyTable")
 
 
 @patch(
