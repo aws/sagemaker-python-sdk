@@ -80,7 +80,7 @@ class _RepackModelStep(TrainingStep):
                     artifacts. After the endpoint is created, the inference code
                     might use the IAM role, if it needs to access an AWS resource.
             model_data (str): The S3 location of a SageMaker model data
-                    ``.tar.gz`` file (default: None).
+                    ``.tar.gz`` file.
             entry_point (str): Path (absolute or relative) to the local Python
                     source file which should be executed as the entry point to
                     inference. If ``source_dir`` is specified, then ``entry_point``
@@ -310,6 +310,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
         tags=None,
         container_def_list=None,
         drift_check_baselines=None,
+        customer_metadata_properties=None,
         **kwargs,
     ):
         """Constructor of a register model step.
@@ -347,6 +348,8 @@ class _RegisterModelStep(ConfigurableRetryStep):
                 this step depends on
             retry_policies (List[RetryPolicy]): The list of retry policies for the current step
             drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
+            customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
+                metadata properties (default: None).
             **kwargs: additional arguments to `create_model`.
         """
         super(_RegisterModelStep, self).__init__(
@@ -362,6 +365,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
         self.tags = tags
         self.model_metrics = model_metrics
         self.drift_check_baselines = drift_check_baselines
+        self.customer_metadata_properties = customer_metadata_properties
         self.metadata_properties = metadata_properties
         self.approval_status = approval_status
         self.image_uri = image_uri
@@ -435,6 +439,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
             description=self.description,
             tags=self.tags,
             container_def_list=self.container_def_list,
+            customer_metadata_properties=self.customer_metadata_properties,
         )
 
         request_dict = get_create_model_package_request(**model_package_args)

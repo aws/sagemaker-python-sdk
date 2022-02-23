@@ -13,6 +13,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import pytest
+
 from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.functions import Join, JsonGet
 from sagemaker.workflow.parameters import (
@@ -97,3 +99,23 @@ def test_json_get_expressions():
             "Path": "my-json-path",
         },
     }
+
+
+def test_json_get_expressions_with_invalid_step_name():
+    with pytest.raises(ValueError) as err:
+        JsonGet(
+            step_name="",
+            property_file="my-property-file",
+            json_path="my-json-path",
+        ).expr
+
+    assert "Please give a valid step name as a string" in str(err.value)
+
+    with pytest.raises(ValueError) as err:
+        JsonGet(
+            step_name=ParameterString(name="MyString"),
+            property_file="my-property-file",
+            json_path="my-json-path",
+        ).expr
+
+    assert "Please give a valid step name as a string" in str(err.value)

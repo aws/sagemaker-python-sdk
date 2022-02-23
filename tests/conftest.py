@@ -37,6 +37,26 @@ NO_M4_REGIONS = [
     "me-south-1",
 ]
 
+NO_P3_REGIONS = [
+    "af-south-1",
+    "ap-east-1",
+    "ap-southeast-1",  # it has p3, but not enough
+    "ap-southeast-2",  # it has p3, but not enough
+    "ca-central-1",  # it has p3, but not enough
+    "eu-central-1",  # it has p3, but not enough
+    "eu-north-1",
+    "eu-west-2",  # it has p3, but not enough
+    "eu-west-3",
+    "eu-south-1",
+    "me-south-1",
+    "sa-east-1",
+    "us-west-1",
+    "ap-northeast-1",  # it has p3, but not enough
+    "ap-south-1",
+    "ap-northeast-2",  # it has p3, but not enough
+    "us-east-2",  # it has p3, but not enough
+]
+
 NO_T2_REGIONS = ["eu-north-1", "ap-east-1", "me-south-1"]
 
 FRAMEWORKS_FOR_GENERATED_VERSION_FIXTURES = (
@@ -361,9 +381,13 @@ def cpu_instance_type(sagemaker_session, request):
         return "ml.m4.xlarge"
 
 
-@pytest.fixture(scope="module")
-def gpu_instance_type(request):
-    return "ml.p2.xlarge"
+@pytest.fixture(scope="session")
+def gpu_instance_type(sagemaker_session, request):
+    region = sagemaker_session.boto_session.region_name
+    if region in NO_P3_REGIONS:
+        return "ml.p2.xlarge"
+    else:
+        return "ml.p3.2xlarge"
 
 
 @pytest.fixture(scope="session")
@@ -405,10 +429,16 @@ def pytest_generate_tests(metafunc):
 
         params = [cpu_instance_type]
         if not (
+            region in tests.integ.HOSTING_NO_P3_REGIONS
+            or region in tests.integ.TRAINING_NO_P3_REGIONS
+        ):
+            params.append("ml.p3.2xlarge")
+        elif not (
             region in tests.integ.HOSTING_NO_P2_REGIONS
             or region in tests.integ.TRAINING_NO_P2_REGIONS
         ):
             params.append("ml.p2.xlarge")
+
         metafunc.parametrize("instance_type", params, scope="session")
 
     _generate_all_framework_version_fixtures(metafunc)

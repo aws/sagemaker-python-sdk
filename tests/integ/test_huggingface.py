@@ -28,8 +28,9 @@ ROLE = "SageMakerRole"
 
 @pytest.mark.release
 @pytest.mark.skipif(
-    integ.test_region() in integ.TRAINING_NO_P2_REGIONS,
-    reason="no ml.p2 instances in this region",
+    integ.test_region() in integ.TRAINING_NO_P2_REGIONS
+    and integ.test_region() in integ.TRAINING_NO_P3_REGIONS,
+    reason="no ml.p2 or ml.p3 instances in this region",
 )
 def test_framework_processing_job_with_deps(
     sagemaker_session,
@@ -63,8 +64,9 @@ def test_framework_processing_job_with_deps(
 
 @pytest.mark.release
 @pytest.mark.skipif(
-    integ.test_region() in integ.TRAINING_NO_P2_REGIONS,
-    reason="no ml.p2 instances in this region",
+    integ.test_region() in integ.TRAINING_NO_P2_REGIONS
+    and integ.test_region() in integ.TRAINING_NO_P3_REGIONS,
+    reason="no ml.p2 or ml.p3 instances in this region",
 )
 def test_huggingface_training(
     sagemaker_session,
@@ -108,7 +110,9 @@ def test_huggingface_training(
 
 @pytest.mark.release
 @pytest.mark.skipif(
-    integ.test_region() in integ.TRAINING_NO_P2_REGIONS, reason="no ml.p2 instances in this region"
+    integ.test_region() in integ.TRAINING_NO_P2_REGIONS
+    and integ.test_region() in integ.TRAINING_NO_P3_REGIONS,
+    reason="no ml.p2 or ml.p3 instances in this region",
 )
 def test_huggingface_training_tf(
     sagemaker_session,

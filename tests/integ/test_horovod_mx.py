@@ -47,7 +47,9 @@ def test_hvd_cpu(
 
 @pytest.mark.release
 @pytest.mark.skipif(
-    integ.test_region() in integ.TRAINING_NO_P2_REGIONS, reason="no ml.p2 instances in this region"
+    integ.test_region() in integ.TRAINING_NO_P2_REGIONS
+    and integ.test_region() in integ.TRAINING_NO_P3_REGIONS,
+    reason="no ml.p2 or ml.p3 instances in this region",
 )
 def test_hvd_gpu(
     mxnet_training_latest_version,
