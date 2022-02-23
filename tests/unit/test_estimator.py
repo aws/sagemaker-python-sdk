@@ -1337,8 +1337,7 @@ def test_shuffle_config(sagemaker_session):
 
 BASE_HP = {
     "sagemaker_program": SCRIPT_NAME,
-    "sagemaker_submit_directory":
-        "s3://mybucket/{}/source/sourcedir.tar.gz".format(JOB_NAME),
+    "sagemaker_submit_directory": "s3://mybucket/{}/source/sourcedir.tar.gz".format(JOB_NAME),
     "sagemaker_job_name": JOB_NAME,
 }
 

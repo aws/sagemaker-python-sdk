@@ -493,7 +493,7 @@ class _SageMakerContainer(object):
         # If there is a training script directory and it is a local directory,
         # mount it to the container.
         if sagemaker.estimator.DIR_PARAM_NAME in hyperparameters:
-            training_dir = json.loads(hyperparameters[sagemaker.estimator.DIR_PARAM_NAME])
+            training_dir = hyperparameters[sagemaker.estimator.DIR_PARAM_NAME]
             parsed_uri = urlparse(training_dir)
             if parsed_uri.scheme == "file":
                 host_dir = os.path.abspath(parsed_uri.netloc + parsed_uri.path)
