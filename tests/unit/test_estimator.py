@@ -1241,9 +1241,7 @@ def test_custom_code_bucket(time, sagemaker_session):
 
     expected_submit_dir = "s3://{}/{}".format(code_bucket, expected_key)
     _, _, train_kwargs = sagemaker_session.train.mock_calls[0]
-    assert train_kwargs["hyperparameters"]["sagemaker_submit_directory"] == json.dumps(
-        expected_submit_dir
-    )
+    assert train_kwargs["hyperparameters"]["sagemaker_submit_directory"] == expected_submit_dir
 
 
 @patch("time.strftime", return_value=TIMESTAMP)
@@ -1266,9 +1264,7 @@ def test_custom_code_bucket_without_prefix(time, sagemaker_session):
 
     expected_submit_dir = "s3://{}/{}".format(code_bucket, expected_key)
     _, _, train_kwargs = sagemaker_session.train.mock_calls[0]
-    assert train_kwargs["hyperparameters"]["sagemaker_submit_directory"] == json.dumps(
-        expected_submit_dir
-    )
+    assert train_kwargs["hyperparameters"]["sagemaker_submit_directory"] == expected_submit_dir
 
 
 def test_invalid_custom_code_bucket(sagemaker_session):
@@ -1340,11 +1336,10 @@ def test_shuffle_config(sagemaker_session):
 
 
 BASE_HP = {
-    "sagemaker_program": json.dumps(SCRIPT_NAME),
-    "sagemaker_submit_directory": json.dumps(
-        "s3://mybucket/{}/source/sourcedir.tar.gz".format(JOB_NAME)
-    ),
-    "sagemaker_job_name": json.dumps(JOB_NAME),
+    "sagemaker_program": SCRIPT_NAME,
+    "sagemaker_submit_directory":
+        "s3://mybucket/{}/source/sourcedir.tar.gz".format(JOB_NAME),
+    "sagemaker_job_name": JOB_NAME,
 }
 
 
@@ -1389,8 +1384,8 @@ def test_start_new_convert_hyperparameters_to_str(strftime, sagemaker_session):
     t.fit("s3://{}".format(uri))
 
     expected_hyperparameters = BASE_HP.copy()
-    expected_hyperparameters["sagemaker_container_log_level"] = str(logging.INFO)
-    expected_hyperparameters["learning_rate"] = json.dumps(0.1)
+    expected_hyperparameters["sagemaker_container_log_level"] = logging.INFO
+    expected_hyperparameters["learning_rate"] = 0.1
     expected_hyperparameters["123"] = json.dumps([456])
     expected_hyperparameters["sagemaker_region"] = '"us-west-2"'
 
@@ -1413,7 +1408,7 @@ def test_start_new_wait_called(strftime, sagemaker_session):
     t.fit("s3://{}".format(uri))
 
     expected_hyperparameters = BASE_HP.copy()
-    expected_hyperparameters["sagemaker_container_log_level"] = str(logging.INFO)
+    expected_hyperparameters["sagemaker_container_log_level"] = logging.INFO
     expected_hyperparameters["sagemaker_region"] = '"us-west-2"'
 
     actual_hyperparameter = sagemaker_session.method_calls[1][2]["hyperparameters"]
