@@ -1510,7 +1510,7 @@ def test_tuning_multi_algos(
         code=os.path.join(script_dir, "preprocessing.py"),
     )
 
-    static_hp_1 = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+    static_hp_1 = ParameterString(name="StaticHPInstanceType", default_value="ml.m5.xlarge")
     json_get_hp = JsonGet(
         step_name=step_process.name, property_file=property_file, json_path="train_size"
     )
@@ -1562,7 +1562,7 @@ def test_tuning_multi_algos(
 
     pipeline = Pipeline(
         name=pipeline_name,
-        parameters=[instance_count, instance_type, min_batch_size, max_batch_size],
+        parameters=[instance_count, instance_type, min_batch_size, max_batch_size, static_hp_1],
         steps=[step_process, step_tune],
         sagemaker_session=sagemaker_session,
     )
@@ -1575,7 +1575,7 @@ def test_tuning_multi_algos(
             create_arn,
         )
 
-        execution = pipeline.start(parameters={})
+        execution = pipeline.start(parameters={"StaticHPInstanceType": "ml.c5.12xlarge"})
         assert re.match(
             rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,

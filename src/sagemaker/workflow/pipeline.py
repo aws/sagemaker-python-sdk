@@ -41,7 +41,6 @@ from sagemaker.workflow.steps import Step
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.utilities import list_to_request
 
-
 @attr.s
 class Pipeline(Entity):
     """Pipeline for workflow.

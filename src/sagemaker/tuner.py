@@ -38,9 +38,11 @@ from sagemaker.parameter import (
     IntegerParameter,
     ParameterRange,
 )
-from sagemaker.workflow.parameters import Parameter as PipelineParameter
-from sagemaker.workflow.functions import JsonGet as PipelineJsonGet
-from sagemaker.workflow.functions import Join as PipelineJoin
+from sagemaker.workflow.pipeline_context import (
+    PipelineSession,
+    runnable_by_pipeline,
+    is_pipeline_entities
+)
 
 from sagemaker.session import Session
 from sagemaker.utils import base_from_name, base_name_from_image, name_from_base
@@ -61,18 +63,6 @@ PARENT_HYPERPARAMETER_TUNING_JOBS = "ParentHyperParameterTuningJobs"
 WARM_START_TYPE = "WarmStartType"
 
 logger = logging.getLogger(__name__)
-
-
-def is_pipeline_parameters(value):
-    """Determine if a value is a pipeline parameter or function representation
-
-    Args:
-        value (float or int): The value to be verified.
-
-    Returns:
-        bool: True if it is, False otherwise.
-    """
-    return isinstance(value, (PipelineParameter, PipelineJsonGet, PipelineJoin))
 
 
 class WarmStartTypes(Enum):
@@ -377,7 +367,7 @@ class HyperparameterTuner(object):
         # Remove any hyperparameter that will be tuned
         static_hyperparameters = {
             str(k): str(v)
-            if not isinstance(v, (PipelineParameter, PipelineJsonGet, PipelineJoin))
+            if not is_pipeline_entities(v)
             else v
             for (k, v) in estimator.hyperparameters().items()
         }
@@ -396,6 +386,7 @@ class HyperparameterTuner(object):
 
         return static_hyperparameters
 
+    @runnable_by_pipeline
     def fit(
         self,
         inputs=None,
@@ -482,7 +473,9 @@ class HyperparameterTuner(object):
         estimator_names = sorted(self.estimator_dict.keys())
         self._validate_dict_argument(name="inputs", value=inputs, allowed_keys=estimator_names)
         self._validate_dict_argument(
-            name="include_cls_metadata", value=include_cls_metadata, allowed_keys=estimator_names
+            name="include_cls_metadata",
+            value=include_cls_metadata if include_cls_metadata else {},
+            allowed_keys=estimator_names
         )
         self._validate_dict_argument(
             name="estimator_kwargs", value=estimator_kwargs, allowed_keys=estimator_names
@@ -1362,7 +1355,9 @@ class HyperparameterTuner(object):
             warm_start_config=warm_start_config,
             early_stopping_type=early_stopping_type,
         )
-
+        print("???", first_estimator_name)
+        print("???", tuner.estimator_dict)
+        print("???", tuner.estimator)
         for estimator_name in estimator_names[1:]:
             metric_definitions = (
                 metric_definitions_dict.get(estimator_name, None)
@@ -1484,6 +1479,9 @@ class _TuningJob(_Job):
             information about the started job.
         """
         tuner_args = cls._get_tuner_args(tuner, inputs)
+        if type(tuner.sagemaker_session) is PipelineSession:
+            tuner_args['pipeline_session'] = PipelineSession
+
         tuner.sagemaker_session.create_tuning_job(**tuner_args)
 
         return cls(tuner.sagemaker_session, tuner._current_job_name)

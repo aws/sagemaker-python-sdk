@@ -466,6 +466,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         profiler_config=None,
         environment=None,
         retry_strategy=None,
+        pipeline_session=None,
     ):
         """Create an Amazon SageMaker training job.
 
@@ -551,7 +552,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             retry_strategy(dict): Defines RetryStrategy for InternalServerFailures.
                 * max_retry_attsmpts (int): Number of times a job should be retried.
                 The key in RetryStrategy is 'MaxRetryAttempts'.
-
+            pipeline_session (`sagemaker.workflow.pipeline_session.PipelineSession`) A pipeline session
         Returns:
             str: ARN of the training job, if it is created.
         """
@@ -585,6 +586,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
             environment=environment,
             retry_strategy=retry_strategy,
         )
+        if pipeline_session:
+            pipeline_session.context = train_request
+            return
+
         LOGGER.info("Creating training-job with name: %s", job_name)
         LOGGER.debug("train request: %s", json.dumps(train_request, indent=4))
         self.sagemaker_client.create_training_job(**train_request)
@@ -856,6 +861,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         role_arn,
         tags,
         experiment_config=None,
+        pipeline_session=None,
     ):
         """Create an Amazon SageMaker processing job.
 
@@ -895,6 +901,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 * If both `ExperimentName` and `TrialName` are not supplied the trial component
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
+            pipeline_session (`sagemaker.workflow.pipeline_session.PipelineSession`) A pipeline session
         """
         tags = _append_project_tags(tags)
         process_request = self._get_process_request(
@@ -910,6 +917,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             tags=tags,
             experiment_config=experiment_config,
         )
+        if pipeline_session:
+            pipeline_session.context = process_request
+            return
         LOGGER.info("Creating processing-job with name %s", job_name)
         LOGGER.debug("process request: %s", json.dumps(process_request, indent=4))
         self.sagemaker_client.create_processing_job(**process_request)
@@ -2045,6 +2055,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         training_config_list=None,
         warm_start_config=None,
         tags=None,
+        pipeline_session=None,
     ):
         """Create an Amazon SageMaker hyperparameter tuning job.
 
@@ -2081,7 +2092,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             warm_start_config=warm_start_config,
             tags=tags,
         )
-
+        if pipeline_session:
+            pipeline_session.context = tune_request
+            return
         LOGGER.info("Creating hyperparameter tuning job with name: %s", job_name)
         LOGGER.debug("tune request: %s", json.dumps(tune_request, indent=4))
         self.sagemaker_client.create_hyper_parameter_tuning_job(**tune_request)
@@ -2492,6 +2505,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         tags,
         data_processing,
         model_client_config=None,
+        pipeline_session=None,
     ):
         """Create an Amazon SageMaker transform job.
 
@@ -2544,6 +2558,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             data_processing=data_processing,
             model_client_config=model_client_config,
         )
+        if pipeline_session:
+            pipeline_session.context = transform_request
+            return
 
         LOGGER.info("Creating transform job with name: %s", job_name)
         LOGGER.debug("Transform request: %s", json.dumps(transform_request, indent=4))

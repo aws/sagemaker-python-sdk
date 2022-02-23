@@ -39,27 +39,26 @@ def test_framework_processing_job_with_deps(
     huggingface_training_pytorch_latest_version,
     huggingface_pytorch_latest_training_py_version,
 ):
-    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        code_path = os.path.join(DATA_DIR, "dummy_code_bundle_with_reqs")
-        entry_point = "main_script.py"
+    code_path = os.path.join(DATA_DIR, "dummy_code_bundle_with_reqs")
+    entry_point = "main_script.py"
 
-        processor = HuggingFaceProcessor(
-            transformers_version=huggingface_training_latest_version,
-            pytorch_version=huggingface_training_pytorch_latest_version,
-            py_version=huggingface_pytorch_latest_training_py_version,
-            role=ROLE,
-            instance_count=1,
-            instance_type=gpu_instance_type,
-            sagemaker_session=sagemaker_session,
-            base_job_name="test-huggingface",
-        )
+    processor = HuggingFaceProcessor(
+        transformers_version=huggingface_training_latest_version,
+        pytorch_version=huggingface_training_pytorch_latest_version,
+        py_version=huggingface_pytorch_latest_training_py_version,
+        role=ROLE,
+        instance_count=1,
+        instance_type=gpu_instance_type,
+        sagemaker_session=sagemaker_session,
+        base_job_name="test-huggingface",
+    )
 
-        processor.run(
-            code=entry_point,
-            source_dir=code_path,
-            inputs=[],
-            wait=True,
-        )
+    processor.run(
+        code=entry_point,
+        source_dir=code_path,
+        inputs=[],
+        wait=True,
+    )
 
 
 @pytest.mark.release

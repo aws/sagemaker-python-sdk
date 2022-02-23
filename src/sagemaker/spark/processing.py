@@ -249,7 +249,7 @@ class _SparkProcessorBase(ScriptProcessor):
         """
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
 
-        super().run(
+        return super().run(
             submit_app,
             inputs,
             outputs,
@@ -868,7 +868,7 @@ class PySparkProcessor(_SparkProcessorBase):
             spark_event_logs_s3_uri=spark_event_logs_s3_uri,
         )
 
-        super().run(
+        return super().run(
             submit_app=submit_app,
             inputs=extended_inputs,
             outputs=extended_outputs,
@@ -1125,7 +1125,7 @@ class SparkJarProcessor(_SparkProcessorBase):
             spark_event_logs_s3_uri=spark_event_logs_s3_uri,
         )
 
-        super().run(
+        return super().run(
             submit_app=submit_app,
             inputs=extended_inputs,
             outputs=extended_outputs,
