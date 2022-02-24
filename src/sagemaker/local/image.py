@@ -579,7 +579,7 @@ class _SageMakerContainer(object):
             The updated parameters.
         """
         if key in params:
-            src_dir = json.loads(params[key])
+            src_dir = params[key]
             parsed_uri = urlparse(src_dir)
             if parsed_uri.scheme == "file":
                 new_params = params.copy()

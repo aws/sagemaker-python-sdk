@@ -2761,13 +2761,10 @@ class Framework(EstimatorBase):
             job_details, model_channel_name
         )
 
-        init_params["entry_point"] = json.loads(
-            init_params["hyperparameters"].get(SCRIPT_PARAM_NAME)
-        )
-        init_params["source_dir"] = json.loads(init_params["hyperparameters"].get(DIR_PARAM_NAME))
-        init_params["container_log_level"] = json.loads(
-            init_params["hyperparameters"].get(CONTAINER_LOG_LEVEL_PARAM_NAME)
-        )
+        init_params["entry_point"] = init_params["hyperparameters"].get(SCRIPT_PARAM_NAME)
+        init_params["source_dir"] = init_params["hyperparameters"].get(DIR_PARAM_NAME)
+        init_params["container_log_level"] = init_params["hyperparameters"].get(
+            CONTAINER_LOG_LEVEL_PARAM_NAME)
 
         hyperparameters = {}
         for k, v in init_params["hyperparameters"].items():
