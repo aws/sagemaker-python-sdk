@@ -10,20 +10,55 @@ distributed data parallel library.
 SageMaker Distributed Data Parallel 1.4.0 Release Notes
 =======================================================
 
-*Date: Feb. 18. 2022*
+*Date: Feb. 24. 2022*
 
 **New Features**
 
 * Integrated to PyTorch DDP as a backend option
 * Added support for PyTorch 1.10.2
 
-**Bug Fixes**
+**Breaking Changes**
 
-*
+* As the library is migrated into the PyTorch distributed package as a backend,
+  the following smdistributed implementation APIs are deprecated in
+  the SageMaker data parallal library v1.4.0 and later.
+  Please use the `PyTorch distributed APIs <https://pytorch.org/docs/stable/distributed.html>`_ instead.
+
+  * ``smdistributed.dataparallel.torch.distributed``
+  * ``smdistributed.dataparallel.torch.parallel.DistributedDataParallel``
+  * Please note the slight differences between the deprecated
+    ``smdistributed.dataparallel.torch`` APIs and the
+    `PyTorch distributed APIs <https://pytorch.org/docs/stable/distributed.html>`_.
+
+    * `torch.distributed.barrier <https://pytorch.org/docs/master/distributed.html#torch.distributed.barrier)>`_
+      takes ``device_ids``, which the ``smddp`` backend does not support.
+    * The ``gradient_accumulation_steps`` option in
+      ``smdistributed.dataparallel.torch.parallel.DistributedDataParallel``
+      is no longer supported. Please use the PyTorch
+      `no_sync <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html?highlight=no_sync#torch.nn.parallel.DistributedDataParallel.no_sync>`_ API.
+
+
+* If you want to find documentation for the previous versions of the library
+  (v1.3.0 or before), see the `archived SageMaker distributed data parallel library documentation <https://sagemaker.readthedocs.io/en/stable/api/training/sdp_versions/latest.html#documentation-archive>`_.
 
 **Improvements**
 
-*
+* Support AllReduce Large Tensors
+* we support the following new arguments in the `PyTorch DDP class <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel>`_.
+
+  * ``broadcast_buffers``
+  * ``find_unused_parameters``
+  * ``gradient_as_bucket_view``
+
+**Bug Fixes**
+
+* Fixed stalling issues when training on ``ml.p3.16xlarge``.
+
+**Known Issues**
+
+* The library currently does not support the PyTorch sub-process groups API (`torch.distributed.new_group <https://pytorch.org/docs/stable/distributed.html#torch.distributed.new_group>`_).
+  This means that you cannot use the ``smddp`` backend concurrently with other
+  process group backends such as NCCL and Gloo.
 
 **Migration to AWS Deep Learning Containers**
 

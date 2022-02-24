@@ -27,10 +27,3 @@ To learn more about the core features of this library, see
 `Introduction to SageMaker's Distributed Data Parallel Library
 <https://docs.aws.amazon.com/sagemaker/latest/dg/data-parallel-intro.html>`_
 in the SageMaker Developer Guide.
-
-.. toctree::
-   :maxdepth: 3
-
-   sdp_versions/latest
-   smd_data_parallel_use_sm_pysdk
-   smd_data_parallel_release_notes/smd_data_parallel_change_log

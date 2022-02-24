@@ -1,3 +1,5 @@
+.. _sm-sdk-modelparallel-general:
+
 #############################################################
 Run a Distributed Training Job Using the SageMaker Python SDK
 #############################################################

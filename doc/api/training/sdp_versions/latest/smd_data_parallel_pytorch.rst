@@ -11,154 +11,40 @@ data parallel library API for PyTorch.
 
 .. _pytorch-sdp-modify:
 
-Modify a PyTorch training script to use the SageMaker data parallel library
-===========================================================================
+Use the SageMaker Distributed Data Parallel Library as a Backend of ``torch.distributed``
+===========================================================================================
 
-The following steps show you how to convert a PyTorch training script to
-utilize SageMaker's distributed data parallel library.
-
-The distributed data parallel library works as a backend of the PyTorch distributed package.
-See `SageMaker distributed data parallel PyTorch examples <https://sagemaker-examples.readthedocs.io/en/latest/training/distributed_training/index.html#pytorch-distributed>`__ 
-for additional details on how to use the library.
-
-1.  Import the SageMaker distributed data parallel library’s PyTorch client.
-
-    .. code:: python
-
-      import smdistributed.dataparallel.torch.torch_smddp
-
-2.  Import the PyTorch distributed modules.
-
-    .. code:: python
-
-      import torch
-      import torch.distributed as dist
-      from torch.nn.parallel import DistributedDataParallel as DDP
-
-3.  Set the backend of ``torch.distributed`` as ``smddp``.
-
-    .. code:: python
-
-      dist.init_process_group(backend='smddp')
-
-4.  After parsing arguments and defining a batch size parameter
-    (for example, ``batch_size=args.batch_size``), add a two-line of code to
-    resize the batch size per worker (GPU). PyTorch's DataLoader operation
-    does not automatically handle the batch resizing for distributed training.
-
-    .. code:: python
-
-      batch_size //= dist.get_world_size()
-      batch_size = max(batch_size, 1)
-
-5.  Pin each GPU to a single SageMaker data parallel library process with
-    ``local_rank``. This refers to the relative rank of the process within a given node.
-
-    You can retrieve the rank of the process from the ``LOCAL_RANK`` environment variable.
-
-    .. code:: python
-
-      import os
-      local_rank = os.environ["LOCAL_RANK"]
-      torch.cuda.set_device(local_rank)
-
-6.  After defining a model, wrap it with the PyTorch DDP.
-
-    .. code:: python
-
-      model = ...
-
-      # Wrap the model with the PyTorch DistributedDataParallel API
-      model = DDP(model)
-
-7.  When you call the ``torch.utils.data.distributed.DistributedSampler`` API,
-    specify the total number of processes (GPUs) participating in training across
-    all the nodes in the cluster. This is called ``world_size``, and you can retrieve
-    the number from the ``torch.distributed.get_world_size()`` API. Also, specify
-    the rank of each process among all processes using the ``torch.distributed.get_rank()`` API.
-
-    .. code:: python
-
-      train_sampler = DistributedSampler(
-          train_dataset,
-          num_replicas = dist.get_world_size(),
-          rank = dist.get_rank()
-      )
-
-8.  Modify your script to save checkpoints only on the leader process (rank 0).
-    The leader process has a synchronized model. This also avoids other processes
-    overwriting the checkpoints and possibly corrupting the checkpoints.
-
-The following example code shows the structure of a PyTorch training script with DDP and smddp as the backend.
+To use the SageMaker distributed data parallel library,
+the only thing you need to do is to import the SageMaker distributed data
+parallel library’s PyTorch client (``smdistributed.dataparallel.torch.torch_smddp``).
+The client registers ``smddp`` as a backend for PyTorch.
+When you initialize the PyTorch distributed process group using
+the ``torch.distributed.init_process_group`` API,
+make sure you specify ``'smddp'`` to the backend argument.
 
 .. code:: python
 
-  import os
-  import torch
-
-  # SageMaker data parallel: Import the library PyTorch API
   import smdistributed.dataparallel.torch.torch_smddp
-
-  # SageMaker data parallel: Import PyTorch's distributed API
   import torch.distributed as dist
-  from torch.nn.parallel import DistributedDataParallel as DDP
 
-  # SageMaker data parallel: Initialize the process group
   dist.init_process_group(backend='smddp')
 
-  class Net(nn.Module):
-      ...
-      # Define model
 
-  def train(...):
-      ...
-      # Model training
+If you already have a working PyTorch script and only need to add the
+backend specification, you can proceed to Using the SageMaker PyTorch Estimator
+in the Step 2: Launch a SageMaker Distributed Training Job Using the SageMaker Python SDK topic.
 
-  def test(...):
-      ...
-      # Model evaluation
+.. note::
 
-  def main():
+  The ``smddp`` backend currently does not support creating subprocess groups
+  with the ``torch.distributed.new_group()`` API.
+  You cannot use the ``smddp`` backend concurrently with other backends.
 
-      # SageMaker data parallel: Scale batch size by world size
-      batch_size //= dist.get_world_size()
-      batch_size = max(batch_size, 1)
+.. seealso::
 
-      # Prepare dataset
-      train_dataset = torchvision.datasets.MNIST(...)
-
-      # SageMaker data parallel: Set num_replicas and rank in DistributedSampler
-      train_sampler = torch.utils.data.distributed.DistributedSampler(
-              train_dataset,
-              num_replicas=dist.get_world_size(),
-              rank=dist.get_rank())
-
-      train_loader = torch.utils.data.DataLoader(..)
-
-      # SageMaker data parallel: Wrap the PyTorch model with the library's DDP
-      model = DDP(Net().to(device))
-
-      # SageMaker data parallel: Pin each GPU to a single library process.
-      local_rank = os.environ["LOCAL_RANK"]
-      torch.cuda.set_device(local_rank)
-      model.cuda(local_rank)
-
-      # Train
-      optimizer = optim.Adadelta(...)
-      scheduler = StepLR(...)
-      for epoch in range(1, args.epochs + 1):
-          train(...)
-          if rank == 0:
-              test(...)
-          scheduler.step()
-
-      # SageMaker data parallel: Save model on the leader node (rank 0).
-      if dist.get_rank() == 0:
-          torch.save(...)
-
-  if __name__ == '__main__':
-      main()
-
+  If you still need to modify your training script to properly use
+  the PyTorch distributed package, see `Preparing a PyTorch Training Script for Distributed Training <https://docs.aws.amazon.com/sagemaker/latest/dg/data-parallel-modify-sdp-pt.html>`_
+  in the *Amazon SageMaker Developer Guide*.
 
 .. _pytorch-sdp-api:
 
