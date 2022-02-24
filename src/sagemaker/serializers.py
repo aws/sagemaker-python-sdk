@@ -374,10 +374,10 @@ class DataSerializer(SimpleBaseSerializer):
         """Serialize file data to a raw bytes.
 
         Args:
-            data (object): Data to be serialized. The data can be a string,
+            data (object): Data to be serialized. The data can be a string
                 representing file-path or the raw bytes from a file.
         Returns:
-            raw-bytes: The data serialized as a raw-bytes from the input.
+            raw-bytes: The data serialized as raw-bytes from the input.
         """
         if isinstance(data, str):
             try:
