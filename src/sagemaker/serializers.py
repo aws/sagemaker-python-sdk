@@ -18,7 +18,6 @@ from collections.abc import Iterable
 import csv
 import io
 import json
-import os
 import numpy as np
 from six import with_metaclass
 
@@ -381,10 +380,13 @@ class DataSerializer(SimpleBaseSerializer):
             raw-bytes: The data serialized as a raw-bytes from the input.
         """
         if isinstance(data, str):
-            if not os.path.exists(data):
+            try:
+                dataFile = open(data, "rb")
+            except Exception:
                 raise ValueError(f"{data} is not a valid file path.")
-            image = open(data, "rb")
-            return image.read()
+            dataFileInfo = dataFile.read()
+            dataFile.close()
+            return dataFileInfo
         if isinstance(data, bytes):
             return data
 
