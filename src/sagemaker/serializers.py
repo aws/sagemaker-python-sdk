@@ -385,7 +385,7 @@ class DataSerializer(SimpleBaseSerializer):
                 dataFileInfo = dataFile.read()
                 dataFile.close()
             except Exception as e:
-                raise ValueError(f"Could not open/read file: {data}. {e.message}")
+                raise ValueError(f"Could not open/read file: {data}. {e}")
             return dataFileInfo
         if isinstance(data, bytes):
             return data
