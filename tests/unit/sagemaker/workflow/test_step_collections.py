@@ -19,6 +19,7 @@ import shutil
 import pytest
 
 from sagemaker.drift_check_baselines import DriftCheckBaselines
+from sagemaker.workflow.utilities import list_to_request
 from tests.unit import DATA_DIR
 
 import sagemaker
@@ -206,6 +207,16 @@ def test_step_collection():
     ]
 
 
+def test_step_collection_with_list_to_request():
+    step_collection = StepCollection(steps=[CustomStep("MyStep1"), CustomStep("MyStep2")])
+    custom_step = CustomStep("MyStep3")
+    assert list_to_request([step_collection, custom_step]) == [
+        {"Name": "MyStep1", "Type": "Training", "Arguments": dict()},
+        {"Name": "MyStep2", "Type": "Training", "Arguments": dict()},
+        {"Name": "MyStep3", "Type": "Training", "Arguments": dict()},
+    ]
+
+
 def test_register_model(estimator, model_metrics, drift_check_baselines):
     model_data = f"s3://{BUCKET}/model.tar.gz"
     register_model = RegisterModel(
@@ -216,6 +227,7 @@ def test_register_model(estimator, model_metrics, drift_check_baselines):
         response_types=["response_type"],
         inference_instances=["inference_instance"],
         transform_instances=["transform_instance"],
+        image_uri="012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri",
         model_package_group_name="mpg",
         model_metrics=model_metrics,
         drift_check_baselines=drift_check_baselines,
@@ -236,7 +248,10 @@ def test_register_model(estimator, model_metrics, drift_check_baselines):
                 "Arguments": {
                     "InferenceSpecification": {
                         "Containers": [
-                            {"Image": "fakeimage", "ModelDataUrl": f"s3://{BUCKET}/model.tar.gz"}
+                            {
+                                "Image": "012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri",
+                                "ModelDataUrl": f"s3://{BUCKET}/model.tar.gz",
+                            }
                         ],
                         "SupportedContentTypes": ["content_type"],
                         "SupportedRealtimeInferenceInstanceTypes": ["inference_instance"],
@@ -842,6 +857,120 @@ def test_estimator_transformer(estimator):
                         "Image": "fakeimage",
                         "ModelDataUrl": "s3://my-bucket/model.tar.gz",
                     },
+                },
+            }
+        elif request_dict["Type"] == "Transform":
+            assert request_dict["Name"] == "EstimatorTransformerStepTransformStep"
+            assert request_dict["RetryPolicies"] == [service_fault_retry_policy.to_request()]
+            arguments = request_dict["Arguments"]
+            assert isinstance(arguments["ModelName"], Properties)
+            arguments.pop("ModelName")
+            assert "DependsOn" not in request_dict
+            assert arguments == {
+                "TransformInput": {
+                    "DataSource": {
+                        "S3DataSource": {
+                            "S3DataType": "S3Prefix",
+                            "S3Uri": f"s3://{BUCKET}/transform_manifest",
+                        }
+                    }
+                },
+                "TransformOutput": {"S3OutputPath": None},
+                "TransformResources": {"InstanceCount": 1, "InstanceType": "ml.c4.4xlarge"},
+            }
+        else:
+            raise Exception("A step exists in the collection of an invalid type.")
+
+
+def test_estimator_transformer_with_model_repack_with_estimator(estimator):
+    model_data = f"s3://{BUCKET}/model.tar.gz"
+    model_inputs = CreateModelInput(
+        instance_type="c4.4xlarge",
+        accelerator_type="ml.eia1.medium",
+    )
+    service_fault_retry_policy = StepRetryPolicy(
+        exception_types=[StepExceptionTypeEnum.SERVICE_FAULT], max_attempts=10
+    )
+    transform_inputs = TransformInput(data=f"s3://{BUCKET}/transform_manifest")
+    estimator_transformer = EstimatorTransformer(
+        name="EstimatorTransformerStep",
+        estimator=estimator,
+        model_data=model_data,
+        model_inputs=model_inputs,
+        instance_count=1,
+        instance_type="ml.c4.4xlarge",
+        transform_inputs=transform_inputs,
+        depends_on=["TestStep"],
+        model_step_retry_policies=[service_fault_retry_policy],
+        transform_step_retry_policies=[service_fault_retry_policy],
+        repack_model_step_retry_policies=[service_fault_retry_policy],
+        entry_point=f"{DATA_DIR}/dummy_script.py",
+    )
+    request_dicts = estimator_transformer.request_dicts()
+    assert len(request_dicts) == 3
+
+    for request_dict in request_dicts:
+        if request_dict["Type"] == "Training":
+            assert request_dict["Name"] == "EstimatorTransformerStepRepackModel"
+            assert request_dict["DependsOn"] == ["TestStep"]
+            assert request_dict["RetryPolicies"] == [service_fault_retry_policy.to_request()]
+            arguments = request_dict["Arguments"]
+            # pop out the dynamic generated fields
+            arguments["HyperParameters"].pop("sagemaker_submit_directory")
+            arguments["HyperParameters"].pop("sagemaker_job_name")
+            assert arguments == {
+                "AlgorithmSpecification": {
+                    "TrainingInputMode": "File",
+                    "TrainingImage": "246618743249.dkr.ecr.us-west-2.amazonaws.com/"
+                    + "sagemaker-scikit-learn:0.23-1-cpu-py3",
+                },
+                "OutputDataConfig": {"S3OutputPath": "s3://my-bucket/"},
+                "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
+                "ResourceConfig": {
+                    "InstanceCount": 1,
+                    "InstanceType": "ml.m5.large",
+                    "VolumeSizeInGB": 30,
+                },
+                "RoleArn": "DummyRole",
+                "InputDataConfig": [
+                    {
+                        "DataSource": {
+                            "S3DataSource": {
+                                "S3DataType": "S3Prefix",
+                                "S3Uri": "s3://my-bucket",
+                                "S3DataDistributionType": "FullyReplicated",
+                            }
+                        },
+                        "ChannelName": "training",
+                    }
+                ],
+                "HyperParameters": {
+                    "inference_script": '"dummy_script.py"',
+                    "model_archive": '"model.tar.gz"',
+                    "dependencies": "null",
+                    "source_dir": "null",
+                    "sagemaker_program": '"_repack_model.py"',
+                    "sagemaker_container_log_level": "20",
+                    "sagemaker_region": '"us-west-2"',
+                },
+                "VpcConfig": {"Subnets": ["abc", "def"], "SecurityGroupIds": ["123", "456"]},
+                "DebugHookConfig": {
+                    "S3OutputPath": "s3://my-bucket/",
+                    "CollectionConfigurations": [],
+                },
+            }
+        elif request_dict["Type"] == "Model":
+            assert request_dict["Name"] == "EstimatorTransformerStepCreateModelStep"
+            assert request_dict["RetryPolicies"] == [service_fault_retry_policy.to_request()]
+            arguments = request_dict["Arguments"]
+            assert isinstance(arguments["PrimaryContainer"]["ModelDataUrl"], Properties)
+            arguments["PrimaryContainer"].pop("ModelDataUrl")
+            assert "DependsOn" not in request_dict
+            assert arguments == {
+                "ExecutionRoleArn": "DummyRole",
+                "PrimaryContainer": {
+                    "Environment": {},
+                    "Image": "fakeimage",
                 },
             }
         elif request_dict["Type"] == "Transform":

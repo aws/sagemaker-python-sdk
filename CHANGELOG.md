@@ -1,5 +1,44 @@
 # Changelog
 
+## v2.77.0 (2022-02-22)
+
+### Features
+
+ * override jumpstart content bucket
+ * jumpstart model id suggestions
+ * adding customer metadata support to registermodel step
+
+### Bug Fixes and Other Changes
+
+ * Improve Pipeline workflow unit test branch coverage
+ * update lineage_trial_compoment get pipeline execution arn
+ * Add lineage doc
+ * Support primitive types for left value of ConditionSteps
+
+## v2.76.0 (2022-02-17)
+
+### Features
+
+ * Add FailStep Support for Sagemaker Pipeline
+
+### Bug Fixes and Other Changes
+
+ * use recommended inference image uri from Neo API
+ * pin test dependencies
+ * Add exception in test_action
+ * Update Static Endpoint
+ * Add CMH to the non-P3 list
+
+### Documentation Changes
+
+ * Support for generation of Jumpstart model table on build
+
+## v2.75.1 (2022-02-08)
+
+### Bug Fixes and Other Changes
+
+ * Add CMH to the non-P3 list
+
 ## v2.75.0 (2022-02-05)
 
 ### Features

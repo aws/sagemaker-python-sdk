@@ -95,7 +95,7 @@ class ConditionStep(Step):
 
 
 @attr.s
-class JsonGet(Expression):
+class JsonGet(Expression):  # pragma: no cover
     """Get JSON properties from PropertyFiles.
 
     Attributes:

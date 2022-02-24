@@ -114,9 +114,28 @@ def test_pipeline_execution_arn(sagemaker_session):
     trial_component_arn = (
         "arn:aws:sagemaker:us-west-2:123456789012:trial_component/lineage-unit-3b05f017-0d87-4c37"
     )
-    obj = lineage_trial_component.LineageTrialComponent(
-        sagemaker_session, trial_component_name="foo", trial_component_arn=trial_component_arn
+    training_job_arn = (
+        "arn:aws:sagemaker:us-west-2:123456789012:training-job/pipelines-bs6gaeln463r-abalonetrain"
     )
+    context = lineage_trial_component.LineageTrialComponent(
+        sagemaker_session,
+        trial_component_name="foo",
+        trial_component_arn=trial_component_arn,
+        source={
+            "SourceArn": training_job_arn,
+            "SourceType": "SageMakerTrainingJob",
+        },
+    )
+    obj = {
+        "TrialComponentName": "pipelines-bs6gaeln463r-AbaloneTrain-A0QiDGuY6z-aws-training-job",
+        "TrialComponentArn": trial_component_arn,
+        "DisplayName": "pipelines-bs6gaeln463r-AbaloneTrain-A0QiDGuY6z-aws-training-job",
+        "Source": {
+            "SourceArn": training_job_arn,
+            "SourceType": "SageMakerTrainingJob",
+        },
+    }
+    sagemaker_session.sagemaker_client.describe_trial_component.return_value = obj
 
     sagemaker_session.sagemaker_client.list_tags.return_value = {
         "Tags": [
@@ -124,9 +143,10 @@ def test_pipeline_execution_arn(sagemaker_session):
         ],
     }
     expected_calls = [
-        unittest.mock.call(ResourceArn=trial_component_arn),
+        unittest.mock.call(ResourceArn=training_job_arn),
     ]
-    pipeline_execution_arn_result = obj.pipeline_execution_arn()
+    pipeline_execution_arn_result = context.pipeline_execution_arn()
+
     assert pipeline_execution_arn_result == "tag1"
     assert expected_calls == sagemaker_session.sagemaker_client.list_tags.mock_calls
 
@@ -135,9 +155,28 @@ def test_no_pipeline_execution_arn(sagemaker_session):
     trial_component_arn = (
         "arn:aws:sagemaker:us-west-2:123456789012:trial_component/lineage-unit-3b05f017-0d87-4c37"
     )
-    obj = lineage_trial_component.LineageTrialComponent(
-        sagemaker_session, trial_component_name="foo", trial_component_arn=trial_component_arn
+    training_job_arn = (
+        "arn:aws:sagemaker:us-west-2:123456789012:training-job/pipelines-bs6gaeln463r-abalonetrain"
     )
+    context = lineage_trial_component.LineageTrialComponent(
+        sagemaker_session,
+        trial_component_name="foo",
+        trial_component_arn=trial_component_arn,
+        source={
+            "SourceArn": training_job_arn,
+            "SourceType": "SageMakerTrainingJob",
+        },
+    )
+    obj = {
+        "TrialComponentName": "pipelines-bs6gaeln463r-AbaloneTrain-A0QiDGuY6z-aws-training-job",
+        "TrialComponentArn": trial_component_arn,
+        "DisplayName": "pipelines-bs6gaeln463r-AbaloneTrain-A0QiDGuY6z-aws-training-job",
+        "Source": {
+            "SourceArn": training_job_arn,
+            "SourceType": "SageMakerTrainingJob",
+        },
+    }
+    sagemaker_session.sagemaker_client.describe_trial_component.return_value = obj
 
     sagemaker_session.sagemaker_client.list_tags.return_value = {
         "Tags": [
@@ -145,9 +184,48 @@ def test_no_pipeline_execution_arn(sagemaker_session):
         ],
     }
     expected_calls = [
-        unittest.mock.call(ResourceArn=trial_component_arn),
+        unittest.mock.call(ResourceArn=training_job_arn),
     ]
-    pipeline_execution_arn_result = obj.pipeline_execution_arn()
+    pipeline_execution_arn_result = context.pipeline_execution_arn()
+    expected_result = None
+    assert pipeline_execution_arn_result == expected_result
+    assert expected_calls == sagemaker_session.sagemaker_client.list_tags.mock_calls
+
+
+def test_no_source_arn_pipeline_execution_arn(sagemaker_session):
+    trial_component_arn = (
+        "arn:aws:sagemaker:us-west-2:123456789012:trial_component/lineage-unit-3b05f017-0d87-4c37"
+    )
+    training_job_arn = (
+        "arn:aws:sagemaker:us-west-2:123456789012:training-job/pipelines-bs6gaeln463r-abalonetrain"
+    )
+    context = lineage_trial_component.LineageTrialComponent(
+        sagemaker_session,
+        trial_component_name="foo",
+        trial_component_arn=trial_component_arn,
+        source={
+            "SourceArn": training_job_arn,
+            "SourceType": "SageMakerTrainingJob",
+        },
+    )
+    obj = {
+        "TrialComponentName": "pipelines-bs6gaeln463r-AbaloneTrain-A0QiDGuY6z-aws-training-job",
+        "TrialComponentArn": trial_component_arn,
+        "DisplayName": "pipelines-bs6gaeln463r-AbaloneTrain-A0QiDGuY6z-aws-training-job",
+        "Source": {
+            "SourceArn": None,
+            "SourceType": None,
+        },
+    }
+    sagemaker_session.sagemaker_client.describe_trial_component.return_value = obj
+
+    sagemaker_session.sagemaker_client.list_tags.return_value = {
+        "Tags": [
+            {"Key": "abcd", "Value": "efg"},
+        ],
+    }
+    expected_calls = []
+    pipeline_execution_arn_result = context.pipeline_execution_arn()
     expected_result = None
     assert pipeline_execution_arn_result == expected_result
     assert expected_calls == sagemaker_session.sagemaker_client.list_tags.mock_calls
