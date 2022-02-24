@@ -78,7 +78,7 @@ def create_jumpstart_model_table():
     file_content.append("     - Latest Version\n")
     file_content.append("     - Min SDK Version\n")
 
-    for model in sorted(sdk_manifest, key=lambda elt: elt["model_id"]):
+    for model in sdk_manifest_top_versions_for_models.values():
         model_spec = get_jumpstart_sdk_spec(model["spec_key"])
         file_content.append("   * - {}\n".format(model["model_id"]))
         file_content.append("     - {}\n".format(model_spec["training_supported"]))
