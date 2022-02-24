@@ -382,10 +382,10 @@ class DataSerializer(SimpleBaseSerializer):
         if isinstance(data, str):
             try:
                 dataFile = open(data, "rb")
-            except Exception:
-                raise ValueError(f"{data} is not a valid file-path.")
-            dataFileInfo = dataFile.read()
-            dataFile.close()
+                dataFileInfo = dataFile.read()
+                dataFile.close()
+            except Exception as e:
+                raise ValueError(f"Could not open/read file: {data}. {e.message}")
             return dataFileInfo
         if isinstance(data, bytes):
             return data
