@@ -371,7 +371,7 @@ class DataSerializer(SimpleBaseSerializer):
         super(DataSerializer, self).__init__(content_type=content_type)
 
     def serialize(self, data):
-        """Serialize file of various formats to a raw bytes.
+        """Serialize file data to a raw bytes.
 
         Args:
             data (object): Data to be serialized. The data can be a string,
@@ -383,7 +383,7 @@ class DataSerializer(SimpleBaseSerializer):
             try:
                 dataFile = open(data, "rb")
             except Exception:
-                raise ValueError(f"{data} is not a valid file path.")
+                raise ValueError(f"{data} is not a valid file-path.")
             dataFileInfo = dataFile.read()
             dataFile.close()
             return dataFileInfo
