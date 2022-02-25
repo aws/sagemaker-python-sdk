@@ -384,9 +384,9 @@ class DataSerializer(SimpleBaseSerializer):
                 dataFile = open(data, "rb")
                 dataFileInfo = dataFile.read()
                 dataFile.close()
+                return dataFileInfo
             except Exception as e:
                 raise ValueError(f"Could not open/read file: {data}. {e}")
-            return dataFileInfo
         if isinstance(data, bytes):
             return data
 
