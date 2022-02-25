@@ -18,6 +18,8 @@ import time
 
 import pytest
 
+from packaging.version import Version
+
 from sagemaker.tensorflow import TensorFlow, TensorFlowProcessor
 from sagemaker.utils import unique_name_from_base, sagemaker_timestamp
 
@@ -206,7 +208,23 @@ def test_mnist_distributed(
 
 
 @pytest.mark.slow_test
-def test_mnist_async(sagemaker_session, cpu_instance_type, tf_full_version, tf_full_py_version):
+def test_mnist_async(
+    sagemaker_session,
+    cpu_instance_type,
+    tf_full_version,
+    tensorflow_training_latest_version,
+    tf_full_py_version
+):
+
+    # Use the latest patch version for training, if available
+    tf_full_v = Version(tf_full_version)
+    tf_training_latest_v = Version(tensorflow_training_latest_version)
+
+    if (tf_full_v.major, tf_full_v.minor) == (tf_training_latest_v.major, tf_training_latest_v.minor):
+        tf_fw_version = tensorflow_training_latest_version
+    else:
+        tf_fw_version = tf_full_version
+
     estimator = TensorFlow(
         entry_point=SCRIPT,
         source_dir=MNIST_RESOURCE_PATH,
@@ -214,7 +232,7 @@ def test_mnist_async(sagemaker_session, cpu_instance_type, tf_full_version, tf_f
         instance_count=1,
         instance_type="ml.c5.4xlarge",
         sagemaker_session=sagemaker_session,
-        framework_version=tf_full_version,
+        framework_version=tf_fw_version,
         py_version=tf_full_py_version,
         tags=TAGS,
     )
