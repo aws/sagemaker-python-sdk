@@ -548,6 +548,17 @@ def test_processing_step(sagemaker_session):
     evaluation_report = PropertyFile(
         name="EvaluationReport", output_name="evaluation", path="evaluation.json"
     )
+    step = ProcessingStep(
+        name="MyProcessingStep",
+        description="ProcessingStep description",
+        display_name="MyProcessingStep",
+        depends_on=["TestStep", "SecondTestStep"],
+        processor=processor,
+        inputs=inputs,
+        outputs=[],
+        cache_config=cache_config,
+        property_files=[evaluation_report],
+    )
     with warnings.catch_warnings(record=True) as w:
         step = ProcessingStep(
             name="MyProcessingStep",
