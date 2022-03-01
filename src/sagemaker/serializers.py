@@ -381,10 +381,9 @@ class DataSerializer(SimpleBaseSerializer):
         """
         if isinstance(data, str):
             try:
-                dataFile = open(data, "rb")
-                dataFileInfo = dataFile.read()
-                dataFile.close()
-                return dataFileInfo
+                with open(data, "rb") as data_file:
+                    data_file_info = data_file.read()
+                return data_file_info
             except Exception as e:
                 raise ValueError(f"Could not open/read file: {data}. {e}")
         if isinstance(data, bytes):
