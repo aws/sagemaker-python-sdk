@@ -1,5 +1,26 @@
 # Changelog
 
+## v2.77.1 (2022-02-25)
+
+### Bug Fixes and Other Changes
+
+ * jumpstart model table
+
+## v2.77.0 (2022-02-22)
+
+### Features
+
+ * override jumpstart content bucket
+ * jumpstart model id suggestions
+ * adding customer metadata support to registermodel step
+
+### Bug Fixes and Other Changes
+
+ * Improve Pipeline workflow unit test branch coverage
+ * update lineage_trial_compoment get pipeline execution arn
+ * Add lineage doc
+ * Support primitive types for left value of ConditionSteps
+
 ## v2.76.0 (2022-02-17)
 
 ### Features
