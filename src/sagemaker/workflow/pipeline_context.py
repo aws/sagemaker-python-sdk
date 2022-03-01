@@ -1,3 +1,16 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
+"""The pipeline context for workflow"""
 from __future__ import absolute_import
 
 import warnings
@@ -11,20 +24,20 @@ from sagemaker.workflow.parameters import Parameter
 
 
 class PipelineSession(Session):
-    """Managing interactions with the Amazon SageMaker APIs and any other AWS services needed
-            under SageMaker Model-Building Pipeline Context
+    """Managing interactions with SageMaker APIs and AWS services needed under SageMaker Model-Building Pipeline Context
 
-        This class inherits the SageMaker session, it provides convenient methods for manipulating entities
-        and resources that Amazon SageMaker uses, such as training jobs, endpoints, and input datasets in S3.
-        When composing SageMaker Model-Building Pipeline, PipelineSession is recommended over
-        regular SageMaker Session
-        """
+    This class inherits the SageMaker session, it provides convenient methods for manipulating entities
+    and resources that Amazon SageMaker uses, such as training jobs, endpoints, and input datasets in S3.
+    When composing SageMaker Model-Building Pipeline, PipelineSession is recommended over
+    regular SageMaker Session
+    """
+
     def __init__(
-            self,
-            boto_session=None,
-            sagemaker_client=None,
-            default_bucket=None,
-            settings=SessionSettings(),
+        self,
+        boto_session=None,
+        sagemaker_client=None,
+        default_bucket=None,
+        settings=SessionSettings(),
     ):
         """Initialize a ``PipelineSession``.
 
@@ -66,16 +79,17 @@ class PipelineSession(Session):
 def runnable_by_pipeline(run_func):
     """A convenient Decorator
 
-        This is a decorator designed to annotate, during pipeline session, the methods that downstream managed to
-            1. preprocess user inputs, outputs, and configurations
-            2. generate the create request
-            3. start the job.
-        For instance, `Processor.run`, `Estimator.fit`, or `Transformer.transform`. This decorator will
-        essentially run 1, and capture the request shape from 2, then instead of starting a new job in 3, it will
-        return request shape from 2 to `sagemaker.workflow.steps.Step`. The request shape will be used to construct
-        the arguments needed to compose that particular step as part of the pipeline. The job will be started during
-        pipeline execution.
+    This is a decorator designed to annotate, during pipeline session, the methods that downstream managed to
+        1. preprocess user inputs, outputs, and configurations
+        2. generate the create request
+        3. start the job.
+    For instance, `Processor.run`, `Estimator.fit`, or `Transformer.transform`. This decorator will
+    essentially run 1, and capture the request shape from 2, then instead of starting a new job in 3, it will
+    return request shape from 2 to `sagemaker.workflow.steps.Step`. The request shape will be used to construct
+    the arguments needed to compose that particular step as part of the pipeline. The job will be started during
+    pipeline execution.
     """
+
     def wrapper(*args, **kwargs):
         if type(args[0].sagemaker_session) is PipelineSession:
             run_func_sig = inspect.signature(run_func)
@@ -85,29 +99,30 @@ def runnable_by_pipeline(run_func):
             for i, (arg_name, param) in enumerate(run_func_sig.parameters.items()):
                 if i >= len(arg_list):
                     break
-                if arg_name == 'wait':
+                if arg_name == "wait":
                     override_wait = True
                     arg_list[i] = False
-                elif arg_name == 'logs':
+                elif arg_name == "logs":
                     override_logs = True
                     arg_list[i] = False
 
             args = tuple(arg_list)
 
             if not override_wait:
-                kwargs['wait'] = False
+                kwargs["wait"] = False
             if not override_logs:
-                kwargs['logs'] = False
+                kwargs["logs"] = False
 
             warnings.warn(
                 "Running within a PipelineSession, there will be No Wait, "
                 "No Logs, and No Job being started.",
-                UserWarning
+                UserWarning,
             )
             run_func(*args, **kwargs)
             return args[0].sagemaker_session.context
         else:
             run_func(*args, **kwargs)
+
     return wrapper
 
 

@@ -30,9 +30,11 @@ from sagemaker.pytorch.estimator import PyTorch
 
 from tests.unit import DATA_DIR
 
+
 @pytest.fixture
 def pipeline_session():
     return PipelineSession()
+
 
 @pytest.fixture
 def entry_point():

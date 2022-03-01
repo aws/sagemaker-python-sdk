@@ -77,7 +77,7 @@ from sagemaker.utils import (
 from sagemaker.workflow.pipeline_context import (
     PipelineSession,
     runnable_by_pipeline,
-    is_pipeline_entities
+    is_pipeline_entities,
 )
 
 logger = logging.getLogger(__name__)
@@ -1335,7 +1335,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
     @property
     def model_data(self):
         """str: The model location in S3. Only set if Estimator has been ``fit()``."""
-        if self.latest_training_job is not None and type(self.sagemaker_session) is not PipelineSession:
+        if (
+            self.latest_training_job is not None
+            and type(self.sagemaker_session) is not PipelineSession
+        ):
             model_uri = self.sagemaker_session.sagemaker_client.describe_training_job(
                 TrainingJobName=self.latest_training_job.name
             )["ModelArtifacts"]["S3ModelArtifacts"]
@@ -1762,7 +1765,7 @@ class _TrainingJob(_Job):
         """
         train_args = cls._get_train_args(estimator, inputs, experiment_config)
         if type(estimator.sagemaker_session) is PipelineSession:
-            train_args['pipeline_session'] = estimator.sagemaker_session
+            train_args["pipeline_session"] = estimator.sagemaker_session
 
         estimator.sagemaker_session.train(**train_args)
 

@@ -58,4 +58,3 @@ def hash_file(path: str) -> str:
             md5.update(data)
 
     return md5.hexdigest()
-

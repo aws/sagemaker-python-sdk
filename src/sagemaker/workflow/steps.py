@@ -285,8 +285,9 @@ class TrainingStep(ConfigurableRetryStep):
         self.cache_config = cache_config
 
         if self.cache_config:
-            if (self.run_args and "ProfilerConfig" in self.run_args) or \
-                    (self.estimator is not None and not self.estimator.disable_profiler):
+            if (self.run_args and "ProfilerConfig" in self.run_args) or (
+                self.estimator is not None and not self.estimator.disable_profiler
+            ):
                 msg = (
                     "Profiling is enabled on the provided estimator. "
                     "The default profiler rule includes a timestamp "
@@ -299,10 +300,10 @@ class TrainingStep(ConfigurableRetryStep):
         if not self.run_args:
             warnings.warn(
                 (
-                    "We are deprecating the instantiation of TrainingStep using \"estimator\"."
-                    "Instead, simply using \"run_args\"."
+                    'We are deprecating the instantiation of TrainingStep using "estimator".'
+                    'Instead, simply using "run_args".'
                 ),
-                DeprecationWarning
+                DeprecationWarning,
             )
 
     @property
@@ -464,10 +465,10 @@ class TransformStep(ConfigurableRetryStep):
                 raise ValueError("Inputs can't be None when transformer is given.")
             warnings.warn(
                 (
-                    "We are deprecating the instantiation of TransformStep using \"transformer\"."
-                    "Instead, simply using \"run_args\"."
+                    'We are deprecating the instantiation of TransformStep using "transformer".'
+                    'Instead, simply using "run_args".'
                 ),
-                DeprecationWarning
+                DeprecationWarning,
             )
 
     @property
@@ -493,7 +494,9 @@ class TransformStep(ConfigurableRetryStep):
                 model_client_config=self.inputs.model_client_config,
                 experiment_config=dict(),
             )
-            request_dict = self.transformer.sagemaker_session._get_transform_request(**transform_args)
+            request_dict = self.transformer.sagemaker_session._get_transform_request(
+                **transform_args
+            )
 
         request_dict.pop("TransformJobName", None)
         return request_dict
@@ -598,10 +601,10 @@ class ProcessingStep(ConfigurableRetryStep):
 
             warnings.warn(
                 (
-                    "We are deprecating the instantiation of ProcessingStep using \"processor\"."
-                    "Instead, simply using \"run_args\"."
+                    'We are deprecating the instantiation of ProcessingStep using "processor".'
+                    'Instead, simply using "run_args".'
                 ),
-                DeprecationWarning
+                DeprecationWarning,
             )
 
     @property
@@ -738,10 +741,10 @@ class TuningStep(ConfigurableRetryStep):
         if not self.run_args:
             warnings.warn(
                 (
-                    "We are deprecating the instantiation of TuningStep using \"tuner\"."
-                    "Instead, simply using \"run_args\"."
+                    'We are deprecating the instantiation of TuningStep using "tuner".'
+                    'Instead, simply using "run_args".'
                 ),
-                DeprecationWarning
+                DeprecationWarning,
             )
 
     @property
@@ -808,5 +811,3 @@ class TuningStep(ConfigurableRetryStep):
                 "output/model.tar.gz",
             ],
         )
-
-

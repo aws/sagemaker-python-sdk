@@ -41,7 +41,7 @@ from sagemaker.parameter import (
 from sagemaker.workflow.pipeline_context import (
     PipelineSession,
     runnable_by_pipeline,
-    is_pipeline_entities
+    is_pipeline_entities,
 )
 
 from sagemaker.session import Session
@@ -366,9 +366,7 @@ class HyperparameterTuner(object):
         """Prepare static hyperparameters for one estimator before tuning."""
         # Remove any hyperparameter that will be tuned
         static_hyperparameters = {
-            str(k): str(v)
-            if not is_pipeline_entities(v)
-            else v
+            str(k): str(v) if not is_pipeline_entities(v) else v
             for (k, v) in estimator.hyperparameters().items()
         }
         for hyperparameter_name in hyperparameter_ranges.keys():
@@ -475,7 +473,7 @@ class HyperparameterTuner(object):
         self._validate_dict_argument(
             name="include_cls_metadata",
             value=include_cls_metadata if include_cls_metadata else {},
-            allowed_keys=estimator_names
+            allowed_keys=estimator_names,
         )
         self._validate_dict_argument(
             name="estimator_kwargs", value=estimator_kwargs, allowed_keys=estimator_names
@@ -1480,7 +1478,7 @@ class _TuningJob(_Job):
         """
         tuner_args = cls._get_tuner_args(tuner, inputs)
         if type(tuner.sagemaker_session) is PipelineSession:
-            tuner_args['pipeline_session'] = PipelineSession
+            tuner_args["pipeline_session"] = PipelineSession
 
         tuner.sagemaker_session.create_tuning_job(**tuner_args)
 

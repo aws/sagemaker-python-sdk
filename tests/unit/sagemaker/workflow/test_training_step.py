@@ -74,9 +74,7 @@ def training_input(bucket):
 
 @pytest.fixture
 def hyperparameters():
-    return {
-        "test-key": "test-val"
-    }
+    return {"test-key": "test-val"}
 
 
 def test_training_step_with_estimator(pipeline_session, training_input, hyperparameters):
@@ -118,86 +116,84 @@ def test_training_step_with_estimator(pipeline_session, training_input, hyperpar
         "DependsOn": ["TestStep", "SecondTestStep"],
         "Arguments": run_args,
     }
-    assert step.properties.TrainingJobName.expr == {
-        "Get": "Steps.MyTrainingStep.TrainingJobName"
-    }
+    assert step.properties.TrainingJobName.expr == {"Get": "Steps.MyTrainingStep.TrainingJobName"}
 
 
-@pytest.mark.parametrize("estimator", [
-    SKLearn(
-        framework_version="0.23-1",
-        py_version="py3",
-        instance_type=INSTANCE_TYPE,
-        instance_count=1,
-        role=sagemaker.get_execution_role(),
-        entry_point="entry_point.py",
-    ),
-    PyTorch(
-        role=sagemaker.get_execution_role(),
-        instance_type=INSTANCE_TYPE,
-        instance_count=1,
-        framework_version="1.8.0",
-        py_version="py36",
-        entry_point="entry_point.py",
-    ),
-    TensorFlow(
-        role=sagemaker.get_execution_role(),
-        instance_type=INSTANCE_TYPE,
-        instance_count=1,
-        framework_version="2.0",
-        py_version="py3",
-        entry_point="entry_point.py",
-    ),
-    HuggingFace(
-        transformers_version="4.6",
-        pytorch_version="1.7",
-        role=sagemaker.get_execution_role(),
-        instance_type='ml.p3.2xlarge',
-        instance_count=1,
-        py_version="py36",
-        entry_point="entry_point.py",
-    ),
-    XGBoost(
-        framework_version="1.3-1",
-        py_version="py3",
-        role=sagemaker.get_execution_role(),
-        instance_type=INSTANCE_TYPE,
-        instance_count=1,
-        entry_point="entry_point.py"
-    ),
-    MXNet(
-        framework_version="1.4.1",
-        py_version="py3",
-        role=sagemaker.get_execution_role(),
-        instance_type=INSTANCE_TYPE,
-        instance_count=1,
-        entry_point="entry_point.py"
-    ),
-    RLEstimator(
-        entry_point="cartpole.py",
-        toolkit=RLToolkit.RAY,
-        framework=RLFramework.TENSORFLOW,
-        toolkit_version="0.8.5",
-        role=sagemaker.get_execution_role(),
-        instance_type=INSTANCE_TYPE,
-        instance_count=1,
-    ),
-    Chainer(
-        role=sagemaker.get_execution_role(),
-        entry_point="entry_point.py",
-        use_mpi=True,
-        num_processes=4,
-        framework_version="5.0.0",
-        instance_type=INSTANCE_TYPE,
-        instance_count=1,
-        py_version="py3",
-    )
-])
+@pytest.mark.parametrize(
+    "estimator",
+    [
+        SKLearn(
+            framework_version="0.23-1",
+            py_version="py3",
+            instance_type=INSTANCE_TYPE,
+            instance_count=1,
+            role=sagemaker.get_execution_role(),
+            entry_point="entry_point.py",
+        ),
+        PyTorch(
+            role=sagemaker.get_execution_role(),
+            instance_type=INSTANCE_TYPE,
+            instance_count=1,
+            framework_version="1.8.0",
+            py_version="py36",
+            entry_point="entry_point.py",
+        ),
+        TensorFlow(
+            role=sagemaker.get_execution_role(),
+            instance_type=INSTANCE_TYPE,
+            instance_count=1,
+            framework_version="2.0",
+            py_version="py3",
+            entry_point="entry_point.py",
+        ),
+        HuggingFace(
+            transformers_version="4.6",
+            pytorch_version="1.7",
+            role=sagemaker.get_execution_role(),
+            instance_type="ml.p3.2xlarge",
+            instance_count=1,
+            py_version="py36",
+            entry_point="entry_point.py",
+        ),
+        XGBoost(
+            framework_version="1.3-1",
+            py_version="py3",
+            role=sagemaker.get_execution_role(),
+            instance_type=INSTANCE_TYPE,
+            instance_count=1,
+            entry_point="entry_point.py",
+        ),
+        MXNet(
+            framework_version="1.4.1",
+            py_version="py3",
+            role=sagemaker.get_execution_role(),
+            instance_type=INSTANCE_TYPE,
+            instance_count=1,
+            entry_point="entry_point.py",
+        ),
+        RLEstimator(
+            entry_point="cartpole.py",
+            toolkit=RLToolkit.RAY,
+            framework=RLFramework.TENSORFLOW,
+            toolkit_version="0.8.5",
+            role=sagemaker.get_execution_role(),
+            instance_type=INSTANCE_TYPE,
+            instance_count=1,
+        ),
+        Chainer(
+            role=sagemaker.get_execution_role(),
+            entry_point="entry_point.py",
+            use_mpi=True,
+            num_processes=4,
+            framework_version="5.0.0",
+            instance_type=INSTANCE_TYPE,
+            instance_count=1,
+            py_version="py3",
+        ),
+    ],
+)
 def test_training_step_with_framework_estimator(
-        estimator,
-        pipeline_session,
-        training_input,
-        hyperparameters
+    estimator, pipeline_session, training_input, hyperparameters
 ):
     estimator.source_dir = DUMMY_S3_SOURCE_DIR
     estimator.set_hyperparameters(**hyperparameters)
@@ -225,18 +221,21 @@ def test_training_step_with_framework_estimator(
     }
 
 
-@pytest.mark.parametrize('algo_estimator', [
-    KNN,
-    KMeans,
-    LinearLearner,
-    RandomCutForest,
-    LDA,
-    Object2Vec,
-    NTM,
-    PCA,
-    FactorizationMachines,
-    IPInsights
-])
+@pytest.mark.parametrize(
+    "algo_estimator",
+    [
+        KNN,
+        KMeans,
+        LinearLearner,
+        RandomCutForest,
+        LDA,
+        Object2Vec,
+        NTM,
+        PCA,
+        FactorizationMachines,
+        IPInsights,
+    ],
+)
 def test_training_step_with_algorithm_base(algo_estimator, pipeline_session):
     estimator = algo_estimator(
         role=sagemaker.get_execution_role(),
@@ -277,6 +276,4 @@ def test_training_step_with_algorithm_base(algo_estimator, pipeline_session):
         "Type": "Training",
         "Arguments": run_args,
     }
-    assert step.properties.TrainingJobName.expr == {
-        "Get": "Steps.MyTrainingStep.TrainingJobName"
-    }
+    assert step.properties.TrainingJobName.expr == {"Get": "Steps.MyTrainingStep.TrainingJobName"}

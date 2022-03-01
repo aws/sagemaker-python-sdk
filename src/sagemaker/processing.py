@@ -1759,4 +1759,3 @@ class FrameworkProcessor(ScriptProcessor):
             )
         )
         self.entrypoint = self.framework_entrypoint_command + [user_script_location]
-

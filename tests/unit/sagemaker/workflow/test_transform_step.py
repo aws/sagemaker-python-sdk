@@ -50,7 +50,9 @@ def test_transform_step_with_transformer(pipeline_session):
         sagemaker_session=pipeline_session,
     )
 
-    transform_inputs = TransformInput(data=f"s3://{pipeline_session.default_bucket()}/batch-data",)
+    transform_inputs = TransformInput(
+        data=f"s3://{pipeline_session.default_bucket()}/batch-data",
+    )
 
     with warnings.catch_warnings(record=True) as w:
         run_args = transformer.transform(
@@ -70,7 +72,8 @@ def test_transform_step_with_transformer(pipeline_session):
 
     with warnings.catch_warnings(record=True) as w:
         step = TransformStep(
-            name="MyTransformStep", run_args=run_args,
+            name="MyTransformStep",
+            run_args=run_args,
         )
         assert len(w) == 0
 
@@ -80,10 +83,9 @@ def test_transform_step_with_transformer(pipeline_session):
         parameters=[model_name],
         sagemaker_session=pipeline_session,
     )
-    run_args['ModelName'] = model_name.expr
+    run_args["ModelName"] = model_name.expr
     assert json.loads(pipeline.definition())["Steps"][0] == {
         "Name": "MyTransformStep",
         "Type": "Transform",
         "Arguments": run_args,
     }
-

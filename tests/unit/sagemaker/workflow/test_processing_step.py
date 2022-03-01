@@ -42,12 +42,12 @@ from sagemaker.pytorch.estimator import PyTorch
 from sagemaker import utils
 
 from sagemaker.clarify import (
-        SageMakerClarifyProcessor,
-        BiasConfig,
-        DataConfig,
-        ModelConfig,
-        ModelPredictedLabelConfig,
-        SHAPConfig
+    SageMakerClarifyProcessor,
+    BiasConfig,
+    DataConfig,
+    ModelConfig,
+    ModelPredictedLabelConfig,
+    SHAPConfig,
 )
 import numpy as np
 import pandas as pd
@@ -58,6 +58,7 @@ IMAGE_URI = "fakeimage"
 MODEL_NAME = "gisele"
 DUMMY_S3_SCRIPT_PATH = "s3://dummy-s3/dummy_script.py"
 INSTANCE_TYPE = "ml.m4.xlarge"
+
 
 @pytest.fixture
 def pipeline_session():
@@ -165,7 +166,9 @@ def test_processing_step_with_script_processor(pipeline_session, processing_inpu
         sagemaker_session=pipeline_session,
     )
 
-    run_args = processor.run(inputs=processing_input, code=DUMMY_S3_SCRIPT_PATH, job_name="my-processing-job")
+    run_args = processor.run(
+        inputs=processing_input, code=DUMMY_S3_SCRIPT_PATH, job_name="my-processing-job"
+    )
 
     step = ProcessingStep(
         name="MyProcessingStep",
@@ -179,33 +182,35 @@ def test_processing_step_with_script_processor(pipeline_session, processing_inpu
     )
 
     assert json.loads(pipeline.definition())["Steps"][0] == {
-            "Name": "MyProcessingStep",
-            "Type": "Processing",
-            "Arguments": run_args,
+        "Name": "MyProcessingStep",
+        "Type": "Processing",
+        "Arguments": run_args,
     }
 
 
-@pytest.mark.parametrize("framework_processor", [
-    (
+@pytest.mark.parametrize(
+    "framework_processor",
+    [
+        (
             FrameworkProcessor(
                 framework_version="1.8",
                 instance_type=INSTANCE_TYPE,
                 instance_count=1,
                 role=sagemaker.get_execution_role(),
-                estimator_cls=PyTorch
+                estimator_cls=PyTorch,
             ),
-            {"code": DUMMY_S3_SCRIPT_PATH}
-    ),
-    (
+            {"code": DUMMY_S3_SCRIPT_PATH},
+        ),
+        (
             SKLearnProcessor(
                 framework_version="0.23-1",
                 instance_type=INSTANCE_TYPE,
                 instance_count=1,
                 role=sagemaker.get_execution_role(),
             ),
-            {"code": DUMMY_S3_SCRIPT_PATH}
-    ),
-    (
+            {"code": DUMMY_S3_SCRIPT_PATH},
+        ),
+        (
             PyTorchProcessor(
                 role=sagemaker.get_execution_role(),
                 instance_type=INSTANCE_TYPE,
@@ -213,28 +218,28 @@ def test_processing_step_with_script_processor(pipeline_session, processing_inpu
                 framework_version="1.8.0",
                 py_version="py3",
             ),
-            {"code": DUMMY_S3_SCRIPT_PATH}
-    ),
-    (
+            {"code": DUMMY_S3_SCRIPT_PATH},
+        ),
+        (
             TensorFlowProcessor(
                 role=sagemaker.get_execution_role(),
                 instance_type=INSTANCE_TYPE,
                 instance_count=1,
                 framework_version="2.0",
             ),
-            {"code": DUMMY_S3_SCRIPT_PATH}
-    ),
-    (
+            {"code": DUMMY_S3_SCRIPT_PATH},
+        ),
+        (
             HuggingFaceProcessor(
                 transformers_version="4.6",
                 pytorch_version="1.7",
                 role=sagemaker.get_execution_role(),
                 instance_count=1,
-                instance_type='ml.p3.2xlarge',
+                instance_type="ml.p3.2xlarge",
             ),
-            {"code": DUMMY_S3_SCRIPT_PATH}
-    ),
-    (
+            {"code": DUMMY_S3_SCRIPT_PATH},
+        ),
+        (
             XGBoostProcessor(
                 framework_version="1.3-1",
                 py_version="py3",
@@ -243,9 +248,9 @@ def test_processing_step_with_script_processor(pipeline_session, processing_inpu
                 instance_type=INSTANCE_TYPE,
                 base_job_name="test-xgboost",
             ),
-            {"code": DUMMY_S3_SCRIPT_PATH}
-    ),
-    (
+            {"code": DUMMY_S3_SCRIPT_PATH},
+        ),
+        (
             MXNetProcessor(
                 framework_version="1.4.1",
                 py_version="py3",
@@ -254,31 +259,31 @@ def test_processing_step_with_script_processor(pipeline_session, processing_inpu
                 instance_type=INSTANCE_TYPE,
                 base_job_name="test-mxnet",
             ),
-            {"code": DUMMY_S3_SCRIPT_PATH}
-    ),
-    (
+            {"code": DUMMY_S3_SCRIPT_PATH},
+        ),
+        (
             DataWranglerProcessor(
                 role=sagemaker.get_execution_role(),
                 data_wrangler_flow_source="s3://my-bucket/dw.flow",
                 instance_count=1,
                 instance_type=INSTANCE_TYPE,
             ),
-            {}
-    ),
-    (
-        SparkJarProcessor(
-            role=sagemaker.get_execution_role(),
-            framework_version="2.4",
-            instance_count=1,
-            instance_type=INSTANCE_TYPE,
+            {},
         ),
-        {
-            "submit_app": "s3://my-jar",
-            "submit_class": "com.amazonaws.sagemaker.spark.test.HelloJavaSparkApp",
-            "arguments": ["--input", "input-data-uri", "--output", "output-data-uri"],
-        }
-    ),
-    (
+        (
+            SparkJarProcessor(
+                role=sagemaker.get_execution_role(),
+                framework_version="2.4",
+                instance_count=1,
+                instance_type=INSTANCE_TYPE,
+            ),
+            {
+                "submit_app": "s3://my-jar",
+                "submit_class": "com.amazonaws.sagemaker.spark.test.HelloJavaSparkApp",
+                "arguments": ["--input", "input-data-uri", "--output", "output-data-uri"],
+            },
+        ),
+        (
             PySparkProcessor(
                 role=sagemaker.get_execution_role(),
                 framework_version="2.4",
@@ -288,14 +293,12 @@ def test_processing_step_with_script_processor(pipeline_session, processing_inpu
             {
                 "submit_app": "s3://my-jar",
                 "arguments": ["--input", "input-data-uri", "--output", "output-data-uri"],
-            }
-    )
-])
+            },
+        ),
+    ],
+)
 def test_processing_step_with_framework_processor(
-        framework_processor,
-        pipeline_session,
-        processing_input,
-        network_config
+    framework_processor, pipeline_session, processing_input, network_config
 ):
 
     processor, run_inputs = framework_processor
@@ -305,7 +308,7 @@ def test_processing_step_with_framework_processor(
     processor.volume_kms_key = "volume-kms-key"
     processor.network_config = network_config
 
-    run_inputs['inputs'] = processing_input
+    run_inputs["inputs"] = processing_input
 
     run_args = processor.run(**run_inputs)
 
@@ -320,14 +323,13 @@ def test_processing_step_with_framework_processor(
     )
 
     assert json.loads(pipeline.definition())["Steps"][0] == {
-            "Name": "MyProcessingStep",
-            "Type": "Processing",
-            "Arguments": run_args,
-        }
+        "Name": "MyProcessingStep",
+        "Type": "Processing",
+        "Arguments": run_args,
+    }
 
 
 def test_processing_step_with_clarify_processor(pipeline_session):
-
     def training_set():
         label = (np.random.rand(100, 1) > 0.5).astype(np.int32)
         features = np.random.rand(100, 4)
@@ -336,7 +338,7 @@ def test_processing_step_with_clarify_processor(pipeline_session):
     def data_path():
         features, label = training_set()
         data = pd.concat([pd.DataFrame(label), pd.DataFrame(features)], axis=1, sort=False)
-        filename = './train.csv'
+        filename = "./train.csv"
         data.to_csv(filename, index=False, header=False)
         return filename
 
@@ -433,9 +435,7 @@ def test_processing_step_with_clarify_processor(pipeline_session):
         data_config=data_config,
         data_bias_config=data_bias_config(),
         model_config=model_config("1st-model-rpyndy0uyo"),
-        model_predicted_label_config=ModelPredictedLabelConfig(
-            probability_threshold=0.9
-        )
+        model_predicted_label_config=ModelPredictedLabelConfig(probability_threshold=0.9),
     )
     verfiy(run_post_training_bias_args)
 
@@ -445,4 +445,3 @@ def test_processing_step_with_clarify_processor(pipeline_session):
         explainability_config=shap_config(),
     )
     verfiy(run_explainability_args)
-

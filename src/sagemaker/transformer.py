@@ -17,7 +17,11 @@ from botocore import exceptions
 
 from sagemaker.job import _Job
 from sagemaker.session import Session
-from sagemaker.workflow.pipeline_context import PipelineSession, runnable_by_pipeline, is_pipeline_entities
+from sagemaker.workflow.pipeline_context import (
+    PipelineSession,
+    runnable_by_pipeline,
+    is_pipeline_entities,
+)
 from sagemaker.utils import base_name_from_image, name_from_base
 
 
@@ -375,7 +379,7 @@ class _TransformJob(_Job):
             model_client_config,
         )
         if type(transformer.sagemaker_session) is PipelineSession:
-            transform_args['pipeline_session'] = transformer.sagemaker_session
+            transform_args["pipeline_session"] = transformer.sagemaker_session
         transformer.sagemaker_session.transform(**transform_args)
 
         return cls(transformer.sagemaker_session, transformer._current_job_name)
