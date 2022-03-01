@@ -686,7 +686,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         hyperparams[JOB_NAME_PARAM_NAME] = self._current_job_name
         hyperparams[SAGEMAKER_REGION_PARAM_NAME] = self.sagemaker_session.boto_region_name
 
-        self._hyperparameters.update(EstimatorBase._json_encode_hyperparameters(hyperparams))
+        self._hyperparameters.update(hyperparams)
 
     def _stage_user_code_in_s3(self) -> str:
         """Uploads the user training script to S3 and returns the S3 URI.
