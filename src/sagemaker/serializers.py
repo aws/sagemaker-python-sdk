@@ -383,7 +383,7 @@ class DataSerializer(SimpleBaseSerializer):
             try:
                 with open(data, "rb") as data_file:
                     data_file_info = data_file.read()
-                return data_file_info
+                    return data_file_info
             except Exception as e:
                 raise ValueError(f"Could not open/read file: {data}. {e}")
         if isinstance(data, bytes):
