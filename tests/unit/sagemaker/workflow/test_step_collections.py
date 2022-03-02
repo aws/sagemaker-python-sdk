@@ -457,7 +457,7 @@ def test_register_model_with_model_repack_with_estimator(
             assert len(request_dict["DependsOn"]) == 1
             assert request_dict["DependsOn"][0] == "TestStep"
             arguments = request_dict["Arguments"]
-            assert BUCKET in arguments["HyperParameters"]["sagemaker_submit_directory"] 
+            assert BUCKET in arguments["HyperParameters"]["sagemaker_submit_directory"]
             arguments["HyperParameters"].pop("sagemaker_submit_directory")
             assert ordered(arguments) == ordered(
                 {
@@ -582,7 +582,7 @@ def test_register_model_with_model_repack_with_model(model, model_metrics, drift
             assert len(request_dict["DependsOn"]) == 1
             assert request_dict["DependsOn"][0] == "TestStep"
             arguments = request_dict["Arguments"]
-            assert BUCKET in arguments["HyperParameters"]["sagemaker_submit_directory"] 
+            assert BUCKET in arguments["HyperParameters"]["sagemaker_submit_directory"]
             arguments["HyperParameters"].pop("sagemaker_submit_directory")
             assert ordered(arguments) == ordered(
                 {
@@ -711,7 +711,7 @@ def test_register_model_with_model_repack_with_pipeline_model(
             assert len(request_dict["DependsOn"]) == 1
             assert request_dict["DependsOn"][0] == "TestStep"
             arguments = request_dict["Arguments"]
-            assert BUCKET in arguments["HyperParameters"]["sagemaker_submit_directory"] 
+            assert BUCKET in arguments["HyperParameters"]["sagemaker_submit_directory"]
             arguments["HyperParameters"].pop("sagemaker_submit_directory")
             assert ordered(arguments) == ordered(
                 {
