@@ -1,3 +1,5 @@
+.. _sdp_api_docs_launch_training_job:
+
 Launch a Distributed Training Job Using the SageMaker Python SDK
 ================================================================
 

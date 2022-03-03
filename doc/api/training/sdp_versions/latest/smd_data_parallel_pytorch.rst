@@ -31,8 +31,7 @@ make sure you specify ``'smddp'`` to the backend argument.
 
 
 If you already have a working PyTorch script and only need to add the
-backend specification, you can proceed to Using the SageMaker PyTorch Estimator
-in the Step 2: Launch a SageMaker Distributed Training Job Using the SageMaker Python SDK topic.
+backend specification, you can proceed to :ref:`sdp_api_docs_launch_training_job`.
 
 .. note::
 
