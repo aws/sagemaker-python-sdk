@@ -4161,7 +4161,7 @@ def get_model_package_args(
         description (str): Model Package description (default: None).
         tags (List[dict[str, str]]): A list of dictionaries containing key-value pairs
             (default: None).
-        container_def_list (list): A list of container defintiions (default: None).
+        container_def_list (list): A list of container definitions (default: None).
         drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
         customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
             metadata properties (default: None).

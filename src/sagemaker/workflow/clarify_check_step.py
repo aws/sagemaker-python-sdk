@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""The step definitions for workflow."""
+"""The ClarifyCheckStep definitions for workflow."""
 from __future__ import absolute_import
 
 import copy
@@ -180,7 +180,7 @@ class ClarifyCheckStep(Step):
             description (str): The description of the ClarifyCheckStep step (default: None).
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance
                 (default: None).
-            depends_on (List[str] or List[Step]): A list of step names or step instances
+            depends_on (Union[List[str], List[Step]]): A list of step names or step instances
                 this `sagemaker.workflow.steps.ClarifyCheckStep` depends on (default: None).
         """
         if (

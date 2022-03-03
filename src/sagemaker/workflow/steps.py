@@ -17,7 +17,7 @@ import abc
 import warnings
 
 from enum import Enum
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Optional
 from urllib.parse import urlparse
 
 import attr
@@ -186,11 +186,22 @@ class ConfigurableRetryStep(Step):
         self,
         name: str,
         step_type: StepTypeEnum,
-        display_name: str = None,
-        description: str = None,
-        depends_on: Union[List[str], List[Step]] = None,
-        retry_policies: List[RetryPolicy] = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
+        depends_on: Optional[Union[List[str], List[Step]]] = None,
+        retry_policies: Optional[List[RetryPolicy]] = None,
     ):
+        """Constructor of a configurable retry step.
+
+        Args:
+            name (str): The name of the step.
+            step_type (StepTypeEnum): The type of the step.
+            display_name (str): The display name of the step.
+            description (str): The description of the step.
+            depends_on (Union[List[str], List[Step]]): A list of `Step` names or `Step` instances
+                this step depends on.
+            retry_policies (List[RetryPolicy]): A list of retry policies.
+        """
         super().__init__(
             name=name,
             display_name=display_name,
@@ -229,12 +240,12 @@ class TrainingStep(ConfigurableRetryStep):
         self,
         name: str,
         estimator: EstimatorBase,
-        display_name: str = None,
-        description: str = None,
-        inputs: Union[TrainingInput, dict, str, FileSystemInput] = None,
-        cache_config: CacheConfig = None,
-        depends_on: Union[List[str], List[Step]] = None,
-        retry_policies: List[RetryPolicy] = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
+        inputs: Optional[Union[TrainingInput, dict, str, FileSystemInput]] = None,
+        cache_config: Optional[CacheConfig] = None,
+        depends_on: Optional[Union[List[str], List[Step]]] = None,
+        retry_policies: Optional[List[RetryPolicy]] = None,
     ):
         """Construct a `TrainingStep`, given an `EstimatorBase` instance.
 
@@ -326,10 +337,10 @@ class CreateModelStep(ConfigurableRetryStep):
         name: str,
         model: Union[Model, PipelineModel],
         inputs: CreateModelInput,
-        depends_on: Union[List[str], List[Step]] = None,
-        retry_policies: List[RetryPolicy] = None,
-        display_name: str = None,
-        description: str = None,
+        depends_on: Optional[Union[List[str], List[Step]]] = None,
+        retry_policies: Optional[List[RetryPolicy]] = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
     ):
         """Construct a `CreateModelStep`, given an `sagemaker.model.Model` instance.
 
@@ -401,11 +412,11 @@ class TransformStep(ConfigurableRetryStep):
         name: str,
         transformer: Transformer,
         inputs: TransformInput,
-        display_name: str = None,
-        description: str = None,
-        cache_config: CacheConfig = None,
-        depends_on: Union[List[str], List[Step]] = None,
-        retry_policies: List[RetryPolicy] = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
+        cache_config: Optional[CacheConfig] = None,
+        depends_on: Optional[Union[List[str], List[Step]]] = None,
+        retry_policies: Optional[List[RetryPolicy]] = None,
     ):
         """Constructs a `TransformStep`, given a `Transformer` instance.
 

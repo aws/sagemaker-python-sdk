@@ -13,7 +13,7 @@
 """The properties definitions for workflow."""
 from __future__ import absolute_import
 
-from typing import Dict, Union, List
+from typing import Dict, Union, List, Optional
 
 import attr
 
@@ -50,9 +50,9 @@ class Properties(metaclass=PropertiesMeta):
     def __init__(
         self,
         path: str,
-        shape_name: str = None,
-        shape_names: List[str] = None,
-        service_name: str = "sagemaker",
+        shape_name: Optional[str] = None,
+        shape_names: Optional[List[str]] = None,
+        service_name: Optional[str] = "sagemaker",
     ):
         """Create a Properties instance representing the given shape.
 
@@ -60,6 +60,7 @@ class Properties(metaclass=PropertiesMeta):
             path (str): The parent path of the Properties instance.
             shape_name (str): The botocore service model shape name.
             shape_names (str): A List of the botocore service model shape name.
+            service_name (str): The botocore service name.
         """
         self._path = path
         shape_names = [] if shape_names is None else shape_names
@@ -97,7 +98,9 @@ class Properties(metaclass=PropertiesMeta):
 class PropertiesList(Properties):
     """PropertiesList for use in workflow expressions."""
 
-    def __init__(self, path: str, shape_name: str = None, service_name: str = "sagemaker"):
+    def __init__(
+        self, path: str, shape_name: Optional[str] = None, service_name: Optional[str] = "sagemaker"
+    ):
         """Create a PropertiesList instance representing the given shape.
 
         Args:
@@ -131,7 +134,9 @@ class PropertiesList(Properties):
 class PropertiesMap(Properties):
     """PropertiesMap for use in workflow expressions."""
 
-    def __init__(self, path: str, shape_name: str = None, service_name: str = "sagemaker"):
+    def __init__(
+        self, path: str, shape_name: Optional[str] = None, service_name: Optional[str] = "sagemaker"
+    ):
         """Create a PropertiesMap instance representing the given shape.
 
         Args:
@@ -167,9 +172,9 @@ class PropertyFile(Expression):
     """Provides a property file struct.
 
     Attributes:
-        name: The name of the property file for reference with `JsonGet` functions.
-        output_name: The name of the processing job output channel.
-        path: The path to the file at the output channel location.
+        name (str): The name of the property file for reference with `JsonGet` functions.
+        output_name (str): The name of the processing job output channel.
+        path (str): The path to the file at the output channel location.
     """
 
     name: str = attr.ib()

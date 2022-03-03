@@ -10,10 +10,10 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""The step definitions for workflow."""
+"""The ConditionStep definitions for workflow."""
 from __future__ import absolute_import
 
-from typing import List, Union
+from typing import List, Union, Optional
 
 import attr
 
@@ -41,12 +41,12 @@ class ConditionStep(Step):
     def __init__(
         self,
         name: str,
-        depends_on: Union[List[str], List[Step]] = None,
-        display_name: str = None,
-        description: str = None,
-        conditions: List[Condition] = None,
-        if_steps: List[Union[Step, StepCollection]] = None,
-        else_steps: List[Union[Step, StepCollection]] = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
+        conditions: Optional[List[Condition]] = None,
+        depends_on: Optional[Union[List[str], List[Step]]] = None,
+        if_steps: Optional[List[Union[Step, StepCollection]]] = None,
+        else_steps: Optional[List[Union[Step, StepCollection]]] = None,
     ):
         """Construct a ConditionStep for pipelines to support conditional branching.
 
@@ -60,6 +60,8 @@ class ConditionStep(Step):
             description (str): The description of the condition step.
             conditions (List[Condition]): A list of `sagemaker.workflow.conditions.Condition`
                 instances.
+            depends_on (List[str] or List[Step]): A list of step names or step instances
+                this `sagemaker.workflow.steps.ClarifyCheckStep` depends on (default: None).
             if_steps (List[Union[Step, StepCollection]]): A list of `sagemaker.workflow.steps.Step`
                 or `sagemaker.workflow.step_collections.StepCollection` instances that are
                 marked as ready for execution if the list of conditions evaluates to True.

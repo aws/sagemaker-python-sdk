@@ -17,7 +17,8 @@ import os
 import shutil
 import tarfile
 import tempfile
-from typing import List, Union
+from typing import List, Union, Dict, Optional
+from sagemaker.session import Session
 from sagemaker import image_uris
 from sagemaker.inputs import TrainingInput
 from sagemaker.s3 import (
@@ -36,6 +37,9 @@ from sagemaker.workflow.steps import (
     ConfigurableRetryStep,
 )
 from sagemaker.workflow.retry import RetryPolicy
+from sagemaker.model_metrics import ModelMetrics
+from sagemaker.metadata_properties import MetadataProperties
+from sagemaker.drift_check_baselines import DriftCheckBaselines
 
 FRAMEWORK_VERSION = "0.23-1"
 INSTANCE_TYPE = "ml.m5.large"
@@ -52,18 +56,18 @@ class _RepackModelStep(TrainingStep):
     def __init__(
         self,
         name: str,
-        sagemaker_session,
-        role,
+        sagemaker_session: Session,
+        role: str,
         model_data: str,
         entry_point: str,
-        display_name: str = None,
-        description: str = None,
-        source_dir: str = None,
-        dependencies: List = None,
-        depends_on: Union[List[str], List[Step]] = None,
-        retry_policies: List[RetryPolicy] = None,
-        subnets=None,
-        security_group_ids=None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
+        source_dir: Optional[str] = None,
+        dependencies: Optional[List] = None,
+        depends_on: Optional[Union[List[str], List[Step]]] = None,
+        retry_policies: Optional[List[RetryPolicy]] = None,
+        subnets: Optional[List[str]] = None,
+        security_group_ids: Optional[List[str]] = None,
         **kwargs,
     ):
         """Base class initializer.
@@ -250,7 +254,7 @@ class _RepackModelStep(TrainingStep):
     def arguments(self) -> RequestType:
         """The arguments dict that are used to call `create_training_job`.
 
-        This first prepares the source bundle for repackinglby placing artifacts
+        This first prepares the source bundle for repacking by placing artifacts
         in locations which the training container will make available to the
         repacking script and then gets the arguments for the training job.
         """
@@ -291,26 +295,26 @@ class _RegisterModelStep(ConfigurableRetryStep):
     def __init__(
         self,
         name: str,
-        content_types,
-        response_types,
-        inference_instances,
-        transform_instances,
-        estimator: EstimatorBase = None,
-        model_data=None,
-        model_package_group_name=None,
-        model_metrics=None,
-        metadata_properties=None,
-        approval_status="PendingManualApproval",
-        image_uri=None,
-        compile_model_family=None,
-        display_name: str = None,
-        description=None,
-        depends_on: Union[List[str], List[Step]] = None,
-        retry_policies: List[RetryPolicy] = None,
-        tags=None,
-        container_def_list=None,
-        drift_check_baselines=None,
-        customer_metadata_properties=None,
+        content_types: List,
+        response_types: List,
+        inference_instances: List,
+        transform_instances: List,
+        estimator: Optional[EstimatorBase] = None,
+        model_data: Optional[str] = None,
+        model_package_group_name: Optional[str] = None,
+        model_metrics: Optional[ModelMetrics] = None,
+        metadata_properties: Optional[MetadataProperties] = None,
+        approval_status: str = "PendingManualApproval",
+        image_uri: Optional[str] = None,
+        compile_model_family: Optional[str] = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
+        depends_on: Optional[Union[List[str], List[Step]]] = None,
+        retry_policies: Optional[List[RetryPolicy]] = None,
+        tags: Optional[List[Dict[str, str]]] = None,
+        container_def_list: Optional[List] = None,
+        drift_check_baselines: Optional[DriftCheckBaselines] = None,
+        customer_metadata_properties: Optional[Dict[str, str]] = None,
         **kwargs,
     ):
         """Constructor of a register model step.
@@ -347,6 +351,9 @@ class _RegisterModelStep(ConfigurableRetryStep):
             depends_on (List[str] or List[Step]): A list of step names or instances
                 this step depends on
             retry_policies (List[RetryPolicy]): The list of retry policies for the current step
+            tags (List[dict[str, str]]): A list of dictionaries containing key-value pairs
+                (default: None).
+            container_def_list (list): A list of container definitions (default: None).
             drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
             customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
                 metadata properties (default: None).

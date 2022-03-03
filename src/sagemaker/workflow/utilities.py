@@ -27,7 +27,7 @@ def list_to_request(entities: Sequence[Union[Entity, StepCollection]]) -> List[R
     """Get the request structure for list of entities.
 
     Args:
-        entities (Sequence[Entity]): A list of entities.
+        entities (Sequence[Entity, StepCollection]): A list of entities or StepCollection
     Returns:
         list: A request structure for a workflow service call.
     """

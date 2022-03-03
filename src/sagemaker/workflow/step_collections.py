@@ -10,13 +10,14 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""The step definitions for workflow."""
+"""The StepCollections definitions for workflow."""
 from __future__ import absolute_import
 
-from typing import List, Union
+from typing import List, Union, Dict, Callable, Optional
 
 import attr
 
+from sagemaker.session import Session
 from sagemaker.estimator import EstimatorBase
 from sagemaker.model import Model
 from sagemaker import PipelineModel
@@ -33,6 +34,9 @@ from sagemaker.workflow._utils import (
     _RepackModelStep,
 )
 from sagemaker.workflow.retry import RetryPolicy
+from sagemaker.model_metrics import ModelMetrics
+from sagemaker.drift_check_baselines import DriftCheckBaselines
+from sagemaker.inputs import CreateModelInput, TransformInput
 
 
 @attr.s
@@ -56,26 +60,26 @@ class RegisterModel(StepCollection):
     def __init__(
         self,
         name: str,
-        content_types,
-        response_types,
-        inference_instances,
-        transform_instances,
-        estimator: EstimatorBase = None,
-        model_data=None,
-        depends_on: Union[List[str], List[Step]] = None,
-        repack_model_step_retry_policies: List[RetryPolicy] = None,
-        register_model_step_retry_policies: List[RetryPolicy] = None,
-        model_package_group_name=None,
-        model_metrics=None,
-        approval_status=None,
-        image_uri=None,
-        compile_model_family=None,
-        display_name=None,
-        description=None,
-        tags=None,
-        model: Union[Model, PipelineModel] = None,
-        drift_check_baselines=None,
-        customer_metadata_properties=None,
+        content_types: List[str],
+        response_types: List[str],
+        inference_instances: List[str],
+        transform_instances: List[str],
+        estimator: Optional[EstimatorBase] = None,
+        model_data: Optional[str] = None,
+        depends_on: Optional[Union[List[str], List[Step]]] = None,
+        repack_model_step_retry_policies: Optional[List[RetryPolicy]] = None,
+        register_model_step_retry_policies: Optional[List[RetryPolicy]] = None,
+        model_package_group_name: Optional[str] = None,
+        model_metrics: Optional[ModelMetrics] = None,
+        approval_status: Optional[str] = None,
+        image_uri: Optional[str] = None,
+        compile_model_family: Optional[str] = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
+        tags: Optional[List[Dict[str, str]]] = None,
+        model: Optional[Union[Model, PipelineModel]] = None,
+        drift_check_baselines: Optional[DriftCheckBaselines] = None,
+        customer_metadata_properties: Optional[Dict[str, str]] = None,
         **kwargs,
     ):
         """Construct steps `_RepackModelStep` and `_RegisterModelStep` based on the estimator.
@@ -90,7 +94,7 @@ class RegisterModel(StepCollection):
                 generate inferences in real-time (default: None).
             transform_instances (list): A list of the instance types on which a transformation
                 job can be run or on which an endpoint can be deployed (default: None).
-            depends_on (List[str] or List[Step]): The list of step names or step instances
+            depends_on (Union[List[str], List[Step]]): The list of step names or step instances
                 the first step in the collection depends on
             repack_model_step_retry_policies (List[RetryPolicy]): The list of retry policies
                 for the repack model step
@@ -250,32 +254,32 @@ class EstimatorTransformer(StepCollection):
         self,
         name: str,
         estimator: EstimatorBase,
-        model_data,
-        model_inputs,
-        instance_count,
-        instance_type,
-        transform_inputs,
-        description: str = None,
-        display_name: str = None,
+        model_data: str,
+        model_inputs: CreateModelInput,
+        instance_count: int,
+        instance_type: str,
+        transform_inputs: TransformInput,
+        description: Optional[str] = None,
+        display_name: Optional[str] = None,
         # model arguments
-        image_uri=None,
-        predictor_cls=None,
-        env=None,
+        image_uri: Optional[str] = None,
+        predictor_cls: Optional[Callable[[str, Session], Predictor]] = None,
+        env: Optional[Dict[str, str]] = None,
         # transformer arguments
-        strategy=None,
-        assemble_with=None,
-        output_path=None,
-        output_kms_key=None,
-        accept=None,
-        max_concurrent_transforms=None,
-        max_payload=None,
-        tags=None,
-        volume_kms_key=None,
-        depends_on: Union[List[str], List[Step]] = None,
+        strategy: Optional[str] = None,
+        assemble_with: Optional[str] = None,
+        output_path: Optional[str] = None,
+        output_kms_key: Optional[str] = None,
+        accept: Optional[str] = None,
+        max_concurrent_transforms: Optional[int] = None,
+        max_payload: Optional[int] = None,
+        tags: Optional[List[Dict[str, str]]] = None,
+        volume_kms_key: Optional[str] = None,
+        depends_on: Optional[Union[List[str], List[Step]]] = None,
         # step retry policies
-        repack_model_step_retry_policies: List[RetryPolicy] = None,
-        model_step_retry_policies: List[RetryPolicy] = None,
-        transform_step_retry_policies: List[RetryPolicy] = None,
+        repack_model_step_retry_policies: Optional[List[RetryPolicy]] = None,
+        model_step_retry_policies: Optional[List[RetryPolicy]] = None,
+        transform_step_retry_policies: Optional[List[RetryPolicy]] = None,
         **kwargs,
     ):
         """Construct steps required for a Transformer step collection:
@@ -295,9 +299,22 @@ class EstimatorTransformer(StepCollection):
 
         Args:
             name (str): The name of the Transform Step.
-            estimator: The estimator instance.
+            estimator (EstimatorBase): The estimator instance.
+            model_data (str): The S3 location of a SageMaker model data
+                ``.tar.gz`` file (default: None).
+            model_inputs (CreateModelInput): The create model input.
             instance_count (int): The number of EC2 instances to use.
             instance_type (str): The type of EC2 instance to use.
+            transform_inputs (TransformInput): The transform inputs for the transform step.
+            description (str): The description of the QualityCheckStep step (default: None).
+            display_name (str): The display name of the QualityCheckStep step (default: None).
+            image_uri (str): A Docker image URI for model.
+            predictor_cls (Callable[[str, Session], Predictor]): A
+                function to call to create a predictor (default: None). If not
+                None, ``deploy`` will return the result of invoking this
+                function on the created endpoint name.
+            env (dict[str, str]): Environment variables to run with ``image_uri``
+                when hosted in SageMaker (default: None).
             strategy (str): The strategy used to decide how to batch records in
                 a single request (default: None). Valid values: 'MultiRecord'
                 and 'SingleRecord'.
@@ -310,8 +327,16 @@ class EstimatorTransformer(StepCollection):
             accept (str): The accept header passed by the client to
                 the inference endpoint. If it is supported by the endpoint,
                 it will be the format of the batch transform output.
-            env (dict): The Environment variables to be set for use during the
-                transform job (default: None).
+            max_concurrent_transforms (int): The maximum number of HTTP requests
+                to be made to each individual transform container at one time.
+            max_payload (int): Maximum size of the payload in a single HTTP
+                request to the container in MB.
+            tags (List[dict[str, str]]): The list of tags to attach to the model package group. Note
+                that tags will only be applied to newly created model package groups; if the
+                name of an existing group is passed to "model_package_group_name",
+                tags will not be applied.
+            volume_kms_key (str): KMS key ID for encrypting the volume
+                attached to the ML compute instance (default: None).
             depends_on (List[str] or List[Step]): The list of step names or step instances
                 the first step in the collection depends on
             repack_model_step_retry_policies (List[RetryPolicy]): The list of retry policies

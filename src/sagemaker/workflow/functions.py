@@ -10,15 +10,16 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""The step definitions for workflow."""
+"""The functions for workflow."""
 from __future__ import absolute_import
 
 from typing import List, Union
 
 import attr
 
-from sagemaker.workflow.entities import Expression
+from sagemaker.workflow.entities import Expression, PrimitiveType
 from sagemaker.workflow.properties import PropertyFile
+from sagemaker.workflow.parameters import Parameter
 
 
 @attr.s
@@ -36,13 +37,13 @@ class Join(Expression):
             content_type="text/csv")
 
     Attributes:
+        on (str): The string to join the values on (Defaults to "").
         values (List[Union[PrimitiveType, Parameter, Expression]]):
             The primitive type values, parameters, step properties, expressions to join.
-        on_str (str): The string to join the values on (Defaults to "").
     """
 
     on: str = attr.ib(factory=str)
-    values: List = attr.ib(factory=list)
+    values: List[Union[PrimitiveType, Parameter, Expression]] = attr.ib(factory=list)
 
     @property
     def expr(self):

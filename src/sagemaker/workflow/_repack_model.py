@@ -32,9 +32,15 @@ import tempfile
 # we'll go ahead and use the copy_tree function anyways because this
 # repacking is some short-lived hackery, right??
 from distutils.dir_util import copy_tree
+from typing import Optional
 
 
-def repack(inference_script, model_archive, dependencies=None, source_dir=None):  # pragma: no cover
+def repack(
+    inference_script: str,
+    model_archive: str,
+    dependencies: Optional[str] = None,
+    source_dir: Optional[str] = None,
+):  # pragma: no cover
     """Repack custom dependencies and code into an existing model TAR archive
 
     Args:

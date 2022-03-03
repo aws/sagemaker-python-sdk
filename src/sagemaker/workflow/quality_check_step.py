@@ -10,11 +10,11 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""The step definitions for workflow."""
+"""The QualityCheckStep definitions for workflow."""
 from __future__ import absolute_import
 
 from abc import ABC
-from typing import List, Union
+from typing import List, Union, Optional
 import os
 import pathlib
 import attr
@@ -119,13 +119,13 @@ class QualityCheckStep(Step):
         check_job_config: CheckJobConfig,
         skip_check: Union[bool, PipelineNonPrimitiveInputTypes] = False,
         register_new_baseline: Union[bool, PipelineNonPrimitiveInputTypes] = False,
-        model_package_group_name: Union[str, PipelineNonPrimitiveInputTypes] = None,
-        supplied_baseline_statistics: Union[str, PipelineNonPrimitiveInputTypes] = None,
-        supplied_baseline_constraints: Union[str, PipelineNonPrimitiveInputTypes] = None,
-        display_name: str = None,
-        description: str = None,
-        cache_config: CacheConfig = None,
-        depends_on: Union[List[str], List[Step]] = None,
+        model_package_group_name: Optional[Union[str, PipelineNonPrimitiveInputTypes]] = None,
+        supplied_baseline_statistics: Optional[Union[str, PipelineNonPrimitiveInputTypes]] = None,
+        supplied_baseline_constraints: Optional[Union[str, PipelineNonPrimitiveInputTypes]] = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
+        cache_config: Optional[CacheConfig] = None,
+        depends_on: Optional[Union[List[str], List[Step]]] = None,
     ):
         """Constructs a QualityCheckStep.
 
