@@ -10,10 +10,10 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""The step definitions for workflow."""
+"""The LambdaStep definitions for workflow."""
 from __future__ import absolute_import
 
-from typing import List, Dict
+from typing import List, Dict, Union
 from enum import Enum
 
 import attr
@@ -84,25 +84,25 @@ class LambdaStep(Step):
         lambda_func: Lambda,
         display_name: str = None,
         description: str = None,
-        inputs: dict = None,
+        inputs: Dict = None,
         outputs: List[LambdaOutput] = None,
         cache_config: CacheConfig = None,
-        depends_on: List[str] = None,
+        depends_on: Union[List[str], List[Step]] = None,
     ):
         """Constructs a LambdaStep.
 
         Args:
             name (str): The name of the lambda step.
-            display_name (str): The display name of the Lambda step.
-            description (str): The description of the Lambda step.
-            lambda_func (str): An instance of sagemaker.lambda_helper.Lambda.
+            lambda_func (Lambda): An instance of sagemaker.lambda_helper.Lambda.
                 If lambda arn is specified in the instance, LambdaStep just invokes the function,
                 else lambda function will be created while creating the pipeline.
-            inputs (dict): Input arguments that will be provided
+            display_name (str): The display name of the Lambda step.
+            description (str): The description of the Lambda step.
+            inputs (Dict): Input arguments that will be provided
                 to the lambda function.
             outputs (List[LambdaOutput]): List of outputs from the lambda function.
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
-            depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.LambdaStep`
+            depends_on (Union[List[str], List[Step]]): A list of step names this `sagemaker.workflow.steps.LambdaStep`
                 depends on
         """
         super(LambdaStep, self).__init__(

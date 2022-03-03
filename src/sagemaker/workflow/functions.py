@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""The step definitions for workflow."""
+"""The functions for workflow."""
 from __future__ import absolute_import
 
 from typing import List, Union
@@ -36,13 +36,13 @@ class Join(PipelineVariable):
             content_type="text/csv")
 
     Attributes:
-        values (List[Union[PrimitiveType, Parameter, Expression]]):
-            The primitive type values, parameters, step properties, expressions to join.
         on (str): The string to join the values on (Defaults to "").
+        values (List[PipelineVariable]):
+            The PipelineVariable(s) to join.
     """
 
     on: str = attr.ib(factory=str)
-    values: List = attr.ib(factory=list)
+    values: List[PipelineVariable] = attr.ib(factory=list)
 
     def to_string(self) -> PipelineVariable:
         """Prompt the pipeline to convert the pipeline variable to String in runtime

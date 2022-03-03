@@ -14,9 +14,10 @@
 from __future__ import absolute_import
 
 import logging
-from typing import Optional
+from typing import Optional, Dict, List
 
 from sagemaker import Session
+from sagemaker.network import NetworkConfig
 from sagemaker.model_monitor import (
     ModelMonitor,
     DefaultModelMonitor,
@@ -31,18 +32,18 @@ class CheckJobConfig:
 
     def __init__(
         self,
-        role,
-        instance_count=1,
-        instance_type="ml.m5.xlarge",
-        volume_size_in_gb=30,
-        volume_kms_key=None,
-        output_kms_key=None,
-        max_runtime_in_seconds=None,
-        base_job_name=None,
-        sagemaker_session=None,
-        env=None,
-        tags=None,
-        network_config=None,
+        role: str,
+        instance_count: int = 1,
+        instance_type: str = "ml.m5.xlarge",
+        volume_size_in_gb: int = 30,
+        volume_kms_key: str = None,
+        output_kms_key: str = None,
+        max_runtime_in_seconds: int = None,
+        base_job_name: str = None,
+        sagemaker_session: Session = None,
+        env: Dict[str, str] = None,
+        tags: List[Dict[str, str]] = None,
+        network_config: NetworkConfig = None,
     ):
         """Constructs a CheckJobConfig instance.
 
@@ -65,8 +66,9 @@ class CheckJobConfig:
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed (default: None). If not specified, one is
                 created using the default AWS configuration chain.
-            env (dict): Environment variables to be passed to the job (default: None).
-            tags ([dict]): List of tags to be passed to the job (default: None).
+            env (Dict): Environment variables to be passed to the job (default: None).
+            tags (List[Dict[str, str]]): A list of dictionaries containing key-value pairs
+                (default: None).
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets (default: None).

@@ -10,10 +10,10 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""The step definitions for workflow."""
+"""The EMRStep definitions for workflow."""
 from __future__ import absolute_import
 
-from typing import List
+from typing import List, Union
 
 from sagemaker.workflow.entities import (
     RequestType,
@@ -28,17 +28,21 @@ class EMRStepConfig:
     """Config for a Hadoop Jar step."""
 
     def __init__(
-        self, jar, args: List[str] = None, main_class: str = None, properties: List[dict] = None
+        self,
+        jar: str,
+        args: List[str] = None,
+        main_class: str = None,
+        properties: List[dict] = None,
     ):
         """Create a definition for input data used by an EMR cluster(job flow) step.
 
         See AWS documentation on the ``StepConfig`` API for more details on the parameters.
 
         Args:
+            jar(str): A path to a JAR file run during the step.
             args(List[str]):
                 A list of command line arguments passed to
                 the JAR file's main function when executed.
-            jar(str): A path to a JAR file run during the step.
             main_class(str): The name of the main class in the specified Java file.
             properties(List(dict)): A list of key-value pairs that are set when the step runs.
         """
@@ -70,7 +74,7 @@ class EMRStep(Step):
         description: str,
         cluster_id: str,
         step_config: EMRStepConfig,
-        depends_on: List[str] = None,
+        depends_on: Union[List[str], List[Step]] = None,
         cache_config: CacheConfig = None,
     ):
         """Constructs a EMRStep.
@@ -81,7 +85,7 @@ class EMRStep(Step):
             description(str): The description of the EMR step.
             cluster_id(str): The ID of the running EMR cluster.
             step_config(EMRStepConfig): One StepConfig to be executed by the job flow.
-            depends_on(List[str]):
+            depends_on(Union[List[str], List[Step]]):
                 A list of step names this `sagemaker.workflow.steps.EMRStep` depends on
             cache_config(CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
 

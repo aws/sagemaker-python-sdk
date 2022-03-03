@@ -177,8 +177,8 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
     def update(
         self,
         role_arn: str,
-        description: str = None,
-        parallelism_config: ParallelismConfiguration = None,
+        description: Optional[str] = None,
+        parallelism_config: Optional[ParallelismConfiguration] = None,
     ) -> Dict[str, Any]:
         """Updates a Pipeline in the Workflow service.
 
@@ -389,7 +389,7 @@ def _map_callback_outputs(steps: List[Step]):
     """Iterate over the provided steps, building a map of callback output parameters to step names.
 
     Args:
-        step (List[Step]): The steps list.
+        steps (List[Step]): The steps list.
     """
 
     callback_output_map = {}
@@ -406,7 +406,7 @@ def _map_lambda_outputs(steps: List[Step]):
     """Iterate over the provided steps, building a map of lambda output parameters to step names.
 
     Args:
-        step (List[Step]): The steps list.
+        steps (List[Step]): The steps list.
     """
 
     lambda_output_map = {}
@@ -425,7 +425,7 @@ def update_args(args: Dict[str, Any], **kwargs):
     This handles the case when the service API doesn't like NoneTypes for argument values.
 
     Args:
-        request_args (Dict[str, Any]): The request arguments dict.
+        args (Dict[str, Any]): The request arguments dict.
         kwargs: key, value pairs to update the args dict with.
     """
     for key, value in kwargs.items():

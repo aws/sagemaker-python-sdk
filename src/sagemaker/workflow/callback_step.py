@@ -10,10 +10,10 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""The step definitions for workflow."""
+"""The CallbackStep definitions for workflow."""
 from __future__ import absolute_import
 
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Optional
 from enum import Enum
 
 import attr
@@ -81,12 +81,12 @@ class CallbackStep(Step):
         self,
         name: str,
         sqs_queue_url: str,
-        inputs: dict,
+        inputs: Dict,
         outputs: List[CallbackOutput],
-        display_name: str = None,
-        description: str = None,
-        cache_config: CacheConfig = None,
-        depends_on: Union[List[str], List[Step]] = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
+        cache_config: Optional[CacheConfig] = None,
+        depends_on: Optional[Union[List[str], List[Step]]] = None,
     ):
         """Constructs a CallbackStep.
 
@@ -99,7 +99,7 @@ class CallbackStep(Step):
             display_name (str): The display name of the callback step.
             description (str): The description of the callback step.
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
-            depends_on (List[str] or List[Step]): A list of step names or step instances
+            depends_on (Union[List[str], List[Step]]): A list of step names or step instances
                 this `sagemaker.workflow.steps.CallbackStep` depends on
         """
         super(CallbackStep, self).__init__(

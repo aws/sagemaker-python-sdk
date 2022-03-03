@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""The `Step` definitions for SageMaker Pipelines Workflows."""
+"""The FailStep definitions for workflow."""
 from __future__ import absolute_import
 
 from typing import List, Union
@@ -45,9 +45,8 @@ class FailStep(Step):
             display_name (str): The display name of the `FailStep`.
                 The display name provides better UI readability. (default: None).
             description (str): The description of the `FailStep` (default: None).
-            depends_on (List[str] or List[Step]): A list of `Step` names or `Step` instances
-                that this `FailStep` depends on.
-                If a listed `Step` name does not exist, an error is returned (default: None).
+            depends_on (Union[List[str], List[Step]]): A list of step names or step instances
+                this `sagemaker.workflow.steps.FailStep` depends on
         """
         super(FailStep, self).__init__(
             name, display_name, description, StepTypeEnum.FAIL, depends_on
