@@ -301,7 +301,8 @@ class TrainingStep(ConfigurableRetryStep):
         )
         request_dict = self.estimator.sagemaker_session._get_train_request(**train_args)
         request_dict.pop("TrainingJobName")
-        request_dict["HyperParameters"].pop("sagemaker_job_name", None)
+        if "HyperParameters" in request_dict:
+            request_dict["HyperParameters"].pop("sagemaker_job_name", None)
 
         return request_dict
 
