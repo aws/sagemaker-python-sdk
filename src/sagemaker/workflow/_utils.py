@@ -214,31 +214,42 @@ class _RepackModelStep(TrainingStep):
             1) copies the _repack_model.py script into the source dir
         """
         fname = os.path.join(os.path.dirname(__file__), REPACK_SCRIPT)
+
         if self._source_dir.lower().startswith("s3://"):
+
             with tempfile.TemporaryDirectory() as tmp:
-                local_path = os.path.join(tmp, "local.tar.gz")
 
                 S3Downloader.download(
                     s3_uri=self._source_dir,
-                    local_path=local_path,
+                    local_path=tmp,
                     sagemaker_session=self.sagemaker_session,
                 )
 
-                src_dir = os.path.join(tmp, "src")
-                with tarfile.open(name=local_path, mode="r:gz") as tf:
-                    tf.extractall(path=src_dir)
-
-                shutil.copy2(fname, os.path.join(src_dir, REPACK_SCRIPT))
-                with tarfile.open(name=local_path, mode="w:gz") as tf:
-                    tf.add(src_dir, arcname=".")
+                self._inject_repack_script_into_s3_source(tmp, fname)
 
                 S3Uploader.upload(
-                    local_path=local_path,
+                    local_path=tmp,
                     desired_s3_uri=self._source_dir,
                     sagemaker_session=self.sagemaker_session,
                 )
+
         else:
             shutil.copy2(fname, os.path.join(self._source_dir, REPACK_SCRIPT))
+
+    @staticmethod
+    def _inject_repack_script_into_s3_source(local_path, fname):
+        """Injects the _repack_model.py script
+
+        injects _repack_model.py script into the model tarball downloaded from s3
+        and then re-uploads it to s3
+        """
+        src_dir = os.path.join(local_path, "src")
+        with tarfile.open(name=f"{local_path}/model.tar.gz", mode="r:gz") as tf:
+            tf.extractall(path=src_dir)
+
+        shutil.copy2(fname, os.path.join(src_dir, REPACK_SCRIPT))
+        with tarfile.open(name=f"{local_path}/model.tar.gz", mode="w:gz") as tf:
+            tf.add(src_dir, arcname=".")
 
     @property
     def arguments(self) -> RequestType:

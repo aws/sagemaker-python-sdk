@@ -16,15 +16,15 @@ from __future__ import absolute_import
 import os
 import shutil
 import tempfile
-
+import tarfile
 import pytest
-import sagemaker
 
 from mock import (
     Mock,
     PropertyMock,
 )
 
+import sagemaker
 from sagemaker.estimator import Estimator
 from sagemaker.workflow import Properties
 from sagemaker.workflow._utils import _RepackModelStep
@@ -210,3 +210,42 @@ def test_repack_model_step_with_source_dir(estimator, source_dir):
     assert step.properties.TrainingJobName.expr == {
         "Get": "Steps.MyRepackModelStep.TrainingJobName"
     }
+
+
+def test_inject_repack_script_into_s3_source():
+
+    # create tmp directory
+    local_path = tempfile.mkdtemp()
+
+    # create empty tarball
+    with tarfile.open(name=os.path.join(local_path, "model.tar.gz"), mode="w:gz") as tf:
+
+        # create dummy txt file in a directory
+        src_dir = os.path.join(local_path, "src")
+        os.mkdir(src_dir)
+        dummytxtfilepath = os.path.join(src_dir, "dummy.txt")
+        open(dummytxtfilepath, mode="x").close()
+
+        # add dummy text file to the tarball
+        tf.add(dummytxtfilepath, arcname=os.path.basename(dummytxtfilepath))
+
+    # clean up previously created directory
+    shutil.rmtree(src_dir)
+
+    # create dummy repack script
+    REPACK_SCRIPT = "dummy_repack_script.py"
+    fname = os.path.join(local_path, REPACK_SCRIPT)
+    open(file=fname, mode="x").close()
+
+    # call method under test
+    _RepackModelStep._inject_repack_script_into_s3_source(local_path, fname)
+
+    # check for existence of REPACK_SCRIPT in tarball
+    with tarfile.open(name=f"{local_path}/model.tar.gz", mode="r:gz") as tf:
+        tf.extractall(path=src_dir)
+
+    assert os.path.exists(os.path.join(src_dir, "_repack_model.py"))
+
+    # cleanup
+    shutil.rmtree(src_dir)
+    shutil.rmtree(local_path)
