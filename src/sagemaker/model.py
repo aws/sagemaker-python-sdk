@@ -477,13 +477,12 @@ class Model(ModelBase):
                 dir_name = self.uploaded_code.s3_prefix
         elif self.entry_point is not None:
             script_name = self.entry_point
-        if self.source_dir is not None:
+            if self.source_dir is not None:
                 dir_name = (
                     self.source_dir
                     if self.source_dir.startswith("s3://")
                     else "file://" + self.source_dir
                 )
-
         return {
             SCRIPT_PARAM_NAME.upper(): script_name or str(),
             DIR_PARAM_NAME.upper(): dir_name or str(),
