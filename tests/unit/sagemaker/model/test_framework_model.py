@@ -25,6 +25,7 @@ MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
 ENTRY_POINT = "blah.py"
 ROLE = "some-role"
+S3_SOURCE_DIR = "s3://somebucket/sourcedir.tar.gz"
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_NAME = "dummy_script.py"
@@ -111,6 +112,23 @@ def test_prepare_container_def(time, sagemaker_session):
         "ModelDataUrl": MODEL_DATA,
     }
 
+@patch("shutil.rmtree", MagicMock())
+@patch("tarfile.open", MagicMock())
+@patch("os.listdir", MagicMock(return_value=["blah.py"]))
+@patch("time.strftime", return_value=TIMESTAMP)
+def test_prepare_container_def_s3_src(time, sagemaker_session):
+    model = DummyFrameworkModel(sagemaker_session, source_dir=S3_SOURCE_DIR)
+    assert model.prepare_container_def(INSTANCE_TYPE) == {
+        "Environment": {
+            "SAGEMAKER_PROGRAM": ENTRY_POINT,
+            "SAGEMAKER_SUBMIT_DIRECTORY": "s3://somebucket/sourcedir.tar.gz",
+            "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
+            "SAGEMAKER_REGION": REGION,
+        },
+        "Image": MODEL_IMAGE,
+        "ModelDataUrl": MODEL_DATA,
+    }
+S3_SOURCE_DIR
 
 @patch("shutil.rmtree", MagicMock())
 @patch("tarfile.open", MagicMock())
