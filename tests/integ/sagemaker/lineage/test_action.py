@@ -139,12 +139,15 @@ def test_downstream_artifacts(static_approval_action):
 
 
 def test_datasets(static_approval_action, static_dataset_artifact, sagemaker_session):
+    try:
+        sagemaker_session.sagemaker_client.add_association(
+            SourceArn=static_dataset_artifact.artifact_arn,
+            DestinationArn=static_approval_action.action_arn,
+            AssociationType="ContributedTo",
+        )
+    except Exception:
+        print("Source and Destination association already exists.")
 
-    sagemaker_session.sagemaker_client.add_association(
-        SourceArn=static_dataset_artifact.artifact_arn,
-        DestinationArn=static_approval_action.action_arn,
-        AssociationType="ContributedTo",
-    )
     time.sleep(3)
     artifacts_from_query = static_approval_action.datasets()
 
@@ -153,10 +156,13 @@ def test_datasets(static_approval_action, static_dataset_artifact, sagemaker_ses
         assert "artifact" in artifact.artifact_arn
         assert artifact.artifact_type == "DataSet"
 
-    sagemaker_session.sagemaker_client.delete_association(
-        SourceArn=static_dataset_artifact.artifact_arn,
-        DestinationArn=static_approval_action.action_arn,
-    )
+    try:
+        sagemaker_session.sagemaker_client.delete_association(
+            SourceArn=static_dataset_artifact.artifact_arn,
+            DestinationArn=static_approval_action.action_arn,
+        )
+    except Exception:
+        pass
 
 
 def test_endpoints(static_approval_action):

@@ -577,6 +577,11 @@ Here is an example:
 Use Prebuilt Models with SageMaker JumpStart
 ********************************************
 
+.. toctree::
+    :maxdepth: 2
+
+    doc_utils/jumpstart
+
 `Amazon SageMaker JumpStart <https://aws.amazon.com/sagemaker/getting-started/>`__ is a
 SageMaker feature that helps users bring machine learning (ML)
 applications to market using prebuilt solutions for common use cases,
@@ -628,11 +633,11 @@ the ``model_id`` and ``model_version`` needed to retrieve the URI.
 
    -  ``model_id``: A unique identifier for the JumpStart model.
    -  ``model_version``: The version of the specifications for the
-      model. To use the latest version, enter ``*``. This is a
+      model. To use the latest version, enter ``"*"``. This is a
       required parameter.
 
 To retrieve a model, first select a ``model id`` and ``version`` from
-the Available Models.
+the :doc:`available models <./doc_utils/jumpstart>`.
 
 .. code:: python
 
@@ -652,7 +657,7 @@ Then use those values to retrieve the model as follows.
 JumpStart scripts
 -----------------
 
-To adapt JumpStart models for the SageMaker Python SDK, a custom
+To adapt JumpStart models for SageMaker, a custom
 script is needed to perform training or inference. JumpStart
 maintains a suite of scripts used for each of the models in the
 JumpStart S3 bucket, which can be accessed using the SageMaker Python
@@ -741,6 +746,7 @@ see `Model <https://sagemaker.readthedocs.io/en/stable/api/inference/model.html
 .. code:: python
 
    from sagemaker.model import Model
+   from sagemaker.predictor import Predictor
    from sagemaker.session import Session
 
    # Create the SageMaker model instance
@@ -750,6 +756,7 @@ see `Model <https://sagemaker.readthedocs.io/en/stable/api/inference/model.html
        source_dir=script_uri,
        entry_point="inference.py",
        role=Session().get_caller_identity_arn(),
+       predictor_cls=Predictor,
    )
 
 Save the output from deploying the model to a variable named
@@ -761,15 +768,12 @@ Deployment may take about 5 minutes.
 
 .. code:: python
 
-   from sagemaker.predictor import Predictor
-
    predictor = model.deploy(
        initial_instance_count=instance_count,
        instance_type=instance_type,
-       predictor_cls=Predictor
    )
 
-Because ``catboost`` relies on the PyTorch Deep Learning Containers
+Because ``catboost`` and ``lightgbm`` rely on the PyTorch Deep Learning Containers
 image, the corresponding Models and Endpoints display the “pytorch”
 prefix when viewed in the AWS console. To verify that these models
 were created successfully with your desired base model, refer to
@@ -780,7 +784,7 @@ Perform Inference
 
 Finally, use the ``predictor`` instance to query your endpoint. For
 ``catboost-classification-model``, for example, the predictor accepts
-a string. For more information about how to use the predictor, see
+a csv. For more information about how to use the predictor, see
 the
 `Appendix <https://sagemaker.readthedocs.io/en/stable/overview.html#appendix>`__.
 
@@ -807,9 +811,8 @@ using “training” as the model scope. Use the utility functions to
 retrieve the URI of each of the three components you need to
 continue. The HuggingFace model in this example requires a GPU
 instance, so use the ``ml.p3.2xlarge`` instance type. For a complete
-list of available SageMaker instance types , see `Available SageMaker
-Studio Instance
-Types <https://docs.aws.amazon.com/sagemaker/latest/dg/notebooks-available-instance-types.html>`__.
+list of available SageMaker instance types, see the `SageMaker On-Demand Pricing
+Table <https://aws.amazon.com/sagemaker/pricing/#On-Demand_Pricing>`__ and select 'Training'.
 
 .. code:: python
 
@@ -970,45 +973,45 @@ ContentType of ``application/list-text``.
 
 .. container::
 
-   +-----------------------+-----------------------+-----------------------+
-   | Task                  | Identifier            | ContentType           |
-   +-----------------------+-----------------------+-----------------------+
-   | Image Classification  | ic                    | "application/x-image" |
-   +-----------------------+-----------------------+-----------------------+
-   | Object Detection      | od, od1               | "application/x-image" |
-   +-----------------------+-----------------------+-----------------------+
-   | Semantic Segmentation | semseg                | "application/x-image" |
-   +-----------------------+-----------------------+-----------------------+
-   | Instance Segmentation | is                    | "application/x-image" |
-   +-----------------------+-----------------------+-----------------------+
-   | Text Classification   | tc                    | "application/x-text"  |
-   +-----------------------+-----------------------+-----------------------+
-   | Sentence Pair         | spc                   | "a                    |
-   | Classification        |                       | pplication/list-text" |
-   +-----------------------+-----------------------+-----------------------+
-   | Extractive Question   | eqa                   | "a                    |
-   | Answering             |                       | pplication/list-text" |
-   +-----------------------+-----------------------+-----------------------+
-   | Text Generation       | textgeneration        | "application/x-text"  |
-   +-----------------------+-----------------------+-----------------------+
-   | Image Classification  | icembedding           | "application/x-image" |
-   | Embedding             |                       |                       |
-   +-----------------------+-----------------------+-----------------------+
-   | Text Classification   | tcembedding           | "application/x-text"  |
-   | Embedding             |                       |                       |
-   +-----------------------+-----------------------+-----------------------+
-   | Named-entity          | ner                   | "application/x-text"  |
-   | Recognition           |                       |                       |
-   +-----------------------+-----------------------+-----------------------+
-   | Text Summarization    | summarization         | "application/x-text"  |
-   +-----------------------+-----------------------+-----------------------+
-   | Text Translation      | translation           | "application/x-text"  |
-   +-----------------------+-----------------------+-----------------------+
-   | Tabular Regression    | regression            | "text/csv"            |
-   +-----------------------+-----------------------+-----------------------+
-   | Tabular               | classification        | "text/csv"            |
-   | Classification        |                       |                       |
-   +-----------------------+-----------------------+-----------------------+
+   +-----------------------+-----------------------+-------------------------+
+   | Task                  | Identifier            | ContentType             |
+   +-----------------------+-----------------------+-------------------------+
+   | Image Classification  | ic                    | "application/x-image"   |
+   +-----------------------+-----------------------+-------------------------+
+   | Object Detection      | od, od1               | "application/x-image"   |
+   +-----------------------+-----------------------+-------------------------+
+   | Semantic Segmentation | semseg                | "application/x-image"   |
+   +-----------------------+-----------------------+-------------------------+
+   | Instance Segmentation | is                    | "application/x-image"   |
+   +-----------------------+-----------------------+-------------------------+
+   | Text Classification   | tc                    | "application/x-text"    |
+   +-----------------------+-----------------------+-------------------------+
+   | Sentence Pair         | spc                   | "application/list-text" |
+   | Classification        |                       |                         |
+   +-----------------------+-----------------------+-------------------------+
+   | Extractive Question   | eqa                   | "application/list-text" |
+   | Answering             |                       |                         |
+   +-----------------------+-----------------------+-------------------------+
+   | Text Generation       | textgeneration        | "application/x-text"    |
+   +-----------------------+-----------------------+-------------------------+
+   | Image Classification  | icembedding           | "application/x-image"   |
+   | Embedding             |                       |                         |
+   +-----------------------+-----------------------+-------------------------+
+   | Text Classification   | tcembedding           | "application/x-text"    |
+   | Embedding             |                       |                         |
+   +-----------------------+-----------------------+-------------------------+
+   | Named-entity          | ner                   | "application/x-text"    |
+   | Recognition           |                       |                         |
+   +-----------------------+-----------------------+-------------------------+
+   | Text Summarization    | summarization         | "application/x-text"    |
+   +-----------------------+-----------------------+-------------------------+
+   | Text Translation      | translation           | "application/x-text"    |
+   +-----------------------+-----------------------+-------------------------+
+   | Tabular Regression    | regression            | "text/csv"              |
+   +-----------------------+-----------------------+-------------------------+
+   | Tabular               | classification        | "text/csv"              |
+   | Classification        |                       |                         |
+   +-----------------------+-----------------------+-------------------------+
 
 ********************************
 SageMaker Automatic Model Tuning
