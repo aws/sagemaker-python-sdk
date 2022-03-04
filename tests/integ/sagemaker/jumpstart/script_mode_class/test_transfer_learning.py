@@ -21,6 +21,7 @@ from sagemaker.jumpstart.constants import (
     TRAINING_ENTRY_POINT_SCRIPT_NAME,
 )
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
+from sagemaker.predictor import Predictor
 from sagemaker.utils import name_from_base
 from tests.integ.sagemaker.jumpstart.constants import (
     ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID,
@@ -106,19 +107,17 @@ def test_jumpstart_transfer_learning_estimator_class(setup):
         model_id=model_id, model_version=model_version, model_scope="inference"
     )
 
-    endpoint_name = name_from_base(f"{model_id}-transfer-learning")
-
-    estimator.deploy(
+    predictor: Predictor = estimator.deploy(
         initial_instance_count=instance_count,
         instance_type=inference_instance_type,
         entry_point=INFERENCE_ENTRY_POINT_SCRIPT_NAME,
         image_uri=image_uri,
         source_dir=script_uri,
-        endpoint_name=endpoint_name,
+        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
     )
 
     endpoint_invoker = EndpointInvoker(
-        endpoint_name=endpoint_name,
+        endpoint_name=predictor.endpoint_name,
     )
 
     response = endpoint_invoker.invoke_spc_endpoint(["hello", "world"])

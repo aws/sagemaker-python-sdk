@@ -33,7 +33,7 @@ from sagemaker.deprecations import removed_kwargs
 from sagemaker.predictor import PredictorBase
 from sagemaker.serverless import ServerlessInferenceConfig
 from sagemaker.transformer import Transformer
-from sagemaker.jumpstart.utils import add_jumpstart_tags
+from sagemaker.jumpstart.utils import add_jumpstart_tags, get_jumpstart_base_name_if_jumpstart_model
 from sagemaker.utils import unique_name_from_base
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.predictor_async import AsyncPredictor
@@ -514,7 +514,9 @@ class Model(ModelBase):
         """
         container_def = self.prepare_container_def(instance_type, accelerator_type=accelerator_type)
 
-        self._ensure_base_name_if_needed(container_def["Image"])
+        self._ensure_base_name_if_needed(
+            image_uri=container_def["Image"], script_uri=self.source_dir, model_uri=self.model_data
+        )
         self._set_model_name_if_needed()
 
         enable_network_isolation = self.enable_network_isolation()
@@ -529,10 +531,14 @@ class Model(ModelBase):
             tags=tags,
         )
 
-    def _ensure_base_name_if_needed(self, image_uri):
+    def _ensure_base_name_if_needed(self, image_uri, script_uri, model_uri):
         """Create a base name from the image URI if there is no model name provided."""
         if self.name is None:
-            self._base_name = self._base_name or utils.base_name_from_image(image_uri)
+            self._base_name = (
+                self._base_name
+                or get_jumpstart_base_name_if_jumpstart_model(script_uri, model_uri)
+                or utils.base_name_from_image(image_uri)
+            )
 
     def _set_model_name_if_needed(self):
         """Generate a new model name if ``self._base_name`` is present."""
@@ -963,7 +969,9 @@ class Model(ModelBase):
 
         compiled_model_suffix = None if is_serverless else "-".join(instance_type.split(".")[:-1])
         if self._is_compiled_model and not is_serverless:
-            self._ensure_base_name_if_needed(self.image_uri)
+            self._ensure_base_name_if_needed(
+                image_uri=self.image_uri, script_uri=self.source_dir, model_uri=self.model_data
+            )
             if self._base_name is not None:
                 self._base_name = "-".join((self._base_name, compiled_model_suffix))
 
