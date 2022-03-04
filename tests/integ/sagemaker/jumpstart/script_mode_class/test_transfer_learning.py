@@ -22,7 +22,6 @@ from sagemaker.jumpstart.constants import (
 )
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 from sagemaker.predictor import Predictor
-from sagemaker.utils import name_from_base
 from tests.integ.sagemaker.jumpstart.constants import (
     ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID,
     JUMPSTART_TAG,

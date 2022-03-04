@@ -20,6 +20,7 @@ from sagemaker.jumpstart.constants import (
     ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE,
     JUMPSTART_BUCKET_NAME_SET,
     JUMPSTART_REGION_NAME_SET,
+    JUMPSTART_RESOURCE_BASE_NAME,
     JumpStartScriptScope,
 )
 from sagemaker.jumpstart.enums import JumpStartTag
@@ -874,3 +875,11 @@ def test_jumpstart_deprecated_model(patched_get_model_specs):
             "pytorch-eqa-bert-base-cased",
             "*",
         )
+
+
+def test_get_jumpstart_base_name_if_jumpstart_model():
+    uris = [random_jumpstart_s3_uri("random_key") for _ in range(random.randint(1, 10))]
+    assert JUMPSTART_RESOURCE_BASE_NAME == utils.get_jumpstart_base_name_if_jumpstart_model(*uris)
+
+    uris = ["s3://not-jumpstart-bucket/some-key" for _ in range(random.randint(0, 10))]
+    assert utils.get_jumpstart_base_name_if_jumpstart_model(*uris) is None
