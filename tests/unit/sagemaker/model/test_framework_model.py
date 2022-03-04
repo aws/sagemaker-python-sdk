@@ -25,7 +25,6 @@ MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
 ENTRY_POINT = "blah.py"
 ROLE = "some-role"
-S3_SOURCE_DIR = "s3://somebucket/sourcedir.tar.gz"
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_NAME = "dummy_script.py"
