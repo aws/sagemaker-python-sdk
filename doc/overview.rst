@@ -773,11 +773,10 @@ Deployment may take about 5 minutes.
        instance_type=instance_type,
    )
 
-Because ``catboost`` and ``lightgbm`` rely on the PyTorch Deep Learning Containers
-image, the corresponding Models and Endpoints display the “pytorch”
-prefix when viewed in the AWS console. To verify that these models
-were created successfully with your desired base model, refer to
-the ``Tags`` section.
+Because the model and script URIs are owned by JumpStart, the endpoint, 
+endpoint config and model resources will be prefixed with 
+``sagemaker-jumpstart``. Refer to the model ``Tags`` to inspect the 
+JumpStart artifacts involved in the model creation.
 
 Perform Inference
 -----------------
