@@ -773,9 +773,9 @@ Deployment may take about 5 minutes.
        instance_type=instance_type,
    )
 
-Because the model and script URIs are owned by JumpStart, the endpoint, 
-endpoint config and model resources will be prefixed with 
-``sagemaker-jumpstart``. Refer to the model ``Tags`` to inspect the 
+Because the model and script URIs are owned by JumpStart, the endpoint,
+endpoint config and model resources will be prefixed with
+``sagemaker-jumpstart``. Refer to the model ``Tags`` to inspect the
 JumpStart artifacts involved in the model creation.
 
 Perform Inference
