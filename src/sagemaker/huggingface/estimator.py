@@ -50,15 +50,15 @@ class HuggingFace(Framework):
         compiler_config=None,
         **kwargs,
     ):
-        """This ``Estimator`` runs a Hugging Face training script in a SageMaker training environment.
+        """This estimator runs a Hugging Face training script in a SageMaker training environment.
 
         The estimator initiates the SageMaker-managed Hugging Face environment
         by using the pre-built Hugging Face Docker container and runs
         the Hugging Face training script that user provides through
         the ``entry_point`` argument.
 
-        Training is started by calling
-        :meth:`~sagemaker.amazon.estimator.Framework.fit` on this Estimator.
+        After configuring the estimator class, use the class method
+        :meth:`~sagemaker.amazon.estimator.Framework.fit()` to start a training job.
 
         Args:
             py_version (str): Python version you want to use for executing your model training
