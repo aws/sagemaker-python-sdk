@@ -43,6 +43,7 @@ from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.estimator import Estimator, EstimatorBase, Framework, _TrainingJob
 from sagemaker.fw_utils import PROFILER_UNSUPPORTED_REGIONS
 from sagemaker.inputs import ShuffleConfig
+from sagemaker.instance_group import InstanceGroup
 from sagemaker.model import FrameworkModel
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.predictor import Predictor
@@ -239,6 +240,10 @@ def test_framework_all_init_args(sagemaker_session):
         role="DummyRole",
         instance_count=3,
         instance_type="ml.m4.xlarge",
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
         sagemaker_session=sagemaker_session,
         volume_size=123,
         volume_kms_key="volumekms",
@@ -288,6 +293,10 @@ def test_framework_all_init_args(sagemaker_session):
         "resource_config": {
             "VolumeSizeInGB": 123,
             "InstanceCount": 3,
+            "InstanceGroups": [
+                {"InstanceGroupName": "group1", "InstanceCount": 1, "InstanceType": "ml.c4.xlarge"},
+                {"InstanceGroupName": "group2", "InstanceCount": 2, "InstanceType": "ml.m4.xlarge"},
+            ],
             "VolumeKmsKeyId": "volumekms",
             "InstanceType": "ml.m4.xlarge",
         },
@@ -299,6 +308,31 @@ def test_framework_all_init_args(sagemaker_session):
         "checkpoint_local_path": "file://local/checkpoint",
         "enable_sagemaker_metrics": True,
         "enable_network_isolation": True,
+    }
+
+
+def test_framework_with_heterogeneous_cluster(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args["resource_config"]["InstanceGroups"][0] == {
+        "InstanceGroupName": "group1",
+        "InstanceCount": 1,
+        "InstanceType": "ml.c4.xlarge",
+    }
+    assert args["resource_config"]["InstanceGroups"][1] == {
+        "InstanceGroupName": "group2",
+        "InstanceCount": 2,
+        "InstanceType": "ml.m4.xlarge",
     }
 
 

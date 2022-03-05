@@ -105,6 +105,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         role,
         instance_count=None,
         instance_type=None,
+        instance_groups=None,
         volume_size=30,
         volume_kms_key=None,
         max_run=24 * 60 * 60,
@@ -154,6 +155,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 for training.
             instance_type (str): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'.
+            instance_groups (list[InstanceGroup]): Optional. List of InstanceGroup
+                for specifying different instance groups for heterogeneous cluster.
             volume_size (int): Size in GB of the EBS volume to use for
                 storing input data during training (default: 30). Must be large
                 enough to store training data if File Mode is used (which is the
@@ -437,12 +440,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             "train_volume_kms_key", "volume_kms_key", volume_kms_key, kwargs
         )
 
-        if instance_count is None or instance_type is None:
-            raise ValueError("Both instance_count and instance_type are required.")
-
         self.role = role
         self.instance_count = instance_count
         self.instance_type = instance_type
+        self.instance_groups = instance_groups
         self.volume_size = volume_size
         self.volume_kms_key = volume_kms_key
         self.max_run = max_run
@@ -1979,6 +1980,7 @@ class Estimator(EstimatorBase):
         role,
         instance_count=None,
         instance_type=None,
+        instance_groups=None,
         volume_size=30,
         volume_kms_key=None,
         max_run=24 * 60 * 60,
@@ -2029,6 +2031,8 @@ class Estimator(EstimatorBase):
                 for training.
             instance_type (str): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'.
+            instance_groups (list[InstanceGroup]): Optional. List of InstanceGroup
+                for specifying different instance groups for heterogeneous cluster.
             volume_size (int): Size in GB of the EBS volume to use for
                 storing input data during training (default: 30). Must be large
                 enough to store training data if File Mode is used (which is the
@@ -2297,6 +2301,7 @@ class Estimator(EstimatorBase):
             role,
             instance_count,
             instance_type,
+            instance_groups,
             volume_size,
             volume_kms_key,
             max_run,
