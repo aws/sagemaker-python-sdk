@@ -17,6 +17,7 @@ import json
 
 from copy import deepcopy
 from typing import Any, Dict, List, Sequence, Union, Optional
+from urllib.parse import urlparse
 
 import attr
 import botocore
@@ -33,11 +34,11 @@ from sagemaker.workflow.entities import (
     RequestType,
 )
 from sagemaker.workflow.execution_variables import ExecutionVariables
-from sagemaker.workflow.parameters import Parameter
+from sagemaker.workflow.parameters import Parameter, ParameterString
 from sagemaker.workflow.pipeline_experiment_config import PipelineExperimentConfig
 from sagemaker.workflow.parallelism_config import ParallelismConfiguration
 from sagemaker.workflow.properties import Properties
-from sagemaker.workflow.steps import Step
+from sagemaker.workflow.steps import Step, ProcessingStep
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.utilities import list_to_request
 
@@ -84,11 +85,13 @@ class Pipeline(Entity):
         return {
             "Version": self._version,
             "Metadata": self._metadata,
-            "Parameters": list_to_request(self.parameters),
             "PipelineExperimentConfig": self.pipeline_experiment_config.to_request()
             if self.pipeline_experiment_config is not None
             else None,
             "Steps": list_to_request(self.steps),
+            # Put Parameters below Steps as
+            # their default value may be updated while performing list_to_request for Steps
+            "Parameters": list_to_request(self.parameters),
         }
 
     def create(
@@ -285,7 +288,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         kwargs = dict(PipelineName=self.name)
         update_args(
             kwargs,
-            PipelineParameters=format_start_parameters(parameters),
+            PipelineParameters=self.format_start_parameters(parameters),
             PipelineExecutionDescription=execution_description,
             PipelineExecutionDisplayName=execution_display_name,
             ParallelismConfiguration=parallelism_config,
@@ -312,21 +315,39 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
 
         return json.dumps(request_dict)
 
+    def format_start_parameters(self, parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Formats start parameter overrides as a list of dicts.
 
-def format_start_parameters(parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """Formats start parameter overrides as a list of dicts.
+        This list of dicts adheres to the request schema of:
 
-    This list of dicts adheres to the request schema of:
+            `{"Name": "MyParameterName", "Value": "MyValue"}`
 
-        `{"Name": "MyParameterName", "Value": "MyValue"}`
+        Args:
+            parameters (Dict[str, Any]): A dict of named values where the keys are
+                the names of the parameters to pass values into.
+        """
+        if parameters is None:
+            return None
 
-    Args:
-        parameters (Dict[str, Any]): A dict of named values where the keys are
-            the names of the parameters to pass values into.
-    """
-    if parameters is None:
-        return None
-    return [{"Name": name, "Value": str(value)} for name, value in parameters.items()]
+        formatted_param_list: List = []
+
+        # Detect if a non-S3-URI path was provided for the code parameter of ProcessingStep
+        processing_steps = filter(lambda step: isinstance(step, ProcessingStep), self.steps)
+        # TODO: need to update once introducing subclass compatibility fix
+        for name, value in parameters.items():
+            for proc_step in processing_steps:
+                code_param = proc_step.code
+                if not (isinstance(code_param, ParameterString) and code_param.name == name):
+                    continue
+
+                code_url = urlparse(value)
+                if code_url.scheme != "s3":
+                    raise ValueError(
+                        f"The new value {value} for {name} Parameter has to be a valid S3 URI"
+                    )
+                break
+            formatted_param_list.append({"Name": name, "Value": str(value)})
+        return formatted_param_list
 
 
 def interpolate(

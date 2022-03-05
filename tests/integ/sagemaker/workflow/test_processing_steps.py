@@ -21,9 +21,11 @@ from datetime import datetime
 import pytest
 from botocore.exceptions import WaiterError
 
+from tests.integ.retry import retries
+from tests.integ.kms_utils import get_or_create_kms_key
 from sagemaker import image_uris, get_execution_role, utils
 from sagemaker.dataset_definition import DatasetDefinition, AthenaDatasetDefinition
-from sagemaker.processing import ProcessingInput, ProcessingOutput
+from sagemaker.processing import ProcessingInput, ProcessingOutput, ScriptProcessor
 from sagemaker.s3 import S3Uploader
 from sagemaker.sklearn import SKLearnProcessor
 from sagemaker.workflow.parameters import ParameterInteger, ParameterString
@@ -791,6 +793,127 @@ def test_two_processing_job_depends_on(
             else:
                 time_stamp[name] = execution_step["StartTime"]
         assert time_stamp["pyspark-process-1"] < time_stamp["pyspark-process-2"]
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
+def test_one_step_script_processing_pipeline_with_param_str_local_code(
+    sagemaker_session,
+    role,
+    pipeline_name,
+    region_name,
+    cpu_instance_type,
+    sklearn_latest_version,
+    sklearn_latest_py_version,
+):
+    input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
+    code_local_path = os.path.join(DATA_DIR, "dummy_script.py")
+    code_param = ParameterString(name="Script", default_value=code_local_path)
+
+    output_kms_key = get_or_create_kms_key(
+        sagemaker_session=sagemaker_session,
+        role_arn=role,
+        alias="integ-test-processing-output-kms-key-{}".format(
+            sagemaker_session.boto_session.region_name
+        ),
+    )
+    image_uri = image_uris.retrieve(
+        "sklearn",
+        sagemaker_session.boto_region_name,
+        version=sklearn_latest_version,
+        py_version=sklearn_latest_py_version,
+        instance_type=cpu_instance_type,
+    )
+    script_processor = ScriptProcessor(
+        role=role,
+        image_uri=image_uri,
+        command=["python3"],
+        instance_count=1,
+        instance_type=cpu_instance_type,
+        volume_size_in_gb=100,
+        output_kms_key=output_kms_key,
+        max_runtime_in_seconds=3600,
+        base_job_name="test-script-processor",
+        env={"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"},
+        tags=[{"Key": "dummy-tag", "Value": "dummy-tag-value"}],
+        sagemaker_session=sagemaker_session,
+    )
+    inputs = [
+        ProcessingInput(
+            source=input_file_path,
+            destination="/opt/ml/processing/input/container/path/",
+            input_name="dummy_input",
+            s3_data_type="S3Prefix",
+            s3_input_mode="File",
+            s3_data_distribution_type="FullyReplicated",
+            s3_compression_type="None",
+        )
+    ]
+    outputs = [
+        ProcessingOutput(
+            source="/opt/ml/processing/output/container/path/",
+            output_name="dummy_output",
+            s3_upload_mode="EndOfJob",
+        )
+    ]
+    step = ProcessingStep(
+        name="MyProcessingStep",
+        processor=script_processor,
+        code=code_param,
+        inputs=inputs,
+        outputs=outputs,
+        job_arguments=["-v"],
+    )
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[code_param],
+        steps=[step],
+        sagemaker_session=sagemaker_session,
+    )
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+
+        # Update the user script code to be another local file
+        with pytest.raises(ValueError) as error:
+            pipeline.start(parameters={"Script": code_local_path})
+        assert str(error.value) == (
+            f"The new value {code_local_path} for Script Parameter has to be a valid S3 URI"
+        )
+
+        # Update the user script code to be a S3 URI
+        code_s3_uri_prefix = "s3://{}/{}/{}/{}/{}".format(
+            sagemaker_session.default_bucket(),
+            "processing_step",
+            "input",
+            "code",
+            utils.unique_name_from_base("code"),
+        )
+        code_s3_uri = S3Uploader.upload(
+            code_local_path, code_s3_uri_prefix, sagemaker_session=sagemaker_session
+        )
+
+        for _ in retries(
+            max_retry_count=5,
+            exception_message_prefix="Waiting for a successful execution of pipeline",
+            seconds_to_sleep=10,
+        ):
+            execution = pipeline.start(parameters={"Script": code_s3_uri})
+            response = execution.describe()
+            assert response["PipelineArn"] == create_arn
+
+            try:
+                execution.wait(delay=30, max_attempts=60)
+            except WaiterError:
+                pass
+            execution_steps = execution.list_steps()
+
+            assert len(execution_steps) == 1
+            assert execution_steps[0]["StepStatus"] == "Succeeded"
+            break
     finally:
         try:
             pipeline.delete()

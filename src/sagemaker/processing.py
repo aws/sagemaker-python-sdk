@@ -35,7 +35,7 @@ from sagemaker.local import LocalSession
 from sagemaker.utils import base_name_from_image, get_config_value, name_from_base
 from sagemaker.session import Session
 from sagemaker.workflow.properties import Properties
-from sagemaker.workflow.parameters import Parameter
+from sagemaker.workflow.parameters import Parameter, ParameterString
 from sagemaker.workflow.entities import Expression
 from sagemaker.dataset_definition.inputs import S3Input, DatasetDefinition
 from sagemaker.apiutils._base_types import ApiObject
@@ -251,7 +251,7 @@ class Processor(object):
                 :class:`~sagemaker.processing.ProcessingInput` objects.
             _code (str): This can be an S3 URI or a local path to a file with the framework
                 script to run (default: None). A no op in the base class.
-            kms_key (str): The ARN of the KMS key that is used to encrypt the
+            _kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
 
         Returns:
@@ -575,7 +575,11 @@ class ScriptProcessor(Processor):
         user_code_s3_uri = self._handle_user_code_url(code, kms_key)
         user_script_name = self._get_user_code_name(code)
 
-        inputs_with_code = self._convert_code_and_add_to_inputs(inputs, user_code_s3_uri)
+        if isinstance(code, ParameterString):
+            code.default_value = user_code_s3_uri
+        else:
+            code = user_code_s3_uri
+        inputs_with_code = self._convert_code_and_add_to_inputs(inputs, code)
 
         self._set_entrypoint(self.command, user_script_name)
         return inputs_with_code
@@ -618,6 +622,14 @@ class ScriptProcessor(Processor):
             # Validate that the file exists locally and is not a directory.
             code_path = url2pathname(code_url.path)
             if not os.path.exists(code_path):
+                if isinstance(code, ParameterString) and not code.default_value:
+                    raise ValueError(
+                        """code Parameter ({}) didn't have a valid default_value.
+                        Please make sure the default_value is valid.
+                        """.format(
+                            code.name
+                        )
+                    )
                 raise ValueError(
                     """code {} wasn't found. Please make sure that the file exists.
                     """.format(

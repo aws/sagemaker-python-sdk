@@ -22,6 +22,7 @@ from botocore.exceptions import ClientError
 from mock import Mock
 
 from sagemaker import s3
+from sagemaker.processing import ScriptProcessor
 from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline import Pipeline
@@ -34,6 +35,7 @@ from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.steps import (
     Step,
     StepTypeEnum,
+    ProcessingStep,
 )
 from tests.unit.sagemaker.workflow.helpers import ordered
 
@@ -473,3 +475,46 @@ def test_pipeline_execution_basics(sagemaker_session_mock):
         PipelineExecutionArn="my:arn"
     )
     assert len(steps) == 1
+
+
+def test_format_start_parameters(sagemaker_session_mock):
+    code_param = ParameterString(name="Script", default_value="file://file_name")
+    instance_type_param = ParameterString(name="InstanceType", default_value="ml.m4.xlarge")
+    script_processor = ScriptProcessor(
+        role="role",
+        image_uri="012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri",
+        command=["python3"],
+        instance_type=instance_type_param,
+        instance_count=1,
+    )
+    processing_step = ProcessingStep(
+        name="MyProcessingStep",
+        processor=script_processor,
+        code=code_param,
+    )
+    custom_step = CustomStep(name="MyStep", input_data="input")
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[code_param, instance_type_param],
+        steps=[processing_step, custom_step],
+        sagemaker_session=sagemaker_session_mock,
+    )
+    # code parameter is updated with a S3 URI
+    formatted_param_list = pipeline.format_start_parameters(
+        dict(Script="s3://my-bucket/file_Name", InstanceType="ml.m5.large")
+    )
+
+    assert formatted_param_list == [
+        dict(Name="Script", Value="s3://my-bucket/file_Name"),
+        dict(Name="InstanceType", Value="ml.m5.large"),
+    ]
+
+    # code parameter is updated with a local file path
+    with pytest.raises(ValueError) as error:
+        pipeline.format_start_parameters(
+            dict(Script="file://file_Name2", InstanceType="ml.m5.large")
+        )
+
+    assert str(error.value) == (
+        "The new value file://file_Name2 for Script Parameter has to be a valid S3 URI"
+    )

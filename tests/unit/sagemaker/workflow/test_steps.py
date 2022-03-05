@@ -643,6 +643,159 @@ def test_processing_step_normalizes_args_with_local_code(mock_normalize_args, sc
     )
 
 
+def test_processing_step_normalizes_args_with_param_str_local_code(
+    sagemaker_session, script_processor
+):
+    cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
+    file_name = os.path.join(os.path.dirname(__file__), "__init__.py")
+    code_param = ParameterString(name="Script", default_value=file_name)
+    inputs = [
+        ProcessingInput(
+            source=f"s3://{BUCKET}/processing_manifest",
+            destination="processing_manifest",
+        )
+    ]
+    outputs = [
+        ProcessingOutput(
+            source=f"s3://{BUCKET}/processing_manifest",
+            destination="processing_manifest",
+        )
+    ]
+    # Test with code parameter without default value
+    step = ProcessingStep(
+        name="MyProcessingStep",
+        processor=script_processor,
+        code=ParameterString(name="Script"),
+        inputs=inputs,
+        outputs=outputs,
+        job_arguments=["arg1", "arg2"],
+        cache_config=cache_config,
+    )
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[code_param],
+        steps=[step],
+        sagemaker_session=sagemaker_session,
+    )
+    with pytest.raises(ValueError) as error:
+        pipeline.definition()
+
+    assert "code Parameter (Script) didn't have a valid default_value." in str(error.value)
+
+    # Test with code parameter with default value
+    step = ProcessingStep(
+        name="MyProcessingStep",
+        processor=script_processor,
+        code=code_param,
+        inputs=inputs,
+        outputs=outputs,
+        job_arguments=["arg1", "arg2"],
+        cache_config=cache_config,
+    )
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[code_param],
+        steps=[step],
+        sagemaker_session=sagemaker_session,
+    )
+
+    dsl = json.loads(pipeline.definition())
+    assert dsl == {
+        "Version": "2020-12-01",
+        "Metadata": {},
+        "PipelineExperimentConfig": {
+            "ExperimentName": {"Get": "Execution.PipelineName"},
+            "TrialName": {"Get": "Execution.PipelineExecutionId"},
+        },
+        "Steps": [
+            {
+                "Name": "MyProcessingStep",
+                "Type": "Processing",
+                "Arguments": {
+                    "ProcessingResources": {
+                        "ClusterConfig": {
+                            "InstanceType": "ml.m4.xlarge",
+                            "InstanceCount": 1,
+                            "VolumeSizeInGB": 100,
+                            "VolumeKmsKeyId": "arn:aws:kms:us-west-2:012345678901:key/volume-kms-key",
+                        }
+                    },
+                    "AppSpecification": {
+                        "ImageUri": "012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri",
+                        "ContainerArguments": ["arg1", "arg2"],
+                        "ContainerEntrypoint": [
+                            "python3",
+                            "/opt/ml/processing/input/code/__init__.py",
+                        ],
+                    },
+                    "RoleArn": "DummyRole",
+                    "ProcessingInputs": [
+                        {
+                            "InputName": "input-1",
+                            "AppManaged": False,
+                            "S3Input": {
+                                "S3Uri": "s3://my-bucket/processing_manifest",
+                                "LocalPath": "processing_manifest",
+                                "S3DataType": "S3Prefix",
+                                "S3InputMode": "File",
+                                "S3DataDistributionType": "FullyReplicated",
+                                "S3CompressionType": "None",
+                            },
+                        },
+                        {
+                            "InputName": "code",
+                            "AppManaged": False,
+                            "S3Input": {
+                                "S3Uri": {"Get": "Parameters.Script"},
+                                "LocalPath": "/opt/ml/processing/input/code",
+                                "S3DataType": "S3Prefix",
+                                "S3InputMode": "File",
+                                "S3DataDistributionType": "FullyReplicated",
+                                "S3CompressionType": "None",
+                            },
+                        },
+                    ],
+                    "ProcessingOutputConfig": {
+                        "Outputs": [
+                            {
+                                "OutputName": "output-1",
+                                "AppManaged": False,
+                                "S3Output": {
+                                    "S3Uri": "s3://my-bucket/MyProcessingStep-"
+                                    + "d41d8cd98f00b204e9800998ecf8427e/output/output-1",
+                                    "LocalPath": "s3://my-bucket/processing_manifest",
+                                    "S3UploadMode": "EndOfJob",
+                                },
+                            }
+                        ],
+                        "KmsKeyId": "arn:aws:kms:us-west-2:012345678901:key/output-kms-key",
+                    },
+                    "Environment": {"my_env_variable": "my_env_variable_value"},
+                    "NetworkConfig": {
+                        "EnableNetworkIsolation": True,
+                        "EnableInterContainerTrafficEncryption": True,
+                        "VpcConfig": {
+                            "SecurityGroupIds": ["my_security_group_id"],
+                            "Subnets": ["my_subnet_id"],
+                        },
+                    },
+                    "StoppingCondition": {"MaxRuntimeInSeconds": 3600},
+                    "Tags": [{"Key": "my-tag", "Value": "my-tag-value"}],
+                },
+                "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
+            }
+        ],
+        "Parameters": [
+            {
+                "Name": "Script",
+                "Type": "String",
+                "DefaultValue": "s3://my-bucket/MyProcessingStep-"
+                + "d41d8cd98f00b204e9800998ecf8427e/input/code/__init__.py",
+            }
+        ],
+    }
+
+
 @patch("sagemaker.processing.ScriptProcessor._normalize_args")
 def test_processing_step_normalizes_args_with_s3_code(mock_normalize_args, script_processor):
     cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
