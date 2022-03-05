@@ -1245,6 +1245,7 @@ def test_custom_code_bucket(time, sagemaker_session):
         expected_submit_dir
     )
 
+
 @patch("time.strftime", return_value=TIMESTAMP)
 def test_custom_code_bucket_without_prefix(time, sagemaker_session):
     code_bucket = "codebucket"
@@ -1267,7 +1268,7 @@ def test_custom_code_bucket_without_prefix(time, sagemaker_session):
     _, _, train_kwargs = sagemaker_session.train.mock_calls[0]
     assert train_kwargs["hyperparameters"]["sagemaker_submit_directory"] == json.dumps(
         expected_submit_dir
-    ) 
+    )
 
 
 def test_invalid_custom_code_bucket(sagemaker_session):
@@ -1341,7 +1342,7 @@ def test_shuffle_config(sagemaker_session):
 BASE_HP = {
     "sagemaker_program": json.dumps(SCRIPT_NAME),
     "sagemaker_submit_directory": json.dumps(
-    "s3://mybucket/{}/source/sourcedir.tar.gz".format(JOB_NAME)
+        "s3://mybucket/{}/source/sourcedir.tar.gz".format(JOB_NAME)
     ),
     "sagemaker_job_name": json.dumps(JOB_NAME),
 }
