@@ -399,7 +399,6 @@ def test_training_step_tensorflow(sagemaker_session):
         name="MyTrainingStep", estimator=estimator, inputs=inputs, cache_config=cache_config
     )
     step_request = step.to_request()
-    step_request["Arguments"]["HyperParameters"].pop("sagemaker_job_name", None)
     step_request["Arguments"]["HyperParameters"].pop("sagemaker_program", None)
     step_request["Arguments"].pop("ProfilerRuleConfigurations", None)
     assert step_request == {
