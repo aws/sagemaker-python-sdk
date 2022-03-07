@@ -233,7 +233,7 @@ def add_single_jumpstart_tag(
 
 
 def get_jumpstart_base_name_if_jumpstart_model(
-    *uris,
+    *uris: Optional[str],
 ) -> Optional[str]:
     """Return default JumpStart base name if a URI belongs to JumpStart.
 

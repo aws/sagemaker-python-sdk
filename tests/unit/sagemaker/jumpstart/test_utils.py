@@ -883,3 +883,15 @@ def test_get_jumpstart_base_name_if_jumpstart_model():
 
     uris = ["s3://not-jumpstart-bucket/some-key" for _ in range(random.randint(0, 10))]
     assert utils.get_jumpstart_base_name_if_jumpstart_model(*uris) is None
+
+    uris = ["s3://not-jumpstart-bucket/some-key" for _ in range(random.randint(1, 10))] + [
+        random_jumpstart_s3_uri("random_key")
+    ]
+    assert JUMPSTART_RESOURCE_BASE_NAME == utils.get_jumpstart_base_name_if_jumpstart_model(*uris)
+
+    uris = (
+        ["s3://not-jumpstart-bucket/some-key" for _ in range(random.randint(1, 10))]
+        + [random_jumpstart_s3_uri("random_key")]
+        + ["s3://not-jumpstart-bucket/some-key-2" for _ in range(random.randint(1, 10))]
+    )
+    assert JUMPSTART_RESOURCE_BASE_NAME == utils.get_jumpstart_base_name_if_jumpstart_model(*uris)

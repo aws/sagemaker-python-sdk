@@ -570,10 +570,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
     def _ensure_base_job_name(self):
         """Set ``self.base_job_name`` if it is not set already."""
         # honor supplied base_job_name or generate it
-        if self.base_job_name is None:
-            self.base_job_name = get_jumpstart_base_name_if_jumpstart_model(
-                self.source_dir, self.model_uri
-            ) or base_name_from_image(self.training_image_uri())
+        self.base_job_name = (
+            self.base_job_name
+            or get_jumpstart_base_name_if_jumpstart_model(self.source_dir, self.model_uri)
+            or base_name_from_image(self.training_image_uri())
+        )
 
     def _get_or_create_name(self, name=None):
         """Generate a name based on the base job name or training image if needed.

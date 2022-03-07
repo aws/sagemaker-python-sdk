@@ -532,7 +532,10 @@ class Model(ModelBase):
         )
 
     def _ensure_base_name_if_needed(self, image_uri, script_uri, model_uri):
-        """Create a base name from the image URI if there is no model name provided."""
+        """Create a base name from the image URI if there is no model name provided.
+
+        If a JumpStart script or model uri is used, select the JumpStart base name.
+        """
         if self.name is None:
             self._base_name = (
                 self._base_name
