@@ -502,7 +502,7 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
     """Fetch trial component data and make them accessible for analytics."""
 
     MAX_TRIAL_COMPONENTS = 10000
-    POLL = 10
+    POLL = 0.5
 
     def __init__(
         self,
