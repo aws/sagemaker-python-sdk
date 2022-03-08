@@ -238,6 +238,9 @@ def get_jumpstart_base_name_if_jumpstart_model(
     """Return default JumpStart base name if a URI belongs to JumpStart.
 
     If no URIs belong to JumpStart, return None.
+
+    Args:
+        *uris (Optional[str]): URI to test for association with JumpStart.
     """
     for uri in uris:
         if is_jumpstart_model_uri(uri):
