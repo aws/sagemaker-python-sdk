@@ -32,7 +32,7 @@ def read_version():
 
 
 def read_requirements(filename):
-    """ Reads requirements file which lists package dependencies.
+    """Reads requirements file which lists package dependencies.
 
     Args:
         filename: type(str) Relative file path of requirements.txt file
@@ -40,7 +40,7 @@ def read_requirements(filename):
     Returns:
         list of dependencies extracted from file
     """
-    with open(filename) as fp:
+    with open(os.path.abspath(filename)) as fp:
         deps = [line.strip() for line in fp.readlines()]
     return deps
 
