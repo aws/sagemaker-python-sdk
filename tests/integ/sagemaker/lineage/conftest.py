@@ -26,7 +26,9 @@ from sagemaker.lineage import (
     artifact,
 )
 from sagemaker.model import ModelPackage
-from tests.integ.test_workflow import test_end_to_end_pipeline_successful_execution
+from tests.integ.sagemaker.workflow.test_workflow import (
+    test_end_to_end_pipeline_successful_execution,
+)
 from sagemaker.workflow.pipeline import _PipelineExecution
 from sagemaker.session import get_execution_role
 from smexperiments import trial_component, trial, experiment
