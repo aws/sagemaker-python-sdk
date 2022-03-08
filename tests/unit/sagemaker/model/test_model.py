@@ -26,6 +26,8 @@ from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.sklearn.model import SKLearnModel
 from sagemaker.tensorflow.model import TensorFlowModel
 from sagemaker.xgboost.model import XGBoostModel
+from sagemaker.workflow.properties import Properties
+
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -42,7 +44,6 @@ GIT_REPO = "https://github.com/aws/sagemaker-python-sdk.git"
 BRANCH = "test-branch-git-config"
 COMMIT = "ae15c9d7d5b97ea95ea451e4662ee43da3401d73"
 ENTRY_POINT_INFERENCE = "inference.py"
-
 SCRIPT_URI = "s3://codebucket/someprefix/sourcedir.tar.gz"
 IMAGE_URI = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.9.0-gpu-py38"
 
@@ -69,6 +70,23 @@ def sagemaker_session():
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
 
     return sms
+
+
+@patch("shutil.rmtree", MagicMock())
+@patch("tarfile.open", MagicMock())
+@patch("os.listdir", MagicMock(return_value=[ENTRY_POINT_INFERENCE]))
+def test_prepare_container_def_with_model_src_s3_returns_correct_url(sagemaker_session):
+    model = Model(
+        entry_point=ENTRY_POINT_INFERENCE,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        source_dir=SCRIPT_URI,
+        image_uri=MODEL_IMAGE,
+        model_data=Properties("Steps.MyStep"),
+    )
+    container_def = model.prepare_container_def(INSTANCE_TYPE, "ml.eia.medium")
+
+    assert container_def["Environment"]["SAGEMAKER_SUBMIT_DIRECTORY"] == SCRIPT_URI
 
 
 def test_prepare_container_def_with_model_data():

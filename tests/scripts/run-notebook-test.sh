@@ -81,8 +81,15 @@ echo "$LIFECYCLE_CONFIG_CONTENT"
 
 set -euo pipefail
 
+# git doesn't work in codepipeline, use CODEBUILD_RESOLVED_SOURCE_VERSION to get commit id
+codebuild_initiator="${CODEBUILD_INITIATOR:-0}"
+if [ "${codebuild_initiator:0:12}" == "codepipeline" ]; then
+    COMMIT_ID="${CODEBUILD_RESOLVED_SOURCE_VERSION}"
+else
+    COMMIT_ID=$(git rev-parse --short HEAD)
+fi
+
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-COMMIT_ID=$(git rev-parse --short HEAD)
 LIFECYCLE_CONFIG_NAME="install-python-sdk-$COMMIT_ID"
 
 python setup.py sdist

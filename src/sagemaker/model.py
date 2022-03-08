@@ -466,7 +466,7 @@ class Model(ModelBase):
             )
 
     def _script_mode_env_vars(self):
-        """Placeholder docstring"""
+        """Returns a mapping of environment variables for script mode execution"""
         script_name = None
         dir_name = None
         if self.uploaded_code:
@@ -478,8 +478,11 @@ class Model(ModelBase):
         elif self.entry_point is not None:
             script_name = self.entry_point
             if self.source_dir is not None:
-                dir_name = "file://" + self.source_dir
-
+                dir_name = (
+                    self.source_dir
+                    if self.source_dir.startswith("s3://")
+                    else "file://" + self.source_dir
+                )
         return {
             SCRIPT_PARAM_NAME.upper(): script_name or str(),
             DIR_PARAM_NAME.upper(): dir_name or str(),
