@@ -169,8 +169,7 @@ def retrieve(
         ]:
             _version = version
         if processor == "neuron":
-            repo += "-" + processor
-            print("repo: ", repo)
+            repo += "-{0}".format(processor)
 
         tag_prefix = f"{pt_or_tf_version}-transformers{_version}"
 
