@@ -168,6 +168,9 @@ def retrieve(
             "huggingface-tensorflow-trcomp-training",
         ]:
             _version = version
+        if processor == "neuron":
+            repo += "-" + processor
+            print("repo: ", repo)
 
         tag_prefix = f"{pt_or_tf_version}-transformers{_version}"
 
@@ -310,6 +313,8 @@ def _processor(instance_type, available_processors):
 
     if instance_type.startswith("local"):
         processor = "cpu" if instance_type == "local" else "gpu"
+    elif instance_type.startswith("neuron"):
+        processor = "neuron"
     else:
         # looks for either "ml.<family>.<size>" or "ml_<family>"
         match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
@@ -321,8 +326,6 @@ def _processor(instance_type, available_processors):
             # 'cpu' or 'gpu'.
             if family in available_processors:
                 processor = family
-            elif family.startswith("inf"):
-                processor = "inf"
             elif family[0] in ("g", "p"):
                 processor = "gpu"
             else:
@@ -332,7 +335,6 @@ def _processor(instance_type, available_processors):
                 "Invalid SageMaker instance type: {}. For options, see: "
                 "https://aws.amazon.com/sagemaker/pricing/instance-types".format(instance_type)
             )
-
     _validate_arg(processor, available_processors, "processor")
     return processor
 
