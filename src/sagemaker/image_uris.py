@@ -46,6 +46,8 @@ def retrieve(
     model_version=None,
     tolerate_vulnerable_model=False,
     tolerate_deprecated_model=False,
+    sdk_version=None,
+    repo_version=None,
 ) -> str:
     """Retrieves the ECR URI for the Docker image matching the given arguments.
 
@@ -172,9 +174,11 @@ def retrieve(
         ]:
             _version = version
         if processor == "neuron":
-            sdk_version = _get_latest_versions(version_config["sdk_versions"])
-            repo_versions = _get_latest_versions(version_config["repo_versions"])
-            container_version = sdk_version + "-" + container_version + "-" + repo_versions
+            if not sdk_version:
+                sdk_version = _get_latest_versions(version_config["sdk_versions"])
+            if not repo_version:
+                repo_version = _get_latest_versions(version_config["repo_versions"])
+            container_version = sdk_version + "-" + container_version + "-" + repo_version
             repo += "-{0}".format(processor)
 
         tag_prefix = f"{pt_or_tf_version}-transformers{_version}"
