@@ -884,7 +884,7 @@
                     "tensorflow2.5": "tensorflow2.5.1"
                 },
                 "pytorch1.9.1": {
-                    "py_versions": ["py38","py37"],
+                    "py_versions": ["py38"],
                     "registries": {
                         "af-south-1": "626614931356",
                         "ap-east-1": "871362719292",
@@ -913,7 +913,7 @@
                         "us-west-2": "763104351884"
                     },
                     "repository": "huggingface-pytorch-inference",
-                    "container_version": {"gpu": "cu111-ubuntu20.04", "cpu": "ubuntu20.04"}
+                    "container_version": {"gpu": "cu111-ubuntu20.04", "cpu": "ubuntu20.04" }
                 },
                 "tensorflow2.5.1": {
                     "py_versions": ["py37"],
