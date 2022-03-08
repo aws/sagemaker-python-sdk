@@ -562,7 +562,7 @@
     },
 
     "inference": {
-        "processors": ["gpu", "cpu", "neuron"],
+        "processors": ["gpu", "cpu"],
         "version_aliases": {
             "4.6": "4.6.1",
             "4.10": "4.10.2",
@@ -913,7 +913,7 @@
                         "us-west-2": "763104351884"
                     },
                     "repository": "huggingface-pytorch-inference",
-                    "container_version": {"gpu": "cu111-ubuntu20.04", "cpu": "ubuntu20.04", "neuron": "sdk1.17.1-ubuntu18.04-v1.0" }
+                    "container_version": {"gpu": "cu111-ubuntu20.04", "cpu": "ubuntu20.04"}
                 },
                 "tensorflow2.5.1": {
                     "py_versions": ["py37"],
