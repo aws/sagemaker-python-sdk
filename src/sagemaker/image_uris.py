@@ -151,7 +151,6 @@ def retrieve(
             full_base_framework_version = version_config["version_aliases"].get(
                 base_framework_version, base_framework_version
             )
-
         _validate_arg(full_base_framework_version, list(version_config.keys()), "base framework")
         version_config = version_config.get(full_base_framework_version)
 
@@ -174,7 +173,6 @@ def retrieve(
         pt_or_tf_version = (
             re.compile("^(pytorch|tensorflow)(.*)$").match(base_framework_version).group(2)
         )
-
         _version = original_version
 
         if repo in [
@@ -188,9 +186,17 @@ def retrieve(
             if not image_version:
                 image_version = _get_latest_versions(version_config["image_versions"])
             container_version = sdk_version + "-" + container_version + "-" + image_version
+            if config.get("version_aliases"):
+                _version = config.get("version_aliases")[original_version]
+            if base_framework_version in config.get("versions")[_version]["version_aliases"]:
+                _base_framework_version = config.get("versions")[_version]["version_aliases"][
+                    base_framework_version
+                ]
+                pt_or_tf_version = (
+                    re.compile("^(pytorch|tensorflow)(.*)$").match(_base_framework_version).group(2)
+                )
 
         tag_prefix = f"{pt_or_tf_version}-transformers{_version}"
-
     else:
         tag_prefix = version_config.get("tag_prefix", version)
 
