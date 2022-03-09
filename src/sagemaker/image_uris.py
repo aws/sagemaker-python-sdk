@@ -225,9 +225,7 @@ def retrieve(
     return ECR_URI_TEMPLATE.format(registry=registry, hostname=hostname, repository=repo)
 
 
-def _config_for_framework_and_scope(
-    framework, image_scope, accelerator_type=None
-):
+def _config_for_framework_and_scope(framework, image_scope, accelerator_type=None):
     """Loads the JSON config for the given framework and image scope."""
     config = config_for_framework(framework)
 
