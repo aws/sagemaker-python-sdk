@@ -186,9 +186,14 @@ def retrieve(
             if not image_version:
                 image_version = _get_latest_versions(version_config["image_versions"])
             container_version = sdk_version + "-" + container_version + "-" + image_version
-            if config.get("version_aliases"):
+            if config.get("version_aliases").get(original_version):
                 _version = config.get("version_aliases")[original_version]
-            if base_framework_version in config.get("versions")[_version]["version_aliases"]:
+            if (
+                config.get("versions")
+                .get(_version)
+                .get("version_aliases")
+                .get(base_framework_version)
+            ):
                 _base_framework_version = config.get("versions")[_version]["version_aliases"][
                     base_framework_version
                 ]
