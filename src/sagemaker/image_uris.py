@@ -139,7 +139,7 @@ def retrieve(
             config = _config_for_framework_and_scope(framework, image_scope, accelerator_type)
     elif framework == HUGGING_FACE_FRAMEWORK:
         config = _config_for_framework_and_scope(
-            framework + "-training-compiler", image_scope, accelerator_type, instance_type
+            framework + "-training-compiler", image_scope, accelerator_type
         )
     else:
         raise ValueError(
@@ -226,11 +226,9 @@ def retrieve(
 
 
 def _config_for_framework_and_scope(
-    framework, image_scope, accelerator_type=None, instance_type=None
+    framework, image_scope, accelerator_type=None
 ):
     """Loads the JSON config for the given framework and image scope."""
-    if framework == HUGGING_FACE_FRAMEWORK and instance_type == "neuron":
-        framework = framework + "_" + instance_type
     config = config_for_framework(framework)
 
     if accelerator_type:
