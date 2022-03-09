@@ -47,7 +47,8 @@ def retrieve(
     tolerate_vulnerable_model=False,
     tolerate_deprecated_model=False,
     sdk_version=None,
-    repo_version=None,
+    image_version=None,
+    inference_tool=None,
 ) -> str:
     """Retrieves the ECR URI for the Docker image matching the given arguments.
 
@@ -89,6 +90,13 @@ def retrieve(
         tolerate_deprecated_model (bool): True if deprecated versions of model specifications
             should be tolerated without an exception raised. If False, raises an exception
             if the version of the model is deprecated. (Default: False).
+        sdk_version (str): the version of python-sdk that will be used in the image retrieval.
+            (default: None).
+        image_versions (str): the version of corresponding image that will be used in the retrieval.
+            (default: None).
+        inference_tool (str): the tool that will be used to aid in the inference.
+            Valid values: "neuron, None"
+            (default: None).
 
     Returns:
         str: The ECR URI for the corresponding SageMaker Docker image.
@@ -119,7 +127,8 @@ def retrieve(
             tolerate_deprecated_model,
         )
     if training_compiler_config is None:
-        if framework == HUGGING_FACE_FRAMEWORK and instance_type == "neuron":
+        inference_tool = _get_inference_tool(inference_tool, instance_type)
+        if framework == HUGGING_FACE_FRAMEWORK and inference_tool == "neuron":
             config = _config_for_framework_and_scope(
                 framework + "-neuron", image_scope, accelerator_type
             )
@@ -168,30 +177,25 @@ def retrieve(
         )
 
         _version = original_version
+
         if repo in [
             "huggingface-pytorch-trcomp-training",
             "huggingface-tensorflow-trcomp-training",
         ]:
             _version = version
-        if processor == "neuron":
+        if repo in ["huggingface-pytorch-inference-neuron"]:
             if not sdk_version:
                 sdk_version = _get_latest_versions(version_config["sdk_versions"])
-            if not repo_version:
-                repo_version = _get_latest_versions(version_config["repo_versions"])
-            container_version = sdk_version + "-" + container_version + "-" + repo_version
-            repo += "-{0}".format(processor)
+            if not image_version:
+                image_version = _get_latest_versions(version_config["image_versions"])
+            container_version = sdk_version + "-" + container_version + "-" + image_version
 
         tag_prefix = f"{pt_or_tf_version}-transformers{_version}"
 
     else:
         tag_prefix = version_config.get("tag_prefix", version)
 
-    tag = _format_tag(
-        tag_prefix,
-        processor,
-        py_version,
-        container_version,
-    )
+    tag = _format_tag(tag_prefix, processor, py_version, container_version, inference_tool)
 
     if _should_auto_select_container_version(instance_type, distribution):
         container_versions = {
@@ -264,8 +268,17 @@ def config_for_framework(framework):
         return json.load(f)
 
 
+def _get_inference_tool(inference_tool, instance_type):
+    """Extract the inference tool name from instance type."""
+    if not inference_tool and instance_type:
+        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        if match[1].startswith("inf"):
+            return "neuron"
+    return inference_tool
+
+
 def _get_latest_versions(list_of_versions):
-    """Raises a ``ValueError`` if ``accelerator_type`` is invalid."""
+    """Extract the latest version from the input list of available versions."""
     return sorted(list_of_versions, reverse=True)[0]
 
 
@@ -410,9 +423,12 @@ def _validate_arg(arg, available_options, arg_name):
         )
 
 
-def _format_tag(tag_prefix, processor, py_version, container_version):
+def _format_tag(tag_prefix, processor, py_version, container_version, inference_tool=None):
     """Creates a tag for the image URI."""
-    return "-".join(x for x in (tag_prefix, processor, py_version, container_version) if x)
+    if not inference_tool:
+        return "-".join(x for x in (tag_prefix, processor, py_version, container_version) if x)
+
+    return "-".join(x for x in (tag_prefix, inference_tool, py_version, container_version) if x)
 
 
 def get_training_image_uri(
