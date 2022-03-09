@@ -129,10 +129,15 @@ def retrieve(
     if training_compiler_config is None:
         if framework == HUGGING_FACE_FRAMEWORK:
             inference_tool = _get_inference_tool(inference_tool, instance_type)
+
             if inference_tool == "neuron":
-                config = _config_for_framework_and_scope(
-                    framework + "-neuron", image_scope, accelerator_type
-                )
+                _framework = framework + "-neuron"
+            else:
+                _framework = framework
+            config = _config_for_framework_and_scope(
+                _framework, image_scope, accelerator_type
+            )
+
         else:
             config = _config_for_framework_and_scope(framework, image_scope, accelerator_type)
     elif framework == HUGGING_FACE_FRAMEWORK:
