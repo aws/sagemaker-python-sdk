@@ -127,11 +127,12 @@ def retrieve(
             tolerate_deprecated_model,
         )
     if training_compiler_config is None:
-        inference_tool = _get_inference_tool(inference_tool, instance_type)
-        if framework == HUGGING_FACE_FRAMEWORK and inference_tool == "neuron":
-            config = _config_for_framework_and_scope(
-                framework + "-neuron", image_scope, accelerator_type
-            )
+        if framework == HUGGING_FACE_FRAMEWORK:
+            inference_tool = _get_inference_tool(inference_tool, instance_type)
+            if inference_tool == "neuron":
+                config = _config_for_framework_and_scope(
+                    framework + "-neuron", image_scope, accelerator_type
+                )
         else:
             config = _config_for_framework_and_scope(framework, image_scope, accelerator_type)
     elif framework == HUGGING_FACE_FRAMEWORK:
