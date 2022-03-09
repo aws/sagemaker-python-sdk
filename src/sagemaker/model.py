@@ -620,7 +620,7 @@ class Model(ModelBase):
         }
 
         if (
-            framework.lower() == "pytorch"
+            framework.lower() == "pytorch" or framework.lower() == "tensorflow"
             and re.match("(?=^ml_)(?!ml_inf)", target_instance_type) is not None
             and framework_version is not None
         ):
