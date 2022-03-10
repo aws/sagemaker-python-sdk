@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 from functools import cmp_to_key
-from typing import Any, Collection, List, Tuple, Union, Set, Dict
+from typing import Any, List, Tuple, Union, Set, Dict
 from packaging.version import Version
 from sagemaker.jumpstart import accessors
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
@@ -145,14 +145,14 @@ def list_jumpstart_scripts(
 
 
 def list_jumpstart_models(
-    script_allowlist: Union[str, Collection[str]] = None,
-    task_allowlist: Union[str, Collection[str]] = None,
-    framework_allowlist: Union[str, Collection[str]] = None,
-    model_id_allowlist: Union[str, Collection[str]] = None,
-    script_denylist: Union[str, Collection[str]] = None,
-    task_denylist: Union[str, Collection[str]] = None,
-    framework_denylist: Union[str, Collection[str]] = None,
-    model_id_denylist: Union[str, Collection[str]] = None,
+    script_allowlist: Union[str, List[str], Set[str], Tuple[str]] = None,
+    task_allowlist: Union[str, List[str], Set[str], Tuple[str]] = None,
+    framework_allowlist: Union[str, List[str], Set[str], Tuple[str]] = None,
+    model_id_allowlist: Union[str, List[str], Set[str], Tuple[str]] = None,
+    script_denylist: Union[str, List[str], Set[str], Tuple[str]] = None,
+    task_denylist: Union[str, List[str], Set[str], Tuple[str]] = None,
+    framework_denylist: Union[str, List[str], Set[str], Tuple[str]] = None,
+    model_id_denylist: Union[str, List[str], Set[str], Tuple[str]] = None,
     region: str = JUMPSTART_DEFAULT_REGION_NAME,
     accept_unsupported_models: bool = False,
     accept_old_models: bool = False,
@@ -162,42 +162,42 @@ def list_jumpstart_models(
     """List models in JumpStart, and optionally apply filters to result.
 
     Args:
-        script_allowlist (Union[str, Collection[str]]): Optional. String or
-            ``Collection`` storing scripts. All models returned by this function
+        script_allowlist (Union[str, List[str], Set[str], Tuple[str]]): Optional. String,
+            list, set, or tuple storing scripts. All models returned by this function
             must use a script which is specified in this argument. Note: Using this
             filter will result in slow execution speed, as it requires making more
             http calls and parsing many metadata files. To-Do: store script
             information for all models in a single file.
             (Default: None).
-        task_allowlist (Union[str, Collection[str]]): Optional. String or
-            ``Collection`` storing tasks. All models returned by this function
+        task_allowlist (Union[str, List[str], Set[str], Tuple[str]]): Optional. String,
+            list, set, or tuple storing tasks. All models returned by this function
             must use a task which is specified in this argument.
             (Default: None).
-        framework_allowlist (Union[str, Collection[str]]): Optional. String or
-            ``Collection`` storing frameworks. All models returned by this function
+        framework_allowlist (Union[str, List[str], Set[str], Tuple[str]]): Optional. String,
+            list, set, or tuple storing frameworks. All models returned by this function
             must use a frameworks which is specified in this argument.
             (Default: None).
-        model_id_allowlist (Union[str, Collection[str]]): Optional. String or
-            ``Collection`` storing model ids. All models returned by this function
+        model_id_allowlist (Union[str, List[str], Set[str], Tuple[str]]): Optional. String,
+            list, set, or tuple storing model ids. All models returned by this function
             must use a model id which is specified in this argument.
             (Default: None).
-        script_denylist (Union[str, Collection[str]]): Optional. String or
-            ``Collection`` storing scripts. All models returned by this function
+        script_denylist (Union[str, List[str], Set[str], Tuple[str]]): Optional. String,
+            list, set, or tuple storing scripts. All models returned by this function
             must not use a script which is specified in this argument. Note: Using
             this filter will result in slow execution speed, as it requires making
             more http calls and parsing many metadata files. To-Do: store script
             information for all models in a single file.
             (Default: None).
-        task_denylist (Union[str, Collection[str]]): Optional. String or
-            ``Collection`` storing tasks. All models returned by this function
+        task_denylist (Union[str, List[str], Set[str], Tuple[str]]): Optional. String,
+            list, set, or tuple storing tasks. All models returned by this function
             must not use a task which is specified in this argument.
             (Default: None).
-        framework_denylist (Union[str, Collection[str]]): Optional. String or
-            ``Collection`` storing frameworks. All models returned by this function
+        framework_denylist (Union[str, List[str], Set[str], Tuple[str]]): Optional. String,
+            list, set, or tuple storing frameworks. All models returned by this function
             must not use a frameworks which is specified in this argument.
             (Default: None).
-        model_id_denylist (Union[str, Collection[str]]): Optional. String or
-            ``Collection`` storing scripts. All models returned by this function
+        model_id_denylist (Union[str, List[str], Set[str], Tuple[str]]): Optional. String,
+            list, set, or tuple storing model ids. All models returned by this function
             must not use a model id which is specified in this argument.
             (Default: None).
         region (str): Optional. Region to use when fetching JumpStart metadata.
