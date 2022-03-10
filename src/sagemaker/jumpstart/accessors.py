@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 """This module contains accessors related to SageMaker JumpStart."""
 from __future__ import absolute_import
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartModelSpecs
 from sagemaker.jumpstart import cache
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
@@ -150,3 +150,20 @@ class JumpStartModelsAccessor(object):
         """
         cache_kwargs_dict = {} if cache_kwargs is None else cache_kwargs
         JumpStartModelsAccessor.set_cache_kwargs(cache_kwargs_dict, region)
+
+    @staticmethod
+    def get_manifest(
+        cache_kwargs: Dict[str, Any] = None, region: Optional[str] = None
+    ) -> List[JumpStartModelHeader]:
+        """Return entire JumpStart models manifest.
+
+        Raises:
+            ValueError: If region in `cache_kwargs` is inconsistent with `region` argument.
+
+        Args:
+            cache_kwargs (str): cache kwargs to use.
+            region (str): The region to use for the cache.
+        """
+        cache_kwargs_dict = {} if cache_kwargs is None else cache_kwargs
+        JumpStartModelsAccessor.set_cache_kwargs(cache_kwargs_dict, region)
+        return JumpStartModelsAccessor._cache.get_manifest()  # type: ignore

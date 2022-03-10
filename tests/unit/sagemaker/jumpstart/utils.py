@@ -12,9 +12,10 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import copy
+from typing import List
 
 from sagemaker.jumpstart.cache import JumpStartModelsCache
-from sagemaker.jumpstart.constants import JUMPSTART_REGION_NAME_SET
+from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME, JUMPSTART_REGION_NAME_SET
 from sagemaker.jumpstart.types import (
     JumpStartCachedS3ContentKey,
     JumpStartCachedS3ContentValue,
@@ -42,7 +43,16 @@ def get_header_from_base_header(
     if version and semantic_version_str:
         raise ValueError("Cannot specify both `version` and `semantic_version_str` fields.")
 
-    if "pytorch" not in model_id and "tensorflow" not in model_id:
+    if (
+        "pytorch" not in model_id
+        and "tensorflow" not in model_id
+        and "huggingface" not in model_id
+        and "mxnet" not in model_id
+        and "xgboost" not in model_id
+        and "catboost" not in model_id
+        and "lightgbm" not in model_id
+        and "sklearn" not in model_id
+    ):
         raise KeyError("Bad model id")
 
     if region is not None and region not in JUMPSTART_REGION_NAME_SET:
@@ -57,6 +67,16 @@ def get_header_from_base_header(
     spec["model_id"] = model_id
 
     return JumpStartModelHeader(spec)
+
+
+def get_prototype_manifest(
+    region: str = JUMPSTART_DEFAULT_REGION_NAME,
+) -> List[JumpStartModelHeader]:
+    return [
+        get_header_from_base_header(region=region, model_id=model_id, version=version)
+        for model_id in PROTOTYPICAL_MODEL_SPECS_DICT.keys()
+        for version in ["1.0.0"]
+    ]
 
 
 def get_prototype_model_spec(
@@ -81,7 +101,16 @@ def get_spec_from_base_spec(
     if version and semantic_version_str:
         raise ValueError("Cannot specify both `version` and `semantic_version_str` fields.")
 
-    if "pytorch" not in model_id and "tensorflow" not in model_id:
+    if (
+        "pytorch" not in model_id
+        and "tensorflow" not in model_id
+        and "huggingface" not in model_id
+        and "mxnet" not in model_id
+        and "xgboost" not in model_id
+        and "catboost" not in model_id
+        and "lightgbm" not in model_id
+        and "sklearn" not in model_id
+    ):
         raise KeyError("Bad model id")
 
     if region is not None and region not in JUMPSTART_REGION_NAME_SET:
