@@ -18,7 +18,7 @@ import logging
 from packaging.version import Version
 
 from sagemaker.deprecations import renamed_kwargs
-from sagemaker.estimator import Framework
+from sagemaker.estimator import Framework, EstimatorBase
 from sagemaker.fw_utils import (
     framework_name_from_image,
     framework_version_from_tag,
@@ -192,7 +192,9 @@ class PyTorch(Framework):
         additional_hyperparameters = self._distribution_configuration(
             distribution=self.distribution
         )
-        hyperparameters.update(Framework._json_encode_hyperparameters(additional_hyperparameters))
+        hyperparameters.update(
+            EstimatorBase._json_encode_hyperparameters(additional_hyperparameters)
+        )
         return hyperparameters
 
     def create_model(

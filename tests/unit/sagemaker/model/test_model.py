@@ -11,12 +11,23 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+from unittest.mock import MagicMock
 
 import pytest
 from mock import Mock, patch
 
 import sagemaker
-from sagemaker.model import Model
+from sagemaker.model import FrameworkModel, Model
+from sagemaker.huggingface.model import HuggingFaceModel
+from sagemaker.jumpstart.constants import JUMPSTART_BUCKET_NAME_SET
+from sagemaker.jumpstart.enums import JumpStartTag
+from sagemaker.mxnet.model import MXNetModel
+from sagemaker.pytorch.model import PyTorchModel
+from sagemaker.sklearn.model import SKLearnModel
+from sagemaker.tensorflow.model import TensorFlowModel
+from sagemaker.xgboost.model import XGBoostModel
+from sagemaker.workflow.properties import Properties
+
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -27,10 +38,55 @@ INSTANCE_COUNT = 2
 INSTANCE_TYPE = "ml.c4.4xlarge"
 ROLE = "some-role"
 
+REGION = "us-west-2"
+BUCKET_NAME = "some-bucket-name"
+GIT_REPO = "https://github.com/aws/sagemaker-python-sdk.git"
+BRANCH = "test-branch-git-config"
+COMMIT = "ae15c9d7d5b97ea95ea451e4662ee43da3401d73"
+ENTRY_POINT_INFERENCE = "inference.py"
+SCRIPT_URI = "s3://codebucket/someprefix/sourcedir.tar.gz"
+IMAGE_URI = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.9.0-gpu-py38"
 
-@pytest.fixture
+
+class DummyFrameworkModel(FrameworkModel):
+    def __init__(self, **kwargs):
+        super(DummyFrameworkModel, self).__init__(
+            **kwargs,
+        )
+
+
+@pytest.fixture()
 def sagemaker_session():
-    return Mock()
+    boto_mock = Mock(name="boto_session", region_name=REGION)
+    sms = MagicMock(
+        name="sagemaker_session",
+        boto_session=boto_mock,
+        boto_region_name=REGION,
+        config=None,
+        local_mode=False,
+        s3_client=None,
+        s3_resource=None,
+    )
+    sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
+
+    return sms
+
+
+@patch("shutil.rmtree", MagicMock())
+@patch("tarfile.open", MagicMock())
+@patch("os.listdir", MagicMock(return_value=[ENTRY_POINT_INFERENCE]))
+def test_prepare_container_def_with_model_src_s3_returns_correct_url(sagemaker_session):
+    model = Model(
+        entry_point=ENTRY_POINT_INFERENCE,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        source_dir=SCRIPT_URI,
+        image_uri=MODEL_IMAGE,
+        model_data=Properties("Steps.MyStep"),
+    )
+    container_def = model.prepare_container_def(INSTANCE_TYPE, "ml.eia.medium")
+
+    assert container_def["Environment"]["SAGEMAKER_SUBMIT_DIRECTORY"] == SCRIPT_URI
 
 
 def test_prepare_container_def_with_model_data():
@@ -345,3 +401,171 @@ def test_delete_model_no_name(sagemaker_session):
     ):
         model.delete_model()
     sagemaker_session.delete_model.assert_not_called()
+
+
+@patch("time.strftime", MagicMock(return_value=TIMESTAMP))
+@patch("sagemaker.utils.repack_model")
+def test_script_mode_model_same_calls_as_framework(repack_model, sagemaker_session):
+    t = Model(
+        entry_point=ENTRY_POINT_INFERENCE,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        source_dir=SCRIPT_URI,
+        image_uri=IMAGE_URI,
+        model_data=MODEL_DATA,
+    )
+    t.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT)
+
+    assert len(sagemaker_session.create_model.call_args_list) == 1
+    assert len(sagemaker_session.endpoint_from_production_variants.call_args_list) == 1
+    assert len(repack_model.call_args_list) == 1
+
+    generic_model_create_model_args = sagemaker_session.create_model.call_args_list
+    generic_model_endpoint_from_production_variants_args = (
+        sagemaker_session.endpoint_from_production_variants.call_args_list
+    )
+    generic_model_repack_model_args = repack_model.call_args_list
+
+    sagemaker_session.create_model.reset_mock()
+    sagemaker_session.endpoint_from_production_variants.reset_mock()
+    repack_model.reset_mock()
+
+    t = DummyFrameworkModel(
+        entry_point=ENTRY_POINT_INFERENCE,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        source_dir=SCRIPT_URI,
+        image_uri=IMAGE_URI,
+        model_data=MODEL_DATA,
+    )
+    t.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT)
+
+    assert generic_model_create_model_args == sagemaker_session.create_model.call_args_list
+    assert (
+        generic_model_endpoint_from_production_variants_args
+        == sagemaker_session.endpoint_from_production_variants.call_args_list
+    )
+    assert generic_model_repack_model_args == repack_model.call_args_list
+
+
+@patch("sagemaker.git_utils.git_clone_repo")
+@patch("sagemaker.model.fw_utils.tar_and_upload_dir")
+def test_git_support_succeed_model_class(tar_and_upload_dir, git_clone_repo, sagemaker_session):
+    git_clone_repo.side_effect = lambda gitconfig, entrypoint, sourcedir, dependency: {
+        "entry_point": "entry_point",
+        "source_dir": "/tmp/repo_dir/source_dir",
+        "dependencies": ["/tmp/repo_dir/foo", "/tmp/repo_dir/bar"],
+    }
+    entry_point = "entry_point"
+    source_dir = "source_dir"
+    dependencies = ["foo", "bar"]
+    git_config = {"repo": GIT_REPO, "branch": BRANCH, "commit": COMMIT}
+    model = Model(
+        sagemaker_session=sagemaker_session,
+        entry_point=entry_point,
+        source_dir=source_dir,
+        dependencies=dependencies,
+        git_config=git_config,
+        image_uri=IMAGE_URI,
+    )
+    model.prepare_container_def(instance_type=INSTANCE_TYPE)
+    git_clone_repo.assert_called_with(git_config, entry_point, source_dir, dependencies)
+    assert model.entry_point == "entry_point"
+    assert model.source_dir == "/tmp/repo_dir/source_dir"
+    assert model.dependencies == ["/tmp/repo_dir/foo", "/tmp/repo_dir/bar"]
+
+
+@patch("sagemaker.utils.repack_model")
+def test_script_mode_model_tags_jumpstart_models(repack_model, sagemaker_session):
+
+    jumpstart_source_dir = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[0]}/source_dirs/source.tar.gz"
+    t = Model(
+        entry_point=ENTRY_POINT_INFERENCE,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        source_dir=jumpstart_source_dir,
+        image_uri=IMAGE_URI,
+        model_data=MODEL_DATA,
+    )
+    t.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT)
+
+    assert sagemaker_session.create_model.call_args_list[0][1]["tags"] == [
+        {
+            "Key": JumpStartTag.INFERENCE_SCRIPT_URI.value,
+            "Value": jumpstart_source_dir,
+        },
+    ]
+    assert sagemaker_session.endpoint_from_production_variants.call_args_list[0][1]["tags"] == [
+        {
+            "Key": JumpStartTag.INFERENCE_SCRIPT_URI.value,
+            "Value": jumpstart_source_dir,
+        },
+    ]
+
+    non_jumpstart_source_dir = "s3://blah/blah/blah"
+    t = Model(
+        entry_point=ENTRY_POINT_INFERENCE,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        source_dir=non_jumpstart_source_dir,
+        image_uri=IMAGE_URI,
+        model_data=MODEL_DATA,
+    )
+    t.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT)
+
+    assert {
+        "Key": JumpStartTag.INFERENCE_SCRIPT_URI.value,
+        "Value": non_jumpstart_source_dir,
+    } not in sagemaker_session.create_model.call_args_list[0][1]["tags"]
+
+    assert {
+        "Key": JumpStartTag.INFERENCE_SCRIPT_URI.value,
+        "Value": non_jumpstart_source_dir,
+    } not in sagemaker_session.create_model.call_args_list[0][1]["tags"]
+
+
+@patch("sagemaker.utils.repack_model")
+@patch("sagemaker.fw_utils.tar_and_upload_dir")
+def test_all_framework_models_add_jumpstart_tags(
+    repack_model, tar_and_uload_dir, sagemaker_session
+):
+    framework_model_classes_to_kwargs = {
+        PyTorchModel: {"framework_version": "1.5.0", "py_version": "py3"},
+        TensorFlowModel: {
+            "framework_version": "2.3",
+        },
+        HuggingFaceModel: {
+            "pytorch_version": "1.7.1",
+            "py_version": "py36",
+            "transformers_version": "4.6.1",
+        },
+        MXNetModel: {"framework_version": "1.7.0", "py_version": "py3"},
+        SKLearnModel: {
+            "framework_version": "0.23-1",
+        },
+        XGBoostModel: {
+            "framework_version": "1.3-1",
+        },
+    }
+    jumpstart_model_dir = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[0]}/model_dirs/model.tar.gz"
+    for framework_model_class, kwargs in framework_model_classes_to_kwargs.items():
+        framework_model_class(
+            entry_point=ENTRY_POINT_INFERENCE,
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            model_data=jumpstart_model_dir,
+            **kwargs,
+        ).deploy(instance_type="ml.m2.xlarge", initial_instance_count=INSTANCE_COUNT)
+
+        assert {
+            "Key": JumpStartTag.INFERENCE_MODEL_URI.value,
+            "Value": jumpstart_model_dir,
+        } in sagemaker_session.create_model.call_args_list[0][1]["tags"]
+
+        assert {
+            "Key": JumpStartTag.INFERENCE_MODEL_URI.value,
+            "Value": jumpstart_model_dir,
+        } in sagemaker_session.endpoint_from_production_variants.call_args_list[0][1]["tags"]
+
+        sagemaker_session.create_model.reset_mock()
+        sagemaker_session.endpoint_from_production_variants.reset_mock()

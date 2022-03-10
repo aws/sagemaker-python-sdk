@@ -1,5 +1,87 @@
 # Changelog
 
+## v2.78.0 (2022-03-07)
+
+### Features
+
+ * TensorFlow 2.4 for Neo
+ * Data Serializer
+
+### Bug Fixes and Other Changes
+
+ * Style update in DataSerializer
+ * Remove sagemaker_job_name from hyperparameters in TrainingStep
+ * reorganize test files for workflow
+ * update code to get commit_id in codepipeline
+
+## v2.77.1 (2022-02-25)
+
+### Bug Fixes and Other Changes
+
+ * jumpstart model table
+
+## v2.77.0 (2022-02-22)
+
+### Features
+
+ * override jumpstart content bucket
+ * jumpstart model id suggestions
+ * adding customer metadata support to registermodel step
+
+### Bug Fixes and Other Changes
+
+ * Improve Pipeline workflow unit test branch coverage
+ * update lineage_trial_compoment get pipeline execution arn
+ * Add lineage doc
+ * Support primitive types for left value of ConditionSteps
+
+## v2.76.0 (2022-02-17)
+
+### Features
+
+ * Add FailStep Support for Sagemaker Pipeline
+
+### Bug Fixes and Other Changes
+
+ * use recommended inference image uri from Neo API
+ * pin test dependencies
+ * Add exception in test_action
+ * Update Static Endpoint
+ * Add CMH to the non-P3 list
+
+### Documentation Changes
+
+ * Support for generation of Jumpstart model table on build
+
+## v2.75.1 (2022-02-08)
+
+### Bug Fixes and Other Changes
+
+ * Add CMH to the non-P3 list
+
+## v2.75.0 (2022-02-05)
+
+### Features
+
+ * JumpStart Integration
+ * Adds support for async inference
+ * Update instance types for integ test
+
+### Bug Fixes and Other Changes
+
+ * Revert "feature: CompilationStep support for Sagemaker Pipelines
+ * gpu use p3/p2 per avail for region
+ * jumpstart typo
+ * pin pytest-xdist to avoid release failures
+ * set sagemaker_connection and image_uri in register method
+ * update to incorporate black v22, pin tox versions
+ * Add deprecation warning in Clarify DataConfig
+
+### Documentation Changes
+
+ * Jumpstart doc strings and added new sections
+ * Add Jumpstart support documentation
+
 ## v2.74.0 (2022-01-26)
 
 ### Features

@@ -75,8 +75,8 @@ class JsonGet(Expression):
     @property
     def expr(self):
         """The expression dict for a `JsonGet` function."""
-        if not isinstance(self.step_name, str):
-            raise ValueError("Please give step name as a string")
+        if not isinstance(self.step_name, str) or not self.step_name:
+            raise ValueError("Please give a valid step name as a string")
 
         if isinstance(self.property_file, PropertyFile):
             name = self.property_file.name
