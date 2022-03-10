@@ -36,7 +36,6 @@
                         "us-west-2": "763104351884"
                     },
                     "container_version": {"inf": "ubuntu18.04"},
-                    "image_versions": ["v1.0"],
                     "sdk_versions": ["sdk1.17.1"]
                 }
             }

@@ -47,7 +47,6 @@ def retrieve(
     tolerate_vulnerable_model=False,
     tolerate_deprecated_model=False,
     sdk_version=None,
-    image_version=None,
     inference_tool=None,
 ) -> str:
     """Retrieves the ECR URI for the Docker image matching the given arguments.
@@ -91,8 +90,6 @@ def retrieve(
             should be tolerated without an exception raised. If False, raises an exception
             if the version of the model is deprecated. (Default: False).
         sdk_version (str): the version of python-sdk that will be used in the image retrieval.
-            (default: None).
-        image_versions (str): the version of corresponding image that will be used in the retrieval.
             (default: None).
         inference_tool (str): the tool that will be used to aid in the inference.
             Valid values: "neuron, None"
@@ -183,9 +180,7 @@ def retrieve(
         if repo in ["huggingface-pytorch-inference-neuron"]:
             if not sdk_version:
                 sdk_version = _get_latest_versions(version_config["sdk_versions"])
-            if not image_version:
-                image_version = _get_latest_versions(version_config["image_versions"])
-            container_version = sdk_version + "-" + container_version + "-" + image_version
+            container_version = sdk_version + "-" + container_version + "-"
             if config.get("version_aliases").get(original_version):
                 _version = config.get("version_aliases")[original_version]
             if (
