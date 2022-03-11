@@ -41,7 +41,7 @@ from sagemaker.predictor_async import AsyncPredictor
 LOGGER = logging.getLogger("sagemaker")
 
 NEO_ALLOWED_FRAMEWORKS = set(
-    ["mxnet", "tensorflow", "keras", "pytorch", "onnx", "xgboost", "tflite"]
+    ["mxnet", "tensorflow", "keras", "pytorch", "onnx", "xgboost", "tflite", "huggingface"]
 )
 
 

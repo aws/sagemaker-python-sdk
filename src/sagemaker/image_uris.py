@@ -180,7 +180,7 @@ def retrieve(
         if repo in ["huggingface-pytorch-inference-neuron"]:
             if not sdk_version:
                 sdk_version = _get_latest_versions(version_config["sdk_versions"])
-            container_version = sdk_version + "-" + container_version + "-"
+            container_version = sdk_version + "-" + container_version
             if config.get("version_aliases").get(original_version):
                 _version = config.get("version_aliases")[original_version]
             if (

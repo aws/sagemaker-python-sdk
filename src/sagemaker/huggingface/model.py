@@ -153,6 +153,7 @@ class HuggingFaceModel(FrameworkModel):
             :class:`~sagemaker.model.FrameworkModel` and
             :class:`~sagemaker.model.Model`.
         """
+
         validate_version_or_image_args(transformers_version, py_version, image_uri)
         _validate_pt_tf_versions(
             pytorch_version=pytorch_version,
@@ -169,9 +170,44 @@ class HuggingFaceModel(FrameworkModel):
         super(HuggingFaceModel, self).__init__(
             model_data, image_uri, role, entry_point, predictor_cls=predictor_cls, **kwargs
         )
-
         self.model_server_workers = model_server_workers
 
+    def deploy(
+        self,
+        initial_instance_count=None,
+        instance_type=None,
+        serializer=None,
+        deserializer=None,
+        accelerator_type=None,
+        endpoint_name=None,
+        tags=None,
+        kms_key=None,
+        wait=True,
+        data_capture_config=None,
+        update_endpoint=None,
+        async_inference_config=None,
+        serverless_inference_config=None,
+    ):
+        """Deploy a Tensorflow ``Model`` to a SageMaker ``Endpoint``."""
+
+        if instance_type and not self.image_uri:
+            self.image_uri = self.prepare_container_def(instance_type)['Image']
+
+        return super(HuggingFaceModel, self).deploy(
+            initial_instance_count=initial_instance_count,
+            instance_type=instance_type,
+            serializer=serializer,
+            deserializer=deserializer,
+            accelerator_type=accelerator_type,
+            endpoint_name=endpoint_name,
+            tags=tags,
+            kms_key=kms_key,
+            wait=wait,
+            data_capture_config=data_capture_config,
+            async_inference_config=async_inference_config,
+            serverless_inference_config=serverless_inference_config,
+            update_endpoint=update_endpoint,
+        )
     def register(
         self,
         content_types,
@@ -223,11 +259,6 @@ class HuggingFaceModel(FrameworkModel):
 
         if image_uri:
             self.image_uri = image_uri
-        if not self.image_uri:
-            self.image_uri = self.serving_image_uri(
-                region_name=self.sagemaker_session.boto_session.region_name,
-                instance_type=instance_type,
-            )
         return super(HuggingFaceModel, self).register(
             content_types,
             response_types,
