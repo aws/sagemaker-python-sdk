@@ -184,10 +184,10 @@ def retrieve(
             if config.get("version_aliases").get(original_version):
                 _version = config.get("version_aliases")[original_version]
             if (
-                config.get("versions")
-                .get(_version)
-                .get("version_aliases")
-                .get(base_framework_version)
+                config.get("versions", {})
+                .get(_version, {})
+                .get("version_aliases", {})
+                .get(base_framework_version, {})
             ):
                 _base_framework_version = config.get("versions")[_version]["version_aliases"][
                     base_framework_version
