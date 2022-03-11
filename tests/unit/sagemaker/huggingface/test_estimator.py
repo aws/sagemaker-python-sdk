@@ -252,21 +252,21 @@ def test_huggingface(
     assert actual_train_args == expected_train_args
 
 
-def test_huggingface_neo(
+def test_huggingface_neuron(
     sagemaker_session,
-    huggingface_neo_latest_inference_pytorch_version,
-    huggingface_neo_latest_inference_transformer_version,
-    huggingface_neo_latest_inference_py_version,
+    huggingface_neuron_latest_inference_pytorch_version,
+    huggingface_neuron_latest_inference_transformer_version,
+    huggingface_neuron_latest_inference_py_version,
 ):
 
     inputs = "s3://mybucket/train"
     huggingface_model = HuggingFaceModel(
         model_data=inputs,
-        transformers_version=huggingface_neo_latest_inference_transformer_version,
+        transformers_version=huggingface_neuron_latest_inference_transformer_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        pytorch_version=huggingface_neo_latest_inference_pytorch_version,
-        py_version=huggingface_neo_latest_inference_py_version,
+        pytorch_version=huggingface_neuron_latest_inference_pytorch_version,
+        py_version=huggingface_neuron_latest_inference_py_version,
     )
     container = huggingface_model.prepare_container_def("ml.inf.xlarge")
     assert container["Image"]
