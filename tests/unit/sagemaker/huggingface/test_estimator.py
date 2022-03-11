@@ -19,7 +19,7 @@ import os
 import pytest
 from mock import MagicMock, Mock, patch
 
-from sagemaker.huggingface import HuggingFace
+from sagemaker.huggingface import HuggingFace, HuggingFaceModel
 
 from .huggingface_utils import get_full_gpu_image_uri, GPU_INSTANCE_TYPE, REGION
 
@@ -250,6 +250,24 @@ def test_huggingface(
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert actual_train_args == expected_train_args
+
+
+def test_huggingface_neo(
+    sagemaker_session,
+    huggingface_inference_latest_version,
+    huggingface_pytorch_latest_inference_py_version,
+):
+
+    inputs = "s3://mybucket/train"
+    huggingface_model = HuggingFaceModel(
+        model_data=inputs,
+        transformers_version=huggingface_inference_latest_version,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        pytorch_version=huggingface_pytorch_latest_inference_py_version,
+    )
+    container = huggingface_model.prepare_container_def("ml.inf.xlarge")
+    assert container["Image"]
 
 
 def test_attach(
