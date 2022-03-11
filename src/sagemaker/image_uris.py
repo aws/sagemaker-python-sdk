@@ -128,7 +128,7 @@ def retrieve(
         if framework == HUGGING_FACE_FRAMEWORK:
             inference_tool = _get_inference_tool(inference_tool, instance_type)
             if inference_tool == "neuron":
-                _framework = framework + "-neuron"
+                _framework = framework + "-" + inference_tool
         config = _config_for_framework_and_scope(_framework, image_scope, accelerator_type)
     elif framework == HUGGING_FACE_FRAMEWORK:
         config = _config_for_framework_and_scope(
@@ -273,7 +273,7 @@ def _get_inference_tool(inference_tool, instance_type):
     """Extract the inference tool name from instance type."""
     if not inference_tool and instance_type:
         match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
-        if match[1].startswith("inf"):
+        if match and match[1].startswith("inf"):
             return "neuron"
     return inference_tool
 
@@ -426,10 +426,11 @@ def _validate_arg(arg, available_options, arg_name):
 
 def _format_tag(tag_prefix, processor, py_version, container_version, inference_tool=None):
     """Creates a tag for the image URI."""
-    if not inference_tool:
-        return "-".join(x for x in (tag_prefix, processor, py_version, container_version) if x)
+    if inference_tool:
+        return "-".join(x for x in (tag_prefix, inference_tool, py_version, container_version) if x)
 
-    return "-".join(x for x in (tag_prefix, inference_tool, py_version, container_version) if x)
+    return "-".join(x for x in (tag_prefix, processor, py_version, container_version) if x)
+
 
 
 def get_training_image_uri(
