@@ -223,7 +223,11 @@ class HuggingFaceModel(FrameworkModel):
 
         if image_uri:
             self.image_uri = image_uri
-        
+        if not self.image_uri:
+            self.image_uri = self.serving_image_uri(
+                region_name=self.sagemaker_session.boto_session.region_name,
+                instance_type=instance_type,
+            )
         return super(HuggingFaceModel, self).register(
             content_types,
             response_types,
