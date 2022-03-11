@@ -61,7 +61,7 @@ class ConditionStep(Step):
             conditions (List[Condition]): A list of `sagemaker.workflow.conditions.Condition`
                 instances.
             depends_on (List[str] or List[Step]): A list of step names or step instances
-                this `sagemaker.workflow.steps.ClarifyCheckStep` depends on (default: None).
+                this `sagemaker.workflow.steps.ConditionStep` depends on (default: None).
             if_steps (List[Union[Step, StepCollection]]): A list of `sagemaker.workflow.steps.Step`
                 or `sagemaker.workflow.step_collections.StepCollection` instances that are
                 marked as ready for execution if the list of conditions evaluates to True.

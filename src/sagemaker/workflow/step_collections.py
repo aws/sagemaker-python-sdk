@@ -306,8 +306,8 @@ class EstimatorTransformer(StepCollection):
             instance_count (int): The number of EC2 instances to use.
             instance_type (str): The type of EC2 instance to use.
             transform_inputs (TransformInput): The transform inputs for the transform step.
-            description (str): The description of the QualityCheckStep step (default: None).
-            display_name (str): The display name of the QualityCheckStep step (default: None).
+            description (str): The description of the steps in the collection. (default: None).
+            display_name (str): The display name of the steps in the collection. (default: None).
             image_uri (str): A Docker image URI for model.
             predictor_cls (Callable[[str, Session], Predictor]): A
                 function to call to create a predictor (default: None). If not
