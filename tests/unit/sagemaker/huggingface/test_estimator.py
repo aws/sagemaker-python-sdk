@@ -254,17 +254,19 @@ def test_huggingface(
 
 def test_huggingface_neo(
     sagemaker_session,
-    huggingface_inference_latest_version,
-    huggingface_pytorch_latest_inference_py_version,
+    huggingface_neo_latest_inference_pytorch_version,
+    huggingface_neo_latest_inference_transformer_version,
+    huggingface_neo_latest_inference_py_version,
 ):
 
     inputs = "s3://mybucket/train"
     huggingface_model = HuggingFaceModel(
         model_data=inputs,
-        transformers_version=huggingface_inference_latest_version,
+        transformers_version=huggingface_neo_latest_inference_transformer_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        pytorch_version=huggingface_pytorch_latest_inference_py_version,
+        pytorch_version=huggingface_neo_latest_inference_pytorch_version,
+        py_version=huggingface_neo_latest_inference_py_version,
     )
     container = huggingface_model.prepare_container_def("ml.inf.xlarge")
     assert container["Image"]
