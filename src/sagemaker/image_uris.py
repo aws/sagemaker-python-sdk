@@ -428,7 +428,6 @@ def _format_tag(tag_prefix, processor, py_version, container_version, inference_
     """Creates a tag for the image URI."""
     if inference_tool:
         return "-".join(x for x in (tag_prefix, inference_tool, py_version, container_version) if x)
-
     return "-".join(x for x in (tag_prefix, processor, py_version, container_version) if x)
 
 
