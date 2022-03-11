@@ -432,7 +432,6 @@ def _format_tag(tag_prefix, processor, py_version, container_version, inference_
     return "-".join(x for x in (tag_prefix, processor, py_version, container_version) if x)
 
 
-
 def get_training_image_uri(
     region,
     framework,
