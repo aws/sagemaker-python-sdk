@@ -22,8 +22,20 @@ Sagemaker Distributed Model Parallel 1.7.0 Release Notes
 Additional tensor parallelism features for PyTorch:
 
 * Support for query key layer scaling to avoid overflow for large model
+
+  * This feature is integrated to the following modules:
+
+    * :class:`smp.nn.DistributedTransformerLMHead`
+    * :class:`smp.nn.DistributedTransformer`
+    * :class:`smp.nn.DistributedTransformerLayer`
+    * :class:`smp.nn.DistributedAttentionLayer`
+
 * Support for FP32 residual addition to avoid overflow (NaN loss values)
   for large models when using FP16
+
+  * This feature is integrated to the following module:
+
+    * :class:`smp.nn.DistributedTransformerOutputLayer`
 
 **Improvements**
 
@@ -62,10 +74,10 @@ Sagemaker Distributed Model Parallel 1.6.0 Release Notes
 
   - Added extended memory-saving features for PyTorch 1.8.1:
 
-    - Tensor parallelism
-    - Optimizer state sharding
-    - Activation checkpointing
-    - Activation offloading
+    - `Tensor parallelism <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-tensor-parallelism.html>`_
+    - `Optimizer state sharding <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-optimizer-state-sharding.html>`_
+    - `Activation checkpointing <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-activation-checkpointing.html>`_
+    - `Activation offloading <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-activation-offloading.html>`_
 
     For more information, see the following documentation:
 

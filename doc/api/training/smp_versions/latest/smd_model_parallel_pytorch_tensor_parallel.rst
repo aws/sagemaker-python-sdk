@@ -191,7 +191,7 @@ Tensor Parallelism Module APIs
       -  ``out_features``: The total number of output channels for the
          linear layer across all tensor-parallel ranks.
 
-.. class:: smp.nn.DistributedTransformerLMHead(num_layers=12, num_attention_heads=32, attention_head_size=32, hidden_size=1024, intermediate_size=4096, vocab_size=30522, num_positions=1024, attention_dropout_prob=0.1, hidden_dropout_prob=0.1, activation="gelu", layernorm_epsilon=1e-5, num_token_types=0, causal_mask_size=None, add_cross_attention=False, add_lm_head=True,  initializer_range=0.02, use_normal_initialization=False, pre_layernorm=False, post_layernorm=True)
+.. class:: smp.nn.DistributedTransformerLMHead(num_layers=12, num_attention_heads=32, attention_head_size=32, hidden_size=1024, intermediate_size=4096, vocab_size=30522, num_positions=1024, attention_dropout_prob=0.1, hidden_dropout_prob=0.1, activation="gelu", layernorm_epsilon=1e-5, num_token_types=0, causal_mask_size=None, add_cross_attention=False, add_lm_head=True,  initializer_range=0.02, use_normal_initialization=False, pre_layernorm=False, post_layernorm=True, query_key_layer_scaling=False)
 
    -  Constructs a distributed transformer model, including embeddings
       and a single LM head. A word embedding of size
@@ -223,7 +223,7 @@ Tensor Parallelism Module APIs
          -  ``attention_mask`` is assumed to be a 0-1 tensor of shape
             ``[N, S]``, where 1 represents a masked position.
 
-.. class:: smp.nn.DistributedTransformer(num_layers=12, num_attention_heads=32, attention_head_size=32, hidden_size=1024, intermediate_size=4096, attention_dropout_prob=0.1, hidden_dropout_prob=0.1, activation="gelu", layernorm_epsilon=1e-5, initializer_range=0.02, use_normal_initialization=False, causal_mask_size=None, add_cross_attention=False, pre_layernorm=False, post_layernorm=True)
+.. class:: smp.nn.DistributedTransformer(num_layers=12, num_attention_heads=32, attention_head_size=32, hidden_size=1024, intermediate_size=4096, attention_dropout_prob=0.1, hidden_dropout_prob=0.1, activation="gelu", layernorm_epsilon=1e-5, initializer_range=0.02, use_normal_initialization=False, causal_mask_size=None, add_cross_attention=False, pre_layernorm=False, post_layernorm=True, query_key_layer_scaling=False)
 
    -  A sequence of ``smp.nn.DistributedTransformerLayer``\ s, whose
       number is given by ``num_layers`` argument. For the other
@@ -234,7 +234,7 @@ Tensor Parallelism Module APIs
       the ``DistributedTransformer``, in addition to the intermediate
       attention and transformer-output layers.
 
-.. class:: smp.nn.DistributedTransformerLayer(num_attention_heads=32, attention_head_size=32, hidden_size=1024, intermediate_size=4096, attention_dropout_prob=0.1, hidden_dropout_prob=0.1, activation="gelu", layernorm_epsilon=1e-5, initializer_range=0.02, use_normal_initialization=False, causal_mask_size=None, add_cross_attention=False, pre_layernorm=False, post_layernorm=True)
+.. class:: smp.nn.DistributedTransformerLayer(num_attention_heads=32, attention_head_size=32, hidden_size=1024, intermediate_size=4096, attention_dropout_prob=0.1, hidden_dropout_prob=0.1, activation="gelu", layernorm_epsilon=1e-5, initializer_range=0.02, use_normal_initialization=False, causal_mask_size=None, add_cross_attention=False, pre_layernorm=False, post_layernorm=True, query_key_layer_scaling=False)
 
    -  Tensor-parallel implementation of a single transformer layer.
       Number of attention heads, hidden size, and intermediate size
@@ -336,7 +336,7 @@ Tensor Parallelism Module APIs
                and the next three tensors are the same as the input
                arguments.
 
-.. class:: smp.nn.DistributedAttentionLayer(num_attention_heads=32, attention_head_size=32, hidden_size=1024, attention_dropout_prob=0.1, hidden_dropout_prob=0.1, layernorm_epsilon=1e-5, initializer_range=0.02, use_normal_initialization=False, cross_attention=False, causal_mask_size=None, pre_layernorm=False, post_layernorm=True)
+.. class:: smp.nn.DistributedAttentionLayer(num_attention_heads=32, attention_head_size=32, hidden_size=1024, attention_dropout_prob=0.1, hidden_dropout_prob=0.1, layernorm_epsilon=1e-5, initializer_range=0.02, use_normal_initialization=False, cross_attention=False, causal_mask_size=None, pre_layernorm=False, post_layernorm=True, query_key_layer_scaling=False)
 
    -  A distributed implementation for the attention block. Includes the
       computation of the self- or cross-attention (context layer),
@@ -346,9 +346,9 @@ Tensor Parallelism Module APIs
 
       -  See ``DistributedTransformerLayer`` for a description of the
          arguments.
-      -  If ``cross_attention`` is ``True``, computes the attentions
+      -  ``cross_attention``: If ``True``, it computes the attentions
          with respect to the ``cross_states`` tensor of the ``forward``
-         method input tuple.
+         method input tuple. (Default: ``False``)
 
    -  **Methods:**
 
@@ -363,7 +363,7 @@ Tensor Parallelism Module APIs
                ``[N, S, H]``, where ``N`` is batch size, ``S`` is
                sequence length, and ``H`` is ``hidden_size``.
                ``attention_mask`` is assumed to be a tensor of
-               dimensions ``[N, 1, 1, S]``, \***\* where ``N`` is the
+               dimensions ``[N, 1, 1, S]``, where ``N`` is the
                batch size, and ``S`` is the sequence length.
             -  If ``cross_attention=True``, ``inputs`` must be a tuple
                ``(hidden_states, cross_states, attention_mask)``, where
@@ -383,7 +383,7 @@ Tensor Parallelism Module APIs
             -  A single tensor that is the output of the attention
                layer.
 
-.. class:: smp.nn.DistributedTransformerOutputLayer(hidden_size=1024, intermediate_size=4096,  hidden_dropout_prob=0.1, activation="gelu", layernorm_epsilon=1e-5, initializer_range=0.02, use_normal_initialization=False, pre_layernorm=False, post_layernorm=True)
+.. class:: smp.nn.DistributedTransformerOutputLayer(hidden_size=1024, intermediate_size=4096,  hidden_dropout_prob=0.1, activation="gelu", layernorm_epsilon=1e-5, initializer_range=0.02, use_normal_initialization=False, pre_layernorm=False, post_layernorm=True, fp32_residual_addition=False)
 
    -  Distributed implementation of a single transformer output layer. A
       single ``DistributedTransformerLayer`` with
@@ -396,6 +396,8 @@ Tensor Parallelism Module APIs
 
       -  See ``DistributedTransformerLayer`` for a description of the
          arguments.
+      - ``fp32_residual_addition``: Set to ``True`` if you want to avoid overflow
+        (NaN loss values) for large models when using FP16. (Default: False)
 
 .. class:: smp.nn.DistributedEmbedding(num_embeddings,embedding_dim, padding_idx=None, max_norm=None, norm_type=2.0, scale_grad_by_freq=False, sparse=False, _weight=None, initializer_range=0.02, _skip_allgather=False,_skip_scatter_and_merge=False,)
 
