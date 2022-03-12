@@ -1,5 +1,55 @@
-Sagemaker Distributed Model Parallel 1.6.0 Release Notes
+#############
+Release Notes
+#############
+
+New features, bug fixes, and improvements are regularly made to the SageMaker
+distributed model parallel library.
+
+Sagemaker Distributed Model Parallel 1.7.0 Release Notes
 ========================================================
+
+*Date: March. 07. 2022*
+
+**New Features**
+
+**Currency Updates**
+
+* Support for PyTorch 1.10.2
+* Support for Hugging Face Transformers 4.16.2
+
+**New Features**
+
+* Support for query key layer scaling to avoid overflow for large model
+* Support for FP32 residual addition to avoid overflow (NaN loss values) for large models when using FP16.
+
+**Improvements**
+
+* Added support for a custom CUDA kernel for softmax to improve throughput
+* Added support for the following `NVIDIA Megatron’s fused kernels
+  <https://github.com/NVIDIA/Megatron-LM/tree/main/megatron/fused_kernels>`_:
+
+  * Fusion of attention masking and softmax
+  * Fusion of bias addition and Gelu activation
+
+**Migration to AWS Deep Learning Containers**
+
+This version passed benchmark testing and is migrated to the following AWS Deep Learning Containers:
+
+
+* PyTorch 1.10.2
+
+  .. code::
+
+    763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.10.2-gpu-py38-cu113-ubuntu20.04-sagemaker
+
+
+----
+
+Release History
+===============
+
+Sagemaker Distributed Model Parallel 1.6.0 Release Notes
+--------------------------------------------------------
 
 *Date: December. 20. 2021*
 
@@ -30,10 +80,7 @@ AWS Deep Learning Container(s):
 
     763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.8.1-gpu-py36-cu111-ubuntu18.04
 
-----
 
-Release History
-===============
 
 Sagemaker Distributed Model Parallel 1.5.0 Release Notes
 --------------------------------------------------------

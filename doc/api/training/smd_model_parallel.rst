@@ -9,15 +9,6 @@ allowing you to increase prediction accuracy by creating larger models with more
 You can use the library to automatically partition your existing TensorFlow and PyTorch workloads
 across multiple GPUs with minimal code changes. The library's API can be accessed through the Amazon SageMaker SDK.
 
-See the following sections to learn more about the SageMaker model parallel library APIs.
-
-.. toctree::
-   :maxdepth: 3
-
-   smp_versions/latest
-   smd_model_parallel_general
-
-
 .. tip::
 
   We recommended using this API documentation with the conceptual guide at
@@ -48,14 +39,3 @@ See the following sections to learn more about the SageMaker model parallel libr
    `Extend or Adapt A Docker Container that Contains the Model Parallel Library
    <https://integ-docs-aws.amazon.com/sagemaker/latest/dg/model-parallel-use-api.html#model-parallel-customize-container>`__
    for more information.
-
-Release Notes
-=============
-
-New features, bug fixes, and improvements are regularly made to the SageMaker
-distributed model parallel library.
-
-.. toctree::
-   :maxdepth: 1
-
-   smd_model_parallel_release_notes/smd_model_parallel_change_log
