@@ -19,8 +19,11 @@ Sagemaker Distributed Model Parallel 1.7.0 Release Notes
 
 **New Features**
 
+Additional tensor parallelism features for PyTorch:
+
 * Support for query key layer scaling to avoid overflow for large model
-* Support for FP32 residual addition to avoid overflow (NaN loss values) for large models when using FP16.
+* Support for FP32 residual addition to avoid overflow (NaN loss values)
+  for large models when using FP16
 
 **Improvements**
 
