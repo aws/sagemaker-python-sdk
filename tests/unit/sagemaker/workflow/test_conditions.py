@@ -165,3 +165,12 @@ def test_condition_or():
             },
         ],
     }
+
+
+def test_left_and_right_primitives():
+    cond = ConditionEquals(left=2, right=1)
+    assert cond.to_request() == {
+        "Type": "Equals",
+        "LeftValue": 2,
+        "RightValue": 1,
+    }

@@ -26,7 +26,9 @@ from sagemaker.lineage import (
     artifact,
 )
 from sagemaker.model import ModelPackage
-from tests.integ.test_workflow import test_end_to_end_pipeline_successful_execution
+from tests.integ.sagemaker.workflow.test_workflow import (
+    test_end_to_end_pipeline_successful_execution,
+)
 from sagemaker.workflow.pipeline import _PipelineExecution
 from sagemaker.session import get_execution_role
 from smexperiments import trial_component, trial, experiment
@@ -233,7 +235,7 @@ def upstream_trial_associated_artifact(
         sagemaker_session=sagemaker_session,
     )
     trial_obj.add_trial_component(trial_component_obj)
-    time.sleep(3)
+    time.sleep(4)
     yield artifact_obj
     trial_obj.remove_trial_component(trial_component_obj)
     assntn.delete()
@@ -561,14 +563,14 @@ def static_approval_action(
 
 
 @pytest.fixture
-def static_model_deployment_action(sagemaker_session, static_endpoint_context):
+def static_model_deployment_action(sagemaker_session, static_processing_job_trial_component):
     query_filter = LineageFilter(
         entities=[LineageEntityEnum.ACTION], sources=[LineageSourceEnum.MODEL_DEPLOYMENT]
     )
     query_result = LineageQuery(sagemaker_session).query(
-        start_arns=[static_endpoint_context.context_arn],
+        start_arns=[static_processing_job_trial_component.trial_component_arn],
         query_filter=query_filter,
-        direction=LineageQueryDirectionEnum.ASCENDANTS,
+        direction=LineageQueryDirectionEnum.DESCENDANTS,
         include_edges=False,
     )
     model_approval_actions = []
@@ -579,14 +581,14 @@ def static_model_deployment_action(sagemaker_session, static_endpoint_context):
 
 @pytest.fixture
 def static_processing_job_trial_component(
-    sagemaker_session, static_endpoint_context
+    sagemaker_session, static_dataset_artifact
 ) -> LineageTrialComponent:
     query_filter = LineageFilter(
         entities=[LineageEntityEnum.TRIAL_COMPONENT], sources=[LineageSourceEnum.PROCESSING_JOB]
     )
 
     query_result = LineageQuery(sagemaker_session).query(
-        start_arns=[static_endpoint_context.context_arn],
+        start_arns=[static_dataset_artifact.artifact_arn],
         query_filter=query_filter,
         direction=LineageQueryDirectionEnum.ASCENDANTS,
         include_edges=False,
@@ -600,14 +602,14 @@ def static_processing_job_trial_component(
 
 @pytest.fixture
 def static_training_job_trial_component(
-    sagemaker_session, static_endpoint_context
+    sagemaker_session, static_model_artifact
 ) -> LineageTrialComponent:
     query_filter = LineageFilter(
         entities=[LineageEntityEnum.TRIAL_COMPONENT], sources=[LineageSourceEnum.TRAINING_JOB]
     )
 
     query_result = LineageQuery(sagemaker_session).query(
-        start_arns=[static_endpoint_context.context_arn],
+        start_arns=[static_model_artifact.artifact_arn],
         query_filter=query_filter,
         direction=LineageQueryDirectionEnum.ASCENDANTS,
         include_edges=False,
@@ -738,12 +740,12 @@ def static_dataset_artifact(static_model_artifact, sagemaker_session):
 
 
 @pytest.fixture
-def static_image_artifact(static_model_artifact, sagemaker_session):
+def static_image_artifact(static_dataset_artifact, sagemaker_session):
     query_filter = LineageFilter(
         entities=[LineageEntityEnum.ARTIFACT], sources=[LineageSourceEnum.IMAGE]
     )
     query_result = LineageQuery(sagemaker_session).query(
-        start_arns=[static_model_artifact.artifact_arn],
+        start_arns=[static_dataset_artifact.artifact_arn],
         query_filter=query_filter,
         direction=LineageQueryDirectionEnum.ASCENDANTS,
         include_edges=False,

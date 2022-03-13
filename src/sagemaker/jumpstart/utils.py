@@ -13,6 +13,7 @@
 """This module contains utilities related to SageMaker JumpStart."""
 from __future__ import absolute_import
 import logging
+import os
 from typing import Dict, List, Optional
 from urllib.parse import urlparse
 from packaging.version import Version
@@ -60,6 +61,14 @@ def get_jumpstart_content_bucket(region: str) -> str:
     Raises:
         RuntimeError: If JumpStart is not launched in ``region``.
     """
+
+    if (
+        constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE in os.environ
+        and len(os.environ[constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE]) > 0
+    ):
+        bucket_override = os.environ[constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE]
+        LOGGER.info("Using JumpStart bucket override: '%s'", bucket_override)
+        return bucket_override
     try:
         return constants.JUMPSTART_REGION_NAME_TO_LAUNCHED_REGION_DICT[region].content_bucket
     except KeyError:
@@ -221,6 +230,22 @@ def add_single_jumpstart_tag(
                 }
             )
     return curr_tags
+
+
+def get_jumpstart_base_name_if_jumpstart_model(
+    *uris: Optional[str],
+) -> Optional[str]:
+    """Return default JumpStart base name if a URI belongs to JumpStart.
+
+    If no URIs belong to JumpStart, return None.
+
+    Args:
+        *uris (Optional[str]): URI to test for association with JumpStart.
+    """
+    for uri in uris:
+        if is_jumpstart_model_uri(uri):
+            return constants.JUMPSTART_RESOURCE_BASE_NAME
+    return None
 
 
 def add_jumpstart_tags(

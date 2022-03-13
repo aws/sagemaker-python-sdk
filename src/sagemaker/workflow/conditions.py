@@ -79,7 +79,7 @@ class ConditionComparison(Condition):
         """Get the request structure for workflow service calls."""
         return {
             "Type": self.condition_type.value,
-            "LeftValue": self.left.expr,
+            "LeftValue": primitive_or_expr(self.left),
             "RightValue": primitive_or_expr(self.right),
         }
 

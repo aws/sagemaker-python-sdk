@@ -26,6 +26,7 @@ from mock import (
 )
 
 from sagemaker.estimator import Estimator
+from sagemaker.workflow import Properties
 from sagemaker.workflow._utils import _RepackModelStep
 from tests.unit import DATA_DIR
 
@@ -156,7 +157,7 @@ def test_repack_model_step(estimator):
 
 
 def test_repack_model_step_with_source_dir(estimator, source_dir):
-    model_data = f"s3://{BUCKET}/model.tar.gz"
+    model_data = Properties(path="Steps.MyStep", shape_name="DescribeModelOutput")
     entry_point = "inference.py"
     step = _RepackModelStep(
         name="MyRepackModelStep",
@@ -189,7 +190,7 @@ def test_repack_model_step_with_source_dir(estimator, source_dir):
                         "S3DataSource": {
                             "S3DataDistributionType": "FullyReplicated",
                             "S3DataType": "S3Prefix",
-                            "S3Uri": f"s3://{BUCKET}",
+                            "S3Uri": model_data,
                         }
                     },
                 }

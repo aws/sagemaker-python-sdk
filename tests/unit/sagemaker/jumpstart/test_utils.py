@@ -11,13 +11,16 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+import os
 from mock.mock import Mock, patch
 import pytest
 import random
 from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.constants import (
+    ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE,
     JUMPSTART_BUCKET_NAME_SET,
     JUMPSTART_REGION_NAME_SET,
+    JUMPSTART_RESOURCE_BASE_NAME,
     JumpStartScriptScope,
 )
 from sagemaker.jumpstart.enums import JumpStartTag
@@ -38,6 +41,17 @@ def test_get_jumpstart_content_bucket():
     assert bad_region not in JUMPSTART_REGION_NAME_SET
     with pytest.raises(ValueError):
         utils.get_jumpstart_content_bucket(bad_region)
+
+
+def test_get_jumpstart_content_bucket_override():
+    with patch.dict(os.environ, {ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE: "some-val"}):
+        with patch("logging.Logger.info") as mocked_info_log:
+            random_region = "random_region"
+            assert "some-val" == utils.get_jumpstart_content_bucket(random_region)
+            mocked_info_log.assert_called_once_with(
+                "Using JumpStart bucket override: '%s'",
+                "some-val",
+            )
 
 
 def test_get_jumpstart_launched_regions_message():
@@ -861,3 +875,23 @@ def test_jumpstart_deprecated_model(patched_get_model_specs):
             "pytorch-eqa-bert-base-cased",
             "*",
         )
+
+
+def test_get_jumpstart_base_name_if_jumpstart_model():
+    uris = [random_jumpstart_s3_uri("random_key") for _ in range(random.randint(1, 10))]
+    assert JUMPSTART_RESOURCE_BASE_NAME == utils.get_jumpstart_base_name_if_jumpstart_model(*uris)
+
+    uris = ["s3://not-jumpstart-bucket/some-key" for _ in range(random.randint(0, 10))]
+    assert utils.get_jumpstart_base_name_if_jumpstart_model(*uris) is None
+
+    uris = ["s3://not-jumpstart-bucket/some-key" for _ in range(random.randint(1, 10))] + [
+        random_jumpstart_s3_uri("random_key")
+    ]
+    assert JUMPSTART_RESOURCE_BASE_NAME == utils.get_jumpstart_base_name_if_jumpstart_model(*uris)
+
+    uris = (
+        ["s3://not-jumpstart-bucket/some-key" for _ in range(random.randint(1, 10))]
+        + [random_jumpstart_s3_uri("random_key")]
+        + ["s3://not-jumpstart-bucket/some-key-2" for _ in range(random.randint(1, 10))]
+    )
+    assert JUMPSTART_RESOURCE_BASE_NAME == utils.get_jumpstart_base_name_if_jumpstart_model(*uris)

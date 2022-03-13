@@ -161,8 +161,8 @@ class LambdaStep(Step):
             partition = "aws"
 
         if self.lambda_func.function_arn is None:
+            account_id = self.lambda_func.session.account_id()
             try:
-                account_id = self.lambda_func.session.account_id()
                 response = self.lambda_func.create()
                 return response["FunctionArn"]
             except ValueError as error:

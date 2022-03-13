@@ -130,8 +130,15 @@ class LineageTrialComponent(_base_types.Record):
         Returns:
             str: A pipeline execution ARN.
         """
+        trial_component = self.load(
+            trial_component_name=self.trial_component_name, sagemaker_session=self.sagemaker_session
+        )
+
+        if trial_component.source is None or trial_component.source["SourceArn"] is None:
+            return None
+
         tags = self.sagemaker_session.sagemaker_client.list_tags(
-            ResourceArn=self.trial_component_arn
+            ResourceArn=trial_component.source["SourceArn"]
         )["Tags"]
         for tag in tags:
             if tag["Key"] == "sagemaker:pipeline-execution-arn":
