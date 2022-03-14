@@ -25,6 +25,7 @@ from sagemaker.fw_utils import (
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import JSONSerializer
+from sagemaker.session import Session
 
 logger = logging.getLogger("sagemaker")
 
@@ -169,6 +170,7 @@ class HuggingFaceModel(FrameworkModel):
         super(HuggingFaceModel, self).__init__(
             model_data, image_uri, role, entry_point, predictor_cls=predictor_cls, **kwargs
         )
+        self.sagemaker_session = self.sagemaker_session or Session()
 
         self.model_server_workers = model_server_workers
 
@@ -262,11 +264,12 @@ class HuggingFaceModel(FrameworkModel):
                 is not None. Otherwise, return None.
         """
 
-        if instance_type.startswith("ml.inf") and not self.image_uri:
+        if not self.image_uri and instance_type.startswith("ml.inf"):
             self.image_uri = self.serving_image_uri(
                 region_name=self.sagemaker_session.boto_session.region_name,
                 instance_type=instance_type,
             )
+
         return super(HuggingFaceModel, self).deploy(
             initial_instance_count,
             instance_type,
