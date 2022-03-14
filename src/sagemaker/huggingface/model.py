@@ -174,6 +174,9 @@ class HuggingFaceModel(FrameworkModel):
 
         self.model_server_workers = model_server_workers
 
+    # TODO: Remove the following function once botocore adds hugginface to the list of valid neo compilable frameworks.
+    # Ideally with inferentia framewrok, call to .compile( ... ) method will create the image_uri.
+    # currently, call to .compile is causing `ValidationException`
     def deploy(
         self,
         initial_instance_count=None,
