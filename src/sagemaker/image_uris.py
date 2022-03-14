@@ -128,7 +128,7 @@ def retrieve(
         if framework == HUGGING_FACE_FRAMEWORK:
             inference_tool = _get_inference_tool(inference_tool, instance_type)
             if inference_tool == "neuron":
-                _framework = "{}-{}".format(framework, inference_tool)
+                _framework = f"{framework}-{inference_tool}"
         config = _config_for_framework_and_scope(_framework, image_scope, accelerator_type)
     elif framework == HUGGING_FACE_FRAMEWORK:
         config = _config_for_framework_and_scope(
