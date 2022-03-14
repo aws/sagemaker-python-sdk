@@ -105,41 +105,79 @@ class PyTorch(Framework):
                 (default: None).  Currently, the following are supported:
                 distributed training with parameter servers, SageMaker Distributed (SMD) Data
                 and Model Parallelism, and MPI. SMD Model Parallelism can only be used with MPI.
-                To enable parameter server use the following setup:
 
-                .. code:: python
+                **To enable the SageMaker distributed data parallelism:**
 
-                    {
-                        "parameter_server": {
-                            "enabled": True
-                        }
-                    }
+                    .. code:: python
 
-                To enable MPI:
+                        { "smdistributed": { "dataparallel": { "enabled": True } } }
 
-                .. code:: python
+                    .. seealso::
 
-                    {
-                        "mpi": {
-                            "enabled": True
-                        }
-                    }
+                        To learn more, see :ref:`sdp_api_docs_toc`.
 
-                To enable SMDistributed Data Parallel or Model Parallel:
+                **To enable the SageMaker distributed model parallelism:**
 
-                .. code:: python
+                    .. code:: python
 
-                    {
-                        "smdistributed": {
-                            "dataparallel": {
-                                "enabled": True
+                        {
+                            "smdistributed": {
+                                "modelparallel": {
+                                    "enabled":True,
+                                    "parameters": {
+                                        "partitions": 2,
+                                        "microbatches": 4,
+                                        "placement_strategy": "spread",
+                                        "pipeline": "interleaved",
+                                        "optimize": "speed",
+                                        "ddp": True,
+                                    }
                             },
-                            "modelparallel": {
-                                "enabled": True,
-                                "parameters": {}
+                            "mpi": {
+                                "enabled" : True,
+                                "processes_per_host" : 8,
                             }
                         }
-                    }
+
+                    .. note::
+
+                        The SageMaker distributed model parallel library internally uses MPI.
+                        In order to use model parallelism, MPI also must be enabled.
+
+                    .. seealso::
+
+                        To learn more, see :ref:`smp_api_docs_toc`.
+
+                    .. seealso::
+
+                        To find a complete list of parameters for SageMaker model parallelism,
+                        see :ref:`sm-sdk-modelparallel-general`.
+
+                **To enable MPI:**
+
+                    .. code:: python
+
+                        {
+                            "mpi": {
+                                "enabled": True
+                            }
+                        }
+
+                    To learn more, see `Training with Horovod
+                    <https://sagemaker.readthedocs.io/en/stable/frameworks/tensorflow/using_tf.html#training-with-horovod>`_.
+
+                **To enable parameter server:**
+
+                    .. code:: python
+
+                        {
+                            "parameter_server": {
+                                "enabled": True
+                            }
+                        }
+
+                    To learn more, see `Training with parameter servers
+                    <https://sagemaker.readthedocs.io/en/stable/frameworks/tensorflow/using_tf.html#training-with-parameter-servers>`_.
 
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework`
                 constructor.
