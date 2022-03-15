@@ -270,6 +270,21 @@ def huggingface_tensorflow_latest_training_py_version():
 
 
 @pytest.fixture(scope="module")
+def huggingface_neuron_latest_inference_pytorch_version():
+    return "1.9"
+
+
+@pytest.fixture(scope="module")
+def huggingface_neuron_latest_inference_transformer_version():
+    return "4.12"
+
+
+@pytest.fixture(scope="module")
+def huggingface_neuron_latest_inference_py_version():
+    return "py37"
+
+
+@pytest.fixture(scope="module")
 def pytorch_eia_py_version():
     return "py3"
 
