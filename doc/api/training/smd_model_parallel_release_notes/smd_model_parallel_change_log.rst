@@ -10,8 +10,6 @@ Sagemaker Distributed Model Parallel 1.7.0 Release Notes
 
 *Date: March. 07. 2022*
 
-**New Features**
-
 **Currency Updates**
 
 * Support for PyTorch 1.10.2
