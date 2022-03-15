@@ -5,7 +5,7 @@ Release Notes
 New features, bug fixes, and improvements are regularly made to the SageMaker
 distributed model parallel library.
 
-Sagemaker Distributed Model Parallel 1.7.0 Release Notes
+SageMaker Distributed Model Parallel 1.7.0 Release Notes
 ========================================================
 
 *Date: March. 07. 2022*
@@ -54,7 +54,7 @@ This version passed benchmark testing and is migrated to the following AWS Deep 
 Release History
 ===============
 
-Sagemaker Distributed Model Parallel 1.6.0 Release Notes
+SageMaker Distributed Model Parallel 1.6.0 Release Notes
 --------------------------------------------------------
 
 *Date: December. 20. 2021*
@@ -88,7 +88,7 @@ AWS Deep Learning Container(s):
 
 
 
-Sagemaker Distributed Model Parallel 1.5.0 Release Notes
+SageMaker Distributed Model Parallel 1.5.0 Release Notes
 --------------------------------------------------------
 
 *Date: November. 03. 2021*
@@ -112,7 +112,7 @@ AWS Deep Learning Containers:
 
 ----
 
-Sagemaker Distributed Model Parallel 1.4.0 Release Notes
+SageMaker Distributed Model Parallel 1.4.0 Release Notes
 --------------------------------------------------------
 
 *Date: June. 29. 2021*
@@ -143,7 +143,7 @@ AWS Deep Learning Containers:
 
 ----
 
-Sagemaker Distributed Model Parallel 1.3.1 Release Notes
+SageMaker Distributed Model Parallel 1.3.1 Release Notes
 --------------------------------------------------------
 
 -  New Features
@@ -196,7 +196,7 @@ Sagemaker Distributed Model Parallel 1.3.1 Release Notes
 
 ----
 
-Sagemaker Distributed Model Parallel 1.3.0 Release Notes
+SageMaker Distributed Model Parallel 1.3.0 Release Notes
 --------------------------------------------------------
 
 -  New Features
@@ -288,7 +288,7 @@ Sagemaker Distributed Model Parallel 1.3.0 Release Notes
 
 ----
 
-Sagemaker Distributed Model Parallel 1.2.0 Release Notes
+SageMaker Distributed Model Parallel 1.2.0 Release Notes
 --------------------------------------------------------
 
 -  New Features
@@ -365,7 +365,7 @@ Sagemaker Distributed Model Parallel 1.2.0 Release Notes
 
 ----
 
-Sagemaker Distributed Model Parallel 1.1.0 Release Notes
+SageMaker Distributed Model Parallel 1.1.0 Release Notes
 --------------------------------------------------------
 
 -  New Features
