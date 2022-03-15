@@ -25,6 +25,7 @@ from sagemaker.fw_utils import (
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import JSONSerializer
+from sagemaker.session import Session
 
 logger = logging.getLogger("sagemaker")
 
@@ -169,8 +170,124 @@ class HuggingFaceModel(FrameworkModel):
         super(HuggingFaceModel, self).__init__(
             model_data, image_uri, role, entry_point, predictor_cls=predictor_cls, **kwargs
         )
+        self.sagemaker_session = self.sagemaker_session or Session()
 
         self.model_server_workers = model_server_workers
+
+    # TODO: Remove the following function
+    # botocore needs to add hugginface to the list of valid neo compilable frameworks.
+    # Ideally with inferentia framewrok, call to .compile( ... ) method will create the image_uri.
+    # currently, call to compile( ... ) method is causing `ValidationException`
+    def deploy(
+        self,
+        initial_instance_count=None,
+        instance_type=None,
+        serializer=None,
+        deserializer=None,
+        accelerator_type=None,
+        endpoint_name=None,
+        tags=None,
+        kms_key=None,
+        wait=True,
+        data_capture_config=None,
+        async_inference_config=None,
+        serverless_inference_config=None,
+        **kwargs,
+    ):
+        """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
+
+        Create a SageMaker ``Model`` and ``EndpointConfig``, and deploy an
+        ``Endpoint`` from this ``Model``. If ``self.predictor_cls`` is not None,
+        this method returns a the result of invoking ``self.predictor_cls`` on
+        the created endpoint name.
+
+        The name of the created model is accessible in the ``name`` field of
+        this ``Model`` after deploy returns
+
+        The name of the created endpoint is accessible in the
+        ``endpoint_name`` field of this ``Model`` after deploy returns.
+
+        Args:
+            initial_instance_count (int): The initial number of instances to run
+                in the ``Endpoint`` created from this ``Model``. If not using
+                serverless inference, then it need to be a number larger or equals
+                to 1 (default: None)
+            instance_type (str): The EC2 instance type to deploy this Model to.
+                For example, 'ml.p2.xlarge', or 'local' for local mode. If not using
+                serverless inference, then it is required to deploy a model.
+                (default: None)
+            serializer (:class:`~sagemaker.serializers.BaseSerializer`): A
+                serializer object, used to encode data for an inference endpoint
+                (default: None). If ``serializer`` is not None, then
+                ``serializer`` will override the default serializer. The
+                default serializer is set by the ``predictor_cls``.
+            deserializer (:class:`~sagemaker.deserializers.BaseDeserializer`): A
+                deserializer object, used to decode data from an inference
+                endpoint (default: None). If ``deserializer`` is not None, then
+                ``deserializer`` will override the default deserializer. The
+                default deserializer is set by the ``predictor_cls``.
+            accelerator_type (str): Type of Elastic Inference accelerator to
+                deploy this model for model loading and inference, for example,
+                'ml.eia1.medium'. If not specified, no Elastic Inference
+                accelerator will be attached to the endpoint. For more
+                information:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
+            endpoint_name (str): The name of the endpoint to create (default:
+                None). If not specified, a unique endpoint name will be created.
+            tags (List[dict[str, str]]): The list of tags to attach to this
+                specific endpoint.
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                data on the storage volume attached to the instance hosting the
+                endpoint.
+            wait (bool): Whether the call should wait until the deployment of
+                this model completes (default: True).
+            data_capture_config (sagemaker.model_monitor.DataCaptureConfig): Specifies
+                configuration related to Endpoint data capture for use with
+                Amazon SageMaker Model Monitoring. Default: None.
+            async_inference_config (sagemaker.model_monitor.AsyncInferenceConfig): Specifies
+                configuration related to async endpoint. Use this configuration when trying
+                to create async endpoint and make async inference. If empty config object
+                passed through, will use default config to deploy async endpoint. Deploy a
+                real-time endpoint if it's None. (default: None)
+            serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
+                Specifies configuration related to serverless endpoint. Use this configuration
+                when trying to create serverless endpoint and make serverless inference. If
+                empty object passed through, will use pre-defined values in
+                ``ServerlessInferenceConfig`` class to deploy serverless endpoint. Deploy an
+                instance based endpoint if it's None. (default: None)
+        Raises:
+             ValueError: If arguments combination check failed in these circumstances:
+                - If no role is specified or
+                - If serverless inference config is not specified and instance type and instance
+                    count are also not specified or
+                - If a wrong type of object is provided as serverless inference config or async
+                    inference config
+        Returns:
+            callable[string, sagemaker.session.Session] or None: Invocation of
+                ``self.predictor_cls`` on the created endpoint name, if ``self.predictor_cls``
+                is not None. Otherwise, return None.
+        """
+
+        if not self.image_uri and instance_type.startswith("ml.inf"):
+            self.image_uri = self.serving_image_uri(
+                region_name=self.sagemaker_session.boto_session.region_name,
+                instance_type=instance_type,
+            )
+
+        return super(HuggingFaceModel, self).deploy(
+            initial_instance_count,
+            instance_type,
+            serializer,
+            deserializer,
+            accelerator_type,
+            endpoint_name,
+            tags,
+            kms_key,
+            wait,
+            data_capture_config,
+            async_inference_config,
+            serverless_inference_config,
+        )
 
     def register(
         self,
