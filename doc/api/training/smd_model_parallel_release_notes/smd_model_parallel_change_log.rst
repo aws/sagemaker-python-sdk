@@ -17,34 +17,27 @@ Sagemaker Distributed Model Parallel 1.7.0 Release Notes
 * Support for PyTorch 1.10.2
 * Support for Hugging Face Transformers 4.16.2
 
-**New Features**
-
-Additional tensor parallelism features for PyTorch:
-
-* Support for query key layer scaling to avoid overflow for large model
-
-  * This feature is integrated to the following modules:
-
-    * :class:`smp.nn.DistributedTransformerLMHead`
-    * :class:`smp.nn.DistributedTransformer`
-    * :class:`smp.nn.DistributedTransformerLayer`
-    * :class:`smp.nn.DistributedAttentionLayer`
-
-* Support for FP32 residual addition to avoid overflow (NaN loss values)
-  for large models when using FP16
-
-  * This feature is integrated to the following module:
-
-    * :class:`smp.nn.DistributedTransformerOutputLayer`
-
 **Improvements**
 
-* Added support for a custom CUDA kernel for softmax to improve throughput
-* Added support for the following `NVIDIA Megatron’s fused kernels
-  <https://github.com/NVIDIA/Megatron-LM/tree/main/megatron/fused_kernels>`_:
+* Additional support for the :ref:`smdmp-pytorch-tensor-parallel`.
 
-  * Fusion of attention masking and softmax
-  * Fusion of bias addition and Gelu activation
+  * Added support for FP32 residual addition to avoid overflow (NaN loss values)
+    for large models with more than 100 billion parameters when using FP16.
+    This is integrated to the following module:
+
+      * :class:`smp.nn.DistributedTransformerOutputLayer`
+
+
+  * Added support for the following two `NVIDIA Megatron fused kernels
+    <https://github.com/NVIDIA/Megatron-LM/tree/main/megatron/fused_kernels>`_:
+
+    * Fusion of attention masking and softmax (``fused_softmax``)
+    * Fusion of bias addition and Gelu activation (``fused_bias_gelu``)
+
+    To learn more about these options and how to use them,
+    see the :class:`smp.tensor_parallelism` context manager.
+
+
 
 **Migration to AWS Deep Learning Containers**
 
