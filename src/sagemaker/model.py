@@ -621,11 +621,13 @@ class Model(ModelBase):
 
         if (
             framework.lower() == "pytorch"
-            or framework.lower() == "tensorflow"
             and re.match("(?=^ml_)(?!ml_inf)", target_instance_type) is not None
             and framework_version is not None
         ):
             input_model_config["FrameworkVersion"] = utils.get_short_version(framework_version)
+
+        if framework.lower() == "tensorflow":
+            input_model_config["FrameworkVersion"] = framework_version
 
         role = self.sagemaker_session.expand_role(role)
         output_model_config = {
