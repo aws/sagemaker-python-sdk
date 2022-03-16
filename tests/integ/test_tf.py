@@ -212,18 +212,21 @@ def test_mnist_async(
     sagemaker_session,
     cpu_instance_type,
     tf_full_version,
-    tensorflow_training_latest_version,
     tf_full_py_version
 ):
 
     # Use the latest patch version for training, if available
-    tf_full_v = Version(tf_full_version)
-    tf_training_latest_v = Version(tensorflow_training_latest_version)
+    # tf_full_v = Version(tf_full_version)
+    # tf_training_latest_v = Version(tensorflow_training_latest_version)
+#
+    # if (tf_full_v.major, tf_full_v.minor) == (tf_training_latest_v.major, tf_training_latest_v.minor):
+    #     tf_fw_version = tensorflow_training_latest_version
+    # else:
+    #     tf_fw_version = tf_full_version
 
-    if (tf_full_v.major, tf_full_v.minor) == (tf_training_latest_v.major, tf_training_latest_v.minor):
-        tf_fw_version = tensorflow_training_latest_version
-    else:
-        tf_fw_version = tf_full_version
+    # test
+    if tf_full_version == "2.7.0":
+        tf_full_version = "2.7.1"
 
     estimator = TensorFlow(
         entry_point=SCRIPT,
@@ -232,7 +235,7 @@ def test_mnist_async(
         instance_count=1,
         instance_type="ml.c5.4xlarge",
         sagemaker_session=sagemaker_session,
-        framework_version=tf_fw_version,
+        framework_version=tf_full_version,
         py_version=tf_full_py_version,
         tags=TAGS,
     )
