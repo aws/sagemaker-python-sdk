@@ -92,3 +92,27 @@ def test_get_child_process_ids(m_subprocess):
     m_subprocess.Popen.return_value = process_mock
     sagemaker.local.utils.get_child_process_ids("pid")
     m_subprocess.Popen.assert_called_with(cmd, stdout=m_subprocess.PIPE, stderr=m_subprocess.PIPE)
+
+
+@patch("sagemaker.local.utils.subprocess")
+def test_get_docker_host(m_subprocess):
+    cmd = "docker context inspect".split()
+    process_mock = Mock()
+    endpoints = [
+        {"test": "tcp://host:port", "result": "host"},
+        {"test": "fd://something", "result": "localhost"},
+        {"test": "unix://path/to/socket", "result": "localhost"},
+        {"test": "npipe:////./pipe/foo", "result": "localhost"},
+    ]
+    for endpoint in endpoints:
+        return_value = (
+            '[\n{\n"Endpoints":{\n"docker":{\n"Host": "%s"}\n}\n}\n]\n' % endpoint["test"]
+        )
+        attrs = {"communicate.return_value": (return_value.encode("utf-8"), None), "returncode": 0}
+        process_mock.configure_mock(**attrs)
+        m_subprocess.Popen.return_value = process_mock
+        host = sagemaker.local.utils.get_docker_host()
+        m_subprocess.Popen.assert_called_with(
+            cmd, stdout=m_subprocess.PIPE, stderr=m_subprocess.PIPE
+        )
+        assert host == endpoint["result"]
