@@ -70,8 +70,34 @@ def test_join_expressions():
     }
 
 
-def test_json_get_expressions():
+def test_to_string_on_join():
+    func = Join(values=[1, "a", False, 1.1])
 
+    assert func.to_string() == func
+
+    with pytest.raises(TypeError) as error:
+        str(func)
+
+    assert str(error.value) == "Pipeline variables do not support __str__ operation."
+
+
+def test_startswith_on_join():
+    func = Join(on=",", values=["s3:/", "my-bucket", "a"])
+    # The func will only be parsed in runtime (Pipeline backend) so not able to tell in SDK
+    assert not func.startswith("s3")
+
+
+def test_add_func_of_join():
+    func_join1 = Join(values=[1, "a"])
+    param = ParameterInteger(name="MyInteger", default_value=3)
+
+    with pytest.raises(TypeError) as error:
+        func_join1 + param
+
+    assert str(error.value) == "Pipeline variables do not support concatenation."
+
+
+def test_json_get_expressions():
     assert JsonGet(
         step_name="my-step",
         property_file="my-property-file",
@@ -88,7 +114,6 @@ def test_json_get_expressions():
         output_name="result",
         path="output",
     )
-
     assert JsonGet(
         step_name="my-step",
         property_file=property_file,
@@ -119,3 +144,64 @@ def test_json_get_expressions_with_invalid_step_name():
         ).expr
 
     assert "Please give a valid step name as a string" in str(err.value)
+
+
+def test_to_string_on_json_get():
+    func = JsonGet(
+        step_name="my-step",
+        property_file="my-property-file",
+        json_path="my-json-path",
+    )
+
+    assert func.to_string().expr == {
+        "Std:Join": {
+            "On": "",
+            "Values": [
+                {
+                    "Std:JsonGet": {
+                        "Path": "my-json-path",
+                        "PropertyFile": {"Get": "Steps.my-step.PropertyFiles.my-property-file"},
+                    }
+                }
+            ],
+        },
+    }
+
+    with pytest.raises(TypeError) as error:
+        str(func)
+
+    assert str(error.value) == "Pipeline variables do not support __str__ operation."
+
+
+def test_startswith_on_json_get():
+    func = JsonGet(
+        step_name="my-step",
+        property_file="my-property-file",
+        json_path="my-json-path",
+    )
+    # The func will only be parsed in runtime (Pipeline backend) so not able to tell in SDK
+    assert not func.startswith("s3")
+
+
+def test_add_func_of_json_get():
+    json_get_func1 = JsonGet(
+        step_name="my-step",
+        property_file="my-property-file",
+        json_path="my-json-path",
+    )
+
+    property_file = PropertyFile(
+        name="name",
+        output_name="result",
+        path="output",
+    )
+    json_get_func2 = JsonGet(
+        step_name="my-step",
+        property_file=property_file,
+        json_path="my-json-path",
+    )
+
+    with pytest.raises(TypeError) as error:
+        json_get_func1 + json_get_func2
+
+    assert str(error.value) == "Pipeline variables do not support concatenation."

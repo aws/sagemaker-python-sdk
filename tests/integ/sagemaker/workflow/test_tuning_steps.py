@@ -44,7 +44,7 @@ def role(sagemaker_session):
 
 @pytest.fixture
 def pipeline_name():
-    return utils.unique_name_from_base("my-pipeline-training")
+    return utils.unique_name_from_base("my-pipeline-tuning")
 
 
 @pytest.fixture
@@ -106,7 +106,7 @@ def test_tuning_single_algo(
     )
 
     min_batch_size = ParameterString(name="MinBatchSize", default_value="64")
-    max_batch_size = ParameterString(name="MaxBatchSize", default_value="128")
+    max_batch_size = ParameterInteger(name="MaxBatchSize", default_value=128)
     hyperparameter_ranges = {
         "batch-size": IntegerParameter(min_batch_size, max_batch_size),
     }

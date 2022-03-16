@@ -16,7 +16,7 @@ from __future__ import absolute_import
 import abc
 
 from enum import EnumMeta
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Union, Optional
 
 PrimitiveType = Union[str, int, bool, float, None]
 RequestType = Union[Dict[str, Any], List[Dict[str, Any]]]
@@ -57,3 +57,62 @@ class Expression(abc.ABC):
     @abc.abstractmethod
     def expr(self) -> RequestType:
         """Get the expression structure for workflow service calls."""
+
+
+class PipelineVariable(Expression):
+    """Base object for pipeline variables
+
+    PipelineVariables must implement the expr property.
+    """
+
+    def __add__(self, other: Union[Expression, PrimitiveType]):
+        """Add function for PipelineVariable
+
+        Args:
+            other (Union[Expression, PrimitiveType]): The other object to be concatenated.
+
+        Always raise an error since pipeline variables do not support concatenation
+        """
+
+        raise TypeError("Pipeline variables do not support concatenation.")
+
+    def __str__(self):
+        """Override built-in String function for PipelineVariable"""
+        raise TypeError("Pipeline variables do not support __str__ operation.")
+
+    def __int__(self):
+        """Override built-in Integer function for PipelineVariable"""
+        raise TypeError("Pipeline variables do not support __int__ operation.")
+
+    def __float__(self):
+        """Override built-in Float function for PipelineVariable"""
+        raise TypeError("Pipeline variables do not support __float__ operation.")
+
+    def to_string(self):
+        """Prompt the pipeline to convert the pipeline variable to String in runtime"""
+        from sagemaker.workflow.functions import Join
+
+        return Join(on="", values=[self])
+
+    @property
+    @abc.abstractmethod
+    def expr(self) -> RequestType:
+        """Get the expression structure for workflow service calls."""
+
+    def startswith(
+        self,
+        prefix: Union[str, tuple],  # pylint: disable=unused-argument
+        start: Optional[int] = None,  # pylint: disable=unused-argument
+        end: Optional[int] = None,  # pylint: disable=unused-argument
+    ) -> bool:
+        """Simulate the Python string's built-in method: startswith
+
+        Args:
+            prefix (str, tuple): The (tuple of) string to be checked.
+            start (int): To set the start index of the matching boundary (default: None).
+            end (int): To set the end index of the matching boundary (default: None).
+
+        Return:
+            bool: Always return False as Pipeline variables are parsed during execution runtime
+        """
+        return False
