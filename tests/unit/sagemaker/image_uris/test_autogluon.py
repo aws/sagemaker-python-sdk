@@ -42,17 +42,18 @@ ACCOUNTS = {
     "us-west-1": "763104351884",
     "us-west-2": "763104351884",
 }
-VERSIONS = ["0.3.1"]
+VERSIONS = ["0.3.1", "0.3.2", "0.4.0", "0.3", "0.4"]
 
 
 @pytest.mark.parametrize("version", VERSIONS)
 def test_valid_uris(version):
+    py_version = "py37" if version == "0.3.1" else "py38"
     for region in ACCOUNTS.keys():
         uri = image_uris.retrieve(
             "autogluon",
             region=region,
             version=version,
-            py_version="py37",
+            py_version=py_version,
             image_scope="training",
             instance_type="ml.c4.xlarge",
         )
@@ -61,7 +62,7 @@ def test_valid_uris(version):
             "autogluon-training",
             version,
             ACCOUNTS[region],
-            py_version="py37",
+            py_version=py_version,
             region=region,
         )
         assert uri == expected
