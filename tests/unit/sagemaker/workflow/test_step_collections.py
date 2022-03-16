@@ -457,7 +457,8 @@ def test_register_model_with_model_repack_with_estimator(
             assert len(request_dict["DependsOn"]) == 1
             assert request_dict["DependsOn"][0] == "TestStep"
             arguments = request_dict["Arguments"]
-            repacker_job_name = arguments["HyperParameters"]["sagemaker_job_name"]
+            assert BUCKET in arguments["HyperParameters"]["sagemaker_submit_directory"]
+            arguments["HyperParameters"].pop("sagemaker_submit_directory")
             assert ordered(arguments) == ordered(
                 {
                     "AlgorithmSpecification": {
@@ -472,12 +473,8 @@ def test_register_model_with_model_repack_with_estimator(
                         "inference_script": '"dummy_script.py"',
                         "dependencies": f'"{dummy_requirements}"',
                         "model_archive": '"model.tar.gz"',
-                        "sagemaker_submit_directory": '"s3://{}/{}/source/sourcedir.tar.gz"'.format(
-                            BUCKET, repacker_job_name.replace('"', "")
-                        ),
                         "sagemaker_program": '"_repack_model.py"',
                         "sagemaker_container_log_level": "20",
-                        "sagemaker_job_name": repacker_job_name,
                         "sagemaker_region": f'"{REGION}"',
                         "source_dir": "null",
                     },
@@ -585,7 +582,8 @@ def test_register_model_with_model_repack_with_model(model, model_metrics, drift
             assert len(request_dict["DependsOn"]) == 1
             assert request_dict["DependsOn"][0] == "TestStep"
             arguments = request_dict["Arguments"]
-            repacker_job_name = arguments["HyperParameters"]["sagemaker_job_name"]
+            assert BUCKET in arguments["HyperParameters"]["sagemaker_submit_directory"]
+            arguments["HyperParameters"].pop("sagemaker_submit_directory")
             assert ordered(arguments) == ordered(
                 {
                     "AlgorithmSpecification": {
@@ -599,12 +597,8 @@ def test_register_model_with_model_repack_with_model(model, model_metrics, drift
                     "HyperParameters": {
                         "inference_script": '"dummy_script.py"',
                         "model_archive": '"model.tar.gz"',
-                        "sagemaker_submit_directory": '"s3://{}/{}/source/sourcedir.tar.gz"'.format(
-                            BUCKET, repacker_job_name.replace('"', "")
-                        ),
                         "sagemaker_program": '"_repack_model.py"',
                         "sagemaker_container_log_level": "20",
-                        "sagemaker_job_name": repacker_job_name,
                         "sagemaker_region": f'"{REGION}"',
                         "dependencies": "null",
                         "source_dir": "null",
@@ -717,7 +711,8 @@ def test_register_model_with_model_repack_with_pipeline_model(
             assert len(request_dict["DependsOn"]) == 1
             assert request_dict["DependsOn"][0] == "TestStep"
             arguments = request_dict["Arguments"]
-            repacker_job_name = arguments["HyperParameters"]["sagemaker_job_name"]
+            assert BUCKET in arguments["HyperParameters"]["sagemaker_submit_directory"]
+            arguments["HyperParameters"].pop("sagemaker_submit_directory")
             assert ordered(arguments) == ordered(
                 {
                     "AlgorithmSpecification": {
@@ -732,12 +727,8 @@ def test_register_model_with_model_repack_with_pipeline_model(
                         "dependencies": "null",
                         "inference_script": '"dummy_script.py"',
                         "model_archive": '"model.tar.gz"',
-                        "sagemaker_submit_directory": '"s3://{}/{}/source/sourcedir.tar.gz"'.format(
-                            BUCKET, repacker_job_name.replace('"', "")
-                        ),
                         "sagemaker_program": '"_repack_model.py"',
                         "sagemaker_container_log_level": "20",
-                        "sagemaker_job_name": repacker_job_name,
                         "sagemaker_region": f'"{REGION}"',
                         "source_dir": "null",
                     },
@@ -917,7 +908,6 @@ def test_estimator_transformer_with_model_repack_with_estimator(estimator):
             arguments = request_dict["Arguments"]
             # pop out the dynamic generated fields
             arguments["HyperParameters"].pop("sagemaker_submit_directory")
-            arguments["HyperParameters"].pop("sagemaker_job_name")
             assert arguments == {
                 "AlgorithmSpecification": {
                     "TrainingInputMode": "File",

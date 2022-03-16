@@ -1,5 +1,25 @@
 # Changelog
 
+## v2.78.0 (2022-03-07)
+
+### Features
+
+ * TensorFlow 2.4 for Neo
+ * Data Serializer
+
+### Bug Fixes and Other Changes
+
+ * Style update in DataSerializer
+ * Remove sagemaker_job_name from hyperparameters in TrainingStep
+ * reorganize test files for workflow
+ * update code to get commit_id in codepipeline
+
+## v2.77.1 (2022-02-25)
+
+### Bug Fixes and Other Changes
+
+ * jumpstart model table
+
 ## v2.77.0 (2022-02-22)
 
 ### Features

@@ -19,7 +19,6 @@ import os
 import pytest
 from botocore.exceptions import WaiterError
 
-import tests
 from sagemaker.clarify import (
     BiasConfig,
     DataConfig,
@@ -129,10 +128,6 @@ def data_bias_check_config(data_config, bias_config):
     )
 
 
-@pytest.mark.skipif(
-    tests.integ.test_region() in tests.integ.NO_SM_PIPELINE_MM_CLARIFY_CHECK_STEP_REGIONS,
-    reason=f"ClarifyCheckStep is not fully deployed in {tests.integ.test_region()}.",
-)
 def test_one_step_data_bias_pipeline_happycase(
     sagemaker_session,
     role,
@@ -220,10 +215,6 @@ def test_one_step_data_bias_pipeline_happycase(
             pass
 
 
-@pytest.mark.skipif(
-    tests.integ.test_region() in tests.integ.NO_SM_PIPELINE_MM_CLARIFY_CHECK_STEP_REGIONS,
-    reason=f"ClarifyCheckStep is not fully deployed in {tests.integ.test_region()}.",
-)
 def test_one_step_data_bias_pipeline_constraint_violation(
     sagemaker_session,
     role,

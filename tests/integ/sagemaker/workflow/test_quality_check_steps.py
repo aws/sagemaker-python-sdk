@@ -18,7 +18,6 @@ import os
 import pytest
 from botocore.exceptions import WaiterError
 
-import tests
 from sagemaker.workflow.parameters import ParameterString
 from tests.integ import DATA_DIR
 
@@ -122,10 +121,6 @@ def model_quality_supplied_baseline_statistics(sagemaker_session):
     ).file_s3_uri
 
 
-@pytest.mark.skipif(
-    tests.integ.test_region() in tests.integ.NO_SM_PIPELINE_MM_CLARIFY_CHECK_STEP_REGIONS,
-    reason=f"QualityCheckStep is not fully deployed in {tests.integ.test_region()}",
-)
 def test_one_step_data_quality_pipeline_happycase(
     sagemaker_session,
     role,
@@ -220,10 +215,6 @@ def test_one_step_data_quality_pipeline_happycase(
             pass
 
 
-@pytest.mark.skipif(
-    tests.integ.test_region() in tests.integ.NO_SM_PIPELINE_MM_CLARIFY_CHECK_STEP_REGIONS,
-    reason=f"QualityCheckStep is not fully deployed in {tests.integ.test_region()}",
-)
 def test_one_step_data_quality_pipeline_constraint_violation(
     sagemaker_session,
     role,
@@ -299,10 +290,6 @@ def test_one_step_data_quality_pipeline_constraint_violation(
             pass
 
 
-@pytest.mark.skipif(
-    tests.integ.test_region() in tests.integ.NO_SM_PIPELINE_MM_CLARIFY_CHECK_STEP_REGIONS,
-    reason=f"QualityCheckStep is not fully deployed in {tests.integ.test_region()}",
-)
 def test_one_step_model_quality_pipeline_happycase(
     sagemaker_session,
     role,
@@ -398,10 +385,6 @@ def test_one_step_model_quality_pipeline_happycase(
             pass
 
 
-@pytest.mark.skipif(
-    tests.integ.test_region() in tests.integ.NO_SM_PIPELINE_MM_CLARIFY_CHECK_STEP_REGIONS,
-    reason=f"QualityCheckStep is not fully deployed in {tests.integ.test_region()}",
-)
 def test_one_step_model_quality_pipeline_constraint_violation(
     sagemaker_session,
     role,

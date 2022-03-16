@@ -26,7 +26,6 @@ To use the library, reference the Common API documentation alongside the framewo
 To find archived API documentation for the previous versions of the library,
 see the following link:
 
-
 Documentation Archive
 =====================
 
