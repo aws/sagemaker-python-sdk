@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import os
 
 import pytest
+import logging
 
 from sagemaker.huggingface import HuggingFace, HuggingFaceProcessor
 from sagemaker.huggingface.model import HuggingFaceModel, HuggingFacePredictor
@@ -22,6 +23,7 @@ from sagemaker.utils import unique_name_from_base
 from tests import integ
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
+from sagemaker.exceptions import UnexpectedStatusException
 
 ROLE = "SageMakerRole"
 
@@ -34,32 +36,41 @@ ROLE = "SageMakerRole"
 )
 def test_framework_processing_job_with_deps(
     sagemaker_session,
-    gpu_instance_type,
+    gpu_instance_type_list,
     huggingface_training_latest_version,
     huggingface_training_pytorch_latest_version,
     huggingface_pytorch_latest_training_py_version,
 ):
-    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        code_path = os.path.join(DATA_DIR, "dummy_code_bundle_with_reqs")
-        entry_point = "main_script.py"
+    for i_type in gpu_instance_type_list:
+        logging.info("Using the instance type: {}".format(i_type))
+        with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+            code_path = os.path.join(DATA_DIR, "dummy_code_bundle_with_reqs")
+            entry_point = "main_script.py"
 
-        processor = HuggingFaceProcessor(
-            transformers_version=huggingface_training_latest_version,
-            pytorch_version=huggingface_training_pytorch_latest_version,
-            py_version=huggingface_pytorch_latest_training_py_version,
-            role=ROLE,
-            instance_count=1,
-            instance_type=gpu_instance_type,
-            sagemaker_session=sagemaker_session,
-            base_job_name="test-huggingface",
-        )
-
-        processor.run(
-            code=entry_point,
-            source_dir=code_path,
-            inputs=[],
-            wait=True,
-        )
+            processor = HuggingFaceProcessor(
+                transformers_version=huggingface_training_latest_version,
+                pytorch_version=huggingface_training_pytorch_latest_version,
+                py_version=huggingface_pytorch_latest_training_py_version,
+                role=ROLE,
+                instance_count=1,
+                instance_type=i_type,
+                sagemaker_session=sagemaker_session,
+                base_job_name="test-huggingface",
+            )
+            try:
+                processor.run(
+                    code=entry_point,
+                    source_dir=code_path,
+                    inputs=[],
+                    wait=True,
+                )
+            except UnexpectedStatusException as e:
+                if "CapacityError" in str(e) and i_type != gpu_instance_type_list[-1]:
+                    logging.warning("Failure using instance type: {}. {}".format(i_type, str(e)))
+                    continue
+                else:
+                    raise
+        break
 
 
 @pytest.mark.release
