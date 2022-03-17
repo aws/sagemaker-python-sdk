@@ -229,7 +229,7 @@ class JumpStartModelsCache:
             )
 
         else:
-            possible_model_ids = [header.model_id for header in manifest.values()]
+            possible_model_ids = [header.model_id for header in manifest.values()]  # type: ignore
             closest_model_id = get_close_matches(model_id, possible_model_ids, n=1, cutoff=0)[0]
             error_msg += f"Did you mean to use model ID '{closest_model_id}'?"
 

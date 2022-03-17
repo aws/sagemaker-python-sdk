@@ -24,7 +24,6 @@ from sagemaker.jumpstart.utils import is_jumpstart_model_input
 from sagemaker.spark import defaults
 from sagemaker.jumpstart import artifacts
 
-
 logger = logging.getLogger(__name__)
 
 ECR_URI_TEMPLATE = "{registry}.dkr.{hostname}/{repository}"
@@ -47,6 +46,8 @@ def retrieve(
     model_version=None,
     tolerate_vulnerable_model=False,
     tolerate_deprecated_model=False,
+    sdk_version=None,
+    inference_tool=None,
 ) -> str:
     """Retrieves the ECR URI for the Docker image matching the given arguments.
 
@@ -88,6 +89,11 @@ def retrieve(
         tolerate_deprecated_model (bool): True if deprecated versions of model specifications
             should be tolerated without an exception raised. If False, raises an exception
             if the version of the model is deprecated. (Default: False).
+        sdk_version (str): the version of python-sdk that will be used in the image retrieval.
+            (default: None).
+        inference_tool (str): the tool that will be used to aid in the inference.
+            Valid values: "neuron, None"
+            (default: None).
 
     Returns:
         str: The ECR URI for the corresponding SageMaker Docker image.
@@ -100,7 +106,6 @@ def retrieve(
         DeprecatedJumpStartModelError: If the version of the model is deprecated.
     """
     if is_jumpstart_model_input(model_id, model_version):
-
         return artifacts._retrieve_image_uri(
             model_id,
             model_version,
@@ -118,9 +123,13 @@ def retrieve(
             tolerate_vulnerable_model,
             tolerate_deprecated_model,
         )
-
     if training_compiler_config is None:
-        config = _config_for_framework_and_scope(framework, image_scope, accelerator_type)
+        _framework = framework
+        if framework == HUGGING_FACE_FRAMEWORK:
+            inference_tool = _get_inference_tool(inference_tool, instance_type)
+            if inference_tool == "neuron":
+                _framework = f"{framework}-{inference_tool}"
+        config = _config_for_framework_and_scope(_framework, image_scope, accelerator_type)
     elif framework == HUGGING_FACE_FRAMEWORK:
         config = _config_for_framework_and_scope(
             framework + "-training-compiler", image_scope, accelerator_type
@@ -129,6 +138,7 @@ def retrieve(
         raise ValueError(
             "Unsupported Configuration: Training Compiler is only supported with HuggingFace"
         )
+
     original_version = version
     version = _validate_version_and_set_if_needed(version, config, framework)
     version_config = config["versions"][_version_for_config(version, config)]
@@ -138,7 +148,6 @@ def retrieve(
             full_base_framework_version = version_config["version_aliases"].get(
                 base_framework_version, base_framework_version
             )
-
         _validate_arg(full_base_framework_version, list(version_config.keys()), "base framework")
         version_config = version_config.get(full_base_framework_version)
 
@@ -161,25 +170,37 @@ def retrieve(
         pt_or_tf_version = (
             re.compile("^(pytorch|tensorflow)(.*)$").match(base_framework_version).group(2)
         )
-
         _version = original_version
+
         if repo in [
             "huggingface-pytorch-trcomp-training",
             "huggingface-tensorflow-trcomp-training",
         ]:
             _version = version
+        if repo in ["huggingface-pytorch-inference-neuron"]:
+            if not sdk_version:
+                sdk_version = _get_latest_versions(version_config["sdk_versions"])
+            container_version = sdk_version + "-" + container_version
+            if config.get("version_aliases").get(original_version):
+                _version = config.get("version_aliases")[original_version]
+            if (
+                config.get("versions", {})
+                .get(_version, {})
+                .get("version_aliases", {})
+                .get(base_framework_version, {})
+            ):
+                _base_framework_version = config.get("versions")[_version]["version_aliases"][
+                    base_framework_version
+                ]
+                pt_or_tf_version = (
+                    re.compile("^(pytorch|tensorflow)(.*)$").match(_base_framework_version).group(2)
+                )
 
         tag_prefix = f"{pt_or_tf_version}-transformers{_version}"
-
     else:
         tag_prefix = version_config.get("tag_prefix", version)
 
-    tag = _format_tag(
-        tag_prefix,
-        processor,
-        py_version,
-        container_version,
-    )
+    tag = _format_tag(tag_prefix, processor, py_version, container_version, inference_tool)
 
     if _should_auto_select_container_version(instance_type, distribution):
         container_versions = {
@@ -248,6 +269,20 @@ def config_for_framework(framework):
         return json.load(f)
 
 
+def _get_inference_tool(inference_tool, instance_type):
+    """Extract the inference tool name from instance type."""
+    if not inference_tool and instance_type:
+        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        if match and match[1].startswith("inf"):
+            return "neuron"
+    return inference_tool
+
+
+def _get_latest_versions(list_of_versions):
+    """Extract the latest version from the input list of available versions."""
+    return sorted(list_of_versions, reverse=True)[0]
+
+
 def _validate_accelerator_type(accelerator_type):
     """Raises a ``ValueError`` if ``accelerator_type`` is invalid."""
     if not accelerator_type.startswith("ml.eia") and accelerator_type != "local_sagemaker_notebook":
@@ -310,6 +345,8 @@ def _processor(instance_type, available_processors):
 
     if instance_type.startswith("local"):
         processor = "cpu" if instance_type == "local" else "gpu"
+    elif instance_type.startswith("neuron"):
+        processor = "neuron"
     else:
         # looks for either "ml.<family>.<size>" or "ml_<family>"
         match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
@@ -387,8 +424,10 @@ def _validate_arg(arg, available_options, arg_name):
         )
 
 
-def _format_tag(tag_prefix, processor, py_version, container_version):
+def _format_tag(tag_prefix, processor, py_version, container_version, inference_tool=None):
     """Creates a tag for the image URI."""
+    if inference_tool:
+        return "-".join(x for x in (tag_prefix, inference_tool, py_version, container_version) if x)
     return "-".join(x for x in (tag_prefix, processor, py_version, container_version) if x)
 
 

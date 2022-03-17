@@ -16,6 +16,7 @@ from __future__ import absolute_import
 import os
 import shutil
 import subprocess
+import json
 
 from distutils.dir_util import copy_tree
 from six.moves.urllib.parse import urlparse
@@ -127,3 +128,27 @@ def get_child_process_ids(pid):
             return pids + get_child_process_ids(child_pid)
     else:
         return []
+
+
+def get_docker_host():
+    """Discover remote docker host address (if applicable) or use "localhost"
+
+    Use "docker context inspect" to read current docker host endpoint url,
+    url must start with "tcp://"
+
+    Args:
+
+    Returns:
+        docker_host (str): Docker host DNS or IP address
+    """
+    cmd = "docker context inspect".split()
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output, err = process.communicate()
+    if err:
+        return "localhost"
+    docker_context_string = output.decode("utf-8")
+    docker_context_host_url = json.loads(docker_context_string)[0]["Endpoints"]["docker"]["Host"]
+    parsed_url = urlparse(docker_context_host_url)
+    if parsed_url.hostname and parsed_url.scheme == "tcp":
+        return parsed_url.hostname
+    return "localhost"
