@@ -1,5 +1,5 @@
-The SageMaker Distributed Model Parallel Library
-------------------------------------------------
+The SageMaker Distributed Model Parallel Library Overview
+---------------------------------------------------------
 
 The Amazon SageMaker distributed model parallel library is a model parallelism library for training
 large deep learning models that were previously difficult to train due to GPU memory limitations.

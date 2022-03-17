@@ -50,6 +50,7 @@ from sagemaker.inputs import TrainingInput
 from sagemaker.job import _Job
 from sagemaker.jumpstart.utils import (
     add_jumpstart_tags,
+    get_jumpstart_base_name_if_jumpstart_model,
     update_inference_tags_with_jumpstart_training_tags,
 )
 from sagemaker.local import LocalSession
@@ -569,8 +570,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
     def _ensure_base_job_name(self):
         """Set ``self.base_job_name`` if it is not set already."""
         # honor supplied base_job_name or generate it
-        if self.base_job_name is None:
-            self.base_job_name = base_name_from_image(self.training_image_uri())
+        self.base_job_name = (
+            self.base_job_name
+            or get_jumpstart_base_name_if_jumpstart_model(self.source_dir, self.model_uri)
+            or base_name_from_image(self.training_image_uri())
+        )
 
     def _get_or_create_name(self, name=None):
         """Generate a name based on the base job name or training image if needed.
@@ -1212,7 +1216,15 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         is_serverless = serverless_inference_config is not None
         self._ensure_latest_training_job()
         self._ensure_base_job_name()
-        default_name = name_from_base(self.base_job_name)
+
+        jumpstart_base_name = get_jumpstart_base_name_if_jumpstart_model(
+            kwargs.get("source_dir"), self.source_dir, kwargs.get("model_data"), self.model_uri
+        )
+        default_name = (
+            name_from_base(jumpstart_base_name)
+            if jumpstart_base_name
+            else name_from_base(self.base_job_name)
+        )
         endpoint_name = endpoint_name or default_name
         model_name = model_name or default_name
 

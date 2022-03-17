@@ -148,12 +148,6 @@ DRIFT_CHECK_BASELINES_SUPPORTED_REGIONS = [
     "eu-west-2",
     "us-east-1",
 ]
-NO_SM_PIPELINE_MM_CLARIFY_CHECK_STEP_REGIONS = [
-    "ap-northeast-3",
-    "ap-south-1",
-    "eu-north-1",
-    "sa-east-1",
-]
 EDGE_PACKAGING_SUPPORTED_REGIONS = [
     "us-east-2",
     "us-west-2",

@@ -18,7 +18,6 @@ from collections.abc import Iterable
 import csv
 import io
 import json
-
 import numpy as np
 from six import with_metaclass
 
@@ -357,3 +356,37 @@ class LibSVMSerializer(SimpleBaseSerializer):
             return data.read()
 
         raise ValueError("Unable to handle input format: %s" % type(data))
+
+
+class DataSerializer(SimpleBaseSerializer):
+    """Serialize data in any file by extracting raw bytes from the file."""
+
+    def __init__(self, content_type="file-path/raw-bytes"):
+        """Initialize a ``DataSerializer`` instance.
+
+        Args:
+            content_type (str): The MIME type to signal to the inference endpoint when sending
+                request data (default: "file-path/raw-bytes").
+        """
+        super(DataSerializer, self).__init__(content_type=content_type)
+
+    def serialize(self, data):
+        """Serialize file data to a raw bytes.
+
+        Args:
+            data (object): Data to be serialized. The data can be a string
+                representing file-path or the raw bytes from a file.
+        Returns:
+            raw-bytes: The data serialized as raw-bytes from the input.
+        """
+        if isinstance(data, str):
+            try:
+                with open(data, "rb") as data_file:
+                    data_file_info = data_file.read()
+                    return data_file_info
+            except Exception as e:
+                raise ValueError(f"Could not open/read file: {data}. {e}")
+        if isinstance(data, bytes):
+            return data
+
+        raise ValueError(f"Object of type {type(data)} is not Data serializable.")

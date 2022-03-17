@@ -757,6 +757,7 @@ see `Model <https://sagemaker.readthedocs.io/en/stable/api/inference/model.html
        entry_point="inference.py",
        role=Session().get_caller_identity_arn(),
        predictor_cls=Predictor,
+       enable_network_isolation=True,
    )
 
 Save the output from deploying the model to a variable named
@@ -773,11 +774,10 @@ Deployment may take about 5 minutes.
        instance_type=instance_type,
    )
 
-Because ``catboost`` and ``lightgbm`` rely on the PyTorch Deep Learning Containers
-image, the corresponding Models and Endpoints display the “pytorch”
-prefix when viewed in the AWS console. To verify that these models
-were created successfully with your desired base model, refer to
-the ``Tags`` section.
+Because the model and script URIs are distributed by SageMaker JumpStart,
+the endpoint, endpoint config and model resources will be prefixed with
+``sagemaker-jumpstart``. Refer to the model ``Tags`` to inspect the
+JumpStart artifacts involved in the model creation.
 
 Perform Inference
 -----------------
@@ -875,6 +875,7 @@ value is not set.
        hyperparameters=default_hyperparameters,
        instance_count=instance_count,
        instance_type=training_instance_type,
+       enable_network_isolation=True,
    )
 
    # Specify the S3 location of training data for the training channel
@@ -936,6 +937,7 @@ took your model to train.
        image_uri=deploy_image_uri,
        source_dir=deploy_script_uri,
        endpoint_name=endpoint_name,
+       enable_network_isolation=True,
    )
 
 Perform Inference on a SageMaker Endpoint
