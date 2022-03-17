@@ -502,7 +502,7 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
     """Fetch trial component data and make them accessible for analytics."""
 
     MAX_TRIAL_COMPONENTS = 10000
-    POLL = 0.5
+    POLL = 0.1
 
     def __init__(
         self,
@@ -735,13 +735,15 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
             search_args["SortOrder"] = sort_order
 
         while len(trial_components) < self.MAX_TRIAL_COMPONENTS:
-            search_response = self._sage_client.search(**search_args)
-            components = [result["TrialComponent"] for result in search_response["Results"]]
-            trial_components.extend(components)
-            if "NextToken" in search_response and len(components) > 0:
-                search_args["NextToken"] = search_response["NextToken"]
-            else:
-                break
-            time.sleep(self.POLL)
+            try:
+                search_response = self._sage_client.search(**search_args)
+                components = [result["TrialComponent"] for result in search_response["Results"]]
+                trial_components.extend(components)
+                if "NextToken" in search_response and len(components) > 0:
+                    search_args["NextToken"] = search_response["NextToken"]
+                else:
+                    break
+            except:
+                time.sleep(self.POLL)
 
         return trial_components
