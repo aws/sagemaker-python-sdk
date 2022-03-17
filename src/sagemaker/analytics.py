@@ -17,6 +17,7 @@ from abc import ABCMeta, abstractmethod
 from collections import defaultdict, OrderedDict
 import datetime
 import logging
+import time
 
 from six import with_metaclass
 
@@ -733,12 +734,15 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
             search_args["SortOrder"] = sort_order
 
         while len(trial_components) < self.MAX_TRIAL_COMPONENTS:
-            search_response = self._sage_client.search(**search_args)
-            components = [result["TrialComponent"] for result in search_response["Results"]]
-            trial_components.extend(components)
-            if "NextToken" in search_response and len(components) > 0:
-                search_args["NextToken"] = search_response["NextToken"]
-            else:
-                break
+            try:
+                search_response = self._sage_client.search(**search_args)
+                components = [result["TrialComponent"] for result in search_response["Results"]]
+                trial_components.extend(components)
+                if "NextToken" in search_response and len(components) > 0:
+                    search_args["NextToken"] = search_response["NextToken"]
+                else:
+                    break
+            except:
+                time.sleep(0.2)
 
         return trial_components
