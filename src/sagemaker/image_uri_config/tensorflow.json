@@ -1373,7 +1373,7 @@
                     "us-west-1": "763104351884",
                     "us-west-2": "763104351884"
                 },
-                "repository": "tensorflow-inference",
+                "repository": "tensorflow-inference"
             },
             "2.7.0": {
                 "registries": {
