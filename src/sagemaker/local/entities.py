@@ -175,7 +175,11 @@ class _LocalProcessingJob:
 
 
 class _LocalTrainingJob(object):
-    """Placeholder docstring"""
+    """Creates a local processing job.
+
+    Args:
+        container: the local container object.
+    """
 
     _STARTING = "Starting"
     _TRAINING = "Training"
@@ -188,9 +192,19 @@ class _LocalTrainingJob(object):
         self.state = "created"
         self.start_time = None
         self.end_time = None
+        self.environment = None
 
-    def start(self, input_data_config, output_data_config, hyperparameters, job_name):
-        """Placeholder docstring."""
+    def start(self, input_data_config, output_data_config, hyperparameters, environment, job_name):
+        """Starts a local training job.
+
+        Args:
+            input_data_config (dict): The Input Data Configuration, this contains data such as the
+                channels to be used for training.
+            output_data_config (dict): The configuration of the output data.
+            hyperparameters (dict): The HyperParameters for the training job.
+            environment (dict): The collection of environment variables passed to the job.
+            job_name (str): Name of the local training job being run.
+        """
         for channel in input_data_config:
             if channel["DataSource"] and "S3DataSource" in channel["DataSource"]:
                 data_distribution = channel["DataSource"]["S3DataSource"]["S3DataDistributionType"]
@@ -216,9 +230,10 @@ class _LocalTrainingJob(object):
 
         self.start_time = datetime.datetime.now()
         self.state = self._TRAINING
+        self.environment = environment
 
         self.model_artifacts = self.container.train(
-            input_data_config, output_data_config, hyperparameters, job_name
+            input_data_config, output_data_config, hyperparameters, environment, job_name
         )
         self.end_time = datetime.datetime.now()
         self.state = self._COMPLETED

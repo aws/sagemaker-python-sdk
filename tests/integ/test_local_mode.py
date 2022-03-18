@@ -248,6 +248,28 @@ def test_mxnet_local_data_local_script(
 
 
 @pytest.mark.local_mode
+def test_mxnet_local_env(mxnet_training_latest_version, mxnet_training_latest_py_version):
+    data_path = os.path.join(DATA_DIR, "mxnet_mnist")
+    script_path = os.path.join(data_path, "check_env.py")
+
+    mx = MXNet(
+        entry_point=script_path,
+        role="SageMakerRole",
+        instance_count=1,
+        instance_type="local",
+        framework_version=mxnet_training_latest_version,
+        py_version=mxnet_training_latest_py_version,
+        sagemaker_session=LocalNoS3Session(),
+        environment={"MYVAR": "HELLO_WORLD"},
+    )
+
+    train_input = "file://" + os.path.join(data_path, "train")
+    test_input = "file://" + os.path.join(data_path, "test")
+
+    mx.fit({"train": train_input, "test": test_input})
+
+
+@pytest.mark.local_mode
 def test_mxnet_training_failure(
     sagemaker_local_session, mxnet_training_latest_version, mxnet_training_latest_py_version, tmpdir
 ):
