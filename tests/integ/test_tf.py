@@ -220,23 +220,7 @@ def test_mnist_distributed(
 
 
 @pytest.mark.slow_test
-def test_mnist_async(
-    sagemaker_session,
-    cpu_instance_type,
-    tf_full_version,
-    tf_full_py_version
-):
-
-    # Use the latest patch version for training, if available
-    # tf_full_v = Version(tf_full_version)
-    # tf_training_latest_v = Version(tensorflow_training_latest_version)
-#
-    # if (tf_full_v.major, tf_full_v.minor) == (tf_training_latest_v.major, tf_training_latest_v.minor):
-    #     tf_fw_version = tensorflow_training_latest_version
-    # else:
-    #     tf_fw_version = tf_full_version
-
-    # test
+def test_mnist_async(sagemaker_session, cpu_instance_type, tf_full_version, tf_full_py_version):
     if tf_full_version == "2.7.0":
         tf_full_version = "2.7.1"
 
