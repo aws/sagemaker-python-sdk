@@ -410,6 +410,15 @@ def gpu_instance_type(sagemaker_session, request):
 
 
 @pytest.fixture(scope="session")
+def gpu_instance_type_list(sagemaker_session, request):
+    region = sagemaker_session.boto_session.region_name
+    if region in NO_P3_REGIONS:
+        return ["ml.p2.xlarge"]
+    else:
+        return ["ml.p3.2xlarge", "ml.p2.xlarge"]
+
+
+@pytest.fixture(scope="session")
 def inf_instance_type(sagemaker_session, request):
     return "ml.inf1.xlarge"
 
