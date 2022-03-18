@@ -26,3 +26,6 @@ The SageMaker Distributed Model Parallel Library
    :maxdepth: 3
 
    smd_model_parallel
+   smp_versions/latest
+   smd_model_parallel_general
+   smd_model_parallel_release_notes/smd_model_parallel_change_log

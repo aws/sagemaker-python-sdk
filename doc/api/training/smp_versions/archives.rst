@@ -3,6 +3,7 @@
 .. toctree::
     :maxdepth: 1
 
+    v1_6_0.rst
     v1_5_0.rst
     v1_4_0.rst
     v1_3_0.rst
