@@ -43,6 +43,11 @@ ENV_INPUT = {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_va
 
 
 @pytest.mark.release
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.TRAINING_NO_P2_REGIONS
+    and tests.integ.test_region() in tests.integ.TRAINING_NO_P3_REGIONS,
+    reason="no ml.p2 or ml.p3 instances in this region",
+)
 def test_framework_processing_job_with_deps(
     sagemaker_session,
     gpu_instance_type_list,
