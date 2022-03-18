@@ -16,11 +16,11 @@ from __future__ import absolute_import
 from typing import List, Sequence, Union
 import hashlib
 
+from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.entities import (
     Entity,
     RequestType,
 )
-from sagemaker.workflow.step_collections import StepCollection
 
 
 def list_to_request(entities: Sequence[Union[Entity, StepCollection]]) -> List[RequestType]:

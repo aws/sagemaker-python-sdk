@@ -68,7 +68,6 @@ class StepTypeEnum(Enum, metaclass=DefaultEnumMeta):
 @attr.s
 class Step(Entity):
     """Pipeline `Step` for SageMaker Pipelines Workflows.
-
     Attributes:
         name (str): The name of the `Step`.
         display_name (str): The display name of the `Step`.
@@ -143,23 +142,18 @@ class Step(Entity):
 @attr.s
 class CacheConfig:
     """Configuration class to enable caching in SageMaker Pipelines Workflows.
-
     If caching is enabled, the pipeline attempts to find a previous execution of a `Step`
     that was called with the same arguments. `Step` caching only considers successful execution.
     If a successful previous execution is found, the pipeline propagates the values
     from the previous execution rather than recomputing the `Step`.
     When multiple successful executions exist within the timeout period,
     it uses the result for the most recent successful execution.
-
-
     Attributes:
         enable_caching (bool): To enable `Step` caching. Defaults to `False`.
         expire_after (str): If `Step` caching is enabled, a timeout also needs to defined.
             It defines how old a previous execution can be to be considered for reuse.
             Value should be an ISO 8601 duration string. Defaults to `None`.
-
             Examples::
-
                 'p30d' # 30 days
                 'P4DT12H' # 4 days and 12 hours
                 'T12H' # 12 hours
@@ -192,7 +186,6 @@ class ConfigurableRetryStep(Step):
         retry_policies: Optional[List[RetryPolicy]] = None,
     ):
         """Constructor of a configurable retry step.
-
         Args:
             name (str): The name of the step.
             step_type (StepTypeEnum): The type of the step.
@@ -248,10 +241,8 @@ class TrainingStep(ConfigurableRetryStep):
         retry_policies: Optional[List[RetryPolicy]] = None,
     ):
         """Construct a `TrainingStep`, given an `EstimatorBase` instance.
-
         In addition to the `EstimatorBase` instance, the other arguments are those
         that are supplied to the `fit` method of the `sagemaker.estimator.Estimator`.
-
         Args:
             name (str): The name of the `TrainingStep`.
             estimator (EstimatorBase): A `sagemaker.estimator.EstimatorBase` instance.
@@ -259,7 +250,6 @@ class TrainingStep(ConfigurableRetryStep):
             description (str): The description of the `TrainingStep`.
             inputs (Union[str, dict, TrainingInput, FileSystemInput]): Information
                 about the training data. This can be one of three types:
-
                 * (str) the S3 location where training data is saved, or a file:// path in
                   local mode.
                 * (dict[str, str] or dict[str, sagemaker.inputs.TrainingInput]) If using multiple
@@ -272,7 +262,6 @@ class TrainingStep(ConfigurableRetryStep):
                 * (sagemaker.inputs.FileSystemInput) - channel configuration for
                   a file system data source that can provide additional information as well as
                   the path to the training dataset.
-
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
             depends_on (List[str] or List[Step]): A list of `Step` names or `Step` instances
                 this `sagemaker.workflow.steps.TrainingStep` depends on.
@@ -301,7 +290,6 @@ class TrainingStep(ConfigurableRetryStep):
     @property
     def arguments(self) -> RequestType:
         """The arguments dictionary that is used to call `create_training_job`.
-
         NOTE: The `CreateTrainingJob` request is not quite the args list that workflow needs.
         The `TrainingJobName` and `ExperimentConfig` attributes cannot be included.
         """
@@ -345,10 +333,8 @@ class CreateModelStep(ConfigurableRetryStep):
         description: Optional[str] = None,
     ):
         """Construct a `CreateModelStep`, given an `sagemaker.model.Model` instance.
-
         In addition to the `Model` instance, the other arguments are those that are supplied to
         the `_create_sagemaker_model` method of the `sagemaker.model.Model._create_sagemaker_model`.
-
         Args:
             name (str): The name of the `CreateModelStep`.
             model (Model or PipelineModel): A `sagemaker.model.Model`
@@ -372,7 +358,6 @@ class CreateModelStep(ConfigurableRetryStep):
     @property
     def arguments(self) -> RequestType:
         """The arguments dictionary that is used to call `create_model`.
-
         NOTE: The `CreateModelRequest` is not quite the args list that workflow needs.
         `ModelName` cannot be included in the arguments.
         """
@@ -421,10 +406,8 @@ class TransformStep(ConfigurableRetryStep):
         retry_policies: Optional[List[RetryPolicy]] = None,
     ):
         """Constructs a `TransformStep`, given a `Transformer` instance.
-
         In addition to the `Transformer` instance, the other arguments are those
         that are supplied to the `transform` method of the `sagemaker.transformer.Transformer`.
-
         Args:
             name (str): The name of the `TransformStep`.
             transformer (Transformer): A `sagemaker.transformer.Transformer` instance.
@@ -449,7 +432,6 @@ class TransformStep(ConfigurableRetryStep):
     @property
     def arguments(self) -> RequestType:
         """The arguments dictionary that is used to call `create_transform_job`.
-
         NOTE: The `CreateTransformJob` request is not quite the args list that workflow needs.
         `TransformJobName` and `ExperimentConfig` cannot be included in the arguments.
         """
@@ -506,10 +488,8 @@ class ProcessingStep(ConfigurableRetryStep):
         kms_key=None,
     ):
         """Construct a `ProcessingStep`, given a `Processor` instance.
-
         In addition to the `Processor` instance, the other arguments are those that are supplied to
         the `process` method of the `sagemaker.processing.Processor`.
-
         Args:
             name (str): The name of the `ProcessingStep`.
             processor (Processor): A `sagemaker.processing.Processor` instance.
@@ -567,7 +547,6 @@ class ProcessingStep(ConfigurableRetryStep):
     @property
     def arguments(self) -> RequestType:
         """The arguments dictionary that is used to call `create_processing_job`.
-
         NOTE: The `CreateProcessingJob` request is not quite the args list that workflow needs.
         `ProcessingJobName` and `ExperimentConfig` cannot be included in the arguments.
         """
@@ -627,10 +606,8 @@ class TuningStep(ConfigurableRetryStep):
         retry_policies: List[RetryPolicy] = None,
     ):
         """Construct a `TuningStep`, given a `HyperparameterTuner` instance.
-
         In addition to the `HyperparameterTuner` instance, the other arguments are those
         that are supplied to the `fit` method of the `sagemaker.tuner.HyperparameterTuner`.
-
         Args:
             name (str): The name of the `TuningStep`.
             tuner (HyperparameterTuner): A `sagemaker.tuner.HyperparameterTuner` instance.
@@ -639,7 +616,6 @@ class TuningStep(ConfigurableRetryStep):
             inputs: Information about the training data. Please refer to the
                 `fit()` method of the associated estimator, as this can take
                 any of the following forms:
-
                 * (str) - The S3 location where training data is saved.
                 * (dict[str, str] or dict[str, sagemaker.inputs.TrainingInput]) -
                     If using multiple channels for training data, you can specify
@@ -688,7 +664,6 @@ class TuningStep(ConfigurableRetryStep):
     @property
     def arguments(self) -> RequestType:
         """The arguments dictionary that is used to call `create_hyper_parameter_tuning_job`.
-
         NOTE: The `CreateHyperParameterTuningJob` request is not quite the
             args list that workflow needs.
         The `HyperParameterTuningJobName` attribute cannot be included.
@@ -709,7 +684,6 @@ class TuningStep(ConfigurableRetryStep):
     @property
     def properties(self):
         """A `Properties` object
-
         A `Properties` object representing `DescribeHyperParameterTuningJobResponse` and
         `ListTrainingJobsForHyperParameterTuningJobResponse` data model.
         """
@@ -725,7 +699,6 @@ class TuningStep(ConfigurableRetryStep):
 
     def get_top_model_s3_uri(self, top_k: int, s3_bucket: str, prefix: str = "") -> Join:
         """Get the model artifact S3 URI from the top performing training jobs.
-
         Args:
             top_k (int): The index of the top performing training job
                 tuning step stores up to 50 top performing training jobs.
