@@ -857,3 +857,18 @@ def test_local_session_download_with_custom_s3_endpoint_url(sagemaker_session_cu
         Filename="{}/{}".format(DOWNLOAD_DATA_TESTS_FILES_DIR, "test.csv"),
         ExtraArgs=None,
     )
+
+
+@patch("sagemaker.local.local_session.get_docker_host")
+@patch("urllib3.PoolManager.request")
+def test_invoke_local_endpoint_with_remote_docker_host(
+    m_request,
+    m_get_docker_host,
+):
+    m_get_docker_host.return_value = "some_host"
+    Body = "Body".encode("utf-8")
+    url = "http://%s:%d/invocations" % ("some_host", 8080)
+    sagemaker.local.local_session.LocalSagemakerRuntimeClient().invoke_endpoint(
+        Body, "local_endpoint"
+    )
+    m_request.assert_called_with("POST", url, body=Body, preload_content=False, headers={})

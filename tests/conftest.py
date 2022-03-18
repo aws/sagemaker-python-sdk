@@ -270,6 +270,21 @@ def huggingface_tensorflow_latest_training_py_version():
 
 
 @pytest.fixture(scope="module")
+def huggingface_neuron_latest_inference_pytorch_version():
+    return "1.9"
+
+
+@pytest.fixture(scope="module")
+def huggingface_neuron_latest_inference_transformer_version():
+    return "4.12"
+
+
+@pytest.fixture(scope="module")
+def huggingface_neuron_latest_inference_py_version():
+    return "py37"
+
+
+@pytest.fixture(scope="module")
 def pytorch_eia_py_version():
     return "py3"
 
@@ -388,6 +403,15 @@ def gpu_instance_type(sagemaker_session, request):
         return "ml.p2.xlarge"
     else:
         return "ml.p3.2xlarge"
+
+
+@pytest.fixture(scope="session")
+def gpu_instance_type_list(sagemaker_session, request):
+    region = sagemaker_session.boto_session.region_name
+    if region in NO_P3_REGIONS:
+        return ["ml.p2.xlarge"]
+    else:
+        return ["ml.p3.2xlarge", "ml.p2.xlarge"]
 
 
 @pytest.fixture(scope="session")
