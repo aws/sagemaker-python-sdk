@@ -10,7 +10,7 @@ depending on which version of the library you need to use.
 To use the library, reference the
 **Common API** documentation alongside the framework specific API documentation.
 
-Version 1.6.0 (Latest)
+Version 1.7.0 (Latest)
 ======================
 
 To use the library, reference the Common API documentation alongside the framework specific API documentation.
