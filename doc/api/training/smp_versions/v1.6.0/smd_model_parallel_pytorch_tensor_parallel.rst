@@ -1,4 +1,5 @@
 .. _smdmp-pytorch-tensor-parallel:
+   :noindex:
 
 PyTorch API for Tensor Parallelism
 ==================================
@@ -32,6 +33,7 @@ For more information, see the following topics.
   :local:
 
 .. _registering-tp-modules:
+   :noindex:
 
 Registering Tensor Parallelism Distributed Modules
 --------------------------------------------------
@@ -102,6 +104,7 @@ versions in ``smp.nn`` module.
                  ...
 
 .. function:: smp.tp_register_with_module(module_cls, dist_module, init_hook=None, forward_hook=None, return_hook=None)
+   :noindex:
 
    -  When you do not have direct access to model definition code, you
       can use this API to similarly register a distributed module with
@@ -153,6 +156,7 @@ versions in ``smp.nn`` module.
                                      init_hook=init_hook)
 
 .. _smdmp-supported-modules-for-tp:
+   :noindex:
 
 Supported Modules for Tensor Parallelism
 ----------------------------------------
@@ -173,11 +177,13 @@ parallelism.
   :local:
 
 .. _tp-module-api:
+   :noindex:
 
 Tensor Parallelism Module APIs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. class:: smp.nn.DistributedLinear(in_features, out_features)
+   :noindex:
 
    -  Tensor-parallel implementation of the ``nn.Linear`` class.
       Functionally equivalent to an ``nn.Linear`` module with the same
@@ -192,6 +198,7 @@ Tensor Parallelism Module APIs
          linear layer across all tensor-parallel ranks.
 
 .. class:: smp.nn.DistributedTransformerLMHead(num_layers=12, num_attention_heads=32, attention_head_size=32, hidden_size=1024, intermediate_size=4096, vocab_size=30522, num_positions=1024, attention_dropout_prob=0.1, hidden_dropout_prob=0.1, activation="gelu", layernorm_epsilon=1e-5, num_token_types=0, causal_mask_size=None, add_cross_attention=False, add_lm_head=True,  initializer_range=0.02, use_normal_initialization=False, pre_layernorm=False, post_layernorm=True)
+   :noindex:
 
    -  Constructs a distributed transformer model, including embeddings
       and a single LM head. A word embedding of size
@@ -205,7 +212,7 @@ Tensor Parallelism Module APIs
       if ``add_lm_head`` is ``True``, the output passes through a single
       LM head, which is a linear module without bias whose weight is
       tied to the word embeddings.
-   -  See :class:`smp.nn.DistributedTransformerLayer` for descriptions of the rest
+   -  See ``DistributedTransformerLayer`` for a description of the rest
       of the arguments.
    -  **Methods:**
 
@@ -224,6 +231,7 @@ Tensor Parallelism Module APIs
             ``[N, S]``, where 1 represents a masked position.
 
 .. class:: smp.nn.DistributedTransformer(num_layers=12, num_attention_heads=32, attention_head_size=32, hidden_size=1024, intermediate_size=4096, attention_dropout_prob=0.1, hidden_dropout_prob=0.1, activation="gelu", layernorm_epsilon=1e-5, initializer_range=0.02, use_normal_initialization=False, causal_mask_size=None, add_cross_attention=False, pre_layernorm=False, post_layernorm=True)
+   :noindex:
 
    -  A sequence of ``smp.nn.DistributedTransformerLayer``\ s, whose
       number is given by ``num_layers`` argument. For the other
@@ -235,6 +243,7 @@ Tensor Parallelism Module APIs
       attention and transformer-output layers.
 
 .. class:: smp.nn.DistributedTransformerLayer(num_attention_heads=32, attention_head_size=32, hidden_size=1024, intermediate_size=4096, attention_dropout_prob=0.1, hidden_dropout_prob=0.1, activation="gelu", layernorm_epsilon=1e-5, initializer_range=0.02, use_normal_initialization=False, causal_mask_size=None, add_cross_attention=False, pre_layernorm=False, post_layernorm=True)
+   :noindex:
 
    -  Tensor-parallel implementation of a single transformer layer.
       Number of attention heads, hidden size, and intermediate size
@@ -337,6 +346,7 @@ Tensor Parallelism Module APIs
                arguments.
 
 .. class:: smp.nn.DistributedAttentionLayer(num_attention_heads=32, attention_head_size=32, hidden_size=1024, attention_dropout_prob=0.1, hidden_dropout_prob=0.1, layernorm_epsilon=1e-5, initializer_range=0.02, use_normal_initialization=False, cross_attention=False, causal_mask_size=None, pre_layernorm=False, post_layernorm=True)
+   :noindex:
 
    -  A distributed implementation for the attention block. Includes the
       computation of the self- or cross-attention (context layer),
@@ -344,11 +354,11 @@ Tensor Parallelism Module APIs
       followed by the residual-connection and layer normalization.
    -  **Arguments:**
 
-      -  See :class:`smp.nn.DistributedTransformerLayer` for descriptions of the
+      -  See ``DistributedTransformerLayer`` for a description of the
          arguments.
-      -  ``cross_attention``: If ``True``, it computes the attentions
+      -  If ``cross_attention`` is ``True``, computes the attentions
          with respect to the ``cross_states`` tensor of the ``forward``
-         method input tuple. (Default: ``False``)
+         method input tuple.
 
    -  **Methods:**
 
@@ -363,7 +373,7 @@ Tensor Parallelism Module APIs
                ``[N, S, H]``, where ``N`` is batch size, ``S`` is
                sequence length, and ``H`` is ``hidden_size``.
                ``attention_mask`` is assumed to be a tensor of
-               dimensions ``[N, 1, 1, S]``, where ``N`` is the
+               dimensions ``[N, 1, 1, S]``, \***\* where ``N`` is the
                batch size, and ``S`` is the sequence length.
             -  If ``cross_attention=True``, ``inputs`` must be a tuple
                ``(hidden_states, cross_states, attention_mask)``, where
@@ -383,10 +393,11 @@ Tensor Parallelism Module APIs
             -  A single tensor that is the output of the attention
                layer.
 
-.. class:: smp.nn.DistributedTransformerOutputLayer(hidden_size=1024, intermediate_size=4096,  hidden_dropout_prob=0.1, activation="gelu", layernorm_epsilon=1e-5, initializer_range=0.02, use_normal_initialization=False, pre_layernorm=False, post_layernorm=True, fp32_residual_addition=False)
+.. class:: smp.nn.DistributedTransformerOutputLayer(hidden_size=1024, intermediate_size=4096,  hidden_dropout_prob=0.1, activation="gelu", layernorm_epsilon=1e-5, initializer_range=0.02, use_normal_initialization=False, pre_layernorm=False, post_layernorm=True)
+   :noindex:
 
    -  Distributed implementation of a single transformer output layer. A
-      single :class:`smp.nn.DistributedTransformerLayer` with
+      single ``DistributedTransformerLayer`` with
       ``add_cross_attention=False`` consists of a single
       ``DistributedAttentionLayer`` immediately followed by a single
       ``DistributedTransformerOutputLayer``. The latter linearly maps
@@ -394,22 +405,21 @@ Tensor Parallelism Module APIs
       ``intermediate_size``, and then maps it back to ``hidden_size``.
    -  **Arguments:**
 
-      -  See :class:`smp.nn.DistributedTransformerLayer` for descriptions of the
+      -  See ``DistributedTransformerLayer`` for a description of the
          arguments.
-      - ``fp32_residual_addition``: Set to ``True`` if you want to avoid overflow
-        (NaN loss values) for large models with more than 100 billion parameters
-        when using FP16. (Default: False)
 
 .. class:: smp.nn.DistributedEmbedding(num_embeddings,embedding_dim, padding_idx=None, max_norm=None, norm_type=2.0, scale_grad_by_freq=False, sparse=False, _weight=None, initializer_range=0.02, _skip_allgather=False,_skip_scatter_and_merge=False,)
+   :noindex:
 
    -  Distributed implementation of a single Embedding Layer. Currently
       only supports splitting across the embedding_dim.
    -  **Arguments:**
 
-      -  See :class:`smp.nn.DistributedEmbedding` for descriptions of the
+      -  See ``DistributedEmbedding`` for a description of the
          arguments.
 
 .. _enabling-tp:
+   :noindex:
 
 Enabling Tensor Parallelism
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -447,10 +457,11 @@ supported modules within that scope. To do this, you can use the
 following API:
 
 .. decorator:: smp.tensor_parallelism(enabled=True, **kwargs)
+   :noindex:
 
    -  A context manager that enables or disables tensor parallelism for
       any supported module that is created inside. If there are nested
-      contexts, the innermost overrides the rest. If there are
+      contexts, the innermost will override the rest. If there are
       multiple supported modules created within the context, where one
       is the submodule of the other, only the outermost module will be
       distributed. If a supported module shares weights with another
@@ -468,27 +479,10 @@ following API:
              with smp.tensor_parallelism(enabled=False):
                  self.m1 = nn.Linear(20, 20)               # will not be distributed
 
-   - ``kwargs`` - Keyword arguments that can be used to modify the configurations of
-     the distributed modules created inside the context.
-     If a keyword argument provided through it matches any ``__init__`` method arguments
-     of a ``DistributedModule`` that substitutes a module created inside
-     the ``smp.tensor_parallelism`` context, this keyword will override
-     the value defined in the ``init_hook``.
-
-     - (*For v1.7.0 and later*) Through the following additional keyword arguments,
-       the library supports `NVIDIA Megatron’s fused kernels
-       <https://github.com/NVIDIA/Megatron-LM/tree/main/megatron/fused_kernels>`_
-
-       - ``fused_softmax`` (bool) - Fusion of attention masking and softmax.
-         By default, it is set to ``True``. You can deactivate it by setting
-         ``fused_softmax=False`` in the ``smp.tensor_parallelism`` context manager.
-       - ``fused_bias_gelu`` (bool) - Fusion of bias addition and Gelu activation.
-         By default, it is set to ``False``. You can activate it by setting
-         ``fused_bias_gelu=True`` in the ``smp.tensor_parallelism`` context manager.
-
-
+   - Keyword arguments `kwargs` can be used to modify the configurations of the distributed modules created inside the context. If a keyword argument provided here matches any `__init__` method arguments of a `DistributedModule` that substitutes a module created inside the `smp.tensor_parallelism` context, this keyword will override the value defined in the `init_hook`.
 
 .. function:: smp.set_tensor_parallelism(module, enabled=True, **kwargs)
+   :noindex:
 
    -  Enables or disables tensor parallelism for the supported
       submodules of ``module``. If enabling, the outermost supported
@@ -522,6 +516,7 @@ following API:
          optimizer = smp.DistributedOptimizer(optimizer)
 
 .. _activation-checkpointing-api:
+   :noindex:
 
 Activation Checkpointing APIs
 -----------------------------
@@ -536,6 +531,7 @@ For a conceptual guide and examples, see
 in the *SageMaker's Distributed Model Parallel developer guide*.
 
 .. class:: smdistributed.modelparallel.torch.patches.checkpoint.checkpoint(module, *args, preserve_rng_state=True)
+   :noindex:
 
    -  Checkpoints the module passed. Throws error if, during manual
       partitioning, all children of module are not on same rank as the
@@ -557,6 +553,7 @@ in the *SageMaker's Distributed Model Parallel developer guide*.
          restoring the RNG state during each checkpoint.
 
 .. class:: smdistributed.modelparallel.torch.patches.checkpoint.checkpoint_sequential(sequential_module, input, strategy="each", preserve_rng_state=True, pack_args_as_tuple=False)
+   :noindex:
 
    -  Checkpoints the modules inside
       `nn.Sequential <https://pytorch.org/docs/stable/generated/torch.nn.Sequential.html>`__.
@@ -609,6 +606,7 @@ in the *SageMaker's Distributed Model Parallel developer guide*.
          input, then this needs to be set to True.
 
 .. class:: smp.set_activation_checkpointing(module, preserve_rng_state=True, pack_args_as_tuple=False, strategy="each")
+   :noindex:
 
    -  This API is recommended when importing pretrained models from
       libraries, such as PyTorch and Hugging Face Transformers. This is
@@ -656,6 +654,7 @@ in the *SageMaker's Distributed Model Parallel developer guide*.
             checkpointed together on ``pp_rank1``.
 
 .. _smdmp-tp-appendix:
+   :noindex:
 
 Appendix: Reference Implementations for Modules
 -----------------------------------------------

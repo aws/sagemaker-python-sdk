@@ -1,5 +1,61 @@
-Sagemaker Distributed Model Parallel 1.6.0 Release Notes
+#############
+Release Notes
+#############
+
+New features, bug fixes, and improvements are regularly made to the SageMaker
+distributed model parallel library.
+
+SageMaker Distributed Model Parallel 1.7.0 Release Notes
 ========================================================
+
+*Date: March. 07. 2022*
+
+**Currency Updates**
+
+* Support for PyTorch 1.10.2
+* Support for Hugging Face Transformers 4.16.2
+
+**Improvements**
+
+* Additional support for the :ref:`smdmp-pytorch-tensor-parallel`.
+
+  * Added support for FP32 residual addition to avoid overflow (NaN loss values)
+    for large models with more than 100 billion parameters when using FP16.
+    This is integrated to the following module:
+
+      * :class:`smp.nn.DistributedTransformerOutputLayer`
+
+
+  * Added support for the following two `NVIDIA Megatron fused kernels
+    <https://github.com/NVIDIA/Megatron-LM/tree/main/megatron/fused_kernels>`_:
+
+    * Fusion of attention masking and softmax (``fused_softmax``)
+    * Fusion of bias addition and Gelu activation (``fused_bias_gelu``)
+
+    To learn more about these options and how to use them,
+    see the :class:`smp.tensor_parallelism` context manager.
+
+
+
+**Migration to AWS Deep Learning Containers**
+
+This version passed benchmark testing and is migrated to the following AWS Deep Learning Containers:
+
+
+* PyTorch 1.10.2
+
+  .. code::
+
+    763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.10.2-gpu-py38-cu113-ubuntu20.04-sagemaker
+
+
+----
+
+Release History
+===============
+
+SageMaker Distributed Model Parallel 1.6.0 Release Notes
+--------------------------------------------------------
 
 *Date: December. 20. 2021*
 
@@ -9,10 +65,10 @@ Sagemaker Distributed Model Parallel 1.6.0 Release Notes
 
   - Added extended memory-saving features for PyTorch 1.8.1:
 
-    - Tensor parallelism
-    - Optimizer state sharding
-    - Activation checkpointing
-    - Activation offloading
+    - `Tensor parallelism <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-tensor-parallelism.html>`_
+    - `Optimizer state sharding <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-optimizer-state-sharding.html>`_
+    - `Activation checkpointing <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-activation-checkpointing.html>`_
+    - `Activation offloading <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-activation-offloading.html>`_
 
     For more information, see the following documentation:
 
@@ -30,12 +86,9 @@ AWS Deep Learning Container(s):
 
     763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.8.1-gpu-py36-cu111-ubuntu18.04
 
-----
 
-Release History
-===============
 
-Sagemaker Distributed Model Parallel 1.5.0 Release Notes
+SageMaker Distributed Model Parallel 1.5.0 Release Notes
 --------------------------------------------------------
 
 *Date: November. 03. 2021*
@@ -59,7 +112,7 @@ AWS Deep Learning Containers:
 
 ----
 
-Sagemaker Distributed Model Parallel 1.4.0 Release Notes
+SageMaker Distributed Model Parallel 1.4.0 Release Notes
 --------------------------------------------------------
 
 *Date: June. 29. 2021*
@@ -90,7 +143,7 @@ AWS Deep Learning Containers:
 
 ----
 
-Sagemaker Distributed Model Parallel 1.3.1 Release Notes
+SageMaker Distributed Model Parallel 1.3.1 Release Notes
 --------------------------------------------------------
 
 -  New Features
@@ -143,7 +196,7 @@ Sagemaker Distributed Model Parallel 1.3.1 Release Notes
 
 ----
 
-Sagemaker Distributed Model Parallel 1.3.0 Release Notes
+SageMaker Distributed Model Parallel 1.3.0 Release Notes
 --------------------------------------------------------
 
 -  New Features
@@ -235,7 +288,7 @@ Sagemaker Distributed Model Parallel 1.3.0 Release Notes
 
 ----
 
-Sagemaker Distributed Model Parallel 1.2.0 Release Notes
+SageMaker Distributed Model Parallel 1.2.0 Release Notes
 --------------------------------------------------------
 
 -  New Features
@@ -312,7 +365,7 @@ Sagemaker Distributed Model Parallel 1.2.0 Release Notes
 
 ----
 
-Sagemaker Distributed Model Parallel 1.1.0 Release Notes
+SageMaker Distributed Model Parallel 1.1.0 Release Notes
 --------------------------------------------------------
 
 -  New Features
