@@ -1,5 +1,28 @@
 # Changelog
 
+## v2.80.0 (2022-03-18)
+
+### Features
+
+ * Add support for TF2.7
+ * Add support for TF 2.8
+ * TF242 ioc support
+ * Add support for TF 2.6.3
+ * Support for remote docker host
+ * AutoGluon 0.3.2 and 0.4.0 image_uris
+
+### Bug Fixes and Other Changes
+
+ * Align max_wait definitions in EstimaorBase and Estimator
+ * Add JumpStart model table build notification
+ * gpu integs CapacityError - fallback to available compute
+ * gpu integs CapacityError - fallback to available compute
+ * jumpstart docs network isolation
+
+### Documentation Changes
+
+ * sagemaker distributed model parallel 1.7.0 doc
+
 ## v2.79.0 (2022-03-16)
 
 ### Features
