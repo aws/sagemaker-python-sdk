@@ -232,6 +232,22 @@ def add_single_jumpstart_tag(
     return curr_tags
 
 
+def get_jumpstart_base_name_if_jumpstart_model(
+    *uris: Optional[str],
+) -> Optional[str]:
+    """Return default JumpStart base name if a URI belongs to JumpStart.
+
+    If no URIs belong to JumpStart, return None.
+
+    Args:
+        *uris (Optional[str]): URI to test for association with JumpStart.
+    """
+    for uri in uris:
+        if is_jumpstart_model_uri(uri):
+            return constants.JUMPSTART_RESOURCE_BASE_NAME
+    return None
+
+
 def add_jumpstart_tags(
     tags: Optional[List[Dict[str, str]]] = None,
     inference_model_uri: Optional[str] = None,

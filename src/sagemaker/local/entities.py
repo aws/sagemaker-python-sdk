@@ -22,7 +22,7 @@ import time
 
 import sagemaker.local.data
 from sagemaker.local.image import _SageMakerContainer
-from sagemaker.local.utils import copy_directory_structure, move_to_destination
+from sagemaker.local.utils import copy_directory_structure, move_to_destination, get_docker_host
 from sagemaker.utils import DeferredError, get_config_value
 
 logger = logging.getLogger(__name__)
@@ -295,7 +295,7 @@ class _LocalTransformJob(object):
         _wait_for_serving_container(serving_port)
 
         # Get capabilities from Container if needed
-        endpoint_url = "http://localhost:%s/execution-parameters" % serving_port
+        endpoint_url = "http://%s:%d/execution-parameters" % (get_docker_host(), serving_port)
         response, code = _perform_request(endpoint_url)
         if code == 200:
             execution_parameters = json.loads(response.read())
@@ -607,7 +607,7 @@ def _wait_for_serving_container(serving_port):
     i = 0
     http = urllib3.PoolManager()
 
-    endpoint_url = "http://localhost:%s/ping" % serving_port
+    endpoint_url = "http://%s:%d/ping" % (get_docker_host(), serving_port)
     while True:
         i += 5
         if i >= HEALTH_CHECK_TIMEOUT_LIMIT:

@@ -18,11 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class TrainingCompilerConfig(object):
-    """The configuration class for accelerating SageMaker training jobs through compilation.
-
-    SageMaker Training Compiler speeds up training by optimizing the model execution graph.
-
-    """
+    """The SageMaker Training Compiler configuration class."""
 
     DEBUG_PATH = "/opt/ml/output/data/compiler/"
     SUPPORTED_INSTANCE_CLASS_PREFIXES = ["p3", "g4dn", "p4"]
@@ -37,9 +33,15 @@ class TrainingCompilerConfig(object):
     ):
         """This class initializes a ``TrainingCompilerConfig`` instance.
 
-        Pass the output of it to the ``compiler_config``
+        `Amazon SageMaker Training Compiler
+        <https://docs.aws.amazon.com/sagemaker/latest/dg/training-compiler.html>`_
+        is a feature of SageMaker Training
+        and speeds up training jobs by optimizing model execution graphs.
+
+        You can compile Hugging Face models
+        by passing the object of this configuration class to the ``compiler_config``
         parameter of the :class:`~sagemaker.huggingface.HuggingFace`
-        class.
+        estimator.
 
         Args:
             enabled (bool): Optional. Switch to enable SageMaker Training Compiler.
@@ -48,13 +50,28 @@ class TrainingCompilerConfig(object):
                 This comes with a potential performance slowdown.
                 The default is ``False``.
 
-        **Example**: The following example shows the basic ``compiler_config``
-        parameter configuration, enabling compilation with default parameter values.
+        **Example**: The following code shows the basic usage of the
+        :class:`sagemaker.huggingface.TrainingCompilerConfig()` class
+        to run a HuggingFace training job with the compiler.
 
         .. code-block:: python
 
-            from sagemaker.huggingface import TrainingCompilerConfig
-            compiler_config = TrainingCompilerConfig()
+            from sagemaker.huggingface import HuggingFace, TrainingCompilerConfig
+
+            huggingface_estimator=HuggingFace(
+                ...
+                compiler_config=TrainingCompilerConfig()
+            )
+
+        .. seealso::
+
+            For more information about how to enable SageMaker Training Compiler
+            for various training settings such as using TensorFlow-based models,
+            PyTorch-based models, and distributed training,
+            see `Enable SageMaker Training Compiler
+            <https://docs.aws.amazon.com/sagemaker/latest/dg/training-compiler-enable.html>`_
+            in the `Amazon SageMaker Training Compiler developer guide
+            <https://docs.aws.amazon.com/sagemaker/latest/dg/training-compiler.html>`_.
 
         """
 

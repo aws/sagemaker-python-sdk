@@ -205,7 +205,7 @@ Tensor Parallelism Module APIs
       if ``add_lm_head`` is ``True``, the output passes through a single
       LM head, which is a linear module without bias whose weight is
       tied to the word embeddings.
-   -  See ``DistributedTransformerLayer`` for a description of the rest
+   -  See :class:`smp.nn.DistributedTransformerLayer` for descriptions of the rest
       of the arguments.
    -  **Methods:**
 
@@ -344,11 +344,11 @@ Tensor Parallelism Module APIs
       followed by the residual-connection and layer normalization.
    -  **Arguments:**
 
-      -  See ``DistributedTransformerLayer`` for a description of the
+      -  See :class:`smp.nn.DistributedTransformerLayer` for descriptions of the
          arguments.
-      -  If ``cross_attention`` is ``True``, computes the attentions
+      -  ``cross_attention``: If ``True``, it computes the attentions
          with respect to the ``cross_states`` tensor of the ``forward``
-         method input tuple.
+         method input tuple. (Default: ``False``)
 
    -  **Methods:**
 
@@ -363,7 +363,7 @@ Tensor Parallelism Module APIs
                ``[N, S, H]``, where ``N`` is batch size, ``S`` is
                sequence length, and ``H`` is ``hidden_size``.
                ``attention_mask`` is assumed to be a tensor of
-               dimensions ``[N, 1, 1, S]``, \***\* where ``N`` is the
+               dimensions ``[N, 1, 1, S]``, where ``N`` is the
                batch size, and ``S`` is the sequence length.
             -  If ``cross_attention=True``, ``inputs`` must be a tuple
                ``(hidden_states, cross_states, attention_mask)``, where
@@ -383,10 +383,10 @@ Tensor Parallelism Module APIs
             -  A single tensor that is the output of the attention
                layer.
 
-.. class:: smp.nn.DistributedTransformerOutputLayer(hidden_size=1024, intermediate_size=4096,  hidden_dropout_prob=0.1, activation="gelu", layernorm_epsilon=1e-5, initializer_range=0.02, use_normal_initialization=False, pre_layernorm=False, post_layernorm=True)
+.. class:: smp.nn.DistributedTransformerOutputLayer(hidden_size=1024, intermediate_size=4096,  hidden_dropout_prob=0.1, activation="gelu", layernorm_epsilon=1e-5, initializer_range=0.02, use_normal_initialization=False, pre_layernorm=False, post_layernorm=True, fp32_residual_addition=False)
 
    -  Distributed implementation of a single transformer output layer. A
-      single ``DistributedTransformerLayer`` with
+      single :class:`smp.nn.DistributedTransformerLayer` with
       ``add_cross_attention=False`` consists of a single
       ``DistributedAttentionLayer`` immediately followed by a single
       ``DistributedTransformerOutputLayer``. The latter linearly maps
@@ -394,8 +394,11 @@ Tensor Parallelism Module APIs
       ``intermediate_size``, and then maps it back to ``hidden_size``.
    -  **Arguments:**
 
-      -  See ``DistributedTransformerLayer`` for a description of the
+      -  See :class:`smp.nn.DistributedTransformerLayer` for descriptions of the
          arguments.
+      - ``fp32_residual_addition``: Set to ``True`` if you want to avoid overflow
+        (NaN loss values) for large models with more than 100 billion parameters
+        when using FP16. (Default: False)
 
 .. class:: smp.nn.DistributedEmbedding(num_embeddings,embedding_dim, padding_idx=None, max_norm=None, norm_type=2.0, scale_grad_by_freq=False, sparse=False, _weight=None, initializer_range=0.02, _skip_allgather=False,_skip_scatter_and_merge=False,)
 
@@ -403,7 +406,7 @@ Tensor Parallelism Module APIs
       only supports splitting across the embedding_dim.
    -  **Arguments:**
 
-      -  See ``DistributedEmbedding`` for a description of the
+      -  See :class:`smp.nn.DistributedEmbedding` for descriptions of the
          arguments.
 
 .. _enabling-tp:
@@ -447,7 +450,7 @@ following API:
 
    -  A context manager that enables or disables tensor parallelism for
       any supported module that is created inside. If there are nested
-      contexts, the innermost will override the rest. If there are
+      contexts, the innermost overrides the rest. If there are
       multiple supported modules created within the context, where one
       is the submodule of the other, only the outermost module will be
       distributed. If a supported module shares weights with another
@@ -465,7 +468,25 @@ following API:
              with smp.tensor_parallelism(enabled=False):
                  self.m1 = nn.Linear(20, 20)               # will not be distributed
 
-   - Keyword arguments `kwargs` can be used to modify the configurations of the distributed modules created inside the context. If a keyword argument provided here matches any `__init__` method arguments of a `DistributedModule` that substitutes a module created inside the `smp.tensor_parallelism` context, this keyword will override the value defined in the `init_hook`.
+   - ``kwargs`` - Keyword arguments that can be used to modify the configurations of
+     the distributed modules created inside the context.
+     If a keyword argument provided through it matches any ``__init__`` method arguments
+     of a ``DistributedModule`` that substitutes a module created inside
+     the ``smp.tensor_parallelism`` context, this keyword will override
+     the value defined in the ``init_hook``.
+
+     - (*For v1.7.0 and later*) Through the following additional keyword arguments,
+       the library supports `NVIDIA Megatron’s fused kernels
+       <https://github.com/NVIDIA/Megatron-LM/tree/main/megatron/fused_kernels>`_
+
+       - ``fused_softmax`` (bool) - Fusion of attention masking and softmax.
+         By default, it is set to ``True``. You can deactivate it by setting
+         ``fused_softmax=False`` in the ``smp.tensor_parallelism`` context manager.
+       - ``fused_bias_gelu`` (bool) - Fusion of bias addition and Gelu activation.
+         By default, it is set to ``False``. You can activate it by setting
+         ``fused_bias_gelu=True`` in the ``smp.tensor_parallelism`` context manager.
+
+
 
 .. function:: smp.set_tensor_parallelism(module, enabled=True, **kwargs)
 

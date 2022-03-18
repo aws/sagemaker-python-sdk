@@ -1,5 +1,37 @@
 # Changelog
 
+## v2.79.0 (2022-03-16)
+
+### Features
+
+ * Inferentia Neuron support for HuggingFace
+ * custom base job name for jumpstart models/estimators
+ * Python 3.9 for readthedocs
+
+### Bug Fixes and Other Changes
+
+ * container env generation for S3 URI and add test for the same
+
+### Documentation Changes
+
+ * the SageMaker distributed data parallel v1.4.0 release
+ * update sagemaker training compiler docstring
+ * smddp doc update
+
+## v2.78.0 (2022-03-07)
+
+### Features
+
+ * TensorFlow 2.4 for Neo
+ * Data Serializer
+
+### Bug Fixes and Other Changes
+
+ * Style update in DataSerializer
+ * Remove sagemaker_job_name from hyperparameters in TrainingStep
+ * reorganize test files for workflow
+ * update code to get commit_id in codepipeline
+
 ## v2.77.1 (2022-02-25)
 
 ### Bug Fixes and Other Changes

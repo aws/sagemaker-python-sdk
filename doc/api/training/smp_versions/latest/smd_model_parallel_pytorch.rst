@@ -16,7 +16,7 @@ you need to add the following import statement at the top of your training scrip
    <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-training-script-pt.html>`_
    to learn how to use the following API in your PyTorch training script.
 
-.. py:class:: smp.DistributedModel()
+.. class:: smp.DistributedModel
 
    A sub-class of ``torch.nn.Module`` which specifies the model to be
    partitioned. Accepts a ``torch.nn.Module`` object ``module`` which is
