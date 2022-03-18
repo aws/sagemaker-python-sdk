@@ -19,8 +19,6 @@ import logging
 
 import pytest
 
-from packaging.version import Version
-
 from sagemaker.tensorflow import TensorFlow, TensorFlowProcessor
 from sagemaker.utils import unique_name_from_base, sagemaker_timestamp
 
