@@ -1,5 +1,23 @@
 # Changelog
 
+## v2.79.0 (2022-03-16)
+
+### Features
+
+ * Inferentia Neuron support for HuggingFace
+ * custom base job name for jumpstart models/estimators
+ * Python 3.9 for readthedocs
+
+### Bug Fixes and Other Changes
+
+ * container env generation for S3 URI and add test for the same
+
+### Documentation Changes
+
+ * the SageMaker distributed data parallel v1.4.0 release
+ * update sagemaker training compiler docstring
+ * smddp doc update
+
 ## v2.78.0 (2022-03-07)
 
 ### Features

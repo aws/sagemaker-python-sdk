@@ -21,6 +21,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 from sagemaker.local.image import _SageMakerContainer
+from sagemaker.local.utils import get_docker_host
 from sagemaker.local.entities import (
     _LocalEndpointConfig,
     _LocalEndpoint,
@@ -448,7 +449,7 @@ class LocalSagemakerRuntimeClient(object):
         Returns:
             object: Inference for the given input.
         """
-        url = "http://localhost:%s/invocations" % self.serving_port
+        url = "http://%s:%d/invocations" % (get_docker_host(), self.serving_port)
         headers = {}
 
         if ContentType is not None:
