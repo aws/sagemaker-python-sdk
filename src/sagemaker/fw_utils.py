@@ -75,6 +75,8 @@ SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
         "2.6.0",
         "2.6.2",
         "2.6.3",
+        "2.7",
+        "2.7.1",
         "2.8",
         "2.8.0",
     ],
