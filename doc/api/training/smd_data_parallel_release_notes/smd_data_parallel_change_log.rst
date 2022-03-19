@@ -43,8 +43,9 @@ SageMaker Distributed Data Parallel 1.4.0 Release Notes
 
 **Improvements**
 
-* Support AllReduce Large Tensors
-* we support the following new arguments in the `PyTorch DDP class <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel>`_.
+* Support for AllReduce Large Tensors
+* Support for the following new arguments in the `PyTorch DDP class
+  <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel>`_.
 
   * ``broadcast_buffers``
   * ``find_unused_parameters``
@@ -69,18 +70,6 @@ This version passed benchmark testing and is migrated to the following AWS Deep 
   .. code::
 
     763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.10.2-gpu-py38-cu113-ubuntu20.04-sagemaker
-
-- PyTorch 1.10.0 DLC
-
-  .. code::
-
-    763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.10.0-gpu-py38-cu113-ubuntu20.04-sagemaker
-
-- PyTorch 1.9.1 DLC
-
-  .. code::
-
-    763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.9.1-gpu-py38-cu111-ubuntu20.04
 
 
 ----
