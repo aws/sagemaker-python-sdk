@@ -7,11 +7,11 @@
         "versions": {
             "4.11.0": {
                 "version_aliases": {
-                    "pytorch1.10": "pytorch1.10.0",
+                    "pytorch1.10": "pytorch1.10.2",
                     "pytorch1.9": "pytorch1.9.0",
                     "tensorflow2.5": "tensorflow2.5.1"
                 },
-                "pytorch1.10.0": {
+                "pytorch1.10.2": {
                     "py_versions": ["py38"],
                     "registries": {
                         "eu-west-1": "763104351884",
