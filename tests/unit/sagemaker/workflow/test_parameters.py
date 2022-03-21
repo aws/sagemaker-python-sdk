@@ -102,17 +102,31 @@ def test_parsable_parameter_string():
     assert urlparse(param).scheme == "s3"
 
 
-def test_startswith_on_parameter_string():
+def test_string_builtin_funcs_that_return_bool_on_parameter_string():
     param = ParameterString("MyString", default_value="s3://foo/bar/baz.csv")
     # The param will only be parsed in runtime (Pipeline backend) so not able to tell in SDK
     assert not param.startswith("s3")
+    assert not param.endswith("s3")
 
 
 def test_add_func():
     param_str = ParameterString(name="MyString", default_value="s3://foo/bar/baz.csv")
     param_int = ParameterInteger(name="MyInteger", default_value=3)
+    param_float = ParameterFloat(name="MyFloat", default_value=1.5)
+    param_bool = ParameterBoolean(name="MyBool")
 
     with pytest.raises(TypeError) as error:
         param_str + param_int
+    assert str(error.value) == "Pipeline variables do not support concatenation."
 
+    with pytest.raises(TypeError) as error:
+        param_int + param_float
+    assert str(error.value) == "Pipeline variables do not support concatenation."
+
+    with pytest.raises(TypeError) as error:
+        param_float + param_bool
+    assert str(error.value) == "Pipeline variables do not support concatenation."
+
+    with pytest.raises(TypeError) as error:
+        param_bool + param_str
     assert str(error.value) == "Pipeline variables do not support concatenation."

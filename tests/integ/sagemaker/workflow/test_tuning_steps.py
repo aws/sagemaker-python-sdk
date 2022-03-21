@@ -105,7 +105,7 @@ def test_tuning_single_algo(
         max_retry_attempts=3,
     )
 
-    min_batch_size = ParameterString(name="MinBatchSize", default_value="64")
+    min_batch_size = ParameterInteger(name="MinBatchSize", default_value=64)
     max_batch_size = ParameterInteger(name="MaxBatchSize", default_value=128)
     hyperparameter_ranges = {
         "batch-size": IntegerParameter(min_batch_size, max_batch_size),

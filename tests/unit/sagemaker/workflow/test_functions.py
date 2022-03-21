@@ -75,16 +75,28 @@ def test_to_string_on_join():
 
     assert func.to_string() == func
 
+
+def test_implicit_value_on_join():
+    func = Join(values=[1, "a", False, 1.1])
+
     with pytest.raises(TypeError) as error:
         str(func)
-
     assert str(error.value) == "Pipeline variables do not support __str__ operation."
 
+    with pytest.raises(TypeError) as error:
+        int(func)
+    assert str(error.value) == "Pipeline variables do not support __int__ operation."
 
-def test_startswith_on_join():
+    with pytest.raises(TypeError) as error:
+        float(func)
+    assert str(error.value) == "Pipeline variables do not support __float__ operation."
+
+
+def test_string_builtin_funcs_that_return_bool_on_join():
     func = Join(on=",", values=["s3:/", "my-bucket", "a"])
     # The func will only be parsed in runtime (Pipeline backend) so not able to tell in SDK
     assert not func.startswith("s3")
+    assert not func.endswith("s3")
 
 
 def test_add_func_of_join():
@@ -167,13 +179,28 @@ def test_to_string_on_json_get():
         },
     }
 
+
+def test_implicit_value_on_json_get():
+    func = JsonGet(
+        step_name="my-step",
+        property_file="my-property-file",
+        json_path="my-json-path",
+    )
+
     with pytest.raises(TypeError) as error:
         str(func)
-
     assert str(error.value) == "Pipeline variables do not support __str__ operation."
 
+    with pytest.raises(TypeError) as error:
+        int(func)
+    assert str(error.value) == "Pipeline variables do not support __int__ operation."
 
-def test_startswith_on_json_get():
+    with pytest.raises(TypeError) as error:
+        float(func)
+    assert str(error.value) == "Pipeline variables do not support __float__ operation."
+
+
+def test_string_builtin_funcs_that_return_bool_on_json_get():
     func = JsonGet(
         step_name="my-step",
         property_file="my-property-file",
@@ -181,6 +208,7 @@ def test_startswith_on_json_get():
     )
     # The func will only be parsed in runtime (Pipeline backend) so not able to tell in SDK
     assert not func.startswith("s3")
+    assert not func.endswith("s3")
 
 
 def test_add_func_of_json_get():

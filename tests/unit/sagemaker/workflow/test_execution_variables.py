@@ -27,16 +27,28 @@ def test_to_string():
 
     assert var.to_string() == var
 
+
+def test_implicit_value():
+    var = ExecutionVariables.START_DATETIME
+
     with pytest.raises(TypeError) as error:
         str(var)
-
     assert str(error.value) == "Pipeline variables do not support __str__ operation."
 
+    with pytest.raises(TypeError) as error:
+        int(var)
+    assert str(error.value) == "Pipeline variables do not support __int__ operation."
 
-def test_startswith():
+    with pytest.raises(TypeError) as error:
+        float(var)
+    assert str(error.value) == "Pipeline variables do not support __float__ operation."
+
+
+def test_string_builtin_funcs_that_return_bool():
     prop = ExecutionVariables.PIPELINE_NAME
     # The execution var will only be parsed in runtime (Pipeline backend) so not able to tell in SDK
     assert not prop.startswith("MyPipeline")
+    assert not prop.endswith("MyPipeline")
 
 
 def test_add_func():
