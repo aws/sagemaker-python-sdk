@@ -248,7 +248,7 @@ def test_mxnet_local_data_local_script(
 
 
 @pytest.mark.local_mode
-def test_mxnet_local_env(mxnet_training_latest_version, mxnet_training_latest_py_version):
+def test_mxnet_local_training_env(mxnet_training_latest_version, mxnet_training_latest_py_version):
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
     script_path = os.path.join(data_path, "check_env.py")
 
