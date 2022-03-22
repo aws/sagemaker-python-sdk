@@ -183,7 +183,7 @@ class _LocalTrainingJob(object):
     _states = ["Starting", "Training", "Completed"]
 
     def __init__(self, container):
-        """Creates a local processing job.
+        """Creates a local training job.
 
         Args:
             container: the local container object.
