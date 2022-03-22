@@ -90,7 +90,6 @@ def test_s3_data_distribution_type_ignorance():
         headers=["Label", "F1", "F2", "F3", "F4"],
         dataset_type="text/csv",
         joinsource="F4",
-        s3_data_distribution_type="ShardedByS3Key",
     )
     assert data_config.s3_data_distribution_type == "FullyReplicated"
 
