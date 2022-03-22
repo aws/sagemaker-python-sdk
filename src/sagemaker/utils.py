@@ -658,11 +658,9 @@ class DataConfig(abc.ABC):
     """
 
     @abc.abstractmethod
-    def fetch_data_config(self, sagemaker_session):
+    def fetch_data_config(self):
         """Abstract method implementing retrieval of data config from a pre-configured data source.
 
-        Args:
-            sagemaker_session (Session): SageMaker session instance to use for boto configuration
 
         Returns:
             object: The data configuration object for Example Notebooks
@@ -681,9 +679,9 @@ class S3DataConfig(DataConfig):
         """Initialize a ``S3DataConfig`` instance.
 
         Args:
-            bucket_name (str): Name of the bucket from which data config needs to be fetched
-            prefix (str): The object prefix for the hosted data config
             sagemaker_session (Session): SageMaker session instance to use for boto configuration.
+            bucket_name (str): Name of the bucket from which data config needs to be fetched.
+            prefix (str): The object prefix for the hosted data config.
 
         """
         super(S3DataConfig, self).__init__()
@@ -691,11 +689,8 @@ class S3DataConfig(DataConfig):
         self.prefix = prefix
         self.sagemaker_session = sagemaker_session
 
-    def fetch_data_config(self, sagemaker_session):
+    def fetch_data_config(self):
         """Fetches data configuration for Example Notebooks from a S3 bucket.
-
-        Args:
-            sagemaker_session (Session): SageMaker session instance to use for boto configuration.
 
         Returns:
             object: The JSON object containing data configuration.
@@ -705,10 +700,7 @@ class S3DataConfig(DataConfig):
         return json.loads(json_string)
 
     def get_data_bucket(self):
-        """Returns the bucket containing the data for specified region.
-
-        Args:
-            sagemaker_session (Session): SageMaker session instance to use for boto configuration.
+        """Provides the bucket containing the data for specified region.
 
         Returns:
             str: The S3 bucket containing datasets for Example Notebooks in the specified region.
