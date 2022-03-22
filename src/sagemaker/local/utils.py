@@ -14,15 +14,19 @@
 from __future__ import absolute_import
 
 import os
+import logging
 import shutil
 import subprocess
 import json
 import re
+import errno
 
 from distutils.dir_util import copy_tree
 from six.moves.urllib.parse import urlparse
 
 from sagemaker import s3
+
+logger = logging.getLogger(__name__)
 
 
 def copy_directory_structure(destination_directory, relative_path):
@@ -77,7 +81,19 @@ def move_to_destination(source, destination, job_name, sagemaker_session):
     else:
         raise ValueError("Invalid destination URI, must be s3:// or file://, got: %s" % destination)
 
-    shutil.rmtree(source)
+    try:
+        shutil.rmtree(source)
+    except OSError as exc:
+        # on Linux, when docker writes to any mounted volume, it uses the container's user. In most
+        # cases this is root. When the container exits and we try to delete them we can't because
+        # root owns those files. We expect this to happen, so we handle EACCESS. Any other error
+        # we will raise the exception up.
+        if exc.errno == errno.EACCES:
+            logger.warning("Failed to delete: %s Please remove it manually.", source)
+        else:
+            logger.error("Failed to delete: %s", source)
+            raise
+
     return final_uri
 
 
