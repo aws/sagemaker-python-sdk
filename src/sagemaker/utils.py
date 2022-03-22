@@ -651,8 +651,8 @@ def _module_import_error(py_module, feature, extras):
     return error_msg.format(py_module, feature, extras)
 
 
-class NotebooksDataConfig(abc.ABC):
-    """Abstract base class for creation for accessing data related to Example Notebooks.
+class DataConfig(abc.ABC):
+    """Abstract base class for creation for accessing data config hosted in AWS resourcs.
 
     Provides a skeleton for customization by overriding of method fetch_data_config.
     """
@@ -669,11 +669,29 @@ class NotebooksDataConfig(abc.ABC):
         """
 
 
-class S3DataConfig(NotebooksDataConfig):
-    """This class extends the NotebooksDataConfig class to fetch a data config file hosted on S3"""
+class S3DataConfig(DataConfig):
+    """This class extends the DataConfig class to fetch a data config file hosted on S3"""
 
-    @staticmethod
-    def fetch_data_config(sagemaker_session):
+    def __init__(
+        self,
+        sagemaker_session,
+        bucket_name="example-notebooks-data-config",
+        prefix="config/data_config.json",
+    ):
+        """Initialize a ``S3DataConfig`` instance.
+
+        Args:
+            bucket_name (str): Name of the bucket from which data config needs to be fetched
+            prefix (str): The object prefix for the hosted data config
+            sagemaker_session (Session): SageMaker session instance to use for boto configuration.
+
+        """
+        super(S3DataConfig, self).__init__()
+        self.bucket_name = bucket_name
+        self.prefix = prefix
+        self.sagemaker_session = sagemaker_session
+
+    def fetch_data_config(self, sagemaker_session):
         """Fetches data configuration for Example Notebooks from a S3 bucket.
 
         Args:
@@ -683,13 +701,10 @@ class S3DataConfig(NotebooksDataConfig):
             object: The JSON object containing data configuration.
         """
 
-        bucket_name = "example-notebooks-data-config"
-        prefix = "config/data_config.json"
-        json_string = sagemaker_session.read_s3_file(bucket_name, prefix)
+        json_string = self.sagemaker_session.read_s3_file(self.bucket_name, self.prefix)
         return json.loads(json_string)
 
-    @staticmethod
-    def get_data_bucket(sagemaker_session):
+    def get_data_bucket(self):
         """Returns the bucket containing the data for specified region.
 
         Args:
@@ -699,10 +714,10 @@ class S3DataConfig(NotebooksDataConfig):
             str: The S3 bucket containing datasets for Example Notebooks in the specified region.
         """
 
-        config = S3DataConfig.fetch_data_config(sagemaker_session)
-        region = sagemaker_session.boto_region_name
+        config = self.fetch_data_config()
+        region = self.sagemaker_session.boto_region_name
         return (
-            config[sagemaker_session.boto_region_name]
+            config[self.sagemaker_session.boto_region_name]
             if region in config.keys()
             else config["default"]
         )
