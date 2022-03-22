@@ -23,6 +23,8 @@ import shutil
 import tarfile
 import tempfile
 import time
+import json
+import abc
 from datetime import datetime
 
 import botocore
@@ -647,6 +649,68 @@ def _module_import_error(py_module, feature, extras):
         "to install all required dependencies."
     )
     return error_msg.format(py_module, feature, extras)
+
+
+class NotebooksDataConfig(abc.ABC):
+    """Abstract base class for creation of mechanisms for accessing data related to Example Notebooks.
+
+    Provides a skeleton for customization requiring the overriding of the method fetch_data_config.
+    """
+
+    @abc.abstractmethod
+    def fetch_data_config(self, sagemaker_session):
+        """An abstract method that implements mechanisms to extract notebooks data config from a pre-configured
+         data source.
+
+        Args:
+            sagemaker_session (Session): SageMaker session instance to use for boto configuration
+
+        Returns:
+            object: The data configuration object for Example Notebooks
+
+        """
+
+
+class S3DataConfig(NotebooksDataConfig):
+
+    """
+    This class extends the NotebooksDataConfig class to fetch a data config file hosted on S3
+    """
+
+    def __init__(self):
+        """Initialize a ``S3DataConfig`` instance."""
+        super(S3DataConfig, self).__init__()
+
+    @staticmethod
+    def fetch_data_config(sagemaker_session):
+        """Fetches data configuration for Example Notebooks from a S3 bucket.
+
+        Args:
+            sagemaker_session (Session): SageMaker session instance to use for boto configuration.
+
+        Returns:
+            object: The JSON object containing data configuration object for Example Notebooks from S3.
+        """
+
+        bucket_name = 'example-notebooks-data-config'
+        prefix = 'config/data_config.json'
+        json_string = sagemaker_session.read_s3_file(bucket_name, prefix)
+        return json.loads(json_string)
+
+    @staticmethod
+    def get_data_bucket(sagemaker_session):
+        """Returns the bucket containing the data for specified region.
+
+        Args:
+            sagemaker_session (Session): SageMaker session instance to use for boto configuration.
+
+        Returns:
+            str: The name of the S3 bucket containing datasets for Example Notebooks in the specified region.
+        """
+
+        config = S3DataConfig.fetch_data_config(sagemaker_session)
+        region = sagemaker_session.boto_region_name
+        return config[sagemaker_session.boto_region_name] if region in config.keys() else config["default"]
 
 
 get_ecr_image_uri_prefix = deprecations.removed_function("get_ecr_image_uri_prefix")
