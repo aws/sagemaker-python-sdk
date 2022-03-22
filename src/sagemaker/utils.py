@@ -661,7 +661,6 @@ class DataConfig(abc.ABC):
     def fetch_data_config(self):
         """Abstract method implementing retrieval of data config from a pre-configured data source.
 
-
         Returns:
             object: The data configuration object for Example Notebooks
         """
