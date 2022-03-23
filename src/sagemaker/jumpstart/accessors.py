@@ -164,6 +164,6 @@ class JumpStartModelsAccessor(object):
             cache_kwargs (str): cache kwargs to use.
             region (str): The region to use for the cache.
         """
-        cache_kwargs_dict = {} if cache_kwargs is None else cache_kwargs
+        cache_kwargs_dict: Dict[str, Any] = {} if cache_kwargs is None else cache_kwargs
         JumpStartModelsAccessor.set_cache_kwargs(cache_kwargs_dict, region)
         return JumpStartModelsAccessor._cache.get_manifest()  # type: ignore

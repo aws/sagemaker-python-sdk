@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import copy
 
 from functools import cmp_to_key
-from typing import Any, List, Tuple, Union, Set, Dict
+from typing import Any, List, Optional, Tuple, Union, Set, Dict
 from packaging.version import Version
 from sagemaker.jumpstart import accessors
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
@@ -26,7 +26,8 @@ from sagemaker.jumpstart.utils import get_sagemaker_version
 
 
 def _compare_model_version_tuples(  # pylint: disable=too-many-return-statements
-    model_version_1: Tuple[str, str] = None, model_version_2: Tuple[str, str] = None
+    model_version_1: Optional[Tuple[str, str]] = None,
+    model_version_2: Optional[Tuple[str, str]] = None,
 ) -> int:
     """Performs comparison of sdk specs paths, in order to sort them.
 
@@ -104,7 +105,7 @@ def extract_framework_task_model(model_id: str) -> Tuple[str, str, str]:
     _id_parts = model_id.split("-")
 
     if len(_id_parts) < 3:
-        raise ValueError(f"incorrect model id: {model_id}.")
+        raise ValueError(f"incorrect model ID: {model_id}.")
 
     framework = _id_parts[0]
     task = _id_parts[1]
