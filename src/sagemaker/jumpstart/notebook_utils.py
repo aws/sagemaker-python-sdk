@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 """This module stores notebook utils related to SageMaker JumpStart."""
 from __future__ import absolute_import
+import copy
 
 from functools import cmp_to_key
 from typing import Any, List, Tuple, Union, Set, Dict
@@ -19,31 +20,15 @@ from packaging.version import Version
 from sagemaker.jumpstart import accessors
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 from sagemaker.jumpstart.enums import JumpStartScriptScope
+from sagemaker.jumpstart.filters import BooleanValues, Identity
+from sagemaker.jumpstart.filters import Constant, ModelFilter, Operator, evaluate_filter_expression
 from sagemaker.jumpstart.utils import get_sagemaker_version
-
-
-def extract_framework_task_model(model_id: str) -> Tuple[str, str, str]:
-    """Parse the input model id, return a tuple framework, task, rest-of-id.
-
-    Args:
-        model_id (str): The model id for which to extract the framework/task/model.
-    """
-    _id_parts = model_id.split("-")
-
-    if len(_id_parts) < 3:
-        raise ValueError(f"incorrect model id: {model_id}.")
-
-    framework = _id_parts[0]
-    task = _id_parts[1]
-    name = "-".join(_id_parts[2:])
-
-    return framework, task, name
 
 
 def _compare_model_version_tuples(  # pylint: disable=too-many-return-statements
     model_version_1: Tuple[str, str] = None, model_version_2: Tuple[str, str] = None
 ) -> int:
-    """Performs comparison of sdk specs paths, in order to sort them in manifest.
+    """Performs comparison of sdk specs paths, in order to sort them.
 
     Args:
         model_version_1 (Tuple[str, str]): The first model id and version tuple to compare.
@@ -77,260 +62,178 @@ def _compare_model_version_tuples(  # pylint: disable=too-many-return-statements
     return 0
 
 
-def list_jumpstart_frameworks(
-    **kwargs: Dict[str, Any],
-) -> List[str]:
-    """List frameworks actively in use by JumpStart.
+def _model_filter_in_operator_generator(filter_operator: Operator) -> Operator:
+    """Generator for model filters in an operator."""
+    for operator in filter_operator:
+        if isinstance(operator.unresolved_value, ModelFilter):
+            yield operator
+
+
+def _put_resolved_booleans_into_filter(
+    filter_operator: Operator, model_filters_to_resolved_values: Dict[ModelFilter, BooleanValues]
+) -> None:
+    """Put resolved booleans into filter."""
+    for operator in _model_filter_in_operator_generator(filter_operator):
+        model_filter = operator.unresolved_value
+        operator.resolved_value = model_filters_to_resolved_values.get(
+            model_filter, BooleanValues.UNKNOWN
+        )
+
+
+def _populate_model_filters_to_resolved_values(
+    manifest_specs_cached_values: Dict[str, Any],
+    model_filters_to_resolved_values: Dict[ModelFilter, BooleanValues],
+    model_filters: Operator,
+) -> None:
+    """Populate model filters to resolved values."""
+    for model_filter in model_filters:
+        if model_filter.key in manifest_specs_cached_values:
+            cached_model_value = manifest_specs_cached_values[model_filter.key]
+            evaluated_expression: BooleanValues = evaluate_filter_expression(
+                model_filter, cached_model_value
+            )
+            model_filters_to_resolved_values[model_filter] = evaluated_expression
+
+
+def extract_framework_task_model(model_id: str) -> Tuple[str, str, str]:
+    """Parse the input model id, return a tuple framework, task, rest-of-id.
 
     Args:
-        kwargs (Dict[str, Any]): kwarg arguments to supply to
-            ``list_jumpstart_models``.
+        model_id (str): The model id for which to extract the framework/task/model.
     """
-    models_list = list_jumpstart_models(**kwargs)
-    frameworks = set()
-    for model_id, _ in models_list:
-        framework, _, _ = extract_framework_task_model(model_id)
-        frameworks.add(framework)
-    return sorted(list(frameworks))
+    _id_parts = model_id.split("-")
+
+    if len(_id_parts) < 3:
+        raise ValueError(f"incorrect model id: {model_id}.")
+
+    framework = _id_parts[0]
+    task = _id_parts[1]
+    name = "-".join(_id_parts[2:])
+
+    return framework, task, name
 
 
-def list_jumpstart_tasks(
-    **kwargs: Dict[str, Any],
+def list_jumpstart_tasks(  # pylint: disable=redefined-builtin
+    filter: Union[Operator, str] = Constant(BooleanValues.TRUE),
+    region: str = JUMPSTART_DEFAULT_REGION_NAME,
 ) -> List[str]:
-    """List tasks actively in use by JumpStart.
+    """List tasks for JumpStart, and optionally apply filters to result.
 
     Args:
-        kwargs (Dict[str, Any]): kwarg arguments to supply to
-            ``list_jumpstart_models``.
+        filter (Union[Operator, str]): Optional. The filter to apply to list tasks. This can be
+            either an ``Operator`` type filter (e.g. ``And("task == ic", "framework == pytorch")``),
+            or simply a string filter which will get serialized into an Identity filter.
+            (e.g. ``"task == ic"``). If this argument is not supplied, all tasks will be listed.
+            (Default: Constant(BooleanValues.TRUE)).
+        region (str): Optional. The AWS region from which to retrieve JumpStart metadata regarding
+            models. (Default: JUMPSTART_DEFAULT_REGION_NAME).
     """
-    models_list = list_jumpstart_models(**kwargs)
-    tasks = set()
-    for model_id, _ in models_list:
+
+    tasks: Set[str] = set()
+    for model_id, _ in _generate_jumpstart_model_versions(filter=filter, region=region):
         _, task, _ = extract_framework_task_model(model_id)
         tasks.add(task)
     return sorted(list(tasks))
 
 
-def list_jumpstart_scripts(
-    **kwargs: Dict[str, Any],
+def list_jumpstart_frameworks(  # pylint: disable=redefined-builtin
+    filter: Union[Operator, str] = Constant(BooleanValues.TRUE),
+    region: str = JUMPSTART_DEFAULT_REGION_NAME,
 ) -> List[str]:
-    """List scripts actively in use by JumpStart.
-
-    Note: Using this function will result in slow execution speed, as it requires
-    making many http calls and parsing metadata files. To-Do: store script
-    information for all models in a single file.
-
-    Check ``sagemaker.jumpstart.enums.JumpStartScriptScope`` for possible types
-    of JumpStart scripts.
+    """List frameworks for JumpStart, and optionally apply filters to result.
 
     Args:
-        kwargs (Dict[str, Any]): kwarg arguments to supply to
-            ``list_jumpstart_models``.
+        filter (Union[Operator, str]): Optional. The filter to apply to list frameworks. This can be
+            either an ``Operator`` type filter (e.g. ``And("task == ic", "framework == pytorch")``),
+            or simply a string filter which will get serialized into an Identity filter.
+            (eg. ``"task == ic"``). If this argument is not supplied, all frameworks will be listed.
+            (Default: Constant(BooleanValues.TRUE)).
+        region (str): Optional. The AWS region from which to retrieve JumpStart metadata regarding
+            models. (Default: JUMPSTART_DEFAULT_REGION_NAME).
     """
-    models_list = list_jumpstart_models(**kwargs)
-    scripts = set()
-    for model_id, version in models_list:
-        scripts.add(JumpStartScriptScope.INFERENCE.value)
+
+    frameworks: Set[str] = set()
+    for model_id, _ in _generate_jumpstart_model_versions(filter=filter, region=region):
+        framework, _, _ = extract_framework_task_model(model_id)
+        frameworks.add(framework)
+    return sorted(list(frameworks))
+
+
+def list_jumpstart_scripts(  # pylint: disable=redefined-builtin
+    filter: Union[Operator, str] = Constant(BooleanValues.TRUE),
+    region: str = JUMPSTART_DEFAULT_REGION_NAME,
+) -> List[str]:
+    """List scripts for JumpStart, and optionally apply filters to result.
+
+    Args:
+        filter (Union[Operator, str]): Optional. The filter to apply to list scripts. This can be
+            either an ``Operator`` type filter (e.g. ``And("task == ic", "framework == pytorch")``),
+            or simply a string filter which will get serialized into an Identity filter.
+            (e.g. ``"task == ic"``). If this argument is not supplied, all scripts will be listed.
+            (Default: Constant(BooleanValues.TRUE)).
+        region (str): Optional. The AWS region from which to retrieve JumpStart metadata regarding
+            models. (Default: JUMPSTART_DEFAULT_REGION_NAME).
+    """
+    if (isinstance(filter, Constant) and filter.resolved_value == BooleanValues.TRUE) or (
+        isinstance(filter, str) and filter.lower() == BooleanValues.TRUE.lower()
+    ):
+        return sorted([e.value for e in JumpStartScriptScope])
+
+    scripts: Set[str] = set()
+    for model_id, version in _generate_jumpstart_model_versions(filter=filter, region=region):
+        scripts.add(JumpStartScriptScope.INFERENCE)
         model_specs = accessors.JumpStartModelsAccessor.get_model_specs(
-            region=kwargs.get("region", JUMPSTART_DEFAULT_REGION_NAME),
+            region=region,
             model_id=model_id,
             version=version,
         )
         if model_specs.training_supported:
-            scripts.add(JumpStartScriptScope.TRAINING.value)
+            scripts.add(JumpStartScriptScope.TRAINING)
 
         if scripts == {e.value for e in JumpStartScriptScope}:
             break
     return sorted(list(scripts))
 
 
-def list_jumpstart_models(
-    script_allowlist: Union[str, List[str], Set[str], Tuple[str]] = None,
-    task_allowlist: Union[str, List[str], Set[str], Tuple[str]] = None,
-    framework_allowlist: Union[str, List[str], Set[str], Tuple[str]] = None,
-    model_id_allowlist: Union[str, List[str], Set[str], Tuple[str]] = None,
-    script_denylist: Union[str, List[str], Set[str], Tuple[str]] = None,
-    task_denylist: Union[str, List[str], Set[str], Tuple[str]] = None,
-    framework_denylist: Union[str, List[str], Set[str], Tuple[str]] = None,
-    model_id_denylist: Union[str, List[str], Set[str], Tuple[str]] = None,
+def list_jumpstart_models(  # pylint: disable=redefined-builtin
+    filter: Union[Operator, str] = Constant(BooleanValues.TRUE),
     region: str = JUMPSTART_DEFAULT_REGION_NAME,
-    accept_unsupported_models: bool = False,
-    accept_old_models: bool = False,
-    accept_vulnerable_models: bool = True,
-    accept_deprecated_models: bool = True,
-) -> List[str]:
-    """List models in JumpStart, and optionally apply filters to result.
+    list_incomplete_models: bool = False,
+    list_old_models: bool = False,
+    list_versions: bool = False,
+) -> List[Union[Tuple[str], Tuple[str, str]]]:
+    """List models for JumpStart, and optionally apply filters to result.
 
     Args:
-        script_allowlist (Union[str, List[str], Set[str], Tuple[str]]): Optional. String,
-            list, set, or tuple storing scripts. All models returned by this function
-            must use a script which is specified in this argument. Note: Using this
-            filter will result in slow execution speed, as it requires making more
-            http calls and parsing many metadata files. To-Do: store script
-            information for all models in a single file.
-            (Default: None).
-        task_allowlist (Union[str, List[str], Set[str], Tuple[str]]): Optional. String,
-            list, set, or tuple storing tasks. All models returned by this function
-            must use a task which is specified in this argument.
-            (Default: None).
-        framework_allowlist (Union[str, List[str], Set[str], Tuple[str]]): Optional. String,
-            list, set, or tuple storing frameworks. All models returned by this function
-            must use a frameworks which is specified in this argument.
-            (Default: None).
-        model_id_allowlist (Union[str, List[str], Set[str], Tuple[str]]): Optional. String,
-            list, set, or tuple storing model ids. All models returned by this function
-            must use a model id which is specified in this argument.
-            (Default: None).
-        script_denylist (Union[str, List[str], Set[str], Tuple[str]]): Optional. String,
-            list, set, or tuple storing scripts. All models returned by this function
-            must not use a script which is specified in this argument. Note: Using
-            this filter will result in slow execution speed, as it requires making
-            more http calls and parsing many metadata files. To-Do: store script
-            information for all models in a single file.
-            (Default: None).
-        task_denylist (Union[str, List[str], Set[str], Tuple[str]]): Optional. String,
-            list, set, or tuple storing tasks. All models returned by this function
-            must not use a task which is specified in this argument.
-            (Default: None).
-        framework_denylist (Union[str, List[str], Set[str], Tuple[str]]): Optional. String,
-            list, set, or tuple storing frameworks. All models returned by this function
-            must not use a frameworks which is specified in this argument.
-            (Default: None).
-        model_id_denylist (Union[str, List[str], Set[str], Tuple[str]]): Optional. String,
-            list, set, or tuple storing model ids. All models returned by this function
-            must not use a model id which is specified in this argument.
-            (Default: None).
-        region (str): Optional. Region to use when fetching JumpStart metadata.
-            (Default: ``JUMPSTART_DEFAULT_REGION_NAME``).
-        accept_unsupported_models (bool): Optional. Set to True to accept models that
-            are not supported with the current SageMaker library version
+        filter (Union[Operator, str]): Optional. The filter to apply to list models. This can be
+            either an ``Operator`` type filter (e.g. ``And("task == ic", "framework == pytorch")``),
+            or simply a string filter which will get serialized into an Identity filter.
+            (e.g. ``"task == ic"``). If this argument is not supplied, all models will be listed.
+            (Default: Constant(BooleanValues.TRUE)).
+        region (str): Optional. The AWS region from which to retrieve JumpStart metadata regarding
+            models. (Default: JUMPSTART_DEFAULT_REGION_NAME).
+        list_incomplete_models (bool): Optional. If a model does not contain metadata fields
+            requested by the filter, and the filter cannot be resolved to a include/not include,
+            whether the model should be included. By default, these models are omitted from results.
             (Default: False).
-        accept_old_models (bool): Optional. Set to True to accept model and version
-            tuples for which a model with the same name and a newer version exists.
-            (Default: False).
-        accept_vulnerable_models (bool): Optional. Set to False to reject models that
-            have a vulnerable inference or training script dependency. Note: accessing
-            vulnerability information requires making many http calls and parsing many
-            metadata files. To-Do: store vulnerability information for all models in a
-            single file, and change default value to False. (Default: True).
-        accept_deprecated_models (bool): Optional. Set to False to reject models that
-            have been flagged as deprecated. Note: accessing deprecation information
-            requires making many http calls and parsing many metadata files. To-Do:
-            store deprecation information for all models in a single file, and change
-            default value to False. (Default: True).
+        list_old_models (bool): Optional. If there are older versions of a model, whether the older
+            versions should be included in the returned result. (Default: False).
+        list_versions (bool): Optional. True if versions for models should be returned in addition
+            to the id of the model. (Default: False).
     """
-    bad_script_filter = script_allowlist is not None and script_denylist is not None
-    bad_task_filter = task_allowlist is not None and task_denylist is not None
-    bad_framework_filter = framework_allowlist is not None and framework_denylist is not None
-    bad_model_id_filter = model_id_allowlist is not None and model_id_denylist is not None
 
-    if bad_script_filter or bad_task_filter or bad_framework_filter or bad_model_id_filter:
-        raise ValueError(
-            (
-                "Cannot use an allowlist and denylist at the same time "
-                "for a filter (script, task, framework, model id)"
-            )
-        )
-
-    if isinstance(script_allowlist, str):
-        script_allowlist = set([script_allowlist])
-
-    if isinstance(task_allowlist, str):
-        task_allowlist = set([task_allowlist])
-
-    if isinstance(framework_allowlist, str):
-        framework_allowlist = set([framework_allowlist])
-
-    if isinstance(model_id_allowlist, str):
-        model_id_allowlist = set([model_id_allowlist])
-
-    if isinstance(script_denylist, str):
-        script_denylist = set([script_denylist])
-
-    if isinstance(task_denylist, str):
-        task_denylist = set([task_denylist])
-
-    if isinstance(framework_denylist, str):
-        framework_denylist = set([framework_denylist])
-
-    if isinstance(model_id_denylist, str):
-        model_id_denylist = set([model_id_denylist])
-
-    models_manifest_list = accessors.JumpStartModelsAccessor.get_manifest(region=region)
-    model_id_version_dict: Dict[str, Set[str]] = dict()
-    for model_manifest in models_manifest_list:
-        model_id = model_manifest.model_id
-        model_version = model_manifest.version
-
-        if not accept_unsupported_models and Version(get_sagemaker_version()) < Version(
-            model_manifest.min_version
-        ):
-            continue
-
-        if model_id_allowlist is not None:
-            model_id_allowlist = set(model_id_allowlist)
-            if model_id not in model_id_allowlist:
-                continue
-        if model_id_denylist is not None:
-            model_id_denylist = set(model_id_denylist)
-            if model_id in model_id_denylist:
-                continue
-
-        framework, task, _ = extract_framework_task_model(model_id)
-        supported_scripts = set([JumpStartScriptScope.INFERENCE.value])
-
-        if task_allowlist is not None:
-            task_allowlist = set(task_allowlist)
-            if task not in task_allowlist:
-                continue
-        if task_denylist is not None:
-            task_denylist = set(task_denylist)
-            if task in task_denylist:
-                continue
-
-        if framework_allowlist is not None:
-            framework_allowlist = set(framework_allowlist)
-            if framework not in framework_allowlist:
-                continue
-        if framework_denylist is not None:
-            framework_denylist = set(framework_denylist)
-            if framework in framework_denylist:
-                continue
-
-        if script_denylist is not None or script_allowlist is not None:
-            model_specs = accessors.JumpStartModelsAccessor.get_model_specs(
-                region=region, model_id=model_id, version=model_version
-            )
-            if model_specs.training_supported:
-                supported_scripts.add(JumpStartScriptScope.TRAINING.value)
-
-        if script_allowlist is not None:
-            script_allowlist = set(script_allowlist)
-            if len(supported_scripts.intersection(script_allowlist)) == 0:
-                continue
-        if script_denylist is not None:
-            script_denylist = set(script_denylist)
-            if len(supported_scripts.intersection(script_denylist)) > 0:
-                continue
-        if not accept_vulnerable_models:
-            model_specs = accessors.JumpStartModelsAccessor.get_model_specs(
-                region=region, model_id=model_id, version=model_version
-            )
-            if model_specs.inference_vulnerable or model_specs.training_vulnerable:
-                continue
-        if not accept_deprecated_models:
-            model_specs = accessors.JumpStartModelsAccessor.get_model_specs(
-                region=region, model_id=model_id, version=model_version
-            )
-            if model_specs.deprecated:
-                continue
-
+    model_id_version_dict: Dict[str, List[str]] = dict()
+    for model_id, version in _generate_jumpstart_model_versions(
+        filter=filter, region=region, list_incomplete_models=list_incomplete_models
+    ):
         if model_id not in model_id_version_dict:
-            model_id_version_dict[model_id] = set()
+            model_id_version_dict[model_id] = list()
+        model_id_version_dict[model_id].append(Version(version))
 
-        model_id_version_dict[model_id].add(Version(model_version))
+    if not list_versions:
+        return sorted(list(model_id_version_dict.keys()))
 
-    if not accept_old_models:
+    if not list_old_models:
         model_id_version_dict = {
             model: set([max(versions)]) for model, versions in model_id_version_dict.items()
         }
@@ -341,3 +244,139 @@ def list_jumpstart_models(
             model_id_set.add((model_id, str(version)))
 
     return sorted(list(model_id_set), key=cmp_to_key(_compare_model_version_tuples))
+
+
+def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
+    filter: Union[Operator, str] = Constant(BooleanValues.TRUE),
+    region: str = JUMPSTART_DEFAULT_REGION_NAME,
+    list_incomplete_models: bool = False,
+) -> Tuple[str, str]:
+    """Generate models for JumpStart, and optionally apply filters to result.
+
+    Args:
+        filter (Union[Operator, str]): Optional. The filter to apply to generate models. This can be
+            either an ``Operator`` type filter (e.g. ``And("task == ic", "framework == pytorch")``),
+            or simply a string filter which will get serialized into an Identity filter.
+            (e.g. ``"task == ic"``). If this argument is not supplied, all models will be generated.
+            (Default: Constant(BooleanValues.TRUE)).
+        region (str): Optional. The AWS region from which to retrieve JumpStart metadata regarding
+            models. (Default: JUMPSTART_DEFAULT_REGION_NAME).
+        list_incomplete_models (bool): Optional. If a model does not contain metadata fields
+            requested by the filter, and the filter cannot be resolved to a include/not include,
+            whether the model should be included. By default, these models are omitted from
+            results. (Default: False).
+    """
+
+    if isinstance(filter, str):
+        filter = Identity(filter)
+
+    models_manifest_list = accessors.JumpStartModelsAccessor.get_manifest(region=region)
+    manifest_keys = set(models_manifest_list[0].__slots__)
+
+    all_keys = set([])
+
+    model_filters = set([])
+
+    for operator in _model_filter_in_operator_generator(filter):
+        model_filter = operator.unresolved_value
+        key = model_filter.key
+        all_keys.add(key)
+        model_filters.add(model_filter)
+
+    for key in all_keys:
+        if "." in key:
+            raise NotImplementedError("No support for multiple level metadata indexing.")
+
+    metadata_filter_keys = all_keys - set(["task", "framework", "supported_model"])
+
+    required_manifest_keys = manifest_keys.intersection(metadata_filter_keys)
+    possible_spec_keys = metadata_filter_keys - manifest_keys
+
+    unrecognized_keys = set([])
+
+    for model_manifest in models_manifest_list:
+
+        copied_filter = copy.deepcopy(filter)
+
+        manifest_specs_cached_values = {}
+
+        model_filters_to_resolved_values = {}
+
+        for val in required_manifest_keys:
+            manifest_specs_cached_values[val] = getattr(model_manifest, val)
+
+        if "task" in all_keys:
+            manifest_specs_cached_values["task"] = extract_framework_task_model(
+                model_manifest.model_id
+            )[1]
+
+        if "framework" in all_keys:
+            manifest_specs_cached_values["framework"] = extract_framework_task_model(
+                model_manifest.model_id
+            )[0]
+
+        if "supported_model" in all_keys:
+            manifest_specs_cached_values["supported_model"] = Version(
+                model_manifest.min_version
+            ) <= Version(get_sagemaker_version())
+
+        _populate_model_filters_to_resolved_values(
+            manifest_specs_cached_values,
+            model_filters_to_resolved_values,
+            model_filters,
+        )
+
+        _put_resolved_booleans_into_filter(copied_filter, model_filters_to_resolved_values)
+
+        copied_filter.eval()
+
+        if copied_filter.resolved_value in [BooleanValues.TRUE, BooleanValues.FALSE]:
+            if copied_filter.resolved_value == BooleanValues.TRUE:
+                yield (model_manifest.model_id, model_manifest.version)
+            continue
+
+        if copied_filter.resolved_value == BooleanValues.UNEVALUATED:
+            raise RuntimeError(
+                "Filter expression in unevaluated state after using values from models manifest"
+            )
+
+        copied_filter_2 = copy.deepcopy(filter)
+
+        model_specs = accessors.JumpStartModelsAccessor.get_model_specs(
+            region=region,
+            model_id=model_manifest.model_id,
+            version=model_manifest.version,
+        )
+
+        model_specs_keys = set(model_specs.__slots__)
+
+        unrecognized_keys -= model_specs_keys
+        unrecognized_keys_for_single_spec = possible_spec_keys - model_specs_keys
+        unrecognized_keys.update(unrecognized_keys_for_single_spec)
+
+        for val in possible_spec_keys:
+            if hasattr(model_specs, val):
+                manifest_specs_cached_values[val] = getattr(model_specs, val)
+
+        _populate_model_filters_to_resolved_values(
+            manifest_specs_cached_values,
+            model_filters_to_resolved_values,
+            model_filters,
+        )
+        _put_resolved_booleans_into_filter(copied_filter_2, model_filters_to_resolved_values)
+
+        copied_filter_2.eval()
+
+        if copied_filter_2.resolved_value != BooleanValues.UNEVALUATED:
+            if copied_filter_2.resolved_value == BooleanValues.TRUE or (
+                BooleanValues.UNKNOWN and list_incomplete_models
+            ):
+                yield (model_manifest.model_id, model_manifest.version)
+            continue
+
+        raise RuntimeError(
+            "Filter expression in unevaluated state after using values from model specs"
+        )
+
+    if len(unrecognized_keys) > 0:
+        raise RuntimeError(f"Unrecognized keys: {str(unrecognized_keys)}")
