@@ -330,29 +330,6 @@ def test_compile_with_pytorch_neo_in_ml_inf(session):
     )
 
 
-@patch("sagemaker.session.Session")
-def test_compile_with_tensorflow_neo_in_ml_inf(session):
-    session.return_value.boto_region_name = REGION
-
-    model = _create_model()
-    model.compile(
-        target_instance_family="ml_inf",
-        input_shape={"data": [1, 3, 1024, 1024]},
-        output_path="s3://output",
-        role="role",
-        framework="tensorflow",
-        framework_version="1.15",
-        job_name="compile-model",
-    )
-
-    assert (
-        "{}.dkr.ecr.{}.amazonaws.com/sagemaker-inference-tensorflow:1.15-cpu-py3".format(
-            NEO_REGION_ACCOUNT, REGION
-        )
-        != model.image_uri
-    )
-
-
 def test_compile_validates_framework_version(sagemaker_session):
     sagemaker_session.wait_for_compilation_job = Mock(
         return_value={
