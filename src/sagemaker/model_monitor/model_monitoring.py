@@ -295,7 +295,6 @@ class ModelMonitor(object):
         network_config_dict = None
         if self.network_config is not None:
             network_config_dict = self.network_config._to_request_dict()
-            self._validate_network_config(network_config_dict)
 
         self.sagemaker_session.create_monitoring_schedule(
             monitoring_schedule_name=self.monitoring_schedule_name,
@@ -448,7 +447,6 @@ class ModelMonitor(object):
         network_config_dict = None
         if self.network_config is not None:
             network_config_dict = self.network_config._to_request_dict()
-            self._validate_network_config(network_config_dict)
 
         self.sagemaker_session.update_monitoring_schedule(
             monitoring_schedule_name=self.monitoring_schedule_name,
@@ -708,6 +706,9 @@ class ModelMonitor(object):
         if network_config_dict:
             network_config = NetworkConfig(
                 enable_network_isolation=network_config_dict["EnableNetworkIsolation"],
+                encrypt_inter_container_traffic=network_config_dict[
+                    "EnableInterContainerTrafficEncryption"
+                ],
                 security_group_ids=security_group_ids,
                 subnets=subnets,
             )
@@ -784,6 +785,9 @@ class ModelMonitor(object):
         if network_config_dict:
             network_config = NetworkConfig(
                 enable_network_isolation=network_config_dict["EnableNetworkIsolation"],
+                encrypt_inter_container_traffic=network_config_dict[
+                    "EnableInterContainerTrafficEncryption"
+                ],
                 security_group_ids=security_group_ids,
                 subnets=subnets,
             )
@@ -1163,31 +1167,6 @@ class ModelMonitor(object):
             schedule_desc = self.describe_schedule()
             if schedule_desc["MonitoringScheduleStatus"] != "Pending":
                 break
-
-    def _validate_network_config(self, network_config_dict):
-        """Function to validate EnableInterContainerTrafficEncryption.
-
-        It validates EnableInterContainerTrafficEncryption is not set in the provided
-        NetworkConfig request dictionary.
-
-        Args:
-            network_config_dict (dict): NetworkConfig request dictionary.
-                Contains parameters from :class:`~sagemaker.network.NetworkConfig` object
-                that configures network isolation, encryption of
-                inter-container traffic, security group IDs, and subnets.
-
-        """
-        if "EnableInterContainerTrafficEncryption" in network_config_dict:
-            message = (
-                "EnableInterContainerTrafficEncryption is not supported in Model Monitor. "
-                "Please ensure that encrypt_inter_container_traffic=None "
-                "when creating your NetworkConfig object. "
-                "Current encrypt_inter_container_traffic value: {}".format(
-                    self.network_config.encrypt_inter_container_traffic
-                )
-            )
-            _LOGGER.info(message)
-            raise ValueError(message)
 
     @classmethod
     def monitoring_type(cls):
@@ -1781,7 +1760,6 @@ class DefaultModelMonitor(ModelMonitor):
         network_config_dict = None
         if self.network_config is not None:
             network_config_dict = self.network_config._to_request_dict()
-            super(DefaultModelMonitor, self)._validate_network_config(network_config_dict)
 
         if role is not None:
             self.role = role
@@ -2034,6 +2012,9 @@ class DefaultModelMonitor(ModelMonitor):
             subnets = vpc_config.get("Subnets")
             network_config = NetworkConfig(
                 enable_network_isolation=network_config_dict["EnableNetworkIsolation"],
+                encrypt_inter_container_traffic=network_config_dict[
+                    "EnableInterContainerTrafficEncryption"
+                ],
                 security_group_ids=security_group_ids,
                 subnets=subnets,
             )
@@ -2304,7 +2285,6 @@ class DefaultModelMonitor(ModelMonitor):
 
         if network_config is not None:
             network_config_dict = network_config._to_request_dict()
-            self._validate_network_config(network_config_dict)
             request_dict["NetworkConfig"] = network_config_dict
         elif existing_network_config is not None:
             request_dict["NetworkConfig"] = existing_network_config
@@ -3007,7 +2987,6 @@ class ModelQualityMonitor(ModelMonitor):
 
         if network_config is not None:
             network_config_dict = network_config._to_request_dict()
-            self._validate_network_config(network_config_dict)
             request_dict["NetworkConfig"] = network_config_dict
         elif existing_network_config is not None:
             request_dict["NetworkConfig"] = existing_network_config
