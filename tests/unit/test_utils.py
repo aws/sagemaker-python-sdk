@@ -217,7 +217,12 @@ def test_notebooks_data_config_if_region_not_present():
     boto_mock = MagicMock(name="boto_session", region_name="ap-northeast-1")
     session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=MagicMock())
     session.read_s3_file = Mock(return_value=sample_data_config)
-    assert sagemaker.utils.S3DataConfig(session).get_data_bucket() == "sagemaker-sample-files"
+    assert (
+        sagemaker.utils.S3DataConfig(
+            session, "example-notebooks-data-config", "config/data_config.json"
+        ).get_data_bucket()
+        == "sagemaker-sample-files"
+    )
 
 
 def test_notebooks_data_config_if_region_present():
@@ -227,7 +232,12 @@ def test_notebooks_data_config_if_region_present():
     boto_mock = MagicMock(name="boto_session", region_name="us-west-2")
     session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=MagicMock())
     session.read_s3_file = Mock(return_value=sample_data_config)
-    assert sagemaker.utils.S3DataConfig(session).get_data_bucket() == "sagemaker-hosted-datasets"
+    assert (
+        sagemaker.utils.S3DataConfig(
+            session, "example-notebooks-data-config", "config/data_config.json"
+        ).get_data_bucket()
+        == "sagemaker-hosted-datasets"
+    )
 
 
 @patch("os.makedirs")

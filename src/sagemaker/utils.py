@@ -672,18 +672,24 @@ class S3DataConfig(DataConfig):
     def __init__(
         self,
         sagemaker_session,
-        bucket_name="example-notebooks-data-config",
-        prefix="config/data_config.json",
+        bucket_name,
+        prefix,
     ):
         """Initialize a ``S3DataConfig`` instance.
 
         Args:
             sagemaker_session (Session): SageMaker session instance to use for boto configuration.
-            bucket_name (str): Name of the bucket from which data config needs to be fetched.
-            prefix (str): The object prefix for the hosted data config.
+            bucket_name (str): Required. Name of the bucket from which data config needs to be fetched.
+            prefix (str): Required. The object prefix for the hosted data config.
 
         """
+        if bucket_name is None or prefix is None:
+            raise ValueError(
+                "Bucket Name and S3 file Prefix are required arguments and must be provided."
+            )
+
         super(S3DataConfig, self).__init__()
+
         self.bucket_name = bucket_name
         self.prefix = prefix
         self.sagemaker_session = sagemaker_session
