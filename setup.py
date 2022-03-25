@@ -16,7 +16,7 @@ from __future__ import absolute_import
 import os
 from glob import glob
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 
 def read(fname):
@@ -81,6 +81,7 @@ extras["test"] = (
         "fabric==2.6.0",
         "requests==2.27.1",
         "sagemaker-experiments==0.1.35",
+        "Jinja2==3.0.3",
     ],
 )
 
