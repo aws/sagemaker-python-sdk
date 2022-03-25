@@ -679,7 +679,7 @@ class S3DataConfig(DataConfig):
 
         Args:
             sagemaker_session (Session): SageMaker session instance to use for boto configuration.
-            bucket_name (str): Required. Name of the bucket from which data config needs to be fetched.
+            bucket_name (str): Required. Bucket name from which data config needs to be fetched.
             prefix (str): Required. The object prefix for the hosted data config.
 
         """
