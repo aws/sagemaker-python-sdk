@@ -662,7 +662,7 @@ class DataConfig(abc.ABC):
         """Abstract method implementing retrieval of data config from a pre-configured data source.
 
         Returns:
-            object: The data configuration object for Example Notebooks
+            object: The data configuration object.
         """
 
 
@@ -695,7 +695,7 @@ class S3DataConfig(DataConfig):
         self.sagemaker_session = sagemaker_session
 
     def fetch_data_config(self):
-        """Fetches data configuration for Example Notebooks from a S3 bucket.
+        """Fetches data configuration from a S3 bucket.
 
         Returns:
             object: The JSON object containing data configuration.
@@ -704,20 +704,19 @@ class S3DataConfig(DataConfig):
         json_string = self.sagemaker_session.read_s3_file(self.bucket_name, self.prefix)
         return json.loads(json_string)
 
-    def get_data_bucket(self):
+    def get_data_bucket(self, region_requested=None):
         """Provides the bucket containing the data for specified region.
 
+        Args:
+            region_requested (str): The region for which the data is beig requested.
+
         Returns:
-            str: The S3 bucket containing datasets for Example Notebooks in the specified region.
+            str: Name of the S3 bucket containing datasets in the requested region.
         """
 
         config = self.fetch_data_config()
-        region = self.sagemaker_session.boto_region_name
-        return (
-            config[self.sagemaker_session.boto_region_name]
-            if region in config.keys()
-            else config["default"]
-        )
+        region = region_requested if region_requested else self.sagemaker_session.boto_region_name
+        return config[region] if region in config.keys() else config["default"]
 
 
 get_ecr_image_uri_prefix = deprecations.removed_function("get_ecr_image_uri_prefix")
