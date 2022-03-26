@@ -320,7 +320,19 @@ def test_training_step_base_estimator(sagemaker_session):
         cache_config=cache_config,
     )
     step.add_depends_on(["AnotherTestStep"])
-    assert step.to_request() == {
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[
+            instance_type_parameter,
+            instance_count_parameter,
+            data_source_uri_parameter,
+            training_epochs_parameter,
+            training_batch_size_parameter,
+        ],
+        steps=[step],
+        sagemaker_session=sagemaker_session,
+    )
+    assert json.loads(pipeline.definition())["Steps"][0] == {
         "Name": "MyTrainingStep",
         "Type": "Training",
         "Description": "TrainingStep description",
@@ -329,8 +341,18 @@ def test_training_step_base_estimator(sagemaker_session):
         "Arguments": {
             "AlgorithmSpecification": {"TrainingImage": IMAGE_URI, "TrainingInputMode": "File"},
             "HyperParameters": {
-                "batch-size": training_batch_size_parameter,
-                "epochs": training_epochs_parameter,
+                "batch-size": {
+                    "Std:Join": {
+                        "On": "",
+                        "Values": [{"Get": "Parameters.TrainingBatchSize"}],
+                    },
+                },
+                "epochs": {
+                    "Std:Join": {
+                        "On": "",
+                        "Values": [{"Get": "Parameters.TrainingEpochs"}],
+                    },
+                },
             },
             "InputDataConfig": [
                 {
@@ -339,15 +361,15 @@ def test_training_step_base_estimator(sagemaker_session):
                         "S3DataSource": {
                             "S3DataDistributionType": "FullyReplicated",
                             "S3DataType": "S3Prefix",
-                            "S3Uri": data_source_uri_parameter,
+                            "S3Uri": {"Get": "Parameters.DataSourceS3Uri"},
                         }
                     },
                 }
             ],
             "OutputDataConfig": {"S3OutputPath": f"s3://{BUCKET}/"},
             "ResourceConfig": {
-                "InstanceCount": instance_count_parameter,
-                "InstanceType": instance_type_parameter,
+                "InstanceCount": {"Get": "Parameters.InstanceCount"},
+                "InstanceType": {"Get": "Parameters.InstanceType"},
                 "VolumeSizeInGB": 30,
             },
             "RoleArn": ROLE,
@@ -398,10 +420,22 @@ def test_training_step_tensorflow(sagemaker_session):
     step = TrainingStep(
         name="MyTrainingStep", estimator=estimator, inputs=inputs, cache_config=cache_config
     )
-    step_request = step.to_request()
-    step_request["Arguments"]["HyperParameters"].pop("sagemaker_program", None)
-    step_request["Arguments"].pop("ProfilerRuleConfigurations", None)
-    assert step_request == {
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[
+            instance_type_parameter,
+            instance_count_parameter,
+            data_source_uri_parameter,
+            training_epochs_parameter,
+            training_batch_size_parameter,
+        ],
+        steps=[step],
+        sagemaker_session=sagemaker_session,
+    )
+    dsl = json.loads(pipeline.definition())["Steps"][0]
+    dsl["Arguments"]["HyperParameters"].pop("sagemaker_program", None)
+    dsl["Arguments"].pop("ProfilerRuleConfigurations", None)
+    assert dsl == {
         "Name": "MyTrainingStep",
         "Type": "Training",
         "Arguments": {
@@ -413,8 +447,8 @@ def test_training_step_tensorflow(sagemaker_session):
             "OutputDataConfig": {"S3OutputPath": "s3://my-bucket/"},
             "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
             "ResourceConfig": {
-                "InstanceCount": instance_count_parameter,
-                "InstanceType": instance_type_parameter,
+                "InstanceCount": {"Get": "Parameters.InstanceCount"},
+                "InstanceType": {"Get": "Parameters.InstanceType"},
                 "VolumeSizeInGB": 30,
             },
             "RoleArn": "DummyRole",
@@ -423,7 +457,7 @@ def test_training_step_tensorflow(sagemaker_session):
                     "DataSource": {
                         "S3DataSource": {
                             "S3DataType": "S3Prefix",
-                            "S3Uri": data_source_uri_parameter,
+                            "S3Uri": {"Get": "Parameters.DataSourceS3Uri"},
                             "S3DataDistributionType": "FullyReplicated",
                         }
                     },
@@ -431,13 +465,17 @@ def test_training_step_tensorflow(sagemaker_session):
                 }
             ],
             "HyperParameters": {
-                "batch-size": training_batch_size_parameter,
-                "epochs": training_epochs_parameter,
+                "batch-size": {
+                    "Std:Join": {"On": "", "Values": [{"Get": "Parameters.TrainingBatchSize"}]}
+                },
+                "epochs": {
+                    "Std:Join": {"On": "", "Values": [{"Get": "Parameters.TrainingEpochs"}]}
+                },
                 "sagemaker_submit_directory": '"s3://mybucket/source"',
                 "sagemaker_container_log_level": "20",
                 "sagemaker_region": '"us-west-2"',
                 "sagemaker_distributed_dataparallel_enabled": "true",
-                "sagemaker_instance_type": instance_type_parameter,
+                "sagemaker_instance_type": {"Get": "Parameters.InstanceType"},
                 "sagemaker_distributed_dataparallel_custom_mpi_options": '""',
             },
             "ProfilerConfig": {"S3OutputPath": "s3://my-bucket/"},
@@ -1153,7 +1191,16 @@ def test_multi_algo_tuning_step(sagemaker_session):
         },
     )
 
-    assert tuning_step.to_request() == {
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[data_source_uri_parameter, instance_count, initial_lr_param],
+        steps=[tuning_step],
+        sagemaker_session=sagemaker_session,
+    )
+
+    dsl = json.loads(pipeline.definition())
+
+    assert dsl["Steps"][0] == {
         "Name": "MyTuningStep",
         "Type": "Tuning",
         "Arguments": {
@@ -1179,7 +1226,7 @@ def test_multi_algo_tuning_step(sagemaker_session):
                     "RoleArn": "DummyRole",
                     "OutputDataConfig": {"S3OutputPath": "s3://my-bucket/"},
                     "ResourceConfig": {
-                        "InstanceCount": 1,
+                        "InstanceCount": {"Get": "Parameters.InstanceCount"},
                         "InstanceType": "ml.c5.4xlarge",
                         "VolumeSizeInGB": 30,
                     },
@@ -1193,7 +1240,7 @@ def test_multi_algo_tuning_step(sagemaker_session):
                             "DataSource": {
                                 "S3DataSource": {
                                     "S3DataType": "S3Prefix",
-                                    "S3Uri": data_source_uri_parameter,
+                                    "S3Uri": {"Get": "Parameters.DataSourceS3Uri"},
                                     "S3DataDistributionType": "FullyReplicated",
                                 }
                             },
@@ -1206,7 +1253,7 @@ def test_multi_algo_tuning_step(sagemaker_session):
                         "ContinuousParameterRanges": [
                             {
                                 "Name": "learning_rate",
-                                "MinValue": initial_lr_param,
+                                "MinValue": {"Get": "Parameters.InitialLR"},
                                 "MaxValue": "0.05",
                                 "ScalingType": "Auto",
                             },
@@ -1246,7 +1293,7 @@ def test_multi_algo_tuning_step(sagemaker_session):
                     "RoleArn": "DummyRole",
                     "OutputDataConfig": {"S3OutputPath": "s3://my-bucket/"},
                     "ResourceConfig": {
-                        "InstanceCount": 1,
+                        "InstanceCount": {"Get": "Parameters.InstanceCount"},
                         "InstanceType": "ml.c5.4xlarge",
                         "VolumeSizeInGB": 30,
                     },
@@ -1260,7 +1307,7 @@ def test_multi_algo_tuning_step(sagemaker_session):
                             "DataSource": {
                                 "S3DataSource": {
                                     "S3DataType": "S3Prefix",
-                                    "S3Uri": data_source_uri_parameter,
+                                    "S3Uri": {"Get": "Parameters.DataSourceS3Uri"},
                                     "S3DataDistributionType": "FullyReplicated",
                                 }
                             },
@@ -1273,7 +1320,7 @@ def test_multi_algo_tuning_step(sagemaker_session):
                         "ContinuousParameterRanges": [
                             {
                                 "Name": "learning_rate",
-                                "MinValue": initial_lr_param,
+                                "MinValue": {"Get": "Parameters.InitialLR"},
                                 "MaxValue": "0.05",
                                 "ScalingType": "Auto",
                             },
