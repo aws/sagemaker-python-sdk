@@ -120,6 +120,7 @@ def test_tags(action_obj, sagemaker_session):
     assert [actual_tags[-1]] == tags
 
 
+@pytest.mark.skip("data inconsistency P61661075")
 def test_upstream_artifacts(static_model_deployment_action):
     artifacts_from_query = static_model_deployment_action.artifacts(
         direction=LineageQueryDirectionEnum.ASCENDANTS
@@ -129,6 +130,7 @@ def test_upstream_artifacts(static_model_deployment_action):
         assert "artifact" in artifact.artifact_arn
 
 
+@pytest.mark.skip("data inconsistency P61661075")
 def test_downstream_artifacts(static_approval_action):
     artifacts_from_query = static_approval_action.artifacts(
         direction=LineageQueryDirectionEnum.DESCENDANTS
@@ -138,6 +140,7 @@ def test_downstream_artifacts(static_approval_action):
         assert "artifact" in artifact.artifact_arn
 
 
+@pytest.mark.skip("data inconsistency P61661075")
 def test_datasets(static_approval_action, static_dataset_artifact, sagemaker_session):
     try:
         sagemaker_session.sagemaker_client.add_association(
@@ -165,6 +168,7 @@ def test_datasets(static_approval_action, static_dataset_artifact, sagemaker_ses
         pass
 
 
+@pytest.mark.skip("data inconsistency P61661075")
 def test_endpoints(static_approval_action):
     endpoint_contexts_from_query = static_approval_action.endpoints()
     assert len(endpoint_contexts_from_query) > 0
