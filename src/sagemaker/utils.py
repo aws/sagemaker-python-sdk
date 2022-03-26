@@ -652,7 +652,7 @@ def _module_import_error(py_module, feature, extras):
 
 
 class DataConfig(abc.ABC):
-    """Abstract base class for creation for accessing data config hosted in AWS resourcs.
+    """Abstract base class for accessing data config hosted in AWS resources.
 
     Provides a skeleton for customization by overriding of method fetch_data_config.
     """
