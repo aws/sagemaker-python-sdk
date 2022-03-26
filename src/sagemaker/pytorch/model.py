@@ -107,10 +107,14 @@ class PyTorchModel(FrameworkModel):
             py_version (str): Python version you want to use for executing your
                 model training code. Defaults to ``None``. Required unless
                 ``image_uri`` is provided.
-            image_uri (str): A Docker image URI (default: None). If not specified, a
-                default image for PyTorch will be used. If ``framework_version``
-                or ``py_version`` are ``None``, then ``image_uri`` is required. If
-                also ``None``, then a ``ValueError`` will be raised.
+            image_uri (str): A Docker image URI (default: None). For serverless
+                inferece, it is required. More image information can be found in
+                `Amazon SageMaker provided algorithms and Deep Learning Containers
+                <https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-algo-docker-registry-paths.html>`_.
+                For instance based inference, if not specified, a default image for
+                PyTorch will be used. If ``framework_version`` or ``py_version`` are
+                ``None``, then ``image_uri`` is required. If also ``None``, then a
+                ``ValueError`` will be raised.
             predictor_cls (callable[str, sagemaker.session.Session]): A function
                 to call to create a predictor with an endpoint name and
                 SageMaker ``Session``. If specified, ``deploy()`` returns the
