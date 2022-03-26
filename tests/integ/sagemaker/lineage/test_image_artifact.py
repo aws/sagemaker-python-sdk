@@ -13,9 +13,12 @@
 """This module contains code to test SageMaker ``ImageArtifact``"""
 from __future__ import absolute_import
 
+import pytest
+
 from sagemaker.lineage.query import LineageQueryDirectionEnum
 
 
+@pytest.mark.skip("data inconsistency P61661075")
 def test_dataset(static_image_artifact, sagemaker_session):
     artifacts_from_query = static_image_artifact.datasets(
         direction=LineageQueryDirectionEnum.DESCENDANTS

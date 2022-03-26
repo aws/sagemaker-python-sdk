@@ -7,7 +7,8 @@
             "4.6": "4.6.1",
             "4.10": "4.10.2",
             "4.11": "4.11.0",
-            "4.12": "4.12.3"
+            "4.12": "4.12.3",
+            "4.17": "4.17.0"
         },
         "versions": {
             "4.4.2": {
@@ -557,6 +558,43 @@
                     "repository": "huggingface-tensorflow-training",
                     "container_version": {"gpu": "cu112-ubuntu18.04"}
                 }
+            },
+            "4.17.0": {
+                "version_aliases": {
+                    "pytorch1.10": "pytorch1.10.2"
+                },
+                "pytorch1.10.2": {
+                    "py_versions": ["py38"],
+                    "registries": {
+                        "af-south-1": "626614931356",
+                        "ap-east-1": "871362719292",
+                        "ap-northeast-1": "763104351884",
+                        "ap-northeast-2": "763104351884",
+                        "ap-northeast-3": "364406365360",
+                        "ap-south-1": "763104351884",
+                        "ap-southeast-1": "763104351884",
+                        "ap-southeast-2": "763104351884",
+                        "ca-central-1": "763104351884",
+                        "cn-north-1": "727897471807",
+                        "cn-northwest-1": "727897471807",
+                        "eu-central-1": "763104351884",
+                        "eu-north-1": "763104351884",
+                        "eu-west-1": "763104351884",
+                        "eu-west-2": "763104351884",
+                        "eu-west-3": "763104351884",
+                        "eu-south-1": "692866216735",
+                        "me-south-1": "217643126080",
+                        "sa-east-1": "763104351884",
+                        "us-east-1": "763104351884",
+                        "us-east-2": "763104351884",
+                        "us-gov-west-1": "442386744353",
+                        "us-iso-east-1": "886529160074",
+                        "us-west-1": "763104351884",
+                        "us-west-2": "763104351884"
+                    },
+                    "repository": "huggingface-pytorch-training",
+                    "container_version": {"gpu": "cu113-ubuntu20.04"}
+                }
             }
         }
     },
@@ -567,7 +605,8 @@
             "4.6": "4.6.1",
             "4.10": "4.10.2",
             "4.11": "4.11.0",
-            "4.12": "4.12.3"
+            "4.12": "4.12.3",
+            "4.17": "4.17.0"
         },
         "versions": {
             "4.6.1": {
@@ -946,6 +985,43 @@
                     },
                     "repository": "huggingface-tensorflow-inference",
                     "container_version": {"gpu": "cu112-ubuntu18.04", "cpu": "ubuntu18.04" }
+                }
+            },
+            "4.17.0": {
+                "version_aliases": {
+                    "pytorch1.10": "pytorch1.10.2"
+                },
+                "pytorch1.10.2": {
+                    "py_versions": ["py38"],
+                    "registries": {
+                        "af-south-1": "626614931356",
+                        "ap-east-1": "871362719292",
+                        "ap-northeast-1": "763104351884",
+                        "ap-northeast-2": "763104351884",
+                        "ap-northeast-3": "364406365360",
+                        "ap-south-1": "763104351884",
+                        "ap-southeast-1": "763104351884",
+                        "ap-southeast-2": "763104351884",
+                        "ca-central-1": "763104351884",
+                        "cn-north-1": "727897471807",
+                        "cn-northwest-1": "727897471807",
+                        "eu-central-1": "763104351884",
+                        "eu-north-1": "763104351884",
+                        "eu-west-1": "763104351884",
+                        "eu-west-2": "763104351884",
+                        "eu-west-3": "763104351884",
+                        "eu-south-1": "692866216735",
+                        "me-south-1": "217643126080",
+                        "sa-east-1": "763104351884",
+                        "us-east-1": "763104351884",
+                        "us-east-2": "763104351884",
+                        "us-gov-west-1": "442386744353",
+                        "us-iso-east-1": "886529160074",
+                        "us-west-1": "763104351884",
+                        "us-west-2": "763104351884"
+                    },
+                    "repository": "huggingface-pytorch-inference",
+                    "container_version": {"gpu": "cu113-ubuntu20.04", "cpu": "ubuntu20.04" }
                 }
             }
         }
