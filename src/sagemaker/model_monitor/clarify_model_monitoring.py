@@ -397,7 +397,6 @@ class ClarifyModelMonitor(mm.ModelMonitor):
 
         if network_config is not None:
             network_config_dict = network_config._to_request_dict()
-            self._validate_network_config(network_config_dict)
             request_dict["NetworkConfig"] = network_config_dict
         elif existing_network_config is not None:
             request_dict["NetworkConfig"] = existing_network_config
