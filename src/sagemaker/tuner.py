@@ -38,6 +38,7 @@ from sagemaker.parameter import (
     IntegerParameter,
     ParameterRange,
 )
+from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.parameters import Parameter as PipelineParameter
 from sagemaker.workflow.functions import JsonGet as PipelineJsonGet
 from sagemaker.workflow.functions import Join as PipelineJoin
@@ -376,9 +377,7 @@ class HyperparameterTuner(object):
         """Prepare static hyperparameters for one estimator before tuning."""
         # Remove any hyperparameter that will be tuned
         static_hyperparameters = {
-            str(k): str(v)
-            if not isinstance(v, (PipelineParameter, PipelineJsonGet, PipelineJoin))
-            else v
+            str(k): str(v) if not isinstance(v, PipelineVariable) else v.to_string()
             for (k, v) in estimator.hyperparameters().items()
         }
         for hyperparameter_name in hyperparameter_ranges.keys():
