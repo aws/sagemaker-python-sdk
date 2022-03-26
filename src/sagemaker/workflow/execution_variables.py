@@ -14,12 +14,12 @@
 from __future__ import absolute_import
 
 from sagemaker.workflow.entities import (
-    Expression,
     RequestType,
+    PipelineVariable,
 )
 
 
-class ExecutionVariable(Expression):
+class ExecutionVariable(PipelineVariable):
     """Pipeline execution variables for workflow."""
 
     def __init__(self, name: str):
@@ -29,6 +29,13 @@ class ExecutionVariable(Expression):
             name (str): The name of the execution variable.
         """
         self.name = name
+
+    def to_string(self) -> PipelineVariable:
+        """Prompt the pipeline to convert the pipeline variable to String in runtime
+
+        As ExecutionVariable is treated as String in runtime, no extra actions are needed.
+        """
+        return self
 
     @property
     def expr(self) -> RequestType:

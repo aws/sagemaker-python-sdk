@@ -17,12 +17,12 @@ from typing import List, Union
 
 import attr
 
-from sagemaker.workflow.entities import Expression
+from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.properties import PropertyFile
 
 
 @attr.s
-class Join(Expression):
+class Join(PipelineVariable):
     """Join together properties.
 
     Examples:
@@ -38,15 +38,23 @@ class Join(Expression):
     Attributes:
         values (List[Union[PrimitiveType, Parameter, Expression]]):
             The primitive type values, parameters, step properties, expressions to join.
-        on_str (str): The string to join the values on (Defaults to "").
+        on (str): The string to join the values on (Defaults to "").
     """
 
     on: str = attr.ib(factory=str)
     values: List = attr.ib(factory=list)
 
+    def to_string(self) -> PipelineVariable:
+        """Prompt the pipeline to convert the pipeline variable to String in runtime
+
+        As Join is treated as String in runtime, no extra actions are needed.
+        """
+        return self
+
     @property
     def expr(self):
         """The expression dict for a `Join` function."""
+
         return {
             "Std:Join": {
                 "On": self.on,
@@ -58,7 +66,7 @@ class Join(Expression):
 
 
 @attr.s
-class JsonGet(Expression):
+class JsonGet(PipelineVariable):
     """Get JSON properties from PropertyFiles.
 
     Attributes:
