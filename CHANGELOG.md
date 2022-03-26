@@ -1,5 +1,24 @@
 # Changelog
 
+## v2.81.0 (2022-03-26)
+
+### Features
+
+ * Retrieve data configuration
+ * enable EnableInterContainerTrafficEncryption for model monitoring
+ * Hugging Face Transformers 4.17 for PT 1.10
+
+### Bug Fixes and Other Changes
+
+ * remove `new` from serverless
+ * temporarily skip tests impacted by data inconsistency
+ * Implement override solution for pipeline variables
+
+### Documentation Changes
+
+ * add documentation for image_uri serverless use case
+ * minor fixes for smddp 1.4.0 doc
+
 ## v2.80.0 (2022-03-18)
 
 ### Features
