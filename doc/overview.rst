@@ -1235,14 +1235,14 @@ the default ``MaxConcurrency`` will be **5** :
     from sagemaker.serverless import ServerlessInferenceConfig
 
     # Create an empty ServerlessInferenceConfig object to use default values
-    serverless_config = new ServerlessInferenceConfig()
+    serverless_config = ServerlessInferenceConfig()
 
 Or you can specify ``MemorySizeInMB`` and ``MaxConcurrency`` in ``ServerlessInferenceConfig`` (example shown below):
 
 .. code:: python
 
     # Specify MemorySizeInMB and MaxConcurrency in the serverless config object
-    serverless_config = new ServerlessInferenceConfig(
+    serverless_config = ServerlessInferenceConfig(
       memory_size_in_mb=4096,
       max_concurrency=10,
     )
