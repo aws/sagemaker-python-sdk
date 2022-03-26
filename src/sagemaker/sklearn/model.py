@@ -102,9 +102,12 @@ class SKLearnModel(FrameworkModel):
                 model training code (default: 'py3'). Currently, 'py3' is the only
                 supported version. If ``None`` is passed in, ``image_uri`` must be
                 provided.
-            image_uri (str): A Docker image URI (default: None). If not specified, a
-                default image for Scikit-learn will be used.
-
+            image_uri (str): A Docker image URI (default: None). For serverless
+                inferece, it is required. More image information can be found in
+                `Amazon SageMaker provided algorithms and Deep Learning Containers
+                <https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-algo-docker-registry-paths.html>`_.
+                For instance based inference, if not specified, a default image for
+                Scikit-learn will be used.
                 If ``framework_version`` or ``py_version`` are ``None``, then
                 ``image_uri`` is required. If also ``None``, then a ``ValueError``
                 will be raised.
