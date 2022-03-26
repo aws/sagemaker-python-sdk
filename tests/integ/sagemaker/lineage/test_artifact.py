@@ -102,6 +102,7 @@ def test_list_by_type(artifact_objs, sagemaker_session):
     assert artifact_names_listed[0] == expected_name
 
 
+@pytest.mark.skip("data inconsistency P61661075")
 def test_get_artifact(static_dataset_artifact):
     s3_uri = static_dataset_artifact.source.source_uri
     expected_artifact = static_dataset_artifact.s3_uri_artifacts(s3_uri=s3_uri)

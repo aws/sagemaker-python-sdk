@@ -709,9 +709,10 @@ def static_model_artifact(sagemaker_session, static_pipeline_execution_arn):
             )
         )
 
-    yield artifact.ModelArtifact.load(
-        artifacts[0]["ArtifactArn"], sagemaker_session=sagemaker_session
-    )
+    artifact_arn = artifacts[0]["ArtifactArn"]
+    logging.info(f"Using static model artifact {artifact_arn}")
+
+    yield artifact.ModelArtifact.load(artifact_arn, sagemaker_session=sagemaker_session)
 
 
 @pytest.fixture
