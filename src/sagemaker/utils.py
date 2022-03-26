@@ -23,6 +23,8 @@ import shutil
 import tarfile
 import tempfile
 import time
+import json
+import abc
 from datetime import datetime
 
 import botocore
@@ -647,6 +649,74 @@ def _module_import_error(py_module, feature, extras):
         "to install all required dependencies."
     )
     return error_msg.format(py_module, feature, extras)
+
+
+class DataConfig(abc.ABC):
+    """Abstract base class for accessing data config hosted in AWS resources.
+
+    Provides a skeleton for customization by overriding of method fetch_data_config.
+    """
+
+    @abc.abstractmethod
+    def fetch_data_config(self):
+        """Abstract method implementing retrieval of data config from a pre-configured data source.
+
+        Returns:
+            object: The data configuration object.
+        """
+
+
+class S3DataConfig(DataConfig):
+    """This class extends the DataConfig class to fetch a data config file hosted on S3"""
+
+    def __init__(
+        self,
+        sagemaker_session,
+        bucket_name,
+        prefix,
+    ):
+        """Initialize a ``S3DataConfig`` instance.
+
+        Args:
+            sagemaker_session (Session): SageMaker session instance to use for boto configuration.
+            bucket_name (str): Required. Bucket name from which data config needs to be fetched.
+            prefix (str): Required. The object prefix for the hosted data config.
+
+        """
+        if bucket_name is None or prefix is None:
+            raise ValueError(
+                "Bucket Name and S3 file Prefix are required arguments and must be provided."
+            )
+
+        super(S3DataConfig, self).__init__()
+
+        self.bucket_name = bucket_name
+        self.prefix = prefix
+        self.sagemaker_session = sagemaker_session
+
+    def fetch_data_config(self):
+        """Fetches data configuration from a S3 bucket.
+
+        Returns:
+            object: The JSON object containing data configuration.
+        """
+
+        json_string = self.sagemaker_session.read_s3_file(self.bucket_name, self.prefix)
+        return json.loads(json_string)
+
+    def get_data_bucket(self, region_requested=None):
+        """Provides the bucket containing the data for specified region.
+
+        Args:
+            region_requested (str): The region for which the data is beig requested.
+
+        Returns:
+            str: Name of the S3 bucket containing datasets in the requested region.
+        """
+
+        config = self.fetch_data_config()
+        region = region_requested if region_requested else self.sagemaker_session.boto_region_name
+        return config[region] if region in config.keys() else config["default"]
 
 
 get_ecr_image_uri_prefix = deprecations.removed_function("get_ecr_image_uri_prefix")
