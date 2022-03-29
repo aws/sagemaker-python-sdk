@@ -155,6 +155,7 @@ class LocalSagemakerClient(object):
         OutputDataConfig,
         ResourceConfig,
         InputDataConfig=None,
+        Environment=None,
         **kwargs
     ):
         """Create a training job in Local Mode.
@@ -167,6 +168,8 @@ class LocalSagemakerClient(object):
           OutputDataConfig(dict): Identifies the location where you want to save the results of
             model training.
           ResourceConfig(dict): Identifies the resources to use for local model training.
+          Environment(dict, optional): Describes the environment variables to pass
+            to the container. (Default value = None)
           HyperParameters(dict) [optional]: Specifies these algorithm-specific parameters to
             influence the quality of the final model.
           **kwargs:
@@ -175,6 +178,7 @@ class LocalSagemakerClient(object):
 
         """
         InputDataConfig = InputDataConfig or {}
+        Environment = Environment or {}
         container = _SageMakerContainer(
             ResourceConfig["InstanceType"],
             ResourceConfig["InstanceCount"],
@@ -184,7 +188,9 @@ class LocalSagemakerClient(object):
         training_job = _LocalTrainingJob(container)
         hyperparameters = kwargs["HyperParameters"] if "HyperParameters" in kwargs else {}
         logger.info("Starting training job")
-        training_job.start(InputDataConfig, OutputDataConfig, hyperparameters, TrainingJobName)
+        training_job.start(
+            InputDataConfig, OutputDataConfig, hyperparameters, Environment, TrainingJobName
+        )
 
         LocalSagemakerClient._training_jobs[TrainingJobName] = training_job
 
