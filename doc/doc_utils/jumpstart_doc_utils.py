@@ -67,6 +67,11 @@ def create_jumpstart_model_table():
     We highly suggest pinning an exact model version however.\n
     """
     )
+    file_content.append(
+        """
+    Each model id is linked to an external page that describes the model.\n
+    """
+    )
     file_content.append("\n")
     file_content.append(".. list-table:: Available Models\n")
     file_content.append("   :widths: 50 20 20 20\n")
@@ -80,7 +85,7 @@ def create_jumpstart_model_table():
 
     for model in sdk_manifest_top_versions_for_models.values():
         model_spec = get_jumpstart_sdk_spec(model["spec_key"])
-        file_content.append("   * - {}\n".format(model["model_id"]))
+        file_content.append("   * - `{} <{}>`_\n".format(model["model_id"], model["url"]))
         file_content.append("     - {}\n".format(model_spec["training_supported"]))
         file_content.append("     - {}\n".format(model["version"]))
         file_content.append("     - {}\n".format(model["min_version"]))
