@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.81.1 (2022-03-29)
+
+### Bug Fixes and Other Changes
+
+ * Update black-check version, add support for Spark 3.1 Processing
+
 ## v2.81.0 (2022-03-26)
 
 ### Features
