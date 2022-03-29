@@ -24,6 +24,7 @@ from sagemaker.workflow.entities import (
     Entity,
     PrimitiveType,
     RequestType,
+    PipelineVariable,
 )
 
 
@@ -48,7 +49,7 @@ class ParameterTypeEnum(Enum, metaclass=DefaultEnumMeta):
 
 
 @attr.s
-class Parameter(Entity):
+class Parameter(PipelineVariable, Entity):
     """Pipeline parameter for workflow.
 
     Attributes:
@@ -169,6 +170,13 @@ class ParameterString(Parameter, str):
     def __hash__(self):
         """Hash function for parameter types"""
         return hash(tuple(self.to_request()))
+
+    def to_string(self) -> PipelineVariable:
+        """Prompt the pipeline to convert the pipeline variable to String in runtime
+
+        As ParameterString is treated as String in runtime, no extra actions are needed.
+        """
+        return self
 
     def to_request(self) -> RequestType:
         """Get the request structure for workflow service calls."""

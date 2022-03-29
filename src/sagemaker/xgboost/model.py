@@ -91,8 +91,12 @@ class XGBoostModel(FrameworkModel):
             entry_point (str): Path (absolute or relative) to the Python source file which should
                 be executed  as the entry point to model hosting. If ``source_dir`` is specified,
                 then ``entry_point`` must point to a file located at the root of ``source_dir``.
-            image_uri (str): A Docker image URI (default: None). If not specified, a default image
-                for XGBoost is be used.
+            image_uri (str): A Docker image URI (default: None). For serverless inferece, it is
+                required. More image information can be found in
+                `Amazon SageMaker provided algorithms and Deep Learning Containers
+                <https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-algo-docker-registry-paths.html>`_.
+                For instance based inference, if not specified, a default image for XGBoost
+                is be used.
             py_version (str): Python version you want to use for executing your model training code
                 (default: 'py3').
             framework_version (str): XGBoost version you want to use for executing your model

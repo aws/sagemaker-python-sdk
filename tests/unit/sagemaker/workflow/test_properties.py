@@ -10,8 +10,9 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-# language governing permissions and limitations under the License.
 from __future__ import absolute_import
+
+import pytest
 
 from sagemaker.workflow.properties import Properties
 
@@ -92,3 +93,47 @@ def test_properties_describe_model_package_output():
     assert prop.ValidationSpecification.ValidationRole.expr == {
         "Get": "Steps.MyStep.ValidationSpecification.ValidationRole"
     }
+
+
+def test_to_string():
+    prop = Properties("Steps.MyStep", "DescribeTrainingJobResponse")
+
+    assert prop.CreationTime.to_string().expr == {
+        "Std:Join": {
+            "On": "",
+            "Values": [{"Get": "Steps.MyStep.CreationTime"}],
+        },
+    }
+
+
+def test_implicit_value():
+    prop = Properties("Steps.MyStep", "DescribeTrainingJobResponse")
+
+    with pytest.raises(TypeError) as error:
+        str(prop.CreationTime)
+    assert str(error.value) == "Pipeline variables do not support __str__ operation."
+
+    with pytest.raises(TypeError) as error:
+        int(prop.CreationTime)
+    assert str(error.value) == "Pipeline variables do not support __int__ operation."
+
+    with pytest.raises(TypeError) as error:
+        float(prop.CreationTime)
+    assert str(error.value) == "Pipeline variables do not support __float__ operation."
+
+
+def test_string_builtin_funcs_that_return_bool():
+    prop = Properties("Steps.MyStep", "DescribeModelPackageOutput")
+    # The prop will only be parsed in runtime (Pipeline backend) so not able to tell in SDK
+    assert not prop.startswith("s3")
+    assert not prop.endswith("s3")
+
+
+def test_add_func():
+    prop_train = Properties("Steps.MyStepTrain", "DescribeTrainingJobResponse")
+    prop_model = Properties("Steps.MyStepModel", "DescribeModelPackageOutput")
+
+    with pytest.raises(TypeError) as error:
+        prop_train + prop_model
+
+    assert str(error.value) == "Pipeline variables do not support concatenation."

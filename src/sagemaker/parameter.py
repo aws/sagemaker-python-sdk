@@ -14,9 +14,8 @@
 from __future__ import absolute_import
 
 import json
-from sagemaker.workflow.parameters import Parameter as PipelineParameter
-from sagemaker.workflow.functions import JsonGet as PipelineJsonGet
-from sagemaker.workflow.functions import Join as PipelineJoin
+
+from sagemaker.workflow.entities import PipelineVariable
 
 
 class ParameterRange(object):
@@ -73,11 +72,11 @@ class ParameterRange(object):
         return {
             "Name": name,
             "MinValue": str(self.min_value)
-            if not isinstance(self.min_value, (PipelineParameter, PipelineJsonGet, PipelineJoin))
-            else self.min_value,
+            if not isinstance(self.min_value, PipelineVariable)
+            else self.min_value.to_string(),
             "MaxValue": str(self.max_value)
-            if not isinstance(self.max_value, (PipelineParameter, PipelineJsonGet, PipelineJoin))
-            else self.max_value,
+            if not isinstance(self.max_value, PipelineVariable)
+            else self.max_value.to_string(),
             "ScalingType": self.scaling_type,
         }
 
@@ -112,8 +111,7 @@ class CategoricalParameter(ParameterRange):
         """
         values = values if isinstance(values, list) else [values]
         self.values = [
-            str(v) if not isinstance(v, (PipelineParameter, PipelineJsonGet, PipelineJoin)) else v
-            for v in values
+            str(v) if not isinstance(v, PipelineVariable) else v.to_string() for v in values
         ]
 
     def as_tuning_range(self, name):

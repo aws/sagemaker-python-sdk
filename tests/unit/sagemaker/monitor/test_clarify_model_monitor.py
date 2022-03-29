@@ -81,6 +81,7 @@ SECURITY_GROUP_IDS = ["test_security_group_ids"]
 SUBNETS = ["test_subnets"]
 NETWORK_CONFIG = NetworkConfig(
     enable_network_isolation=False,
+    encrypt_inter_container_traffic=False,
     security_group_ids=SECURITY_GROUP_IDS,
     subnets=SUBNETS,
 )

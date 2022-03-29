@@ -86,7 +86,19 @@ def test_prepare_for_training(tuner):
     assert tuner._current_job_name.startswith(IMAGE_NAME)
     assert len(tuner.static_hyperparameters) == 3
     assert tuner.static_hyperparameters["another_one"] == "0"
-    assert tuner.static_hyperparameters["hp1"] == hp1
+    assert tuner.static_hyperparameters["hp1"].expr == {
+        "Std:Join": {
+            "On": "",
+            "Values": [
+                {
+                    "Std:JsonGet": {
+                        "PropertyFile": {"Get": "Steps.stepname.PropertyFiles.pf"},
+                        "Path": "jp",
+                    },
+                },
+            ],
+        }
+    }
     assert tuner.static_hyperparameters["hp2"] == hp2
 
 
@@ -1177,8 +1189,27 @@ def test_integer_parameter_ranges_with_pipeline_parameter():
 
     assert len(ranges.keys()) == 4
     assert ranges["Name"] == "some"
-    assert ranges["MinValue"] == min
-    assert ranges["MaxValue"] == max
+    assert ranges["MinValue"].expr == {
+        "Std:Join": {
+            "On": "",
+            "Values": [
+                {"Get": "Parameters.p"},
+            ],
+        }
+    }
+    assert ranges["MaxValue"].expr == {
+        "Std:Join": {
+            "On": "",
+            "Values": [
+                {
+                    "Std:JsonGet": {
+                        "PropertyFile": {"Get": "Steps.sn.PropertyFiles.pf"},
+                        "Path": "jp",
+                    }
+                }
+            ],
+        }
+    }
     assert ranges["ScalingType"] == scale
 
 

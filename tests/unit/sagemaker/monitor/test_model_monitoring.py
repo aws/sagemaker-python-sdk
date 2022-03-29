@@ -23,9 +23,7 @@ from sagemaker.model_monitor import (
     CronExpressionGenerator,
     DefaultModelMonitor,
     EndpointInput,
-    ModelMonitor,
     ModelQualityMonitor,
-    MonitoringOutput,
     Statistics,
 )
 
@@ -52,7 +50,7 @@ ENVIRONMENT = {
 TAG_KEY_1 = "tag_key_1"
 TAG_VALUE_1 = "tag_value_1"
 TAGS = [{"Key": TAG_KEY_1, "Value": TAG_VALUE_1}]
-NETWORK_CONFIG = NetworkConfig(enable_network_isolation=False)
+NETWORK_CONFIG = NetworkConfig(enable_network_isolation=False, encrypt_inter_container_traffic=True)
 ENABLE_CLOUDWATCH_METRICS = True
 PROBLEM_TYPE = "Regression"
 GROUND_TRUTH_ATTRIBUTE = "TestAttribute"
@@ -429,53 +427,6 @@ def test_default_model_monitor_suggest_baseline(sagemaker_session):
     assert my_default_monitor.env[ENV_KEY_1] == ENV_VALUE_1
 
 
-def test_default_model_monitor_with_invalid_network_config(sagemaker_session):
-    invalid_network_config = NetworkConfig(encrypt_inter_container_traffic=False)
-    my_default_monitor = DefaultModelMonitor(
-        role=ROLE, sagemaker_session=sagemaker_session, network_config=invalid_network_config
-    )
-    with pytest.raises(ValueError) as exception:
-        my_default_monitor.create_monitoring_schedule(endpoint_input="test_endpoint")
-    assert INTER_CONTAINER_ENCRYPTION_EXCEPTION_MSG in str(exception.value)
-
-    with pytest.raises(ValueError) as exception:
-        my_default_monitor.update_monitoring_schedule()
-    assert INTER_CONTAINER_ENCRYPTION_EXCEPTION_MSG in str(exception.value)
-
-
-def test_model_monitor_without_network_config(sagemaker_session):
-    my_model_monitor = ModelMonitor(
-        role=ROLE,
-        image_uri=CUSTOM_IMAGE_URI,
-        sagemaker_session=sagemaker_session,
-    )
-    model_monitor_schedule_name = "model-monitoring-without-network-config"
-    attached = my_model_monitor.attach(model_monitor_schedule_name, sagemaker_session)
-    assert attached.network_config is None
-
-
-def test_model_monitor_with_invalid_network_config(sagemaker_session):
-    invalid_network_config = NetworkConfig(encrypt_inter_container_traffic=False)
-    my_model_monitor = ModelMonitor(
-        role=ROLE,
-        image_uri=CUSTOM_IMAGE_URI,
-        sagemaker_session=sagemaker_session,
-        network_config=invalid_network_config,
-    )
-    with pytest.raises(ValueError) as exception:
-        my_model_monitor.create_monitoring_schedule(
-            endpoint_input="test_endpoint",
-            output=MonitoringOutput(
-                source="/opt/ml/processing/output", destination="/opt/ml/processing/output"
-            ),
-        )
-    assert INTER_CONTAINER_ENCRYPTION_EXCEPTION_MSG in str(exception.value)
-
-    with pytest.raises(ValueError) as exception:
-        my_model_monitor.update_monitoring_schedule()
-    assert INTER_CONTAINER_ENCRYPTION_EXCEPTION_MSG in str(exception.value)
-
-
 def test_data_quality_monitor_suggest_baseline(sagemaker_session, data_quality_monitor):
     data_quality_monitor.suggest_baseline(
         baseline_dataset=BASELINE_DATASET_PATH,
@@ -637,20 +588,6 @@ def test_data_quality_monitor_update_failure(data_quality_monitor, sagemaker_ses
 
     # no effect
     data_quality_monitor.update_monitoring_schedule()
-
-
-def test_data_quality_monitor_with_invalid_network_config(sagemaker_session):
-    invalid_network_config = NetworkConfig(encrypt_inter_container_traffic=False)
-    data_quality_monitor = DefaultModelMonitor(
-        role=ROLE,
-        sagemaker_session=sagemaker_session,
-        network_config=invalid_network_config,
-    )
-    with pytest.raises(ValueError) as exception:
-        data_quality_monitor.create_monitoring_schedule(
-            endpoint_input="test_endpoint",
-        )
-    assert INTER_CONTAINER_ENCRYPTION_EXCEPTION_MSG in str(exception.value)
 
 
 def _test_data_quality_monitor_create_schedule(
@@ -1051,22 +988,6 @@ def test_model_quality_monitor_update_failure(model_quality_monitor, sagemaker_s
 
     # no effect
     model_quality_monitor.update_monitoring_schedule()
-
-
-def test_model_quality_monitor_with_invalid_network_config(sagemaker_session):
-    invalid_network_config = NetworkConfig(encrypt_inter_container_traffic=False)
-    model_quality_monitor = ModelQualityMonitor(
-        role=ROLE,
-        sagemaker_session=sagemaker_session,
-        network_config=invalid_network_config,
-    )
-    with pytest.raises(ValueError) as exception:
-        model_quality_monitor.create_monitoring_schedule(
-            endpoint_input="test_endpoint",
-            problem_type=PROBLEM_TYPE,
-            ground_truth_input=GROUND_TRUTH_S3_URI,
-        )
-    assert INTER_CONTAINER_ENCRYPTION_EXCEPTION_MSG in str(exception.value)
 
 
 def _test_model_quality_monitor_create_schedule(
