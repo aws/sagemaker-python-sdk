@@ -153,7 +153,7 @@ class JumpStartModelsAccessor(object):
 
     @staticmethod
     def get_manifest(
-        cache_kwargs: Dict[str, Any] = None, region: Optional[str] = None
+        cache_kwargs: Optional[Dict[str, Any]] = None, region: Optional[str] = None
     ) -> List[JumpStartModelHeader]:
         """Return entire JumpStart models manifest.
 
@@ -161,8 +161,10 @@ class JumpStartModelsAccessor(object):
             ValueError: If region in `cache_kwargs` is inconsistent with `region` argument.
 
         Args:
-            cache_kwargs (str): cache kwargs to use.
-            region (str): The region to use for the cache.
+            cache_kwargs (Dict[str, Any]): Optional. Cache kwargs to use.
+                (Default: None).
+            region (str): Optional. The region to use for the cache.
+                (Default: None).
         """
         cache_kwargs_dict: Dict[str, Any] = {} if cache_kwargs is None else cache_kwargs
         JumpStartModelsAccessor.set_cache_kwargs(cache_kwargs_dict, region)

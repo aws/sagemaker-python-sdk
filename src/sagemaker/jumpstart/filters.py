@@ -14,13 +14,16 @@
 from __future__ import absolute_import
 from ast import literal_eval
 from enum import Enum
-from typing import List, Union, Any
+from typing import Dict, List, Union, Any
 
 from sagemaker.jumpstart.types import JumpStartDataHolderType
 
 
 class BooleanValues(str, Enum):
-    """Enum class for boolean values."""
+    """Enum class for boolean values.
+
+    This is a status value that an ``Operand`` can resolve to.
+    """
 
     TRUE = "true"
     FALSE = "false"
@@ -37,6 +40,14 @@ class FilterOperators(str, Enum):
     NOT_IN = "not_in"
 
 
+class SpecialSupportedFilterKeys(str, Enum):
+    """Enum class for special supported filter keys."""
+
+    TASK = "task"
+    FRAMEWORK = "framework"
+    SUPPORTED_MODEL = "supported_model"
+
+
 FILTER_OPERATOR_STRING_MAPPINGS = {
     FilterOperators.EQUALS: ["===", "==", "equals", "is"],
     FilterOperators.NOT_EQUALS: ["!==", "!=", "not equals", "is not"],
@@ -45,14 +56,37 @@ FILTER_OPERATOR_STRING_MAPPINGS = {
 }
 
 
+_PAD_ALPHABETIC_OPERATOR = (
+    lambda operator: f" {operator} "
+    if any(character.isalpha() for character in operator)
+    else operator
+)
+
+ACCEPTABLE_OPERATORS_IN_PARSE_ORDER = (
+    list(map(_PAD_ALPHABETIC_OPERATOR, FILTER_OPERATOR_STRING_MAPPINGS[FilterOperators.NOT_EQUALS]))
+    + list(map(_PAD_ALPHABETIC_OPERATOR, FILTER_OPERATOR_STRING_MAPPINGS[FilterOperators.NOT_IN]))
+    + list(map(_PAD_ALPHABETIC_OPERATOR, FILTER_OPERATOR_STRING_MAPPINGS[FilterOperators.EQUALS]))
+    + list(map(_PAD_ALPHABETIC_OPERATOR, FILTER_OPERATOR_STRING_MAPPINGS[FilterOperators.IN]))
+)
+
+
+SPECIAL_SUPPORTED_FILTER_KEYS = set(
+    [
+        SpecialSupportedFilterKeys.TASK,
+        SpecialSupportedFilterKeys.FRAMEWORK,
+        SpecialSupportedFilterKeys.SUPPORTED_MODEL,
+    ]
+)
+
+
 class Operand:
     """Operand class for filtering JumpStart content."""
 
     def __init__(
         self, unresolved_value: Any, resolved_value: BooleanValues = BooleanValues.UNEVALUATED
     ):
-        self.unresolved_value = unresolved_value
-        self.resolved_value = resolved_value
+        self.unresolved_value: Any = unresolved_value
+        self._resolved_value: BooleanValues = resolved_value
 
     def __iter__(self) -> Any:
         """Returns an iterator."""
@@ -62,9 +96,32 @@ class Operand:
         """Evaluates operand."""
         return
 
+    @property
+    def resolved_value(self):
+        """Getter method for resolved_value."""
+        return self._resolved_value
+
+    @resolved_value.setter
+    def resolved_value(self, new_resolved_value: Any):
+        """Setter method for resolved_value. Resolved_value must be of type ``BooleanValues``."""
+        if isinstance(new_resolved_value, BooleanValues):
+            self._resolved_value = new_resolved_value
+            return
+        raise RuntimeError(
+            "Resolved value must be of type BooleanValues, "
+            f"but got type {type(new_resolved_value)}."
+        )
+
     @staticmethod
     def validate_operand(operand: Any) -> Any:
-        """Validate operand and return ``Operand`` object."""
+        """Validate operand and return ``Operand`` object.
+
+        Args:
+            operand (Any): The operand to validate.
+
+        Raises:
+            RuntimeError: If the operand is not of ``Operand`` or ``str`` type.
+        """
         if isinstance(operand, str):
             if operand.lower() == BooleanValues.TRUE.lower():
                 operand = Operand(operand, resolved_value=BooleanValues.TRUE)
@@ -75,12 +132,18 @@ class Operand:
             else:
                 operand = Operand(parse_filter_string(operand))
         elif not issubclass(type(operand), Operand):
-            raise RuntimeError()
+            raise RuntimeError(f"Operand '{operand}' is not supported.")
         return operand
 
 
 class Operator(Operand):
-    """Operator class for filtering JumpStart content."""
+    """Operator class for filtering JumpStart content.
+
+    An operator in this case corresponds to an operand that is also an operation.
+    For example, given the expression ``(True or True) and True``,
+    ``(True or True)`` is an operand to an ``And`` expression, but is also itself an
+    operator. ``(True or True) and True`` would also be considered an operator.
+    """
 
     def __init__(
         self,
@@ -117,6 +180,9 @@ class And(Operator):
 
         Args:
             operand (Operand): Operand for And-ing.
+
+        Raises:
+            RuntimeError: If the operands cannot be validated.
         """
         self.operands: List[Operand] = list(operands)  # type: ignore
         for i in range(len(self.operands)):
@@ -124,17 +190,24 @@ class And(Operator):
         super().__init__()
 
     def eval(self) -> None:
-        """Evaluates operator."""
+        """Evaluates operator.
+
+        Raises:
+            RuntimeError: If the operands remain unevaluated after calling ``eval``,
+                or if the resolved value isn't a ``BooleanValues`` type.
+        """
         incomplete_expression = False
         for operand in self.operands:
             if not issubclass(type(operand), Operand):
-                raise RuntimeError()
+                raise RuntimeError(
+                    f"Operand must be subclass of ``Operand``, but got {type(operand)}"
+                )
             if operand.resolved_value == BooleanValues.UNEVALUATED:
                 operand.eval()
-            if operand.resolved_value == BooleanValues.UNEVALUATED:
-                raise RuntimeError()
-            if not isinstance(operand.resolved_value, BooleanValues):
-                raise RuntimeError()
+                if operand.resolved_value == BooleanValues.UNEVALUATED:
+                    raise RuntimeError(
+                        "Operand remains unevaluated after calling ``eval`` function."
+                    )
             if operand.resolved_value == BooleanValues.FALSE:
                 self.resolved_value = BooleanValues.FALSE
                 return
@@ -162,7 +235,7 @@ class Constant(Operator):
         """Instantiates Constant operator object.
 
         Args:
-            constant (BooleanValues]): Value of constant.
+            constant (BooleanValues): Value of constant.
         """
         super().__init__(constant)
 
@@ -195,14 +268,21 @@ class Identity(Operator):
         yield self
         yield from self.operand
 
-    def eval(self) -> Any:
-        """Evaluates operator."""
+    def eval(self) -> None:
+        """Evaluates operator.
+
+        Raises:
+            RuntimeError: If the operands remain unevaluated after calling ``eval``,
+                or if the resolved value isn't a ``BooleanValues`` type.
+        """
         if not issubclass(type(self.operand), Operand):
-            raise RuntimeError()
+            raise RuntimeError(
+                f"Operand must be subclass of ``Operand``, but got {type(self.operand)}"
+            )
         if self.operand.resolved_value == BooleanValues.UNEVALUATED:
             self.operand.eval()
-        if self.operand.resolved_value == BooleanValues.UNEVALUATED:
-            raise RuntimeError()
+            if self.operand.resolved_value == BooleanValues.UNEVALUATED:
+                raise RuntimeError("Operand remains unevaluated after calling ``eval`` function.")
         if not isinstance(self.operand.resolved_value, BooleanValues):
             raise RuntimeError(self.operand.resolved_value)
         self.resolved_value = self.operand.resolved_value
@@ -219,6 +299,9 @@ class Or(Operator):
 
         Args:
             operands (Operand): Operand for Or-ing.
+
+        Raises:
+            RuntimeError: If the operands cannot be validated.
         """
         self.operands: List[Operand] = list(operands)  # type: ignore
         for i in range(len(self.operands)):
@@ -226,17 +309,24 @@ class Or(Operator):
         super().__init__()
 
     def eval(self) -> None:
-        """Evaluates operator."""
+        """Evaluates operator.
+
+        Raises:
+            RuntimeError: If the operands remain unevaluated after calling ``eval``,
+                or if the resolved value isn't a ``BooleanValues`` type.
+        """
         incomplete_expression = False
         for operand in self.operands:
             if not issubclass(type(operand), Operand):
-                raise RuntimeError()
+                raise RuntimeError(
+                    f"Operand must be subclass of ``Operand``, but got {type(operand)}"
+                )
             if operand.resolved_value == BooleanValues.UNEVALUATED:
                 operand.eval()
-            if operand.resolved_value == BooleanValues.UNEVALUATED:
-                raise RuntimeError()
-            if not isinstance(operand.resolved_value, BooleanValues):
-                raise RuntimeError()
+                if operand.resolved_value == BooleanValues.UNEVALUATED:
+                    raise RuntimeError(
+                        "Operand remains unevaluated after calling ``eval`` function."
+                    )
             if operand.resolved_value == BooleanValues.TRUE:
                 self.resolved_value = BooleanValues.TRUE
                 return
@@ -270,16 +360,21 @@ class Not(Operator):
         super().__init__()
 
     def eval(self) -> None:
-        """Evaluates operator."""
+        """Evaluates operator.
+
+        Raises:
+            RuntimeError: If the operands remain unevaluated after calling ``eval``,
+                or if the resolved value isn't a ``BooleanValues`` type.
+        """
 
         if not issubclass(type(self.operand), Operand):
-            raise RuntimeError()
+            raise RuntimeError(
+                f"Operand must be subclass of ``Operand``, but got {type(self.operand)}"
+            )
         if self.operand.resolved_value == BooleanValues.UNEVALUATED:
             self.operand.eval()
-        if self.operand.resolved_value == BooleanValues.UNEVALUATED:
-            raise RuntimeError()
-        if not isinstance(self.operand.resolved_value, BooleanValues):
-            raise RuntimeError()
+            if self.operand.resolved_value == BooleanValues.UNEVALUATED:
+                raise RuntimeError("Operand remains unevaluated after calling ``eval`` function.")
         if self.operand.resolved_value == BooleanValues.TRUE:
             self.resolved_value = BooleanValues.FALSE
             return
@@ -324,37 +419,20 @@ def parse_filter_string(filter_string: str) -> ModelFilter:
         filter_string (str): The filter string to be serialized to an object.
     """
 
-    pad_alphabetic_operator = (
-        lambda operator: " " + operator + " "
-        if any(character.isalpha() for character in operator)
-        else operator
-    )
-
-    acceptable_operators_in_parse_order = (
-        list(
-            map(
-                pad_alphabetic_operator, FILTER_OPERATOR_STRING_MAPPINGS[FilterOperators.NOT_EQUALS]
-            )
-        )
-        + list(
-            map(pad_alphabetic_operator, FILTER_OPERATOR_STRING_MAPPINGS[FilterOperators.NOT_IN])
-        )
-        + list(
-            map(pad_alphabetic_operator, FILTER_OPERATOR_STRING_MAPPINGS[FilterOperators.EQUALS])
-        )
-        + list(map(pad_alphabetic_operator, FILTER_OPERATOR_STRING_MAPPINGS[FilterOperators.IN]))
-    )
-    for operator in acceptable_operators_in_parse_order:
+    for operator in ACCEPTABLE_OPERATORS_IN_PARSE_ORDER:
         split_filter_string = filter_string.split(operator)
         if len(split_filter_string) == 2:
             return ModelFilter(
-                split_filter_string[0].strip(), split_filter_string[1].strip(), operator.strip()
+                key=split_filter_string[0].strip(),
+                value=split_filter_string[1].strip(),
+                operator=operator.strip(),
             )
-    raise RuntimeError(f"Cannot parse filter string: {filter_string}")
+    raise ValueError(f"Cannot parse filter string: {filter_string}")
 
 
 def evaluate_filter_expression(  # pylint: disable=too-many-return-statements
-    model_filter: ModelFilter, cached_model_value: Any
+    model_filter: ModelFilter,
+    cached_model_value: Union[str, bool, int, float, Dict[str, Any], List[Any]],
 ) -> BooleanValues:
     """Evaluates model filter with cached model spec value, returns boolean.
 
@@ -379,11 +457,21 @@ def evaluate_filter_expression(  # pylint: disable=too-many-return-statements
             return BooleanValues.FALSE
         return BooleanValues.TRUE
     if model_filter.operator in FILTER_OPERATOR_STRING_MAPPINGS[FilterOperators.IN]:
-        if cached_model_value in literal_eval(model_filter.value):
+        py_obj = literal_eval(model_filter.value)
+        try:
+            iter(py_obj)
+        except TypeError:
+            return BooleanValues.FALSE
+        if cached_model_value in py_obj:
             return BooleanValues.TRUE
         return BooleanValues.FALSE
     if model_filter.operator in FILTER_OPERATOR_STRING_MAPPINGS[FilterOperators.NOT_IN]:
-        if cached_model_value in literal_eval(model_filter.value):
+        py_obj = literal_eval(model_filter.value)
+        try:
+            iter(py_obj)
+        except TypeError:
+            return BooleanValues.TRUE
+        if cached_model_value in py_obj:
             return BooleanValues.FALSE
         return BooleanValues.TRUE
     raise RuntimeError(f"Bad operator: {model_filter.operator}")

@@ -43,6 +43,78 @@ class TestEvaluateFilterExpression(TestCase):
             ModelFilter(key="hello", operator="equals", value="mom"), "moms"
         )
 
+        assert BooleanValues.TRUE == evaluate_filter_expression(
+            ModelFilter(key="hello", operator="is", value="5"), 5
+        )
+
+        assert BooleanValues.TRUE == evaluate_filter_expression(
+            ModelFilter(key="hello", operator="is", value="True"), True
+        )
+
+        assert BooleanValues.TRUE == evaluate_filter_expression(
+            ModelFilter(key="hello", operator="is", value="mom"), "mom"
+        )
+
+        assert BooleanValues.FALSE == evaluate_filter_expression(
+            ModelFilter(key="hello", operator="is", value="5"), 6
+        )
+
+        assert BooleanValues.FALSE == evaluate_filter_expression(
+            ModelFilter(key="hello", operator="is", value="True"), False
+        )
+
+        assert BooleanValues.FALSE == evaluate_filter_expression(
+            ModelFilter(key="hello", operator="is", value="mom"), "moms"
+        )
+
+        assert BooleanValues.TRUE == evaluate_filter_expression(
+            ModelFilter(key="hello", operator="==", value="5"), 5
+        )
+
+        assert BooleanValues.TRUE == evaluate_filter_expression(
+            ModelFilter(key="hello", operator="==", value="True"), True
+        )
+
+        assert BooleanValues.TRUE == evaluate_filter_expression(
+            ModelFilter(key="hello", operator="==", value="mom"), "mom"
+        )
+
+        assert BooleanValues.FALSE == evaluate_filter_expression(
+            ModelFilter(key="hello", operator="==", value="5"), 6
+        )
+
+        assert BooleanValues.FALSE == evaluate_filter_expression(
+            ModelFilter(key="hello", operator="==", value="True"), False
+        )
+
+        assert BooleanValues.FALSE == evaluate_filter_expression(
+            ModelFilter(key="hello", operator="==", value="mom"), "moms"
+        )
+
+        assert BooleanValues.TRUE == evaluate_filter_expression(
+            ModelFilter(key="hello", operator="===", value="5"), 5
+        )
+
+        assert BooleanValues.TRUE == evaluate_filter_expression(
+            ModelFilter(key="hello", operator="===", value="True"), True
+        )
+
+        assert BooleanValues.TRUE == evaluate_filter_expression(
+            ModelFilter(key="hello", operator="===", value="mom"), "mom"
+        )
+
+        assert BooleanValues.FALSE == evaluate_filter_expression(
+            ModelFilter(key="hello", operator="===", value="5"), 6
+        )
+
+        assert BooleanValues.FALSE == evaluate_filter_expression(
+            ModelFilter(key="hello", operator="===", value="True"), False
+        )
+
+        assert BooleanValues.FALSE == evaluate_filter_expression(
+            ModelFilter(key="hello", operator="===", value="mom"), "moms"
+        )
+
     def test_not_equals(self):
 
         assert BooleanValues.FALSE == evaluate_filter_expression(
@@ -226,6 +298,12 @@ class TestFilterOperators(TestCase):
 
         resolved_value = operation.resolved_value
         assert BooleanValues.FALSE == resolved_value
+
+        operation = Or("False", "False", "True")
+        operation.eval()
+
+        resolved_value = operation.resolved_value
+        assert BooleanValues.TRUE == resolved_value
 
     def test_not(self):
         operation = Not("False")

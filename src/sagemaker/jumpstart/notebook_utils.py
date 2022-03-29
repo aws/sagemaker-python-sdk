@@ -15,12 +15,17 @@ from __future__ import absolute_import
 import copy
 
 from functools import cmp_to_key
-from typing import Any, List, Optional, Tuple, Union, Set, Dict
+from typing import Any, Generator, List, Optional, Tuple, Union, Set, Dict
 from packaging.version import Version
 from sagemaker.jumpstart import accessors
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 from sagemaker.jumpstart.enums import JumpStartScriptScope
-from sagemaker.jumpstart.filters import BooleanValues, Identity
+from sagemaker.jumpstart.filters import (
+    SPECIAL_SUPPORTED_FILTER_KEYS,
+    BooleanValues,
+    Identity,
+    SpecialSupportedFilterKeys,
+)
 from sagemaker.jumpstart.filters import Constant, ModelFilter, Operator, evaluate_filter_expression
 from sagemaker.jumpstart.utils import get_sagemaker_version
 
@@ -42,11 +47,9 @@ def _compare_model_version_tuples(  # pylint: disable=too-many-return-statements
             return 1
         return 0
 
-    version_1 = model_version_1[1]
-    model_id_1 = model_version_1[0]
+    model_id_1, version_1 = model_version_1
 
-    version_2 = model_version_2[1]
-    model_id_2 = model_version_2[0]
+    model_id_2, version_2 = model_version_2
 
     if model_id_1 < model_id_2:
         return -1
@@ -63,7 +66,7 @@ def _compare_model_version_tuples(  # pylint: disable=too-many-return-statements
     return 0
 
 
-def _model_filter_in_operator_generator(filter_operator: Operator) -> Operator:
+def _model_filter_in_operator_generator(filter_operator: Operator) -> Generator:
     """Generator for model filters in an operator."""
     for operator in filter_operator:
         if isinstance(operator.unresolved_value, ModelFilter):
@@ -73,7 +76,10 @@ def _model_filter_in_operator_generator(filter_operator: Operator) -> Operator:
 def _put_resolved_booleans_into_filter(
     filter_operator: Operator, model_filters_to_resolved_values: Dict[ModelFilter, BooleanValues]
 ) -> None:
-    """Put resolved booleans into filter."""
+    """Iterate over the operators in the filter, assign resolved value if found in second arg.
+
+    If not found, assigns ``UNKNOWN``.
+    """
     for operator in _model_filter_in_operator_generator(filter_operator):
         model_filter = operator.unresolved_value
         operator.resolved_value = model_filters_to_resolved_values.get(
@@ -86,7 +92,10 @@ def _populate_model_filters_to_resolved_values(
     model_filters_to_resolved_values: Dict[ModelFilter, BooleanValues],
     model_filters: Operator,
 ) -> None:
-    """Populate model filters to resolved values."""
+    """Iterate over the model filters, if the filter key has a cached value, evaluate the filter.
+
+    The resolved filter values are placed in ``model_filters_to_resolved_values``.
+    """
     for model_filter in model_filters:
         if model_filter.key in manifest_specs_cached_values:
             cached_model_value = manifest_specs_cached_values[model_filter.key]
@@ -97,10 +106,14 @@ def _populate_model_filters_to_resolved_values(
 
 
 def extract_framework_task_model(model_id: str) -> Tuple[str, str, str]:
-    """Parse the input model id, return a tuple framework, task, rest-of-id.
+    """Parse the model ID, return a tuple framework, task, rest-of-id.
 
     Args:
-        model_id (str): The model id for which to extract the framework/task/model.
+        model_id (str): The model ID for which to extract the framework/task/model.
+
+    Raises:
+        ValueError: If the model id cannot be parsed into at least 3 components seperated by
+            "-" character.
     """
     _id_parts = model_id.split("-")
 
@@ -236,22 +249,22 @@ def list_jumpstart_models(  # pylint: disable=redefined-builtin
 
     if not list_old_models:
         model_id_version_dict = {
-            model: set([max(versions)]) for model, versions in model_id_version_dict.items()
+            model_id: set([max(versions)]) for model_id, versions in model_id_version_dict.items()
         }
 
-    model_id_set = set()
+    model_id_version_set: Set[Tuple[str, str]] = set()
     for model_id in model_id_version_dict:
         for version in model_id_version_dict[model_id]:
-            model_id_set.add((model_id, str(version)))
+            model_id_version_set.add((model_id, str(version)))
 
-    return sorted(list(model_id_set), key=cmp_to_key(_compare_model_version_tuples))
+    return sorted(list(model_id_version_set), key=cmp_to_key(_compare_model_version_tuples))
 
 
 def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
     filter: Union[Operator, str] = Constant(BooleanValues.TRUE),
     region: str = JUMPSTART_DEFAULT_REGION_NAME,
     list_incomplete_models: bool = False,
-) -> Tuple[str, str]:
+) -> Generator:
     """Generate models for JumpStart, and optionally apply filters to result.
 
     Args:
@@ -274,9 +287,9 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
     models_manifest_list = accessors.JumpStartModelsAccessor.get_manifest(region=region)
     manifest_keys = set(models_manifest_list[0].__slots__)
 
-    all_keys = set([])
+    all_keys: Set[str] = set()
 
-    model_filters = set([])
+    model_filters: Set[ModelFilter] = set()
 
     for operator in _model_filter_in_operator_generator(filter):
         model_filter = operator.unresolved_value
@@ -286,38 +299,42 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
 
     for key in all_keys:
         if "." in key:
-            raise NotImplementedError("No support for multiple level metadata indexing.")
+            raise NotImplementedError(f"No support for multiple level metadata indexing ('{key}').")
 
-    metadata_filter_keys = all_keys - set(["task", "framework", "supported_model"])
+    metadata_filter_keys = all_keys - SPECIAL_SUPPORTED_FILTER_KEYS
 
     required_manifest_keys = manifest_keys.intersection(metadata_filter_keys)
     possible_spec_keys = metadata_filter_keys - manifest_keys
 
-    unrecognized_keys = set([])
+    unrecognized_keys: Set[str] = set()
+
+    is_task_filter = SpecialSupportedFilterKeys.TASK in all_keys
+    is_framework_filter = SpecialSupportedFilterKeys.FRAMEWORK in all_keys
+    is_supported_model_filter = SpecialSupportedFilterKeys.SUPPORTED_MODEL in all_keys
 
     for model_manifest in models_manifest_list:
 
         copied_filter = copy.deepcopy(filter)
 
-        manifest_specs_cached_values = {}
+        manifest_specs_cached_values: Dict[str, Union[bool, int, float, str, dict, list]] = {}
 
-        model_filters_to_resolved_values = {}
+        model_filters_to_resolved_values: Dict[ModelFilter, BooleanValues] = {}
 
         for val in required_manifest_keys:
             manifest_specs_cached_values[val] = getattr(model_manifest, val)
 
-        if "task" in all_keys:
-            manifest_specs_cached_values["task"] = extract_framework_task_model(
-                model_manifest.model_id
-            )[1]
+        if is_task_filter:
+            manifest_specs_cached_values[
+                SpecialSupportedFilterKeys.TASK
+            ] = extract_framework_task_model(model_manifest.model_id)[1]
 
-        if "framework" in all_keys:
-            manifest_specs_cached_values["framework"] = extract_framework_task_model(
-                model_manifest.model_id
-            )[0]
+        if is_framework_filter:
+            manifest_specs_cached_values[
+                SpecialSupportedFilterKeys.FRAMEWORK
+            ] = extract_framework_task_model(model_manifest.model_id)[0]
 
-        if "supported_model" in all_keys:
-            manifest_specs_cached_values["supported_model"] = Version(
+        if is_supported_model_filter:
+            manifest_specs_cached_values[SpecialSupportedFilterKeys.SUPPORTED_MODEL] = Version(
                 model_manifest.min_version
             ) <= Version(get_sagemaker_version())
 
@@ -338,9 +355,10 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
 
         if copied_filter.resolved_value == BooleanValues.UNEVALUATED:
             raise RuntimeError(
-                "Filter expression in unevaluated state after using values from models manifest"
+                "Filter expression in unevaluated state after using values from model manifest. "
+                "Model id and version that is failing: "
+                f"{(model_manifest.model_id, model_manifest.version)}."
             )
-
         copied_filter_2 = copy.deepcopy(filter)
 
         model_specs = accessors.JumpStartModelsAccessor.get_model_specs(
@@ -376,7 +394,9 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
             continue
 
         raise RuntimeError(
-            "Filter expression in unevaluated state after using values from model specs"
+            "Filter expression in unevaluated state after using values from model specs. "
+            "Model id and version that is failing: "
+            f"{(model_manifest.model_id, model_manifest.version)}."
         )
 
     if len(unrecognized_keys) > 0:

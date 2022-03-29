@@ -43,15 +43,17 @@ def get_header_from_base_header(
     if version and semantic_version_str:
         raise ValueError("Cannot specify both `version` and `semantic_version_str` fields.")
 
-    if (
-        "pytorch" not in model_id
-        and "tensorflow" not in model_id
-        and "huggingface" not in model_id
-        and "mxnet" not in model_id
-        and "xgboost" not in model_id
-        and "catboost" not in model_id
-        and "lightgbm" not in model_id
-        and "sklearn" not in model_id
+    if all(
+        [
+            "pytorch" not in model_id,
+            "tensorflow" not in model_id,
+            "huggingface" not in model_id,
+            "mxnet" not in model_id,
+            "xgboost" not in model_id,
+            "catboost" not in model_id,
+            "lightgbm" not in model_id,
+            "sklearn" not in model_id,
+        ]
     ):
         raise KeyError("Bad model id")
 
