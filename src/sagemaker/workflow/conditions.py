@@ -28,6 +28,7 @@ from sagemaker.workflow.entities import (
     Expression,
     PrimitiveType,
     RequestType,
+    PipelineVariable,
 )
 from sagemaker.workflow.execution_variables import ExecutionVariable
 from sagemaker.workflow.parameters import Parameter
@@ -261,6 +262,6 @@ def primitive_or_expr(
     Returns:
         Either the expression of the value or the primitive value.
     """
-    if isinstance(value, (ExecutionVariable, Expression, Parameter, Properties)):
+    if isinstance(value, PipelineVariable):
         return value.expr
     return value
