@@ -117,7 +117,7 @@ def test_repack_model_step(estimator):
 
     hyperparameters = request_dict["Arguments"]["HyperParameters"]
     assert hyperparameters["inference_script"] == '"dummy_script.py"'
-    assert hyperparameters["model_archive"] == '"model.tar.gz"'
+    assert hyperparameters["model_archive"] == '"s3://my-bucket/model.tar.gz"'
     assert hyperparameters["sagemaker_program"] == '"_repack_model.py"'
 
     del request_dict["Arguments"]["HyperParameters"]
@@ -136,7 +136,7 @@ def test_repack_model_step(estimator):
                         "S3DataSource": {
                             "S3DataDistributionType": "FullyReplicated",
                             "S3DataType": "S3Prefix",
-                            "S3Uri": f"s3://{BUCKET}",
+                            "S3Uri": f"s3://{BUCKET}/model.tar.gz",
                         }
                     },
                 }
@@ -172,7 +172,9 @@ def test_repack_model_step_with_source_dir(estimator, source_dir):
 
     hyperparameters = request_dict["Arguments"]["HyperParameters"]
     assert hyperparameters["inference_script"] == '"inference.py"'
-    assert hyperparameters["model_archive"] == '"model.tar.gz"'
+    assert hyperparameters["model_archive"].expr == {
+        "Std:Join": {"On": "", "Values": [{"Get": "Steps.MyStep"}]}
+    }
     assert hyperparameters["sagemaker_program"] == '"_repack_model.py"'
 
     del request_dict["Arguments"]["HyperParameters"]

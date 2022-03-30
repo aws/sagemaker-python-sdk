@@ -36,7 +36,7 @@ from sagemaker.utils import base_name_from_image, get_config_value, name_from_ba
 from sagemaker.session import Session
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.parameters import Parameter
-from sagemaker.workflow.entities import Expression
+from sagemaker.workflow.entities import Expression, PipelineVariable
 from sagemaker.dataset_definition.inputs import S3Input, DatasetDefinition
 from sagemaker.apiutils._base_types import ApiObject
 from sagemaker.s3 import S3Uploader
@@ -233,6 +233,12 @@ class Processor(object):
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
         """
+        if code and isinstance(code, PipelineVariable):
+            raise ValueError(
+                "code argument has to be a valid S3 URI or local file path "
+                + "rather than a pipeline variable"
+            )
+
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
 
         inputs_with_code = self._include_code_in_inputs(inputs, code, kms_key)
