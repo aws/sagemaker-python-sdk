@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.82.0 (2022-03-30)
+
+### Features
+
+ * pluggable instance fallback mechanism, add CapacityError
+ * support passing Env Vars to local mode training
+
 ## v2.81.1 (2022-03-29)
 
 ### Bug Fixes and Other Changes
