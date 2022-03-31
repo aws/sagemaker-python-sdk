@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.82.1 (2022-03-31)
+
+### Bug Fixes and Other Changes
+
+ * Update Inferentia Image URI Config
+ * Fix Pipeline variables related customer issues
+ * more logging info for static pipeline test data setup
+
 ## v2.82.0 (2022-03-30)
 
 ### Features
