@@ -39,6 +39,9 @@ from sagemaker.parameter import (
     ParameterRange,
 )
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.workflow.parameters import Parameter as PipelineParameter
+from sagemaker.workflow.functions import JsonGet as PipelineJsonGet
+from sagemaker.workflow.functions import Join as PipelineJoin
 
 from sagemaker.session import Session
 from sagemaker.utils import base_from_name, base_name_from_image, name_from_base
@@ -59,6 +62,18 @@ PARENT_HYPERPARAMETER_TUNING_JOBS = "ParentHyperParameterTuningJobs"
 WARM_START_TYPE = "WarmStartType"
 
 logger = logging.getLogger(__name__)
+
+
+def is_pipeline_parameters(value):
+    """Determine if a value is a pipeline parameter or function representation
+
+    Args:
+        value (float or int): The value to be verified.
+
+    Returns:
+        bool: True if it is, False otherwise.
+    """
+    return isinstance(value, (PipelineParameter, PipelineJsonGet, PipelineJoin))
 
 
 class WarmStartTypes(Enum):

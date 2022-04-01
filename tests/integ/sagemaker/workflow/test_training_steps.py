@@ -13,22 +13,19 @@
 from __future__ import absolute_import
 
 import os
-import re
 import uuid
 import logging
 
 import pytest
 from botocore.exceptions import WaiterError
 
-from sagemaker import TrainingInput, get_execution_role, utils, image_uris
+from sagemaker import TrainingInput, get_execution_role, utils
 from sagemaker.debugger import (
     DebuggerHookConfig,
     Rule,
     rule_configs,
 )
-from sagemaker.estimator import Estimator
 from sagemaker.pytorch.estimator import PyTorch
-from sagemaker.workflow.functions import Join
 from sagemaker.workflow.parameters import ParameterInteger, ParameterString
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.steps import TrainingStep
@@ -154,72 +151,3 @@ def test_training_job_with_debugger_and_profiler(
                 pipeline.delete()
             except Exception:
                 pass
-
-
-def test_training_step_with_output_path_as_join(
-    sagemaker_session, role, tf_full_version, tf_full_py_version, pipeline_name, region_name
-):
-    base_dir = os.path.join(DATA_DIR, "dummy_tensor")
-    input_path = sagemaker_session.upload_data(
-        path=base_dir, key_prefix="integ-test-data/estimator/training"
-    )
-    inputs = TrainingInput(s3_data=input_path)
-
-    instance_count = ParameterInteger(name="InstanceCount", default_value=1)
-    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
-    output_path = Join(
-        on="/", values=["s3:/", f"{sagemaker_session.default_bucket()}", f"{pipeline_name}Train"]
-    )
-
-    image_uri = image_uris.retrieve("factorization-machines", sagemaker_session.boto_region_name)
-    estimator = Estimator(
-        image_uri=image_uri,
-        role=role,
-        instance_count=instance_count,
-        instance_type=instance_type,
-        sagemaker_session=sagemaker_session,
-        output_path=output_path,
-    )
-    estimator.set_hyperparameters(
-        num_factors=10, feature_dim=784, mini_batch_size=100, predictor_type="binary_classifier"
-    )
-    step_train = TrainingStep(
-        name="MyTrain",
-        estimator=estimator,
-        inputs=inputs,
-    )
-
-    pipeline = Pipeline(
-        name=pipeline_name,
-        parameters=[instance_count, instance_type],
-        steps=[step_train],
-        sagemaker_session=sagemaker_session,
-    )
-
-    try:
-        response = pipeline.create(role)
-        create_arn = response["PipelineArn"]
-
-        assert re.match(
-            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
-            create_arn,
-        )
-
-        execution = pipeline.start(parameters={})
-        assert re.match(
-            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
-            execution.arn,
-        )
-        try:
-            execution.wait(delay=30, max_attempts=60)
-        except WaiterError:
-            pass
-        execution_steps = execution.list_steps()
-
-        assert len(execution_steps) == 1
-        assert execution_steps[0]["StepName"] == "MyTrain"
-    finally:
-        try:
-            pipeline.delete()
-        except Exception:
-            pass
