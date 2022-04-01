@@ -175,6 +175,8 @@ def mxnet_inference_py_version(mxnet_inference_version, request):
         return request.param
     elif Version(mxnet_inference_version) == Version("1.8.0"):
         return "py37"
+    elif Version(mxnet_inference_version) == Version("1.9.0"):
+        return "py38"
     else:
         return "py3"
 
@@ -185,6 +187,8 @@ def mxnet_training_py_version(mxnet_training_version, request):
         return request.param
     elif Version(mxnet_training_version) == Version("1.8.0"):
         return "py37"
+    elif Version(mxnet_training_version) == Version("1.9.0"):
+        return "py38"
     else:
         return "py3"
 
