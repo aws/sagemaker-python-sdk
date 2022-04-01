@@ -23,10 +23,6 @@ import pytest
 from botocore.exceptions import WaiterError
 import pandas as pd
 
-from tests.integ.retry import retries
-from sagemaker.parameter import IntegerParameter
-from sagemaker.pytorch import PyTorch
-from sagemaker.tuner import HyperparameterTuner
 from tests.integ.timeout import timeout
 
 from sagemaker.session import Session
@@ -75,7 +71,6 @@ from sagemaker.workflow.steps import (
     TransformStep,
     TransformInput,
     PropertyFile,
-    TuningStep,
 )
 from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.workflow.pipeline import Pipeline
@@ -1008,114 +1003,6 @@ def test_create_and_update_with_parallelism_config(
         response = pipeline.describe()
         assert response["ParallelismConfiguration"]["MaxParallelExecutionSteps"] == 55
 
-    finally:
-        try:
-            pipeline.delete()
-        except Exception:
-            pass
-
-
-def test_model_registration_with_tuning_model(
-    sagemaker_session,
-    role,
-    cpu_instance_type,
-    pipeline_name,
-    region_name,
-):
-    base_dir = os.path.join(DATA_DIR, "pytorch_mnist")
-    entry_point = os.path.join(base_dir, "mnist.py")
-    input_path = sagemaker_session.upload_data(
-        path=os.path.join(base_dir, "training"),
-        key_prefix="integ-test-data/pytorch_mnist/training",
-    )
-    inputs = TrainingInput(s3_data=input_path)
-
-    instance_count = ParameterInteger(name="InstanceCount", default_value=1)
-    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
-
-    pytorch_estimator = PyTorch(
-        entry_point=entry_point,
-        role=role,
-        framework_version="1.5.0",
-        py_version="py3",
-        instance_count=instance_count,
-        instance_type=instance_type,
-        sagemaker_session=sagemaker_session,
-        enable_sagemaker_metrics=True,
-        max_retry_attempts=3,
-    )
-
-    min_batch_size = ParameterString(name="MinBatchSize", default_value="64")
-    max_batch_size = ParameterString(name="MaxBatchSize", default_value="128")
-    hyperparameter_ranges = {
-        "batch-size": IntegerParameter(min_batch_size, max_batch_size),
-    }
-
-    tuner = HyperparameterTuner(
-        estimator=pytorch_estimator,
-        objective_metric_name="test:acc",
-        objective_type="Maximize",
-        hyperparameter_ranges=hyperparameter_ranges,
-        metric_definitions=[{"Name": "test:acc", "Regex": "Overall test accuracy: (.*?);"}],
-        max_jobs=2,
-        max_parallel_jobs=2,
-    )
-
-    step_tune = TuningStep(
-        name="my-tuning-step",
-        tuner=tuner,
-        inputs=inputs,
-    )
-
-    step_register_best = RegisterModel(
-        name="my-model-regis",
-        estimator=pytorch_estimator,
-        model_data=step_tune.get_top_model_s3_uri(
-            top_k=0,
-            s3_bucket=sagemaker_session.default_bucket(),
-        ),
-        content_types=["text/csv"],
-        response_types=["text/csv"],
-        inference_instances=["ml.t2.medium", "ml.m5.large"],
-        transform_instances=["ml.m5.large"],
-        entry_point=entry_point,
-    )
-
-    pipeline = Pipeline(
-        name=pipeline_name,
-        parameters=[instance_count, instance_type, min_batch_size, max_batch_size],
-        steps=[step_tune, step_register_best],
-        sagemaker_session=sagemaker_session,
-    )
-
-    try:
-        response = pipeline.create(role)
-        create_arn = response["PipelineArn"]
-        assert re.match(
-            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
-            create_arn,
-        )
-
-        for _ in retries(
-            max_retry_count=5,
-            exception_message_prefix="Waiting for a successful execution of pipeline",
-            seconds_to_sleep=10,
-        ):
-            execution = pipeline.start(parameters={})
-            assert re.match(
-                rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
-                execution.arn,
-            )
-            try:
-                execution.wait(delay=30, max_attempts=60)
-            except WaiterError:
-                pass
-            execution_steps = execution.list_steps()
-
-            assert len(execution_steps) == 3
-            for step in execution_steps:
-                assert step["StepStatus"] == "Succeeded"
-            break
     finally:
         try:
             pipeline.delete()
