@@ -1879,9 +1879,7 @@ class _TrainingJob(_Job):
         if estimator.use_spot_instances:
             if local_mode:
                 raise ValueError("Spot training is not supported in local mode.")
-            # estimator.use_spot_instances may be a Pipeline ParameterBoolean object
-            # which is parsed during the Pipeline execution runtime
-            train_args["use_spot_instances"] = estimator.use_spot_instances
+            train_args["use_spot_instances"] = True
 
         if estimator.checkpoint_s3_uri:
             if local_mode:

@@ -763,8 +763,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
             train_request["EnableInterContainerTrafficEncryption"] = encrypt_inter_container_traffic
 
         if use_spot_instances:
-            # estimator.use_spot_instances may be a Pipeline ParameterBoolean object
-            # which is parsed during the Pipeline execution runtime
             train_request["EnableManagedSpotTraining"] = use_spot_instances
 
         if checkpoint_s3_uri:
@@ -2342,17 +2340,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
             training_job_definition["VpcConfig"] = vpc_config
 
         if enable_network_isolation:
-            training_job_definition["EnableNetworkIsolation"] = enable_network_isolation
+            training_job_definition["EnableNetworkIsolation"] = True
 
         if encrypt_inter_container_traffic:
-            training_job_definition[
-                "EnableInterContainerTrafficEncryption"
-            ] = encrypt_inter_container_traffic
+            training_job_definition["EnableInterContainerTrafficEncryption"] = True
 
         if use_spot_instances:
-            # use_spot_instances may be a Pipeline ParameterBoolean object
-            # which is parsed during the Pipeline execution runtime
-            training_job_definition["EnableManagedSpotTraining"] = use_spot_instances
+            training_job_definition["EnableManagedSpotTraining"] = True
 
         if checkpoint_s3_uri:
             checkpoint_config = {"S3Uri": checkpoint_s3_uri}
