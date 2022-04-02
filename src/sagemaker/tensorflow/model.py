@@ -21,7 +21,7 @@ from sagemaker.deserializers import JSONDeserializer
 from sagemaker.deprecations import removed_kwargs
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import JSONSerializer
-from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.workflow import is_pipeline_variable
 
 
 class TensorFlowPredictor(Predictor):
@@ -338,7 +338,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
 
         # If self.model_data is pipeline variable, model is not yet there.
         # So defer repacking to later during pipeline execution
-        if self.entry_point and not isinstance(self.model_data, PipelineVariable):
+        if self.entry_point and not is_pipeline_variable(self.model_data):
             key_prefix = sagemaker.fw_utils.model_code_key_prefix(
                 self.key_prefix, self.name, image_uri
             )

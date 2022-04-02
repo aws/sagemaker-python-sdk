@@ -74,7 +74,7 @@ from sagemaker.utils import (
     get_config_value,
     name_from_base,
 )
-from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.workflow import is_pipeline_variable
 
 logger = logging.getLogger(__name__)
 
@@ -600,7 +600,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         current_hyperparameters = hyperparameters
         if current_hyperparameters is not None:
             hyperparameters = {
-                str(k): (v.to_string() if isinstance(v, PipelineVariable) else json.dumps(v))
+                str(k): (v.to_string() if is_pipeline_variable(v) else json.dumps(v))
                 for (k, v) in current_hyperparameters.items()
             }
         return hyperparameters
@@ -1811,7 +1811,7 @@ class _TrainingJob(_Job):
         current_hyperparameters = estimator.hyperparameters()
         if current_hyperparameters is not None:
             hyperparameters = {
-                str(k): (v.to_string() if isinstance(v, PipelineVariable) else str(v))
+                str(k): (v.to_string() if is_pipeline_variable(v) else str(v))
                 for (k, v) in current_hyperparameters.items()
             }
 

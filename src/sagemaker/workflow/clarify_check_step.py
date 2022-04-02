@@ -37,8 +37,8 @@ from sagemaker.model_monitor import BiasAnalysisConfig, ExplainabilityAnalysisCo
 from sagemaker.model_monitor.model_monitoring import _MODEL_MONITOR_S3_PATH
 from sagemaker.processing import ProcessingInput, ProcessingOutput, ProcessingJob
 from sagemaker.utils import name_from_base
-from sagemaker.workflow import PipelineNonPrimitiveInputTypes
-from sagemaker.workflow.entities import RequestType, PipelineVariable
+from sagemaker.workflow import PipelineNonPrimitiveInputTypes, is_pipeline_variable
+from sagemaker.workflow.entities import RequestType
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.steps import Step, StepTypeEnum, CacheConfig
 from sagemaker.workflow.check_job_config import CheckJobConfig
@@ -193,16 +193,15 @@ class ClarifyCheckStep(Step):
                 + "DataBiasCheckConfig, ModelBiasCheckConfig or ModelExplainabilityCheckConfig"
             )
 
-        if isinstance(
-            clarify_check_config.data_config.s3_analysis_config_output_path, PipelineVariable
-        ):
+        if is_pipeline_variable(clarify_check_config.data_config.s3_analysis_config_output_path):
             raise RuntimeError(
                 "s3_analysis_config_output_path cannot be of type "
                 + "ExecutionVariable/Expression/Parameter/Properties"
             )
 
-        if not clarify_check_config.data_config.s3_analysis_config_output_path and isinstance(
-            clarify_check_config.data_config.s3_output_path, PipelineVariable
+        if (
+            not clarify_check_config.data_config.s3_analysis_config_output_path
+            and is_pipeline_variable(clarify_check_config.data_config.s3_output_path)
         ):
             raise RuntimeError(
                 "`s3_output_path` cannot be of type ExecutionVariable/Expression/Parameter"
