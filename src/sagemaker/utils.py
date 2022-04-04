@@ -33,6 +33,8 @@ from six.moves.urllib import parse
 from sagemaker import deprecations
 from sagemaker.session_settings import SessionSettings
 
+import uuid
+
 
 ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(.*)(/)(.*:.*)$"
 MAX_BUCKET_PATHS_COUNT = 5
@@ -81,6 +83,7 @@ def name_from_base(base, max_length=63, short=False):
 
 def unique_name_from_base(base, max_length=63):
     """Placeholder Docstring"""
+    random.seed(int(uuid.uuid4())) #using uuid to randomize, otherwise system timestamp is used. 
     unique = "%04x" % random.randrange(16**4)  # 4-digit hex
     ts = str(int(time.time()))
     available_length = max_length - 2 - len(ts) - len(unique)
