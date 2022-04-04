@@ -64,7 +64,7 @@ required_packages = [
 # Keep format of *_requirements.txt to be tracked by dependabot
 extras = {
     "local": read_requirements("requirements/extras/local_requirements.txt"),
-    "scipy": read_requirements("requirements/extras/spicy_requirements.txt"),
+    "scipy": read_requirements("requirements/extras/scipy_requirements.txt"),
 }
 # Meta dependency groups
 extras["all"] = [item for group in extras.values() for item in group]
