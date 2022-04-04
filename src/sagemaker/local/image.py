@@ -176,7 +176,7 @@ class _SageMakerContainer(object):
         # you see this line at the end.
         print("===== Job Complete =====")
 
-    def train(self, input_data_config, output_data_config, hyperparameters, job_name):
+    def train(self, input_data_config, output_data_config, hyperparameters, environment, job_name):
         """Run a training job locally using docker-compose.
 
         Args:
@@ -184,6 +184,7 @@ class _SageMakerContainer(object):
                 channels to be used for training.
             output_data_config: The configuration of the output data.
             hyperparameters (dict): The HyperParameters for the training job.
+            environment (dict): The environment collection for the training job.
             job_name (str): Name of the local training job being run.
 
         Returns (str): Location of the trained model.
@@ -217,6 +218,7 @@ class _SageMakerContainer(object):
             REGION_ENV_NAME: self.sagemaker_session.boto_region_name,
             TRAINING_JOB_NAME_ENV_NAME: job_name,
         }
+        training_env_vars.update(environment)
         if self.sagemaker_session.s3_resource is not None:
             training_env_vars[
                 S3_ENDPOINT_URL_ENV_NAME

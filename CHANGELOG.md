@@ -1,5 +1,33 @@
 # Changelog
 
+## v2.82.2 (2022-04-01)
+
+### Bug Fixes and Other Changes
+
+ * Revert "fix: Fix Pipeline variables related customer issues (#2959)"
+ * Refactor repack_model script injection, fixes tar.gz error
+
+## v2.82.1 (2022-03-31)
+
+### Bug Fixes and Other Changes
+
+ * Update Inferentia Image URI Config
+ * Fix Pipeline variables related customer issues
+ * more logging info for static pipeline test data setup
+
+## v2.82.0 (2022-03-30)
+
+### Features
+
+ * pluggable instance fallback mechanism, add CapacityError
+ * support passing Env Vars to local mode training
+
+## v2.81.1 (2022-03-29)
+
+### Bug Fixes and Other Changes
+
+ * Update black-check version, add support for Spark 3.1 Processing
+
 ## v2.81.0 (2022-03-26)
 
 ### Features
