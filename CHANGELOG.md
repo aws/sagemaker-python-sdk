@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.83.0 (2022-04-04)
+
+### Features
+
+ * Hugging Face Transformers 4.17 for TF 2.6
+
+### Bug Fixes and Other Changes
+
+ * IOC image version select issue
+
 ## v2.82.2 (2022-04-01)
 
 ### Bug Fixes and Other Changes
