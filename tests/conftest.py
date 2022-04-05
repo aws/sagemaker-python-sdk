@@ -266,7 +266,7 @@ def huggingface_pytorch_latest_inference_py_version(huggingface_inference_pytorc
 
 @pytest.fixture(scope="module")
 def huggingface_tensorflow_latest_training_py_version():
-    return "py37"
+    return "py38"
 
 
 @pytest.fixture(scope="module")

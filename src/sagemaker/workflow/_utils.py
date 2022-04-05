@@ -21,10 +21,6 @@ from typing import List, Union, Dict, Optional
 from sagemaker.session import Session
 from sagemaker import image_uris
 from sagemaker.inputs import TrainingInput
-from sagemaker.s3 import (
-    S3Downloader,
-    S3Uploader,
-)
 from sagemaker.estimator import EstimatorBase
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.workflow.entities import RequestType
@@ -36,6 +32,7 @@ from sagemaker.workflow.steps import (
     Step,
     ConfigurableRetryStep,
 )
+from sagemaker.utils import _save_model, download_file_from_url
 from sagemaker.workflow.retry import RetryPolicy
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.metadata_properties import MetadataProperties
@@ -141,6 +138,12 @@ class _RepackModelStep(TrainingStep):
         self._model_data = model_data
         self.sagemaker_session = sagemaker_session
         self.role = role
+        if isinstance(model_data, Properties):
+            self._model_prefix = model_data
+            self._model_archive = "model.tar.gz"
+        else:
+            self._model_prefix = "/".join(self._model_data.split("/")[:-1])
+            self._model_archive = self._model_data.split("/")[-1]
         self._entry_point = entry_point
         self._entry_point_basename = os.path.basename(self._entry_point)
         self._source_dir = source_dir
@@ -162,7 +165,7 @@ class _RepackModelStep(TrainingStep):
             role=self.role,
             hyperparameters={
                 "inference_script": self._entry_point_basename,
-                "model_archive": self._model_data,
+                "model_archive": self._model_archive,
                 "dependencies": dependencies_hyperparameter,
                 "source_dir": self._source_dir,
             },
@@ -171,7 +174,7 @@ class _RepackModelStep(TrainingStep):
             **kwargs,
         )
         repacker.disable_profiler = True
-        inputs = TrainingInput(self._model_data)
+        inputs = TrainingInput(self._model_prefix)
 
         # super!
         super(_RepackModelStep, self).__init__(
@@ -207,12 +210,14 @@ class _RepackModelStep(TrainingStep):
         self._entry_point = self._entry_point_basename
 
     def _inject_repack_script(self):
-        """Injects the _repack_model.py script where it belongs.
+        """Injects the _repack_model.py script into S3 or local source directory.
 
         If the source_dir is an S3 path:
             1) downloads the source_dir tar.gz
-            2) copies the _repack_model.py script where it belongs
-            3) uploads the mutated source_dir
+            2) extracts it
+            3) copies the _repack_model.py script into the extracted directory
+            4) rezips the directory
+            5) overwrites the S3 source_dir with the new tar.gz
 
         If the source_dir is a local path:
             1) copies the _repack_model.py script into the source dir
@@ -220,27 +225,21 @@ class _RepackModelStep(TrainingStep):
         fname = os.path.join(os.path.dirname(__file__), REPACK_SCRIPT)
         if self._source_dir.lower().startswith("s3://"):
             with tempfile.TemporaryDirectory() as tmp:
-                local_path = os.path.join(tmp, "local.tar.gz")
+                targz_contents_dir = os.path.join(tmp, "extracted")
 
-                S3Downloader.download(
-                    s3_uri=self._source_dir,
-                    local_path=local_path,
-                    sagemaker_session=self.sagemaker_session,
-                )
+                old_targz_path = os.path.join(tmp, "old.tar.gz")
+                download_file_from_url(self._source_dir, old_targz_path, self.sagemaker_session)
 
-                src_dir = os.path.join(tmp, "src")
-                with tarfile.open(name=local_path, mode="r:gz") as tf:
-                    tf.extractall(path=src_dir)
+                with tarfile.open(name=old_targz_path, mode="r:gz") as t:
+                    t.extractall(path=targz_contents_dir)
 
-                shutil.copy2(fname, os.path.join(src_dir, REPACK_SCRIPT))
-                with tarfile.open(name=local_path, mode="w:gz") as tf:
-                    tf.add(src_dir, arcname=".")
+                shutil.copy2(fname, os.path.join(targz_contents_dir, REPACK_SCRIPT))
 
-                S3Uploader.upload(
-                    local_path=local_path,
-                    desired_s3_uri=self._source_dir,
-                    sagemaker_session=self.sagemaker_session,
-                )
+                new_targz_path = os.path.join(tmp, "new.tar.gz")
+                with tarfile.open(new_targz_path, mode="w:gz") as t:
+                    t.add(targz_contents_dir, arcname=os.path.sep)
+
+                _save_model(self._source_dir, new_targz_path, self.sagemaker_session, kms_key=None)
         else:
             shutil.copy2(fname, os.path.join(self._source_dir, REPACK_SCRIPT))
 
