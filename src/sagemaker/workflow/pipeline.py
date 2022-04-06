@@ -41,6 +41,7 @@ from sagemaker.workflow.steps import Step
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.utilities import list_to_request
 
+from sagemaker.workflow.pipeline_validation import PipelineValidation
 
 @attr.s
 class Pipeline(Entity):
@@ -78,6 +79,9 @@ class Pipeline(Entity):
 
     _version: str = "2020-12-01"
     _metadata: Dict[str, Any] = dict()
+
+    def __attrs_post_init__(self):
+        self._validator = PipelineValidation(self.steps)
 
     def to_request(self) -> RequestType:
         """Gets the request structure for workflow service calls."""
@@ -118,6 +122,7 @@ class Pipeline(Entity):
             kwargs,
             Tags=tags,
         )
+        self._validator.validate_pipeline_inputs()
         return self.sagemaker_session.sagemaker_client.create_pipeline(**kwargs)
 
     def _create_args(
@@ -193,6 +198,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             A response dict from the service.
         """
         kwargs = self._create_args(role_arn, description, parallelism_config)
+        self._validator.validate_pipeline_inputs()
         return self.sagemaker_session.sagemaker_client.update_pipeline(**kwargs)
 
     def upsert(
