@@ -25,7 +25,7 @@ def get_model_url(
     Args:
         model_id (str): The model id for which to retieve the url.
         model_version (str): The model version for which to retrieve the url.
-        region (str): Optional. The region of metadata from which to retrieve metadata.
+        region (str): Optional. The region from which to retrieve metadata.
             (Default: JUMPSTART_DEFAULT_REGION_NAME)
     """
 
