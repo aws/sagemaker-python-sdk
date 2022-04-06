@@ -171,8 +171,7 @@ class Lambda:
         except ValueError as error:
             if "ResourceConflictException" in str(error):
                 return self.update()
-            else:
-                raise
+            raise
 
     def invoke(self):
         """Method to invoke a lambda function.

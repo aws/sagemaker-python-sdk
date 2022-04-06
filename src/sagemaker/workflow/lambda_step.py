@@ -157,5 +157,4 @@ class LambdaStep(Step):
         if self.lambda_func.function_arn is None:
             response = self.lambda_func.upsert()
             return response["FunctionArn"]
-        else:
-            return self.lambda_func.function_arn
+        return self.lambda_func.function_arn
