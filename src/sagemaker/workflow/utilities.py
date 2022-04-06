@@ -52,7 +52,7 @@ def hash_file(path: str) -> str:
     BUF_SIZE = 65536  # read in 64KiB chunks
     md5 = hashlib.md5()
     if path.lower().startswith("file://"):
-        path = unquote(urlparse(path).path.strip('/'))
+        path = unquote(urlparse(path).path)
     with open(path, "rb") as f:
         while True:
             data = f.read(BUF_SIZE)

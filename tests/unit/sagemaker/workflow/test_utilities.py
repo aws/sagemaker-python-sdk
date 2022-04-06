@@ -27,5 +27,5 @@ def test_hash_file():
 def test_hash_file_uri():
     with tempfile.NamedTemporaryFile() as tmp:
         tmp.write("hashme".encode())
-        hash = hash_file(f"file://{tmp.name}")
+        hash = hash_file(f"file:///{tmp.name}")
         assert hash == "d41d8cd98f00b204e9800998ecf8427e"
