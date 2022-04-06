@@ -294,6 +294,78 @@ def test_update_lambda_client_error(sagemaker_session):
     assert "Cannot update code" in str(error)
 
 
+@patch("sagemaker.lambda_helper._zip_lambda_code", return_value=ZIPPED_CODE)
+def test_upsert_lambda_happycase1(sagemaker_session):
+    lambda_obj = lambda_helper.Lambda(
+        function_name=FUNCTION_NAME,
+        execution_role_arn=EXECUTION_ROLE,
+        script=SCRIPT,
+        handler=HANDLER,
+        session=sagemaker_session,
+    )
+
+    code = {"ZipFile": ZIPPED_CODE}
+    lambda_obj.upsert()
+
+    sagemaker_session.lambda_client.create_function.assert_called_with(
+        FunctionName=FUNCTION_NAME,
+        Runtime="python3.8",
+        Handler=HANDLER,
+        Role=EXECUTION_ROLE,
+        Code=code,
+        Timeout=120,
+        MemorySize=128,
+    )
+
+
+@patch("sagemaker.lambda_helper._zip_lambda_code", return_value=ZIPPED_CODE)
+def test_upsert_lambda_happycase2(sagemaker_session):
+    lambda_obj = lambda_helper.Lambda(
+        function_name=FUNCTION_NAME,
+        execution_role_arn=EXECUTION_ROLE,
+        script=SCRIPT,
+        handler=HANDLER,
+        session=sagemaker_session,
+    )
+
+    sagemaker_session.lambda_client.create_function.side_effect = ClientError(
+        {"Error": {"Code": "ResourceConflictException", "Message": "Lambda already exists"}},
+        "CreateFunction",
+    )
+
+    lambda_obj.upsert()
+
+    sagemaker_session.lambda_client.update_function_code.assert_called_once_with(
+        FunctionName=FUNCTION_NAME, ZipFile=ZIPPED_CODE
+    )
+
+
+@patch("sagemaker.lambda_helper._zip_lambda_code", return_value=ZIPPED_CODE)
+def test_upsert_lambda_client_error(sagemaker_session):
+    lambda_obj = lambda_helper.Lambda(
+        function_name=FUNCTION_NAME,
+        execution_role_arn=EXECUTION_ROLE,
+        script=SCRIPT,
+        handler=HANDLER,
+        session=sagemaker_session,
+    )
+
+    sagemaker_session.lambda_client.create_function.side_effect = ClientError(
+        {"Error": {"Code": "ResourceConflictException", "Message": "Lambda already exists"}},
+        "CreateFunction",
+    )
+
+    sagemaker_session.lambda_client.update_function_code.side_effect = ClientError(
+        {"Error": {"Code": "ResourceConflictException", "Message": "Cannot update code"}},
+        "UpdateFunctionCode",
+    )
+
+    with pytest.raises(ValueError) as error:
+        lambda_obj.upsert()
+
+    assert "Cannot update code" in str(error)
+
+
 def test_invoke_lambda_happycase(sagemaker_session):
     lambda_obj = lambda_helper.Lambda(function_arn=LAMBDA_ARN, session=sagemaker_session)
     lambda_obj.invoke()

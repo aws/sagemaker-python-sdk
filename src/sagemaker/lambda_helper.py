@@ -161,6 +161,19 @@ class Lambda:
                 error = e.response["Error"]
                 raise ValueError(error)
 
+    def upsert(self):
+        """Method to create a lambda function or update it if it already exists
+
+        Returns: boto3 response from Lambda's methods.
+        """
+        try:
+            return self.create()
+        except ValueError as error:
+            if "ResourceConflictException" in str(error):
+                return self.update()
+            else:
+                raise
+
     def invoke(self):
         """Method to invoke a lambda function.
 
