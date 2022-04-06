@@ -97,12 +97,12 @@ class Operand:
         return
 
     @property
-    def resolved_value(self):
+    def resolved_value(self) -> BooleanValues:
         """Getter method for resolved_value."""
         return self._resolved_value
 
     @resolved_value.setter
-    def resolved_value(self, new_resolved_value: Any):
+    def resolved_value(self, new_resolved_value: Any) -> None:
         """Setter method for resolved_value. Resolved_value must be of type ``BooleanValues``."""
         if isinstance(new_resolved_value, BooleanValues):
             self._resolved_value = new_resolved_value
@@ -272,7 +272,7 @@ class Identity(Operator):
         """Evaluates operator.
 
         Raises:
-            RuntimeError: If the operands remain unevaluated after calling ``eval``,
+            RuntimeError: If the operand remains unevaluated after calling ``eval``,
                 or if the resolved value isn't a ``BooleanValues`` type.
         """
         if not issubclass(type(self.operand), Operand):
@@ -363,7 +363,7 @@ class Not(Operator):
         """Evaluates operator.
 
         Raises:
-            RuntimeError: If the operands remain unevaluated after calling ``eval``,
+            RuntimeError: If the operand remains unevaluated after calling ``eval``,
                 or if the resolved value isn't a ``BooleanValues`` type.
         """
 

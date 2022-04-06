@@ -327,7 +327,7 @@ def verify_model_region_and_return_specs(
     """Verifies that an acceptable model_id, version, scope, and region combination is provided.
 
     Args:
-        model_id (Optional[str]): model id of the JumpStart model to verify and
+        model_id (Optional[str]): model ID of the JumpStart model to verify and
             obtains specs.
         version (Optional[str]): version of the JumpStart model to verify and
             obtains specs.

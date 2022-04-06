@@ -146,16 +146,16 @@ class JumpStartModelsCache:
         key: JumpStartVersionedModelId,
         value: Optional[JumpStartVersionedModelId],  # pylint: disable=W0613
     ) -> JumpStartVersionedModelId:
-        """Return model id and version in manifest that matches semantic version/id.
+        """Return model ID and version in manifest that matches semantic version/id.
 
         Uses ``packaging.version`` to perform version comparison. The highest model version
         matching the semantic version is used, which is compatible with the SageMaker
         version.
 
         Args:
-            key (JumpStartVersionedModelId): Key for which to fetch versioned model id.
+            key (JumpStartVersionedModelId): Key for which to fetch versioned model ID.
             value (Optional[JumpStartVersionedModelId]): Unused variable for current value of
-                old cached model id/version.
+                old cached model ID/version.
 
         Raises:
             KeyError: If the semantic version is not found in the manifest, or is found but
@@ -287,10 +287,10 @@ class JumpStartModelsCache:
         return manifest
 
     def get_header(self, model_id: str, semantic_version_str: str) -> JumpStartModelHeader:
-        """Return header for a given JumpStart model id and semantic version.
+        """Return header for a given JumpStart model ID and semantic version.
 
         Args:
-            model_id (str): model id for which to get a header.
+            model_id (str): model ID for which to get a header.
             semantic_version_str (str): The semantic version for which to get a
                 header.
         """
@@ -331,7 +331,7 @@ class JumpStartModelsCache:
         Allows a single retry if the cache is old.
 
         Args:
-            model_id (str): model id for which to get a header.
+            model_id (str): model ID for which to get a header.
             semantic_version_str (str): The semantic version for which to get a
                 header.
             attempt (int): attempt number at retrieving a header.
@@ -353,10 +353,10 @@ class JumpStartModelsCache:
             return self._get_header_impl(model_id, semantic_version_str, attempt + 1)
 
     def get_specs(self, model_id: str, semantic_version_str: str) -> JumpStartModelSpecs:
-        """Return specs for a given JumpStart model id and semantic version.
+        """Return specs for a given JumpStart model ID and semantic version.
 
         Args:
-            model_id (str): model id for which to get specs.
+            model_id (str): model ID for which to get specs.
             semantic_version_str (str): The semantic version for which to get
                 specs.
         """
@@ -369,6 +369,6 @@ class JumpStartModelsCache:
         return specs  # type: ignore
 
     def clear(self) -> None:
-        """Clears the model id/version and s3 cache."""
+        """Clears the model ID/version and s3 cache."""
         self._s3_cache.clear()
         self._model_id_semantic_version_manifest_key_cache.clear()

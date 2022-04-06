@@ -56,9 +56,9 @@ def create_jumpstart_model_table():
     file_content.append("==================================\n")
     file_content.append(
         """
-    JumpStart for the SageMaker Python SDK uses model ids and model versions to access the necessary
+    JumpStart for the SageMaker Python SDK uses model IDs and model versions to access the necessary
     utilities. This table serves to provide the core material plus some extra information that can be useful
-    in selecting the correct model id and corresponding parameters.\n
+    in selecting the correct model ID and corresponding parameters.\n
     """
     )
     file_content.append(

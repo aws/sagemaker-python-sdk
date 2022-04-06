@@ -55,7 +55,7 @@ def get_header_from_base_header(
             "sklearn" not in model_id,
         ]
     ):
-        raise KeyError("Bad model id")
+        raise KeyError("Bad model ID")
 
     if region is not None and region not in JUMPSTART_REGION_NAME_SET:
         raise ValueError(
@@ -85,7 +85,7 @@ def get_prototype_model_spec(
     region: str = None, model_id: str = None, version: str = None
 ) -> JumpStartModelSpecs:
     """This function mocks cache accessor functions. For this mock,
-    we only retrieve model specs based on the model id.
+    we only retrieve model specs based on the model ID.
     """
 
     specs = JumpStartModelSpecs(PROTOTYPICAL_MODEL_SPECS_DICT[model_id])
@@ -115,7 +115,7 @@ def get_spec_from_base_spec(
             "sklearn" not in model_id,
         ]
     ):
-        raise KeyError("Bad model id")
+        raise KeyError("Bad model ID")
 
     if region is not None and region not in JUMPSTART_REGION_NAME_SET:
         raise ValueError(

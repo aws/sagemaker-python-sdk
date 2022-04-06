@@ -37,8 +37,8 @@ def _compare_model_version_tuples(  # pylint: disable=too-many-return-statements
     """Performs comparison of sdk specs paths, in order to sort them.
 
     Args:
-        model_version_1 (Tuple[str, str]): The first model id and version tuple to compare.
-        model_version_2 (Tuple[str, str]): The second model id and version tuple to compare.
+        model_version_1 (Tuple[str, str]): The first model ID and version tuple to compare.
+        model_version_2 (Tuple[str, str]): The second model ID and version tuple to compare.
     """
     if model_version_1 is None or model_version_2 is None:
         if model_version_2 is not None:
@@ -112,7 +112,7 @@ def extract_framework_task_model(model_id: str) -> Tuple[str, str, str]:
         model_id (str): The model ID for which to extract the framework/task/model.
 
     Raises:
-        ValueError: If the model id cannot be parsed into at least 3 components seperated by
+        ValueError: If the model ID cannot be parsed into at least 3 components seperated by
             "-" character.
     """
     _id_parts = model_id.split("-")
@@ -356,7 +356,7 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
         if copied_filter.resolved_value == BooleanValues.UNEVALUATED:
             raise RuntimeError(
                 "Filter expression in unevaluated state after using values from model manifest. "
-                "Model id and version that is failing: "
+                "Model ID and version that is failing: "
                 f"{(model_manifest.model_id, model_manifest.version)}."
             )
         copied_filter_2 = copy.deepcopy(filter)
@@ -395,7 +395,7 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
 
         raise RuntimeError(
             "Filter expression in unevaluated state after using values from model specs. "
-            "Model id and version that is failing: "
+            "Model ID and version that is failing: "
             f"{(model_manifest.model_id, model_manifest.version)}."
         )
 

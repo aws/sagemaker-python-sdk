@@ -84,8 +84,8 @@ class JumpStartModelsAccessor(object):
 
         Args:
             region (str): region for which to retrieve header.
-            model_id (str): model id to retrieve.
-            version (str): semantic version to retrieve for the model id.
+            model_id (str): model ID to retrieve.
+            version (str): semantic version to retrieve for the model ID.
         """
         cache_kwargs = JumpStartModelsAccessor._validate_and_mutate_region_cache_kwargs(
             JumpStartModelsAccessor._cache_kwargs, region
@@ -101,8 +101,8 @@ class JumpStartModelsAccessor(object):
 
         Args:
             region (str): region for which to retrieve header.
-            model_id (str): model id to retrieve.
-            version (str): semantic version to retrieve for the model id.
+            model_id (str): model ID to retrieve.
+            version (str): semantic version to retrieve for the model ID.
         """
         cache_kwargs = JumpStartModelsAccessor._validate_and_mutate_region_cache_kwargs(
             JumpStartModelsAccessor._cache_kwargs, region
