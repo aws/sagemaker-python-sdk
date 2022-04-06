@@ -13,16 +13,17 @@
 """The properties definitions for workflow."""
 from __future__ import absolute_import
 
+from abc import ABCMeta
 from typing import Dict, Union, List
 
 import attr
 
 import botocore.loaders
 
-from sagemaker.workflow.entities import Expression
+from sagemaker.workflow.entities import Expression, PipelineVariable
 
 
-class PropertiesMeta(type):
+class PropertiesMeta(ABCMeta):
     """Load an internal shapes attribute from the botocore service model
 
     for sagemaker and emr service.
@@ -44,7 +45,7 @@ class PropertiesMeta(type):
         return super().__new__(mcs, *args, **kwargs)
 
 
-class Properties(metaclass=PropertiesMeta):
+class Properties(PipelineVariable, metaclass=PropertiesMeta):
     """Properties for use in workflow expressions."""
 
     def __init__(

@@ -15,7 +15,6 @@ from __future__ import absolute_import
 import numpy as np
 import os
 import time
-import logging
 
 import pytest
 
@@ -25,8 +24,8 @@ from sagemaker.utils import unique_name_from_base, sagemaker_timestamp
 import tests.integ
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES, kms_utils, timeout
 from tests.integ.retry import retries
+from tests.integ.utils import gpu_list, retry_with_instance_list
 from tests.integ.s3_utils import assert_s3_file_patterns_exist
-from sagemaker.exceptions import UnexpectedStatusException
 
 
 ROLE = "SageMakerRole"
@@ -48,41 +47,32 @@ ENV_INPUT = {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_va
     and tests.integ.test_region() in tests.integ.TRAINING_NO_P3_REGIONS,
     reason="no ml.p2 or ml.p3 instances in this region",
 )
+@retry_with_instance_list(gpu_list(tests.integ.test_region()))
 def test_framework_processing_job_with_deps(
     sagemaker_session,
-    gpu_instance_type_list,
     tensorflow_training_latest_version,
     tensorflow_training_latest_py_version,
+    **kwargs,
 ):
-    for i_type in gpu_instance_type_list:
-        logging.info("Using the instance type: {}".format(i_type))
-        with timeout.timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-            code_path = os.path.join(DATA_DIR, "dummy_code_bundle_with_reqs")
-            entry_point = "main_script.py"
+    with timeout.timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        code_path = os.path.join(DATA_DIR, "dummy_code_bundle_with_reqs")
+        entry_point = "main_script.py"
 
-            processor = TensorFlowProcessor(
-                framework_version=tensorflow_training_latest_version,
-                py_version=tensorflow_training_latest_py_version,
-                role=ROLE,
-                instance_count=1,
-                instance_type=i_type,
-                sagemaker_session=sagemaker_session,
-                base_job_name="test-tensorflow",
-            )
-            try:
-                processor.run(
-                    code=entry_point,
-                    source_dir=code_path,
-                    inputs=[],
-                    wait=True,
-                )
-            except UnexpectedStatusException as e:
-                if "CapacityError" in str(e) and i_type != gpu_instance_type_list[-1]:
-                    logging.warning("Failure using instance type: {}. {}".format(i_type, str(e)))
-                    continue
-                else:
-                    raise
-        break
+        processor = TensorFlowProcessor(
+            framework_version=tensorflow_training_latest_version,
+            py_version=tensorflow_training_latest_py_version,
+            role=ROLE,
+            instance_count=1,
+            instance_type=kwargs["instance_type"],
+            sagemaker_session=sagemaker_session,
+            base_job_name="test-tensorflow",
+        )
+        processor.run(
+            code=entry_point,
+            source_dir=code_path,
+            inputs=[],
+            wait=True,
+        )
 
 
 def test_mnist_with_checkpoint_config(

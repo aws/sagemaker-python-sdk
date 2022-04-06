@@ -53,7 +53,10 @@ ENVIRONMENT = {ENV_KEY_1: ENV_VALUE_1}
 TAG_KEY_1 = "tag_key_1"
 TAG_VALUE_1 = "tag_value_1"
 TAGS = [{"Key": TAG_KEY_1, "Value": TAG_VALUE_1}]
-NETWORK_CONFIG = NetworkConfig(enable_network_isolation=True)
+NETWORK_CONFIG = NetworkConfig(
+    enable_network_isolation=True,
+    encrypt_inter_container_traffic=True,
+)
 ENABLE_CLOUDWATCH_METRICS = True
 
 DEFAULT_BASELINING_MAX_RUNTIME_IN_SECONDS = 86400

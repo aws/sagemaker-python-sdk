@@ -16,7 +16,7 @@ from __future__ import absolute_import
 import os
 from glob import glob
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 
 def read(fname):
@@ -29,6 +29,20 @@ def read(fname):
 
 def read_version():
     return read("VERSION").strip()
+
+
+def read_requirements(filename):
+    """Reads requirements file which lists package dependencies.
+
+    Args:
+        filename: type(str) Relative file path of requirements.txt file
+
+    Returns:
+        list of dependencies extracted from file
+    """
+    with open(os.path.abspath(filename)) as fp:
+        deps = [line.strip() for line in fp.readlines()]
+    return deps
 
 
 # Declare minimal set for installation
@@ -47,42 +61,15 @@ required_packages = [
 ]
 
 # Specific use case dependencies
+# Keep format of *_requirements.txt to be tracked by dependabot
 extras = {
-    "local": [
-        "urllib3==1.26.8",
-        "docker-compose==1.29.2",
-        "docker~=5.0.0",
-        "PyYAML==5.4.1",  # PyYAML version has to match docker-compose requirements
-    ],
-    "scipy": ["scipy==1.5.4"],
+    "local": read_requirements("requirements/extras/local_requirements.txt"),
+    "scipy": read_requirements("requirements/extras/scipy_requirements.txt"),
 }
 # Meta dependency groups
 extras["all"] = [item for group in extras.values() for item in group]
 # Tests specific dependencies (do not need to be included in 'all')
-extras["test"] = (
-    [
-        extras["all"],
-        "tox==3.24.5",
-        "flake8==4.0.1",
-        "pytest==6.0.2",
-        "pytest-cov==3.0.0",
-        "pytest-rerunfailures==10.2",
-        "pytest-timeout==2.1.0",
-        "pytest-xdist==2.4.0",
-        "coverage>=5.2, <6.2",
-        "mock==4.0.3",
-        "contextlib2==21.6.0",
-        "awslogs==0.14.0",
-        "black==22.1.0",
-        "stopit==1.1.2",
-        "apache-airflow==2.2.3",
-        "apache-airflow-providers-amazon==3.0.0",
-        "attrs==20.3.0",
-        "fabric==2.6.0",
-        "requests==2.27.1",
-        "sagemaker-experiments==0.1.35",
-    ],
-)
+extras["test"] = (extras["all"] + read_requirements("requirements/extras/test_requirements.txt"),)
 
 setup(
     name="sagemaker",
