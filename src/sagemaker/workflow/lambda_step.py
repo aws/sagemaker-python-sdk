@@ -154,7 +154,6 @@ class LambdaStep(Step):
         Method creates a lambda function and returns it's arn.
         If the lambda is already present, it will build it's arn and return that.
         """
-        a = self.lambda_func.function_arn
         if self.lambda_func.function_arn is None:
             response = self.lambda_func.upsert()
             return response["FunctionArn"]
