@@ -15,6 +15,7 @@ from __future__ import absolute_import
 
 from typing import List, Sequence, Union
 import hashlib
+from urllib.parse import unquote, urlparse
 
 from sagemaker.workflow.entities import (
     Entity,
@@ -50,6 +51,8 @@ def hash_file(path: str) -> str:
     """
     BUF_SIZE = 65536  # read in 64KiB chunks
     md5 = hashlib.md5()
+    if path.lower().startswith("file://"):
+        path = unquote(urlparse(path).path.strip('/'))
     with open(path, "rb") as f:
         while True:
             data = f.read(BUF_SIZE)
