@@ -25,6 +25,7 @@ import tempfile
 import time
 import json
 import abc
+import uuid
 from datetime import datetime
 
 import botocore
@@ -32,8 +33,6 @@ from six.moves.urllib import parse
 
 from sagemaker import deprecations
 from sagemaker.session_settings import SessionSettings
-
-import uuid
 
 
 ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(.*)(/)(.*:.*)$"
