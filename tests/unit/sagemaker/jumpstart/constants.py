@@ -15,6 +15,7 @@ from __future__ import absolute_import
 PROTOTYPICAL_MODEL_SPECS_DICT = {
     "pytorch-eqa-bert-base-cased": {
         "model_id": "pytorch-eqa-bert-base-cased",
+        "url": "https://pytorch.org/hub/huggingface_pytorch-transformers/",
         "version": "1.0.0",
         "min_sdk_version": "2.68.1",
         "training_supported": True,
@@ -146,6 +147,7 @@ PROTOTYPICAL_MODEL_SPECS_DICT = {
     },
     "tensorflow-ic-bit-m-r101x1-ilsvrc2012-classification-1": {
         "model_id": "tensorflow-ic-bit-m-r101x1-ilsvrc2012-classification-1",
+        "url": "https://tfhub.dev/google/bit/m-r101x1/ilsvrc2012_classification/1",
         "version": "1.0.0",
         "min_sdk_version": "2.68.1",
         "training_supported": True,
@@ -258,6 +260,7 @@ PROTOTYPICAL_MODEL_SPECS_DICT = {
     },
     "mxnet-semseg-fcn-resnet50-ade": {
         "model_id": "mxnet-semseg-fcn-resnet50-ade",
+        "url": "https://cv.gluon.ai/model_zoo/segmentation.html",
         "version": "1.0.0",
         "min_sdk_version": "2.68.1",
         "training_supported": True,
@@ -369,6 +372,7 @@ PROTOTYPICAL_MODEL_SPECS_DICT = {
     },
     "huggingface-spc-bert-base-cased": {
         "model_id": "huggingface-spc-bert-base-cased",
+        "url": "https://huggingface.co/bert-base-cased",
         "version": "1.0.0",
         "min_sdk_version": "2.68.1",
         "training_supported": True,
@@ -482,6 +486,7 @@ PROTOTYPICAL_MODEL_SPECS_DICT = {
     },
     "lightgbm-classification-model": {
         "model_id": "lightgbm-classification-model",
+        "url": "https://lightgbm.readthedocs.io/en/latest/",
         "version": "1.0.0",
         "min_sdk_version": "2.68.1",
         "training_supported": True,
@@ -640,6 +645,7 @@ PROTOTYPICAL_MODEL_SPECS_DICT = {
     },
     "catboost-classification-model": {
         "model_id": "catboost-classification-model",
+        "url": "https://catboost.ai/",
         "version": "1.0.0",
         "min_sdk_version": "2.68.1",
         "training_supported": True,
@@ -792,6 +798,7 @@ PROTOTYPICAL_MODEL_SPECS_DICT = {
     },
     "xgboost-classification-model": {
         "model_id": "xgboost-classification-model",
+        "url": "https://xgboost.readthedocs.io/en/latest/",
         "version": "1.0.0",
         "min_sdk_version": "2.68.1",
         "training_supported": True,
@@ -945,6 +952,7 @@ PROTOTYPICAL_MODEL_SPECS_DICT = {
     },
     "sklearn-classification-linear": {
         "model_id": "sklearn-classification-linear",
+        "url": "https://scikit-learn.org/stable/",
         "version": "1.0.0",
         "min_sdk_version": "2.68.1",
         "training_supported": True,
@@ -1066,6 +1074,7 @@ PROTOTYPICAL_MODEL_SPECS_DICT = {
 
 BASE_SPEC = {
     "model_id": "pytorch-ic-mobilenet-v2",
+    "url": "https://pytorch.org/hub/pytorch_vision_mobilenet_v2/",
     "version": "1.0.0",
     "min_sdk_version": "2.49.0",
     "training_supported": True,
