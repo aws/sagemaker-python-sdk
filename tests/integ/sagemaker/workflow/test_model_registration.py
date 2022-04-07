@@ -20,6 +20,7 @@ import pytest
 from botocore.exceptions import WaiterError
 
 import tests
+from sagemaker.tensorflow import TensorFlow, TensorFlowModel
 from tests.integ.retry import retries
 from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker import (
@@ -740,6 +741,104 @@ def test_model_registration_with_model_repack(
             rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
+def test_model_registration_with_tensorflow_model_with_pipeline_model(
+    sagemaker_session, role, tf_full_version, tf_full_py_version, pipeline_name, region_name
+):
+    base_dir = os.path.join(DATA_DIR, "tensorflow_mnist")
+    entry_point = os.path.join(base_dir, "mnist_v2.py")
+    input_path = sagemaker_session.upload_data(
+        path=os.path.join(base_dir, "data"),
+        key_prefix="integ-test-data/tf-scriptmode/mnist/training",
+    )
+    inputs = TrainingInput(s3_data=input_path)
+
+    instance_count = ParameterInteger(name="InstanceCount", default_value=1)
+    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+
+    tensorflow_estimator = TensorFlow(
+        entry_point=entry_point,
+        role=role,
+        instance_count=instance_count,
+        instance_type=instance_type,
+        framework_version=tf_full_version,
+        py_version=tf_full_py_version,
+        sagemaker_session=sagemaker_session,
+    )
+    step_train = TrainingStep(
+        name="MyTrain",
+        estimator=tensorflow_estimator,
+        inputs=inputs,
+    )
+
+    model = TensorFlowModel(
+        entry_point=entry_point,
+        framework_version="2.4",
+        model_data=step_train.properties.ModelArtifacts.S3ModelArtifacts,
+        role=role,
+        sagemaker_session=sagemaker_session,
+    )
+
+    pipeline_model = PipelineModel(
+        name="MyModelPipeline", models=[model], role=role, sagemaker_session=sagemaker_session
+    )
+
+    step_register_model = RegisterModel(
+        name="MyRegisterModel",
+        model=pipeline_model,
+        model_data=step_train.properties.ModelArtifacts.S3ModelArtifacts,
+        content_types=["application/json"],
+        response_types=["application/json"],
+        inference_instances=["ml.t2.medium", "ml.m5.large"],
+        transform_instances=["ml.m5.large"],
+        model_package_group_name=f"{pipeline_name}TestModelPackageGroup",
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[
+            instance_count,
+            instance_type,
+        ],
+        steps=[step_train, step_register_model],
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+
+        assert re.match(
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
+        )
+
+        for _ in retries(
+            max_retry_count=5,
+            exception_message_prefix="Waiting for a successful execution of pipeline",
+            seconds_to_sleep=10,
+        ):
+            execution = pipeline.start(parameters={})
+            assert re.match(
+                rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+                execution.arn,
+            )
+            try:
+                execution.wait(delay=30, max_attempts=60)
+            except WaiterError:
+                pass
+            execution_steps = execution.list_steps()
+
+            assert len(execution_steps) == 3
+            for step in execution_steps:
+                assert step["StepStatus"] == "Succeeded"
+            break
     finally:
         try:
             pipeline.delete()

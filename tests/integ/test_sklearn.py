@@ -18,6 +18,7 @@ import time
 import pytest
 import numpy
 
+from sagemaker.serverless import ServerlessInferenceConfig
 from sagemaker.sklearn import SKLearn, SKLearnModel, SKLearnProcessor
 from sagemaker.utils import sagemaker_timestamp, unique_name_from_base
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
@@ -155,6 +156,32 @@ def test_deploy_model(
         _predict_and_assert(predictor)
 
 
+def test_deploy_model_with_serverless_inference_config(
+    sklearn_training_job,
+    sagemaker_session,
+    sklearn_latest_version,
+    sklearn_latest_py_version,
+):
+    endpoint_name = "test-sklearn-deploy-model-serverless-{}".format(sagemaker_timestamp())
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+        desc = sagemaker_session.sagemaker_client.describe_training_job(
+            TrainingJobName=sklearn_training_job
+        )
+        model_data = desc["ModelArtifacts"]["S3ModelArtifacts"]
+        script_path = os.path.join(DATA_DIR, "sklearn_mnist", "mnist.py")
+        model = SKLearnModel(
+            model_data,
+            ROLE,
+            entry_point=script_path,
+            framework_version=sklearn_latest_version,
+            sagemaker_session=sagemaker_session,
+        )
+        predictor = model.deploy(
+            serverless_inference_config=ServerlessInferenceConfig(), endpoint_name=endpoint_name
+        )
+        _predict_and_assert(predictor)
+
+
 @pytest.mark.skip(
     reason="This test has always failed, but the failure was masked by a bug. "
     "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
@@ -275,13 +302,5 @@ def _run_mnist_training_job(
 def _predict_and_assert(predictor):
     batch_size = 100
     data = numpy.zeros((batch_size, 784), dtype="float32")
-    output = predictor.predict(data)
-    assert len(output) == batch_size
-
-    data = numpy.zeros((batch_size, 1, 28, 28), dtype="float32")
-    output = predictor.predict(data)
-    assert len(output) == batch_size
-
-    data = numpy.zeros((batch_size, 28, 28), dtype="float32")
     output = predictor.predict(data)
     assert len(output) == batch_size
