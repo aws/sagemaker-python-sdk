@@ -23,7 +23,7 @@ def get_model_url(
     """Retrieve web url describing pretrained model.
 
     Args:
-        model_id (str): The model id for which to retrieve the url.
+        model_id (str): The model ID for which to retrieve the url.
         model_version (str): The model version for which to retrieve the url.
         region (str): Optional. The region from which to retrieve metadata.
             (Default: JUMPSTART_DEFAULT_REGION_NAME)
