@@ -26,8 +26,8 @@ from sagemaker.workflow.steps import (
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.utilities import list_to_request
 from sagemaker.workflow.entities import (
-    Expression,
     RequestType,
+    PipelineVariable,
 )
 from sagemaker.workflow.properties import (
     Properties,
@@ -95,7 +95,7 @@ class ConditionStep(Step):
 
 
 @attr.s
-class JsonGet(Expression):  # pragma: no cover
+class JsonGet(PipelineVariable):  # pragma: no cover
     """Get JSON properties from PropertyFiles.
 
     Attributes:

@@ -38,13 +38,10 @@ from sagemaker.parameter import (
     IntegerParameter,
     ParameterRange,
 )
-from sagemaker.workflow.entities import PipelineVariable
-from sagemaker.workflow.parameters import Parameter as PipelineParameter
-from sagemaker.workflow.functions import JsonGet as PipelineJsonGet
-from sagemaker.workflow.functions import Join as PipelineJoin
 
 from sagemaker.session import Session
 from sagemaker.utils import base_from_name, base_name_from_image, name_from_base
+from sagemaker.workflow import is_pipeline_variable
 
 AMAZON_ESTIMATOR_MODULE = "sagemaker"
 AMAZON_ESTIMATOR_CLS_NAMES = {
@@ -62,18 +59,6 @@ PARENT_HYPERPARAMETER_TUNING_JOBS = "ParentHyperParameterTuningJobs"
 WARM_START_TYPE = "WarmStartType"
 
 logger = logging.getLogger(__name__)
-
-
-def is_pipeline_parameters(value):
-    """Determine if a value is a pipeline parameter or function representation
-
-    Args:
-        value (float or int): The value to be verified.
-
-    Returns:
-        bool: True if it is, False otherwise.
-    """
-    return isinstance(value, (PipelineParameter, PipelineJsonGet, PipelineJoin))
 
 
 class WarmStartTypes(Enum):
@@ -377,7 +362,7 @@ class HyperparameterTuner(object):
         """Prepare static hyperparameters for one estimator before tuning."""
         # Remove any hyperparameter that will be tuned
         static_hyperparameters = {
-            str(k): str(v) if not isinstance(v, PipelineVariable) else v.to_string()
+            str(k): str(v) if not is_pipeline_variable(v) else v.to_string()
             for (k, v) in estimator.hyperparameters().items()
         }
         for hyperparameter_name in hyperparameter_ranges.keys():
