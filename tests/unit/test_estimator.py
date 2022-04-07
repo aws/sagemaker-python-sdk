@@ -189,7 +189,9 @@ class DummyFrameworkModel(FrameworkModel):
     def create_predictor(self, endpoint_name):
         return None
 
-    def prepare_container_def(self, instance_type, accelerator_type=None):
+    def prepare_container_def(
+        self, instance_type, accelerator_type=None, serverless_inference_config=None
+    ):
         return MODEL_CONTAINER_DEF
 
 

@@ -133,11 +133,7 @@ class HuggingFaceModel(FrameworkModel):
             py_version (str): Python version you want to use for executing your
                 model training code. Defaults to ``None``. Required unless
                 ``image_uri`` is provided.
-            image_uri (str): A Docker image URI. Defaults to None. For serverless
-                inferece, it is required. More image information can be found in
-                `Amazon SageMaker provided algorithms and Deep Learning Containers
-                <https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-algo-docker-registry-paths.html>`_.
-                For instance based inference, if not specified, a
+            image_uri (str): A Docker image URI. Defaults to None. If not specified, a
                 default image for PyTorch will be used. If ``framework_version``
                 or ``py_version`` are ``None``, then ``image_uri`` is required. If
                 also ``None``, then a ``ValueError`` will be raised.
@@ -272,7 +268,7 @@ class HuggingFaceModel(FrameworkModel):
                 is not None. Otherwise, return None.
         """
 
-        if not self.image_uri and instance_type.startswith("ml.inf"):
+        if not self.image_uri and instance_type is not None and instance_type.startswith("ml.inf"):
             self.image_uri = self.serving_image_uri(
                 region_name=self.sagemaker_session.boto_session.region_name,
                 instance_type=instance_type,
@@ -365,7 +361,9 @@ class HuggingFaceModel(FrameworkModel):
             drift_check_baselines=drift_check_baselines,
         )
 
-    def prepare_container_def(self, instance_type=None, accelerator_type=None):
+    def prepare_container_def(
+        self, instance_type=None, accelerator_type=None, serverless_inference_config=None
+    ):
         """A container definition with framework configuration set in model environment variables.
 
         Args:
@@ -374,6 +372,9 @@ class HuggingFaceModel(FrameworkModel):
             accelerator_type (str): The Elastic Inference accelerator type to
                 deploy to the instance for loading and making inferences to the
                 model.
+            serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
+                Specifies configuration related to serverless endpoint. Instance type is
+                not provided in serverless inference. So this is used to find image URIs.
 
         Returns:
             dict[str, str]: A container definition object usable with the
@@ -381,14 +382,17 @@ class HuggingFaceModel(FrameworkModel):
         """
         deploy_image = self.image_uri
         if not deploy_image:
-            if instance_type is None:
+            if instance_type is None and serverless_inference_config is None:
                 raise ValueError(
                     "Must supply either an instance type (for choosing CPU vs GPU) or an image URI."
                 )
 
             region_name = self.sagemaker_session.boto_session.region_name
             deploy_image = self.serving_image_uri(
-                region_name, instance_type, accelerator_type=accelerator_type
+                region_name,
+                instance_type,
+                accelerator_type=accelerator_type,
+                serverless_inference_config=serverless_inference_config,
             )
 
         deploy_key_prefix = model_code_key_prefix(self.key_prefix, self.name, deploy_image)
@@ -402,7 +406,13 @@ class HuggingFaceModel(FrameworkModel):
             deploy_image, self.repacked_model_data or self.model_data, deploy_env
         )
 
-    def serving_image_uri(self, region_name, instance_type, accelerator_type=None):
+    def serving_image_uri(
+        self,
+        region_name,
+        instance_type=None,
+        accelerator_type=None,
+        serverless_inference_config=None,
+    ):
         """Create a URI for the serving image.
 
         Args:
@@ -412,6 +422,9 @@ class HuggingFaceModel(FrameworkModel):
             accelerator_type (str): The Elastic Inference accelerator type to
                 deploy to the instance for loading and making inferences to the
                 model.
+            serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
+                Specifies configuration related to serverless endpoint. Instance type is
+                not provided in serverless inference. So this is used used to determine device type.
 
         Returns:
             str: The appropriate image URI based on the given parameters.
@@ -432,4 +445,5 @@ class HuggingFaceModel(FrameworkModel):
             accelerator_type=accelerator_type,
             image_scope="inference",
             base_framework_version=base_framework_version,
+            serverless_inference_config=serverless_inference_config,
         )

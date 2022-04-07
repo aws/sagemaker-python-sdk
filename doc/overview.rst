@@ -1226,27 +1226,27 @@ to configure or manage the underlying infrastructure. After you trained a model,
 Serverless endpoint and then invoke the endpoint with the model to get inference results back. More information about
 SageMaker Serverless Inference can be found in the `AWS documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/serverless-endpoints.html>`__.
 
-For using SageMaker Serverless Inference, if you plan to use any of the SageMaker-provided container or Bring Your Own Container
-model, you will need to pass ``image_uri``. An example to use ``image_uri`` for creating MXNet model:
+For using SageMaker Serverless Inference, you can either use SageMaker-provided container or Bring Your Own Container model.
+A step by step example for using Serverless Inference with MXNet image :
+
+Firstly, create MXNet model
 
 .. code:: python
 
     from sagemaker.mxnet import MXNetModel
+    from sagemaker.serverless import ServerlessInferenceConfig
     import sagemaker
 
     role = sagemaker.get_execution_role()
 
     # create MXNet Model Class
-    mxnet_model = MXNetModel(
+    model = MXNetModel(
         model_data="s3://my_bucket/pretrained_model/model.tar.gz", # path to your trained sagemaker model
         role=role, # iam role with permissions to create an Endpoint
         entry_point="inference.py",
-        image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/mxnet-inference:1.4.1-cpu-py3" # image wanted to use
+        py_version="py3", # Python version
+        framework_version="1.6.0", # MXNet framework version
     )
-
-For more Amazon SageMaker provided algorithms and containers image paths, please check this page: `Amazon SageMaker provided
-algorithms and Deep Learning Containers <https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-algo-docker-registry-paths.html>`_.
-After creating model using ``image_uri``, you can then follow the steps below to create serverless endpoint.
 
 To deploy serverless endpoint, you will need to create a ``ServerlessInferenceConfig``.
 If you create ``ServerlessInferenceConfig`` without specifying its arguments, the default ``MemorySizeInMB`` will be **2048** and
@@ -1282,7 +1282,6 @@ Or directly using model's ``deploy()`` method to deploy a serverless endpoint:
 
     # Deploys the model to a SageMaker serverless endpoint
     serverless_predictor = model.deploy(serverless_inference_config=serverless_config)
-
 
 After deployment is complete, you can use predictor's ``predict()`` method to invoke the serverless endpoint just like
 real-time endpoints:

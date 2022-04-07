@@ -140,7 +140,9 @@ def test_create_sagemaker_model(prepare_container_def, sagemaker_session):
     model = Model(MODEL_DATA, MODEL_IMAGE, name=MODEL_NAME, sagemaker_session=sagemaker_session)
     model._create_sagemaker_model()
 
-    prepare_container_def.assert_called_with(None, accelerator_type=None)
+    prepare_container_def.assert_called_with(
+        None, accelerator_type=None, serverless_inference_config=None
+    )
     sagemaker_session.create_model.assert_called_with(
         MODEL_NAME, None, container_def, vpc_config=None, enable_network_isolation=False, tags=None
     )
@@ -151,7 +153,9 @@ def test_create_sagemaker_model_instance_type(prepare_container_def, sagemaker_s
     model = Model(MODEL_DATA, MODEL_IMAGE, name=MODEL_NAME, sagemaker_session=sagemaker_session)
     model._create_sagemaker_model(INSTANCE_TYPE)
 
-    prepare_container_def.assert_called_with(INSTANCE_TYPE, accelerator_type=None)
+    prepare_container_def.assert_called_with(
+        INSTANCE_TYPE, accelerator_type=None, serverless_inference_config=None
+    )
 
 
 @patch("sagemaker.model.Model.prepare_container_def")
@@ -161,7 +165,9 @@ def test_create_sagemaker_model_accelerator_type(prepare_container_def, sagemake
     accelerator_type = "ml.eia.medium"
     model._create_sagemaker_model(INSTANCE_TYPE, accelerator_type=accelerator_type)
 
-    prepare_container_def.assert_called_with(INSTANCE_TYPE, accelerator_type=accelerator_type)
+    prepare_container_def.assert_called_with(
+        INSTANCE_TYPE, accelerator_type=accelerator_type, serverless_inference_config=None
+    )
 
 
 @patch("sagemaker.model.Model.prepare_container_def")
