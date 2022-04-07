@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.84.0 (2022-04-07)
+
+### Features
+
+ * dependabot integ - move all deps to requirements.txt
+ * add xgboost framework version 1.5-1
+
 ## v2.83.0 (2022-04-04)
 
 ### Features
