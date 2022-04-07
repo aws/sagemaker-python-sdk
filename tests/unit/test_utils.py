@@ -20,6 +20,7 @@ from datetime import datetime
 import os
 import re
 import time
+import json
 
 from boto3 import exceptions
 import botocore
@@ -203,6 +204,39 @@ def test_secondary_training_status_message_prev_missing():
     assert (
         sagemaker.utils.secondary_training_status_message(TRAINING_JOB_DESCRIPTION_1, {})
         == expected
+    )
+
+
+SAMPLE_DATA_CONFIG = {"us-west-2": "sagemaker-hosted-datasets", "default": "sagemaker-sample-files"}
+
+
+def test_notebooks_data_config_if_region_not_present():
+
+    sample_data_config = json.dumps(SAMPLE_DATA_CONFIG)
+
+    boto_mock = MagicMock(name="boto_session", region_name="ap-northeast-1")
+    session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=MagicMock())
+    session.read_s3_file = Mock(return_value=sample_data_config)
+    assert (
+        sagemaker.utils.S3DataConfig(
+            session, "example-notebooks-data-config", "config/data_config.json"
+        ).get_data_bucket()
+        == "sagemaker-sample-files"
+    )
+
+
+def test_notebooks_data_config_if_region_present():
+
+    sample_data_config = json.dumps(SAMPLE_DATA_CONFIG)
+
+    boto_mock = MagicMock(name="boto_session", region_name="us-west-2")
+    session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=MagicMock())
+    session.read_s3_file = Mock(return_value=sample_data_config)
+    assert (
+        sagemaker.utils.S3DataConfig(
+            session, "example-notebooks-data-config", "config/data_config.json"
+        ).get_data_bucket()
+        == "sagemaker-hosted-datasets"
     )
 
 

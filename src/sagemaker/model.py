@@ -383,7 +383,10 @@ class Model(ModelBase):
             self.sagemaker_session = session.Session()
 
     def prepare_container_def(
-        self, instance_type=None, accelerator_type=None
+        self,
+        instance_type=None,
+        accelerator_type=None,
+        serverless_inference_config=None,
     ):  # pylint: disable=unused-argument
         """Return a dict created by ``sagemaker.container_def()``.
 
@@ -398,6 +401,9 @@ class Model(ModelBase):
             accelerator_type (str): The Elastic Inference accelerator type to
                 deploy to the instance for loading and making inferences to the
                 model. For example, 'ml.eia1.medium'.
+            serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
+                Specifies configuration related to serverless endpoint. Instance type is
+                not provided in serverless inference. So this is used to find image URIs.
 
         Returns:
             dict: A container definition object usable with the CreateModel API.
@@ -498,7 +504,9 @@ class Model(ModelBase):
         """
         return self._enable_network_isolation
 
-    def _create_sagemaker_model(self, instance_type=None, accelerator_type=None, tags=None):
+    def _create_sagemaker_model(
+        self, instance_type=None, accelerator_type=None, tags=None, serverless_inference_config=None
+    ):
         """Create a SageMaker Model Entity
 
         Args:
@@ -514,8 +522,15 @@ class Model(ModelBase):
                 'tagvalue'}] For more information about tags, see
                 https://boto3.amazonaws.com/v1/documentation
                 /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
+            serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
+                Specifies configuration related to serverless endpoint. Instance type is
+                not provided in serverless inference. So this is used to find image URIs.
         """
-        container_def = self.prepare_container_def(instance_type, accelerator_type=accelerator_type)
+        container_def = self.prepare_container_def(
+            instance_type,
+            accelerator_type=accelerator_type,
+            serverless_inference_config=serverless_inference_config,
+        )
 
         self._ensure_base_name_if_needed(
             image_uri=container_def["Image"], script_uri=self.source_dir, model_uri=self.model_data
@@ -628,9 +643,9 @@ class Model(ModelBase):
             "Framework": framework.upper(),
         }
 
+        multiple_version_supported_framework_list = ["pytorch", "tensorflow"]
         if (
-            framework.lower() == "pytorch"
-            or framework.lower() == "tensorflow"
+            framework.lower() in multiple_version_supported_framework_list
             and target_instance_type is not None
             and re.match("(?=^ml_)(?!ml_inf)", target_instance_type) is not None
             and framework_version is not None
@@ -983,7 +998,9 @@ class Model(ModelBase):
             if self._base_name is not None:
                 self._base_name = "-".join((self._base_name, compiled_model_suffix))
 
-        self._create_sagemaker_model(instance_type, accelerator_type, tags)
+        self._create_sagemaker_model(
+            instance_type, accelerator_type, tags, serverless_inference_config
+        )
 
         serverless_inference_config_dict = (
             serverless_inference_config._to_request_dict() if is_serverless else None

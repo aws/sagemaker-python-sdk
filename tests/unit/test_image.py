@@ -74,6 +74,8 @@ LOCAL_CODE_HYPERPARAMETERS = {
     "sagemaker_submit_directory": json.dumps("file:///tmp/code"),
 }
 
+ENVIRONMENT = {"MYVAR": "HELLO_WORLD"}
+
 
 @pytest.fixture()
 def sagemaker_session():
@@ -352,7 +354,7 @@ def test_train(
             "local", instance_count, image, sagemaker_session=sagemaker_session
         )
         sagemaker_container.train(
-            INPUT_DATA_CONFIG, OUTPUT_DATA_CONFIG, HYPERPARAMETERS, TRAINING_JOB_NAME
+            INPUT_DATA_CONFIG, OUTPUT_DATA_CONFIG, HYPERPARAMETERS, ENVIRONMENT, TRAINING_JOB_NAME
         )
 
         docker_compose_file = os.path.join(
@@ -415,7 +417,7 @@ def test_train_with_hyperparameters_without_job_name(
             "local", instance_count, image, sagemaker_session=sagemaker_session
         )
         sagemaker_container.train(
-            INPUT_DATA_CONFIG, OUTPUT_DATA_CONFIG, HYPERPARAMETERS, TRAINING_JOB_NAME
+            INPUT_DATA_CONFIG, OUTPUT_DATA_CONFIG, HYPERPARAMETERS, ENVIRONMENT, TRAINING_JOB_NAME
         )
 
         docker_compose_file = os.path.join(
@@ -456,7 +458,11 @@ def test_train_error(
 
         with pytest.raises(RuntimeError) as e:
             sagemaker_container.train(
-                INPUT_DATA_CONFIG, OUTPUT_DATA_CONFIG, HYPERPARAMETERS, TRAINING_JOB_NAME
+                INPUT_DATA_CONFIG,
+                OUTPUT_DATA_CONFIG,
+                HYPERPARAMETERS,
+                ENVIRONMENT,
+                TRAINING_JOB_NAME,
             )
 
         assert "this is expected" in str(e)
@@ -486,7 +492,11 @@ def test_train_local_code(get_data_source_instance, tmpdir, sagemaker_session):
         )
 
         sagemaker_container.train(
-            INPUT_DATA_CONFIG, OUTPUT_DATA_CONFIG, LOCAL_CODE_HYPERPARAMETERS, TRAINING_JOB_NAME
+            INPUT_DATA_CONFIG,
+            OUTPUT_DATA_CONFIG,
+            LOCAL_CODE_HYPERPARAMETERS,
+            ENVIRONMENT,
+            TRAINING_JOB_NAME,
         )
 
         docker_compose_file = os.path.join(
@@ -538,7 +548,7 @@ def test_train_local_intermediate_output(get_data_source_instance, tmpdir, sagem
         hyperparameters = {"sagemaker_s3_output": output_path}
 
         sagemaker_container.train(
-            INPUT_DATA_CONFIG, output_data_config, hyperparameters, TRAINING_JOB_NAME
+            INPUT_DATA_CONFIG, output_data_config, hyperparameters, ENVIRONMENT, TRAINING_JOB_NAME
         )
 
         docker_compose_file = os.path.join(

@@ -99,10 +99,11 @@ class ChainerModel(FrameworkModel):
                 file which should be executed as the entry point to model
                 hosting. If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
-            image_uri (str): A Docker image URI (default: None). If not specified, a
-                default image for Chainer will be used. If ``framework_version``
-                or ``py_version`` are ``None``, then ``image_uri`` is required. If
-                also ``None``, then a ``ValueError`` will be raised.
+            image_uri (str): A Docker image URI (default: None). If not specified,
+                a default image for Chainer will be used.
+                If ``framework_version`` or ``py_version``
+                are ``None``, then ``image_uri`` is required. If ``image_uri`` is also ``None``,
+                then a ``ValueError`` will be raised.
             framework_version (str): Chainer version you want to use for
                 executing your model training code. Defaults to ``None``. Required
                 unless ``image_uri`` is provided.
@@ -139,7 +140,9 @@ class ChainerModel(FrameworkModel):
 
         self.model_server_workers = model_server_workers
 
-    def prepare_container_def(self, instance_type=None, accelerator_type=None):
+    def prepare_container_def(
+        self, instance_type=None, accelerator_type=None, serverless_inference_config=None
+    ):
         """Return a container definition with framework configuration set in model environment.
 
         Args:
@@ -148,6 +151,9 @@ class ChainerModel(FrameworkModel):
             accelerator_type (str): The Elastic Inference accelerator type to
                 deploy to the instance for loading and making inferences to the
                 model. For example, 'ml.eia1.medium'.
+            serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
+                Specifies configuration related to serverless endpoint. Instance type is
+                not provided in serverless inference. So this is used to find image URIs.
 
         Returns:
             dict[str, str]: A container definition object usable with the
@@ -155,14 +161,17 @@ class ChainerModel(FrameworkModel):
         """
         deploy_image = self.image_uri
         if not deploy_image:
-            if instance_type is None:
+            if instance_type is None and serverless_inference_config is None:
                 raise ValueError(
                     "Must supply either an instance type (for choosing CPU vs GPU) or an image URI."
                 )
 
             region_name = self.sagemaker_session.boto_session.region_name
             deploy_image = self.serving_image_uri(
-                region_name, instance_type, accelerator_type=accelerator_type
+                region_name,
+                instance_type,
+                accelerator_type=accelerator_type,
+                serverless_inference_config=serverless_inference_config,
             )
 
         deploy_key_prefix = model_code_key_prefix(self.key_prefix, self.name, deploy_image)
@@ -174,13 +183,18 @@ class ChainerModel(FrameworkModel):
             deploy_env[MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = str(self.model_server_workers)
         return sagemaker.container_def(deploy_image, self.model_data, deploy_env)
 
-    def serving_image_uri(self, region_name, instance_type, accelerator_type=None):
+    def serving_image_uri(
+        self, region_name, instance_type, accelerator_type=None, serverless_inference_config=None
+    ):
         """Create a URI for the serving image.
 
         Args:
             region_name (str): AWS region where the image is uploaded.
             instance_type (str): SageMaker instance type. Used to determine device type
                 (cpu/gpu/family-specific optimized).
+            serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
+                Specifies configuration related to serverless endpoint. Instance type is
+                not provided in serverless inference. So this is used to determine device type.
 
         Returns:
             str: The appropriate image URI based on the given parameters.
@@ -194,4 +208,5 @@ class ChainerModel(FrameworkModel):
             instance_type=instance_type,
             accelerator_type=accelerator_type,
             image_scope="inference",
+            serverless_inference_config=serverless_inference_config,
         )

@@ -1721,6 +1721,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             (dict): Return value from the ``DescribeAutoMLJob`` API.
 
         Raises:
+            exceptions.CapacityError: If the auto ml job fails with CapacityError.
             exceptions.UnexpectedStatusException: If the auto ml job fails.
         """
         desc = _wait_until(lambda: _auto_ml_job_status(self.sagemaker_client, job), poll)
@@ -1743,7 +1744,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 completion (default: 5).
 
         Raises:
-            exceptions.UnexpectedStatusException: If waiting and the training job fails.
+            exceptions.CapacityError: If waiting and auto ml job fails with CapacityError.
+            exceptions.UnexpectedStatusException: If waiting and auto ml job fails.
         """
 
         description = self.sagemaker_client.describe_auto_ml_job(AutoMLJobName=job_name)
@@ -2845,6 +2847,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         Returns:
             dict: Return value from the ``DescribeEndpoint`` API.
+
+        Raises:
+            exceptions.CapacityError: If the Model Package job fails with CapacityError.
+            exceptions.UnexpectedStatusException: If waiting and the Model Package job fails.
         """
         desc = _wait_until(
             lambda: _create_model_package_status(self.sagemaker_client, model_package_name), poll
@@ -2853,10 +2859,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if status != "Completed":
             reason = desc.get("FailureReason", None)
+            message = "Error creating model package {package}: {status} Reason: {reason}".format(
+                package=model_package_name, status=status, reason=reason
+            )
+            if "CapacityError" in str(reason):
+                raise exceptions.CapacityError(
+                    message=message,
+                    allowed_statuses=["InService"],
+                    actual_status=status,
+                )
             raise exceptions.UnexpectedStatusException(
-                message="Error creating model package {package}: {status} Reason: {reason}".format(
-                    package=model_package_name, status=status, reason=reason
-                ),
+                message=message,
                 allowed_statuses=["Completed"],
                 actual_status=status,
             )
@@ -3147,6 +3160,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             (dict): Return value from the ``DescribeTrainingJob`` API.
 
         Raises:
+            exceptions.CapacityError: If the training job fails with CapacityError.
             exceptions.UnexpectedStatusException: If the training job fails.
         """
         desc = _wait_until_training_done(
@@ -3166,7 +3180,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             (dict): Return value from the ``DescribeProcessingJob`` API.
 
         Raises:
-            exceptions.UnexpectedStatusException: If the compilation job fails.
+            exceptions.CapacityError: If the processing job fails with CapacityError.
+            exceptions.UnexpectedStatusException: If the processing job fails.
         """
         desc = _wait_until(lambda: _processing_job_status(self.sagemaker_client, job), poll)
         self._check_job_status(job, desc, "ProcessingJobStatus")
@@ -3183,6 +3198,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             (dict): Return value from the ``DescribeCompilationJob`` API.
 
         Raises:
+            exceptions.CapacityError: If the compilation job fails with CapacityError.
             exceptions.UnexpectedStatusException: If the compilation job fails.
         """
         desc = _wait_until(lambda: _compilation_job_status(self.sagemaker_client, job), poll)
@@ -3200,7 +3216,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             (dict): Return value from the ``DescribeEdgePackagingJob`` API.
 
         Raises:
-            exceptions.UnexpectedStatusException: If the compilation job fails.
+            exceptions.CapacityError: If the edge packaging job fails with CapacityError.
+            exceptions.UnexpectedStatusException: If the edge packaging job fails.
         """
         desc = _wait_until(lambda: _edge_packaging_job_status(self.sagemaker_client, job), poll)
         self._check_job_status(job, desc, "EdgePackagingJobStatus")
@@ -3217,6 +3234,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             (dict): Return value from the ``DescribeHyperParameterTuningJob`` API.
 
         Raises:
+            exceptions.CapacityError: If the hyperparameter tuning job fails with CapacityError.
             exceptions.UnexpectedStatusException: If the hyperparameter tuning job fails.
         """
         desc = _wait_until(lambda: _tuning_job_status(self.sagemaker_client, job), poll)
@@ -3245,6 +3263,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             (dict): Return value from the ``DescribeTransformJob`` API.
 
         Raises:
+            exceptions.CapacityError: If the transform job fails with CapacityError.
             exceptions.UnexpectedStatusException: If the transform job fails.
         """
         desc = _wait_until(lambda: _transform_job_status(self.sagemaker_client, job), poll)
@@ -3283,6 +3302,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             status_key_name (str): Status key name to check for.
 
         Raises:
+            exceptions.CapacityError: If the training job fails with CapacityError.
             exceptions.UnexpectedStatusException: If the training job fails.
         """
         status = desc[status_key_name]
@@ -3298,10 +3318,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
         elif status != "Completed":
             reason = desc.get("FailureReason", "(No reason provided)")
             job_type = status_key_name.replace("JobStatus", " job")
+            message = "Error for {job_type} {job_name}: {status}. Reason: {reason}".format(
+                job_type=job_type, job_name=job, status=status, reason=reason
+            )
+            if "CapacityError" in str(reason):
+                raise exceptions.CapacityError(
+                    message=message,
+                    allowed_statuses=["Completed", "Stopped"],
+                    actual_status=status,
+                )
             raise exceptions.UnexpectedStatusException(
-                message="Error for {job_type} {job_name}: {status}. Reason: {reason}".format(
-                    job_type=job_type, job_name=job, status=status, reason=reason
-                ),
+                message=message,
                 allowed_statuses=["Completed", "Stopped"],
                 actual_status=status,
             )
@@ -3313,6 +3340,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
             endpoint (str): Name of the ``Endpoint`` to wait for.
             poll (int): Polling interval in seconds (default: 5).
 
+        Raises:
+            exceptions.CapacityError: If the endpoint creation job fails with CapacityError.
+            exceptions.UnexpectedStatusException: If the endpoint creation job fails.
+
         Returns:
             dict: Return value from the ``DescribeEndpoint`` API.
         """
@@ -3321,10 +3352,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if status != "InService":
             reason = desc.get("FailureReason", None)
+            message = "Error hosting endpoint {endpoint}: {status}. Reason: {reason}.".format(
+                endpoint=endpoint, status=status, reason=reason
+            )
+            if "CapacityError" in str(reason):
+                raise exceptions.CapacityError(
+                    message=message,
+                    allowed_statuses=["InService"],
+                    actual_status=status,
+                )
             raise exceptions.UnexpectedStatusException(
-                message="Error hosting endpoint {endpoint}: {status}. Reason: {reason}.".format(
-                    endpoint=endpoint, status=status, reason=reason
-                ),
+                message=message,
                 allowed_statuses=["InService"],
                 actual_status=status,
             )
@@ -3649,6 +3687,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 completion (default: 5).
 
         Raises:
+            exceptions.CapacityError: If the training job fails with CapacityError.
             exceptions.UnexpectedStatusException: If waiting and the training job fails.
         """
 

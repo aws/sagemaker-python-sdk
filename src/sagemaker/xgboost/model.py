@@ -91,8 +91,8 @@ class XGBoostModel(FrameworkModel):
             entry_point (str): Path (absolute or relative) to the Python source file which should
                 be executed  as the entry point to model hosting. If ``source_dir`` is specified,
                 then ``entry_point`` must point to a file located at the root of ``source_dir``.
-            image_uri (str): A Docker image URI (default: None). If not specified, a default image
-                for XGBoost is be used.
+            image_uri (str): A Docker image URI (default: None). If not specified,
+                a default image for XGBoost is be used.
             py_version (str): Python version you want to use for executing your model training code
                 (default: 'py3').
             framework_version (str): XGBoost version you want to use for executing your model
@@ -124,7 +124,9 @@ class XGBoostModel(FrameworkModel):
         validate_py_version(py_version)
         validate_framework_version(framework_version)
 
-    def prepare_container_def(self, instance_type=None, accelerator_type=None):
+    def prepare_container_def(
+        self, instance_type=None, accelerator_type=None, serverless_inference_config=None
+    ):
         """Return a container definition with framework configuration.
 
         The framework configuration is set in model environment variables.
@@ -134,6 +136,9 @@ class XGBoostModel(FrameworkModel):
             accelerator_type (str): The Elastic Inference accelerator type to deploy to the
             instance for loading and making inferences to the model. This parameter is
                 unused because accelerator types are not supported by XGBoostModel.
+            serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
+                Specifies configuration related to serverless endpoint. Instance type is
+                not provided in serverless inference. So this is used to find image URIs.
 
         Returns:
             dict[str, str]: A container definition object usable with the CreateModel API.
@@ -141,7 +146,9 @@ class XGBoostModel(FrameworkModel):
         deploy_image = self.image_uri
         if not deploy_image:
             deploy_image = self.serving_image_uri(
-                self.sagemaker_session.boto_region_name, instance_type
+                self.sagemaker_session.boto_region_name,
+                instance_type,
+                serverless_inference_config=serverless_inference_config,
             )
 
         deploy_key_prefix = model_code_key_prefix(self.key_prefix, self.name, deploy_image)
@@ -156,12 +163,16 @@ class XGBoostModel(FrameworkModel):
         )
         return sagemaker.container_def(deploy_image, model_data, deploy_env)
 
-    def serving_image_uri(self, region_name, instance_type):
+    def serving_image_uri(self, region_name, instance_type, serverless_inference_config=None):
         """Create a URI for the serving image.
 
         Args:
             region_name (str): AWS region where the image is uploaded.
             instance_type (str): SageMaker instance type. Must be a CPU instance type.
+            serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
+                Specifies configuration related to serverless endpoint. Instance type is
+                not provided in serverless inference. So this is used to determine device type.
+
 
         Returns:
             str: The appropriate image URI based on the given parameters.
@@ -171,4 +182,5 @@ class XGBoostModel(FrameworkModel):
             region_name,
             version=self.framework_version,
             instance_type=instance_type,
+            serverless_inference_config=serverless_inference_config,
         )

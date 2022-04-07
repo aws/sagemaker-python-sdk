@@ -1,0 +1,20 @@
+tox==3.24.5
+flake8==4.0.1
+pytest==6.0.2
+pytest-cov==3.0.0
+pytest-rerunfailures==10.2
+pytest-timeout==2.1.0
+pytest-xdist==2.4.0
+coverage>=5.2, <6.2
+mock==4.0.3
+contextlib2==21.6.0
+awslogs==0.14.0
+black==22.3.0
+stopit==1.1.2
+apache-airflow==2.2.4
+apache-airflow-providers-amazon==3.0.0
+attrs==20.3.0
+fabric==2.6.0
+requests==2.27.1
+sagemaker-experiments==0.1.35
+Jinja2==3.0.3

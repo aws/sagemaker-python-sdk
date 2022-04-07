@@ -145,10 +145,11 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
                 file which should be executed as the entry point to model
                 hosting. If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
-            image_uri (str): A Docker image URI (default: None). If not specified, a
-                default image for TensorFlow Serving will be used. If
-                ``framework_version`` is ``None``, then ``image_uri`` is required.
-                If also ``None``, then a ``ValueError`` will be raised.
+            image_uri (str): A Docker image URI (default: None). If not specified,
+                a default image for TensorFlow Serving will be used.
+                If ``framework_version`` is ``None``, then ``image_uri`` is required.
+                If ``image_uri`` is also ``None``, then a ``ValueError``
+                will be raised.
             framework_version (str): Optional. TensorFlow Serving version you
                 want to use. Defaults to ``None``. Required unless ``image_uri`` is
                 provided.
@@ -308,22 +309,30 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             and framework_version <= self.LATEST_EIA_VERSION
         )
 
-    def prepare_container_def(self, instance_type=None, accelerator_type=None):
+    def prepare_container_def(
+        self, instance_type=None, accelerator_type=None, serverless_inference_config=None
+    ):
         """Prepare the container definition.
 
         Args:
             instance_type: Instance type of the container.
             accelerator_type: Accelerator type, if applicable.
+            serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
+                Specifies configuration related to serverless endpoint. Instance type is
+                not provided in serverless inference. So this is used to find image URIs.
 
         Returns:
             A container definition for deploying a ``Model`` to an ``Endpoint``.
         """
-        if self.image_uri is None and instance_type is None:
-            raise ValueError(
-                "Must supply either an instance type (for choosing CPU vs GPU) or an image URI."
-            )
+        if not self.image_uri:
+            if instance_type is None and serverless_inference_config is None:
+                raise ValueError(
+                    "Must supply either an instance type (for choosing CPU vs GPU) or an image URI."
+                )
 
-        image_uri = self._get_image_uri(instance_type, accelerator_type)
+        image_uri = self._get_image_uri(
+            instance_type, accelerator_type, serverless_inference_config=serverless_inference_config
+        )
         env = self._get_container_env()
 
         if self.entry_point:
@@ -361,7 +370,13 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         env[self.LOG_LEVEL_PARAM_NAME] = self.LOG_LEVEL_MAP[self._container_log_level]
         return env
 
-    def _get_image_uri(self, instance_type, accelerator_type=None, region_name=None):
+    def _get_image_uri(
+        self,
+        instance_type,
+        accelerator_type=None,
+        region_name=None,
+        serverless_inference_config=None,
+    ):
         """Placeholder docstring."""
         if self.image_uri:
             return self.image_uri
@@ -373,10 +388,11 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             instance_type=instance_type,
             accelerator_type=accelerator_type,
             image_scope="inference",
+            serverless_inference_config=serverless_inference_config,
         )
 
     def serving_image_uri(
-        self, region_name, instance_type, accelerator_type=None
+        self, region_name, instance_type, accelerator_type=None, serverless_inference_config=None
     ):  # pylint: disable=unused-argument
         """Create a URI for the serving image.
 
@@ -387,11 +403,17 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             accelerator_type (str): The Elastic Inference accelerator type to
                 deploy to the instance for loading and making inferences to the
                 model (default: None). For example, 'ml.eia1.medium'.
+            serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
+                Specifies configuration related to serverless endpoint. Instance type is
+                not provided in serverless inference. So this is used to determine device type.
 
         Returns:
             str: The appropriate image URI based on the given parameters.
 
         """
         return self._get_image_uri(
-            instance_type=instance_type, accelerator_type=accelerator_type, region_name=region_name
+            instance_type=instance_type,
+            accelerator_type=accelerator_type,
+            region_name=region_name,
+            serverless_inference_config=serverless_inference_config,
         )

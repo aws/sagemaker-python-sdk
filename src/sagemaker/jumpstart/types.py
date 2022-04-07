@@ -272,6 +272,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
 
     __slots__ = [
         "model_id",
+        "url",
         "version",
         "min_sdk_version",
         "incremental_training_supported",
@@ -308,6 +309,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
             json_obj (Dict[str, Any]): Dictionary representation of spec.
         """
         self.model_id: str = json_obj["model_id"]
+        self.url: str = json_obj["url"]
         self.version: str = json_obj["version"]
         self.min_sdk_version: str = json_obj["min_sdk_version"]
         self.incremental_training_supported: bool = bool(json_obj["incremental_training_supported"])

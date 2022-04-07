@@ -401,3 +401,21 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
 
     if len(unrecognized_keys) > 0:
         raise RuntimeError(f"Unrecognized keys: {str(unrecognized_keys)}")
+
+
+def get_model_url(
+    model_id: str, model_version: str, region: str = JUMPSTART_DEFAULT_REGION_NAME
+) -> str:
+    """Retrieve web url describing pretrained model.
+
+    Args:
+        model_id (str): The model ID for which to retrieve the url.
+        model_version (str): The model version for which to retrieve the url.
+        region (str): Optional. The region from which to retrieve metadata.
+            (Default: JUMPSTART_DEFAULT_REGION_NAME)
+    """
+
+    model_specs = accessors.JumpStartModelsAccessor.get_model_specs(
+        region=region, model_id=model_id, version=model_version
+    )
+    return model_specs.url

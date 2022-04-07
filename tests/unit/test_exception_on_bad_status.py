@@ -84,6 +84,26 @@ def test_does_raise_when_incorrect_job_status():
         assert "Stopped" in e.allowed_statuses
 
 
+def test_does_raise_capacity_error_when_incorrect_job_status():
+    try:
+        job = Mock()
+        sagemaker_session = get_sagemaker_session(returns_status="Failed")
+        sagemaker_session._check_job_status(
+            job,
+            {
+                "TransformationJobStatus": "Failed",
+                "FailureReason": "CapacityError: Unable to provision requested ML compute capacity",
+            },
+            "TransformationJobStatus",
+        )
+        assert False, "sagemaker.exceptions.CapacityError should have been raised but was not"
+    except Exception as e:
+        assert type(e) == sagemaker.exceptions.CapacityError
+        assert e.actual_status == "Failed"
+        assert "Completed" in e.allowed_statuses
+        assert "Stopped" in e.allowed_statuses
+
+
 def test_does_not_raise_when_successfully_deployed_endpoint():
     try:
         sagemaker_session = get_sagemaker_session(returns_status="InService")

@@ -62,7 +62,9 @@ def test_deploy(name_from_base, prepare_container_def, production_variant, sagem
     name_from_base.assert_called_with(MODEL_IMAGE)
     assert 2 == name_from_base.call_count
 
-    prepare_container_def.assert_called_with(INSTANCE_TYPE, accelerator_type=None)
+    prepare_container_def.assert_called_with(
+        INSTANCE_TYPE, accelerator_type=None, serverless_inference_config=None
+    )
     production_variant.assert_called_with(
         MODEL_NAME,
         INSTANCE_TYPE,
@@ -106,7 +108,7 @@ def test_deploy_accelerator_type(
         accelerator_type=ACCELERATOR_TYPE,
     )
 
-    create_sagemaker_model.assert_called_with(INSTANCE_TYPE, ACCELERATOR_TYPE, None)
+    create_sagemaker_model.assert_called_with(INSTANCE_TYPE, ACCELERATOR_TYPE, None, None)
     production_variant.assert_called_with(
         MODEL_NAME,
         INSTANCE_TYPE,
@@ -212,7 +214,7 @@ def test_deploy_tags(create_sagemaker_model, production_variant, name_from_base,
     tags = [{"Key": "ModelName", "Value": "TestModel"}]
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT, tags=tags)
 
-    create_sagemaker_model.assert_called_with(INSTANCE_TYPE, None, tags)
+    create_sagemaker_model.assert_called_with(INSTANCE_TYPE, None, tags, None)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
         name=ENDPOINT_NAME,
         production_variants=[BASE_PRODUCTION_VARIANT],
@@ -349,7 +351,7 @@ def test_deploy_serverless_inference(production_variant, create_sagemaker_model,
         serverless_inference_config=serverless_inference_config,
     )
 
-    create_sagemaker_model.assert_called_with(None, None, None)
+    create_sagemaker_model.assert_called_with(None, None, None, serverless_inference_config)
     production_variant.assert_called_with(
         MODEL_NAME,
         None,

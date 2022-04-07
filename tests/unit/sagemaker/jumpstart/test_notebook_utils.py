@@ -14,6 +14,7 @@ from tests.unit.sagemaker.jumpstart.utils import (
 )
 from sagemaker.jumpstart.notebook_utils import (
     _generate_jumpstart_model_versions,
+    get_model_url,
     list_jumpstart_frameworks,
     list_jumpstart_models,
     list_jumpstart_scripts,
@@ -641,3 +642,35 @@ class ListJumpStartModels(TestCase):
 
         with pytest.raises(NotImplementedError):
             list_jumpstart_models("hosting_ecr_specs.py_version == py3")
+
+
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+def test_get_model_url(
+    patched_get_model_specs: Mock,
+):
+
+    patched_get_model_specs.side_effect = get_prototype_model_spec
+
+    model_id, version = "xgboost-classification-model", "1.0.0"
+    assert "https://xgboost.readthedocs.io/en/latest/" == get_model_url(model_id, version)
+
+    model_id, version = "tensorflow-ic-bit-m-r101x1-ilsvrc2012-classification-1", "1.0.0"
+    assert "https://tfhub.dev/google/bit/m-r101x1/ilsvrc2012_classification/1" == get_model_url(
+        model_id, version
+    )
+
+    model_id, version = "tensorflow-ic-bit-m-r101x1-ilsvrc2012-classification-1", "1.0.0"
+    region = "fake-region"
+
+    patched_get_model_specs.reset_mock()
+    patched_get_model_specs.side_effect = lambda *largs, **kwargs: get_prototype_model_spec(
+        *largs,
+        region="us-west-2",
+        **{key: value for key, value in kwargs.items() if key != "region"},
+    )
+
+    get_model_url(model_id, version, region=region)
+
+    patched_get_model_specs.assert_called_once_with(
+        model_id=model_id, version=version, region=region
+    )

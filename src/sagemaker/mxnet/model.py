@@ -107,11 +107,10 @@ class MXNetModel(FrameworkModel):
             py_version (str): Python version you want to use for executing your
                 model training code. Defaults to ``None``. Required unless
                 ``image_uri`` is provided.
-            image_uri (str): A Docker image URI (default: None). If not specified, a
-                default image for MXNet will be used.
-
+            image_uri (str): A Docker image URI (default: None). If not specified,
+                a default image for MXNet will be used.
                 If ``framework_version`` or ``py_version`` are ``None``, then
-                ``image_uri`` is required. If also ``None``, then a ``ValueError``
+                ``image_uri`` is required. If ``image_uri`` is also ``None``, then a ``ValueError``
                 will be raised.
             predictor_cls (callable[str, sagemaker.session.Session]): A function
                 to call to create a predictor with an endpoint name and
@@ -217,7 +216,9 @@ class MXNetModel(FrameworkModel):
             customer_metadata_properties=customer_metadata_properties,
         )
 
-    def prepare_container_def(self, instance_type=None, accelerator_type=None):
+    def prepare_container_def(
+        self, instance_type=None, accelerator_type=None, serverless_inference_config=None
+    ):
         """Return a container definition with framework configuration.
 
         Framework configuration is set in model environment variables.
@@ -228,6 +229,9 @@ class MXNetModel(FrameworkModel):
             accelerator_type (str): The Elastic Inference accelerator type to
                 deploy to the instance for loading and making inferences to the
                 model. For example, 'ml.eia1.medium'.
+            serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
+                Specifies configuration related to serverless endpoint. Instance type is
+                not provided in serverless inference. So this is used to find image URIs.
 
         Returns:
             dict[str, str]: A container definition object usable with the
@@ -235,14 +239,17 @@ class MXNetModel(FrameworkModel):
         """
         deploy_image = self.image_uri
         if not deploy_image:
-            if instance_type is None:
+            if instance_type is None and serverless_inference_config is None:
                 raise ValueError(
                     "Must supply either an instance type (for choosing CPU vs GPU) or an image URI."
                 )
 
             region_name = self.sagemaker_session.boto_session.region_name
             deploy_image = self.serving_image_uri(
-                region_name, instance_type, accelerator_type=accelerator_type
+                region_name,
+                instance_type,
+                accelerator_type=accelerator_type,
+                serverless_inference_config=serverless_inference_config,
             )
 
         deploy_key_prefix = model_code_key_prefix(self.key_prefix, self.name, deploy_image)
@@ -256,7 +263,9 @@ class MXNetModel(FrameworkModel):
             deploy_image, self.repacked_model_data or self.model_data, deploy_env
         )
 
-    def serving_image_uri(self, region_name, instance_type, accelerator_type=None):
+    def serving_image_uri(
+        self, region_name, instance_type, accelerator_type=None, serverless_inference_config=None
+    ):
         """Create a URI for the serving image.
 
         Args:
@@ -266,6 +275,9 @@ class MXNetModel(FrameworkModel):
             accelerator_type (str): The Elastic Inference accelerator type to
                 deploy to the instance for loading and making inferences to the
                 model (default: None). For example, 'ml.eia1.medium'.
+            serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
+                Specifies configuration related to serverless endpoint. Instance type is
+                not provided in serverless inference. So this is used to determine device type.
 
         Returns:
             str: The appropriate image URI based on the given parameters.
@@ -279,6 +291,7 @@ class MXNetModel(FrameworkModel):
             instance_type=instance_type,
             accelerator_type=accelerator_type,
             image_scope="inference",
+            serverless_inference_config=serverless_inference_config,
         )
 
     def _is_mms_version(self):
