@@ -201,36 +201,40 @@ def test_lambda_step_no_inputs_outputs(sagemaker_session):
 
 
 def test_lambda_step_with_function_arn(sagemaker_session):
+    lambda_func = MagicMock(
+        function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
+        session=sagemaker_session,
+    )
     lambda_step = LambdaStep(
         name="MyLambdaStep",
         depends_on=["TestStep"],
-        lambda_func=Lambda(
-            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
-            session=sagemaker_session,
-        ),
+        lambda_func=lambda_func,
         inputs={},
         outputs=[],
     )
-    lambda_step._get_function_arn()
-    sagemaker_session.account_id.assert_not_called()
+    function_arn = lambda_step._get_function_arn()
+    assert function_arn == "arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda"
+    lambda_func.upsert.assert_not_called()
 
 
 def test_lambda_step_without_function_arn(sagemaker_session):
+    lambda_func = MagicMock(
+        function_arn=None,
+        function_name="name",
+        execution_role_arn="arn:aws:lambda:us-west-2:123456789012:execution_role",
+        zipped_code_dir="",
+        handler="",
+        session=sagemaker_session,
+    )
     lambda_step = LambdaStep(
         name="MyLambdaStep",
         depends_on=["TestStep"],
-        lambda_func=Lambda(
-            function_name="name",
-            execution_role_arn="arn:aws:lambda:us-west-2:123456789012:execution_role",
-            zipped_code_dir="",
-            handler="",
-            session=sagemaker_session,
-        ),
+        lambda_func=lambda_func,
         inputs={},
         outputs=[],
     )
     lambda_step._get_function_arn()
-    sagemaker_session.account_id.assert_called_once()
+    lambda_func.upsert.assert_called_once()
 
 
 def test_lambda_step_without_function_arn_and_with_error(sagemaker_session_cn):
@@ -242,26 +246,14 @@ def test_lambda_step_without_function_arn_and_with_error(sagemaker_session_cn):
         handler="",
         session=sagemaker_session_cn,
     )
-    # The raised ValueError contains ResourceConflictException
-    lambda_func.create.side_effect = ValueError("ResourceConflictException")
-    lambda_step1 = LambdaStep(
-        name="MyLambdaStep1",
-        depends_on=["TestStep"],
-        lambda_func=lambda_func,
-        inputs={},
-        outputs=[],
-    )
-    function_arn = lambda_step1._get_function_arn()
-    assert function_arn == "arn:aws-cn:lambda:cn-north-1:234567890123:function:name"
 
-    # The raised ValueError does not contain ResourceConflictException
-    lambda_func.create.side_effect = ValueError()
-    lambda_step2 = LambdaStep(
-        name="MyLambdaStep2",
+    lambda_func.upsert.side_effect = ValueError()
+    lambda_step = LambdaStep(
+        name="MyLambdaStep",
         depends_on=["TestStep"],
         lambda_func=lambda_func,
         inputs={},
         outputs=[],
     )
     with pytest.raises(ValueError):
-        lambda_step2._get_function_arn()
+        lambda_step._get_function_arn()
