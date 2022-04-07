@@ -10,7 +10,6 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-# language governing permissions and limitations under the License.
 from __future__ import absolute_import
 from sagemaker.workflow import _repack_model
 
@@ -36,7 +35,8 @@ def test_repack_entry_point_only(tmp):
     open(fake_model_path, "w")
 
     # create model.tar.gz
-    model_tar_name = "model-%s.tar.gz" % time.time()
+    model_tar_path = "s3://my-bucket/model-%s.tar.gz" % time.time()
+    model_tar_name = model_tar_path.split("/")[-1]
     model_tar_location = os.path.join(tmp, model_tar_name)
     with tarfile.open(model_tar_location, mode="w:gz") as t:
         t.add(fake_model_path, arcname=model_name)
@@ -54,7 +54,7 @@ def test_repack_entry_point_only(tmp):
     )
 
     # repack
-    _repack_model.repack(inference_script="inference.py", model_archive=model_tar_name)
+    _repack_model.repack(inference_script="inference.py", model_archive=model_tar_path)
 
     # /opt/ml/model should now have the original model and the inference script
     assert os.path.exists(os.path.join("/opt/ml/model", model_name))
