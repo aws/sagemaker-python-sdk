@@ -23,6 +23,7 @@ from sagemaker import ModelPackage
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.mxnet.model import MXNetModel
 from sagemaker.mxnet.processing import MXNetProcessor
+from sagemaker.serverless import ServerlessInferenceConfig
 from sagemaker.utils import sagemaker_timestamp
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.kms_utils import get_or_create_kms_key
@@ -417,6 +418,45 @@ def test_deploy_model_with_accelerator(
         data = numpy.zeros(shape=(1, 1, 28, 28))
         result = predictor.predict(data)
         assert result is not None
+
+
+def test_deploy_model_with_serverless_inference_config(
+    mxnet_training_job,
+    sagemaker_session,
+    mxnet_inference_latest_version,
+    mxnet_inference_latest_py_version,
+):
+    endpoint_name = "test-mxnet-deploy-model-serverless-{}".format(sagemaker_timestamp())
+
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+        desc = sagemaker_session.sagemaker_client.describe_training_job(
+            TrainingJobName=mxnet_training_job
+        )
+        model_data = desc["ModelArtifacts"]["S3ModelArtifacts"]
+        script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist.py")
+        model = MXNetModel(
+            model_data,
+            "SageMakerRole",
+            entry_point=script_path,
+            py_version=mxnet_inference_latest_py_version,
+            sagemaker_session=sagemaker_session,
+            framework_version=mxnet_inference_latest_version,
+        )
+        predictor = model.deploy(
+            serverless_inference_config=ServerlessInferenceConfig(), endpoint_name=endpoint_name
+        )
+
+        data = numpy.zeros(shape=(1, 1, 28, 28))
+        result = predictor.predict(data)
+
+        print("==========Result is===========")
+        print(result)
+        assert result is not None
+
+    model.delete_model()
+    with pytest.raises(Exception) as exception:
+        sagemaker_session.sagemaker_client.describe_model(ModelName=model.name)
+        assert "Could not find model" in str(exception.value)
 
 
 def test_async_fit(

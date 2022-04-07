@@ -86,6 +86,7 @@ def test_tfs_model(retrieve_image_uri, sagemaker_session, tensorflow_inference_v
         instance_type=INSTANCE_TYPE,
         accelerator_type=None,
         image_scope="inference",
+        serverless_inference_config=None,
     )
     assert IMAGE == cdef["Image"]
     assert {} == cdef["Environment"]
@@ -110,6 +111,7 @@ def test_tfs_model_accelerator(retrieve_image_uri, sagemaker_session, tensorflow
         instance_type=INSTANCE_TYPE,
         accelerator_type=ACCELERATOR_TYPE,
         image_scope="inference",
+        serverless_inference_config=None,
     )
     assert IMAGE == cdef["Image"]
 

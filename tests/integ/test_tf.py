@@ -18,7 +18,8 @@ import time
 
 import pytest
 
-from sagemaker.tensorflow import TensorFlow, TensorFlowProcessor
+from sagemaker.serverless import ServerlessInferenceConfig
+from sagemaker.tensorflow import TensorFlow, TensorFlowProcessor, TensorFlowModel
 from sagemaker.utils import unique_name_from_base, sagemaker_timestamp
 
 import tests.integ
@@ -288,6 +289,39 @@ def test_deploy_with_input_handlers(
 
         input_data = {"instances": [1.0, 2.0, 5.0]}
         expected_result = {"predictions": [4.0, 4.5, 6.0]}
+
+        result = predictor.predict(input_data)
+        assert expected_result == result
+
+
+def test_model_deploy_with_serverless_inference_config(
+    sagemaker_session, tf_full_version, tf_full_py_version
+):
+    endpoint_name = unique_name_from_base("sagemaker-tensorflow-serverless")
+    model_data = sagemaker_session.upload_data(
+        path=os.path.join(tests.integ.DATA_DIR, "tensorflow-serving-test-model.tar.gz"),
+        key_prefix="tensorflow-serving/models",
+    )
+    with tests.integ.timeout.timeout_and_delete_endpoint_by_name(
+        endpoint_name=endpoint_name,
+        sagemaker_session=sagemaker_session,
+        hours=2,
+        sleep_between_cleanup_attempts=20,
+        exponential_sleep=True,
+    ):
+        model = TensorFlowModel(
+            model_data=model_data,
+            role=ROLE,
+            framework_version=tf_full_version,
+            sagemaker_session=sagemaker_session,
+        )
+        predictor = model.deploy(
+            serverless_inference_config=ServerlessInferenceConfig(),
+            endpoint_name=endpoint_name,
+        )
+
+        input_data = {"instances": [1.0, 2.0, 5.0]}
+        expected_result = {"predictions": [3.5, 4.0, 5.5]}
 
         result = predictor.predict(input_data)
         assert expected_result == result
