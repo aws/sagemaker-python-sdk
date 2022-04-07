@@ -48,6 +48,7 @@ def retrieve(
     tolerate_deprecated_model=False,
     sdk_version=None,
     inference_tool=None,
+    serverless_inference_config=None,
 ) -> str:
     """Retrieves the ECR URI for the Docker image matching the given arguments.
 
@@ -94,6 +95,9 @@ def retrieve(
         inference_tool (str): the tool that will be used to aid in the inference.
             Valid values: "neuron, None"
             (default: None).
+        serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
+            Specifies configuration related to serverless endpoint. Instance type is
+            not provided in serverless inference. So this is used to determine processor type.
 
     Returns:
         str: The ECR URI for the corresponding SageMaker Docker image.
@@ -159,7 +163,9 @@ def retrieve(
     repo = version_config["repository"]
 
     processor = _processor(
-        instance_type, config.get("processors") or version_config.get("processors")
+        instance_type,
+        config.get("processors") or version_config.get("processors"),
+        serverless_inference_config,
     )
 
     # if container version is available in .json file, utilize that
@@ -202,7 +208,9 @@ def retrieve(
 
     tag = _format_tag(tag_prefix, processor, py_version, container_version, inference_tool)
 
-    if _should_auto_select_container_version(instance_type, distribution):
+    if instance_type is not None and _should_auto_select_container_version(
+        instance_type, distribution
+    ):
         container_versions = {
             "tensorflow-2.3-gpu-py37": "cu110-ubuntu18.04-v3",
             "tensorflow-2.3.1-gpu-py37": "cu110-ubuntu18.04",
@@ -327,7 +335,7 @@ def _registry_from_region(region, registry_dict):
     return registry_dict[region]
 
 
-def _processor(instance_type, available_processors):
+def _processor(instance_type, available_processors, serverless_inference_config=None):
     """Returns the processor type for the given instance type."""
     if not available_processors:
         logger.info("Ignoring unnecessary instance type: %s.", instance_type)
@@ -336,6 +344,10 @@ def _processor(instance_type, available_processors):
     if len(available_processors) == 1 and not instance_type:
         logger.info("Defaulting to only supported image scope: %s.", available_processors[0])
         return available_processors[0]
+
+    if serverless_inference_config is not None:
+        logger.info("Defaulting to CPU type when using serverless inference")
+        return "cpu"
 
     if not instance_type:
         raise ValueError(
