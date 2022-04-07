@@ -69,7 +69,7 @@ def create_jumpstart_model_table():
     )
     file_content.append(
         """
-    Each model id is linked to an external page that describes the model.\n
+    Each model ID is linked to an external page that describes the model.\n
     """
     )
     file_content.append("\n")
