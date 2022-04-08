@@ -138,12 +138,6 @@ class _RepackModelStep(TrainingStep):
         self._model_data = model_data
         self.sagemaker_session = sagemaker_session
         self.role = role
-        if isinstance(model_data, Properties):
-            self._model_prefix = model_data
-            self._model_archive = "model.tar.gz"
-        else:
-            self._model_prefix = "/".join(self._model_data.split("/")[:-1])
-            self._model_archive = self._model_data.split("/")[-1]
         self._entry_point = entry_point
         self._entry_point_basename = os.path.basename(self._entry_point)
         self._source_dir = source_dir
@@ -165,7 +159,7 @@ class _RepackModelStep(TrainingStep):
             role=self.role,
             hyperparameters={
                 "inference_script": self._entry_point_basename,
-                "model_archive": self._model_archive,
+                "model_archive": self._model_data,
                 "dependencies": dependencies_hyperparameter,
                 "source_dir": self._source_dir,
             },
@@ -174,7 +168,7 @@ class _RepackModelStep(TrainingStep):
             **kwargs,
         )
         repacker.disable_profiler = True
-        inputs = TrainingInput(self._model_prefix)
+        inputs = TrainingInput(self._model_data)
 
         # super!
         super(_RepackModelStep, self).__init__(

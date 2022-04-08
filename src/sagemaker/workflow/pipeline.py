@@ -339,16 +339,20 @@ def interpolate(
     Args:
         request_obj (RequestType): The request dict.
         callback_output_to_step_map (Dict[str, str]): A dict of output name -> step name.
+        lambda_output_to_step_map (Dict[str, str]): A dict of output name -> step name.
 
     Returns:
         RequestType: The request dict with Parameter values replaced by their expression.
     """
-    request_obj_copy = deepcopy(request_obj)
-    return _interpolate(
-        request_obj_copy,
-        callback_output_to_step_map=callback_output_to_step_map,
-        lambda_output_to_step_map=lambda_output_to_step_map,
-    )
+    try:
+        request_obj_copy = deepcopy(request_obj)
+        return _interpolate(
+            request_obj_copy,
+            callback_output_to_step_map=callback_output_to_step_map,
+            lambda_output_to_step_map=lambda_output_to_step_map,
+        )
+    except TypeError as type_err:
+        raise TypeError("Not able to interpolate Pipeline definition: %s" % type_err)
 
 
 def _interpolate(

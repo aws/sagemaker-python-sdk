@@ -149,28 +149,12 @@ class LambdaStep(Step):
         return request_dict
 
     def _get_function_arn(self):
-        """Returns the lamba function arn
+        """Returns the lambda function arn
 
         Method creates a lambda function and returns it's arn.
         If the lambda is already present, it will build it's arn and return that.
         """
-        region = self.lambda_func.session.boto_region_name
-        if region.lower() == "cn-north-1" or region.lower() == "cn-northwest-1":
-            partition = "aws-cn"
-        else:
-            partition = "aws"
-
         if self.lambda_func.function_arn is None:
-            account_id = self.lambda_func.session.account_id()
-            try:
-                response = self.lambda_func.create()
-                return response["FunctionArn"]
-            except ValueError as error:
-                if "ResourceConflictException" not in str(error):
-                    raise
-                return (
-                    f"arn:{partition}:lambda:{region}:{account_id}:"
-                    f"function:{self.lambda_func.function_name}"
-                )
-        else:
-            return self.lambda_func.function_arn
+            response = self.lambda_func.upsert()
+            return response["FunctionArn"]
+        return self.lambda_func.function_arn

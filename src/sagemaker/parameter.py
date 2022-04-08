@@ -15,7 +15,7 @@ from __future__ import absolute_import
 
 import json
 
-from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.workflow import is_pipeline_variable
 
 
 class ParameterRange(object):
@@ -72,10 +72,10 @@ class ParameterRange(object):
         return {
             "Name": name,
             "MinValue": str(self.min_value)
-            if not isinstance(self.min_value, PipelineVariable)
+            if not is_pipeline_variable(self.min_value)
             else self.min_value.to_string(),
             "MaxValue": str(self.max_value)
-            if not isinstance(self.max_value, PipelineVariable)
+            if not is_pipeline_variable(self.max_value)
             else self.max_value.to_string(),
             "ScalingType": self.scaling_type,
         }
@@ -110,9 +110,7 @@ class CategoricalParameter(ParameterRange):
                 This input will be converted into a list of strings.
         """
         values = values if isinstance(values, list) else [values]
-        self.values = [
-            str(v) if not isinstance(v, PipelineVariable) else v.to_string() for v in values
-        ]
+        self.values = [str(v) if not is_pipeline_variable(v) else v.to_string() for v in values]
 
     def as_tuning_range(self, name):
         """Represent the parameter range as a dictionary.

@@ -102,14 +102,10 @@ class SKLearnModel(FrameworkModel):
                 model training code (default: 'py3'). Currently, 'py3' is the only
                 supported version. If ``None`` is passed in, ``image_uri`` must be
                 provided.
-            image_uri (str): A Docker image URI (default: None). For serverless
-                inferece, it is required. More image information can be found in
-                `Amazon SageMaker provided algorithms and Deep Learning Containers
-                <https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-algo-docker-registry-paths.html>`_.
-                For instance based inference, if not specified, a default image for
-                Scikit-learn will be used.
+            image_uri (str): A Docker image URI (default: None). If not specified,
+                a default image for Scikit-learn will be used.
                 If ``framework_version`` or ``py_version`` are ``None``, then
-                ``image_uri`` is required. If also ``None``, then a ``ValueError``
+                ``image_uri`` is required. If ``image_uri`` is also ``None``, then a ``ValueError``
                 will be raised.
             predictor_cls (callable[str, sagemaker.session.Session]): A function
                 to call to create a predictor with an endpoint name and
@@ -208,7 +204,9 @@ class SKLearnModel(FrameworkModel):
             description,
         )
 
-    def prepare_container_def(self, instance_type=None, accelerator_type=None):
+    def prepare_container_def(
+        self, instance_type=None, accelerator_type=None, serverless_inference_config=None
+    ):
         """Container definition with framework configuration set in model environment variables.
 
         Args:
@@ -218,6 +216,9 @@ class SKLearnModel(FrameworkModel):
                 deploy to the instance for loading and making inferences to the
                 model. This parameter is unused because accelerator types
                 are not supported by SKLearnModel.
+            serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
+                Specifies configuration related to serverless endpoint. Instance type is
+                not provided in serverless inference. So this is used to find image URIs.
 
         Returns:
             dict[str, str]: A container definition object usable with the
@@ -244,12 +245,16 @@ class SKLearnModel(FrameworkModel):
         )
         return sagemaker.container_def(deploy_image, model_data_uri, deploy_env)
 
-    def serving_image_uri(self, region_name, instance_type):
+    def serving_image_uri(self, region_name, instance_type, serverless_inference_config=None):
         """Create a URI for the serving image.
 
         Args:
             region_name (str): AWS region where the image is uploaded.
             instance_type (str): SageMaker instance type.
+            serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
+                Specifies configuration related to serverless endpoint. Instance type is
+                not provided in serverless inference. So this is used to determine device type.
+
 
         Returns:
             str: The appropriate image URI based on the given parameters.
@@ -261,4 +266,5 @@ class SKLearnModel(FrameworkModel):
             version=self.framework_version,
             py_version=self.py_version,
             instance_type=instance_type,
+            serverless_inference_config=serverless_inference_config,
         )
