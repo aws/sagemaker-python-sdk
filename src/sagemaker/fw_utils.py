@@ -239,7 +239,7 @@ def validate_mp_config(config):
         ValueError: If any of the keys have incorrect values.
     """
     from sagemaker.mp_config import ModelParallelConfig
-    
+
     # the constructor runs validation on config parameters
     ModelParallelConfig(config)
 
