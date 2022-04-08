@@ -1,3 +1,10 @@
+"""Parses and validates configurations for modelparallel arguments.
+
+This validation is done in Python SDK so that validation errors are
+immediately raised, before launching the training job.
+"""
+from __future__ import absolute_import
+
 # Standard Library
 import json
 import os
@@ -25,7 +32,8 @@ except ImportError:
     py_sdk = True
 
 
-def int_or_float_if_possible(s):
+def _int_or_float_if_possible(s):
+    """Attempt to convert to int, or float"""
     try:
         float_s = float(s)
         int_s = int(float_s)
@@ -35,6 +43,8 @@ def int_or_float_if_possible(s):
 
 
 class ConfigParam:
+    """Represents and validates a single modelparallel configuration parameter."""
+
     def __init__(self, name, input_value, cfg_dict, existing_params, provided=False):
         self.name = name
         self.cfg_dict = cfg_dict
@@ -43,9 +53,11 @@ class ConfigParam:
         self._value = self._set_value(input_value)
 
     def get_value(self):
+        """Return the underlying value of the configuration parameter"""
         return self._value
 
     def _get_default(self):
+        """Get default value for the parameter"""
         default = self._handle_dependencies(self.cfg_dict["default"])
         if isinstance(default, (float, int)):
             # should explicitly enforce upper and lower bounds for dynamic formulas in case
@@ -58,6 +70,7 @@ class ConfigParam:
         return default
 
     def _set_value(self, input_value):
+        """Set the value for the parameter"""
         if not self.provided:
             if "default" not in self.cfg_dict:
                 raise ValueError(f"Config parameter {self.name} is required.")
@@ -68,28 +81,32 @@ class ConfigParam:
             expected_type = locate(self.cfg_dict["type"])
             if expected_type != type(input_value):
                 raise TypeError(
-                    f"Config parameter {self.name} needs to be of type {expected_type.__name__}. Found: {type(input_value)}"
+                    f"Config parameter {self.name} needs to be of type "
+                    f"{expected_type.__name__}. Found: {type(input_value)}"
                 )
 
         if "options" in self.cfg_dict:
             options = self._handle_dependencies(self.cfg_dict["options"])
             if input_value not in options:
                 raise ValueError(
-                    f"Config parameter {self.name} must be one of {self.cfg_dict['options']}. Found: {input_value}."
+                    f"Config parameter {self.name} must be one of "
+                    f"{self.cfg_dict['options']}. Found: {input_value}."
                 )
 
         if "lower_bound" in self.cfg_dict:
             lower_bound = self._handle_dependencies(self.cfg_dict["lower_bound"])
             if input_value < lower_bound:
                 raise ValueError(
-                    f"Config parameter {self.name} ({input_value}) cannot be less than {self.cfg_dict['lower_bound']} ({lower_bound})."
+                    f"Config parameter {self.name} ({input_value}) cannot be less "
+                    f"than {self.cfg_dict['lower_bound']} ({lower_bound})."
                 )
 
         if "upper_bound" in self.cfg_dict:
             upper_bound = self._handle_dependencies(self.cfg_dict["upper_bound"])
             if input_value > upper_bound:
                 raise ValueError(
-                    f"Config parameter {self.name} ({input_value}) cannot be larger than {self.cfg_dict['upper_bound']} ({upper_bound})."
+                    f"Config parameter {self.name} ({input_value}) cannot be larger "
+                    f"than {self.cfg_dict['upper_bound']} ({upper_bound})."
                 )
 
         if "requires" in self.cfg_dict:
@@ -97,7 +114,9 @@ class ConfigParam:
             for k, v in self.cfg_dict["requires"].items():
                 if self.existing_params[k].get_value() != v and input_value != default:
                     raise ValueError(
-                        f"Setting config parameter {self.name} to non-default value {input_value} requires {k} to be set to {v}. Found: {self.existing_params[k].get_value()}"
+                        f"Setting config parameter {self.name} to non-default value {input_value} "
+                        f"requires {k} to be set to {v}. Found: "
+                        f"{self.existing_params[k].get_value()}"
                     )
 
         if "requires_not" in self.cfg_dict:
@@ -105,18 +124,21 @@ class ConfigParam:
             for k, v in self.cfg_dict["requires_not"].items():
                 if self.existing_params[k].get_value() == v and input_value != default:
                     raise ValueError(
-                        f"Setting config parameter {self.name} to non-default value {input_value} requires {k} to not be {v}."
+                        f"Setting config parameter {self.name} to non-default value "
+                        f"{input_value} requires {k} to not be {v}."
                     )
 
         return input_value
 
     def _maybe_convert(self, value):
+        """Convert the value to int or float if possible"""
         if value[0] == "(" and value[-1] == ")" and value[1:-1] in self.existing_params:
             value = self.existing_params[value[1:-1]].get_value()
 
-        return int_or_float_if_possible(value)
+        return _int_or_float_if_possible(value)
 
     def _handle_dependencies(self, value):
+        """If value depends on another one, parse the formula."""
         if isinstance(value, str):
             tokens = re.split("\\+|\\-|\\*|\\/", value)
             ops = [c for c in value if c in ["+", "-", "*", "/"]]
@@ -137,19 +159,27 @@ class ConfigParam:
                 elif op == "/":
                     cur_value /= val
             return cur_value
-        else:
-            return value
+
+        return value
 
 
 class DependencyIterator:
+    """An iterator that traverses the configuration parameters in topological sort.
+
+    If a parameter a has dependency to another parameter b, then b is guaranteed to
+    be returned before a.
+    """
+
     def __init__(self, config):
         self.config = config
         self.seen = set()
 
     def __iter__(self):
+        """Create the iterator"""
         return self
 
     def __next__(self):
+        """Return the next element in topological sort"""
         for k in self.config:
             if k not in self.seen:
                 if "dependencies" not in self.config[k]:
@@ -167,6 +197,9 @@ class ModelParallelConfig:
     """Structure that holds the user-defined parameters for SMP."""
 
     def __init__(self, config):
+        # pylint: disable=no-member
+        # pylint: disable=E0203
+
         if not py_sdk:
             SM_CONFIG = json.loads(os.environ.get("SM_HP_MP_PARAMETERS", default="{}"))
             for each_sm_config in SM_CONFIG:
@@ -184,7 +217,8 @@ class ModelParallelConfig:
             if alias in config:
                 if orig in config and config[alias] != config[orig]:
                     raise ValueError(
-                        f"Conflicting values {config[orig]} and {config[alias]} are provided for config parameter {orig} and its alias {alias}."
+                        f"Conflicting values {config[orig]} and {config[alias]} are provided "
+                        f"for config parameter {orig} and its alias {alias}."
                     )
                 config[orig] = config[alias]
                 del config[alias]
@@ -208,22 +242,25 @@ class ModelParallelConfig:
         self._input_config = config
         self._config_dict = params
 
-        # enforce additional constraints - need to be careful here to make sure these do not conflict with the
-        # existing constraints
+        # enforce additional constraints - need to be careful here to make sure these do not
+        # conflict with the existing constraints
         if self.active_microbatches != self.microbatches and self.pipeline != "interleaved":
             # PT limitation right now
             self.pipeline = "interleaved"
             info_func(
-                "Simple pipeline is only supported when 'active_microbatches' is equal to 'microbatches'. Using interleaved pipeline instead."
+                "Simple pipeline is only supported when 'active_microbatches' is equal to "
+                "'microbatches'. Using interleaved pipeline instead."
             )
 
         if self.pipeline_parallel_degree > 1 and self.checkpoint_attentions:
             warn_func(
-                f"Cannot checkpoint attentions when pipeline-parallel degree is more than 1, disabling attention checkpointing."
+                "Cannot checkpoint attentions when pipeline-parallel degree is more "
+                "than 1, disabling attention checkpointing."
             )
             self.checkpoint_attentions = False
 
     def display_config(self):
+        """Display the parsed configuration"""
         assert hasattr(self, "_config_dict")
 
         if not py_sdk:

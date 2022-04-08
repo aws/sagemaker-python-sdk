@@ -129,29 +129,22 @@ def test_tar_and_upload_dir_s3_without_kms_with_overridden_settings(utils, sagem
     obj.upload_file.assert_called_with(utils.create_tar_file(), ExtraArgs=None)
 
 
-def test_mp_config_partition_exists():
-    mp_parameters = {}
-    with pytest.raises(ValueError):
-        fw_utils.validate_mp_config(mp_parameters)
-
-
 @pytest.mark.parametrize(
-    "pipeline, placement_strategy, optimize, trace_device",
+    "pipeline, placement_strategy, optimize",
     [
-        ("simple", "spread", "speed", "cpu"),
-        ("interleaved", "cluster", "memory", "gpu"),
-        ("_only_forward", "spread", "speed", "gpu"),
+        ("simple", "spread", "speed"),
+        ("interleaved", "cluster", "memory"),
+        ("_only_forward", "spread", "speed"),
     ],
 )
-def test_mp_config_string_names(pipeline, placement_strategy, optimize, trace_device):
+def test_mp_config_string_names(pipeline, placement_strategy, optimize):
     mp_parameters = {
         "partitions": 2,
         "pipeline": pipeline,
         "placement_strategy": placement_strategy,
         "optimize": optimize,
-        "trace_device": trace_device,
-        "active_microbatches": 8,
-        "deterministic_server": True,
+        "active_microbatches": 4,
+        "microbatches": 8,
     }
     fw_utils.validate_mp_config(mp_parameters)
 
