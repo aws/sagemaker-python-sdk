@@ -22,6 +22,7 @@ from typing import Dict, List, Union
 
 import attr
 
+from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import (
     DefaultEnumMeta,
     Entity,
@@ -261,6 +262,6 @@ def primitive_or_expr(
     Returns:
         Either the expression of the value or the primitive value.
     """
-    if isinstance(value, (ExecutionVariable, Expression, Parameter, Properties)):
+    if is_pipeline_variable(value):
         return value.expr
     return value
