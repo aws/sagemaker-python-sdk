@@ -80,9 +80,11 @@ class Pipeline(Entity):
     _version: str = "2020-12-01"
     _metadata: Dict[str, Any] = dict()
 
+    _validator: PipelineValidation = attr.ib(factory=PipelineValidation)
+
     def __attrs_post_init__(self):
         """Post-init logic after attributes are set"""
-        self.validator = PipelineValidation(self)
+        self._validator = PipelineValidation(self)
 
     def to_request(self) -> RequestType:
         """Gets the request structure for workflow service calls."""
@@ -123,7 +125,7 @@ class Pipeline(Entity):
             kwargs,
             Tags=tags,
         )
-        self.validator.validate()
+        self._validator.validate()
         return self.sagemaker_session.sagemaker_client.create_pipeline(**kwargs)
 
     def _create_args(
@@ -199,7 +201,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             A response dict from the service.
         """
         kwargs = self._create_args(role_arn, description, parallelism_config)
-        self.validator.validate()
+        self._validator.validate()
         return self.sagemaker_session.sagemaker_client.update_pipeline(**kwargs)
 
     def upsert(

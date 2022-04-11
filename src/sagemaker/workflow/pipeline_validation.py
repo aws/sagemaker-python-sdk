@@ -26,8 +26,10 @@ class PipelineValidation:
 
     def __init__(self, pipeline):
         """Constructs a PipelineValidation obj from Pipeline attributes
-        pipeline (Pipeline):
-            The current pipeline workflow object used for validation
+
+        Args:
+            pipeline (Pipeline):
+                The current pipeline workflow object used for validation
         """
         # Load Botocore for model validation
         loader = botocore.loaders.Loader()
@@ -45,7 +47,7 @@ class PipelineValidation:
         for step in self._pipeline.steps:
             if isinstance(step, ProcessingStep) and step is not None:
                 if (
-                    step.step_type is StepTypeEnum.PROCESSING
+                    step.step_type is StepTypeEnum.PROCESSING and step.inputs
                     and len(step.inputs) > max_processing_inputs
                 ):
                     raise ValidationError(
@@ -55,7 +57,7 @@ class PipelineValidation:
                 for s in step.steps:
                     if isinstance(s, ProcessingStep) and s is not None:
                         if (
-                            s.step_type is StepTypeEnum.PROCESSING
+                            s.step_type is StepTypeEnum.PROCESSING and s.inputs
                             and len(s.inputs) > max_processing_inputs
                         ):
                             raise ValidationError(
