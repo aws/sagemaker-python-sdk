@@ -24,7 +24,7 @@ from sagemaker.workflow.step_collections import StepCollection
 class PipelineValidation:
     """Validator for SageMaker Pipeline Workflows"""
 
-    def __init__(self, pipeline):
+    def __init__(self, pipeline=None):
         """Constructs a PipelineValidation obj from Pipeline attributes
 
         Args:
@@ -47,7 +47,8 @@ class PipelineValidation:
         for step in self._pipeline.steps:
             if isinstance(step, ProcessingStep) and step is not None:
                 if (
-                    step.step_type is StepTypeEnum.PROCESSING and step.inputs
+                    step.step_type is StepTypeEnum.PROCESSING
+                    and step.inputs
                     and len(step.inputs) > max_processing_inputs
                 ):
                     raise ValidationError(
@@ -57,7 +58,8 @@ class PipelineValidation:
                 for s in step.steps:
                     if isinstance(s, ProcessingStep) and s is not None:
                         if (
-                            s.step_type is StepTypeEnum.PROCESSING and s.inputs
+                            s.step_type is StepTypeEnum.PROCESSING
+                            and s.inputs
                             and len(s.inputs) > max_processing_inputs
                         ):
                             raise ValidationError(
