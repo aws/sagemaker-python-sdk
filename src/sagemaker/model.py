@@ -478,7 +478,7 @@ class Model(ModelBase):
         dir_name = None
         if self.uploaded_code:
             script_name = self.uploaded_code.script_name
-            if self.enable_network_isolation():
+            if self.repacked_model_data or self.enable_network_isolation():
                 dir_name = "/opt/ml/model/code"
             else:
                 dir_name = self.uploaded_code.s3_prefix
