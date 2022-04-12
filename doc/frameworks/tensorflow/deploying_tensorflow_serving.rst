@@ -272,7 +272,7 @@ More information on how to create ``export_outputs`` can be found in `specifying
 refer to TensorFlow's `Save and Restore <https://www.tensorflow.org/guide/saved_model>`_ documentation for other ways to control the
 inference-time behavior of your SavedModels.
 
-Providing Python scripts for pre/pos-processing
+Providing Python scripts for pre/post-processing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 You can add your customized Python code to process your input and output data.
