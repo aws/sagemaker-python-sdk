@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.86.0 (2022-04-12)
+
+### Features
+
+ * Adds Spark Processing Notebook to Notebook Tests
+
 ## v2.85.0 (2022-04-11)
 
 ### Features
