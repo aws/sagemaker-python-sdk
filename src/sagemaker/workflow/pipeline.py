@@ -201,7 +201,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             A response dict from the service.
         """
         kwargs = self._create_args(role_arn, description, parallelism_config)
-        self._validator.validate()
+        self.validator.validate()
         return self.sagemaker_session.sagemaker_client.update_pipeline(**kwargs)
 
     def upsert(
