@@ -573,14 +573,48 @@ Here is an example:
         # When you are done using your endpoint
         model.sagemaker_session.delete_endpoint('my-endpoint')
 
-********************************************
-Use Prebuilt Models with SageMaker JumpStart
-********************************************
+*********************************************************
+Use SageMaker JumpStart Algorithms with Pretrained Models
+*********************************************************
+
+JumpStart for the SageMaker Python SDK uses model ids and model versions to access the necessary
+utilities. This table serves to provide the core material plus some extra information that can be useful
+in selecting the correct model id and corresponding parameters.
 
 .. toctree::
     :maxdepth: 2
 
     doc_utils/jumpstart
+
+Example notebooks
+=================
+
+JumpStart supports 15 different machine learning problem types. Below is a list of all the supported
+problem types with a link to a Jupyter notebook that provides example usage.
+
+Vision
+    - `Image Classification <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_image_classification/Amazon_JumpStart_Image_Classification.ipynb>`__
+    - `Object Detection <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_object_detection/Amazon_JumpStart_Object_Detection.ipynb>`__
+    - `Semantic Segmentation <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_semantic_segmentation/Amazon_JumpStart_Semantic_Segmentation.ipynb>`__
+    - `Instance Segmentation <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_instance_segmentation/Amazon_JumpStart_Instance_Segmentation.ipynb>`__
+    - `Image Embedding <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_image_embedding/Amazon_JumpStart_Image_Embedding.ipynb>`__
+    
+Text
+    - `Text Classification <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_text_classification/Amazon_JumpStart_Text_Classification.ipynb>`__
+    - `Sentence Pair Classification <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_sentence_pair_classification/Amazon_JumpStart_Sentence_Pair_Classification.ipynb>`__
+    - `Question Answering <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_question_answering/Amazon_JumpStart_Question_Answering.ipynb>`__
+    - `Named Entity Recognition <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_named_entity_recognition/Amazon_JumpStart_Named_Entity_Recognition.ipynb>`__
+    - `Text Summarization <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_text_summarization/Amazon_JumpStart_Text_Summarization.ipynb>`__
+    - `Text Generation <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_text_generation/Amazon_JumpStart_Text_Generation.ipynb>`__
+    - `Machine Translation <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_machine_translation/Amazon_JumpStart_Machine_Translation.ipynb>`__
+    - `Text Embedding <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_text_embedding/Amazon_JumpStart_Text_Embedding.ipynb>`__
+    
+Tabular
+    - `Tabular Classification (LightGBM & Catboost) <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_tabular_classification/Amazon_JumpStart_Tabular_Classification_LightGBM_CatBoost.ipynb>`__
+    - `Tabular Classification (XGBoost & Linear Learner) <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_tabular_classification/Amazon_JumpStart_Tabular_Classification_XGBoost_LinearLearner.ipynb>`__
+    - `Tabular Regression (LightGBM & Catboost) <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_tabular_regression/Amazon_JumpStart_Tabular_Regression_LightGBM_CatBoost.ipynb>`__
+    - `Tabular Regression (XGBoost & Linear Learner) <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_tabular_regression/Amazon_JumpStart_Tabular_Regression_XGBoost_LinearLearner.ipynb>`__
+
 
 `Amazon SageMaker JumpStart <https://aws.amazon.com/sagemaker/getting-started/>`__ is a
 SageMaker feature that helps users bring machine learning (ML)
