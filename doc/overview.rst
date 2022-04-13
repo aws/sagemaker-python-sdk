@@ -589,7 +589,7 @@ in selecting the correct model id and corresponding parameters.
 Example notebooks
 =================
 
-JumpStart supports 15 different machine learning problem types. Below is a list of all the supported
+JumpStart supports 15 different machine learning problem types. Below is a list of all of the supported
 problem types with a link to a Jupyter notebook that provides example usage.
 
 Vision
