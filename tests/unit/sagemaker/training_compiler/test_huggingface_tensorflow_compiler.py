@@ -154,13 +154,13 @@ def _create_train_job(version, base_framework_version, instance_type, training_c
 
 def test_unsupported_BYOC(
     huggingface_training_compiler_version,
-    huggingface_training_compiler_pytorch_version,
+    huggingface_training_compiler_tensorflow_version,
 ):
     byoc = (
-        "1.dkr.ecr.us-east-1.amazonaws.com/huggingface-pytorch-trcomp-training:"
-        "1.9.0-"
-        "transformers4.10.2-gpu-"
-        "py38-cu111-ubuntu20.04"
+        "1.dkr.ecr.us-east-1.amazonaws.com/huggingface-tensorflow-trcomp-training:"
+        "2.6.3-"
+        "transformers4.17.0-gpu-"
+        "py38-cu112-ubuntu20.04"
     )
     with pytest.raises(ValueError):
         HuggingFace(
@@ -171,7 +171,7 @@ def test_unsupported_BYOC(
             instance_count=INSTANCE_COUNT,
             instance_type=INSTANCE_TYPE,
             transformers_version=huggingface_training_compiler_version,
-            pytorch_version=huggingface_training_compiler_pytorch_version,
+            tensorflow_version=huggingface_training_compiler_tensorflow_version,
             enable_sagemaker_metrics=False,
             compiler_config=TrainingCompilerConfig(),
         ).fit()
@@ -180,7 +180,7 @@ def test_unsupported_BYOC(
 def test_unsupported_cpu_instance(
     cpu_instance_type,
     huggingface_training_compiler_version,
-    huggingface_training_compiler_pytorch_version,
+    huggingface_training_compiler_tensorflow_version,
 ):
     with pytest.raises(ValueError):
         HuggingFace(
@@ -190,7 +190,7 @@ def test_unsupported_cpu_instance(
             instance_count=INSTANCE_COUNT,
             instance_type=cpu_instance_type,
             transformers_version=huggingface_training_compiler_version,
-            pytorch_version=huggingface_training_compiler_pytorch_version,
+            tensorflow_version=huggingface_training_compiler_tensorflow_version,
             enable_sagemaker_metrics=False,
             compiler_config=TrainingCompilerConfig(),
         ).fit()
@@ -200,7 +200,7 @@ def test_unsupported_cpu_instance(
 def test_unsupported_gpu_instance(
     unsupported_gpu_instance_class,
     huggingface_training_compiler_version,
-    huggingface_training_compiler_pytorch_version,
+    huggingface_training_compiler_tensorflow_version,
 ):
     with pytest.raises(ValueError):
         HuggingFace(
@@ -210,7 +210,7 @@ def test_unsupported_gpu_instance(
             instance_count=INSTANCE_COUNT,
             instance_type=f"ml.{unsupported_gpu_instance_class}.xlarge",
             transformers_version=huggingface_training_compiler_version,
-            pytorch_version=huggingface_training_compiler_pytorch_version,
+            tensorflow_version=huggingface_training_compiler_tensorflow_version,
             enable_sagemaker_metrics=False,
             compiler_config=TrainingCompilerConfig(),
         ).fit()
@@ -227,7 +227,7 @@ def test_unsupported_framework_version(
             instance_count=INSTANCE_COUNT,
             instance_type=INSTANCE_TYPE,
             transformers_version=huggingface_training_compiler_version,
-            pytorch_version=".".join(
+            tensorflow_version=".".join(
                 ["99"] * len(huggingface_training_compiler_version.split("."))
             ),
             enable_sagemaker_metrics=False,
@@ -254,7 +254,7 @@ def test_unsupported_framework_mxnet(
 
 def test_unsupported_python_2(
     huggingface_training_compiler_version,
-    huggingface_training_compiler_pytorch_version,
+    huggingface_training_compiler_tensorflow_version,
 ):
     with pytest.raises(ValueError):
         HuggingFace(
@@ -264,7 +264,7 @@ def test_unsupported_python_2(
             instance_count=INSTANCE_COUNT,
             instance_type=INSTANCE_TYPE,
             transformers_version=huggingface_training_compiler_version,
-            pytorch_version=huggingface_training_compiler_pytorch_version,
+            tensorflow_version=huggingface_training_compiler_tensorflow_version,
             enable_sagemaker_metrics=False,
             compiler_config=TrainingCompilerConfig(),
         ).fit()
@@ -280,7 +280,7 @@ def test_default_compiler_config(
     name_from_base,
     sagemaker_session,
     huggingface_training_compiler_version,
-    huggingface_training_compiler_pytorch_version,
+    huggingface_training_compiler_tensorflow_version,
     instance_class,
 ):
     compiler_config = TrainingCompilerConfig()
@@ -294,7 +294,7 @@ def test_default_compiler_config(
         instance_count=INSTANCE_COUNT,
         instance_type=instance_type,
         transformers_version=huggingface_training_compiler_version,
-        pytorch_version=huggingface_training_compiler_pytorch_version,
+        tensorflow_version=huggingface_training_compiler_tensorflow_version,
         enable_sagemaker_metrics=False,
         compiler_config=compiler_config,
     )
@@ -310,7 +310,7 @@ def test_default_compiler_config(
 
     expected_train_args = _create_train_job(
         huggingface_training_compiler_version,
-        f"pytorch{huggingface_training_compiler_pytorch_version}",
+        f"tensorflow{huggingface_training_compiler_tensorflow_version}",
         instance_type,
         compiler_config,
     )
@@ -338,7 +338,7 @@ def test_debug_compiler_config(
     name_from_base,
     sagemaker_session,
     huggingface_training_compiler_version,
-    huggingface_training_compiler_pytorch_version,
+    huggingface_training_compiler_tensorflow_version,
 ):
     compiler_config = TrainingCompilerConfig(debug=True)
 
@@ -350,7 +350,7 @@ def test_debug_compiler_config(
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
         transformers_version=huggingface_training_compiler_version,
-        pytorch_version=huggingface_training_compiler_pytorch_version,
+        tensorflow_version=huggingface_training_compiler_tensorflow_version,
         enable_sagemaker_metrics=False,
         compiler_config=compiler_config,
     )
@@ -366,7 +366,7 @@ def test_debug_compiler_config(
 
     expected_train_args = _create_train_job(
         huggingface_training_compiler_version,
-        f"pytorch{huggingface_training_compiler_pytorch_version}",
+        f"tensorflow{huggingface_training_compiler_tensorflow_version}",
         INSTANCE_TYPE,
         compiler_config,
     )
@@ -394,7 +394,7 @@ def test_disable_compiler_config(
     name_from_base,
     sagemaker_session,
     huggingface_training_compiler_version,
-    huggingface_training_compiler_pytorch_version,
+    huggingface_training_compiler_tensorflow_version,
 ):
     compiler_config = TrainingCompilerConfig(enabled=False)
 
@@ -406,7 +406,7 @@ def test_disable_compiler_config(
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
         transformers_version=huggingface_training_compiler_version,
-        pytorch_version=huggingface_training_compiler_pytorch_version,
+        tensorflow_version=huggingface_training_compiler_tensorflow_version,
         enable_sagemaker_metrics=False,
         compiler_config=TrainingCompilerConfig(enabled=False),
     )
@@ -422,7 +422,7 @@ def test_disable_compiler_config(
 
     expected_train_args = _create_train_job(
         huggingface_training_compiler_version,
-        f"pytorch{huggingface_training_compiler_pytorch_version}",
+        f"tensorflow{huggingface_training_compiler_tensorflow_version}",
         INSTANCE_TYPE,
         compiler_config,
     )
@@ -450,10 +450,10 @@ def test_attach(
     debug_enabled,
 ):
     training_image = (
-        "1.dkr.ecr.us-east-1.amazonaws.com/huggingface-pytorch-trcomp-training:"
-        "1.9.0-"
-        "transformers4.10.2-gpu-"
-        "py38-cu111-ubuntu20.04"
+        "1.dkr.ecr.us-east-1.amazonaws.com/huggingface-tensorflow-trcomp-training:"
+        "2.6.3-"
+        "transformers4.17.0-gpu-"
+        "py38-cu112-ubuntu20.04"
     )
     returned_job_description = {
         "AlgorithmSpecification": {"TrainingInputMode": "File", "TrainingImage": training_image},
@@ -488,8 +488,8 @@ def test_attach(
     estimator = HuggingFace.attach(training_job_name="hopper", sagemaker_session=sagemaker_session)
     assert estimator.latest_training_job.job_name == "hopper"
     assert estimator.py_version == "py38"
-    assert estimator.framework_version == "4.10.2"
-    assert estimator.pytorch_version == "1.9.0"
+    assert estimator.framework_version == "4.17.0"
+    assert estimator.tensorflow_version == "2.6.3"
     assert estimator.role == "arn:aws:iam::366:role/SageMakerRole"
     assert estimator.instance_count == 1
     assert estimator.max_run == 24 * 60 * 60
