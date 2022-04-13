@@ -1,5 +1,24 @@
 # Changelog
 
+## v2.86.0 (2022-04-12)
+
+### Features
+
+ * Adds Spark Processing Notebook to Notebook Tests
+
+## v2.85.0 (2022-04-11)
+
+### Features
+
+ * update lambda code on pipeline create/update/upsert for Lamb…
+ * jumpstart model url
+ * add serverless inference image_uri retrieve support
+
+### Bug Fixes and Other Changes
+
+ * Add back the Fix for Pipeline variables related customer issues
+ * Support file URIs in ProcessingStep's code parameter
+
 ## v2.84.0 (2022-04-07)
 
 ### Features
