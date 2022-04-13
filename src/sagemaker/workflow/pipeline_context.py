@@ -20,6 +20,22 @@ from typing import Dict
 from sagemaker.session import Session, SessionSettings
 
 
+class _ModelStepArguments:
+    """Step arguments entity for ModelStep"""
+
+    def __init__(self, model):
+        """Create a `_ModelStepArguments`
+
+        Args:
+            model (Model or PipelineModel): A `sagemaker.model.Model`
+                or `sagemaker.pipeline.PipelineModel` instance
+        """
+        self.model = model
+        self.create_model_package_request = None
+        self.create_model_request = None
+        self.need_runtime_repack = set()
+
+
 class PipelineSession(Session):
     """Managing interactions with SageMaker APIs and AWS services needed under Pipeline Context
 
@@ -71,10 +87,33 @@ class PipelineSession(Session):
 
     @context.setter
     def context(self, args: Dict):
+        # TODO: we should use _StepArguments type to formalize non-ModelStep args
         self._context = args
 
-    def _intercept_create_request(self, request: Dict, create):
-        self.context = request
+    def _intercept_create_request(self, request: Dict, create, func_name: str = None):
+        """This function intercepts the create job request
+
+        Args:
+            request (dict): the create job request
+            create (functor): a functor calls the sagemaker client create method
+            func_name (str): the name of the function needed intercepting
+        """
+        if func_name == "create_model":
+            self.context.create_model_request = request
+        elif func_name == "create_model_package_from_containers":
+            self.context.create_model_package_request = request
+        else:
+            self.context = request
+
+    def init_model_step_arguments(self, model):
+        """Create a `_ModelStepArguments` (if not exist) as pipeline context
+
+        Args:
+            model (Model or PipelineModel): A `sagemaker.model.Model`
+                or `sagemaker.pipeline.PipelineModel` instance
+        """
+        if not self._context or not isinstance(self._context, _ModelStepArguments):
+            self._context = _ModelStepArguments(model)
 
 
 def runnable_by_pipeline(run_func):
@@ -95,11 +134,11 @@ def runnable_by_pipeline(run_func):
 
     def wrapper(*args, **kwargs):
         if isinstance(args[0].sagemaker_session, PipelineSession):
-            run_func_sig = inspect.signature(run_func)
+            run_func_params = inspect.signature(run_func).parameters
             arg_list = list(args)
 
             override_wait, override_logs = False, False
-            for i, (arg_name, _) in enumerate(run_func_sig.parameters.items()):
+            for i, (arg_name, _) in enumerate(run_func_params.items()):
                 if i >= len(arg_list):
                     break
                 if arg_name == "wait":
@@ -111,9 +150,9 @@ def runnable_by_pipeline(run_func):
 
             args = tuple(arg_list)
 
-            if not override_wait:
+            if not override_wait and "wait" in run_func_params.keys():
                 kwargs["wait"] = False
-            if not override_logs:
+            if not override_logs and "logs" in run_func_params.keys():
                 kwargs["logs"] = False
 
             warnings.warn(
@@ -121,10 +160,16 @@ def runnable_by_pipeline(run_func):
                 "No Logs, and No Job being started.",
                 UserWarning,
             )
+            if run_func.__name__ in ["register", "create"]:
+                args[0].sagemaker_session.init_model_step_arguments(args[0])
+                run_func(*args, **kwargs)
+                context = args[0].sagemaker_session.context
+                args[0].sagemaker_session.context = None
+                return context
+
             run_func(*args, **kwargs)
             return args[0].sagemaker_session.context
 
-        run_func(*args, **kwargs)
-        return None
+        return run_func(*args, **kwargs)
 
     return wrapper

@@ -17,6 +17,7 @@ from typing import List, Union
 
 import attr
 
+from sagemaker.deprecations import deprecated_class
 from sagemaker.estimator import EstimatorBase
 from sagemaker.model import Model
 from sagemaker import PipelineModel
@@ -50,7 +51,7 @@ class StepCollection:
         return [step.to_request() for step in self.steps]
 
 
-class RegisterModel(StepCollection):
+class RegisterModel(StepCollection):  # pragma: no cover
     """Register Model step collection for workflow."""
 
     def __init__(
@@ -241,6 +242,9 @@ class RegisterModel(StepCollection):
 
         steps.append(register_model_step)
         self.steps = steps
+
+
+RegisterModel = deprecated_class(RegisterModel, "RegisterModel")
 
 
 class EstimatorTransformer(StepCollection):

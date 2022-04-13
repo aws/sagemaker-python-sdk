@@ -17,7 +17,7 @@ import abc
 import warnings
 
 from enum import Enum
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Optional
 from urllib.parse import urlparse
 
 import attr
@@ -380,12 +380,13 @@ class CreateModelStep(ConfigurableRetryStep):
     def __init__(
         self,
         name: str,
-        model: Union[Model, PipelineModel],
-        inputs: CreateModelInput = None,
-        depends_on: Union[List[str], List[Step]] = None,
-        retry_policies: List[RetryPolicy] = None,
-        display_name: str = None,
-        description: str = None,
+        step_args: Optional[dict] = None,
+        model: Optional[Union[Model, PipelineModel]] = None,
+        inputs: Optional[CreateModelInput] = None,
+        depends_on: Optional[Union[List[str], List[Step]]] = None,
+        retry_policies: Optional[List[RetryPolicy]] = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
     ):
         """Construct a `CreateModelStep`, given an `sagemaker.model.Model` instance.
 
@@ -394,23 +395,40 @@ class CreateModelStep(ConfigurableRetryStep):
 
         Args:
             name (str): The name of the `CreateModelStep`.
+            step_args (dict): The arguments for the `CreateModelStep` definition (default: None).
             model (Model or PipelineModel): A `sagemaker.model.Model`
-                or `sagemaker.pipeline.PipelineModel` instance.
+                or `sagemaker.pipeline.PipelineModel` instance (default: None).
             inputs (CreateModelInput): A `sagemaker.inputs.CreateModelInput` instance.
-                Defaults to `None`.
+                (default: None).
             depends_on (List[str] or List[Step]): A list of `Step` names or `Step` instances
-                this `sagemaker.workflow.steps.CreateModelStep` depends on.
-            retry_policies (List[RetryPolicy]):  A list of retry policies.
-            display_name (str): The display name of the `CreateModelStep`.
-            description (str): The description of the `CreateModelStep`.
+                this `sagemaker.workflow.steps.CreateModelStep` depends on (default: None).
+            retry_policies (List[RetryPolicy]):  A list of retry policies (default: None).
+            display_name (str): The display name of the `CreateModelStep` (default: None).
+            description (str): The description of the `CreateModelStep` (default: None).
         """
         super(CreateModelStep, self).__init__(
             name, StepTypeEnum.CREATE_MODEL, display_name, description, depends_on, retry_policies
         )
+        if not (step_args is None) ^ (model is None):
+            raise ValueError(
+                "step_args and model are mutually exclusive. Either of them should be provided."
+            )
+
+        self.step_args = step_args
         self.model = model
         self.inputs = inputs or CreateModelInput()
 
         self._properties = Properties(path=f"Steps.{name}", shape_name="DescribeModelOutput")
+
+        if not self.step_args:
+            warnings.warn(
+                (
+                    "We are deprecating the instantiation of CreateModelStep using "
+                    "`Model` and a list of `CreateModelInput`. "
+                    "Instead, the new interface simply uses step_args."
+                ),
+                DeprecationWarning,
+            )
 
     @property
     def arguments(self) -> RequestType:
@@ -420,25 +438,28 @@ class CreateModelStep(ConfigurableRetryStep):
         `ModelName` cannot be included in the arguments.
         """
 
-        if isinstance(self.model, PipelineModel):
-            request_dict = self.model.sagemaker_session._create_model_request(
-                name="",
-                role=self.model.role,
-                container_defs=self.model.pipeline_container_def(self.inputs.instance_type),
-                vpc_config=self.model.vpc_config,
-                enable_network_isolation=self.model.enable_network_isolation,
-            )
+        if self.step_args:
+            request_dict = self.step_args
         else:
-            request_dict = self.model.sagemaker_session._create_model_request(
-                name="",
-                role=self.model.role,
-                container_defs=self.model.prepare_container_def(
-                    instance_type=self.inputs.instance_type,
-                    accelerator_type=self.inputs.accelerator_type,
-                ),
-                vpc_config=self.model.vpc_config,
-                enable_network_isolation=self.model.enable_network_isolation(),
-            )
+            if isinstance(self.model, PipelineModel):
+                request_dict = self.model.sagemaker_session._create_model_request(
+                    name="",
+                    role=self.model.role,
+                    container_defs=self.model.pipeline_container_def(self.inputs.instance_type),
+                    vpc_config=self.model.vpc_config,
+                    enable_network_isolation=self.model.enable_network_isolation,
+                )
+            else:
+                request_dict = self.model.sagemaker_session._create_model_request(
+                    name="",
+                    role=self.model.role,
+                    container_defs=self.model.prepare_container_def(
+                        instance_type=self.inputs.instance_type,
+                        accelerator_type=self.inputs.accelerator_type,
+                    ),
+                    vpc_config=self.model.vpc_config,
+                    enable_network_isolation=self.model.enable_network_isolation(),
+                )
         request_dict.pop("ModelName", None)
 
         return request_dict

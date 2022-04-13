@@ -18,10 +18,9 @@ import re
 import pytest
 from botocore.exceptions import WaiterError
 
-from tests.integ.retry import retries
+from sagemaker.workflow.model_step import ModelStep, _CREATE_MODEL_NAME_BASE
 from sagemaker import TrainingInput, Model, get_execution_role, utils
 from sagemaker.dataset_definition import DatasetDefinition, AthenaDatasetDefinition
-from sagemaker.inputs import CreateModelInput
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.pytorch import PyTorch
 from sagemaker.sklearn import SKLearnProcessor
@@ -31,7 +30,6 @@ from sagemaker.workflow.parameters import ParameterInteger, ParameterString
 from sagemaker.workflow.pipeline import Pipeline
 
 from sagemaker.workflow.steps import (
-    CreateModelStep,
     ProcessingStep,
     TuningStep,
     PropertyFile,
@@ -78,7 +76,7 @@ def athena_dataset_definition(sagemaker_session):
 
 
 def test_tuning_single_algo(
-    sagemaker_session,
+    pipeline_session,
     role,
     cpu_instance_type,
     pipeline_name,
@@ -86,7 +84,7 @@ def test_tuning_single_algo(
 ):
     base_dir = os.path.join(DATA_DIR, "pytorch_mnist")
     entry_point = os.path.join(base_dir, "mnist.py")
-    input_path = sagemaker_session.upload_data(
+    input_path = pipeline_session.upload_data(
         path=os.path.join(base_dir, "training"),
         key_prefix="integ-test-data/pytorch_mnist/training",
     )
@@ -102,7 +100,7 @@ def test_tuning_single_algo(
         py_version="py3",
         instance_count=instance_count,
         instance_type=instance_type,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=pipeline_session,
         enable_sagemaker_metrics=True,
         max_retry_attempts=3,
     )
@@ -133,44 +131,45 @@ def test_tuning_single_algo(
         image_uri=pytorch_estimator.training_image_uri(),
         model_data=step_tune.get_top_model_s3_uri(
             top_k=0,
-            s3_bucket=sagemaker_session.default_bucket(),
+            s3_bucket=pipeline_session.default_bucket(),
         ),
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=pipeline_session,
         role=role,
     )
-    model_inputs = CreateModelInput(
+    step_best_model_args = best_model.create(
         instance_type="ml.m5.large",
         accelerator_type="ml.eia1.medium",
     )
-    step_best_model = CreateModelStep(
+    step_best_model = ModelStep(
         name="1st-model",
-        model=best_model,
-        inputs=model_inputs,
+        step_args=step_best_model_args,
     )
 
     second_best_model = Model(
         image_uri=pytorch_estimator.training_image_uri(),
         model_data=step_tune.get_top_model_s3_uri(
             top_k=1,
-            s3_bucket=sagemaker_session.default_bucket(),
+            s3_bucket=pipeline_session.default_bucket(),
         ),
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=pipeline_session,
         role=role,
         entry_point=entry_point,
         source_dir=base_dir,
     )
-
-    step_second_best_model = CreateModelStep(
+    step_second_best_model_args = second_best_model.create(
+        instance_type="ml.m5.large",
+        accelerator_type="ml.eia1.medium",
+    )
+    step_second_best_model = ModelStep(
         name="2nd-best-model",
-        model=second_best_model,
-        inputs=model_inputs,
+        step_args=step_second_best_model_args,
     )
 
     pipeline = Pipeline(
         name=pipeline_name,
         parameters=[instance_count, instance_type, min_batch_size, max_batch_size],
         steps=[step_tune, step_best_model, step_second_best_model],
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=pipeline_session,
     )
 
     try:
@@ -181,26 +180,23 @@ def test_tuning_single_algo(
             create_arn,
         )
 
-        for _ in retries(
-            max_retry_count=5,
-            exception_message_prefix="Waiting for a successful execution of pipeline",
-            seconds_to_sleep=10,
-        ):
-            execution = pipeline.start(parameters={})
-            assert re.match(
-                rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
-                execution.arn,
-            )
-            try:
-                execution.wait(delay=30, max_attempts=60)
-            except WaiterError:
-                pass
-            execution_steps = execution.list_steps()
+        execution = pipeline.start(parameters={})
+        assert re.match(
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            execution.arn,
+        )
+        try:
+            execution.wait(delay=30, max_attempts=60)
+        except WaiterError:
+            pass
+        execution_steps = execution.list_steps()
 
-            assert len(execution_steps) == 3
-            for step in execution_steps:
-                assert step["StepStatus"] == "Succeeded"
-            break
+        for step in execution_steps:
+            assert not step.get("FailureReason", None)
+            assert step["StepStatus"] == "Succeeded"
+            if _CREATE_MODEL_NAME_BASE in step["StepName"]:
+                assert step["Metadata"]["Model"]
+        assert len(execution_steps) == 4
     finally:
         try:
             pipeline.delete()
