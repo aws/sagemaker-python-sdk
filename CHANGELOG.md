@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.77.1 (2022-02-25)
+
+### Bug Fixes and Other Changes
+
+ * jumpstart model table
+
 ## v2.77.0 (2022-02-22)
 
 ### Features
