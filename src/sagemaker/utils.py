@@ -25,6 +25,7 @@ import tempfile
 import time
 import json
 import abc
+import uuid
 from datetime import datetime
 
 import botocore
@@ -81,6 +82,7 @@ def name_from_base(base, max_length=63, short=False):
 
 def unique_name_from_base(base, max_length=63):
     """Placeholder Docstring"""
+    random.seed(int(uuid.uuid4()))  # using uuid to randomize, otherwise system timestamp is used.
     unique = "%04x" % random.randrange(16**4)  # 4-digit hex
     ts = str(int(time.time()))
     available_length = max_length - 2 - len(ts) - len(unique)
