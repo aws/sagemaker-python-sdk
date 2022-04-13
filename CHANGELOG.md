@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.86.1 (2022-04-13)
+
+### Bug Fixes and Other Changes
+
+ * xgboost, sklearn network isolation for jumpstart
+
+### Documentation Changes
+
+ * fix minor typo
+
 ## v2.86.0 (2022-04-12)
 
 ### Features
