@@ -42,7 +42,7 @@
                 "pytorch1.10.2": {
                     "py_versions": ["py38"],
                     "registries": {
-					    "af-south-1": "626614931356",
+                        "af-south-1": "626614931356",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
@@ -70,7 +70,7 @@
                 "tensorflow2.6.3": {
                     "py_versions": ["py38"],
                     "registries": {
-					    "af-south-1": "626614931356",
+                        "af-south-1": "626614931356",
                         "ap-east-1": "871362719292",
                         "ap-northeast-1": "763104351884",
                         "ap-northeast-2": "763104351884",
