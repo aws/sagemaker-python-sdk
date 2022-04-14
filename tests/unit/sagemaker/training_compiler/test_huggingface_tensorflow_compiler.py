@@ -79,11 +79,7 @@ def fixture_sagemaker_session():
 
 
 def _get_full_gpu_image_uri(
-    version,
-    base_framework_version,
-    instance_type,
-    training_compiler_config,
-    py_version
+    version, base_framework_version, instance_type, training_compiler_config, py_version
 ):
     return image_uris.retrieve(
         "huggingface",
@@ -98,7 +94,9 @@ def _get_full_gpu_image_uri(
     )
 
 
-def _create_train_job(version, base_framework_version, instance_type, training_compiler_config, py_version):
+def _create_train_job(
+    version, base_framework_version, instance_type, training_compiler_config, py_version
+):
     return {
         "image_uri": _get_full_gpu_image_uri(
             version, base_framework_version, instance_type, training_compiler_config, py_version
@@ -159,7 +157,7 @@ def _create_train_job(version, base_framework_version, instance_type, training_c
 def test_unsupported_BYOC(
     huggingface_training_compiler_version,
     huggingface_training_compiler_tensorflow_version,
-    huggingface_training_compiler_py_version
+    huggingface_training_compiler_py_version,
 ):
     byoc = (
         f"1.dkr.ecr.us-east-1.amazonaws.com/huggingface-tensorflow-trcomp-training:"
@@ -186,7 +184,7 @@ def test_unsupported_cpu_instance(
     cpu_instance_type,
     huggingface_training_compiler_version,
     huggingface_training_compiler_tensorflow_version,
-    huggingface_training_compiler_py_version
+    huggingface_training_compiler_py_version,
 ):
     with pytest.raises(ValueError):
         HuggingFace(
@@ -207,7 +205,7 @@ def test_unsupported_gpu_instance(
     unsupported_gpu_instance_class,
     huggingface_training_compiler_version,
     huggingface_training_compiler_tensorflow_version,
-    huggingface_training_compiler_py_version
+    huggingface_training_compiler_py_version,
 ):
     with pytest.raises(ValueError):
         HuggingFace(
@@ -225,7 +223,7 @@ def test_unsupported_gpu_instance(
 
 def test_unsupported_framework_version(
     huggingface_training_compiler_version,
-    huggingface_training_compiler_py_version
+    huggingface_training_compiler_py_version,
 ):
     with pytest.raises(ValueError):
         HuggingFace(
@@ -245,7 +243,7 @@ def test_unsupported_framework_version(
 
 def test_unsupported_framework_mxnet(
     huggingface_training_compiler_version,
-    huggingface_training_compiler_py_version
+    huggingface_training_compiler_py_version,
 ):
     with pytest.raises(ValueError):
         HuggingFace(
@@ -263,7 +261,7 @@ def test_unsupported_framework_mxnet(
 
 def test_unsupported_python_2(
     huggingface_training_compiler_version,
-    huggingface_training_compiler_tensorflow_version
+    huggingface_training_compiler_tensorflow_version,
 ):
     with pytest.raises(ValueError):
         HuggingFace(
@@ -291,7 +289,7 @@ def test_default_compiler_config(
     huggingface_training_compiler_version,
     huggingface_training_compiler_tensorflow_version,
     instance_class,
-    huggingface_training_compiler_py_version
+    huggingface_training_compiler_py_version,
 ):
     compiler_config = TrainingCompilerConfig()
     instance_type = f"ml.{instance_class}.xlarge"
@@ -323,7 +321,7 @@ def test_default_compiler_config(
         f"tensorflow{huggingface_training_compiler_tensorflow_version}",
         instance_type,
         compiler_config,
-        huggingface_training_compiler_py_version
+        huggingface_training_compiler_py_version,
     )
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
     expected_train_args["enable_sagemaker_metrics"] = False
@@ -350,7 +348,7 @@ def test_debug_compiler_config(
     sagemaker_session,
     huggingface_training_compiler_version,
     huggingface_training_compiler_tensorflow_version,
-    huggingface_training_compiler_py_version
+    huggingface_training_compiler_py_version,
 ):
     compiler_config = TrainingCompilerConfig(debug=True)
 
@@ -381,7 +379,7 @@ def test_debug_compiler_config(
         f"tensorflow{huggingface_training_compiler_tensorflow_version}",
         INSTANCE_TYPE,
         compiler_config,
-        huggingface_training_compiler_py_version
+        huggingface_training_compiler_py_version,
     )
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
     expected_train_args["enable_sagemaker_metrics"] = False
@@ -408,7 +406,7 @@ def test_disable_compiler_config(
     sagemaker_session,
     huggingface_training_compiler_version,
     huggingface_training_compiler_tensorflow_version,
-    huggingface_training_compiler_py_version
+    huggingface_training_compiler_py_version,
 ):
     compiler_config = TrainingCompilerConfig(enabled=False)
 
@@ -439,7 +437,7 @@ def test_disable_compiler_config(
         f"tensorflow{huggingface_training_compiler_tensorflow_version}",
         INSTANCE_TYPE,
         compiler_config,
-        huggingface_training_compiler_py_version
+        huggingface_training_compiler_py_version,
     )
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
     expected_train_args["enable_sagemaker_metrics"] = False
@@ -460,10 +458,7 @@ def test_disable_compiler_config(
     ["compiler_enabled", "debug_enabled"], [(True, False), (True, True), (False, False)]
 )
 def test_attach(
-    sagemaker_session,
-    compiler_enabled,
-    debug_enabled,
-    huggingface_training_compiler_py_version
+    sagemaker_session, compiler_enabled, debug_enabled, huggingface_training_compiler_py_version
 ):
     training_image = (
         f"1.dkr.ecr.us-east-1.amazonaws.com/huggingface-tensorflow-trcomp-training:"
@@ -503,7 +498,7 @@ def test_attach(
 
     estimator = HuggingFace.attach(training_job_name="hopper", sagemaker_session=sagemaker_session)
     assert estimator.latest_training_job.job_name == "hopper"
-    assert estimator.py_version == "py38"
+    assert estimator.py_version == huggingface_training_compiler_py_version
     assert estimator.framework_version == "4.17.0"
     assert estimator.tensorflow_version == "2.6.3"
     assert estimator.role == "arn:aws:iam::366:role/SageMakerRole"
