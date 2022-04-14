@@ -79,13 +79,17 @@ def fixture_sagemaker_session():
 
 
 def _get_full_gpu_image_uri(
-    version, base_framework_version, instance_type, training_compiler_config
+    version,
+    base_framework_version,
+    instance_type,
+    training_compiler_config,
+    py_version
 ):
     return image_uris.retrieve(
         "huggingface",
         REGION,
         version=version,
-        py_version="py38",
+        py_version=py_version,
         instance_type=instance_type,
         image_scope="training",
         base_framework_version=base_framework_version,
@@ -94,10 +98,10 @@ def _get_full_gpu_image_uri(
     )
 
 
-def _create_train_job(version, base_framework_version, instance_type, training_compiler_config):
+def _create_train_job(version, base_framework_version, instance_type, training_compiler_config, py_version):
     return {
         "image_uri": _get_full_gpu_image_uri(
-            version, base_framework_version, instance_type, training_compiler_config
+            version, base_framework_version, instance_type, training_compiler_config, py_version
         ),
         "input_mode": "File",
         "input_config": [
@@ -155,17 +159,18 @@ def _create_train_job(version, base_framework_version, instance_type, training_c
 def test_unsupported_BYOC(
     huggingface_training_compiler_version,
     huggingface_training_compiler_tensorflow_version,
+    huggingface_training_compiler_py_version
 ):
     byoc = (
-        "1.dkr.ecr.us-east-1.amazonaws.com/huggingface-tensorflow-trcomp-training:"
-        "2.6.3-"
-        "transformers4.17.0-gpu-"
-        "py38-cu112-ubuntu20.04"
+        f"1.dkr.ecr.us-east-1.amazonaws.com/huggingface-tensorflow-trcomp-training:"
+        f"2.6.3-"
+        f"transformers4.17.0-gpu-"
+        f"{huggingface_training_compiler_py_version}-cu112-ubuntu20.04"
     )
     with pytest.raises(ValueError):
         HuggingFace(
             image_uri=byoc,
-            py_version="py38",
+            py_version=huggingface_training_compiler_py_version,
             entry_point=SCRIPT_PATH,
             role=ROLE,
             instance_count=INSTANCE_COUNT,
@@ -181,10 +186,11 @@ def test_unsupported_cpu_instance(
     cpu_instance_type,
     huggingface_training_compiler_version,
     huggingface_training_compiler_tensorflow_version,
+    huggingface_training_compiler_py_version
 ):
     with pytest.raises(ValueError):
         HuggingFace(
-            py_version="py38",
+            py_version=huggingface_training_compiler_py_version,
             entry_point=SCRIPT_PATH,
             role=ROLE,
             instance_count=INSTANCE_COUNT,
@@ -201,10 +207,11 @@ def test_unsupported_gpu_instance(
     unsupported_gpu_instance_class,
     huggingface_training_compiler_version,
     huggingface_training_compiler_tensorflow_version,
+    huggingface_training_compiler_py_version
 ):
     with pytest.raises(ValueError):
         HuggingFace(
-            py_version="py38",
+            py_version=huggingface_training_compiler_py_version,
             entry_point=SCRIPT_PATH,
             role=ROLE,
             instance_count=INSTANCE_COUNT,
@@ -218,10 +225,11 @@ def test_unsupported_gpu_instance(
 
 def test_unsupported_framework_version(
     huggingface_training_compiler_version,
+    huggingface_training_compiler_py_version
 ):
     with pytest.raises(ValueError):
         HuggingFace(
-            py_version="py38",
+            py_version=huggingface_training_compiler_py_version,
             entry_point=SCRIPT_PATH,
             role=ROLE,
             instance_count=INSTANCE_COUNT,
@@ -237,10 +245,11 @@ def test_unsupported_framework_version(
 
 def test_unsupported_framework_mxnet(
     huggingface_training_compiler_version,
+    huggingface_training_compiler_py_version
 ):
     with pytest.raises(ValueError):
         HuggingFace(
-            py_version="py38",
+            py_version=huggingface_training_compiler_py_version,
             entry_point=SCRIPT_PATH,
             role=ROLE,
             instance_count=INSTANCE_COUNT,
@@ -254,7 +263,7 @@ def test_unsupported_framework_mxnet(
 
 def test_unsupported_python_2(
     huggingface_training_compiler_version,
-    huggingface_training_compiler_tensorflow_version,
+    huggingface_training_compiler_tensorflow_version
 ):
     with pytest.raises(ValueError):
         HuggingFace(
@@ -282,12 +291,13 @@ def test_default_compiler_config(
     huggingface_training_compiler_version,
     huggingface_training_compiler_tensorflow_version,
     instance_class,
+    huggingface_training_compiler_py_version
 ):
     compiler_config = TrainingCompilerConfig()
     instance_type = f"ml.{instance_class}.xlarge"
 
     hf = HuggingFace(
-        py_version="py38",
+        py_version=huggingface_training_compiler_py_version,
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -313,6 +323,7 @@ def test_default_compiler_config(
         f"tensorflow{huggingface_training_compiler_tensorflow_version}",
         instance_type,
         compiler_config,
+        huggingface_training_compiler_py_version
     )
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
     expected_train_args["enable_sagemaker_metrics"] = False
@@ -339,11 +350,12 @@ def test_debug_compiler_config(
     sagemaker_session,
     huggingface_training_compiler_version,
     huggingface_training_compiler_tensorflow_version,
+    huggingface_training_compiler_py_version
 ):
     compiler_config = TrainingCompilerConfig(debug=True)
 
     hf = HuggingFace(
-        py_version="py38",
+        py_version=huggingface_training_compiler_py_version,
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -369,6 +381,7 @@ def test_debug_compiler_config(
         f"tensorflow{huggingface_training_compiler_tensorflow_version}",
         INSTANCE_TYPE,
         compiler_config,
+        huggingface_training_compiler_py_version
     )
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
     expected_train_args["enable_sagemaker_metrics"] = False
@@ -395,11 +408,12 @@ def test_disable_compiler_config(
     sagemaker_session,
     huggingface_training_compiler_version,
     huggingface_training_compiler_tensorflow_version,
+    huggingface_training_compiler_py_version
 ):
     compiler_config = TrainingCompilerConfig(enabled=False)
 
     hf = HuggingFace(
-        py_version="py38",
+        py_version=huggingface_training_compiler_py_version,
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -425,6 +439,7 @@ def test_disable_compiler_config(
         f"tensorflow{huggingface_training_compiler_tensorflow_version}",
         INSTANCE_TYPE,
         compiler_config,
+        huggingface_training_compiler_py_version
     )
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
     expected_train_args["enable_sagemaker_metrics"] = False
@@ -448,12 +463,13 @@ def test_attach(
     sagemaker_session,
     compiler_enabled,
     debug_enabled,
+    huggingface_training_compiler_py_version
 ):
     training_image = (
-        "1.dkr.ecr.us-east-1.amazonaws.com/huggingface-tensorflow-trcomp-training:"
-        "2.6.3-"
-        "transformers4.17.0-gpu-"
-        "py38-cu112-ubuntu20.04"
+        f"1.dkr.ecr.us-east-1.amazonaws.com/huggingface-tensorflow-trcomp-training:"
+        f"2.6.3-"
+        f"transformers4.17.0-gpu-"
+        f"{huggingface_training_compiler_py_version}-cu112-ubuntu20.04"
     )
     returned_job_description = {
         "AlgorithmSpecification": {"TrainingInputMode": "File", "TrainingImage": training_image},

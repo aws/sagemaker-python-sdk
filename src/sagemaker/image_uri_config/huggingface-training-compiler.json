@@ -36,7 +36,7 @@
             },
             "4.17.0": {
                 "version_aliases": {
-                    "pytorch1.10.2": "pytorch1.10.2",
+                    "pytorch1.10": "pytorch1.10.2",
                     "tensorflow2.6": "tensorflow2.6.3"
                 },
                 "pytorch1.10.2": {
