@@ -16,9 +16,6 @@ import os
 import re
 
 import pytest
-from botocore.exceptions import WaiterError
-
-from tests.integ.retry import retries
 from sagemaker import TrainingInput, Model, get_execution_role, utils
 from sagemaker.dataset_definition import DatasetDefinition, AthenaDatasetDefinition
 from sagemaker.inputs import CreateModelInput
@@ -46,7 +43,7 @@ def role(sagemaker_session):
 
 @pytest.fixture
 def pipeline_name():
-    return utils.unique_name_from_base("my-pipeline-tuning")
+    return utils.unique_name_from_base("my-pipeline-training")
 
 
 @pytest.fixture
@@ -107,8 +104,8 @@ def test_tuning_single_algo(
         max_retry_attempts=3,
     )
 
-    min_batch_size = ParameterInteger(name="MinBatchSize", default_value=64)
-    max_batch_size = ParameterInteger(name="MaxBatchSize", default_value=128)
+    min_batch_size = ParameterString(name="MinBatchSize", default_value="64")
+    max_batch_size = ParameterString(name="MaxBatchSize", default_value="128")
     hyperparameter_ranges = {
         "batch-size": IntegerParameter(min_batch_size, max_batch_size),
     }
@@ -156,8 +153,6 @@ def test_tuning_single_algo(
         ),
         sagemaker_session=sagemaker_session,
         role=role,
-        entry_point=entry_point,
-        source_dir=base_dir,
     )
 
     step_second_best_model = CreateModelStep(
@@ -181,26 +176,11 @@ def test_tuning_single_algo(
             create_arn,
         )
 
-        for _ in retries(
-            max_retry_count=5,
-            exception_message_prefix="Waiting for a successful execution of pipeline",
-            seconds_to_sleep=10,
-        ):
-            execution = pipeline.start(parameters={})
-            assert re.match(
-                rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
-                execution.arn,
-            )
-            try:
-                execution.wait(delay=30, max_attempts=60)
-            except WaiterError:
-                pass
-            execution_steps = execution.list_steps()
-
-            assert len(execution_steps) == 3
-            for step in execution_steps:
-                assert step["StepStatus"] == "Succeeded"
-            break
+        execution = pipeline.start(parameters={})
+        assert re.match(
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            execution.arn,
+        )
     finally:
         try:
             pipeline.delete()

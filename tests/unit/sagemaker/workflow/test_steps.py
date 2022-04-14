@@ -430,22 +430,10 @@ def test_training_step_tensorflow(sagemaker_session):
     step = TrainingStep(
         name="MyTrainingStep", estimator=estimator, inputs=inputs, cache_config=cache_config
     )
-    pipeline = Pipeline(
-        name="MyPipeline",
-        parameters=[
-            instance_type_parameter,
-            instance_count_parameter,
-            data_source_uri_parameter,
-            training_epochs_parameter,
-            training_batch_size_parameter,
-        ],
-        steps=[step],
-        sagemaker_session=sagemaker_session,
-    )
-    dsl = json.loads(pipeline.definition())["Steps"][0]
-    dsl["Arguments"]["HyperParameters"].pop("sagemaker_program", None)
-    dsl["Arguments"].pop("ProfilerRuleConfigurations", None)
-    assert dsl == {
+    step_request = step.to_request()
+    step_request["Arguments"]["HyperParameters"].pop("sagemaker_program", None)
+    step_request["Arguments"].pop("ProfilerRuleConfigurations", None)
+    assert step_request == {
         "Name": "MyTrainingStep",
         "Type": "Training",
         "Arguments": {

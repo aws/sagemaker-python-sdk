@@ -472,7 +472,7 @@ def test_register_model_with_model_repack_with_estimator(
                     "HyperParameters": {
                         "inference_script": '"dummy_script.py"',
                         "dependencies": f'"{dummy_requirements}"',
-                        "model_archive": '"s3://my-bucket/model.tar.gz"',
+                        "model_archive": '"model.tar.gz"',
                         "sagemaker_program": '"_repack_model.py"',
                         "sagemaker_container_log_level": "20",
                         "sagemaker_region": f'"{REGION}"',
@@ -596,7 +596,7 @@ def test_register_model_with_model_repack_with_model(model, model_metrics, drift
                     },
                     "HyperParameters": {
                         "inference_script": '"dummy_script.py"',
-                        "model_archive": '"s3://my-bucket/model.tar.gz"',
+                        "model_archive": '"model.tar.gz"',
                         "sagemaker_program": '"_repack_model.py"',
                         "sagemaker_container_log_level": "20",
                         "sagemaker_region": f'"{REGION}"',
@@ -726,7 +726,7 @@ def test_register_model_with_model_repack_with_pipeline_model(
                     "HyperParameters": {
                         "dependencies": "null",
                         "inference_script": '"dummy_script.py"',
-                        "model_archive": '"s3://my-bucket/model.tar.gz"',
+                        "model_archive": '"model.tar.gz"',
                         "sagemaker_program": '"_repack_model.py"',
                         "sagemaker_container_log_level": "20",
                         "sagemaker_region": f'"{REGION}"',
