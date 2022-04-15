@@ -13,8 +13,9 @@
 from __future__ import absolute_import
 from urllib import request
 import json
-from packaging.version import Version   
+from packaging.version import Version
 from enum import Enum
+
 
 class Tasks(str, Enum):
     """The ML task name as referenced in the infix of the model ID."""
@@ -36,6 +37,7 @@ class Tasks(str, Enum):
     TABULAR_REGRESSION = "regression"
     TABULAR_CLASSIFICATION = "classification"
 
+
 class ProblemTypes(str, Enum):
     """Possible problem types for JumpStart models."""
 
@@ -54,6 +56,7 @@ class ProblemTypes(str, Enum):
     NAMED_ENTITY_RECOGNITION = "Named Entity Recognition"
     TABULAR_REGRESSION = "Regression"
     TABULAR_CLASSIFICATION = "Classification"
+
 
 JUMPSTART_REGION = "eu-west-2"
 SDK_MANIFEST_FILE = "models_manifest.json"
@@ -93,9 +96,10 @@ def get_jumpstart_sdk_spec(key):
         model_spec = f.read().decode("utf-8")
     return json.loads(model_spec)
 
+
 def get_model_task(id):
-    task_short = id.split('-')[1]
-    return TASK_MAP[task_short] if task_short in TASK_MAP else 'Source'
+    task_short = id.split("-")[1]
+    return TASK_MAP[task_short] if task_short in TASK_MAP else "Source"
 
 
 def create_jumpstart_model_table():
