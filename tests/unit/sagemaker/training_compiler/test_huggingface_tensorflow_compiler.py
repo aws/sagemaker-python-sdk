@@ -473,7 +473,7 @@ def test_attach(
             "sagemaker_program": '"iris-dnn-classifier.py"',
             "sagemaker_s3_uri_training": '"sagemaker-3/integ-test-data/tf_iris"',
             "sagemaker_container_log_level": '"logging.INFO"',
-            "sagemaker_job_name": '"hopper"',
+            "sagemaker_job_name": '"trcomp"',
             "training_steps": "100",
             "sagemaker_region": '"us-east-1"',
             TrainingCompilerConfig.HP_ENABLE_COMPILER: json.dumps(compiler_enabled),
@@ -486,18 +486,18 @@ def test_attach(
             "InstanceType": "ml.p3.2xlarge",
         },
         "StoppingCondition": {"MaxRuntimeInSeconds": 24 * 60 * 60},
-        "TrainingJobName": "hopper",
+        "TrainingJobName": "trcomp",
         "TrainingJobStatus": "Completed",
-        "TrainingJobArn": "arn:aws:sagemaker:us-west-2:336:training-job/hopper",
-        "OutputDataConfig": {"KmsKeyId": "", "S3OutputPath": "s3://place/output/hopper"},
+        "TrainingJobArn": "arn:aws:sagemaker:us-west-2:336:training-job/trcomp",
+        "OutputDataConfig": {"KmsKeyId": "", "S3OutputPath": "s3://place/output/trcomp"},
         "TrainingJobOutput": {"S3TrainingJobOutput": "s3://here/output.tar.gz"},
     }
     sagemaker_session.sagemaker_client.describe_training_job = Mock(
         name="describe_training_job", return_value=returned_job_description
     )
 
-    estimator = HuggingFace.attach(training_job_name="hopper", sagemaker_session=sagemaker_session)
-    assert estimator.latest_training_job.job_name == "hopper"
+    estimator = HuggingFace.attach(training_job_name="trcomp", sagemaker_session=sagemaker_session)
+    assert estimator.latest_training_job.job_name == "trcomp"
     assert estimator.py_version == huggingface_training_compiler_py_version
     assert estimator.framework_version == "4.17.0"
     assert estimator.tensorflow_version == "2.6.3"
@@ -505,8 +505,8 @@ def test_attach(
     assert estimator.instance_count == 1
     assert estimator.max_run == 24 * 60 * 60
     assert estimator.input_mode == "File"
-    assert estimator.base_job_name == "hopper"
-    assert estimator.output_path == "s3://place/output/hopper"
+    assert estimator.base_job_name == "trcomp"
+    assert estimator.output_path == "s3://place/output/trcomp"
     assert estimator.output_kms_key == ""
     assert estimator.hyperparameters()["training_steps"] == "100"
     assert estimator.hyperparameters()[TrainingCompilerConfig.HP_ENABLE_COMPILER] == json.dumps(
