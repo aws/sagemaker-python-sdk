@@ -88,7 +88,7 @@ def test_huggingface_tensorflow(
         data_path = os.path.join(DATA_DIR, "huggingface")
 
         hf = HuggingFace(
-            py_version="py37",
+            py_version="py38",
             entry_point=os.path.join(data_path, "run_tf.py"),
             role="SageMakerRole",
             transformers_version=huggingface_training_compiler_latest_version,
