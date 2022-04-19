@@ -1598,7 +1598,7 @@ def test_git_support_with_branch_and_commit_succeed(git_clone_repo, sagemaker_se
     git_clone_repo.side_effect = lambda gitconfig, entrypoint, source_dir=None, dependencies=None: {
         "entry_point": "/tmp/repo_dir/entry_point",
         "source_dir": None,
-        "dependencies": None,
+        "dependencies": [],
     }
     git_config = {"repo": GIT_REPO, "branch": BRANCH, "commit": COMMIT}
     entry_point = "entry_point"
@@ -3448,7 +3448,7 @@ def test_git_support_with_branch_and_commit_succeed_estimator_class(
         image_uri=IMAGE_URI,
     )
     fw.fit()
-    git_clone_repo.assert_called_once_with(git_config, entry_point, None, None)
+    git_clone_repo.assert_called_once_with(git_config, entry_point, None, [])
 
 
 @patch("sagemaker.estimator.Estimator._stage_user_code_in_s3")

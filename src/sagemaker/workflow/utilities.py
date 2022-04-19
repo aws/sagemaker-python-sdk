@@ -13,15 +13,19 @@
 """Utilities to support workflow."""
 from __future__ import absolute_import
 
+from pathlib import Path
 from typing import List, Sequence, Union
 import hashlib
 from urllib.parse import unquote, urlparse
+from _hashlib import HASH as Hash
 
 from sagemaker.workflow.entities import (
     Entity,
     RequestType,
 )
 from sagemaker.workflow.step_collections import StepCollection
+
+BUF_SIZE = 65536  # 64KiB
 
 
 def list_to_request(entities: Sequence[Union[Entity, StepCollection]]) -> List[RequestType]:
@@ -49,15 +53,82 @@ def hash_file(path: str) -> str:
     Returns:
         str: The MD5 hash of the file.
     """
-    BUF_SIZE = 65536  # read in 64KiB chunks
+    return _hash_file(path, hashlib.md5()).hexdigest()
+
+
+def hash_files_or_dirs(paths: List[str]) -> str:
+    """Get the MD5 hash of the contents of a list of files or directories.
+
+    Hash is changed if:
+       * input list is changed
+       * new nested directories/files are added to any directory in the input list
+       * nested directory/file names are changed for any of the inputted directories
+       * content of files is edited
+
+    Args:
+        paths: List of file or directory paths
+    Returns:
+        str: The MD5 hash of the list of files or directories.
+    """
     md5 = hashlib.md5()
-    if path.lower().startswith("file://"):
+    for path in sorted(paths):
+        md5 = _hash_file_or_dir(path, md5)
+    return md5.hexdigest()
+
+
+def _hash_file_or_dir(path: str, md5: Hash) -> Hash:
+    """Updates the inputted Hash with the contents of the current path.
+
+    Args:
+        path: path of file or directory
+    Returns:
+        str: The MD5 hash of the file or directory
+    """
+    if isinstance(path, str) and path.lower().startswith("file://"):
         path = unquote(urlparse(path).path)
-    with open(path, "rb") as f:
+    md5.update(path.encode())
+    if Path(path).is_dir():
+        md5 = _hash_dir(path, md5)
+    elif Path(path).is_file():
+        md5 = _hash_file(path, md5)
+    return md5
+
+
+def _hash_dir(directory: Union[str, Path], md5: Hash) -> Hash:
+    """Updates the inputted Hash with the contents of the current path.
+
+    Args:
+        directory: path of the directory
+    Returns:
+        str: The MD5 hash of the directory
+    """
+    if not Path(directory).is_dir():
+        raise ValueError(str(directory) + " is not a valid directory")
+    for path in sorted(Path(directory).iterdir()):
+        md5.update(path.name.encode())
+        if path.is_file():
+            md5 = _hash_file(path, md5)
+        elif path.is_dir():
+            md5 = _hash_dir(path, md5)
+    return md5
+
+
+def _hash_file(file: Union[str, Path], md5: Hash) -> Hash:
+    """Updates the inputted Hash with the contents of the current path.
+
+    Args:
+        file: path of the file
+    Returns:
+        str: The MD5 hash of the file
+    """
+    if isinstance(file, str) and file.lower().startswith("file://"):
+        file = unquote(urlparse(file).path)
+    if not Path(file).is_file():
+        raise ValueError(str(file) + " is not a valid file")
+    with open(file, "rb") as f:
         while True:
             data = f.read(BUF_SIZE)
             if not data:
                 break
             md5.update(data)
-
-    return md5.hexdigest()
+    return md5
