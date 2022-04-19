@@ -32,6 +32,10 @@ def gpu_instance_type(request):
     integ.test_region() not in integ.TRAINING_COMPILER_SUPPORTED_REGIONS,
     reason="SageMaker Training Compiler is not supported in this region",
 )
+@pytest.mark.skipif(
+    integ.test_region() in integ.TRAINING_NO_P3_REGIONS,
+    reason="no ml.p3 instances in this region",
+)
 def test_huggingface_pytorch(
     sagemaker_session,
     gpu_instance_type,
@@ -77,6 +81,10 @@ def test_huggingface_pytorch(
 @pytest.mark.skipif(
     integ.test_region() not in integ.TRAINING_COMPILER_SUPPORTED_REGIONS,
     reason="SageMaker Training Compiler is not supported in this region",
+)
+@pytest.mark.skipif(
+    integ.test_region() in integ.TRAINING_NO_P3_REGIONS,
+    reason="no ml.p3 instances in this region",
 )
 def test_huggingface_tensorflow(
     sagemaker_session,
