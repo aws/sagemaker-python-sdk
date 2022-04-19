@@ -158,9 +158,9 @@ def test_unsupported_BYOC(
 ):
     byoc = (
         "1.dkr.ecr.us-east-1.amazonaws.com/huggingface-pytorch-trcomp-training:"
-        "1.9.0-"
-        "transformers4.10.2-gpu-"
-        "py38-cu111-ubuntu20.04"
+        "1.10.2-"
+        "transformers4.17.0-gpu-"
+        "py38-cu113-ubuntu20.04"
     )
     with pytest.raises(ValueError):
         HuggingFace(
@@ -451,9 +451,9 @@ def test_attach(
 ):
     training_image = (
         "1.dkr.ecr.us-east-1.amazonaws.com/huggingface-pytorch-trcomp-training:"
-        "1.9.0-"
-        "transformers4.10.2-gpu-"
-        "py38-cu111-ubuntu20.04"
+        "1.10.2-"
+        "transformers4.17.0-gpu-"
+        "py38-cu113-ubuntu20.04"
     )
     returned_job_description = {
         "AlgorithmSpecification": {"TrainingInputMode": "File", "TrainingImage": training_image},
@@ -462,7 +462,7 @@ def test_attach(
             "sagemaker_program": '"iris-dnn-classifier.py"',
             "sagemaker_s3_uri_training": '"sagemaker-3/integ-test-data/tf_iris"',
             "sagemaker_container_log_level": '"logging.INFO"',
-            "sagemaker_job_name": '"hopper"',
+            "sagemaker_job_name": '"trcomp"',
             "training_steps": "100",
             "sagemaker_region": '"us-east-1"',
             TrainingCompilerConfig.HP_ENABLE_COMPILER: json.dumps(compiler_enabled),
@@ -475,27 +475,27 @@ def test_attach(
             "InstanceType": "ml.p3.2xlarge",
         },
         "StoppingCondition": {"MaxRuntimeInSeconds": 24 * 60 * 60},
-        "TrainingJobName": "hopper",
+        "TrainingJobName": "trcomp",
         "TrainingJobStatus": "Completed",
-        "TrainingJobArn": "arn:aws:sagemaker:us-west-2:336:training-job/hopper",
-        "OutputDataConfig": {"KmsKeyId": "", "S3OutputPath": "s3://place/output/hopper"},
+        "TrainingJobArn": "arn:aws:sagemaker:us-west-2:336:training-job/trcomp",
+        "OutputDataConfig": {"KmsKeyId": "", "S3OutputPath": "s3://place/output/trcomp"},
         "TrainingJobOutput": {"S3TrainingJobOutput": "s3://here/output.tar.gz"},
     }
     sagemaker_session.sagemaker_client.describe_training_job = Mock(
         name="describe_training_job", return_value=returned_job_description
     )
 
-    estimator = HuggingFace.attach(training_job_name="hopper", sagemaker_session=sagemaker_session)
-    assert estimator.latest_training_job.job_name == "hopper"
+    estimator = HuggingFace.attach(training_job_name="trcomp", sagemaker_session=sagemaker_session)
+    assert estimator.latest_training_job.job_name == "trcomp"
     assert estimator.py_version == "py38"
-    assert estimator.framework_version == "4.10.2"
-    assert estimator.pytorch_version == "1.9.0"
+    assert estimator.framework_version == "4.17.0"
+    assert estimator.pytorch_version == "1.10.2"
     assert estimator.role == "arn:aws:iam::366:role/SageMakerRole"
     assert estimator.instance_count == 1
     assert estimator.max_run == 24 * 60 * 60
     assert estimator.input_mode == "File"
-    assert estimator.base_job_name == "hopper"
-    assert estimator.output_path == "s3://place/output/hopper"
+    assert estimator.base_job_name == "trcomp"
+    assert estimator.output_path == "s3://place/output/trcomp"
     assert estimator.output_kms_key == ""
     assert estimator.hyperparameters()["training_steps"] == "100"
     assert estimator.hyperparameters()[TrainingCompilerConfig.HP_ENABLE_COMPILER] == json.dumps(

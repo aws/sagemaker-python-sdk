@@ -249,6 +249,15 @@ def huggingface_training_compiler_tensorflow_version(huggingface_training_compil
 
 
 @pytest.fixture(scope="module")
+def huggingface_training_compiler_py_version(huggingface_training_compiler_tensorflow_version):
+    return (
+        "py37"
+        if Version(huggingface_training_compiler_tensorflow_version) < Version("2.6")
+        else "py38"
+    )
+
+
+@pytest.fixture(scope="module")
 def huggingface_pytorch_latest_training_py_version(huggingface_training_pytorch_latest_version):
     return (
         "py38" if Version(huggingface_training_pytorch_latest_version) >= Version("1.9") else "py36"
