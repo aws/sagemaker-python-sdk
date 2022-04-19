@@ -43,7 +43,7 @@ from sagemaker.lineage.query import (
 )
 from sagemaker.lineage.lineage_trial_component import LineageTrialComponent
 
-from tests.integ.sagemaker.lineage.helpers import name, names
+from tests.integ.sagemaker.lineage.helpers import name, names, retry
 
 SLEEP_TIME_SECONDS = 1
 SLEEP_TIME_TWO_SECONDS = 2
@@ -400,7 +400,7 @@ def model_obj(sagemaker_session):
 
     yield model
     time.sleep(SLEEP_TIME_SECONDS)
-    model.delete(disassociate=True)
+    retry(lambda: model.delete(disassociate=True), num_attempts=4)
 
 
 @pytest.fixture
