@@ -457,7 +457,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self._hyperparameters = hyperparameters.copy() if hyperparameters else {}
         self.code_location = code_location
         self.entry_point = entry_point
-        self.dependencies = dependencies
+        self.dependencies = dependencies or []
         self.uploaded_code = None
         self.tags = add_jumpstart_tags(
             tags=tags, training_model_uri=self.model_uri, training_script_uri=self.source_dir
