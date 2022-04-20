@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.87.0 (2022-04-20)
+
+### Features
+
+ * Add Jumpstart example notebooks
+ * add Tensorflow and Pytorch version for SM Training Compiler and expand to regular regions
+
+### Bug Fixes and Other Changes
+
+ * integs for training compiler in non-PDX regions
+ * TrainingStep cache misses due to timestamp based job name
+ * retry context delete
+ * Add more logging when unexpected number of artifacts found
+
 ## v2.86.2 (2022-04-14)
 
 ### Bug Fixes and Other Changes
