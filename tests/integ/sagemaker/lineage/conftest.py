@@ -43,7 +43,7 @@ from sagemaker.lineage.query import (
 )
 from sagemaker.lineage.lineage_trial_component import LineageTrialComponent
 
-from tests.integ.sagemaker.lineage.helpers import name, names
+from tests.integ.sagemaker.lineage.helpers import name, names, retry
 
 SLEEP_TIME_SECONDS = 1
 SLEEP_TIME_TWO_SECONDS = 2
@@ -400,7 +400,7 @@ def model_obj(sagemaker_session):
 
     yield model
     time.sleep(SLEEP_TIME_SECONDS)
-    model.delete(disassociate=True)
+    retry(lambda: model.delete(disassociate=True), num_attempts=4)
 
 
 @pytest.fixture
@@ -663,7 +663,12 @@ def static_endpoint_context(sagemaker_session, static_pipeline_execution_arn):
     contexts = sagemaker_session.sagemaker_client.list_contexts(SourceUri=endpoint_arn)[
         "ContextSummaries"
     ]
-    if len(contexts) != 1:
+
+    logging.info(f"Found {len(contexts)} contexts associated with {endpoint_arn}")
+    for ctx in contexts:
+        logging.info(f'Found context "{ctx["ContextArn"]}"')
+
+    if len(contexts) == 0:
         raise (
             Exception(
                 f"Got an unexpected number of Contexts for \
@@ -689,7 +694,12 @@ def static_model_package_group_context(sagemaker_session, static_pipeline_execut
     contexts = sagemaker_session.sagemaker_client.list_contexts(SourceUri=model_package_group_arn)[
         "ContextSummaries"
     ]
-    if len(contexts) != 1:
+
+    logging.info(f"Found {len(contexts)} contexts associated with {model_package_group_arn}")
+    for ctx in context:
+        logging.info(f'Found context "{ctx["ContextArn"]}"')
+
+    if len(contexts) == 0:
         raise (
             Exception(
                 f"Got an unexpected number of Contexts for \
@@ -713,7 +723,12 @@ def static_model_artifact(sagemaker_session, static_pipeline_execution_arn):
     artifacts = sagemaker_session.sagemaker_client.list_artifacts(SourceUri=model_package_arn)[
         "ArtifactSummaries"
     ]
-    if len(artifacts) != 1:
+
+    logging.info(f"Found {len(artifacts)} artifacts associated with {model_package_arn}")
+    for art in artifacts:
+        logging.info(f'Found artifact {art["ArtifactArn"]}')
+
+    if len(artifacts) == 0:
         raise (
             Exception(
                 f"Got an unexpected number of Artifacts for \

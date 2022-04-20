@@ -74,7 +74,7 @@ from sagemaker.utils import (
     get_config_value,
     name_from_base,
 )
-from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.workflow import is_pipeline_variable
 
 logger = logging.getLogger(__name__)
 
@@ -457,7 +457,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self._hyperparameters = hyperparameters.copy() if hyperparameters else {}
         self.code_location = code_location
         self.entry_point = entry_point
-        self.dependencies = dependencies
+        self.dependencies = dependencies or []
         self.uploaded_code = None
         self.tags = add_jumpstart_tags(
             tags=tags, training_model_uri=self.model_uri, training_script_uri=self.source_dir
@@ -600,7 +600,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         current_hyperparameters = hyperparameters
         if current_hyperparameters is not None:
             hyperparameters = {
-                str(k): (v.to_string() if isinstance(v, PipelineVariable) else json.dumps(v))
+                str(k): (v.to_string() if is_pipeline_variable(v) else json.dumps(v))
                 for (k, v) in current_hyperparameters.items()
             }
         return hyperparameters
@@ -1811,7 +1811,7 @@ class _TrainingJob(_Job):
         current_hyperparameters = estimator.hyperparameters()
         if current_hyperparameters is not None:
             hyperparameters = {
-                str(k): (v.to_string() if isinstance(v, PipelineVariable) else str(v))
+                str(k): (v.to_string() if is_pipeline_variable(v) else str(v))
                 for (k, v) in current_hyperparameters.items()
             }
 
@@ -1879,7 +1879,9 @@ class _TrainingJob(_Job):
         if estimator.use_spot_instances:
             if local_mode:
                 raise ValueError("Spot training is not supported in local mode.")
-            train_args["use_spot_instances"] = True
+            # estimator.use_spot_instances may be a Pipeline ParameterBoolean object
+            # which is parsed during the Pipeline execution runtime
+            train_args["use_spot_instances"] = estimator.use_spot_instances
 
         if estimator.checkpoint_s3_uri:
             if local_mode:

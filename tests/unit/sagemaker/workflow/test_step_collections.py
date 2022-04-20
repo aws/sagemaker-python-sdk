@@ -472,7 +472,7 @@ def test_register_model_with_model_repack_with_estimator(
                     "HyperParameters": {
                         "inference_script": '"dummy_script.py"',
                         "dependencies": f'"{dummy_requirements}"',
-                        "model_archive": '"model.tar.gz"',
+                        "model_archive": '"s3://my-bucket/model.tar.gz"',
                         "sagemaker_program": '"_repack_model.py"',
                         "sagemaker_container_log_level": "20",
                         "sagemaker_region": f'"{REGION}"',
@@ -485,7 +485,7 @@ def test_register_model_with_model_repack_with_estimator(
                                 "S3DataSource": {
                                     "S3DataDistributionType": "FullyReplicated",
                                     "S3DataType": "S3Prefix",
-                                    "S3Uri": f"s3://{BUCKET}",
+                                    "S3Uri": f"s3://{BUCKET}/model.tar.gz",
                                 }
                             },
                         }
@@ -596,7 +596,7 @@ def test_register_model_with_model_repack_with_model(model, model_metrics, drift
                     },
                     "HyperParameters": {
                         "inference_script": '"dummy_script.py"',
-                        "model_archive": '"model.tar.gz"',
+                        "model_archive": '"s3://my-bucket/model.tar.gz"',
                         "sagemaker_program": '"_repack_model.py"',
                         "sagemaker_container_log_level": "20",
                         "sagemaker_region": f'"{REGION}"',
@@ -610,7 +610,7 @@ def test_register_model_with_model_repack_with_model(model, model_metrics, drift
                                 "S3DataSource": {
                                     "S3DataDistributionType": "FullyReplicated",
                                     "S3DataType": "S3Prefix",
-                                    "S3Uri": f"s3://{BUCKET}",
+                                    "S3Uri": f"s3://{BUCKET}/model.tar.gz",
                                 }
                             },
                         }
@@ -726,7 +726,7 @@ def test_register_model_with_model_repack_with_pipeline_model(
                     "HyperParameters": {
                         "dependencies": "null",
                         "inference_script": '"dummy_script.py"',
-                        "model_archive": '"model.tar.gz"',
+                        "model_archive": '"s3://my-bucket/model.tar.gz"',
                         "sagemaker_program": '"_repack_model.py"',
                         "sagemaker_container_log_level": "20",
                         "sagemaker_region": f'"{REGION}"',
@@ -739,7 +739,7 @@ def test_register_model_with_model_repack_with_pipeline_model(
                                 "S3DataSource": {
                                     "S3DataDistributionType": "FullyReplicated",
                                     "S3DataType": "S3Prefix",
-                                    "S3Uri": f"s3://{BUCKET}",
+                                    "S3Uri": f"s3://{BUCKET}/model.tar.gz",
                                 }
                             },
                         }
@@ -927,7 +927,7 @@ def test_estimator_transformer_with_model_repack_with_estimator(estimator):
                         "DataSource": {
                             "S3DataSource": {
                                 "S3DataType": "S3Prefix",
-                                "S3Uri": "s3://my-bucket",
+                                "S3Uri": "s3://my-bucket/model.tar.gz",
                                 "S3DataDistributionType": "FullyReplicated",
                             }
                         },
@@ -936,7 +936,7 @@ def test_estimator_transformer_with_model_repack_with_estimator(estimator):
                 ],
                 "HyperParameters": {
                     "inference_script": '"dummy_script.py"',
-                    "model_archive": '"model.tar.gz"',
+                    "model_archive": '"s3://my-bucket/model.tar.gz"',
                     "dependencies": "null",
                     "source_dir": "null",
                     "sagemaker_program": '"_repack_model.py"',
