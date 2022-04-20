@@ -51,6 +51,8 @@ def test_jumpstart_models_cache_get_fxs():
         region="us-west-2", model_id="pytorch-ic-mobilenet-v2", version="*"
     )
 
+    assert len(accessors.JumpStartModelsAccessor.get_manifest()) > 0
+
     # necessary because accessors is a static module
     reload(accessors)
 
