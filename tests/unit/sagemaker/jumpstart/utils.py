@@ -12,9 +12,10 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import copy
+from typing import List
 
 from sagemaker.jumpstart.cache import JumpStartModelsCache
-from sagemaker.jumpstart.constants import JUMPSTART_REGION_NAME_SET
+from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME, JUMPSTART_REGION_NAME_SET
 from sagemaker.jumpstart.types import (
     JumpStartCachedS3ContentKey,
     JumpStartCachedS3ContentValue,
@@ -42,8 +43,19 @@ def get_header_from_base_header(
     if version and semantic_version_str:
         raise ValueError("Cannot specify both `version` and `semantic_version_str` fields.")
 
-    if "pytorch" not in model_id and "tensorflow" not in model_id:
-        raise KeyError("Bad model id")
+    if all(
+        [
+            "pytorch" not in model_id,
+            "tensorflow" not in model_id,
+            "huggingface" not in model_id,
+            "mxnet" not in model_id,
+            "xgboost" not in model_id,
+            "catboost" not in model_id,
+            "lightgbm" not in model_id,
+            "sklearn" not in model_id,
+        ]
+    ):
+        raise KeyError("Bad model ID")
 
     if region is not None and region not in JUMPSTART_REGION_NAME_SET:
         raise ValueError(
@@ -59,11 +71,21 @@ def get_header_from_base_header(
     return JumpStartModelHeader(spec)
 
 
+def get_prototype_manifest(
+    region: str = JUMPSTART_DEFAULT_REGION_NAME,
+) -> List[JumpStartModelHeader]:
+    return [
+        get_header_from_base_header(region=region, model_id=model_id, version=version)
+        for model_id in PROTOTYPICAL_MODEL_SPECS_DICT.keys()
+        for version in ["1.0.0"]
+    ]
+
+
 def get_prototype_model_spec(
     region: str = None, model_id: str = None, version: str = None
 ) -> JumpStartModelSpecs:
     """This function mocks cache accessor functions. For this mock,
-    we only retrieve model specs based on the model id.
+    we only retrieve model specs based on the model ID.
     """
 
     specs = JumpStartModelSpecs(PROTOTYPICAL_MODEL_SPECS_DICT[model_id])
@@ -81,8 +103,19 @@ def get_spec_from_base_spec(
     if version and semantic_version_str:
         raise ValueError("Cannot specify both `version` and `semantic_version_str` fields.")
 
-    if "pytorch" not in model_id and "tensorflow" not in model_id:
-        raise KeyError("Bad model id")
+    if all(
+        [
+            "pytorch" not in model_id,
+            "tensorflow" not in model_id,
+            "huggingface" not in model_id,
+            "mxnet" not in model_id,
+            "xgboost" not in model_id,
+            "catboost" not in model_id,
+            "lightgbm" not in model_id,
+            "sklearn" not in model_id,
+        ]
+    ):
+        raise KeyError("Bad model ID")
 
     if region is not None and region not in JUMPSTART_REGION_NAME_SET:
         raise ValueError(

@@ -179,7 +179,7 @@
 ### Features
 
  * override jumpstart content bucket
- * jumpstart model id suggestions
+ * jumpstart model ID suggestions
  * adding customer metadata support to registermodel step
 
 ### Bug Fixes and Other Changes
