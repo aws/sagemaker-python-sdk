@@ -670,7 +670,7 @@ the ``model_id`` and ``model_version`` needed to retrieve the URI.
       model. To use the latest version, enter ``"*"``. This is a
       required parameter.
 
-To retrieve a model, first select a ``model id`` and ``version`` from
+To retrieve a model, first select a ``model ID`` and ``version`` from
 the :doc:`available models <./doc_utils/jumpstart>`.
 
 .. code:: python
