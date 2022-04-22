@@ -5,8 +5,47 @@ Release Notes
 New features, bug fixes, and improvements are regularly made to the SageMaker
 distributed model parallel library.
 
-SageMaker Distributed Model Parallel 1.7.0 Release Notes
+SageMaker Distributed Model Parallel 1.8.0 Release Notes
 ========================================================
+
+*Date: March. 23. 2022*
+
+**New Features**
+
+* Added tensor parallelism support for the `GPT-J model
+  <https://huggingface.co/docs/transformers/model_doc/gptj>`_.
+  When using the GPT-J model of Hugging Face Transformers v4.17.0 with
+  tensor parallelism, the SageMaker model parallel library automatically
+  replaces the model with a tensor parallel distributed GPT-J model.
+  For more information, see `Support for Hugging Face Transformer Models
+  <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-hugging-face.html>`_
+  in the *Amazon SageMaker Model Parallel Training developer guide*.
+
+**Migration to AWS Deep Learning Containers**
+
+This version passed benchmark testing and is migrated to the following AWS Deep Learning Containers:
+
+* HuggingFace 4.17.0 DLC with PyTorch 1.10.2
+
+    .. code::
+
+      763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training:1.10.2-transformers4.17.0-gpu-py38-cu113-ubuntu20.04
+
+
+    The binary file of this version of the library for custom container users:
+
+    .. code::
+
+      https://sagemaker-distributed-model-parallel.s3.us-west-2.amazonaws.com/pytorch-1.10.0/build-artifacts/2022-03-12-00-33/smdistributed_modelparallel-1.8.0-cp38-cp38-linux_x86_64.whl
+
+
+----
+
+Release History
+===============
+
+SageMaker Distributed Model Parallel 1.7.0 Release Notes
+--------------------------------------------------------
 
 *Date: March. 07. 2022*
 
@@ -48,11 +87,6 @@ This version passed benchmark testing and is migrated to the following AWS Deep 
 
     763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.10.2-gpu-py38-cu113-ubuntu20.04-sagemaker
 
-
-----
-
-Release History
-===============
 
 SageMaker Distributed Model Parallel 1.6.0 Release Notes
 --------------------------------------------------------
