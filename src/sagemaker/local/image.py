@@ -112,7 +112,11 @@ class _SageMakerContainer(object):
         self.container = None
 
     def process(
-        self, processing_inputs, processing_output_config, environment, processing_job_name
+        self,
+        processing_inputs,
+        processing_output_config,
+        environment,
+        processing_job_name,
     ):
         """Run a processing job locally using docker-compose.
 
@@ -139,7 +143,11 @@ class _SageMakerContainer(object):
         for host in self.hosts:
             _create_processing_config_file_directories(self.container_root, host)
             self.write_processing_config_files(
-                host, environment, processing_inputs, processing_output_config, processing_job_name
+                host,
+                environment,
+                processing_inputs,
+                processing_output_config,
+                processing_job_name,
             )
 
         self._generate_compose_file(
@@ -381,7 +389,12 @@ class _SageMakerContainer(object):
         return os.path.join(output_data, "model.tar.gz")
 
     def write_processing_config_files(
-        self, host, environment, processing_inputs, processing_output_config, processing_job_name
+        self,
+        host,
+        environment,
+        processing_inputs,
+        processing_output_config,
+        processing_job_name,
     ):
         """Write the config files for the processing containers.
 
@@ -1080,8 +1093,14 @@ def _ecr_login_if_needed(boto_session, image):
     token = raw_token.decode("utf-8").strip("AWS:")
     ecr_url = auth["authorizationData"][0]["proxyEndpoint"]
 
-    cmd = "docker login -u AWS -p %s %s" % (token, ecr_url)
-    subprocess.check_output(cmd.split())
+    # Log in to ecr, but use communicate to not print creds to the console
+    cmd = f"docker login {ecr_url} -u AWS --password-stdin".split()
+    proc = subprocess.Popen(
+        cmd,
+        stdin=subprocess.PIPE,
+    )
+
+    proc.communicate(input=token.encode())
 
     return True
 
