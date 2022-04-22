@@ -753,8 +753,9 @@ def test_ecr_login_image_exists(_check_output, image):
     assert result is False
 
 
-@patch("subprocess.check_output", return_value="".encode("utf-8"))
-def test_ecr_login_needed(check_output):
+@patch("subprocess.Popen", return_value=Mock(autospec=subprocess.Popen))
+@patch("sagemaker.local.image._check_output", return_value="")
+def test_ecr_login_needed(mock_check_output, popen):
     session_mock = Mock()
 
     token = "very-secure-token"
@@ -775,13 +776,22 @@ def test_ecr_login_needed(check_output):
     }
     session_mock.client("ecr").get_authorization_token.return_value = response
     image = "520713654638.dkr.ecr.us-east-1.amazonaws.com/image-i-need:1.1"
+    # What a sucessful login would look like
+    popen.return_value.communicate.return_value = (None, None)
+
     result = sagemaker.local.image._ecr_login_if_needed(session_mock, image)
 
-    expected_command = (
-        "docker login -u AWS -p %s https://520713654638.dkr.ecr.us-east-1.amazonaws.com" % token
-    )
-
-    check_output.assert_called_with(expected_command.split())
+    mock_check_output.assert_called_with(f"docker images -q {image}")
+    expected_command = [
+        "docker",
+        "login",
+        "https://520713654638.dkr.ecr.us-east-1.amazonaws.com",
+        "-u",
+        "AWS",
+        "--password-stdin",
+    ]
+    popen.assert_called_with(expected_command, stdin=subprocess.PIPE)
+    popen.return_value.communicate.assert_called_with(input=token.encode())
     session_mock.client("ecr").get_authorization_token.assert_called_with(
         registryIds=["520713654638"]
     )
