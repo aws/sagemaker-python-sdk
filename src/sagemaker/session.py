@@ -2787,7 +2787,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         description=None,
         drift_check_baselines=None,
         customer_metadata_properties=None,
-        validation_specification=None
+        validation_specification=None,
     ):
         """Get request dictionary for CreateModelPackage API.
 
@@ -2833,7 +2833,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             description,
             drift_check_baselines=drift_check_baselines,
             customer_metadata_properties=customer_metadata_properties,
-            validation_specification=validation_specification
+            validation_specification=validation_specification,
         )
         if model_package_group_name is not None:
             try:
@@ -4182,7 +4182,7 @@ def get_model_package_args(
     container_def_list=None,
     drift_check_baselines=None,
     customer_metadata_properties=None,
-    validation_specification=None
+    validation_specification=None,
 ):
     """Get arguments for create_model_package method.
 
@@ -4273,7 +4273,7 @@ def get_create_model_package_request(
     tags=None,
     drift_check_baselines=None,
     customer_metadata_properties=None,
-    validation_specification=None
+    validation_specification=None,
 ):
     """Get request dictionary for CreateModelPackage API.
 
