@@ -1583,3 +1583,57 @@ def test_tags_prefixes_jumpstart_models(
     assert sagemaker_session.create_tuning_job.call_args_list[0][1]["job_name"].startswith(
         JUMPSTART_RESOURCE_BASE_NAME
     )
+
+
+@patch("time.time", return_value=510006209.073025)
+@patch("sagemaker.estimator.tar_and_upload_dir")
+@patch("sagemaker.model.Model._upload_code")
+def test_no_tags_prefixes_non_jumpstart_models(
+    patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+):
+
+    patched_tar_and_upload_dir.return_value = UploadedCode(
+        s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
+    )
+    sagemaker_session.boto_region_name = REGION
+
+    instance_type = "ml.p2.xlarge"
+    instance_count = 1
+
+    training_data_uri = "s3://bucket/mydata"
+
+    non_jumpstart_source_dir = "s3://non-js-bucket/sdfsdfs"
+    non_jumpstart_source_dir_2 = "s3://non-js-bucket/sdfsdsfsdfsddfs"
+
+    image_uri = "fake-image-uri"
+
+    generic_estimator = Estimator(
+        entry_point="transfer_learning.py",
+        role=ROLE,
+        region=REGION,
+        sagemaker_session=sagemaker_session,
+        instance_count=instance_count,
+        instance_type=instance_type,
+        source_dir=non_jumpstart_source_dir,
+        image_uri=image_uri,
+        model_uri=non_jumpstart_source_dir_2,
+        tags=[{"Key": "estimator-tag-key", "Value": "estimator-tag-value"}],
+    )
+
+    hp_tuner = HyperparameterTuner(
+        generic_estimator,
+        OBJECTIVE_METRIC_NAME,
+        HYPERPARAMETER_RANGES,
+        tags=[{"Key": "hp-tuner-tag-key", "Value": "hp-tuner-estimator-tag-value"}],
+    )
+
+    hp_tuner.fit({"training": training_data_uri})
+
+    assert [
+        {"Key": "hp-tuner-tag-key", "Value": "hp-tuner-estimator-tag-value"},
+        {"Key": "estimator-tag-key", "Value": "estimator-tag-value"},
+    ] == sagemaker_session.create_tuning_job.call_args_list[0][1]["tags"]
+
+    assert not sagemaker_session.create_tuning_job.call_args_list[0][1]["job_name"].startswith(
+        JUMPSTART_RESOURCE_BASE_NAME
+    )

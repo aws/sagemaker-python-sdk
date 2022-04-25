@@ -325,16 +325,15 @@ class HyperparameterTuner(object):
         self,
         estimator,
     ):
-        """Get model uri attribute of ``Estimator`` object.
+        """Return the model artifact URI used by the Estimator instance.
 
         This attribute can live in multiple places, and accessing the attribute can
         raise a TypeError, which needs to be handled.
         """
         try:
-            model_data = getattr(estimator, "model_data", None)
+            return getattr(estimator, "model_data", None)
         except TypeError:
-            model_data = None
-        return model_data or getattr(estimator, "model_uri", None)
+            return getattr(estimator, "model_uri", None)
 
     def _prepare_tags_for_tuning(self):
         """Add tags to tuning job (from Estimator and JumpStart tags)."""
@@ -351,7 +350,6 @@ class HyperparameterTuner(object):
             if tag not in self.tags:
                 self.tags.append(tag)
 
-        # Add JumpStart tags
         self.tags = add_jumpstart_tags(
             tags=self.tags,
             training_script_uri=getattr(estimator, "source_dir", None),
