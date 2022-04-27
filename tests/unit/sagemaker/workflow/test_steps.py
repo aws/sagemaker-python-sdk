@@ -523,9 +523,12 @@ def test_training_step_profiler_warning(sagemaker_session):
         TrainingStep(
             name="MyTrainingStep", estimator=estimator, inputs=inputs, cache_config=cache_config
         )
-        assert len(w) == 1
-        assert issubclass(w[-1].category, UserWarning)
-        assert "Profiling is enabled on the provided estimator" in str(w[-1].message)
+        assert len(w) == 2
+        assert issubclass(w[0].category, UserWarning)
+        assert "Profiling is enabled on the provided estimator" in str(w[0].message)
+
+        assert issubclass(w[1].category, DeprecationWarning)
+        assert "We are deprecating the instantiation" in str(w[1].message)
 
 
 def test_training_step_no_profiler_warning(sagemaker_session):
@@ -556,13 +559,17 @@ def test_training_step_no_profiler_warning(sagemaker_session):
         TrainingStep(
             name="MyTrainingStep", estimator=estimator, inputs=inputs, cache_config=cache_config
         )
-        assert len(w) == 0
+        assert len(w) == 1
+        assert issubclass(w[-1].category, DeprecationWarning)
+        assert "We are deprecating the instantiation" in str(w[-1].message)
 
     with warnings.catch_warnings(record=True) as w:
         # profiler enabled, cache config is None
         estimator.disable_profiler = False
         TrainingStep(name="MyTrainingStep", estimator=estimator, inputs=inputs, cache_config=None)
-        assert len(w) == 0
+        assert len(w) == 1
+        assert issubclass(w[-1].category, DeprecationWarning)
+        assert "We are deprecating the instantiation" in str(w[-1].message)
 
 
 def test_processing_step(sagemaker_session):
@@ -588,17 +595,22 @@ def test_processing_step(sagemaker_session):
     evaluation_report = PropertyFile(
         name="EvaluationReport", output_name="evaluation", path="evaluation.json"
     )
-    step = ProcessingStep(
-        name="MyProcessingStep",
-        description="ProcessingStep description",
-        display_name="MyProcessingStep",
-        depends_on=["TestStep", "SecondTestStep"],
-        processor=processor,
-        inputs=inputs,
-        outputs=[],
-        cache_config=cache_config,
-        property_files=[evaluation_report],
-    )
+    with warnings.catch_warnings(record=True) as w:
+        step = ProcessingStep(
+            name="MyProcessingStep",
+            description="ProcessingStep description",
+            display_name="MyProcessingStep",
+            depends_on=["TestStep", "SecondTestStep"],
+            processor=processor,
+            inputs=inputs,
+            outputs=[],
+            cache_config=cache_config,
+            property_files=[evaluation_report],
+        )
+        assert len(w) == 1
+        assert issubclass(w[-1].category, DeprecationWarning)
+        assert "We are deprecating the instantiation" in str(w[-1].message)
+
     step.add_depends_on(["ThirdTestStep"])
     pipeline = Pipeline(
         name="MyPipeline",
@@ -901,15 +913,20 @@ def test_transform_step(sagemaker_session):
     )
     inputs = TransformInput(data=f"s3://{BUCKET}/transform_manifest")
     cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
-    step = TransformStep(
-        name="MyTransformStep",
-        depends_on=["TestStep"],
-        transformer=transformer,
-        display_name="TransformStep",
-        description="TestDescription",
-        inputs=inputs,
-        cache_config=cache_config,
-    )
+    with warnings.catch_warnings(record=True) as w:
+        step = TransformStep(
+            name="MyTransformStep",
+            depends_on=["TestStep"],
+            transformer=transformer,
+            display_name="TransformStep",
+            description="TestDescription",
+            inputs=inputs,
+            cache_config=cache_config,
+        )
+        assert len(w) == 1
+        assert issubclass(w[-1].category, DeprecationWarning)
+        assert "We are deprecating the instantiation" in str(w[-1].message)
+
     step.add_depends_on(["SecondTestStep"])
     assert step.to_request() == {
         "Name": "MyTransformStep",
@@ -1066,11 +1083,15 @@ def test_single_algo_tuning_step(sagemaker_session):
 
     inputs = TrainingInput(s3_data=data_source_uri_parameter)
 
-    tuning_step = TuningStep(
-        name="MyTuningStep",
-        tuner=tuner,
-        inputs=inputs,
-    )
+    with warnings.catch_warnings(record=True) as w:
+        tuning_step = TuningStep(
+            name="MyTuningStep",
+            tuner=tuner,
+            inputs=inputs,
+        )
+        assert len(w) == 1
+        assert issubclass(w[-1].category, DeprecationWarning)
+        assert "We are deprecating the instantiation" in str(w[-1].message)
 
     pipeline = Pipeline(
         name="MyPipeline",
