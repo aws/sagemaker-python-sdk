@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.88.1 (2022-04-27)
+
+### Bug Fixes and Other Changes
+
+ * Add encryption setting to tar_and_upload_dir method
+
 ## v2.88.0 (2022-04-26)
 
 ### Features
