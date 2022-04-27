@@ -5,8 +5,67 @@ Release Notes
 New features, bug fixes, and improvements are regularly made to the SageMaker
 distributed model parallel library.
 
-SageMaker Distributed Model Parallel 1.8.0 Release Notes
+SageMaker Distributed Model Parallel 1.8.1 Release Notes
 ========================================================
+
+*Date: April. 23. 2022*
+
+**New Features**
+
+* Added support for more configurations of Hugging Face Transformers GPT-2 and GPT-J models
+  with tensor parallelism: ``scale_attn_weights``, ``scale_attn_by_inverse_layer_idx``,
+  ``reorder_and_upcast_attn``. To learn more about these features, please refer to
+  the following model configuration classes
+  in the *Hugging Face Transformers documentation*:
+
+  * `transformers.GPT2Config <https://huggingface.co/docs/transformers/model_doc/gpt2#transformers.GPT2Config>`_
+  * `transformers.GPTJConfig <https://huggingface.co/docs/transformers/model_doc/gptj#transformers.GPTJConfig>`_
+
+* Added support for activation checkpointing of modules which pass keyword value arguments
+  and arbitrary structures in their forward methods. This helps support
+  activation checkpointing with Hugging Face Transformers models even
+  when tensor parallelism is not enabled.
+
+**Bug Fixes**
+
+* Fixed a correctness issue with tensor parallelism for GPT-J model
+  which was due to improper scaling during gradient reduction
+  for some layer normalization modules.
+* Fixed the creation of unnecessary additional processes which take up some
+  GPU memory on GPU 0 when the :class:`smp.allgather` collective is called.
+
+**Improvements**
+
+* Improved activation offloading so that activations are preloaded on a
+  per-layer basis as opposed to all activations for a micro batch earlier.
+  This not only improves memory efficiency and performance, but also makes
+  activation offloading a useful feature for non-pipeline parallelism cases.
+
+**Migration to AWS Deep Learning Containers**
+
+This version passed benchmark testing and is migrated to the following AWS Deep Learning Containers:
+
+* HuggingFace 4.17.0 DLC with PyTorch 1.10.2
+
+    .. code::
+
+      763104351884.dkr.ecr.us-east-1.amazonaws.com/huggingface-pytorch-training:1.10.2-transformers4.17.0-gpu-py38-cu113-ubuntu20.04
+
+
+* The binary file of this version of the library for custom container users
+
+    .. code::
+
+      https://sagemaker-distributed-model-parallel.s3.us-west-2.amazonaws.com/pytorch-1.10.0/build-artifacts/2022-04-14-03-58/smdistributed_modelparallel-1.8.1-cp38-cp38-linux_x86_64.whl
+
+
+----
+
+Release History
+===============
+
+SageMaker Distributed Model Parallel 1.8.0 Release Notes
+--------------------------------------------------------
 
 *Date: March. 23. 2022*
 
@@ -32,17 +91,12 @@ This version passed benchmark testing and is migrated to the following AWS Deep 
       763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training:1.10.2-transformers4.17.0-gpu-py38-cu113-ubuntu20.04
 
 
-    The binary file of this version of the library for custom container users:
+* The binary file of this version of the library for custom container users
 
     .. code::
 
       https://sagemaker-distributed-model-parallel.s3.us-west-2.amazonaws.com/pytorch-1.10.0/build-artifacts/2022-03-12-00-33/smdistributed_modelparallel-1.8.0-cp38-cp38-linux_x86_64.whl
 
-
-----
-
-Release History
-===============
 
 SageMaker Distributed Model Parallel 1.7.0 Release Notes
 --------------------------------------------------------
