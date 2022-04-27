@@ -16,9 +16,9 @@ from __future__ import absolute_import, print_function
 import json
 import logging
 import os
-from typing import Any, Dict
 import uuid
 from abc import ABCMeta, abstractmethod
+from typing import Any, Dict
 
 from six import string_types, with_metaclass
 from six.moves.urllib.parse import urlparse
@@ -721,6 +721,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             dependencies=self.dependencies,
             kms_key=kms_key,
             s3_resource=self.sagemaker_session.s3_resource,
+            settings=self.sagemaker_session.settings,
         )
 
     def _prepare_rules(self):
