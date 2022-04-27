@@ -12,7 +12,7 @@ SageMaker Distributed Model Parallel 1.8.1 Release Notes
 
 **New Features**
 
-* Added support for more configurations of Hugging Face Transformers GPT-2 and GPT-J models
+* Added support for more configurations of the Hugging Face Transformers GPT-2 and GPT-J models
   with tensor parallelism: ``scale_attn_weights``, ``scale_attn_by_inverse_layer_idx``,
   ``reorder_and_upcast_attn``. To learn more about these features, please refer to
   the following model configuration classes
