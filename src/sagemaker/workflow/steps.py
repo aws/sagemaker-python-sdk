@@ -34,6 +34,7 @@ from sagemaker.processing import (
 )
 from sagemaker.transformer import Transformer, _TransformJob
 from sagemaker.tuner import HyperparameterTuner, _TuningJob
+from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import (
     DefaultEnumMeta,
     Entity,
@@ -663,6 +664,11 @@ class ProcessingStep(ConfigurableRetryStep):
             self.processor.arguments = job_arguments
 
             if code:
+                if is_pipeline_variable(code):
+                    raise ValueError(
+                        "code argument has to be a valid S3 URI or local file path "
+                        + "rather than a pipeline variable"
+                    )
                 code_url = urlparse(code)
                 if code_url.scheme == "" or code_url.scheme == "file":
                     # By default, `Processor` will upload the local code to an S3 path

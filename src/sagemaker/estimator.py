@@ -483,6 +483,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         if (
             not self.sagemaker_session.local_mode
             and output_path
+            and not is_pipeline_variable(output_path)
             and output_path.startswith("file://")
         ):
             raise RuntimeError("file:// output paths are only supported in Local Mode")

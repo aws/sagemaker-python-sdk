@@ -14,7 +14,7 @@
 """Helper methods for testing."""
 from __future__ import absolute_import
 
-from sagemaker.workflow import Properties
+from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.steps import Step, StepTypeEnum
 
 
