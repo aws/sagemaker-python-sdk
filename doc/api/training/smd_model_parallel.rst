@@ -34,11 +34,8 @@ across multiple GPUs with minimal code changes. The library's API can be accesse
 
 .. important::
    The model parallel library only supports SageMaker training jobs using CUDA 11.
-   Make sure you use the pre-built Deep Learning Containers, or use the right CUDA version
-   if you use a custom training container.
-
-.. tip::
-   If you want to extend or customize your own training image
+   Make sure you use the pre-built Deep Learning Containers.
+   If you want to extend or customize your own training image,
    you must use a CUDA 11 base image. For more information, see `Extend a Prebuilt Docker
    Container that Contains SageMaker's Distributed Model Parallel Library
    <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-sm-sdk.html#model-parallel-customize-container>`_
