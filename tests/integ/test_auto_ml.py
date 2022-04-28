@@ -170,7 +170,7 @@ def test_auto_ml_describe_auto_ml_job(sagemaker_session):
             },
             "TargetAttributeName": TARGET_ATTRIBUTE_NAME,
             "ContentType": "text/csv;header=present",
-            'ChannelType': 'training',
+            "ChannelType": "training",
         }
     ]
     expected_default_output_config = {
@@ -208,7 +208,7 @@ def test_auto_ml_attach(sagemaker_session):
             },
             "TargetAttributeName": TARGET_ATTRIBUTE_NAME,
             "ContentType": "text/csv;header=present",
-            'ChannelType': 'training',
+            "ChannelType": "training",
         }
     ]
     expected_default_output_config = {
