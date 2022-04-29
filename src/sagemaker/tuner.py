@@ -38,6 +38,7 @@ from sagemaker.parameter import (
     IntegerParameter,
     ParameterRange,
 )
+from sagemaker.workflow.pipeline_context import runnable_by_pipeline
 
 from sagemaker.session import Session
 from sagemaker.utils import base_from_name, base_name_from_image, name_from_base
@@ -380,6 +381,7 @@ class HyperparameterTuner(object):
 
         return static_hyperparameters
 
+    @runnable_by_pipeline
     def fit(
         self,
         inputs=None,
@@ -466,7 +468,9 @@ class HyperparameterTuner(object):
         estimator_names = sorted(self.estimator_dict.keys())
         self._validate_dict_argument(name="inputs", value=inputs, allowed_keys=estimator_names)
         self._validate_dict_argument(
-            name="include_cls_metadata", value=include_cls_metadata, allowed_keys=estimator_names
+            name="include_cls_metadata",
+            value=include_cls_metadata,
+            allowed_keys=estimator_names,
         )
         self._validate_dict_argument(
             name="estimator_kwargs", value=estimator_kwargs, allowed_keys=estimator_names
@@ -1468,6 +1472,7 @@ class _TuningJob(_Job):
             information about the started job.
         """
         tuner_args = cls._get_tuner_args(tuner, inputs)
+
         tuner.sagemaker_session.create_tuning_job(**tuner_args)
 
         return cls(tuner.sagemaker_session, tuner._current_job_name)

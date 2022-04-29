@@ -1,5 +1,26 @@
 # Changelog
 
+## v2.88.1 (2022-04-27)
+
+### Bug Fixes and Other Changes
+
+ * Add encryption setting to tar_and_upload_dir method
+
+## v2.88.0 (2022-04-26)
+
+### Features
+
+ * jumpstart notebook utils -- list model ids, scripts, tasks, frameworks
+
+### Bug Fixes and Other Changes
+
+ * local mode printing of credentials during docker login closes #2180
+ * disable endpoint context test
+
+### Documentation Changes
+
+ * sm model parallel 1.8.0 release notes
+
 ## v2.87.0 (2022-04-20)
 
 ### Features

@@ -803,7 +803,8 @@ class SageMakerClarifyProcessor(Processor):
                 output_name="analysis_result",
                 s3_upload_mode="EndOfJob",
             )
-            super().run(
+
+            return super().run(
                 inputs=[data_input, config_input],
                 outputs=[result_output],
                 wait=wait,
@@ -871,7 +872,7 @@ class SageMakerClarifyProcessor(Processor):
                 job_name = utils.name_from_base(self.job_name_prefix)
             else:
                 job_name = utils.name_from_base("Clarify-Pretraining-Bias")
-        self._run(
+        return self._run(
             data_config,
             analysis_config,
             wait,
@@ -957,7 +958,7 @@ class SageMakerClarifyProcessor(Processor):
                 job_name = utils.name_from_base(self.job_name_prefix)
             else:
                 job_name = utils.name_from_base("Clarify-Posttraining-Bias")
-        self._run(
+        return self._run(
             data_config,
             analysis_config,
             wait,
@@ -1060,7 +1061,7 @@ class SageMakerClarifyProcessor(Processor):
                 job_name = utils.name_from_base(self.job_name_prefix)
             else:
                 job_name = utils.name_from_base("Clarify-Bias")
-        self._run(
+        return self._run(
             data_config,
             analysis_config,
             wait,
@@ -1167,7 +1168,7 @@ class SageMakerClarifyProcessor(Processor):
                 job_name = utils.name_from_base(self.job_name_prefix)
             else:
                 job_name = utils.name_from_base("Clarify-Explainability")
-        self._run(
+        return self._run(
             data_config,
             analysis_config,
             wait,

@@ -19,6 +19,7 @@ import os
 import re
 import sys
 import time
+import typing
 import warnings
 from typing import List, Dict, Any, Sequence
 
@@ -551,7 +552,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
             retry_strategy(dict): Defines RetryStrategy for InternalServerFailures.
                 * max_retry_attsmpts (int): Number of times a job should be retried.
                 The key in RetryStrategy is 'MaxRetryAttempts'.
-
         Returns:
             str: ARN of the training job, if it is created.
         """
@@ -585,9 +585,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
             environment=environment,
             retry_strategy=retry_strategy,
         )
-        LOGGER.info("Creating training-job with name: %s", job_name)
-        LOGGER.debug("train request: %s", json.dumps(train_request, indent=4))
-        self.sagemaker_client.create_training_job(**train_request)
+
+        def submit(request):
+            LOGGER.info("Creating training-job with name: %s", job_name)
+            LOGGER.debug("train request: %s", json.dumps(request, indent=4))
+            self.sagemaker_client.create_training_job(**request)
+
+        self._intercept_create_request(train_request, submit)
 
     def _get_train_request(  # noqa: C901
         self,
@@ -912,9 +916,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
             tags=tags,
             experiment_config=experiment_config,
         )
-        LOGGER.info("Creating processing-job with name %s", job_name)
-        LOGGER.debug("process request: %s", json.dumps(process_request, indent=4))
-        self.sagemaker_client.create_processing_job(**process_request)
+
+        def submit(request):
+            LOGGER.info("Creating processing-job with name %s", job_name)
+            LOGGER.debug("process request: %s", json.dumps(request, indent=4))
+            self.sagemaker_client.create_processing_job(**request)
+
+        self._intercept_create_request(process_request, submit)
 
     def _get_process_request(
         self,
@@ -2086,9 +2094,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
             tags=tags,
         )
 
-        LOGGER.info("Creating hyperparameter tuning job with name: %s", job_name)
-        LOGGER.debug("tune request: %s", json.dumps(tune_request, indent=4))
-        self.sagemaker_client.create_hyper_parameter_tuning_job(**tune_request)
+        def submit(request):
+            LOGGER.info("Creating hyperparameter tuning job with name: %s", job_name)
+            LOGGER.debug("tune request: %s", json.dumps(request, indent=4))
+            self.sagemaker_client.create_hyper_parameter_tuning_job(**request)
+
+        self._intercept_create_request(tune_request, submit)
 
     def _get_tuning_request(
         self,
@@ -2553,9 +2564,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
             model_client_config=model_client_config,
         )
 
-        LOGGER.info("Creating transform job with name: %s", job_name)
-        LOGGER.debug("Transform request: %s", json.dumps(transform_request, indent=4))
-        self.sagemaker_client.create_transform_job(**transform_request)
+        def submit(request):
+            LOGGER.info("Creating transform job with name: %s", job_name)
+            LOGGER.debug("Transform request: %s", json.dumps(request, indent=4))
+            self.sagemaker_client.create_transform_job(**request)
+
+        self._intercept_create_request(transform_request, submit)
 
     def _create_model_request(
         self,
@@ -4160,6 +4174,18 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "sts", region_name=region, endpoint_url=sts_regional_endpoint(region)
         )
         return sts_client.get_caller_identity()["Account"]
+
+    def _intercept_create_request(self, request: typing.Dict, create):
+        """This function intercepts the create job request.
+
+        PipelineSession inherits this Session class and will override
+        this function to intercept the create request.
+
+        Args:
+            request (dict): the create job request
+            create (functor): a functor calls the sagemaker client create method
+        """
+        create(request)
 
 
 def get_model_package_args(
