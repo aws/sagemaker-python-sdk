@@ -28,16 +28,13 @@ import attr
 
 from six.moves.urllib.parse import urlparse
 from six.moves.urllib.request import url2pathname
-
 from sagemaker import s3
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
 from sagemaker.utils import base_name_from_image, get_config_value, name_from_base
 from sagemaker.session import Session
 from sagemaker.workflow import is_pipeline_variable
-from sagemaker.workflow.properties import Properties
-from sagemaker.workflow.parameters import Parameter
-from sagemaker.workflow.entities import Expression
+from sagemaker.workflow.pipeline_context import runnable_by_pipeline
 from sagemaker.dataset_definition.inputs import S3Input, DatasetDefinition
 from sagemaker.apiutils._base_types import ApiObject
 from sagemaker.s3 import S3Uploader
@@ -133,6 +130,7 @@ class Processor(object):
 
         self.sagemaker_session = sagemaker_session or Session()
 
+    @runnable_by_pipeline
     def run(
         self,
         inputs=None,
@@ -314,10 +312,10 @@ class Processor(object):
                 if file_input.input_name is None:
                     file_input.input_name = "input-{}".format(count)
 
-                if isinstance(file_input.source, Properties) or file_input.dataset_definition:
+                if is_pipeline_variable(file_input.source) or file_input.dataset_definition:
                     normalized_inputs.append(file_input)
                     continue
-                if isinstance(file_input.s3_input.s3_uri, (Parameter, Expression, Properties)):
+                if is_pipeline_variable(file_input.s3_input.s3_uri):
                     normalized_inputs.append(file_input)
                     continue
                 # If the source is a local path, upload it to S3
@@ -367,7 +365,7 @@ class Processor(object):
                 # Generate a name for the ProcessingOutput if it doesn't have one.
                 if output.output_name is None:
                     output.output_name = "output-{}".format(count)
-                if isinstance(output.destination, (Parameter, Expression, Properties)):
+                if is_pipeline_variable(output.destination):
                     normalized_outputs.append(output)
                     continue
                 # If the output's destination is not an s3_uri, create one.
@@ -497,6 +495,7 @@ class ScriptProcessor(Processor):
         """
         return RunArgs(code=code, inputs=inputs, outputs=outputs, arguments=arguments)
 
+    @runnable_by_pipeline
     def run(
         self,
         code,
@@ -1600,7 +1599,7 @@ class FrameworkProcessor(ScriptProcessor):
         )
 
         # Submit a processing job.
-        super().run(
+        return super().run(
             code=s3_runproc_sh,
             inputs=inputs,
             outputs=outputs,
