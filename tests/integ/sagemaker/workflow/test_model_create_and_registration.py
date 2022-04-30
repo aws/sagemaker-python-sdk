@@ -26,9 +26,7 @@ import pytest
 from botocore.exceptions import WaiterError
 
 import tests
-from sagemaker.parameter import IntegerParameter
 from sagemaker.tensorflow import TensorFlow, TensorFlowModel
-from sagemaker.tuner import HyperparameterTuner
 from tests.integ.retry import retries
 from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker import (
@@ -50,7 +48,7 @@ from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.parameters import ParameterInteger, ParameterString
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.step_collections import RegisterModel
-from sagemaker.workflow.steps import CreateModelStep, ProcessingStep, TrainingStep, TuningStep
+from sagemaker.workflow.steps import CreateModelStep, ProcessingStep, TrainingStep
 from sagemaker.xgboost import XGBoostModel
 from sagemaker.xgboost import XGBoost
 from sagemaker.workflow.conditions import (
@@ -848,124 +846,3 @@ def test_model_registration_with_tensorflow_model_with_pipeline_model(
             pipeline.delete()
         except Exception as error:
             logging.error(error)
-
-
-def test_tuning_single_algo_with_create_model(
-    sagemaker_session,
-    role,
-    cpu_instance_type,
-    pipeline_name,
-    region_name,
-):
-    base_dir = os.path.join(DATA_DIR, "pytorch_mnist")
-    entry_point = os.path.join(base_dir, "mnist.py")
-    input_path = sagemaker_session.upload_data(
-        path=os.path.join(base_dir, "training"),
-        key_prefix="integ-test-data/pytorch_mnist/training",
-    )
-    inputs = TrainingInput(s3_data=input_path)
-
-    instance_count = ParameterInteger(name="InstanceCount", default_value=1)
-    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
-
-    pytorch_estimator = PyTorch(
-        entry_point=entry_point,
-        role=role,
-        framework_version="1.5.0",
-        py_version="py3",
-        instance_count=instance_count,
-        instance_type=instance_type,
-        sagemaker_session=sagemaker_session,
-        enable_sagemaker_metrics=True,
-        max_retry_attempts=3,
-    )
-
-    min_batch_size = ParameterInteger(name="MinBatchSize", default_value=64)
-    max_batch_size = ParameterInteger(name="MaxBatchSize", default_value=128)
-    hyperparameter_ranges = {
-        "batch-size": IntegerParameter(min_batch_size, max_batch_size),
-    }
-    tuner = HyperparameterTuner(
-        estimator=pytorch_estimator,
-        objective_metric_name="test:acc",
-        objective_type="Maximize",
-        hyperparameter_ranges=hyperparameter_ranges,
-        metric_definitions=[{"Name": "test:acc", "Regex": "Overall test accuracy: (.*?);"}],
-        max_jobs=2,
-        max_parallel_jobs=2,
-    )
-    step_tune = TuningStep(
-        name="my-tuning-step",
-        tuner=tuner,
-        inputs=inputs,
-    )
-    best_model = Model(
-        image_uri=pytorch_estimator.training_image_uri(),
-        model_data=step_tune.get_top_model_s3_uri(
-            top_k=0,
-            s3_bucket=sagemaker_session.default_bucket(),
-        ),
-        sagemaker_session=sagemaker_session,
-        role=role,
-    )
-    model_inputs = CreateModelInput(
-        instance_type="ml.m5.large",
-        accelerator_type="ml.eia1.medium",
-    )
-    step_best_model = CreateModelStep(
-        name="1st-model",
-        model=best_model,
-        inputs=model_inputs,
-    )
-
-    second_best_model = Model(
-        image_uri=pytorch_estimator.training_image_uri(),
-        model_data=step_tune.get_top_model_s3_uri(
-            top_k=1,
-            s3_bucket=sagemaker_session.default_bucket(),
-        ),
-        sagemaker_session=sagemaker_session,
-        role=role,
-        entry_point=entry_point,
-        source_dir=base_dir,
-    )
-    step_second_best_model = CreateModelStep(
-        name="2nd-best-model",
-        model=second_best_model,
-        inputs=model_inputs,
-    )
-    pipeline = Pipeline(
-        name=pipeline_name,
-        parameters=[instance_count, instance_type, min_batch_size, max_batch_size],
-        steps=[step_tune, step_best_model, step_second_best_model],
-        sagemaker_session=sagemaker_session,
-    )
-
-    try:
-        response = pipeline.create(role)
-        create_arn = response["PipelineArn"]
-        assert re.match(
-            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
-            create_arn,
-        )
-
-        execution = pipeline.start(parameters={})
-        assert re.match(
-            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
-            execution.arn,
-        )
-        try:
-            execution.wait(delay=30, max_attempts=60)
-        except WaiterError:
-            pass
-        execution_steps = execution.list_steps()
-
-        for step in execution_steps:
-            assert not step.get("FailureReason", None)
-            assert step["StepStatus"] == "Succeeded"
-        assert len(execution_steps) == 3
-    finally:
-        try:
-            pipeline.delete()
-        except Exception:
-            pass

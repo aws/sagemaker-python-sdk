@@ -105,7 +105,7 @@ class PipelineSession(Session):
         else:
             self.context = request
 
-    def init_model_step_arguments(self, model):
+    def init_step_arguments(self, model):
         """Create a `_ModelStepArguments` (if not exist) as pipeline context
 
         Args:
@@ -161,7 +161,7 @@ def runnable_by_pipeline(run_func):
                 UserWarning,
             )
             if run_func.__name__ in ["register", "create"]:
-                args[0].sagemaker_session.init_model_step_arguments(args[0])
+                args[0].sagemaker_session.init_step_arguments(args[0])
                 run_func(*args, **kwargs)
                 context = args[0].sagemaker_session.context
                 args[0].sagemaker_session.context = None

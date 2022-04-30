@@ -13,12 +13,13 @@
 from __future__ import absolute_import
 
 import json
+import os
 
 from mock import Mock, PropertyMock, patch
 
 import pytest
 
-from sagemaker import Model, PipelineModel
+from sagemaker import Model, PipelineModel, Session
 from sagemaker.chainer import ChainerModel
 from sagemaker.huggingface import HuggingFaceModel
 from sagemaker.model import SCRIPT_PARAM_NAME, DIR_PARAM_NAME
@@ -56,6 +57,8 @@ _SAGEMAKER_PROGRAM = SCRIPT_PARAM_NAME.upper()
 _SAGEMAKER_SUBMIT_DIRECTORY = DIR_PARAM_NAME.upper()
 _SCRIPT_NAME = "dummy_script.py"
 _DIR_NAME = "/opt/ml/model/code"
+_XGBOOST_PATH = os.path.join(DATA_DIR, "xgboost_abalone")
+_TENSORFLOW_PATH = os.path.join(DATA_DIR, "tfs/tfs-test-entrypoint-and-dependencies")
 
 
 @pytest.fixture
@@ -94,6 +97,16 @@ def pipeline_session(boto_session, client):
     return PipelineSession(
         boto_session=boto_session,
         sagemaker_client=client,
+        default_bucket=_BUCKET,
+    )
+
+
+@pytest.fixture
+def sagemaker_session(boto_session, client):
+    return Session(
+        boto_session=boto_session,
+        sagemaker_client=client,
+        sagemaker_runtime_client=client,
         default_bucket=_BUCKET,
     )
 
@@ -209,6 +222,9 @@ def test_create_model_with_runtime_repack(pipeline_session, model_data_param, mo
         name="MyModelStep",
         step_args=step_args,
         description="my model step description",
+        retry_policies=[
+            StepRetryPolicy(exception_types=[StepExceptionTypeEnum.THROTTLING], max_attempts=3)
+        ],
     )
     pipeline = Pipeline(
         name="MyPipeline",
@@ -233,6 +249,14 @@ def test_create_model_with_runtime_repack(pipeline_session, model_data_param, mo
             assert "s3://" in arguments["HyperParameters"]["sagemaker_submit_directory"]
             assert arguments["HyperParameters"]["dependencies"] == "null"
             assert "repack a model with customer scripts" in step["Description"]
+            assert step["RetryPolicies"] == [
+                {
+                    "BackoffRate": 2.0,
+                    "IntervalSeconds": 1,
+                    "MaxAttempts": 3,
+                    "ExceptionType": ["Step.THROTTLING"],
+                }
+            ]
         elif step["Type"] == "Model":
             assert step["Name"] == f"MyModelStep-{_CREATE_MODEL_NAME_BASE}"
             arguments = step["Arguments"]
@@ -244,6 +268,14 @@ def test_create_model_with_runtime_repack(pipeline_session, model_data_param, mo
             assert container["Environment"][_SAGEMAKER_PROGRAM] == _SCRIPT_NAME
             assert container["Environment"][_SAGEMAKER_SUBMIT_DIRECTORY] == _DIR_NAME
             assert "my model step description" in step["Description"]
+            assert step["RetryPolicies"] == [
+                {
+                    "BackoffRate": 2.0,
+                    "IntervalSeconds": 1,
+                    "MaxAttempts": 3,
+                    "ExceptionType": ["Step.THROTTLING"],
+                }
+            ]
         else:
             raise Exception("A step exists in the collection of an invalid type.")
 
@@ -465,10 +497,7 @@ def test_create_model_with_compile_time_repack(mock_repack, pipeline_session):
         arguments["PrimaryContainer"]["ModelDataUrl"] == f"s3://{_BUCKET}/{model_name}/model.tar.gz"
     )
     assert arguments["PrimaryContainer"]["Environment"][_SAGEMAKER_PROGRAM] == _SCRIPT_NAME
-    assert (
-        arguments["PrimaryContainer"]["Environment"][_SAGEMAKER_SUBMIT_DIRECTORY]
-        == "/opt/ml/model/code"
-    )
+    assert arguments["PrimaryContainer"]["Environment"][_SAGEMAKER_SUBMIT_DIRECTORY] == _DIR_NAME
     assert len(step_dsl_list[0]["DependsOn"]) == 1
     assert step_dsl_list[0]["DependsOn"][0] == "TestStep"
 
@@ -652,3 +681,161 @@ def test_create_model_among_different_model_types(test_input, pipeline_session, 
     # If expected_step_num is 2, it means a runtime repack step is appended
     # If expected_step_num is 1, it means no runtime repack is needed
     assert len(steps) == expected_step_num
+
+
+@pytest.mark.parametrize(
+    "test_input",
+    [
+        # Assign entry_point and enable_network_isolation to the XGBoostModel
+        # which will trigger a model runtime repacking and update
+        # the container env with SAGEMAKER_SUBMIT_DIRECTORY=/opt/ml/model/code
+        (
+            XGBoostModel(
+                model_data="dummy_model_step",
+                framework_version="1.3-1",
+                role=_ROLE,
+                entry_point=os.path.join(_XGBOOST_PATH, "inference.py"),
+                enable_network_isolation=True,
+            ),
+            {
+                "expected_step_num": 2,
+                f"{_SAGEMAKER_PROGRAM}": "inference.py",
+                f"{_SAGEMAKER_SUBMIT_DIRECTORY}": f"{_DIR_NAME}",
+            },
+        ),
+        # Assign entry_point only to the XGBoostModel
+        # which will NOT trigger a model runtime repacking but update the container env with
+        # SAGEMAKER_SUBMIT_DIRECTORY is a s3 uri pointing to the entry_point script
+        (
+            XGBoostModel(
+                model_data="dummy_model_step",
+                framework_version="1.3-1",
+                role=_ROLE,
+                entry_point=os.path.join(_XGBOOST_PATH, "inference.py"),
+            ),
+            {
+                "expected_step_num": 1,
+                f"{_SAGEMAKER_PROGRAM}": "inference.py",
+                f"{_SAGEMAKER_SUBMIT_DIRECTORY}": "s3://",
+            },
+        ),
+        # Not assigning entry_point to the XGBoostModel
+        # which will NOT trigger a model runtime repacking. Container env
+        # SAGEMAKER_SUBMIT_DIRECTORY, SAGEMAKER_PROGRAM are empty
+        (
+            XGBoostModel(
+                model_data="dummy_model_step",
+                framework_version="1.3-1",
+                role=_ROLE,
+                entry_point=None,
+            ),
+            {
+                "expected_step_num": 1,
+                f"{_SAGEMAKER_PROGRAM}": "",
+                f"{_SAGEMAKER_SUBMIT_DIRECTORY}": "",
+            },
+        ),
+        # Assign entry_point to the TensorFlowModel
+        # which will trigger a model runtime repacking
+        # TensorFlowModel does not configure the container Environment
+        (
+            TensorFlowModel(
+                model_data="dummy_model_step",
+                role=_ROLE,
+                image_uri=_IMAGE_URI,
+                sagemaker_session=pipeline_session,
+                entry_point=os.path.join(_TENSORFLOW_PATH, "inference.py"),
+            ),
+            {
+                "expected_step_num": 2,
+                f"{_SAGEMAKER_PROGRAM}": None,
+                f"{_SAGEMAKER_SUBMIT_DIRECTORY}": None,
+            },
+        ),
+        # Not assigning entry_point to the TensorFlowModel
+        # which will NOT trigger a model runtime repacking
+        # TensorFlowModel does not configure the container Environment
+        (
+            TensorFlowModel(
+                model_data="dummy_model_step",
+                role=_ROLE,
+                image_uri=_IMAGE_URI,
+                sagemaker_session=pipeline_session,
+            ),
+            {
+                "expected_step_num": 1,
+                f"{_SAGEMAKER_PROGRAM}": None,
+                f"{_SAGEMAKER_SUBMIT_DIRECTORY}": None,
+            },
+        ),
+    ],
+)
+@patch("sagemaker.utils.repack_model")
+def test_request_compare_of_register_model_under_different_sessions(
+    mock_repack, test_input, pipeline_session, sagemaker_session, model_data_param
+):
+    model_package_group_name = "TestModelPackageGroup"
+    model, expect = test_input
+    expected_step_num = expect["expected_step_num"]
+
+    # Get create model package request under PipelineSession
+    model.model_data = model_data_param
+    model.sagemaker_session = pipeline_session
+    step_args = model.register(
+        content_types=["application/json"],
+        response_types=["application/json"],
+        inference_instances=["ml.m5.large"],
+        transform_instances=["ml.m5.large"],
+        model_package_group_name=model_package_group_name,
+        approval_status="Approved",
+    )
+    step_model = ModelStep(
+        name="MyModelStep",
+        step_args=step_args,
+    )
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[model_data_param],
+        steps=[step_model],
+        sagemaker_session=pipeline_session,
+    )
+    step_dsl_list = json.loads(pipeline.definition())["Steps"]
+    assert len(step_dsl_list) == expected_step_num
+    # the step arg is used as request to create model package in backend
+    regis_step_arg = step_dsl_list[expected_step_num - 1]["Arguments"]
+    _verify_register_model_container_definition(regis_step_arg, expect, dict)
+
+    # Get create model package request under Session
+    model.model_data = f"s3://{_BUCKET}"
+    model.sagemaker_session = sagemaker_session
+    with patch.object(
+        Session, "_intercept_create_request", return_value=dict(ModelPackageArn="arn:aws")
+    ) as mock_method:
+        model.register(
+            content_types=["application/json"],
+            response_types=["application/json"],
+            inference_instances=["ml.m5.large"],
+            transform_instances=["ml.m5.large"],
+            model_package_group_name=model_package_group_name,
+            approval_status="Approved",
+        )
+        register_model_request = mock_method.call_args[0][0]
+        _verify_register_model_container_definition(register_model_request, expect, str)
+        register_model_request.pop("CertifyForMarketplace", None)
+        assert regis_step_arg == register_model_request
+
+
+def _verify_register_model_container_definition(
+    request: dict, expect: dict, expected_model_data_type: type
+):
+    expected_submit_dir = expect[_SAGEMAKER_SUBMIT_DIRECTORY]
+    expected_program = expect[_SAGEMAKER_PROGRAM]
+    containers = request["InferenceSpecification"]["Containers"]
+    assert len(containers) == 1
+    isinstance(containers[0].pop("ModelDataUrl"), expected_model_data_type)
+    container_env = containers[0]["Environment"]
+    assert container_env.pop(_SAGEMAKER_PROGRAM, None) == expected_program
+    submit_dir = container_env.pop(_SAGEMAKER_SUBMIT_DIRECTORY, None)
+    if submit_dir and not submit_dir.startswith("s3://"):
+        # exclude the s3 path assertion as it contains timestamp
+        assert submit_dir == expected_submit_dir

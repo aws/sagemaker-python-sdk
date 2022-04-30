@@ -18,7 +18,9 @@ import os
 import pytest
 from botocore.exceptions import WaiterError
 
-from sagemaker.tensorflow import TensorFlow, TensorFlowModel
+from tests.integ.timeout import timeout_and_delete_endpoint_by_name
+from sagemaker.tensorflow import TensorFlow, TensorFlowModel, TensorFlowPredictor
+from sagemaker.utils import unique_name_from_base
 from sagemaker.workflow.model_step import (
     ModelStep,
     _REGISTER_MODEL_NAME_BASE,
@@ -33,25 +35,26 @@ from sagemaker import (
     ModelMetrics,
     MetricsSource,
     get_execution_role,
+    ModelPackage,
 )
 from sagemaker import FileSource, utils
 from sagemaker.pytorch import PyTorch
 from sagemaker.s3 import S3Uploader
 from sagemaker.mxnet.model import MXNetModel
-from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.parameters import ParameterInteger, ParameterString
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.steps import TrainingStep
-from sagemaker.xgboost import XGBoost
-from sagemaker.workflow.conditions import (
-    ConditionGreaterThanOrEqualTo,
-)
+from sagemaker.xgboost import XGBoost, XGBoostModel, XGBoostPredictor
 from tests.integ.kms_utils import get_or_create_kms_key
 from tests.integ import DATA_DIR
 
 
 _REGISTER_MODEL_TYPE = "RegisterModel"
 _CREATE_MODEL_TYPE = "Model"
+_XGBOOST_PATH = os.path.join(DATA_DIR, "xgboost_abalone")
+_XGBOOST_TEST_DATA = "6 1:3 2:0.37 3:0.29 4:0.095 5:0.249 6:0.1045 7:0.058 8:0.067"
+_TENSORFLOW_PATH = os.path.join(DATA_DIR, "tfs/tfs-test-entrypoint-and-dependencies")
+_TENSORFLOW_TEST_DATA = {"instances": [1.0, 2.0, 5.0]}
 
 
 @pytest.fixture
@@ -64,10 +67,9 @@ def pipeline_name():
     return utils.unique_name_from_base("my-pipeline-model-step")
 
 
-def test_conditional_pytorch_training_model_registration(
+def test_pytorch_training_model_registration_and_creation_without_custom_inference(
     pipeline_session,
     role,
-    cpu_instance_type,
     pipeline_name,
 ):
     base_dir = os.path.join(DATA_DIR, "pytorch_mnist")
@@ -80,7 +82,6 @@ def test_conditional_pytorch_training_model_registration(
 
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
     instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
-    good_enough_input = ParameterInteger(name="GoodEnoughInput", default_value=1)
 
     pytorch_estimator = PyTorch(
         entry_point=entry_point,
@@ -122,54 +123,28 @@ def test_conditional_pytorch_training_model_registration(
         name="pytorch-model",
         step_args=create_model_step_args,
     )
-
-    step_cond = ConditionStep(
-        name="cond-good-enough",
-        conditions=[
-            ConditionGreaterThanOrEqualTo(left=good_enough_input, right=1),
-        ],
-        if_steps=[step_model_regis],
-        else_steps=[step_model_create],
-        depends_on=[step_train],
-    )
-
     pipeline = Pipeline(
         name=pipeline_name,
-        parameters=[
-            good_enough_input,
-            instance_count,
-            instance_type,
-        ],
-        steps=[step_train, step_cond],
+        parameters=[instance_count, instance_type],
+        steps=[step_train, step_model_regis, step_model_create],
         sagemaker_session=pipeline_session,
     )
     try:
         pipeline.create(role)
-        execution1 = pipeline.start(parameters={})
-        execution2 = pipeline.start(parameters={"GoodEnoughInput": 0})
+        execution = pipeline.start(parameters={})
         try:
-            execution1.wait(delay=30, max_attempts=60)
+            execution.wait(delay=30, max_attempts=60)
         except WaiterError:
             pass
-        execution1_steps = execution1.list_steps()
-        for step in execution1_steps:
+        execution_steps = execution.list_steps()
+        for step in execution_steps:
             assert not step.get("FailureReason", None)
             assert step["StepStatus"] == "Succeeded"
             if _REGISTER_MODEL_NAME_BASE in step["StepName"]:
                 assert step["Metadata"][_REGISTER_MODEL_TYPE]
-        assert len(execution1_steps) == 3
-
-        try:
-            execution2.wait(delay=30, max_attempts=60)
-        except WaiterError:
-            pass
-        execution2_steps = execution2.list_steps()
-        for step in execution2_steps:
-            assert not step.get("FailureReason", None)
-            assert step["StepStatus"] == "Succeeded"
             if _CREATE_MODEL_NAME_BASE in step["StepName"]:
                 assert step["Metadata"][_CREATE_MODEL_TYPE]
-        assert len(execution2_steps) == 3
+        assert len(execution_steps) == 3
     finally:
         try:
             pipeline.delete()
@@ -177,10 +152,106 @@ def test_conditional_pytorch_training_model_registration(
             pass
 
 
-def test_mxnet_model_registration(
+def test_pytorch_training_model_registration_and_creation_with_custom_inference(
     pipeline_session,
     role,
-    cpu_instance_type,
+    pipeline_name,
+):
+    kms_key = get_or_create_kms_key(pipeline_session, role)
+    base_dir = os.path.join(DATA_DIR, "pytorch_mnist")
+    entry_point = os.path.join(base_dir, "mnist.py")
+    input_path = pipeline_session.upload_data(
+        path=os.path.join(base_dir, "training"),
+        key_prefix="integ-test-data/pytorch_mnist/training",
+    )
+    inputs = TrainingInput(s3_data=input_path)
+
+    instance_count = ParameterInteger(name="InstanceCount", default_value=1)
+    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+
+    pytorch_estimator = PyTorch(
+        entry_point=entry_point,
+        role=role,
+        framework_version="1.5.0",
+        py_version="py3",
+        instance_count=instance_count,
+        instance_type=instance_type,
+        sagemaker_session=pipeline_session,
+        output_kms_key=kms_key,
+    )
+    train_step_args = pytorch_estimator.fit(inputs=inputs)
+    step_train = TrainingStep(
+        name="pytorch-train",
+        step_args=train_step_args,
+    )
+    model = Model(
+        name="MyModel",
+        image_uri=pytorch_estimator.training_image_uri(),
+        model_data=step_train.properties.ModelArtifacts.S3ModelArtifacts,
+        sagemaker_session=pipeline_session,
+        role=role,
+        entry_point=entry_point,
+        source_dir=base_dir,
+        model_kms_key=kms_key,
+    )
+    # register model with runtime repack
+    regis_model_step_args = model.register(
+        content_types=["text/csv"],
+        response_types=["text/csv"],
+        inference_instances=["ml.t2.medium", "ml.m5.large"],
+        transform_instances=["ml.m5.large"],
+        description="test-description",
+        model_package_group_name=f"{pipeline_name}TestModelPackageGroup",
+    )
+    step_model_regis = ModelStep(
+        name="pytorch-register-model",
+        step_args=regis_model_step_args,
+    )
+
+    create_model_step_args = model.create(
+        instance_type="ml.m5.large",
+        accelerator_type="ml.eia1.medium",
+    )
+
+    step_model_create = ModelStep(
+        name="pytorch-model",
+        step_args=create_model_step_args,
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[instance_count, instance_type],
+        steps=[step_train, step_model_regis, step_model_create],
+        sagemaker_session=pipeline_session,
+    )
+
+    try:
+        pipeline.create(role)
+        execution = pipeline.start(parameters={})
+
+        try:
+            execution.wait(delay=30, max_attempts=60)
+        except WaiterError:
+            pass
+        execution_steps = execution.list_steps()
+        for step in execution_steps:
+            assert not step.get("FailureReason", None)
+            assert step["StepStatus"] == "Succeeded"
+            if _REGISTER_MODEL_NAME_BASE in step["StepName"]:
+                assert step["Metadata"][_REGISTER_MODEL_TYPE]
+            if _CREATE_MODEL_NAME_BASE in step["StepName"]:
+                assert step["Metadata"][_CREATE_MODEL_TYPE]
+        assert len(execution_steps) == 5
+    finally:
+        try:
+            pipeline.delete()
+        except Exception as error:
+            logging.error(error)
+
+
+def test_mxnet_model_registration_with_custom_inference(
+    pipeline_session,
+    role,
     pipeline_name,
 ):
     base_dir = os.path.join(DATA_DIR, "mxnet_mnist")
@@ -191,6 +262,7 @@ def test_mxnet_model_registration(
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
     instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
 
+    # No runtime repack needed as the model_data is not a PipelineVariable
     model = MXNetModel(
         entry_point=entry_point,
         source_dir=source_dir,
@@ -255,7 +327,7 @@ def test_mxnet_model_registration(
             logging.error(error)
 
 
-def test_model_registration_with_drift_check_baselines(
+def test_model_registration_with_drift_check_baselines_and_model_metrics(
     pipeline_session,
     role,
     pipeline_name,
@@ -456,126 +528,6 @@ def test_model_registration_with_drift_check_baselines(
             logging.error(error)
 
 
-def test_model_registration_with_model_repack(
-    pipeline_session,
-    role,
-    pipeline_name,
-):
-    kms_key = get_or_create_kms_key(pipeline_session, role)
-    base_dir = os.path.join(DATA_DIR, "pytorch_mnist")
-    entry_point = os.path.join(base_dir, "mnist.py")
-    input_path = pipeline_session.upload_data(
-        path=os.path.join(base_dir, "training"),
-        key_prefix="integ-test-data/pytorch_mnist/training",
-    )
-    inputs = TrainingInput(s3_data=input_path)
-
-    instance_count = ParameterInteger(name="InstanceCount", default_value=1)
-    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
-    good_enough_input = ParameterInteger(name="GoodEnoughInput", default_value=1)
-
-    pytorch_estimator = PyTorch(
-        entry_point=entry_point,
-        role=role,
-        framework_version="1.5.0",
-        py_version="py3",
-        instance_count=instance_count,
-        instance_type=instance_type,
-        sagemaker_session=pipeline_session,
-        output_kms_key=kms_key,
-    )
-    train_step_args = pytorch_estimator.fit(inputs=inputs)
-    step_train = TrainingStep(
-        name="pytorch-train",
-        step_args=train_step_args,
-    )
-    model = Model(
-        name="MyModel",
-        image_uri=pytorch_estimator.training_image_uri(),
-        model_data=step_train.properties.ModelArtifacts.S3ModelArtifacts,
-        sagemaker_session=pipeline_session,
-        role=role,
-        entry_point=entry_point,
-        source_dir=base_dir,
-        model_kms_key=kms_key,
-    )
-    # register model with runtime repack
-    regis_model_step_args = model.register(
-        content_types=["text/csv"],
-        response_types=["text/csv"],
-        inference_instances=["ml.t2.medium", "ml.m5.large"],
-        transform_instances=["ml.m5.large"],
-        description="test-description",
-        model_package_group_name=f"{pipeline_name}TestModelPackageGroup",
-    )
-    step_model_regis = ModelStep(
-        name="pytorch-register-model",
-        step_args=regis_model_step_args,
-    )
-
-    # create model without runtime repack
-    model.entry_point = None
-    model.source_dir = None
-    create_model_step_args = model.create(
-        instance_type="ml.m5.large",
-        accelerator_type="ml.eia1.medium",
-    )
-
-    step_model_create = ModelStep(
-        name="pytorch-model",
-        step_args=create_model_step_args,
-    )
-
-    step_cond = ConditionStep(
-        name="cond-good-enough",
-        conditions=[ConditionGreaterThanOrEqualTo(left=good_enough_input, right=1)],
-        if_steps=[step_model_regis],
-        else_steps=[step_model_create],
-        depends_on=[step_train],
-    )
-
-    pipeline = Pipeline(
-        name=pipeline_name,
-        parameters=[good_enough_input, instance_count, instance_type],
-        steps=[step_train, step_cond],
-        sagemaker_session=pipeline_session,
-    )
-
-    try:
-        pipeline.create(role)
-        execution1 = pipeline.start(parameters={})
-        execution2 = pipeline.start(parameters={"GoodEnoughInput": 0})
-
-        try:
-            execution1.wait(delay=30, max_attempts=60)
-        except WaiterError:
-            pass
-        execution1_steps = execution1.list_steps()
-        for step in execution1_steps:
-            assert not step.get("FailureReason", None)
-            assert step["StepStatus"] == "Succeeded"
-            if _REGISTER_MODEL_NAME_BASE in step["StepName"]:
-                assert step["Metadata"][_REGISTER_MODEL_TYPE]
-        assert len(execution1_steps) == 4
-
-        try:
-            execution2.wait(delay=30, max_attempts=60)
-        except WaiterError:
-            pass
-        execution2_steps = execution2.list_steps()
-        for step in execution2_steps:
-            assert not step.get("FailureReason", None)
-            assert step["StepStatus"] == "Succeeded"
-            if _CREATE_MODEL_NAME_BASE in step["StepName"]:
-                assert step["Metadata"][_CREATE_MODEL_TYPE]
-        assert len(execution2_steps) == 3
-    finally:
-        try:
-            pipeline.delete()
-        except Exception as error:
-            logging.error(error)
-
-
 def test_model_registration_with_tensorflow_model_with_pipeline_model(
     pipeline_session, role, tf_full_version, tf_full_py_version, pipeline_name
 ):
@@ -652,5 +604,207 @@ def test_model_registration_with_tensorflow_model_with_pipeline_model(
     finally:
         try:
             pipeline.delete()
+        except Exception as error:
+            logging.error(error)
+
+
+# E2E tests
+@pytest.mark.skip(
+    reason="""Skip this test as when running in parallel,
+    it can lead to XGBoost endpoint conflicts
+    and cause the test_inference_pipeline_model_deploy_and_update_endpoint to fail.
+    Have created a backlog task for this and will remove the skip once issue resolved"""
+)
+def test_xgboost_model_register_and_deploy_with_runtime_repack(
+    pipeline_session, sagemaker_session, role, pipeline_name
+):
+    # Assign entry_point and enable_network_isolation to the model
+    # which will trigger a model runtime repacking and update the container env with
+    # SAGEMAKER_SUBMIT_DIRECTORY=/opt/ml/model/code
+    endpoint_name = unique_name_from_base("model-xgboost-integ")
+    model_package_group_name = f"{pipeline_name}TestModelPackageGroup"
+    xgb_model_data_s3 = pipeline_session.upload_data(
+        path=os.path.join(_XGBOOST_PATH, "xgb_model.tar.gz"),
+        key_prefix="integ-test-data/xgboost/model",
+    )
+    xgb_model_data_param = ParameterString(name="ModelData", default_value=xgb_model_data_s3)
+    xgb_model = XGBoostModel(
+        model_data=xgb_model_data_param,
+        framework_version="1.3-1",
+        role=role,
+        sagemaker_session=pipeline_session,
+        entry_point=os.path.join(_XGBOOST_PATH, "inference.py"),
+        enable_network_isolation=True,
+    )
+    step_args = xgb_model.register(
+        content_types=["application/json"],
+        response_types=["application/json"],
+        inference_instances=["ml.m5.large"],
+        transform_instances=["ml.m5.large"],
+        model_package_group_name=model_package_group_name,
+        approval_status="Approved",
+    )
+    step_model = ModelStep(
+        name="MyModelStep",
+        step_args=step_args,
+    )
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[xgb_model_data_param],
+        steps=[step_model],
+        sagemaker_session=pipeline_session,
+    )
+    try:
+        pipeline.create(role)
+        execution = pipeline.start(parameters={})
+        try:
+            execution.wait(delay=30, max_attempts=60)
+        except WaiterError:
+            pass
+
+        # Verify the pipeline execution succeeded
+        step_register_model = None
+        execution_steps = execution.list_steps()
+        for step in execution_steps:
+            assert not step.get("FailureReason", None)
+            assert step["StepStatus"] == "Succeeded"
+            if _REGISTER_MODEL_NAME_BASE in step["StepName"]:
+                step_register_model = step
+        assert len(execution_steps) == 2
+        assert step_register_model
+
+        # Verify the registered model can work as expected
+        with timeout_and_delete_endpoint_by_name(
+            endpoint_name=endpoint_name, sagemaker_session=pipeline_session
+        ):
+            model_pkg_arn = step_register_model["Metadata"][_REGISTER_MODEL_TYPE]["Arn"]
+            response = pipeline_session.sagemaker_client.describe_model_package(
+                ModelPackageName=model_pkg_arn
+            )
+            model_package = ModelPackage(
+                role=role,
+                model_data=response["InferenceSpecification"]["Containers"][0]["ModelDataUrl"],
+                model_package_arn=model_pkg_arn,
+                sagemaker_session=sagemaker_session,
+            )
+            model_package.deploy(
+                initial_instance_count=1,
+                instance_type="ml.m5.large",
+                endpoint_name=endpoint_name,
+            )
+            predictor = XGBoostPredictor(
+                endpoint_name=endpoint_name,
+                sagemaker_session=pipeline_session,
+            )
+            _, *features = _XGBOOST_TEST_DATA.strip().split()
+            test_data = " ".join(["-99"] + features)
+            response = predictor.predict(test_data)
+            assert len(response) == 1
+            # extra data are appended by the inference.py
+            assert len(response[0]) > 1
+    finally:
+        try:
+            pipeline.delete()
+            pipeline_session.sagemaker_client.delete_model_package(
+                ModelPackageName=model_package.model_package_arn
+            )
+            pipeline_session.sagemaker_client.delete_model_package_group(
+                ModelPackageGroupName=model_package_group_name
+            )
+        except Exception as error:
+            logging.error(error)
+
+
+def test_tensorflow_model_register_and_deploy_with_runtime_repack(
+    pipeline_session, sagemaker_session, role, pipeline_name, tensorflow_inference_latest_version
+):
+    # Assign entry_point to the model
+    # which will trigger a model runtime repacking
+    endpoint_name = unique_name_from_base("model-tensorflow-integ")
+    model_package_group_name = f"{pipeline_name}TestModelPackageGroup"
+    tf_model_data_s3 = pipeline_session.upload_data(
+        path=os.path.join(DATA_DIR, "tensorflow-serving-test-model.tar.gz"),
+        key_prefix="integ-test-data/tensorflow/models",
+    )
+    tf_model_data_param = ParameterString(name="ModelData", default_value=tf_model_data_s3)
+    tf_model = TensorFlowModel(
+        model_data=tf_model_data_param,
+        framework_version=tensorflow_inference_latest_version,
+        role=role,
+        sagemaker_session=pipeline_session,
+        entry_point=os.path.join(_TENSORFLOW_PATH, "inference.py"),
+        dependencies=[os.path.join(_TENSORFLOW_PATH, "dependency.py")],
+    )
+    step_args = tf_model.register(
+        content_types=["application/json"],
+        response_types=["application/json"],
+        inference_instances=["ml.m5.large"],
+        transform_instances=["ml.m5.large"],
+        model_package_group_name=model_package_group_name,
+        approval_status="Approved",
+    )
+    step_model = ModelStep(
+        name="MyModelStep",
+        step_args=step_args,
+    )
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[tf_model_data_param],
+        steps=[step_model],
+        sagemaker_session=pipeline_session,
+    )
+    try:
+        pipeline.create(role)
+        execution = pipeline.start(parameters={})
+        try:
+            execution.wait(delay=30, max_attempts=60)
+        except WaiterError:
+            pass
+
+        # Verify the pipeline execution succeeded
+        step_register_model = None
+        execution_steps = execution.list_steps()
+        for step in execution_steps:
+            assert not step.get("FailureReason", None)
+            assert step["StepStatus"] == "Succeeded"
+            if _REGISTER_MODEL_NAME_BASE in step["StepName"]:
+                step_register_model = step
+        assert len(execution_steps) == 2
+        assert step_register_model
+
+        # Verify the registered model can work as expected
+        with timeout_and_delete_endpoint_by_name(
+            endpoint_name=endpoint_name, sagemaker_session=pipeline_session
+        ):
+            model_pkg_arn = step_register_model["Metadata"][_REGISTER_MODEL_TYPE]["Arn"]
+            response = pipeline_session.sagemaker_client.describe_model_package(
+                ModelPackageName=model_pkg_arn
+            )
+            model_package = ModelPackage(
+                role=role,
+                model_data=response["InferenceSpecification"]["Containers"][0]["ModelDataUrl"],
+                model_package_arn=model_pkg_arn,
+                sagemaker_session=sagemaker_session,
+            )
+            model_package.deploy(
+                initial_instance_count=1,
+                instance_type="ml.m5.large",
+                endpoint_name=endpoint_name,
+            )
+            predictor = TensorFlowPredictor(
+                endpoint_name=endpoint_name,
+                sagemaker_session=pipeline_session,
+            )
+            response = predictor.predict(_TENSORFLOW_TEST_DATA)
+            assert response == {"predictions": [4.0, 4.5, 6.0]}
+    finally:
+        try:
+            pipeline.delete()
+            pipeline_session.sagemaker_client.delete_model_package(
+                ModelPackageName=model_package.model_package_arn
+            )
+            pipeline_session.sagemaker_client.delete_model_package_group(
+                ModelPackageGroupName=model_package_group_name
+            )
         except Exception as error:
             logging.error(error)
