@@ -157,10 +157,6 @@ def create_jumpstart_model_table():
     If you want to automatically use the latest version of the model, use "*" for the `model_version` attribute.
     We highly suggest pinning an exact model version however.\n"""
     )
-    file_content.append(
-        """
-    Click on the Problem Type to navigate to the source of the model.\n"""
-    )
     file_content.append("\n")
     file_content.append(".. list-table:: Available Models\n")
     file_content.append("   :widths: 50 20 20 20 30 20\n")
