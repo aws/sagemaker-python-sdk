@@ -183,13 +183,9 @@ def create_jumpstart_model_table():
         file_content.append("     - {}\n".format(model["version"]))
         file_content.append("     - {}\n".format(model["min_version"]))
         file_content.append("     - {}\n".format(model_task))
-<<<<<<< HEAD
         file_content.append(
             "     - `{} <{}>`__ |external-link|\n".format(model_source, model_spec["url"])
         )
-=======
-        file_content.append("     - `{} <{}>`__ |external-link|\n".format(model_source, model_spec["url"]))
->>>>>>> bf0696325ba49810bdefd91e3e0d0e76228eae65
 
     f = open("doc_utils/jumpstart.rst", "w")
     f.writelines(file_content)
