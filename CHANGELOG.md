@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.88.2 (2022-05-02)
+
+### Bug Fixes and Other Changes
+
+ * Automl integ describe job check
+ * Implement subclass compatibility for workflow pipeline job steps
+
 ## v2.88.1 (2022-04-27)
 
 ### Bug Fixes and Other Changes
