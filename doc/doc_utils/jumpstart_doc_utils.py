@@ -103,26 +103,26 @@ def get_model_task(id):
 
 
 def get_model_source(url):
-    if 'tfhub' in url:
-        return 'Tensorflow Hub'
-    if 'pytorch' in url:
-        return 'Pytorch Hub'
-    if 'huggingface' in url:
+    if "tfhub" in url:
+        return "Tensorflow Hub"
+    if "pytorch" in url:
+        return "Pytorch Hub"
+    if "huggingface" in url:
         return "HuggingFace"
-    if 'catboost' in url:
+    if "catboost" in url:
         return "Catboost"
-    if 'gluon' in url:
+    if "gluon" in url:
         return "GluonCV"
-    if 'catboost' in url:
-        return 'Catboost'
-    if 'lightgbm' in url:
-        return 'LightGBM'
-    if 'xgboost' in url:
-        return 'XGBoost'
-    if 'scikit' in url:
-        return 'ScikitLearn'
+    if "catboost" in url:
+        return "Catboost"
+    if "lightgbm" in url:
+        return "LightGBM"
+    if "xgboost" in url:
+        return "XGBoost"
+    if "scikit" in url:
+        return "ScikitLearn"
     else:
-        return 'Source'
+        return "Source"
 
 
 def create_jumpstart_model_table():
@@ -140,7 +140,7 @@ def create_jumpstart_model_table():
 
     file_content = []
 
-    file_content.append('.. |external-link| raw:: html\n\n')
+    file_content.append(".. |external-link| raw:: html\n\n")
     file_content.append('   <i class="fa fa-external-link"></i>\n\n')
 
     file_content.append("==================================\n")
@@ -183,7 +183,9 @@ def create_jumpstart_model_table():
         file_content.append("     - {}\n".format(model["version"]))
         file_content.append("     - {}\n".format(model["min_version"]))
         file_content.append("     - {}\n".format(model_task))
-        file_content.append("     - `{} <{}>`__ |external-link|\n".format(model_source, model_spec["url"]))
+        file_content.append(
+            "     - `{} <{}>`__ |external-link|\n".format(model_source, model_spec["url"])
+        )
 
     f = open("doc_utils/jumpstart.rst", "w")
     f.writelines(file_content)
