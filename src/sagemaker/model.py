@@ -17,7 +17,6 @@ import abc
 import json
 import logging
 import os
-import pdb
 import re
 import copy
 
@@ -455,7 +454,6 @@ class Model(ModelBase):
             if is_pipeline_variable(self.model_data):
                 # model is not yet there, defer repacking to later during pipeline execution
                 return
-            pdb.set_trace()
             if local_code and self.model_data.startswith("file://"):
                 repacked_model_data = self.model_data
             else:
