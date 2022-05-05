@@ -16,9 +16,9 @@ from __future__ import absolute_import, print_function
 import json
 import logging
 import os
-from typing import Any, Dict
 import uuid
 from abc import ABCMeta, abstractmethod
+from typing import Any, Dict
 
 from six import string_types, with_metaclass
 from six.moves.urllib.parse import urlparse
@@ -75,6 +75,10 @@ from sagemaker.utils import (
     name_from_base,
 )
 from sagemaker.workflow import is_pipeline_variable
+from sagemaker.workflow.pipeline_context import (
+    PipelineSession,
+    runnable_by_pipeline,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -721,6 +725,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             dependencies=self.dependencies,
             kms_key=kms_key,
             s3_resource=self.sagemaker_session.s3_resource,
+            settings=self.sagemaker_session.settings,
         )
 
     def _prepare_rules(self):
@@ -896,6 +901,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             )
         return None
 
+    @runnable_by_pipeline
     def fit(self, inputs=None, wait=True, logs="All", job_name=None, experiment_config=None):
         """Train a model using the input training dataset.
 
@@ -1341,7 +1347,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
     @property
     def model_data(self):
         """str: The model location in S3. Only set if Estimator has been ``fit()``."""
-        if self.latest_training_job is not None:
+        if self.latest_training_job is not None and not isinstance(
+            self.sagemaker_session, PipelineSession
+        ):
             model_uri = self.sagemaker_session.sagemaker_client.describe_training_job(
                 TrainingJobName=self.latest_training_job.name
             )["ModelArtifacts"]["S3ModelArtifacts"]
@@ -1767,6 +1775,7 @@ class _TrainingJob(_Job):
             all information about the started training job.
         """
         train_args = cls._get_train_args(estimator, inputs, experiment_config)
+
         estimator.sagemaker_session.train(**train_args)
 
         return cls(estimator.sagemaker_session, estimator._current_job_name)

@@ -19,11 +19,11 @@ import hashlib
 from urllib.parse import unquote, urlparse
 from _hashlib import HASH as Hash
 
+from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.entities import (
     Entity,
     RequestType,
 )
-from sagemaker.workflow.step_collections import StepCollection
 
 BUF_SIZE = 65536  # 64KiB
 
