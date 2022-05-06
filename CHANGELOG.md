@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.88.3 (2022-05-06)
+
+### Bug Fixes and Other Changes
+
+ * deprecate: Remove deprecated argument s3_data_distribution_type
+ * Feat/jumpstart model table update
+
 ## v2.88.2 (2022-05-02)
 
 ### Bug Fixes and Other Changes
