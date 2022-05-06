@@ -24,6 +24,7 @@ import stopit
 
 import tests.integ.lock as lock
 from tests.integ import DATA_DIR
+from mock import Mock, ANY
 
 from sagemaker import image_uris
 
@@ -221,6 +222,13 @@ def test_mxnet_local_data_local_script(
 ):
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
     script_path = os.path.join(data_path, "mnist.py")
+    local_no_s3_session = LocalNoS3Session()
+    local_no_s3_session.boto_session.resource = Mock(
+        side_effect=local_no_s3_session.boto_session.resource
+    )
+    local_no_s3_session.boto_session.client = Mock(
+        side_effect=local_no_s3_session.boto_session.client
+    )
 
     mx = MXNet(
         entry_point=script_path,
@@ -229,7 +237,7 @@ def test_mxnet_local_data_local_script(
         instance_type="local",
         framework_version=mxnet_training_latest_version,
         py_version=mxnet_training_latest_py_version,
-        sagemaker_session=LocalNoS3Session(),
+        sagemaker_session=local_no_s3_session,
     )
 
     train_input = "file://" + os.path.join(data_path, "train")
@@ -243,6 +251,11 @@ def test_mxnet_local_data_local_script(
             predictor = mx.deploy(1, "local", endpoint_name=endpoint_name)
             data = numpy.zeros(shape=(1, 1, 28, 28))
             predictor.predict(data)
+            # check if no boto_session s3 calls were made
+            with pytest.raises(AssertionError):
+                local_no_s3_session.boto_session.resource.assert_called_with("s3", region_name=ANY)
+            with pytest.raises(AssertionError):
+                local_no_s3_session.boto_session.client.assert_called_with("s3", region_name=ANY)
         finally:
             predictor.delete_endpoint()
 
