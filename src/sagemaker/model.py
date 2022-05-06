@@ -305,6 +305,7 @@ class Model(ModelBase):
         description=None,
         drift_check_baselines=None,
         customer_metadata_properties=None,
+        validation_specification=None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -360,6 +361,7 @@ class Model(ModelBase):
             container_def_list=[container_def],
             drift_check_baselines=drift_check_baselines,
             customer_metadata_properties=customer_metadata_properties,
+            validation_specification=validation_specification,
         )
         model_package = self.sagemaker_session.create_model_package_from_containers(
             **model_pkg_args
@@ -454,9 +456,14 @@ class Model(ModelBase):
             if is_pipeline_variable(self.model_data):
                 # model is not yet there, defer repacking to later during pipeline execution
                 return
-
-            bucket = self.bucket or self.sagemaker_session.default_bucket()
-            repacked_model_data = "s3://" + "/".join([bucket, key_prefix, "model.tar.gz"])
+            if local_code and self.model_data.startswith("file://"):
+                repacked_model_data = self.model_data
+            else:
+                bucket = self.bucket or self.sagemaker_session.default_bucket()
+                repacked_model_data = "s3://" + "/".join([bucket, key_prefix, "model.tar.gz"])
+                self.uploaded_code = fw_utils.UploadedCode(
+                    s3_prefix=repacked_model_data, script_name=os.path.basename(self.entry_point)
+                )
 
             utils.repack_model(
                 inference_script=self.entry_point,
@@ -469,9 +476,6 @@ class Model(ModelBase):
             )
 
             self.repacked_model_data = repacked_model_data
-            self.uploaded_code = fw_utils.UploadedCode(
-                s3_prefix=self.repacked_model_data, script_name=os.path.basename(self.entry_point)
-            )
 
     def _script_mode_env_vars(self):
         """Returns a mapping of environment variables for script mode execution"""
