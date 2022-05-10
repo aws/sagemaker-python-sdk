@@ -5,7 +5,7 @@ Release Notes
 New features, bug fixes, and improvements are regularly made to the SageMaker
 distributed model parallel library.
 
-SageMaker Distributed Model Parallel 1.8.1 Release Notes
+SageMaker Distributed Model Parallel 1.9.0 Release Notes
 ========================================================
 
 *Date: May. 3. 2022*
