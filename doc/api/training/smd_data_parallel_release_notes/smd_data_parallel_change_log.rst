@@ -33,7 +33,9 @@ This version passed benchmark testing and is migrated to the following AWS Deep 
 
 Binary file of this version of the library for custom container users:
 
-* https://smdataparallel.s3.amazonaws.com/binary/pytorch/1.11.0/cu113/2022-04-14/smdistributed_dataparallel-1.4.1-cp38-cp38-linux_x86_64.whl
+  .. code::
+
+    https://smdataparallel.s3.amazonaws.com/binary/pytorch/1.11.0/cu113/2022-04-14/smdistributed_dataparallel-1.4.1-cp38-cp38-linux_x86_64.whl
 
 
 ----

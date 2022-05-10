@@ -118,7 +118,7 @@ This version passed benchmark testing and is migrated to the following AWS Deep 
       763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training:1.10.2-transformers4.17.0-gpu-py38-cu113-ubuntu20.04
 
 
-* The binary file of this version of the library for custom container users
+The binary file of this version of the library for custom container users:
 
     .. code::
 
