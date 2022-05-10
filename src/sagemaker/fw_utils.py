@@ -93,6 +93,9 @@ SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
         "1.9.1",
         "1.10",
         "1.10.0",
+        "1.10.2",
+        "1.11",
+        "1.11.0",
     ],
 }
 SMDISTRIBUTED_SUPPORTED_STRATEGIES = ["dataparallel", "modelparallel"]
