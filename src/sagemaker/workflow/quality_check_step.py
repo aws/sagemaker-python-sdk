@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 from abc import ABC
-from typing import List, Union
+from typing import List, Union, Optional
 import os
 import pathlib
 import attr
@@ -28,6 +28,7 @@ from sagemaker.workflow.entities import RequestType
 from sagemaker.workflow.properties import (
     Properties,
 )
+from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.steps import Step, StepTypeEnum, CacheConfig
 from sagemaker.workflow.check_job_config import CheckJobConfig
 
@@ -125,7 +126,7 @@ class QualityCheckStep(Step):
         display_name: str = None,
         description: str = None,
         cache_config: CacheConfig = None,
-        depends_on: Union[List[str], List[Step]] = None,
+        depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
     ):
         """Constructs a QualityCheckStep.
 
@@ -150,8 +151,9 @@ class QualityCheckStep(Step):
             description (str): The description of the QualityCheckStep step (default: None).
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance
                 (default: None).
-            depends_on (List[str] or List[Step]): A list of step names or step instances
-                this `sagemaker.workflow.steps.QualityCheckStep` depends on (default: None).
+            depends_on (List[Union[str, Step, StepCollection]]): A list of `Step`/`StepCollection`
+                names or `Step` instances or `StepCollection` instances that this `QualityCheckStep`
+                depends on (default: None).
         """
         if not isinstance(quality_check_config, DataQualityCheckConfig) and not isinstance(
             quality_check_config, ModelQualityCheckConfig

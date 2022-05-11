@@ -17,7 +17,7 @@ import os
 import shutil
 import tarfile
 import tempfile
-from typing import List, Union, Optional
+from typing import List, Union, Optional, TYPE_CHECKING
 from sagemaker import image_uris
 from sagemaker.inputs import TrainingInput
 from sagemaker.estimator import EstimatorBase
@@ -33,6 +33,9 @@ from sagemaker.workflow.steps import (
 )
 from sagemaker.utils import _save_model, download_file_from_url
 from sagemaker.workflow.retry import RetryPolicy
+
+if TYPE_CHECKING:
+    from sagemaker.workflow.step_collections import StepCollection
 
 FRAMEWORK_VERSION = "0.23-1"
 INSTANCE_TYPE = "ml.m5.large"
@@ -57,7 +60,7 @@ class _RepackModelStep(TrainingStep):
         description: str = None,
         source_dir: str = None,
         dependencies: List = None,
-        depends_on: Union[List[str], List[Step]] = None,
+        depends_on: Optional[List[Union[str, Step, "StepCollection"]]] = None,
         retry_policies: List[RetryPolicy] = None,
         subnets=None,
         security_group_ids=None,
@@ -124,8 +127,9 @@ class _RepackModelStep(TrainingStep):
                         >>>     |------ virtual-env
 
                     This is not supported with "local code" in Local Mode.
-            depends_on (List[str] or List[Step]): A list of step names or instances
-                    this step depends on (default: None).
+            depends_on (List[Union[str, Step, StepCollection]]): The list of `Step`/`StepCollection`
+                names or `Step` instances or `StepCollection` instances that the current `Step`
+                depends on (default: None).
             retry_policies (List[RetryPolicy]): The list of retry policies for the current step
                 (default: None).
             subnets (list[str]): List of subnet ids. If not specified, the re-packing
@@ -274,7 +278,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
         compile_model_family=None,
         display_name: str = None,
         description=None,
-        depends_on: Optional[Union[List[str], List[Step]]] = None,
+        depends_on: Optional[List[Union[str, Step, "StepCollection"]]] = None,
         retry_policies: Optional[List[RetryPolicy]] = None,
         tags=None,
         container_def_list=None,
@@ -311,8 +315,9 @@ class _RegisterModelStep(ConfigurableRetryStep):
                 if specified, a compiled model will be used (default: None).
             display_name (str): The display name of this `_RegisterModelStep` step (default: None).
             description (str): Model Package description (default: None).
-            depends_on (List[str] or List[Step]): A list of step names or instances
-                this step depends on (default: None).
+            depends_on (List[Union[str, Step, StepCollection]]): The list of `Step`/`StepCollection`
+                names or `Step` instances or `StepCollection` instances that the current `Step`
+                depends on (default: None).
             retry_policies (List[RetryPolicy]): The list of retry policies for the current step
                 (default: None).
             tags (List[dict[str, str]]): A list of dictionaries containing key-value pairs used to

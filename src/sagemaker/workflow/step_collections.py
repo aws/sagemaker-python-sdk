@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import warnings
-from typing import List, Union
+from typing import List, Union, Optional
 
 import attr
 
@@ -25,15 +25,8 @@ from sagemaker import PipelineModel
 from sagemaker.predictor import Predictor
 from sagemaker.transformer import Transformer
 from sagemaker.workflow.entities import RequestType
-from sagemaker.workflow.steps import (
-    CreateModelStep,
-    Step,
-    TransformStep,
-)
-from sagemaker.workflow._utils import (
-    _RegisterModelStep,
-    _RepackModelStep,
-)
+from sagemaker.workflow.steps import Step, CreateModelStep, TransformStep
+from sagemaker.workflow._utils import _RegisterModelStep, _RepackModelStep
 from sagemaker.workflow.retry import RetryPolicy
 
 
@@ -42,14 +35,24 @@ class StepCollection:
     """A wrapper of pipeline steps for workflow.
 
     Attributes:
+        name (str): The name of the `StepCollection`.
         steps (List[Step]): A list of steps.
     """
 
+    name: str = attr.ib()
     steps: List[Step] = attr.ib(factory=list)
 
     def request_dicts(self) -> List[RequestType]:
         """Get the request structure for workflow service calls."""
         return [step.to_request() for step in self.steps]
+
+    @property
+    def properties(self):
+        """The properties of the particular `StepCollection`."""
+        if not self.steps:
+            return None
+        size = len(self.steps)
+        return self.steps[size - 1].properties
 
 
 class RegisterModel(StepCollection):  # pragma: no cover
@@ -64,7 +67,7 @@ class RegisterModel(StepCollection):  # pragma: no cover
         transform_instances,
         estimator: EstimatorBase = None,
         model_data=None,
-        depends_on: Union[List[str], List[Step]] = None,
+        depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
         repack_model_step_retry_policies: List[RetryPolicy] = None,
         register_model_step_retry_policies: List[RetryPolicy] = None,
         model_package_group_name=None,
@@ -92,8 +95,9 @@ class RegisterModel(StepCollection):  # pragma: no cover
                 generate inferences in real-time (default: None).
             transform_instances (list): A list of the instance types on which a transformation
                 job can be run or on which an endpoint can be deployed (default: None).
-            depends_on (List[str] or List[Step]): The list of step names or step instances
-                the first step in the collection depends on
+            depends_on (List[Union[str, Step, StepCollection]]): The list of `Step`/`StepCollection`
+                names or `Step` instances or `StepCollection` instances that the first step
+                in the collection depends on (default: None).
             repack_model_step_retry_policies (List[RetryPolicy]): The list of retry policies
                 for the repack model step
             register_model_step_retry_policies (List[RetryPolicy]): The list of retry policies
@@ -121,6 +125,7 @@ class RegisterModel(StepCollection):  # pragma: no cover
 
             **kwargs: additional arguments to `create_model`.
         """
+        self.name = name
         steps: List[Step] = []
         repack_model = False
         self.model_list = None
@@ -286,7 +291,7 @@ class EstimatorTransformer(StepCollection):
         max_payload=None,
         tags=None,
         volume_kms_key=None,
-        depends_on: Union[List[str], List[Step]] = None,
+        depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
         # step retry policies
         repack_model_step_retry_policies: List[RetryPolicy] = None,
         model_step_retry_policies: List[RetryPolicy] = None,
@@ -327,8 +332,9 @@ class EstimatorTransformer(StepCollection):
                 it will be the format of the batch transform output.
             env (dict): The Environment variables to be set for use during the
                 transform job (default: None).
-            depends_on (List[str] or List[Step]): The list of step names or step instances
-                the first step in the collection depends on
+            depends_on (List[Union[str, Step, StepCollection]]): The list of `Step`/`StepCollection`
+                names or `Step` instances or `StepCollection` instances that the first step
+                in the collection depends on (default: None).
             repack_model_step_retry_policies (List[RetryPolicy]): The list of retry policies
                 for the repack model step
             model_step_retry_policies (List[RetryPolicy]): The list of retry policies for
@@ -336,6 +342,7 @@ class EstimatorTransformer(StepCollection):
             transform_step_retry_policies (List[RetryPolicy]): The list of retry policies for
                 transform step
         """
+        self.name = name
         steps = []
         if "entry_point" in kwargs:
             entry_point = kwargs.get("entry_point", None)
