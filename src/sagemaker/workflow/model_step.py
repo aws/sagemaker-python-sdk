@@ -55,7 +55,7 @@ class ModelStep(StepCollection):
                 that this `ModelStep` depends on.
                 If a listed `Step` name does not exist, an error is returned (default: None).
             retry_policies (List[RetryPolicy] or Dict[str, List[RetryPolicy]]): The list of retry
-                policies for the `ModelStep`.
+                policies for the `ModelStep` (default: None).
             display_name (str): The display name of the `ModelStep`.
                 The display name provides better UI readability. (default: None).
             description (str): The description of the `ModelStep` (default: None).
@@ -107,8 +107,9 @@ class ModelStep(StepCollection):
             self._create_model_retry_policies = retry_policies
             self._register_model_retry_policies = retry_policies
             self._repack_model_retry_policies = retry_policies
-        self._repack()
 
+        if self._need_runtime_repack:
+            self._append_repack_model_step()
         if self._register_model_args:
             self._append_register_model_step()
         else:
@@ -140,12 +141,8 @@ class ModelStep(StepCollection):
             create_model_step.add_depends_on(self.depends_on)
         self.steps.append(create_model_step)
 
-    def _repack(self):
-        """Add `_RepackModelStep` for the runtime repack"""
-
-        if not self._need_runtime_repack:
-            return
-
+    def _append_repack_model_step(self):
+        """Create and append a `_RepackModelStep` for the runtime repack"""
         if isinstance(self._model, PipelineModel):
             model_list = self._model.models
         elif isinstance(self._model, Model):

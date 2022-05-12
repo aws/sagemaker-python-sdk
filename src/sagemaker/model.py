@@ -405,6 +405,7 @@ class Model(ModelBase):
                 https://boto3.amazonaws.com/v1/documentation
                 /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
         """
+        # TODO: we should replace _create_sagemaker_model() with create()
         self._create_sagemaker_model(
             instance_type=instance_type,
             accelerator_type=accelerator_type,

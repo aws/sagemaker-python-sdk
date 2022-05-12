@@ -76,8 +76,7 @@ class _RepackModelStep(TrainingStep):
                     endpoints use this role to access training data and model
                     artifacts. After the endpoint is created, the inference code
                     might use the IAM role, if it needs to access an AWS resource.
-            model_data (str): The S3 location of a SageMaker model data
-                    ``.tar.gz`` file.
+            model_data (str): The S3 location of a SageMaker model data `.tar.gz` file.
             entry_point (str): Path (absolute or relative) to the local Python
                     source file which should be executed as the entry point to
                     inference. If ``source_dir`` is specified, then ``entry_point``
@@ -94,6 +93,8 @@ class _RepackModelStep(TrainingStep):
                         >>>         |----- test.py
 
                         You can assign entry_point='src/train.py'.
+            display_name (str): The display name of this `_RepackModelStep` step (default: None).
+            description (str): The description of this `_RepackModelStep` (default: None).
             source_dir (str): A relative location to a directory with other training
                 or model hosting source code dependencies aside from the entry point
                 file in the Git repo (default: None). Structure within this
@@ -124,12 +125,14 @@ class _RepackModelStep(TrainingStep):
 
                     This is not supported with "local code" in Local Mode.
             depends_on (List[str] or List[Step]): A list of step names or instances
-                    this step depends on
+                    this step depends on (default: None).
             retry_policies (List[RetryPolicy]): The list of retry policies for the current step
+                (default: None).
             subnets (list[str]): List of subnet ids. If not specified, the re-packing
-                    job will be created without VPC config.
+                    job will be created without VPC config (default: None).
             security_group_ids (list[str]): List of security group ids. If not
-                specified, the re-packing job will be created without VPC config.
+                specified, the re-packing job will be created without VPC config (default: None).
+            **kwargs: additional arguments for the repacking job.
         """
         self._model_data = model_data
         self.sagemaker_session = sagemaker_session
@@ -283,36 +286,38 @@ class _RegisterModelStep(ConfigurableRetryStep):
 
         Args:
             name (str): The name of the training step.
-            step_args (dict): The arguments for the `_RegisterModelStep` definition (default: None).
-            estimator (EstimatorBase): A `sagemaker.estimator.EstimatorBase` instance
+            step_args (dict): The arguments for this `_RegisterModelStep` definition
                 (default: None).
-            model_data: the S3 URI to the model data from training (default: None).
-            content_types (list): The supported MIME types for the
-                input data (default: None).
-            response_types (list): The supported MIME types for
-                the output data (default: None).
+            content_types (list): The supported MIME types for the input data (default: None).
+            response_types (list): The supported MIME types for the output data (default: None).
             inference_instances (list): A list of the instance types that are used to
                 generate inferences in real-time (default: None).
             transform_instances (list): A list of the instance types on which a
                 transformation job can be run or on which an endpoint
                 can be deployed (default: None).
+            estimator (EstimatorBase): A `sagemaker.estimator.EstimatorBase` instance
+                (default: None).
+            model_data: the S3 URI to the model data from training (default: None).
             model_package_group_name (str): Model Package Group name, exclusive to
                 `model_package_name`, using `model_package_group_name`
                 makes the Model Package versioned (default: None).
             model_metrics (ModelMetrics): ModelMetrics object (default: None).
-            metadata_properties (MetadataProperties): MetadataProperties object
-                (default: None).
+            metadata_properties (MetadataProperties): MetadataProperties object (default: None).
             approval_status (str): Model Approval Status, values can be "Approved",
-                "Rejected", or "PendingManualApproval"
-                (default: "PendingManualApproval").
+                "Rejected", or "PendingManualApproval" (default: "PendingManualApproval").
             image_uri (str): The container image uri for Model Package, if not specified,
                 Estimator's training container image will be used (default: None).
             compile_model_family (str): Instance family for compiled model,
                 if specified, a compiled model will be used (default: None).
+            display_name (str): The display name of this `_RegisterModelStep` step (default: None).
             description (str): Model Package description (default: None).
             depends_on (List[str] or List[Step]): A list of step names or instances
                 this step depends on (default: None).
             retry_policies (List[RetryPolicy]): The list of retry policies for the current step
+                (default: None).
+            tags (List[dict[str, str]]): A list of dictionaries containing key-value pairs used to
+                configure the create model package request (default: None).
+            container_def_list (list): A list of container definitions (default: None).
             drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
             customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
                 metadata properties (default: None).

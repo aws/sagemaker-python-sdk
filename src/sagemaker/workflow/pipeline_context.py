@@ -133,7 +133,8 @@ def runnable_by_pipeline(run_func):
     """
 
     def wrapper(*args, **kwargs):
-        if isinstance(args[0].sagemaker_session, PipelineSession):
+        self_instance = args[0]
+        if isinstance(self_instance.sagemaker_session, PipelineSession):
             run_func_params = inspect.signature(run_func).parameters
             arg_list = list(args)
 
@@ -161,14 +162,14 @@ def runnable_by_pipeline(run_func):
                 UserWarning,
             )
             if run_func.__name__ in ["register", "create"]:
-                args[0].sagemaker_session.init_step_arguments(args[0])
+                self_instance.sagemaker_session.init_step_arguments(self_instance)
                 run_func(*args, **kwargs)
-                context = args[0].sagemaker_session.context
-                args[0].sagemaker_session.context = None
+                context = self_instance.sagemaker_session.context
+                self_instance.sagemaker_session.context = None
                 return context
 
             run_func(*args, **kwargs)
-            return args[0].sagemaker_session.context
+            return self_instance.sagemaker_session.context
 
         return run_func(*args, **kwargs)
 

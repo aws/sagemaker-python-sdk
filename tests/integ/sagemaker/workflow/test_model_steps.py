@@ -131,25 +131,41 @@ def test_pytorch_training_model_registration_and_creation_without_custom_inferen
     )
     try:
         pipeline.create(role)
-        execution = pipeline.start(parameters={})
-        try:
-            execution.wait(delay=30, max_attempts=60)
-        except WaiterError:
-            pass
-        execution_steps = execution.list_steps()
-        for step in execution_steps:
-            assert not step.get("FailureReason", None)
-            assert step["StepStatus"] == "Succeeded"
-            if _REGISTER_MODEL_NAME_BASE in step["StepName"]:
-                assert step["Metadata"][_REGISTER_MODEL_TYPE]
-            if _CREATE_MODEL_NAME_BASE in step["StepName"]:
-                assert step["Metadata"][_CREATE_MODEL_TYPE]
-        assert len(execution_steps) == 3
+
+        for _ in retries(
+            max_retry_count=5,
+            exception_message_prefix="Waiting for a successful execution of pipeline",
+            seconds_to_sleep=10,
+        ):
+            execution = pipeline.start(parameters={})
+            try:
+                execution.wait(delay=30, max_attempts=60)
+            except WaiterError:
+                pass
+            execution_steps = execution.list_steps()
+            is_execution_fail = False
+            for step in execution_steps:
+                failure_reason = step.get("FailureReason", "")
+                if failure_reason != "":
+                    logging.error(
+                        f"Pipeline execution failed with error: {failure_reason}." " Retrying.."
+                    )
+                    is_execution_fail = True
+                    break
+                assert step["StepStatus"] == "Succeeded"
+                if _REGISTER_MODEL_NAME_BASE in step["StepName"]:
+                    assert step["Metadata"][_REGISTER_MODEL_TYPE]
+                if _CREATE_MODEL_NAME_BASE in step["StepName"]:
+                    assert step["Metadata"][_CREATE_MODEL_TYPE]
+            if is_execution_fail:
+                continue
+            assert len(execution_steps) == 3
+            break
     finally:
         try:
             pipeline.delete()
-        except Exception:
-            pass
+        except Exception as error:
+            logging.error(error)
 
 
 def test_pytorch_training_model_registration_and_creation_with_custom_inference(
@@ -227,21 +243,36 @@ def test_pytorch_training_model_registration_and_creation_with_custom_inference(
 
     try:
         pipeline.create(role)
-        execution = pipeline.start(parameters={})
 
-        try:
-            execution.wait(delay=30, max_attempts=60)
-        except WaiterError:
-            pass
-        execution_steps = execution.list_steps()
-        for step in execution_steps:
-            assert not step.get("FailureReason", None)
-            assert step["StepStatus"] == "Succeeded"
-            if _REGISTER_MODEL_NAME_BASE in step["StepName"]:
-                assert step["Metadata"][_REGISTER_MODEL_TYPE]
-            if _CREATE_MODEL_NAME_BASE in step["StepName"]:
-                assert step["Metadata"][_CREATE_MODEL_TYPE]
-        assert len(execution_steps) == 5
+        for _ in retries(
+            max_retry_count=5,
+            exception_message_prefix="Waiting for a successful execution of pipeline",
+            seconds_to_sleep=10,
+        ):
+            execution = pipeline.start(parameters={})
+            try:
+                execution.wait(delay=30, max_attempts=60)
+            except WaiterError:
+                pass
+            execution_steps = execution.list_steps()
+            is_execution_fail = False
+            for step in execution_steps:
+                failure_reason = step.get("FailureReason", "")
+                if failure_reason != "":
+                    logging.error(
+                        f"Pipeline execution failed with error: {failure_reason}." " Retrying.."
+                    )
+                    is_execution_fail = True
+                    break
+                assert step["StepStatus"] == "Succeeded"
+                if _REGISTER_MODEL_NAME_BASE in step["StepName"]:
+                    assert step["Metadata"][_REGISTER_MODEL_TYPE]
+                if _CREATE_MODEL_NAME_BASE in step["StepName"]:
+                    assert step["Metadata"][_CREATE_MODEL_TYPE]
+            if is_execution_fail:
+                continue
+            assert len(execution_steps) == 5
+            break
     finally:
         try:
             pipeline.delete()
@@ -588,19 +619,34 @@ def test_model_registration_with_tensorflow_model_with_pipeline_model(
 
     try:
         pipeline.create(role)
-        execution = pipeline.start(parameters={})
-        try:
-            execution.wait(delay=30, max_attempts=60)
-        except WaiterError:
-            pass
-        execution_steps = execution.list_steps()
 
-        for step in execution_steps:
-            assert not step.get("FailureReason", None)
-            assert step["StepStatus"] == "Succeeded"
-            if _REGISTER_MODEL_NAME_BASE in step["StepName"]:
-                assert step["Metadata"][_REGISTER_MODEL_TYPE]
-        assert len(execution_steps) == 3
+        for _ in retries(
+            max_retry_count=5,
+            exception_message_prefix="Waiting for a successful execution of pipeline",
+            seconds_to_sleep=10,
+        ):
+            execution = pipeline.start(parameters={})
+            try:
+                execution.wait(delay=30, max_attempts=60)
+            except WaiterError:
+                pass
+            execution_steps = execution.list_steps()
+            is_execution_fail = False
+            for step in execution_steps:
+                failure_reason = step.get("FailureReason", "")
+                if failure_reason != "":
+                    logging.error(
+                        f"Pipeline execution failed with error: {failure_reason}." " Retrying.."
+                    )
+                    is_execution_fail = True
+                    break
+                assert step["StepStatus"] == "Succeeded"
+                if _REGISTER_MODEL_NAME_BASE in step["StepName"]:
+                    assert step["Metadata"][_REGISTER_MODEL_TYPE]
+            if is_execution_fail:
+                continue
+            assert len(execution_steps) == 3
+            break
     finally:
         try:
             pipeline.delete()
@@ -656,22 +702,38 @@ def test_xgboost_model_register_and_deploy_with_runtime_repack(
     )
     try:
         pipeline.create(role)
-        execution = pipeline.start(parameters={})
-        try:
-            execution.wait(delay=30, max_attempts=60)
-        except WaiterError:
-            pass
 
-        # Verify the pipeline execution succeeded
-        step_register_model = None
-        execution_steps = execution.list_steps()
-        for step in execution_steps:
-            assert not step.get("FailureReason", None)
-            assert step["StepStatus"] == "Succeeded"
-            if _REGISTER_MODEL_NAME_BASE in step["StepName"]:
-                step_register_model = step
-        assert len(execution_steps) == 2
-        assert step_register_model
+        for _ in retries(
+            max_retry_count=5,
+            exception_message_prefix="Waiting for a successful execution of pipeline",
+            seconds_to_sleep=10,
+        ):
+            execution = pipeline.start(parameters={})
+            try:
+                execution.wait(delay=30, max_attempts=60)
+            except WaiterError:
+                pass
+
+            # Verify the pipeline execution succeeded
+            step_register_model = None
+            execution_steps = execution.list_steps()
+            is_execution_fail = False
+            for step in execution_steps:
+                failure_reason = step.get("FailureReason", "")
+                if failure_reason != "":
+                    logging.error(
+                        f"Pipeline execution failed with error: {failure_reason}." " Retrying.."
+                    )
+                    is_execution_fail = True
+                    break
+                assert step["StepStatus"] == "Succeeded"
+                if _REGISTER_MODEL_NAME_BASE in step["StepName"]:
+                    step_register_model = step
+            if is_execution_fail:
+                continue
+            assert len(execution_steps) == 2
+            assert step_register_model
+            break
 
         # Verify the registered model can work as expected
         with timeout_and_delete_endpoint_by_name(
@@ -755,22 +817,38 @@ def test_tensorflow_model_register_and_deploy_with_runtime_repack(
     )
     try:
         pipeline.create(role)
-        execution = pipeline.start(parameters={})
-        try:
-            execution.wait(delay=30, max_attempts=60)
-        except WaiterError:
-            pass
 
-        # Verify the pipeline execution succeeded
-        step_register_model = None
-        execution_steps = execution.list_steps()
-        for step in execution_steps:
-            assert not step.get("FailureReason", None)
-            assert step["StepStatus"] == "Succeeded"
-            if _REGISTER_MODEL_NAME_BASE in step["StepName"]:
-                step_register_model = step
-        assert len(execution_steps) == 2
-        assert step_register_model
+        for _ in retries(
+            max_retry_count=5,
+            exception_message_prefix="Waiting for a successful execution of pipeline",
+            seconds_to_sleep=10,
+        ):
+            execution = pipeline.start(parameters={})
+            try:
+                execution.wait(delay=30, max_attempts=60)
+            except WaiterError:
+                pass
+
+            # Verify the pipeline execution succeeded
+            step_register_model = None
+            execution_steps = execution.list_steps()
+            is_execution_fail = False
+            for step in execution_steps:
+                failure_reason = step.get("FailureReason", "")
+                if failure_reason != "":
+                    logging.error(
+                        f"Pipeline execution failed with error: {failure_reason}." " Retrying.."
+                    )
+                    is_execution_fail = True
+                    break
+                assert step["StepStatus"] == "Succeeded"
+                if _REGISTER_MODEL_NAME_BASE in step["StepName"]:
+                    step_register_model = step
+            if is_execution_fail:
+                continue
+            assert len(execution_steps) == 2
+            assert step_register_model
+            break
 
         # Verify the registered model can work as expected
         with timeout_and_delete_endpoint_by_name(
