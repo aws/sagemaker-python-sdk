@@ -17,8 +17,6 @@ import json
 
 import pytest
 
-from botocore.exceptions import ClientError
-
 from mock import Mock
 
 from sagemaker import s3
@@ -178,20 +176,15 @@ def test_large_pipeline_update(sagemaker_session_mock, role_arn):
 
 
 def test_pipeline_upsert(sagemaker_session_mock, role_arn):
-    sagemaker_session_mock.side_effect = [
-        ClientError(
-            operation_name="CreatePipeline",
-            error_response={
-                "Error": {
-                    "Code": "ValidationException",
-                    "Message": "Pipeline names must be unique within ...",
-                }
-            },
-        ),
-        {"PipelineArn": "mock_pipeline_arn"},
-        [{"Key": "dummy", "Value": "dummy_tag"}],
-        {},
-    ]
+    sagemaker_session_mock.sagemaker_client.describe_pipeline.return_value = {
+        "PipelineArn": "pipeline-arn"
+    }
+    sagemaker_session_mock.sagemaker_client.update_pipeline.return_value = {
+        "PipelineArn": "pipeline-arn"
+    }
+    sagemaker_session_mock.sagemaker_client.list_tags.return_value = {
+        "Tags": [{"Key": "dummy", "Value": "dummy_tag"}]
+    }
 
     pipeline = Pipeline(
         name="MyPipeline",
@@ -205,9 +198,9 @@ def test_pipeline_upsert(sagemaker_session_mock, role_arn):
         {"Key": "bar", "Value": "xyz"},
     ]
     pipeline.upsert(role_arn=role_arn, tags=tags)
-    assert sagemaker_session_mock.sagemaker_client.create_pipeline.called_with(
-        PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn=role_arn
-    )
+
+    sagemaker_session_mock.sagemaker_client.create_pipeline.assert_not_called()
+
     assert sagemaker_session_mock.sagemaker_client.update_pipeline.called_with(
         PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn=role_arn
     )
@@ -271,18 +264,6 @@ def test_pipeline_start(sagemaker_session_mock):
     assert sagemaker_session_mock.start_pipeline_execution.called_with(
         PipelineName="MyPipeline", PipelineParameters=[{"Name": "alpha", "Value": "epsilon"}]
     )
-
-
-def test_pipeline_start_before_creation(sagemaker_session_mock):
-    sagemaker_session_mock.sagemaker_client.describe_pipeline.side_effect = ClientError({}, "bar")
-    pipeline = Pipeline(
-        name="MyPipeline",
-        parameters=[ParameterString("alpha", "beta"), ParameterString("gamma", "delta")],
-        steps=[],
-        sagemaker_session=sagemaker_session_mock,
-    )
-    with pytest.raises(ValueError):
-        pipeline.start()
 
 
 def test_pipeline_basic():

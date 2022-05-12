@@ -215,30 +215,33 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         Returns:
             response dict from service
         """
+        exists = True
         try:
-            response = self.create(role_arn, description, tags, parallelism_config)
+            self.describe()
         except ClientError as e:
-            error = e.response["Error"]
-            if (
-                error["Code"] == "ValidationException"
-                and "Pipeline names must be unique within" in error["Message"]
-            ):
-                response = self.update(role_arn, description)
-                if tags is not None:
-                    old_tags = self.sagemaker_session.sagemaker_client.list_tags(
-                        ResourceArn=response["PipelineArn"]
-                    )["Tags"]
-
-                    tag_keys = [tag["Key"] for tag in tags]
-                    for old_tag in old_tags:
-                        if old_tag["Key"] not in tag_keys:
-                            tags.append(old_tag)
-
-                    self.sagemaker_session.sagemaker_client.add_tags(
-                        ResourceArn=response["PipelineArn"], Tags=tags
-                    )
+            err = e.response.get("Error", {})
+            if err.get("Code", None) == "ResourceNotFound":
+                exists = False
             else:
-                raise
+                raise e
+
+        if not exists:
+            response = self.create(role_arn, description, tags, parallelism_config)
+        else:
+            response = self.update(role_arn, description)
+            if tags is not None:
+                old_tags = self.sagemaker_session.sagemaker_client.list_tags(
+                    ResourceArn=response["PipelineArn"]
+                )["Tags"]
+
+                tag_keys = [tag["Key"] for tag in tags]
+                for old_tag in old_tags:
+                    if old_tag["Key"] not in tag_keys:
+                        tags.append(old_tag)
+
+                self.sagemaker_session.sagemaker_client.add_tags(
+                    ResourceArn=response["PipelineArn"], Tags=tags
+                )
         return response
 
     def delete(self) -> Dict[str, Any]:
@@ -270,18 +273,6 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         Returns:
             A `_PipelineExecution` instance, if successful.
         """
-        exists = True
-        try:
-            self.describe()
-        except ClientError:
-            exists = False
-
-        if not exists:
-            raise ValueError(
-                "This pipeline is not associated with a Pipeline in SageMaker. "
-                "Please invoke create() first before attempting to invoke start()."
-            )
-
         kwargs = dict(PipelineName=self.name)
         update_args(
             kwargs,
