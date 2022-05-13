@@ -838,11 +838,11 @@ def test_deploy_default(tuner):
     predictor = tuner.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
 
     tuner.sagemaker_session.create_model.assert_called_once()
-    args = tuner.sagemaker_session.create_model.call_args[0]
-    assert args[0].startswith(TRAINING_JOB_NAME)
-    assert args[1] == ROLE
-    assert args[2]["Image"] == IMAGE_NAME
-    assert args[2]["ModelDataUrl"] == MODEL_DATA
+    args, kwargs = tuner.sagemaker_session.create_model.call_args
+    assert kwargs["name"].startswith(TRAINING_JOB_NAME)
+    assert kwargs["role"] == ROLE
+    assert kwargs["container_defs"]["Image"] == IMAGE_NAME
+    assert kwargs["container_defs"]["ModelDataUrl"] == MODEL_DATA
 
     assert isinstance(predictor, Predictor)
     assert predictor.endpoint_name.startswith(TRAINING_JOB_NAME)
@@ -877,11 +877,11 @@ def test_deploy_estimator_dict(tuner):
     predictor = tuner.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
 
     tuner.sagemaker_session.create_model.assert_called_once()
-    args = tuner.sagemaker_session.create_model.call_args[0]
-    assert args[0].startswith(TRAINING_JOB_NAME)
-    assert args[1] == ROLE
-    assert args[2]["Image"] == IMAGE_NAME
-    assert args[2]["ModelDataUrl"] == MODEL_DATA
+    args, kwargs = tuner.sagemaker_session.create_model.call_args
+    assert kwargs["name"].startswith(TRAINING_JOB_NAME)
+    assert kwargs["role"] == ROLE
+    assert kwargs["container_defs"]["Image"] == IMAGE_NAME
+    assert kwargs["container_defs"]["ModelDataUrl"] == MODEL_DATA
 
     assert isinstance(predictor, Predictor)
     assert predictor.endpoint_name.startswith(TRAINING_JOB_NAME)

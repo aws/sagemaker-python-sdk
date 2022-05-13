@@ -2034,9 +2034,9 @@ def test_framework_transformer_creation(name_from_base, sagemaker_session):
 
     name_from_base.assert_called_with(IMAGE_URI)
     sagemaker_session.create_model.assert_called_with(
-        MODEL_IMAGE,
-        ROLE,
-        MODEL_CONTAINER_DEF,
+        name=MODEL_IMAGE,
+        role=ROLE,
+        container_defs=MODEL_CONTAINER_DEF,
         tags=None,
         vpc_config=vpc_config,
         enable_network_isolation=False,
@@ -2100,9 +2100,9 @@ def test_framework_transformer_creation_with_optional_params(name_from_image, sa
     )
 
     sagemaker_session.create_model.assert_called_with(
-        model_name,
-        new_role,
-        MODEL_CONTAINER_DEF,
+        name=model_name,
+        role=new_role,
+        container_defs=MODEL_CONTAINER_DEF,
         vpc_config=new_vpc_config,
         tags=TAGS,
         enable_network_isolation=True,
@@ -2492,9 +2492,13 @@ def test_fit_deploy_tags_in_estimator(name_from_base, sagemaker_session):
     )
 
     sagemaker_session.create_model.assert_called_with(
-        model_name,
-        "DummyRole",
-        {"ModelDataUrl": "s3://bucket/model.tar.gz", "Environment": {}, "Image": "fakeimage"},
+        name=model_name,
+        role="DummyRole",
+        container_defs={
+            "ModelDataUrl": "s3://bucket/model.tar.gz",
+            "Environment": {},
+            "Image": "fakeimage",
+        },
         enable_network_isolation=False,
         vpc_config=None,
         tags=tags,
@@ -2538,9 +2542,13 @@ def test_fit_deploy_tags(name_from_base, sagemaker_session):
     )
 
     sagemaker_session.create_model.assert_called_with(
-        ANY,
-        "DummyRole",
-        {"ModelDataUrl": "s3://bucket/model.tar.gz", "Environment": {}, "Image": "fakeimage"},
+        name=ANY,
+        role="DummyRole",
+        container_defs={
+            "ModelDataUrl": "s3://bucket/model.tar.gz",
+            "Environment": {},
+            "Image": "fakeimage",
+        },
         enable_network_isolation=False,
         vpc_config=None,
         tags=tags,
@@ -2806,10 +2814,10 @@ def test_generic_to_deploy(time, sagemaker_session):
 
     sagemaker_session.create_model.assert_called_once()
     args, kwargs = sagemaker_session.create_model.call_args
-    assert args[0].startswith(IMAGE_URI)
-    assert args[1] == ROLE
-    assert args[2]["Image"] == IMAGE_URI
-    assert args[2]["ModelDataUrl"] == MODEL_DATA
+    assert kwargs["name"].startswith(IMAGE_URI)
+    assert kwargs["role"] == ROLE
+    assert kwargs["container_defs"]["Image"] == IMAGE_URI
+    assert kwargs["container_defs"]["ModelDataUrl"] == MODEL_DATA
     assert kwargs["vpc_config"] is None
 
     assert isinstance(predictor, Predictor)
@@ -3044,7 +3052,7 @@ def test_deploy_with_model_name(sagemaker_session):
 
     sagemaker_session.create_model.assert_called_once()
     args, kwargs = sagemaker_session.create_model.call_args
-    assert args[0] == model_name
+    assert kwargs["name"] == model_name
 
 
 def test_deploy_with_no_model_name(sagemaker_session):
@@ -3062,7 +3070,7 @@ def test_deploy_with_no_model_name(sagemaker_session):
 
     sagemaker_session.create_model.assert_called_once()
     args, kwargs = sagemaker_session.create_model.call_args
-    assert args[0].startswith(IMAGE_URI)
+    assert kwargs["name"].startswith(IMAGE_URI)
 
 
 def test_register_default_image(sagemaker_session):
@@ -3907,7 +3915,7 @@ def test_script_mode_estimator_uses_jumpstart_base_name_with_js_models(
         role=ROLE,
     )
 
-    assert sagemaker_session.create_model.call_args_list[0][0][0].startswith(
+    assert sagemaker_session.create_model.call_args_list[0][1]["name"].startswith(
         JUMPSTART_RESOURCE_BASE_NAME
     )
 
@@ -3981,7 +3989,7 @@ def test_all_framework_estimators_add_jumpstart_base_name(
             role=ROLE,
         )
 
-        assert sagemaker_session.create_model.call_args_list[0][0][0].startswith(
+        assert sagemaker_session.create_model.call_args_list[0][1]["name"].startswith(
             JUMPSTART_RESOURCE_BASE_NAME
         )
 
