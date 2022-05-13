@@ -13,6 +13,10 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+<<<<<<< HEAD
+=======
+import os
+>>>>>>> support-estimator-output-param
 import json
 
 import pytest
@@ -20,6 +24,10 @@ import sagemaker
 import warnings
 
 from sagemaker.workflow.pipeline_context import PipelineSession
+<<<<<<< HEAD
+=======
+from sagemaker.workflow.parameters import ParameterString
+>>>>>>> support-estimator-output-param
 
 from sagemaker.workflow.steps import TrainingStep
 from sagemaker.workflow.pipeline import Pipeline
@@ -46,12 +54,14 @@ from sagemaker.amazon.randomcutforest import RandomCutForest
 from sagemaker.amazon.ntm import NTM
 from sagemaker.amazon.object2vec import Object2Vec
 
+from tests.integ import DATA_DIR
 
 from sagemaker.inputs import TrainingInput
 
 REGION = "us-west-2"
 IMAGE_URI = "fakeimage"
 MODEL_NAME = "gisele"
+DUMMY_LOCAL_SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
 DUMMY_S3_SCRIPT_PATH = "s3://dummy-s3/dummy_script.py"
 DUMMY_S3_SOURCE_DIR = "s3://dummy-s3-source-dir/"
 INSTANCE_TYPE = "ml.m4.xlarge"
@@ -119,6 +129,36 @@ def test_training_step_with_estimator(pipeline_session, training_input, hyperpar
     assert step.properties.TrainingJobName.expr == {"Get": "Steps.MyTrainingStep.TrainingJobName"}
 
 
+def test_estimator_with_parameterized_output(pipeline_session, training_input):
+    output_path = ParameterString(name="OutputPath")
+    estimator = XGBoost(
+        framework_version="1.3-1",
+        py_version="py3",
+        role=sagemaker.get_execution_role(),
+        instance_type=INSTANCE_TYPE,
+        instance_count=1,
+        entry_point=DUMMY_LOCAL_SCRIPT_PATH,
+        output_path=output_path,
+        sagemaker_session=pipeline_session,
+    )
+    step_args = estimator.fit(inputs=training_input)
+    step = TrainingStep(
+        name="MyTrainingStep",
+        step_args=step_args,
+        description="TrainingStep description",
+        display_name="MyTrainingStep",
+    )
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[step],
+        sagemaker_session=pipeline_session,
+    )
+    step_def = json.loads(pipeline.definition())["Steps"][0]
+    assert step_def["Arguments"]["OutputDataConfig"]["S3OutputPath"] == {
+        "Get": "Parameters.OutputPath"
+    }
+
+
 @pytest.mark.parametrize(
     "estimator",
     [
@@ -128,7 +168,7 @@ def test_training_step_with_estimator(pipeline_session, training_input, hyperpar
             instance_type=INSTANCE_TYPE,
             instance_count=1,
             role=sagemaker.get_execution_role(),
-            entry_point="entry_point.py",
+            entry_point=DUMMY_LOCAL_SCRIPT_PATH,
         ),
         PyTorch(
             role=sagemaker.get_execution_role(),
@@ -136,7 +176,7 @@ def test_training_step_with_estimator(pipeline_session, training_input, hyperpar
             instance_count=1,
             framework_version="1.8.0",
             py_version="py36",
-            entry_point="entry_point.py",
+            entry_point=DUMMY_LOCAL_SCRIPT_PATH,
         ),
         TensorFlow(
             role=sagemaker.get_execution_role(),
@@ -144,7 +184,7 @@ def test_training_step_with_estimator(pipeline_session, training_input, hyperpar
             instance_count=1,
             framework_version="2.0",
             py_version="py3",
-            entry_point="entry_point.py",
+            entry_point=DUMMY_LOCAL_SCRIPT_PATH,
         ),
         HuggingFace(
             transformers_version="4.6",
@@ -153,7 +193,7 @@ def test_training_step_with_estimator(pipeline_session, training_input, hyperpar
             instance_type="ml.p3.2xlarge",
             instance_count=1,
             py_version="py36",
-            entry_point="entry_point.py",
+            entry_point=DUMMY_LOCAL_SCRIPT_PATH,
         ),
         XGBoost(
             framework_version="1.3-1",
@@ -161,7 +201,7 @@ def test_training_step_with_estimator(pipeline_session, training_input, hyperpar
             role=sagemaker.get_execution_role(),
             instance_type=INSTANCE_TYPE,
             instance_count=1,
-            entry_point="entry_point.py",
+            entry_point=DUMMY_LOCAL_SCRIPT_PATH,
         ),
         MXNet(
             framework_version="1.4.1",
@@ -169,7 +209,7 @@ def test_training_step_with_estimator(pipeline_session, training_input, hyperpar
             role=sagemaker.get_execution_role(),
             instance_type=INSTANCE_TYPE,
             instance_count=1,
-            entry_point="entry_point.py",
+            entry_point=DUMMY_LOCAL_SCRIPT_PATH,
         ),
         RLEstimator(
             entry_point="cartpole.py",
@@ -182,7 +222,7 @@ def test_training_step_with_estimator(pipeline_session, training_input, hyperpar
         ),
         Chainer(
             role=sagemaker.get_execution_role(),
-            entry_point="entry_point.py",
+            entry_point=DUMMY_LOCAL_SCRIPT_PATH,
             use_mpi=True,
             num_processes=4,
             framework_version="5.0.0",

@@ -60,6 +60,9 @@ def test_training_job_with_debugger_and_profiler(
 ):
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
     instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+    output_path = ParameterString(
+        name="OutputPath", default_value=f"s3://{sagemaker_session.default_bucket()}/test/"
+    )
 
     rules = [
         Rule.sagemaker(rule_configs.vanishing_gradient()),
@@ -88,6 +91,7 @@ def test_training_job_with_debugger_and_profiler(
         sagemaker_session=sagemaker_session,
         rules=rules,
         debugger_hook_config=debugger_hook_config,
+        output_path=output_path,
     )
 
     step_train = TrainingStep(
@@ -98,7 +102,7 @@ def test_training_job_with_debugger_and_profiler(
 
     pipeline = Pipeline(
         name=pipeline_name,
-        parameters=[instance_count, instance_type],
+        parameters=[instance_count, instance_type, output_path],
         steps=[step_train],
         sagemaker_session=sagemaker_session,
     )
