@@ -10,6 +10,12 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+
+# TODO: This file should be removed once we completely deprecate the RegisterModel
+# and deprecate the old usage of CreateModelStep (i.e. without step_args)
+# Most of the tests in this file have been reproduced in
+# `tests/integ/sagemaker/workflow/test_model_steps.py` etc.
+# and the RegisterModel and CreateModelStep have been replaced with the new interface - ModelStep
 from __future__ import absolute_import
 
 import logging
@@ -136,8 +142,9 @@ def test_conditional_pytorch_training_model_registration(
             ConditionGreaterThanOrEqualTo(left=good_enough_input, right=1),
             ConditionIn(value=in_condition_input, in_values=["foo", "bar"]),
         ],
-        if_steps=[step_train, step_register],
+        if_steps=[step_register],
         else_steps=[step_model],
+        depends_on=[step_train],
     )
 
     pipeline = Pipeline(
@@ -148,7 +155,7 @@ def test_conditional_pytorch_training_model_registration(
             instance_count,
             instance_type,
         ],
-        steps=[step_cond],
+        steps=[step_train, step_cond],
         sagemaker_session=sagemaker_session,
     )
 
@@ -819,28 +826,23 @@ def test_model_registration_with_tensorflow_model_with_pipeline_model(
             create_arn,
         )
 
-        for _ in retries(
-            max_retry_count=5,
-            exception_message_prefix="Waiting for a successful execution of pipeline",
-            seconds_to_sleep=10,
-        ):
-            execution = pipeline.start(parameters={})
-            assert re.match(
-                rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
-                execution.arn,
-            )
-            try:
-                execution.wait(delay=30, max_attempts=60)
-            except WaiterError:
-                pass
-            execution_steps = execution.list_steps()
+        execution = pipeline.start(parameters={})
+        assert re.match(
+            rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            execution.arn,
+        )
+        try:
+            execution.wait(delay=30, max_attempts=60)
+        except WaiterError:
+            pass
+        execution_steps = execution.list_steps()
 
-            assert len(execution_steps) == 3
-            for step in execution_steps:
-                assert step["StepStatus"] == "Succeeded"
-            break
+        for step in execution_steps:
+            assert not step.get("FailureReason", None)
+            assert step["StepStatus"] == "Succeeded"
+        assert len(execution_steps) == 3
     finally:
         try:
             pipeline.delete()
-        except Exception:
-            pass
+        except Exception as error:
+            logging.error(error)

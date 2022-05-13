@@ -19,6 +19,7 @@ import logging
 import os
 import re
 import copy
+from typing import List, Dict
 
 import sagemaker
 from sagemaker import (
@@ -38,6 +39,7 @@ from sagemaker.utils import unique_name_from_base
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.predictor_async import AsyncPredictor
 from sagemaker.workflow import is_pipeline_variable
+from sagemaker.workflow.pipeline_context import runnable_by_pipeline, PipelineSession
 
 LOGGER = logging.getLogger("sagemaker")
 
@@ -289,6 +291,7 @@ class Model(ModelBase):
         self.uploaded_code = None
         self.repacked_model_data = None
 
+    @runnable_by_pipeline
     def register(
         self,
         content_types,
@@ -310,12 +313,12 @@ class Model(ModelBase):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
         Args:
-            content_types (list): The supported MIME types for the input data (default: None).
-            response_types (list): The supported MIME types for the output data (default: None).
+            content_types (list): The supported MIME types for the input data.
+            response_types (list): The supported MIME types for the output data.
             inference_instances (list): A list of the instance types that are used to
-                generate inferences in real-time (default: None).
+                generate inferences in real-time.
             transform_instances (list): A list of the instance types on which a transformation
-                job can be run or on which an endpoint can be deployed (default: None).
+                job can be run or on which an endpoint can be deployed.
             model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
                 using `model_package_name` makes the Model Package un-versioned (default: None).
             model_package_group_name (str): Model Package Group name, exclusive to
@@ -366,10 +369,48 @@ class Model(ModelBase):
         model_package = self.sagemaker_session.create_model_package_from_containers(
             **model_pkg_args
         )
+        if isinstance(self.sagemaker_session, PipelineSession):
+            return None
         return ModelPackage(
             role=self.role,
             model_data=self.model_data,
             model_package_arn=model_package.get("ModelPackageArn"),
+        )
+
+    @runnable_by_pipeline
+    def create(
+        self,
+        instance_type: str = None,
+        accelerator_type: str = None,
+        serverless_inference_config: ServerlessInferenceConfig = None,
+        tags: List[Dict[str, str]] = None,
+    ):
+        """Create a SageMaker Model Entity
+
+        Args:
+            instance_type (str): The EC2 instance type that this Model will be
+                used for, this is only used to determine if the image needs GPU
+                support or not (default: None).
+            accelerator_type (str): Type of Elastic Inference accelerator to
+                attach to an endpoint for model loading and inference, for
+                example, 'ml.eia1.medium'. If not specified, no Elastic
+                Inference accelerator will be attached to the endpoint (default: None).
+            serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
+                Specifies configuration related to serverless endpoint. Instance type is
+                not provided in serverless inference. So this is used to find image URIs
+                (default: None).
+            tags (List[Dict[str, str]]): The list of tags to add to
+                the model (default: None). Example: >>> tags = [{'Key': 'tagname', 'Value':
+                'tagvalue'}] For more information about tags, see
+                https://boto3.amazonaws.com/v1/documentation
+                /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
+        """
+        # TODO: we should replace _create_sagemaker_model() with create()
+        self._create_sagemaker_model(
+            instance_type=instance_type,
+            accelerator_type=accelerator_type,
+            tags=tags,
+            serverless_inference_config=serverless_inference_config,
         )
 
     def _init_sagemaker_session_if_does_not_exist(self, instance_type=None):
@@ -455,6 +496,24 @@ class Model(ModelBase):
         if repack and self.model_data is not None and self.entry_point is not None:
             if is_pipeline_variable(self.model_data):
                 # model is not yet there, defer repacking to later during pipeline execution
+                if not isinstance(self.sagemaker_session, PipelineSession):
+                    # TODO: link the doc in the warning once ready
+                    logging.warning(
+                        "The model_data is a Pipeline variable of type %s, "
+                        "which should be used under `PipelineSession` and "
+                        "leverage `ModelStep` to create or register model. "
+                        "Otherwise some functionalities e.g. "
+                        "runtime repack may be missing",
+                        type(self.model_data),
+                    )
+                    return
+                self.sagemaker_session.context.need_runtime_repack.add(id(self))
+                # Add the uploaded_code and repacked_model_data to update the container env
+                self.repacked_model_data = self.model_data
+                self.uploaded_code = fw_utils.UploadedCode(
+                    s3_prefix=self.repacked_model_data,
+                    script_name=os.path.basename(self.entry_point),
+                )
                 return
             if local_code and self.model_data.startswith("file://"):
                 repacked_model_data = self.model_data
@@ -538,22 +597,29 @@ class Model(ModelBase):
             serverless_inference_config=serverless_inference_config,
         )
 
-        self._ensure_base_name_if_needed(
-            image_uri=container_def["Image"], script_uri=self.source_dir, model_uri=self.model_data
-        )
-        self._set_model_name_if_needed()
+        if not isinstance(self.sagemaker_session, PipelineSession):
+            # _base_name, model_name are not needed under PipelineSession.
+            # the model_data may be Pipeline variable
+            # which may break the _base_name generation
+            self._ensure_base_name_if_needed(
+                image_uri=container_def["Image"],
+                script_uri=self.source_dir,
+                model_uri=self.model_data,
+            )
+            self._set_model_name_if_needed()
 
         enable_network_isolation = self.enable_network_isolation()
 
         self._init_sagemaker_session_if_does_not_exist(instance_type)
-        self.sagemaker_session.create_model(
-            self.name,
-            self.role,
-            container_def,
+        create_model_args = dict(
+            name=self.name,
+            role=self.role,
+            container_defs=container_def,
             vpc_config=self.vpc_config,
             enable_network_isolation=enable_network_isolation,
             tags=tags,
         )
+        self.sagemaker_session.create_model(**create_model_args)
 
     def _ensure_base_name_if_needed(self, image_uri, script_uri, model_uri):
         """Create a base name from the image URI if there is no model name provided.
