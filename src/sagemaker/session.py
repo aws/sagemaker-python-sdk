@@ -48,6 +48,8 @@ from sagemaker.session_settings import SessionSettings
 LOGGER = logging.getLogger("sagemaker")
 
 NOTEBOOK_METADATA_FILE = "/opt/ml/metadata/resource-metadata.json"
+DIR_PARAM_NAME = "SAGEMAKER_SUBMIT_DIRECTORY"
+SCRIPT_PARAM_NAME = "SAGEMAKER_PROGRAM"
 
 _STATUS_CODE_TABLE = {
     "COMPLETED": "Completed",
@@ -4209,6 +4211,7 @@ def get_model_package_args(
     drift_check_baselines=None,
     customer_metadata_properties=None,
     validation_specification=None,
+    entry_point=None,
 ):
     """Get arguments for create_model_package method.
 
@@ -4239,6 +4242,7 @@ def get_model_package_args(
         drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
         customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
             metadata properties (default: None).
+        entry_point (str): The path (absolute or relative) to the custom entry point.
     Returns:
         dict: A dictionary of method argument names and values.
     """
@@ -4249,6 +4253,15 @@ def get_model_package_args(
             "Image": image_uri,
             "ModelDataUrl": model_data,
         }
+        if entry_point is not None:
+            # This is a script mode model and its container def wasn't set
+            # (this happens when an estimator is passed to RegisterModelStep instead
+            # of a model). Set the env vars needed for script mode.
+            env_map = {
+                DIR_PARAM_NAME: "/opt/ml/model/code",
+                SCRIPT_PARAM_NAME: os.path.basename(entry_point),
+            }
+            container["Environment"] = env_map
         containers = [container]
 
     model_package_args = {

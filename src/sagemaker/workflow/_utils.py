@@ -272,6 +272,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
         compile_model_family (str): Instance family for compiled model, if specified, a compiled
             model will be used (default: None).
         container_def_list (list): A list of container definitions.
+        entry_point (str): The path (absolute or relative) to the custom entry point.
         **kwargs: additional arguments to `create_model`.
     """
 
@@ -298,6 +299,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
         container_def_list=None,
         drift_check_baselines=None,
         customer_metadata_properties=None,
+        entry_point=None,
         **kwargs,
     ):
         """Constructor of a register model step.
@@ -361,6 +363,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
         self.tags = tags
         self.kwargs = kwargs
         self.container_def_list = container_def_list
+        self.entry_point = entry_point
 
         self._properties = Properties(path=f"Steps.{name}", shape_name="DescribeModelPackageOutput")
 
@@ -427,6 +430,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
             tags=self.tags,
             container_def_list=self.container_def_list,
             customer_metadata_properties=self.customer_metadata_properties,
+            entry_point=self.entry_point,
         )
 
         request_dict = get_create_model_package_request(**model_package_args)

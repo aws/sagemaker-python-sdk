@@ -133,6 +133,7 @@ class RegisterModel(StepCollection):
             subnets = model.vpc_config["Subnets"]
             security_group_ids = model.vpc_config["SecurityGroupIds"]
 
+        entry_point = None
         if "entry_point" in kwargs:
             repack_model = True
             entry_point = kwargs.pop("entry_point", None)
@@ -234,6 +235,7 @@ class RegisterModel(StepCollection):
             container_def_list=self.container_def_list,
             retry_policies=register_model_step_retry_policies,
             customer_metadata_properties=customer_metadata_properties,
+            entry_point=entry_point,
             **kwargs,
         )
         if not repack_model:

@@ -171,4 +171,10 @@ def create_file_tree(root, tree):
 
 @pytest.fixture()
 def tmp(tmpdir):
+    # cleanup test folders
+    if os.path.exists("/opt/ml/code"):
+        shutil.rmtree("/opt/ml/code")
+    if os.path.exists("/opt/ml/model"):
+        shutil.rmtree("/opt/ml/model")
+
     yield str(tmpdir)

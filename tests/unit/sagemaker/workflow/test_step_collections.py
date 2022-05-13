@@ -514,9 +514,25 @@ def test_register_model_with_model_repack_with_estimator(
                 arguments["InferenceSpecification"]["Containers"][0]["Image"]
                 == estimator.training_image_uri()
             )
+
+            # Confirm that model container env vars were set correctly.
+            # These env vars are necessary for script mode to work
             assert isinstance(
                 arguments["InferenceSpecification"]["Containers"][0]["ModelDataUrl"], Properties
             )
+            assert (
+                arguments["InferenceSpecification"]["Containers"][0]["Environment"][
+                    "SAGEMAKER_SUBMIT_DIRECTORY"
+                ]
+                == "/opt/ml/model/code"
+            )
+            assert (
+                arguments["InferenceSpecification"]["Containers"][0]["Environment"][
+                    "SAGEMAKER_PROGRAM"
+                ]
+                == "dummy_script.py"
+            )
+
             del arguments["InferenceSpecification"]["Containers"]
             assert ordered(arguments) == ordered(
                 {
@@ -636,10 +652,26 @@ def test_register_model_with_model_repack_with_model(model, model_metrics, drift
             arguments = request_dict["Arguments"]
             assert len(arguments["InferenceSpecification"]["Containers"]) == 1
             assert arguments["InferenceSpecification"]["Containers"][0]["Image"] == model.image_uri
+
+            # Confirm that model container env vars were set correctly.
+            # These env vars are necessary for script mode to work
             assert isinstance(
                 arguments["InferenceSpecification"]["Containers"][0]["ModelDataUrl"], Properties
             )
+            assert (
+                arguments["InferenceSpecification"]["Containers"][0]["Environment"][
+                    "SAGEMAKER_SUBMIT_DIRECTORY"
+                ]
+                == "s3://my-bucket/modelName/sourcedir.tar.gz"
+            )
+            assert (
+                arguments["InferenceSpecification"]["Containers"][0]["Environment"][
+                    "SAGEMAKER_PROGRAM"
+                ]
+                == "dummy_script.py"
+            )
             del arguments["InferenceSpecification"]["Containers"]
+
             assert ordered(arguments) == ordered(
                 {
                     "InferenceSpecification": {
