@@ -17,7 +17,7 @@ import logging
 import re
 
 from sagemaker.deprecations import renamed_kwargs
-from sagemaker.estimator import Framework
+from sagemaker.estimator import Framework, EstimatorBase
 from sagemaker.fw_utils import (
     framework_name_from_image,
     warn_if_parameter_server_with_multi_gpu,
@@ -50,14 +50,15 @@ class HuggingFace(Framework):
         compiler_config=None,
         **kwargs,
     ):
-        """This ``Estimator`` executes a HuggingFace script in a managed execution environment.
+        """This estimator runs a Hugging Face training script in a SageMaker training environment.
 
-        The managed HuggingFace environment is an Amazon-built Docker container that executes
-        functions defined in the supplied ``entry_point`` Python script within a SageMaker
-        Training Job.
+        The estimator initiates the SageMaker-managed Hugging Face environment
+        by using the pre-built Hugging Face Docker container and runs
+        the Hugging Face training script that user provides through
+        the ``entry_point`` argument.
 
-        Training is started by calling
-        :meth:`~sagemaker.amazon.estimator.Framework.fit` on this Estimator.
+        After configuring the estimator class, use the class method
+        :meth:`~sagemaker.amazon.estimator.Framework.fit()` to start a training job.
 
         Args:
             py_version (str): Python version you want to use for executing your model training
@@ -246,13 +247,13 @@ class HuggingFace(Framework):
             distribution=self.distribution
         )
         hyperparameters.update(
-            Framework._json_encode_hyperparameters(distributed_training_hyperparameters)
+            EstimatorBase._json_encode_hyperparameters(distributed_training_hyperparameters)
         )
 
         if self.compiler_config:
             training_compiler_hyperparameters = self.compiler_config._to_hyperparameter_dict()
             hyperparameters.update(
-                Framework._json_encode_hyperparameters(training_compiler_hyperparameters)
+                EstimatorBase._json_encode_hyperparameters(training_compiler_hyperparameters)
             )
 
         return hyperparameters

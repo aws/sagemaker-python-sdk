@@ -33,7 +33,7 @@ def read_version():
 
 # Declare minimal set for installation
 required_packages = [
-    "attrs",
+    "attrs==20.3.0",
     "boto3>=1.20.21",
     "google-pasta",
     "numpy>=1.9.0",
@@ -49,12 +49,12 @@ required_packages = [
 # Specific use case dependencies
 extras = {
     "local": [
-        "urllib3>=1.21.1,!=1.25,!=1.25.1",
-        "docker-compose>=1.25.2",
-        "docker==5.0.0",
-        "PyYAML>=5.3, <6",  # PyYAML version has to match docker-compose requirements
+        "urllib3==1.26.8",
+        "docker-compose==1.29.2",
+        "docker~=5.0.0",
+        "PyYAML==5.4.1",  # PyYAML version has to match docker-compose requirements
     ],
-    "scipy": ["scipy>=0.19.0"],
+    "scipy": ["scipy==1.5.4"],
 }
 # Meta dependency groups
 extras["all"] = [item for group in extras.values() for item in group]
@@ -62,23 +62,25 @@ extras["all"] = [item for group in extras.values() for item in group]
 extras["test"] = (
     [
         extras["all"],
-        "tox",
-        "flake8",
-        "pytest<6.1.0",
-        "pytest-cov",
-        "pytest-rerunfailures",
-        "pytest-timeout",
-        "pytest-xdist",
-        "coverage<6.2",
-        "mock",
-        "contextlib2",
-        "awslogs",
-        "black",
+        "tox==3.24.5",
+        "flake8==4.0.1",
+        "pytest==6.0.2",
+        "pytest-cov==3.0.0",
+        "pytest-rerunfailures==10.2",
+        "pytest-timeout==2.1.0",
+        "pytest-xdist==2.4.0",
+        "coverage>=5.2, <6.2",
+        "mock==4.0.3",
+        "contextlib2==21.6.0",
+        "awslogs==0.14.0",
+        "black==22.1.0",
         "stopit==1.1.2",
-        "apache-airflow==1.10.11",
-        "fabric>=2.0",
-        "requests>=2.20.0, <3",
-        "sagemaker-experiments",
+        "apache-airflow==2.2.3",
+        "apache-airflow-providers-amazon==3.0.0",
+        "attrs==20.3.0",
+        "fabric==2.6.0",
+        "requests==2.27.1",
+        "sagemaker-experiments==0.1.35",
     ],
 )
 

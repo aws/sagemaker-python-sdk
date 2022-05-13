@@ -79,7 +79,7 @@ def name_from_base(base, max_length=63, short=False):
 
 def unique_name_from_base(base, max_length=63):
     """Placeholder Docstring"""
-    unique = "%04x" % random.randrange(16 ** 4)  # 4-digit hex
+    unique = "%04x" % random.randrange(16**4)  # 4-digit hex
     ts = str(int(time.time()))
     available_length = max_length - 2 - len(ts) - len(unique)
     trimmed = base[:available_length]
@@ -413,7 +413,12 @@ def repack_model(
         model_dir = _extract_model(model_uri, sagemaker_session, tmp)
 
         _create_or_update_code_dir(
-            model_dir, inference_script, source_directory, dependencies, sagemaker_session, tmp
+            model_dir,
+            inference_script,
+            source_directory,
+            dependencies,
+            sagemaker_session,
+            tmp,
         )
 
         tmp_model_path = os.path.join(tmp, "temp-model.tar.gz")
@@ -544,7 +549,11 @@ def sts_regional_endpoint(region):
     return "https://{}".format(endpoint_data["hostname"])
 
 
-def retries(max_retry_count, exception_message_prefix, seconds_to_sleep=DEFAULT_SLEEP_TIME_SECONDS):
+def retries(
+    max_retry_count,
+    exception_message_prefix,
+    seconds_to_sleep=DEFAULT_SLEEP_TIME_SECONDS,
+):
     """Retries until max retry count is reached.
 
     Args:

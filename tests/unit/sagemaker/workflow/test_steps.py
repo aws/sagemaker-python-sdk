@@ -13,6 +13,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import json
+
 import pytest
 import sagemaker
 import os
@@ -27,7 +29,7 @@ from mock import (
 from sagemaker.debugger import DEBUGGER_FLAG, ProfilerConfig
 from sagemaker.estimator import Estimator
 from sagemaker.tensorflow import TensorFlow
-from sagemaker.inputs import TrainingInput, TransformInput, CreateModelInput, CompilationInput
+from sagemaker.inputs import TrainingInput, TransformInput, CreateModelInput
 from sagemaker.model import Model
 from sagemaker.processing import (
     Processor,
@@ -43,7 +45,8 @@ from sagemaker.tuner import (
 )
 from sagemaker.network import NetworkConfig
 from sagemaker.transformer import Transformer
-from sagemaker.workflow.properties import Properties
+from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.properties import Properties, PropertyFile
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
 from sagemaker.workflow.retry import (
     StepRetryPolicy,
@@ -53,7 +56,6 @@ from sagemaker.workflow.retry import (
 )
 from sagemaker.workflow.steps import (
     ProcessingStep,
-    CompilationStep,
     ConfigurableRetryStep,
     StepTypeEnum,
     TrainingStep,
@@ -397,7 +399,6 @@ def test_training_step_tensorflow(sagemaker_session):
         name="MyTrainingStep", estimator=estimator, inputs=inputs, cache_config=cache_config
     )
     step_request = step.to_request()
-    step_request["Arguments"]["HyperParameters"].pop("sagemaker_job_name", None)
     step_request["Arguments"]["HyperParameters"].pop("sagemaker_program", None)
     step_request["Arguments"].pop("ProfilerRuleConfigurations", None)
     assert step_request == {
@@ -536,6 +537,9 @@ def test_processing_step(sagemaker_session):
         )
     ]
     cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
+    evaluation_report = PropertyFile(
+        name="EvaluationReport", output_name="evaluation", path="evaluation.json"
+    )
     step = ProcessingStep(
         name="MyProcessingStep",
         description="ProcessingStep description",
@@ -545,9 +549,20 @@ def test_processing_step(sagemaker_session):
         inputs=inputs,
         outputs=[],
         cache_config=cache_config,
+        property_files=[evaluation_report],
     )
     step.add_depends_on(["ThirdTestStep"])
-    assert step.to_request() == {
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[
+            processing_input_data_uri_parameter,
+            instance_type_parameter,
+            instance_count_parameter,
+        ],
+        steps=[step],
+        sagemaker_session=sagemaker_session,
+    )
+    assert json.loads(pipeline.definition())["Steps"][0] == {
         "Name": "MyProcessingStep",
         "Description": "ProcessingStep description",
         "DisplayName": "MyProcessingStep",
@@ -565,20 +580,27 @@ def test_processing_step(sagemaker_session):
                         "S3DataDistributionType": "FullyReplicated",
                         "S3DataType": "S3Prefix",
                         "S3InputMode": "File",
-                        "S3Uri": processing_input_data_uri_parameter,
+                        "S3Uri": {"Get": "Parameters.ProcessingInputDataUri"},
                     },
                 }
             ],
             "ProcessingResources": {
                 "ClusterConfig": {
-                    "InstanceCount": instance_count_parameter,
-                    "InstanceType": instance_type_parameter,
+                    "InstanceCount": {"Get": "Parameters.InstanceCount"},
+                    "InstanceType": {"Get": "Parameters.InstanceType"},
                     "VolumeSizeInGB": 30,
                 }
             },
             "RoleArn": "DummyRole",
         },
         "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
+        "PropertyFiles": [
+            {
+                "FilePath": "evaluation.json",
+                "OutputName": "evaluation",
+                "PropertyFileName": "EvaluationReport",
+            }
+        ],
     }
     assert step.properties.ProcessingJobName.expr == {
         "Get": "Steps.MyProcessingStep.ProcessingJobName"
@@ -724,6 +746,7 @@ def test_processing_step_normalizes_args_with_no_code(mock_normalize_args, scrip
         inputs=step.inputs,
         outputs=step.outputs,
         code=None,
+        kms_key=None,
     )
 
 
@@ -1310,52 +1333,5 @@ def test_multi_algo_tuning_step(sagemaker_session):
                     },
                 },
             ],
-        },
-    }
-
-
-def test_compilation_step(sagemaker_session):
-    estimator = Estimator(
-        image_uri=IMAGE_URI,
-        role=ROLE,
-        instance_count=1,
-        instance_type="ml.c5.4xlarge",
-        profiler_config=ProfilerConfig(system_monitor_interval_millis=500),
-        rules=[],
-        sagemaker_session=sagemaker_session,
-    )
-
-    model = Model(
-        image_uri=IMAGE_URI,
-        model_data="s3://output/tensorflow.tar.gz",
-        sagemaker_session=sagemaker_session,
-    )
-
-    compilation_input = CompilationInput(
-        target_instance_type="ml_inf",
-        input_shape={"data": [1, 3, 1024, 1024]},
-        output_path="s3://output",
-        compile_max_run=100,
-        framework="tensorflow",
-        job_name="compile-model",
-        compiler_options=None,
-    )
-    compilation_step = CompilationStep(
-        name="MyCompilationStep", estimator=estimator, model=model, inputs=compilation_input
-    )
-
-    assert compilation_step.to_request() == {
-        "Name": "MyCompilationStep",
-        "Type": "Compilation",
-        "Arguments": {
-            "InputConfig": {
-                "DataInputConfig": '{"data": [1, 3, 1024, 1024]}',
-                "Framework": "TENSORFLOW",
-                "S3Uri": "s3://output/tensorflow.tar.gz",
-            },
-            "OutputConfig": {"S3OutputLocation": "s3://output", "TargetDevice": "ml_inf"},
-            "RoleArn": ROLE,
-            "StoppingCondition": {"MaxRuntimeInSeconds": 100},
-            "Tags": [],
         },
     }

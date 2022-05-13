@@ -24,6 +24,7 @@ from mock import ANY, MagicMock, Mock, patch, call, mock_open
 
 import sagemaker
 from sagemaker import TrainingInput, Session, get_execution_role
+from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.session import (
     _tuning_job_status,
     _transform_job_status,
@@ -1941,6 +1942,32 @@ def test_endpoint_from_production_variants_with_serverless_inference_config(sage
     )
 
 
+def test_endpoint_from_production_variants_with_async_config(sagemaker_session):
+    ims = sagemaker_session
+    ims.sagemaker_client.describe_endpoint = Mock(return_value={"EndpointStatus": "InService"})
+    pvs = [
+        sagemaker.production_variant("A", "ml.p2.xlarge"),
+        sagemaker.production_variant("B", "p299.4096xlarge"),
+    ]
+    ex = ClientError(
+        {"Error": {"Code": "ValidationException", "Message": "Could not find your thing"}}, "b"
+    )
+    ims.sagemaker_client.describe_endpoint_config = Mock(side_effect=ex)
+    sagemaker_session.endpoint_from_production_variants(
+        "some-endpoint",
+        pvs,
+        async_inference_config_dict=AsyncInferenceConfig,
+    )
+    sagemaker_session.sagemaker_client.create_endpoint.assert_called_with(
+        EndpointConfigName="some-endpoint", EndpointName="some-endpoint", Tags=[]
+    )
+    sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
+        EndpointConfigName="some-endpoint",
+        ProductionVariants=pvs,
+        AsyncInferenceConfig=AsyncInferenceConfig,
+    )
+
+
 def test_update_endpoint_succeed(sagemaker_session):
     sagemaker_session.sagemaker_client.describe_endpoint = Mock(
         return_value={"EndpointStatus": "InService"}
@@ -2358,6 +2385,7 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
     marketplace_cert = (True,)
     approval_status = ("Approved",)
     description = "description"
+    customer_metadata_properties = {"key1": "value1"}
     sagemaker_session.create_model_package_from_containers(
         containers=containers,
         content_types=content_types,
@@ -2371,6 +2399,7 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
         approval_status=approval_status,
         description=description,
         drift_check_baselines=drift_check_baselines,
+        customer_metadata_properties=customer_metadata_properties,
     )
     expected_args = {
         "ModelPackageName": model_package_name,
@@ -2387,6 +2416,7 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
         "CertifyForMarketplace": marketplace_cert,
         "ModelApprovalStatus": approval_status,
         "DriftCheckBaselines": drift_check_baselines,
+        "CustomerMetadataProperties": customer_metadata_properties,
     }
     sagemaker_session.sagemaker_client.create_model_package.assert_called_with(**expected_args)
 

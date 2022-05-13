@@ -66,6 +66,25 @@ TRAINING_NO_P2_REGIONS = [
     "sa-east-1",
     "us-west-1",
 ]
+TRAINING_NO_P3_REGIONS = [
+    "af-south-1",
+    "ap-east-1",
+    "ap-southeast-1",  # it has p3, but not enough
+    "ap-southeast-2",  # it has p3, but not enough
+    "ca-central-1",  # it has p3, but not enough
+    "eu-central-1",  # it has p3, but not enough
+    "eu-north-1",
+    "eu-west-2",  # it has p3, but not enough
+    "eu-west-3",
+    "eu-south-1",
+    "me-south-1",
+    "sa-east-1",
+    "us-west-1",
+    "ap-northeast-1",  # it has p3, but not enough
+    "ap-south-1",
+    "ap-northeast-2",  # it has p3, but not enough
+    "us-east-2",  # it has p3, but not enough
+]
 
 # EI is currently only supported in the following regions
 # regions were derived from https://aws.amazon.com/machine-learning/elastic-inference/pricing/
@@ -128,12 +147,6 @@ DRIFT_CHECK_BASELINES_SUPPORTED_REGIONS = [
     "ap-southeast-2",
     "eu-west-2",
     "us-east-1",
-]
-NO_SM_PIPELINE_MM_CLARIFY_CHECK_STEP_REGIONS = [
-    "ap-northeast-3",
-    "ap-south-1",
-    "eu-north-1",
-    "sa-east-1",
 ]
 EDGE_PACKAGING_SUPPORTED_REGIONS = [
     "us-east-2",

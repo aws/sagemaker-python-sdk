@@ -76,6 +76,7 @@ class RegisterModel(StepCollection):
         tags=None,
         model: Union[Model, PipelineModel] = None,
         drift_check_baselines=None,
+        customer_metadata_properties=None,
         **kwargs,
     ):
         """Construct steps `_RepackModelStep` and `_RegisterModelStep` based on the estimator.
@@ -99,7 +100,7 @@ class RegisterModel(StepCollection):
                 for the repack model step
             register_model_step_retry_policies (List[RetryPolicy]): The list of retry policies
                 for register model step
-            model_package_group_name (str): The Model Package Group name, exclusive to
+            model_package_group_name (str): The Model Package Group name or Arn, exclusive to
                 `model_package_name`, using `model_package_group_name` makes the Model Package
                 versioned (default: None).
             model_metrics (ModelMetrics): ModelMetrics object (default: None).
@@ -117,6 +118,9 @@ class RegisterModel(StepCollection):
             model (object or Model): A PipelineModel object that comprises a list of models
                 which gets executed as a serial inference pipeline or a Model object.
             drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
+            customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
+                metadata properties (default: None).
+
             **kwargs: additional arguments to `create_model`.
         """
         steps: List[Step] = []
@@ -235,6 +239,7 @@ class RegisterModel(StepCollection):
             tags=tags,
             container_def_list=self.container_def_list,
             retry_policies=register_model_step_retry_policies,
+            customer_metadata_properties=customer_metadata_properties,
             **kwargs,
         )
         if not repack_model:
@@ -367,7 +372,11 @@ class EstimatorTransformer(StepCollection):
             vpc_config=None,
             sagemaker_session=estimator.sagemaker_session,
             role=estimator.role,
-            **kwargs,
+            env=kwargs.get("env", None),
+            name=kwargs.get("name", None),
+            enable_network_isolation=kwargs.get("enable_network_isolation", None),
+            model_kms_key=kwargs.get("model_kms_key", None),
+            image_config=kwargs.get("image_config", None),
         )
         model_step = CreateModelStep(
             name=f"{name}CreateModelStep",
