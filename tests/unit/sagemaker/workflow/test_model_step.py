@@ -46,6 +46,8 @@ from sagemaker.workflow.retry import (
     SageMakerJobStepRetryPolicy,
 )
 from sagemaker.xgboost import XGBoostModel
+from sagemaker.lambda_helper import Lambda
+from sagemaker.workflow.lambda_step import LambdaStep, LambdaOutput, LambdaOutputTypeEnum
 from tests.unit import DATA_DIR
 
 _IMAGE_URI = "fakeimage"
@@ -839,3 +841,36 @@ def _verify_register_model_container_definition(
     if submit_dir and not submit_dir.startswith("s3://"):
         # exclude the s3 path assertion as it contains timestamp
         assert submit_dir == expected_submit_dir
+
+
+def test_model_step_with_lambda_property_reference(pipeline_session):
+    lambda_step = LambdaStep(
+        name="MyLambda",
+        lambda_func=Lambda(
+            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda"
+        ),
+        outputs=[
+            LambdaOutput(output_name="model_image", output_type=LambdaOutputTypeEnum.String),
+            LambdaOutput(output_name="model_artifact", output_type=LambdaOutputTypeEnum.String),
+        ],
+    )
+
+    model = PyTorchModel(
+        name="MyModel",
+        framework_version="1.8.0",
+        py_version="py3",
+        image_uri=lambda_step.properties.Outputs["model_image"],
+        model_data=lambda_step.properties.Outputs["model_artifact"],
+        sagemaker_session=pipeline_session,
+        entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
+        role=_ROLE,
+    )
+
+    step_create_model = ModelStep(name="mymodelstep", step_args=model.create())
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[lambda_step, step_create_model],
+        sagemaker_session=pipeline_session,
+    )
+    assert pipeline.definition() is not None
