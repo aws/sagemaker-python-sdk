@@ -185,7 +185,12 @@ def test_create_sagemaker_model(prepare_container_def, sagemaker_session):
         None, accelerator_type=None, serverless_inference_config=None
     )
     sagemaker_session.create_model.assert_called_with(
-        MODEL_NAME, None, container_def, vpc_config=None, enable_network_isolation=False, tags=None
+        name=MODEL_NAME,
+        role=None,
+        container_defs=container_def,
+        vpc_config=None,
+        enable_network_isolation=False,
+        tags=None,
     )
 
 
@@ -222,7 +227,12 @@ def test_create_sagemaker_model_tags(prepare_container_def, sagemaker_session):
     model._create_sagemaker_model(INSTANCE_TYPE, tags=tags)
 
     sagemaker_session.create_model.assert_called_with(
-        MODEL_NAME, None, container_def, vpc_config=None, enable_network_isolation=False, tags=tags
+        name=MODEL_NAME,
+        role=None,
+        container_defs=container_def,
+        vpc_config=None,
+        enable_network_isolation=False,
+        tags=tags,
     )
 
 
@@ -252,9 +262,9 @@ def test_create_sagemaker_model_optional_model_params(
     name_from_base.assert_not_called()
 
     sagemaker_session.create_model.assert_called_with(
-        MODEL_NAME,
-        ROLE,
-        container_def,
+        name=MODEL_NAME,
+        role=ROLE,
+        container_defs=container_def,
         vpc_config=vpc_config,
         enable_network_isolation=True,
         tags=None,
@@ -281,9 +291,9 @@ def test_create_sagemaker_model_generates_model_name(
     name_from_base.assert_called_with(base_name_from_image.return_value)
 
     sagemaker_session.create_model.assert_called_with(
-        MODEL_NAME,
-        None,
-        container_def,
+        name=MODEL_NAME,
+        role=None,
+        container_defs=container_def,
         vpc_config=None,
         enable_network_isolation=False,
         tags=None,
@@ -632,7 +642,7 @@ def test_script_mode_model_uses_jumpstart_base_name(repack_model, sagemaker_sess
     )
     t.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT)
 
-    assert sagemaker_session.create_model.call_args_list[0][0][0].startswith(
+    assert sagemaker_session.create_model.call_args_list[0][1]["name"].startswith(
         JUMPSTART_RESOURCE_BASE_NAME
     )
 
@@ -654,7 +664,7 @@ def test_script_mode_model_uses_jumpstart_base_name(repack_model, sagemaker_sess
     )
     t.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT)
 
-    assert not sagemaker_session.create_model.call_args_list[0][0][0].startswith(
+    assert not sagemaker_session.create_model.call_args_list[0][1]["name"].startswith(
         JUMPSTART_RESOURCE_BASE_NAME
     )
 
@@ -696,7 +706,7 @@ def test_all_framework_models_add_jumpstart_base_name(
             **kwargs,
         ).deploy(instance_type="ml.m2.xlarge", initial_instance_count=INSTANCE_COUNT)
 
-        assert sagemaker_session.create_model.call_args_list[0][0][0].startswith(
+        assert sagemaker_session.create_model.call_args_list[0][1]["name"].startswith(
             JUMPSTART_RESOURCE_BASE_NAME
         )
 
@@ -723,7 +733,7 @@ def test_script_mode_model_uses_proper_sagemaker_submit_dir(repack_model, sagema
     t.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT)
 
     assert (
-        sagemaker_session.create_model.call_args_list[0][0][2]["Environment"][
+        sagemaker_session.create_model.call_args_list[0][1]["container_defs"]["Environment"][
             "SAGEMAKER_SUBMIT_DIRECTORY"
         ]
         == "/opt/ml/model/code"
