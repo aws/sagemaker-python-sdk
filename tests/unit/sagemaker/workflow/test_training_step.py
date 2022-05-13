@@ -13,10 +13,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-<<<<<<< HEAD
-=======
 import os
->>>>>>> support-estimator-output-param
 import json
 
 import pytest
@@ -24,10 +21,7 @@ import sagemaker
 import warnings
 
 from sagemaker.workflow.pipeline_context import PipelineSession
-<<<<<<< HEAD
-=======
 from sagemaker.workflow.parameters import ParameterString
->>>>>>> support-estimator-output-param
 
 from sagemaker.workflow.steps import TrainingStep
 from sagemaker.workflow.pipeline import Pipeline
