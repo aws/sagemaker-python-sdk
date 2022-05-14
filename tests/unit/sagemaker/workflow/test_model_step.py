@@ -875,9 +875,10 @@ def test_model_step_with_lambda_property_reference(pipeline_session):
     )
     steps = json.loads(pipeline.definition())["Steps"]
     repack_step = steps[1]
-    assert repack_step['Arguments']['InputDataConfig'][0]['DataSource']['S3DataSource']['S3Uri'] == \
-           {'Get': "Steps.MyLambda.OutputParameters['model_artifact']"}
+    assert repack_step["Arguments"]["InputDataConfig"][0]["DataSource"]["S3DataSource"][
+        "S3Uri"
+    ] == {"Get": "Steps.MyLambda.OutputParameters['model_artifact']"}
     register_step = steps[2]
-    assert register_step['Arguments']['PrimaryContainer']['Image'] == \
-           {'Get': "Steps.MyLambda.OutputParameters['model_image']"}
-
+    assert register_step["Arguments"]["PrimaryContainer"]["Image"] == {
+        "Get": "Steps.MyLambda.OutputParameters['model_image']"
+    }
