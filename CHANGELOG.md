@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.90.0 (2022-05-16)
+
+### Features
+
+ * Add ModelStep for SageMaker Model Building Pipeline
+
+### Bug Fixes and Other Changes
+
+ * update setup.py to add minimum python requirement of 3.6
+
 ## v2.89.0 (2022-05-11)
 
 ### Features
