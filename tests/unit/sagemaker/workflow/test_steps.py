@@ -847,6 +847,24 @@ def test_create_model_step(sagemaker_session):
     assert step.properties.ModelName.expr == {"Get": "Steps.MyCreateModelStep.ModelName"}
 
 
+def test_create_model_step_with_invalid_input(sagemaker_session):
+    # without both step_args and any of the old required arguments
+    with pytest.raises(ValueError) as error:
+        CreateModelStep(
+            name="MyRegisterModelStep",
+        )
+    assert "Either of them should be provided" in str(error.value)
+
+    # with both step_args and the old required arguments
+    with pytest.raises(ValueError) as error:
+        CreateModelStep(
+            name="MyRegisterModelStep",
+            step_args=dict(),
+            model=Model(image_uri=IMAGE_URI),
+        )
+    assert "Either of them should be provided" in str(error.value)
+
+
 @patch("tarfile.open")
 @patch("time.strftime", return_value="2017-10-10-14-14-15")
 def test_create_model_step_with_model_pipeline(tfo, time, sagemaker_session):

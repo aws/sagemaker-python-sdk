@@ -22,6 +22,7 @@ from sagemaker.deprecations import removed_kwargs
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import JSONSerializer
 from sagemaker.workflow import is_pipeline_variable
+from sagemaker.workflow.pipeline_context import PipelineSession
 
 
 class TensorFlowPredictor(Predictor):
@@ -336,8 +337,6 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         )
         env = self._get_container_env()
 
-        # If self.model_data is pipeline variable, model is not yet there.
-        # So defer repacking to later during pipeline execution
         if self.entry_point and not is_pipeline_variable(self.model_data):
             key_prefix = sagemaker.fw_utils.model_code_key_prefix(
                 self.key_prefix, self.name, image_uri
@@ -355,6 +354,21 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
                 self.sagemaker_session,
                 kms_key=self.model_kms_key,
             )
+        elif self.entry_point and is_pipeline_variable(self.model_data):
+            # model is not yet there, defer repacking to later during pipeline execution
+            if isinstance(self.sagemaker_session, PipelineSession):
+                self.sagemaker_session.context.need_runtime_repack.add(id(self))
+            else:
+                # TODO: link the doc in the warning once ready
+                logging.warning(
+                    "The model_data is a Pipeline variable of type %s, "
+                    "which should be used under `PipelineSession` and "
+                    "leverage `ModelStep` to create or register model. "
+                    "Otherwise some functionalities e.g. "
+                    "runtime repack may be missing",
+                    type(self.model_data),
+                )
+            model_data = self.model_data
         else:
             model_data = self.model_data
 
