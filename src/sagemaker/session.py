@@ -4057,7 +4057,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         kwargs = dict(FeatureGroupName=feature_group_name)
         update_args(kwargs, NextToken=next_token)
         return self.sagemaker_client.describe_feature_group(**kwargs)
-    
+
     def update_feature_group(
         self, feature_group_name: str, feature_additions: Sequence[Dict[str, str]]
     ) -> Dict[str, Any]:

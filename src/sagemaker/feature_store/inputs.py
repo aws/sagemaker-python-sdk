@@ -208,6 +208,7 @@ class FeatureValue(Config):
             ValueAsString=self.value_as_string,
         )
 
+
 @attr.s
 class FeatureParameter(Config):
     """FeatureParameter for FeatureStore.

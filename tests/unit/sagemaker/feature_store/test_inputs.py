@@ -19,7 +19,7 @@ from sagemaker.feature_store.inputs import (
     S3StorageConfig,
     DataCatalogConfig,
     OfflineStoreConfig,
-    FeatureParameter
+    FeatureParameter,
 )
 
 
@@ -84,6 +84,7 @@ def test_offline_data_store_config():
             "DisableGlueTableCreation": False,
         }
     )
+
 
 def test_feature_metadata():
     config = FeatureParameter(key="key", value="value")

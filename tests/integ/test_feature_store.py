@@ -22,10 +22,7 @@ import pandas as pd
 import pytest
 from pandas import DataFrame
 
-from sagemaker.feature_store.feature_group import (
-    FeatureGroup,
-    FeatureParameter
-)
+from sagemaker.feature_store.feature_group import FeatureGroup, FeatureParameter
 from sagemaker.feature_store.inputs import FeatureValue
 from sagemaker.session import get_execution_role, Session
 from sagemaker.feature_store.feature_definition import (

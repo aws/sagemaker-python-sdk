@@ -31,9 +31,7 @@ from sagemaker.feature_store.feature_group import (
     AthenaQuery,
     IngestionError,
 )
-from sagemaker.feature_store.inputs import (
-    FeatureParameter
-)
+from sagemaker.feature_store.inputs import FeatureParameter
 
 
 class PicklableMock(Mock):
@@ -187,7 +185,7 @@ def test_feature_metadata_update(sagemaker_session_mock):
         feature_name="Feature1",
         description="DummyDescription",
         parameter_additions=[pa.to_dict() for pa in parameter_additions],
-        parameter_removals=parameter_removals
+        parameter_removals=parameter_removals,
     )
 
 

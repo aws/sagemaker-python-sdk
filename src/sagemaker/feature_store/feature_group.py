@@ -53,7 +53,7 @@ from sagemaker.feature_store.inputs import (
     OfflineStoreConfig,
     DataCatalogConfig,
     FeatureValue,
-    FeatureParameter
+    FeatureParameter,
 )
 
 logger = logging.getLogger(__name__)
@@ -558,8 +558,8 @@ class FeatureGroup:
         self,
         feature_name: str,
         description: str = None,
-        parameter_additions: Sequence[FeatureParameter] = [],
-        parameter_removals: Sequence[str] = [],
+        parameter_additions: Sequence[FeatureParameter] = None,
+        parameter_removals: Sequence[str] = None,
     ) -> Dict[str, Any]:
         """Update a feature metadata and add/remove metadata.
 
@@ -579,8 +579,12 @@ class FeatureGroup:
             parameter_additions=[
                 parameter_addition.to_dict()
                 for parameter_addition in parameter_additions
-            ],
-            parameter_removals=parameter_removals,
+            ]
+            if parameter_additions is not None
+            else [],
+            parameter_removals=parameter_removals
+            if parameter_removals is not None
+            else [],
         )
 
     def describe_feature_metadata(self, feature_name: str) -> Dict[str, Any]:
