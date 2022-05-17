@@ -27,7 +27,7 @@ from mock import (
 
 from sagemaker.estimator import Estimator
 from sagemaker.workflow import Properties
-from sagemaker.workflow._utils import _RepackModelStep
+from sagemaker.workflow._utils import _RepackModelStep, _RegisterModelStep
 from tests.unit.test_utils import FakeS3, list_tar_files
 from tests.unit import DATA_DIR
 
@@ -159,6 +159,28 @@ def test_repack_model_step(estimator):
     assert step.properties.TrainingJobName.expr == {
         "Get": "Steps.MyRepackModelStep.TrainingJobName"
     }
+
+
+def test_repack_model_step_with_invalid_input():
+    # without both step_args and any of the old required arguments
+    with pytest.raises(ValueError) as error:
+        _RegisterModelStep(
+            name="MyRegisterModelStep",
+            content_types=list(),
+        )
+    assert "Either of them should be provided" in str(error.value)
+
+    # with both step_args and the old required arguments
+    with pytest.raises(ValueError) as error:
+        _RegisterModelStep(
+            name="MyRegisterModelStep",
+            step_args=dict(),
+            content_types=list(),
+            response_types=list(),
+            inference_instances=list(),
+            transform_instances=list(),
+        )
+    assert "Either of them should be provided" in str(error.value)
 
 
 def test_repack_model_step_with_source_dir(estimator, source_dir):

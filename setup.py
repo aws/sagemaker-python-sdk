@@ -84,6 +84,7 @@ setup(
     url="https://github.com/aws/sagemaker-python-sdk/",
     license="Apache License 2.0",
     keywords="ML Amazon AWS AI Tensorflow MXNet",
+    python_requires=">= 3.6",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
