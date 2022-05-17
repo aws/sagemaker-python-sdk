@@ -16,6 +16,7 @@ from __future__ import absolute_import
 import warnings
 import inspect
 from typing import Dict
+from functools import wraps
 
 from sagemaker.session import Session, SessionSettings
 
@@ -131,7 +132,7 @@ def runnable_by_pipeline(run_func):
     the arguments needed to compose that particular step as part of the pipeline.
     The job will be started during pipeline execution.
     """
-
+    @wraps(run_func)
     def wrapper(*args, **kwargs):
         self_instance = args[0]
         if isinstance(self_instance.sagemaker_session, PipelineSession):
