@@ -695,34 +695,38 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         Returns: S3 URI
         """
-        local_mode = not is_pipeline_variable(self.output_path) and self.output_path.startswith(
-            "file://"
-        )
-
-        if self.code_location is None and local_mode:
+        if is_pipeline_variable(self.output_path):
             code_bucket = self.sagemaker_session.default_bucket()
-            code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
-            kms_key = None
-        elif self.code_location is None:
-            if is_pipeline_variable(self.output_path):
-                code_bucket = self.sagemaker_session.default_bucket()
+            if self.code_location is None:
+                code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
+                kms_key = self.output_kms_key
             else:
-                code_bucket, _ = parse_s3_url(self.output_path)
-            code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
-            kms_key = self.output_kms_key
-        elif local_mode:
-            code_bucket, key_prefix = parse_s3_url(self.code_location)
-            code_s3_prefix = "/".join(filter(None, [key_prefix, self._current_job_name, "source"]))
-            kms_key = None
+                code_bucket, key_prefix = parse_s3_url(self.code_location)
+                code_s3_prefix = "/".join(
+                    filter(None, [key_prefix, self._current_job_name, "source"])
+                )
+                kms_key = (
+                    self.output_kms_key
+                    if code_bucket == self.sagemaker_session.default_bucket()
+                    else None
+                )
         else:
-            code_bucket, key_prefix = parse_s3_url(self.code_location)
-            code_s3_prefix = "/".join(filter(None, [key_prefix, self._current_job_name, "source"]))
+            if self.code_location is None:
+                code_bucket, _ = parse_s3_url(self.output_path)
+                code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
+            else:
+                code_bucket, key_prefix = parse_s3_url(self.code_location)
+                code_s3_prefix = "/".join(
+                    filter(None, [key_prefix, self._current_job_name, "source"])
+                )
 
-            if is_pipeline_variable(self.output_path):
-                output_bucket = self.sagemaker_session.default_bucket()
+            local_mode = self.output_path.startswith("file://")
+
+            if local_mode:
+                kms_key = None
             else:
                 output_bucket, _ = parse_s3_url(self.output_path)
-            kms_key = self.output_kms_key if code_bucket == output_bucket else None
+                kms_key = self.output_kms_key if code_bucket == output_bucket else None
 
         return tar_and_upload_dir(
             session=self.sagemaker_session.boto_session,
