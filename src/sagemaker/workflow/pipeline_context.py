@@ -132,6 +132,7 @@ def runnable_by_pipeline(run_func):
     the arguments needed to compose that particular step as part of the pipeline.
     The job will be started during pipeline execution.
     """
+
     @wraps(run_func)
     def wrapper(*args, **kwargs):
         self_instance = args[0]
