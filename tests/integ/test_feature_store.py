@@ -22,9 +22,17 @@ import pandas as pd
 import pytest
 from pandas import DataFrame
 
-from sagemaker.feature_store.feature_group import FeatureGroup
+from sagemaker.feature_store.feature_group import (
+    FeatureGroup,
+    FeatureParameter
+)
 from sagemaker.feature_store.inputs import FeatureValue
 from sagemaker.session import get_execution_role, Session
+from sagemaker.feature_store.feature_definition import (
+    FractionalFeatureDefinition,
+    IntegralFeatureDefinition,
+    StringFeatureDefinition,
+)
 from tests.integ.timeout import timeout
 
 BUCKET_POLICY = {
@@ -235,6 +243,95 @@ def test_create_feature_store(
             == feature_group.as_hive_ddl()
         )
     assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
+
+
+def test_update_feature_group(
+    feature_store_session,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame,
+):
+    feature_group = FeatureGroup(
+        name=feature_group_name, sagemaker_session=feature_store_session
+    )
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+
+    with cleanup_feature_group(feature_group):
+        output = feature_group.create(
+            s3_uri=offline_store_s3_uri,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        new_feature_name = "new_feature"
+        new_features = [FractionalFeatureDefinition(feature_name=new_feature_name)]
+        feature_group.update(new_features)
+        time.sleep(10)
+        feature_definitions = feature_group.describe().get("FeatureDefinitions")
+        assert (
+            any(
+                [
+                    True
+                    for elem in feature_definitions
+                    if new_feature_name in elem.values()
+                ]
+            )
+            == True
+        )
+
+
+def test_feature_metadata(
+    feature_store_session,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame,
+):
+    feature_group = FeatureGroup(
+        name=feature_group_name, sagemaker_session=feature_store_session
+    )
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+
+    with cleanup_feature_group(feature_group):
+        output = feature_group.create(
+            s3_uri=offline_store_s3_uri,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        parameter_additions = [
+            FeatureParameter(key="key1", value="value1"),
+            FeatureParameter(key="key2", value="value2"),
+        ]
+        description = "test description"
+        feature_name = "feature1"
+        feature_group.update_feature_metadata(
+            feature_name=feature_name,
+            description=description,
+            parameter_additions=parameter_additions,
+        )
+        describe_feature_metadata = feature_group.describe_feature_metadata(
+            feature_name=feature_name
+        )
+        assert description == describe_feature_metadata.get("Description")
+        assert 2 == len(describe_feature_metadata.get("Parameters"))
+
+        parameter_removals = ["key1"]
+        feature_group.update_feature_metadata(
+            feature_name=feature_name, parameter_removals=parameter_removals
+        )
+        describe_feature_metadata = feature_group.describe_feature_metadata(
+            feature_name=feature_name
+        )
+        assert description == describe_feature_metadata.get("Description")
+        assert 1 == len(describe_feature_metadata.get("Parameters"))
 
 
 def test_ingest_without_string_feature(
