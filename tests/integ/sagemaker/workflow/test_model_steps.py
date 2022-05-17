@@ -18,6 +18,8 @@ import os
 import pytest
 from botocore.exceptions import WaiterError
 
+from sagemaker.workflow.fail_step import FailStep
+from sagemaker.workflow.functions import Join
 from tests.integ.timeout import timeout_and_delete_endpoint_by_name
 from sagemaker.tensorflow import TensorFlow, TensorFlowModel, TensorFlowPredictor
 from sagemaker.utils import unique_name_from_base
@@ -118,15 +120,28 @@ def test_pytorch_training_model_registration_and_creation_without_custom_inferen
         instance_type="ml.m5.large",
         accelerator_type="ml.eia1.medium",
     )
-
     step_model_create = ModelStep(
         name="pytorch-model",
         step_args=create_model_step_args,
     )
+    # Use FailStep error_message to reference model step properties
+    step_fail = FailStep(
+        name="fail-step",
+        error_message=Join(
+            on=", ",
+            values=[
+                "Fail the execution on purpose to check model step properties",
+                "register model",
+                step_model_regis.properties.ModelPackageName,
+                "create model",
+                step_model_create.properties.ModelName,
+            ],
+        ),
+    )
     pipeline = Pipeline(
         name=pipeline_name,
         parameters=[instance_count, instance_type],
-        steps=[step_train, step_model_regis, step_model_create],
+        steps=[step_train, step_model_regis, step_model_create, step_fail],
         sagemaker_session=pipeline_session,
     )
     try:
@@ -145,6 +160,11 @@ def test_pytorch_training_model_registration_and_creation_without_custom_inferen
             execution_steps = execution.list_steps()
             is_execution_fail = False
             for step in execution_steps:
+                if step["StepName"] == "fail-step":
+                    assert step["StepStatus"] == "Failed"
+                    assert "pytorch-register" in step["FailureReason"]
+                    assert "pytorch-model" in step["FailureReason"]
+                    continue
                 failure_reason = step.get("FailureReason", "")
                 if failure_reason != "":
                     logging.error(
@@ -159,7 +179,7 @@ def test_pytorch_training_model_registration_and_creation_without_custom_inferen
                     assert step["Metadata"][_CREATE_MODEL_TYPE]
             if is_execution_fail:
                 continue
-            assert len(execution_steps) == 3
+            assert len(execution_steps) == 4
             break
     finally:
         try:
@@ -223,21 +243,32 @@ def test_pytorch_training_model_registration_and_creation_with_custom_inference(
         name="pytorch-register-model",
         step_args=regis_model_step_args,
     )
-
     create_model_step_args = model.create(
         instance_type="ml.m5.large",
         accelerator_type="ml.eia1.medium",
     )
-
     step_model_create = ModelStep(
         name="pytorch-model",
         step_args=create_model_step_args,
     )
-
+    # Use FailStep error_message to reference model step properties
+    step_fail = FailStep(
+        name="fail-step",
+        error_message=Join(
+            on=", ",
+            values=[
+                "Fail the execution on purpose to check model step properties",
+                "register model",
+                step_model_regis.properties.ModelApprovalStatus,
+                "create model",
+                step_model_create.properties.ModelName,
+            ],
+        ),
+    )
     pipeline = Pipeline(
         name=pipeline_name,
         parameters=[instance_count, instance_type],
-        steps=[step_train, step_model_regis, step_model_create],
+        steps=[step_train, step_model_regis, step_model_create, step_fail],
         sagemaker_session=pipeline_session,
     )
 
@@ -257,6 +288,11 @@ def test_pytorch_training_model_registration_and_creation_with_custom_inference(
             execution_steps = execution.list_steps()
             is_execution_fail = False
             for step in execution_steps:
+                if step["StepName"] == "fail-step":
+                    assert step["StepStatus"] == "Failed"
+                    assert "PendingManualApproval" in step["FailureReason"]
+                    assert "pytorch-model" in step["FailureReason"]
+                    continue
                 failure_reason = step.get("FailureReason", "")
                 if failure_reason != "":
                     logging.error(
@@ -271,7 +307,7 @@ def test_pytorch_training_model_registration_and_creation_with_custom_inference(
                     assert step["Metadata"][_CREATE_MODEL_TYPE]
             if is_execution_fail:
                 continue
-            assert len(execution_steps) == 5
+            assert len(execution_steps) == 6
             break
     finally:
         try:

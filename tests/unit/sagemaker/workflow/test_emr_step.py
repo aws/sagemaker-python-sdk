@@ -22,6 +22,7 @@ from sagemaker.workflow.emr_step import EMRStep, EMRStepConfig
 from sagemaker.workflow.steps import CacheConfig
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.parameters import ParameterString
+from tests.unit.sagemaker.workflow.helpers import CustomStep
 
 
 @pytest.fixture()
@@ -92,6 +93,7 @@ def test_emr_step_with_one_step_config(sagemaker_session):
 
 
 def test_pipeline_interpolates_emr_outputs(sagemaker_session):
+    custom_step = CustomStep("TestStep")
     parameter = ParameterString("MyStr")
 
     emr_step_config_1 = EMRStepConfig(
@@ -124,7 +126,7 @@ def test_pipeline_interpolates_emr_outputs(sagemaker_session):
     pipeline = Pipeline(
         name="MyPipeline",
         parameters=[parameter],
-        steps=[step_emr_1, step_emr_2],
+        steps=[step_emr_1, step_emr_2, custom_step],
         sagemaker_session=sagemaker_session,
     )
 
@@ -170,6 +172,11 @@ def test_pipeline_interpolates_emr_outputs(sagemaker_session):
                 "Description": "MyEMRStepDescription",
                 "DisplayName": "emr_step_2",
                 "DependsOn": ["TestStep"],
+            },
+            {
+                "Name": "TestStep",
+                "Type": "Training",
+                "Arguments": {},
             },
         ],
     }

@@ -299,6 +299,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
     def definition(self) -> str:
         """Converts a request structure to string representation for workflow service calls."""
         request_dict = self.to_request()
+        self._interpolate_step_collection_name_in_depends_on(request_dict["Steps"])
         request_dict["PipelineExperimentConfig"] = interpolate(
             request_dict["PipelineExperimentConfig"], {}, {}
         )
@@ -311,6 +312,24 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         )
 
         return json.dumps(request_dict)
+
+    def _interpolate_step_collection_name_in_depends_on(self, step_requests: dict):
+        """Insert step names as per `StepCollection` name in depends_on list
+
+        Args:
+            step_requests (dict): The raw step request dict without any interpolation.
+        """
+        step_name_map = {s.name: s for s in self.steps}
+        for step_request in step_requests:
+            if not step_request.get("DependsOn", None):
+                continue
+            depends_on = []
+            for depend_step_name in step_request["DependsOn"]:
+                if isinstance(step_name_map[depend_step_name], StepCollection):
+                    depends_on.extend([s.name for s in step_name_map[depend_step_name].steps])
+                else:
+                    depends_on.append(depend_step_name)
+            step_request["DependsOn"] = depends_on
 
 
 def format_start_parameters(parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
