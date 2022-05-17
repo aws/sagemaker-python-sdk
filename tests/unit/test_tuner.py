@@ -1642,7 +1642,7 @@ def test_tags_prefixes_jumpstart_models(
         role=ROLE,
     )
 
-    assert sagemaker_session.create_model.call_args_list[0][0][0].startswith(
+    assert sagemaker_session.create_model.call_args_list[0][1]["name"].startswith(
         JUMPSTART_RESOURCE_BASE_NAME
     )
 
@@ -1763,7 +1763,7 @@ def test_no_tags_prefixes_non_jumpstart_models(
         role=ROLE,
     )
 
-    assert not sagemaker_session.create_model.call_args_list[0][0][0].startswith(
+    assert not sagemaker_session.create_model.call_args_list[0][1]["name"].startswith(
         JUMPSTART_RESOURCE_BASE_NAME
     )
 
