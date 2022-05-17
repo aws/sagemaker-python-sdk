@@ -13,7 +13,7 @@
 """The step definitions for workflow."""
 from __future__ import absolute_import
 
-from typing import List
+from typing import List, Union, Optional
 
 from sagemaker.workflow.entities import (
     RequestType,
@@ -21,6 +21,7 @@ from sagemaker.workflow.entities import (
 from sagemaker.workflow.properties import (
     Properties,
 )
+from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.steps import Step, StepTypeEnum, CacheConfig
 
 
@@ -70,7 +71,7 @@ class EMRStep(Step):
         description: str,
         cluster_id: str,
         step_config: EMRStepConfig,
-        depends_on: List[str] = None,
+        depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
         cache_config: CacheConfig = None,
     ):
         """Constructs a EMRStep.
@@ -81,8 +82,9 @@ class EMRStep(Step):
             description(str): The description of the EMR step.
             cluster_id(str): The ID of the running EMR cluster.
             step_config(EMRStepConfig): One StepConfig to be executed by the job flow.
-            depends_on(List[str]):
-                A list of step names this `sagemaker.workflow.steps.EMRStep` depends on
+            depends_on (List[Union[str, Step, StepCollection]]): A list of `Step`/`StepCollection`
+                names or `Step` instances or `StepCollection` instances that this `EMRStep`
+                depends on.
             cache_config(CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
 
         """
