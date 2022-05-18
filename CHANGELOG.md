@@ -1,5 +1,30 @@
 # Changelog
 
+## v2.90.0 (2022-05-16)
+
+### Features
+
+ * Add ModelStep for SageMaker Model Building Pipeline
+
+### Bug Fixes and Other Changes
+
+ * update setup.py to add minimum python requirement of 3.6
+
+## v2.89.0 (2022-05-11)
+
+### Features
+
+ * Add PT 1.11 support
+ * add validation specification
+
+### Bug Fixes and Other Changes
+
+ * repack model locally when local_code local mode
+
+### Documentation Changes
+
+ * smdmp 1.8.1 release note
+
 ## v2.88.3 (2022-05-06)
 
 ### Bug Fixes and Other Changes

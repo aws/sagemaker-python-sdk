@@ -18,7 +18,7 @@ import json
 import os
 import tempfile
 from abc import ABC
-from typing import List, Union
+from typing import List, Union, Optional
 
 import attr
 
@@ -40,6 +40,7 @@ from sagemaker.utils import name_from_base
 from sagemaker.workflow import PipelineNonPrimitiveInputTypes, is_pipeline_variable
 from sagemaker.workflow.entities import RequestType
 from sagemaker.workflow.properties import Properties
+from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.steps import Step, StepTypeEnum, CacheConfig
 from sagemaker.workflow.check_job_config import CheckJobConfig
 
@@ -158,7 +159,7 @@ class ClarifyCheckStep(Step):
         display_name: str = None,
         description: str = None,
         cache_config: CacheConfig = None,
-        depends_on: Union[List[str], List[Step]] = None,
+        depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
     ):
         """Constructs a ClarifyCheckStep.
 
@@ -180,8 +181,9 @@ class ClarifyCheckStep(Step):
             description (str): The description of the ClarifyCheckStep step (default: None).
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance
                 (default: None).
-            depends_on (List[str] or List[Step]): A list of step names or step instances
-                this `sagemaker.workflow.steps.ClarifyCheckStep` depends on (default: None).
+            depends_on (List[Union[str, Step, StepCollection]]): A list of `Step`/`StepCollection`
+                names or `Step` instances or `StepCollection` instances that this `ClarifyCheckStep`
+                depends on (default: None).
         """
         if (
             not isinstance(clarify_check_config, DataBiasCheckConfig)

@@ -289,6 +289,8 @@ def test_custom_step_with_retry_policy():
 
 
 def test_training_step_base_estimator(sagemaker_session):
+    custom_step1 = CustomStep("TestStep")
+    custom_step2 = CustomStep("AnotherTestStep")
     instance_type_parameter = ParameterString(name="InstanceType", default_value="c4.4xlarge")
     instance_count_parameter = ParameterInteger(name="InstanceCount", default_value=1)
     data_source_uri_parameter = ParameterString(
@@ -335,7 +337,7 @@ def test_training_step_base_estimator(sagemaker_session):
             training_batch_size_parameter,
             use_spot_instances,
         ],
-        steps=[step],
+        steps=[step, custom_step1, custom_step2],
         sagemaker_session=sagemaker_session,
     )
 
@@ -573,6 +575,9 @@ def test_training_step_no_profiler_warning(sagemaker_session):
 
 
 def test_processing_step(sagemaker_session):
+    custom_step1 = CustomStep("TestStep")
+    custom_step2 = CustomStep("SecondTestStep")
+    custom_step3 = CustomStep("ThirdTestStep")
     processing_input_data_uri_parameter = ParameterString(
         name="ProcessingInputDataUri", default_value=f"s3://{BUCKET}/processing_manifest"
     )
@@ -619,7 +624,7 @@ def test_processing_step(sagemaker_session):
             instance_type_parameter,
             instance_count_parameter,
         ],
-        steps=[step],
+        steps=[step, custom_step1, custom_step2, custom_step3],
         sagemaker_session=sagemaker_session,
     )
     assert json.loads(pipeline.definition())["Steps"][0] == {
@@ -845,6 +850,24 @@ def test_create_model_step(sagemaker_session):
         },
     }
     assert step.properties.ModelName.expr == {"Get": "Steps.MyCreateModelStep.ModelName"}
+
+
+def test_create_model_step_with_invalid_input(sagemaker_session):
+    # without both step_args and any of the old required arguments
+    with pytest.raises(ValueError) as error:
+        CreateModelStep(
+            name="MyRegisterModelStep",
+        )
+    assert "Either of them should be provided" in str(error.value)
+
+    # with both step_args and the old required arguments
+    with pytest.raises(ValueError) as error:
+        CreateModelStep(
+            name="MyRegisterModelStep",
+            step_args=dict(),
+            model=Model(image_uri=IMAGE_URI),
+        )
+    assert "Either of them should be provided" in str(error.value)
 
 
 @patch("tarfile.open")

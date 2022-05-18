@@ -2679,23 +2679,24 @@ class Session(object):  # pylint: disable=too-many-public-methods
             primary_container=primary_container,
             tags=tags,
         )
-        LOGGER.info("Creating model with name: %s", name)
-        LOGGER.debug("CreateModel request: %s", json.dumps(create_model_request, indent=4))
 
-        try:
-            self.sagemaker_client.create_model(**create_model_request)
-        except ClientError as e:
-            error_code = e.response["Error"]["Code"]
-            message = e.response["Error"]["Message"]
+        def submit(request):
+            LOGGER.info("Creating model with name: %s", name)
+            LOGGER.debug("CreateModel request: %s", json.dumps(request, indent=4))
+            try:
+                self.sagemaker_client.create_model(**request)
+            except ClientError as e:
+                error_code = e.response["Error"]["Code"]
+                message = e.response["Error"]["Message"]
+                if (
+                    error_code == "ValidationException"
+                    and "Cannot create already existing model" in message
+                ):
+                    LOGGER.warning("Using already existing model: %s", name)
+                else:
+                    raise
 
-            if (
-                error_code == "ValidationException"
-                and "Cannot create already existing model" in message
-            ):
-                LOGGER.warning("Using already existing model: %s", name)
-            else:
-                raise
-
+        self._intercept_create_request(create_model_request, submit, self.create_model.__name__)
         return name
 
     def create_model_from_job(
@@ -2829,10 +2830,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
             customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
                 metadata properties (default: None).
-
         """
 
-        request = get_create_model_package_request(
+        model_pkg_request = get_create_model_package_request(
             model_package_name,
             model_package_group_name,
             containers,
@@ -2849,16 +2849,22 @@ class Session(object):  # pylint: disable=too-many-public-methods
             customer_metadata_properties=customer_metadata_properties,
             validation_specification=validation_specification,
         )
-        if model_package_group_name is not None:
-            try:
-                self.sagemaker_client.describe_model_package_group(
-                    ModelPackageGroupName=request["ModelPackageGroupName"]
-                )
-            except ClientError:
-                self.sagemaker_client.create_model_package_group(
-                    ModelPackageGroupName=request["ModelPackageGroupName"]
-                )
-        return self.sagemaker_client.create_model_package(**request)
+
+        def submit(request):
+            if model_package_group_name is not None:
+                try:
+                    self.sagemaker_client.describe_model_package_group(
+                        ModelPackageGroupName=request["ModelPackageGroupName"]
+                    )
+                except ClientError:
+                    self.sagemaker_client.create_model_package_group(
+                        ModelPackageGroupName=request["ModelPackageGroupName"]
+                    )
+            return self.sagemaker_client.create_model_package(**request)
+
+        return self._intercept_create_request(
+            model_pkg_request, submit, self.create_model_package_from_containers.__name__
+        )
 
     def wait_for_model_package(self, model_package_name, poll=5):
         """Wait for an Amazon SageMaker endpoint deployment to complete.
@@ -4239,7 +4245,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
         return sts_client.get_caller_identity()["Account"]
 
-    def _intercept_create_request(self, request: typing.Dict, create):
+    def _intercept_create_request(
+        self, request: typing.Dict, create, func_name: str = None  # pylint: disable=unused-argument
+    ):
         """This function intercepts the create job request.
 
         PipelineSession inherits this Session class and will override
@@ -4248,8 +4256,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Args:
             request (dict): the create job request
             create (functor): a functor calls the sagemaker client create method
+            func_name (str): the name of the function needed intercepting
         """
-        create(request)
+        return create(request)
 
 
 def get_model_package_args(
