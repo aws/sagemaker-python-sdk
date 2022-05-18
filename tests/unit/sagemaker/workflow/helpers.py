@@ -14,6 +14,9 @@
 """Helper methods for testing."""
 from __future__ import absolute_import
 
+from sagemaker.workflow import Properties
+from sagemaker.workflow.steps import Step, StepTypeEnum
+
 
 def ordered(obj):
     """Helper function for dict comparison.
@@ -32,3 +35,19 @@ def ordered(obj):
         return sorted(ordered(x) for x in obj)
     else:
         return obj
+
+
+class CustomStep(Step):
+    def __init__(self, name, display_name=None, description=None, depends_on=None):
+        super(CustomStep, self).__init__(
+            name, display_name, description, StepTypeEnum.TRAINING, depends_on
+        )
+        self._properties = Properties(path=f"Steps.{name}")
+
+    @property
+    def arguments(self):
+        return dict()
+
+    @property
+    def properties(self):
+        return self._properties

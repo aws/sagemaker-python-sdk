@@ -51,6 +51,7 @@ from sagemaker.amazon.object2vec import Object2Vec
 from tests.integ import DATA_DIR
 
 from sagemaker.inputs import TrainingInput
+from tests.unit.sagemaker.workflow.helpers import CustomStep
 
 REGION = "us-west-2"
 IMAGE_URI = "fakeimage"
@@ -82,6 +83,8 @@ def hyperparameters():
 
 
 def test_training_step_with_estimator(pipeline_session, training_input, hyperparameters):
+    custom_step1 = CustomStep("TestStep")
+    custom_step2 = CustomStep("SecondTestStep")
     estimator = Estimator(
         role=sagemaker.get_execution_role(),
         instance_count=1,
@@ -109,7 +112,7 @@ def test_training_step_with_estimator(pipeline_session, training_input, hyperpar
 
     pipeline = Pipeline(
         name="MyPipeline",
-        steps=[step],
+        steps=[step, custom_step1, custom_step2],
         sagemaker_session=pipeline_session,
     )
     assert json.loads(pipeline.definition())["Steps"][0] == {
