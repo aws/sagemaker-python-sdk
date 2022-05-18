@@ -10,31 +10,12 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-# language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
 from sagemaker.workflow.conditions import ConditionEquals
 from sagemaker.workflow.parameters import ParameterInteger
-from sagemaker.workflow.steps import (
-    Step,
-    StepTypeEnum,
-)
-from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.condition_step import ConditionStep
-
-
-class CustomStep(Step):
-    def __init__(self, name, display_name=None, description=None):
-        super(CustomStep, self).__init__(name, display_name, description, StepTypeEnum.TRAINING)
-        self._properties = Properties(path=f"Steps.{name}")
-
-    @property
-    def arguments(self):
-        return dict()
-
-    @property
-    def properties(self):
-        return self._properties
+from tests.unit.sagemaker.workflow.helpers import CustomStep
 
 
 def test_condition_step():

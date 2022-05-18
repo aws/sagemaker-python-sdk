@@ -49,7 +49,7 @@ from sagemaker.clarify import (
     ModelPredictedLabelConfig,
     SHAPConfig,
 )
-
+from tests.unit.sagemaker.workflow.helpers import CustomStep
 
 REGION = "us-west-2"
 IMAGE_URI = "fakeimage"
@@ -89,6 +89,8 @@ def network_config():
 
 
 def test_processing_step_with_processor(pipeline_session, processing_input):
+    custom_step1 = CustomStep("TestStep")
+    custom_step2 = CustomStep("SecondTestStep")
     processor = Processor(
         image_uri=IMAGE_URI,
         role=sagemaker.get_execution_role(),
@@ -122,7 +124,7 @@ def test_processing_step_with_processor(pipeline_session, processing_input):
 
     pipeline = Pipeline(
         name="MyPipeline",
-        steps=[step],
+        steps=[step, custom_step1, custom_step2],
         sagemaker_session=pipeline_session,
     )
     assert json.loads(pipeline.definition())["Steps"][0] == {
