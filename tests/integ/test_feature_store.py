@@ -25,11 +25,7 @@ from pandas import DataFrame
 from sagemaker.feature_store.feature_group import FeatureGroup, FeatureParameter
 from sagemaker.feature_store.inputs import FeatureValue
 from sagemaker.session import get_execution_role, Session
-from sagemaker.feature_store.feature_definition import (
-    FractionalFeatureDefinition,
-    IntegralFeatureDefinition,
-    StringFeatureDefinition,
-)
+from sagemaker.feature_store.feature_definition import FractionalFeatureDefinition
 from tests.integ.timeout import timeout
 
 BUCKET_POLICY = {
@@ -255,7 +251,7 @@ def test_update_feature_group(
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
 
     with cleanup_feature_group(feature_group):
-        output = feature_group.create(
+        feature_group.create(
             s3_uri=offline_store_s3_uri,
             record_identifier_name="feature1",
             event_time_feature_name="feature3",
@@ -269,15 +265,8 @@ def test_update_feature_group(
         feature_group.update(new_features)
         time.sleep(10)
         feature_definitions = feature_group.describe().get("FeatureDefinitions")
-        assert (
-            any(
-                [
-                    True
-                    for elem in feature_definitions
-                    if new_feature_name in elem.values()
-                ]
-            )
-            == True
+        assert any(
+            [True for elem in feature_definitions if new_feature_name in elem.values()]
         )
 
 
@@ -294,7 +283,7 @@ def test_feature_metadata(
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
 
     with cleanup_feature_group(feature_group):
-        output = feature_group.create(
+        feature_group.create(
             s3_uri=offline_store_s3_uri,
             record_identifier_name="feature1",
             event_time_feature_name="feature3",
