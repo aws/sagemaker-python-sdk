@@ -13,7 +13,7 @@
 """The step definitions for workflow."""
 from __future__ import absolute_import
 
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Optional
 from enum import Enum
 
 import attr
@@ -27,6 +27,7 @@ from sagemaker.workflow.properties import (
 from sagemaker.workflow.entities import (
     DefaultEnumMeta,
 )
+from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.steps import Step, StepTypeEnum, CacheConfig
 
 
@@ -86,7 +87,7 @@ class CallbackStep(Step):
         display_name: str = None,
         description: str = None,
         cache_config: CacheConfig = None,
-        depends_on: Union[List[str], List[Step]] = None,
+        depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
     ):
         """Constructs a CallbackStep.
 
@@ -99,8 +100,9 @@ class CallbackStep(Step):
             display_name (str): The display name of the callback step.
             description (str): The description of the callback step.
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
-            depends_on (List[str] or List[Step]): A list of step names or step instances
-                this `sagemaker.workflow.steps.CallbackStep` depends on
+            depends_on (List[Union[str, Step, StepCollection]]): A list of `Step`/`StepCollection`
+                names or `Step` instances or `StepCollection` instances that this `CallbackStep`
+                depends on.
         """
         super(CallbackStep, self).__init__(
             name, display_name, description, StepTypeEnum.CALLBACK, depends_on

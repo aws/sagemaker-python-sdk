@@ -17,7 +17,7 @@ import abc
 import warnings
 
 from enum import Enum
-from typing import Dict, List, Union, Optional
+from typing import Dict, List, Union, Optional, TYPE_CHECKING
 from urllib.parse import urlparse
 
 import attr
@@ -45,6 +45,9 @@ from sagemaker.workflow.properties import (
 )
 from sagemaker.workflow.functions import Join
 from sagemaker.workflow.retry import RetryPolicy
+
+if TYPE_CHECKING:
+    from sagemaker.workflow.step_collections import StepCollection
 
 
 class StepTypeEnum(Enum, metaclass=DefaultEnumMeta):
@@ -74,15 +77,16 @@ class Step(Entity):
         display_name (str): The display name of the `Step`.
         description (str): The description of the `Step`.
         step_type (StepTypeEnum): The type of the `Step`.
-        depends_on (List[str] or List[Step]): The list of `Step` names or `Step`
-            instances that the current `Step` depends on.
+        depends_on (List[Union[str, Step, StepCollection]]): The list of `Step`/`StepCollection`
+            names or `Step` instances or `StepCollection` instances that the current `Step`
+            depends on.
     """
 
     name: str = attr.ib(factory=str)
-    display_name: str = attr.ib(default=None)
-    description: str = attr.ib(default=None)
+    display_name: Optional[str] = attr.ib(default=None)
+    description: Optional[str] = attr.ib(default=None)
     step_type: StepTypeEnum = attr.ib(factory=StepTypeEnum.factory)
-    depends_on: Union[List[str], List["Step"]] = attr.ib(default=None)
+    depends_on: Optional[List[Union[str, "Step", "StepCollection"]]] = attr.ib(default=None)
 
     @property
     @abc.abstractmethod
@@ -110,7 +114,7 @@ class Step(Entity):
 
         return request_dict
 
-    def add_depends_on(self, step_names: Union[List[str], List["Step"]]):
+    def add_depends_on(self, step_names: List[Union[str, "Step", "StepCollection"]]):
         """Add `Step` names or `Step` instances to the current `Step` depends on list."""
 
         if not step_names:
@@ -126,11 +130,17 @@ class Step(Entity):
         return {"Name": self.name}
 
     @staticmethod
-    def _resolve_depends_on(depends_on_list: Union[List[str], List["Step"]]) -> List[str]:
+    def _resolve_depends_on(
+        depends_on_list: List[Union[str, "Step", "StepCollection"]]
+    ) -> List[str]:
         """Resolve the `Step` depends on list."""
+        from sagemaker.workflow.step_collections import StepCollection
+
         depends_on = []
         for step in depends_on_list:
-            if isinstance(step, Step):
+            # As for StepCollection, the names of its sub steps will be interpolated
+            # when generating the pipeline definition
+            if isinstance(step, (Step, StepCollection)):
                 depends_on.append(step.name)
             elif isinstance(step, str):
                 depends_on.append(step)
@@ -187,7 +197,7 @@ class ConfigurableRetryStep(Step):
         step_type: StepTypeEnum,
         display_name: str = None,
         description: str = None,
-        depends_on: Union[List[str], List[Step]] = None,
+        depends_on: Optional[List[Union[str, Step, "StepCollection"]]] = None,
         retry_policies: List[RetryPolicy] = None,
     ):
         super().__init__(
@@ -233,7 +243,7 @@ class TrainingStep(ConfigurableRetryStep):
         description: str = None,
         inputs: Union[TrainingInput, dict, str, FileSystemInput] = None,
         cache_config: CacheConfig = None,
-        depends_on: Union[List[str], List[Step]] = None,
+        depends_on: Optional[List[Union[str, Step, "StepCollection"]]] = None,
         retry_policies: List[RetryPolicy] = None,
     ):
         """Construct a `TrainingStep`, given an `EstimatorBase` instance.
@@ -264,8 +274,9 @@ class TrainingStep(ConfigurableRetryStep):
                   the path to the training dataset.
 
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
-            depends_on (List[str] or List[Step]): A list of `Step` names or `Step` instances
-                this `sagemaker.workflow.steps.TrainingStep` depends on.
+            depends_on (List[Union[str, Step, StepCollection]]): A list of `Step`/`StepCollection`
+                names or `Step` instances or `StepCollection` instances that this `TrainingStep`
+                depends on.
             retry_policies (List[RetryPolicy]):  A list of retry policies.
         """
         super(TrainingStep, self).__init__(
@@ -383,7 +394,7 @@ class CreateModelStep(ConfigurableRetryStep):
         step_args: Optional[dict] = None,
         model: Optional[Union[Model, PipelineModel]] = None,
         inputs: Optional[CreateModelInput] = None,
-        depends_on: Optional[Union[List[str], List[Step]]] = None,
+        depends_on: Optional[List[Union[str, Step, "StepCollection"]]] = None,
         retry_policies: Optional[List[RetryPolicy]] = None,
         display_name: Optional[str] = None,
         description: Optional[str] = None,
@@ -400,8 +411,9 @@ class CreateModelStep(ConfigurableRetryStep):
                 or `sagemaker.pipeline.PipelineModel` instance (default: None).
             inputs (CreateModelInput): A `sagemaker.inputs.CreateModelInput` instance.
                 (default: None).
-            depends_on (List[str] or List[Step]): A list of `Step` names or `Step` instances
-                this `sagemaker.workflow.steps.CreateModelStep` depends on (default: None).
+            depends_on (List[Union[str, Step, StepCollection]]): A list of `Step`/`StepCollection`
+                names or `Step` instances or `StepCollection` instances that this `CreateModelStep`
+                depends on (default: None).
             retry_policies (List[RetryPolicy]):  A list of retry policies (default: None).
             display_name (str): The display name of the `CreateModelStep` (default: None).
             description (str): The description of the `CreateModelStep` (default: None).
@@ -482,7 +494,7 @@ class TransformStep(ConfigurableRetryStep):
         display_name: str = None,
         description: str = None,
         cache_config: CacheConfig = None,
-        depends_on: Union[List[str], List[Step]] = None,
+        depends_on: Optional[List[Union[str, Step, "StepCollection"]]] = None,
         retry_policies: List[RetryPolicy] = None,
     ):
         """Constructs a `TransformStep`, given a `Transformer` instance.
@@ -498,7 +510,8 @@ class TransformStep(ConfigurableRetryStep):
             cache_config (CacheConfig): A `sagemaker.workflow.steps.CacheConfig` instance.
             display_name (str): The display name of the `TransformStep`.
             description (str): The description of the `TransformStep`.
-            depends_on (List[str]): A list of `Step` names that this `sagemaker.workflow.steps.TransformStep`
+            depends_on (List[Union[str, Step, StepCollection]]): A list of `Step`/`StepCollection`
+                names or `Step` instances or `StepCollection` instances that this `TransformStep`
                 depends on.
             retry_policies (List[RetryPolicy]): A list of retry policies.
         """
@@ -589,7 +602,7 @@ class ProcessingStep(ConfigurableRetryStep):
         code: str = None,
         property_files: List[PropertyFile] = None,
         cache_config: CacheConfig = None,
-        depends_on: Union[List[str], List[Step]] = None,
+        depends_on: Optional[List[Union[str, Step, "StepCollection"]]] = None,
         retry_policies: List[RetryPolicy] = None,
         kms_key=None,
     ):
@@ -615,8 +628,9 @@ class ProcessingStep(ConfigurableRetryStep):
             property_files (List[PropertyFile]): A list of property files that workflow looks
                 for and resolves from the configured processing output list.
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
-            depends_on (List[str] or List[Step]): A list of `Step` names or `Step` instances that
-                this `sagemaker.workflow.steps.ProcessingStep` depends on.
+            depends_on (List[Union[str, Step, StepCollection]]): A list of `Step`/`StepCollection`
+                names or `Step` instances or `StepCollection` instances that this `ProcessingStep`
+                depends on.
             retry_policies (List[RetryPolicy]):  A list of retry policies.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file. Defaults to `None`.
@@ -731,7 +745,7 @@ class TuningStep(ConfigurableRetryStep):
         inputs=None,
         job_arguments: List[str] = None,
         cache_config: CacheConfig = None,
-        depends_on: Union[List[str], List[Step]] = None,
+        depends_on: Optional[List[Union[str, Step, "StepCollection"]]] = None,
         retry_policies: List[RetryPolicy] = None,
     ):
         """Construct a `TuningStep`, given a `HyperparameterTuner` instance.
@@ -775,8 +789,9 @@ class TuningStep(ConfigurableRetryStep):
             job_arguments (List[str]): A list of strings to be passed into the processing job.
                 Defaults to `None`.
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
-            depends_on (List[str] or List[Step]): A list of `Step` names or `Step` instances that
-                this `sagemaker.workflow.steps.ProcessingStep` depends on.
+            depends_on (List[Union[str, Step, StepCollection]]): A list of `Step`/`StepCollection`
+                names or `Step` instances or `StepCollection` instances that this `TuningStep`
+                depends on.
             retry_policies (List[RetryPolicy]):  A list of retry policies.
         """
         super(TuningStep, self).__init__(
