@@ -4347,6 +4347,8 @@ def get_create_model_package_request(
         drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
         customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
             metadata properties (default: None).
+        domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
+            "MACHINE_LEARNING" (default: None).
     """
 
     if all([model_package_name, model_package_group_name]):
