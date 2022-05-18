@@ -78,6 +78,7 @@ class RegisterModel(StepCollection):  # pragma: no cover
         model: Union[Model, PipelineModel] = None,
         drift_check_baselines=None,
         customer_metadata_properties=None,
+        domain=None,
         **kwargs,
     ):
         """Construct steps `_RepackModelStep` and `_RegisterModelStep` based on the estimator.
@@ -118,6 +119,8 @@ class RegisterModel(StepCollection):  # pragma: no cover
             drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
             customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
                 metadata properties (default: None).
+            domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
+                "MACHINE_LEARNING" (default: None).
 
             **kwargs: additional arguments to `create_model`.
         """
@@ -236,6 +239,7 @@ class RegisterModel(StepCollection):  # pragma: no cover
             container_def_list=self.container_def_list,
             retry_policies=register_model_step_retry_policies,
             customer_metadata_properties=customer_metadata_properties,
+            domain=domain,
             **kwargs,
         )
         if not repack_model:

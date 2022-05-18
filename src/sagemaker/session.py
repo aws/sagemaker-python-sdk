@@ -2803,6 +2803,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         drift_check_baselines=None,
         customer_metadata_properties=None,
         validation_specification=None,
+        domain=None
     ):
         """Get request dictionary for CreateModelPackage API.
 
@@ -2830,6 +2831,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
             customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
                 metadata properties (default: None).
+            domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
+                "MACHINE_LEARNING" (default: None).
         """
 
         model_pkg_request = get_create_model_package_request(
@@ -2848,6 +2851,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             drift_check_baselines=drift_check_baselines,
             customer_metadata_properties=customer_metadata_properties,
             validation_specification=validation_specification,
+            domain=domain
         )
 
         def submit(request):
@@ -4218,6 +4222,7 @@ def get_model_package_args(
     drift_check_baselines=None,
     customer_metadata_properties=None,
     validation_specification=None,
+    domain=None
 ):
     """Get arguments for create_model_package method.
 
@@ -4248,6 +4253,8 @@ def get_model_package_args(
         drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
         customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
             metadata properties (default: None).
+        domain (str): Domain values can be "COMPUTER_VISION, NATURAL_LANGUAGE_PROCESSING, 
+            MACHINE_LEARNING" (default: None).
     Returns:
         dict: A dictionary of method argument names and values.
     """
@@ -4289,6 +4296,8 @@ def get_model_package_args(
         model_package_args["customer_metadata_properties"] = customer_metadata_properties
     if validation_specification is not None:
         model_package_args["validation_specification"] = validation_specification
+    if domain is not None:
+        model_package_args["domain"] = domain
     return model_package_args
 
 
@@ -4309,6 +4318,7 @@ def get_create_model_package_request(
     drift_check_baselines=None,
     customer_metadata_properties=None,
     validation_specification=None,
+    domain=None
 ):
     """Get request dictionary for CreateModelPackage API.
 
@@ -4362,6 +4372,8 @@ def get_create_model_package_request(
         request_dict["CustomerMetadataProperties"] = customer_metadata_properties
     if validation_specification:
         request_dict["ValidationSpecification"] = validation_specification
+    if domain is not None:
+        request_dict["Domain"] = domain
     if containers is not None:
         if not all([content_types, response_types, inference_instances, transform_instances]):
             raise ValueError(

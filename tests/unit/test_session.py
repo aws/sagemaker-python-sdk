@@ -2386,6 +2386,7 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
     approval_status = ("Approved",)
     description = "description"
     customer_metadata_properties = {"key1": "value1"}
+    domain = "COMPUTER_VISION"
     sagemaker_session.create_model_package_from_containers(
         containers=containers,
         content_types=content_types,
@@ -2400,6 +2401,7 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
         description=description,
         drift_check_baselines=drift_check_baselines,
         customer_metadata_properties=customer_metadata_properties,
+        domain=domain
     )
     expected_args = {
         "ModelPackageName": model_package_name,
@@ -2417,6 +2419,7 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
         "ModelApprovalStatus": approval_status,
         "DriftCheckBaselines": drift_check_baselines,
         "CustomerMetadataProperties": customer_metadata_properties,
+        "Domain": domain
     }
     sagemaker_session.sagemaker_client.create_model_package.assert_called_with(**expected_args)
 

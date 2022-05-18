@@ -309,6 +309,7 @@ class Model(ModelBase):
         drift_check_baselines=None,
         customer_metadata_properties=None,
         validation_specification=None,
+        domain=None
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -336,6 +337,8 @@ class Model(ModelBase):
             drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
             customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
                 metadata properties (default: None).
+            domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
+                "MACHINE_LEARNING" (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -365,6 +368,7 @@ class Model(ModelBase):
             drift_check_baselines=drift_check_baselines,
             customer_metadata_properties=customer_metadata_properties,
             validation_specification=validation_specification,
+            domain=domain
         )
         model_package = self.sagemaker_session.create_model_package_from_containers(
             **model_pkg_args
