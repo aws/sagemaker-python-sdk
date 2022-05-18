@@ -47,6 +47,7 @@ from sagemaker.workflow.retry import (
 )
 from sagemaker.xgboost import XGBoostModel
 from tests.unit import DATA_DIR
+from tests.unit.sagemaker.workflow.helpers import CustomStep
 
 _IMAGE_URI = "fakeimage"
 _REGION = "us-west-2"
@@ -130,6 +131,7 @@ def model(pipeline_session, model_data_param):
 
 
 def test_register_model_with_runtime_repack(pipeline_session, model_data_param, model):
+    custom_step = CustomStep("TestStep")
     step_args = model.register(
         content_types=["text/csv"],
         response_types=["text/csv"],
@@ -156,13 +158,15 @@ def test_register_model_with_runtime_repack(pipeline_session, model_data_param, 
     pipeline = Pipeline(
         name="MyPipeline",
         parameters=[model_data_param],
-        steps=[model_steps],
+        steps=[model_steps, custom_step],
         sagemaker_session=pipeline_session,
     )
     step_dsl_list = json.loads(pipeline.definition())["Steps"]
-    assert len(step_dsl_list) == 2
+    assert len(step_dsl_list) == 3
     expected_repack_step_name = f"MyModelStep-{_REPACK_MODEL_NAME_BASE}-MyModel"
-    for step in step_dsl_list:
+    # Filter out the dummy custom step
+    step_dsl_list = list(filter(lambda s: s["Name"] != "TestStep", step_dsl_list))
+    for step in step_dsl_list[0:2]:
         if step["Type"] == "Training":
             assert step["Name"] == expected_repack_step_name
             assert len(step["DependsOn"]) == 1
@@ -468,6 +472,7 @@ def test_register_model_without_repack(pipeline_session):
 
 @patch("sagemaker.utils.repack_model")
 def test_create_model_with_compile_time_repack(mock_repack, pipeline_session):
+    custom_step = CustomStep("TestStep")
     model_name = "MyModel"
     model = Model(
         name=model_name,
@@ -485,11 +490,11 @@ def test_create_model_with_compile_time_repack(mock_repack, pipeline_session):
     model_steps = ModelStep(name="MyModelStep", step_args=step_args, depends_on=["TestStep"])
     pipeline = Pipeline(
         name="MyPipeline",
-        steps=[model_steps],
+        steps=[model_steps, custom_step],
         sagemaker_session=pipeline_session,
     )
     step_dsl_list = json.loads(pipeline.definition())["Steps"]
-    assert len(step_dsl_list) == 1
+    assert len(step_dsl_list) == 2
     assert step_dsl_list[0]["Name"] == "MyModelStep-CreateModel"
     arguments = step_dsl_list[0]["Arguments"]
     assert arguments["PrimaryContainer"]["Image"] == _IMAGE_URI
