@@ -23,6 +23,7 @@ from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.lambda_step import LambdaStep, LambdaOutput, LambdaOutputTypeEnum
 from sagemaker.lambda_helper import Lambda
 from sagemaker.workflow.steps import CacheConfig
+from tests.unit.sagemaker.workflow.helpers import CustomStep
 
 
 @pytest.fixture()
@@ -54,6 +55,8 @@ def sagemaker_session_cn():
 
 
 def test_lambda_step(sagemaker_session):
+    custom_step1 = CustomStep("TestStep")
+    custom_step2 = CustomStep("SecondTestStep")
     param = ParameterInteger(name="MyInt")
     output_param1 = LambdaOutput(output_name="output1", output_type=LambdaOutputTypeEnum.String)
     output_param2 = LambdaOutput(output_name="output2", output_type=LambdaOutputTypeEnum.Boolean)
@@ -75,7 +78,7 @@ def test_lambda_step(sagemaker_session):
     pipeline = Pipeline(
         name="MyPipeline",
         parameters=[param],
-        steps=[lambda_step],
+        steps=[lambda_step, custom_step1, custom_step2],
         sagemaker_session=sagemaker_session,
     )
     assert json.loads(pipeline.definition())["Steps"][0] == {
@@ -118,6 +121,7 @@ def test_lambda_step_output_expr(sagemaker_session):
 
 
 def test_pipeline_interpolates_lambda_outputs(sagemaker_session):
+    custom_step = CustomStep("TestStep")
     parameter = ParameterString("MyStr")
     output_param1 = LambdaOutput(output_name="output1", output_type=LambdaOutputTypeEnum.String)
     output_param2 = LambdaOutput(output_name="output2", output_type=LambdaOutputTypeEnum.String)
@@ -145,7 +149,7 @@ def test_pipeline_interpolates_lambda_outputs(sagemaker_session):
     pipeline = Pipeline(
         name="MyPipeline",
         parameters=[parameter],
-        steps=[lambda_step1, lambda_step2],
+        steps=[lambda_step1, lambda_step2, custom_step],
         sagemaker_session=sagemaker_session,
     )
 
@@ -173,6 +177,11 @@ def test_pipeline_interpolates_lambda_outputs(sagemaker_session):
                 "DependsOn": ["TestStep"],
                 "FunctionArn": "arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
                 "OutputParameters": [{"OutputName": "output2", "OutputType": "String"}],
+            },
+            {
+                "Name": "TestStep",
+                "Type": "Training",
+                "Arguments": {},
             },
         ],
     }

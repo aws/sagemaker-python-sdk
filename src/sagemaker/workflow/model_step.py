@@ -40,7 +40,7 @@ class ModelStep(StepCollection):
         self,
         name: str,
         step_args: _ModelStepArguments,
-        depends_on: Optional[Union[List[str], List[Step]]] = None,
+        depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
         retry_policies: Optional[Union[List[RetryPolicy], Dict[str, List[RetryPolicy]]]] = None,
         display_name: Optional[str] = None,
         description: Optional[str] = None,
@@ -51,8 +51,9 @@ class ModelStep(StepCollection):
             name (str): The name of the `ModelStep`. A name is required and must be
                 unique within a pipeline.
             step_args (_ModelStepArguments): The arguments for the `ModelStep` definition.
-            depends_on (List[str] or List[Step]): A list of `Step` names or `Step` instances
-                that this `ModelStep` depends on.
+            depends_on (List[Union[str, Step, StepCollection]]): A list of `Step`/`StepCollection`
+                names or `Step` instances or `StepCollection` instances that the first step,
+                in this `ModelStep` collection, depends on.
                 If a listed `Step` name does not exist, an error is returned (default: None).
             retry_policies (List[RetryPolicy] or Dict[str, List[RetryPolicy]]): The list of retry
                 policies for the `ModelStep` (default: None).

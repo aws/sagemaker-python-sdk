@@ -21,6 +21,7 @@ from mock import Mock
 from sagemaker.workflow.parameters import ParameterInteger, ParameterString
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.callback_step import CallbackStep, CallbackOutput, CallbackOutputTypeEnum
+from tests.unit.sagemaker.workflow.helpers import CustomStep
 
 
 @pytest.fixture
@@ -98,6 +99,7 @@ def test_callback_step_output_expr():
 
 def test_pipeline_interpolates_callback_outputs():
     parameter = ParameterString("MyStr")
+    custom_step = CustomStep("TestStep")
     outputParam1 = CallbackOutput(output_name="output1", output_type=CallbackOutputTypeEnum.String)
     outputParam2 = CallbackOutput(output_name="output2", output_type=CallbackOutputTypeEnum.String)
     cb_step1 = CallbackStep(
@@ -118,7 +120,7 @@ def test_pipeline_interpolates_callback_outputs():
     pipeline = Pipeline(
         name="MyPipeline",
         parameters=[parameter],
-        steps=[cb_step1, cb_step2],
+        steps=[cb_step1, cb_step2, custom_step],
         sagemaker_session=sagemaker_session_mock,
     )
 
@@ -146,6 +148,11 @@ def test_pipeline_interpolates_callback_outputs():
                 "DependsOn": ["TestStep"],
                 "SqsQueueUrl": "https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue",
                 "OutputParameters": [{"OutputName": "output2", "OutputType": "String"}],
+            },
+            {
+                "Name": "TestStep",
+                "Type": "Training",
+                "Arguments": {},
             },
         ],
     }
