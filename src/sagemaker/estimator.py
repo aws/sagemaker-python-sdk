@@ -1340,6 +1340,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         Returns:
             str: A string of SageMaker Model Package ARN.
         """
+        if isinstance(self.sagemaker_session, PipelineSession):
+            raise TypeError(
+                "estimator.register does not support PipelineSession at this moment. "
+                "Please use model.register with PipelineSession if you're using the ModelStep."
+            )
         default_name = name_from_base(self.base_job_name)
         model_name = model_name or default_name
         if compile_model_family is not None:

@@ -148,6 +148,10 @@ class StepRetryPolicy(RetryPolicy):
         request["ExceptionType"] = [e.value for e in self.exception_types]
         return request
 
+    def __hash__(self):
+        """Hash function for StepRetryPolicy types"""
+        return hash(tuple(self.to_request()))
+
 
 class SageMakerJobStepRetryPolicy(RetryPolicy):
     """RetryPolicy for exception thrown by SageMaker Job.
@@ -202,3 +206,7 @@ class SageMakerJobStepRetryPolicy(RetryPolicy):
         request = super().to_request()
         request["ExceptionType"] = [e.value for e in self.exception_type_list]
         return request
+
+    def __hash__(self):
+        """Hash function for SageMakerJobStepRetryPolicy types"""
+        return hash(tuple(self.to_request()))
