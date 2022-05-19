@@ -81,7 +81,7 @@ def test_implicit_value_on_join():
 
     with pytest.raises(TypeError) as error:
         str(func)
-    assert str(error.value) == "Pipeline variables do not support __str__ operation."
+    assert "Pipeline variables do not support __str__ operation." in str(error.value)
 
     with pytest.raises(TypeError) as error:
         int(func)
@@ -189,7 +189,7 @@ def test_implicit_value_on_json_get():
 
     with pytest.raises(TypeError) as error:
         str(func)
-    assert str(error.value) == "Pipeline variables do not support __str__ operation."
+    assert "Pipeline variables do not support __str__ operation." in str(error.value)
 
     with pytest.raises(TypeError) as error:
         int(func)
