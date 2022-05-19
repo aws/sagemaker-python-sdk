@@ -90,10 +90,12 @@ def test_conditional_pytorch_training_model_registration(
     inputs = TrainingInput(s3_data=input_path)
 
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
-    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+    instance_type = "ml.m5.xlarge"
     good_enough_input = ParameterInteger(name="GoodEnoughInput", default_value=1)
     in_condition_input = ParameterString(name="Foo", default_value="Foo")
 
+    # If image_uri is not provided, the instance_type should not be a pipeline variable
+    # since instance_type is used to retrieve image_uri in compile time (PySDK)
     pytorch_estimator = PyTorch(
         entry_point=entry_point,
         role=role,
@@ -153,7 +155,6 @@ def test_conditional_pytorch_training_model_registration(
             in_condition_input,
             good_enough_input,
             instance_count,
-            instance_type,
         ],
         steps=[step_train, step_cond],
         sagemaker_session=sagemaker_session,
@@ -259,8 +260,10 @@ def test_sklearn_xgboost_sip_model_registration(
     prefix = "sip"
     bucket_name = sagemaker_session.default_bucket()
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
-    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+    instance_type = "ml.m5.xlarge"
 
+    # The instance_type should not be a pipeline variable
+    # since it is used to retrieve image_uri in compile time (PySDK)
     sklearn_processor = SKLearnProcessor(
         role=role,
         instance_type=instance_type,
@@ -331,6 +334,8 @@ def test_sklearn_xgboost_sip_model_registration(
     source_dir = base_dir
     code_location = "s3://{0}/{1}/code".format(bucket_name, prefix)
 
+    # If image_uri is not provided, the instance_type should not be a pipeline variable
+    # since instance_type is used to retrieve image_uri in compile time (PySDK)
     estimator = XGBoost(
         entry_point=entry_point,
         source_dir=source_dir,
@@ -416,7 +421,6 @@ def test_sklearn_xgboost_sip_model_registration(
             train_data_path_param,
             val_data_path_param,
             model_path_param,
-            instance_type,
             instance_count,
             output_path_param,
         ],
@@ -462,7 +466,7 @@ def test_model_registration_with_drift_check_baselines(
     pipeline_name,
 ):
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
-    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+    instance_type = "ml.m5.xlarge"
 
     # upload model data to s3
     model_local_path = os.path.join(DATA_DIR, "mxnet_mnist/model.tar.gz")
@@ -550,6 +554,9 @@ def test_model_registration_with_drift_check_baselines(
         ),
     )
     customer_metadata_properties = {"key1": "value1"}
+
+    # If image_uri is not provided, the instance_type should not be a pipeline variable
+    # since instance_type is used to retrieve image_uri in compile time (PySDK)
     estimator = XGBoost(
         entry_point="training.py",
         source_dir=os.path.join(DATA_DIR, "sip"),
@@ -579,7 +586,6 @@ def test_model_registration_with_drift_check_baselines(
         parameters=[
             model_uri_param,
             metrics_uri_param,
-            instance_type,
             instance_count,
         ],
         steps=[step_register],
@@ -667,9 +673,11 @@ def test_model_registration_with_model_repack(
     inputs = TrainingInput(s3_data=input_path)
 
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
-    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+    instance_type = "ml.m5.xlarge"
     good_enough_input = ParameterInteger(name="GoodEnoughInput", default_value=1)
 
+    # If image_uri is not provided, the instance_type should not be a pipeline variable
+    # since instance_type is used to retrieve image_uri in compile time (PySDK)
     pytorch_estimator = PyTorch(
         entry_point=entry_point,
         role=role,
@@ -724,7 +732,7 @@ def test_model_registration_with_model_repack(
 
     pipeline = Pipeline(
         name=pipeline_name,
-        parameters=[good_enough_input, instance_count, instance_type],
+        parameters=[good_enough_input, instance_count],
         steps=[step_cond],
         sagemaker_session=sagemaker_session,
     )
@@ -767,8 +775,10 @@ def test_model_registration_with_tensorflow_model_with_pipeline_model(
     inputs = TrainingInput(s3_data=input_path)
 
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
-    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+    instance_type = "ml.m5.xlarge"
 
+    # If image_uri is not provided, the instance_type should not be a pipeline variable
+    # since instance_type is used to retrieve image_uri in compile time (PySDK)
     tensorflow_estimator = TensorFlow(
         entry_point=entry_point,
         role=role,
@@ -809,10 +819,7 @@ def test_model_registration_with_tensorflow_model_with_pipeline_model(
 
     pipeline = Pipeline(
         name=pipeline_name,
-        parameters=[
-            instance_count,
-            instance_type,
-        ],
+        parameters=[instance_count],
         steps=[step_train, step_register_model],
         sagemaker_session=sagemaker_session,
     )
