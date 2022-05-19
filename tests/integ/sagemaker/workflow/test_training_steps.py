@@ -90,7 +90,6 @@ def test_training_job_with_debugger_and_profiler(
         sagemaker_session=sagemaker_session,
         rules=rules,
         debugger_hook_config=debugger_hook_config,
-        output_path=output_path,
     )
 
     step_train = TrainingStep(
