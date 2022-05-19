@@ -432,7 +432,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
                 tags=self.tags,
                 container_def_list=self.container_def_list,
                 customer_metadata_properties=self.customer_metadata_properties,
-                domain=self.domain
+                domain=self.domain,
             )
 
             request_dict = get_create_model_package_request(**model_package_args)

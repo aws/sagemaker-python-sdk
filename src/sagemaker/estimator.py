@@ -1345,7 +1345,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             description,
             drift_check_baselines=drift_check_baselines,
             customer_metadata_properties=customer_metadata_properties,
-            domain=domain
+            domain=domain,
         )
 
     @property

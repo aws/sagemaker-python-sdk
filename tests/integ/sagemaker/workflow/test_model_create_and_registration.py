@@ -573,7 +573,7 @@ def test_model_registration_with_drift_check_baselines(
         model_metrics=model_metrics,
         drift_check_baselines=drift_check_baselines,
         customer_metadata_properties=customer_metadata_properties,
-        domain=domain
+        domain=domain,
     )
 
     pipeline = Pipeline(

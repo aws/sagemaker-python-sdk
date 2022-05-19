@@ -205,7 +205,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         description=None,
         drift_check_baselines=None,
         customer_metadata_properties=None,
-        domain=None
+        domain=None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -264,7 +264,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             description,
             drift_check_baselines=drift_check_baselines,
             customer_metadata_properties=customer_metadata_properties,
-            domain=domain
+            domain=domain,
         )
 
     def deploy(
