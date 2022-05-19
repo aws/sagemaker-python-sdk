@@ -78,7 +78,11 @@ class PipelineVariable(Expression):
 
     def __str__(self):
         """Override built-in String function for PipelineVariable"""
-        raise TypeError("Pipeline variables do not support __str__ operation.")
+        raise TypeError(
+            "Pipeline variables do not support __str__ operation. "
+            "Please use `.to_string()` to convert it to string type in execution time"
+            "or use `.expr` to translate it to Json for display purpose in Python SDK."
+        )
 
     def __int__(self):
         """Override built-in Integer function for PipelineVariable"""
