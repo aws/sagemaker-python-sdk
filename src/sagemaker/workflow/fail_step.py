@@ -13,12 +13,13 @@
 """The `Step` definitions for SageMaker Pipelines Workflows."""
 from __future__ import absolute_import
 
-from typing import List, Union
+from typing import List, Union, Optional
 
 from sagemaker.workflow import PipelineNonPrimitiveInputTypes
 from sagemaker.workflow.entities import (
     RequestType,
 )
+from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.steps import Step, StepTypeEnum
 
 
@@ -31,7 +32,7 @@ class FailStep(Step):
         error_message: Union[str, PipelineNonPrimitiveInputTypes] = None,
         display_name: str = None,
         description: str = None,
-        depends_on: Union[List[str], List[Step]] = None,
+        depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
     ):
         """Constructs a `FailStep`.
 
@@ -45,8 +46,9 @@ class FailStep(Step):
             display_name (str): The display name of the `FailStep`.
                 The display name provides better UI readability. (default: None).
             description (str): The description of the `FailStep` (default: None).
-            depends_on (List[str] or List[Step]): A list of `Step` names or `Step` instances
-                that this `FailStep` depends on.
+            depends_on (List[Union[str, Step, StepCollection]]): A list of `Step`/`StepCollection`
+                names or `Step` instances or `StepCollection` instances that this `FailStep`
+                depends on.
                 If a listed `Step` name does not exist, an error is returned (default: None).
         """
         super(FailStep, self).__init__(
