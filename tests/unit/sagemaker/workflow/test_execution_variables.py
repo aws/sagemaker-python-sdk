@@ -33,7 +33,7 @@ def test_implicit_value():
 
     with pytest.raises(TypeError) as error:
         str(var)
-    assert "Pipeline variables do not support __str__ operation." in str(error.value)
+    assert str(error.value) == "Pipeline variables do not support __str__ operation."
 
     with pytest.raises(TypeError) as error:
         int(var)
