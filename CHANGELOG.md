@@ -1,5 +1,37 @@
 # Changelog
 
+## v2.91.1 (2022-05-19)
+
+### Bug Fixes and Other Changes
+
+ * Revert Prevent passing PipelineVariable object into image_uris.retrieve
+
+## v2.91.0 (2022-05-19)
+
+### Features
+
+ * Support Properties for StepCollection
+
+### Bug Fixes and Other Changes
+
+ * Prevent passing PipelineVariable object into image_uris.retrieve
+ * support image_uri being property ref for model
+ * ResourceConflictException from AWS Lambda on pipeline upsert
+
+### Documentation Changes
+
+ * release notes for SMDDP 1.4.1 and SMDMP 1.9.0
+
+## v2.90.0 (2022-05-16)
+
+### Features
+
+ * Add ModelStep for SageMaker Model Building Pipeline
+
+### Bug Fixes and Other Changes
+
+ * update setup.py to add minimum python requirement of 3.6
+
 ## v2.89.0 (2022-05-11)
 
 ### Features
