@@ -3302,7 +3302,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if existing_endpoint_config_desc.get("AsyncInferenceConfig") is not None:
             request["AsyncInferenceConfig"] = existing_endpoint_config_desc.get(
-                "AsyncInferenceConfig"
+                "AsyncInferenceConfig", None
             )
 
         self.sagemaker_client.create_endpoint_config(**request)
