@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.91.1 (2022-05-19)
+
+### Bug Fixes and Other Changes
+
+ * Revert Prevent passing PipelineVariable object into image_uris.retrieve
+
 ## v2.91.0 (2022-05-19)
 
 ### Features
