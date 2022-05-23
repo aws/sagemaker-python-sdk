@@ -151,6 +151,7 @@ class SKLearnModel(FrameworkModel):
         marketplace_cert=False,
         approval_status=None,
         description=None,
+        domain=None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -175,6 +176,8 @@ class SKLearnModel(FrameworkModel):
             approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
                 or "PendingManualApproval" (default: "PendingManualApproval").
             description (str): Model Package description (default: None).
+            domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
+                "MACHINE_LEARNING" (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -202,6 +205,7 @@ class SKLearnModel(FrameworkModel):
             marketplace_cert,
             approval_status,
             description,
+            domain=domain,
         )
 
     def prepare_container_def(
