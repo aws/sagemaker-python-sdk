@@ -55,7 +55,7 @@ def test_jumpstart_sklearn_image_uri(patched_get_model_specs, session):
 
     assert uri == framework_class_uri
     assert (
-        uri == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3"
+        uri == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.0-1-cpu-py3"
     )
 
     # training
@@ -81,7 +81,7 @@ def test_jumpstart_sklearn_image_uri(patched_get_model_specs, session):
 
     assert uri == framework_class_uri
     assert (
-        uri == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3"
+        uri == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.0-1-cpu-py3"
     )
 
     with pytest.raises(ValueError):

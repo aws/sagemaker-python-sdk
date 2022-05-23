@@ -598,7 +598,7 @@ def test_all_framework_models_add_jumpstart_tags(
         },
         MXNetModel: {"framework_version": "1.7.0", "py_version": "py3"},
         SKLearnModel: {
-            "framework_version": "0.23-1",
+            "framework_version": "1.0-1",
         },
         XGBoostModel: {
             "framework_version": "1.3-1",
@@ -690,7 +690,7 @@ def test_all_framework_models_add_jumpstart_base_name(
         },
         MXNetModel: {"framework_version": "1.7.0", "py_version": "py3"},
         SKLearnModel: {
-            "framework_version": "0.23-1",
+            "framework_version": "1.0-1",
         },
         XGBoostModel: {
             "framework_version": "1.3-1",

@@ -404,7 +404,7 @@ def test_vertex_to_dataset_artifact(sagemaker_session):
     sagemaker_session.sagemaker_client.describe_artifact.return_value = {
         "ArtifactArn": "arn:aws:sagemaker:us-west-2:0123456789012:artifact/e66eef7f19c05e75284089183491bd4f",
         "Source": {
-            "SourceUri": "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3",
+            "SourceUri": "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.0-1-cpu-py3",
             "SourceTypes": [],
         },
         "ArtifactType": "Image",
@@ -435,7 +435,7 @@ def test_vertex_to_model_artifact(sagemaker_session):
     sagemaker_session.sagemaker_client.describe_artifact.return_value = {
         "ArtifactArn": "arn:aws:sagemaker:us-west-2:0123456789012:artifact/e66eef7f19c05e75284089183491bd4f",
         "Source": {
-            "SourceUri": "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3",
+            "SourceUri": "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.0-1-cpu-py3",
             "SourceTypes": [],
         },
         "ArtifactType": "Image",
@@ -466,7 +466,7 @@ def test_vertex_to_object_image_artifact(sagemaker_session):
     sagemaker_session.sagemaker_client.describe_artifact.return_value = {
         "ArtifactArn": "arn:aws:sagemaker:us-west-2:0123456789012:artifact/e66eef7f19c05e75284089183491bd4f",
         "Source": {
-            "SourceUri": "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3",
+            "SourceUri": "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.0-1-cpu-py3",
             "SourceTypes": [],
         },
         "ArtifactType": "Image",
@@ -497,7 +497,7 @@ def test_vertex_to_object_action(sagemaker_session):
     sagemaker_session.sagemaker_client.describe_action.return_value = {
         "ActionName": "cp-m5-20210424t041405868z-1619237657-1-aws-endpoint",
         "Source": {
-            "SourceUri": "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3",
+            "SourceUri": "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.0-1-cpu-py3",
             "SourceTypes": [],
         },
         "ActionType": "A",

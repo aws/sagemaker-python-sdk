@@ -233,7 +233,7 @@ def test_processing_step_with_script_processor(pipeline_session, processing_inpu
         ),
         (
             SKLearnProcessor(
-                framework_version="0.23-1",
+                framework_version="1.0-1",
                 instance_type=INSTANCE_TYPE,
                 instance_count=1,
                 role=sagemaker.get_execution_role(),

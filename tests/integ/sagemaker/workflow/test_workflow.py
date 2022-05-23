@@ -676,7 +676,7 @@ def test_end_to_end_pipeline_successful_execution(
     )
 
     # define processing step
-    framework_version = "0.23-1"
+    framework_version = "1.0-1"
     sklearn_processor = SKLearnProcessor(
         framework_version=framework_version,
         instance_type=processing_instance_type,

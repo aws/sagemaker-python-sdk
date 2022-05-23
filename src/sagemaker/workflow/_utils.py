@@ -37,7 +37,7 @@ from sagemaker.workflow.retry import RetryPolicy
 if TYPE_CHECKING:
     from sagemaker.workflow.step_collections import StepCollection
 
-FRAMEWORK_VERSION = "0.23-1"
+FRAMEWORK_VERSION = "1.0-1"
 INSTANCE_TYPE = "ml.m5.large"
 REPACK_SCRIPT = "_repack_model.py"
 

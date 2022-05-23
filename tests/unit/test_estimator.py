@@ -3808,7 +3808,7 @@ def test_all_framework_estimators_add_jumpstart_tags(
             "instance_type": "ml.p2.xlarge",
         },
         MXNet: {"framework_version": "1.7.0", "py_version": "py3", "instance_type": "ml.p2.xlarge"},
-        SKLearn: {"framework_version": "0.23-1", "instance_type": "ml.m2.xlarge"},
+        SKLearn: {"framework_version": "1.0-1", "instance_type": "ml.m2.xlarge"},
         XGBoost: {"framework_version": "1.3-1", "instance_type": "ml.m2.xlarge"},
     }
     jumpstart_model_uri = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[0]}/model_dirs/model.tar.gz"
@@ -3959,7 +3959,7 @@ def test_all_framework_estimators_add_jumpstart_base_name(
             "instance_type": "ml.p2.xlarge",
         },
         MXNet: {"framework_version": "1.7.0", "py_version": "py3", "instance_type": "ml.p2.xlarge"},
-        SKLearn: {"framework_version": "0.23-1", "instance_type": "ml.m2.xlarge"},
+        SKLearn: {"framework_version": "1.0-1", "instance_type": "ml.m2.xlarge"},
         XGBoost: {"framework_version": "1.3-1", "instance_type": "ml.m2.xlarge"},
     }
     jumpstart_model_uri = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[0]}/model_dirs/model.tar.gz"

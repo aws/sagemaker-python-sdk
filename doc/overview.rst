@@ -1621,7 +1621,7 @@ To train a model in network isolation mode, set the optional parameter ``enable_
     # set the enable_network_isolation parameter to True
     sklearn_estimator = SKLearn('sklearn-train.py',
                                 instance_type='ml.m4.xlarge',
-                                framework_version='0.20.0',
+                                framework_version='1.0-1',
                                 hyperparameters = {'epochs': 20, 'batch-size': 64, 'learning-rate': 0.1},
                                 enable_network_isolation=True)
 

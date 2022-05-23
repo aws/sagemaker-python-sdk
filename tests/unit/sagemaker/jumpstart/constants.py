@@ -959,7 +959,7 @@ PROTOTYPICAL_MODEL_SPECS_DICT = {
         "incremental_training_supported": False,
         "hosting_ecr_specs": {
             "framework": "sklearn",
-            "framework_version": "0.23-1",
+            "framework_version": "1.0-1",
             "py_version": "py3",
         },
         "hosting_artifact_key": "sklearn-infer/infer-sklearn-classification-linear.tar.gz",
@@ -1025,7 +1025,7 @@ PROTOTYPICAL_MODEL_SPECS_DICT = {
         "training_script_key": "source-directory-tarballs/sklearn/transfer_learning/classification/"
         "v1.0.0/sourcedir.tar.gz",
         "training_ecr_specs": {
-            "framework_version": "0.23-1",
+            "framework_version": "1.0-1",
             "framework": "sklearn",
             "py_version": "py3",
         },

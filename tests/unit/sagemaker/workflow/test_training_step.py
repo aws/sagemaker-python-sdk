@@ -126,7 +126,7 @@ def test_training_step_with_estimator(pipeline_session, training_input, hyperpar
     "estimator",
     [
         SKLearn(
-            framework_version="0.23-1",
+            framework_version="1.0-1",
             py_version="py3",
             instance_type=INSTANCE_TYPE,
             instance_count=1,

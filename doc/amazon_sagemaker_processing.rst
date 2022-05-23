@@ -36,7 +36,7 @@ You first create a ``SKLearnProcessor``
     from sagemaker.sklearn.processing import SKLearnProcessor
 
     sklearn_processor = SKLearnProcessor(
-        framework_version="0.20.0",
+        framework_version="1.0-1",
         role="[Your SageMaker-compatible IAM role]",
         instance_type="ml.m5.xlarge",
         instance_count=1,

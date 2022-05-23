@@ -63,7 +63,7 @@ IMAGE_URI = "fakeimage"
 ROLE = "DummyRole"
 MODEL_NAME = "gisele"
 MODEL_REPACKING_IMAGE_URI = (
-    "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3"
+    "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.0-1-cpu-py3"
 )
 
 
@@ -1044,7 +1044,7 @@ def test_estimator_transformer_with_model_repack_with_estimator(estimator):
                 "AlgorithmSpecification": {
                     "TrainingInputMode": "File",
                     "TrainingImage": "246618743249.dkr.ecr.us-west-2.amazonaws.com/"
-                    + "sagemaker-scikit-learn:0.23-1-cpu-py3",
+                    + "sagemaker-scikit-learn:1.0-1-cpu-py3",
                 },
                 "OutputDataConfig": {"S3OutputPath": "s3://my-bucket/"},
                 "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
