@@ -25,7 +25,7 @@ from sagemaker.workflow.pipeline_context import PipelineSession
 
 from sagemaker.workflow.steps import TuningStep
 from sagemaker.inputs import TrainingInput
-from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.functions import Join
 
@@ -33,7 +33,6 @@ from sagemaker.tuner import HyperparameterTuner, IntegerParameter
 from sagemaker.pytorch.estimator import PyTorch
 
 from tests.unit import DATA_DIR
-
 
 REGION = "us-west-2"
 BUCKET = "my-bucket"
@@ -166,6 +165,8 @@ def test_tuning_step_with_single_algo_tuner(pipeline_session, training_input, en
         "Type": "Tuning",
         "Arguments": step_args,
     }
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert adjacency_list == {"MyTuningStep": []}
 
 
 def test_tuning_step_with_multi_algo_tuner(pipeline_session, entry_point):
@@ -229,6 +230,8 @@ def test_tuning_step_with_multi_algo_tuner(pipeline_session, entry_point):
         "Type": "Tuning",
         "Arguments": step_args.args,
     }
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert adjacency_list == {"MyTuningStep": []}
 
 
 @pytest.mark.parametrize(

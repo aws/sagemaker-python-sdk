@@ -19,9 +19,9 @@ import pytest
 from mock import Mock
 
 from sagemaker.workflow.parameters import ParameterInteger, ParameterString
-from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
 from sagemaker.workflow.callback_step import CallbackStep, CallbackOutput, CallbackOutputTypeEnum
-from tests.unit.sagemaker.workflow.helpers import CustomStep
+from tests.unit.sagemaker.workflow.helpers import CustomStep, ordered
 
 
 @pytest.fixture
@@ -156,3 +156,11 @@ def test_pipeline_interpolates_callback_outputs():
             },
         ],
     }
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert ordered(adjacency_list) == ordered(
+        {
+            "MyCallbackStep1": [],
+            "MyCallbackStep2": [],
+            "TestStep": ["MyCallbackStep1", "MyCallbackStep2"],
+        }
+    )
