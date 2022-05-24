@@ -304,6 +304,7 @@ class HuggingFaceModel(FrameworkModel):
         approval_status=None,
         description=None,
         drift_check_baselines=None,
+        domain=None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -331,6 +332,8 @@ class HuggingFaceModel(FrameworkModel):
                 or "PendingManualApproval". Defaults to ``PendingManualApproval``.
             description (str): Model Package description. Defaults to ``None``.
             drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
+            domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
+                "MACHINE_LEARNING" (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -359,6 +362,7 @@ class HuggingFaceModel(FrameworkModel):
             approval_status,
             description,
             drift_check_baselines=drift_check_baselines,
+            domain=domain,
         )
 
     def prepare_container_def(

@@ -550,6 +550,7 @@ def test_model_registration_with_drift_check_baselines(
         ),
     )
     customer_metadata_properties = {"key1": "value1"}
+    domain = "COMPUTER_VISION"
     estimator = XGBoost(
         entry_point="training.py",
         source_dir=os.path.join(DATA_DIR, "sip"),
@@ -572,6 +573,7 @@ def test_model_registration_with_drift_check_baselines(
         model_metrics=model_metrics,
         drift_check_baselines=drift_check_baselines,
         customer_metadata_properties=customer_metadata_properties,
+        domain=domain,
     )
 
     pipeline = Pipeline(
@@ -643,6 +645,7 @@ def test_model_registration_with_drift_check_baselines(
                 == "application/json"
             )
             assert response["CustomerMetadataProperties"] == customer_metadata_properties
+            assert response["Domain"] == domain
             break
     finally:
         try:
