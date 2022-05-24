@@ -102,3 +102,14 @@ You can use Amazon SageMaker Processing to perform data processing tasks such as
     :maxdepth: 2
 
     amazon_sagemaker_processing
+
+
+*****************************************
+Amazon SageMaker Model Building Pipeline
+*****************************************
+You can use Amazon SageMaker Model Building Pipelines to orchestrate your machine learning workflow.
+
+.. toctree::
+    :maxdepth: 2
+
+    amazon_sagemaker_model_building_pipeline
