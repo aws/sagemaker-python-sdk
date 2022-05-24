@@ -21,7 +21,7 @@ import pytest
 
 import sagemaker
 import tests.integ
-from sagemaker import AlgorithmEstimator, ModelPackage
+from sagemaker import AlgorithmEstimator, ModelPackage, Model
 from sagemaker.serializers import CSVSerializer
 from sagemaker.tuner import IntegerParameter, HyperparameterTuner
 from sagemaker.utils import sagemaker_timestamp, _aws_partition, unique_name_from_base
@@ -184,6 +184,99 @@ def test_marketplace_model(sagemaker_session, cpu_instance_type):
         test_x = test_data.iloc[:, 1:]
 
         print(predictor.predict(test_x.values).decode("utf-8"))
+
+
+def test_create_model_package(sagemaker_session, custom_bucket_name, cpu_instance_type, boto_session):
+
+    # Prepare
+    s3_bucket = sagemaker_session.default_bucket()
+
+    model_name = "my-flower-detection-model"
+    model_description = "This model accepts petal length, petal width, sepal length, sepal width and predicts whether \
+    flower is of type setosa, versicolor, or virginica"
+
+    supported_realtime_inference_instance_types = supported_batch_transform_instance_types = ["ml.m4.xlarge"]
+    supported_content_types = ["text/csv", "application/json", "application/jsonlines"]
+    supported_response_MIME_types = ["application/json", "text/csv", "application/jsonlines"]
+
+    validation_input_path = "s3://" + s3_bucket + "/validation-input-csv/"
+    validation_output_path = "s3://" + s3_bucket + "/validation-output-csv/"
+
+    role = "SageMakerRole"
+    s3_client = boto_session.client('s3')
+    s3_client.put_object(
+        Bucket=custom_bucket_name,
+        Key="validation-input-csv/input.csv",
+        Body="5.1, 3.5, 1.4, 0.2"
+    )
+
+    ValidationSpecification = {
+        "ValidationRole": role,
+        "ValidationProfiles": [
+            {
+                "ProfileName": "Validation-test",
+                "TransformJobDefinition": {
+                    "BatchStrategy": "SingleRecord",
+                    "TransformInput": {
+                        "DataSource": {
+                            "S3DataSource": {
+                                "S3DataType": "S3Prefix",
+                                "S3Uri": validation_input_path,
+                            }
+                        },
+                        "ContentType": supported_content_types[0],
+                    },
+                    "TransformOutput": {
+                        "S3OutputPath": validation_output_path,
+                    },
+                    "TransformResources": {
+                        "InstanceType": supported_batch_transform_instance_types[0],
+                        "InstanceCount": 1,
+                    },
+                },
+            },
+        ],
+    }
+
+    # get pre-existing model artifact stored in ECR
+    model = Model(
+        image_uri="142577830533.dkr.ecr.us-west-2.amazonaws.com/my-flower-detection-model:latest",
+        model_data=validation_input_path + "input.csv",
+        role="SageMakerRole",
+        sagemaker_session=sagemaker_session,
+    )
+
+    # Call model.register() - the method under test - to create a model package
+    model.register(
+        supported_content_types,
+        supported_response_MIME_types,
+        supported_realtime_inference_instance_types,
+        supported_batch_transform_instance_types,
+        marketplace_cert=True,
+        description=model_description,
+        model_package_name=model_name,
+        validation_specification=ValidationSpecification,
+    )
+
+    import pdb
+    pdb.set_trace()
+    # TODO: wait for the validation to run, will need to use boto client for this
+
+    # query for all model packages with the name "my-flower-detection-model"
+    response = sagemaker.list_model_packages(
+        MaxResults=10,
+        NameContains="my-flower-detection-model",
+        SortBy='CreationTime',
+        SortOrder='Descending'
+    )
+
+    # assert that response is non-empty
+    print(response['ModelPackageSummaryList'])
+
+    # TODO: delete model package that was just created
+
+
+
 
 
 @pytest.mark.skipif(
