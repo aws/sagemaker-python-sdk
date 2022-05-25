@@ -746,6 +746,7 @@ class _SageMakerContainer(object):
             "volumes": [v.map for v in optml_volumes],
             "environment": environment,
             "networks": {"sagemaker-local": {"aliases": [host]}},
+            "deploy": {"resources": {"reservations": {"devices": [{"capabilities": ["gpu"]}]}}},
         }
 
         if command != "process":
