@@ -52,6 +52,7 @@ Execution Variables
 .. autoclass:: sagemaker.workflow.execution_variables.ExecutionVariable
 
 .. autoclass:: sagemaker.workflow.execution_variables.ExecutionVariables
+    :members: START_DATETIME, CURRENT_DATETIME, PIPELINE_EXECUTION_ID, PIPELINE_EXECUTION_ARN, PIPELINE_NAME, PIPELINE_ARN
 
 Functions
 ---------
@@ -73,6 +74,8 @@ Parameters
 
 .. autoclass:: sagemaker.workflow.parameters.ParameterFloat
 
+.. autoclass:: sagemaker.workflow.parameters.ParameterBoolean
+
 Pipeline
 --------
 
@@ -81,6 +84,13 @@ Pipeline
 
 .. autoclass:: sagemaker.workflow.pipeline._PipelineExecution
     :members:
+
+Pipeline Context
+------------------
+
+.. autoclass:: sagemaker.workflow.pipeline_context.PipelineSession
+    :members:
+
 
 Parallelism Configuration
 -------------------------
@@ -114,6 +124,8 @@ Step Collections
 .. autoclass:: sagemaker.workflow.step_collections.RegisterModel
 
 .. autoclass:: sagemaker.workflow.step_collections.EstimatorTransformer
+
+.. autoclass:: sagemaker.workflow.model_step.ModelStep
 
 Steps
 -----

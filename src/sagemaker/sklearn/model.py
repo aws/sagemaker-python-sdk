@@ -153,6 +153,7 @@ class SKLearnModel(FrameworkModel):
         description=None,
         drift_check_baselines=None,
         customer_metadata_properties=None,
+        domain=None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -180,6 +181,8 @@ class SKLearnModel(FrameworkModel):
             drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
             customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
                 metadata properties (default: None).
+            domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
+                "MACHINE_LEARNING" (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -209,6 +212,7 @@ class SKLearnModel(FrameworkModel):
             description,
             drift_check_baselines=drift_check_baselines,
             customer_metadata_properties=customer_metadata_properties,
+            domain=domain,
         )
 
     def prepare_container_def(
