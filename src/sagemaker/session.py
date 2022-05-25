@@ -2891,6 +2891,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     self.sagemaker_client.create_model_package_group(
                         ModelPackageGroupName=request["ModelPackageGroupName"]
                     )
+
             return self.sagemaker_client.create_model_package(**request)
 
         return self._intercept_create_request(

@@ -30,7 +30,12 @@ from sagemaker.utils import sagemaker_timestamp, _aws_partition, unique_name_fro
 from tests.integ import DATA_DIR
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 from tests.integ.marketplace_utils import REGION_ACCOUNT_MAP
-from tests.integ.test_multidatamodel import _ecr_image_uri, _ecr_login, _create_repository, _delete_repository
+from tests.integ.test_multidatamodel import (
+    _ecr_image_uri,
+    _ecr_login,
+    _create_repository,
+    _delete_repository,
+)
 from tests.integ.retry import retries
 import logging
 
@@ -191,6 +196,7 @@ def test_marketplace_model(sagemaker_session, cpu_instance_type):
 
         print(predictor.predict(test_x.values).decode("utf-8"))
 
+
 @pytest.fixture(scope="module")
 def iris_image(sagemaker_session):
     algorithm_name = unique_name_from_base("iris-classifier")
@@ -236,7 +242,9 @@ def test_create_model_package(sagemaker_session, boto_session, iris_image):
     model_description = "This model accepts petal length, petal width, sepal length, sepal width and predicts whether \
     flower is of type setosa, versicolor, or virginica"
 
-    supported_realtime_inference_instance_types = supported_batch_transform_instance_types = ["ml.m4.xlarge"]
+    supported_realtime_inference_instance_types = supported_batch_transform_instance_types = [
+        "ml.m4.xlarge"
+    ]
     supported_content_types = ["text/csv", "application/json", "application/jsonlines"]
     supported_response_MIME_types = ["application/json", "text/csv", "application/jsonlines"]
 
@@ -244,12 +252,10 @@ def test_create_model_package(sagemaker_session, boto_session, iris_image):
     validation_output_path = "s3://" + s3_bucket + "/validation-output-csv/"
 
     role = "arn:aws:iam::142577830533:role/SageMakerRole"
-    sm_client = boto_session.client('sagemaker')
-    s3_client = boto_session.client('s3')
+    sm_client = boto_session.client("sagemaker")
+    s3_client = boto_session.client("s3")
     s3_client.put_object(
-        Bucket=s3_bucket,
-        Key="validation-input-csv/input.csv",
-        Body="5.1, 3.5, 1.4, 0.2"
+        Bucket=s3_bucket, Key="validation-input-csv/input.csv", Body="5.1, 3.5, 1.4, 0.2"
     )
 
     ValidationSpecification = {
@@ -302,21 +308,21 @@ def test_create_model_package(sagemaker_session, boto_session, iris_image):
     )
 
     # wait for model execution to complete
-    time.sleep(60*3)
+    time.sleep(60 * 3)
 
     # query for all model packages with the name "my-flower-detection-model"
     response = sm_client.list_model_packages(
         MaxResults=10,
         NameContains="my-flower-detection-model",
-        SortBy='CreationTime',
-        SortOrder='Descending'
+        SortBy="CreationTime",
+        SortOrder="Descending",
     )
 
-    if len(response['ModelPackageSummaryList'])>0:
+    if len(response["ModelPackageSummaryList"]) > 0:
         sm_client.delete_model_package(ModelPackageName=model_name)
 
     # assert that response is non-empty
-    assert(len(response['ModelPackageSummaryList']) > 0)
+    assert len(response["ModelPackageSummaryList"]) > 0
 
 
 @pytest.mark.skipif(
