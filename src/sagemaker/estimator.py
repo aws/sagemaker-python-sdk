@@ -1266,8 +1266,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self,
         content_types,
         response_types,
-        inference_instances,
-        transform_instances,
+        inference_instances=None,
+        transform_instances=None,
         image_uri=None,
         model_package_name=None,
         model_package_group_name=None,
@@ -1288,9 +1288,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             content_types (list): The supported MIME types for the input data.
             response_types (list): The supported MIME types for the output data.
             inference_instances (list): A list of the instance types that are used to
-                generate inferences in real-time.
+                generate inferences in real-time (default: None).
             transform_instances (list): A list of the instance types on which a transformation
-                job can be run or on which an endpoint can be deployed.
+                job can be run or on which an endpoint can be deployed (default: None).
             image_uri (str): The container image uri for Model Package, if not specified,
                 Estimator's training container image will be used (default: None).
             model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
