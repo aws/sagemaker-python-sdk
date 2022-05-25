@@ -31,10 +31,7 @@ from sagemaker.workflow.model_step import (
     _REGISTER_MODEL_NAME_BASE,
     _CREATE_MODEL_NAME_BASE,
 )
-from sagemaker.workflow.parameters import (
-    ParameterInteger,
-    ParameterString,
-)
+from sagemaker.workflow.parameters import ParameterInteger
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.retry import (
@@ -185,9 +182,11 @@ def test_model_registration_with_model_repack(
     inputs = TrainingInput(s3_data=input_path)
 
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
-    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+    instance_type = "ml.m5.xlarge"
     good_enough_input = ParameterInteger(name="GoodEnoughInput", default_value=1)
 
+    # If image_uri is not provided, the instance_type should not be a pipeline variable
+    # since instance_type is used to retrieve image_uri in compile time (PySDK)
     pytorch_estimator = PyTorch(
         entry_point=entry_point,
         role=role,
@@ -252,7 +251,7 @@ def test_model_registration_with_model_repack(
     )
     pipeline = Pipeline(
         name=pipeline_name,
-        parameters=[good_enough_input, instance_count, instance_type],
+        parameters=[good_enough_input, instance_count],
         steps=[step_train, step_cond],
         sagemaker_session=pipeline_session,
     )
