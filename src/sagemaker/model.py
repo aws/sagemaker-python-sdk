@@ -341,7 +341,9 @@ class Model(ModelBase):
                 "MACHINE_LEARNING" (default: None).
 
         Returns:
-            A `sagemaker.model.ModelPackage` instance.
+            A `sagemaker.model.ModelPackage` instance or pipeline step arguments
+            in case the Model instance is built with
+            :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
         """
         if self.model_data is None:
             raise ValueError("SageMaker Model Package cannot be created without model data.")
@@ -399,15 +401,22 @@ class Model(ModelBase):
                 attach to an endpoint for model loading and inference, for
                 example, 'ml.eia1.medium'. If not specified, no Elastic
                 Inference accelerator will be attached to the endpoint (default: None).
-            serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
+            serverless_inference_config (ServerlessInferenceConfig):
                 Specifies configuration related to serverless endpoint. Instance type is
                 not provided in serverless inference. So this is used to find image URIs
                 (default: None).
             tags (List[Dict[str, str]]): The list of tags to add to
-                the model (default: None). Example: >>> tags = [{'Key': 'tagname', 'Value':
-                'tagvalue'}] For more information about tags, see
-                https://boto3.amazonaws.com/v1/documentation
-                /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
+                the model (default: None). Example::
+
+                    tags = [{'Key': 'tagname', 'Value':'tagvalue'}]
+
+                For more information about tags, see
+                `boto3 documentation <https://boto3.amazonaws.com/v1/documentation/\
+api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
+
+        Returns:
+            None or pipeline step arguments in case the Model instance is built with
+            :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
         """
         # TODO: we should replace _create_sagemaker_model() with create()
         self._create_sagemaker_model(
