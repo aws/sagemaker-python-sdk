@@ -16,7 +16,6 @@ import base64
 import os
 import requests
 
-import botocore
 import docker
 import numpy
 import pytest
