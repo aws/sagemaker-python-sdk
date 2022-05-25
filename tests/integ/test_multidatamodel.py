@@ -115,7 +115,7 @@ def _delete_repository(ecr_client, repository_name):
     try:
         ecr_client.describe_repositories(repositoryNames=[repository_name])
         ecr_client.delete_repository(repositoryName=repository_name, force=True)
-    except ecr_client.exceptions.ResourceNotFoundException:
+    except ecr_client.exceptions.RepositoryNotFoundException:
         pass
 
 
