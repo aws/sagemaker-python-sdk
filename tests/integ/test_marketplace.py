@@ -15,9 +15,11 @@ from __future__ import absolute_import
 import itertools
 import os
 import time
+import requests
 
 import pandas
 import pytest
+import docker
 
 import sagemaker
 import tests.integ
@@ -28,7 +30,11 @@ from sagemaker.utils import sagemaker_timestamp, _aws_partition, unique_name_fro
 from tests.integ import DATA_DIR
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 from tests.integ.marketplace_utils import REGION_ACCOUNT_MAP
+from tests.integ.test_multidatamodel import _ecr_image_uri, _ecr_login, _create_repository, _delete_repository
+from tests.integ.retry import retries
+import logging
 
+logger = logging.getLogger(__name__)
 
 # All these tests require a manual 1 time subscription to the following Marketplace items:
 # Algorithm: Scikit Decision Trees
@@ -185,8 +191,43 @@ def test_marketplace_model(sagemaker_session, cpu_instance_type):
 
         print(predictor.predict(test_x.values).decode("utf-8"))
 
+@pytest.fixture(scope="module")
+def iris_image(sagemaker_session):
+    algorithm_name = unique_name_from_base("iris-classifier")
+    ecr_image = _ecr_image_uri(sagemaker_session, algorithm_name)
+    ecr_client = sagemaker_session.boto_session.client("ecr")
+    username, password = _ecr_login(ecr_client)
 
-def test_create_model_package(sagemaker_session, custom_bucket_name, cpu_instance_type, boto_session):
+    docker_client = docker.from_env()
+
+    # Build and tag docker image locally
+    path = os.path.join(DATA_DIR, "marketplace", "iris")
+    image, build_logs = docker_client.images.build(
+        path=path,
+        tag=algorithm_name,
+        rm=True,
+    )
+    image.tag(ecr_image, tag="latest")
+    _create_repository(ecr_client, algorithm_name)
+
+    # Retry docker image push
+    for _ in retries(3, "Upload docker image to ECR repo", seconds_to_sleep=10):
+        try:
+            docker_client.images.push(
+                ecr_image, auth_config={"username": username, "password": password}
+            )
+            break
+        except requests.exceptions.ConnectionError:
+            # This can happen when we try to create multiple repositories in parallel, so we retry
+            pass
+
+    yield ecr_image
+
+    # Delete repository after the marketplace integration tests complete
+    _delete_repository(ecr_client, algorithm_name)
+
+
+def test_create_model_package(sagemaker_session, boto_session, iris_image):
 
     # Prepare
     s3_bucket = sagemaker_session.default_bucket()
@@ -202,10 +243,11 @@ def test_create_model_package(sagemaker_session, custom_bucket_name, cpu_instanc
     validation_input_path = "s3://" + s3_bucket + "/validation-input-csv/"
     validation_output_path = "s3://" + s3_bucket + "/validation-output-csv/"
 
-    role = "SageMakerRole"
+    role = "arn:aws:iam::142577830533:role/SageMakerRole"
+    sm_client = boto_session.client('sagemaker')
     s3_client = boto_session.client('s3')
     s3_client.put_object(
-        Bucket=custom_bucket_name,
+        Bucket=s3_bucket,
         Key="validation-input-csv/input.csv",
         Body="5.1, 3.5, 1.4, 0.2"
     )
@@ -240,10 +282,11 @@ def test_create_model_package(sagemaker_session, custom_bucket_name, cpu_instanc
 
     # get pre-existing model artifact stored in ECR
     model = Model(
-        image_uri="142577830533.dkr.ecr.us-west-2.amazonaws.com/my-flower-detection-model:latest",
+        image_uri=iris_image,
         model_data=validation_input_path + "input.csv",
-        role="SageMakerRole",
+        role=role,
         sagemaker_session=sagemaker_session,
+        enable_network_isolation=False,
     )
 
     # Call model.register() - the method under test - to create a model package
@@ -258,25 +301,22 @@ def test_create_model_package(sagemaker_session, custom_bucket_name, cpu_instanc
         validation_specification=ValidationSpecification,
     )
 
-    import pdb
-    pdb.set_trace()
-    # TODO: wait for the validation to run, will need to use boto client for this
+    # wait for model execution to complete
+    time.sleep(60*3)
 
     # query for all model packages with the name "my-flower-detection-model"
-    response = sagemaker.list_model_packages(
+    response = sm_client.list_model_packages(
         MaxResults=10,
         NameContains="my-flower-detection-model",
         SortBy='CreationTime',
         SortOrder='Descending'
     )
 
+    if len(response['ModelPackageSummaryList'])>0:
+        sm_client.delete_model_package(ModelPackageName=model_name)
+
     # assert that response is non-empty
-    print(response['ModelPackageSummaryList'])
-
-    # TODO: delete model package that was just created
-
-
-
+    assert(len(response['ModelPackageSummaryList']) > 0)
 
 
 @pytest.mark.skipif(
