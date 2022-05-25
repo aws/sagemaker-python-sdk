@@ -91,8 +91,10 @@ def test_tuning_single_algo(
     inputs = TrainingInput(s3_data=input_path)
 
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
-    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+    instance_type = "ml.m5.xlarge"
 
+    # If image_uri is not provided, the instance_type should not be a pipeline variable
+    # since instance_type is used to retrieve image_uri in compile time (PySDK)
     pytorch_estimator = PyTorch(
         entry_point=entry_point,
         role=role,
@@ -167,7 +169,7 @@ def test_tuning_single_algo(
 
     pipeline = Pipeline(
         name=pipeline_name,
-        parameters=[instance_count, instance_type, min_batch_size, max_batch_size],
+        parameters=[instance_count, min_batch_size, max_batch_size],
         steps=[step_tune, step_best_model, step_second_best_model],
         sagemaker_session=pipeline_session,
     )
@@ -221,10 +223,12 @@ def test_tuning_multi_algos(
     )
 
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
-    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+    instance_type = "ml.m5.xlarge"
 
     input_data = f"s3://sagemaker-sample-data-{region_name}/processing/census/census-income.csv"
 
+    # The instance_type should not be a pipeline variable
+    # since it is used to retrieve image_uri in compile time (PySDK)
     sklearn_processor = SKLearnProcessor(
         framework_version="0.20.0",
         instance_type=instance_type,
@@ -259,6 +263,8 @@ def test_tuning_multi_algos(
     json_get_hp = JsonGet(
         step_name=step_process.name, property_file=property_file, json_path="train_size"
     )
+    # If image_uri is not provided, the instance_type should not be a pipeline variable
+    # since instance_type is used to retrieve image_uri in compile time (PySDK)
     pytorch_estimator = PyTorch(
         entry_point=entry_point,
         role=role,
@@ -307,7 +313,7 @@ def test_tuning_multi_algos(
 
     pipeline = Pipeline(
         name=pipeline_name,
-        parameters=[instance_count, instance_type, min_batch_size, max_batch_size],
+        parameters=[instance_count, min_batch_size, max_batch_size, static_hp_1],
         steps=[step_process, step_tune],
         sagemaker_session=sagemaker_session,
     )

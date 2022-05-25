@@ -19,6 +19,7 @@ import pytest
 from mock import patch
 
 from sagemaker import image_uris
+from sagemaker.workflow.parameters import ParameterString
 
 BASE_CONFIG = {
     "processors": ["cpu", "gpu"],
@@ -717,3 +718,19 @@ def test_retrieve_huggingface(config_for_framework):
         "564829616587.dkr.ecr.us-east-1.amazonaws.com/huggingface-pytorch-training:"
         "1.6.0-transformers4.3.1-gpu-py37-cu110-ubuntu18.04" == pt_new_version
     )
+
+
+def test_retrieve_with_pipeline_variable():
+    with pytest.raises(Exception) as error:
+        image_uris.retrieve(
+            framework="tensorflow",
+            version="1.15",
+            py_version="py3",
+            instance_type=ParameterString(
+                name="TrainingInstanceType",
+                default_value="ml.m5.xlarge",
+            ),
+            region="us-east-1",
+            image_scope="training",
+        )
+    assert "instance_type should not be a pipeline variable" in str(error.value)
