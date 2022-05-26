@@ -48,13 +48,13 @@ def read_requirements(filename):
 # Declare minimal set for installation
 required_packages = [
     "attrs==20.3.0",
-    "boto3>=1.20.21",
+    "boto3>=1.20.21,<2.0",
     "google-pasta",
-    "numpy>=1.9.0",
-    "protobuf>=3.1",
-    "protobuf3-to-dict>=0.1.5",
+    "numpy>=1.9.0,<2.0",
+    "protobuf>=3.1,<4.0",
+    "protobuf3-to-dict>=0.1.5,<1.0",
     "smdebug_rulesconfig==1.0.1",
-    "importlib-metadata>=1.4.0",
+    "importlib-metadata>=1.4.0,<2.0",
     "packaging>=20.0",
     "pandas",
     "pathos",

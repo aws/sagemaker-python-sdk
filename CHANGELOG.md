@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.92.0 (2022-05-26)
+
+### Features
+
+ * add 'Domain' property to RegisterModel step
+
+### Bug Fixes and Other Changes
+
+ * support estimator output path parameterization
+ * Add back Prevent passing PipelineVariable object into image_uris.retrieve
+ * jumpstart amt tracking
+ * fix missing register method params for framework models
+ * fix docstring for decorated functions
+ * Documents: add sagemaker model building pipeline readthedocs
+
 ## v2.91.1 (2022-05-19)
 
 ### Bug Fixes and Other Changes
