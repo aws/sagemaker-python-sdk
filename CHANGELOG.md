@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.92.1 (2022-05-26)
+
+### Bug Fixes and Other Changes
+
+ * pin protobuf to < 4.0 to fix breaking change
+
 ## v2.92.0 (2022-05-26)
 
 ### Features
