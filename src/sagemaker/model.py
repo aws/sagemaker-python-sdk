@@ -312,7 +312,7 @@ class Model(ModelBase):
         domain=None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
-        
+
         Args:
             content_types (list): The supported MIME types for the input data.
             response_types (list): The supported MIME types for the output data.

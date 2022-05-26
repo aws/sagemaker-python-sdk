@@ -313,7 +313,9 @@ class PipelineModel(object):
             if model.model_data is None:
                 raise ValueError("SageMaker Model Package cannot be created without model data.")
         if model_package_group_name is not None:
-            container_def = self.pipeline_container_def(inference_instances[0] if inference_instances else None)
+            container_def = self.pipeline_container_def(
+                inference_instances[0] if inference_instances else None
+            )
         else:
             container_def = [
                 {"Image": image_uri or model.image_uri, "ModelDataUrl": model.model_data}

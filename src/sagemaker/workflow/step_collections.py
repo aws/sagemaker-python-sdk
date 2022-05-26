@@ -220,9 +220,13 @@ class RegisterModel(StepCollection):  # pragma: no cover
                     kwargs.pop("output_kms_key", None)
 
             if isinstance(model, PipelineModel):
-                self.container_def_list = model.pipeline_container_def(inference_instances[0] if inference_instances else None)
+                self.container_def_list = model.pipeline_container_def(
+                    inference_instances[0] if inference_instances else None
+                )
             elif isinstance(model, Model):
-                self.container_def_list = [model.prepare_container_def(inference_instances[0] if inference_instances else None)]
+                self.container_def_list = [model.prepare_container_def(
+                    inference_instances[0] if inference_instances else None
+                )]
 
         register_model_step = _RegisterModelStep(
             name=name,
