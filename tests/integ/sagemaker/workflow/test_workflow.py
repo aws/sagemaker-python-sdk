@@ -157,12 +157,14 @@ def test_three_step_definition(
     athena_dataset_definition,
 ):
     framework_version = "0.20.0"
-    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+    instance_type = "ml.m5.xlarge"
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
     output_prefix = ParameterString(name="OutputPrefix", default_value="output")
 
     input_data = f"s3://sagemaker-sample-data-{region_name}/processing/census/census-income.csv"
 
+    # The instance_type should not be a pipeline variable
+    # since it is used to retrieve image_uri in compile time (PySDK)
     sklearn_processor = SKLearnProcessor(
         framework_version=framework_version,
         instance_type=instance_type,
@@ -200,6 +202,8 @@ def test_three_step_definition(
         code=os.path.join(script_dir, "preprocessing.py"),
     )
 
+    # If image_uri is not provided, the instance_type should not be a pipeline variable
+    # since instance_type is used to retrieve image_uri in compile time (PySDK)
     sklearn_train = SKLearn(
         framework_version=framework_version,
         entry_point=os.path.join(script_dir, "train.py"),
@@ -238,7 +242,7 @@ def test_three_step_definition(
 
     pipeline = Pipeline(
         name=pipeline_name,
-        parameters=[instance_type, instance_count, output_prefix],
+        parameters=[instance_count, output_prefix],
         steps=[step_process, step_train, step_model],
         sagemaker_session=pipeline_session,
     )
@@ -248,13 +252,6 @@ def test_three_step_definition(
 
     assert set(tuple(param.items()) for param in definition["Parameters"]) == set(
         [
-            tuple(
-                {
-                    "Name": "InstanceType",
-                    "Type": "String",
-                    "DefaultValue": "ml.m5.xlarge",
-                }.items()
-            ),
             tuple({"Name": "InstanceCount", "Type": "Integer", "DefaultValue": 1}.items()),
             tuple(
                 {
@@ -299,14 +296,14 @@ def test_three_step_definition(
         ]
     )
     assert processing_args["ProcessingResources"]["ClusterConfig"] == {
-        "InstanceType": {"Get": "Parameters.InstanceType"},
+        "InstanceType": "ml.m5.xlarge",
         "InstanceCount": {"Get": "Parameters.InstanceCount"},
         "VolumeSizeInGB": 30,
     }
 
     assert training_args["ResourceConfig"] == {
         "InstanceCount": 1,
-        "InstanceType": {"Get": "Parameters.InstanceType"},
+        "InstanceType": "ml.m5.xlarge",
         "VolumeSizeInGB": 30,
     }
     assert training_args["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"] == {
@@ -339,10 +336,12 @@ def test_steps_with_map_params_pipeline(
 ):
     instance_count = ParameterInteger(name="InstanceCount", default_value=2)
     framework_version = "0.20.0"
-    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+    instance_type = "ml.m5.xlarge"
     output_prefix = ParameterString(name="OutputPrefix", default_value="output")
     input_data = f"s3://sagemaker-sample-data-{region_name}/processing/census/census-income.csv"
 
+    # The instance_type should not be a pipeline variable
+    # since it is used to retrieve image_uri in compile time (PySDK)
     sklearn_processor = SKLearnProcessor(
         framework_version=framework_version,
         instance_type=instance_type,
@@ -380,6 +379,8 @@ def test_steps_with_map_params_pipeline(
         code=os.path.join(script_dir, "preprocessing.py"),
     )
 
+    # If image_uri is not provided, the instance_type should not be a pipeline variable
+    # since instance_type is used to retrieve image_uri in compile time (PySDK)
     sklearn_train = SKLearn(
         framework_version=framework_version,
         entry_point=os.path.join(script_dir, "train.py"),
@@ -435,7 +436,7 @@ def test_steps_with_map_params_pipeline(
 
     pipeline = Pipeline(
         name=pipeline_name,
-        parameters=[instance_type, instance_count, output_prefix],
+        parameters=[instance_count, output_prefix],
         steps=[step_process, step_train, step_cond],
         sagemaker_session=pipeline_session,
     )
@@ -1029,8 +1030,10 @@ def test_model_registration_with_tuning_model(
     inputs = TrainingInput(s3_data=input_path)
 
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
-    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+    instance_type = "ml.m5.xlarge"
 
+    # If image_uri is not provided, the instance_type should not be a pipeline variable
+    # since instance_type is used to retrieve image_uri in compile time (PySDK)
     pytorch_estimator = PyTorch(
         entry_point=entry_point,
         role=role,
@@ -1087,7 +1090,7 @@ def test_model_registration_with_tuning_model(
 
     pipeline = Pipeline(
         name=pipeline_name,
-        parameters=[instance_count, instance_type, min_batch_size, max_batch_size],
+        parameters=[instance_count, min_batch_size, max_batch_size],
         steps=[step_tune, step_register_best],
         sagemaker_session=pipeline_session,
     )

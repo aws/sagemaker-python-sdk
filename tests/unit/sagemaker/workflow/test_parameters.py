@@ -76,7 +76,7 @@ def test_parameter_to_string_and_string_implicit_value():
     with pytest.raises(TypeError) as error:
         str(param)
 
-    assert str(error.value) == "Pipeline variables do not support __str__ operation."
+    assert "Pipeline variables do not support __str__ operation." in str(error.value)
 
 
 def test_parameter_integer_implicit_value():
