@@ -26,8 +26,8 @@ from mock import (
 )
 
 from sagemaker.estimator import Estimator
-from sagemaker.workflow import Properties
 from sagemaker.workflow._utils import _RepackModelStep, _RegisterModelStep
+from sagemaker.workflow.properties import Properties
 from tests.unit.test_utils import FakeS3, list_tar_files
 from tests.unit import DATA_DIR
 
