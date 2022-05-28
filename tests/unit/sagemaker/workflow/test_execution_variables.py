@@ -44,13 +44,6 @@ def test_implicit_value():
     assert str(error.value) == "Pipeline variables do not support __float__ operation."
 
 
-def test_string_builtin_funcs_that_return_bool():
-    prop = ExecutionVariables.PIPELINE_NAME
-    # The execution var will only be parsed in runtime (Pipeline backend) so not able to tell in SDK
-    assert not prop.startswith("MyPipeline")
-    assert not prop.endswith("MyPipeline")
-
-
 def test_add_func():
     var_start_datetime = ExecutionVariables.START_DATETIME
     var_current_datetime = ExecutionVariables.CURRENT_DATETIME
