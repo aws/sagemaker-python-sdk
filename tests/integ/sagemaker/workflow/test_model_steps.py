@@ -608,6 +608,9 @@ def test_model_registration_with_tensorflow_model_with_pipeline_model(
     )
     inputs = TrainingInput(s3_data=input_path)
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
+    output_path = ParameterString(
+        name="OutputPath", default_value=f"s3://{pipeline_session.default_bucket()}"
+    )
 
     # If image_uri is not provided, the instance_type should not be a pipeline variable
     # since instance_type is used to retrieve image_uri in compile time (PySDK)
@@ -619,6 +622,7 @@ def test_model_registration_with_tensorflow_model_with_pipeline_model(
         framework_version=tf_full_version,
         py_version=tf_full_py_version,
         sagemaker_session=pipeline_session,
+        output_path=output_path,
     )
     train_step_args = tensorflow_estimator.fit(inputs=inputs)
     step_train = TrainingStep(
@@ -648,7 +652,7 @@ def test_model_registration_with_tensorflow_model_with_pipeline_model(
     )
     pipeline = Pipeline(
         name=pipeline_name,
-        parameters=[instance_count],
+        parameters=[instance_count, output_path],
         steps=[step_train, step_register_model],
         sagemaker_session=pipeline_session,
     )
