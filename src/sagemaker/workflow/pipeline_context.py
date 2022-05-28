@@ -15,14 +15,45 @@ from __future__ import absolute_import
 
 import warnings
 import inspect
-from typing import Dict
 from functools import wraps
+from typing import Dict, Optional
 
 from sagemaker.session import Session, SessionSettings
 
 
-class _ModelStepArguments:
-    """Step arguments entity for ModelStep"""
+class _StepArguments:
+    """Step arguments entity for `Step`"""
+
+    def __init__(self, caller_name: str = None):
+        """Create a `_StepArguments`
+
+        Args:
+            caller_name (str): The name of the caller function which is intercepted by the
+                PipelineSession to get the step arguments.
+        """
+        self.caller_name = caller_name
+
+
+class _JobStepArguments(_StepArguments):
+    """Step arguments entity for job step types
+
+    Job step types include: TrainingStep, ProcessingStep, TuningStep, TransformStep
+    """
+
+    def __init__(self, caller_name: str, args: dict):
+        """Create a `_JobStepArguments`
+
+        Args:
+            caller_name (str): The name of the caller function which is intercepted by the
+                PipelineSession to get the step arguments.
+            args (dict): The arguments to be used for composing the SageMaker API request.
+        """
+        super(_JobStepArguments, self).__init__(caller_name)
+        self.args = args
+
+
+class _ModelStepArguments(_StepArguments):
+    """Step arguments entity for `ModelStep`"""
 
     def __init__(self, model):
         """Create a `_ModelStepArguments`
@@ -31,6 +62,7 @@ class _ModelStepArguments:
             model (Model or PipelineModel): A `sagemaker.model.Model`
                 or `sagemaker.pipeline.PipelineModel` instance
         """
+        super(_ModelStepArguments, self).__init__()
         self.model = model
         self.create_model_package_request = None
         self.create_model_request = None
@@ -87,9 +119,8 @@ class PipelineSession(Session):
         return self._context
 
     @context.setter
-    def context(self, args: Dict):
-        # TODO: we should use _StepArguments type to formalize non-ModelStep args
-        self._context = args
+    def context(self, value: Optional[_StepArguments] = None):
+        self._context = value
 
     def _intercept_create_request(self, request: Dict, create, func_name: str = None):
         """This function intercepts the create job request
@@ -99,12 +130,14 @@ class PipelineSession(Session):
             create (functor): a functor calls the sagemaker client create method
             func_name (str): the name of the function needed intercepting
         """
-        if func_name == "create_model":
+        if func_name == self.create_model.__name__:
             self.context.create_model_request = request
-        elif func_name == "create_model_package_from_containers":
+            self.context.caller_name = func_name
+        elif func_name == self.create_model_package_from_containers.__name__:
             self.context.create_model_package_request = request
+            self.context.caller_name = func_name
         else:
-            self.context = request
+            self.context = _JobStepArguments(func_name, request)
 
     def init_step_arguments(self, model):
         """Create a `_ModelStepArguments` (if not exist) as pipeline context
