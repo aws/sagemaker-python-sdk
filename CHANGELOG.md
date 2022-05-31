@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.92.2 (2022-05-31)
+
+### Bug Fixes and Other Changes
+
+ * turn off Pipeline Parameter inheritance from python primitives
+ * Add more validations for pipeline step new interfaces
+ * Changed method description per AWS request
+
 ## v2.92.1 (2022-05-26)
 
 ### Bug Fixes and Other Changes
