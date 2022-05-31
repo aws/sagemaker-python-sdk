@@ -15,9 +15,9 @@ from __future__ import absolute_import
 
 from typing import List, Union, Optional
 
-from sagemaker.workflow import PipelineNonPrimitiveInputTypes
 from sagemaker.workflow.entities import (
     RequestType,
+    PipelineVariable,
 )
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.steps import Step, StepTypeEnum
@@ -29,7 +29,7 @@ class FailStep(Step):
     def __init__(
         self,
         name: str,
-        error_message: Union[str, PipelineNonPrimitiveInputTypes] = None,
+        error_message: Union[str, PipelineVariable] = None,
         display_name: str = None,
         description: str = None,
         depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
@@ -39,7 +39,7 @@ class FailStep(Step):
         Args:
             name (str): The name of the `FailStep`. A name is required and must be
                 unique within a pipeline.
-            error_message (str or PipelineNonPrimitiveInputTypes):
+            error_message (str or PipelineVariable):
                 An error message defined by the user.
                 Once the `FailStep` is reached, the execution fails and the
                 error message is set as the failure reason (default: None).

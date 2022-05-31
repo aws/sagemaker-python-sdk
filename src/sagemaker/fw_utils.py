@@ -428,6 +428,10 @@ def warn_if_parameter_server_with_multi_gpu(training_instance_type, distribution
     """
     if training_instance_type == "local" or distribution is None:
         return
+    if is_pipeline_variable(training_instance_type):
+        # The training_instance_type is not available in compile time.
+        # Rather, it's given in Pipeline execution time
+        return
 
     is_multi_gpu_instance = (
         training_instance_type == "local_gpu"
@@ -484,6 +488,10 @@ def validate_smdistributed(
     """
     if "smdistributed" not in distribution:
         # Distribution strategy other than smdistributed is selected
+        return
+    if is_pipeline_variable(instance_type):
+        # The instance_type is not available in compile time.
+        # Rather, it's given in Pipeline execution time
         return
 
     # distribution contains smdistributed

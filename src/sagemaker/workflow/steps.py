@@ -22,6 +22,7 @@ from urllib.parse import urlparse
 
 import attr
 
+from sagemaker import Session
 from sagemaker.estimator import EstimatorBase, _TrainingJob
 from sagemaker.inputs import CreateModelInput, TrainingInput, TransformInput, FileSystemInput
 from sagemaker.model import Model
@@ -34,11 +35,13 @@ from sagemaker.processing import (
 )
 from sagemaker.transformer import Transformer, _TransformJob
 from sagemaker.tuner import HyperparameterTuner, _TuningJob
+from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import (
     DefaultEnumMeta,
     Entity,
     RequestType,
 )
+from sagemaker.workflow.pipeline_context import _JobStepArguments
 from sagemaker.workflow.properties import (
     PropertyFile,
     Properties,
@@ -237,7 +240,7 @@ class TrainingStep(ConfigurableRetryStep):
     def __init__(
         self,
         name: str,
-        step_args: Dict = None,
+        step_args: _JobStepArguments = None,
         estimator: EstimatorBase = None,
         display_name: str = None,
         description: str = None,
@@ -253,7 +256,7 @@ class TrainingStep(ConfigurableRetryStep):
 
         Args:
             name (str): The name of the `TrainingStep`.
-            step_args: The arguments for the `TrainingStep` definition.
+            step_args (_JobStepArguments): The arguments for the `TrainingStep` definition.
             estimator (EstimatorBase): A `sagemaker.estimator.EstimatorBase` instance.
             display_name (str): The display name of the `TrainingStep`.
             description (str): The description of the `TrainingStep`.
@@ -284,9 +287,18 @@ class TrainingStep(ConfigurableRetryStep):
         )
 
         if not (step_args is not None) ^ (estimator is not None):
-            raise ValueError("either step_args or estimator need to be given.")
+            raise ValueError("Either step_args or estimator need to be given.")
 
-        self.step_args = step_args
+        if step_args:
+            from sagemaker.workflow.utilities import validate_step_args_input
+
+            validate_step_args_input(
+                step_args=step_args,
+                expected_caller={Session.train.__name__},
+                error_message="The step_args of TrainingStep must be obtained from estimator.fit().",
+            )
+
+        self.step_args = step_args.args if step_args else None
         self.estimator = estimator
         self.inputs = inputs
 
@@ -488,7 +500,7 @@ class TransformStep(ConfigurableRetryStep):
     def __init__(
         self,
         name: str,
-        step_args: Dict = None,
+        step_args: _JobStepArguments = None,
         transformer: Transformer = None,
         inputs: TransformInput = None,
         display_name: str = None,
@@ -504,7 +516,7 @@ class TransformStep(ConfigurableRetryStep):
 
         Args:
             name (str): The name of the `TransformStep`.
-            step_args: The arguments for the `TransformStep` definition.
+            step_args (_JobStepArguments): The arguments for the `TransformStep` definition.
             transformer (Transformer): A `sagemaker.transformer.Transformer` instance.
             inputs (TransformInput): A `sagemaker.inputs.TransformInput` instance.
             cache_config (CacheConfig): A `sagemaker.workflow.steps.CacheConfig` instance.
@@ -522,7 +534,17 @@ class TransformStep(ConfigurableRetryStep):
         if not (step_args is not None) ^ (transformer is not None):
             raise ValueError("either step_args or transformer need to be given, but not both.")
 
-        self.step_args = step_args
+        if step_args:
+            from sagemaker.workflow.utilities import validate_step_args_input
+
+            validate_step_args_input(
+                step_args=step_args,
+                expected_caller={Session.transform.__name__},
+                error_message="The step_args of TransformStep must be obtained "
+                "from transformer.transform().",
+            )
+
+        self.step_args = step_args.args if step_args else None
         self.transformer = transformer
         self.inputs = inputs
         self.cache_config = cache_config
@@ -592,7 +614,7 @@ class ProcessingStep(ConfigurableRetryStep):
     def __init__(
         self,
         name: str,
-        step_args: Dict = None,
+        step_args: _JobStepArguments = None,
         processor: Processor = None,
         display_name: str = None,
         description: str = None,
@@ -613,7 +635,7 @@ class ProcessingStep(ConfigurableRetryStep):
 
         Args:
             name (str): The name of the `ProcessingStep`.
-            step_args: The arguments for the `ProcessingStep` definition.
+            step_args (_JobStepArguments): The arguments for the `ProcessingStep` definition.
             processor (Processor): A `sagemaker.processing.Processor` instance.
             display_name (str): The display name of the `ProcessingStep`.
             description (str): The description of the `ProcessingStep`
@@ -642,7 +664,16 @@ class ProcessingStep(ConfigurableRetryStep):
         if not (step_args is not None) ^ (processor is not None):
             raise ValueError("either step_args or processor need to be given, but not both.")
 
-        self.step_args = step_args
+        if step_args:
+            from sagemaker.workflow.utilities import validate_step_args_input
+
+            validate_step_args_input(
+                step_args=step_args,
+                expected_caller={Session.process.__name__},
+                error_message="The step_args of ProcessingStep must be obtained from processor.run().",
+            )
+
+        self.step_args = step_args.args if step_args else None
         self.processor = processor
         self.inputs = inputs
         self.outputs = outputs
@@ -663,6 +694,11 @@ class ProcessingStep(ConfigurableRetryStep):
             self.processor.arguments = job_arguments
 
             if code:
+                if is_pipeline_variable(code):
+                    raise ValueError(
+                        "code argument has to be a valid S3 URI or local file path "
+                        + "rather than a pipeline variable"
+                    )
                 code_url = urlparse(code)
                 if code_url.scheme == "" or code_url.scheme == "file":
                     # By default, `Processor` will upload the local code to an S3 path
@@ -738,7 +774,7 @@ class TuningStep(ConfigurableRetryStep):
     def __init__(
         self,
         name: str,
-        step_args: Dict = None,
+        step_args: _JobStepArguments = None,
         tuner: HyperparameterTuner = None,
         display_name: str = None,
         description: str = None,
@@ -755,7 +791,7 @@ class TuningStep(ConfigurableRetryStep):
 
         Args:
             name (str): The name of the `TuningStep`.
-            step_args: The arguments for the `TuningStep` definition.
+            step_args (_JobStepArguments): The arguments for the `TuningStep` definition.
             tuner (HyperparameterTuner): A `sagemaker.tuner.HyperparameterTuner` instance.
             display_name (str): The display name of the `TuningStep`.
             description (str): The description of the `TuningStep`.
@@ -801,7 +837,16 @@ class TuningStep(ConfigurableRetryStep):
         if not (step_args is not None) ^ (tuner is not None):
             raise ValueError("either step_args or tuner need to be given, but not both.")
 
-        self.step_args = step_args
+        if step_args:
+            from sagemaker.workflow.utilities import validate_step_args_input
+
+            validate_step_args_input(
+                step_args=step_args,
+                expected_caller={Session.create_tuning_job.__name__},
+                error_message="The step_args of TuningStep must be obtained from tuner.fit().",
+            )
+
+        self.step_args = step_args.args if step_args else None
         self.tuner = tuner
         self.inputs = inputs
         self.job_arguments = job_arguments

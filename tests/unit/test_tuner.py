@@ -22,6 +22,9 @@ from mock import Mock, patch
 from sagemaker import Predictor, TrainingInput, utils
 from sagemaker.amazon.amazon_estimator import RecordSet
 from sagemaker.estimator import Framework
+from sagemaker.fw_utils import UploadedCode
+from sagemaker.jumpstart.constants import JUMPSTART_BUCKET_NAME_SET, JUMPSTART_RESOURCE_BASE_NAME
+from sagemaker.jumpstart.enums import JumpStartTag
 from sagemaker.mxnet import MXNet
 from sagemaker.parameter import ParameterRange
 from sagemaker.tuner import (
@@ -1184,7 +1187,7 @@ def test_integer_parameter_ranges_with_pipeline_parameter():
     min = ParameterInteger(name="p", default_value=2)
     max = JsonGet(step_name="sn", property_file="pf", json_path="jp")
     scale = ParameterString(name="scale", default_value="Auto")
-    int_param = IntegerParameter(min, max)
+    int_param = IntegerParameter(min, max, scale)
     ranges = int_param.as_tuning_range("some")
 
     assert len(ranges.keys()) == 4
@@ -1210,7 +1213,7 @@ def test_integer_parameter_ranges_with_pipeline_parameter():
             ],
         }
     }
-    assert ranges["ScalingType"] == scale
+    assert ranges["ScalingType"].expr == {"Get": "Parameters.scale"}
 
 
 def test_integer_parameter_scaling_type():
@@ -1518,3 +1521,256 @@ def _convert_tuning_job_details(job_details, estimator_name):
     job_details_copy["TrainingJobDefinitions"] = [training_details]
 
     return job_details_copy
+
+
+@patch("time.time", return_value=510006209.073025)
+@patch("sagemaker.estimator.tar_and_upload_dir")
+@patch("sagemaker.model.Model._upload_code")
+def test_tags_prefixes_jumpstart_models(
+    patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+):
+
+    jumpstart_source_dir = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[0]}/source_dirs/source.tar.gz"
+    jumpstart_source_dir_2 = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[1]}/source_dirs/source.tar.gz"
+    jumpstart_source_dir_3 = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[2]}/source_dirs/source.tar.gz"
+
+    estimator_tag = {"Key": "estimator-tag-key", "Value": "estimator-tag-value"}
+    hp_tag = {"Key": "hp-tuner-tag-key", "Value": "hp-tuner-estimator-tag-value"}
+    training_model_uri_tag = {
+        "Key": JumpStartTag.TRAINING_MODEL_URI.value,
+        "Value": jumpstart_source_dir_2,
+    }
+    training_script_uri_tag = {
+        "Key": JumpStartTag.TRAINING_SCRIPT_URI.value,
+        "Value": jumpstart_source_dir,
+    }
+    inference_script_uri_tag = {
+        "Key": JumpStartTag.INFERENCE_SCRIPT_URI.value,
+        "Value": jumpstart_source_dir_3,
+    }
+
+    patched_tar_and_upload_dir.return_value = UploadedCode(
+        s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
+    )
+    sagemaker_session.boto_region_name = REGION
+
+    sagemaker_session.sagemaker_client.describe_training_job.return_value = {
+        "AlgorithmSpecification": {
+            "TrainingInputMode": "File",
+            "TrainingImage": "1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-other:1.0.4",
+        },
+        "HyperParameters": {
+            "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
+            "checkpoint_path": '"s3://other/1508872349"',
+            "sagemaker_program": '"iris-dnn-classifier.py"',
+            "sagemaker_container_log_level": '"logging.INFO"',
+            "sagemaker_job_name": '"neo"',
+            "training_steps": "100",
+        },
+        "RoleArn": "arn:aws:iam::366:role/SageMakerRole",
+        "ResourceConfig": {
+            "VolumeSizeInGB": 30,
+            "InstanceCount": 1,
+            "InstanceType": "ml.c4.xlarge",
+        },
+        "EnableNetworkIsolation": False,
+        "StoppingCondition": {"MaxRuntimeInSeconds": 24 * 60 * 60},
+        "TrainingJobName": "neo",
+        "TrainingJobStatus": "Completed",
+        "TrainingJobArn": "arn:aws:sagemaker:us-west-2:336:training-job/neo",
+        "OutputDataConfig": {"KmsKeyId": "", "S3OutputPath": "s3://place/output/neo"},
+        "TrainingJobOutput": {"S3TrainingJobOutput": "s3://here/output.tar.gz"},
+        "EnableInterContainerTrafficEncryption": False,
+        "ModelArtifacts": {"S3ModelArtifacts": "blah"},
+    }
+
+    sagemaker_session.sagemaker_client.list_tags.return_value = {
+        "Tags": [
+            estimator_tag,
+            hp_tag,
+            training_model_uri_tag,
+            training_script_uri_tag,
+        ]
+    }
+
+    instance_type = "ml.p2.xlarge"
+    instance_count = 1
+
+    training_data_uri = "s3://bucket/mydata"
+
+    image_uri = "fake-image-uri"
+
+    generic_estimator = Estimator(
+        entry_point="transfer_learning.py",
+        role=ROLE,
+        region=REGION,
+        sagemaker_session=sagemaker_session,
+        instance_count=instance_count,
+        instance_type=instance_type,
+        source_dir=jumpstart_source_dir,
+        image_uri=image_uri,
+        model_uri=jumpstart_source_dir_2,
+        tags=[estimator_tag],
+    )
+
+    hp_tuner = HyperparameterTuner(
+        generic_estimator,
+        OBJECTIVE_METRIC_NAME,
+        HYPERPARAMETER_RANGES,
+        tags=[hp_tag],
+    )
+
+    hp_tuner.fit({"training": training_data_uri})
+
+    assert [
+        hp_tag,
+        estimator_tag,
+        training_model_uri_tag,
+        training_script_uri_tag,
+    ] == sagemaker_session.create_tuning_job.call_args_list[0][1]["tags"]
+
+    assert sagemaker_session.create_tuning_job.call_args_list[0][1]["job_name"].startswith(
+        JUMPSTART_RESOURCE_BASE_NAME
+    )
+
+    hp_tuner.deploy(
+        initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        image_uri=image_uri,
+        source_dir=jumpstart_source_dir_3,
+        entry_point="inference.py",
+        role=ROLE,
+    )
+
+    assert sagemaker_session.create_model.call_args_list[0][1]["name"].startswith(
+        JUMPSTART_RESOURCE_BASE_NAME
+    )
+
+    assert sagemaker_session.endpoint_from_production_variants.call_args_list[0].startswith(
+        JUMPSTART_RESOURCE_BASE_NAME
+    )
+
+    assert sagemaker_session.create_model.call_args_list[0][1]["tags"] == [
+        training_model_uri_tag,
+        training_script_uri_tag,
+        inference_script_uri_tag,
+    ]
+
+    assert sagemaker_session.endpoint_from_production_variants.call_args_list[0][1]["tags"] == [
+        training_model_uri_tag,
+        training_script_uri_tag,
+        inference_script_uri_tag,
+    ]
+
+
+@patch("time.time", return_value=510006209.073025)
+@patch("sagemaker.estimator.tar_and_upload_dir")
+@patch("sagemaker.model.Model._upload_code")
+def test_no_tags_prefixes_non_jumpstart_models(
+    patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+):
+
+    non_jumpstart_source_dir = "s3://blah1/source_dirs/source.tar.gz"
+    non_jumpstart_source_dir_2 = "s3://blah2/source_dirs/source.tar.gz"
+    non_jumpstart_source_dir_3 = "s3://blah3/source_dirs/source.tar.gz"
+
+    estimator_tag = {"Key": "estimator-tag-key", "Value": "estimator-tag-value"}
+    hp_tag = {"Key": "hp-tuner-tag-key", "Value": "hp-tuner-estimator-tag-value"}
+
+    patched_tar_and_upload_dir.return_value = UploadedCode(
+        s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
+    )
+    sagemaker_session.boto_region_name = REGION
+
+    sagemaker_session.sagemaker_client.describe_training_job.return_value = {
+        "AlgorithmSpecification": {
+            "TrainingInputMode": "File",
+            "TrainingImage": "1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-other:1.0.4",
+        },
+        "HyperParameters": {
+            "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
+            "checkpoint_path": '"s3://other/1508872349"',
+            "sagemaker_program": '"iris-dnn-classifier.py"',
+            "sagemaker_container_log_level": '"logging.INFO"',
+            "sagemaker_job_name": '"neo"',
+            "training_steps": "100",
+        },
+        "RoleArn": "arn:aws:iam::366:role/SageMakerRole",
+        "ResourceConfig": {
+            "VolumeSizeInGB": 30,
+            "InstanceCount": 1,
+            "InstanceType": "ml.c4.xlarge",
+        },
+        "EnableNetworkIsolation": False,
+        "StoppingCondition": {"MaxRuntimeInSeconds": 24 * 60 * 60},
+        "TrainingJobName": "neo",
+        "TrainingJobStatus": "Completed",
+        "TrainingJobArn": "arn:aws:sagemaker:us-west-2:336:training-job/neo",
+        "OutputDataConfig": {"KmsKeyId": "", "S3OutputPath": "s3://place/output/neo"},
+        "TrainingJobOutput": {"S3TrainingJobOutput": "s3://here/output.tar.gz"},
+        "EnableInterContainerTrafficEncryption": False,
+        "ModelArtifacts": {"S3ModelArtifacts": "blah"},
+    }
+
+    sagemaker_session.sagemaker_client.list_tags.return_value = {"Tags": []}
+
+    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job.return_value = {
+        "BestTrainingJob": {"TrainingJobName": "some-name"}
+    }
+    instance_type = "ml.p2.xlarge"
+    instance_count = 1
+
+    training_data_uri = "s3://bucket/mydata"
+
+    image_uri = "fake-image-uri"
+
+    generic_estimator = Estimator(
+        entry_point="transfer_learning.py",
+        role=ROLE,
+        region=REGION,
+        sagemaker_session=sagemaker_session,
+        instance_count=instance_count,
+        instance_type=instance_type,
+        source_dir=non_jumpstart_source_dir,
+        image_uri=image_uri,
+        model_uri=non_jumpstart_source_dir_2,
+        tags=[estimator_tag],
+    )
+
+    hp_tuner = HyperparameterTuner(
+        generic_estimator,
+        OBJECTIVE_METRIC_NAME,
+        HYPERPARAMETER_RANGES,
+        tags=[hp_tag],
+    )
+
+    hp_tuner.fit({"training": training_data_uri})
+
+    assert [hp_tag, estimator_tag] == sagemaker_session.create_tuning_job.call_args_list[0][1][
+        "tags"
+    ]
+
+    assert not sagemaker_session.create_tuning_job.call_args_list[0][1]["job_name"].startswith(
+        JUMPSTART_RESOURCE_BASE_NAME
+    )
+
+    hp_tuner.deploy(
+        initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        image_uri=image_uri,
+        source_dir=non_jumpstart_source_dir_3,
+        entry_point="inference.py",
+        role=ROLE,
+    )
+
+    assert not sagemaker_session.create_model.call_args_list[0][1]["name"].startswith(
+        JUMPSTART_RESOURCE_BASE_NAME
+    )
+
+    assert not sagemaker_session.endpoint_from_production_variants.call_args_list[0][1][
+        "name"
+    ].startswith(JUMPSTART_RESOURCE_BASE_NAME)
+
+    assert sagemaker_session.create_model.call_args_list[0][1]["tags"] == []
+
+    assert sagemaker_session.endpoint_from_production_variants.call_args_list[0][1]["tags"] == []

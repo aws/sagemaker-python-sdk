@@ -483,6 +483,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         if (
             not self.sagemaker_session.local_mode
             and output_path
+            and not is_pipeline_variable(output_path)
             and output_path.startswith("file://")
         ):
             raise RuntimeError("file:// output paths are only supported in Local Mode")
@@ -695,26 +696,45 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         Returns: S3 URI
         """
-        local_mode = self.output_path.startswith("file://")
+        if is_pipeline_variable(self.output_path):
+            if self.code_location is None:
+                code_bucket = self.sagemaker_session.default_bucket()
+                code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
+                kms_key = None
+            else:
+                code_bucket, key_prefix = parse_s3_url(self.code_location)
+                code_s3_prefix = "/".join(
+                    filter(None, [key_prefix, self._current_job_name, "source"])
+                )
 
-        if self.code_location is None and local_mode:
-            code_bucket = self.sagemaker_session.default_bucket()
-            code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
-            kms_key = None
-        elif self.code_location is None:
-            code_bucket, _ = parse_s3_url(self.output_path)
-            code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
-            kms_key = self.output_kms_key
-        elif local_mode:
-            code_bucket, key_prefix = parse_s3_url(self.code_location)
-            code_s3_prefix = "/".join(filter(None, [key_prefix, self._current_job_name, "source"]))
-            kms_key = None
+                output_bucket = self.sagemaker_session.default_bucket()
+                kms_key = self.output_kms_key if code_bucket == output_bucket else None
         else:
-            code_bucket, key_prefix = parse_s3_url(self.code_location)
-            code_s3_prefix = "/".join(filter(None, [key_prefix, self._current_job_name, "source"]))
+            local_mode = self.output_path.startswith("file://")
+            if local_mode:
+                if self.code_location is None:
+                    code_bucket = self.sagemaker_session.default_bucket()
+                    code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
+                    kms_key = None
+                else:
+                    code_bucket, key_prefix = parse_s3_url(self.code_location)
+                    code_s3_prefix = "/".join(
+                        filter(None, [key_prefix, self._current_job_name, "source"])
+                    )
+                    kms_key = None
+            else:
+                if self.code_location is None:
+                    code_bucket, _ = parse_s3_url(self.output_path)
+                    code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
+                    kms_key = self.output_kms_key
+                else:
+                    code_bucket, key_prefix = parse_s3_url(self.code_location)
+                    code_s3_prefix = "/".join(
+                        filter(None, [key_prefix, self._current_job_name, "source"])
+                    )
 
-            output_bucket, _ = parse_s3_url(self.output_path)
-            kms_key = self.output_kms_key if code_bucket == output_bucket else None
+                    output_bucket, _ = parse_s3_url(self.output_path)
+                    kms_key = self.output_kms_key if code_bucket == output_bucket else None
 
         return tar_and_upload_dir(
             session=self.sagemaker_session.boto_session,
@@ -1321,6 +1341,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         Returns:
             str: A string of SageMaker Model Package ARN.
         """
+        if isinstance(self.sagemaker_session, PipelineSession):
+            raise TypeError(
+                "estimator.register does not support PipelineSession at this moment. "
+                "Please use model.register with PipelineSession if you're using the ModelStep."
+            )
         default_name = name_from_base(self.base_job_name)
         model_name = model_name or default_name
         if compile_model_family is not None:

@@ -13,8 +13,6 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-from urllib.parse import urlparse
-
 import pytest
 
 from sagemaker.workflow.parameters import (
@@ -76,7 +74,7 @@ def test_parameter_to_string_and_string_implicit_value():
     with pytest.raises(TypeError) as error:
         str(param)
 
-    assert str(error.value) == "Pipeline variables do not support __str__ operation."
+    assert "Pipeline variables do not support __str__ operation." in str(error.value)
 
 
 def test_parameter_integer_implicit_value():
@@ -95,18 +93,6 @@ def test_parameter_float_implicit_value():
         float(param)
 
     assert str(error.value) == "Pipeline variables do not support __float__ operation."
-
-
-def test_parsable_parameter_string():
-    param = ParameterString("MyString", default_value="s3://foo/bar/baz.csv")
-    assert urlparse(param).scheme == "s3"
-
-
-def test_string_builtin_funcs_that_return_bool_on_parameter_string():
-    param = ParameterString("MyString", default_value="s3://foo/bar/baz.csv")
-    # The param will only be parsed in runtime (Pipeline backend) so not able to tell in SDK
-    assert not param.startswith("s3")
-    assert not param.endswith("s3")
 
 
 def test_add_func():

@@ -111,7 +111,7 @@ def test_implicit_value():
 
     with pytest.raises(TypeError) as error:
         str(prop.CreationTime)
-    assert str(error.value) == "Pipeline variables do not support __str__ operation."
+    assert "Pipeline variables do not support __str__ operation." in str(error.value)
 
     with pytest.raises(TypeError) as error:
         int(prop.CreationTime)
@@ -120,13 +120,6 @@ def test_implicit_value():
     with pytest.raises(TypeError) as error:
         float(prop.CreationTime)
     assert str(error.value) == "Pipeline variables do not support __float__ operation."
-
-
-def test_string_builtin_funcs_that_return_bool():
-    prop = Properties("Steps.MyStep", "DescribeModelPackageOutput")
-    # The prop will only be parsed in runtime (Pipeline backend) so not able to tell in SDK
-    assert not prop.startswith("s3")
-    assert not prop.endswith("s3")
 
 
 def test_add_func():
