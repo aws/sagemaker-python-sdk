@@ -28,6 +28,7 @@ from sagemaker.workflow.parameters import ParameterString
 
 from sagemaker.workflow.steps import TrainingStep
 from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.functions import Join
 
 from sagemaker.estimator import Estimator
 from sagemaker.sklearn.estimator import SKLearn
@@ -65,6 +66,88 @@ DUMMY_LOCAL_SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
 DUMMY_S3_SCRIPT_PATH = "s3://dummy-s3/dummy_script.py"
 DUMMY_S3_SOURCE_DIR = "s3://dummy-s3-source-dir/"
 INSTANCE_TYPE = "ml.m4.xlarge"
+
+ESTIMATOR_LISTS = [
+    SKLearn(
+        framework_version="0.23-1",
+        py_version="py3",
+        instance_type=INSTANCE_TYPE,
+        instance_count=1,
+        role=ROLE,
+        entry_point=DUMMY_LOCAL_SCRIPT_PATH,
+    ),
+    PyTorch(
+        role=ROLE,
+        instance_type=INSTANCE_TYPE,
+        instance_count=1,
+        framework_version="1.8.0",
+        py_version="py36",
+        entry_point=DUMMY_LOCAL_SCRIPT_PATH,
+    ),
+    TensorFlow(
+        role=ROLE,
+        entry_point=DUMMY_LOCAL_SCRIPT_PATH,
+        instance_type=INSTANCE_TYPE,
+        instance_count=1,
+        framework_version="2.0",
+        py_version="py3",
+    ),
+    HuggingFace(
+        transformers_version="4.6",
+        pytorch_version="1.7",
+        role=ROLE,
+        instance_type="ml.p3.2xlarge",
+        instance_count=1,
+        py_version="py36",
+        entry_point=DUMMY_LOCAL_SCRIPT_PATH,
+    ),
+    XGBoost(
+        framework_version="1.3-1",
+        py_version="py3",
+        role=ROLE,
+        instance_type=INSTANCE_TYPE,
+        instance_count=1,
+        entry_point=DUMMY_LOCAL_SCRIPT_PATH,
+    ),
+    MXNet(
+        framework_version="1.4.1",
+        py_version="py3",
+        role=ROLE,
+        instance_type=INSTANCE_TYPE,
+        instance_count=1,
+        entry_point=DUMMY_LOCAL_SCRIPT_PATH,
+        toolkit=RLToolkit.RAY,
+        framework=RLFramework.TENSORFLOW,
+        toolkit_version="0.8.5",
+    ),
+    RLEstimator(
+        entry_point="cartpole.py",
+        toolkit=RLToolkit.RAY,
+        framework=RLFramework.TENSORFLOW,
+        toolkit_version="0.8.5",
+        role=ROLE,
+        instance_type=INSTANCE_TYPE,
+        instance_count=1,
+    ),
+    Chainer(
+        role=ROLE,
+        entry_point=DUMMY_LOCAL_SCRIPT_PATH,
+        use_mpi=True,
+        num_processes=4,
+        framework_version="5.0.0",
+        instance_type=INSTANCE_TYPE,
+        instance_count=1,
+        py_version="py3",
+    ),
+]
+
+
+INPUT_PARAM_LISTS = [
+    "s3://my-bucket/my-training-input",
+    ParameterString(name="training_input", default_value="s3://my-bucket/my-input"),
+    ParameterString(name="training_input"),
+    Join(on="/", values=["s3://my-bucket", "my-input"]),
+]
 
 
 @pytest.fixture
@@ -161,120 +244,23 @@ def test_training_step_with_estimator(pipeline_session, training_input, hyperpar
     assert step.properties.TrainingJobName.expr == {"Get": "Steps.MyTrainingStep.TrainingJobName"}
 
 
-def test_estimator_with_parameterized_output(pipeline_session, training_input):
-    output_path = ParameterString(name="OutputPath")
-    estimator = XGBoost(
-        framework_version="1.3-1",
-        py_version="py3",
-        role=ROLE,
-        instance_type=INSTANCE_TYPE,
-        instance_count=1,
-        entry_point=DUMMY_LOCAL_SCRIPT_PATH,
-        output_path=output_path,
-        sagemaker_session=pipeline_session,
-    )
-    step_args = estimator.fit(inputs=training_input)
-    step = TrainingStep(
-        name="MyTrainingStep",
-        step_args=step_args,
-        description="TrainingStep description",
-        display_name="MyTrainingStep",
-    )
-    pipeline = Pipeline(
-        name="MyPipeline",
-        steps=[step],
-        sagemaker_session=pipeline_session,
-    )
-    step_def = json.loads(pipeline.definition())["Steps"][0]
-    assert step_def["Arguments"]["OutputDataConfig"]["S3OutputPath"] == {
-        "Get": "Parameters.OutputPath"
-    }
-
-
+@pytest.mark.parametrize("estimator", ESTIMATOR_LISTS)
+@pytest.mark.parametrize("training_input", INPUT_PARAM_LISTS)
 @pytest.mark.parametrize(
-    "estimator",
-    [
-        SKLearn(
-            framework_version="0.23-1",
-            py_version="py3",
-            instance_type=INSTANCE_TYPE,
-            instance_count=1,
-            role=ROLE,
-            entry_point=DUMMY_LOCAL_SCRIPT_PATH,
-        ),
-        PyTorch(
-            role=ROLE,
-            instance_type=INSTANCE_TYPE,
-            instance_count=1,
-            framework_version="1.8.0",
-            py_version="py36",
-            entry_point=DUMMY_LOCAL_SCRIPT_PATH,
-        ),
-        TensorFlow(
-            role=ROLE,
-            instance_type=INSTANCE_TYPE,
-            instance_count=1,
-            framework_version="2.0",
-            py_version="py3",
-            entry_point=DUMMY_LOCAL_SCRIPT_PATH,
-        ),
-        HuggingFace(
-            transformers_version="4.6",
-            pytorch_version="1.7",
-            role=ROLE,
-            instance_type="ml.p3.2xlarge",
-            instance_count=1,
-            py_version="py36",
-            entry_point=DUMMY_LOCAL_SCRIPT_PATH,
-        ),
-        XGBoost(
-            framework_version="1.3-1",
-            py_version="py3",
-            role=ROLE,
-            instance_type=INSTANCE_TYPE,
-            instance_count=1,
-            entry_point=DUMMY_LOCAL_SCRIPT_PATH,
-        ),
-        MXNet(
-            framework_version="1.4.1",
-            py_version="py3",
-            role=ROLE,
-            instance_type=INSTANCE_TYPE,
-            instance_count=1,
-            entry_point=DUMMY_LOCAL_SCRIPT_PATH,
-        ),
-        RLEstimator(
-            entry_point="cartpole.py",
-            toolkit=RLToolkit.RAY,
-            framework=RLFramework.TENSORFLOW,
-            toolkit_version="0.8.5",
-            role=ROLE,
-            instance_type=INSTANCE_TYPE,
-            instance_count=1,
-        ),
-        Chainer(
-            role=ROLE,
-            entry_point=DUMMY_LOCAL_SCRIPT_PATH,
-            use_mpi=True,
-            num_processes=4,
-            framework_version="5.0.0",
-            instance_type=INSTANCE_TYPE,
-            instance_count=1,
-            py_version="py3",
-        ),
-    ],
+    "output_path", ["s3://my-bucket/my-output-path", ParameterString(name="OutputPath")]
 )
 def test_training_step_with_framework_estimator(
-    estimator, pipeline_session, training_input, hyperparameters
+    estimator, pipeline_session, training_input, output_path, hyperparameters
 ):
     estimator.source_dir = DUMMY_S3_SOURCE_DIR
     estimator.set_hyperparameters(**hyperparameters)
     estimator.volume_kms_key = "volume-kms-key"
     estimator.output_kms_key = "output-kms-key"
     estimator.dependencies = ["dep-1", "dep-2"]
+    estimator.output_path = output_path
 
     estimator.sagemaker_session = pipeline_session
-    step_args = estimator.fit(inputs=training_input)
+    step_args = estimator.fit(inputs=TrainingInput(s3_data=training_input))
 
     step = TrainingStep(
         name="MyTrainingStep",
@@ -286,10 +272,26 @@ def test_training_step_with_framework_estimator(
         sagemaker_session=pipeline_session,
     )
 
-    assert json.loads(pipeline.definition())["Steps"][0] == {
+    step_args = step_args.args
+    step_def = json.loads(pipeline.definition())["Steps"][0]
+
+    assert step_args["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"] == training_input
+    assert step_args["OutputDataConfig"]["S3OutputPath"] == output_path
+
+    del step_args["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"]
+    del step_def["Arguments"]["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"]
+
+    del step_args["OutputDataConfig"]["S3OutputPath"]
+    del step_def["Arguments"]["OutputDataConfig"]["S3OutputPath"]
+
+    if "sagemaker_s3_output" in step_args["HyperParameters"]:
+        del step_args["HyperParameters"]["sagemaker_s3_output"]
+        del step_def["Arguments"]["HyperParameters"]["sagemaker_s3_output"]
+
+    assert step_def == {
         "Name": "MyTrainingStep",
         "Type": "Training",
-        "Arguments": step_args.args,
+        "Arguments": step_args,
     }
 
 
@@ -308,7 +310,11 @@ def test_training_step_with_framework_estimator(
         IPInsights,
     ],
 )
-def test_training_step_with_algorithm_base(algo_estimator, pipeline_session):
+@pytest.mark.parametrize(
+    "training_input",
+    INPUT_PARAM_LISTS,
+)
+def test_training_step_with_algorithm_base(algo_estimator, training_input, pipeline_session):
     estimator = algo_estimator(
         role=ROLE,
         instance_type=INSTANCE_TYPE,
@@ -316,7 +322,7 @@ def test_training_step_with_algorithm_base(algo_estimator, pipeline_session):
         sagemaker_session=pipeline_session,
     )
     data = RecordSet(
-        "s3://{}/{}".format(pipeline_session.default_bucket(), "dummy"),
+        s3_data=training_input,
         num_records=1000,
         feature_dim=128,
         channel="train",
@@ -343,12 +349,19 @@ def test_training_step_with_algorithm_base(algo_estimator, pipeline_session):
         steps=[step],
         sagemaker_session=pipeline_session,
     )
-    assert json.loads(pipeline.definition())["Steps"][0] == {
+
+    step_args = step_args.args
+
+    step_def = json.loads(pipeline.definition())["Steps"][0]
+    assert step_args["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"] == training_input
+    del step_args["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"]
+    del step_def["Arguments"]["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"]
+
+    assert step_def == {
         "Name": "MyTrainingStep",
         "Type": "Training",
-        "Arguments": step_args.args,
+        "Arguments": step_args,
     }
-    assert step.properties.TrainingJobName.expr == {"Get": "Steps.MyTrainingStep.TrainingJobName"}
 
 
 @pytest.mark.parametrize(
