@@ -26,8 +26,8 @@ from mock import (
 )
 
 from sagemaker.estimator import Estimator
-from sagemaker.workflow import Properties
-from sagemaker.workflow._utils import _RepackModelStep
+from sagemaker.workflow._utils import _RepackModelStep, _RegisterModelStep
+from sagemaker.workflow.properties import Properties
 from tests.unit.test_utils import FakeS3, list_tar_files
 from tests.unit import DATA_DIR
 
@@ -118,8 +118,12 @@ def test_repack_model_step(estimator):
 
     hyperparameters = request_dict["Arguments"]["HyperParameters"]
     assert hyperparameters["inference_script"] == '"dummy_script.py"'
-    assert hyperparameters["model_archive"] == '"model.tar.gz"'
+    assert hyperparameters["model_archive"] == '"s3://my-bucket/model.tar.gz"'
     assert hyperparameters["sagemaker_program"] == '"_repack_model.py"'
+    assert (
+        hyperparameters["sagemaker_submit_directory"]
+        == '"s3://my-bucket/MyRepackModelStep-1be10316814854973ed1b445db3ef84e/source/sourcedir.tar.gz"'
+    )
 
     del request_dict["Arguments"]["HyperParameters"]
     del request_dict["Arguments"]["AlgorithmSpecification"]["TrainingImage"]
@@ -137,7 +141,7 @@ def test_repack_model_step(estimator):
                         "S3DataSource": {
                             "S3DataDistributionType": "FullyReplicated",
                             "S3DataType": "S3Prefix",
-                            "S3Uri": f"s3://{BUCKET}",
+                            "S3Uri": f"s3://{BUCKET}/model.tar.gz",
                         }
                     },
                 }
@@ -157,6 +161,28 @@ def test_repack_model_step(estimator):
     }
 
 
+def test_repack_model_step_with_invalid_input():
+    # without both step_args and any of the old required arguments
+    with pytest.raises(ValueError) as error:
+        _RegisterModelStep(
+            name="MyRegisterModelStep",
+            content_types=list(),
+        )
+    assert "Either of them should be provided" in str(error.value)
+
+    # with both step_args and the old required arguments
+    with pytest.raises(ValueError) as error:
+        _RegisterModelStep(
+            name="MyRegisterModelStep",
+            step_args=dict(),
+            content_types=list(),
+            response_types=list(),
+            inference_instances=list(),
+            transform_instances=list(),
+        )
+    assert "Either of them should be provided" in str(error.value)
+
+
 def test_repack_model_step_with_source_dir(estimator, source_dir):
     model_data = Properties(path="Steps.MyStep", shape_name="DescribeModelOutput")
     entry_point = "inference.py"
@@ -173,7 +199,9 @@ def test_repack_model_step_with_source_dir(estimator, source_dir):
 
     hyperparameters = request_dict["Arguments"]["HyperParameters"]
     assert hyperparameters["inference_script"] == '"inference.py"'
-    assert hyperparameters["model_archive"] == '"model.tar.gz"'
+    assert hyperparameters["model_archive"].expr == {
+        "Std:Join": {"On": "", "Values": [{"Get": "Steps.MyStep"}]}
+    }
     assert hyperparameters["sagemaker_program"] == '"_repack_model.py"'
 
     del request_dict["Arguments"]["HyperParameters"]

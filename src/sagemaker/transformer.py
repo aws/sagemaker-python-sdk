@@ -17,6 +17,8 @@ from botocore import exceptions
 
 from sagemaker.job import _Job
 from sagemaker.session import Session
+from sagemaker.workflow.pipeline_context import runnable_by_pipeline
+from sagemaker.workflow import is_pipeline_variable
 from sagemaker.utils import base_name_from_image, name_from_base
 
 
@@ -106,6 +108,7 @@ class Transformer(object):
 
         self.sagemaker_session = sagemaker_session or Session()
 
+    @runnable_by_pipeline
     def transform(
         self,
         data,
@@ -197,7 +200,11 @@ class Transformer(object):
             base_name = self.base_transform_job_name
 
             if base_name is None:
-                base_name = self._retrieve_base_name()
+                base_name = (
+                    "transform-job"
+                    if is_pipeline_variable(self.model_name)
+                    else self._retrieve_base_name()
+                )
 
             self._current_job_name = name_from_base(base_name)
 
@@ -370,6 +377,7 @@ class _TransformJob(_Job):
             experiment_config,
             model_client_config,
         )
+
         transformer.sagemaker_session.transform(**transform_args)
 
         return cls(transformer.sagemaker_session, transformer._current_job_name)

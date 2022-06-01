@@ -22,17 +22,11 @@ import re
 import tempfile
 from abc import ABC, abstractmethod
 from sagemaker import image_uris, s3, utils
-from sagemaker.deprecations import deprecation_warning
 from sagemaker.processing import ProcessingInput, ProcessingOutput, Processor
 
 logger = logging.getLogger(__name__)
 
 
-@deprecation_warning(
-    msg="s3_data_distribution_type parameter will no longer be supported. Everything else will"
-    " remain as is",
-    date="15 Mar 2022",
-)
 class DataConfig:
     """Config object related to configurations of the input and output dataset."""
 
@@ -45,7 +39,6 @@ class DataConfig:
         headers=None,
         features=None,
         dataset_type="text/csv",
-        s3_data_distribution_type="FullyReplicated",
         s3_compression_type="None",
         joinsource=None,
     ):
@@ -64,8 +57,6 @@ class DataConfig:
                 dataset format is JSONLines.
             dataset_type (str): Format of the dataset. Valid values are "text/csv" for CSV,
                 "application/jsonlines" for JSONLines, and "application/x-parquet" for Parquet.
-            s3_data_distribution_type (str): Deprecated. Only valid option is "FullyReplicated".
-                Any other value is ignored.
             s3_compression_type (str): Valid options are "None" or "Gzip".
             joinsource (str): The name or index of the column in the dataset that acts as an
                 identifier column (for instance, while performing a join). This column is only
@@ -86,12 +77,6 @@ class DataConfig:
         self.s3_data_input_path = s3_data_input_path
         self.s3_output_path = s3_output_path
         self.s3_analysis_config_output_path = s3_analysis_config_output_path
-        if s3_data_distribution_type != "FullyReplicated":
-            logger.warning(
-                "s3_data_distribution_type parameter, set to %s, is being ignored. Only"
-                " valid option is FullyReplicated",
-                s3_data_distribution_type,
-            )
         self.s3_data_distribution_type = "FullyReplicated"
         self.s3_compression_type = s3_compression_type
         self.label = label
@@ -803,7 +788,8 @@ class SageMakerClarifyProcessor(Processor):
                 output_name="analysis_result",
                 s3_upload_mode="EndOfJob",
             )
-            super().run(
+
+            return super().run(
                 inputs=[data_input, config_input],
                 outputs=[result_output],
                 wait=wait,
@@ -841,7 +827,7 @@ class SageMakerClarifyProcessor(Processor):
                 "`TVD <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-total-variation-distance.html>`_",
                 "`KS <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-kolmogorov-smirnov.html>`_",
                 "`CDDL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-cddl.html>`_"].
-                Defaults to computing all.
+                Defaults to str "all" to run all metrics if left unspecified.
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when ``wait`` is True (default: True).
@@ -871,7 +857,7 @@ class SageMakerClarifyProcessor(Processor):
                 job_name = utils.name_from_base(self.job_name_prefix)
             else:
                 job_name = utils.name_from_base("Clarify-Pretraining-Bias")
-        self._run(
+        return self._run(
             data_config,
             analysis_config,
             wait,
@@ -920,7 +906,7 @@ class SageMakerClarifyProcessor(Processor):
                 "`CDDPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-cddpl.html>`_
                 ", "`TE <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-te.html>`_",
                 "`FT <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ft.html>`_"].
-                Defaults to computing all.
+                Defaults to str "all" to run all metrics if left unspecified.
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when ``wait`` is True (default: True).
@@ -957,7 +943,7 @@ class SageMakerClarifyProcessor(Processor):
                 job_name = utils.name_from_base(self.job_name_prefix)
             else:
                 job_name = utils.name_from_base("Clarify-Posttraining-Bias")
-        self._run(
+        return self._run(
             data_config,
             analysis_config,
             wait,
@@ -1003,7 +989,7 @@ class SageMakerClarifyProcessor(Processor):
                 "`TVD <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-total-variation-distance.html>`_",
                 "`KS <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-kolmogorov-smirnov.html>`_",
                 "`CDDL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-cddl.html>`_"].
-                Defaults to computing all.
+                Defaults to str "all" to run all metrics if left unspecified.
             post_training_methods (str or list[str]): Selector of a subset of potential metrics:
                 ["`DPPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dppl.html>`_"
                 , "`DI <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-di.html>`_",
@@ -1016,7 +1002,7 @@ class SageMakerClarifyProcessor(Processor):
                 "`CDDPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-cddpl.html>`_
                 ", "`TE <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-te.html>`_",
                 "`FT <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ft.html>`_"].
-                Defaults to computing all.
+                Defaults to str "all" to run all metrics if left unspecified.
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when ``wait`` is True (default: True).
@@ -1060,7 +1046,7 @@ class SageMakerClarifyProcessor(Processor):
                 job_name = utils.name_from_base(self.job_name_prefix)
             else:
                 job_name = utils.name_from_base("Clarify-Bias")
-        self._run(
+        return self._run(
             data_config,
             analysis_config,
             wait,
@@ -1167,7 +1153,7 @@ class SageMakerClarifyProcessor(Processor):
                 job_name = utils.name_from_base(self.job_name_prefix)
             else:
                 job_name = utils.name_from_base("Clarify-Explainability")
-        self._run(
+        return self._run(
             data_config,
             analysis_config,
             wait,

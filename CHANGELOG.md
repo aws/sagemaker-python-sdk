@@ -1,5 +1,165 @@
 # Changelog
 
+## v2.92.2 (2022-05-31)
+
+### Bug Fixes and Other Changes
+
+ * turn off Pipeline Parameter inheritance from python primitives
+ * Add more validations for pipeline step new interfaces
+ * Changed method description per AWS request
+
+## v2.92.1 (2022-05-26)
+
+### Bug Fixes and Other Changes
+
+ * pin protobuf to < 4.0 to fix breaking change
+
+## v2.92.0 (2022-05-26)
+
+### Features
+
+ * add 'Domain' property to RegisterModel step
+
+### Bug Fixes and Other Changes
+
+ * support estimator output path parameterization
+ * Add back Prevent passing PipelineVariable object into image_uris.retrieve
+ * jumpstart amt tracking
+ * fix missing register method params for framework models
+ * fix docstring for decorated functions
+ * Documents: add sagemaker model building pipeline readthedocs
+
+## v2.91.1 (2022-05-19)
+
+### Bug Fixes and Other Changes
+
+ * Revert Prevent passing PipelineVariable object into image_uris.retrieve
+
+## v2.91.0 (2022-05-19)
+
+### Features
+
+ * Support Properties for StepCollection
+
+### Bug Fixes and Other Changes
+
+ * Prevent passing PipelineVariable object into image_uris.retrieve
+ * support image_uri being property ref for model
+ * ResourceConflictException from AWS Lambda on pipeline upsert
+
+### Documentation Changes
+
+ * release notes for SMDDP 1.4.1 and SMDMP 1.9.0
+
+## v2.90.0 (2022-05-16)
+
+### Features
+
+ * Add ModelStep for SageMaker Model Building Pipeline
+
+### Bug Fixes and Other Changes
+
+ * update setup.py to add minimum python requirement of 3.6
+
+## v2.89.0 (2022-05-11)
+
+### Features
+
+ * Add PT 1.11 support
+ * add validation specification
+
+### Bug Fixes and Other Changes
+
+ * repack model locally when local_code local mode
+
+### Documentation Changes
+
+ * smdmp 1.8.1 release note
+
+## v2.88.3 (2022-05-06)
+
+### Bug Fixes and Other Changes
+
+ * deprecate: Remove deprecated argument s3_data_distribution_type
+ * Feat/jumpstart model table update
+
+## v2.88.2 (2022-05-02)
+
+### Bug Fixes and Other Changes
+
+ * Automl integ describe job check
+ * Implement subclass compatibility for workflow pipeline job steps
+
+## v2.88.1 (2022-04-27)
+
+### Bug Fixes and Other Changes
+
+ * Add encryption setting to tar_and_upload_dir method
+
+## v2.88.0 (2022-04-26)
+
+### Features
+
+ * jumpstart notebook utils -- list model ids, scripts, tasks, frameworks
+
+### Bug Fixes and Other Changes
+
+ * local mode printing of credentials during docker login closes #2180
+ * disable endpoint context test
+
+### Documentation Changes
+
+ * sm model parallel 1.8.0 release notes
+
+## v2.87.0 (2022-04-20)
+
+### Features
+
+ * Add Jumpstart example notebooks
+ * add Tensorflow and Pytorch version for SM Training Compiler and expand to regular regions
+
+### Bug Fixes and Other Changes
+
+ * integs for training compiler in non-PDX regions
+ * TrainingStep cache misses due to timestamp based job name
+ * retry context delete
+ * Add more logging when unexpected number of artifacts found
+
+## v2.86.2 (2022-04-14)
+
+### Bug Fixes and Other Changes
+
+ * #using uuid to randomize, otherwise system timestamp is used
+
+## v2.86.1 (2022-04-13)
+
+### Bug Fixes and Other Changes
+
+ * xgboost, sklearn network isolation for jumpstart
+
+### Documentation Changes
+
+ * fix minor typo
+
+## v2.86.0 (2022-04-12)
+
+### Features
+
+ * Adds Spark Processing Notebook to Notebook Tests
+
+## v2.85.0 (2022-04-11)
+
+### Features
+
+ * update lambda code on pipeline create/update/upsert for Lamb…
+ * jumpstart model url
+ * add serverless inference image_uri retrieve support
+
+### Bug Fixes and Other Changes
+
+ * Add back the Fix for Pipeline variables related customer issues
+ * Support file URIs in ProcessingStep's code parameter
+
 ## v2.84.0 (2022-04-07)
 
 ### Features
@@ -130,7 +290,7 @@
 ### Features
 
  * override jumpstart content bucket
- * jumpstart model id suggestions
+ * jumpstart model ID suggestions
  * adding customer metadata support to registermodel step
 
 ### Bug Fixes and Other Changes

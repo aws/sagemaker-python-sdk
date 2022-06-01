@@ -13,21 +13,21 @@
 """The step definitions for workflow."""
 from __future__ import absolute_import
 
-from typing import List, Union
+from typing import List, Union, Optional
 
 import attr
 
 from sagemaker.deprecations import deprecated_class
 from sagemaker.workflow.conditions import Condition
+from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.steps import (
     Step,
     StepTypeEnum,
 )
-from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.utilities import list_to_request
 from sagemaker.workflow.entities import (
-    Expression,
     RequestType,
+    PipelineVariable,
 )
 from sagemaker.workflow.properties import (
     Properties,
@@ -41,7 +41,7 @@ class ConditionStep(Step):
     def __init__(
         self,
         name: str,
-        depends_on: Union[List[str], List[Step]] = None,
+        depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
         display_name: str = None,
         description: str = None,
         conditions: List[Condition] = None,
@@ -56,6 +56,9 @@ class ConditionStep(Step):
 
         Args:
             name (str): The name of the condition step.
+            depends_on (List[Union[str, Step, StepCollection]]): The list of `Step`/StepCollection`
+                names or `Step` instances or `StepCollection` instances that the current `Step`
+                depends on.
             display_name (str): The display name of the condition step.
             description (str): The description of the condition step.
             conditions (List[Condition]): A list of `sagemaker.workflow.conditions.Condition`
@@ -95,7 +98,7 @@ class ConditionStep(Step):
 
 
 @attr.s
-class JsonGet(Expression):  # pragma: no cover
+class JsonGet(PipelineVariable):  # pragma: no cover
     """Get JSON properties from PropertyFiles.
 
     Attributes:

@@ -13,12 +13,21 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import json
 import os
 import tempfile
 import shutil
 import pytest
 
 from sagemaker.drift_check_baselines import DriftCheckBaselines
+from sagemaker.workflow.model_step import (
+    ModelStep,
+    _CREATE_MODEL_NAME_BASE,
+    _REPACK_MODEL_NAME_BASE,
+)
+from sagemaker.workflow.parameters import ParameterString
+from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.pipeline_context import PipelineSession
 from sagemaker.workflow.utilities import list_to_request
 from tests.unit import DATA_DIR
 
@@ -39,17 +48,14 @@ from sagemaker.model_metrics import (
     ModelMetrics,
 )
 from sagemaker.workflow.properties import Properties
-from sagemaker.workflow.steps import (
-    Step,
-    StepTypeEnum,
-)
+from sagemaker.workflow.steps import CreateModelStep
 from sagemaker.workflow.step_collections import (
     EstimatorTransformer,
     StepCollection,
     RegisterModel,
 )
 from sagemaker.workflow.retry import StepRetryPolicy, StepExceptionTypeEnum
-from tests.unit.sagemaker.workflow.helpers import ordered
+from tests.unit.sagemaker.workflow.helpers import ordered, CustomStep
 
 REGION = "us-west-2"
 BUCKET = "my-bucket"
@@ -59,34 +65,6 @@ MODEL_NAME = "gisele"
 MODEL_REPACKING_IMAGE_URI = (
     "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3"
 )
-
-
-class CustomStep(Step):
-    def __init__(self, name, display_name=None, description=None):
-        super(CustomStep, self).__init__(name, display_name, description, StepTypeEnum.TRAINING)
-        self._properties = Properties(path=f"Steps.{name}")
-
-    @property
-    def arguments(self):
-        return dict()
-
-    @property
-    def properties(self):
-        return self._properties
-
-
-@pytest.fixture
-def boto_session():
-    role_mock = Mock()
-    type(role_mock).arn = PropertyMock(return_value=ROLE)
-
-    resource_mock = Mock()
-    resource_mock.Role.return_value = role_mock
-
-    session_mock = Mock(region_name=REGION)
-    session_mock.resource.return_value = resource_mock
-
-    return session_mock
 
 
 @pytest.fixture
@@ -106,11 +84,35 @@ def client():
 
 
 @pytest.fixture
+def boto_session(client):
+    role_mock = Mock()
+    type(role_mock).arn = PropertyMock(return_value=ROLE)
+
+    resource_mock = Mock()
+    resource_mock.Role.return_value = role_mock
+
+    session_mock = Mock(region_name=REGION)
+    session_mock.resource.return_value = resource_mock
+    session_mock.client.return_value = client
+
+    return session_mock
+
+
+@pytest.fixture
 def sagemaker_session(boto_session, client):
     return sagemaker.session.Session(
         boto_session=boto_session,
         sagemaker_client=client,
         sagemaker_runtime_client=client,
+        default_bucket=BUCKET,
+    )
+
+
+@pytest.fixture
+def pipeline_session(boto_session, client):
+    return PipelineSession(
+        boto_session=boto_session,
+        sagemaker_client=client,
         default_bucket=BUCKET,
     )
 
@@ -200,7 +202,9 @@ def source_dir(request):
 
 
 def test_step_collection():
-    step_collection = StepCollection(steps=[CustomStep("MyStep1"), CustomStep("MyStep2")])
+    step_collection = StepCollection(
+        name="MyStepCollection", steps=[CustomStep("MyStep1"), CustomStep("MyStep2")]
+    )
     assert step_collection.request_dicts() == [
         {"Name": "MyStep1", "Type": "Training", "Arguments": dict()},
         {"Name": "MyStep2", "Type": "Training", "Arguments": dict()},
@@ -208,13 +212,141 @@ def test_step_collection():
 
 
 def test_step_collection_with_list_to_request():
-    step_collection = StepCollection(steps=[CustomStep("MyStep1"), CustomStep("MyStep2")])
+    step_collection = StepCollection(
+        name="MyStepCollection", steps=[CustomStep("MyStep1"), CustomStep("MyStep2")]
+    )
     custom_step = CustomStep("MyStep3")
     assert list_to_request([step_collection, custom_step]) == [
         {"Name": "MyStep1", "Type": "Training", "Arguments": dict()},
         {"Name": "MyStep2", "Type": "Training", "Arguments": dict()},
         {"Name": "MyStep3", "Type": "Training", "Arguments": dict()},
     ]
+
+
+def test_step_collection_properties(pipeline_session, sagemaker_session):
+    # ModelStep
+    model = Model(
+        name="MyModel",
+        image_uri=IMAGE_URI,
+        model_data=ParameterString(name="ModelData", default_value="s3://my-bucket/file"),
+        sagemaker_session=pipeline_session,
+        entry_point=f"{DATA_DIR}/dummy_script.py",
+        source_dir=f"{DATA_DIR}",
+        role=ROLE,
+    )
+    step_args = model.create(
+        instance_type="c4.4xlarge",
+        accelerator_type="ml.eia1.medium",
+    )
+    model_step_name = "MyModelStep"
+    model_step = ModelStep(
+        name=model_step_name,
+        step_args=step_args,
+    )
+    steps = model_step.steps
+    assert len(steps) == 2
+    assert isinstance(steps[1], CreateModelStep)
+    assert model_step.properties.ModelName.expr == {
+        "Get": f"Steps.{model_step_name}-{_CREATE_MODEL_NAME_BASE}.ModelName"
+    }
+
+    # RegisterModel
+    model.sagemaker_session = sagemaker_session
+    model.entry_point = None
+    model.source_dir = None
+    register_model_step_name = "RegisterModelStep"
+    register_model = RegisterModel(
+        name=register_model_step_name,
+        model=model,
+        model_data="s3://",
+        content_types=["content_type"],
+        response_types=["response_type"],
+        inference_instances=["inference_instance"],
+        transform_instances=["transform_instance"],
+        model_package_group_name="mpg",
+    )
+    steps = register_model.steps
+    assert len(steps) == 1
+    assert register_model.properties.ModelPackageName.expr == {
+        "Get": f"Steps.{register_model_step_name}.ModelPackageName"
+    }
+
+    # Custom StepCollection
+    step_collection = StepCollection(name="MyStepCollection")
+    steps = step_collection.steps
+    assert len(steps) == 0
+    assert not step_collection.properties
+
+
+def test_step_collection_is_depended_on(pipeline_session, sagemaker_session):
+    custom_step1 = CustomStep(name="MyStep1")
+    model_name = "MyModel"
+    model = Model(
+        name=model_name,
+        image_uri=IMAGE_URI,
+        model_data=ParameterString(name="ModelData", default_value="s3://my-bucket/file"),
+        sagemaker_session=pipeline_session,
+        entry_point=f"{DATA_DIR}/dummy_script.py",
+        source_dir=f"{DATA_DIR}",
+        role=ROLE,
+    )
+    step_args = model.create(
+        instance_type="c4.4xlarge",
+        accelerator_type="ml.eia1.medium",
+    )
+    model_step_name = "MyModelStep"
+    model_step = ModelStep(
+        name=model_step_name,
+        step_args=step_args,
+    )
+
+    # StepCollection object is depended on by another StepCollection object
+    model.sagemaker_session = sagemaker_session
+    register_model_name = "RegisterModelStep"
+    register_model = RegisterModel(
+        name=register_model_name,
+        model=model,
+        model_data="s3://",
+        content_types=["content_type"],
+        response_types=["response_type"],
+        inference_instances=["inference_instance"],
+        transform_instances=["transform_instance"],
+        model_package_group_name="mpg",
+        depends_on=["MyStep1", model_step],
+    )
+
+    # StepCollection objects are depended on by a step
+    custom_step2 = CustomStep(
+        name="MyStep2", depends_on=["MyStep1", model_step, register_model_name]
+    )
+    custom_step3 = CustomStep(
+        name="MyStep3", depends_on=[custom_step1, model_step_name, register_model]
+    )
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[custom_step1, model_step, custom_step2, custom_step3, register_model],
+    )
+    step_list = json.loads(pipeline.definition())["Steps"]
+    assert len(step_list) == 7
+    for step in step_list:
+        if step["Name"] not in ["MyStep2", "MyStep3", f"{model_name}RepackModel"]:
+            assert "DependsOn" not in step
+            continue
+        if step["Name"] == f"{model_name}RepackModel":
+            assert set(step["DependsOn"]) == {
+                "MyStep1",
+                f"{model_step_name}-{_REPACK_MODEL_NAME_BASE}-{model_name}",
+                f"{model_step_name}-{_CREATE_MODEL_NAME_BASE}",
+            }
+        else:
+            assert set(step["DependsOn"]) == {
+                "MyStep1",
+                f"{model_step_name}-{_REPACK_MODEL_NAME_BASE}-{model_name}",
+                f"{model_step_name}-{_CREATE_MODEL_NAME_BASE}",
+                f"{model_name}RepackModel",
+                register_model_name,
+            }
 
 
 def test_register_model(estimator, model_metrics, drift_check_baselines):
@@ -472,7 +604,7 @@ def test_register_model_with_model_repack_with_estimator(
                     "HyperParameters": {
                         "inference_script": '"dummy_script.py"',
                         "dependencies": f'"{dummy_requirements}"',
-                        "model_archive": '"model.tar.gz"',
+                        "model_archive": '"s3://my-bucket/model.tar.gz"',
                         "sagemaker_program": '"_repack_model.py"',
                         "sagemaker_container_log_level": "20",
                         "sagemaker_region": f'"{REGION}"',
@@ -485,7 +617,7 @@ def test_register_model_with_model_repack_with_estimator(
                                 "S3DataSource": {
                                     "S3DataDistributionType": "FullyReplicated",
                                     "S3DataType": "S3Prefix",
-                                    "S3Uri": f"s3://{BUCKET}",
+                                    "S3Uri": f"s3://{BUCKET}/model.tar.gz",
                                 }
                             },
                         }
@@ -596,7 +728,7 @@ def test_register_model_with_model_repack_with_model(model, model_metrics, drift
                     },
                     "HyperParameters": {
                         "inference_script": '"dummy_script.py"',
-                        "model_archive": '"model.tar.gz"',
+                        "model_archive": '"s3://my-bucket/model.tar.gz"',
                         "sagemaker_program": '"_repack_model.py"',
                         "sagemaker_container_log_level": "20",
                         "sagemaker_region": f'"{REGION}"',
@@ -610,7 +742,7 @@ def test_register_model_with_model_repack_with_model(model, model_metrics, drift
                                 "S3DataSource": {
                                     "S3DataDistributionType": "FullyReplicated",
                                     "S3DataType": "S3Prefix",
-                                    "S3Uri": f"s3://{BUCKET}",
+                                    "S3Uri": f"s3://{BUCKET}/model.tar.gz",
                                 }
                             },
                         }
@@ -726,7 +858,7 @@ def test_register_model_with_model_repack_with_pipeline_model(
                     "HyperParameters": {
                         "dependencies": "null",
                         "inference_script": '"dummy_script.py"',
-                        "model_archive": '"model.tar.gz"',
+                        "model_archive": '"s3://my-bucket/model.tar.gz"',
                         "sagemaker_program": '"_repack_model.py"',
                         "sagemaker_container_log_level": "20",
                         "sagemaker_region": f'"{REGION}"',
@@ -739,7 +871,7 @@ def test_register_model_with_model_repack_with_pipeline_model(
                                 "S3DataSource": {
                                     "S3DataDistributionType": "FullyReplicated",
                                     "S3DataType": "S3Prefix",
-                                    "S3Uri": f"s3://{BUCKET}",
+                                    "S3Uri": f"s3://{BUCKET}/model.tar.gz",
                                 }
                             },
                         }
@@ -927,7 +1059,7 @@ def test_estimator_transformer_with_model_repack_with_estimator(estimator):
                         "DataSource": {
                             "S3DataSource": {
                                 "S3DataType": "S3Prefix",
-                                "S3Uri": "s3://my-bucket",
+                                "S3Uri": "s3://my-bucket/model.tar.gz",
                                 "S3DataDistributionType": "FullyReplicated",
                             }
                         },
@@ -936,7 +1068,7 @@ def test_estimator_transformer_with_model_repack_with_estimator(estimator):
                 ],
                 "HyperParameters": {
                     "inference_script": '"dummy_script.py"',
-                    "model_archive": '"model.tar.gz"',
+                    "model_archive": '"s3://my-bucket/model.tar.gz"',
                     "dependencies": "null",
                     "source_dir": "null",
                     "sagemaker_program": '"_repack_model.py"',

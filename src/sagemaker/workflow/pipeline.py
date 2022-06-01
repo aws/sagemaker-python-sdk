@@ -215,30 +215,33 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         Returns:
             response dict from service
         """
+        exists = True
         try:
-            response = self.create(role_arn, description, tags, parallelism_config)
+            self.describe()
         except ClientError as e:
-            error = e.response["Error"]
-            if (
-                error["Code"] == "ValidationException"
-                and "Pipeline names must be unique within" in error["Message"]
-            ):
-                response = self.update(role_arn, description)
-                if tags is not None:
-                    old_tags = self.sagemaker_session.sagemaker_client.list_tags(
-                        ResourceArn=response["PipelineArn"]
-                    )["Tags"]
-
-                    tag_keys = [tag["Key"] for tag in tags]
-                    for old_tag in old_tags:
-                        if old_tag["Key"] not in tag_keys:
-                            tags.append(old_tag)
-
-                    self.sagemaker_session.sagemaker_client.add_tags(
-                        ResourceArn=response["PipelineArn"], Tags=tags
-                    )
+            err = e.response.get("Error", {})
+            if err.get("Code", None) == "ResourceNotFound":
+                exists = False
             else:
-                raise
+                raise e
+
+        if not exists:
+            response = self.create(role_arn, description, tags, parallelism_config)
+        else:
+            response = self.update(role_arn, description)
+            if tags is not None:
+                old_tags = self.sagemaker_session.sagemaker_client.list_tags(
+                    ResourceArn=response["PipelineArn"]
+                )["Tags"]
+
+                tag_keys = [tag["Key"] for tag in tags]
+                for old_tag in old_tags:
+                    if old_tag["Key"] not in tag_keys:
+                        tags.append(old_tag)
+
+                self.sagemaker_session.sagemaker_client.add_tags(
+                    ResourceArn=response["PipelineArn"], Tags=tags
+                )
         return response
 
     def delete(self) -> Dict[str, Any]:
@@ -270,18 +273,6 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         Returns:
             A `_PipelineExecution` instance, if successful.
         """
-        exists = True
-        try:
-            self.describe()
-        except ClientError:
-            exists = False
-
-        if not exists:
-            raise ValueError(
-                "This pipeline is not associated with a Pipeline in SageMaker. "
-                "Please invoke create() first before attempting to invoke start()."
-            )
-
         kwargs = dict(PipelineName=self.name)
         update_args(
             kwargs,
@@ -299,6 +290,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
     def definition(self) -> str:
         """Converts a request structure to string representation for workflow service calls."""
         request_dict = self.to_request()
+        self._interpolate_step_collection_name_in_depends_on(request_dict["Steps"])
         request_dict["PipelineExperimentConfig"] = interpolate(
             request_dict["PipelineExperimentConfig"], {}, {}
         )
@@ -311,6 +303,24 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         )
 
         return json.dumps(request_dict)
+
+    def _interpolate_step_collection_name_in_depends_on(self, step_requests: dict):
+        """Insert step names as per `StepCollection` name in depends_on list
+
+        Args:
+            step_requests (dict): The raw step request dict without any interpolation.
+        """
+        step_name_map = {s.name: s for s in self.steps}
+        for step_request in step_requests:
+            if not step_request.get("DependsOn", None):
+                continue
+            depends_on = []
+            for depend_step_name in step_request["DependsOn"]:
+                if isinstance(step_name_map[depend_step_name], StepCollection):
+                    depends_on.extend([s.name for s in step_name_map[depend_step_name].steps])
+                else:
+                    depends_on.append(depend_step_name)
+            step_request["DependsOn"] = depends_on
 
 
 def format_start_parameters(parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -339,16 +349,20 @@ def interpolate(
     Args:
         request_obj (RequestType): The request dict.
         callback_output_to_step_map (Dict[str, str]): A dict of output name -> step name.
+        lambda_output_to_step_map (Dict[str, str]): A dict of output name -> step name.
 
     Returns:
         RequestType: The request dict with Parameter values replaced by their expression.
     """
-    request_obj_copy = deepcopy(request_obj)
-    return _interpolate(
-        request_obj_copy,
-        callback_output_to_step_map=callback_output_to_step_map,
-        lambda_output_to_step_map=lambda_output_to_step_map,
-    )
+    try:
+        request_obj_copy = deepcopy(request_obj)
+        return _interpolate(
+            request_obj_copy,
+            callback_output_to_step_map=callback_output_to_step_map,
+            lambda_output_to_step_map=lambda_output_to_step_map,
+        )
+    except TypeError as type_err:
+        raise TypeError("Not able to interpolate Pipeline definition: %s" % type_err)
 
 
 def _interpolate(

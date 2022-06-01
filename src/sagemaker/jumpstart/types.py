@@ -362,7 +362,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
 
 
 class JumpStartVersionedModelId(JumpStartDataHolderType):
-    """Data class for versioned model ids."""
+    """Data class for versioned model IDs."""
 
     __slots__ = ["model_id", "version"]
 
@@ -374,7 +374,7 @@ class JumpStartVersionedModelId(JumpStartDataHolderType):
         """Instantiates JumpStartVersionedModelId object.
 
         Args:
-            model_id (str): JumpStart model id.
+            model_id (str): JumpStart model ID.
             version (str): JumpStart model version.
         """
         self.model_id = model_id
@@ -420,7 +420,7 @@ class JumpStartCachedS3ContentValue(JumpStartDataHolderType):
             formatted_content (Union[Dict[JumpStartVersionedModelId, JumpStartModelHeader],
             JumpStartModelSpecs]):
                 Formatted content for model specs and mappings from
-                versioned model ids to specs.
+                versioned model IDs to specs.
             md5_hash (str): md5_hash for stored file content from s3.
         """
         self.formatted_content = formatted_content

@@ -81,7 +81,7 @@ def test_implicit_value_on_join():
 
     with pytest.raises(TypeError) as error:
         str(func)
-    assert str(error.value) == "Pipeline variables do not support __str__ operation."
+    assert "Pipeline variables do not support __str__ operation." in str(error.value)
 
     with pytest.raises(TypeError) as error:
         int(func)
@@ -90,13 +90,6 @@ def test_implicit_value_on_join():
     with pytest.raises(TypeError) as error:
         float(func)
     assert str(error.value) == "Pipeline variables do not support __float__ operation."
-
-
-def test_string_builtin_funcs_that_return_bool_on_join():
-    func = Join(on=",", values=["s3:/", "my-bucket", "a"])
-    # The func will only be parsed in runtime (Pipeline backend) so not able to tell in SDK
-    assert not func.startswith("s3")
-    assert not func.endswith("s3")
 
 
 def test_add_func_of_join():
@@ -189,7 +182,7 @@ def test_implicit_value_on_json_get():
 
     with pytest.raises(TypeError) as error:
         str(func)
-    assert str(error.value) == "Pipeline variables do not support __str__ operation."
+    assert "Pipeline variables do not support __str__ operation." in str(error.value)
 
     with pytest.raises(TypeError) as error:
         int(func)
@@ -198,17 +191,6 @@ def test_implicit_value_on_json_get():
     with pytest.raises(TypeError) as error:
         float(func)
     assert str(error.value) == "Pipeline variables do not support __float__ operation."
-
-
-def test_string_builtin_funcs_that_return_bool_on_json_get():
-    func = JsonGet(
-        step_name="my-step",
-        property_file="my-property-file",
-        json_path="my-json-path",
-    )
-    # The func will only be parsed in runtime (Pipeline backend) so not able to tell in SDK
-    assert not func.startswith("s3")
-    assert not func.endswith("s3")
 
 
 def test_add_func_of_json_get():

@@ -27,6 +27,7 @@ from sagemaker.deprecations import renamed_warning
 from sagemaker.estimator import EstimatorBase, _TrainingJob
 from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.utils import sagemaker_timestamp
+from sagemaker.workflow.pipeline_context import runnable_by_pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -192,6 +193,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         self.feature_dim = feature_dim
         self.mini_batch_size = mini_batch_size
 
+    @runnable_by_pipeline
     def fit(
         self,
         records,

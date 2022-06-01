@@ -17,11 +17,12 @@ import abc
 import warnings
 
 from enum import Enum
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Optional, TYPE_CHECKING
 from urllib.parse import urlparse
 
 import attr
 
+from sagemaker import Session
 from sagemaker.estimator import EstimatorBase, _TrainingJob
 from sagemaker.inputs import CreateModelInput, TrainingInput, TransformInput, FileSystemInput
 from sagemaker.model import Model
@@ -34,17 +35,22 @@ from sagemaker.processing import (
 )
 from sagemaker.transformer import Transformer, _TransformJob
 from sagemaker.tuner import HyperparameterTuner, _TuningJob
+from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import (
     DefaultEnumMeta,
     Entity,
     RequestType,
 )
+from sagemaker.workflow.pipeline_context import _JobStepArguments
 from sagemaker.workflow.properties import (
     PropertyFile,
     Properties,
 )
 from sagemaker.workflow.functions import Join
 from sagemaker.workflow.retry import RetryPolicy
+
+if TYPE_CHECKING:
+    from sagemaker.workflow.step_collections import StepCollection
 
 
 class StepTypeEnum(Enum, metaclass=DefaultEnumMeta):
@@ -74,16 +80,16 @@ class Step(Entity):
         display_name (str): The display name of the `Step`.
         description (str): The description of the `Step`.
         step_type (StepTypeEnum): The type of the `Step`.
-        depends_on (List[str] or List[Step]): The list of `Step` names or `Step`
-            instances that the current `Step` depends on.
-        retry_policies (List[RetryPolicy]): The custom retry policy configuration.
+        depends_on (List[Union[str, Step, StepCollection]]): The list of `Step`/`StepCollection`
+            names or `Step` instances or `StepCollection` instances that the current `Step`
+            depends on.
     """
 
     name: str = attr.ib(factory=str)
-    display_name: str = attr.ib(default=None)
-    description: str = attr.ib(default=None)
+    display_name: Optional[str] = attr.ib(default=None)
+    description: Optional[str] = attr.ib(default=None)
     step_type: StepTypeEnum = attr.ib(factory=StepTypeEnum.factory)
-    depends_on: Union[List[str], List["Step"]] = attr.ib(default=None)
+    depends_on: Optional[List[Union[str, "Step", "StepCollection"]]] = attr.ib(default=None)
 
     @property
     @abc.abstractmethod
@@ -111,7 +117,7 @@ class Step(Entity):
 
         return request_dict
 
-    def add_depends_on(self, step_names: Union[List[str], List["Step"]]):
+    def add_depends_on(self, step_names: List[Union[str, "Step", "StepCollection"]]):
         """Add `Step` names or `Step` instances to the current `Step` depends on list."""
 
         if not step_names:
@@ -127,11 +133,17 @@ class Step(Entity):
         return {"Name": self.name}
 
     @staticmethod
-    def _resolve_depends_on(depends_on_list: Union[List[str], List["Step"]]) -> List[str]:
+    def _resolve_depends_on(
+        depends_on_list: List[Union[str, "Step", "StepCollection"]]
+    ) -> List[str]:
         """Resolve the `Step` depends on list."""
+        from sagemaker.workflow.step_collections import StepCollection
+
         depends_on = []
         for step in depends_on_list:
-            if isinstance(step, Step):
+            # As for StepCollection, the names of its sub steps will be interpolated
+            # when generating the pipeline definition
+            if isinstance(step, (Step, StepCollection)):
                 depends_on.append(step.name)
             elif isinstance(step, str):
                 depends_on.append(step)
@@ -188,7 +200,7 @@ class ConfigurableRetryStep(Step):
         step_type: StepTypeEnum,
         display_name: str = None,
         description: str = None,
-        depends_on: Union[List[str], List[Step]] = None,
+        depends_on: Optional[List[Union[str, Step, "StepCollection"]]] = None,
         retry_policies: List[RetryPolicy] = None,
     ):
         super().__init__(
@@ -228,12 +240,13 @@ class TrainingStep(ConfigurableRetryStep):
     def __init__(
         self,
         name: str,
-        estimator: EstimatorBase,
+        step_args: _JobStepArguments = None,
+        estimator: EstimatorBase = None,
         display_name: str = None,
         description: str = None,
         inputs: Union[TrainingInput, dict, str, FileSystemInput] = None,
         cache_config: CacheConfig = None,
-        depends_on: Union[List[str], List[Step]] = None,
+        depends_on: Optional[List[Union[str, Step, "StepCollection"]]] = None,
         retry_policies: List[RetryPolicy] = None,
     ):
         """Construct a `TrainingStep`, given an `EstimatorBase` instance.
@@ -243,6 +256,7 @@ class TrainingStep(ConfigurableRetryStep):
 
         Args:
             name (str): The name of the `TrainingStep`.
+            step_args (_JobStepArguments): The arguments for the `TrainingStep` definition.
             estimator (EstimatorBase): A `sagemaker.estimator.EstimatorBase` instance.
             display_name (str): The display name of the `TrainingStep`.
             description (str): The description of the `TrainingStep`.
@@ -263,29 +277,67 @@ class TrainingStep(ConfigurableRetryStep):
                   the path to the training dataset.
 
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
-            depends_on (List[str] or List[Step]): A list of `Step` names or `Step` instances
-                this `sagemaker.workflow.steps.TrainingStep` depends on.
+            depends_on (List[Union[str, Step, StepCollection]]): A list of `Step`/`StepCollection`
+                names or `Step` instances or `StepCollection` instances that this `TrainingStep`
+                depends on.
             retry_policies (List[RetryPolicy]):  A list of retry policies.
         """
         super(TrainingStep, self).__init__(
             name, StepTypeEnum.TRAINING, display_name, description, depends_on, retry_policies
         )
+
+        if not (step_args is not None) ^ (estimator is not None):
+            raise ValueError("Either step_args or estimator need to be given.")
+
+        if step_args:
+            from sagemaker.workflow.utilities import validate_step_args_input
+
+            validate_step_args_input(
+                step_args=step_args,
+                expected_caller={Session.train.__name__},
+                error_message="The step_args of TrainingStep must be obtained from estimator.fit().",
+            )
+
+        self.step_args = step_args.args if step_args else None
         self.estimator = estimator
         self.inputs = inputs
+
         self._properties = Properties(
             path=f"Steps.{name}", shape_name="DescribeTrainingJobResponse"
         )
         self.cache_config = cache_config
 
-        if self.cache_config is not None and not self.estimator.disable_profiler:
-            msg = (
-                "Profiling is enabled on the provided estimator. "
-                "The default profiler rule includes a timestamp "
-                "which will change each time the pipeline is "
-                "upserted, causing cache misses. If profiling "
-                "is not needed, set disable_profiler to True on the estimator."
+        if self.cache_config:
+            if (self.step_args and "ProfilerConfig" in self.step_args) or (
+                self.estimator is not None and not self.estimator.disable_profiler
+            ):
+                msg = (
+                    "Profiling is enabled on the provided estimator. "
+                    "The default profiler rule includes a timestamp "
+                    "which will change each time the pipeline is "
+                    "upserted, causing cache misses. If profiling "
+                    "is not needed, set disable_profiler to True on the estimator."
+                )
+                warnings.warn(msg)
+
+        if not self.step_args:
+            warnings.warn(
+                (
+                    'We are deprecating the instantiation of TrainingStep using "estimator".'
+                    'Instead, simply using "step_args".'
+                ),
+                DeprecationWarning,
             )
-            warnings.warn(msg)
+
+        self.job_name = None
+        if estimator and (estimator.source_dir or estimator.entry_point):
+            # By default, `Estimator` will upload the local code to an S3 path
+            # containing a timestamp. This causes cache misses whenever a
+            # pipeline is updated, even if the underlying script hasn't changed.
+            # To avoid this, hash the contents of the training script and include it
+            # in the `job_name` passed to the `Estimator`, which will be used
+            # instead of the timestamped path.
+            self.job_name = self._generate_code_upload_path()
 
     @property
     def arguments(self) -> RequestType:
@@ -294,15 +346,20 @@ class TrainingStep(ConfigurableRetryStep):
         NOTE: The `CreateTrainingJob` request is not quite the args list that workflow needs.
         The `TrainingJobName` and `ExperimentConfig` attributes cannot be included.
         """
+        if self.step_args:
+            request_dict = self.step_args
+        else:
+            self.estimator._prepare_for_training(self.job_name)
+            train_args = _TrainingJob._get_train_args(
+                self.estimator, self.inputs, experiment_config=dict()
+            )
+            request_dict = self.estimator.sagemaker_session._get_train_request(**train_args)
 
-        self.estimator._prepare_for_training()
-        train_args = _TrainingJob._get_train_args(
-            self.estimator, self.inputs, experiment_config=dict()
-        )
-        request_dict = self.estimator.sagemaker_session._get_train_request(**train_args)
-        request_dict.pop("TrainingJobName")
         if "HyperParameters" in request_dict:
             request_dict["HyperParameters"].pop("sagemaker_job_name", None)
+
+        request_dict.pop("TrainingJobName", None)
+        request_dict.pop("ExperimentConfig", None)
 
         return request_dict
 
@@ -319,6 +376,26 @@ class TrainingStep(ConfigurableRetryStep):
 
         return request_dict
 
+    def _generate_code_upload_path(self) -> str or None:
+        """Generate an upload path for local training scripts based on their content."""
+        from sagemaker.workflow.utilities import hash_files_or_dirs
+
+        if self.estimator.source_dir:
+            source_dir_url = urlparse(self.estimator.source_dir)
+            if source_dir_url.scheme == "" or source_dir_url.scheme == "file":
+                code_hash = hash_files_or_dirs(
+                    [self.estimator.source_dir] + self.estimator.dependencies
+                )
+                return f"{self.name}-{code_hash}"[:1024]
+        elif self.estimator.entry_point:
+            entry_point_url = urlparse(self.estimator.entry_point)
+            if entry_point_url.scheme == "" or entry_point_url.scheme == "file":
+                code_hash = hash_files_or_dirs(
+                    [self.estimator.entry_point] + self.estimator.dependencies
+                )
+                return f"{self.name}-{code_hash}"[:1024]
+        return None
+
 
 class CreateModelStep(ConfigurableRetryStep):
     """`CreateModelStep` for SageMaker Pipelines Workflows."""
@@ -326,12 +403,13 @@ class CreateModelStep(ConfigurableRetryStep):
     def __init__(
         self,
         name: str,
-        model: Union[Model, PipelineModel],
-        inputs: CreateModelInput,
-        depends_on: Union[List[str], List[Step]] = None,
-        retry_policies: List[RetryPolicy] = None,
-        display_name: str = None,
-        description: str = None,
+        step_args: Optional[dict] = None,
+        model: Optional[Union[Model, PipelineModel]] = None,
+        inputs: Optional[CreateModelInput] = None,
+        depends_on: Optional[List[Union[str, Step, "StepCollection"]]] = None,
+        retry_policies: Optional[List[RetryPolicy]] = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
     ):
         """Construct a `CreateModelStep`, given an `sagemaker.model.Model` instance.
 
@@ -340,23 +418,41 @@ class CreateModelStep(ConfigurableRetryStep):
 
         Args:
             name (str): The name of the `CreateModelStep`.
+            step_args (dict): The arguments for the `CreateModelStep` definition (default: None).
             model (Model or PipelineModel): A `sagemaker.model.Model`
-                or `sagemaker.pipeline.PipelineModel` instance.
+                or `sagemaker.pipeline.PipelineModel` instance (default: None).
             inputs (CreateModelInput): A `sagemaker.inputs.CreateModelInput` instance.
-                Defaults to `None`.
-            depends_on (List[str] or List[Step]): A list of `Step` names or `Step` instances
-                this `sagemaker.workflow.steps.CreateModelStep` depends on.
-            retry_policies (List[RetryPolicy]):  A list of retry policies.
-            display_name (str): The display name of the `CreateModelStep`.
-            description (str): The description of the `CreateModelStep`.
+                (default: None).
+            depends_on (List[Union[str, Step, StepCollection]]): A list of `Step`/`StepCollection`
+                names or `Step` instances or `StepCollection` instances that this `CreateModelStep`
+                depends on (default: None).
+            retry_policies (List[RetryPolicy]):  A list of retry policies (default: None).
+            display_name (str): The display name of the `CreateModelStep` (default: None).
+            description (str): The description of the `CreateModelStep` (default: None).
         """
         super(CreateModelStep, self).__init__(
             name, StepTypeEnum.CREATE_MODEL, display_name, description, depends_on, retry_policies
         )
+        if not (step_args is None) ^ (model is None):
+            raise ValueError(
+                "step_args and model are mutually exclusive. Either of them should be provided."
+            )
+
+        self.step_args = step_args
         self.model = model
         self.inputs = inputs or CreateModelInput()
 
         self._properties = Properties(path=f"Steps.{name}", shape_name="DescribeModelOutput")
+
+        # TODO: add public document link here once ready
+        warnings.warn(
+            (
+                "We are deprecating the use of CreateModelStep. "
+                "Instead, please use the ModelStep, which simply takes in the step arguments "
+                "generated by model.create()."
+            ),
+            DeprecationWarning,
+        )
 
     @property
     def arguments(self) -> RequestType:
@@ -366,26 +462,29 @@ class CreateModelStep(ConfigurableRetryStep):
         `ModelName` cannot be included in the arguments.
         """
 
-        if isinstance(self.model, PipelineModel):
-            request_dict = self.model.sagemaker_session._create_model_request(
-                name="",
-                role=self.model.role,
-                container_defs=self.model.pipeline_container_def(self.inputs.instance_type),
-                vpc_config=self.model.vpc_config,
-                enable_network_isolation=self.model.enable_network_isolation,
-            )
+        if self.step_args:
+            request_dict = self.step_args
         else:
-            request_dict = self.model.sagemaker_session._create_model_request(
-                name="",
-                role=self.model.role,
-                container_defs=self.model.prepare_container_def(
-                    instance_type=self.inputs.instance_type,
-                    accelerator_type=self.inputs.accelerator_type,
-                ),
-                vpc_config=self.model.vpc_config,
-                enable_network_isolation=self.model.enable_network_isolation(),
-            )
-        request_dict.pop("ModelName")
+            if isinstance(self.model, PipelineModel):
+                request_dict = self.model.sagemaker_session._create_model_request(
+                    name="",
+                    role=self.model.role,
+                    container_defs=self.model.pipeline_container_def(self.inputs.instance_type),
+                    vpc_config=self.model.vpc_config,
+                    enable_network_isolation=self.model.enable_network_isolation,
+                )
+            else:
+                request_dict = self.model.sagemaker_session._create_model_request(
+                    name="",
+                    role=self.model.role,
+                    container_defs=self.model.prepare_container_def(
+                        instance_type=self.inputs.instance_type,
+                        accelerator_type=self.inputs.accelerator_type,
+                    ),
+                    vpc_config=self.model.vpc_config,
+                    enable_network_isolation=self.model.enable_network_isolation(),
+                )
+        request_dict.pop("ModelName", None)
 
         return request_dict
 
@@ -401,12 +500,13 @@ class TransformStep(ConfigurableRetryStep):
     def __init__(
         self,
         name: str,
-        transformer: Transformer,
-        inputs: TransformInput,
+        step_args: _JobStepArguments = None,
+        transformer: Transformer = None,
+        inputs: TransformInput = None,
         display_name: str = None,
         description: str = None,
         cache_config: CacheConfig = None,
-        depends_on: Union[List[str], List[Step]] = None,
+        depends_on: Optional[List[Union[str, Step, "StepCollection"]]] = None,
         retry_policies: List[RetryPolicy] = None,
     ):
         """Constructs a `TransformStep`, given a `Transformer` instance.
@@ -416,24 +516,52 @@ class TransformStep(ConfigurableRetryStep):
 
         Args:
             name (str): The name of the `TransformStep`.
+            step_args (_JobStepArguments): The arguments for the `TransformStep` definition.
             transformer (Transformer): A `sagemaker.transformer.Transformer` instance.
             inputs (TransformInput): A `sagemaker.inputs.TransformInput` instance.
             cache_config (CacheConfig): A `sagemaker.workflow.steps.CacheConfig` instance.
             display_name (str): The display name of the `TransformStep`.
             description (str): The description of the `TransformStep`.
-            depends_on (List[str]): A list of `Step` names that this `sagemaker.workflow.steps.TransformStep`
+            depends_on (List[Union[str, Step, StepCollection]]): A list of `Step`/`StepCollection`
+                names or `Step` instances or `StepCollection` instances that this `TransformStep`
                 depends on.
             retry_policies (List[RetryPolicy]): A list of retry policies.
         """
         super(TransformStep, self).__init__(
             name, StepTypeEnum.TRANSFORM, display_name, description, depends_on, retry_policies
         )
+
+        if not (step_args is not None) ^ (transformer is not None):
+            raise ValueError("either step_args or transformer need to be given, but not both.")
+
+        if step_args:
+            from sagemaker.workflow.utilities import validate_step_args_input
+
+            validate_step_args_input(
+                step_args=step_args,
+                expected_caller={Session.transform.__name__},
+                error_message="The step_args of TransformStep must be obtained "
+                "from transformer.transform().",
+            )
+
+        self.step_args = step_args.args if step_args else None
         self.transformer = transformer
         self.inputs = inputs
         self.cache_config = cache_config
         self._properties = Properties(
             path=f"Steps.{name}", shape_name="DescribeTransformJobResponse"
         )
+
+        if not self.step_args:
+            if inputs is None:
+                raise ValueError("Inputs can't be None when transformer is given.")
+            warnings.warn(
+                (
+                    'We are deprecating the instantiation of TransformStep using "transformer".'
+                    'Instead, simply using "step_args".'
+                ),
+                DeprecationWarning,
+            )
 
     @property
     def arguments(self) -> RequestType:
@@ -442,23 +570,28 @@ class TransformStep(ConfigurableRetryStep):
         NOTE: The `CreateTransformJob` request is not quite the args list that workflow needs.
         `TransformJobName` and `ExperimentConfig` cannot be included in the arguments.
         """
-        transform_args = _TransformJob._get_transform_args(
-            transformer=self.transformer,
-            data=self.inputs.data,
-            data_type=self.inputs.data_type,
-            content_type=self.inputs.content_type,
-            compression_type=self.inputs.compression_type,
-            split_type=self.inputs.split_type,
-            input_filter=self.inputs.input_filter,
-            output_filter=self.inputs.output_filter,
-            join_source=self.inputs.join_source,
-            model_client_config=self.inputs.model_client_config,
-            experiment_config=dict(),
-        )
+        if self.step_args:
+            request_dict = self.step_args
+        else:
+            transform_args = _TransformJob._get_transform_args(
+                transformer=self.transformer,
+                data=self.inputs.data,
+                data_type=self.inputs.data_type,
+                content_type=self.inputs.content_type,
+                compression_type=self.inputs.compression_type,
+                split_type=self.inputs.split_type,
+                input_filter=self.inputs.input_filter,
+                output_filter=self.inputs.output_filter,
+                join_source=self.inputs.join_source,
+                model_client_config=self.inputs.model_client_config,
+                experiment_config=dict(),
+            )
+            request_dict = self.transformer.sagemaker_session._get_transform_request(
+                **transform_args
+            )
 
-        request_dict = self.transformer.sagemaker_session._get_transform_request(**transform_args)
-        request_dict.pop("TransformJobName")
-
+        request_dict.pop("TransformJobName", None)
+        request_dict.pop("ExperimentConfig", None)
         return request_dict
 
     @property
@@ -481,7 +614,8 @@ class ProcessingStep(ConfigurableRetryStep):
     def __init__(
         self,
         name: str,
-        processor: Processor,
+        step_args: _JobStepArguments = None,
+        processor: Processor = None,
         display_name: str = None,
         description: str = None,
         inputs: List[ProcessingInput] = None,
@@ -490,7 +624,7 @@ class ProcessingStep(ConfigurableRetryStep):
         code: str = None,
         property_files: List[PropertyFile] = None,
         cache_config: CacheConfig = None,
-        depends_on: Union[List[str], List[Step]] = None,
+        depends_on: Optional[List[Union[str, Step, "StepCollection"]]] = None,
         retry_policies: List[RetryPolicy] = None,
         kms_key=None,
     ):
@@ -501,6 +635,7 @@ class ProcessingStep(ConfigurableRetryStep):
 
         Args:
             name (str): The name of the `ProcessingStep`.
+            step_args (_JobStepArguments): The arguments for the `ProcessingStep` definition.
             processor (Processor): A `sagemaker.processing.Processor` instance.
             display_name (str): The display name of the `ProcessingStep`.
             description (str): The description of the `ProcessingStep`
@@ -515,8 +650,9 @@ class ProcessingStep(ConfigurableRetryStep):
             property_files (List[PropertyFile]): A list of property files that workflow looks
                 for and resolves from the configured processing output list.
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
-            depends_on (List[str] or List[Step]): A list of `Step` names or `Step` instances that
-                this `sagemaker.workflow.steps.ProcessingStep` depends on.
+            depends_on (List[Union[str, Step, StepCollection]]): A list of `Step`/`StepCollection`
+                names or `Step` instances or `StepCollection` instances that this `ProcessingStep`
+                depends on.
             retry_policies (List[RetryPolicy]):  A list of retry policies.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file. Defaults to `None`.
@@ -524,6 +660,20 @@ class ProcessingStep(ConfigurableRetryStep):
         super(ProcessingStep, self).__init__(
             name, StepTypeEnum.PROCESSING, display_name, description, depends_on, retry_policies
         )
+
+        if not (step_args is not None) ^ (processor is not None):
+            raise ValueError("either step_args or processor need to be given, but not both.")
+
+        if step_args:
+            from sagemaker.workflow.utilities import validate_step_args_input
+
+            validate_step_args_input(
+                step_args=step_args,
+                expected_caller={Session.process.__name__},
+                error_message="The step_args of ProcessingStep must be obtained from processor.run().",
+            )
+
+        self.step_args = step_args.args if step_args else None
         self.processor = processor
         self.inputs = inputs
         self.outputs = outputs
@@ -532,26 +682,40 @@ class ProcessingStep(ConfigurableRetryStep):
         self.property_files = property_files
         self.job_name = None
         self.kms_key = kms_key
-
-        # Examine why run method in `sagemaker.processing.Processor` mutates the processor instance
-        # by setting the instance's arguments attribute. Refactor `Processor.run`, if possible.
-        self.processor.arguments = job_arguments
-
+        self.cache_config = cache_config
         self._properties = Properties(
             path=f"Steps.{name}", shape_name="DescribeProcessingJobResponse"
         )
-        self.cache_config = cache_config
 
-        if code:
-            code_url = urlparse(code)
-            if code_url.scheme == "" or code_url.scheme == "file":
-                # By default, `Processor` will upload the local code to an S3 path
-                # containing a timestamp. This causes cache misses whenever a
-                # pipeline is updated, even if the underlying script hasn't changed.
-                # To avoid this, hash the contents of the script and include it
-                # in the `job_name` passed to the `Processor`, which will be used
-                # instead of the timestamped path.
-                self.job_name = self._generate_code_upload_path()
+        if not self.step_args:
+            # Examine why run method in `sagemaker.processing.Processor`
+            # mutates the processor instance by setting the instance's
+            # arguments attribute. Refactor `Processor.run`, if possible.
+            self.processor.arguments = job_arguments
+
+            if code:
+                if is_pipeline_variable(code):
+                    raise ValueError(
+                        "code argument has to be a valid S3 URI or local file path "
+                        + "rather than a pipeline variable"
+                    )
+                code_url = urlparse(code)
+                if code_url.scheme == "" or code_url.scheme == "file":
+                    # By default, `Processor` will upload the local code to an S3 path
+                    # containing a timestamp. This causes cache misses whenever a
+                    # pipeline is updated, even if the underlying script hasn't changed.
+                    # To avoid this, hash the contents of the script and include it
+                    # in the `job_name` passed to the `Processor`, which will be used
+                    # instead of the timestamped path.
+                    self.job_name = self._generate_code_upload_path()
+
+            warnings.warn(
+                (
+                    'We are deprecating the instantiation of ProcessingStep using "processor".'
+                    'Instead, simply using "step_args".'
+                ),
+                DeprecationWarning,
+            )
 
     @property
     def arguments(self) -> RequestType:
@@ -560,20 +724,24 @@ class ProcessingStep(ConfigurableRetryStep):
         NOTE: The `CreateProcessingJob` request is not quite the args list that workflow needs.
         `ProcessingJobName` and `ExperimentConfig` cannot be included in the arguments.
         """
-        normalized_inputs, normalized_outputs = self.processor._normalize_args(
-            job_name=self.job_name,
-            arguments=self.job_arguments,
-            inputs=self.inputs,
-            outputs=self.outputs,
-            code=self.code,
-            kms_key=self.kms_key,
-        )
-        process_args = ProcessingJob._get_process_args(
-            self.processor, normalized_inputs, normalized_outputs, experiment_config=dict()
-        )
-        request_dict = self.processor.sagemaker_session._get_process_request(**process_args)
-        request_dict.pop("ProcessingJobName")
+        if self.step_args:
+            request_dict = self.step_args
+        else:
+            normalized_inputs, normalized_outputs = self.processor._normalize_args(
+                job_name=self.job_name,
+                arguments=self.job_arguments,
+                inputs=self.inputs,
+                outputs=self.outputs,
+                code=self.code,
+                kms_key=self.kms_key,
+            )
+            process_args = ProcessingJob._get_process_args(
+                self.processor, normalized_inputs, normalized_outputs, experiment_config=dict()
+            )
+            request_dict = self.processor.sagemaker_session._get_process_request(**process_args)
 
+        request_dict.pop("ProcessingJobName", None)
+        request_dict.pop("ExperimentConfig", None)
         return request_dict
 
     @property
@@ -606,13 +774,14 @@ class TuningStep(ConfigurableRetryStep):
     def __init__(
         self,
         name: str,
-        tuner: HyperparameterTuner,
+        step_args: _JobStepArguments = None,
+        tuner: HyperparameterTuner = None,
         display_name: str = None,
         description: str = None,
         inputs=None,
         job_arguments: List[str] = None,
         cache_config: CacheConfig = None,
-        depends_on: Union[List[str], List[Step]] = None,
+        depends_on: Optional[List[Union[str, Step, "StepCollection"]]] = None,
         retry_policies: List[RetryPolicy] = None,
     ):
         """Construct a `TuningStep`, given a `HyperparameterTuner` instance.
@@ -622,6 +791,7 @@ class TuningStep(ConfigurableRetryStep):
 
         Args:
             name (str): The name of the `TuningStep`.
+            step_args (_JobStepArguments): The arguments for the `TuningStep` definition.
             tuner (HyperparameterTuner): A `sagemaker.tuner.HyperparameterTuner` instance.
             display_name (str): The display name of the `TuningStep`.
             description (str): The description of the `TuningStep`.
@@ -655,13 +825,28 @@ class TuningStep(ConfigurableRetryStep):
             job_arguments (List[str]): A list of strings to be passed into the processing job.
                 Defaults to `None`.
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
-            depends_on (List[str] or List[Step]): A list of `Step` names or `Step` instances that
-                this `sagemaker.workflow.steps.ProcessingStep` depends on.
+            depends_on (List[Union[str, Step, StepCollection]]): A list of `Step`/`StepCollection`
+                names or `Step` instances or `StepCollection` instances that this `TuningStep`
+                depends on.
             retry_policies (List[RetryPolicy]):  A list of retry policies.
         """
         super(TuningStep, self).__init__(
             name, StepTypeEnum.TUNING, display_name, description, depends_on, retry_policies
         )
+
+        if not (step_args is not None) ^ (tuner is not None):
+            raise ValueError("either step_args or tuner need to be given, but not both.")
+
+        if step_args:
+            from sagemaker.workflow.utilities import validate_step_args_input
+
+            validate_step_args_input(
+                step_args=step_args,
+                expected_caller={Session.create_tuning_job.__name__},
+                error_message="The step_args of TuningStep must be obtained from tuner.fit().",
+            )
+
+        self.step_args = step_args.args if step_args else None
         self.tuner = tuner
         self.inputs = inputs
         self.job_arguments = job_arguments
@@ -674,6 +859,15 @@ class TuningStep(ConfigurableRetryStep):
         )
         self.cache_config = cache_config
 
+        if not self.step_args:
+            warnings.warn(
+                (
+                    'We are deprecating the instantiation of TuningStep using "tuner".'
+                    'Instead, simply using "step_args".'
+                ),
+                DeprecationWarning,
+            )
+
     @property
     def arguments(self) -> RequestType:
         """The arguments dictionary that is used to call `create_hyper_parameter_tuning_job`.
@@ -682,17 +876,20 @@ class TuningStep(ConfigurableRetryStep):
             args list that workflow needs.
         The `HyperParameterTuningJobName` attribute cannot be included.
         """
-        if self.tuner.estimator is not None:
-            self.tuner.estimator._prepare_for_training()
+        if self.step_args:
+            request_dict = self.step_args
         else:
-            for _, estimator in self.tuner.estimator_dict.items():
-                estimator._prepare_for_training()
+            if self.tuner.estimator is not None:
+                self.tuner.estimator._prepare_for_training()
+            else:
+                for _, estimator in self.tuner.estimator_dict.items():
+                    estimator._prepare_for_training()
 
-        self.tuner._prepare_for_tuning()
-        tuner_args = _TuningJob._get_tuner_args(self.tuner, self.inputs)
-        request_dict = self.tuner.sagemaker_session._get_tuning_request(**tuner_args)
-        request_dict.pop("HyperParameterTuningJobName")
+            self.tuner._prepare_for_tuning()
+            tuner_args = _TuningJob._get_tuner_args(self.tuner, self.inputs)
+            request_dict = self.tuner.sagemaker_session._get_tuning_request(**tuner_args)
 
+        request_dict.pop("HyperParameterTuningJobName", None)
         return request_dict
 
     @property

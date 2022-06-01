@@ -24,6 +24,7 @@ from packaging.version import Version
 
 from sagemaker import Session, image_uris, utils
 from sagemaker.local import LocalSession
+from sagemaker.workflow.pipeline_context import PipelineSession
 
 DEFAULT_REGION = "us-west-2"
 CUSTOM_BUCKET_NAME_PREFIX = "sagemaker-custom-bucket"
@@ -155,6 +156,11 @@ def sagemaker_local_session(boto_session):
     return LocalSession(boto_session=boto_session)
 
 
+@pytest.fixture(scope="session")
+def pipeline_session(boto_session):
+    return PipelineSession(boto_session=boto_session)
+
+
 @pytest.fixture(scope="module")
 def custom_bucket_name(boto_session):
     region = boto_session.region_name
@@ -250,6 +256,15 @@ def huggingface_training_compiler_tensorflow_version(huggingface_training_compil
     return _huggingface_base_fm_version(
         huggingface_training_compiler_version, "tensorflow", "huggingface_training_compiler"
     )[0]
+
+
+@pytest.fixture(scope="module")
+def huggingface_training_compiler_py_version(huggingface_training_compiler_tensorflow_version):
+    return (
+        "py37"
+        if Version(huggingface_training_compiler_tensorflow_version) < Version("2.6")
+        else "py38"
+    )
 
 
 @pytest.fixture(scope="module")

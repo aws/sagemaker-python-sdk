@@ -16,6 +16,7 @@ from __future__ import absolute_import
 import logging
 import os
 import re
+import time
 import shutil
 import tempfile
 from collections import namedtuple
@@ -24,6 +25,7 @@ from typing import Optional
 import sagemaker.image_uris
 from sagemaker.session_settings import SessionSettings
 import sagemaker.utils
+from sagemaker.workflow import is_pipeline_variable
 
 from sagemaker.deprecations import renamed_warning
 
@@ -93,6 +95,9 @@ SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
         "1.9.1",
         "1.10",
         "1.10.0",
+        "1.10.2",
+        "1.11",
+        "1.11.0",
     ],
 }
 SMDISTRIBUTED_SUPPORTED_STRATEGIES = ["dataparallel", "modelparallel"]
@@ -392,8 +397,10 @@ def model_code_key_prefix(code_location_key_prefix, model_name, image):
     Returns:
         str: the key prefix to be used in uploading code
     """
-    training_job_name = sagemaker.utils.name_from_image(image)
-    return "/".join(filter(None, [code_location_key_prefix, model_name or training_job_name]))
+    name_from_image = f"/model_code/{int(time.time())}"
+    if not is_pipeline_variable(image):
+        name_from_image = sagemaker.utils.name_from_image(image)
+    return "/".join(filter(None, [code_location_key_prefix, model_name or name_from_image]))
 
 
 def warn_if_parameter_server_with_multi_gpu(training_instance_type, distribution):
@@ -420,6 +427,10 @@ def warn_if_parameter_server_with_multi_gpu(training_instance_type, distribution
 
     """
     if training_instance_type == "local" or distribution is None:
+        return
+    if is_pipeline_variable(training_instance_type):
+        # The training_instance_type is not available in compile time.
+        # Rather, it's given in Pipeline execution time
         return
 
     is_multi_gpu_instance = (
@@ -477,6 +488,10 @@ def validate_smdistributed(
     """
     if "smdistributed" not in distribution:
         # Distribution strategy other than smdistributed is selected
+        return
+    if is_pipeline_variable(instance_type):
+        # The instance_type is not available in compile time.
+        # Rather, it's given in Pipeline execution time
         return
 
     # distribution contains smdistributed

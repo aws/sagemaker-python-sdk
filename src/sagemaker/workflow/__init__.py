@@ -12,11 +12,20 @@
 # language governing permissions and limitations under the License.
 """Defines Types etc. used in workflow."""
 from __future__ import absolute_import
-from typing import Union
 
 from sagemaker.workflow.entities import Expression
-from sagemaker.workflow.execution_variables import ExecutionVariable
-from sagemaker.workflow.parameters import Parameter
-from sagemaker.workflow.properties import Properties
 
-PipelineNonPrimitiveInputTypes = Union[ExecutionVariable, Expression, Parameter, Properties]
+
+def is_pipeline_variable(var: object) -> bool:
+    """Check if the variable is a pipeline variable
+
+    Args:
+        var (object): The variable to be verified.
+    Returns:
+         bool: True if it is, False otherwise.
+    """
+
+    # Currently Expression is on top of all kinds of pipeline variables
+    # as well as PipelineExperimentConfigProperty and PropertyFile
+    # TODO: We should deprecate the Expression and replace it with PipelineVariable
+    return isinstance(var, Expression)

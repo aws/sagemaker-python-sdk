@@ -22,7 +22,7 @@ from sagemaker.fw_utils import UploadedCode
 
 import pytest
 from botocore.exceptions import ClientError
-from mock import ANY, MagicMock, Mock, patch
+from mock import ANY, MagicMock, Mock, patch, PropertyMock
 from sagemaker.huggingface.estimator import HuggingFace
 from sagemaker.jumpstart.constants import JUMPSTART_BUCKET_NAME_SET, JUMPSTART_RESOURCE_BASE_NAME
 from sagemaker.jumpstart.enums import JumpStartTag
@@ -51,6 +51,7 @@ from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.tensorflow.estimator import TensorFlow
 from sagemaker.predictor_async import AsyncPredictor
 from sagemaker.transformer import Transformer
+from sagemaker.workflow.pipeline_context import PipelineSession
 from sagemaker.xgboost.estimator import XGBoost
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
@@ -222,6 +223,24 @@ def sagemaker_session():
     sms.sagemaker_client.list_tags = Mock(return_value=LIST_TAGS_RESULT)
     sms.upload_data = Mock(return_value=OUTPUT_PATH)
     return sms
+
+
+@pytest.fixture()
+def pipeline_session():
+    client_mock = Mock()
+    client_mock._client_config.user_agent = (
+        "Boto3/1.14.24 Python/3.8.5 Linux/5.4.0-42-generic Botocore/1.17.24 Resource"
+    )
+    role_mock = Mock()
+    type(role_mock).arn = PropertyMock(return_value=ROLE)
+    resource_mock = Mock()
+    resource_mock.Role.return_value = role_mock
+    session_mock = Mock(region_name=REGION)
+    session_mock.resource.return_value = resource_mock
+    session_mock.client.return_value = client_mock
+    return PipelineSession(
+        boto_session=session_mock, sagemaker_client=client_mock, default_bucket=BUCKET_NAME
+    )
 
 
 @pytest.fixture()
@@ -1598,7 +1617,7 @@ def test_git_support_with_branch_and_commit_succeed(git_clone_repo, sagemaker_se
     git_clone_repo.side_effect = lambda gitconfig, entrypoint, source_dir=None, dependencies=None: {
         "entry_point": "/tmp/repo_dir/entry_point",
         "source_dir": None,
-        "dependencies": None,
+        "dependencies": [],
     }
     git_config = {"repo": GIT_REPO, "branch": BRANCH, "commit": COMMIT}
     entry_point = "entry_point"
@@ -2034,9 +2053,9 @@ def test_framework_transformer_creation(name_from_base, sagemaker_session):
 
     name_from_base.assert_called_with(IMAGE_URI)
     sagemaker_session.create_model.assert_called_with(
-        MODEL_IMAGE,
-        ROLE,
-        MODEL_CONTAINER_DEF,
+        name=MODEL_IMAGE,
+        role=ROLE,
+        container_defs=MODEL_CONTAINER_DEF,
         tags=None,
         vpc_config=vpc_config,
         enable_network_isolation=False,
@@ -2100,9 +2119,9 @@ def test_framework_transformer_creation_with_optional_params(name_from_image, sa
     )
 
     sagemaker_session.create_model.assert_called_with(
-        model_name,
-        new_role,
-        MODEL_CONTAINER_DEF,
+        name=model_name,
+        role=new_role,
+        container_defs=MODEL_CONTAINER_DEF,
         vpc_config=new_vpc_config,
         tags=TAGS,
         enable_network_isolation=True,
@@ -2492,9 +2511,13 @@ def test_fit_deploy_tags_in_estimator(name_from_base, sagemaker_session):
     )
 
     sagemaker_session.create_model.assert_called_with(
-        model_name,
-        "DummyRole",
-        {"ModelDataUrl": "s3://bucket/model.tar.gz", "Environment": {}, "Image": "fakeimage"},
+        name=model_name,
+        role="DummyRole",
+        container_defs={
+            "ModelDataUrl": "s3://bucket/model.tar.gz",
+            "Environment": {},
+            "Image": "fakeimage",
+        },
         enable_network_isolation=False,
         vpc_config=None,
         tags=tags,
@@ -2538,9 +2561,13 @@ def test_fit_deploy_tags(name_from_base, sagemaker_session):
     )
 
     sagemaker_session.create_model.assert_called_with(
-        ANY,
-        "DummyRole",
-        {"ModelDataUrl": "s3://bucket/model.tar.gz", "Environment": {}, "Image": "fakeimage"},
+        name=ANY,
+        role="DummyRole",
+        container_defs={
+            "ModelDataUrl": "s3://bucket/model.tar.gz",
+            "Environment": {},
+            "Image": "fakeimage",
+        },
         enable_network_isolation=False,
         vpc_config=None,
         tags=tags,
@@ -2806,10 +2833,10 @@ def test_generic_to_deploy(time, sagemaker_session):
 
     sagemaker_session.create_model.assert_called_once()
     args, kwargs = sagemaker_session.create_model.call_args
-    assert args[0].startswith(IMAGE_URI)
-    assert args[1] == ROLE
-    assert args[2]["Image"] == IMAGE_URI
-    assert args[2]["ModelDataUrl"] == MODEL_DATA
+    assert kwargs["name"].startswith(IMAGE_URI)
+    assert kwargs["role"] == ROLE
+    assert kwargs["container_defs"]["Image"] == IMAGE_URI
+    assert kwargs["container_defs"]["ModelDataUrl"] == MODEL_DATA
     assert kwargs["vpc_config"] is None
 
     assert isinstance(predictor, Predictor)
@@ -3044,7 +3071,7 @@ def test_deploy_with_model_name(sagemaker_session):
 
     sagemaker_session.create_model.assert_called_once()
     args, kwargs = sagemaker_session.create_model.call_args
-    assert args[0] == model_name
+    assert kwargs["name"] == model_name
 
 
 def test_deploy_with_no_model_name(sagemaker_session):
@@ -3062,7 +3089,7 @@ def test_deploy_with_no_model_name(sagemaker_session):
 
     sagemaker_session.create_model.assert_called_once()
     args, kwargs = sagemaker_session.create_model.call_args
-    assert args[0].startswith(IMAGE_URI)
+    assert kwargs["name"].startswith(IMAGE_URI)
 
 
 def test_register_default_image(sagemaker_session):
@@ -3157,6 +3184,33 @@ def test_register_inference_image(sagemaker_session):
     sagemaker_session.create_model_package_from_containers.assert_called_with(
         **expected_create_model_package_request
     )
+
+
+def test_register_under_pipeline_session(pipeline_session):
+    estimator = Estimator(
+        IMAGE_URI,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=pipeline_session,
+    )
+
+    model_package_name = "test-estimator-register-model"
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarget"]
+
+    with pytest.raises(TypeError) as error:
+        estimator.register(
+            content_types=content_types,
+            response_types=response_types,
+            inference_instances=inference_instances,
+            transform_instances=transform_instances,
+            model_package_name=model_package_name,
+        )
+    assert "estimator.register does not support PipelineSession" in str(error.value)
 
 
 @patch("sagemaker.estimator.LocalSession")
@@ -3448,7 +3502,7 @@ def test_git_support_with_branch_and_commit_succeed_estimator_class(
         image_uri=IMAGE_URI,
     )
     fw.fit()
-    git_clone_repo.assert_called_once_with(git_config, entry_point, None, None)
+    git_clone_repo.assert_called_once_with(git_config, entry_point, None, [])
 
 
 @patch("sagemaker.estimator.Estimator._stage_user_code_in_s3")
@@ -3907,7 +3961,7 @@ def test_script_mode_estimator_uses_jumpstart_base_name_with_js_models(
         role=ROLE,
     )
 
-    assert sagemaker_session.create_model.call_args_list[0][0][0].startswith(
+    assert sagemaker_session.create_model.call_args_list[0][1]["name"].startswith(
         JUMPSTART_RESOURCE_BASE_NAME
     )
 
@@ -3981,7 +4035,7 @@ def test_all_framework_estimators_add_jumpstart_base_name(
             role=ROLE,
         )
 
-        assert sagemaker_session.create_model.call_args_list[0][0][0].startswith(
+        assert sagemaker_session.create_model.call_args_list[0][1]["name"].startswith(
             JUMPSTART_RESOURCE_BASE_NAME
         )
 
