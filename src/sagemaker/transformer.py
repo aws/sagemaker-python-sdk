@@ -191,7 +191,7 @@ class Transformer(object):
                 Only meaningful when wait is ``True`` (default: ``True``).
         """
         local_mode = self.sagemaker_session.local_mode
-        if not local_mode and not data.startswith("s3://"):
+        if not local_mode and not is_pipeline_variable(data) and not data.startswith("s3://"):
             raise ValueError("Invalid S3 URI: {}".format(data))
 
         if job_name is not None:
