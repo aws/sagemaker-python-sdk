@@ -47,7 +47,7 @@ class TensorFlow(Framework):
         image_uri=None,
         distribution=None,
         compiler_config=None,
-        **kwargs
+        **kwargs,
     ):
         """Initialize a ``TensorFlow`` estimator.
 
@@ -315,7 +315,7 @@ class TensorFlow(Framework):
         entry_point=None,
         source_dir=None,
         dependencies=None,
-        **kwargs
+        **kwargs,
     ):
         """Creates ``TensorFlowModel`` object to be used for creating SageMaker model entities.
 
@@ -366,7 +366,7 @@ class TensorFlow(Framework):
             entry_point=entry_point,
             source_dir=source_dir,
             dependencies=dependencies,
-            **kwargs
+            **kwargs,
         )
 
     def hyperparameters(self):
