@@ -4379,8 +4379,7 @@ def get_create_model_package_request(
     if containers is not None:
         if not all([content_types, response_types]):
             raise ValueError(
-                "content_types and response_types "
-                "must be provided if containers is present."
+                "content_types and response_types " "must be provided if containers is present."
             )
         inference_specification = {
             "Containers": containers,
