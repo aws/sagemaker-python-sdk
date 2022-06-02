@@ -153,6 +153,18 @@ class PyTorch(Framework):
                         To find a complete list of parameters for SageMaker model parallelism,
                         see :ref:`sm-sdk-modelparallel-general`.
 
+                **To enable PyTorch DDP:**
+
+                    .. code:: python
+
+                        {
+                            "pytorchddp": {
+                                "enabled": True
+                            }
+                        }
+
+                        To learn more, see <TBD>
+
                 **To enable MPI:**
 
                     .. code:: python
