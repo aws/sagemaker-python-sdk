@@ -26,6 +26,7 @@ from sagemaker.tensorflow.model import TensorFlowModel
 from sagemaker.transformer import Transformer
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 from sagemaker.workflow import is_pipeline_variable
+from sagemaker.tensorflow.training_compiler.config import TrainingCompilerConfig
 
 logger = logging.getLogger("sagemaker")
 
@@ -45,6 +46,7 @@ class TensorFlow(Framework):
         model_dir=None,
         image_uri=None,
         distribution=None,
+        compiler_config=None,
         **kwargs
     ):
         """Initialize a ``TensorFlow`` estimator.
@@ -157,6 +159,8 @@ class TensorFlow(Framework):
 
                     To learn more, see `Training with parameter servers
                     <https://sagemaker.readthedocs.io/en/stable/frameworks/tensorflow/using_tf.html#training-with-parameter-servers>`_.
+            compiler_config (:class:`~sagemaker.tensorflow.TrainingCompilerConfig`):
+                Configures SageMaker Training Compiler to accelerate training.
 
             **kwargs: Additional kwargs passed to the Framework constructor.
 
@@ -202,6 +206,16 @@ class TensorFlow(Framework):
         self.distribution = distribution or {}
 
         self._validate_args(py_version=py_version)
+        if compiler_config is not None:
+            if not isinstance(compiler_config, TrainingCompilerConfig):
+                error_string = (
+                    f"Expected instance of type {TrainingCompilerConfig}"
+                    f"for argument compiler_config. "
+                    f"Instead got {type(compiler_config)}"
+                )
+                raise ValueError(error_string)
+            if compiler_config:
+                compiler_config.validate(self)
 
     def _validate_args(self, py_version):
         """Placeholder docstring"""
