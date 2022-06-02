@@ -416,12 +416,10 @@ def test_training_step_tensorflow(sagemaker_session):
         instance_count=instance_count_parameter,
         instance_type=instance_type_parameter,
         sagemaker_session=sagemaker_session,
-        # subnets=subnets,
         hyperparameters={
             "batch-size": training_batch_size_parameter,
             "epochs": training_epochs_parameter,
         },
-        # security_group_ids=security_group_ids,
         debugger_hook_config=False,
         # Training using SMDataParallel Distributed Training Framework
         distribution={"smdistributed": {"dataparallel": {"enabled": True}}},
@@ -725,22 +723,22 @@ def test_processing_step_normalizes_args_with_param_str_local_code(
             destination="processing_manifest",
         )
     ]
-    step = ProcessingStep(
-        name="MyProcessingStep",
-        processor=script_processor,
-        code=code_param,
-        inputs=inputs,
-        outputs=outputs,
-        job_arguments=["arg1", "arg2"],
-        cache_config=cache_config,
-    )
-    pipeline = Pipeline(
-        name="MyPipeline",
-        parameters=[code_param],
-        steps=[step],
-        sagemaker_session=sagemaker_session,
-    )
     with pytest.raises(ValueError) as error:
+        step = ProcessingStep(
+            name="MyProcessingStep",
+            processor=script_processor,
+            code=code_param,
+            inputs=inputs,
+            outputs=outputs,
+            job_arguments=["arg1", "arg2"],
+            cache_config=cache_config,
+        )
+        pipeline = Pipeline(
+            name="MyPipeline",
+            parameters=[code_param],
+            steps=[step],
+            sagemaker_session=sagemaker_session,
+        )
         pipeline.definition()
 
     assert "has to be a valid S3 URI or local file path" in str(error.value)

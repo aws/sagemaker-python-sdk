@@ -278,6 +278,7 @@ class PipelineModel(object):
         description: Optional[str] = None,
         drift_check_baselines: Optional[DriftCheckBaselines] = None,
         customer_metadata_properties: Optional[Dict[str, str]] = None,
+        domain: Optional[str] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -305,6 +306,8 @@ class PipelineModel(object):
             drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
             customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
                 metadata properties (default: None).
+            domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
+                "MACHINE_LEARNING" (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -337,6 +340,7 @@ class PipelineModel(object):
             container_def_list=container_def,
             drift_check_baselines=drift_check_baselines,
             customer_metadata_properties=customer_metadata_properties,
+            domain=domain,
         )
 
         self.sagemaker_session.create_model_package_from_containers(**model_pkg_args)

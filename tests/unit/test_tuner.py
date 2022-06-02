@@ -1187,7 +1187,7 @@ def test_integer_parameter_ranges_with_pipeline_parameter():
     min = ParameterInteger(name="p", default_value=2)
     max = JsonGet(step_name="sn", property_file="pf", json_path="jp")
     scale = ParameterString(name="scale", default_value="Auto")
-    int_param = IntegerParameter(min, max)
+    int_param = IntegerParameter(min, max, scale)
     ranges = int_param.as_tuning_range("some")
 
     assert len(ranges.keys()) == 4
@@ -1213,7 +1213,7 @@ def test_integer_parameter_ranges_with_pipeline_parameter():
             ],
         }
     }
-    assert ranges["ScalingType"] == scale
+    assert ranges["ScalingType"].expr == {"Get": "Parameters.scale"}
 
 
 def test_integer_parameter_scaling_type():

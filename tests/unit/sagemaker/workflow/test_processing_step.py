@@ -10,15 +10,18 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-# language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
 import json
+from mock import Mock, PropertyMock
 
 import pytest
-import sagemaker
 import warnings
 
+from sagemaker.estimator import Estimator
+from sagemaker.parameter import IntegerParameter
+from sagemaker.transformer import Transformer
+from sagemaker.tuner import HyperparameterTuner
 from sagemaker.workflow.pipeline_context import PipelineSession
 
 from sagemaker.processing import Processor, ScriptProcessor, FrameworkProcessor
@@ -39,7 +42,7 @@ from sagemaker.workflow.properties import PropertyFile
 
 from sagemaker.network import NetworkConfig
 from sagemaker.pytorch.estimator import PyTorch
-from sagemaker import utils
+from sagemaker import utils, Model
 
 from sagemaker.clarify import (
     SageMakerClarifyProcessor,
@@ -52,6 +55,8 @@ from sagemaker.clarify import (
 from tests.unit.sagemaker.workflow.helpers import CustomStep
 
 REGION = "us-west-2"
+BUCKET = "my-bucket"
+ROLE = "DummyRole"
 IMAGE_URI = "fakeimage"
 MODEL_NAME = "gisele"
 DUMMY_S3_SCRIPT_PATH = "s3://dummy-s3/dummy_script.py"
@@ -59,20 +64,50 @@ INSTANCE_TYPE = "ml.m4.xlarge"
 
 
 @pytest.fixture
-def pipeline_session():
-    return PipelineSession()
+def client():
+    """Mock client.
+
+    Considerations when appropriate:
+
+        * utilize botocore.stub.Stubber
+        * separate runtime client from client
+    """
+    client_mock = Mock()
+    client_mock._client_config.user_agent = (
+        "Boto3/1.14.24 Python/3.8.5 Linux/5.4.0-42-generic Botocore/1.17.24 Resource"
+    )
+    return client_mock
 
 
 @pytest.fixture
-def bucket(pipeline_session):
-    return pipeline_session.default_bucket()
+def boto_session(client):
+    role_mock = Mock()
+    type(role_mock).arn = PropertyMock(return_value=ROLE)
+
+    resource_mock = Mock()
+    resource_mock.Role.return_value = role_mock
+
+    session_mock = Mock(region_name=REGION)
+    session_mock.resource.return_value = resource_mock
+    session_mock.client.return_value = client
+
+    return session_mock
 
 
 @pytest.fixture
-def processing_input(bucket):
+def pipeline_session(boto_session, client):
+    return PipelineSession(
+        boto_session=boto_session,
+        sagemaker_client=client,
+        default_bucket=BUCKET,
+    )
+
+
+@pytest.fixture
+def processing_input():
     return [
         ProcessingInput(
-            source=f"s3://{bucket}/processing_manifest",
+            source=f"s3://{BUCKET}/processing_manifest",
             destination="processing_manifest",
         )
     ]
@@ -93,7 +128,7 @@ def test_processing_step_with_processor(pipeline_session, processing_input):
     custom_step2 = CustomStep("SecondTestStep")
     processor = Processor(
         image_uri=IMAGE_URI,
-        role=sagemaker.get_execution_role(),
+        role=ROLE,
         instance_count=1,
         instance_type=INSTANCE_TYPE,
         sagemaker_session=pipeline_session,
@@ -133,7 +168,7 @@ def test_processing_step_with_processor(pipeline_session, processing_input):
         "DisplayName": "MyProcessingStep",
         "Type": "Processing",
         "DependsOn": ["TestStep", "SecondTestStep"],
-        "Arguments": step_args,
+        "Arguments": step_args.args,
         "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
         "PropertyFiles": [
             {
@@ -151,7 +186,7 @@ def test_processing_step_with_processor(pipeline_session, processing_input):
 def test_processing_step_with_processor_and_step_args(pipeline_session, processing_input):
     processor = Processor(
         image_uri=IMAGE_URI,
-        role=sagemaker.get_execution_role(),
+        role=ROLE,
         instance_count=1,
         instance_type=INSTANCE_TYPE,
         sagemaker_session=pipeline_session,
@@ -180,7 +215,7 @@ def test_processing_step_with_processor_and_step_args(pipeline_session, processi
 
 def test_processing_step_with_script_processor(pipeline_session, processing_input, network_config):
     processor = ScriptProcessor(
-        role=sagemaker.get_execution_role(),
+        role=ROLE,
         image_uri=IMAGE_URI,
         command=["python3"],
         instance_type=INSTANCE_TYPE,
@@ -214,7 +249,7 @@ def test_processing_step_with_script_processor(pipeline_session, processing_inpu
     assert json.loads(pipeline.definition())["Steps"][0] == {
         "Name": "MyProcessingStep",
         "Type": "Processing",
-        "Arguments": step_args,
+        "Arguments": step_args.args,
     }
 
 
@@ -226,7 +261,7 @@ def test_processing_step_with_script_processor(pipeline_session, processing_inpu
                 framework_version="1.8",
                 instance_type=INSTANCE_TYPE,
                 instance_count=1,
-                role=sagemaker.get_execution_role(),
+                role=ROLE,
                 estimator_cls=PyTorch,
             ),
             {"code": DUMMY_S3_SCRIPT_PATH},
@@ -236,13 +271,13 @@ def test_processing_step_with_script_processor(pipeline_session, processing_inpu
                 framework_version="0.23-1",
                 instance_type=INSTANCE_TYPE,
                 instance_count=1,
-                role=sagemaker.get_execution_role(),
+                role=ROLE,
             ),
             {"code": DUMMY_S3_SCRIPT_PATH},
         ),
         (
             PyTorchProcessor(
-                role=sagemaker.get_execution_role(),
+                role=ROLE,
                 instance_type=INSTANCE_TYPE,
                 instance_count=1,
                 framework_version="1.8.0",
@@ -252,7 +287,7 @@ def test_processing_step_with_script_processor(pipeline_session, processing_inpu
         ),
         (
             TensorFlowProcessor(
-                role=sagemaker.get_execution_role(),
+                role=ROLE,
                 instance_type=INSTANCE_TYPE,
                 instance_count=1,
                 framework_version="2.0",
@@ -263,7 +298,7 @@ def test_processing_step_with_script_processor(pipeline_session, processing_inpu
             HuggingFaceProcessor(
                 transformers_version="4.6",
                 pytorch_version="1.7",
-                role=sagemaker.get_execution_role(),
+                role=ROLE,
                 instance_count=1,
                 instance_type="ml.p3.2xlarge",
             ),
@@ -273,7 +308,7 @@ def test_processing_step_with_script_processor(pipeline_session, processing_inpu
             XGBoostProcessor(
                 framework_version="1.3-1",
                 py_version="py3",
-                role=sagemaker.get_execution_role(),
+                role=ROLE,
                 instance_count=1,
                 instance_type=INSTANCE_TYPE,
                 base_job_name="test-xgboost",
@@ -284,7 +319,7 @@ def test_processing_step_with_script_processor(pipeline_session, processing_inpu
             MXNetProcessor(
                 framework_version="1.4.1",
                 py_version="py3",
-                role=sagemaker.get_execution_role(),
+                role=ROLE,
                 instance_count=1,
                 instance_type=INSTANCE_TYPE,
                 base_job_name="test-mxnet",
@@ -293,8 +328,8 @@ def test_processing_step_with_script_processor(pipeline_session, processing_inpu
         ),
         (
             DataWranglerProcessor(
-                role=sagemaker.get_execution_role(),
-                data_wrangler_flow_source="s3://my-bucket/dw.flow",
+                role=ROLE,
+                data_wrangler_flow_source=f"s3://{BUCKET}/dw.flow",
                 instance_count=1,
                 instance_type=INSTANCE_TYPE,
             ),
@@ -302,7 +337,7 @@ def test_processing_step_with_script_processor(pipeline_session, processing_inpu
         ),
         (
             SparkJarProcessor(
-                role=sagemaker.get_execution_role(),
+                role=ROLE,
                 framework_version="2.4",
                 instance_count=1,
                 instance_type=INSTANCE_TYPE,
@@ -315,7 +350,7 @@ def test_processing_step_with_script_processor(pipeline_session, processing_inpu
         ),
         (
             PySparkProcessor(
-                role=sagemaker.get_execution_role(),
+                role=ROLE,
                 framework_version="2.4",
                 instance_count=1,
                 instance_type=INSTANCE_TYPE,
@@ -333,7 +368,7 @@ def test_processing_step_with_framework_processor(
 
     processor, run_inputs = framework_processor
     processor.sagemaker_session = pipeline_session
-    processor.role = sagemaker.get_execution_role()
+    processor.role = ROLE
 
     processor.volume_kms_key = "volume-kms-key"
     processor.network_config = network_config
@@ -355,7 +390,7 @@ def test_processing_step_with_framework_processor(
     assert json.loads(pipeline.definition())["Steps"][0] == {
         "Name": "MyProcessingStep",
         "Type": "Processing",
-        "Arguments": step_args,
+        "Arguments": step_args.args,
     }
 
 
@@ -414,7 +449,7 @@ def test_processing_step_with_clarify_processor(pipeline_session):
         assert json.loads(pipeline.definition())["Steps"][0] == {
             "Name": "MyProcessingStep",
             "Type": "Processing",
-            "Arguments": step_args,
+            "Arguments": step_args.args,
         }
 
     test_run = utils.unique_name_from_base("test_run")
@@ -433,7 +468,7 @@ def test_processing_step_with_clarify_processor(pipeline_session):
         instance_type=INSTANCE_TYPE,
         instance_count=1,
         sagemaker_session=pipeline_session,
-        role=sagemaker.get_execution_role(),
+        role=ROLE,
     )
 
     run_bias_args = clarify_processor.run_bias(
@@ -463,3 +498,73 @@ def test_processing_step_with_clarify_processor(pipeline_session):
         explainability_config=shap_config(),
     )
     verfiy(run_explainability_args)
+
+
+@pytest.mark.parametrize(
+    "inputs",
+    [
+        (
+            Transformer(
+                model_name="model_name",
+                instance_type="ml.m5.xlarge",
+                instance_count=1,
+                output_path="s3://Transform",
+            ),
+            dict(
+                target_fun="transform",
+                func_args=dict(data="s3://data", job_name="test"),
+            ),
+        ),
+        (
+            Estimator(
+                role=ROLE,
+                instance_count=1,
+                instance_type=INSTANCE_TYPE,
+                image_uri=IMAGE_URI,
+            ),
+            dict(
+                target_fun="fit",
+                func_args={},
+            ),
+        ),
+        (
+            HyperparameterTuner(
+                estimator=Estimator(
+                    role=ROLE,
+                    instance_count=1,
+                    instance_type=INSTANCE_TYPE,
+                    image_uri=IMAGE_URI,
+                ),
+                objective_metric_name="test:acc",
+                hyperparameter_ranges={"batch-size": IntegerParameter(64, 128)},
+            ),
+            dict(target_fun="fit", func_args={}),
+        ),
+        (
+            Model(
+                image_uri=IMAGE_URI,
+                role=ROLE,
+            ),
+            dict(target_fun="create", func_args={}),
+        ),
+    ],
+)
+def test_insert_wrong_step_args_into_processing_step(inputs, pipeline_session):
+    downstream_obj, target_func_cfg = inputs
+    if isinstance(downstream_obj, HyperparameterTuner):
+        downstream_obj.estimator.sagemaker_session = pipeline_session
+    else:
+        downstream_obj.sagemaker_session = pipeline_session
+    func_name = target_func_cfg["target_fun"]
+    func_args = target_func_cfg["func_args"]
+    step_args = getattr(downstream_obj, func_name)(**func_args)
+
+    with pytest.raises(ValueError) as error:
+        ProcessingStep(
+            name="MyProcessingStep",
+            step_args=step_args,
+        )
+
+    assert "The step_args of ProcessingStep must be obtained from processor.run()" in str(
+        error.value
+    )

@@ -16,7 +16,7 @@ from __future__ import absolute_import
 import abc
 
 from enum import EnumMeta
-from typing import Any, Dict, List, Union, Optional
+from typing import Any, Dict, List, Union
 
 PrimitiveType = Union[str, int, bool, float, None]
 RequestType = Union[Dict[str, Any], List[Dict[str, Any]]]
@@ -102,39 +102,3 @@ class PipelineVariable(Expression):
     @abc.abstractmethod
     def expr(self) -> RequestType:
         """Get the expression structure for workflow service calls."""
-
-    def startswith(
-        self,
-        prefix: Union[str, tuple],  # pylint: disable=unused-argument
-        start: Optional[int] = None,  # pylint: disable=unused-argument
-        end: Optional[int] = None,  # pylint: disable=unused-argument
-    ) -> bool:
-        """Simulate the Python string's built-in method: startswith
-
-        Args:
-            prefix (str, tuple): The (tuple of) string to be checked.
-            start (int): To set the start index of the matching boundary (default: None).
-            end (int): To set the end index of the matching boundary (default: None).
-
-        Return:
-            bool: Always return False as Pipeline variables are parsed during execution runtime
-        """
-        return False
-
-    def endswith(
-        self,
-        suffix: Union[str, tuple],  # pylint: disable=unused-argument
-        start: Optional[int] = None,  # pylint: disable=unused-argument
-        end: Optional[int] = None,  # pylint: disable=unused-argument
-    ) -> bool:
-        """Simulate the Python string's built-in method: endswith
-
-        Args:
-            suffix (str, tuple): The (tuple of) string to be checked.
-            start (int): To set the start index of the matching boundary (default: None).
-            end (int): To set the end index of the matching boundary (default: None).
-
-        Return:
-            bool: Always return False as Pipeline variables are parsed during execution runtime
-        """
-        return False

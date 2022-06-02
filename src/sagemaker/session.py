@@ -591,7 +591,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             LOGGER.debug("train request: %s", json.dumps(request, indent=4))
             self.sagemaker_client.create_training_job(**request)
 
-        self._intercept_create_request(train_request, submit)
+        self._intercept_create_request(train_request, submit, self.train.__name__)
 
     def _get_train_request(  # noqa: C901
         self,
@@ -922,7 +922,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             LOGGER.debug("process request: %s", json.dumps(request, indent=4))
             self.sagemaker_client.create_processing_job(**request)
 
-        self._intercept_create_request(process_request, submit)
+        self._intercept_create_request(process_request, submit, self.process.__name__)
 
     def _get_process_request(
         self,
@@ -2099,7 +2099,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             LOGGER.debug("tune request: %s", json.dumps(request, indent=4))
             self.sagemaker_client.create_hyper_parameter_tuning_job(**request)
 
-        self._intercept_create_request(tune_request, submit)
+        self._intercept_create_request(tune_request, submit, self.create_tuning_job.__name__)
 
     def _get_tuning_request(
         self,
@@ -2569,7 +2569,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             LOGGER.debug("Transform request: %s", json.dumps(request, indent=4))
             self.sagemaker_client.create_transform_job(**request)
 
-        self._intercept_create_request(transform_request, submit)
+        self._intercept_create_request(transform_request, submit, self.transform.__name__)
 
     def _create_model_request(
         self,

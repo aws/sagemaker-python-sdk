@@ -362,13 +362,14 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             if isinstance(self.sagemaker_session, PipelineSession):
                 self.sagemaker_session.context.need_runtime_repack.add(id(self))
             else:
-                # TODO: link the doc in the warning once ready
                 logging.warning(
                     "The model_data is a Pipeline variable of type %s, "
                     "which should be used under `PipelineSession` and "
                     "leverage `ModelStep` to create or register model. "
                     "Otherwise some functionalities e.g. "
-                    "runtime repack may be missing",
+                    "runtime repack may be missing. For more, see: "
+                    "https://sagemaker.readthedocs.io/en/stable/"
+                    "amazon_sagemaker_model_building_pipeline.html#model-step",
                     type(self.model_data),
                 )
             model_data = self.model_data

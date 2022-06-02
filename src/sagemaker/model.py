@@ -500,13 +500,14 @@ class Model(ModelBase):
             if is_pipeline_variable(self.model_data):
                 # model is not yet there, defer repacking to later during pipeline execution
                 if not isinstance(self.sagemaker_session, PipelineSession):
-                    # TODO: link the doc in the warning once ready
                     logging.warning(
                         "The model_data is a Pipeline variable of type %s, "
                         "which should be used under `PipelineSession` and "
                         "leverage `ModelStep` to create or register model. "
                         "Otherwise some functionalities e.g. "
-                        "runtime repack may be missing",
+                        "runtime repack may be missing. For more, see: "
+                        "https://sagemaker.readthedocs.io/en/stable/"
+                        "amazon_sagemaker_model_building_pipeline.html#model-step",
                         type(self.model_data),
                     )
                     return

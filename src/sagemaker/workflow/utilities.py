@@ -14,11 +14,12 @@
 from __future__ import absolute_import
 
 from pathlib import Path
-from typing import List, Sequence, Union
+from typing import List, Sequence, Union, Set
 import hashlib
 from urllib.parse import unquote, urlparse
 from _hashlib import HASH as Hash
 
+from sagemaker.workflow.pipeline_context import _StepArguments
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.entities import (
     Entity,
@@ -132,3 +133,21 @@ def _hash_file(file: Union[str, Path], md5: Hash) -> Hash:
                 break
             md5.update(data)
     return md5
+
+
+def validate_step_args_input(
+    step_args: _StepArguments, expected_caller: Set[str], error_message: str
+):
+    """Validate the `_StepArguments` object which is passed into a pipeline step
+
+    Args:
+        step_args (_StepArguments): A `_StepArguments` object to be used for composing
+            a pipeline step.
+        expected_caller (Set[str]): The expected name of the caller function which is
+            intercepted by the PipelineSession to get the step arguments.
+        error_message (str): The error message to be thrown if the validation fails.
+    """
+    if not isinstance(step_args, _StepArguments):
+        raise TypeError(error_message)
+    if step_args.caller_name not in expected_caller:
+        raise ValueError(error_message)
