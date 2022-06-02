@@ -84,27 +84,36 @@ def pipeline_session(boto_session, client):
     )
 
 
-@pytest.mark.parametrize("model_name", [
-    "my-model",
-    ParameterString("ModelName"),
-    ParameterString("ModelName", default_value="my-model"),
-    Join(on="-", values=["my", "model"]),
-    CustomStep(name="custom-step").properties.RoleArn
-])
-@pytest.mark.parametrize("data", [
-    "s3://my-bucket/my-data",
-    ParameterString("MyTransformInput"),
-    ParameterString("MyTransformInput", default_value="s3://my-model"),
-    Join(on="/", values=["s3://my-bucket", "my-transform-data", "input"]),
-    CustomStep(name="custom-step").properties.OutputDataConfig.S3OutputPath
-])
-@pytest.mark.parametrize("output_path", [
-    "s3://my-bucket/my-output-path",
-    ParameterString("MyOutputPath"),
-    ParameterString("MyOutputPath", default_value="s3://my-output"),
-    Join(on="/", values=["s3://my-bucket", "my-transform-data", "output"]),
-    CustomStep(name="custom-step").properties.OutputDataConfig.S3OutputPath
-])
+@pytest.mark.parametrize(
+    "model_name",
+    [
+        "my-model",
+        ParameterString("ModelName"),
+        ParameterString("ModelName", default_value="my-model"),
+        Join(on="-", values=["my", "model"]),
+        CustomStep(name="custom-step").properties.RoleArn,
+    ],
+)
+@pytest.mark.parametrize(
+    "data",
+    [
+        "s3://my-bucket/my-data",
+        ParameterString("MyTransformInput"),
+        ParameterString("MyTransformInput", default_value="s3://my-model"),
+        Join(on="/", values=["s3://my-bucket", "my-transform-data", "input"]),
+        CustomStep(name="custom-step").properties.OutputDataConfig.S3OutputPath,
+    ],
+)
+@pytest.mark.parametrize(
+    "output_path",
+    [
+        "s3://my-bucket/my-output-path",
+        ParameterString("MyOutputPath"),
+        ParameterString("MyOutputPath", default_value="s3://my-output"),
+        Join(on="/", values=["s3://my-bucket", "my-transform-data", "output"]),
+        CustomStep(name="custom-step").properties.OutputDataConfig.S3OutputPath,
+    ],
+)
 def test_transform_step_with_transformer(model_name, data, output_path, pipeline_session):
     transformer = Transformer(
         model_name=model_name,
@@ -147,19 +156,24 @@ def test_transform_step_with_transformer(model_name, data, output_path, pipeline
     step_args = step_args.args
     step_def = json.loads(pipeline.definition())["Steps"][0]
     step_args["ModelName"] = model_name.expr if is_pipeline_variable(model_name) else model_name
-    step_args["TransformInput"]["DataSource"]["S3DataSource"]["S3Uri"] = data.expr if is_pipeline_variable(data) else data
-    step_args["TransformOutput"]["S3OutputPath"] = output_path.expr if is_pipeline_variable(
-        output_path) else output_path
+    step_args["TransformInput"]["DataSource"]["S3DataSource"]["S3Uri"] = (
+        data.expr if is_pipeline_variable(data) else data
+    )
+    step_args["TransformOutput"]["S3OutputPath"] = (
+        output_path.expr if is_pipeline_variable(output_path) else output_path
+    )
 
-    del step_args["ModelName"], step_args["TransformInput"]["DataSource"]["S3DataSource"]["S3Uri"], \
-        step_args["TransformOutput"]["S3OutputPath"]
-    del step_def['Arguments']["ModelName"], step_def['Arguments']["TransformInput"]["DataSource"]["S3DataSource"]["S3Uri"], \
-        step_def['Arguments']["TransformOutput"]["S3OutputPath"]
-    assert step_def == {
-        "Name": "MyTransformStep",
-        "Type": "Transform",
-        "Arguments": step_args
-    }
+    del (
+        step_args["ModelName"],
+        step_args["TransformInput"]["DataSource"]["S3DataSource"]["S3Uri"],
+        step_args["TransformOutput"]["S3OutputPath"],
+    )
+    del (
+        step_def["Arguments"]["ModelName"],
+        step_def["Arguments"]["TransformInput"]["DataSource"]["S3DataSource"]["S3Uri"],
+        step_def["Arguments"]["TransformOutput"]["S3OutputPath"],
+    )
+    assert step_def == {"Name": "MyTransformStep", "Type": "Transform", "Arguments": step_args}
 
 
 @pytest.mark.parametrize(
