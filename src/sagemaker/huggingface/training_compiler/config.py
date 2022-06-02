@@ -14,17 +14,15 @@
 from __future__ import absolute_import
 import logging
 
+from sagemaker.training_compiler.config import TrainingCompilerConfig as BaseConfig
+
 logger = logging.getLogger(__name__)
 
 
-class TrainingCompilerConfig(object):
+class TrainingCompilerConfig(BaseConfig):
     """The SageMaker Training Compiler configuration class."""
 
-    DEBUG_PATH = "/opt/ml/output/data/compiler/"
     SUPPORTED_INSTANCE_CLASS_PREFIXES = ["p3", "g4dn", "p4"]
-
-    HP_ENABLE_COMPILER = "sagemaker_training_compiler_enabled"
-    HP_ENABLE_DEBUG = "sagemaker_training_compiler_debug_mode"
 
     def __init__(
         self,
@@ -75,45 +73,7 @@ class TrainingCompilerConfig(object):
 
         """
 
-        self.enabled = enabled
-        self.debug = debug
-
-        self.disclaimers_and_warnings()
-
-    def __nonzero__(self):
-        """Evaluates to 0 if SM Training Compiler is disabled."""
-        return self.enabled
-
-    def disclaimers_and_warnings(self):
-        """Disclaimers and warnings.
-
-        Logs disclaimers and warnings about the
-        requested configuration of SageMaker Training Compiler.
-
-        """
-
-        if self.enabled and self.debug:
-            logger.warning(
-                "Debugging is enabled."
-                "This will dump detailed logs from compilation to %s"
-                "This might impair training performance.",
-                self.DEBUG_PATH,
-            )
-
-    def _to_hyperparameter_dict(self):
-        """Converts configuration object into hyperparameters.
-
-        Returns:
-            dict: A portion of the hyperparameters passed to the training job as a dictionary.
-
-        """
-
-        compiler_config_hyperparameters = {
-            self.HP_ENABLE_COMPILER: self.enabled,
-            self.HP_ENABLE_DEBUG: self.debug,
-        }
-
-        return compiler_config_hyperparameters
+        super(TrainingCompilerConfig, self).__init__(enabled=enabled, debug=debug)
 
     @classmethod
     def validate(
@@ -127,46 +87,19 @@ class TrainingCompilerConfig(object):
                 If SageMaker Training Compiler is enabled, it will validate whether
                 the estimator is configured to be compatible with Training Compiler.
 
-
         Raises:
             ValueError: Raised if the requested configuration is not compatible
                         with SageMaker Training Compiler.
         """
 
-        if "local" not in estimator.instance_type:
-            requested_instance_class = estimator.instance_type.split(".")[
-                1
-            ]  # Expecting ml.class.size
-            if not any(
-                [
-                    requested_instance_class.startswith(i)
-                    for i in cls.SUPPORTED_INSTANCE_CLASS_PREFIXES
-                ]
-            ):
-                error_helper_string = (
-                    "Unsupported Instance class {}. SageMaker Training Compiler only supports {}"
-                )
-                error_helper_string = error_helper_string.format(
-                    requested_instance_class, cls.SUPPORTED_INSTANCE_CLASS_PREFIXES
-                )
-                raise ValueError(error_helper_string)
-        elif estimator.instance_type == "local":
+        super(TrainingCompilerConfig, cls).validate(estimator)
+
+        if estimator.image_uri:
             error_helper_string = (
-                "The local mode is not supported by SageMaker Training Compiler."
-                f"It only supports the following GPU instances: {cls.SUPPORTED_INSTANCE_CLASS_PREFIXES}."
+                "Overriding the image URI is currently not supported "
+                "for SageMaker Training Compiler."
+                "Specify the following parameters to run the Hugging Face training job "
+                "with SageMaker Training Compiler enabled: "
+                "transformer_version, tensorflow_version or pytorch_version, and compiler_config."
             )
             raise ValueError(error_helper_string)
-
-        if estimator.distribution and "smdistributed" in estimator.distribution:
-            raise ValueError(
-                "SageMaker distributed training configuration is currently not compatible with "
-                "SageMaker Training Compiler."
-            )
-
-        if estimator.debugger_hook_config or (not estimator.disable_profiler):
-            logger.warning(
-                f"Using Debugger and/or Profiler with SageMaker Training Compiler causes poor "
-                f"performance. Found debugger_hook_config={estimator.debugger_hook_config} "
-                f"disable_profiler={estimator.disable_profiler}. Please set "
-                f"debugger_hook_config=None and disable_profiler=True for optimal performance."
-            )
