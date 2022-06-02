@@ -747,7 +747,7 @@ def test_model_prepare_container_def_no_instance_type_or_image(
 
 
 def test_attach(sagemaker_session, mxnet_training_version, mxnet_training_py_version):
-    if mxnet_training_py_version == "py37" or mxnet_training_py_version == "py38":
+    if mxnet_training_py_version in ["py37", "py38"]:
         training_image = "1.dkr.ecr.us-west-2.amazonaws.com/mxnet-training:{1}-cpu-{0}".format(
             mxnet_training_py_version, mxnet_training_version
         )
