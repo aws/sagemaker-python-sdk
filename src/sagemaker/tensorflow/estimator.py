@@ -25,6 +25,7 @@ from sagemaker.tensorflow import defaults
 from sagemaker.tensorflow.model import TensorFlowModel
 from sagemaker.transformer import Transformer
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
+from sagemaker.workflow import is_pipeline_variable
 
 logger = logging.getLogger("sagemaker")
 
@@ -378,6 +379,9 @@ class TensorFlow(Framework):
         if mpi:
             return "/opt/ml/model"
         if self._current_job_name:
+            if is_pipeline_variable(self.output_path):
+                output_path = "s3://{}".format(self.sagemaker_session.default_bucket())
+                return s3.s3_path_join(output_path, self._current_job_name, directory)
             return s3.s3_path_join(self.output_path, self._current_job_name, directory)
         return None
 

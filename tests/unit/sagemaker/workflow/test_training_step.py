@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import os
 import json
 from mock import Mock, PropertyMock
+import re
 
 import pytest
 import warnings
@@ -163,6 +164,7 @@ def test_training_step_with_estimator(pipeline_session, training_input, hyperpar
 
 def test_estimator_with_parameterized_output(pipeline_session, training_input):
     output_path = ParameterString(name="OutputPath")
+    # XGBoost
     estimator = XGBoost(
         framework_version="1.3-1",
         py_version="py3",
@@ -174,21 +176,48 @@ def test_estimator_with_parameterized_output(pipeline_session, training_input):
         sagemaker_session=pipeline_session,
     )
     step_args = estimator.fit(inputs=training_input)
-    step = TrainingStep(
-        name="MyTrainingStep",
+    step1 = TrainingStep(
+        name="MyTrainingStep1",
+        step_args=step_args,
+        description="TrainingStep description",
+        display_name="MyTrainingStep",
+    )
+
+    # TensorFlow
+    # If model_dir is None and output_path is a pipeline variable
+    # a default model_dir will be generated with default bucket
+    estimator = TensorFlow(
+        framework_version="2.4.1",
+        py_version="py37",
+        role=ROLE,
+        instance_type=INSTANCE_TYPE,
+        instance_count=1,
+        entry_point=DUMMY_LOCAL_SCRIPT_PATH,
+        output_path=output_path,
+        sagemaker_session=pipeline_session,
+    )
+    step_args = estimator.fit(inputs=training_input)
+    step2 = TrainingStep(
+        name="MyTrainingStep2",
         step_args=step_args,
         description="TrainingStep description",
         display_name="MyTrainingStep",
     )
     pipeline = Pipeline(
         name="MyPipeline",
-        steps=[step],
+        steps=[step1, step2],
+        parameters=[output_path],
         sagemaker_session=pipeline_session,
     )
-    step_def = json.loads(pipeline.definition())["Steps"][0]
-    assert step_def["Arguments"]["OutputDataConfig"]["S3OutputPath"] == {
-        "Get": "Parameters.OutputPath"
-    }
+    step_defs = json.loads(pipeline.definition())["Steps"]
+    for step_def in step_defs:
+        assert step_def["Arguments"]["OutputDataConfig"]["S3OutputPath"] == {
+            "Get": "Parameters.OutputPath"
+        }
+        if step_def["Name"] != "MyTrainingStep2":
+            continue
+        model_dir = step_def["Arguments"]["HyperParameters"]["model_dir"]
+        assert re.match(rf'"s3://{BUCKET}/.*/model"', model_dir)
 
 
 @pytest.mark.parametrize(
@@ -316,7 +345,7 @@ def test_training_step_with_algorithm_base(algo_estimator, pipeline_session):
         sagemaker_session=pipeline_session,
     )
     data = RecordSet(
-        "s3://{}/{}".format(pipeline_session.default_bucket(), "dummy"),
+        "s3://{}/{}".format(BUCKET, "dummy"),
         num_records=1000,
         feature_dim=128,
         channel="train",
