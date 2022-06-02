@@ -15,7 +15,6 @@ from __future__ import absolute_import
 import os
 import json
 from mock import Mock, PropertyMock
-import re
 
 import pytest
 import warnings
