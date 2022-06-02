@@ -153,8 +153,9 @@ class TrainingCompilerConfig(object):
         elif estimator.instance_type == "local":
             error_helper_string = (
                 "The local mode is not supported by SageMaker Training Compiler."
-                f"It only supports the following GPU instances: {cls.SUPPORTED_INSTANCE_CLASS_PREFIXES}."
+                "It only supports the following GPU instances: {}"
             )
+            error_helper_string = error_helper_string.format(cls.SUPPORTED_INSTANCE_CLASS_PREFIXES)
             raise ValueError(error_helper_string)
 
         if estimator.distribution and "smdistributed" in estimator.distribution:
@@ -164,9 +165,13 @@ class TrainingCompilerConfig(object):
             )
 
         if estimator.debugger_hook_config or (not estimator.disable_profiler):
-            logger.warning(
-                f"Using Debugger and/or Profiler with SageMaker Training Compiler causes poor "
-                f"performance. Found debugger_hook_config={estimator.debugger_hook_config} "
-                f"disable_profiler={estimator.disable_profiler}. Please set "
-                f"debugger_hook_config=None and disable_profiler=True for optimal performance."
+            helper_string = (
+                "Using Debugger and/or Profiler with SageMaker Training Compiler causes poor "
+                "performance. Found debugger_hook_config={} "
+                "disable_profiler={}. Please set "
+                "debugger_hook_config=None and disable_profiler=True for optimal performance."
             )
+            helper_string = helper_string.format(
+                estimator.debugger_hook_config, estimator.disable_profiler
+            )
+            logger.warning(helper_string)

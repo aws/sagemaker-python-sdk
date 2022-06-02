@@ -99,7 +99,10 @@ class TrainingCompilerConfig(BaseConfig):
         if estimator.framework_version:
             if version.parse(estimator.framework_version) < cls.MIN_SUPPORTED_VERSION:
                 error_helper_string = (
-                    f"SageMaker Training Compiler only supports TensorFlow version "
-                    f">= {cls.MIN_SUPPORTED_VERSION} but received {estimator.framework_version}"
+                    "SageMaker Training Compiler only supports TensorFlow version "
+                    ">= {} but received {}"
+                )
+                error_helper_string = error_helper_string.format(
+                    cls.MIN_SUPPORTED_VERSION, estimator.framework_version
                 )
                 raise ValueError(error_helper_string)
