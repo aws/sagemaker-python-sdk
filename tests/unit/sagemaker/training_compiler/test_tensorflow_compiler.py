@@ -54,7 +54,7 @@ EXPERIMENT_CONFIG = {
 
 
 @pytest.fixture(scope="module", autouse=True)
-def skip_if_incompatible(tensorflow_training_version):
+def skip_if_incompatible(tensorflow_training_version, request):
     if version.parse(tensorflow_training_version) < version.parse("2.9"):
         pytest.skip("Training Compiler only supports TF >= 2.9")
 
@@ -158,6 +158,7 @@ def _create_train_job(framework_version, instance_type, training_compiler_config
 
 class TestUnsupportedConfig:
     def test_cpu_instance(
+        self,
         cpu_instance_type,
         tensorflow_training_version,
         tensorflow_training_py_version,
@@ -176,6 +177,7 @@ class TestUnsupportedConfig:
 
     @pytest.mark.parametrize("unsupported_gpu_instance_class", UNSUPPORTED_GPU_INSTANCE_CLASSES)
     def test_gpu_instance(
+        self,
         unsupported_gpu_instance_class,
         tensorflow_training_version,
         tensorflow_training_py_version,
@@ -193,6 +195,7 @@ class TestUnsupportedConfig:
             ).fit()
 
     def test_framework_version(
+        self,
         tensorflow_training_py_version,
     ):
         with pytest.raises(ValueError):
@@ -208,6 +211,7 @@ class TestUnsupportedConfig:
             ).fit()
 
     def test_python_2(
+        self,
         tensorflow_training_version,
     ):
         with pytest.raises(ValueError):
@@ -230,6 +234,7 @@ class TestUnsupportedConfig:
 class TestTrainingCompilerConfig:
     @pytest.mark.parametrize("instance_class", SUPPORTED_GPU_INSTANCE_CLASSES)
     def test_default(
+        self,
         time,
         name_from_base,
         sagemaker_session,
@@ -282,6 +287,7 @@ class TestTrainingCompilerConfig:
         ), f"{json.dumps(actual_train_args, indent=2)} != {json.dumps(expected_train_args, indent=2)}"
 
     def test_debug_compiler_config(
+        self,
         time,
         name_from_base,
         sagemaker_session,
@@ -332,6 +338,7 @@ class TestTrainingCompilerConfig:
         ), f"{json.dumps(actual_train_args, indent=2)} != {json.dumps(expected_train_args, indent=2)}"
 
     def test_disable_compiler_config(
+        self,
         time,
         name_from_base,
         sagemaker_session,
