@@ -190,6 +190,8 @@ class HuggingFace(Framework):
             entry_point, source_dir, hyperparameters, image_uri=image_uri, **kwargs
         )
 
+        self.distribution = distribution or {}
+
         if compiler_config is not None:
             if not isinstance(compiler_config, TrainingCompilerConfig):
                 error_string = (
@@ -200,8 +202,6 @@ class HuggingFace(Framework):
                 raise ValueError(error_string)
             if compiler_config:
                 compiler_config.validate(self)
-
-        self.distribution = distribution or {}
         self.compiler_config = compiler_config
 
     def _validate_args(self, image_uri):
