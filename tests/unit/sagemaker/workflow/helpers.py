@@ -41,7 +41,10 @@ class CustomStep(Step):
         super(CustomStep, self).__init__(
             name, display_name, description, StepTypeEnum.TRAINING, depends_on
         )
-        self._properties = Properties(path=f"Steps.{name}")
+        # for testing property reference, we just use DescribeTrainingJobResponse shape here.
+        self._properties = Properties(
+            path=f"Steps.{name}", shape_name="DescribeTrainingJobResponse"
+        )
 
     @property
     def arguments(self):
