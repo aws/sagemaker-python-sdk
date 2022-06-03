@@ -26,6 +26,8 @@ from sagemaker.workflow.pipeline_context import PipelineSession
 from sagemaker.workflow.steps import TuningStep
 from sagemaker.inputs import TrainingInput
 from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.parameters import ParameterString
+from sagemaker.workflow.functions import Join
 
 from sagemaker.tuner import HyperparameterTuner, IntegerParameter
 from sagemaker.pytorch.estimator import PyTorch
@@ -86,8 +88,17 @@ def entry_point():
     return os.path.join(base_dir, "mnist.py")
 
 
-def test_tuning_step_with_single_algo_tuner(pipeline_session, entry_point):
-    inputs = TrainingInput(s3_data=f"s3://{pipeline_session.default_bucket()}/training-data")
+@pytest.mark.parametrize(
+    "training_input",
+    [
+        "s3://my-bucket/my-training-input",
+        ParameterString(name="training_input", default_value="s3://my-bucket/my-input"),
+        ParameterString(name="training_input"),
+        Join(on="/", values=["s3://my-bucket", "my-input"]),
+    ],
+)
+def test_tuning_step_with_single_algo_tuner(pipeline_session, training_input, entry_point):
+    inputs = TrainingInput(s3_data=training_input)
 
     pytorch_estimator = PyTorch(
         entry_point=entry_point,
@@ -134,10 +145,26 @@ def test_tuning_step_with_single_algo_tuner(pipeline_session, entry_point):
         sagemaker_session=pipeline_session,
     )
 
-    assert json.loads(pipeline.definition())["Steps"][0] == {
+    step_args = step_args.args
+    step_def = json.loads(pipeline.definition())["Steps"][0]
+
+    assert (
+        step_args["TrainingJobDefinition"]["InputDataConfig"][0]["DataSource"]["S3DataSource"][
+            "S3Uri"
+        ]
+        == training_input
+    )
+    del step_args["TrainingJobDefinition"]["InputDataConfig"][0]["DataSource"]["S3DataSource"][
+        "S3Uri"
+    ]
+    del step_def["Arguments"]["TrainingJobDefinition"]["InputDataConfig"][0]["DataSource"][
+        "S3DataSource"
+    ]["S3Uri"]
+
+    assert step_def == {
         "Name": "MyTuningStep",
         "Type": "Tuning",
-        "Arguments": step_args.args,
+        "Arguments": step_args,
     }
 
 
