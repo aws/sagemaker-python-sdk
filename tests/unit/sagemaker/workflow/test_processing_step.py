@@ -39,6 +39,8 @@ from sagemaker.processing import ProcessingInput
 from sagemaker.workflow.steps import CacheConfig, ProcessingStep
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.properties import PropertyFile
+from sagemaker.workflow.parameters import ParameterString
+from sagemaker.workflow.functions import Join
 
 from sagemaker.network import NetworkConfig
 from sagemaker.pytorch.estimator import PyTorch
@@ -183,9 +185,20 @@ def test_processing_step_with_processor(pipeline_session, processing_input):
     }
 
 
-def test_processing_step_with_processor_and_step_args(pipeline_session, processing_input):
+@pytest.mark.parametrize(
+    "image_uri",
+    [
+        IMAGE_URI,
+        ParameterString(name="MyImage"),
+        ParameterString(name="MyImage", default_value="my-image-uri"),
+        Join(on="/", values=["docker", "my-fake-image"]),
+    ],
+)
+def test_processing_step_with_processor_and_step_args(
+    pipeline_session, processing_input, image_uri
+):
     processor = Processor(
-        image_uri=IMAGE_URI,
+        image_uri=image_uri,
         role=ROLE,
         instance_count=1,
         instance_type=INSTANCE_TYPE,
@@ -193,7 +206,6 @@ def test_processing_step_with_processor_and_step_args(pipeline_session, processi
     )
 
     step_args = processor.run(inputs=processing_input)
-
     try:
         ProcessingStep(
             name="MyProcessingStep",

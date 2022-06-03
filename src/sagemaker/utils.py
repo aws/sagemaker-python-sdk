@@ -33,6 +33,7 @@ from six.moves.urllib import parse
 
 from sagemaker import deprecations
 from sagemaker.session_settings import SessionSettings
+from sagemaker.workflow import is_pipeline_variable, is_pipeline_parameter_string
 
 
 ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(.*)(/)(.*:.*)$"
@@ -99,9 +100,17 @@ def base_name_from_image(image):
     Returns:
         str: Algorithm name, as extracted from the image name.
     """
-    m = re.match("^(.+/)?([^:/]+)(:[^:]+)?$", image)
-    algo_name = m.group(2) if m else image
-    return algo_name
+    if is_pipeline_variable(image):
+        if is_pipeline_parameter_string(image) and image.default_value:
+            image_str = image.default_value
+        else:
+            return "base_name"
+    else:
+        image_str = image
+
+    m = re.match("^(.+/)?([^:/]+)(:[^:]+)?$", image_str)
+    base_name = m.group(2) if m else image_str
+    return base_name
 
 
 def base_from_name(name):
