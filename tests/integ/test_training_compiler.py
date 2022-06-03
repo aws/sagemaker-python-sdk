@@ -13,7 +13,7 @@
 from __future__ import absolute_import
 
 import os
-
+from packaging import version
 import pytest
 
 from sagemaker.huggingface import HuggingFace
@@ -125,6 +125,8 @@ def test_tensorflow(
     gpu_instance_type,
     tensorflow_training_latest_version,
 ):
+    if version.parse(tensorflow_training_latest_version) < version.parse("2.9"):
+        pytest.skip("Training Compiler only supports TF >= 2.9")
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         epochs = 10
         batch = 256
