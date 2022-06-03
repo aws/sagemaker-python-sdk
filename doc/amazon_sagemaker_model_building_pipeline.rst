@@ -239,7 +239,7 @@ Referable Property List:
                 ProcessingOutput(output_name="train", source="/opt/ml/processing/train"),
             ],
             code="./local/preprocess.py",
-            job_arguments=["--input-data", "s3://my-input"]
+            arguments=["--input-data", "s3://my-input"]
         ),
     )
 
@@ -496,7 +496,7 @@ A :class:`sagemaker.workflow.properties.PropertyFile` is designed to store infor
             ProcessingOutput(output_name="hyperparam", source="/opt/ml/processing/evaluation"),
         ],
         code="./local/preprocess.py",
-        job_arguments=["--input-data", "s3://my-input"],
+        arguments=["--input-data", "s3://my-input"],
     )
 
     hyperparam_report = PropertyFile(
@@ -577,7 +577,7 @@ There are eight types of condition are supported, they are:
             ProcessingOutput(output_name="hyperparam", source="/opt/ml/processing/evaluation"),
         ],
         code="./local/preprocess.py",
-        job_arguments=["--input-data", "s3://my-input"],
+        arguments=["--input-data", "s3://my-input"],
     )
 
     eval_report = PropertyFile(
@@ -668,7 +668,7 @@ Use :class:`sagemaker.workflow.functions.JsonGet` to extract a Json property fro
             ProcessingOutput(output_name="hyperparam", source="/opt/ml/processing/evaluation"),
         ],
         code="./local/preprocess.py",
-        job_arguments=["--input-data", "s3://my-input"],
+        arguments=["--input-data", "s3://my-input"],
     )
 
     hyperparam_report = PropertyFile(
