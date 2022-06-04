@@ -84,7 +84,7 @@ class PipelineModel(object):
         self.enable_network_isolation = enable_network_isolation
         self.endpoint_name = None
 
-    def pipeline_container_def(self, instance_type):
+    def pipeline_container_def(self, instance_type=None):
         """The pipeline definition for deploying this model.
 
         This is the dict created by ``sagemaker.pipeline_container_def()``.
@@ -321,7 +321,10 @@ class PipelineModel(object):
             )
         else:
             container_def = [
-                {"Image": image_uri or model.image_uri, "ModelDataUrl": model.model_data}
+                {
+                    "Image": image_uri or model.image_uri,
+                    "ModelDataUrl": model.model_data,
+                }
                 for model in self.models
             ]
 

@@ -124,7 +124,9 @@ def test_pipeline_session_context_for_model_step(pipeline_session_mock):
     assert len(register_step_args.need_runtime_repack) == 0
 
 
-def test_pipeline_session_context_for_model_step_without_instance_types(pipeline_session_mock):
+def test_pipeline_session_context_for_model_step_without_instance_types(
+    pipeline_session_mock,
+):
     model = Model(
         name="MyModel",
         image_uri="fakeimage",
@@ -134,27 +136,38 @@ def test_pipeline_session_context_for_model_step_without_instance_types(pipeline
         source_dir=f"{DATA_DIR}",
         role=_ROLE,
     )
-    # CreateModelStep requires runtime repack
-    create_step_args = model.create(
-        instance_type="c4.4xlarge",
-        accelerator_type="ml.eia1.medium",
-    )
-    # The context should be cleaned up before return
-    assert pipeline_session_mock.context is None
-    assert create_step_args.create_model_request
-    assert not create_step_args.create_model_package_request
-    assert len(create_step_args.need_runtime_repack) == 1
 
-    # _RegisterModelStep does not require runtime repack
-    model.entry_point = None
-    model.source_dir = None
     register_step_args = model.register(
         content_types=["text/csv"],
         response_types=["text/csv"],
         model_package_group_name="MyModelPackageGroup",
     )
-    # The context should be cleaned up before return
-    assert not pipeline_session_mock.context
-    assert not register_step_args.create_model_request
-    assert register_step_args.create_model_package_request
-    assert len(register_step_args.need_runtime_repack) == 0
+
+    expected_output = {
+        "ModelPackageGroupName": "MyModelPackageGroup",
+        "InferenceSpecification": {
+            "Containers": [
+                {
+                    "Image": "fakeimage",
+                    "Environment": {
+                        "SAGEMAKER_PROGRAM": "dummy_script.py",
+                        "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
+                        "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
+                        "SAGEMAKER_REGION": "us-west-2",
+                    },
+                    "ModelDataUrl": ParameterString(
+                        name="ModelData",
+                        default_value="s3://my-bucket/file",
+                    ),
+                }
+            ],
+            "SupportedContentTypes": ["text/csv"],
+            "SupportedResponseMIMETypes": ["text/csv"],
+            "SupportedRealtimeInferenceInstanceTypes": None,
+            "SupportedTransformInstanceTypes": None,
+        },
+        "CertifyForMarketplace": False,
+        "ModelApprovalStatus": "PendingManualApproval",
+    }
+
+    assert register_step_args.create_model_package_request == expected_output
