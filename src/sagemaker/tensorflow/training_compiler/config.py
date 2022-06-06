@@ -13,7 +13,8 @@
 """Configuration for the SageMaker Training Compiler."""
 from __future__ import absolute_import
 import logging
-from packaging import version
+from packaging.specifiers import SpecifierSet
+from packaging.version import Version
 
 from sagemaker.training_compiler.config import TrainingCompilerConfig as BaseConfig
 
@@ -97,7 +98,9 @@ class TrainingCompilerConfig(BaseConfig):
         super(TrainingCompilerConfig, cls).validate(estimator)
 
         if estimator.framework_version:
-            if version.parse(estimator.framework_version) < cls.MIN_SUPPORTED_VERSION:
+            if Version(estimator.framework_version) in SpecifierSet(
+                f"< {cls.MIN_SUPPORTED_VERSION}"
+            ):
                 error_helper_string = (
                     "SageMaker Training Compiler only supports TensorFlow version "
                     ">= {} but received {}"
