@@ -42,30 +42,53 @@ ACCOUNTS = {
     "us-west-1": "763104351884",
     "us-west-2": "763104351884",
 }
-VERSIONS = ["0.3.1", "0.3.2", "0.4.0", "0.3", "0.4"]
+VERSIONS = ["0.3.1", "0.3.2", "0.4.0", "0.4.2", "0.3", "0.4"]
+SCOPES = ["training", "inference"]
+PROCESSORS = ["cpu", "gpu"]
 
 
 @pytest.mark.parametrize("version", VERSIONS)
-def test_valid_uris(version):
+@pytest.mark.parametrize("scope", SCOPES)
+@pytest.mark.parametrize("processor", PROCESSORS)
+def test_valid_uris_training(version, scope, processor):
+    instance_type = "ml.c4.xlarge" if processor == "cpu" else "ml.p2.xlarge"
     py_version = "py37" if version == "0.3.1" else "py38"
-    for region in ACCOUNTS.keys():
-        uri = image_uris.retrieve(
-            "autogluon",
-            region=region,
-            version=version,
-            py_version=py_version,
-            image_scope="training",
-            instance_type="ml.c4.xlarge",
-        )
+    if (
+        scope == "inference"
+        and processor == "gpu"
+        and version in ["0.3.1", "0.3.2", "0.4.0", "0.3"]
+    ):
+        with pytest.raises(ValueError) as e:
+            image_uris.retrieve(
+                "autogluon",
+                region="us-west-2",
+                version=version,
+                py_version=py_version,
+                image_scope=scope,
+                instance_type=instance_type,
+            )
 
-        expected = expected_uris.framework_uri(
-            "autogluon-training",
-            version,
-            ACCOUNTS[region],
-            py_version=py_version,
-            region=region,
-        )
-        assert uri == expected
+        assert "Unsupported processor: gpu." in str(e.value)
+    else:
+        for region in ACCOUNTS.keys():
+            uri = image_uris.retrieve(
+                "autogluon",
+                region=region,
+                version=version,
+                py_version=py_version,
+                image_scope=scope,
+                instance_type=instance_type,
+            )
+
+            expected = expected_uris.framework_uri(
+                f"autogluon-{scope}",
+                version,
+                ACCOUNTS[region],
+                py_version=py_version,
+                region=region,
+                processor=processor,
+            )
+            assert uri == expected
 
 
 @pytest.mark.parametrize("version", VERSIONS)
@@ -81,17 +104,3 @@ def test_py3_error(version):
         )
 
     assert "Unsupported Python version: py3." in str(e.value)
-
-
-@pytest.mark.parametrize("version", VERSIONS)
-def test_gpu_error(version):
-    with pytest.raises(ValueError) as e:
-        image_uris.retrieve(
-            "autogluon",
-            region="us-west-2",
-            version=version,
-            image_scope="inference",
-            instance_type="ml.p2.xlarge",
-        )
-
-    assert "Unsupported processor: gpu." in str(e.value)
