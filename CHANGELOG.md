@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.93.1 (2022-06-06)
+
+### Bug Fixes and Other Changes
+
+ * add input parameterization tests for workflow job steps
+ * add parameterized tests to transformer
+
 ## v2.93.0 (2022-06-03)
 
 ### Features
