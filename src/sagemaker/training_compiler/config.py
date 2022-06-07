@@ -124,7 +124,7 @@ class TrainingCompilerConfig(object):
 
         Args:
             estimator (str): A estimator object
-                If SageMaker Training Compiler is enabled, it will validate whether
+                When SageMaker Training Compiler is enabled, it validates if
                 the estimator is configured to be compatible with Training Compiler.
 
 
