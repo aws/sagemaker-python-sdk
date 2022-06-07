@@ -166,10 +166,10 @@ class TrainingCompilerConfig(object):
 
         if estimator.debugger_hook_config or (not estimator.disable_profiler):
             helper_string = (
-                "Using Debugger and/or Profiler with SageMaker Training Compiler causes poor "
+                "Using Debugger and/or Profiler with SageMaker Training Compiler might add recompilation overhead and degrade"
                 "performance. Found debugger_hook_config={} "
                 "disable_profiler={}. Please set "
-                "debugger_hook_config=None and disable_profiler=True for optimal performance."
+                "debugger_hook_config=None and disable_profiler=True for optimal performance. For more information, see Training Compiler Performance Considerations (https://docs.aws.amazon.com/sagemaker/latest/dg/training-compiler-tips-pitfalls.html#training-compiler-tips-pitfalls-considerations)."
             )
             helper_string = helper_string.format(
                 estimator.debugger_hook_config, estimator.disable_profiler
