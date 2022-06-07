@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.94.0 (2022-06-07)
+
+### Features
+
+ * AutoGluon 0.4.2 image_uris support
+
 ## v2.93.1 (2022-06-06)
 
 ### Bug Fixes and Other Changes
