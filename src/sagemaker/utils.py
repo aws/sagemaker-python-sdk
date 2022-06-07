@@ -91,11 +91,12 @@ def unique_name_from_base(base, max_length=63):
     return "{}-{}-{}".format(trimmed, ts, unique)
 
 
-def base_name_from_image(image):
+def base_name_from_image(image, default_base_name=None):
     """Extract the base name of the image to use as the 'algorithm name' for the job.
 
     Args:
         image (str): Image name.
+        default_base_name (str): The default base name
 
     Returns:
         str: Algorithm name, as extracted from the image name.
@@ -104,7 +105,7 @@ def base_name_from_image(image):
         if is_pipeline_parameter_string(image) and image.default_value:
             image_str = image.default_value
         else:
-            return "base_name"
+            return default_base_name if default_base_name else "base_name"
     else:
         image_str = image
 

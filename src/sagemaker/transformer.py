@@ -25,6 +25,8 @@ from sagemaker.utils import base_name_from_image, name_from_base
 class Transformer(object):
     """A class for handling creating and interacting with Amazon SageMaker transform jobs."""
 
+    JOB_CLASS_NAME = "transform-job"
+
     def __init__(
         self,
         model_name,
@@ -240,7 +242,7 @@ class Transformer(object):
         image_uri = self._retrieve_image_uri()
 
         if image_uri:
-            return base_name_from_image(image_uri)
+            return base_name_from_image(image_uri, default_base_name=Transformer.JOB_CLASS_NAME)
 
         return self.model_name
 

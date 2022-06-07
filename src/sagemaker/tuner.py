@@ -29,7 +29,7 @@ from sagemaker.amazon.amazon_estimator import (
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.analytics import HyperparameterTuningJobAnalytics
 from sagemaker.deprecations import removed_function
-from sagemaker.estimator import Framework
+from sagemaker.estimator import Framework, EstimatorBase
 from sagemaker.inputs import TrainingInput
 from sagemaker.job import _Job
 from sagemaker.jumpstart.utils import add_jumpstart_tags, get_jumpstart_base_name_if_jumpstart_model
@@ -367,7 +367,9 @@ class HyperparameterTuner(object):
                 estimator = (
                     self.estimator or self.estimator_dict[sorted(self.estimator_dict.keys())[0]]
                 )
-                base_name = base_name_from_image(estimator.training_image_uri())
+                base_name = base_name_from_image(
+                    estimator.training_image_uri(), default_base_name=EstimatorBase.JOB_CLASS_NAME
+                )
 
                 jumpstart_base_name = get_jumpstart_base_name_if_jumpstart_model(
                     getattr(estimator, "source_dir", None),
