@@ -1023,6 +1023,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         deserializer=None,
         accelerator_type=None,
         endpoint_name=None,
+        variant_name="AllTraffic",
         tags=None,
         kms_key=None,
         wait=True,
@@ -1074,6 +1075,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
             endpoint_name (str): The name of the endpoint to create (default:
                 None). If not specified, a unique endpoint name will be created.
+            variant_name (string): The ``VariantName`` of this production variant
+                (default: 'AllTraffic').
             tags (List[dict[str, str]]): The list of tags to attach to this
                 specific endpoint.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
@@ -1166,6 +1169,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             self.name,
             instance_type,
             initial_instance_count,
+            variant_name=variant_name,
             accelerator_type=accelerator_type,
             serverless_inference_config=serverless_inference_config_dict,
             volume_size=volume_size,

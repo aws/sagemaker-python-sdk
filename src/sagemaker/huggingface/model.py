@@ -200,6 +200,7 @@ class HuggingFaceModel(FrameworkModel):
         deserializer=None,
         accelerator_type=None,
         endpoint_name=None,
+        variant_name="AllTraffic",
         tags=None,
         kms_key=None,
         wait=True,
@@ -251,6 +252,8 @@ class HuggingFaceModel(FrameworkModel):
                 https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
             endpoint_name (str): The name of the endpoint to create (default:
                 None). If not specified, a unique endpoint name will be created.
+            variant_name (string): The ``VariantName`` of this production variant
+                (default: 'AllTraffic').
             tags (List[dict[str, str]]): The list of tags to attach to this
                 specific endpoint.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
@@ -308,6 +311,7 @@ class HuggingFaceModel(FrameworkModel):
             deserializer,
             accelerator_type,
             endpoint_name,
+            variant_name,
             tags,
             kms_key,
             wait,
