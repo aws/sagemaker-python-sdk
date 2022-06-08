@@ -4206,8 +4206,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
 def get_model_package_args(
     content_types,
     response_types,
-    inference_instances,
-    transform_instances,
+    inference_instances=None,
+    transform_instances=None,
     model_package_name=None,
     model_package_group_name=None,
     model_data=None,
@@ -4230,9 +4230,9 @@ def get_model_package_args(
         content_types (list): The supported MIME types for the input data.
         response_types (list): The supported MIME types for the output data.
         inference_instances (list): A list of the instance types that are used to
-            generate inferences in real-time.
+            generate inferences in real-time (default: None).
         transform_instances (list): A list of the instance types on which a transformation
-            job can be run or on which an endpoint can be deployed.
+            job can be run or on which an endpoint can be deployed (default: None).
         model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
             using `model_package_name` makes the Model Package un-versioned (default: None).
         model_package_group_name (str): Model Package Group name, exclusive to
@@ -4377,10 +4377,9 @@ def get_create_model_package_request(
     if domain is not None:
         request_dict["Domain"] = domain
     if containers is not None:
-        if not all([content_types, response_types, inference_instances, transform_instances]):
+        if not all([content_types, response_types]):
             raise ValueError(
-                "content_types, response_types, inference_inferences and transform_instances "
-                "must be provided if containers is present."
+                "content_types and response_types " "must be provided if containers is present."
             )
         inference_specification = {
             "Containers": containers,
