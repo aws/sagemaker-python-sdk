@@ -286,6 +286,64 @@ class TestTrainingCompilerConfig:
             actual_train_args == expected_train_args
         ), f"{json.dumps(actual_train_args, indent=2)} != {json.dumps(expected_train_args, indent=2)}"
 
+    def test_byoc(
+        self,
+        time,
+        name_from_base,
+        sagemaker_session,
+        tensorflow_training_version,
+        tensorflow_training_py_version,
+        instance_class,
+    ):
+        compiler_config = TrainingCompilerConfig()
+        instance_type = f"ml.{instance_class}.2xlarge"
+
+        tf = TensorFlow(
+            py_version=tensorflow_training_py_version,
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            instance_count=INSTANCE_COUNT,
+            instance_type=instance_type,
+            image_uri=_get_full_gpu_image_uri(
+                tensorflow_training_version,
+                instance_type,
+                compiler_config,
+                tensorflow_training_py_version,
+            ),
+            enable_sagemaker_metrics=False,
+            compiler_config=compiler_config,
+        )
+
+        inputs = "s3://mybucket/train"
+
+        tf.fit(inputs=inputs, experiment_config=EXPERIMENT_CONFIG)
+
+        sagemaker_call_names = [c[0] for c in sagemaker_session.method_calls]
+        assert sagemaker_call_names == ["train", "logs_for_job"]
+        boto_call_names = [c[0] for c in sagemaker_session.boto_session.method_calls]
+        assert boto_call_names == ["resource"]
+
+        expected_train_args = _create_train_job(
+            tensorflow_training_version,
+            instance_type,
+            compiler_config,
+            tensorflow_training_py_version,
+        )
+        expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
+        expected_train_args["enable_sagemaker_metrics"] = False
+        expected_train_args["hyperparameters"][
+            TrainingCompilerConfig.HP_ENABLE_COMPILER
+        ] = json.dumps(True)
+        expected_train_args["hyperparameters"][TrainingCompilerConfig.HP_ENABLE_DEBUG] = json.dumps(
+            False
+        )
+
+        actual_train_args = sagemaker_session.method_calls[0][2]
+        assert (
+            actual_train_args == expected_train_args
+        ), f"{json.dumps(actual_train_args, indent=2)} != {json.dumps(expected_train_args, indent=2)}"
+
     def test_debug_compiler_config(
         self,
         time,
