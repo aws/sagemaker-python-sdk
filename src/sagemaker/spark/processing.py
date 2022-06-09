@@ -500,13 +500,19 @@ class _SparkProcessorBase(ScriptProcessor):
                 destination=f"{self._conf_container_base_path}{input_channel_name}",
                 input_name=input_channel_name,
             )
-            spark_opt = Join(on=",", values=spark_opt_s3_uris + [input_channel.destination]) \
-                if spark_opt_s3_uris_has_pipeline_var else ",".join(spark_opt_s3_uris + [input_channel.destination])
+            spark_opt = (
+                Join(on=",", values=spark_opt_s3_uris + [input_channel.destination])
+                if spark_opt_s3_uris_has_pipeline_var
+                else ",".join(spark_opt_s3_uris + [input_channel.destination])
+            )
         # If no local files were uploaded, form the spark-submit option from a list of S3 URIs
         else:
             input_channel = None
-            spark_opt = Join(on=",", values=spark_opt_s3_uris) if spark_opt_s3_uris_has_pipeline_var \
+            spark_opt = (
+                Join(on=",", values=spark_opt_s3_uris)
+                if spark_opt_s3_uris_has_pipeline_var
                 else ",".join(spark_opt_s3_uris)
+            )
 
         return input_channel, spark_opt
 
@@ -1081,7 +1087,7 @@ class SparkJarProcessor(_SparkProcessorBase):
         submit_files: Optional[List[Union[str, PipelineVariable]]] = None,
         inputs: Optional[List[ProcessingInput]] = None,
         outputs: Optional[List[ProcessingOutput]] = None,
-        arguments:Optional[List[Union[str, PipelineVariable]]] = None,
+        arguments: Optional[List[Union[str, PipelineVariable]]] = None,
         wait: bool = True,
         logs: bool = True,
         job_name: Optional[str] = None,

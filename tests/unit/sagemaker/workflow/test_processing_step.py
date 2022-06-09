@@ -23,8 +23,6 @@ from sagemaker.parameter import IntegerParameter
 from sagemaker.transformer import Transformer
 from sagemaker.tuner import HyperparameterTuner
 from sagemaker.workflow.pipeline_context import PipelineSession
-from sagemaker.workflow.functions import Join
-from sagemaker.workflow.parameters import ParameterString
 
 from sagemaker.processing import (
     Processor,
@@ -603,8 +601,10 @@ def test_insert_wrong_step_args_into_processing_step(inputs, pipeline_session):
     )
 
 
-@pytest.mark.parametrize("spark_processor", [
-    (
+@pytest.mark.parametrize(
+    "spark_processor",
+    [
+        (
             SparkJarProcessor(
                 role=ROLE,
                 framework_version="2.4",
@@ -614,14 +614,28 @@ def test_insert_wrong_step_args_into_processing_step(inputs, pipeline_session):
             {
                 "submit_app": "s3://my-jar",
                 "submit_class": "com.amazonaws.sagemaker.spark.test.HelloJavaSparkApp",
-                "arguments": ["--input", "input-data-uri", "--output", ParameterString("MyArgOutput")],
-                "submit_jars": ["s3://my-jar", ParameterString("MyJars"), "s3://her-jar", ParameterString("OurJar")],
-                "submit_files": ["s3://my-files", ParameterString("MyFiles"), "s3://her-files",
-                                 ParameterString("OurFiles")],
-                "spark_event_logs_s3_uri": ParameterString("MySparkEventLogS3Uri")
+                "arguments": [
+                    "--input",
+                    "input-data-uri",
+                    "--output",
+                    ParameterString("MyArgOutput"),
+                ],
+                "submit_jars": [
+                    "s3://my-jar",
+                    ParameterString("MyJars"),
+                    "s3://her-jar",
+                    ParameterString("OurJar"),
+                ],
+                "submit_files": [
+                    "s3://my-files",
+                    ParameterString("MyFiles"),
+                    "s3://her-files",
+                    ParameterString("OurFiles"),
+                ],
+                "spark_event_logs_s3_uri": ParameterString("MySparkEventLogS3Uri"),
             },
-    ),
-    (
+        ),
+        (
             PySparkProcessor(
                 role=ROLE,
                 framework_version="2.4",
@@ -630,16 +644,35 @@ def test_insert_wrong_step_args_into_processing_step(inputs, pipeline_session):
             ),
             {
                 "submit_app": "s3://my-jar",
-                "arguments": ["--input", "input-data-uri", "--output", ParameterString("MyArgOutput")],
-                "submit_py_files": ["s3://my-py-files", ParameterString("MyPyFiles"), "s3://her-pyfiles",
-                                    ParameterString("OurPyFiles")],
-                "submit_jars": ["s3://my-jar", ParameterString("MyJars"), "s3://her-jar", ParameterString("OurJar")],
-                "submit_files": ["s3://my-files", ParameterString("MyFiles"), "s3://her-files",
-                                 ParameterString("OurFiles")],
+                "arguments": [
+                    "--input",
+                    "input-data-uri",
+                    "--output",
+                    ParameterString("MyArgOutput"),
+                ],
+                "submit_py_files": [
+                    "s3://my-py-files",
+                    ParameterString("MyPyFiles"),
+                    "s3://her-pyfiles",
+                    ParameterString("OurPyFiles"),
+                ],
+                "submit_jars": [
+                    "s3://my-jar",
+                    ParameterString("MyJars"),
+                    "s3://her-jar",
+                    ParameterString("OurJar"),
+                ],
+                "submit_files": [
+                    "s3://my-files",
+                    ParameterString("MyFiles"),
+                    "s3://her-files",
+                    ParameterString("OurFiles"),
+                ],
                 "spark_event_logs_s3_uri": ParameterString("MySparkEventLogS3Uri"),
             },
-    ),
-])
+        ),
+    ],
+)
 def test_spark_processor(spark_processor, processing_input, pipeline_session):
 
     processor, run_inputs = spark_processor
@@ -656,9 +689,9 @@ def test_spark_processor(spark_processor, processing_input, pipeline_session):
 
     step_args = step_args.args
 
-    assert step_args['AppSpecification']['ContainerArguments'] == run_inputs['arguments']
+    assert step_args["AppSpecification"]["ContainerArguments"] == run_inputs["arguments"]
 
-    entry_points = step_args['AppSpecification']['ContainerEntrypoint']
+    entry_points = step_args["AppSpecification"]["ContainerEntrypoint"]
     entry_points_expr = []
     for entry_point in entry_points:
         if is_pipeline_variable(entry_point):
@@ -666,42 +699,98 @@ def test_spark_processor(spark_processor, processing_input, pipeline_session):
         else:
             entry_points_expr.append(entry_point)
 
-    if 'submit_py_files' in run_inputs:
+    if "submit_py_files" in run_inputs:
         expected = [
-            'smspark-submit',
-            '--py-files', {'Std:Join': {'On': ',', 'Values': ['s3://my-py-files', {'Get': 'Parameters.MyPyFiles'},
-                                                              's3://her-pyfiles', {'Get': 'Parameters.OurPyFiles'}]}},
-            '--jars', {'Std:Join': {'On': ',', 'Values': ['s3://my-jar', {'Get': 'Parameters.MyJars'}, 's3://her-jar', {'Get': 'Parameters.OurJar'}]}},
-            '--files', {'Std:Join': {'On': ',', 'Values': ['s3://my-files', {'Get': 'Parameters.MyFiles'}, 's3://her-files', {'Get': 'Parameters.OurFiles'}]}},
-            '--local-spark-event-logs-dir', '/opt/ml/processing/spark-events/', '/opt/ml/processing/input/code'
+            "smspark-submit",
+            "--py-files",
+            {
+                "Std:Join": {
+                    "On": ",",
+                    "Values": [
+                        "s3://my-py-files",
+                        {"Get": "Parameters.MyPyFiles"},
+                        "s3://her-pyfiles",
+                        {"Get": "Parameters.OurPyFiles"},
+                    ],
+                }
+            },
+            "--jars",
+            {
+                "Std:Join": {
+                    "On": ",",
+                    "Values": [
+                        "s3://my-jar",
+                        {"Get": "Parameters.MyJars"},
+                        "s3://her-jar",
+                        {"Get": "Parameters.OurJar"},
+                    ],
+                }
+            },
+            "--files",
+            {
+                "Std:Join": {
+                    "On": ",",
+                    "Values": [
+                        "s3://my-files",
+                        {"Get": "Parameters.MyFiles"},
+                        "s3://her-files",
+                        {"Get": "Parameters.OurFiles"},
+                    ],
+                }
+            },
+            "--local-spark-event-logs-dir",
+            "/opt/ml/processing/spark-events/",
+            "/opt/ml/processing/input/code",
         ]
         # py spark
     else:
         expected = [
-            'smspark-submit',
-            '--class',
-            'com.amazonaws.sagemaker.spark.test.HelloJavaSparkApp',
-            '--jars', {'Std:Join': {'On': ',', 'Values': ['s3://my-jar', {'Get': 'Parameters.MyJars'},
-                                                          's3://her-jar', {'Get': 'Parameters.OurJar'}]}},
-            '--files', {'Std:Join': {'On': ',', 'Values': ['s3://my-files', {'Get': 'Parameters.MyFiles'},
-                                                           's3://her-files', {'Get': 'Parameters.OurFiles'}]}},
-            '--local-spark-event-logs-dir', '/opt/ml/processing/spark-events/', '/opt/ml/processing/input/code'
+            "smspark-submit",
+            "--class",
+            "com.amazonaws.sagemaker.spark.test.HelloJavaSparkApp",
+            "--jars",
+            {
+                "Std:Join": {
+                    "On": ",",
+                    "Values": [
+                        "s3://my-jar",
+                        {"Get": "Parameters.MyJars"},
+                        "s3://her-jar",
+                        {"Get": "Parameters.OurJar"},
+                    ],
+                }
+            },
+            "--files",
+            {
+                "Std:Join": {
+                    "On": ",",
+                    "Values": [
+                        "s3://my-files",
+                        {"Get": "Parameters.MyFiles"},
+                        "s3://her-files",
+                        {"Get": "Parameters.OurFiles"},
+                    ],
+                }
+            },
+            "--local-spark-event-logs-dir",
+            "/opt/ml/processing/spark-events/",
+            "/opt/ml/processing/input/code",
         ]
 
     assert entry_points_expr == expected
-    for output in step_args['ProcessingOutputConfig']['Outputs']:
-        if is_pipeline_variable(output['S3Output']['S3Uri']):
-            output['S3Output']['S3Uri'] = output['S3Output']['S3Uri'].expr
+    for output in step_args["ProcessingOutputConfig"]["Outputs"]:
+        if is_pipeline_variable(output["S3Output"]["S3Uri"]):
+            output["S3Output"]["S3Uri"] = output["S3Output"]["S3Uri"].expr
 
-    assert step_args['ProcessingOutputConfig']['Outputs'] == [
+    assert step_args["ProcessingOutputConfig"]["Outputs"] == [
         {
-            'OutputName': 'output-1',
-            'AppManaged': False,
-            'S3Output': {
-                'S3Uri': {'Get': 'Parameters.MySparkEventLogS3Uri'},
-                'LocalPath': '/opt/ml/processing/spark-events/',
-                'S3UploadMode': 'Continuous'
-            }
+            "OutputName": "output-1",
+            "AppManaged": False,
+            "S3Output": {
+                "S3Uri": {"Get": "Parameters.MySparkEventLogS3Uri"},
+                "LocalPath": "/opt/ml/processing/spark-events/",
+                "S3UploadMode": "Continuous",
+            },
         }
     ]
 
@@ -711,4 +800,3 @@ def test_spark_processor(spark_processor, processing_input, pipeline_session):
         sagemaker_session=pipeline_session,
     )
     pipeline.definition()
-
