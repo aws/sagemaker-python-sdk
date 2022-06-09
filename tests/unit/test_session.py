@@ -2424,6 +2424,69 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
     sagemaker_session.sagemaker_client.create_model_package.assert_called_with(**expected_args)
 
 
+def test_create_model_package_from_containers_without_instance_types(sagemaker_session):
+    model_package_name = "sagemaker-model-package"
+    containers = ["dummy-container"]
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    model_metrics = {
+        "Bias": {
+            "ContentType": "content-type",
+            "S3Uri": "s3://...",
+        }
+    }
+    drift_check_baselines = {
+        "Bias": {
+            "ConfigFile": {
+                "ContentType": "content-type",
+                "S3Uri": "s3://...",
+            }
+        }
+    }
+
+    metadata_properties = {
+        "CommitId": "test-commit-id",
+        "Repository": "test-repository",
+        "GeneratedBy": "sagemaker-python-sdk",
+        "ProjectId": "unit-test",
+    }
+    marketplace_cert = (True,)
+    approval_status = ("Approved",)
+    description = "description"
+    customer_metadata_properties = {"key1": "value1"}
+    sagemaker_session.create_model_package_from_containers(
+        containers=containers,
+        content_types=content_types,
+        response_types=response_types,
+        model_package_name=model_package_name,
+        model_metrics=model_metrics,
+        metadata_properties=metadata_properties,
+        marketplace_cert=marketplace_cert,
+        approval_status=approval_status,
+        description=description,
+        drift_check_baselines=drift_check_baselines,
+        customer_metadata_properties=customer_metadata_properties,
+    )
+    expected_args = {
+        "ModelPackageName": model_package_name,
+        "InferenceSpecification": {
+            "Containers": containers,
+            "SupportedContentTypes": content_types,
+            "SupportedResponseMIMETypes": response_types,
+            "SupportedRealtimeInferenceInstanceTypes": None,
+            "SupportedTransformInstanceTypes": None,
+        },
+        "ModelPackageDescription": description,
+        "ModelMetrics": model_metrics,
+        "MetadataProperties": metadata_properties,
+        "CertifyForMarketplace": marketplace_cert,
+        "ModelApprovalStatus": approval_status,
+        "DriftCheckBaselines": drift_check_baselines,
+        "CustomerMetadataProperties": customer_metadata_properties,
+    }
+    sagemaker_session.sagemaker_client.create_model_package.assert_called_with(**expected_args)
+
+
 @pytest.fixture
 def feature_group_dummy_definitions():
     return [{"FeatureName": "feature1", "FeatureType": "String"}]
