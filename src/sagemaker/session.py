@@ -412,29 +412,47 @@ class Session(object):  # pylint: disable=too-many-public-methods
         bucket = s3.Bucket(name=bucket_name)
         if bucket.creation_date is None:
             try:
-                if region == "us-east-1":
-                    # 'us-east-1' cannot be specified because it is the default region:
-                    # https://github.com/boto/boto3/issues/125
-                    s3.create_bucket(Bucket=bucket_name)
-                else:
-                    s3.create_bucket(
-                        Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": region}
-                    )
-
-                LOGGER.info("Created S3 bucket: %s", bucket_name)
+                # trying head bucket call
+                s3.meta.client.head_bucket(Bucket=bucket.name)
             except ClientError as e:
+                # bucket does not exist or forbidden to access
                 error_code = e.response["Error"]["Code"]
                 message = e.response["Error"]["Message"]
 
-                if error_code == "BucketAlreadyOwnedByYou":
-                    pass
-                elif (
-                    error_code == "OperationAborted"
-                    and "conflicting conditional operation" in message
-                ):
-                    # If this bucket is already being concurrently created, we don't need to create
-                    # it again.
-                    pass
+                if error_code == "404" and message == "Not Found":
+                    # bucket does not exist, create one
+                    try:
+                        if region == "us-east-1":
+                            # 'us-east-1' cannot be specified because it is the default region:
+                            # https://github.com/boto/boto3/issues/125
+                            s3.create_bucket(Bucket=bucket_name)
+                        else:
+                            s3.create_bucket(
+                                Bucket=bucket_name,
+                                CreateBucketConfiguration={"LocationConstraint": region},
+                            )
+
+                        LOGGER.info("Created S3 bucket: %s", bucket_name)
+                    except ClientError as e:
+                        error_code = e.response["Error"]["Code"]
+                        message = e.response["Error"]["Message"]
+
+                        if (
+                            error_code == "OperationAborted"
+                            and "conflicting conditional operation" in message
+                        ):
+                            # If this bucket is already being concurrently created,
+                            # we don't need to create it again.
+                            pass
+                        else:
+                            raise
+                elif error_code == "403" and message == "Forbidden":
+                    LOGGER.error(
+                        "Bucket %s exists, but access is forbidden. Please try again after "
+                        "adding appropriate access.",
+                        bucket.name,
+                    )
+                    raise
                 else:
                     raise
 
