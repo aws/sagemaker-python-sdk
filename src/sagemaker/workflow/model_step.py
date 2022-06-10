@@ -111,7 +111,6 @@ class ModelStep(StepCollection):
                 The display name provides better UI readability. (default: None).
             description (str): The description of the `ModelStep` (default: None).
         """
-        # TODO: add a doc link in error message once ready
         from sagemaker.workflow.utilities import validate_step_args_input
 
         validate_step_args_input(
@@ -121,7 +120,8 @@ class ModelStep(StepCollection):
                 Session.create_model_package_from_containers.__name__,
             },
             error_message="The step_args of ModelStep must be obtained from model.create() "
-            "or model.register().",
+            "or model.register(). For more, see: https://sagemaker.readthedocs.io/en/stable/"
+            "amazon_sagemaker_model_building_pipeline.html#model-step",
         )
         if not (step_args.create_model_request is None) ^ (
             step_args.create_model_package_request is None

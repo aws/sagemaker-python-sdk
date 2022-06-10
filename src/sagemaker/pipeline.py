@@ -84,7 +84,7 @@ class PipelineModel(object):
         self.enable_network_isolation = enable_network_isolation
         self.endpoint_name = None
 
-    def pipeline_container_def(self, instance_type):
+    def pipeline_container_def(self, instance_type=None):
         """The pipeline definition for deploying this model.
 
         This is the dict created by ``sagemaker.pipeline_container_def()``.
@@ -266,8 +266,8 @@ class PipelineModel(object):
         self,
         content_types: list,
         response_types: list,
-        inference_instances: list,
-        transform_instances: list,
+        inference_instances: Optional[list] = None,
+        transform_instances: Optional[list] = None,
         model_package_name: Optional[str] = None,
         model_package_group_name: Optional[str] = None,
         image_uri: Optional[str] = None,
@@ -278,6 +278,7 @@ class PipelineModel(object):
         description: Optional[str] = None,
         drift_check_baselines: Optional[DriftCheckBaselines] = None,
         customer_metadata_properties: Optional[Dict[str, str]] = None,
+        domain: Optional[str] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -285,9 +286,9 @@ class PipelineModel(object):
             content_types (list): The supported MIME types for the input data.
             response_types (list): The supported MIME types for the output data.
             inference_instances (list): A list of the instance types that are used to
-                generate inferences in real-time.
+                generate inferences in real-time (default: None).
             transform_instances (list): A list of the instance types on which a transformation
-                job can be run or on which an endpoint can be deployed.
+                job can be run or on which an endpoint can be deployed (default: None).
             model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
                 using `model_package_name` makes the Model Package un-versioned (default: None).
             model_package_group_name (str): Model Package Group name, exclusive to
@@ -305,6 +306,8 @@ class PipelineModel(object):
             drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
             customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
                 metadata properties (default: None).
+            domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
+                "MACHINE_LEARNING" (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -313,18 +316,23 @@ class PipelineModel(object):
             if model.model_data is None:
                 raise ValueError("SageMaker Model Package cannot be created without model data.")
         if model_package_group_name is not None:
-            container_def = self.pipeline_container_def(inference_instances[0])
+            container_def = self.pipeline_container_def(
+                inference_instances[0] if inference_instances else None
+            )
         else:
             container_def = [
-                {"Image": image_uri or model.image_uri, "ModelDataUrl": model.model_data}
+                {
+                    "Image": image_uri or model.image_uri,
+                    "ModelDataUrl": model.model_data,
+                }
                 for model in self.models
             ]
 
         model_pkg_args = sagemaker.get_model_package_args(
             content_types,
             response_types,
-            inference_instances,
-            transform_instances,
+            inference_instances=inference_instances,
+            transform_instances=transform_instances,
             model_package_name=model_package_name,
             model_package_group_name=model_package_group_name,
             model_metrics=model_metrics,
@@ -335,6 +343,7 @@ class PipelineModel(object):
             container_def_list=container_def,
             drift_check_baselines=drift_check_baselines,
             customer_metadata_properties=customer_metadata_properties,
+            domain=domain,
         )
 
         self.sagemaker_session.create_model_package_from_containers(**model_pkg_args)

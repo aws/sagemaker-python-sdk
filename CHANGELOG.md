@@ -1,5 +1,31 @@
 # Changelog
 
+## v2.94.0 (2022-06-07)
+
+### Features
+
+ * AutoGluon 0.4.2 image_uris support
+
+## v2.93.1 (2022-06-06)
+
+### Bug Fixes and Other Changes
+
+ * add input parameterization tests for workflow job steps
+ * add parameterized tests to transformer
+
+## v2.93.0 (2022-06-03)
+
+### Features
+
+ * MxNet 1.9 support
+
+### Bug Fixes and Other Changes
+
+ * bump importlib-metadata version upperbound to support TF2.9
+ * fix pipeline doc code example where process.run only accepts argument
+ * Fix Tensorflow default model_dir generation when output_path is pipeline variable
+ * Support transformer data parameterization
+
 ## v2.92.2 (2022-05-31)
 
 ### Bug Fixes and Other Changes
