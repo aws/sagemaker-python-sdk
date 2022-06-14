@@ -171,7 +171,7 @@ def test_is_pipeline_parameter_string(item):
     var, assertion = item
     assert is_pipeline_parameter_string(var) == assertion
 
-    
+
 def test_pipeline_session_context_for_model_step_without_instance_types(
     pipeline_session_mock,
 ):
