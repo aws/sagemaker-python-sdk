@@ -3138,6 +3138,48 @@ def test_register_default_image(sagemaker_session):
     )
 
 
+def test_register_default_image_without_instance_type_args(sagemaker_session):
+    estimator = Estimator(
+        IMAGE_URI,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+    )
+    estimator.set_hyperparameters(**HYPERPARAMS)
+    estimator.fit({"train": "s3://bucket/training-prefix"})
+
+    model_package_name = "test-estimator-register-model"
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+
+    estimator.register(
+        content_types=content_types,
+        response_types=response_types,
+        model_package_name=model_package_name,
+    )
+    sagemaker_session.create_model.assert_not_called()
+
+    expected_create_model_package_request = {
+        "containers": [
+            {
+                "Image": estimator.image_uri,
+                "ModelDataUrl": estimator.model_data,
+            }
+        ],
+        "content_types": content_types,
+        "response_types": response_types,
+        "inference_instances": None,
+        "transform_instances": None,
+        "model_package_name": model_package_name,
+        "marketplace_cert": False,
+    }
+    sagemaker_session.create_model_package_from_containers.assert_called_with(
+        **expected_create_model_package_request
+    )
+
+
 def test_register_inference_image(sagemaker_session):
     estimator = Estimator(
         IMAGE_URI,

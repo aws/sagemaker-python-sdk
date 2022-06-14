@@ -170,3 +170,52 @@ def test_is_pipeline_variable(item):
 def test_is_pipeline_parameter_string(item):
     var, assertion = item
     assert is_pipeline_parameter_string(var) == assertion
+
+    
+def test_pipeline_session_context_for_model_step_without_instance_types(
+    pipeline_session_mock,
+):
+    model = Model(
+        name="MyModel",
+        image_uri="fakeimage",
+        model_data=ParameterString(name="ModelData", default_value="s3://my-bucket/file"),
+        sagemaker_session=pipeline_session_mock,
+        entry_point=f"{DATA_DIR}/dummy_script.py",
+        source_dir=f"{DATA_DIR}",
+        role=_ROLE,
+    )
+
+    register_step_args = model.register(
+        content_types=["text/csv"],
+        response_types=["text/csv"],
+        model_package_group_name="MyModelPackageGroup",
+    )
+
+    expected_output = {
+        "ModelPackageGroupName": "MyModelPackageGroup",
+        "InferenceSpecification": {
+            "Containers": [
+                {
+                    "Image": "fakeimage",
+                    "Environment": {
+                        "SAGEMAKER_PROGRAM": "dummy_script.py",
+                        "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
+                        "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
+                        "SAGEMAKER_REGION": "us-west-2",
+                    },
+                    "ModelDataUrl": ParameterString(
+                        name="ModelData",
+                        default_value="s3://my-bucket/file",
+                    ),
+                }
+            ],
+            "SupportedContentTypes": ["text/csv"],
+            "SupportedResponseMIMETypes": ["text/csv"],
+            "SupportedRealtimeInferenceInstanceTypes": None,
+            "SupportedTransformInstanceTypes": None,
+        },
+        "CertifyForMarketplace": False,
+        "ModelApprovalStatus": "PendingManualApproval",
+    }
+
+    assert register_step_args.create_model_package_request == expected_output

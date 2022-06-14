@@ -296,8 +296,8 @@ class Model(ModelBase):
         self,
         content_types,
         response_types,
-        inference_instances,
-        transform_instances,
+        inference_instances=None,
+        transform_instances=None,
         model_package_name=None,
         model_package_group_name=None,
         image_uri=None,
@@ -317,9 +317,9 @@ class Model(ModelBase):
             content_types (list): The supported MIME types for the input data.
             response_types (list): The supported MIME types for the output data.
             inference_instances (list): A list of the instance types that are used to
-                generate inferences in real-time.
+                generate inferences in real-time (default: None).
             transform_instances (list): A list of the instance types on which a transformation
-                job can be run or on which an endpoint can be deployed.
+                job can be run or on which an endpoint can be deployed (default: None).
             model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
                 using `model_package_name` makes the Model Package un-versioned (default: None).
             model_package_group_name (str): Model Package Group name, exclusive to
@@ -341,7 +341,9 @@ class Model(ModelBase):
                 "MACHINE_LEARNING" (default: None).
 
         Returns:
-            A `sagemaker.model.ModelPackage` instance.
+            A `sagemaker.model.ModelPackage` instance or pipeline step arguments
+            in case the Model instance is built with
+            :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
         """
         if self.model_data is None:
             raise ValueError("SageMaker Model Package cannot be created without model data.")
@@ -351,12 +353,11 @@ class Model(ModelBase):
             container_def = self.prepare_container_def()
         else:
             container_def = {"Image": self.image_uri, "ModelDataUrl": self.model_data}
-
         model_pkg_args = sagemaker.get_model_package_args(
             content_types,
             response_types,
-            inference_instances,
-            transform_instances,
+            inference_instances=inference_instances,
+            transform_instances=transform_instances,
             model_package_name=model_package_name,
             model_package_group_name=model_package_group_name,
             model_metrics=model_metrics,
@@ -399,15 +400,22 @@ class Model(ModelBase):
                 attach to an endpoint for model loading and inference, for
                 example, 'ml.eia1.medium'. If not specified, no Elastic
                 Inference accelerator will be attached to the endpoint (default: None).
-            serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
+            serverless_inference_config (ServerlessInferenceConfig):
                 Specifies configuration related to serverless endpoint. Instance type is
                 not provided in serverless inference. So this is used to find image URIs
                 (default: None).
             tags (List[Dict[str, str]]): The list of tags to add to
-                the model (default: None). Example: >>> tags = [{'Key': 'tagname', 'Value':
-                'tagvalue'}] For more information about tags, see
-                https://boto3.amazonaws.com/v1/documentation
-                /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
+                the model (default: None). Example::
+
+                    tags = [{'Key': 'tagname', 'Value':'tagvalue'}]
+
+                For more information about tags, see
+                `boto3 documentation <https://boto3.amazonaws.com/v1/documentation/\
+api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
+
+        Returns:
+            None or pipeline step arguments in case the Model instance is built with
+            :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
         """
         # TODO: we should replace _create_sagemaker_model() with create()
         self._create_sagemaker_model(
