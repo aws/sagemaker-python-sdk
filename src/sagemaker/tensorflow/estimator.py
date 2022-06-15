@@ -216,6 +216,7 @@ class TensorFlow(Framework):
                 raise ValueError(error_string)
             if compiler_config:
                 compiler_config.validate(self)
+        self.compiler_config = compiler_config
 
     def _validate_args(self, py_version):
         """Placeholder docstring"""
