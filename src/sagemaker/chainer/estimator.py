@@ -13,6 +13,8 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
+from typing import Optional, Union, Dict
+
 import logging
 from typing import Union, Optional
 
@@ -34,26 +36,26 @@ logger = logging.getLogger("sagemaker")
 class Chainer(Framework):
     """Handle end-to-end training and deployment of custom Chainer code."""
 
-    _framework_name = "chainer"
+    _framework_name: str = "chainer"
 
     # Hyperparameters
-    _use_mpi = "sagemaker_use_mpi"
-    _num_processes = "sagemaker_num_processes"
-    _process_slots_per_host = "sagemaker_process_slots_per_host"
-    _additional_mpi_options = "sagemaker_additional_mpi_options"
+    _use_mpi: str = "sagemaker_use_mpi"
+    _num_processes: str = "sagemaker_num_processes"
+    _process_slots_per_host: str = "sagemaker_process_slots_per_host"
+    _additional_mpi_options: str = "sagemaker_additional_mpi_options"
 
     def __init__(
         self,
         entry_point: Union[str, PipelineVariable],
-        use_mpi=None,
-        num_processes=None,
-        process_slots_per_host=None,
-        additional_mpi_options=None,
+        use_mpi: Optional[Union[bool, PipelineVariable]] = None,
+        num_processes: Optional[Union[int, PipelineVariable]] = None,
+        process_slots_per_host: Optional[Union[int, PipelineVariable]] = None,
+        additional_mpi_options: Optional[Union[str, PipelineVariable]] = None,
         source_dir: Optional[Union[str, PipelineVariable]] = None,
-        hyperparameters=None,
-        framework_version=None,
-        py_version=None,
-        image_uri=None,
+        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        framework_version: Optional[str] = None,
+        py_version: Optional[str] = None,
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
         **kwargs
     ):
         """This ``Estimator`` executes an Chainer script in a managed execution environment.

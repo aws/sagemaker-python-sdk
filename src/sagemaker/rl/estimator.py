@@ -13,6 +13,8 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
+from typing import Optional, Union, List, Dict
+
 import enum
 import logging
 import re
@@ -77,13 +79,13 @@ class RLEstimator(Framework):
     def __init__(
         self,
         entry_point: Union[str, PipelineVariable],
-        toolkit=None,
-        toolkit_version=None,
-        framework=None,
+        toolkit: Optional[RLToolkit] = None,
+        toolkit_version: Optional[str] = None,
+        framework: Optional[Framework] = None,
         source_dir: Optional[Union[str, PipelineVariable]] = None,
-        hyperparameters=None,
-        image_uri=None,
-        metric_definitions=None,
+        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
+        metric_definitions: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
         **kwargs
     ):
         """Creates an RLEstimator for managed Reinforcement Learning (RL).

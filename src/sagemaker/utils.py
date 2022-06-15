@@ -36,7 +36,6 @@ from sagemaker import deprecations
 from sagemaker.session_settings import SessionSettings
 from sagemaker.workflow import is_pipeline_variable, is_pipeline_parameter_string
 
-
 ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(.*)(/)(.*:.*)$"
 MAX_BUCKET_PATHS_COUNT = 5
 S3_PREFIX = "s3://"
@@ -94,7 +93,6 @@ def unique_name_from_base(base, max_length=63):
 
 def base_name_from_image(image, default_base_name=None):
     """Extract the base name of the image to use as the 'algorithm name' for the job.
-
     Args:
         image (str): Image name.
         default_base_name (str): The default base name

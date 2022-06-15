@@ -37,83 +37,83 @@ class FactorizationMachines(AmazonAlgorithmEstimatorBase):
     sparse datasets economically.
     """
 
-    repo_name = "factorization-machines"
-    repo_version = 1
+    repo_name: str = "factorization-machines"
+    repo_version: int = 1
 
-    num_factors = hp("num_factors", gt(0), "An integer greater than zero", int)
-    predictor_type = hp(
+    num_factors: hp = hp("num_factors", gt(0), "An integer greater than zero", int)
+    predictor_type: hp = hp(
         "predictor_type",
         isin("binary_classifier", "regressor"),
         'Value "binary_classifier" or "regressor"',
         str,
     )
-    epochs = hp("epochs", gt(0), "An integer greater than 0", int)
-    clip_gradient = hp("clip_gradient", (), "A float value", float)
-    eps = hp("eps", (), "A float value", float)
-    rescale_grad = hp("rescale_grad", (), "A float value", float)
-    bias_lr = hp("bias_lr", ge(0), "A non-negative float", float)
-    linear_lr = hp("linear_lr", ge(0), "A non-negative float", float)
-    factors_lr = hp("factors_lr", ge(0), "A non-negative float", float)
-    bias_wd = hp("bias_wd", ge(0), "A non-negative float", float)
-    linear_wd = hp("linear_wd", ge(0), "A non-negative float", float)
-    factors_wd = hp("factors_wd", ge(0), "A non-negative float", float)
-    bias_init_method = hp(
+    epochs: hp = hp("epochs", gt(0), "An integer greater than 0", int)
+    clip_gradient: hp = hp("clip_gradient", (), "A float value", float)
+    eps: hp = hp("eps", (), "A float value", float)
+    rescale_grad: hp = hp("rescale_grad", (), "A float value", float)
+    bias_lr: hp = hp("bias_lr", ge(0), "A non-negative float", float)
+    linear_lr: hp = hp("linear_lr", ge(0), "A non-negative float", float)
+    factors_lr: hp = hp("factors_lr", ge(0), "A non-negative float", float)
+    bias_wd: hp = hp("bias_wd", ge(0), "A non-negative float", float)
+    linear_wd: hp = hp("linear_wd", ge(0), "A non-negative float", float)
+    factors_wd: hp = hp("factors_wd", ge(0), "A non-negative float", float)
+    bias_init_method: hp = hp(
         "bias_init_method",
         isin("normal", "uniform", "constant"),
         'Value "normal", "uniform" or "constant"',
         str,
     )
-    bias_init_scale = hp("bias_init_scale", ge(0), "A non-negative float", float)
-    bias_init_sigma = hp("bias_init_sigma", ge(0), "A non-negative float", float)
-    bias_init_value = hp("bias_init_value", (), "A float value", float)
-    linear_init_method = hp(
+    bias_init_scale: hp = hp("bias_init_scale", ge(0), "A non-negative float", float)
+    bias_init_sigma: hp = hp("bias_init_sigma", ge(0), "A non-negative float", float)
+    bias_init_value: hp = hp("bias_init_value", (), "A float value", float)
+    linear_init_method: hp = hp(
         "linear_init_method",
         isin("normal", "uniform", "constant"),
         'Value "normal", "uniform" or "constant"',
         str,
     )
-    linear_init_scale = hp("linear_init_scale", ge(0), "A non-negative float", float)
-    linear_init_sigma = hp("linear_init_sigma", ge(0), "A non-negative float", float)
-    linear_init_value = hp("linear_init_value", (), "A float value", float)
-    factors_init_method = hp(
+    linear_init_scale: hp = hp("linear_init_scale", ge(0), "A non-negative float", float)
+    linear_init_sigma: hp = hp("linear_init_sigma", ge(0), "A non-negative float", float)
+    linear_init_value: hp = hp("linear_init_value", (), "A float value", float)
+    factors_init_method: hp = hp(
         "factors_init_method",
         isin("normal", "uniform", "constant"),
         'Value "normal", "uniform" or "constant"',
         str,
     )
-    factors_init_scale = hp("factors_init_scale", ge(0), "A non-negative float", float)
-    factors_init_sigma = hp("factors_init_sigma", ge(0), "A non-negative float", float)
-    factors_init_value = hp("factors_init_value", (), "A float value", float)
+    factors_init_scale: hp = hp("factors_init_scale", ge(0), "A non-negative float", float)
+    factors_init_sigma: hp = hp("factors_init_sigma", ge(0), "A non-negative float", float)
+    factors_init_value: hp = hp("factors_init_value", (), "A float value", float)
 
     def __init__(
         self,
-        role,
-        instance_count=None,
-        instance_type=None,
-        num_factors=None,
-        predictor_type=None,
-        epochs=None,
-        clip_gradient=None,
-        eps=None,
-        rescale_grad=None,
-        bias_lr=None,
-        linear_lr=None,
-        factors_lr=None,
-        bias_wd=None,
-        linear_wd=None,
-        factors_wd=None,
-        bias_init_method=None,
-        bias_init_scale=None,
-        bias_init_sigma=None,
-        bias_init_value=None,
-        linear_init_method=None,
-        linear_init_scale=None,
-        linear_init_sigma=None,
-        linear_init_value=None,
-        factors_init_method=None,
-        factors_init_scale=None,
-        factors_init_sigma=None,
-        factors_init_value=None,
+        role: str,
+        instance_count: Optional[Union[int, PipelineVariable]] = None,
+        instance_type: Optional[Union[str, PipelineVariable]] = None,
+        num_factors: Optional[int] = None,
+        predictor_type: Optional[str] = None,
+        epochs: Optional[int] = None,
+        clip_gradient: Optional[float] = None,
+        eps: Optional[float] = None,
+        rescale_grad: Optional[float] = None,
+        bias_lr: Optional[float] = None,
+        linear_lr: Optional[float] = None,
+        factors_lr: Optional[float] = None,
+        bias_wd: Optional[float] = None,
+        linear_wd: Optional[float] = None,
+        factors_wd: Optional[float] = None,
+        bias_init_method: Optional[str] = None,
+        bias_init_scale: Optional[float] = None,
+        bias_init_sigma: Optional[float] = None,
+        bias_init_value: Optional[float] = None,
+        linear_init_method: Optional[str] = None,
+        linear_init_scale: Optional[float] = None,
+        linear_init_sigma: Optional[float] = None,
+        linear_init_value: Optional[float] = None,
+        factors_init_method: Optional[str] = None,
+        factors_init_scale: Optional[float] = None,
+        factors_init_sigma: Optional[float] = None,
+        factors_init_value: Optional[float] = None,
         **kwargs
     ):
         """Factorization Machines is :class:`Estimator` for general-purpose supervised learning.

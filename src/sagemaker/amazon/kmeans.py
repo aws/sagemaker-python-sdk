@@ -13,7 +13,7 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-from typing import Union, Optional
+from typing import Union, Optional, List
 
 from sagemaker import image_uris
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase
@@ -27,6 +27,8 @@ from sagemaker.utils import pop_out_unused_kwarg
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 from sagemaker.workflow.entities import PipelineVariable
 
+from sagemaker.workflow.entities import PipelineVariable
+
 
 class KMeans(AmazonAlgorithmEstimatorBase):
     """An unsupervised learning algorithm that attempts to find discrete groupings within data.
@@ -36,23 +38,25 @@ class KMeans(AmazonAlgorithmEstimatorBase):
     the algorithm to use to determine similarity.
     """
 
-    repo_name = "kmeans"
-    repo_version = 1
+    repo_name: str = "kmeans"
+    repo_version: str = 1
 
-    k = hp("k", gt(1), "An integer greater-than 1", int)
-    init_method = hp("init_method", isin("random", "kmeans++"), 'One of "random", "kmeans++"', str)
-    max_iterations = hp("local_lloyd_max_iter", gt(0), "An integer greater-than 0", int)
-    tol = hp("local_lloyd_tol", (ge(0), le(1)), "An float in [0, 1]", float)
-    num_trials = hp("local_lloyd_num_trials", gt(0), "An integer greater-than 0", int)
-    local_init_method = hp(
+    k: hp = hp("k", gt(1), "An integer greater-than 1", int)
+    init_method: hp = hp(
+        "init_method", isin("random", "kmeans++"), 'One of "random", "kmeans++"', str
+    )
+    max_iterations: hp = hp("local_lloyd_max_iter", gt(0), "An integer greater-than 0", int)
+    tol: hp = hp("local_lloyd_tol", (ge(0), le(1)), "An float in [0, 1]", float)
+    num_trials: hp = hp("local_lloyd_num_trials", gt(0), "An integer greater-than 0", int)
+    local_init_method: hp = hp(
         "local_lloyd_init_method", isin("random", "kmeans++"), 'One of "random", "kmeans++"', str
     )
-    half_life_time_size = hp(
+    half_life_time_size: hp = hp(
         "half_life_time_size", ge(0), "An integer greater-than-or-equal-to 0", int
     )
-    epochs = hp("epochs", gt(0), "An integer greater-than 0", int)
-    center_factor = hp("extra_center_factor", gt(0), "An integer greater-than 0", int)
-    eval_metrics = hp(
+    epochs: hp = hp("epochs", gt(0), "An integer greater-than 0", int)
+    center_factor: hp = hp("extra_center_factor", gt(0), "An integer greater-than 0", int)
+    eval_metrics: hp = hp(
         name="eval_metrics",
         validation_message='A comma separated list of "msd" or "ssd"',
         data_type=list,
@@ -60,19 +64,19 @@ class KMeans(AmazonAlgorithmEstimatorBase):
 
     def __init__(
         self,
-        role,
-        instance_count=None,
-        instance_type=None,
-        k=None,
-        init_method=None,
-        max_iterations=None,
-        tol=None,
-        num_trials=None,
-        local_init_method=None,
-        half_life_time_size=None,
-        epochs=None,
-        center_factor=None,
-        eval_metrics=None,
+        role: str,
+        instance_count: Optional[Union[int, PipelineVariable]] = None,
+        instance_type: Optional[Union[str, PipelineVariable]] = None,
+        k: Optional[int] = None,
+        init_method: Optional[str] = None,
+        max_iterations: Optional[int] = None,
+        tol: Optional[float] = None,
+        num_trials: Optional[int] = None,
+        local_init_method: Optional[str] = None,
+        half_life_time_size: Optional[int] = None,
+        epochs: Optional[int] = None,
+        center_factor: Optional[int] = None,
+        eval_metrics: Optional[List[Union[str, PipelineVariable]]] = None,
         **kwargs
     ):
         """A k-means clustering class :class:`~sagemaker.amazon.AmazonAlgorithmEstimatorBase`.

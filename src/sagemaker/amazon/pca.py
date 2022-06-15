@@ -35,22 +35,24 @@ class PCA(AmazonAlgorithmEstimatorBase):
     retain as much information as possible.
     """
 
-    repo_name = "pca"
-    repo_version = 1
+    repo_name: str = "pca"
+    repo_version: int = 1
 
-    DEFAULT_MINI_BATCH_SIZE = 500
+    DEFAULT_MINI_BATCH_SIZE: int = 500
 
-    num_components = hp("num_components", gt(0), "Value must be an integer greater than zero", int)
-    algorithm_mode = hp(
+    num_components: hp = hp(
+        "num_components", gt(0), "Value must be an integer greater than zero", int
+    )
+    algorithm_mode: hp = hp(
         "algorithm_mode",
         isin("regular", "randomized"),
         'Value must be one of "regular" and "randomized"',
         str,
     )
-    subtract_mean = hp(
+    subtract_mean: hp = hp(
         name="subtract_mean", validation_message="Value must be a boolean", data_type=bool
     )
-    extra_components = hp(
+    extra_components: hp = hp(
         name="extra_components",
         validation_message="Value must be an integer greater than or equal to 0, or -1.",
         data_type=int,
@@ -58,13 +60,13 @@ class PCA(AmazonAlgorithmEstimatorBase):
 
     def __init__(
         self,
-        role,
-        instance_count=None,
-        instance_type=None,
-        num_components=None,
-        algorithm_mode=None,
-        subtract_mean=None,
-        extra_components=None,
+        role: str,
+        instance_count: Optional[int] = None,
+        instance_type: Optional[Union[str, PipelineVariable]] = None,
+        num_components: Optional[int] = None,
+        algorithm_mode: Optional[str] = None,
+        subtract_mean: Optional[bool] = None,
+        extra_components: Optional[int] = None,
         **kwargs
     ):
         """A Principal Components Analysis (PCA)

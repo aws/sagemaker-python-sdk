@@ -13,6 +13,8 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
+from typing import Optional, Union, Dict
+
 import json
 import logging
 import tempfile
@@ -30,6 +32,9 @@ from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.utils import sagemaker_timestamp
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
+from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.workflow.parameters import ParameterBoolean
+from sagemaker.workflow import is_pipeline_variable
 
 logger = logging.getLogger(__name__)
 
@@ -42,16 +47,16 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
 
     feature_dim = hp("feature_dim", validation.gt(0), data_type=int)
     mini_batch_size = hp("mini_batch_size", validation.gt(0), data_type=int)
-    repo_name = None
-    repo_version = None
+    repo_name: Optional[str] = None
+    repo_version: Optional[str] = None
 
     def __init__(
         self,
-        role,
-        instance_count=None,
-        instance_type=None,
-        data_location=None,
-        enable_network_isolation=False,
+        role: str,
+        instance_count: Optional[Union[int]] = None,
+        instance_type: Optional[Union[str, PipelineVariable]] = None,
+        data_location: Optional[str] = None,
+        enable_network_isolation: Union[bool, ParameterBoolean] = False,
         **kwargs
     ):
         """Initialize an AmazonAlgorithmEstimatorBase.
@@ -115,6 +120,11 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
     @data_location.setter
     def data_location(self, data_location):
         """Placeholder docstring"""
+        if is_pipeline_variable(data_location):
+            raise ValueError(
+                "data_location argument has to be an integer " + "rather than a pipeline variable"
+            )
+
         if not data_location.startswith("s3://"):
             raise ValueError(
                 'Expecting an S3 URL beginning with "s3://". Got "{}"'.format(data_location)
@@ -198,12 +208,12 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
     @runnable_by_pipeline
     def fit(
         self,
-        records,
-        mini_batch_size=None,
-        wait=True,
-        logs=True,
-        job_name=None,
-        experiment_config=None,
+        records: "RecordSet",
+        mini_batch_size: Optional[int] = None,
+        wait: bool = True,
+        logs: bool = True,
+        job_name: Optional[str] = None,
+        experiment_config: Optional[Dict[str, str]] = None,
     ):
         """Fit this Estimator on serialized Record objects, stored in S3.
 

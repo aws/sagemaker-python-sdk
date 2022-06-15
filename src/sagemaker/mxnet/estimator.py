@@ -13,6 +13,8 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
+from typing import Optional, Dict, Union
+
 import logging
 from typing import Union, Optional, Dict
 

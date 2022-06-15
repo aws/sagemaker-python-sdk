@@ -17,9 +17,13 @@ data validation, and model evaluation and interpretation on SageMaker.
 """
 from __future__ import absolute_import
 
+from typing import Union, List, Dict, Optional
+
+from sagemaker.network import NetworkConfig
 from sagemaker import image_uris, Session
 from sagemaker.processing import ScriptProcessor
 from sagemaker.sklearn import defaults
+from sagemaker.workflow.entities import PipelineVariable
 
 
 class SKLearnProcessor(ScriptProcessor):
@@ -27,20 +31,20 @@ class SKLearnProcessor(ScriptProcessor):
 
     def __init__(
         self,
-        framework_version,
-        role,
-        instance_type,
-        instance_count,
-        command=None,
-        volume_size_in_gb=30,
-        volume_kms_key=None,
-        output_kms_key=None,
-        max_runtime_in_seconds=None,
-        base_job_name=None,
-        sagemaker_session=None,
-        env=None,
-        tags=None,
-        network_config=None,
+        framework_version: str,  # New arg
+        role: str,
+        instance_count: Union[int, PipelineVariable],
+        instance_type: str,
+        command: Optional[List[str]] = None,
+        volume_size_in_gb: Union[int, PipelineVariable] = 30,
+        volume_kms_key: Optional[Union[str, PipelineVariable]] = None,
+        output_kms_key: Optional[Union[str, PipelineVariable]] = None,
+        max_runtime_in_seconds: Optional[Union[int, PipelineVariable]] = None,
+        base_job_name: Optional[str] = None,
+        sagemaker_session: Optional[Session] = None,
+        env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        network_config: Optional[NetworkConfig] = None,
     ):
         """Initialize an ``SKLearnProcessor`` instance.
 

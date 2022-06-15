@@ -13,6 +13,8 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
+from typing import Optional, Union, Dict
+
 import logging
 import re
 from typing import Optional, Union, Dict
@@ -202,8 +204,14 @@ class HuggingFace(Framework):
                     f"Instead got {type(compiler_config)}"
                 )
                 raise ValueError(error_string)
-            if compiler_config:
-                compiler_config.validate(self)
+
+            compiler_config.validate(
+                image_uri=image_uri,
+                instance_type=instance_type,
+                distribution=distribution,
+            )
+
+        self.distribution = distribution or {}
         self.compiler_config = compiler_config
 
     def _validate_args(self, image_uri):

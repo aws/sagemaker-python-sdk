@@ -555,7 +555,7 @@ def validate_smdistributed(
     if "smdistributed" not in distribution:
         # Distribution strategy other than smdistributed is selected
         return
-    if is_pipeline_variable(instance_type):
+    if is_pipeline_variable(instance_type) or (image_uri and is_pipeline_variable(image_uri)):
         # The instance_type is not available in compile time.
         # Rather, it's given in Pipeline execution time
         return

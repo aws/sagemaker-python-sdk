@@ -13,15 +13,22 @@
 """Test docstring"""
 from __future__ import absolute_import
 
+from typing import Optional, Union, Dict, List
+
 import sagemaker
 import sagemaker.parameter
 from sagemaker import vpc_utils
 from sagemaker.deserializers import BytesDeserializer
 from sagemaker.deprecations import removed_kwargs
 from sagemaker.estimator import EstimatorBase
+from sagemaker.inputs import TrainingInput, FileSystemInput
 from sagemaker.serializers import IdentitySerializer
 from sagemaker.transformer import Transformer
 from sagemaker.predictor import Predictor
+from sagemaker.session import Session
+from sagemaker.workflow.entities import PipelineVariable
+
+from sagemaker.workflow import is_pipeline_variable
 
 
 class AlgorithmEstimator(EstimatorBase):
@@ -37,28 +44,28 @@ class AlgorithmEstimator(EstimatorBase):
 
     def __init__(
         self,
-        algorithm_arn,
-        role,
-        instance_count,
-        instance_type,
-        volume_size=30,
-        volume_kms_key=None,
-        max_run=24 * 60 * 60,
-        input_mode="File",
-        output_path=None,
-        output_kms_key=None,
-        base_job_name=None,
-        sagemaker_session=None,
-        hyperparameters=None,
-        tags=None,
-        subnets=None,
-        security_group_ids=None,
-        model_uri=None,
-        model_channel_name="model",
-        metric_definitions=None,
-        encrypt_inter_container_traffic=False,
-        use_spot_instances=False,
-        max_wait=None,
+        algorithm_arn: str,
+        role: str,
+        instance_count: Optional[Union[int, PipelineVariable]] = None,
+        instance_type: Optional[Union[str, PipelineVariable]] = None,
+        volume_size: Union[int, PipelineVariable] = 30,
+        volume_kms_key: Optional[Union[str, PipelineVariable]] = None,
+        max_run: Union[int, PipelineVariable] = 24 * 60 * 60,
+        input_mode: Union[str, PipelineVariable] = "File",
+        output_path: Optional[Union[str, PipelineVariable]] = None,
+        output_kms_key: Optional[Union[str, PipelineVariable]] = None,
+        base_job_name: Optional[str] = None,
+        sagemaker_session: Optional[Session] = None,
+        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        subnets: Optional[List[Union[str, PipelineVariable]]] = None,
+        security_group_ids: Optional[List[Union[str, PipelineVariable]]] = None,
+        model_uri: Optional[str] = None,
+        model_channel_name: Union[str, PipelineVariable] = "model",
+        metric_definitions: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        encrypt_inter_container_traffic: Union[bool, PipelineVariable] = False,
+        use_spot_instances: Union[bool, PipelineVariable] = False,
+        max_wait: Union[int, PipelineVariable] = None,
         **kwargs  # pylint: disable=W0613
     ):
         """Initialize an ``AlgorithmEstimator`` instance.
@@ -186,7 +193,7 @@ class AlgorithmEstimator(EstimatorBase):
         # Check that the input mode provided is compatible with the training input modes for the
         # algorithm.
         input_modes = self._algorithm_training_input_modes(train_spec["TrainingChannels"])
-        if self.input_mode not in input_modes:
+        if not is_pipeline_variable(self.input_mode) and self.input_mode not in input_modes:
             raise ValueError(
                 "Invalid input mode: %s. %s only supports: %s"
                 % (self.input_mode, algorithm_name, input_modes)
@@ -194,14 +201,17 @@ class AlgorithmEstimator(EstimatorBase):
 
         # Check that the training instance type is compatible with the algorithm.
         supported_instances = train_spec["SupportedTrainingInstanceTypes"]
-        if self.instance_type not in supported_instances:
+        if (
+            not is_pipeline_variable(self.instance_type)
+            and self.instance_type not in supported_instances
+        ):
             raise ValueError(
                 "Invalid instance_type: %s. %s supports the following instance types: %s"
                 % (self.instance_type, algorithm_name, supported_instances)
             )
 
         # Verify if distributed training is supported by the algorithm
-        if (
+        if not is_pipeline_variable(self.instance_count) and (
             self.instance_count > 1
             and "SupportsDistributedTraining" in train_spec
             and not train_spec["SupportsDistributedTraining"]
@@ -414,12 +424,18 @@ class AlgorithmEstimator(EstimatorBase):
 
         super(AlgorithmEstimator, self)._prepare_for_training(job_name)
 
-    def fit(self, inputs=None, wait=True, logs=True, job_name=None):
+    def fit(
+        self,
+        inputs: Optional[Union[str, Dict, TrainingInput, FileSystemInput]] = None,
+        wait: bool = True,
+        logs: bool = True,
+        job_name: Optional[str] = None,
+    ):
         """Placeholder docstring"""
         if inputs:
             self._validate_input_channels(inputs)
 
-        super(AlgorithmEstimator, self).fit(inputs, wait, logs, job_name)
+        return super(AlgorithmEstimator, self).fit(inputs, wait, logs, job_name)
 
     def _validate_input_channels(self, channels):
         """Placeholder docstring"""

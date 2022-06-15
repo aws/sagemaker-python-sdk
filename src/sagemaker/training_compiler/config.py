@@ -14,6 +14,8 @@
 from __future__ import absolute_import
 import logging
 
+from sagemaker.workflow import is_pipeline_variable
+
 logger = logging.getLogger(__name__)
 
 
@@ -132,6 +134,19 @@ class TrainingCompilerConfig(object):
             ValueError: Raised if the requested configuration is not compatible
                         with SageMaker Training Compiler.
         """
+        if estimator.image_uri:
+            error_helper_string = (
+                "Overriding the image URI is currently not supported "
+                "for SageMaker Training Compiler."
+                "Specify the following parameters to run the Hugging Face training job "
+                "with SageMaker Training Compiler enabled: "
+                "transformer_version, tensorflow_version or pytorch_version, and compiler_config."
+            )
+            raise ValueError(error_helper_string)
+
+        if is_pipeline_variable(estimator.instance_type):
+            # skip the validation if either instance type is a pipeline variable
+            return
 
         if "local" not in estimator.instance_type:
             requested_instance_class = estimator.instance_type.split(".")[

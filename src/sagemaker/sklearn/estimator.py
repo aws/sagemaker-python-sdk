@@ -13,6 +13,8 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
+from typing import Optional, Union, Dict
+
 import logging
 from typing import Union, Optional
 
@@ -28,6 +30,7 @@ from sagemaker.sklearn import defaults
 from sagemaker.sklearn.model import SKLearnModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.workflow import is_pipeline_variable
 
 logger = logging.getLogger("sagemaker")
 
@@ -40,12 +43,12 @@ class SKLearn(Framework):
     def __init__(
         self,
         entry_point: Union[str, PipelineVariable],
-        framework_version=None,
-        py_version="py3",
+        framework_version: Optional[str] = None,
+        py_version: str = "py3",
         source_dir: Optional[Union[str, PipelineVariable]] = None,
-        hyperparameters=None,
-        image_uri=None,
-        image_uri_region=None,
+        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
+        image_uri_region: Optional[str] = None,
         **kwargs
     ):
         """Creates a SKLearn Estimator for Scikit-learn environment.
@@ -128,11 +131,17 @@ class SKLearn(Framework):
         self.framework_version = framework_version
         self.py_version = py_version
 
+        if instance_type:
+            if is_pipeline_variable(instance_type):
+                raise ValueError("instance_count argument cannot be a pipeline variable")
         # SciKit-Learn does not support distributed training or training on GPU instance types.
         # Fail fast.
         _validate_not_gpu_instance_type(instance_type)
 
         if instance_count:
+            if is_pipeline_variable(instance_count):
+                raise ValueError("instance_count argument cannot be a pipeline variable")
+
             if instance_count != 1:
                 raise AttributeError(
                     "Scikit-Learn does not support distributed training. Please remove the "
@@ -148,6 +157,12 @@ class SKLearn(Framework):
         )
 
         if image_uri is None:
+
+            if is_pipeline_variable(instance_type):
+                raise ValueError(
+                    "instance_type argument cannot be a pipeline variable when image_uri is not given."
+                )
+
             self.image_uri = image_uris.retrieve(
                 SKLearn._framework_name,
                 image_uri_region or self.sagemaker_session.boto_region_name,

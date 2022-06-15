@@ -13,6 +13,8 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
+from typing import Optional, Union, Dict
+
 import logging
 from typing import Union, Optional
 
@@ -45,12 +47,12 @@ class PyTorch(Framework):
     def __init__(
         self,
         entry_point: Union[str, PipelineVariable],
-        framework_version=None,
-        py_version=None,
+        framework_version: Optional[str] = None,
+        py_version: Optional[str] = None,
         source_dir: Optional[Union[str, PipelineVariable]] = None,
-        hyperparameters=None,
-        image_uri=None,
-        distribution=None,
+        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
+        distribution: Dict = None,
         **kwargs
     ):
         """This ``Estimator`` executes a PyTorch script in a managed PyTorch execution environment.

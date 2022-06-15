@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import json
+from sagemaker.workflow import is_pipeline_variable
 
 from sagemaker.workflow import is_pipeline_variable
 

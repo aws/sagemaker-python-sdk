@@ -356,7 +356,6 @@ def test_processing_step_with_script_processor(pipeline_session, processing_inpu
     processor = ScriptProcessor(
         role=ROLE,
         image_uri=IMAGE_URI,
-        command=["python3"],
         instance_type=INSTANCE_TYPE,
         instance_count=1,
         volume_size_in_gb=100,
@@ -429,6 +428,9 @@ def test_processing_step_with_framework_processor(
         step_args["ProcessingOutputConfig"]["Outputs"][0]["S3Output"]["S3Uri"]
         == processing_output.destination
     )
+
+    del step_args["AppSpecification"]["ContainerEntrypoint"]
+    del step_def["Arguments"]["AppSpecification"]["ContainerEntrypoint"]
 
     del step_args["ProcessingInputs"][0]["S3Input"]["S3Uri"]
     del step_def["Arguments"]["ProcessingInputs"][0]["S3Input"]["S3Uri"]

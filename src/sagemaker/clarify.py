@@ -17,6 +17,8 @@ SageMaker Clarify
 """
 from __future__ import absolute_import, print_function
 
+from typing import Union, List, Optional, Dict, Any
+
 import copy
 import json
 import logging
@@ -26,25 +28,29 @@ import re
 import tempfile
 from abc import ABC, abstractmethod
 from sagemaker import image_uris, s3, utils
+from sagemaker.session import Session
+from sagemaker.network import NetworkConfig
 from sagemaker.processing import ProcessingInput, ProcessingOutput, Processor
+from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.workflow import is_pipeline_variable
 
 logger = logging.getLogger(__name__)
 
 
-class DataConfig:
+class DataConfig:  #TODO: add PipelineVariable to rest of fields
     """Config object related to configurations of the input and output dataset."""
 
     def __init__(
         self,
-        s3_data_input_path,
-        s3_output_path,
-        s3_analysis_config_output_path=None,
-        label=None,
-        headers=None,
-        features=None,
-        dataset_type="text/csv",
-        s3_compression_type="None",
-        joinsource=None,
+        s3_data_input_path: Union[str, PipelineVariable],
+        s3_output_path: Union[str, PipelineVariable],
+        s3_analysis_config_output_path: Optional[str] = None,
+        label: Optional[str] = None,
+        headers: Optional[List[str]] = None,
+        features: Optional[List[str]] = None,
+        dataset_type: str = "text/csv",
+        s3_compression_type: str = "None",
+        joinsource: str = None,
         facet_dataset_uri=None,
         facet_headers=None,
         predicted_label_dataset_uri=None,
@@ -186,10 +192,10 @@ class BiasConfig:
 
     def __init__(
         self,
-        label_values_or_threshold,
-        facet_name,
-        facet_values_or_threshold=None,
-        group_name=None,
+        label_values_or_threshold: Union[int, float, str],
+        facet_name: Union[str, int, List[str], List[int]],
+        facet_values_or_threshold: Optional[Union[int, float, str]] = None,
+        group_name: Optional[str] = None,
     ):
         """Initializes a configuration of the sensitive groups in the dataset.
 
@@ -265,21 +271,21 @@ class BiasConfig:
         return copy.deepcopy(self.analysis_config)
 
 
-class ModelConfig:
+class ModelConfig: # TODO add pipeline annotation
     """Config object related to a model and its endpoint to be created."""
 
     def __init__(
         self,
-        model_name,
-        instance_count,
-        instance_type,
-        accept_type=None,
-        content_type=None,
-        content_template=None,
-        custom_attributes=None,
-        accelerator_type=None,
-        endpoint_name_prefix=None,
-        target_model=None,
+        model_name: str,
+        instance_count: int,
+        instance_type: str,
+        accept_type: Optional[str] = None,
+        content_type: Optional[str] = None,
+        content_template: Optional[str] = None,
+        custom_attributes: Optional[str] = None,
+        accelerator_type: Optional[str] = None,
+        endpoint_name_prefix: Optional[str] = None,
+        target_model: Optional[str] = None,
     ):
         r"""Initializes a configuration of a model and the endpoint to be created for it.
 
@@ -378,10 +384,10 @@ class ModelPredictedLabelConfig:
 
     def __init__(
         self,
-        label=None,
-        probability=None,
-        probability_threshold=None,
-        label_headers=None,
+        label: Optional[Union[str, int]] = None,
+        probability: Optional[Union[str, int]] = None,
+        probability_threshold: Optional[float] = None,
+        label_headers: Optional[List[str]] = None,
     ):
         """Initializes a model output config to extract the predicted label or predicted score(s).
 
@@ -473,7 +479,9 @@ class PDPConfig(ExplainabilityConfig):
     and the corresponding values are included in the analysis output.
     """  # noqa E501
 
-    def __init__(self, features=None, grid_resolution=15, top_k_features=10):
+    def __init__(
+        self, features: Optional[List] = None, grid_resolution: int = 15, top_k_features: int = 10
+    ):
         """Initializes PDP config.
 
         Args:
@@ -641,8 +649,8 @@ class TextConfig:
 
     def __init__(
         self,
-        granularity,
-        language,
+        granularity: str,
+        language: str,
     ):
         """Initializes a text configuration.
 
@@ -697,13 +705,13 @@ class ImageConfig:
 
     def __init__(
         self,
-        model_type,
-        num_segments=None,
-        feature_extraction_method=None,
-        segment_compactness=None,
-        max_objects=None,
-        iou_threshold=None,
-        context=None,
+        model_type: str,
+        num_segments: Optional[int] = None,
+        feature_extraction_method: Optional[str] = None,
+        segment_compactness: Optional[float] = None,
+        max_objects: Optional[int] = None,
+        iou_threshold: Optional[float] = None,
+        context: Optional[float] = None,
     ):
         """Initializes a config object for Computer Vision (CV) Image explainability.
 
@@ -778,15 +786,15 @@ class SHAPConfig(ExplainabilityConfig):
 
     def __init__(
         self,
-        baseline=None,
-        num_samples=None,
-        agg_method=None,
-        use_logit=False,
-        save_local_shap_values=True,
-        seed=None,
-        num_clusters=None,
-        text_config=None,
-        image_config=None,
+        baseline: Optional[Union[str, List]] = None,
+        num_samples: Optional[int] = None,
+        agg_method: Optional[str] = None,
+        use_logit: Optional[bool] = None,
+        save_local_shap_values: Optional[bool] = None,
+        seed: Optional[int] = None,
+        num_clusters: Optional[int] = None,
+        text_config: Optional[TextConfig] = None,
+        image_config: Optional[ImageConfig] = None,
     ):
         """Initializes config for SHAP analysis.
 
@@ -866,19 +874,19 @@ class SageMakerClarifyProcessor(Processor):
 
     def __init__(
         self,
-        role,
-        instance_count,
-        instance_type,
-        volume_size_in_gb=30,
-        volume_kms_key=None,
-        output_kms_key=None,
-        max_runtime_in_seconds=None,
-        sagemaker_session=None,
-        env=None,
-        tags=None,
-        network_config=None,
-        job_name_prefix=None,
-        version=None,
+        role: str,
+        instance_count: Union[int, PipelineVariable],
+        instance_type: Union[str, PipelineVariable],
+        volume_size_in_gb: Union[int, PipelineVariable] = 30,
+        volume_kms_key: Optional[Union[str, PipelineVariable]] = None,
+        output_kms_key: Optional[Union[str, PipelineVariable]] = None,
+        max_runtime_in_seconds: Optional[Union[int, PipelineVariable]] = None,
+        sagemaker_session: Optional[Session] = None,
+        env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        network_config: Optional[NetworkConfig] = None,
+        job_name_prefix: Optional[str] = None,
+        version: Optional[str] = None,
     ):
         """Initializes a SageMakerClarifyProcessor to compute bias metrics and model explanations.
 
@@ -949,13 +957,13 @@ class SageMakerClarifyProcessor(Processor):
 
     def _run(
         self,
-        data_config,
-        analysis_config,
-        wait,
-        logs,
-        job_name,
-        kms_key,
-        experiment_config,
+        data_config: DataConfig,
+        analysis_config: Dict[str, Any],
+        wait: bool,
+        logs: bool,
+        job_name: str,
+        kms_key: str,
+        experiment_config: Dict[str, str],
     ):
         """Runs a :class:`~sagemaker.processing.ProcessingJob` with the SageMaker Clarify container
 
@@ -991,6 +999,15 @@ class SageMakerClarifyProcessor(Processor):
             analysis_config_file = os.path.join(tmpdirname, "analysis_config.json")
             with open(analysis_config_file, "w") as f:
                 json.dump(analysis_config, f)
+
+            if (
+                is_pipeline_variable(data_config.s3_data_input_path)
+                and not data_config.s3_analysis_config_output_path
+            ):
+                raise ValueError(
+                    "If s3_data_input_path for DataConfig is a pipeline variable, "
+                    "s3_analysis_config_output_path must not be null"
+                )
             s3_analysis_config_file = _upload_analysis_config(
                 analysis_config_file,
                 data_config.s3_analysis_config_output_path or data_config.s3_output_path,
@@ -1033,14 +1050,14 @@ class SageMakerClarifyProcessor(Processor):
 
     def run_pre_training_bias(
         self,
-        data_config,
-        data_bias_config,
-        methods="all",
-        wait=True,
-        logs=True,
-        job_name=None,
-        kms_key=None,
-        experiment_config=None,
+        data_config: DataConfig,
+        data_bias_config: BiasConfig,
+        methods: str = "all",
+        wait: bool = True,
+        logs: bool = True,
+        job_name: str = None,
+        kms_key: str = None,
+        experiment_config: Dict[str, str] = None,
     ):
         """Runs a :class:`~sagemaker.processing.ProcessingJob` to compute pre-training bias methods
 
@@ -1103,16 +1120,16 @@ class SageMakerClarifyProcessor(Processor):
 
     def run_post_training_bias(
         self,
-        data_config,
-        data_bias_config,
-        model_config,
-        model_predicted_label_config,
-        methods="all",
-        wait=True,
-        logs=True,
-        job_name=None,
-        kms_key=None,
-        experiment_config=None,
+        data_config: DataConfig,
+        data_bias_config: BiasConfig,
+        model_config: ModelConfig,
+        model_predicted_label_config: ModelPredictedLabelConfig,
+        methods: str = "all",
+        wait: bool = True,
+        logs: bool = True,
+        job_name: str = None,
+        kms_key: str = None,
+        experiment_config: Dict[str, str] = None,
     ):
         """Runs a :class:`~sagemaker.processing.ProcessingJob` to compute posttraining bias
 
@@ -1192,17 +1209,17 @@ class SageMakerClarifyProcessor(Processor):
 
     def run_bias(
         self,
-        data_config,
-        bias_config,
-        model_config,
-        model_predicted_label_config=None,
-        pre_training_methods="all",
-        post_training_methods="all",
-        wait=True,
-        logs=True,
-        job_name=None,
-        kms_key=None,
-        experiment_config=None,
+        data_config: DataConfig,
+        bias_config: BiasConfig,
+        model_config: ModelConfig,
+        model_predicted_label_config: ModelPredictedLabelConfig = None,
+        pre_training_methods: str = "all",
+        post_training_methods: str = "all",
+        wait: bool = True,
+        logs: bool = True,
+        job_name: str = None,
+        kms_key: str = None,
+        experiment_config: Dict[str, str] = None,
     ):
         """Runs a :class:`~sagemaker.processing.ProcessingJob` to compute the requested bias methods
 
@@ -1298,15 +1315,15 @@ class SageMakerClarifyProcessor(Processor):
 
     def run_explainability(
         self,
-        data_config,
-        model_config,
-        explainability_config,
-        model_scores=None,
-        wait=True,
-        logs=True,
-        job_name=None,
-        kms_key=None,
-        experiment_config=None,
+        data_config: DataConfig,
+        model_config: ModelConfig,
+        explainability_config: Union[ExplainabilityConfig, List],
+        model_scores: Union[int, ModelPredictedLabelConfig] = None,
+        wait: bool = True,
+        logs: bool = True,
+        job_name: str = None,
+        kms_key: str = None,
+        experiment_config: Dict[str, str] = None,
     ):
         """Runs a :class:`~sagemaker.processing.ProcessingJob` computing feature attributions.
 
