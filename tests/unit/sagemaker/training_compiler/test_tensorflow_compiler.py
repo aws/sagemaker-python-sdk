@@ -131,6 +131,7 @@ def _create_train_job(framework_version, instance_type, training_compiler_config
                 "s3://{}/{}/source/sourcedir.tar.gz".format(BUCKET_NAME, JOB_NAME)
             ),
             "sagemaker_region": '"us-east-1"',
+            "model_dir": json.dumps("s3://{}/{}/model".format(BUCKET_NAME, JOB_NAME)),
         },
         "stop_condition": {"MaxRuntimeInSeconds": 24 * 60 * 60},
         "tags": None,
@@ -286,6 +287,7 @@ class TestTrainingCompilerConfig:
             actual_train_args == expected_train_args
         ), f"{json.dumps(actual_train_args, indent=2)} != {json.dumps(expected_train_args, indent=2)}"
 
+    @pytest.mark.parametrize("instance_class", SUPPORTED_GPU_INSTANCE_CLASSES)
     def test_byoc(
         self,
         time,
