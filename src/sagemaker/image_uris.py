@@ -134,21 +134,18 @@ def retrieve(
             tolerate_vulnerable_model,
             tolerate_deprecated_model,
         )
-    if training_compiler_config is None:
+
+    if training_compiler_config and (framework == HUGGING_FACE_FRAMEWORK):
+        config = _config_for_framework_and_scope(
+            framework + "-training-compiler", image_scope, accelerator_type
+        )
+    else:
         _framework = framework
         if framework == HUGGING_FACE_FRAMEWORK:
             inference_tool = _get_inference_tool(inference_tool, instance_type)
             if inference_tool == "neuron":
                 _framework = f"{framework}-{inference_tool}"
         config = _config_for_framework_and_scope(_framework, image_scope, accelerator_type)
-    elif framework == HUGGING_FACE_FRAMEWORK:
-        config = _config_for_framework_and_scope(
-            framework + "-training-compiler", image_scope, accelerator_type
-        )
-    else:
-        raise ValueError(
-            "Unsupported Configuration: Training Compiler is only supported with HuggingFace"
-        )
 
     original_version = version
     version = _validate_version_and_set_if_needed(version, config, framework)
