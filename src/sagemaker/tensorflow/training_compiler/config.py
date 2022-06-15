@@ -25,7 +25,7 @@ class TrainingCompilerConfig(BaseConfig):
     """The SageMaker Training Compiler configuration class."""
 
     SUPPORTED_INSTANCE_CLASS_PREFIXES = ["p3", "g4dn", "p4", "g5"]
-    MIN_SUPPORTED_VERSION = "2.9.1"
+    MIN_SUPPORTED_VERSION = "2.9"
 
     def __init__(
         self,
