@@ -93,7 +93,7 @@ def _get_full_gpu_image_uri(framework_version, instance_type, training_compiler_
         py_version=py_version,
         instance_type=instance_type,
         image_scope="training",
-        container_version="cu112-ubuntu20.04",
+        container_version=None,
         training_compiler_config=training_compiler_config,
     )
 
