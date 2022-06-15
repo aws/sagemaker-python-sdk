@@ -383,6 +383,13 @@ class TensorFlow(Framework):
         hyperparameters.update(
             EstimatorBase._json_encode_hyperparameters(additional_hyperparameters)
         )
+
+        if self.compiler_config:
+            training_compiler_hyperparameters = self.compiler_config._to_hyperparameter_dict()
+            hyperparameters.update(
+                EstimatorBase._json_encode_hyperparameters(training_compiler_hyperparameters)
+            )
+
         return hyperparameters
 
     def _default_s3_path(self, directory, mpi=False):
