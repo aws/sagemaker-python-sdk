@@ -261,7 +261,7 @@ def test_update_feature_group(
         new_feature_name = "new_feature"
         new_features = [FractionalFeatureDefinition(feature_name=new_feature_name)]
         feature_group.update(new_features)
-        time.sleep(10)
+        _wait_for_feature_group_update(feature_group)
         feature_definitions = feature_group.describe().get("FeatureDefinitions")
         assert any([True for elem in feature_definitions if new_feature_name in elem.values()])
 
@@ -380,6 +380,18 @@ def _wait_for_feature_group_create(feature_group: FeatureGroup):
         print(feature_group.describe())
         raise RuntimeError(f"Failed to create feature group {feature_group.name}")
     print(f"FeatureGroup {feature_group.name} successfully created.")
+
+
+def _wait_for_feature_group_update(feature_group: FeatureGroup):
+    status = feature_group.describe().get("LastUpdateStatus").get("Status")
+    while status == "InProgress":
+        print("Waiting for Feature Group Update")
+        time.sleep(5)
+        status = feature_group.describe().get("LastUpdateStatus").get("Status")
+    if status != "Successful":
+        print(feature_group.describe())
+        raise RuntimeError(f"Failed to update feature group {feature_group.name}")
+    print(f"FeatureGroup {feature_group.name} successfully updated.")
 
 
 @contextmanager
