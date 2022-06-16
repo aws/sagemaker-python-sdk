@@ -1,5 +1,23 @@
 # Changelog
 
+## v2.95.0 (2022-06-16)
+
+### Features
+
+ * Adding Training Compiler support for TensorFlow estimator starting TF 2.9
+ * Add support for TF 2.9 training
+
+### Bug Fixes and Other Changes
+
+ * integs fallback from p3 to p2 instance
+ * bucket exists check for session.default_bucket
+ * make instance type fields as optional
+
+### Documentation Changes
+
+ * improvements on the docstring of ModelStep
+ * Add XGBoostProcessor
+
 ## v2.94.0 (2022-06-07)
 
 ### Features
