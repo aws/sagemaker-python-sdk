@@ -246,17 +246,17 @@ class RegisterModel(StepCollection):  # pragma: no cover
                         inference_instances[0] if inference_instances else None
                     )
                 ]
-            self.container_def_list[0].update(
-                {
-                    "Framework": framework,
-                    "FrameworkVersion": framework_version,
-                    "NearestModelName": nearest_model_name,
-                    "ModelInput": {
-                        "DataInputConfig": data_input_configuration,
-                    },
-                }
-            )
-
+            for container_obj in self.container_def_list:
+                container_obj.update(
+                    {
+                        "Framework": framework,
+                        "FrameworkVersion": framework_version,
+                        "NearestModelName": nearest_model_name,
+                        "ModelInput": {
+                            "DataInputConfig": data_input_configuration,
+                        },
+                    }
+                )
         register_model_step = _RegisterModelStep(
             name=name,
             estimator=estimator,

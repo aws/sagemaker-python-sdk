@@ -368,6 +368,12 @@ def test_register_model(estimator, model_metrics, drift_check_baselines):
         display_name="RegisterModelStep",
         depends_on=["TestStep"],
         tags=[{"Key": "myKey", "Value": "myValue"}],
+        sample_payload_url="s3://test-bucket/model",
+        task="IMAGE_CLASSIFICATION",
+        framework="TENSORFLOW",
+        framework_version="2.9",
+        nearest_model_name="resnet50",
+        data_input_configuration='{"input_1":[1,224,224,3]}',
     )
     assert ordered(register_model.request_dicts()) == ordered(
         [
@@ -383,6 +389,12 @@ def test_register_model(estimator, model_metrics, drift_check_baselines):
                             {
                                 "Image": "012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri",
                                 "ModelDataUrl": f"s3://{BUCKET}/model.tar.gz",
+                                "Framework": None,
+                                "FrameworkVersion": None,
+                                "NearestModelName": None,
+                                "ModelInput": {
+                                    "DataInputConfig": None,
+                                },
                             }
                         ],
                         "SupportedContentTypes": ["content_type"],
@@ -412,6 +424,8 @@ def test_register_model(estimator, model_metrics, drift_check_baselines):
                     "ModelPackageDescription": "description",
                     "ModelPackageGroupName": "mpg",
                     "Tags": [{"Key": "myKey", "Value": "myValue"}],
+                    "SamplePayloadUrl": "s3://test-bucket/model",
+                    "Task": "IMAGE_CLASSIFICATION",
                 },
             },
         ]
@@ -433,6 +447,12 @@ def test_register_model_tf(estimator_tf, model_metrics, drift_check_baselines):
         drift_check_baselines=drift_check_baselines,
         approval_status="Approved",
         description="description",
+        sample_payload_url="s3://test-bucket/model",
+        task="IMAGE_CLASSIFICATION",
+        framework="TENSORFLOW",
+        framework_version="2.9",
+        nearest_model_name="resnet50",
+        data_input_configuration='{"input_1":[1,224,224,3]}',
     )
     assert ordered(register_model.request_dicts()) == ordered(
         [
@@ -446,6 +466,12 @@ def test_register_model_tf(estimator_tf, model_metrics, drift_check_baselines):
                             {
                                 "Image": "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-inference:1.15.2-cpu",
                                 "ModelDataUrl": f"s3://{BUCKET}/model.tar.gz",
+                                "Framework": None,
+                                "FrameworkVersion": None,
+                                "NearestModelName": None,
+                                "ModelInput": {
+                                    "DataInputConfig": None,
+                                },
                             }
                         ],
                         "SupportedContentTypes": ["content_type"],
@@ -474,6 +500,8 @@ def test_register_model_tf(estimator_tf, model_metrics, drift_check_baselines):
                     },
                     "ModelPackageDescription": "description",
                     "ModelPackageGroupName": "mpg",
+                    "SamplePayloadUrl": "s3://test-bucket/model",
+                    "Task": "IMAGE_CLASSIFICATION",
                 },
             },
         ]
@@ -502,6 +530,12 @@ def test_register_model_sip(estimator, model_metrics, drift_check_baselines):
         description="description",
         model=pipeline_model,
         depends_on=["TestStep"],
+        sample_payload_url="s3://test-bucket/model",
+        task="IMAGE_CLASSIFICATION",
+        framework="TENSORFLOW",
+        framework_version="2.9",
+        nearest_model_name="resnet50",
+        data_input_configuration='{"input_1":[1,224,224,3]}',
     )
     assert ordered(register_model.request_dicts()) == ordered(
         [
@@ -517,11 +551,23 @@ def test_register_model_sip(estimator, model_metrics, drift_check_baselines):
                                 "Image": "fakeimage1",
                                 "ModelDataUrl": "Url1",
                                 "Environment": [{"k1": "v1"}, {"k2": "v2"}],
+                                "Framework": "TENSORFLOW",
+                                "FrameworkVersion": "2.9",
+                                "NearestModelName": "resnet50",
+                                "ModelInput": {
+                                    "DataInputConfig": '{"input_1":[1,224,224,3]}',
+                                },
                             },
                             {
                                 "Image": "fakeimage2",
                                 "ModelDataUrl": "Url2",
                                 "Environment": [{"k3": "v3"}, {"k4": "v4"}],
+                                "Framework": "TENSORFLOW",
+                                "FrameworkVersion": "2.9",
+                                "NearestModelName": "resnet50",
+                                "ModelInput": {
+                                    "DataInputConfig": '{"input_1":[1,224,224,3]}',
+                                },
                             },
                         ],
                         "SupportedContentTypes": ["content_type"],
@@ -550,6 +596,8 @@ def test_register_model_sip(estimator, model_metrics, drift_check_baselines):
                     },
                     "ModelPackageDescription": "description",
                     "ModelPackageGroupName": "mpg",
+                    "SamplePayloadUrl": "s3://test-bucket/model",
+                    "Task": "IMAGE_CLASSIFICATION",
                 },
             },
         ]
@@ -578,6 +626,12 @@ def test_register_model_with_model_repack_with_estimator(
         dependencies=[dummy_requirements],
         depends_on=["TestStep"],
         tags=[{"Key": "myKey", "Value": "myValue"}],
+        sample_payload_url="s3://test-bucket/model",
+        task="IMAGE_CLASSIFICATION",
+        framework="TENSORFLOW",
+        framework_version="2.9",
+        nearest_model_name="resnet50",
+        data_input_configuration='{"input_1":[1,224,224,3]}',
     )
 
     request_dicts = register_model.request_dicts()
@@ -649,6 +703,15 @@ def test_register_model_with_model_repack_with_estimator(
             assert isinstance(
                 arguments["InferenceSpecification"]["Containers"][0]["ModelDataUrl"], Properties
             )
+            assert arguments["InferenceSpecification"]["Containers"][0]["Framework"] == None
+            assert arguments["InferenceSpecification"]["Containers"][0]["FrameworkVersion"] == None
+            assert arguments["InferenceSpecification"]["Containers"][0]["NearestModelName"] == None
+            assert (
+                arguments["InferenceSpecification"]["Containers"][0]["ModelInput"][
+                    "DataInputConfig"
+                ]
+                == None
+            )
             del arguments["InferenceSpecification"]["Containers"]
             assert ordered(arguments) == ordered(
                 {
@@ -680,6 +743,8 @@ def test_register_model_with_model_repack_with_estimator(
                     "ModelPackageDescription": "description",
                     "ModelPackageGroupName": "mpg",
                     "Tags": [{"Key": "myKey", "Value": "myValue"}],
+                    "SamplePayloadUrl": "s3://test-bucket/model",
+                    "Task": "IMAGE_CLASSIFICATION",
                 }
             )
         else:

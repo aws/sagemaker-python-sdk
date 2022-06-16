@@ -4314,11 +4314,11 @@ def get_model_package_args(
         container = {
             "Image": image_uri,
             "ModelDataUrl": model_data,
-            "Framework": container_def_list[0]["Framework"],
-            "FrameworkVersion": container_def_list[0]["FrameworkVersion"],
-            "NearestModelName": container_def_list[0]["NearestModelName"],
+            "Framework": None,
+            "FrameworkVersion": None,
+            "NearestModelName": None,
             "ModelInput": {
-                "DataInputConfig": container_def_list[0]["ModelInput"]["DataInputConfig"],
+                "DataInputConfig": None,
             },
         }
         containers = [container]

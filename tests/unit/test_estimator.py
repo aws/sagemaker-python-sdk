@@ -3109,6 +3109,12 @@ def test_register_default_image(sagemaker_session):
     response_types = ["application/json"]
     inference_instances = ["ml.m4.xlarge"]
     transform_instances = ["ml.m4.xlarget"]
+    sample_payload_url = "s3://test-bucket/model"
+    task = "IMAGE_CLASSIFICATION"
+    framework = "TENSORFLOW"
+    framework_version = "2.9"
+    nearest_model_name = "resnet50"
+    data_input_config = '{"input_1":[1,224,224,3]}'
 
     estimator.register(
         content_types=content_types,
@@ -3116,6 +3122,12 @@ def test_register_default_image(sagemaker_session):
         inference_instances=inference_instances,
         transform_instances=transform_instances,
         model_package_name=model_package_name,
+        sample_payload_url=sample_payload_url,
+        task=task,
+        framework=framework,
+        framework_version=framework_version,
+        nearest_model_name=nearest_model_name,
+        data_input_configuration=data_input_config,
     )
     sagemaker_session.create_model.assert_not_called()
 
@@ -3124,6 +3136,12 @@ def test_register_default_image(sagemaker_session):
             {
                 "Image": estimator.image_uri,
                 "ModelDataUrl": estimator.model_data,
+                "Framework": framework,
+                "FrameworkVersion": framework_version,
+                "NearestModelName": nearest_model_name,
+                "ModelInput": {
+                    "DataInputConfig": data_input_config,
+                },
             }
         ],
         "content_types": content_types,
@@ -3132,6 +3150,8 @@ def test_register_default_image(sagemaker_session):
         "transform_instances": transform_instances,
         "model_package_name": model_package_name,
         "marketplace_cert": False,
+        "sample_payload_url": sample_payload_url,
+        "task": task,
     }
     sagemaker_session.create_model_package_from_containers.assert_called_with(
         **expected_create_model_package_request
@@ -3153,11 +3173,23 @@ def test_register_default_image_without_instance_type_args(sagemaker_session):
     model_package_name = "test-estimator-register-model"
     content_types = ["application/json"]
     response_types = ["application/json"]
+    sample_payload_url = "s3://test-bucket/model"
+    task = "IMAGE_CLASSIFICATION"
+    framework = "TENSORFLOW"
+    framework_version = "2.9"
+    nearest_model_name = "resnet50"
+    data_input_config = '{"input_1":[1,224,224,3]}'
 
     estimator.register(
         content_types=content_types,
         response_types=response_types,
         model_package_name=model_package_name,
+        sample_payload_url=sample_payload_url,
+        task=task,
+        framework=framework,
+        framework_version=framework_version,
+        nearest_model_name=nearest_model_name,
+        data_input_configuration=data_input_config,
     )
     sagemaker_session.create_model.assert_not_called()
 
@@ -3166,6 +3198,12 @@ def test_register_default_image_without_instance_type_args(sagemaker_session):
             {
                 "Image": estimator.image_uri,
                 "ModelDataUrl": estimator.model_data,
+                "Framework": framework,
+                "FrameworkVersion": framework_version,
+                "NearestModelName": nearest_model_name,
+                "ModelInput": {
+                    "DataInputConfig": data_input_config,
+                },
             }
         ],
         "content_types": content_types,
@@ -3174,6 +3212,8 @@ def test_register_default_image_without_instance_type_args(sagemaker_session):
         "transform_instances": None,
         "model_package_name": model_package_name,
         "marketplace_cert": False,
+        "sample_payload_url": sample_payload_url,
+        "task": task,
     }
     sagemaker_session.create_model_package_from_containers.assert_called_with(
         **expected_create_model_package_request
@@ -3198,6 +3238,12 @@ def test_register_inference_image(sagemaker_session):
     inference_instances = ["ml.m4.xlarge"]
     transform_instances = ["ml.m4.xlarget"]
     inference_image = "fake-inference-image"
+    sample_payload_url = "s3://test-bucket/model"
+    task = "IMAGE_CLASSIFICATION"
+    framework = "TENSORFLOW"
+    framework_version = "2.9"
+    nearest_model_name = "resnet50"
+    data_input_config = '{"input_1":[1,224,224,3]}'
 
     estimator.register(
         content_types=content_types,
@@ -3205,7 +3251,13 @@ def test_register_inference_image(sagemaker_session):
         inference_instances=inference_instances,
         transform_instances=transform_instances,
         model_package_name=model_package_name,
+        sample_payload_url=sample_payload_url,
+        task=task,
         image_uri=inference_image,
+        framework=framework,
+        framework_version=framework_version,
+        nearest_model_name=nearest_model_name,
+        data_input_configuration=data_input_config,
     )
     sagemaker_session.create_model.assert_not_called()
 
@@ -3214,6 +3266,12 @@ def test_register_inference_image(sagemaker_session):
             {
                 "Image": inference_image,
                 "ModelDataUrl": estimator.model_data,
+                "Framework": framework,
+                "FrameworkVersion": framework_version,
+                "NearestModelName": nearest_model_name,
+                "ModelInput": {
+                    "DataInputConfig": data_input_config,
+                },
             }
         ],
         "content_types": content_types,
@@ -3222,6 +3280,8 @@ def test_register_inference_image(sagemaker_session):
         "transform_instances": transform_instances,
         "model_package_name": model_package_name,
         "marketplace_cert": False,
+        "sample_payload_url": sample_payload_url,
+        "task": task,
     }
     sagemaker_session.create_model_package_from_containers.assert_called_with(
         **expected_create_model_package_request
