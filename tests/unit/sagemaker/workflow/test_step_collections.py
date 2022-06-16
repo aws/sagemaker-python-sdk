@@ -703,14 +703,14 @@ def test_register_model_with_model_repack_with_estimator(
             assert isinstance(
                 arguments["InferenceSpecification"]["Containers"][0]["ModelDataUrl"], Properties
             )
-            assert arguments["InferenceSpecification"]["Containers"][0]["Framework"] == None
-            assert arguments["InferenceSpecification"]["Containers"][0]["FrameworkVersion"] == None
-            assert arguments["InferenceSpecification"]["Containers"][0]["NearestModelName"] == None
+            assert arguments["InferenceSpecification"]["Containers"][0]["Framework"] is None
+            assert arguments["InferenceSpecification"]["Containers"][0]["FrameworkVersion"] is None
+            assert arguments["InferenceSpecification"]["Containers"][0]["NearestModelName"] is None
             assert (
                 arguments["InferenceSpecification"]["Containers"][0]["ModelInput"][
                     "DataInputConfig"
                 ]
-                == None
+                is None
             )
             del arguments["InferenceSpecification"]["Containers"]
             assert ordered(arguments) == ordered(
