@@ -32,22 +32,25 @@ def gpu_instance_type(request):
 
 
 @pytest.fixture(scope="module")
-def imagenet_val_set(request, sagemaker_session, tmpdir):
+def imagenet_val_set(request, sagemaker_session, tmpdir_factory):
     """
     Copies the dataset from the bucket it's hosted in to the local bucket in the test region
     """
+    local_path = tmpdir_factory.mktemp("trcomp_imagenet_val_set")
     sagemaker_session.download_data(
-        path=tmpdir, bucket="collection-of-ml-datasets", key_prefix="Imagenet/TFRecords/validation"
+        path=local_path,
+        bucket="collection-of-ml-datasets",
+        key_prefix="Imagenet/TFRecords/validation",
     )
     train_input = sagemaker_session.upload_data(
-        path=tmpdir,
+        path=local_path,
         key_prefix="integ-test-data/trcomp/tensorflow/imagenet/val",
     )
     return train_input
 
 
 @pytest.fixture(scope="module")
-def huggingface_dummy_dataset(request, sagemaker_session, tmpdir):
+def huggingface_dummy_dataset(request, sagemaker_session):
     """
     Copies the dataset from the local disk to the local bucket in the test region
     """
