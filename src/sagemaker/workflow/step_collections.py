@@ -81,6 +81,12 @@ class RegisterModel(StepCollection):  # pragma: no cover
         drift_check_baselines=None,
         customer_metadata_properties=None,
         domain=None,
+        sample_payload_url=None,
+        task=None,
+        framework=None,
+        framework_version=None,
+        nearest_model_name=None,
+        data_input_configuration=None,
         **kwargs,
     ):
         """Construct steps `_RepackModelStep` and `_RegisterModelStep` based on the estimator.
@@ -124,6 +130,18 @@ class RegisterModel(StepCollection):  # pragma: no cover
                 metadata properties (default: None).
             domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
                 "MACHINE_LEARNING" (default: None).
+            sample_payload_url (str): The S3 path where the sample payload is stored
+                (default: None).
+            task (str): Task values which are supported by Inference Recommender are "FILL_MASK",
+                "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION", "IMAGE_SEGMENTATION",
+                "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
+            framework (str): Machine learning framework of the model package container image
+                (default: None).
+            framework_version (str): Framework version of the Model Package Container Image
+                (default: None).
+            nearest_model_name (str): Name of a pre-trained machine learning benchmarked by
+                Amazon SageMaker Inference Recommender (default: None).
+            data_input_configuration (str): Input object for the model (default: None).
 
             **kwargs: additional arguments to `create_model`.
         """
@@ -228,6 +246,16 @@ class RegisterModel(StepCollection):  # pragma: no cover
                         inference_instances[0] if inference_instances else None
                     )
                 ]
+            self.container_def_list[0].update(
+                {
+                    "Framework": framework,
+                    "FrameworkVersion": framework_version,
+                    "NearestModelName": nearest_model_name,
+                    "ModelInput": {
+                        "DataInputConfig": data_input_configuration,
+                    },
+                }
+            )
 
         register_model_step = _RegisterModelStep(
             name=name,
@@ -250,6 +278,8 @@ class RegisterModel(StepCollection):  # pragma: no cover
             retry_policies=register_model_step_retry_policies,
             customer_metadata_properties=customer_metadata_properties,
             domain=domain,
+            sample_payload_url=sample_payload_url,
+            task=task,
             **kwargs,
         )
         if not repack_model:

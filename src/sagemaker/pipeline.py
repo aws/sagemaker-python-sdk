@@ -279,6 +279,12 @@ class PipelineModel(object):
         drift_check_baselines: Optional[DriftCheckBaselines] = None,
         customer_metadata_properties: Optional[Dict[str, str]] = None,
         domain: Optional[str] = None,
+        sample_payload_url: Optional[str] = None,
+        task: Optional[str] = None,
+        framework: Optional[str] = None,
+        framework_version: Optional[str] = None,
+        nearest_model_name: Optional[str] = None,
+        data_input_configuration: Optional[str] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -308,6 +314,18 @@ class PipelineModel(object):
                 metadata properties (default: None).
             domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
                 "MACHINE_LEARNING" (default: None).
+            sample_payload_url (str): The S3 path where the sample payload is stored
+                (default: None).
+            task (str): Task values which are supported by Inference Recommender are "FILL_MASK",
+                "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION", "IMAGE_SEGMENTATION",
+                "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
+            framework (str): Machine learning framework of the model package container image
+                (default: None).
+            framework_version (str): Framework version of the Model Package Container Image
+                (default: None).
+            nearest_model_name (str): Name of a pre-trained machine learning benchmarked by
+                Amazon SageMaker Inference Recommender (default: None).
+            data_input_configuration (str): Input object for the model (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -319,11 +337,28 @@ class PipelineModel(object):
             container_def = self.pipeline_container_def(
                 inference_instances[0] if inference_instances else None
             )
+            container_def[0].update(
+                {
+                    "Framework": framework,
+                    "FrameworkVersion": framework_version,
+                    "NearestModelName": nearest_model_name,
+                    "ModelInput": {
+                        "DataInputConfig": data_input_configuration,
+                    },
+                }
+            )
         else:
             container_def = [
                 {
                     "Image": image_uri or model.image_uri,
                     "ModelDataUrl": model.model_data,
+                    "Framework": framework or model.framework,
+                    "FrameworkVersion": framework_version or model.framework_version,
+                    "NearestModelName": nearest_model_name or model.nearest_model_name,
+                    "ModelInput": {
+                        "DataInputConfig": data_input_configuration
+                        or model.data_input_configuration
+                    },
                 }
                 for model in self.models
             ]
@@ -344,6 +379,8 @@ class PipelineModel(object):
             drift_check_baselines=drift_check_baselines,
             customer_metadata_properties=customer_metadata_properties,
             domain=domain,
+            sample_payload_url=sample_payload_url,
+            task=task,
         )
 
         self.sagemaker_session.create_model_package_from_containers(**model_pkg_args)
