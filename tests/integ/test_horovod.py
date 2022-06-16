@@ -22,6 +22,7 @@ from six.moves.urllib.parse import urlparse
 
 import sagemaker.utils
 import tests.integ as integ
+from tests.integ.utils import gpu_list, retry_with_instance_list
 from sagemaker.tensorflow import TensorFlow
 from tests.integ import timeout
 
@@ -51,18 +52,19 @@ def test_hvd_cpu(
     and integ.test_region() in integ.TRAINING_NO_P3_REGIONS,
     reason="no ml.p2 or ml.p3 instances in this region",
 )
+@retry_with_instance_list(gpu_list(integ.test_region()))
 def test_hvd_gpu(
     sagemaker_session,
     tensorflow_training_latest_version,
     tensorflow_training_latest_py_version,
-    gpu_instance_type,
     tmpdir,
+    **kwargs,
 ):
     _create_and_fit_estimator(
         sagemaker_session,
         tensorflow_training_latest_version,
         tensorflow_training_latest_py_version,
-        gpu_instance_type,
+        kwargs["instance_type"],
         tmpdir,
     )
 
