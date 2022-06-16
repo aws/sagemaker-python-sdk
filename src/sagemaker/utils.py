@@ -29,11 +29,11 @@ import uuid
 from datetime import datetime
 
 import botocore
+import boto3
 from six.moves.urllib import parse
 
-from sagemaker import deprecations
+from sagemaker import deprecations, Session
 from sagemaker.session_settings import SessionSettings
-
 
 ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(.*)(/)(.*:.*)$"
 MAX_BUCKET_PATHS_COUNT = 5
@@ -83,7 +83,7 @@ def name_from_base(base, max_length=63, short=False):
 def unique_name_from_base(base, max_length=63):
     """Placeholder Docstring"""
     random.seed(int(uuid.uuid4()))  # using uuid to randomize, otherwise system timestamp is used.
-    unique = "%04x" % random.randrange(16**4)  # 4-digit hex
+    unique = "%04x" % random.randrange(16 ** 4)  # 4-digit hex
     ts = str(int(time.time()))
     available_length = max_length - 2 - len(ts) - len(unique)
     trimmed = base[:available_length]
@@ -187,8 +187,8 @@ def secondary_training_status_changed(current_job_description, prev_job_descript
     """
     current_secondary_status_transitions = current_job_description.get("SecondaryStatusTransitions")
     if (
-        current_secondary_status_transitions is None
-        or len(current_secondary_status_transitions) == 0
+            current_secondary_status_transitions is None
+            or len(current_secondary_status_transitions) == 0
     ):
         return False
 
@@ -201,7 +201,7 @@ def secondary_training_status_changed(current_job_description, prev_job_descript
     last_message = (
         prev_job_secondary_status_transitions[-1]["StatusMessage"]
         if prev_job_secondary_status_transitions is not None
-        and len(prev_job_secondary_status_transitions) > 0
+           and len(prev_job_secondary_status_transitions) > 0
         else ""
     )
 
@@ -222,9 +222,9 @@ def secondary_training_status_message(job_description, prev_description):
     """
 
     if (
-        job_description is None
-        or job_description.get("SecondaryStatusTransitions") is None
-        or len(job_description.get("SecondaryStatusTransitions")) == 0
+            job_description is None
+            or job_description.get("SecondaryStatusTransitions") is None
+            or len(job_description.get("SecondaryStatusTransitions")) == 0
     ):
         return ""
 
@@ -244,8 +244,8 @@ def secondary_training_status_message(job_description, prev_description):
     else:
         # Secondary status is changed we need to print all the entries.
         transitions_to_print = current_transitions[
-            prev_transitions_num - len(current_transitions) :
-        ]
+                               prev_transitions_num - len(current_transitions):
+                               ]
 
     status_strs = []
     for transition in transitions_to_print:
@@ -308,7 +308,7 @@ def _download_files_under_prefix(bucket_name, prefix, target, s3):
         if obj_sum.key.endswith("/"):
             continue
         obj = s3.Object(obj_sum.bucket_name, obj_sum.key)
-        s3_relative_path = obj_sum.key[len(prefix) :].lstrip("/")
+        s3_relative_path = obj_sum.key[len(prefix):].lstrip("/")
         file_path = os.path.join(target, s3_relative_path)
 
         try:
@@ -365,13 +365,13 @@ def _tmpdir(suffix="", prefix="tmp"):
 
 
 def repack_model(
-    inference_script,
-    source_directory,
-    dependencies,
-    model_uri,
-    repacked_model_uri,
-    sagemaker_session,
-    kms_key=None,
+        inference_script,
+        source_directory,
+        dependencies,
+        model_uri,
+        repacked_model_uri,
+        sagemaker_session,
+        kms_key=None,
 ):
     """Unpack model tarball and creates a new model tarball with the provided code script.
 
@@ -458,7 +458,7 @@ def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session, kms_key):
 
 
 def _create_or_update_code_dir(
-    model_dir, inference_script, source_directory, dependencies, sagemaker_session, tmp
+        model_dir, inference_script, source_directory, dependencies, sagemaker_session, tmp
 ):
     """Placeholder docstring"""
     code_dir = os.path.join(model_dir, "code")
@@ -554,9 +554,9 @@ def sts_regional_endpoint(region):
 
 
 def retries(
-    max_retry_count,
-    exception_message_prefix,
-    seconds_to_sleep=DEFAULT_SLEEP_TIME_SECONDS,
+        max_retry_count,
+        exception_message_prefix,
+        seconds_to_sleep=DEFAULT_SLEEP_TIME_SECONDS,
 ):
     """Retries until max retry count is reached.
 
@@ -653,6 +653,37 @@ def _module_import_error(py_module, feature, extras):
     return error_msg.format(py_module, feature, extras)
 
 
+def get_session_from_role(role: str, region: str):
+    boto_session = boto3.Session(region_name=region)
+
+    sts = boto_session.client('sts',
+                              region_name=region,
+                              endpoint_url='https://sts.eu-west-1.amazonaws.com')
+
+    metadata = sts.assume_role(RoleArn=role,
+                               RoleSessionName='SagemakerExecution')
+
+    access_key_id = metadata['Credentials']['AccessKeyId']
+    secret_access_key = metadata['Credentials']['SecretAccessKey']
+    session_token = metadata['Credentials']['SessionToken']
+
+    boto_session = boto3.session.Session(region_name=region,
+                                         aws_access_key_id=access_key_id,
+                                         aws_secret_access_key=secret_access_key,
+                                         aws_session_token=session_token)
+
+    # Sessions
+    sagemaker_client = boto_session.client('sagemaker')
+    sagemaker_runtime = boto_session.client('sagemaker-runtime')
+    sagemaker_featurestore_runtime_client = boto_session.client(service_name='sagemaker-featurestore-runtime')
+    sagemaker_session = Session(boto_session=boto_session,
+                                sagemaker_client=sagemaker_client,
+                                sagemaker_runtime_client=sagemaker_runtime,
+                                sagemaker_featurestore_runtime_client=sagemaker_featurestore_runtime_client)
+
+    return sagemaker_session
+
+
 class DataConfig(abc.ABC):
     """Abstract base class for accessing data config hosted in AWS resources.
 
@@ -672,10 +703,10 @@ class S3DataConfig(DataConfig):
     """This class extends the DataConfig class to fetch a data config file hosted on S3"""
 
     def __init__(
-        self,
-        sagemaker_session,
-        bucket_name,
-        prefix,
+            self,
+            sagemaker_session,
+            bucket_name,
+            prefix,
     ):
         """Initialize a ``S3DataConfig`` instance.
 

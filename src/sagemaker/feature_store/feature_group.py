@@ -123,9 +123,13 @@ class AthenaQuery:
             query_execution_id=self._current_query_execution_id
         )
 
-    def as_dataframe(self) -> DataFrame:
+    def as_dataframe(self, **pandas_read_csv_kwargs) -> DataFrame:
         """Download the result of the current query and load it into a DataFrame.
 
+        Args:
+            pandas_read_csv_kwargs: key arguments used for the method pandas.read_csv to be able to have a better
+                           tuning on data. For more info about this methods visit:
+                           https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_csv.html
         Returns:
             A pandas DataFrame contains the query result.
         """
@@ -146,7 +150,10 @@ class AthenaQuery:
             query_execution_id=self._current_query_execution_id,
             filename=output_filename,
         )
-        return pd.read_csv(output_filename, delimiter=",")
+
+        # Assuring delimiter used by default
+        pandas_read_csv_kwargs.pop('delimiter', None)
+        return pd.read_csv(output_filename, delimiter=",", **pandas_read_csv_kwargs)
 
 
 @attr.s

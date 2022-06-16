@@ -190,7 +190,7 @@ class FeatureValue(Config):
     """FeatureValue for FeatureStore.
 
     Attributes:
-        feature_name (str): name of the Feature.
+        feature_group_name (str): name of the Feature.
         value_as_string (str): value of the Feature in string form.
     """
 

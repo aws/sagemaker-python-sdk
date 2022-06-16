@@ -26,6 +26,8 @@ from sagemaker.feature_store.feature_group import FeatureGroup
 from sagemaker.feature_store.inputs import FeatureValue
 from sagemaker.session import get_execution_role, Session
 from tests.integ.timeout import timeout
+from sagemaker.feature_group_utils import get_feature_group_as_dataframe
+from sagemaker.utils import get_session_from_role
 
 BUCKET_POLICY = {
     "Version": "2012-10-17",
@@ -76,7 +78,7 @@ def feature_store_session():
 
 @pytest.fixture
 def feature_group_name():
-    return f"my-feature-group-{int(time.time() * 10**7)}"
+    return f"my-feature-group-{int(time.time() * 10 ** 7)}"
 
 
 @pytest.fixture
@@ -147,10 +149,10 @@ def create_table_ddl():
 
 
 def test_create_feature_store_online_only(
-    feature_store_session,
-    role,
-    feature_group_name,
-    pandas_data_frame,
+        feature_store_session,
+        role,
+        feature_group_name,
+        pandas_data_frame,
 ):
     feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
@@ -169,13 +171,13 @@ def test_create_feature_store_online_only(
 
 
 def test_create_feature_store(
-    feature_store_session,
-    role,
-    feature_group_name,
-    offline_store_s3_uri,
-    pandas_data_frame,
-    record,
-    create_table_ddl,
+        feature_store_session,
+        role,
+        feature_group_name,
+        offline_store_s3_uri,
+        pandas_data_frame,
+        record,
+        create_table_ddl,
 ):
     feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
@@ -226,23 +228,23 @@ def test_create_feature_store(
         for is_na in nans.items():
             assert is_na
         assert (
-            create_table_ddl.format(
-                feature_group_name=feature_group_name,
-                region=feature_store_session.boto_session.region_name,
-                account=feature_store_session.account_id(),
-                resolved_output_s3_uri=resolved_output_s3_uri,
-            )
-            == feature_group.as_hive_ddl()
+                create_table_ddl.format(
+                    feature_group_name=feature_group_name,
+                    region=feature_store_session.boto_session.region_name,
+                    account=feature_store_session.account_id(),
+                    resolved_output_s3_uri=resolved_output_s3_uri,
+                )
+                == feature_group.as_hive_ddl()
         )
     assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
 
 
 def test_ingest_without_string_feature(
-    feature_store_session,
-    role,
-    feature_group_name,
-    offline_store_s3_uri,
-    pandas_data_frame_without_string,
+        feature_store_session,
+        role,
+        feature_group_name,
+        offline_store_s3_uri,
+        pandas_data_frame_without_string,
 ):
     feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame_without_string)
@@ -266,11 +268,11 @@ def test_ingest_without_string_feature(
 
 
 def test_ingest_multi_process(
-    feature_store_session,
-    role,
-    feature_group_name,
-    offline_store_s3_uri,
-    pandas_data_frame,
+        feature_store_session,
+        role,
+        feature_group_name,
+        offline_store_s3_uri,
+        pandas_data_frame,
 ):
     feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
@@ -302,6 +304,71 @@ def _wait_for_feature_group_create(feature_group: FeatureGroup):
         print(feature_group.describe())
         raise RuntimeError(f"Failed to create feature group {feature_group.name}")
     print(f"FeatureGroup {feature_group.name} successfully created.")
+
+
+def test_get_feature_group_with_role_region(
+        feature_store_session,
+        role,
+        feature_group_name,
+        offline_store_s3_uri,
+        pandas_data_frame,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+
+    with cleanup_feature_group(feature_group):
+        output = feature_group.create(
+            s3_uri=offline_store_s3_uri,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        feature_group.ingest(
+            data_frame=pandas_data_frame, max_workers=3, max_processes=2, wait=True
+        )
+
+        dataset = get_feature_group_as_dataframe(feature_group_name=feature_group_name,
+                                                 region=region_name, role=role,
+                                                 event_time_feature_name="feature3",
+                                                 latest_ingestion=True,
+                                                 athena_bucket=f'{offline_store_s3_uri}/query')
+
+    assert dataset.empty == False
+
+def test_get_feature_group_with_session(
+        feature_store_session,
+        role,
+        feature_group_name,
+        offline_store_s3_uri,
+        pandas_data_frame,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+
+    with cleanup_feature_group(feature_group):
+        output = feature_group.create(
+            s3_uri=offline_store_s3_uri,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        feature_group.ingest(
+            data_frame=pandas_data_frame, max_workers=3, max_processes=2, wait=True
+        )
+        
+        dataset = get_feature_group_as_dataframe(feature_group_name=feature_group_name,
+                                                 session=feature_store_session,
+                                                 event_time_feature_name="feature3",
+                                                 latest_ingestion=True,
+                                                 athena_bucket=f'{offline_store_s3_uri}/query')
+
+    assert dataset.empty == False
 
 
 @contextmanager
