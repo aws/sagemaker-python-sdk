@@ -337,31 +337,31 @@ class PipelineModel(object):
             container_def = self.pipeline_container_def(
                 inference_instances[0] if inference_instances else None
             )
-            container_def[0].update(
-                {
-                    "Framework": framework,
-                    "FrameworkVersion": framework_version,
-                    "NearestModelName": nearest_model_name,
-                    "ModelInput": {
-                        "DataInputConfig": data_input_configuration,
-                    },
-                }
-            )
         else:
             container_def = [
                 {
                     "Image": image_uri or model.image_uri,
                     "ModelDataUrl": model.model_data,
-                    "Framework": framework or model.framework,
-                    "FrameworkVersion": framework_version or model.framework_version,
-                    "NearestModelName": nearest_model_name or model.nearest_model_name,
-                    "ModelInput": {
-                        "DataInputConfig": data_input_configuration
-                        or model.data_input_configuration
-                    },
                 }
                 for model in self.models
             ]
+        if (
+            framework is not None
+            and framework_version is not None
+            and nearest_model_name is not None
+            and data_input_configuration is not None
+        ):
+            for container_obj in container_def:
+                container_obj.update(
+                    {
+                        "Framework": framework,
+                        "FrameworkVersion": framework_version,
+                        "NearestModelName": nearest_model_name,
+                        "ModelInput": {
+                            "DataInputConfig": data_input_configuration,
+                        },
+                    }
+                )
 
         model_pkg_args = sagemaker.get_model_package_args(
             content_types,

@@ -4299,27 +4299,28 @@ def get_model_package_args(
         dict: A dictionary of method argument names and values.
     """
     if container_def_list is not None:
-        container_def_list[0].update(
-            {
-                "Framework": container_def_list[0]["Framework"],
-                "FrameworkVersion": container_def_list[0]["FrameworkVersion"],
-                "NearestModelName": container_def_list[0]["NearestModelName"],
-                "ModelInput": {
-                    "DataInputConfig": container_def_list[0]["ModelInput"]["DataInputConfig"],
-                },
-            }
-        )
+        container_fields = container_def_list[0]
+        if (
+            container_fields.get("Framework") is not None
+            and container_fields.get("FrameworkVersion") is not None
+            and container_fields.get("NearestModelName") is not None
+            and container_fields.get("ModelInput").get("DataInputConfig") is not None
+        ):
+            container_def_list[0].update(
+                {
+                    "Framework": container_fields["Framework"],
+                    "FrameworkVersion": container_fields["FrameworkVersion"],
+                    "NearestModelName": container_fields["NearestModelName"],
+                    "ModelInput": {
+                        "DataInputConfig": container_fields["ModelInput"]["DataInputConfig"],
+                    },
+                }
+            )
         containers = container_def_list
     else:
         container = {
             "Image": image_uri,
             "ModelDataUrl": model_data,
-            "Framework": None,
-            "FrameworkVersion": None,
-            "NearestModelName": None,
-            "ModelInput": {
-                "DataInputConfig": None,
-            },
         }
         containers = [container]
 

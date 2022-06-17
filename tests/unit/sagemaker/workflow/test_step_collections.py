@@ -389,12 +389,6 @@ def test_register_model(estimator, model_metrics, drift_check_baselines):
                             {
                                 "Image": "012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri",
                                 "ModelDataUrl": f"s3://{BUCKET}/model.tar.gz",
-                                "Framework": None,
-                                "FrameworkVersion": None,
-                                "NearestModelName": None,
-                                "ModelInput": {
-                                    "DataInputConfig": None,
-                                },
                             }
                         ],
                         "SupportedContentTypes": ["content_type"],
@@ -466,12 +460,6 @@ def test_register_model_tf(estimator_tf, model_metrics, drift_check_baselines):
                             {
                                 "Image": "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-inference:1.15.2-cpu",
                                 "ModelDataUrl": f"s3://{BUCKET}/model.tar.gz",
-                                "Framework": None,
-                                "FrameworkVersion": None,
-                                "NearestModelName": None,
-                                "ModelInput": {
-                                    "DataInputConfig": None,
-                                },
                             }
                         ],
                         "SupportedContentTypes": ["content_type"],
@@ -702,15 +690,6 @@ def test_register_model_with_model_repack_with_estimator(
             )
             assert isinstance(
                 arguments["InferenceSpecification"]["Containers"][0]["ModelDataUrl"], Properties
-            )
-            assert arguments["InferenceSpecification"]["Containers"][0]["Framework"] is None
-            assert arguments["InferenceSpecification"]["Containers"][0]["FrameworkVersion"] is None
-            assert arguments["InferenceSpecification"]["Containers"][0]["NearestModelName"] is None
-            assert (
-                arguments["InferenceSpecification"]["Containers"][0]["ModelInput"][
-                    "DataInputConfig"
-                ]
-                is None
             )
             del arguments["InferenceSpecification"]["Containers"]
             assert ordered(arguments) == ordered(

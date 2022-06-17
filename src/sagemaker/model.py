@@ -374,16 +374,22 @@ class Model(ModelBase):
                 "Image": self.image_uri,
                 "ModelDataUrl": self.model_data,
             }
-        container_def.update(
-            {
-                "Framework": framework,
-                "FrameworkVersion": framework_version,
-                "NearestModelName": nearest_model_name,
-                "ModelInput": {
-                    "DataInputConfig": data_input_configuration,
-                },
-            }
-        )
+        if (
+            framework is not None
+            and framework_version is not None
+            and nearest_model_name is not None
+            and data_input_configuration is not None
+        ):
+            container_def.update(
+                {
+                    "Framework": framework,
+                    "FrameworkVersion": framework_version,
+                    "NearestModelName": nearest_model_name,
+                    "ModelInput": {
+                        "DataInputConfig": data_input_configuration,
+                    },
+                }
+            )
         model_pkg_args = sagemaker.get_model_package_args(
             content_types,
             response_types,
