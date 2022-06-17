@@ -26,7 +26,7 @@ from sagemaker.workflow.pipeline_context import PipelineSession
 from tests.unit.sagemaker.workflow.helpers import CustomStep
 
 from sagemaker.workflow.steps import TransformStep, TransformInput
-from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.functions import Join
 from sagemaker.workflow import is_pipeline_variable
@@ -174,6 +174,8 @@ def test_transform_step_with_transformer(model_name, data, output_path, pipeline
         step_def["Arguments"]["TransformOutput"]["S3OutputPath"],
     )
     assert step_def == {"Name": "MyTransformStep", "Type": "Transform", "Arguments": step_args}
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert adjacency_list == {"MyTransformStep": []}
 
 
 @pytest.mark.parametrize(

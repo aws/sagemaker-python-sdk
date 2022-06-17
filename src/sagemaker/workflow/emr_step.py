@@ -94,7 +94,7 @@ class EMRStep(Step):
         self.args = emr_step_args
         self.cache_config = cache_config
 
-        root_property = Properties(path=f"Steps.{name}", shape_name="Step", service_name="emr")
+        root_property = Properties(step_name=name, shape_name="Step", service_name="emr")
         root_property.__dict__["ClusterId"] = cluster_id
         self._properties = root_property
 

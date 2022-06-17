@@ -90,6 +90,11 @@ class Parameter(PipelineVariable, Entity):
         """The 'Get' expression dict for a `Parameter`."""
         return Parameter._expr(self.name)
 
+    @property
+    def _referenced_steps(self) -> List[str]:
+        """List of step names that this function depends on."""
+        return []
+
     @classmethod
     def _expr(cls, name):
         """An internal classmethod for the 'Get' expression dict for a `Parameter`.
