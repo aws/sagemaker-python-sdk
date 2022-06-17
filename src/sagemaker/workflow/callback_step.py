@@ -112,13 +112,12 @@ class CallbackStep(Step):
         self.cache_config = cache_config
         self.inputs = inputs
 
-        root_path = f"Steps.{name}"
-        root_prop = Properties(path=root_path)
+        root_prop = Properties(step_name=name)
 
         property_dict = {}
         for output in outputs:
             property_dict[output.output_name] = Properties(
-                f"{root_path}.OutputParameters['{output.output_name}']"
+                step_name=name, path=f"OutputParameters['{output.output_name}']"
             )
 
         root_prop.__dict__["Outputs"] = property_dict
