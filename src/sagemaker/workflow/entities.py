@@ -102,3 +102,8 @@ class PipelineVariable(Expression):
     @abc.abstractmethod
     def expr(self) -> RequestType:
         """Get the expression structure for workflow service calls."""
+
+    @property
+    @abc.abstractmethod
+    def _referenced_steps(self) -> List[str]:
+        """List of step names that this function depends on."""
