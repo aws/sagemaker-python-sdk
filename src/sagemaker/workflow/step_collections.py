@@ -50,8 +50,7 @@ class StepCollection:
         """The properties of the particular `StepCollection`."""
         if not self.steps:
             return None
-        size = len(self.steps)
-        return self.steps[size - 1].properties
+        return self.steps[-1].properties
 
 
 class RegisterModel(StepCollection):  # pragma: no cover
