@@ -1,0 +1,9 @@
+archive_system: archive_python
+handler_path: aws_lambda/handlers.py
+python_version: 3.8
+strip_libraries: true
+data_files:
+ - lib/libgfortran.so.4 # needed for numpy (https://sage.amazon.com/questions/498488)
+ - lib/libopenblas.so.0 # needed for numpy (https://sage.amazon.com/questions/498488)
+ - lib/libquadmath.so.0 # needed for numpy (https://sage.amazon.com/questions/498488)
+ - lib/libgomp.so.1

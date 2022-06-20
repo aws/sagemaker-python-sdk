@@ -15,17 +15,10 @@ package.SageMakerTitanWorkflowsPythonLambda = {
     # be exported to other packages that build against you.
     dependencies = {
         1.0 = {
-            # Deploy the default python interpreter for
-            # your versionset. This
-            # guarantees `$ENVROOT/bin/python` will
-            # exist in your deployment.
-            #
-            # This is only needed for application
-            # packages that will be run
-            # from the CLI; if you are making a library,
-            # this is not needed.
-            #
+            # Deploy the default python interpreter for your versionset. This
+            # guarantees `$ENVROOT/bin/python` will exist in your deployment.
             Python = default;
+            TitanML = 1.0;
         };
     };
 

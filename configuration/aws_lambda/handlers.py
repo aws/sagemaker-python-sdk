@@ -1,0 +1,1 @@
+from sagemaker_titan_workflows.aws_lambda.get_recommendations_lambda import get_recommendations_handler

@@ -36,4 +36,3 @@ setup(
     test_mypy=False,  # Enable type checking
     test_flake8=False,  # Enable linting at build time
 )
-
