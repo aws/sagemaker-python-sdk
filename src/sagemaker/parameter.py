@@ -14,8 +14,10 @@
 from __future__ import absolute_import
 
 import json
+from typing import Union
 
 from sagemaker.workflow import is_pipeline_variable
+from sagemaker.workflow.entities import PipelineVariable
 
 
 class ParameterRange(object):
@@ -27,7 +29,12 @@ class ParameterRange(object):
 
     __all_types__ = ("Continuous", "Categorical", "Integer")
 
-    def __init__(self, min_value, max_value, scaling_type="Auto"):
+    def __init__(
+        self,
+        min_value: Union[int, float, PipelineVariable],
+        max_value: Union[int, float, PipelineVariable],
+        scaling_type: Union[str, PipelineVariable] = "Auto",
+    ):
         """Initialize a parameter range.
 
         Args:
