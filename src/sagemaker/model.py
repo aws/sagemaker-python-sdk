@@ -371,7 +371,7 @@ class Model(ModelBase):
             raise ValueError("SageMaker Model Package cannot be created without model data.")
         if image_uri is not None:
             self.image_uri = image_uri
-            
+
         if model_package_group_name is not None:
             container_def = self.prepare_container_def()
             if inference_recommender_params_exist(
