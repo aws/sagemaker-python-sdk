@@ -582,7 +582,7 @@ hubs, such as TensorFlow Hub, Pytorch Hub, and HuggingFace. Customer can deploy 
 as-is or first fine-tune them on a custom dataset and then deploy to a SageMaker endpoint for inference.
 
 
-Python SDK built-in algorithms allow customers access pre-trained models using model ids and model
+SageMaker SDK built-in algorithms allow customers access pre-trained models using model ids and model
 versions. The ‘pre-trained model’ table below provides list of models with information useful in
 selecting the correct model id and corresponding parameters. These models are also available through
 the `JumpStart UI in SageMaker Studio <https://docs.aws.amazon.com/sagemaker/latest/dg/studio-jumpstart.html>`__.
@@ -764,7 +764,7 @@ need to continue.
    )
 
 Next, pass the URIs and other key parameters as part of a new
-SageMaker Model class. The ``entry_point`` is a JumpmodelStart script
+SageMaker Model class. The ``entry_point`` is a JumpStart script
 named ``inference.py``. SageMaker handles the implementation of this
 script. You must use this value for model inference to be successful.
 For more information about the Model class and its parameters,

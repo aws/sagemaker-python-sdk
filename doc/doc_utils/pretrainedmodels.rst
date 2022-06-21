@@ -14,7 +14,8 @@ Built-in Algorithms with pre-trained Model Table
     If you want to automatically use the latest version of the model, use "*" for the `model_version` attribute.
     We highly suggest pinning an exact model version however.
 
-    These models are also available through the `JumpStart UI in SageMaker Studio <https://docs.aws.amazon.com/sagemaker/latest/dg/studio-jumpstart.html>`__
+    These models are also available through the
+    `JumpStart UI in SageMaker Studio <https://docs.aws.amazon.com/sagemaker/latest/dg/studio-jumpstart.html>`__
 
 .. list-table:: Available Models
    :widths: 50 20 20 20 30 20
@@ -27,15 +28,27 @@ Built-in Algorithms with pre-trained Model Table
      - Min SDK Version
      - Problem Type
      - Source
+   * - autogluon-classification-ensemble
+     - True
+     - 1.0.0
+     - 2.80.0
+     - Classification
+     - `GluonCV <https://auto.gluon.ai/stable/index.html>`__ |external-link|
+   * - autogluon-regression-ensemble
+     - True
+     - 1.0.0
+     - 2.80.0
+     - Regression
+     - `GluonCV <https://auto.gluon.ai/stable/index.html>`__ |external-link|
    * - catboost-classification-model
      - True
-     - 1.2.1
+     - 1.2.2
      - 2.75.0
      - Classification
      - `Catboost <https://catboost.ai/>`__ |external-link|
    * - catboost-regression-model
      - True
-     - 1.2.1
+     - 1.2.2
      - 2.75.0
      - Regression
      - `Catboost <https://catboost.ai/>`__ |external-link|
@@ -359,13 +372,13 @@ Built-in Algorithms with pre-trained Model Table
      - `HuggingFace <https://huggingface.co/t5-small>`__ |external-link|
    * - lightgbm-classification-model
      - True
-     - 1.2.0
+     - 1.2.1
      - 2.75.0
      - Classification
      - `LightGBM <https://lightgbm.readthedocs.io/en/latest/>`__ |external-link|
    * - lightgbm-regression-model
      - True
-     - 1.2.0
+     - 1.2.1
      - 2.75.0
      - Regression
      - `LightGBM <https://lightgbm.readthedocs.io/en/latest/>`__ |external-link|
@@ -425,49 +438,49 @@ Built-in Algorithms with pre-trained Model Table
      - `GluonCV <https://cv.gluon.ai/model_zoo/detection.html>`__ |external-link|
    * - mxnet-od-ssd-300-vgg16-atrous-coco
      - True
-     - 1.2.0
+     - 1.2.1
      - 2.75.0
      - Object Detection
      - `GluonCV <https://cv.gluon.ai/model_zoo/detection.html>`__ |external-link|
    * - mxnet-od-ssd-300-vgg16-atrous-voc
      - True
-     - 1.2.0
+     - 1.2.1
      - 2.75.0
      - Object Detection
      - `GluonCV <https://cv.gluon.ai/model_zoo/detection.html>`__ |external-link|
    * - mxnet-od-ssd-512-mobilenet1-0-coco
      - True
-     - 1.2.0
+     - 1.2.1
      - 2.75.0
      - Object Detection
      - `GluonCV <https://cv.gluon.ai/model_zoo/detection.html>`__ |external-link|
    * - mxnet-od-ssd-512-mobilenet1-0-voc
      - True
-     - 1.2.0
+     - 1.2.1
      - 2.75.0
      - Object Detection
      - `GluonCV <https://cv.gluon.ai/model_zoo/detection.html>`__ |external-link|
    * - mxnet-od-ssd-512-resnet50-v1-coco
      - True
-     - 1.2.0
+     - 1.2.1
      - 2.75.0
      - Object Detection
      - `GluonCV <https://cv.gluon.ai/model_zoo/detection.html>`__ |external-link|
    * - mxnet-od-ssd-512-resnet50-v1-voc
      - True
-     - 1.2.0
+     - 1.2.1
      - 2.75.0
      - Object Detection
      - `GluonCV <https://cv.gluon.ai/model_zoo/detection.html>`__ |external-link|
    * - mxnet-od-ssd-512-vgg16-atrous-coco
      - True
-     - 1.2.0
+     - 1.2.1
      - 2.75.0
      - Object Detection
      - `GluonCV <https://cv.gluon.ai/model_zoo/detection.html>`__ |external-link|
    * - mxnet-od-ssd-512-vgg16-atrous-voc
      - True
-     - 1.2.0
+     - 1.2.1
      - 2.75.0
      - Object Detection
      - `GluonCV <https://cv.gluon.ai/model_zoo/detection.html>`__ |external-link|
@@ -497,25 +510,25 @@ Built-in Algorithms with pre-trained Model Table
      - `GluonCV <https://cv.gluon.ai/model_zoo/detection.html>`__ |external-link|
    * - mxnet-semseg-fcn-resnet101-ade
      - True
-     - 1.3.0
+     - 1.3.1
      - 2.75.0
      - Semantic Segmentation
      - `GluonCV <https://cv.gluon.ai/model_zoo/segmentation.html>`__ |external-link|
    * - mxnet-semseg-fcn-resnet101-coco
      - True
-     - 1.3.0
+     - 1.3.1
      - 2.75.0
      - Semantic Segmentation
      - `GluonCV <https://cv.gluon.ai/model_zoo/segmentation.html>`__ |external-link|
    * - mxnet-semseg-fcn-resnet101-voc
      - True
-     - 1.3.0
+     - 1.3.1
      - 2.75.0
      - Semantic Segmentation
      - `GluonCV <https://cv.gluon.ai/model_zoo/segmentation.html>`__ |external-link|
    * - mxnet-semseg-fcn-resnet50-ade
      - True
-     - 1.3.0
+     - 1.3.1
      - 2.75.0
      - Semantic Segmentation
      - `GluonCV <https://cv.gluon.ai/model_zoo/segmentation.html>`__ |external-link|
@@ -653,169 +666,169 @@ Built-in Algorithms with pre-trained Model Table
      - `Pytorch Hub <https://pytorch.org/hub/huggingface_pytorch-transformers/>`__ |external-link|
    * - pytorch-ic-alexnet
      - True
-     - 2.2.1
+     - 2.2.2
      - 2.75.0
      - Image Classification
      - `Pytorch Hub <https://pytorch.org/hub/pytorch_vision_alexnet/>`__ |external-link|
    * - pytorch-ic-densenet121
      - True
-     - 2.2.1
+     - 2.2.2
      - 2.75.0
      - Image Classification
      - `Pytorch Hub <https://pytorch.org/hub/pytorch_vision_densenet/>`__ |external-link|
    * - pytorch-ic-densenet161
      - True
-     - 2.2.1
+     - 2.2.2
      - 2.75.0
      - Image Classification
      - `Pytorch Hub <https://pytorch.org/hub/pytorch_vision_densenet/>`__ |external-link|
    * - pytorch-ic-densenet169
      - True
-     - 2.2.1
+     - 2.2.2
      - 2.75.0
      - Image Classification
      - `Pytorch Hub <https://pytorch.org/hub/pytorch_vision_densenet/>`__ |external-link|
    * - pytorch-ic-densenet201
      - True
-     - 2.2.1
+     - 2.2.2
      - 2.75.0
      - Image Classification
      - `Pytorch Hub <https://pytorch.org/hub/pytorch_vision_densenet/>`__ |external-link|
    * - pytorch-ic-googlenet
      - True
-     - 2.2.1
+     - 2.2.2
      - 2.75.0
      - Image Classification
      - `Pytorch Hub <https://pytorch.org/hub/pytorch_vision_googlenet/>`__ |external-link|
    * - pytorch-ic-mobilenet-v2
      - True
-     - 2.2.1
+     - 2.2.2
      - 2.75.0
      - Image Classification
      - `Pytorch Hub <https://pytorch.org/hub/pytorch_vision_mobilenet_v2/>`__ |external-link|
    * - pytorch-ic-resnet101
      - True
-     - 2.2.1
+     - 2.2.2
      - 2.75.0
      - Image Classification
      - `Pytorch Hub <https://pytorch.org/hub/pytorch_vision_resnet/>`__ |external-link|
    * - pytorch-ic-resnet152
      - True
-     - 2.2.1
+     - 2.2.2
      - 2.75.0
      - Image Classification
      - `Pytorch Hub <https://pytorch.org/hub/pytorch_vision_resnet/>`__ |external-link|
    * - pytorch-ic-resnet18
      - True
-     - 2.2.1
+     - 2.2.2
      - 2.75.0
      - Image Classification
      - `Pytorch Hub <https://pytorch.org/hub/pytorch_vision_resnet/>`__ |external-link|
    * - pytorch-ic-resnet34
      - True
-     - 2.2.1
+     - 2.2.2
      - 2.75.0
      - Image Classification
      - `Pytorch Hub <https://pytorch.org/hub/pytorch_vision_resnet/>`__ |external-link|
    * - pytorch-ic-resnet50
      - True
-     - 2.2.1
+     - 2.2.2
      - 2.75.0
      - Image Classification
      - `Pytorch Hub <https://pytorch.org/hub/pytorch_vision_resnet/>`__ |external-link|
    * - pytorch-ic-resnext101-32x8d
      - True
-     - 2.2.1
+     - 2.2.2
      - 2.75.0
      - Image Classification
      - `Pytorch Hub <https://pytorch.org/hub/pytorch_vision_resnext/>`__ |external-link|
    * - pytorch-ic-resnext50-32x4d
      - True
-     - 2.2.1
+     - 2.2.2
      - 2.75.0
      - Image Classification
      - `Pytorch Hub <https://pytorch.org/hub/pytorch_vision_resnext/>`__ |external-link|
    * - pytorch-ic-shufflenet-v2-x1-0
      - True
-     - 2.2.1
+     - 2.2.2
      - 2.75.0
      - Image Classification
      - `Pytorch Hub <https://pytorch.org/hub/pytorch_vision_shufflenet_v2/>`__ |external-link|
    * - pytorch-ic-squeezenet1-0
      - True
-     - 2.2.1
+     - 2.2.2
      - 2.75.0
      - Image Classification
      - `Pytorch Hub <https://pytorch.org/hub/pytorch_vision_squeezenet/>`__ |external-link|
    * - pytorch-ic-squeezenet1-1
      - True
-     - 2.2.1
+     - 2.2.2
      - 2.75.0
      - Image Classification
      - `Pytorch Hub <https://pytorch.org/hub/pytorch_vision_squeezenet/>`__ |external-link|
    * - pytorch-ic-vgg11
      - True
-     - 2.2.1
+     - 2.2.2
      - 2.75.0
      - Image Classification
      - `Pytorch Hub <https://pytorch.org/hub/pytorch_vision_vgg/>`__ |external-link|
    * - pytorch-ic-vgg11-bn
      - True
-     - 2.2.1
+     - 2.2.2
      - 2.75.0
      - Image Classification
      - `Pytorch Hub <https://pytorch.org/hub/pytorch_vision_vgg/>`__ |external-link|
    * - pytorch-ic-vgg13
      - True
-     - 2.2.1
+     - 2.2.2
      - 2.75.0
      - Image Classification
      - `Pytorch Hub <https://pytorch.org/hub/pytorch_vision_vgg/>`__ |external-link|
    * - pytorch-ic-vgg13-bn
      - True
-     - 2.2.1
+     - 2.2.2
      - 2.75.0
      - Image Classification
      - `Pytorch Hub <https://pytorch.org/hub/pytorch_vision_vgg/>`__ |external-link|
    * - pytorch-ic-vgg16
      - True
-     - 2.2.1
+     - 2.2.2
      - 2.75.0
      - Image Classification
      - `Pytorch Hub <https://pytorch.org/hub/pytorch_vision_vgg/>`__ |external-link|
    * - pytorch-ic-vgg16-bn
      - True
-     - 2.2.1
+     - 2.2.2
      - 2.75.0
      - Image Classification
      - `Pytorch Hub <https://pytorch.org/hub/pytorch_vision_vgg/>`__ |external-link|
    * - pytorch-ic-vgg19
      - True
-     - 2.2.1
+     - 2.2.2
      - 2.75.0
      - Image Classification
      - `Pytorch Hub <https://pytorch.org/hub/pytorch_vision_vgg/>`__ |external-link|
    * - pytorch-ic-vgg19-bn
      - True
-     - 2.2.1
+     - 2.2.2
      - 2.75.0
      - Image Classification
      - `Pytorch Hub <https://pytorch.org/hub/pytorch_vision_vgg/>`__ |external-link|
    * - pytorch-ic-wide-resnet101-2
      - True
-     - 2.2.1
+     - 2.2.2
      - 2.75.0
      - Image Classification
      - `Pytorch Hub <https://pytorch.org/hub/pytorch_vision_wide_resnet/>`__ |external-link|
    * - pytorch-ic-wide-resnet50-2
      - True
-     - 2.2.1
+     - 2.2.2
      - 2.75.0
      - Image Classification
      - `Pytorch Hub <https://pytorch.org/hub/pytorch_vision_wide_resnet/>`__ |external-link|
    * - pytorch-od-nvidia-ssd
      - False
-     - 1.0.0
+     - 1.0.1
      - 2.75.0
      - Object Detection
      - `Pytorch Hub <https://pytorch.org/hub/nvidia_deeplearningexamples_ssd/>`__ |external-link|
@@ -833,10 +846,22 @@ Built-in Algorithms with pre-trained Model Table
      - `Pytorch Hub <https://pytorch.org/vision/stable/_modules/torchvision/models/detection/faster_rcnn.html>`__ |external-link|
    * - pytorch-od1-fasterrcnn-resnet50-fpn
      - True
-     - 1.3.0
+     - 1.3.1
      - 2.75.0
      - Object Detection
      - `Pytorch Hub <https://pytorch.org/vision/stable/_modules/torchvision/models/detection/faster_rcnn.html>`__ |external-link|
+   * - pytorch-tabtransformerclassification-model
+     - True
+     - 1.0.0
+     - 2.75.0
+     - Source
+     - `Source <https://arxiv.org/abs/2012.06678>`__ |external-link|
+   * - pytorch-tabtransformerregression-model
+     - True
+     - 1.0.0
+     - 2.75.0
+     - Source
+     - `Source <https://arxiv.org/abs/2012.06678>`__ |external-link|
    * - sklearn-classification-linear
      - True
      - 1.1.1

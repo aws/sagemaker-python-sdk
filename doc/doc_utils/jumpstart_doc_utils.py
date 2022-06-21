@@ -160,7 +160,8 @@ def create_jumpstart_model_table():
     )
     file_content.append(
         """
-    These models are also available through the `JumpStart UI in SageMaker Studio <https://docs.aws.amazon.com/sagemaker/latest/dg/studio-jumpstart.html>`__\n"""
+    These models are also available through the
+    `JumpStart UI in SageMaker Studio <https://docs.aws.amazon.com/sagemaker/latest/dg/studio-jumpstart.html>`__\n"""
     )
     file_content.append("\n")
     file_content.append(".. list-table:: Available Models\n")
@@ -190,3 +191,4 @@ def create_jumpstart_model_table():
 
     f = open("doc_utils/pretrainedmodels.rst", "w")
     f.writelines(file_content)
+    f.close()
