@@ -38,6 +38,7 @@ class PyTorch(Framework):
     """Handle end-to-end training and deployment of custom PyTorch code."""
 
     _framework_name = "pytorch"
+    LAUNCH_PYTORCH_DDP_ENV_NAME = "sagemaker_pytorch_ddp_enabled"
 
     def __init__(
         self,
@@ -229,10 +230,26 @@ class PyTorch(Framework):
 
         self.distribution = distribution or {}
 
+    def _pytorch_distribution_configuration(self, distribution):
+        """Returns a dict of distribution config
+        Args:
+            None
+        Returns:
+            dict containing torch ddp config
+        """
+        distribution_config = {}
+        if "pytorchddp" in distribution:
+            pytorch_ddp_dict = distribution["pytorchddp"]
+            pytorch_ddp_enabled = distribution.get("pytorchddp").get("enabled", False)
+            distribution_config[self.LAUNCH_PYTORCH_DDP_ENV_NAME] = pytorch_ddp_enabled
+        else:
+            distribution_config = self._distribution_configuration(distribution=distribution)
+        return distribution_config
+
     def hyperparameters(self):
         """Return hyperparameters used by your custom PyTorch code during model training."""
         hyperparameters = super(PyTorch, self).hyperparameters()
-        additional_hyperparameters = self._distribution_configuration(
+        additional_hyperparameters = self._pytorch_distribution_configuration(
             distribution=self.distribution
         )
         hyperparameters.update(

@@ -56,7 +56,13 @@ EXPERIMENT_CONFIG = {
     "TrialComponentDisplayName": "tc",
 }
 
+<<<<<<< Updated upstream
 DISTRIBUTION_PYTORCH_DDP_ENABLED = {"pytorchddp": {"enabled": True, "nnodes": 2, "nproc_per_node": 8}}
+=======
+DISTRIBUTION_PYTORCH_DDP_ENABLED = {
+    "pytorchddp": {"enabled": True, "nnodes": 2, "nproc_per_node": 8}
+}
+>>>>>>> Stashed changes
 
 
 @pytest.fixture(name="sagemaker_session")
@@ -772,12 +778,14 @@ def test_pytorch_ddp_distribution_configuration(
         sagemaker_session,
         framework_version=pytorch_training_version,
         py_version=pytorch_training_py_version,
-        distribution = DISTRIBUTION_PYTORCH_DDP_ENABLED,
+        distribution=DISTRIBUTION_PYTORCH_DDP_ENABLED,
     )
-    actual_pytorch_ddp = pytorch._pytorch_distribution_configuration(distribution=pytorch.distribution)
+    actual_pytorch_ddp = pytorch._pytorch_distribution_configuration(
+        distribution=pytorch.distribution
+    )
     expected_torch_ddp = {
         "sagemaker_pytorch_ddp_enabled": True,
         "sagemaker_pytorch_ddp_nproc_per_node": 2,
-        "sagemaker_pytorch_ddp_nnodes": 8
+        "sagemaker_pytorch_ddp_nnodes": 8,
     }
     assert actual_pytorch_ddp == expected_torch_ddp
