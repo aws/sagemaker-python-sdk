@@ -14,20 +14,27 @@
 from __future__ import absolute_import
 
 import logging
+from typing import Optional, Union, List, Dict
+
 import packaging.version
 
 import sagemaker
-from sagemaker import image_uris
+from sagemaker import image_uris, ModelMetrics
 from sagemaker.deserializers import NumpyDeserializer
+from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.fw_utils import (
     model_code_key_prefix,
     python_deprecation_warning,
     validate_version_or_image_args,
 )
+from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.pytorch import defaults
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import NumpySerializer
+from sagemaker.utils import to_string
+from sagemaker.workflow import is_pipeline_variable
+from sagemaker.workflow.entities import PipelineVariable
 
 logger = logging.getLogger("sagemaker")
 
@@ -77,14 +84,14 @@ class PyTorchModel(FrameworkModel):
 
     def __init__(
         self,
-        model_data,
-        role,
-        entry_point,
-        framework_version=None,
-        py_version=None,
-        image_uri=None,
-        predictor_cls=PyTorchPredictor,
-        model_server_workers=None,
+        model_data: Union[str, PipelineVariable],
+        role: str,
+        entry_point: str,
+        framework_version: str = "1.3",
+        py_version: Optional[str] = None,
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
+        predictor_cls: callable = PyTorchPredictor,
+        model_server_workers: Optional[Union[int, PipelineVariable]] = None,
         **kwargs
     ):
         """Initialize a PyTorchModel.
@@ -102,7 +109,7 @@ class PyTorchModel(FrameworkModel):
                 hosting. If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
             framework_version (str): PyTorch version you want to use for
-                executing your model training code. Defaults to None. Required
+                executing your model training code. Defaults to 1.3. Required
                 unless ``image_uri`` is provided.
             py_version (str): Python version you want to use for executing your
                 model training code. Defaults to ``None``. Required unless
@@ -145,27 +152,27 @@ class PyTorchModel(FrameworkModel):
 
     def register(
         self,
-        content_types,
-        response_types,
-        inference_instances=None,
-        transform_instances=None,
-        model_package_name=None,
-        model_package_group_name=None,
-        image_uri=None,
-        model_metrics=None,
-        metadata_properties=None,
-        marketplace_cert=False,
-        approval_status=None,
-        description=None,
-        drift_check_baselines=None,
-        customer_metadata_properties=None,
-        domain=None,
-        sample_payload_url=None,
-        task=None,
-        framework=None,
-        framework_version=None,
-        nearest_model_name=None,
-        data_input_configuration=None,
+        content_types: List[Union[str, PipelineVariable]],
+        response_types: List[Union[str, PipelineVariable]],
+        inference_instances: Optional[List[Union[str, PipelineVariable]]] = None,
+        transform_instances: Optional[List[Union[str, PipelineVariable]]] = None,
+        model_package_name: Optional[Union[str, PipelineVariable]] = None,
+        model_package_group_name: Optional[Union[str, PipelineVariable]] = None,
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
+        model_metrics: Optional[ModelMetrics] = None,
+        metadata_properties: Optional[MetadataProperties] = None,
+        marketplace_cert: bool = False,
+        approval_status: Optional[Union[str, PipelineVariable]] = None,
+        description: Optional[str] = None,
+        drift_check_baselines: Optional[DriftCheckBaselines] = None,
+        customer_metadata_properties: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        domain: Optional[Union[str, PipelineVariable]] = None,
+        sample_payload_url: Optional[Union[str, PipelineVariable]] = None,
+        task: Optional[Union[str, PipelineVariable]] = None,
+        framework: Optional[Union[str, PipelineVariable]] = None,
+        framework_version: Optional[Union[str, PipelineVariable]] = None,
+        nearest_model_name: Optional[Union[str, PipelineVariable]] = None,
+        data_input_configuration: Optional[Union[str, PipelineVariable]] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -221,6 +228,8 @@ class PyTorchModel(FrameworkModel):
                 region_name=self.sagemaker_session.boto_session.region_name,
                 instance_type=instance_type,
             )
+        if not is_pipeline_variable(framework):
+            framework = (framework or self._framework_name).upper()
         return super(PyTorchModel, self).register(
             content_types,
             response_types,
@@ -239,7 +248,7 @@ class PyTorchModel(FrameworkModel):
             domain=domain,
             sample_payload_url=sample_payload_url,
             task=task,
-            framework=(framework or self._framework_name).upper(),
+            framework=framework,
             framework_version=framework_version or self.framework_version,
             nearest_model_name=nearest_model_name,
             data_input_configuration=data_input_configuration,
@@ -285,7 +294,9 @@ class PyTorchModel(FrameworkModel):
         deploy_env.update(self._script_mode_env_vars())
 
         if self.model_server_workers:
-            deploy_env[MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = str(self.model_server_workers)
+            deploy_env[MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = to_string(
+                self.model_server_workers
+            )
         return sagemaker.container_def(
             deploy_image, self.repacked_model_data or self.model_data, deploy_env
         )
