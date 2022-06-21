@@ -727,8 +727,7 @@ get_ecr_image_uri_prefix = deprecations.removed_function("get_ecr_image_uri_pref
 def inference_recommender_params_exist(
     framework=None, framework_version=None, nearest_model_name=None, data_input_configuration=None
 ):
-    """
-    Function to check if inference recommender parameters exist.
+    """Function to check if inference recommender parameters exist.
 
     Args:
         framework (str): Machine learning framework of the model package container image
@@ -755,8 +754,7 @@ def inference_recommender_params_exist(
 def update_container_object(
     framework=None, framework_version=None, nearest_model_name=None, data_input_configuration=None
 ):
-    """
-    Update the container_def object with inference recommedender parameters.
+    """Update the container_def object with inference recommedender parameters.
 
     Args:
         framework (str): Machine learning framework of the model package container image
