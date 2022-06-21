@@ -26,8 +26,8 @@ from mock import (
 )
 
 from sagemaker.estimator import Estimator
-from sagemaker.workflow import Properties
-from sagemaker.workflow._utils import _RepackModelStep
+from sagemaker.workflow._utils import _RepackModelStep, _RegisterModelStep
+from sagemaker.workflow.properties import Properties
 from tests.unit.test_utils import FakeS3, list_tar_files
 from tests.unit import DATA_DIR
 
@@ -161,8 +161,30 @@ def test_repack_model_step(estimator):
     }
 
 
+def test_repack_model_step_with_invalid_input():
+    # without both step_args and any of the old required arguments
+    with pytest.raises(ValueError) as error:
+        _RegisterModelStep(
+            name="MyRegisterModelStep",
+            content_types=list(),
+        )
+    assert "Either of them should be provided" in str(error.value)
+
+    # with both step_args and the old required arguments
+    with pytest.raises(ValueError) as error:
+        _RegisterModelStep(
+            name="MyRegisterModelStep",
+            step_args=dict(),
+            content_types=list(),
+            response_types=list(),
+            inference_instances=list(),
+            transform_instances=list(),
+        )
+    assert "Either of them should be provided" in str(error.value)
+
+
 def test_repack_model_step_with_source_dir(estimator, source_dir):
-    model_data = Properties(path="Steps.MyStep", shape_name="DescribeModelOutput")
+    model_data = Properties(step_name="MyStep", shape_name="DescribeModelOutput")
     entry_point = "inference.py"
     step = _RepackModelStep(
         name="MyRepackModelStep",
@@ -237,7 +259,7 @@ def test_inject_repack_script_s3(estimator, tmp, fake_s3):
         ],
     )
 
-    model_data = Properties(path="Steps.MyStep", shape_name="DescribeModelOutput")
+    model_data = Properties(step_name="MyStep", shape_name="DescribeModelOutput")
     entry_point = "inference.py"
     source_dir_path = "s3://fake/location"
     step = _RepackModelStep(

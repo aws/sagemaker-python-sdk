@@ -24,6 +24,7 @@ from packaging.version import Version
 
 from sagemaker import Session, image_uris, utils
 from sagemaker.local import LocalSession
+from sagemaker.workflow.pipeline_context import PipelineSession
 
 DEFAULT_REGION = "us-west-2"
 CUSTOM_BUCKET_NAME_PREFIX = "sagemaker-custom-bucket"
@@ -45,6 +46,7 @@ NO_P3_REGIONS = [
     "ca-central-1",  # it has p3, but not enough
     "eu-central-1",  # it has p3, but not enough
     "eu-north-1",
+    "eu-west-1",  # it has p3, but not enough
     "eu-west-2",  # it has p3, but not enough
     "eu-west-3",
     "eu-south-1",
@@ -155,6 +157,11 @@ def sagemaker_local_session(boto_session):
     return LocalSession(boto_session=boto_session)
 
 
+@pytest.fixture(scope="session")
+def pipeline_session(boto_session):
+    return PipelineSession(boto_session=boto_session)
+
+
 @pytest.fixture(scope="module")
 def custom_bucket_name(boto_session):
     region = boto_session.region_name
@@ -175,6 +182,8 @@ def mxnet_inference_py_version(mxnet_inference_version, request):
         return request.param
     elif Version(mxnet_inference_version) == Version("1.8.0"):
         return "py37"
+    elif Version(mxnet_inference_version) == Version("1.9.0"):
+        return "py38"
     else:
         return "py3"
 
@@ -185,6 +194,8 @@ def mxnet_training_py_version(mxnet_training_version, request):
         return request.param
     elif Version(mxnet_training_version) == Version("1.8.0"):
         return "py37"
+    elif Version(mxnet_training_version) == Version("1.9.0"):
+        return "py38"
     else:
         return "py3"
 

@@ -13,17 +13,17 @@
 """The step definitions for workflow."""
 from __future__ import absolute_import
 
-from typing import List, Union
+from typing import List, Union, Optional
 
 import attr
 
 from sagemaker.deprecations import deprecated_class
 from sagemaker.workflow.conditions import Condition
+from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.steps import (
     Step,
     StepTypeEnum,
 )
-from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.utilities import list_to_request
 from sagemaker.workflow.entities import (
     RequestType,
@@ -41,7 +41,7 @@ class ConditionStep(Step):
     def __init__(
         self,
         name: str,
-        depends_on: Union[List[str], List[Step]] = None,
+        depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
         display_name: str = None,
         description: str = None,
         conditions: List[Condition] = None,
@@ -56,6 +56,9 @@ class ConditionStep(Step):
 
         Args:
             name (str): The name of the condition step.
+            depends_on (List[Union[str, Step, StepCollection]]): The list of `Step`/StepCollection`
+                names or `Step` instances or `StepCollection` instances that the current `Step`
+                depends on.
             display_name (str): The display name of the condition step.
             description (str): The description of the condition step.
             conditions (List[Condition]): A list of `sagemaker.workflow.conditions.Condition`
@@ -74,9 +77,8 @@ class ConditionStep(Step):
         self.if_steps = if_steps or []
         self.else_steps = else_steps or []
 
-        root_path = f"Steps.{name}"
-        root_prop = Properties(path=root_path)
-        root_prop.__dict__["Outcome"] = Properties(f"{root_path}.Outcome")
+        root_prop = Properties(step_name=name)
+        root_prop.__dict__["Outcome"] = Properties(step_name=name, path="Outcome")
         self._properties = root_prop
 
     @property
@@ -87,6 +89,11 @@ class ConditionStep(Step):
             IfSteps=list_to_request(self.if_steps),
             ElseSteps=list_to_request(self.else_steps),
         )
+
+    @property
+    def step_only_arguments(self):
+        """Argument dict pertaining to the step only, and not the `if_steps` or `else_steps`."""
+        return self.conditions
 
     @property
     def properties(self):
@@ -122,6 +129,11 @@ class JsonGet(PipelineVariable):  # pragma: no cover
                 "Path": self.json_path,
             }
         }
+
+    @property
+    def _referenced_steps(self) -> List[str]:
+        """List of step names that this function depends on."""
+        return [self.step.name]
 
 
 JsonGet = deprecated_class(JsonGet, "JsonGet")

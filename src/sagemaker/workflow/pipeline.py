@@ -39,6 +39,7 @@ from sagemaker.workflow.parallelism_config import ParallelismConfiguration
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.steps import Step
 from sagemaker.workflow.step_collections import StepCollection
+from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.utilities import list_to_request
 
 
@@ -215,30 +216,33 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         Returns:
             response dict from service
         """
+        exists = True
         try:
-            response = self.create(role_arn, description, tags, parallelism_config)
+            self.describe()
         except ClientError as e:
-            error = e.response["Error"]
-            if (
-                error["Code"] == "ValidationException"
-                and "Pipeline names must be unique within" in error["Message"]
-            ):
-                response = self.update(role_arn, description)
-                if tags is not None:
-                    old_tags = self.sagemaker_session.sagemaker_client.list_tags(
-                        ResourceArn=response["PipelineArn"]
-                    )["Tags"]
-
-                    tag_keys = [tag["Key"] for tag in tags]
-                    for old_tag in old_tags:
-                        if old_tag["Key"] not in tag_keys:
-                            tags.append(old_tag)
-
-                    self.sagemaker_session.sagemaker_client.add_tags(
-                        ResourceArn=response["PipelineArn"], Tags=tags
-                    )
+            err = e.response.get("Error", {})
+            if err.get("Code", None) == "ResourceNotFound":
+                exists = False
             else:
-                raise
+                raise e
+
+        if not exists:
+            response = self.create(role_arn, description, tags, parallelism_config)
+        else:
+            response = self.update(role_arn, description)
+            if tags is not None:
+                old_tags = self.sagemaker_session.sagemaker_client.list_tags(
+                    ResourceArn=response["PipelineArn"]
+                )["Tags"]
+
+                tag_keys = [tag["Key"] for tag in tags]
+                for old_tag in old_tags:
+                    if old_tag["Key"] not in tag_keys:
+                        tags.append(old_tag)
+
+                self.sagemaker_session.sagemaker_client.add_tags(
+                    ResourceArn=response["PipelineArn"], Tags=tags
+                )
         return response
 
     def delete(self) -> Dict[str, Any]:
@@ -270,18 +274,6 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         Returns:
             A `_PipelineExecution` instance, if successful.
         """
-        exists = True
-        try:
-            self.describe()
-        except ClientError:
-            exists = False
-
-        if not exists:
-            raise ValueError(
-                "This pipeline is not associated with a Pipeline in SageMaker. "
-                "Please invoke create() first before attempting to invoke start()."
-            )
-
         kwargs = dict(PipelineName=self.name)
         update_args(
             kwargs,
@@ -299,6 +291,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
     def definition(self) -> str:
         """Converts a request structure to string representation for workflow service calls."""
         request_dict = self.to_request()
+        self._interpolate_step_collection_name_in_depends_on(request_dict["Steps"])
         request_dict["PipelineExperimentConfig"] = interpolate(
             request_dict["PipelineExperimentConfig"], {}, {}
         )
@@ -311,6 +304,24 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         )
 
         return json.dumps(request_dict)
+
+    def _interpolate_step_collection_name_in_depends_on(self, step_requests: dict):
+        """Insert step names as per `StepCollection` name in depends_on list
+
+        Args:
+            step_requests (dict): The raw step request dict without any interpolation.
+        """
+        step_name_map = {s.name: s for s in self.steps}
+        for step_request in step_requests:
+            if not step_request.get("DependsOn", None):
+                continue
+            depends_on = []
+            for depend_step_name in step_request["DependsOn"]:
+                if isinstance(step_name_map[depend_step_name], StepCollection):
+                    depends_on.extend([s.name for s in step_name_map[depend_step_name].steps])
+                else:
+                    depends_on.append(depend_step_name)
+            step_request["DependsOn"] = depends_on
 
 
 def format_start_parameters(parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -524,3 +535,113 @@ sagemaker.html#SageMaker.Client.list_pipeline_execution_steps>`_.
             waiter_id, model, self.sagemaker_session.sagemaker_client
         )
         waiter.wait(PipelineExecutionArn=self.arn)
+
+
+class PipelineGraph:
+    """Helper class representing the Pipeline Directed Acyclic Graph (DAG)
+
+    Attributes:
+        steps (Sequence[Union[Step, StepCollection]]): Sequence of `Step`s and/or `StepCollection`s
+            that represent each node in the pipeline DAG
+    """
+
+    def __init__(self, steps: Sequence[Union[Step, StepCollection]]):
+        self.step_map = {}
+        self._generate_step_map(steps)
+        self.adjacency_list = self._initialize_adjacency_list()
+        if self.is_cyclic():
+            raise ValueError("Cycle detected in pipeline step graph.")
+
+    def _generate_step_map(self, steps: Sequence[Union[Step, StepCollection]]):
+        """Helper method to create a mapping from Step/Step Collection name to itself."""
+        for step in steps:
+            if step.name in self.step_map:
+                raise ValueError("Pipeline steps cannot have duplicate names.")
+            self.step_map[step.name] = step
+            if isinstance(step, ConditionStep):
+                self._generate_step_map(step.if_steps + step.else_steps)
+            if isinstance(step, StepCollection):
+                self._generate_step_map(step.steps)
+
+    @classmethod
+    def from_pipeline(cls, pipeline: Pipeline):
+        """Create a PipelineGraph object from the Pipeline object."""
+        return cls(pipeline.steps)
+
+    def _initialize_adjacency_list(self) -> Dict[str, List[str]]:
+        """Generate an adjacency list representing the step dependency DAG in this pipeline."""
+        from collections import defaultdict
+
+        dependency_list = defaultdict(set)
+        for step in self.step_map.values():
+            if isinstance(step, Step):
+                dependency_list[step.name].update(step._find_step_dependencies(self.step_map))
+
+            if isinstance(step, ConditionStep):
+                for child_step in step.if_steps + step.else_steps:
+                    if isinstance(child_step, Step):
+                        dependency_list[child_step.name].add(step.name)
+                    elif isinstance(child_step, StepCollection):
+                        child_first_step = self.step_map[child_step.name].steps[0].name
+                        dependency_list[child_first_step].add(step.name)
+
+        adjacency_list = {}
+        for step in dependency_list:
+            for step_dependency in dependency_list[step]:
+                adjacency_list[step_dependency] = list(
+                    set(adjacency_list.get(step_dependency, []) + [step])
+                )
+        for step in dependency_list:
+            if step not in adjacency_list:
+                adjacency_list[step] = []
+        return adjacency_list
+
+    def is_cyclic(self) -> bool:
+        """Check if this pipeline graph is cyclic.
+
+        Returns true if it is cyclic, false otherwise.
+        """
+
+        def is_cyclic_helper(current_step):
+            visited_steps.add(current_step)
+            recurse_steps.add(current_step)
+            for child_step in self.adjacency_list[current_step]:
+                if child_step in recurse_steps:
+                    return True
+                if child_step not in visited_steps:
+                    if is_cyclic_helper(child_step):
+                        return True
+            recurse_steps.remove(current_step)
+            return False
+
+        visited_steps = set()
+        recurse_steps = set()
+        for step in self.adjacency_list:
+            if step not in visited_steps:
+                if is_cyclic_helper(step):
+                    return True
+        return False
+
+    def __iter__(self):
+        """Perform topological sort traversal of the Pipeline Graph."""
+
+        def topological_sort(current_step):
+            visited_steps.add(current_step)
+            for child_step in self.adjacency_list[current_step]:
+                if child_step not in visited_steps:
+                    topological_sort(child_step)
+            self.stack.append(current_step)
+
+        visited_steps = set()
+        self.stack = []  # pylint: disable=W0201
+        for step in self.adjacency_list:
+            if step not in visited_steps:
+                topological_sort(step)
+        return self
+
+    def __next__(self) -> Step:
+        """Return the next Step node from the Topological sort order."""
+
+        while self.stack:
+            return self.step_map.get(self.stack.pop())
+        raise StopIteration

@@ -74,7 +74,12 @@ def test_deploy(name_from_base, prepare_container_def, production_variant, sagem
     )
 
     sagemaker_session.create_model.assert_called_with(
-        MODEL_NAME, ROLE, container_def, vpc_config=None, enable_network_isolation=False, tags=None
+        name=MODEL_NAME,
+        role=ROLE,
+        container_defs=container_def,
+        vpc_config=None,
+        enable_network_isolation=False,
+        tags=None,
     )
 
     sagemaker_session.endpoint_from_production_variants.assert_called_with(

@@ -1719,6 +1719,16 @@ For more information, see `SageMaker Workflow in Apache Airflow`_.
 
 .. _SageMaker Workflow in Apache Airflow: https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/workflow/README.rst
 
+************************************
+SageMaker Model Building Pipeline
+************************************
+
+You can use Amazon SageMaker Model Building Pipelines to orchestrate your machine learning workflow.
+
+For more information, see `SageMaker Model Building Pipeline`_.
+
+.. _SageMaker Model Building Pipeline: https://github.com/aws/sagemaker-python-sdk/blob/master/doc/amazon_sagemaker_model_building_pipeline.rst
+
 **************************
 SageMaker Model Monitoring
 **************************

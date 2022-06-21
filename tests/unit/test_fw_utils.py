@@ -691,6 +691,8 @@ def test_validate_smdataparallel_args_not_raises():
         ("ml.p3.16xlarge", "tensorflow", "2.7", "py38", smdataparallel_enabled),
         ("ml.p3.16xlarge", "tensorflow", "2.8.0", "py39", smdataparallel_enabled),
         ("ml.p3.16xlarge", "tensorflow", "2.8", "py39", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "tensorflow", "2.9.1", "py39", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "tensorflow", "2.9", "py39", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.6.0", "py3", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.6", "py3", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.7.1", "py3", smdataparallel_enabled),
@@ -700,7 +702,11 @@ def test_validate_smdataparallel_args_not_raises():
         ("ml.p3.16xlarge", "pytorch", "1.8", "py3", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.9.1", "py38", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.9", "py38", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "pytorch", "1.10.0", "py38", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "pytorch", "1.10.2", "py38", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.10", "py38", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "pytorch", "1.11.0", "py38", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "pytorch", "1.11", "py38", smdataparallel_enabled),
         ("ml.p3.16xlarge", "tensorflow", "2.4.1", "py3", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "tensorflow", "2.4.1", "py37", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "tensorflow", "2.4.3", "py3", smdataparallel_enabled_custom_mpi),
@@ -711,8 +717,11 @@ def test_validate_smdataparallel_args_not_raises():
         ("ml.p3.16xlarge", "tensorflow", "2.6.3", "py38", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "tensorflow", "2.7.1", "py38", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "tensorflow", "2.8.0", "py39", smdataparallel_enabled_custom_mpi),
+        ("ml.p3.16xlarge", "tensorflow", "2.9.1", "py39", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "pytorch", "1.8.0", "py3", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "pytorch", "1.9.1", "py38", smdataparallel_enabled_custom_mpi),
+        ("ml.p3.16xlarge", "pytorch", "1.10.2", "py38", smdataparallel_enabled_custom_mpi),
+        ("ml.p3.16xlarge", "pytorch", "1.11.0", "py38", smdataparallel_enabled_custom_mpi),
     ]
     for instance_type, framework_name, framework_version, py_version, distribution in good_args:
         fw_utils._validate_smdataparallel_args(

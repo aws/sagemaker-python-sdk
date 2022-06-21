@@ -13,10 +13,16 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
+from typing import Optional, Dict
+
 import sagemaker
+from sagemaker import ModelMetrics
+from sagemaker.drift_check_baselines import DriftCheckBaselines
+from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.session import Session
 from sagemaker.utils import name_from_image
 from sagemaker.transformer import Transformer
+from sagemaker.workflow.pipeline_context import runnable_by_pipeline
 
 
 class PipelineModel(object):
@@ -78,7 +84,7 @@ class PipelineModel(object):
         self.enable_network_isolation = enable_network_isolation
         self.endpoint_name = None
 
-    def pipeline_container_def(self, instance_type):
+    def pipeline_container_def(self, instance_type=None):
         """The pipeline definition for deploying this model.
 
         This is the dict created by ``sagemaker.pipeline_container_def()``.
@@ -221,6 +227,17 @@ class PipelineModel(object):
             return predictor
         return None
 
+    @runnable_by_pipeline
+    def create(self, instance_type: str):
+        """Create a SageMaker Model Entity
+
+        Args:
+            instance_type (str): The EC2 instance type that this Model will be
+                used for, this is only used to determine if the image needs GPU
+                support or not.
+        """
+        self._create_sagemaker_pipeline_model(instance_type)
+
     def _create_sagemaker_pipeline_model(self, instance_type):
         """Create a SageMaker Model Entity
 
@@ -235,13 +252,101 @@ class PipelineModel(object):
         containers = self.pipeline_container_def(instance_type)
 
         self.name = self.name or name_from_image(containers[0]["Image"])
-        self.sagemaker_session.create_model(
-            self.name,
-            self.role,
-            containers,
+        create_model_args = dict(
+            name=self.name,
+            role=self.role,
+            container_defs=containers,
             vpc_config=self.vpc_config,
             enable_network_isolation=self.enable_network_isolation,
         )
+        self.sagemaker_session.create_model(**create_model_args)
+
+    @runnable_by_pipeline
+    def register(
+        self,
+        content_types: list,
+        response_types: list,
+        inference_instances: Optional[list] = None,
+        transform_instances: Optional[list] = None,
+        model_package_name: Optional[str] = None,
+        model_package_group_name: Optional[str] = None,
+        image_uri: Optional[str] = None,
+        model_metrics: Optional[ModelMetrics] = None,
+        metadata_properties: Optional[MetadataProperties] = None,
+        marketplace_cert: bool = False,
+        approval_status: Optional[str] = None,
+        description: Optional[str] = None,
+        drift_check_baselines: Optional[DriftCheckBaselines] = None,
+        customer_metadata_properties: Optional[Dict[str, str]] = None,
+        domain: Optional[str] = None,
+    ):
+        """Creates a model package for creating SageMaker models or listing on Marketplace.
+
+        Args:
+            content_types (list): The supported MIME types for the input data.
+            response_types (list): The supported MIME types for the output data.
+            inference_instances (list): A list of the instance types that are used to
+                generate inferences in real-time (default: None).
+            transform_instances (list): A list of the instance types on which a transformation
+                job can be run or on which an endpoint can be deployed (default: None).
+            model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
+                using `model_package_name` makes the Model Package un-versioned (default: None).
+            model_package_group_name (str): Model Package Group name, exclusive to
+                `model_package_name`, using `model_package_group_name` makes the Model Package
+                versioned (default: None).
+            image_uri (str): Inference image uri for the container. Model class' self.image will
+                be used if it is None (default: None).
+            model_metrics (ModelMetrics): ModelMetrics object (default: None).
+            metadata_properties (MetadataProperties): MetadataProperties object (default: None).
+            marketplace_cert (bool): A boolean value indicating if the Model Package is certified
+                for AWS Marketplace (default: False).
+            approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
+                or "PendingManualApproval" (default: "PendingManualApproval").
+            description (str): Model Package description (default: None).
+            drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
+            customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
+                metadata properties (default: None).
+            domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
+                "MACHINE_LEARNING" (default: None).
+
+        Returns:
+            A `sagemaker.model.ModelPackage` instance.
+        """
+        for model in self.models:
+            if model.model_data is None:
+                raise ValueError("SageMaker Model Package cannot be created without model data.")
+        if model_package_group_name is not None:
+            container_def = self.pipeline_container_def(
+                inference_instances[0] if inference_instances else None
+            )
+        else:
+            container_def = [
+                {
+                    "Image": image_uri or model.image_uri,
+                    "ModelDataUrl": model.model_data,
+                }
+                for model in self.models
+            ]
+
+        model_pkg_args = sagemaker.get_model_package_args(
+            content_types,
+            response_types,
+            inference_instances=inference_instances,
+            transform_instances=transform_instances,
+            model_package_name=model_package_name,
+            model_package_group_name=model_package_group_name,
+            model_metrics=model_metrics,
+            metadata_properties=metadata_properties,
+            marketplace_cert=marketplace_cert,
+            approval_status=approval_status,
+            description=description,
+            container_def_list=container_def,
+            drift_check_baselines=drift_check_baselines,
+            customer_metadata_properties=customer_metadata_properties,
+            domain=domain,
+        )
+
+        self.sagemaker_session.create_model_package_from_containers(**model_pkg_args)
 
     def transformer(
         self,

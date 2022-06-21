@@ -48,6 +48,47 @@ SCRIPT_URI = "s3://codebucket/someprefix/sourcedir.tar.gz"
 IMAGE_URI = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.9.0-gpu-py38"
 
 
+MODEL_DESCRIPTION = "a description"
+
+SUPPORTED_REALTIME_INFERENCE_INSTANCE_TYPES = ["ml.m4.xlarge"]
+SUPPORTED_BATCH_TRANSFORM_INSTANCE_TYPES = ["ml.m4.xlarge"]
+
+SUPPORTED_CONTENT_TYPES = ["text/csv", "application/json", "application/jsonlines"]
+SUPPORTED_RESPONSE_MIME_TYPES = ["application/json", "text/csv", "application/jsonlines"]
+
+VALIDATION_FILE_NAME = "input.csv"
+VALIDATION_INPUT_PATH = "s3://" + BUCKET_NAME + "/validation-input-csv/"
+VALIDATION_OUTPUT_PATH = "s3://" + BUCKET_NAME + "/validation-output-csv/"
+
+VALIDATION_SPECIFICATION = {
+    "ValidationRole": "some_role",
+    "ValidationProfiles": [
+        {
+            "ProfileName": "Validation-test",
+            "TransformJobDefinition": {
+                "BatchStrategy": "SingleRecord",
+                "TransformInput": {
+                    "DataSource": {
+                        "S3DataSource": {
+                            "S3DataType": "S3Prefix",
+                            "S3Uri": VALIDATION_INPUT_PATH,
+                        }
+                    },
+                    "ContentType": SUPPORTED_CONTENT_TYPES[0],
+                },
+                "TransformOutput": {
+                    "S3OutputPath": VALIDATION_OUTPUT_PATH,
+                },
+                "TransformResources": {
+                    "InstanceType": SUPPORTED_BATCH_TRANSFORM_INSTANCE_TYPES[0],
+                    "InstanceCount": 1,
+                },
+            },
+        },
+    ],
+}
+
+
 class DummyFrameworkModel(FrameworkModel):
     def __init__(self, **kwargs):
         super(DummyFrameworkModel, self).__init__(
@@ -144,7 +185,12 @@ def test_create_sagemaker_model(prepare_container_def, sagemaker_session):
         None, accelerator_type=None, serverless_inference_config=None
     )
     sagemaker_session.create_model.assert_called_with(
-        MODEL_NAME, None, container_def, vpc_config=None, enable_network_isolation=False, tags=None
+        name=MODEL_NAME,
+        role=None,
+        container_defs=container_def,
+        vpc_config=None,
+        enable_network_isolation=False,
+        tags=None,
     )
 
 
@@ -181,7 +227,12 @@ def test_create_sagemaker_model_tags(prepare_container_def, sagemaker_session):
     model._create_sagemaker_model(INSTANCE_TYPE, tags=tags)
 
     sagemaker_session.create_model.assert_called_with(
-        MODEL_NAME, None, container_def, vpc_config=None, enable_network_isolation=False, tags=tags
+        name=MODEL_NAME,
+        role=None,
+        container_defs=container_def,
+        vpc_config=None,
+        enable_network_isolation=False,
+        tags=tags,
     )
 
 
@@ -211,9 +262,9 @@ def test_create_sagemaker_model_optional_model_params(
     name_from_base.assert_not_called()
 
     sagemaker_session.create_model.assert_called_with(
-        MODEL_NAME,
-        ROLE,
-        container_def,
+        name=MODEL_NAME,
+        role=ROLE,
+        container_defs=container_def,
         vpc_config=vpc_config,
         enable_network_isolation=True,
         tags=None,
@@ -240,9 +291,9 @@ def test_create_sagemaker_model_generates_model_name(
     name_from_base.assert_called_with(base_name_from_image.return_value)
 
     sagemaker_session.create_model.assert_called_with(
-        MODEL_NAME,
-        None,
-        container_def,
+        name=MODEL_NAME,
+        role=None,
+        container_defs=container_def,
         vpc_config=None,
         enable_network_isolation=False,
         tags=None,
@@ -591,7 +642,7 @@ def test_script_mode_model_uses_jumpstart_base_name(repack_model, sagemaker_sess
     )
     t.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT)
 
-    assert sagemaker_session.create_model.call_args_list[0][0][0].startswith(
+    assert sagemaker_session.create_model.call_args_list[0][1]["name"].startswith(
         JUMPSTART_RESOURCE_BASE_NAME
     )
 
@@ -613,7 +664,7 @@ def test_script_mode_model_uses_jumpstart_base_name(repack_model, sagemaker_sess
     )
     t.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT)
 
-    assert not sagemaker_session.create_model.call_args_list[0][0][0].startswith(
+    assert not sagemaker_session.create_model.call_args_list[0][1]["name"].startswith(
         JUMPSTART_RESOURCE_BASE_NAME
     )
 
@@ -655,7 +706,7 @@ def test_all_framework_models_add_jumpstart_base_name(
             **kwargs,
         ).deploy(instance_type="ml.m2.xlarge", initial_instance_count=INSTANCE_COUNT)
 
-        assert sagemaker_session.create_model.call_args_list[0][0][0].startswith(
+        assert sagemaker_session.create_model.call_args_list[0][1]["name"].startswith(
             JUMPSTART_RESOURCE_BASE_NAME
         )
 
@@ -682,8 +733,45 @@ def test_script_mode_model_uses_proper_sagemaker_submit_dir(repack_model, sagema
     t.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT)
 
     assert (
-        sagemaker_session.create_model.call_args_list[0][0][2]["Environment"][
+        sagemaker_session.create_model.call_args_list[0][1]["container_defs"]["Environment"][
             "SAGEMAKER_SUBMIT_DIRECTORY"
         ]
         == "/opt/ml/model/code"
     )
+
+
+@patch("sagemaker.get_model_package_args")
+def test_register_calls_model_package_args(get_model_package_args, sagemaker_session):
+
+    source_dir = "s3://blah/blah/blah"
+    t = Model(
+        entry_point=ENTRY_POINT_INFERENCE,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        source_dir=source_dir,
+        image_uri=IMAGE_URI,
+        model_data=MODEL_DATA,
+    )
+
+    t.register(
+        SUPPORTED_CONTENT_TYPES,
+        SUPPORTED_RESPONSE_MIME_TYPES,
+        SUPPORTED_REALTIME_INFERENCE_INSTANCE_TYPES,
+        SUPPORTED_BATCH_TRANSFORM_INSTANCE_TYPES,
+        marketplace_cert=True,
+        description=MODEL_DESCRIPTION,
+        model_package_name=MODEL_NAME,
+        validation_specification=VALIDATION_SPECIFICATION,
+    )
+
+    # check that the kwarg validation_specification was passed to the internal method 'get_model_package_args'
+    assert (
+        "validation_specification" in get_model_package_args.call_args_list[0][1]
+    ), "validation_specification kwarg was not passed to get_model_package_args"
+
+    # check that the kwarg validation_specification is identical to the one passed into the method 'register'
+    assert (
+        VALIDATION_SPECIFICATION
+        == get_model_package_args.call_args_list[0][1]["validation_specification"]
+    ), """ValidationSpecification from model.register method is not identical to validation_spec from
+         get_model_package_args"""

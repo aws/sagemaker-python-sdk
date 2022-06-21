@@ -141,8 +141,8 @@ class SKLearnModel(FrameworkModel):
         self,
         content_types,
         response_types,
-        inference_instances,
-        transform_instances,
+        inference_instances=None,
+        transform_instances=None,
         model_package_name=None,
         model_package_group_name=None,
         image_uri=None,
@@ -151,6 +151,9 @@ class SKLearnModel(FrameworkModel):
         marketplace_cert=False,
         approval_status=None,
         description=None,
+        drift_check_baselines=None,
+        customer_metadata_properties=None,
+        domain=None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -158,9 +161,9 @@ class SKLearnModel(FrameworkModel):
             content_types (list): The supported MIME types for the input data.
             response_types (list): The supported MIME types for the output data.
             inference_instances (list): A list of the instance types that are used to
-                generate inferences in real-time.
+                generate inferences in real-time (default: None).
             transform_instances (list): A list of the instance types on which a transformation
-                job can be run or on which an endpoint can be deployed.
+                job can be run or on which an endpoint can be deployed (default: None).
             model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
                 using `model_package_name` makes the Model Package un-versioned (default: None).
             model_package_group_name (str): Model Package Group name, exclusive to
@@ -175,11 +178,16 @@ class SKLearnModel(FrameworkModel):
             approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
                 or "PendingManualApproval" (default: "PendingManualApproval").
             description (str): Model Package description (default: None).
+            drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
+            customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
+                metadata properties (default: None).
+            domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
+                "MACHINE_LEARNING" (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
         """
-        instance_type = inference_instances[0]
+        instance_type = inference_instances[0] if inference_instances else None
         self._init_sagemaker_session_if_does_not_exist(instance_type)
 
         if image_uri:
@@ -202,6 +210,9 @@ class SKLearnModel(FrameworkModel):
             marketplace_cert,
             approval_status,
             description,
+            drift_check_baselines=drift_check_baselines,
+            customer_metadata_properties=customer_metadata_properties,
+            domain=domain,
         )
 
     def prepare_container_def(

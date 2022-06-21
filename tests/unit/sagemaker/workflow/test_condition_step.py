@@ -10,31 +10,29 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-# language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import pytest
+from mock import Mock, MagicMock
 from sagemaker.workflow.conditions import ConditionEquals
 from sagemaker.workflow.parameters import ParameterInteger
-from sagemaker.workflow.steps import (
-    Step,
-    StepTypeEnum,
-)
-from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.condition_step import ConditionStep
+from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
+from tests.unit.sagemaker.workflow.helpers import CustomStep, ordered
 
 
-class CustomStep(Step):
-    def __init__(self, name, display_name=None, description=None):
-        super(CustomStep, self).__init__(name, display_name, description, StepTypeEnum.TRAINING)
-        self._properties = Properties(path=f"Steps.{name}")
-
-    @property
-    def arguments(self):
-        return dict()
-
-    @property
-    def properties(self):
-        return self._properties
+@pytest.fixture()
+def sagemaker_session():
+    boto_mock = Mock(name="boto_session", region_name="us-west-2")
+    session_mock = MagicMock(
+        name="sagemaker_session",
+        boto_session=boto_mock,
+        boto_region_name="us-west-2",
+        config=None,
+        local_mode=False,
+        account_id=Mock(),
+    )
+    return session_mock
 
 
 def test_condition_step():
@@ -79,3 +77,26 @@ def test_condition_step():
         },
     }
     assert cond_step.properties.Outcome.expr == {"Get": "Steps.MyConditionStep.Outcome"}
+
+
+def test_pipeline(sagemaker_session):
+    param = ParameterInteger(name="MyInt", default_value=2)
+    cond = ConditionEquals(left=param, right=1)
+    custom_step1 = CustomStep("IfStep")
+    custom_step2 = CustomStep("ElseStep")
+    step_cond = ConditionStep(
+        name="CondStep",
+        conditions=[cond],
+        if_steps=[custom_step1],
+        else_steps=[custom_step2],
+    )
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[step_cond],
+        sagemaker_session=sagemaker_session,
+        parameters=[param],
+    )
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert ordered(adjacency_list) == ordered(
+        {"CondStep": ["IfStep", "ElseStep"], "IfStep": [], "ElseStep": []}
+    )
