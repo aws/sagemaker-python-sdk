@@ -4288,34 +4288,11 @@ def get_model_package_args(
         task (str): Task values which are supported by Inference Recommender are "FILL_MASK",
             "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION", "IMAGE_SEGMENTATION",
             "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
-        framework (str): Machine learning framework of the model package container image
-            (default: None).
-        framework_version (str): Framework version of the Model Package Container Image
-            (default: None).
-        nearest_model_name (str): Name of a pre-trained machine learning benchmarked by
-            Amazon SageMaker Inference Recommender (default: None).
-        data_input_configuration (str): Input object for the model (default: None).
+
     Returns:
         dict: A dictionary of method argument names and values.
     """
     if container_def_list is not None:
-        container_fields = container_def_list[0]
-        if (
-            container_fields.get("Framework") is not None
-            and container_fields.get("FrameworkVersion") is not None
-            and container_fields.get("NearestModelName") is not None
-            and container_fields.get("ModelInput").get("DataInputConfig") is not None
-        ):
-            container_def_list[0].update(
-                {
-                    "Framework": container_fields["Framework"],
-                    "FrameworkVersion": container_fields["FrameworkVersion"],
-                    "NearestModelName": container_fields["NearestModelName"],
-                    "ModelInput": {
-                        "DataInputConfig": container_fields["ModelInput"]["DataInputConfig"],
-                    },
-                }
-            )
         containers = container_def_list
     else:
         container = {

@@ -722,3 +722,59 @@ class S3DataConfig(DataConfig):
 
 
 get_ecr_image_uri_prefix = deprecations.removed_function("get_ecr_image_uri_prefix")
+
+
+def inference_recommender_params_exist(
+    framework=None, framework_version=None, nearest_model_name=None, data_input_configuration=None
+):
+    """
+    Function to check if inference recommender parameters exist.
+
+    Args:
+        framework (str): Machine learning framework of the model package container image
+                (default: None).
+        framework_version (str): Framework version of the Model Package Container Image
+            (default: None).
+        nearest_model_name (str): Name of a pre-trained machine learning benchmarked by
+            Amazon SageMaker Inference Recommender (default: None).
+        data_input_configuration (str): Input object for the model (default: None).
+
+    Returns:
+        bool: all required fields exist or not
+    """
+    if (
+        framework is not None
+        and framework_version is not None
+        and nearest_model_name is not None
+        and data_input_configuration is not None
+    ):
+        return True
+    return False
+
+
+def update_container_object(
+    framework=None, framework_version=None, nearest_model_name=None, data_input_configuration=None
+):
+    """
+    Update the container_def object with inference recommedender parameters.
+
+    Args:
+        framework (str): Machine learning framework of the model package container image
+                (default: None).
+        framework_version (str): Framework version of the Model Package Container Image
+            (default: None).
+        nearest_model_name (str): Name of a pre-trained machine learning benchmarked by
+            Amazon SageMaker Inference Recommender (default: None).
+        data_input_configuration (str): Input object for the model (default: None).
+
+    Returns:
+        dict: inference recommender key, value pairs which updates the object.
+    """
+    return {
+        "Framework": framework,
+        "FrameworkVersion": framework_version,
+        "NearestModelName": nearest_model_name,
+        "ModelInput": {
+            "DataInputConfig": data_input_configuration,
+        },
+    }

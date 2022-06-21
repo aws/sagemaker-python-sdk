@@ -35,7 +35,11 @@ from sagemaker.predictor import PredictorBase
 from sagemaker.serverless import ServerlessInferenceConfig
 from sagemaker.transformer import Transformer
 from sagemaker.jumpstart.utils import add_jumpstart_tags, get_jumpstart_base_name_if_jumpstart_model
-from sagemaker.utils import unique_name_from_base
+from sagemaker.utils import (
+    unique_name_from_base,
+    inference_recommender_params_exist,
+    update_container_object,
+)
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.predictor_async import AsyncPredictor
 from sagemaker.workflow import is_pipeline_variable
@@ -367,29 +371,23 @@ class Model(ModelBase):
             raise ValueError("SageMaker Model Package cannot be created without model data.")
         if image_uri is not None:
             self.image_uri = image_uri
+            
         if model_package_group_name is not None:
             container_def = self.prepare_container_def()
+            if inference_recommender_params_exist(
+                framework, framework_version, nearest_model_name, data_input_configuration
+            ):
+                container_def.update(
+                    update_container_object(
+                        framework, framework_version, nearest_model_name, data_input_configuration
+                    )
+                )
         else:
             container_def = {
                 "Image": self.image_uri,
                 "ModelDataUrl": self.model_data,
             }
-        if (
-            framework is not None
-            and framework_version is not None
-            and nearest_model_name is not None
-            and data_input_configuration is not None
-        ):
-            container_def.update(
-                {
-                    "Framework": framework,
-                    "FrameworkVersion": framework_version,
-                    "NearestModelName": nearest_model_name,
-                    "ModelInput": {
-                        "DataInputConfig": data_input_configuration,
-                    },
-                }
-            )
+
         model_pkg_args = sagemaker.get_model_package_args(
             content_types,
             response_types,

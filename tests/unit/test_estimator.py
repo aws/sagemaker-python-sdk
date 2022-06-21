@@ -3136,12 +3136,6 @@ def test_register_default_image(sagemaker_session):
             {
                 "Image": estimator.image_uri,
                 "ModelDataUrl": estimator.model_data,
-                "Framework": framework,
-                "FrameworkVersion": framework_version,
-                "NearestModelName": nearest_model_name,
-                "ModelInput": {
-                    "DataInputConfig": data_input_config,
-                },
             }
         ],
         "content_types": content_types,
@@ -3198,12 +3192,6 @@ def test_register_default_image_without_instance_type_args(sagemaker_session):
             {
                 "Image": estimator.image_uri,
                 "ModelDataUrl": estimator.model_data,
-                "Framework": framework,
-                "FrameworkVersion": framework_version,
-                "NearestModelName": nearest_model_name,
-                "ModelInput": {
-                    "DataInputConfig": data_input_config,
-                },
             }
         ],
         "content_types": content_types,
@@ -3266,12 +3254,6 @@ def test_register_inference_image(sagemaker_session):
             {
                 "Image": inference_image,
                 "ModelDataUrl": estimator.model_data,
-                "Framework": framework,
-                "FrameworkVersion": framework_version,
-                "NearestModelName": nearest_model_name,
-                "ModelInput": {
-                    "DataInputConfig": data_input_config,
-                },
             }
         ],
         "content_types": content_types,
