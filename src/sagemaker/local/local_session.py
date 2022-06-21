@@ -491,7 +491,9 @@ class LocalSession(Session):
     :class:`~sagemaker.session.Session`.
     """
 
-    def __init__(self, boto_session=None, s3_endpoint_url=None, disable_local_code=False, default_bucket=None):
+    def __init__(
+            self, boto_session=None, s3_endpoint_url=None, disable_local_code=False, default_bucket=None
+    ):
         """Create a Local SageMaker Session.
 
         Args:
