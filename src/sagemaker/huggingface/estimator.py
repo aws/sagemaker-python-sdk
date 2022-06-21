@@ -26,7 +26,7 @@ from sagemaker.fw_utils import (
 from sagemaker.huggingface.model import HuggingFaceModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
-from sagemaker.training_compiler.config import TrainingCompilerConfig
+from sagemaker.huggingface.training_compiler.config import TrainingCompilerConfig
 
 logger = logging.getLogger("sagemaker")
 
@@ -190,6 +190,8 @@ class HuggingFace(Framework):
             entry_point, source_dir, hyperparameters, image_uri=image_uri, **kwargs
         )
 
+        self.distribution = distribution or {}
+
         if compiler_config is not None:
             if not isinstance(compiler_config, TrainingCompilerConfig):
                 error_string = (
@@ -199,13 +201,7 @@ class HuggingFace(Framework):
                 )
                 raise ValueError(error_string)
             if compiler_config:
-                compiler_config.validate(
-                    image_uri=image_uri,
-                    instance_type=instance_type,
-                    distribution=distribution,
-                )
-
-        self.distribution = distribution or {}
+                compiler_config.validate(self)
         self.compiler_config = compiler_config
 
     def _validate_args(self, image_uri):

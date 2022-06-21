@@ -121,7 +121,7 @@ def test_pipeline_variable_in_pipeline_definition(sagemaker_session):
         property_file=property_file,
         json_path="my-json-path",
     )
-    prop = Properties("Steps.MyStep", "DescribeProcessingJobResponse")
+    prop = Properties(step_name="MyStep", shape_name="DescribeProcessingJobResponse")
 
     cond = ConditionGreaterThan(left=param_str, right=param_int.to_string())
     step_fail = FailStep(

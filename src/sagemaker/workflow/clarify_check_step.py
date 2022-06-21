@@ -236,13 +236,12 @@ class ClarifyCheckStep(Step):
             self._generate_processing_job_analysis_config(), self._baselining_processor
         )
 
-        root_path = f"Steps.{name}"
-        root_prop = Properties(path=root_path)
+        root_prop = Properties(step_name=name)
         root_prop.__dict__["CalculatedBaselineConstraints"] = Properties(
-            f"{root_path}.CalculatedBaselineConstraints"
+            step_name=name, path="CalculatedBaselineConstraints"
         )
         root_prop.__dict__["BaselineUsedForDriftCheckConstraints"] = Properties(
-            f"{root_path}.BaselineUsedForDriftCheckConstraints"
+            step_name=name, path="BaselineUsedForDriftCheckConstraints"
         )
         self._properties = root_prop
 

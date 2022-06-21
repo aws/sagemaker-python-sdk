@@ -22,37 +22,13 @@ from mock import Mock
 from sagemaker import s3
 from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.parameters import ParameterString
-from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
 from sagemaker.workflow.parallelism_config import ParallelismConfiguration
 from sagemaker.workflow.pipeline_experiment_config import (
     PipelineExperimentConfig,
     PipelineExperimentConfigProperties,
 )
-from sagemaker.workflow.properties import Properties
-from sagemaker.workflow.steps import (
-    Step,
-    StepTypeEnum,
-)
-from tests.unit.sagemaker.workflow.helpers import ordered
-
-
-class CustomStep(Step):
-    def __init__(self, name, input_data, display_name=None, description=None):
-        self.input_data = input_data
-        super(CustomStep, self).__init__(name, display_name, description, StepTypeEnum.TRAINING)
-
-        path = f"Steps.{name}"
-        prop = Properties(path=path)
-        prop.__dict__["S3Uri"] = Properties(f"{path}.S3Uri")
-        self._properties = prop
-
-    @property
-    def arguments(self):
-        return {"input_data": self.input_data}
-
-    @property
-    def properties(self):
-        return self._properties
+from tests.unit.sagemaker.workflow.helpers import ordered, CustomStep
 
 
 @pytest.fixture
@@ -314,7 +290,9 @@ def test_pipeline_two_step(sagemaker_session_mock):
             PipelineExperimentConfigProperties.EXPERIMENT_NAME,  # experiment config property
         ],
     )
-    step2 = CustomStep(name="MyStep2", input_data=[step1.properties.S3Uri])  # step property
+    step2 = CustomStep(
+        name="MyStep2", input_data=[step1.properties.ModelArtifacts.S3ModelArtifacts]
+    )  # step property
     pipeline = Pipeline(
         name="MyPipeline",
         parameters=[parameter],
@@ -344,7 +322,7 @@ def test_pipeline_two_step(sagemaker_session_mock):
             {
                 "Name": "MyStep2",
                 "Type": "Training",
-                "Arguments": {"input_data": [step1.properties.S3Uri]},
+                "Arguments": {"input_data": [step1.properties.ModelArtifacts.S3ModelArtifacts]},
             },
         ],
     }
@@ -372,11 +350,16 @@ def test_pipeline_two_step(sagemaker_session_mock):
                 {
                     "Name": "MyStep2",
                     "Type": "Training",
-                    "Arguments": {"input_data": [{"Get": "Steps.MyStep1.S3Uri"}]},
+                    "Arguments": {
+                        "input_data": [{"Get": "Steps.MyStep1.ModelArtifacts.S3ModelArtifacts"}]
+                    },
                 },
             ],
         }
     )
+
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert ordered(adjacency_list) == ordered({"MyStep1": ["MyStep2"], "MyStep2": []})
 
 
 def test_pipeline_override_experiment_config():

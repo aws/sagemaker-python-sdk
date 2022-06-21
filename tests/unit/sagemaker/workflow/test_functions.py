@@ -50,7 +50,7 @@ def test_join_expressions():
             ParameterFloat(name="MyFloat"),
             ParameterInteger(name="MyInt"),
             ParameterString(name="MyStr"),
-            Properties(path="Steps.foo.OutputPath.S3Uri"),
+            Properties(step_name="foo", path="OutputPath.S3Uri"),
             ExecutionVariables.PIPELINE_EXECUTION_ID,
             Join(on=",", values=[1, "a", False, 1.1]),
         ]
