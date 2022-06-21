@@ -13,6 +13,7 @@
 """Pipeline parameters and conditions for workflow."""
 from __future__ import absolute_import
 
+from typing import List
 from sagemaker.workflow.entities import (
     RequestType,
     PipelineVariable,
@@ -41,6 +42,11 @@ class ExecutionVariable(PipelineVariable):
     def expr(self) -> RequestType:
         """The 'Get' expression dict for an `ExecutionVariable`."""
         return {"Get": f"Execution.{self.name}"}
+
+    @property
+    def _referenced_steps(self) -> List[str]:
+        """List of step names that this function depends on."""
+        return []
 
 
 class ExecutionVariables:
