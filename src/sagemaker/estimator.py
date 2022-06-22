@@ -3178,9 +3178,17 @@ class Framework(EstimatorBase):
                 current = getattr(self, version_argument)
                 threshold = minimum_supported_framework_version[self._framework_name][version_argument]
                 if Version(current) in SpecifierSet(f"< {threshold}"):
-                    raise ValueError("Multi Worker Mirrored Strategy is only supported from {} {} but received {}".format(version_argument, threshold, current))
+                    raise ValueError(
+                        "Multi Worker Mirrored Strategy is only supported "
+                        "from {} {} but received {}".format(version_argument, threshold, current)
+                    )
         else:
-            raise ValueError("Multi Worker Mirrored Strategy is currently only supported with {} frameworks but received {}".format(minimum_supported_framework_version.keys(), self._framework_name))
+            raise ValueError(
+                "Multi Worker Mirrored Strategy is currently only supported "
+                "with {} frameworks but received {}".format(
+                    minimum_supported_framework_version.keys(), self._framework_name
+                )
+            )
 
     def _model_source_dir(self):
         """Get the appropriate value to pass as ``source_dir`` to a model constructor.
