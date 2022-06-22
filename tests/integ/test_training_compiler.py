@@ -41,7 +41,8 @@ def instance_count(request):
 @pytest.fixture(scope="module")
 def imagenet_val_set(request, sagemaker_session, tmpdir_factory):
     """
-    Copies the dataset from the bucket it's hosted in to the local bucket in the test region
+    Copies the Imagenet dataset from the bucket it's hosted in to the local bucket in the test region.
+    Due to licensing issues, access to this dataset is controlled through an allowlist
     """
     local_path = tmpdir_factory.mktemp("trcomp_imagenet_val_set")
     sagemaker_session.download_data(

@@ -610,7 +610,8 @@ def inf_instance_family(inf_instance_type):
 @pytest.fixture(scope="session")
 def imagenet_train_subset(request, sagemaker_session, tmpdir_factory):
     """
-    Copies the Imagenet dataset from the bucket it's hosted in to the local bucket in the test region
+    Copies the Imagenet dataset from the bucket it's hosted in to the local bucket in the test region.
+    Due to licensing issues, access to this dataset is controlled through an allowlist
     """
     local_path = tmpdir_factory.mktemp("imagenet_tfrecords_train_subset")
     sagemaker_session.download_data(
