@@ -116,6 +116,9 @@ def test_huggingface_training(
     and integ.test_region() in integ.TRAINING_NO_P3_REGIONS,
     reason="no ml.p2 or ml.p3 instances in this region",
 )
+@pytest.mark.skip(
+    reason="need to re enable it later t.corp:V609860141",
+)
 def test_huggingface_training_tf(
     sagemaker_session,
     gpu_instance_type,
