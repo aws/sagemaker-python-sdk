@@ -18,7 +18,6 @@ from typing import Optional, Union, List, Dict
 import enum
 import logging
 import re
-from typing import Union, Optional
 
 from sagemaker import image_uris, fw_utils
 from sagemaker.estimator import Framework, EstimatorBase

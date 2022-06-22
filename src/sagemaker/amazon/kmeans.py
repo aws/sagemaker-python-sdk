@@ -27,8 +27,6 @@ from sagemaker.utils import pop_out_unused_kwarg
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 from sagemaker.workflow.entities import PipelineVariable
 
-from sagemaker.workflow.entities import PipelineVariable
-
 
 class KMeans(AmazonAlgorithmEstimatorBase):
     """An unsupervised learning algorithm that attempts to find discrete groupings within data.
@@ -76,7 +74,7 @@ class KMeans(AmazonAlgorithmEstimatorBase):
         half_life_time_size: Optional[int] = None,
         epochs: Optional[int] = None,
         center_factor: Optional[int] = None,
-        eval_metrics: Optional[List[Union[str, PipelineVariable]]] = None,
+        eval_metrics: Optional[List[str]] = None,
         **kwargs
     ):
         """A k-means clustering class :class:`~sagemaker.amazon.AmazonAlgorithmEstimatorBase`.

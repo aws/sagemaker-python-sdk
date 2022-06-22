@@ -14,6 +14,7 @@
 from __future__ import absolute_import, print_function
 
 from typing import Union, Optional, List
+
 import attr
 
 from sagemaker.workflow.entities import PipelineVariable

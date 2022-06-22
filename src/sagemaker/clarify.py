@@ -37,7 +37,7 @@ from sagemaker.workflow import is_pipeline_variable
 logger = logging.getLogger(__name__)
 
 
-class DataConfig:  #TODO: add PipelineVariable to rest of fields
+class DataConfig:  # TODO: add PipelineVariable to rest of fields
     """Config object related to configurations of the input and output dataset."""
 
     def __init__(
@@ -271,7 +271,7 @@ class BiasConfig:
         return copy.deepcopy(self.analysis_config)
 
 
-class ModelConfig: # TODO add pipeline annotation
+class ModelConfig:  # TODO add pipeline annotation
     """Config object related to a model and its endpoint to be created."""
 
     def __init__(

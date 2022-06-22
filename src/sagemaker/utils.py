@@ -93,6 +93,7 @@ def unique_name_from_base(base, max_length=63):
 
 def base_name_from_image(image, default_base_name=None):
     """Extract the base name of the image to use as the 'algorithm name' for the job.
+
     Args:
         image (str): Image name.
         default_base_name (str): The default base name

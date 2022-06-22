@@ -40,7 +40,6 @@ from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.dataset_definition.inputs import S3Input, DatasetDefinition
 from sagemaker.apiutils._base_types import ApiObject
 from sagemaker.s3 import S3Uploader
-from sagemaker.workflow.entities import PipelineVariable
 
 
 logger = logging.getLogger(__name__)

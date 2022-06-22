@@ -33,17 +33,17 @@ class XGBoostProcessor(FrameworkProcessor):
 
     def __init__(
         self,
-        framework_version: str,  # New arg
+        framework_version: str,
         role: str,
         instance_count: Union[int, PipelineVariable],
         instance_type: Union[str, PipelineVariable],
-        py_version: str = "py3",  # New kwarg
+        py_version: str = "py3",
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         command: Optional[List[str]] = None,
         volume_size_in_gb: Union[int, PipelineVariable] = 30,
         volume_kms_key: Optional[Union[str, PipelineVariable]] = None,
         output_kms_key: Optional[Union[str, PipelineVariable]] = None,
-        code_location: Optional[str] = None,  # New arg
+        code_location: Optional[str] = None,
         max_runtime_in_seconds: Optional[Union[int, PipelineVariable]] = None,
         base_job_name: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,

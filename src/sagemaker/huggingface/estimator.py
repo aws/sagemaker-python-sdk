@@ -17,7 +17,6 @@ from typing import Optional, Union, Dict
 
 import logging
 import re
-from typing import Optional, Union, Dict
 
 from sagemaker.deprecations import renamed_kwargs
 from sagemaker.estimator import Framework, EstimatorBase
@@ -204,14 +203,8 @@ class HuggingFace(Framework):
                     f"Instead got {type(compiler_config)}"
                 )
                 raise ValueError(error_string)
-
-            compiler_config.validate(
-                image_uri=image_uri,
-                instance_type=instance_type,
-                distribution=distribution,
-            )
-
-        self.distribution = distribution or {}
+            if compiler_config:
+                compiler_config.validate(self)
         self.compiler_config = compiler_config
 
     def _validate_args(self, image_uri):

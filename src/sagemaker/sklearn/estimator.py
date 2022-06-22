@@ -16,7 +16,6 @@ from __future__ import absolute_import
 from typing import Optional, Union, Dict
 
 import logging
-from typing import Union, Optional
 
 from sagemaker import image_uris
 from sagemaker.deprecations import renamed_kwargs
@@ -157,12 +156,6 @@ class SKLearn(Framework):
         )
 
         if image_uri is None:
-
-            if is_pipeline_variable(instance_type):
-                raise ValueError(
-                    "instance_type argument cannot be a pipeline variable when image_uri is not given."
-                )
-
             self.image_uri = image_uris.retrieve(
                 SKLearn._framework_name,
                 image_uri_region or self.sagemaker_session.boto_region_name,

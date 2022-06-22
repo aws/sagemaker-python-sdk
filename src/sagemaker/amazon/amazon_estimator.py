@@ -18,7 +18,6 @@ from typing import Optional, Union, Dict
 import json
 import logging
 import tempfile
-from typing import Union
 
 from six.moves.urllib.parse import urlparse
 
@@ -32,7 +31,6 @@ from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.utils import sagemaker_timestamp
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
-from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.parameters import ParameterBoolean
 from sagemaker.workflow import is_pipeline_variable
 

@@ -274,7 +274,9 @@ def test_training_step_with_estimator(pipeline_session, training_input, hyperpar
         "DependsOn": ["TestStep"],
         "Arguments": step_args.args,
     }
-    assert step_train.properties.TrainingJobName.expr == {"Get": "Steps.MyTrainingStep.TrainingJobName"}
+    assert step_train.properties.TrainingJobName.expr == {
+        "Get": "Steps.MyTrainingStep.TrainingJobName"
+    }
     adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
     assert ordered(adjacency_list) == ordered(
         {"MyTrainingStep": [], "SecondTestStep": ["MyTrainingStep"], "TestStep": ["MyTrainingStep"]}
@@ -351,9 +353,6 @@ def test_training_step_with_framework_estimator(
 
     estimator.sagemaker_session = pipeline_session
     step_args = estimator.fit(inputs=TrainingInput(s3_data=training_input))
-
-    from sagemaker.workflow.retry import SageMakerJobStepRetryPolicy, SageMakerJobExceptionTypeEnum
-    from sagemaker.workflow.parameters import ParameterInteger
 
     step = TrainingStep(
         name="MyTrainingStep",

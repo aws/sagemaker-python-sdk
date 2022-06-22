@@ -14,7 +14,6 @@
 from __future__ import absolute_import
 
 import warnings
-from sagemaker.deprecations import deprecated_class
 from typing import List, Union, Optional
 
 import attr

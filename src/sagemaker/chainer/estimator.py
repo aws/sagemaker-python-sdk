@@ -16,7 +16,6 @@ from __future__ import absolute_import
 from typing import Optional, Union, Dict
 
 import logging
-from typing import Union, Optional
 
 from sagemaker.estimator import Framework, EstimatorBase
 from sagemaker.fw_utils import (
