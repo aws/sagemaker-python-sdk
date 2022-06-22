@@ -24,6 +24,7 @@ from sagemaker.jumpstart.utils import is_jumpstart_model_input
 from sagemaker.spark import defaults
 from sagemaker.jumpstart import artifacts
 from sagemaker.workflow import is_pipeline_variable
+from sagemaker.workflow.utilities import override_pipeline_parameter_var
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,8 @@ ECR_URI_TEMPLATE = "{registry}.dkr.{hostname}/{repository}"
 HUGGING_FACE_FRAMEWORK = "huggingface"
 
 
+# TODO: we should remove this decorator later
+@override_pipeline_parameter_var
 def retrieve(
     framework,
     region,
