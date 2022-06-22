@@ -42,6 +42,7 @@ IMAGE_URI_FORMAT_STRING = (
     "520713654638.dkr.ecr.{}.amazonaws.com/sagemaker-tensorflow-scriptmode:{}-cpu-{}"
 )
 DISTRIBUTION_PS_ENABLED = {"parameter_server": {"enabled": True}}
+DISTRIBUTION_MWMS_ENABLED = {"multi_worker_mirrored_strategy": {"enabled": True}}
 DISTRIBUTION_MPI_ENABLED = {
     "mpi": {"enabled": True, "custom_mpi_options": "options", "processes_per_host": 2}
 }
@@ -517,6 +518,60 @@ def test_fit_mpi(time, strftime, sagemaker_session):
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert actual_train_args == expected_train_args
+
+
+@patch("time.strftime", return_value=TIMESTAMP)
+@patch("time.time", return_value=TIME)
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+def test_fit_mwms(time, strftime, sagemaker_session):
+    tf = TensorFlow(
+        entry_point=SCRIPT_FILE,
+        framework_version="2.9.1",
+        py_version="py39",
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_type=INSTANCE_TYPE,
+        instance_count=1,
+        source_dir=DATA_DIR,
+        distribution=DISTRIBUTION_MWMS_ENABLED,
+    )
+
+    inputs = "s3://mybucket/train"
+    tf.fit(inputs=inputs)
+
+    call_names = [c[0] for c in sagemaker_session.method_calls]
+    assert call_names == ["train", "logs_for_job"]
+
+    expected_train_args = _create_train_job("2.9.1", py_version="py39")
+    expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
+    expected_train_args["hyperparameters"][TensorFlow.LAUNCH_MWMS_ENV_NAME] = json.dumps(True)
+
+    actual_train_args = sagemaker_session.method_calls[0][2]
+    assert actual_train_args == expected_train_args
+
+
+@patch("time.strftime", return_value=TIMESTAMP)
+@patch("time.time", return_value=TIME)
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+def test_fit_mwms_unsupported(time, strftime, sagemaker_session):
+    with pytest.raises(ValueError) as error:
+        tf = TensorFlow(
+            entry_point=SCRIPT_FILE,
+            framework_version="2.8",
+            py_version="py3",
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            instance_type=INSTANCE_TYPE,
+            instance_count=1,
+            source_dir=DATA_DIR,
+            distribution=DISTRIBUTION_MWMS_ENABLED,
+        )
+
+        inputs = "s3://mybucket/train"
+        tf.fit(inputs=inputs)
+
+    assert 'only supported from' in str(error)
+    assert 'but received' in str(error)
 
 
 def test_hyperparameters_no_model_dir(

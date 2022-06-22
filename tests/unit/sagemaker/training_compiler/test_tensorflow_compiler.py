@@ -208,6 +208,24 @@ class TestUnsupportedConfig:
                 compiler_config=TrainingCompilerConfig(),
             ).fit()
 
+    def test_mwms(
+        self,
+        tensorflow_training_version,
+        tensorflow_training_py_version,
+    ):
+        with pytest.raises(ValueError):
+            TensorFlow(
+                py_version=tensorflow_training_py_version,
+                entry_point=SCRIPT_PATH,
+                role=ROLE,
+                instance_count=INSTANCE_COUNT,
+                instance_type=INSTANCE_TYPE,
+                framework_version=tensorflow_training_version,
+                enable_sagemaker_metrics=False,
+                compiler_config=TrainingCompilerConfig(),
+                distribution={'multi_worker_mirrored_strategy': True},
+            ).fit()
+
     def test_python_2(
         self,
         tensorflow_training_version,

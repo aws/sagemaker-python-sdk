@@ -145,6 +145,7 @@ ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"Model
 LIST_TAGS_RESULT = {"Tags": [{"Key": "TagtestKey", "Value": "TagtestValue"}]}
 
 DISTRIBUTION_PS_ENABLED = {"parameter_server": {"enabled": True}}
+DISTRIBUTION_MWMS_ENABLED = {"multi_worker_mirrored_strategy": {"enabled": True}}
 DISTRIBUTION_MPI_ENABLED = {
     "mpi": {"enabled": True, "custom_mpi_options": "options", "processes_per_host": 2}
 }
@@ -4016,6 +4017,21 @@ def test_framework_distribution_configuration(sagemaker_session):
         "sagemaker_instance_type": INSTANCE_TYPE,
     }
     assert actual_ddp == expected_ddp
+
+
+def test_mwms_distribution_configuration(sagemaker_session):
+    framework = DummyFramework(
+        entry_point="script",
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+    )
+    with pytest.raises(ValueError) as error:
+        framework._distribution_configuration(distribution=DISTRIBUTION_MWMS_ENABLED)
+    
+    assert 'only supported with' in str(error)
+    assert 'but received' in str(error)
 
 
 def test_image_name_map(sagemaker_session):
