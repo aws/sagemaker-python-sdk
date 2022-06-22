@@ -137,6 +137,19 @@ class TensorFlow(Framework):
                         To find a complete list of parameters for SageMaker model parallelism,
                         see :ref:`sm-sdk-modelparallel-general`.
 
+                **To enable Multi Worker Mirrored Strategy:**
+
+                    .. code:: python
+
+                        {
+                            "multi_worker_mirrored_strategy": {
+                                "enabled": True
+                            }
+                        }
+
+                    To learn more, see `TensorFlow Distributed Training
+                    <https://www.tensorflow.org/guide/distributed_training>`_.
+
                 **To enable MPI:**
 
                     .. code:: python

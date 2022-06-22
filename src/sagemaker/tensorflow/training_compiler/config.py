@@ -102,3 +102,11 @@ class TrainingCompilerConfig(BaseConfig):
                     cls.MIN_SUPPORTED_VERSION, estimator.framework_version
                 )
                 raise ValueError(error_helper_string)
+
+        if estimator.distribution and "multi_worker_mirrored_strategy" in estimator.distribution:
+            mwms_enabled = estimator.distribution.get("multi_worker_mirrored_strategy").get("enabled", False)
+            if mwms_enabled:
+                raise ValueError(
+                    "Multi Worker Mirrored Strategy distributed training configuration "
+                    "is currently not compatible with SageMaker Training Compiler."
+                )
