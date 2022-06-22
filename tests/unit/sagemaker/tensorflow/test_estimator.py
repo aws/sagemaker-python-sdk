@@ -524,10 +524,12 @@ def test_fit_mpi(time, strftime, sagemaker_session):
 @patch("time.time", return_value=TIME)
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 def test_fit_mwms(time, strftime, sagemaker_session):
+    framework_version = "2.9.1"
+    py_version = "py39"
     tf = TensorFlow(
         entry_point=SCRIPT_FILE,
-        framework_version="2.9.1",
-        py_version="py39",
+        framework_version=framework_version,
+        py_version=py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         instance_type=INSTANCE_TYPE,
@@ -545,6 +547,14 @@ def test_fit_mwms(time, strftime, sagemaker_session):
     expected_train_args = _create_train_job("2.9.1", py_version="py39")
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
     expected_train_args["hyperparameters"][TensorFlow.LAUNCH_MWMS_ENV_NAME] = json.dumps(True)
+    expected_train_args[
+        "image_uri"
+    ] = f"763104351884.dkr.ecr.{REGION}.amazonaws.com/tensorflow-training:{framework_version}-cpu-{py_version}"
+    expected_train_args["job_name"] = f"tensorflow-training-{TIMESTAMP}"
+    expected_train_args["hyperparameters"]["sagemaker_job_name"] = expected_train_args["job_name"]
+    expected_train_args["hyperparameters"][
+        "sagemaker_submit_directory"
+    ] = f"s3://{BUCKET_NAME}/{expected_train_args['job_name']}/source/sourcedir.tar.gz"
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert actual_train_args == expected_train_args
