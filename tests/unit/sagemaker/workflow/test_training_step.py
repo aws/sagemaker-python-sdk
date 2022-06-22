@@ -27,7 +27,7 @@ from sagemaker.workflow.pipeline_context import PipelineSession
 from sagemaker.workflow.parameters import ParameterString
 
 from sagemaker.workflow.steps import TrainingStep
-from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
 from sagemaker.workflow.functions import Join
 
 from sagemaker.estimator import Estimator
@@ -55,7 +55,7 @@ from sagemaker.amazon.object2vec import Object2Vec
 from tests.unit import DATA_DIR
 
 from sagemaker.inputs import TrainingInput
-from tests.unit.sagemaker.workflow.helpers import CustomStep
+from tests.unit.sagemaker.workflow.helpers import CustomStep, ordered
 
 REGION = "us-west-2"
 BUCKET = "my-bucket"
@@ -242,6 +242,10 @@ def test_training_step_with_estimator(pipeline_session, training_input, hyperpar
         "Arguments": step_args.args,
     }
     assert step.properties.TrainingJobName.expr == {"Get": "Steps.MyTrainingStep.TrainingJobName"}
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert ordered(adjacency_list) == ordered(
+        {"MyTrainingStep": [], "SecondTestStep": ["MyTrainingStep"], "TestStep": ["MyTrainingStep"]}
+    )
 
 
 @pytest.mark.parametrize("estimator", ESTIMATOR_LISTS)

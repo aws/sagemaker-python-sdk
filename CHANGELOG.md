@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.96.0 (2022-06-20)
+
+### Features
+
+ * Add helper method to generate pipeline adjacency list
+
+### Bug Fixes and Other Changes
+
+ * changing trcomp integ tests to be able to run in all regions
+
 ## v2.95.0 (2022-06-16)
 
 ### Features

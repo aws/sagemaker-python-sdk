@@ -1199,7 +1199,9 @@ class ProcessingOutput(object):
             source (str): The source for the output.
             destination (str): The destination of the output. If a destination
                 is not provided, one will be generated:
-                "s3://<default-bucket-name>/<job-name>/output/<output-name>".
+                "s3://<default-bucket-name>/<job-name>/output/<output-name>"
+                (Note: this does not apply when used with
+                :class:`~sagemaker.workflow.steps.ProcessingStep`).
             output_name (str): The name of the output. If a name
                 is not provided, one will be generated (eg. "output-1").
             s3_upload_mode (str): Valid options are "EndOfJob" or "Continuous".
