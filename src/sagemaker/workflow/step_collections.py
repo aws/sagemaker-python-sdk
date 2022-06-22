@@ -27,7 +27,7 @@ from sagemaker.workflow.entities import RequestType
 from sagemaker.workflow.steps import Step, CreateModelStep, TransformStep
 from sagemaker.workflow._utils import _RegisterModelStep, _RepackModelStep
 from sagemaker.workflow.retry import RetryPolicy
-from sagemaker.utils import inference_recommender_params_exist, update_container_object
+from sagemaker.utils import update_container_with_inference_params
 
 
 @attr.s
@@ -246,18 +246,14 @@ class RegisterModel(StepCollection):  # pragma: no cover
                         inference_instances[0] if inference_instances else None
                     )
                 ]
-            if inference_recommender_params_exist(
-                framework, framework_version, nearest_model_name, data_input_configuration
-            ):
-                for container_obj in self.container_def_list:
-                    container_obj.update(
-                        update_container_object(
-                            framework,
-                            framework_version,
-                            nearest_model_name,
-                            data_input_configuration,
-                        )
-                    )
+
+            update_container_with_inference_params(
+                framework=framework,
+                framework_version=framework_version,
+                nearest_model_name=nearest_model_name,
+                data_input_configuration=data_input_configuration,
+                container_list=self.container_def_list,
+            )
 
         register_model_step = _RegisterModelStep(
             name=name,

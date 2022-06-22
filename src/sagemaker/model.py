@@ -37,8 +37,7 @@ from sagemaker.transformer import Transformer
 from sagemaker.jumpstart.utils import add_jumpstart_tags, get_jumpstart_base_name_if_jumpstart_model
 from sagemaker.utils import (
     unique_name_from_base,
-    inference_recommender_params_exist,
-    update_container_object,
+    update_container_with_inference_params,
 )
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.predictor_async import AsyncPredictor
@@ -374,14 +373,13 @@ class Model(ModelBase):
 
         if model_package_group_name is not None:
             container_def = self.prepare_container_def()
-            if inference_recommender_params_exist(
-                framework, framework_version, nearest_model_name, data_input_configuration
-            ):
-                container_def.update(
-                    update_container_object(
-                        framework, framework_version, nearest_model_name, data_input_configuration
-                    )
-                )
+            update_container_with_inference_params(
+                framework=framework,
+                framework_version=framework_version,
+                nearest_model_name=nearest_model_name,
+                data_input_configuration=data_input_configuration,
+                container_obj=container_def,
+            )
         else:
             container_def = {
                 "Image": self.image_uri,

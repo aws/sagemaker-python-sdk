@@ -22,8 +22,7 @@ from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.session import Session
 from sagemaker.utils import (
     name_from_image,
-    inference_recommender_params_exist,
-    update_container_object,
+    update_container_with_inference_params,
 )
 from sagemaker.transformer import Transformer
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
@@ -341,18 +340,13 @@ class PipelineModel(object):
             container_def = self.pipeline_container_def(
                 inference_instances[0] if inference_instances else None
             )
-            if inference_recommender_params_exist(
-                framework, framework_version, nearest_model_name, data_input_configuration
-            ):
-                for container_obj in container_def:
-                    container_obj.update(
-                        update_container_object(
-                            framework,
-                            framework_version,
-                            nearest_model_name,
-                            data_input_configuration,
-                        )
-                    )
+            update_container_with_inference_params(
+                framework=framework,
+                framework_version=framework_version,
+                nearest_model_name=nearest_model_name,
+                data_input_configuration=data_input_configuration,
+                container_list=container_def,
+            )
         else:
             container_def = [
                 {
