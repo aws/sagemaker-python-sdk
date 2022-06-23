@@ -397,12 +397,18 @@ smdistributed.modelparallel.torch.DistributedModel
 smdistributed.modelparallel.torch.DistributedOptimizer
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. class:: smdistributed.modelparallel.torch.DistributedOptimizer(optimizer)
+.. class:: smdistributed.modelparallel.torch.DistributedOptimizer(optimizer, static_loss_scale=1, dynamic_loss_scale=False, **dynamic_loss_args)
 
    An optimizer wrapper for saving and loading optimizer states.
 
    :param optimizer: An optimizer object.
    :type optimizer: object
+   :param static_loss_scale: Available only for FP16 training. Set to ``1`` to use static loss scale. The default value is ``1``.
+   :type static_loss_scale: float
+   :param dynamic_loss_scale: Available only for FP16 training. Set to ``True`` to use dynamic loss scale.
+   :type dynamic_loss_scale: boolean
+   :param dynamic_loss_args: Available only for FP16 training. If ``dynamic_loss_scale=True``, specify parameters for dynamic loss scale.
+   :type dynamic_loss_args: dict
 
    This wrapper returns ``optimizer`` with the following methods overridden:
 
@@ -523,7 +529,7 @@ smdistributed.modelparallel.torch Context Managers and Util Functions
       * ``FP16_Module`` casts the model back to FP16 if FP16 training is enabled with the smp config.
    :type dtype: torch.dtype
    :param tensor_parallel_config: kwargs to specifiy other tensor parallel configs.
-      This is not used if tensor_parallelism is False
+      This is not used if ``tensor_parallelism`` is ``False``
    :type tensor_parallel_config: dict
 
    **Example Usage:**
@@ -580,10 +586,11 @@ smdistributed.modelparallel.torch Context Managers and Util Functions
    currently doesn’t work with the library. ``smdistributed.modelparallel.torch.amp.GradScaler`` replaces
    ``torch.amp.GradScaler`` and provides the same functionality.
 
-.. function:: smdistributed.modelparallel.torch.delayed_parameter_initialization(enabled=True)
+.. function:: smdistributed.modelparallel.torch.delay_param_initialization(enabled=True)
 
    If enabled, it delays the initialization of parameters
-   to save CPU memory; it initializes after the model is partitioned on GPU.
+   to save CPU memory. That is, parameter initialization takes place
+   after the model is partitioned on GPUs.
 
 .. function:: smdistributed.modelparallel.torch.get_world_process_group( )
 
