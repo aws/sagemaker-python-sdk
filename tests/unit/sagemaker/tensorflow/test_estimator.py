@@ -560,6 +560,7 @@ def test_fit_mwms(time, strftime, sagemaker_session):
     expected_train_args["hyperparameters"]["model_dir"] = json.dumps(
         f"s3://{BUCKET_NAME}/{expected_train_args['job_name']}/model"
     )
+    expected_train_args["enable_sagemaker_metrics"] = True
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert actual_train_args == expected_train_args
@@ -573,7 +574,7 @@ def test_fit_mwms_unsupported(time, strftime, sagemaker_session):
         tf = TensorFlow(
             entry_point=SCRIPT_FILE,
             framework_version="2.8",
-            py_version="py3",
+            py_version="py39",
             role=ROLE,
             sagemaker_session=sagemaker_session,
             instance_type=INSTANCE_TYPE,
