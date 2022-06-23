@@ -102,7 +102,7 @@ you need to add the following import statement at the top of your training scrip
             tf.print("Entered hook through eager context")
 
 .. class:: smp.CheckpointManager
-    :noindex:
+  :noindex:
 
 
    A subclass of TensorFlow
