@@ -207,7 +207,7 @@ def test_mwms_gpu(
     epochs = 1
     global_batch_size = 64
     train_steps = int(10**5 * epochs / global_batch_size)
-    steps_per_loop = train_steps // 10
+    steps_per_loop = train_steps // 100
     overrides = (
         f"runtime.enable_xla=False,"
         f"runtime.num_gpus=1,"
