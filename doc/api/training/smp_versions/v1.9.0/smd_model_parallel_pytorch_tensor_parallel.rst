@@ -460,6 +460,7 @@ supported modules within that scope. To do this, you can use the
 following API:
 
 .. decorator:: smp.tensor_parallelism(enabled=True, **kwargs)
+  :noindex:
 
    -  A context manager that enables or disables tensor parallelism for
       any supported module that is created inside. If there are nested

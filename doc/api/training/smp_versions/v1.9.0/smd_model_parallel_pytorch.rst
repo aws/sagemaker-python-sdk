@@ -17,7 +17,7 @@ you need to add the following import statement at the top of your training scrip
    to learn how to use the following API in your PyTorch training script.
 
 .. class:: smp.DistributedModel
-   :noindex:
+  :noindex:
 
    A sub-class of ``torch.nn.Module`` which specifies the model to be
    partitioned. Accepts a ``torch.nn.Module`` object ``module`` which is
@@ -362,45 +362,45 @@ you need to add the following import statement at the top of your training scrip
   `documentation <https://sagemaker.readthedocs.io/en/stable/api/training/smp_versions/v1.2.0/smd_model_parallel_pytorch.html#smp.DistributedModel>`__.
 
   .. function:: distributed_modules()
-    :noindex:
+   :noindex:
 
      -  An iterator that runs over the set of distributed
         (tensor-parallelized) modules in the model
 
   .. function:: is_distributed_parameter(param)
-    :noindex:
+   :noindex:
 
      -  Returns ``True`` if the given ``nn.Parameter`` is distributed over
         tensor-parallel ranks.
 
   .. function::  is_distributed_buffer(buf)
-    :noindex:
+   :noindex:
 
      -  Returns ``True`` if the given buffer is distributed over
         tensor-parallel ranks.
 
   .. function::  is_scaled_batch_parameter(param)
-    :noindex:
+   :noindex:
 
      -  Returns ``True`` if the given ``nn.Parameter`` is operates on the
         scaled batch (batch over the entire ``TP_GROUP``, and not only the
         local batch).
 
   .. function::  is_scaled_batch_buffer(buf)
-    :noindex:
+   :noindex:
 
      -  Returns ``True`` if the parameter corresponding to the given
         buffer operates on the scaled batch (batch over the entire
         ``TP_GROUP``, and not only the local batch).
 
   .. function::  default_reducer_named_parameters()
-    :noindex:
+   :noindex:
 
      -  Returns an iterator that runs over ``(name, param)`` tuples, for
         ``param`` that is allreduced over the ``DP_GROUP``.
 
   .. function::  scaled_batch_reducer_named_parameters()
-    :noindex:
+   :noindex:
 
      -  Returns an iterator that runs over ``(name, param)`` tuples, for
         ``param`` that is allreduced over the ``RDP_GROUP``.
@@ -512,6 +512,7 @@ you need to add the following import statement at the top of your training scrip
 
 .. function::smp.is_tracing( )
    :noindex:
+   :noindex:
 
    Returns ``True`` if the current process is running the tracing step, and
    ``False`` otherwise.
@@ -527,7 +528,6 @@ you need to add the following import statement at the top of your training scrip
 .. data:: smp.optimizers.FusedNovoGrad
    :noindex:
 
-
    `Fused Novo Grad optimizer <https://nvidia.github.io/apex/optimizers.html#apex.optimizers.FusedNovoGrad>`__ is
    currently not supported by the library. ``smp.optimizers.FusedNovoGrad`` replaces ``apex`` ``FusedNovoGrad``
    optimizer and provides the same functionality. This requires ``apex`` to
@@ -535,7 +535,6 @@ you need to add the following import statement at the top of your training scrip
 
 .. data:: smp.optimizers.FusedLamb
    :noindex:
-
 
    `FusedLamb optimizer <https://nvidia.github.io/apex/optimizers.html#apex.optimizers.FusedLAMB>`__
    currently doesn’t work with the library. ``smp.optimizers.FusedLamb`` replaces
