@@ -182,6 +182,7 @@ def test_server_side_encryption(sagemaker_session, tf_full_version, tf_full_py_v
             )
 
 
+@pytest.mark.slow_test
 @pytest.mark.release
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.TRAINING_NO_P2_REGIONS
@@ -197,9 +198,10 @@ def test_mwms_gpu(
     imagenet_train_subset,
     **kwargs,
 ):
+    instance_count=2
     epochs = 1
     global_batch_size = 64
-    train_steps = int(10**4 * epochs / global_batch_size)
+    train_steps = int(10**5 * epochs / global_batch_size)
     steps_per_loop = train_steps // 10
     overrides = (
         f"runtime.enable_xla=False,"
@@ -225,7 +227,7 @@ def test_mwms_gpu(
         entry_point="official/vision/train.py",
         model_dir=False,
         instance_type=kwargs["instance_type"],
-        instance_count=2,
+        instance_count=instance_count,
         framework_version=tensorflow_training_latest_version,
         py_version=tensorflow_training_latest_py_version,
         distribution=MWMS_DISTRIBUTION,
@@ -252,6 +254,7 @@ def test_mwms_gpu(
     captured = capsys.readouterr()
     logs = captured.out + captured.err
     assert "Running distributed training job with multi_worker_mirrored_strategy setup" in logs
+    assert f"num_devices = 1, group_size = {instance_count}" in logs
     raise NotImplementedError("Check model saving")
 
 
