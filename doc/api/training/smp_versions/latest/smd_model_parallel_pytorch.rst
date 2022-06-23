@@ -2,7 +2,7 @@ PyTorch API
 ===========
 
 To use the PyTorch-specific APIs for SageMaker distributed model parallism,
-you need to add the following import statement at the top of your training script.
+import the ``smdistributed.modelparallel.torch`` package at the top of your training script.
 
 .. code:: python
 
@@ -16,24 +16,33 @@ you need to add the following import statement at the top of your training scrip
    <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-training-script-pt.html>`_
    to learn how to use the following API in your PyTorch training script.
 
-.. class:: smp.DistributedModel
+.. contents:: Topics
+  :depth: 3
+  :local:
+
+smdistributed.modelparallel.torch.DistributedModel
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. class:: smdistributed.modelparallel.torch.DistributedModel
 
    A sub-class of ``torch.nn.Module`` which specifies the model to be
    partitioned. Accepts a ``torch.nn.Module`` object ``module`` which is
    the model to be partitioned. The returned ``DistributedModel`` object
    internally manages model parallelism and data parallelism. Only one
    model in the training script can be wrapped with
-   ``smp.DistributedModel``.
+   ``smdistributed.modelparallel.torch.DistributedModel``.
 
    **Example:**
 
    .. code:: python
 
+      import smdistributed.modelparallel.torch as smp
+
       model = smp.DistributedModel(model)
 
    **Important**: The ``__call__`` and  ``backward`` method calls on the
-   ``smp.DistributedModel`` object (in the following example, the object
-   is \ ``model``) can only be made inside a ``smp.step``-decorated
+   ``smdistributed.modelparallel.torch.DistributedModel`` object (in the following example, the object
+   is \ ``model``) can only be made inside a ``smdistributed.modelparallel.torch.step``-decorated
    function.
 
    Since ``DistributedModel``  is a ``torch.nn.Module``, a forward pass can
@@ -78,7 +87,7 @@ you need to add the following import statement at the top of your training scrip
 
    In these examples, all ``__call__``  and ``backward`` method calls on
    the model objects (``model(inputs)`` and ``model.backward(loss)``) must be made inside
-   a ``smp.step``-decorated function.
+   a ``smdistributed.modelparallel.torch.step``-decorated function.
 
    **Using DDP**
 
@@ -89,7 +98,7 @@ you need to add the following import statement at the top of your training scrip
    Unlike the original DDP wrapper, when you use ``DistributedModel``,
    model parameters and buffers are not immediately broadcast across
    processes when the wrapper is called. Instead, the broadcast is deferred to the first call of the
-   ``smp.step``-decorated function when the partition is done.
+   ``smdistributed.modelparallel.torch.step``-decorated function when the partition is done.
 
    **Parameters**
 
@@ -160,7 +169,7 @@ you need to add the following import statement at the top of your training scrip
    -  ``partitioned``: Is ``True`` if the model is partitioned, ``False``
       otherwise. Initialized to ``False`` when ``DistributedModel`` is first
       created. It becomes be ``True`` during the first call
-      to ``smp.step``-decorated function. Once the model is partitioned, the
+      to ``smdistributed.modelparallel.torch.step``-decorated function. Once the model is partitioned, the
       local parameters or local ``state_dict`` can be fetched using the
       following methods.
 
@@ -240,7 +249,7 @@ you need to add the following import statement at the top of your training scrip
       Registers a callable ``hook`` to
       be executed after the model is partitioned. This is useful in situations
       where an operation needs to be executed after the model partition during
-      the first call to ``smp.step``, but before the actual execution of the
+      the first call to ``smdistributed.modelparallel.torch.step``, but before the actual execution of the
       first forward pass. Returns a ``RemovableHandle`` object ``handle``,
       which can be used to remove the hook by calling ``handle.remove()``.
 
@@ -252,7 +261,7 @@ you need to add the following import statement at the top of your training scrip
    .. function:: join( )
 
       A context manager to be used in conjunction with an instance of
-      ``smp.DistributedModel`` to be able to train with uneven inputs across
+      ``smdistributed.modelparallel.torch.DistributedModel`` to be able to train with uneven inputs across
       participating processes. This is only supported when ``ddp=True``. This will use the join with the wrapped
       ``DistributedDataParallel`` instance. For more information, see:
       `join <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel.join>`__
@@ -276,9 +285,9 @@ you need to add the following import statement at the top of your training scrip
       `register_comm_hook <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel.register_comm_hook>`__
       in the PyTorch documentation.
 
-  **Behavior of** ``smp.DistributedModel`` **with Tensor Parallelism**
+  **Behavior of** ``smdistributed.modelparallel.torch.DistributedModel`` **with Tensor Parallelism**
 
-  When a model is wrapped by ``smp.DistributedModel``, the library
+  When a model is wrapped by ``smdistributed.modelparallel.torch.DistributedModel``, the library
   immediately traverses the modules of the model object, and replaces the
   modules that are supported for tensor parallelism with their distributed
   counterparts. This replacement happens in place. If there are no other
@@ -293,6 +302,8 @@ you need to add the following import statement at the top of your training scrip
 
      # register DistributedSubmodule as the distributed version of Submodule
      # (note this is a hypothetical example, smp.nn.DistributedSubmodule does not exist)
+     import smdistributed.modelparallel.torch as smp
+
      smp.tp_register_with_module(Submodule, smp.nn.DistributedSubmodule)
 
      class MyModule(nn.Module):
@@ -319,20 +330,20 @@ you need to add the following import statement at the top of your training scrip
   placement of model partitions into GPUs and the initial broadcast of
   model parameters and buffers across data-parallel ranks take place
   immediately. This is because it does not need to wait for the model
-  partition when ``smp.DistributedModel`` wrapper is called. For other
+  partition when ``smdistributed.modelparallel.torch.DistributedModel`` wrapper is called. For other
   cases with ``pipeline_parallel_degree`` greater than 1, the broadcast
   and device placement will be deferred until the first call of an
-  ``smp.step``-decorated function happens. This is because the first
-  ``smp.step``-decorated function call is when the model partitioning
+  ``smdistributed.modelparallel.torch.step``-decorated function happens. This is because the first
+  ``smdistributed.modelparallel.torch.step``-decorated function call is when the model partitioning
   happens if pipeline parallelism is enabled.
 
-  Because of the module replacement during the ``smp.DistributedModel``
+  Because of the module replacement during the ``smdistributed.modelparallel.torch.DistributedModel``
   call, any ``load_state_dict`` calls on the model, as well as any direct
   access to model parameters, such as during the optimizer creation,
-  should be done **after** the ``smp.DistributedModel`` call.
+  should be done **after** the ``smdistributed.modelparallel.torch.DistributedModel`` call.
 
   Since the broadcast of the model parameters and buffers happens
-  immediately during ``smp.DistributedModel`` call when the degree of
+  immediately during ``smdistributed.modelparallel.torch.DistributedModel`` call when the degree of
   pipeline parallelism is 1, using ``@smp.step`` decorators is not
   required when tensor parallelism is used by itself (without pipeline
   parallelism).
@@ -340,9 +351,9 @@ you need to add the following import statement at the top of your training scrip
   For more information about the library's tensor parallelism APIs for PyTorch,
   see :ref:`smdmp-pytorch-tensor-parallel`.
 
-  **Additional Methods of** ``smp.DistributedModel`` **for Tensor Parallelism**
+  **Additional Methods of** ``smdistributed.modelparallel.torch.DistributedModel`` **for Tensor Parallelism**
 
-  The following are the new methods of ``smp.DistributedModel``, in
+  The following are the new methods of ``smdistributed.modelparallel.torch.DistributedModel``, in
   addition to the ones listed in the
   `documentation <https://sagemaker.readthedocs.io/en/stable/api/training/smp_versions/v1.2.0/smd_model_parallel_pytorch.html#smp.DistributedModel>`__.
 
@@ -383,24 +394,26 @@ you need to add the following import statement at the top of your training scrip
      -  Returns an iterator that runs over ``(name, param)`` tuples, for
         ``param`` that is allreduced over the ``RDP_GROUP``.
 
+smdistributed.modelparallel.torch.DistributedOptimizer
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. class:: smdistributed.modelparallel.torch.DistributedOptimizer(optimizer)
 
-.. class:: smp.DistributedOptimizer
+   An optimizer wrapper for saving and loading optimizer states.
 
-   **Parameters**
-   - ``optimizer``
+   :param optimizer: An optimizer object.
+   :type optimizer: object
 
-   An optimizer wrapper for saving/loading optimizer states. This wrapper
-   returns ``optimizer`` with the following methods overridden:
+   This wrapper returns ``optimizer`` with the following methods overridden:
 
-   .. function:: state_dict( )
+   .. method:: state_dict( )
 
       Returns the ``state_dict`` that contains optimizer state for the entire model.
       It first collects the ``local_state_dict`` and gathers and merges
       the ``local_state_dict`` from all ``mp_rank``s to create a full
       ``state_dict``.
 
-   .. function::  load_state_dict( )
+   .. method::  load_state_dict( )
 
       Same as the ``torch.optimizer.load_state_dict()`` , except:
 
@@ -409,7 +422,7 @@ you need to add the following import statement at the top of your training scrip
          -  The actual loading happens after the model partition so that each
             rank knows its local parameters.
 
-   .. function::  local_state_dict( )
+   .. method::  local_state_dict( )
 
       Returns the ``state_dict`` that contains the
       local optimizer state that belongs to the current \ ``mp_rank``. This
@@ -418,33 +431,139 @@ you need to add the following import statement at the top of your training scrip
       ``state_dict`` contains elements corresponding to only the current
       partition, or to the entire model.
 
-   ​
-.. function:: smp.partition(index)
-   :noindex:
+   .. method:: save_optimizer_backcompat(cast_to_cpu=True, gather_if_shard=True, fp32_states_only=False)
 
-   **Inputs**
+      Gets the local optimizer states and FP16 states if FP16 training is enabled.
 
-   -  ``index`` (int) - The index of the partition.
+      :param cast_to_cpu: Whether to cast the optimizer states and FP16 states to CPU.
+      :type cast_to_cpu: boolean
+      :param gather_if_shard: (for smdistributed-modelparallel v1.10 only)
+          Whether to gather the optimizer states and FP16 states to the 0th
+          ``rdp_rank`` when using the `optimizer state sharding
+          <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-optimizer-state-sharding.html>`_ feature.
+          If you want to save optimizer and also further reduce CPU memory
+          utilization for better performance, turn it off by setting
+          ``gather_if_shard=False``. However, you need to make sure that you
+          save the states on all ``rdp_rank``. To handle both cases,
+          use the following example code.
+
+
+      :type gather_if_shard: boolean
+      :param fp32_states_only: Whether to return the FP32 optimizer states only.
+      :type fp32_states_only: boolean
+
+      **Example Usage:**
+
+      .. code:: python
+
+        import smdistributed.modelparallel.torch as smp
+
+        # wrap optimizer
+        optimizer = torch.optim.Optimizer(...)
+        optimizer = smp.DistributedOptimizer(optimizer)
+
+        # save optimizer
+        save_dict["optimizer"] = optimizer.save_optimizer_backcompat(
+           gather_if_shard=args.gather_if_shard
+        )
+        if not args.gather_if_shard or smp.rdp_rank() == 0:
+           smp.save(
+              save_dict, output_save_file, partial=True,
+              v3=not args.gather_if_shard
+           )
+
+      The ``v3`` argument of the ``smp.save()`` function checks whether the value of
+      the ``gather_if_shard`` arg is ``True`` or ``False``.
+      If ``gather_if_shard=False``, the ``v3`` arg helps collect optimizer checkpoint
+      files by adding ``pp_rank``, ``tp_rank``, and ``rdp_rank`` as postfix
+      to avoid overwriting checkpoint files.
+
+   .. method:: load_optimizer_backcompat(state_dict, gather_if_shard=False)
+
+      Loads the saved optimizer states and FP16 states if FP16 training is enabled.
+
+      :param state_dict: The ``state_dict`` to load.
+      :type state_dict: dict
+      :param gather_if_shard: Specify whether the optimizer state was saved with ``gather_if_shard=True``
+          when using the :class:`smdistributed.modelparallel.torch.DistributedOptimizer.save_optimizer_backcompat()` method.
+      :type gather_if_shard: boolean
+
+      **Example Usage:**
+
+      .. code:: python
+
+        import smdistributed.modelparallel.torch as smp
+
+        # load optimizer
+        checkpoint = smp.load(local_ckpt_path, partial=True)
+        optimizer.load_optimizer_backcompat(
+           checkpoint["optimizer"], gather_if_shard=args.gather_if_shard
+        )
+
+smdistributed.modelparallel.torch Context Managers and Util Functions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. function:: smdistributed.modelparallel.torch.model_creation(tensor_parallelism=False, dtype=None, **tensor_parallel_config)
+
+   Context manager to create a ``torch`` model. This API combines both the
+   :class:`smdistributed.modelparallel.torch.tensor_parallelism` and
+   ``smdistributed.modelparallel.torch.delay_param_initialization`` decorators
+   so user need to simply use a single context when creating the torch model.
+
+   :param tensor_parallelism: Whether tensor parallel should be enabled during model creation.
+   :type tensor_parallelism: boolean
+   :param dtype: The dtype to use when creating the model. It has the following rules.
+
+      * If dtype is specified, it will be used during model creation.
+      * If dtype is not specified, the default dtype will be used during model creation,
+        which is usually FP32. This is for the best performance on CPU.
+      * Any model that causes out-of-memory problems with FP32 initialization
+        is recommended to be created with
+        :class:`smdistributed.modelparallel.torch.delayed_parameter_initialization`.
+      * ``FP16_Module`` casts the model back to FP16 if FP16 training is enabled with the smp config.
+   :type dtype: torch.dtype
+   :param tensor_parallel_config: kwargs to specifiy other tensor parallel configs.
+      This is not used if tensor_parallelism is False
+   :type tensor_parallel_config: dict
+
+   **Example Usage:**
+
+   .. code:: python
+
+      import smdistributed.modelparallel.torch as smp
+
+      with smp.model_creation(
+          tensor_parallelism=smp.tp_size() > 1,
+          dtype=torch.float16 if args.fp16 else torch.get_default_dtype()
+      ):
+          model = MyModel(...)
+
+.. function:: smdistributed.modelparallel.torch.partition(index)
+
+   :param index: The index of the partition.
+   :type index: int
 
    A context manager which places all modules defined inside into the
    partition with ID ``index``.  The ``index`` argument must be less than
    the number of partitions.
 
-   Use ``smp.partition`` to implement manual partitioning.
+   Use ``smdistributed.modelparallel.torch.partition`` to implement manual partitioning.
    If ``"auto_partition"`` is ``True``, then the
-   ``smp.partition`` contexts are ignored. Any module that is not placed in
-   any ``smp.partition`` context is placed in the
+   ``smdistributed.modelparallel.torch.partition`` contexts are ignored. Any module that is not placed in
+   any ``smdistributed.modelparallel.torch.partition`` context is placed in the
    ``default_partition`` defined through the SageMaker Python SDK.
 
-   When ``smp.partition`` contexts are nested, the innermost context
+   When ``smdistributed.modelparallel.torch.partition`` contexts are nested, the innermost context
    overrides the rest (see the following example). In PyTorch, manual
    partitioning should be done inside the module \ ``__init__``, and the
    partition assignment applies to the modules that are *created* inside
-   the ``smp.partition`` context.
+   the ``smdistributed.modelparallel.torch.partition`` context.
 
    Example:
 
    .. code:: python
+
+      import smdistributed.modelparallel.torch as smp
 
       class Model(torch.nn.Module):
           def __init__(self):
@@ -455,29 +574,40 @@ you need to add the following import statement at the top of your training scrip
                   self.child2 = Child2()            # child2 on partition 1
               self.child3 = Child3()                # child3 on default_partition
 
-.. function:: smp.get_world_process_group( )
+.. data:: smdistributed.modelparallel.torch.amp.GradScaler
+
+   `Torch AMP Gradscaler <https://pytorch.org/docs/stable/amp.html#torch.cuda.amp.GradScaler>`__
+   currently doesn’t work with the library. ``smdistributed.modelparallel.torch.amp.GradScaler`` replaces
+   ``torch.amp.GradScaler`` and provides the same functionality.
+
+.. function:: smdistributed.modelparallel.torch.delayed_parameter_initialization(enabled=True)
+
+   If enabled, it delays the initialization of parameters
+   to save CPU memory; it initializes after the model is partitioned on GPU.
+
+.. function:: smdistributed.modelparallel.torch.get_world_process_group( )
 
    Returns a ``torch.distributed`` ``ProcessGroup`` that consists of all
    processes, which can be used with the ``torch.distributed`` API.
    Requires ``"ddp": True`` in SageMaker Python SDK parameters.
 
-.. function:: smp.get_mp_process_group( )
+.. function:: smdistributed.modelparallel.torch.get_mp_process_group( )
 
    Returns a ``torch.distributed`` ``ProcessGroup`` that consists of the
    processes in the ``MP_GROUP`` which contains the current process, which
    can be used with the \ ``torch.distributed`` API. Requires
    ``"ddp": True`` in SageMaker Python SDK parameters.
 
-.. function:: smp.get_dp_process_group( )
+.. function:: smdistributed.modelparallel.torch.get_dp_process_group( )
 
    Returns a ``torch.distributed`` ``ProcessGroup`` that consists of the
    processes in the ``DP_GROUP`` which contains the current process, which
    can be used with the \ ``torch.distributed`` API. Requires
    ``"ddp": True`` in SageMaker Python SDK parameters.
 
-.. function:: smp.is_initialized( )
+.. function:: smdistributed.modelparallel.torch.is_initialized( )
 
-   Returns ``True`` if ``smp.init`` has already been called for the
+   Returns ``True`` if ``smdistributed.modelparallel.torch.init`` has already been called for the
    process, and ``False`` otherwise.
 
 .. function::smp.is_tracing( )
@@ -485,41 +615,35 @@ you need to add the following import statement at the top of your training scrip
    Returns ``True`` if the current process is running the tracing step, and
    ``False`` otherwise.
 
-.. data:: smp.nn.FusedLayerNorm
+.. data:: smdistributed.modelparallel.torch.nn.FusedLayerNorm
 
    `Apex Fused Layer Norm <https://nvidia.github.io/apex/layernorm.html>`__ is currently not
-   supported by the library. ``smp.nn.FusedLayerNorm`` replaces ``apex``
+   supported by the library. ``smdistributed.modelparallel.torch.nn.FusedLayerNorm`` replaces ``apex``
    ``FusedLayerNorm`` and provides the same functionality. This requires
    ``apex`` to be installed on the system.
 
-.. data:: smp.optimizers.FusedNovoGrad
+.. data:: smdistributed.modelparallel.torch.optimizers.FusedNovoGrad
 
 
    `Fused Novo Grad optimizer <https://nvidia.github.io/apex/optimizers.html#apex.optimizers.FusedNovoGrad>`__ is
-   currently not supported by the library. ``smp.optimizers.FusedNovoGrad`` replaces ``apex`` ``FusedNovoGrad``
+   currently not supported by the library. ``smdistributed.modelparallel.torch.optimizers.FusedNovoGrad`` replaces ``apex`` ``FusedNovoGrad``
    optimizer and provides the same functionality. This requires ``apex`` to
    be installed on the system.
 
-.. data:: smp.optimizers.FusedLamb
+.. data:: smdistributed.modelparallel.torch.optimizers.FusedLamb
 
 
    `FusedLamb optimizer <https://nvidia.github.io/apex/optimizers.html#apex.optimizers.FusedLAMB>`__
-   currently doesn’t work with the library. ``smp.optimizers.FusedLamb`` replaces
+   currently doesn’t work with the library. ``smdistributed.modelparallel.torch.optimizers.FusedLamb`` replaces
    ``apex`` ``FusedLamb`` optimizer and provides the same functionality.
    This requires ``apex`` to be installed on the system.
-
-.. data:: smp.amp.GradScaler
-
-   `Torch AMP Gradscaler <https://pytorch.org/docs/stable/amp.html#torch.cuda.amp.GradScaler>`__
-   currently doesn’t work with the library. ``smp.amp.GradScaler`` replaces
-   ``torch.amp.GradScaler`` and provides the same functionality.
 
 .. _pytorch_saving_loading:
 
 APIs for Saving and Loading
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. function:: smp.save( )
+.. function:: smdistributed.modelparallel.torch.save( )
 
    Saves an object. This operation is similar to ``torch.save()``, except
    it has an additional keyword argument, ``partial``, and accepts only
@@ -534,16 +658,18 @@ APIs for Saving and Loading
    -  ``partial`` (bool, default= ``True``):  When set to ``True``, each
       ``mp_rank`` saves a separate checkpoint file and the library adds an
       ``mp_rank`` index to the saved file. If you want to be able to load
-      and further train a model that you save with ``smp.save()``, you must
+      and further train a model that you save with ``smdistributed.modelparallel.torch.save()``, you must
       set ``partial=True``.
    -  ``pickle_module`` (picklemodule, default = module ``"pickle"`` from ``"/opt/conda/lib/python3.6/pickle.py"``):
       A module used for pickling metadata and objects.
    -  ``pickle_protocol``  (int, default=2): Can be specified to
       override the defaultprotocol.
+   - ``v3`` (bool, default=``False``): When set to ``True``, save optimizer state checkpoints
+     in V3 file format to add all ``pp_rank``, ``tp_rank``, and ``rdp_rank`` as postfix.
 
-.. function:: smp.load( )
+.. function:: smdistributed.modelparallel.torch.load( )
 
-   Loads an object saved with ``smp.save()`` from a file.
+   Loads an object saved with ``smdistributed.modelparallel.torch.save()`` from a file.
 
    Similar to, `torch.load() <https://pytorch.org/docs/stable/generated/torch.load.html>`__,
    except it has an additional keyword argument, ``partial``, and accepts
@@ -577,13 +703,13 @@ The library can save partial or full checkpoints.
 -  For full checkpoints, the library saves a single checkpoint that contains
    entire model parameters.
 
-When **saving** using ``smp.save()``, each rank only holds its own
+When **saving** using ``smdistributed.modelparallel.torch.save()``, each rank only holds its own
 parameters. If you want to save the full model, there will be some
 communication between the ranks to create the full model. If you save
 checkpoints often, you should save partial checkpoints for best
 performance.
 
-When **loading** using ``smp.load()``, the library can load either partial or |
+When **loading** using ``smdistributed.modelparallel.torch.load()``, the library can load either partial or |
 full checkpoints or full checkpoints saved by a non-model-parallel model. If you
 want to resume training with a non-model-parallel model or do inference, you need
 a full checkpoint.
@@ -592,6 +718,7 @@ The following is an example of how you can save and load a checkpoint:
 
 .. code:: python
 
+   import smdistributed.modelparallel.torch as smp
    # Original model and optimizer
    model = MyModel(...)
    optimizer = MyOpt(...)
