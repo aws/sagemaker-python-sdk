@@ -397,26 +397,73 @@ smdistributed.modelparallel.torch.DistributedModel
 smdistributed.modelparallel.torch.DistributedOptimizer
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. class:: smdistributed.modelparallel.torch.DistributedOptimizer(optimizer, static_loss_scale=1, dynamic_loss_scale=False, **dynamic_loss_args)
+.. class:: smdistributed.modelparallel.torch.DistributedOptimizer(optimizer, static_loss_scale=1.0, dynamic_loss_scale=False, **dynamic_loss_args)
 
    An optimizer wrapper for saving and loading optimizer states.
 
    :param optimizer: An optimizer object.
    :type optimizer: object
-   :param static_loss_scale: Available only for FP16 training. Set to ``1`` to use static loss scale. The default value is ``1``.
+   :param static_loss_scale: Available only for FP16 training. The default value is ``1.0``.
    :type static_loss_scale: float
    :param dynamic_loss_scale: Available only for FP16 training. Set to ``True`` to use dynamic loss scale.
    :type dynamic_loss_scale: boolean
-   :param dynamic_loss_args: Available only for FP16 training. If ``dynamic_loss_scale=True``, specify parameters for dynamic loss scale.
+   :param dynamic_loss_args: Available only for FP16 training.
+      If you set ``dynamic_loss_scale=True``, configure scale parameters for dynamic loss scale.
+      The following list shows available parameters.
+
+      * ``"init_scale"``: Default is ``2**32``
+      * ``"scale_factor"``: Default is ``2.``
+      * ``"scale_window"``: Default is ``1000``
+      * ``"min_scale"``: Default is ``1``
+      * ``"delayed_shift"``: Default is ``1``
+      * ``"consecutive_hysteresis"``: Default is ``False``
    :type dynamic_loss_args: dict
 
-   This wrapper returns ``optimizer`` with the following methods overridden:
+   **Example Usage for an FP32 Optimizer:**
+
+   .. code:: python
+
+      optimizer = torch.optim.AdaDelta(model.parameters(), lr=4.0)
+      optimizer = smdistributed.modelparallel.torch.DistributedOptimizer(optimizer)
+
+
+   **Example Usage for an FP16 Optimizer:**
+
+   .. code:: python
+
+      optimizer = smdistributed.modelparallel.torch.DistributedOptimizer(
+          optimizer,
+          static_loss_scale=None,
+          dynamic_loss_scale=True,
+          dynamic_loss_args={
+              "scale_window": 1000,
+              "min_scale": 1,
+              "delayed_shift": 2
+          }
+      )
+
+   .. tip::
+
+      After you modify training scripts with
+      :class:`smdistributed.modelparallel.torch.DistributedModel` and
+      :class:`smdistributed.modelparallel.torch.DistributedOptimizer`,
+      use the SageMaker PyTorch estimator's distribution configuration o enable FP16 training.
+      You simply need to add ``"fp16": True`` to the ``smp_options`` config dictionary's
+      ``"parameters"`` key as shown in
+      `Using the SageMaker TensorFlow and PyTorch Estimators
+      <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-sm-sdk.html>`_.
+      For more information about available parameters for the ``smp_options`` config,
+      see :ref:`sm-sdk-modelparallel-general`.
+
+
+
+   This wrapper returns an ``optimizer`` object with the following methods overridden:
 
    .. method:: state_dict( )
 
       Returns the ``state_dict`` that contains optimizer state for the entire model.
       It first collects the ``local_state_dict`` and gathers and merges
-      the ``local_state_dict`` from all ``mp_rank``s to create a full
+      the ``local_state_dict`` from all ``mp_rank``\ s to create a full
       ``state_dict``.
 
    .. method::  load_state_dict( )
@@ -450,9 +497,8 @@ smdistributed.modelparallel.torch.DistributedOptimizer
           If you want to save optimizer and also further reduce CPU memory
           utilization for better performance, turn it off by setting
           ``gather_if_shard=False``. However, you need to make sure that you
-          save the states on all ``rdp_rank``. To handle both cases,
+          save the states on all ``rdp_rank``\ s. To handle both cases,
           use the following example code.
-
 
       :type gather_if_shard: boolean
       :param fp32_states_only: Whether to return the FP32 optimizer states only.
@@ -465,7 +511,7 @@ smdistributed.modelparallel.torch.DistributedOptimizer
         import smdistributed.modelparallel.torch as smp
 
         # wrap optimizer
-        optimizer = torch.optim.Optimizer(...)
+        optimizer = torch.optim.AdaDelta(...)
         optimizer = smp.DistributedOptimizer(optimizer)
 
         # save optimizer
@@ -482,7 +528,7 @@ smdistributed.modelparallel.torch.DistributedOptimizer
       the ``gather_if_shard`` arg is ``True`` or ``False``.
       If ``gather_if_shard=False``, the ``v3`` arg helps collect optimizer checkpoint
       files by adding ``pp_rank``, ``tp_rank``, and ``rdp_rank`` as postfix
-      to avoid overwriting checkpoint files.
+      to avoid overwriting optimizer checkpoint files.
 
    .. method:: load_optimizer_backcompat(state_dict, gather_if_shard=False)
 
