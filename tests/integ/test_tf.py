@@ -26,7 +26,7 @@ import tests.integ
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES, kms_utils, timeout
 from tests.integ.retry import retries
 from tests.integ.utils import gpu_list, retry_with_instance_list
-from tests.integ.s3_utils import assert_s3_file_patterns_exist, assert_s3_files_exist
+from tests.integ.s3_utils import assert_s3_file_patterns_exist
 
 
 ROLE = "SageMakerRole"
