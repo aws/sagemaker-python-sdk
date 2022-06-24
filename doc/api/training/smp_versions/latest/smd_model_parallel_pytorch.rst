@@ -447,7 +447,7 @@ smdistributed.modelparallel.torch.DistributedOptimizer
       After you modify training scripts with
       :class:`smdistributed.modelparallel.torch.DistributedModel` and
       :class:`smdistributed.modelparallel.torch.DistributedOptimizer`,
-      use the SageMaker PyTorch estimator's distribution configuration o enable FP16 training.
+      use the SageMaker PyTorch estimator's distribution configuration to enable FP16 training.
       You simply need to add ``"fp16": True`` to the ``smp_options`` config dictionary's
       ``"parameters"`` key as shown in
       `Using the SageMaker TensorFlow and PyTorch Estimators
