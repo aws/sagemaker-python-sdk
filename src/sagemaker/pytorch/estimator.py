@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import logging
+from typing import Union, Optional
 
 from packaging.version import Version
 
@@ -28,6 +29,7 @@ from sagemaker.fw_utils import (
 from sagemaker.pytorch import defaults
 from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
+from sagemaker.workflow.entities import PipelineVariable
 
 logger = logging.getLogger("sagemaker")
 
@@ -39,10 +41,10 @@ class PyTorch(Framework):
 
     def __init__(
         self,
-        entry_point,
+        entry_point: Union[str, PipelineVariable],
         framework_version=None,
         py_version=None,
-        source_dir=None,
+        source_dir: Optional[Union[str, PipelineVariable]] = None,
         hyperparameters=None,
         image_uri=None,
         distribution=None,
