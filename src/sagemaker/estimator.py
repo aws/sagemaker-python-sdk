@@ -3111,6 +3111,13 @@ class Framework(EstimatorBase):
         """
         distribution_config = {}
 
+        mpi_enabled = False
+        smdataparallel_enabled = False
+        if "instance_groups" in distribution:
+            distribution_config["sagemaker_distribution_instance_groups"] = distribution[
+                "instance_groups"
+            ]
+
         if "parameter_server" in distribution:
             ps_enabled = distribution.get("parameter_server").get("enabled", False)
             distribution_config[self.LAUNCH_PS_ENV_NAME] = ps_enabled
@@ -3145,6 +3152,13 @@ class Framework(EstimatorBase):
                 distribution_config[self.SM_DDP_CUSTOM_MPI_OPTIONS] = smdistributed[
                     "dataparallel"
                 ].get("custom_mpi_options", "")
+
+        if not (mpi_enabled or smdataparallel_enabled) and distribution_config.get(
+            "sagemaker_distribution_instance_groups"
+        ) not in [None, []]:
+            raise ValueError(
+                "Don't set training instance groups while no distribution strategies enabled!"
+            )
 
         return distribution_config
 

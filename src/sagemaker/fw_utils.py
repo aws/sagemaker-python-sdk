@@ -27,7 +27,7 @@ from sagemaker.session_settings import SessionSettings
 import sagemaker.utils
 from sagemaker.workflow import is_pipeline_variable
 
-from sagemaker.deprecations import renamed_warning
+from sagemaker.deprecations import renamed_warning, renamed_kwargs
 
 logger = logging.getLogger(__name__)
 
@@ -598,6 +598,106 @@ def _validate_smdataparallel_args(
 
     if err_msg:
         raise ValueError(err_msg)
+
+
+def validate_distribution(
+    distribution, instance_groups, framework_name, framework_version, py_version, image_uri, kwargs
+):
+    """Check if distribution strategy is correctly invoked by the user.
+
+    Currently, check for `dataparallel`, `modelparallel` and heterogeneous cluster set up.
+    Validate if the user requested strategy is supported.
+
+    Args:
+        distribution (dict): A dictionary with information to enable distributed training.
+            (Defaults to None if distributed training is not enabled.) For example:
+
+            .. code:: python
+
+                {
+                    "smdistributed": {
+                        "dataparallel": {
+                            "enabled": True
+                        }
+                    }
+                }
+        instance_groups ([InstanceGroup]): A list contains instance groups used for training.
+        framework_name (str): A string representing the name of framework selected.
+        framework_version (str): A string representing the framework version selected.
+        py_version (str): A string representing the python version selected.
+        image_uri (str): A string representing a Docker image URI.
+        kwargs(dict): Additional kwargs passed to this function
+
+    Returns:
+        distribution(dict): updated dictionary with validated information
+            to enable distributed training.
+
+    Raises:
+        ValueError: if distribution dictionary isn't correctly formatted or
+            multiple strategies are requested simultaneously or
+            an unsupported strategy is requested or
+            strategy-specific inputs are incorrect/unsupported or
+            heterogeneous cluster set up is incorrect
+    """
+    train_instance_groups = distribution.get("instance_groups", [])
+    if instance_groups is None:
+        if len(train_instance_groups) >= 1:
+            # if estimator's instance_groups is not defined but
+            # train_instance_groups are specified in distribution
+            raise ValueError("Instance groups not specified in the estimator !")
+    else:
+        if len(train_instance_groups) > len(instance_groups):
+            # if train_instance_groups in distribution are more than estimator's instance_groups
+            raise ValueError("Train instance groups oversubscribed !")
+        if len(instance_groups) == 1 and len(train_instance_groups) == 0:
+            # if just one instance_group but it is not specified in distribution, we set it for user
+            train_instance_groups = instance_groups
+        elif len(instance_groups) > 1 and len(train_instance_groups) != 1:
+            # currently we just support one train instance group
+            raise ValueError("Distribution should only contain one instance group name !")
+
+    if len(train_instance_groups) != 0:
+        # in this case, we are handling a heterogeneous cluster training job
+        instance_group_names = []
+        for train_instance_group in train_instance_groups:
+            # in future version we will support multiple train_instance_groups, so use loop here
+            if train_instance_group not in instance_groups:
+                # check if train instance groups belongs to what user defined in estimator set up
+                raise ValueError(
+                    f"Invalid training instance group {train_instance_group.instance_group_name} !"
+                )
+            instance_type = train_instance_group.instance_type
+            validate_smdistributed(
+                instance_type=instance_type,
+                framework_name=framework_name,
+                framework_version=framework_version,
+                py_version=py_version,
+                distribution=distribution,
+                image_uri=image_uri,
+            )
+            warn_if_parameter_server_with_multi_gpu(
+                training_instance_type=instance_type, distribution=distribution
+            )
+            # get instance group names
+            instance_group_names.append(train_instance_group.instance_group_name)
+        distribution["instance_groups"] = instance_group_names
+    else:
+        # in this case, we are handling a normal training job (without heterogeneous cluster)
+        instance_type = renamed_kwargs(
+            "train_instance_type", "instance_type", kwargs.get("instance_type"), kwargs
+        )
+        validate_smdistributed(
+            instance_type=instance_type,
+            framework_name=framework_name,
+            framework_version=framework_version,
+            py_version=py_version,
+            distribution=distribution,
+            image_uri=image_uri,
+        )
+        warn_if_parameter_server_with_multi_gpu(
+            training_instance_type=instance_type, distribution=distribution
+        )
+    return distribution
 
 
 def python_deprecation_warning(framework, latest_supported_version):
