@@ -183,25 +183,22 @@ class TensorFlow(Framework):
         self.py_version = py_version
         self.instance_type = instance_type
 
-        if distribution is not None:
-            fw.warn_if_parameter_server_with_multi_gpu(
-                training_instance_type=instance_type, distribution=distribution
-            )
-            fw.validate_smdistributed(
-                instance_type=instance_type,
-                framework_name=self._framework_name,
-                framework_version=framework_version,
-                py_version=py_version,
-                distribution=distribution,
-                image_uri=image_uri,
-            )
-
         if "enable_sagemaker_metrics" not in kwargs:
             # enable sagemaker metrics for TF v1.15 or greater:
             if framework_version and version.Version(framework_version) >= version.Version("1.15"):
                 kwargs["enable_sagemaker_metrics"] = True
 
         super(TensorFlow, self).__init__(image_uri=image_uri, **kwargs)
+        if distribution is not None:
+            distribution = fw.validate_distribution(
+                distribution,
+                self.instance_groups,
+                self._framework_name,
+                framework_version,
+                py_version,
+                image_uri,
+                kwargs,
+            )
         self.model_dir = model_dir
         self.distribution = distribution or {}
 
