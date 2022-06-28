@@ -759,7 +759,7 @@ Create Python Scripts for Custom Input and Output Formats
 ---------------------------------------------------------
 
 You can add your customized Python code to process your input and output data.
-This customized Python code must be named ``inference.py`` and specified through the ``entry_point`` parameter:
+This customized Python code must be named ``inference.py`` and is specified through the ``entry_point`` parameter:
 
 .. code::
 
@@ -768,6 +768,8 @@ This customized Python code must be named ``inference.py`` and specified through
     model = TensorFlowModel(entry_point='inference.py',
                             model_data='s3://mybucket/model.tar.gz',
                             role='MySageMakerRole')
+
+In the example above, ``inference.py`` is assumed to be a file inside ``model.tar.gz``. If you want to use a local file instead, you must add the ``source_dir`` argument. See the documentation on `TensorFlowModel <https://sagemaker.readthedocs.io/en/stable/frameworks/tensorflow/sagemaker.tensorflow.html#sagemaker.tensorflow.model.TensorFlowModel>`_.
 
 How to implement the pre- and/or post-processing handler(s)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
