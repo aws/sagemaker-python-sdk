@@ -403,12 +403,14 @@ smdistributed.modelparallel.torch.DistributedOptimizer
 
    :param optimizer: An optimizer object.
    :type optimizer: object
-   :param static_loss_scale: Available only for FP16 training. The default value is ``1.0``.
+   :param static_loss_scale: Effective only for FP16 training. The default value is ``1.0``.
    :type static_loss_scale: float
-   :param dynamic_loss_scale: Available only for FP16 training. Set to ``True`` to use dynamic loss scale.
+   :param dynamic_loss_scale: Effective only for FP16 training. Set to ``True`` to
+      use dynamic loss scale. The default value is ``False``.
    :type dynamic_loss_scale: boolean
-   :param dynamic_loss_args: Available only for FP16 training.
-      If you set ``dynamic_loss_scale=True``, configure scale parameters for dynamic loss scale.
+   :param dynamic_loss_args: Effective only for FP16 training.
+      If ``dynamic_loss_scale=True``, you can configure additional scale
+      parameters for dynamic loss scale.
       The following list shows available parameters.
 
       * ``"init_scale"``: Default is ``2**32``
@@ -423,14 +425,24 @@ smdistributed.modelparallel.torch.DistributedOptimizer
 
    .. code:: python
 
-      optimizer = torch.optim.AdaDelta(model.parameters(), lr=4.0)
+      optimizer = torch.optim.AdaDelta(...)
       optimizer = smdistributed.modelparallel.torch.DistributedOptimizer(optimizer)
 
-
-   **Example Usage for an FP16 Optimizer:**
+   **Example Usage for an FP16 Optimizer with static loss scale:**
 
    .. code:: python
 
+      optimizer = torch.optim.AdaDelta(...)
+      optimizer = smdistributed.modelparallel.torch.DistributedOptimizer(
+          optimizer,
+          static_loss_scale=1.0
+      )
+
+   **Example Usage for an FP16 Optimizer with dynamic loss scale:**
+
+   .. code:: python
+
+      optimizer = torch.optim.AdaDelta(...)
       optimizer = smdistributed.modelparallel.torch.DistributedOptimizer(
           optimizer,
           static_loss_scale=None,
@@ -454,8 +466,6 @@ smdistributed.modelparallel.torch.DistributedOptimizer
       <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-sm-sdk.html>`_.
       For more information about available parameters for the ``smp_options`` config,
       see :ref:`sm-sdk-modelparallel-general`.
-
-
 
    This wrapper returns an ``optimizer`` object with the following methods overridden:
 
@@ -555,14 +565,14 @@ smdistributed.modelparallel.torch.DistributedOptimizer
 smdistributed.modelparallel.torch Context Managers and Util Functions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. function:: smdistributed.modelparallel.torch.model_creation(tensor_parallelism=False, dtype=None, **tensor_parallel_config)
+.. function:: smdistributed.modelparallel.torch.model_creation(tensor_parallelism=False, dtype=None, distribute_embedding=False, **tensor_parallel_config)
 
    Context manager to create a ``torch`` model. This API combines both the
    :class:`smdistributed.modelparallel.torch.tensor_parallelism` and
-   ``smdistributed.modelparallel.torch.delay_param_initialization`` decorators
-   so user need to simply use a single context when creating the torch model.
+   :class:`smdistributed.modelparallel.torch.delay_param_initialization` decorators,
+   so you can simply use this single context when creating the torch model.
 
-   :param tensor_parallelism: Whether tensor parallel should be enabled during model creation.
+   :param tensor_parallelism: Whether to enable tensor parallelism during model creation.
    :type tensor_parallelism: boolean
    :param dtype: The dtype to use when creating the model. It has the following rules.
 
@@ -572,10 +582,12 @@ smdistributed.modelparallel.torch Context Managers and Util Functions
       * Any model that causes out-of-memory problems with FP32 initialization
         is recommended to be created with
         :class:`smdistributed.modelparallel.torch.delayed_parameter_initialization`.
-      * ``FP16_Module`` casts the model back to FP16 if FP16 training is enabled with the smp config.
+      * ``FP16_Module`` casts the model back to FP16 if FP16 training is enabled with the ``smp`` config.
    :type dtype: torch.dtype
+   :param distribute_embedding: Whether to enable vocabulary parallelism for NLP models.
+   :type dtype: boolean
    :param tensor_parallel_config: kwargs to specifiy other tensor parallel configs.
-      This is not used if ``tensor_parallelism`` is ``False``
+      This is not used if ``tensor_parallelism`` is ``False``.
    :type tensor_parallel_config: dict
 
    **Example Usage:**
@@ -586,7 +598,8 @@ smdistributed.modelparallel.torch Context Managers and Util Functions
 
       with smp.model_creation(
           tensor_parallelism=smp.tp_size() > 1,
-          dtype=torch.float16 if args.fp16 else torch.get_default_dtype()
+          dtype=torch.float16 if args.fp16 else torch.get_default_dtype(),
+          distribute_embedding=False
       ):
           model = MyModel(...)
 
