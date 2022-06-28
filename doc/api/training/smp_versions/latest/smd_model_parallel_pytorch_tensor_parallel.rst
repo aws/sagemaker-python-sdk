@@ -49,9 +49,9 @@ this by taking a look at the equivalent reference implementations in the
 These implementations are functionally equivalent to their distributed
 versions in ``smdistributed.modelparallel.torch.nn`` module.
 
-.. decorator:: @smdistributed.modelparallel.torch.tp_register(dist_module, init_hook=None, forward_hook=None, return_hook=None)
+.. class:: smdistributed.modelparallel.torch.tp_register(dist_module, init_hook=None, forward_hook=None, return_hook=None)
 
-   -  A class decorator that registers the ``dist_module`` class with
+   -  A decorator class that registers the ``dist_module`` class with
       the module class that it is attached to. The hooks can be used to
       adapt to different interfaces used with ``__init__`` and
       ``forward`` methods.
@@ -161,16 +161,7 @@ versions in ``smdistributed.modelparallel.torch.nn`` module.
 Supported Modules for Tensor Parallelism
 ----------------------------------------
 
-The following modules are supported for tensor
-parallelism.
-
--  ``smdistributed.modelparallel.torch.nn.DistributedLinear`` (implements ``nn.Linear``)
--  ``smdistributed.modelparallel.torch.nn.DistributedTransformerLMHead``
--  ``smdistributed.modelparallel.torch.nn.DistributedTransformer``
--  ``smdistributed.modelparallel.torch.nn.DistributedTransformerLayer``
--  ``smdistributed.modelparallel.torch.nn.DistributedAttentionLayer``
--  ``smdistributed.modelparallel.torch.nn.DistributedTransformerOutputLayer``
--  ``smdistributed.modelparallel.torch.nn.DistributedEmbedding``
+The following modules are supported for tensor parallelism.
 
 .. contents:: Topics
   :depth: 3
@@ -181,14 +172,27 @@ parallelism.
 Tensor Parallelism Module APIs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+-  :class:`smdistributed.modelparallel.torch.nn.DistributedLinear` (implements ``nn.Linear``)
+-  :class:`smdistributed.modelparallel.torch.nn.DistributedTransformerLMHead`
+-  :class:`smdistributed.modelparallel.torch.nn.DistributedTransformer`
+-  :class:`smdistributed.modelparallel.torch.nn.DistributedTransformerLayer`
+-  :class:`smdistributed.modelparallel.torch.nn.DistributedAttentionLayer`
+-  :class:`smdistributed.modelparallel.torch.nn.DistributedTransformerOutputLayer`
+-  :class:`smdistributed.modelparallel.torch.nn.DistributedEmbedding`
+
 .. class:: smdistributed.modelparallel.torch.nn.DistributedLinear(in_features, out_features)
 
-   -  Tensor-parallel implementation of the ``nn.Linear`` class.
-      Functionally equivalent to an ``nn.Linear`` module with the same
-      ``in_features`` and ``out_features``. In other words,
-      ``in_features`` and ``out_features`` are the number of *global*
-      channels across tensor-parallel ranks.
-   -  **Arguments:**
+    Tensor-parallel implementation of the ``nn.Linear`` class.
+    Functionally equivalent to an ``nn.Linear`` module with the same
+    ``in_features`` and ``out_features``. In other words,
+    ``in_features`` and ``out_features`` are the number of *global*
+    channels across tensor-parallel ranks.
+
+    For more information about what's the reference implementation of this module,
+    see :ref:`smdmp-tp-appendix`.
+
+
+    -  **Arguments:**
 
       -  ``in_features``: The total number of input channels for the
          linear layer across all tensor-parallel ranks.
@@ -197,21 +201,22 @@ Tensor Parallelism Module APIs
 
 .. class:: smdistributed.modelparallel.torch.nn.DistributedTransformerLMHead(num_layers=12, num_attention_heads=32, attention_head_size=32, hidden_size=1024, intermediate_size=4096, vocab_size=30522, num_positions=1024, attention_dropout_prob=0.1, hidden_dropout_prob=0.1, activation="gelu", layernorm_epsilon=1e-5, num_token_types=0, causal_mask_size=None, add_cross_attention=False, add_lm_head=True,  initializer_range=0.02, use_normal_initialization=False, pre_layernorm=False, post_layernorm=True)
 
-   -  Constructs a distributed transformer model, including embeddings
-      and a single LM head. A word embedding of size
-      ``(vocab_size, hidden_size)`` is created, as well as a positional
-      embedding of size ``(num_positions, hidden_size)``, and the
-      embeddings are added together. If ``num_token_types`` is larger
-      than 0, a separate embedding of size
-      ``(num_token_types, hidden_size)`` is created, and further added
-      on top.
-   -  The embeddings are fed through a ``DistributedTransformer``, and
-      if ``add_lm_head`` is ``True``, the output passes through a single
-      LM head, which is a linear module without bias whose weight is
-      tied to the word embeddings.
-   -  See :class:`smdistributed.modelparallel.torch.nn.DistributedTransformerLayer` for descriptions of the rest
-      of the arguments.
-   -  **Methods:**
+    Constructs a distributed transformer model, including embeddings
+    and a single LM head. A word embedding of size
+    ``(vocab_size, hidden_size)`` is created, as well as a positional
+    embedding of size ``(num_positions, hidden_size)``, and the
+    embeddings are added together. If ``num_token_types`` is larger
+    than 0, a separate embedding of size
+    ``(num_token_types, hidden_size)`` is created, and further added
+    on top.
+
+    -  The embeddings are fed through a ``DistributedTransformer``, and
+       if ``add_lm_head`` is ``True``, the output passes through a single
+       LM head, which is a linear module without bias whose weight is
+       tied to the word embeddings.
+    -  See :class:`smdistributed.modelparallel.torch.nn.DistributedTransformerLayer` for descriptions of the rest
+       of the arguments.
+    -  **Methods:**
 
       -  ``forward(self, inputs)``
 
@@ -229,10 +234,11 @@ Tensor Parallelism Module APIs
 
 .. class:: smdistributed.modelparallel.torch.nn.DistributedTransformer(num_layers=12, num_attention_heads=32, attention_head_size=32, hidden_size=1024, intermediate_size=4096, attention_dropout_prob=0.1, hidden_dropout_prob=0.1, activation="gelu", layernorm_epsilon=1e-5, initializer_range=0.02, use_normal_initialization=False, causal_mask_size=None, add_cross_attention=False, pre_layernorm=False, post_layernorm=True)
 
-   -  A sequence of ``smdistributed.modelparallel.torch.nn.DistributedTransformerLayer``\ s, whose
-      number is given by ``num_layers`` argument. For the other
-      arguments and methods, refer to
-      ``smdistributed.modelparallel.torch.nn.DistributedTransformerLayer``.
+   A sequence of :class:`smdistributed.modelparallel.torch.nn.DistributedTransformerLayer`\ s, whose
+   number is given by ``num_layers`` argument. For the other
+   arguments and methods, refer to
+   :class:`smdistributed.modelparallel.torch.nn.DistributedTransformerLayer`.
+   
    -  If both ``pre_layernorm`` and ``post_layernorm`` are ``True``,
       layer normalization is applied to both the input and the output of
       the ``DistributedTransformer``, in addition to the intermediate
@@ -240,9 +246,13 @@ Tensor Parallelism Module APIs
 
 .. class:: smdistributed.modelparallel.torch.nn.DistributedTransformerLayer(num_attention_heads=32, attention_head_size=32, hidden_size=1024, intermediate_size=4096, attention_dropout_prob=0.1, hidden_dropout_prob=0.1, activation="gelu", layernorm_epsilon=1e-5, initializer_range=0.02, use_normal_initialization=False, causal_mask_size=None, add_cross_attention=False, pre_layernorm=False, post_layernorm=True)
 
-   -  Tensor-parallel implementation of a single transformer layer.
-      Number of attention heads, hidden size, and intermediate size
-      refer to the global quantities across all tensor-parallel ranks.
+   Tensor-parallel implementation of a single transformer layer.
+   Number of attention heads, hidden size, and intermediate size
+   refer to the global quantities across all tensor-parallel ranks.
+
+   For more information about what's the reference implementation of this module,
+   see :ref:`smdmp-tp-appendix`.
+
    -  **Arguments:**
 
       -  ``num_attention_heads``: The total number of attention heads
@@ -342,10 +352,14 @@ Tensor Parallelism Module APIs
 
 .. class:: smdistributed.modelparallel.torch.nn.DistributedAttentionLayer(num_attention_heads=32, attention_head_size=32, hidden_size=1024, attention_dropout_prob=0.1, hidden_dropout_prob=0.1, layernorm_epsilon=1e-5, initializer_range=0.02, use_normal_initialization=False, cross_attention=False, causal_mask_size=None, pre_layernorm=False, post_layernorm=True)
 
-   -  A distributed implementation for the attention block. Includes the
-      computation of the self- or cross-attention (context layer),
-      followed by a linear mapping and dropout, which is optionally
-      followed by the residual-connection and layer normalization.
+   A distributed implementation for the attention block. Includes the
+   computation of the self- or cross-attention (context layer),
+   followed by a linear mapping and dropout, which is optionally
+   followed by the residual-connection and layer normalization.
+
+   For more information about what's the reference implementation of this module,
+   see :ref:`smdmp-tp-appendix`.
+
    -  **Arguments:**
 
       -  See :class:`smdistributed.modelparallel.torch.nn.DistributedTransformerLayer` for descriptions of the
@@ -396,6 +410,10 @@ Tensor Parallelism Module APIs
       ``DistributedTransformerOutputLayer``. The latter linearly maps
       the last channel of the input tensor from ``hidden_size`` to
       ``intermediate_size``, and then maps it back to ``hidden_size``.
+
+      For more information about what's the reference implementation of this module,
+      see :ref:`smdmp-tp-appendix`.
+
    -  **Arguments:**
 
       -  See :class:`smdistributed.modelparallel.torch.nn.DistributedTransformerLayer` for descriptions of the
