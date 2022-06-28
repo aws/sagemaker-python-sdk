@@ -22,7 +22,7 @@ from packaging.version import Version
 from sagemaker import image_uris
 from sagemaker.pytorch import defaults
 from sagemaker.pytorch import PyTorch, PyTorchPredictor, PyTorchModel
-
+from sagemaker.instance_group import InstanceGroup
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
@@ -691,3 +691,21 @@ def test_custom_image_estimator_deploy(
     pytorch.fit(inputs="s3://mybucket/train", job_name="new_name")
     model = pytorch.create_model(image_uri=custom_image)
     assert model.image_uri == custom_image
+
+
+def test_pt_heterogeneous_cluster_distribution_config(
+    sagemaker_session, pytorch_training_version, pytorch_training_py_version
+):
+    training_group = InstanceGroup("train_group", "ml.c4.xlarge", 1)
+    expected_return = {"mpi": {"enabled": True}, "instance_groups": ["train_group"]}
+    pytorch = _pytorch_estimator(
+        sagemaker_session,
+        framework_version=pytorch_training_version,
+        py_version=pytorch_training_py_version,
+        instance_groups=[training_group],
+        distribution={
+            "mpi": {"enabled": True},
+            "instance_groups": [training_group],
+        },
+    )
+    assert pytorch.distribution == expected_return
