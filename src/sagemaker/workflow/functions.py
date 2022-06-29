@@ -64,6 +64,15 @@ class Join(PipelineVariable):
             },
         }
 
+    @property
+    def _referenced_steps(self) -> List[str]:
+        """List of step names that this function depends on."""
+        steps = []
+        for value in self.values:
+            if isinstance(value, PipelineVariable):
+                steps.extend(value._referenced_steps)
+        return steps
+
 
 @attr.s
 class JsonGet(PipelineVariable):
@@ -96,3 +105,8 @@ class JsonGet(PipelineVariable):
                 "Path": self.json_path,
             }
         }
+
+    @property
+    def _referenced_steps(self) -> List[str]:
+        """List of step names that this function depends on."""
+        return [self.step_name]

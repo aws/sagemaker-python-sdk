@@ -1,5 +1,127 @@
 # Changelog
 
+## v2.97.0 (2022-06-28)
+
+### Deprecations and Removals
+
+ * remove support for python 3.6
+
+### Features
+
+ * update prebuilt models documentation
+
+### Bug Fixes and Other Changes
+
+ * Skipping test_candidate_estimator_default_rerun_and_deploy
+ * Update model name from 'compiled.pt' to 'model.pth' for neo
+ * update pytest, skip hf integ temp
+ * Add override_pipeline_parameter_var decorator to give grace period to update invalid pipeline var args
+
+## v2.96.0 (2022-06-20)
+
+### Features
+
+ * Add helper method to generate pipeline adjacency list
+
+### Bug Fixes and Other Changes
+
+ * changing trcomp integ tests to be able to run in all regions
+
+## v2.95.0 (2022-06-16)
+
+### Features
+
+ * Adding Training Compiler support for TensorFlow estimator starting TF 2.9
+ * Add support for TF 2.9 training
+
+### Bug Fixes and Other Changes
+
+ * integs fallback from p3 to p2 instance
+ * bucket exists check for session.default_bucket
+ * make instance type fields as optional
+
+### Documentation Changes
+
+ * improvements on the docstring of ModelStep
+ * Add XGBoostProcessor
+
+## v2.94.0 (2022-06-07)
+
+### Features
+
+ * AutoGluon 0.4.2 image_uris support
+
+## v2.93.1 (2022-06-06)
+
+### Bug Fixes and Other Changes
+
+ * add input parameterization tests for workflow job steps
+ * add parameterized tests to transformer
+
+## v2.93.0 (2022-06-03)
+
+### Features
+
+ * MxNet 1.9 support
+
+### Bug Fixes and Other Changes
+
+ * bump importlib-metadata version upperbound to support TF2.9
+ * fix pipeline doc code example where process.run only accepts argument
+ * Fix Tensorflow default model_dir generation when output_path is pipeline variable
+ * Support transformer data parameterization
+
+## v2.92.2 (2022-05-31)
+
+### Bug Fixes and Other Changes
+
+ * turn off Pipeline Parameter inheritance from python primitives
+ * Add more validations for pipeline step new interfaces
+ * Changed method description per AWS request
+
+## v2.92.1 (2022-05-26)
+
+### Bug Fixes and Other Changes
+
+ * pin protobuf to < 4.0 to fix breaking change
+
+## v2.92.0 (2022-05-26)
+
+### Features
+
+ * add 'Domain' property to RegisterModel step
+
+### Bug Fixes and Other Changes
+
+ * support estimator output path parameterization
+ * Add back Prevent passing PipelineVariable object into image_uris.retrieve
+ * jumpstart amt tracking
+ * fix missing register method params for framework models
+ * fix docstring for decorated functions
+ * Documents: add sagemaker model building pipeline readthedocs
+
+## v2.91.1 (2022-05-19)
+
+### Bug Fixes and Other Changes
+
+ * Revert Prevent passing PipelineVariable object into image_uris.retrieve
+
+## v2.91.0 (2022-05-19)
+
+### Features
+
+ * Support Properties for StepCollection
+
+### Bug Fixes and Other Changes
+
+ * Prevent passing PipelineVariable object into image_uris.retrieve
+ * support image_uri being property ref for model
+ * ResourceConflictException from AWS Lambda on pipeline upsert
+
+### Documentation Changes
+
+ * release notes for SMDDP 1.4.1 and SMDMP 1.9.0
+
 ## v2.90.0 (2022-05-16)
 
 ### Features

@@ -46,7 +46,7 @@ from sagemaker.tuner import (
 from sagemaker.network import NetworkConfig
 from sagemaker.transformer import Transformer
 from sagemaker.workflow.functions import Join
-from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
 from sagemaker.workflow.properties import Properties, PropertyFile
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger, ParameterBoolean
 from sagemaker.workflow.retry import (
@@ -70,6 +70,7 @@ from sagemaker.sparkml import SparkMLModel
 from sagemaker.predictor import Predictor
 from sagemaker.model import FrameworkModel
 from tests.unit import DATA_DIR
+from tests.unit.sagemaker.workflow.helpers import ordered
 
 DUMMY_SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
 
@@ -85,7 +86,7 @@ class CustomStep(ConfigurableRetryStep):
         super(CustomStep, self).__init__(
             name, StepTypeEnum.TRAINING, display_name, description, None, retry_policies
         )
-        self._properties = Properties(path=f"Steps.{name}")
+        self._properties = Properties(name)
 
     @property
     def arguments(self):
@@ -395,6 +396,14 @@ def test_training_step_base_estimator(sagemaker_session):
     }
     assert step.properties.TrainingJobName.expr == {"Get": "Steps.MyTrainingStep.TrainingJobName"}
     assert step.properties.HyperParameters.expr == {"Get": "Steps.MyTrainingStep.HyperParameters"}
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert ordered(adjacency_list) == ordered(
+        {
+            "AnotherTestStep": ["MyTrainingStep"],
+            "MyTrainingStep": [],
+            "TestStep": ["MyTrainingStep"],
+        }
+    )
 
 
 def test_training_step_tensorflow(sagemaker_session):
@@ -416,12 +425,10 @@ def test_training_step_tensorflow(sagemaker_session):
         instance_count=instance_count_parameter,
         instance_type=instance_type_parameter,
         sagemaker_session=sagemaker_session,
-        # subnets=subnets,
         hyperparameters={
             "batch-size": training_batch_size_parameter,
             "epochs": training_epochs_parameter,
         },
-        # security_group_ids=security_group_ids,
         debugger_hook_config=False,
         # Training using SMDataParallel Distributed Training Framework
         distribution={"smdistributed": {"dataparallel": {"enabled": True}}},
@@ -670,6 +677,15 @@ def test_processing_step(sagemaker_session):
     assert step.properties.ProcessingJobName.expr == {
         "Get": "Steps.MyProcessingStep.ProcessingJobName"
     }
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert ordered(adjacency_list) == ordered(
+        {
+            "SecondTestStep": ["MyProcessingStep"],
+            "TestStep": ["MyProcessingStep"],
+            "ThirdTestStep": ["MyProcessingStep"],
+            "MyProcessingStep": [],
+        }
+    )
 
 
 @patch("sagemaker.processing.ScriptProcessor._normalize_args")
@@ -725,22 +741,22 @@ def test_processing_step_normalizes_args_with_param_str_local_code(
             destination="processing_manifest",
         )
     ]
-    step = ProcessingStep(
-        name="MyProcessingStep",
-        processor=script_processor,
-        code=code_param,
-        inputs=inputs,
-        outputs=outputs,
-        job_arguments=["arg1", "arg2"],
-        cache_config=cache_config,
-    )
-    pipeline = Pipeline(
-        name="MyPipeline",
-        parameters=[code_param],
-        steps=[step],
-        sagemaker_session=sagemaker_session,
-    )
     with pytest.raises(ValueError) as error:
+        step = ProcessingStep(
+            name="MyProcessingStep",
+            processor=script_processor,
+            code=code_param,
+            inputs=inputs,
+            outputs=outputs,
+            job_arguments=["arg1", "arg2"],
+            cache_config=cache_config,
+        )
+        pipeline = Pipeline(
+            name="MyPipeline",
+            parameters=[code_param],
+            steps=[step],
+            sagemaker_session=sagemaker_session,
+        )
         pipeline.definition()
 
     assert "has to be a valid S3 URI or local file path" in str(error.value)
@@ -981,7 +997,7 @@ def test_transform_step(sagemaker_session):
 
 
 def test_properties_describe_training_job_response():
-    prop = Properties("Steps.MyStep", "DescribeTrainingJobResponse")
+    prop = Properties(step_name="MyStep", shape_name="DescribeTrainingJobResponse")
     some_prop_names = ["TrainingJobName", "TrainingJobArn", "HyperParameters", "OutputDataConfig"]
     for name in some_prop_names:
         assert name in prop.__dict__.keys()
@@ -992,7 +1008,7 @@ def test_properties_describe_training_job_response():
 
 
 def test_properties_describe_processing_job_response():
-    prop = Properties("Steps.MyStep", "DescribeProcessingJobResponse")
+    prop = Properties(step_name="MyStep", shape_name="DescribeProcessingJobResponse")
     some_prop_names = ["ProcessingInputs", "ProcessingOutputConfig", "ProcessingEndTime"]
     for name in some_prop_names:
         assert name in prop.__dict__.keys()

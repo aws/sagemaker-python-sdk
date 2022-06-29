@@ -19,15 +19,19 @@ from mock import Mock, PropertyMock, patch
 
 import pytest
 
-from sagemaker import Model, PipelineModel, Session
+from sagemaker import Model, PipelineModel, Session, Processor
 from sagemaker.chainer import ChainerModel
+from sagemaker.estimator import Estimator
 from sagemaker.huggingface import HuggingFaceModel
 from sagemaker.model import SCRIPT_PARAM_NAME, DIR_PARAM_NAME
 from sagemaker.mxnet import MXNetModel
+from sagemaker.parameter import IntegerParameter
 from sagemaker.pytorch import PyTorchModel
 from sagemaker.sklearn import SKLearnModel
 from sagemaker.sparkml import SparkMLModel
 from sagemaker.tensorflow import TensorFlowModel
+from sagemaker.transformer import Transformer
+from sagemaker.tuner import HyperparameterTuner
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.conditions import ConditionGreaterThanOrEqualTo
 from sagemaker.workflow.model_step import (
@@ -37,7 +41,7 @@ from sagemaker.workflow.model_step import (
     _REPACK_MODEL_NAME_BASE,
 )
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
-from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
 from sagemaker.workflow.pipeline_context import PipelineSession
 from sagemaker.workflow.retry import (
     StepRetryPolicy,
@@ -46,13 +50,16 @@ from sagemaker.workflow.retry import (
     SageMakerJobStepRetryPolicy,
 )
 from sagemaker.xgboost import XGBoostModel
+from sagemaker.lambda_helper import Lambda
+from sagemaker.workflow.lambda_step import LambdaStep, LambdaOutput, LambdaOutputTypeEnum
 from tests.unit import DATA_DIR
-from tests.unit.sagemaker.workflow.helpers import CustomStep
+from tests.unit.sagemaker.workflow.helpers import CustomStep, ordered
 
 _IMAGE_URI = "fakeimage"
 _REGION = "us-west-2"
 _BUCKET = "my-bucket"
 _ROLE = "DummyRole"
+_INSTANCE_TYPE = "ml.m4.xlarge"
 
 _SAGEMAKER_PROGRAM = SCRIPT_PARAM_NAME.upper()
 _SAGEMAKER_SUBMIT_DIRECTORY = DIR_PARAM_NAME.upper()
@@ -139,7 +146,7 @@ def test_register_model_with_runtime_repack(pipeline_session, model_data_param, 
         transform_instances=["ml.m5.xlarge"],
         model_package_group_name="MyModelPackageGroup",
     )
-    model_steps = ModelStep(
+    model_step = ModelStep(
         name="MyModelStep",
         step_args=step_args,
         retry_policies=dict(
@@ -155,17 +162,18 @@ def test_register_model_with_runtime_repack(pipeline_session, model_data_param, 
         depends_on=["TestStep"],
         description="my model step description",
     )
+    custom_step2 = CustomStep("TestStep2", depends_on=[model_step])
     pipeline = Pipeline(
         name="MyPipeline",
         parameters=[model_data_param],
-        steps=[model_steps, custom_step],
+        steps=[custom_step, model_step, custom_step2],
         sagemaker_session=pipeline_session,
     )
     step_dsl_list = json.loads(pipeline.definition())["Steps"]
-    assert len(step_dsl_list) == 3
+    assert len(step_dsl_list) == 4
     expected_repack_step_name = f"MyModelStep-{_REPACK_MODEL_NAME_BASE}-MyModel"
     # Filter out the dummy custom step
-    step_dsl_list = list(filter(lambda s: s["Name"] != "TestStep", step_dsl_list))
+    step_dsl_list = list(filter(lambda s: not s["Name"].startswith("TestStep"), step_dsl_list))
     for step in step_dsl_list[0:2]:
         if step["Type"] == "Training":
             assert step["Name"] == expected_repack_step_name
@@ -215,6 +223,16 @@ def test_register_model_with_runtime_repack(pipeline_session, model_data_param, 
             assert "my model step description" in step["Description"]
         else:
             raise Exception("A step exists in the collection of an invalid type.")
+
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert ordered(adjacency_list) == ordered(
+        {
+            "TestStep": ["MyModelStep-RepackModel-MyModel"],
+            "MyModelStep-RepackModel-MyModel": ["MyModelStep-RegisterModel"],
+            "MyModelStep-RegisterModel": ["TestStep2"],
+            "TestStep2": [],
+        }
+    )
 
 
 def test_create_model_with_runtime_repack(pipeline_session, model_data_param, model):
@@ -282,6 +300,13 @@ def test_create_model_with_runtime_repack(pipeline_session, model_data_param, mo
             ]
         else:
             raise Exception("A step exists in the collection of an invalid type.")
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert ordered(adjacency_list) == ordered(
+        {
+            "MyModelStep-CreateModel": [],
+            "MyModelStep-RepackModel-MyModel": ["MyModelStep-CreateModel"],
+        }
+    )
 
 
 def test_create_pipeline_model_with_runtime_repack(pipeline_session, model_data_param, model):
@@ -303,6 +328,16 @@ def test_create_pipeline_model_with_runtime_repack(pipeline_session, model_data_
     model_steps = ModelStep(
         name="MyModelStep",
         step_args=step_args,
+        retry_policies=dict(
+            create_model_retry_policies=[
+                StepRetryPolicy(exception_types=[StepExceptionTypeEnum.THROTTLING], max_attempts=3)
+            ],
+            repack_model_retry_policies=[
+                SageMakerJobStepRetryPolicy(
+                    exception_types=[SageMakerJobExceptionTypeEnum.CAPACITY_ERROR], max_attempts=3
+                )
+            ],
+        ),
     )
     pipeline = Pipeline(
         name="MyPipeline",
@@ -326,6 +361,14 @@ def test_create_pipeline_model_with_runtime_repack(pipeline_session, model_data_
             assert arguments["HyperParameters"]["sagemaker_program"] == '"_repack_model.py"'
             assert "s3://" in arguments["HyperParameters"]["sagemaker_submit_directory"]
             assert arguments["HyperParameters"]["dependencies"] == "null"
+            assert step["RetryPolicies"] == [
+                {
+                    "BackoffRate": 2.0,
+                    "IntervalSeconds": 1,
+                    "MaxAttempts": 3,
+                    "ExceptionType": ["SageMaker.CAPACITY_ERROR"],
+                }
+            ]
         elif step["Type"] == "Model":
             assert step["Name"] == f"MyModelStep-{_CREATE_MODEL_NAME_BASE}"
             arguments = step["Arguments"]
@@ -341,8 +384,23 @@ def test_create_pipeline_model_with_runtime_repack(pipeline_session, model_data_
             }
             assert containers[1]["Environment"][_SAGEMAKER_PROGRAM] == _SCRIPT_NAME
             assert containers[1]["Environment"][_SAGEMAKER_SUBMIT_DIRECTORY] == _DIR_NAME
+            assert step["RetryPolicies"] == [
+                {
+                    "BackoffRate": 2.0,
+                    "IntervalSeconds": 1,
+                    "MaxAttempts": 3,
+                    "ExceptionType": ["Step.THROTTLING"],
+                }
+            ]
         else:
             raise Exception("A step exists in the collection of an invalid type.")
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert ordered(adjacency_list) == ordered(
+        {
+            "MyModelStep-CreateModel": [],
+            "MyModelStep-RepackModel-MyModel": ["MyModelStep-CreateModel"],
+        }
+    )
 
 
 def test_register_pipeline_model_with_runtime_repack(pipeline_session, model_data_param):
@@ -378,14 +436,17 @@ def test_register_pipeline_model_with_runtime_repack(pipeline_session, model_dat
         name="MyModelStep",
         step_args=step_args,
     )
+    custom_step = CustomStep("TestStep", input_data=model_steps.properties.ModelApprovalStatus)
     pipeline = Pipeline(
         name="MyPipeline",
         parameters=[model_data_param],
-        steps=[model_steps],
+        steps=[model_steps, custom_step],
         sagemaker_session=pipeline_session,
     )
     step_dsl_list = json.loads(pipeline.definition())["Steps"]
-    assert len(step_dsl_list) == 2
+    assert len(step_dsl_list) == 3
+    # Filter out the dummy custom step
+    step_dsl_list = list(filter(lambda s: not s["Name"].startswith("TestStep"), step_dsl_list))
     expected_repack_step_name = f"MyModelStep-{_REPACK_MODEL_NAME_BASE}-1"
     for step in step_dsl_list:
         if step["Type"] == "Training":
@@ -420,6 +481,14 @@ def test_register_pipeline_model_with_runtime_repack(pipeline_session, model_dat
             assert containers[1]["Environment"]["k"] == "v"
         else:
             raise Exception("A step exists in the collection of an invalid type.")
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert ordered(adjacency_list) == ordered(
+        {
+            "MyModelStep-RegisterModel": ["TestStep"],
+            "MyModelStep-RepackModel-1": ["MyModelStep-RegisterModel"],
+            "TestStep": [],
+        }
+    )
 
 
 def test_register_model_without_repack(pipeline_session):
@@ -468,6 +537,8 @@ def test_register_model_without_repack(pipeline_session):
         containers[0]["Environment"][_SAGEMAKER_SUBMIT_DIRECTORY]
         == f"s3://{_BUCKET}/{model_name}/sourcedir.tar.gz"
     )
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert ordered(adjacency_list) == ordered({"MyModelStep-RegisterModel": []})
 
 
 @patch("sagemaker.utils.repack_model")
@@ -505,6 +576,10 @@ def test_create_model_with_compile_time_repack(mock_repack, pipeline_session):
     assert arguments["PrimaryContainer"]["Environment"][_SAGEMAKER_SUBMIT_DIRECTORY] == _DIR_NAME
     assert len(step_dsl_list[0]["DependsOn"]) == 1
     assert step_dsl_list[0]["DependsOn"][0] == "TestStep"
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert ordered(adjacency_list) == ordered(
+        {"MyModelStep-CreateModel": [], "TestStep": ["MyModelStep-CreateModel"]}
+    )
 
 
 def test_conditional_model_create_and_regis(
@@ -522,7 +597,7 @@ def test_conditional_model_create_and_regis(
         model_package_group_name="MyModelPackageGroup",
     )
     step_model_regis = ModelStep(
-        name="MyModelStep",
+        name="MyModelStepRegis",
         step_args=step_args,
     )
     # create model without runtime repack
@@ -533,7 +608,7 @@ def test_conditional_model_create_and_regis(
         accelerator_type="ml.eia1.medium",
     )
     step_model_create = ModelStep(
-        name="MyModelStep",
+        name="MyModelStepCreate",
         step_args=step_args,
     )
     step_cond = ConditionStep(
@@ -553,7 +628,7 @@ def test_conditional_model_create_and_regis(
     cond_step_dsl = json.loads(pipeline.definition())["Steps"][0]
     step_dsl_list = cond_step_dsl["Arguments"]["IfSteps"] + cond_step_dsl["Arguments"]["ElseSteps"]
     assert len(step_dsl_list) == 3
-    expected_repack_step_name = f"MyModelStep-{_REPACK_MODEL_NAME_BASE}-MyModel"
+    expected_repack_step_name = f"MyModelStepRegis-{_REPACK_MODEL_NAME_BASE}-MyModel"
     for step in step_dsl_list:
         if step["Type"] == "Training":
             assert step["Name"] == expected_repack_step_name
@@ -568,7 +643,7 @@ def test_conditional_model_create_and_regis(
             assert "s3://" in arguments["HyperParameters"]["sagemaker_submit_directory"]
             assert arguments["HyperParameters"]["dependencies"] == "null"
         elif step["Type"] == "RegisterModel":
-            assert step["Name"] == f"MyModelStep-{_REGISTER_MODEL_NAME_BASE}"
+            assert step["Name"] == f"MyModelStepRegis-{_REGISTER_MODEL_NAME_BASE}"
             arguments = step["Arguments"]
             assert arguments["ModelApprovalStatus"] == "PendingManualApproval"
             assert len(arguments["InferenceSpecification"]["Containers"]) == 1
@@ -580,7 +655,7 @@ def test_conditional_model_create_and_regis(
             assert container["Environment"][_SAGEMAKER_PROGRAM] == _SCRIPT_NAME
             assert container["Environment"][_SAGEMAKER_SUBMIT_DIRECTORY] == _DIR_NAME
         elif step["Type"] == "Model":
-            assert step["Name"] == f"MyModelStep-{_CREATE_MODEL_NAME_BASE}"
+            assert step["Name"] == f"MyModelStepCreate-{_CREATE_MODEL_NAME_BASE}"
             arguments = step["Arguments"]
             container = arguments["PrimaryContainer"]
             assert container["Image"] == _IMAGE_URI
@@ -588,6 +663,18 @@ def test_conditional_model_create_and_regis(
             assert not container.get("Environment", {})
         else:
             raise Exception("A step exists in the collection of an invalid type.")
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert ordered(adjacency_list) == ordered(
+        {
+            "MyModelStepCreate-CreateModel": [],
+            "MyModelStepRegis-RegisterModel": [],
+            "MyModelStepRegis-RepackModel-MyModel": ["MyModelStepRegis-RegisterModel"],
+            "cond-good-enough": [
+                "MyModelStepCreate-CreateModel",
+                "MyModelStepRegis-RepackModel-MyModel",
+            ],
+        }
+    )
 
 
 @pytest.mark.parametrize(
@@ -844,3 +931,157 @@ def _verify_register_model_container_definition(
     if submit_dir and not submit_dir.startswith("s3://"):
         # exclude the s3 path assertion as it contains timestamp
         assert submit_dir == expected_submit_dir
+
+
+def test_model_step_with_lambda_property_reference(pipeline_session):
+    lambda_step = LambdaStep(
+        name="MyLambda",
+        lambda_func=Lambda(
+            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda"
+        ),
+        outputs=[
+            LambdaOutput(output_name="model_image", output_type=LambdaOutputTypeEnum.String),
+            LambdaOutput(output_name="model_artifact", output_type=LambdaOutputTypeEnum.String),
+        ],
+    )
+
+    model = PyTorchModel(
+        name="MyModel",
+        framework_version="1.8.0",
+        py_version="py3",
+        image_uri=lambda_step.properties.Outputs["model_image"],
+        model_data=lambda_step.properties.Outputs["model_artifact"],
+        sagemaker_session=pipeline_session,
+        entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
+        role=_ROLE,
+    )
+
+    step_create_model = ModelStep(name="mymodelstep", step_args=model.create())
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[lambda_step, step_create_model],
+        sagemaker_session=pipeline_session,
+    )
+    steps = json.loads(pipeline.definition())["Steps"]
+    repack_step = steps[1]
+    assert repack_step["Arguments"]["InputDataConfig"][0]["DataSource"]["S3DataSource"][
+        "S3Uri"
+    ] == {"Get": "Steps.MyLambda.OutputParameters['model_artifact']"}
+    register_step = steps[2]
+    assert register_step["Arguments"]["PrimaryContainer"]["Image"] == {
+        "Get": "Steps.MyLambda.OutputParameters['model_image']"
+    }
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert ordered(adjacency_list) == ordered(
+        {
+            "MyLambda": ["mymodelstep-CreateModel", "mymodelstep-RepackModel-MyModel"],
+            "mymodelstep-CreateModel": [],
+            "mymodelstep-RepackModel-MyModel": ["mymodelstep-CreateModel"],
+        }
+    )
+
+
+@pytest.mark.parametrize(
+    "inputs",
+    [
+        (
+            Processor(
+                image_uri=_IMAGE_URI,
+                role=_ROLE,
+                instance_count=1,
+                instance_type=_INSTANCE_TYPE,
+            ),
+            dict(target_fun="run", func_args={}),
+        ),
+        (
+            Transformer(
+                model_name="model_name",
+                instance_type="ml.m5.xlarge",
+                instance_count=1,
+                output_path="s3://Transform",
+            ),
+            dict(
+                target_fun="transform",
+                func_args=dict(data="s3://data", job_name="test"),
+            ),
+        ),
+        (
+            HyperparameterTuner(
+                estimator=Estimator(
+                    role=_ROLE,
+                    instance_count=1,
+                    instance_type=_INSTANCE_TYPE,
+                    image_uri=_IMAGE_URI,
+                ),
+                objective_metric_name="test:acc",
+                hyperparameter_ranges={"batch-size": IntegerParameter(64, 128)},
+            ),
+            dict(target_fun="fit", func_args={}),
+        ),
+        (
+            Estimator(
+                role=_ROLE,
+                instance_count=1,
+                instance_type=_INSTANCE_TYPE,
+                image_uri=_IMAGE_URI,
+            ),
+            dict(target_fun="fit", func_args={}),
+        ),
+    ],
+)
+def test_insert_wrong_step_args_into_model_step(inputs, pipeline_session):
+    downstream_obj, target_func_cfg = inputs
+    if isinstance(downstream_obj, HyperparameterTuner):
+        downstream_obj.estimator.sagemaker_session = pipeline_session
+    else:
+        downstream_obj.sagemaker_session = pipeline_session
+    func_name = target_func_cfg["target_fun"]
+    func_args = target_func_cfg["func_args"]
+    step_args = getattr(downstream_obj, func_name)(**func_args)
+
+    with pytest.raises(ValueError) as error:
+        ModelStep(
+            name="MyModelStep",
+            step_args=step_args,
+        )
+
+    assert "must be obtained from model.create() or model.register()" in str(error.value)
+
+
+def test_pass_in_wrong_type_of_retry_policies(pipeline_session, model):
+    sm_job_retry_policies = SageMakerJobStepRetryPolicy(
+        exception_types=[SageMakerJobExceptionTypeEnum.CAPACITY_ERROR], max_attempts=3
+    )
+    step_args = model.register(
+        content_types=["text/csv"],
+        response_types=["text/csv"],
+        inference_instances=["ml.t2.medium", "ml.m5.xlarge"],
+        transform_instances=["ml.m5.xlarge"],
+        model_package_group_name="MyModelPackageGroup",
+    )
+    with pytest.raises(ValueError) as error:
+        ModelStep(
+            name="MyModelStep",
+            step_args=step_args,
+            retry_policies=dict(
+                register_model_retry_policies=[sm_job_retry_policies],
+                repack_model_retry_policies=[sm_job_retry_policies],
+            ),
+        )
+    assert "SageMakerJobStepRetryPolicy is not allowed for a create/registe" in str(error.value)
+
+    step_args = model.create(
+        instance_type="c4.4xlarge",
+        accelerator_type="ml.eia1.medium",
+    )
+    with pytest.raises(ValueError) as error:
+        ModelStep(
+            name="MyModelStep",
+            step_args=step_args,
+            retry_policies=dict(
+                create_model_retry_policies=[sm_job_retry_policies],
+                repack_model_retry_policies=[sm_job_retry_policies],
+            ),
+        )
+    assert "SageMakerJobStepRetryPolicy is not allowed for a create/registe" in str(error.value)

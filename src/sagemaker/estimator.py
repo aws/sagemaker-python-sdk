@@ -483,6 +483,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         if (
             not self.sagemaker_session.local_mode
             and output_path
+            and not is_pipeline_variable(output_path)
             and output_path.startswith("file://")
         ):
             raise RuntimeError("file:// output paths are only supported in Local Mode")
@@ -695,26 +696,45 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         Returns: S3 URI
         """
-        local_mode = self.output_path.startswith("file://")
+        if is_pipeline_variable(self.output_path):
+            if self.code_location is None:
+                code_bucket = self.sagemaker_session.default_bucket()
+                code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
+                kms_key = None
+            else:
+                code_bucket, key_prefix = parse_s3_url(self.code_location)
+                code_s3_prefix = "/".join(
+                    filter(None, [key_prefix, self._current_job_name, "source"])
+                )
 
-        if self.code_location is None and local_mode:
-            code_bucket = self.sagemaker_session.default_bucket()
-            code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
-            kms_key = None
-        elif self.code_location is None:
-            code_bucket, _ = parse_s3_url(self.output_path)
-            code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
-            kms_key = self.output_kms_key
-        elif local_mode:
-            code_bucket, key_prefix = parse_s3_url(self.code_location)
-            code_s3_prefix = "/".join(filter(None, [key_prefix, self._current_job_name, "source"]))
-            kms_key = None
+                output_bucket = self.sagemaker_session.default_bucket()
+                kms_key = self.output_kms_key if code_bucket == output_bucket else None
         else:
-            code_bucket, key_prefix = parse_s3_url(self.code_location)
-            code_s3_prefix = "/".join(filter(None, [key_prefix, self._current_job_name, "source"]))
+            local_mode = self.output_path.startswith("file://")
+            if local_mode:
+                if self.code_location is None:
+                    code_bucket = self.sagemaker_session.default_bucket()
+                    code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
+                    kms_key = None
+                else:
+                    code_bucket, key_prefix = parse_s3_url(self.code_location)
+                    code_s3_prefix = "/".join(
+                        filter(None, [key_prefix, self._current_job_name, "source"])
+                    )
+                    kms_key = None
+            else:
+                if self.code_location is None:
+                    code_bucket, _ = parse_s3_url(self.output_path)
+                    code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
+                    kms_key = self.output_kms_key
+                else:
+                    code_bucket, key_prefix = parse_s3_url(self.code_location)
+                    code_s3_prefix = "/".join(
+                        filter(None, [key_prefix, self._current_job_name, "source"])
+                    )
 
-            output_bucket, _ = parse_s3_url(self.output_path)
-            kms_key = self.output_kms_key if code_bucket == output_bucket else None
+                    output_bucket, _ = parse_s3_url(self.output_path)
+                    kms_key = self.output_kms_key if code_bucket == output_bucket else None
 
         return tar_and_upload_dir(
             session=self.sagemaker_session.boto_session,
@@ -1266,8 +1286,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self,
         content_types,
         response_types,
-        inference_instances,
-        transform_instances,
+        inference_instances=None,
+        transform_instances=None,
         image_uri=None,
         model_package_name=None,
         model_package_group_name=None,
@@ -1280,6 +1300,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         model_name=None,
         drift_check_baselines=None,
         customer_metadata_properties=None,
+        domain=None,
         **kwargs,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
@@ -1288,9 +1309,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             content_types (list): The supported MIME types for the input data.
             response_types (list): The supported MIME types for the output data.
             inference_instances (list): A list of the instance types that are used to
-                generate inferences in real-time.
+                generate inferences in real-time (default: None).
             transform_instances (list): A list of the instance types on which a transformation
-                job can be run or on which an endpoint can be deployed.
+                job can be run or on which an endpoint can be deployed (default: None).
             image_uri (str): The container image uri for Model Package, if not specified,
                 Estimator's training container image will be used (default: None).
             model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
@@ -1311,6 +1332,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
             customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
                 metadata properties (default: None).
+            domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
+                "MACHINE_LEARNING" (default: None).
             **kwargs: Passed to invocation of ``create_model()``. Implementations may customize
                 ``create_model()`` to accept ``**kwargs`` to customize model creation during
                 deploy. For more, see the implementation docs.
@@ -1318,6 +1341,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         Returns:
             str: A string of SageMaker Model Package ARN.
         """
+        if isinstance(self.sagemaker_session, PipelineSession):
+            raise TypeError(
+                "estimator.register does not support PipelineSession at this moment. "
+                "Please use model.register with PipelineSession if you're using the ModelStep."
+            )
         default_name = name_from_base(self.base_job_name)
         model_name = model_name or default_name
         if compile_model_family is not None:
@@ -1342,6 +1370,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             description,
             drift_check_baselines=drift_check_baselines,
             customer_metadata_properties=customer_metadata_properties,
+            domain=domain,
         )
 
     @property

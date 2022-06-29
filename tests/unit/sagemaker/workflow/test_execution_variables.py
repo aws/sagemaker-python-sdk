@@ -33,7 +33,7 @@ def test_implicit_value():
 
     with pytest.raises(TypeError) as error:
         str(var)
-    assert str(error.value) == "Pipeline variables do not support __str__ operation."
+    assert "Pipeline variables do not support __str__ operation." in str(error.value)
 
     with pytest.raises(TypeError) as error:
         int(var)
@@ -42,13 +42,6 @@ def test_implicit_value():
     with pytest.raises(TypeError) as error:
         float(var)
     assert str(error.value) == "Pipeline variables do not support __float__ operation."
-
-
-def test_string_builtin_funcs_that_return_bool():
-    prop = ExecutionVariables.PIPELINE_NAME
-    # The execution var will only be parsed in runtime (Pipeline backend) so not able to tell in SDK
-    assert not prop.startswith("MyPipeline")
-    assert not prop.endswith("MyPipeline")
 
 
 def test_add_func():

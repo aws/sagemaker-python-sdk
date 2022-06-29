@@ -412,29 +412,47 @@ class Session(object):  # pylint: disable=too-many-public-methods
         bucket = s3.Bucket(name=bucket_name)
         if bucket.creation_date is None:
             try:
-                if region == "us-east-1":
-                    # 'us-east-1' cannot be specified because it is the default region:
-                    # https://github.com/boto/boto3/issues/125
-                    s3.create_bucket(Bucket=bucket_name)
-                else:
-                    s3.create_bucket(
-                        Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": region}
-                    )
-
-                LOGGER.info("Created S3 bucket: %s", bucket_name)
+                # trying head bucket call
+                s3.meta.client.head_bucket(Bucket=bucket.name)
             except ClientError as e:
+                # bucket does not exist or forbidden to access
                 error_code = e.response["Error"]["Code"]
                 message = e.response["Error"]["Message"]
 
-                if error_code == "BucketAlreadyOwnedByYou":
-                    pass
-                elif (
-                    error_code == "OperationAborted"
-                    and "conflicting conditional operation" in message
-                ):
-                    # If this bucket is already being concurrently created, we don't need to create
-                    # it again.
-                    pass
+                if error_code == "404" and message == "Not Found":
+                    # bucket does not exist, create one
+                    try:
+                        if region == "us-east-1":
+                            # 'us-east-1' cannot be specified because it is the default region:
+                            # https://github.com/boto/boto3/issues/125
+                            s3.create_bucket(Bucket=bucket_name)
+                        else:
+                            s3.create_bucket(
+                                Bucket=bucket_name,
+                                CreateBucketConfiguration={"LocationConstraint": region},
+                            )
+
+                        LOGGER.info("Created S3 bucket: %s", bucket_name)
+                    except ClientError as e:
+                        error_code = e.response["Error"]["Code"]
+                        message = e.response["Error"]["Message"]
+
+                        if (
+                            error_code == "OperationAborted"
+                            and "conflicting conditional operation" in message
+                        ):
+                            # If this bucket is already being concurrently created,
+                            # we don't need to create it again.
+                            pass
+                        else:
+                            raise
+                elif error_code == "403" and message == "Forbidden":
+                    LOGGER.error(
+                        "Bucket %s exists, but access is forbidden. Please try again after "
+                        "adding appropriate access.",
+                        bucket.name,
+                    )
+                    raise
                 else:
                     raise
 
@@ -591,7 +609,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             LOGGER.debug("train request: %s", json.dumps(request, indent=4))
             self.sagemaker_client.create_training_job(**request)
 
-        self._intercept_create_request(train_request, submit)
+        self._intercept_create_request(train_request, submit, self.train.__name__)
 
     def _get_train_request(  # noqa: C901
         self,
@@ -922,7 +940,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             LOGGER.debug("process request: %s", json.dumps(request, indent=4))
             self.sagemaker_client.create_processing_job(**request)
 
-        self._intercept_create_request(process_request, submit)
+        self._intercept_create_request(process_request, submit, self.process.__name__)
 
     def _get_process_request(
         self,
@@ -2099,7 +2117,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             LOGGER.debug("tune request: %s", json.dumps(request, indent=4))
             self.sagemaker_client.create_hyper_parameter_tuning_job(**request)
 
-        self._intercept_create_request(tune_request, submit)
+        self._intercept_create_request(tune_request, submit, self.create_tuning_job.__name__)
 
     def _get_tuning_request(
         self,
@@ -2569,7 +2587,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             LOGGER.debug("Transform request: %s", json.dumps(request, indent=4))
             self.sagemaker_client.create_transform_job(**request)
 
-        self._intercept_create_request(transform_request, submit)
+        self._intercept_create_request(transform_request, submit, self.transform.__name__)
 
     def _create_model_request(
         self,
@@ -2803,6 +2821,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         drift_check_baselines=None,
         customer_metadata_properties=None,
         validation_specification=None,
+        domain=None,
     ):
         """Get request dictionary for CreateModelPackage API.
 
@@ -2830,6 +2849,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
             customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
                 metadata properties (default: None).
+            domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
+                "MACHINE_LEARNING" (default: None).
         """
 
         model_pkg_request = get_create_model_package_request(
@@ -2848,6 +2869,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             drift_check_baselines=drift_check_baselines,
             customer_metadata_properties=customer_metadata_properties,
             validation_specification=validation_specification,
+            domain=domain,
         )
 
         def submit(request):
@@ -4268,8 +4290,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
 def get_model_package_args(
     content_types,
     response_types,
-    inference_instances,
-    transform_instances,
+    inference_instances=None,
+    transform_instances=None,
     model_package_name=None,
     model_package_group_name=None,
     model_data=None,
@@ -4284,6 +4306,7 @@ def get_model_package_args(
     drift_check_baselines=None,
     customer_metadata_properties=None,
     validation_specification=None,
+    domain=None,
 ):
     """Get arguments for create_model_package method.
 
@@ -4291,9 +4314,9 @@ def get_model_package_args(
         content_types (list): The supported MIME types for the input data.
         response_types (list): The supported MIME types for the output data.
         inference_instances (list): A list of the instance types that are used to
-            generate inferences in real-time.
+            generate inferences in real-time (default: None).
         transform_instances (list): A list of the instance types on which a transformation
-            job can be run or on which an endpoint can be deployed.
+            job can be run or on which an endpoint can be deployed (default: None).
         model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
             using `model_package_name` makes the Model Package un-versioned (default: None).
         model_package_group_name (str): Model Package Group name, exclusive to
@@ -4314,6 +4337,8 @@ def get_model_package_args(
         drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
         customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
             metadata properties (default: None).
+        domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
+            "MACHINE_LEARNING" (default: None).
     Returns:
         dict: A dictionary of method argument names and values.
     """
@@ -4355,6 +4380,8 @@ def get_model_package_args(
         model_package_args["customer_metadata_properties"] = customer_metadata_properties
     if validation_specification is not None:
         model_package_args["validation_specification"] = validation_specification
+    if domain is not None:
+        model_package_args["domain"] = domain
     return model_package_args
 
 
@@ -4375,6 +4402,7 @@ def get_create_model_package_request(
     drift_check_baselines=None,
     customer_metadata_properties=None,
     validation_specification=None,
+    domain=None,
 ):
     """Get request dictionary for CreateModelPackage API.
 
@@ -4403,6 +4431,8 @@ def get_create_model_package_request(
         drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
         customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
             metadata properties (default: None).
+        domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
+            "MACHINE_LEARNING" (default: None).
     """
 
     if all([model_package_name, model_package_group_name]):
@@ -4428,11 +4458,12 @@ def get_create_model_package_request(
         request_dict["CustomerMetadataProperties"] = customer_metadata_properties
     if validation_specification:
         request_dict["ValidationSpecification"] = validation_specification
+    if domain is not None:
+        request_dict["Domain"] = domain
     if containers is not None:
-        if not all([content_types, response_types, inference_instances, transform_instances]):
+        if not all([content_types, response_types]):
             raise ValueError(
-                "content_types, response_types, inference_inferences and transform_instances "
-                "must be provided if containers is present."
+                "content_types and response_types " "must be provided if containers is present."
             )
         inference_specification = {
             "Containers": containers,

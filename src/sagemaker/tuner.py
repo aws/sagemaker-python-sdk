@@ -32,6 +32,7 @@ from sagemaker.deprecations import removed_function
 from sagemaker.estimator import Framework
 from sagemaker.inputs import TrainingInput
 from sagemaker.job import _Job
+from sagemaker.jumpstart.utils import add_jumpstart_tags, get_jumpstart_base_name_if_jumpstart_model
 from sagemaker.parameter import (
     CategoricalParameter,
     ContinuousParameter,
@@ -319,6 +320,42 @@ class HyperparameterTuner(object):
         """Prepare the tuner instance for tuning (fit)."""
         self._prepare_job_name_for_tuning(job_name=job_name)
         self._prepare_static_hyperparameters_for_tuning(include_cls_metadata=include_cls_metadata)
+        self._prepare_tags_for_tuning()
+
+    def _get_model_uri(
+        self,
+        estimator,
+    ):
+        """Return the model artifact URI used by the Estimator instance.
+
+        This attribute can live in multiple places, and accessing the attribute can
+        raise a TypeError, which needs to be handled.
+        """
+        try:
+            return getattr(estimator, "model_data", None)
+        except TypeError:
+            return getattr(estimator, "model_uri", None)
+
+    def _prepare_tags_for_tuning(self):
+        """Add tags to tuning job (from Estimator and JumpStart tags)."""
+
+        # Add tags from Estimator class
+        estimator = self.estimator or self.estimator_dict[sorted(self.estimator_dict.keys())[0]]
+
+        estimator_tags = getattr(estimator, "tags", []) or []
+
+        if self.tags is None and len(estimator_tags) > 0:
+            self.tags = []
+
+        for tag in estimator_tags:
+            if tag not in self.tags:
+                self.tags.append(tag)
+
+        self.tags = add_jumpstart_tags(
+            tags=self.tags,
+            training_script_uri=getattr(estimator, "source_dir", None),
+            training_model_uri=self._get_model_uri(estimator),
+        )
 
     def _prepare_job_name_for_tuning(self, job_name=None):
         """Set current job name before starting tuning."""
@@ -331,6 +368,12 @@ class HyperparameterTuner(object):
                     self.estimator or self.estimator_dict[sorted(self.estimator_dict.keys())[0]]
                 )
                 base_name = base_name_from_image(estimator.training_image_uri())
+
+                jumpstart_base_name = get_jumpstart_base_name_if_jumpstart_model(
+                    getattr(estimator, "source_dir", None),
+                    self._get_model_uri(estimator),
+                )
+                base_name = jumpstart_base_name or base_name
             self._current_job_name = name_from_base(
                 base_name, max_length=self.TUNING_JOB_NAME_MAX_LENGTH, short=True
             )

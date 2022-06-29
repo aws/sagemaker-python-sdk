@@ -46,6 +46,7 @@ NO_P3_REGIONS = [
     "ca-central-1",  # it has p3, but not enough
     "eu-central-1",  # it has p3, but not enough
     "eu-north-1",
+    "eu-west-1",  # it has p3, but not enough
     "eu-west-2",  # it has p3, but not enough
     "eu-west-3",
     "eu-south-1",
@@ -181,6 +182,8 @@ def mxnet_inference_py_version(mxnet_inference_version, request):
         return request.param
     elif Version(mxnet_inference_version) == Version("1.8.0"):
         return "py37"
+    elif Version(mxnet_inference_version) == Version("1.9.0"):
+        return "py38"
     else:
         return "py3"
 
@@ -191,6 +194,8 @@ def mxnet_training_py_version(mxnet_training_version, request):
         return request.param
     elif Version(mxnet_training_version) == Version("1.8.0"):
         return "py37"
+    elif Version(mxnet_training_version) == Version("1.9.0"):
+        return "py38"
     else:
         return "py3"
 
