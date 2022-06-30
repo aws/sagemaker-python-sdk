@@ -491,7 +491,9 @@ class LocalSession(Session):
     :class:`~sagemaker.session.Session`.
     """
 
-    def __init__(self, boto_session=None, s3_endpoint_url=None, disable_local_code=False):
+    def __init__(
+            self, boto_session=None, s3_endpoint_url=None, disable_local_code=False, default_bucket=None
+    ):
         """Create a Local SageMaker Session.
 
         Args:
@@ -503,6 +505,12 @@ class LocalSession(Session):
             disable_local_code (bool): Set ``True`` to override the default AWS configuration
                 chain to disable the ``local.local_code`` setting, which may not be supported for
                 some SDK features (default: False).
+            default_bucket (str): The default Amazon S3 bucket to be used by this session.
+                This will be created the next time an Amazon S3 bucket is needed (by calling
+                :func:`default_bucket`).
+                If not provided, a default bucket will be created based on the following format:
+                "sagemaker-{region}-{aws-account-id}".
+                Example: "sagemaker-my-custom-bucket".
         """
         self.s3_endpoint_url = s3_endpoint_url
         # We use this local variable to avoid disrupting the __init__->_initialize API of the
@@ -510,7 +518,7 @@ class LocalSession(Session):
         # discourage external use:
         self._disable_local_code = disable_local_code
 
-        super(LocalSession, self).__init__(boto_session)
+        super(LocalSession, self).__init__(boto_session, default_bucket=default_bucket)
 
         if platform.system() == "Windows":
             logger.warning("Windows Support for Local Mode is Experimental")
