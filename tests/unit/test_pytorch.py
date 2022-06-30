@@ -56,13 +56,9 @@ EXPERIMENT_CONFIG = {
     "TrialComponentDisplayName": "tc",
 }
 
-<<<<<<< Updated upstream
-DISTRIBUTION_PYTORCH_DDP_ENABLED = {"pytorchddp": {"enabled": True, "nnodes": 2, "nproc_per_node": 8}}
-=======
 DISTRIBUTION_PYTORCH_DDP_ENABLED = {
     "pytorchddp": {"enabled": True, "nnodes": 2, "nproc_per_node": 8}
 }
->>>>>>> Stashed changes
 
 
 @pytest.fixture(name="sagemaker_session")
