@@ -200,7 +200,7 @@ def test_mwms_gpu(
     tensorflow_training_latest_version,
     tensorflow_training_latest_py_version,
     capsys,
-    imagenet_train_subset,
+    imagenet_train_set,
     **kwargs,
 ):
     instance_count = 2
@@ -254,7 +254,7 @@ def test_mwms_gpu(
     )
 
     with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        estimator.fit(inputs=imagenet_train_subset, job_name=unique_name_from_base("test-tf-mwms"))
+        estimator.fit(inputs=imagenet_train_set, job_name=unique_name_from_base("test-tf-mwms"))
 
     captured = capsys.readouterr()
     logs = captured.out + captured.err
