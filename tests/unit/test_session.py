@@ -2523,6 +2523,59 @@ def test_feature_group_describe(sagemaker_session):
     )
 
 
+def test_feature_group_update(sagemaker_session, feature_group_dummy_definitions):
+    sagemaker_session.update_feature_group(
+        feature_group_name="MyFeatureGroup",
+        feature_additions=feature_group_dummy_definitions,
+    )
+    assert sagemaker_session.sagemaker_client.update_feature_group.called_with(
+        FeatureGroupName="MyFeatureGroup",
+        FeatureAdditions=feature_group_dummy_definitions,
+    )
+
+
+def test_feature_metadata_update(sagemaker_session):
+    parameter_additions = [
+        {
+            "key": "TestKey",
+            "value": "TestValue",
+        }
+    ]
+    parameter_removals = ["TestKey"]
+
+    sagemaker_session.update_feature_metadata(
+        feature_group_name="TestFeatureGroup",
+        feature_name="TestFeature",
+        description="TestDescription",
+        parameter_additions=parameter_additions,
+        parameter_removals=parameter_removals,
+    )
+    assert sagemaker_session.sagemaker_client.update_feature_group.called_with(
+        feature_group_name="TestFeatureGroup",
+        FeatureName="TestFeature",
+        Description="TestDescription",
+        ParameterAdditions=parameter_additions,
+        ParameterRemovals=parameter_removals,
+    )
+    sagemaker_session.update_feature_metadata(
+        feature_group_name="TestFeatureGroup",
+        feature_name="TestFeature",
+    )
+    assert sagemaker_session.sagemaker_client.update_feature_group.called_with(
+        feature_group_name="TestFeatureGroup",
+        FeatureName="TestFeature",
+    )
+
+
+def test_feature_metadata_describe(sagemaker_session):
+    sagemaker_session.describe_feature_metadata(
+        feature_group_name="MyFeatureGroup", feature_name="TestFeature"
+    )
+    assert sagemaker_session.sagemaker_client.describe_feature_metadata.called_with(
+        FeatureGroupName="MyFeatureGroup", FeatureName="TestFeature"
+    )
+
+
 def test_start_query_execution(sagemaker_session):
     athena_mock = Mock()
     sagemaker_session.boto_session.client(
