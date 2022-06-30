@@ -160,7 +160,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             instance_count (int): Number of Amazon EC2 instances to use
                 for training. Required if instance_groups is not set.
             instance_type (str): Type of EC2 instance to use for training,
-                for example, 'ml.c4.xlarge'. Required if instance_groups is
+                for example, ``'ml.c4.xlarge'``. Required if instance_groups is
                 not set.
             volume_size (int): Size in GB of the EBS volume to use for
                 storing input data during training (default: 30). Must be large
@@ -235,7 +235,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             use_spot_instances (bool): Specifies whether to use SageMaker
                 Managed Spot instances for training. If enabled then the
                 ``max_wait`` arg should also be set.
-
                 More information:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/model-managed-spot-training.html
                 (default: ``False``).
@@ -313,19 +312,18 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 when training on Amazon SageMaker. If 'git_config' is provided,
                 'source_dir' should be a relative location to a directory in the Git
                 repo.
+                With the following GitHub repo directory structure:
 
-                .. admonition:: Example
+                .. code::
 
-                    With the following GitHub repo directory structure:
+                    |----- README.md
+                    |----- src
+                             |----- train.py
+                             |----- test.py
 
-                    >>> |----- README.md
-                    >>> |----- src
-                    >>>         |----- train.py
-                    >>>         |----- test.py
-
-                    if you need 'train.py' as the entry point and 'test.py' as
-                    the training source code, you can assign
-                    entry_point='train.py' and source_dir='src'.
+                if you need 'train.py' as the entry point and 'test.py' as
+                the training source code, you can assign
+                entry_point='train.py' and source_dir='src'.
             git_config (dict[str, str]): Git configurations used for cloning
                 files, including ``repo``, ``branch``, ``commit``,
                 ``2FA_enabled``, ``username``, ``password``, and ``token``. The
@@ -333,20 +331,19 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 ``repo`` specifies the Git repository where your training script
                 is stored. If you don't provide ``branch``, the default value
                 'master' is used. If you don't provide ``commit``, the latest
-                commit in the specified branch is used.
+                commit in the specified branch is used. For example, the following config:
 
-                .. admonition:: Example
+                .. code:: python
 
-                    The following config:
+                    git_config = {
+                        'repo': 'https://github.com/aws/sagemaker-python-sdk.git',
+                        'branch': 'test-branch-git-config',
+                        'commit': '329bfcf884482002c05ff7f44f62599ebc9f445a'
+                    }
 
-                    >>> git_config = {'repo': 'https://github.com/aws/sagemaker-python-sdk.git',
-                    >>>               'branch': 'test-branch-git-config',
-                    >>>               'commit': '329bfcf884482002c05ff7f44f62599ebc9f445a'}
-
-                    results in cloning the repo specified in 'repo', then
-                    checking out the 'master' branch, and checking out the specified
-                    commit.
-
+                results in cloning the repo specified in 'repo', then
+                checking out the 'master' branch, and checking out the specified
+                commit.
                 ``2FA_enabled``, ``username``, ``password``, and ``token`` are
                 used for authentication. For GitHub (or other Git) accounts, set
                 ``2FA_enabled`` to 'True' if two-factor authentication is
@@ -427,10 +424,25 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                     >>>     |------ virtual-env
 
                 This is not supported with "local code" in Local Mode.
-            instance_groups (list[InstanceGroup]): Optional. List of InstanceGroup
-                for specifying different instance groups for heterogeneous cluster.
-                For example: [sagemaker.InstanceGroup('worker','ml.p3dn.24xlarge',64),
-                sagemaker.InstanceGroup('server','ml.c5n.18xlarge',64)]
+            instance_groups (list[:class:`sagemaker.instance_group.InstanceGroup`]):
+                Optional. A list of ``InstanceGroup`` objects
+                for launching a training job with a heterogeneous cluster.
+                For example:
+
+                .. code:: python
+
+                    instance_groups=[
+                        sagemaker.InstanceGroup(
+                            'instance_group_name_1', 'ml.p3dn.24xlarge', 64),
+                        sagemaker.InstanceGroup(
+                            'instance_group_name_2', 'ml.c5n.18xlarge', 64)]
+
+                For instructions on how to use ``InstanceGroup`` objects
+                to configure a heterogeneous cluster
+                through the SageMaker generic and framework estimator classes, see
+                `Train Using a Heterogeneous Cluster
+                <https://docs.aws.amazon.com/sagemaker/latest/dg/train-heterogeneous-cluster.html>`_
+                in the *Amazon SageMaker developer guide*.
         """
         instance_count = renamed_kwargs(
             "train_instance_count", "instance_count", instance_count, kwargs
@@ -2418,10 +2430,25 @@ class Estimator(EstimatorBase):
                     >>>     |------ virtual-env
 
                 This is not supported with "local code" in Local Mode.
-            instance_groups (list[InstanceGroup]): Optional. List of InstanceGroup
-                for specifying different instance groups for heterogeneous cluster.
-                For example: [sagemaker.InstanceGroup('worker','ml.p3dn.24xlarge',64),
-                sagemaker.InstanceGroup('server','ml.c5n.18xlarge',64)]
+            instance_groups (list[:class:`sagemaker.instance_group.InstanceGroup`]):
+                Optional. A list of ``InstanceGroup`` objects
+                for launching a training job with a heterogeneous cluster.
+                For example:
+
+                .. code:: python
+
+                    instance_groups=[
+                        sagemaker.InstanceGroup(
+                            'instance_group_name_1', 'ml.p3dn.24xlarge', 64),
+                        sagemaker.InstanceGroup(
+                            'instance_group_name_2', 'ml.c5n.18xlarge', 64)]
+
+                For instructions on how to use ``InstanceGroup`` objects
+                to configure a heterogeneous cluster
+                through the SageMaker generic and framework estimator classes, see
+                `Train Using a Heterogeneous Cluster
+                <https://docs.aws.amazon.com/sagemaker/latest/dg/train-heterogeneous-cluster.html>`_
+                in the *Amazon SageMaker developer guide*.
         """
         self.image_uri = image_uri
         self._hyperparameters = hyperparameters.copy() if hyperparameters else {}
