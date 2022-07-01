@@ -9,12 +9,27 @@ class TestGetRecommendationLambda(TestCase):
     def test_get_recommendation_handler(self):
         recommendations = get_recommendations_handler(
             {
-                "NearestModelName": "densenet201-keras",
-                "Framework": "tensorflow:1.15.5:py36",
+                "NearestModelName": "resnet152-torchvision",
+                "Framework": "pytorch",
             },
             Mock(),
         )
 
-        expected = ["ml.c5.large", "ml.c5d.large"]
+        expected = [
+            {
+                "InstanceType": "ml.c5.large",
+                "EnvironmentVariables": {
+                    "OMP_NUM_THREADS": "1",
+                    "TS_DEFAULT_WORKERS_PER_MODEL": "1",
+                },
+            },
+            {
+                "InstanceType": "ml.c5d.large",
+                "EnvironmentVariables": {
+                    "OMP_NUM_THREADS": "1",
+                    "TS_DEFAULT_WORKERS_PER_MODEL": "1",
+                },
+            }
+        ]
 
-        self.assertTrue(set(expected) <= set(recommendations))
+        self.assertTrue(all([x in recommendations for x in expected]))
