@@ -47,7 +47,7 @@ def read_requirements(filename):
 
 # Declare minimal set for installation
 required_packages = [
-    "attrs==20.3.0",
+    "attrs>=20.3.0,<22",
     "boto3>=1.20.21,<2.0",
     "google-pasta",
     "numpy>=1.9.0,<2.0",
