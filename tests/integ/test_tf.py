@@ -240,6 +240,7 @@ def test_mwms_gpu(
             "experiment": "resnet_imagenet",
             "config_file": "official/vision/configs/experiments/image_classification/imagenet_resnet50_gpu.yaml",
             "mode": "train",
+            "model_dir": "/tmp/",
             "params_override": overrides,
         },
         environment={
