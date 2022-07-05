@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.98.0 (2022-07-05)
+
+### Features
+
+ * Adding deepar image
+
+### Documentation Changes
+
+ * edit to clarify how to use inference.py
+
 ## v2.97.0 (2022-06-28)
 
 ### Deprecations and Removals
