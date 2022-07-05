@@ -207,7 +207,7 @@ def test_mwms_gpu(
     epochs = 1
     global_batch_size = 64
     train_steps = int(10**5 * epochs / global_batch_size)
-    steps_per_loop = train_steps // 100
+    steps_per_loop = train_steps // 10
     overrides = (
         f"runtime.enable_xla=False,"
         f"runtime.num_gpus=1,"
@@ -240,7 +240,6 @@ def test_mwms_gpu(
             "experiment": "resnet_imagenet",
             "config_file": "official/vision/configs/experiments/image_classification/imagenet_resnet50_gpu.yaml",
             "mode": "train",
-            "model_dir": "/opt/ml/model",
             "params_override": overrides,
         },
         environment={
