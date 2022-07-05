@@ -42,7 +42,7 @@ from sagemaker.spark.processing import SparkJarProcessor, PySparkProcessor
 
 
 from sagemaker.workflow.steps import CacheConfig, ProcessingStep
-from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
 from sagemaker.workflow.properties import PropertyFile
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.functions import Join
@@ -60,7 +60,7 @@ from sagemaker.clarify import (
     ModelPredictedLabelConfig,
     SHAPConfig,
 )
-from tests.unit.sagemaker.workflow.helpers import CustomStep
+from tests.unit.sagemaker.workflow.helpers import CustomStep, ordered
 
 REGION = "us-west-2"
 BUCKET = "my-bucket"
@@ -302,6 +302,14 @@ def test_processing_step_with_processor(pipeline_session, processing_input):
     assert step.properties.ProcessingJobName.expr == {
         "Get": "Steps.MyProcessingStep.ProcessingJobName"
     }
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert ordered(adjacency_list) == ordered(
+        {
+            "TestStep": ["MyProcessingStep"],
+            "SecondTestStep": ["MyProcessingStep"],
+            "MyProcessingStep": [],
+        }
+    )
 
 
 def test_processing_step_with_processor_and_step_args(pipeline_session, processing_input):
@@ -467,7 +475,7 @@ def test_processing_step_with_clarify_processor(pipeline_session):
             seed=123,
         )
 
-    def verfiy(step_args):
+    def verify(step_args):
         step = ProcessingStep(
             name="MyProcessingStep",
             step_args=step_args,
@@ -507,13 +515,13 @@ def test_processing_step_with_clarify_processor(pipeline_session):
         bias_config=data_bias_config(),
         model_config=model_config("1st-model-rpyndy0uyo"),
     )
-    verfiy(run_bias_args)
+    verify(run_bias_args)
 
     run_pre_training_bias_args = clarify_processor.run_pre_training_bias(
         data_config=data_config,
         data_bias_config=data_bias_config(),
     )
-    verfiy(run_pre_training_bias_args)
+    verify(run_pre_training_bias_args)
 
     run_post_training_bias_args = clarify_processor.run_post_training_bias(
         data_config=data_config,
@@ -521,14 +529,14 @@ def test_processing_step_with_clarify_processor(pipeline_session):
         model_config=model_config("1st-model-rpyndy0uyo"),
         model_predicted_label_config=ModelPredictedLabelConfig(probability_threshold=0.9),
     )
-    verfiy(run_post_training_bias_args)
+    verify(run_post_training_bias_args)
 
     run_explainability_args = clarify_processor.run_explainability(
         data_config=data_config,
         model_config=model_config("1st-model-rpyndy0uyo"),
         explainability_config=shap_config(),
     )
-    verfiy(run_explainability_args)
+    verify(run_explainability_args)
 
 
 @pytest.mark.parametrize(

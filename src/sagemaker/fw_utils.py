@@ -81,6 +81,8 @@ SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
         "2.7.1",
         "2.8",
         "2.8.0",
+        "2.9",
+        "2.9.1",
     ],
     "pytorch": [
         "1.6",

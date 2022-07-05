@@ -143,19 +143,25 @@ def create_jumpstart_model_table():
     file_content.append(".. |external-link| raw:: html\n\n")
     file_content.append('   <i class="fa fa-external-link"></i>\n\n')
 
-    file_content.append("==================================\n")
-    file_content.append("JumpStart Available Model Table\n")
-    file_content.append("==================================\n")
+    file_content.append("================================================\n")
+    file_content.append("Built-in Algorithms with pre-trained Model Table\n")
+    file_content.append("================================================\n")
     file_content.append(
         """
-    JumpStart for the SageMaker Python SDK uses model IDs and model versions to access the necessary
-    utilities. This table serves to provide the core material plus some extra information that can be useful
-    in selecting the correct model ID and corresponding parameters.\n"""
+    The SageMaker Python SDK uses model IDs and model versions to access the necessary
+    utilities for pre-trained models. This table serves to provide the core material plus
+    some extra information that can be useful in selecting the correct model ID and
+    corresponding parameters.\n"""
     )
     file_content.append(
         """
     If you want to automatically use the latest version of the model, use "*" for the `model_version` attribute.
     We highly suggest pinning an exact model version however.\n"""
+    )
+    file_content.append(
+        """
+    These models are also available through the
+    `JumpStart UI in SageMaker Studio <https://docs.aws.amazon.com/sagemaker/latest/dg/studio-jumpstart.html>`__\n"""
     )
     file_content.append("\n")
     file_content.append(".. list-table:: Available Models\n")
@@ -183,5 +189,6 @@ def create_jumpstart_model_table():
             "     - `{} <{}>`__ |external-link|\n".format(model_source, model_spec["url"])
         )
 
-    f = open("doc_utils/jumpstart.rst", "w")
+    f = open("doc_utils/pretrainedmodels.rst", "w")
     f.writelines(file_content)
+    f.close()
