@@ -16,6 +16,7 @@ from __future__ import absolute_import, print_function
 import json
 import logging
 import os
+import re
 import uuid
 from abc import ABCMeta, abstractmethod
 from typing import Any, Dict, Union, Optional, List
@@ -1520,6 +1521,39 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 init_params["max_wait"] = max_wait
         return init_params
 
+    def _get_instance_type(self):
+        """Determine the instance type to be used in the training_image_uri function.
+
+        Returns:
+            instance_type: The instance_type to be used.
+        """
+        if self.instance_type is not None:
+            return self.instance_type
+
+        if not isinstance(self.instance_groups, list) or len(self.instance_groups) == 0:
+            raise ValueError(
+                "instance_groups must be set if instance_type is not set and instance_groups "
+                "must be a list."
+            )
+
+        for instance_group in self.instance_groups:
+            instance_type = instance_group.instance_type
+            match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+
+            if match:
+                family = match[1]
+                if family[0] in ("g", "p"):
+                    return instance_type
+            else:
+                raise ValueError(
+                    "Invalid SageMaker instance type for training with heterogeneous clusters: {}. "
+                    "For options see: https://aws.amazon.com/sagemaker/pricing/instance-types".format(
+                        instance_type
+                    )
+                )
+
+        return self.instance_groups[0].instance_type
+
     def transformer(
         self,
         instance_count,
@@ -2903,7 +2937,7 @@ class Framework(EstimatorBase):
             compiler_config=getattr(self, "compiler_config", None),
             tensorflow_version=getattr(self, "tensorflow_version", None),
             pytorch_version=getattr(self, "pytorch_version", None),
-            instance_type=self.instance_type,
+            instance_type=self._get_instance_type(),
         )
 
     @classmethod
