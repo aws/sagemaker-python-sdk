@@ -1334,6 +1334,68 @@ def test_invalid_custom_code_bucket(sagemaker_session):
     assert "Expecting 's3' scheme" in str(error)
 
 
+def test_get_instance_type_gpu(sagemaker_session):
+    estimator = Estimator(
+        image_uri="some-image",
+        role="some_image",
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.p3.16xlarge", 2),
+        ],
+        sagemaker_session=sagemaker_session,
+        base_job_name="base_job_name",
+    )
+
+    assert "ml.p3.16xlarge" == estimator._get_instance_type()
+
+
+def test_get_instance_type_cpu(sagemaker_session):
+    estimator = Estimator(
+        image_uri="some-image",
+        role="some_image",
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.c5.xlarge", 2),
+        ],
+        sagemaker_session=sagemaker_session,
+        base_job_name="base_job_name",
+    )
+
+    assert "ml.c4.xlarge" == estimator._get_instance_type()
+
+
+def test_get_instance_type_no_instance_groups(sagemaker_session):
+    estimator = Estimator(
+        image_uri="some-image",
+        role="some_image",
+        instance_type="ml.c4.xlarge",
+        instance_count=1,
+        sagemaker_session=sagemaker_session,
+        base_job_name="base_job_name",
+    )
+
+    assert "ml.c4.xlarge" == estimator._get_instance_type()
+
+
+def test_get_instance_type_no_instance_groups_or_instance_type(sagemaker_session):
+    estimator = Estimator(
+        image_uri="some-image",
+        role="some_image",
+        instance_type=None,
+        instance_count=None,
+        instance_groups=None,
+        sagemaker_session=sagemaker_session,
+        base_job_name="base_job_name",
+    )
+    with pytest.raises(ValueError) as error:
+        estimator._get_instance_type()
+
+    assert (
+        "instance_groups must be set if instance_type is not set and instance_groups must be a list."
+        in str(error)
+    )
+
+
 def test_augmented_manifest(sagemaker_session):
     fw = DummyFramework(
         entry_point=SCRIPT_PATH,
