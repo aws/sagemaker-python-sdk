@@ -200,6 +200,7 @@ class ModelConfig:
         custom_attributes=None,
         accelerator_type=None,
         endpoint_name_prefix=None,
+        target_model=None,
     ):
         r"""Initializes a configuration of a model and the endpoint to be created for it.
 
@@ -234,6 +235,9 @@ class ModelConfig:
                 for making inferences to the model.
             endpoint_name_prefix (str): The endpoint name prefix of a new endpoint. Must follow
                 pattern ``^[a-zA-Z0-9](-\*[a-zA-Z0-9]``.
+            target_model (str): Sets the target model name when using a multi-model endpoint. For
+                more information about multi-model endpoints, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/multi-model-endpoints.html
 
         Raises:
             ValueError: when the ``endpoint_name_prefix`` is invalid, ``accept_type`` is invalid,
@@ -281,6 +285,7 @@ class ModelConfig:
             self.predictor_config["content_template"] = content_template
         _set(custom_attributes, "custom_attributes", self.predictor_config)
         _set(accelerator_type, "accelerator_type", self.predictor_config)
+        _set(target_model, "target_model", self.predictor_config)
 
     def get_predictor_config(self):
         """Returns part of the predictor dictionary of the analysis config."""
