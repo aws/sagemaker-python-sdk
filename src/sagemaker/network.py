@@ -16,6 +16,10 @@ It also includes encryption, network isolation, and VPC configurations.
 """
 from __future__ import absolute_import
 
+from typing import Union, Optional, List
+
+from sagemaker.workflow.entities import PipelineVariable
+
 
 class NetworkConfig(object):
     """Accepts network configuration parameters for conversion to request dict.
@@ -25,10 +29,10 @@ class NetworkConfig(object):
 
     def __init__(
         self,
-        enable_network_isolation=False,
-        security_group_ids=None,
-        subnets=None,
-        encrypt_inter_container_traffic=None,
+        enable_network_isolation: Union[bool, PipelineVariable] = False,
+        security_group_ids: Optional[List[Union[str, PipelineVariable]]] = None,
+        subnets: Optional[List[Union[str, PipelineVariable]]] = None,
+        encrypt_inter_container_traffic: Optional[Union[bool, PipelineVariable]] = None,
     ):
         """Initialize a ``NetworkConfig`` instance.
 
