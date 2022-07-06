@@ -20,6 +20,7 @@ from sagemaker import TrainingInput
 from sagemaker.amazon.amazon_estimator import RecordSet, FileSystemRecordSet
 from sagemaker.estimator import Estimator, Framework
 from sagemaker.inputs import FileSystemInput
+from sagemaker.instance_group import InstanceGroup
 from sagemaker.job import _Job
 from sagemaker.model import FrameworkModel
 
@@ -28,6 +29,7 @@ S3_OUTPUT_PATH = "s3://bucket/prefix"
 LOCAL_FILE_NAME = "file://local/file"
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = "c4.4xlarge"
+INSTANCE_GROUP = InstanceGroup("group", "ml.c4.xlarge", 1)
 VOLUME_SIZE = 1
 MAX_RUNTIME = 1
 ROLE = "DummyRole"
@@ -597,7 +599,7 @@ def test_prepare_output_config_kms_key_none():
 
 def test_prepare_resource_config():
     resource_config = _Job._prepare_resource_config(
-        INSTANCE_COUNT, INSTANCE_TYPE, VOLUME_SIZE, None
+        INSTANCE_COUNT, INSTANCE_TYPE, None, VOLUME_SIZE, None
     )
 
     assert resource_config == {
@@ -609,7 +611,7 @@ def test_prepare_resource_config():
 
 def test_prepare_resource_config_with_volume_kms():
     resource_config = _Job._prepare_resource_config(
-        INSTANCE_COUNT, INSTANCE_TYPE, VOLUME_SIZE, VOLUME_KMS_KEY
+        INSTANCE_COUNT, INSTANCE_TYPE, None, VOLUME_SIZE, VOLUME_KMS_KEY
     )
 
     assert resource_config == {
@@ -618,6 +620,52 @@ def test_prepare_resource_config_with_volume_kms():
         "VolumeSizeInGB": VOLUME_SIZE,
         "VolumeKmsKeyId": VOLUME_KMS_KEY,
     }
+
+
+def test_prepare_resource_config_with_heterogeneous_cluster():
+    resource_config = _Job._prepare_resource_config(
+        None,
+        None,
+        [InstanceGroup("group1", "ml.c4.xlarge", 1), InstanceGroup("group2", "ml.m4.xlarge", 2)],
+        VOLUME_SIZE,
+        None,
+    )
+
+    assert resource_config == {
+        "InstanceGroups": [
+            {"InstanceGroupName": "group1", "InstanceCount": 1, "InstanceType": "ml.c4.xlarge"},
+            {"InstanceGroupName": "group2", "InstanceCount": 2, "InstanceType": "ml.m4.xlarge"},
+        ],
+        "VolumeSizeInGB": VOLUME_SIZE,
+    }
+
+
+def test_prepare_resource_config_with_instance_groups_instance_type_instance_count_set():
+    with pytest.raises(ValueError) as error:
+        _Job._prepare_resource_config(
+            INSTANCE_COUNT,
+            INSTANCE_TYPE,
+            [INSTANCE_GROUP],
+            VOLUME_SIZE,
+            None,
+        )
+    assert "instance_count and instance_type cannot be set when instance_groups is set" in str(
+        error
+    )
+
+
+def test_prepare_resource_config_with_instance_groups_instance_type_instance_count_not_set():
+    with pytest.raises(ValueError) as error:
+        _Job._prepare_resource_config(
+            None,
+            None,
+            None,
+            VOLUME_SIZE,
+            None,
+        )
+    assert "instance_count and instance_type must be set if instance_groups is not set" in str(
+        error
+    )
 
 
 def test_prepare_stop_condition():
