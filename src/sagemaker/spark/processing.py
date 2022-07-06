@@ -37,6 +37,9 @@ from sagemaker.processing import ProcessingInput, ProcessingOutput, ScriptProces
 from sagemaker.s3 import S3Uploader
 from sagemaker.session import Session
 from sagemaker.spark import defaults
+from typing import List, Optional, Dict
+import sagemaker.session
+import sagemaker.network
 
 logger = logging.getLogger(__name__)
 
@@ -85,22 +88,22 @@ class _SparkProcessorBase(ScriptProcessor):
 
     def __init__(
         self,
-        role,
-        instance_type,
-        instance_count,
-        framework_version=None,
-        py_version=None,
-        container_version=None,
-        image_uri=None,
-        volume_size_in_gb=30,
-        volume_kms_key=None,
-        output_kms_key=None,
-        max_runtime_in_seconds=None,
-        base_job_name=None,
-        sagemaker_session=None,
-        env=None,
-        tags=None,
-        network_config=None,
+        role: str,
+        instance_type: str,
+        instance_count: int,
+        framework_version: Optional[str] = None, 
+        py_version: Optional[str] = None,
+        container_version: Optional[str] = None,
+        image_uri: Optional[str] = None,
+        volume_size_in_gb: int = 30,
+        volume_kms_key: Optional[str] = None,
+        output_kms_key: Optional[str] = None,
+        max_runtime_in_seconds: Optional[int] = None,
+        base_job_name: Optional[str] = None,
+        sagemaker_session: Optional[sagemaker.session.Session] = None,
+        env: Optional[Dict[str, str]] = None,
+        tags: Optional[List[Dict]] = None,
+        network_config: Optional[sagemaker.network.NetworkConfig] = None,
     ):
         """Initialize a ``_SparkProcessorBase`` instance.
 

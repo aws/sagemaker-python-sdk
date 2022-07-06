@@ -19,6 +19,9 @@ from __future__ import absolute_import
 
 from sagemaker.processing import FrameworkProcessor
 from sagemaker.tensorflow.estimator import TensorFlow
+from typing import List, Optional, Dict
+import sagemaker.session
+import sagemaker.network
 
 
 class TensorFlowProcessor(FrameworkProcessor):
@@ -28,23 +31,23 @@ class TensorFlowProcessor(FrameworkProcessor):
 
     def __init__(
         self,
-        framework_version,  # New arg
-        role,
-        instance_count,
-        instance_type,
-        py_version="py3",  # New kwarg
-        image_uri=None,
-        command=None,
-        volume_size_in_gb=30,
-        volume_kms_key=None,
-        output_kms_key=None,
-        code_location=None,  # New arg
-        max_runtime_in_seconds=None,
-        base_job_name=None,
-        sagemaker_session=None,
-        env=None,
-        tags=None,
-        network_config=None,
+        framework_version: str,  # New arg
+        role: str,
+        instance_count: int,
+        instance_type: str,
+        py_version: str = "py3",  # New kwarg
+        image_uri: Optional[str] = None,
+        command: Optional[List[str]] = None,
+        volume_size_in_gb: int = 30,
+        volume_kms_key: Optional[str] = None,
+        output_kms_key: Optional[str] = None,
+        code_location: Optional[str] = None,  # New arg
+        max_runtime_in_seconds: Optional[int] = None,
+        base_job_name: Optional[str] = None,
+        sagemaker_session: Optional[sagemaker.session.Session] = None,
+        env: Optional[Dict[str, str]] = None,
+        tags: Optional[List[Dict]] = None,
+        network_config: Optional[sagemaker.network.NetworkConfig] = None,
     ):
         """This processor executes a Python script in a TensorFlow execution environment.
 

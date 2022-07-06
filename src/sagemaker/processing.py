@@ -1484,20 +1484,20 @@ class FrameworkProcessor(ScriptProcessor):
             arguments=arguments,
         )
 
-    def run(  # type: ignore[override]
+    def run(  
         self,
-        code,
-        source_dir=None,
-        dependencies=None,
-        git_config=None,
-        inputs=None,
-        outputs=None,
-        arguments=None,
-        wait=True,
-        logs=True,
-        job_name=None,
-        experiment_config=None,
-        kms_key=None,
+        code: str,
+        source_dir: Optional[str] = None,
+        dependencies: Optional[List[str]] = None,
+        git_config: Optional[Dict[str, str]] = None,
+        inputs: Optional[List[ProcessingInput]] = None,
+        outputs: Optional[List[ProcessingOutput]] = None,
+        arguments: Optional[List[str]] = None,
+        wait: bool = True,
+        logs: bool = True,
+        job_name: Optional[str] = None,
+        experiment_config: Optional[Dict[str, str]] = None,
+        kms_key: Optional[str] = None,
     ):
         """Runs a processing job.
 
@@ -1508,19 +1508,19 @@ class FrameworkProcessor(ScriptProcessor):
                 to training. When `code` is an S3 URI, ignore `source_dir`,
                 `dependencies, and `git_config`. If ``source_dir`` is specified,
                 then ``code`` must point to a file located at the root of ``source_dir``.
-            source_dir (str): Path (absolute, relative or an S3 URI) to a directory
+            source_dir (Optional[str]): Path (absolute, relative or an S3 URI) to a directory
                 with any other processing source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
                 point to a tar.gz file. Structure within this directory are preserved
                 when processing on Amazon SageMaker (default: None).
-            dependencies (list[str]): A list of paths to directories (absolute
+            dependencies (Optional[List[str]]): A list of paths to directories (absolute
                 or relative) with any additional libraries that will be exported
                 to the container (default: []). The library folders will be
                 copied to SageMaker in the same folder where the entrypoint is
                 copied. If 'git_config' is provided, 'dependencies' should be a
                 list of relative locations to directories with any additional
                 libraries needed in the Git repo (default: None).
-            git_config (dict[str, str]): Git configurations used for cloning
+            git_config (Optional[Dict[str, str]]): Git configurations used for cloning
                 files, including ``repo``, ``branch``, ``commit``,
                 ``2FA_enabled``, ``username``, ``password`` and ``token``. The
                 ``repo`` field is required. All other fields are optional.
@@ -1569,20 +1569,20 @@ class FrameworkProcessor(ScriptProcessor):
                 authentication if they are provided; otherwise, python SDK will
                 try to use either CodeCommit credential helper or local
                 credential storage for authentication.
-            inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
+            inputs (Optional[List[:class:`~sagemaker.processing.ProcessingInput`]]): Input files for
                 the processing job. These must be provided as
                 :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
-            outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
+            outputs (Optional[List[:class:`~sagemaker.processing.ProcessingOutput`]]): Outputs for
                 the processing job. These can be specified as either path strings or
                 :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
-            arguments (list[str]): A list of string arguments to be passed to a
+            arguments (Optional[List[str]]): A list of string arguments to be passed to a
                 processing job (default: None).
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when wait is True (default: True).
-            job_name (str): Processing job name. If not specified, the processor generates
+            job_name (Optional[str]): Processing job name. If not specified, the processor generates
                 a default job name, based on the base job name and current timestamp.
-            experiment_config (dict[str, str]): Experiment management configuration.
+            experiment_config (Optional[Dict[str, str]]): Experiment management configuration.
                 Optionally, the dict can contain three keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
                 The behavior of setting these keys is as follows:
@@ -1593,7 +1593,7 @@ class FrameworkProcessor(ScriptProcessor):
                 * If both `ExperimentName` and `TrialName` are not supplied the trial component
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
-            kms_key (str): The ARN of the KMS key that is used to encrypt the
+            kms_key (Optional[str]): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
         """
         s3_runproc_sh, inputs, job_name = self._pack_and_upload_code(
