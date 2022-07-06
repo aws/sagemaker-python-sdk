@@ -35,6 +35,7 @@ class TrainingInput(object):
         content_type=None,
         record_wrapping=None,
         s3_data_type="S3Prefix",
+        instance_groups=None,
         input_mode=None,
         attribute_names=None,
         target_attribute_name=None,
@@ -60,6 +61,8 @@ class TrainingInput(object):
                 listing the S3 data to train on. Both the ManifestFile and
                 AugmentedManifestFile formats are described in the SageMaker API documentation:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_S3DataSource.html
+            instance_groups (list[str]): Optional. List of InstanceGroupNames to send data to
+                (default: None). By default, data will be sent to all groups.
             input_mode (str): Optional override for this channel's input mode (default: None).
                 By default, channels will use the input mode defined on
                 ``sagemaker.estimator.EstimatorBase.input_mode``, but they will ignore
@@ -97,6 +100,8 @@ class TrainingInput(object):
             self.config["ContentType"] = content_type
         if record_wrapping is not None:
             self.config["RecordWrapperType"] = record_wrapping
+        if instance_groups is not None:
+            self.config["DataSource"]["S3DataSource"]["InstanceGroupNames"] = instance_groups
         if input_mode is not None:
             self.config["InputMode"] = input_mode
         if attribute_names is not None:

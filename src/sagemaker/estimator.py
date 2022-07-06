@@ -145,6 +145,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         code_location: Optional[str] = None,
         entry_point: Optional[str] = None,
         dependencies: Optional[List[Union[str]]] = None,
+        instance_groups=None,
         **kwargs,
     ):
         """Initialize an ``EstimatorBase`` instance.
@@ -156,9 +157,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if it needs to access an AWS resource.
             instance_count (int): Number of Amazon EC2 instances to use
-                for training.
+                for training. Required if instance_groups is not set.
             instance_type (str): Type of EC2 instance to use for training,
-                for example, 'ml.c4.xlarge'.
+                for example, 'ml.c4.xlarge'. Required if instance_groups is
+                not set.
             volume_size (int): Size in GB of the EBS volume to use for
                 storing input data during training (default: 30). Must be large
                 enough to store training data if File Mode is used (which is the
@@ -424,7 +426,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                     >>>     |------ virtual-env
 
                 This is not supported with "local code" in Local Mode.
-
+            instance_groups (list[InstanceGroup]): Optional. List of InstanceGroup
+                for specifying different instance groups for heterogeneous cluster.
+                For example: [sagemaker.InstanceGroup('worker','ml.p3dn.24xlarge',64),
+                sagemaker.InstanceGroup('server','ml.c5n.18xlarge',64)]
         """
         instance_count = renamed_kwargs(
             "train_instance_count", "instance_count", instance_count, kwargs
@@ -442,12 +447,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             "train_volume_kms_key", "volume_kms_key", volume_kms_key, kwargs
         )
 
-        if instance_count is None or instance_type is None:
-            raise ValueError("Both instance_count and instance_type are required.")
-
         self.role = role
         self.instance_count = instance_count
         self.instance_type = instance_type
+        self.instance_groups = instance_groups
         self.volume_size = volume_size
         self.volume_kms_key = volume_kms_key
         self.max_run = max_run
@@ -2103,6 +2106,7 @@ class Estimator(EstimatorBase):
         code_location: Optional[str] = None,
         entry_point: Optional[str] = None,
         dependencies: Optional[List[str]] = None,
+        instance_groups=None,
         **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
@@ -2115,9 +2119,10 @@ class Estimator(EstimatorBase):
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if it needs to access an AWS resource.
             instance_count (int): Number of Amazon EC2 instances to use
-                for training.
+                for training. Required if instance_groups is not set.
             instance_type (str): Type of EC2 instance to use for training,
-                for example, 'ml.c4.xlarge'.
+                for example, 'ml.c4.xlarge'. Required if instance_groups is
+                not set.
             volume_size (int): Size in GB of the EBS volume to use for
                 storing input data during training (default: 30). Must be large
                 enough to store training data if File Mode is used (which is the
@@ -2379,6 +2384,10 @@ class Estimator(EstimatorBase):
                     >>>     |------ virtual-env
 
                 This is not supported with "local code" in Local Mode.
+            instance_groups (list[InstanceGroup]): Optional. List of InstanceGroup
+                for specifying different instance groups for heterogeneous cluster.
+                For example: [sagemaker.InstanceGroup('worker','ml.p3dn.24xlarge',64),
+                sagemaker.InstanceGroup('server','ml.c5n.18xlarge',64)]
         """
         self.image_uri = image_uri
         self._hyperparameters = hyperparameters.copy() if hyperparameters else {}
@@ -2386,6 +2395,7 @@ class Estimator(EstimatorBase):
             role,
             instance_count,
             instance_type,
+            instance_groups,
             volume_size,
             volume_kms_key,
             max_run,
