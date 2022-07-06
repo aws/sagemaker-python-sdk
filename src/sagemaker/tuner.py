@@ -19,6 +19,7 @@ import json
 import logging
 
 from enum import Enum
+from typing import Union, Dict, Optional, List, Set
 
 import sagemaker
 from sagemaker.amazon.amazon_estimator import (
@@ -29,8 +30,8 @@ from sagemaker.amazon.amazon_estimator import (
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.analytics import HyperparameterTuningJobAnalytics
 from sagemaker.deprecations import removed_function
-from sagemaker.estimator import Framework
-from sagemaker.inputs import TrainingInput
+from sagemaker.estimator import Framework, EstimatorBase
+from sagemaker.inputs import TrainingInput, FileSystemInput
 from sagemaker.job import _Job
 from sagemaker.jumpstart.utils import add_jumpstart_tags, get_jumpstart_base_name_if_jumpstart_model
 from sagemaker.parameter import (
@@ -39,6 +40,7 @@ from sagemaker.parameter import (
     IntegerParameter,
     ParameterRange,
 )
+from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
 
 from sagemaker.session import Session
@@ -95,7 +97,11 @@ class WarmStartConfig(object):
         {"p1","p2"}
     """
 
-    def __init__(self, warm_start_type, parents):
+    def __init__(
+        self,
+        warm_start_type: WarmStartTypes,
+        parents: Set[Union[str, PipelineVariable]],
+    ):
         """Creates a ``WarmStartConfig`` with provided ``WarmStartTypes`` and parents.
 
         Args:
@@ -208,19 +214,19 @@ class HyperparameterTuner(object):
 
     def __init__(
         self,
-        estimator,
-        objective_metric_name,
-        hyperparameter_ranges,
-        metric_definitions=None,
-        strategy="Bayesian",
-        objective_type="Maximize",
-        max_jobs=1,
-        max_parallel_jobs=1,
-        tags=None,
-        base_tuning_job_name=None,
-        warm_start_config=None,
-        early_stopping_type="Off",
-        estimator_name=None,
+        estimator: EstimatorBase,
+        objective_metric_name: Union[str, PipelineVariable],
+        hyperparameter_ranges: Dict[str, ParameterRange],
+        metric_definitions: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        strategy: Union[str, PipelineVariable] = "Bayesian",
+        objective_type: Union[str, PipelineVariable] = "Maximize",
+        max_jobs: Union[int, PipelineVariable] = 1,
+        max_parallel_jobs: Union[int, PipelineVariable] = 1,
+        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        base_tuning_job_name: Optional[str] = None,
+        warm_start_config: Optional[WarmStartConfig] = None,
+        early_stopping_type: Union[str, PipelineVariable] = "Off",
+        estimator_name: Optional[str] = None,
     ):
         """Creates a ``HyperparameterTuner`` instance.
 
@@ -427,11 +433,13 @@ class HyperparameterTuner(object):
     @runnable_by_pipeline
     def fit(
         self,
-        inputs=None,
-        job_name=None,
-        include_cls_metadata=False,
-        estimator_kwargs=None,
-        wait=True,
+        inputs: Optional[
+            Union[str, Dict, List, TrainingInput, FileSystemInput, RecordSet, FileSystemRecordSet]
+        ] = None,
+        job_name: Optional[str] = None,
+        include_cls_metadata: Union[bool, Dict[str, bool]] = False,
+        estimator_kwargs: Optional[Dict[str, dict]] = None,
+        wait: bool = True,
         **kwargs
     ):
         """Start a hyperparameter tuning job.
