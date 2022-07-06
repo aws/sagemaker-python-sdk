@@ -18,7 +18,7 @@ import logging
 import os
 import uuid
 from abc import ABCMeta, abstractmethod
-from typing import Any, Dict
+from typing import Any, Dict, Union, Optional, List
 
 from six import string_types, with_metaclass
 from six.moves.urllib.parse import urlparse
@@ -36,6 +36,7 @@ from sagemaker.debugger import (  # noqa: F401 # pylint: disable=unused-import
     TensorBoardOutputConfig,
     get_default_profiler_rule,
     get_rule_container_image_uri,
+    RuleBase,
 )
 from sagemaker.deprecations import removed_function, removed_kwargs, renamed_kwargs
 from sagemaker.fw_utils import (
@@ -46,7 +47,7 @@ from sagemaker.fw_utils import (
     tar_and_upload_dir,
     validate_source_dir,
 )
-from sagemaker.inputs import TrainingInput
+from sagemaker.inputs import TrainingInput, FileSystemInput
 from sagemaker.job import _Job
 from sagemaker.jumpstart.utils import (
     add_jumpstart_tags,
@@ -75,6 +76,7 @@ from sagemaker.utils import (
     name_from_base,
 )
 from sagemaker.workflow import is_pipeline_variable
+from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.pipeline_context import (
     PipelineSession,
     runnable_by_pipeline,
@@ -105,44 +107,44 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
     def __init__(
         self,
-        role,
-        instance_count=None,
-        instance_type=None,
-        volume_size=30,
-        volume_kms_key=None,
-        max_run=24 * 60 * 60,
-        input_mode="File",
-        output_path=None,
-        output_kms_key=None,
-        base_job_name=None,
-        sagemaker_session=None,
-        tags=None,
-        subnets=None,
-        security_group_ids=None,
-        model_uri=None,
-        model_channel_name="model",
-        metric_definitions=None,
-        encrypt_inter_container_traffic=False,
-        use_spot_instances=False,
-        max_wait=None,
-        checkpoint_s3_uri=None,
-        checkpoint_local_path=None,
-        rules=None,
-        debugger_hook_config=None,
-        tensorboard_output_config=None,
-        enable_sagemaker_metrics=None,
-        enable_network_isolation=False,
-        profiler_config=None,
-        disable_profiler=False,
-        environment=None,
-        max_retry_attempts=None,
-        source_dir=None,
-        git_config=None,
-        hyperparameters=None,
-        container_log_level=logging.INFO,
-        code_location=None,
-        entry_point=None,
-        dependencies=None,
+        role: str,
+        instance_count: Optional[Union[int, PipelineVariable]] = None,
+        instance_type: Optional[Union[str, PipelineVariable]] = None,
+        volume_size: Union[int, PipelineVariable] = 30,
+        volume_kms_key: Optional[Union[str, PipelineVariable]] = None,
+        max_run: Union[int, PipelineVariable] = 24 * 60 * 60,
+        input_mode: Union[str, PipelineVariable] = "File",
+        output_path: Optional[Union[str, PipelineVariable]] = None,
+        output_kms_key: Optional[Union[str, PipelineVariable]] = None,
+        base_job_name: Optional[str] = None,
+        sagemaker_session: Optional[Session] = None,
+        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        subnets: Optional[List[Union[str, PipelineVariable]]] = None,
+        security_group_ids: Optional[List[Union[str, PipelineVariable]]] = None,
+        model_uri: Optional[str] = None,
+        model_channel_name: Union[str, PipelineVariable] = "model",
+        metric_definitions: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        encrypt_inter_container_traffic: Union[bool, PipelineVariable] = False,
+        use_spot_instances: Union[bool, PipelineVariable] = False,
+        max_wait: Optional[Union[int, PipelineVariable]] = None,
+        checkpoint_s3_uri: Optional[Union[str, PipelineVariable]] = None,
+        checkpoint_local_path: Optional[Union[str, PipelineVariable]] = None,
+        rules: Optional[List[RuleBase]] = None,
+        debugger_hook_config: Optional[Union[bool, DebuggerHookConfig]] = None,
+        tensorboard_output_config: Optional[TensorBoardOutputConfig] = None,
+        enable_sagemaker_metrics: Optional[Union[bool, PipelineVariable]] = None,
+        enable_network_isolation: Union[bool, PipelineVariable] = False,
+        profiler_config: Optional[ProfilerConfig] = None,
+        disable_profiler: bool = False,
+        environment: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        max_retry_attempts: Optional[Union[int, PipelineVariable]] = None,
+        source_dir: Optional[str] = None,
+        git_config: Optional[Dict[str, str]] = None,
+        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        container_log_level: Union[int, PipelineVariable] = logging.INFO,
+        code_location: Optional[str] = None,
+        entry_point: Optional[str] = None,
+        dependencies: Optional[List[Union[str]]] = None,
         **kwargs,
     ):
         """Initialize an ``EstimatorBase`` instance.
@@ -922,7 +924,14 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         return None
 
     @runnable_by_pipeline
-    def fit(self, inputs=None, wait=True, logs="All", job_name=None, experiment_config=None):
+    def fit(
+        self,
+        inputs: Optional[Union[str, Dict, TrainingInput, FileSystemInput]] = None,
+        wait: bool = True,
+        logs: str = "All",
+        job_name: Optional[str] = None,
+        experiment_config: Optional[Dict[str, str]] = None,
+    ):
         """Train a model using the input training dataset.
 
         The API calls the Amazon SageMaker CreateTrainingJob API to start
@@ -1870,16 +1879,22 @@ class _TrainingJob(_Job):
                 )
                 train_args["input_mode"] = inputs.config["InputMode"]
 
+        # enable_network_isolation may be a pipeline variable place holder object
+        # which is parsed in execution time
         if estimator.enable_network_isolation():
-            train_args["enable_network_isolation"] = True
+            train_args["enable_network_isolation"] = estimator.enable_network_isolation()
 
         if estimator.max_retry_attempts is not None:
             train_args["retry_strategy"] = {"MaximumRetryAttempts": estimator.max_retry_attempts}
         else:
             train_args["retry_strategy"] = None
 
+        # encrypt_inter_container_traffic may be a pipeline variable place holder object
+        # which is parsed in execution time
         if estimator.encrypt_inter_container_traffic:
-            train_args["encrypt_inter_container_traffic"] = True
+            train_args[
+                "encrypt_inter_container_traffic"
+            ] = estimator.encrypt_inter_container_traffic
 
         if isinstance(estimator, sagemaker.algorithm.AlgorithmEstimator):
             train_args["algorithm_arn"] = estimator.algorithm_arn
@@ -2025,45 +2040,45 @@ class Estimator(EstimatorBase):
 
     def __init__(
         self,
-        image_uri,
-        role,
-        instance_count=None,
-        instance_type=None,
-        volume_size=30,
-        volume_kms_key=None,
-        max_run=24 * 60 * 60,
-        input_mode="File",
-        output_path=None,
-        output_kms_key=None,
-        base_job_name=None,
-        sagemaker_session=None,
-        hyperparameters=None,
-        tags=None,
-        subnets=None,
-        security_group_ids=None,
-        model_uri=None,
-        model_channel_name="model",
-        metric_definitions=None,
-        encrypt_inter_container_traffic=False,
-        use_spot_instances=False,
-        max_wait=None,
-        checkpoint_s3_uri=None,
-        checkpoint_local_path=None,
-        enable_network_isolation=False,
-        rules=None,
-        debugger_hook_config=None,
-        tensorboard_output_config=None,
-        enable_sagemaker_metrics=None,
-        profiler_config=None,
-        disable_profiler=False,
-        environment=None,
-        max_retry_attempts=None,
-        source_dir=None,
-        git_config=None,
-        container_log_level=logging.INFO,
-        code_location=None,
-        entry_point=None,
-        dependencies=None,
+        image_uri: Union[str, PipelineVariable],
+        role: str,
+        instance_count: Optional[Union[int, PipelineVariable]] = None,
+        instance_type: Optional[Union[str, PipelineVariable]] = None,
+        volume_size: Union[int, PipelineVariable] = 30,
+        volume_kms_key: Optional[Union[str, PipelineVariable]] = None,
+        max_run: Union[int, PipelineVariable] = 24 * 60 * 60,
+        input_mode: Union[str, PipelineVariable] = "File",
+        output_path: Optional[Union[str, PipelineVariable]] = None,
+        output_kms_key: Optional[Union[str, PipelineVariable]] = None,
+        base_job_name: Optional[str] = None,
+        sagemaker_session: Optional[Session] = None,
+        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        subnets: Optional[List[Union[str, PipelineVariable]]] = None,
+        security_group_ids: Optional[List[Union[str, PipelineVariable]]] = None,
+        model_uri: Optional[str] = None,
+        model_channel_name: Union[str, PipelineVariable] = "model",
+        metric_definitions: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        encrypt_inter_container_traffic: Union[bool, PipelineVariable] = False,
+        use_spot_instances: Union[bool, PipelineVariable] = False,
+        max_wait: Optional[Union[int, PipelineVariable]] = None,
+        checkpoint_s3_uri: Optional[Union[str, PipelineVariable]] = None,
+        checkpoint_local_path: Optional[Union[str, PipelineVariable]] = None,
+        enable_network_isolation: Union[bool, PipelineVariable] = False,
+        rules: Optional[List[RuleBase]] = None,
+        debugger_hook_config: Optional[Union[DebuggerHookConfig, bool]] = None,
+        tensorboard_output_config: Optional[TensorBoardOutputConfig] = None,
+        enable_sagemaker_metrics: Optional[Union[bool, PipelineVariable]] = None,
+        profiler_config: Optional[ProfilerConfig] = None,
+        disable_profiler: bool = False,
+        environment: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        max_retry_attempts: Optional[Union[int, PipelineVariable]] = None,
+        source_dir: Optional[str] = None,
+        git_config: Optional[Dict[str, str]] = None,
+        container_log_level: Union[int, PipelineVariable] = logging.INFO,
+        code_location: Optional[str] = None,
+        entry_point: Optional[str] = None,
+        dependencies: Optional[List[str]] = None,
         **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
@@ -2488,18 +2503,18 @@ class Framework(EstimatorBase):
 
     def __init__(
         self,
-        entry_point,
-        source_dir=None,
-        hyperparameters=None,
-        container_log_level=logging.INFO,
-        code_location=None,
-        image_uri=None,
-        dependencies=None,
-        enable_network_isolation=False,
-        git_config=None,
-        checkpoint_s3_uri=None,
-        checkpoint_local_path=None,
-        enable_sagemaker_metrics=None,
+        entry_point: str,
+        source_dir: Optional[str] = None,
+        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        container_log_level: Union[int, PipelineVariable] = logging.INFO,
+        code_location: Optional[str] = None,
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
+        dependencies: Optional[List[str]] = None,
+        enable_network_isolation: Union[bool, PipelineVariable] = False,
+        git_config: Optional[Dict[str, str]] = None,
+        checkpoint_s3_uri: Optional[Union[str, PipelineVariable]] = None,
+        checkpoint_local_path: Optional[Union[str, PipelineVariable]] = None,
+        enable_sagemaker_metrics: Optional[Union[bool, PipelineVariable]] = None,
         **kwargs,
     ):
         """Base class initializer.
