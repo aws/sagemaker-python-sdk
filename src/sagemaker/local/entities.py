@@ -13,17 +13,23 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
+import enum
 import datetime
 import json
 import logging
 import os
 import tempfile
 import time
+from uuid import uuid4
+from copy import deepcopy
+from botocore.exceptions import ClientError
 
 import sagemaker.local.data
+
 from sagemaker.local.image import _SageMakerContainer
 from sagemaker.local.utils import copy_directory_structure, move_to_destination, get_docker_host
 from sagemaker.utils import DeferredError, get_config_value
+from sagemaker.local.exceptions import StepExecutionException
 
 logger = logging.getLogger(__name__)
 
@@ -616,6 +622,205 @@ class _LocalEndpoint(object):
             "EndpointStatus": self.state,
         }
         return response
+
+
+class _LocalPipeline(object):
+    """Placeholder docstring"""
+
+    _executions = {}
+
+    def __init__(
+        self,
+        pipeline,
+        pipeline_description=None,
+        local_session=None,
+    ):
+        from sagemaker.local import LocalSession
+
+        self.local_session = local_session or LocalSession()
+        self.pipeline = pipeline
+        self.pipeline_description = pipeline_description
+        now_time = datetime.datetime.now()
+        self.creation_time = now_time
+        self.last_modified_time = now_time
+
+    def describe(self):
+        """Placeholder docstring"""
+        response = {
+            "PipelineArn": self.pipeline.name,
+            "PipelineDefinition": self.pipeline.definition(),
+            "PipelineDescription": self.pipeline_description,
+            "PipelineName": self.pipeline.name,
+            "PipelineStatus": "Active",
+            "RoleArn": "<no_role>",
+            "CreationTime": self.creation_time,
+            "LastModifiedTime": self.last_modified_time,
+        }
+        return response
+
+    def start(self, **kwargs):
+        """Placeholder docstring"""
+        from sagemaker.local.pipeline import LocalPipelineExecutor
+
+        execution_id = str(uuid4())
+        execution = _LocalPipelineExecution(execution_id, self.pipeline, **kwargs)
+
+        self._executions[execution_id] = execution
+        return LocalPipelineExecutor(execution, self.local_session).execute()
+
+
+class _LocalPipelineExecution(object):
+    """Placeholder docstring"""
+
+    def __init__(
+        self,
+        execution_id,
+        pipeline,
+        PipelineParameters=None,
+        PipelineExecutionDescription=None,
+        PipelineExecutionDisplayName=None,
+    ):
+        self.pipeline = pipeline
+        self.pipeline_execution_name = execution_id
+        self.pipeline_execution_description = PipelineExecutionDescription
+        self.pipeline_execution_display_name = PipelineExecutionDisplayName
+        self.status = _LocalExecutionStatus.EXECUTING.value
+        self.failure_reason = None
+        self.creation_time = datetime.datetime.now()
+        self.step_execution = self._initialize_step_execution()
+        self.pipeline_parameters = self._initialize_and_validate_parameters(PipelineParameters)
+
+    def describe(self):
+        """Placeholder docstring"""
+        response = {
+            "CreationTime": self.creation_time,
+            "LastModifiedTime": self.creation_time,
+            "FailureReason": self.failure_reason,
+            "PipelineArn": self.pipeline.name,
+            "PipelineExecutionArn": self.pipeline_execution_name,
+            "PipelineExecutionDescription": self.pipeline_execution_description,
+            "PipelineExecutionDisplayName": self.pipeline_execution_display_name,
+            "PipelineExecutionStatus": self.status,
+        }
+        filtered_response = {k: v for k, v in response.items() if v is not None}
+        return filtered_response
+
+    def list_steps(self):
+        """Placeholder docstring"""
+        # TODO
+
+    def update_execution_failure(self, step_name, failure_message):
+        """Mark execution as failed."""
+        self.status = _LocalExecutionStatus.FAILED.value
+        self.failure_reason = f"Step {step_name} failed with message: {failure_message}"
+        logger.error("Pipeline execution failed because step %s failed.", step_name)
+
+    def update_step_failure(self, step_name, failure_message):
+        """Mark step_name as failed."""
+        self.step_execution.get(step_name).update_step_failure(failure_message)
+
+    def mark_step_starting(self, step_name):
+        """Update step's status to EXECUTING"""
+        self.step_execution.get(step_name).status = _LocalExecutionStatus.EXECUTING
+
+    def _initialize_step_execution(self):
+        """Initialize step_execution dict."""
+        from sagemaker.workflow.steps import StepTypeEnum
+
+        supported_steps_types = (
+            StepTypeEnum.TRAINING,
+            StepTypeEnum.PROCESSING,
+            StepTypeEnum.TRANSFORM,
+            StepTypeEnum.CONDITION,
+            StepTypeEnum.FAIL,
+        )
+
+        step_execution = {}
+        for step in self.pipeline.steps:
+            if step.step_type not in supported_steps_types:
+                error_msg = self._construct_validation_exception_message(
+                    "Step type {} is not supported in local mode.".format(step.step_type.value)
+                )
+                raise ClientError(error_msg, "start_pipeline_execution")
+            step_execution[step.name] = _LocalPipelineStepExecution(step.name, step.step_type)
+        return step_execution
+
+    def _initialize_and_validate_parameters(self, overridden_parameters):
+        """Initialize and validate pipeline parameters."""
+        merged_parameters = {}
+        default_parameters = {parameter.name: parameter for parameter in self.pipeline.parameters}
+        if overridden_parameters is not None:
+            for (param_name, param_value) in overridden_parameters.items():
+                if param_name not in default_parameters:
+                    error_msg = self._construct_validation_exception_message(
+                        "Unknown parameter '{}'".format(param_name)
+                    )
+                    raise ClientError(error_msg, "start_pipeline_execution")
+                parameter_type = default_parameters[param_name].parameter_type
+                if type(param_value) != parameter_type.python_type:  # pylint: disable=C0123
+                    error_msg = self._construct_validation_exception_message(
+                        "Unexpected type for parameter '{}'. Expected {} but found "
+                        "{}.".format(param_name, parameter_type.python_type, type(param_value))
+                    )
+                    raise ClientError(error_msg, "start_pipeline_execution")
+                merged_parameters[param_name] = param_value
+        for param_name, default_parameter in default_parameters.items():
+            if param_name not in merged_parameters:
+                if default_parameter.default_value is None:
+                    error_msg = self._construct_validation_exception_message(
+                        "Parameter '{}' is undefined.".format(param_name)
+                    )
+                    raise ClientError(error_msg, "start_pipeline_execution")
+                merged_parameters[param_name] = default_parameter.default_value
+        return merged_parameters
+
+    @staticmethod
+    def _construct_validation_exception_message(exception_msg):
+        """Construct error response for botocore.exceptions.ClientError"""
+        return {"Error": {"Code": "ValidationException", "Message": exception_msg}}
+
+
+class _LocalPipelineStepExecution(object):
+    """Placeholder docstring"""
+
+    def __init__(
+        self,
+        step_name,
+        step_type,
+        last_modified_time=None,
+        status=None,
+        properties=None,
+        failure_reason=None,
+    ):
+        self.step_name = step_name
+        self.step_type = step_type
+        self.status = status or _LocalExecutionStatus.STARTING
+        self.failure_reason = failure_reason
+        self.properties = properties or {}
+        self.creation_time = datetime.datetime.now()
+        self.last_modified_time = last_modified_time or self.creation_time
+
+    def update_step_properties(self, properties):
+        """Update pipeline step execution output properties."""
+        logger.info("Successfully completed step %s.", self.step_name)
+        self.properties = deepcopy(properties)
+        self.status = _LocalExecutionStatus.SUCCEEDED.value
+
+    def update_step_failure(self, failure_message):
+        """Update pipeline step execution failure status and message."""
+        logger.error(failure_message)
+        self.failure_reason = failure_message
+        self.status = _LocalExecutionStatus.FAILED.value
+        raise StepExecutionException(self.step_name, failure_message)
+
+
+class _LocalExecutionStatus(enum.Enum):
+    """Placeholder docstring"""
+
+    STARTING = "Starting"
+    EXECUTING = "Executing"
+    SUCCEEDED = "Succeeded"
+    FAILED = "Failed"
 
 
 def _wait_for_serving_container(serving_port):

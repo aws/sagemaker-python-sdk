@@ -10,13 +10,15 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
+"""Custom Exceptions."""
 from __future__ import absolute_import
 
-from .local_session import (  # noqa: F401
-    file_input,
-    LocalSagemakerClient,
-    LocalSagemakerRuntimeClient,
-    LocalSession,
-    LocalPipelineSession,
-)
+
+class StepExecutionException(Exception):
+    """Exception indicating a failure while execution pipeline steps."""
+
+    def __init__(self, step_name, message):
+        """Placeholder docstring"""
+        super(StepExecutionException, self).__init__(message)
+        self.message = message
+        self.step_name = step_name
