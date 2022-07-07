@@ -2822,6 +2822,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         customer_metadata_properties=None,
         validation_specification=None,
         domain=None,
+        sample_payload_url=None,
+        task=None,
     ):
         """Get request dictionary for CreateModelPackage API.
 
@@ -2851,6 +2853,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 metadata properties (default: None).
             domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
                 "MACHINE_LEARNING" (default: None).
+            sample_payload_url (str): The S3 path where the sample payload is stored
+                (default: None).
+            task (str): Task values which are supported by Inference Recommender are "FILL_MASK",
+                "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION", "IMAGE_SEGMENTATION",
+                "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
         """
 
         model_pkg_request = get_create_model_package_request(
@@ -2870,6 +2877,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             customer_metadata_properties=customer_metadata_properties,
             validation_specification=validation_specification,
             domain=domain,
+            sample_payload_url=sample_payload_url,
+            task=task,
         )
 
         def submit(request):
@@ -4241,6 +4250,8 @@ def get_model_package_args(
     customer_metadata_properties=None,
     validation_specification=None,
     domain=None,
+    sample_payload_url=None,
+    task=None,
 ):
     """Get arguments for create_model_package method.
 
@@ -4273,6 +4284,11 @@ def get_model_package_args(
             metadata properties (default: None).
         domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
             "MACHINE_LEARNING" (default: None).
+        sample_payload_url (str): The S3 path where the sample payload is stored (default: None).
+        task (str): Task values which are supported by Inference Recommender are "FILL_MASK",
+            "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION", "IMAGE_SEGMENTATION",
+            "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
+
     Returns:
         dict: A dictionary of method argument names and values.
     """
@@ -4316,6 +4332,10 @@ def get_model_package_args(
         model_package_args["validation_specification"] = validation_specification
     if domain is not None:
         model_package_args["domain"] = domain
+    if sample_payload_url is not None:
+        model_package_args["sample_payload_url"] = sample_payload_url
+    if task is not None:
+        model_package_args["task"] = task
     return model_package_args
 
 
@@ -4337,6 +4357,8 @@ def get_create_model_package_request(
     customer_metadata_properties=None,
     validation_specification=None,
     domain=None,
+    sample_payload_url=None,
+    task=None,
 ):
     """Get request dictionary for CreateModelPackage API.
 
@@ -4367,6 +4389,10 @@ def get_create_model_package_request(
             metadata properties (default: None).
         domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
             "MACHINE_LEARNING" (default: None).
+        sample_payload_url (str): The S3 path where the sample payload is stored (default: None).
+        task (str): Task values which are supported by Inference Recommender are "FILL_MASK",
+            "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION", "IMAGE_SEGMENTATION",
+            "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
     """
 
     if all([model_package_name, model_package_group_name]):
@@ -4394,6 +4420,10 @@ def get_create_model_package_request(
         request_dict["ValidationSpecification"] = validation_specification
     if domain is not None:
         request_dict["Domain"] = domain
+    if sample_payload_url is not None:
+        request_dict["SamplePayloadUrl"] = sample_payload_url
+    if task is not None:
+        request_dict["Task"] = task
     if containers is not None:
         if not all([content_types, response_types]):
             raise ValueError(
