@@ -92,6 +92,18 @@ class Edge:
             and self.destination_arn == other.destination_arn
         )
 
+    def __str__(self):
+        """Define string representation of ``Edge``.
+
+        Format:
+            {
+                'source_arn': 'string', 'destination_arn': 'string', 
+                'association_type': 'string'
+            }
+        
+        """
+        return (str(self.__dict__))
+
 
 class Vertex:
     """A vertex for a lineage graph."""
@@ -129,6 +141,19 @@ class Vertex:
             and self.lineage_entity == other.lineage_entity
             and self.lineage_source == other.lineage_source
         )
+
+    def __str__(self):
+        """Define string representation of ``Vertex``.
+
+        Format:
+            {
+                'arn': 'string', 'lineage_entity': 'string', 
+                'lineage_source': 'string', 
+                '_session': <sagemaker.session.Session object>
+            }
+        
+        """
+        return (str(self.__dict__))
 
     def to_lineage_object(self):
         """Convert the ``Vertex`` object to its corresponding lineage object.
@@ -198,6 +223,32 @@ class LineageQueryResult(object):
 
         if vertices is not None:
             self.vertices = vertices
+
+    def __str__(self):
+        """Define string representation of ``LineageQueryResult``.
+        
+        Format:
+        {
+            'edges':[
+                {
+                    'source_arn': 'string', 'destination_arn': 'string', 
+                    'association_type': 'string'
+                },
+                ...
+            ]
+            'vertices':[
+                {
+                    'arn': 'string', 'lineage_entity': 'string', 
+                    'lineage_source': 'string', 
+                    '_session': <sagemaker.session.Session object>
+                },
+                ...
+            ]
+        }
+        
+        """
+        result_dict = vars(self)
+        return (str({k: [vars(val) for val in v] for k, v in result_dict.items()}))
 
 
 class LineageFilter(object):
