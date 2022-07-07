@@ -32,6 +32,7 @@ from sagemaker.workflow.pipeline_experiment_config import (
 )
 from sagemaker.workflow.step_collections import StepCollection
 from tests.unit.sagemaker.workflow.helpers import ordered, CustomStep
+from sagemaker.local import LocalSession
 
 
 @pytest.fixture
@@ -43,6 +44,7 @@ def role_arn():
 def sagemaker_session_mock():
     session_mock = Mock()
     session_mock.default_bucket = Mock(name="default_bucket", return_value="s3_bucket")
+    session_mock.local_mode = False
     return session_mock
 
 
@@ -466,3 +468,31 @@ def _generate_large_pipeline_steps(input_data: object):
     for i in range(2000):
         steps.append(CustomStep(name=f"MyStep{i}", input_data=input_data))
     return steps
+
+
+def test_local_pipeline():
+    parameter = ParameterString("MyStr", default_value="test")
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[parameter],
+        steps=[CustomStep(name="MyStep", input_data=parameter)],
+        sagemaker_session=LocalSession(),
+    )
+    pipeline.create("dummy-role", "pipeline-description")
+
+    pipeline_describe_response1 = pipeline.describe()
+    assert pipeline_describe_response1["PipelineArn"] == "MyPipeline"
+    assert pipeline_describe_response1["PipelineDefinition"] == pipeline.definition()
+    assert pipeline_describe_response1["PipelineDescription"] == "pipeline-description"
+
+    pipeline.update("dummy-role", "pipeline-description-2")
+    pipeline_describe_response2 = pipeline.describe()
+    assert pipeline_describe_response2["PipelineDescription"] == "pipeline-description-2"
+    assert (
+        pipeline_describe_response2["CreationTime"]
+        != pipeline_describe_response2["LastModifiedTime"]
+    )
+
+    pipeline_execution_describe_response = pipeline.start().describe()
+    assert pipeline_execution_describe_response["PipelineArn"] == "MyPipeline"
+    assert pipeline_execution_describe_response["PipelineExecutionArn"] is not None
