@@ -17,6 +17,7 @@ import os
 import shutil
 import subprocess
 import json
+import re
 
 from distutils.dir_util import copy_tree
 from six.moves.urllib.parse import urlparse
@@ -152,3 +153,36 @@ def get_docker_host():
     if parsed_url.hostname and parsed_url.scheme == "tcp":
         return parsed_url.hostname
     return "localhost"
+
+
+def get_using_dot_notation(dictionary, keys):
+    """Extract `keys` from dictionary where keys is a string in dot notation.
+
+    Args:
+        dictionary (Dict)
+        keys (str)
+
+    Returns:
+        Nested object within dictionary as defined by "keys"
+
+    Raises:
+     KeyError or IndexError if the provided key does not exist in input dictionary
+    """
+    if keys is None:
+        return dictionary
+    split_keys = keys.split(".", 1)
+    key = split_keys[0]
+    rest = None
+    if len(split_keys) > 1:
+        rest = split_keys[1]
+    list_accessor = re.search(r"(\w+)\[(\d+)]", key)
+    if list_accessor:
+        key = list_accessor.group(1)
+        list_index = int(list_accessor.group(2))
+        return get_using_dot_notation(dictionary[key][list_index], rest)
+    dict_accessor = re.search(r"(\w+)\[['\"](\S+)['\"]]", key)
+    if dict_accessor:
+        key = dict_accessor.group(1)
+        inner_key = dict_accessor.group(2)
+        return get_using_dot_notation(dictionary[key][inner_key], rest)
+    return get_using_dot_notation(dictionary[key], rest)

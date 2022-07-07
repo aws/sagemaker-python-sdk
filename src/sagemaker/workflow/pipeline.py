@@ -15,6 +15,7 @@ from __future__ import absolute_import
 
 import json
 
+import logging
 from copy import deepcopy
 from typing import Any, Dict, List, Sequence, Union, Optional
 
@@ -25,6 +26,7 @@ from botocore.exceptions import ClientError
 from sagemaker import s3
 from sagemaker._studio import _append_project_tags
 from sagemaker.session import Session
+from sagemaker.local import LocalSession
 from sagemaker.workflow.callback_step import CallbackOutput, CallbackStep
 from sagemaker.workflow.lambda_step import LambdaOutput, LambdaStep
 from sagemaker.workflow.entities import (
@@ -41,6 +43,9 @@ from sagemaker.workflow.steps import Step, StepTypeEnum
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.utilities import list_to_request
+from sagemaker.workflow.pipeline_context import LocalPipelineSession
+
+logger = logging.getLogger(__name__)
 
 _DEFAULT_EXPERIMENT_CFG = PipelineExperimentConfig(
     ExecutionVariables.PIPELINE_NAME, ExecutionVariables.PIPELINE_EXECUTION_ID
@@ -123,6 +128,10 @@ class Pipeline(Entity):
         Returns:
             A response dict from the service.
         """
+        if self.sagemaker_session.local_mode:
+            if parallelism_config:
+                logger.warning("Pipeline parallelism config is not supported in the local mode.")
+            return self.sagemaker_session.sagemaker_client.create_pipeline(self, description)
         tags = _append_project_tags(tags)
         kwargs = self._create_args(role_arn, description, parallelism_config)
         update_args(
@@ -154,7 +163,9 @@ class Pipeline(Entity):
 
         # If pipeline definition is large, upload to S3 bucket and
         # provide PipelineDefinitionS3Location to request instead.
-        if len(pipeline_definition.encode("utf-8")) < 1024 * 100:
+        if len(pipeline_definition.encode("utf-8")) < 1024 * 100 or isinstance(
+            self.sagemaker_session, (LocalSession, LocalPipelineSession)
+        ):
             kwargs["PipelineDefinition"] = pipeline_definition
         else:
             desired_s3_uri = s3.s3_path_join(
@@ -203,8 +214,14 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         Returns:
             A response dict from the service.
         """
+        if self.sagemaker_session.local_mode:
+            if parallelism_config:
+                logger.warning("Pipeline parallelism config is not supported in the local mode.")
+            return self.sagemaker_session.sagemaker_client.update_pipeline(self, description)
+
         self._step_map = dict()
         _generate_step_map(self.steps, self._step_map)
+
         kwargs = self._create_args(role_arn, description, parallelism_config)
         return self.sagemaker_session.sagemaker_client.update_pipeline(**kwargs)
 
@@ -289,11 +306,14 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         kwargs = dict(PipelineName=self.name)
         update_args(
             kwargs,
-            PipelineParameters=format_start_parameters(parameters),
             PipelineExecutionDescription=execution_description,
             PipelineExecutionDisplayName=execution_display_name,
             ParallelismConfiguration=parallelism_config,
         )
+        if self.sagemaker_session.local_mode:
+            update_args(kwargs, PipelineParameters=parameters)
+            return self.sagemaker_session.sagemaker_client.start_pipeline_execution(**kwargs)
+        update_args(kwargs, PipelineParameters=format_start_parameters(parameters))
         response = self.sagemaker_session.sagemaker_client.start_pipeline_execution(**kwargs)
         return _PipelineExecution(
             arn=response["PipelineExecutionArn"],

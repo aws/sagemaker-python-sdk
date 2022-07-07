@@ -19,6 +19,7 @@ from functools import wraps
 from typing import Dict, Optional
 
 from sagemaker.session import Session, SessionSettings
+from sagemaker.local import LocalPipelineSession
 
 
 class _StepArguments:
@@ -170,7 +171,7 @@ def runnable_by_pipeline(run_func):
     @wraps(run_func)
     def wrapper(*args, **kwargs):
         self_instance = args[0]
-        if isinstance(self_instance.sagemaker_session, PipelineSession):
+        if isinstance(self_instance.sagemaker_session, (PipelineSession, LocalPipelineSession)):
             run_func_params = inspect.signature(run_func).parameters
             arg_list = list(args)
 
