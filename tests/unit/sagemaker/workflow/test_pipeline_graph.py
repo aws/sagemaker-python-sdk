@@ -84,6 +84,18 @@ def test_pipeline_duplicate_step_name_in_step_collection(sagemaker_session_mock)
     assert "Pipeline steps cannot have duplicate names." in str(error.value)
 
 
+def test_pipeline_depends_on_undefined(sagemaker_session_mock):
+    custom_step = CustomStep(name="foo-1", depends_on=["undefined_step"])
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[custom_step],
+        sagemaker_session=sagemaker_session_mock,
+    )
+    with pytest.raises(ValueError) as error:
+        PipelineGraph.from_pipeline(pipeline)
+    assert "Step undefined_step is undefined." in str(error.value)
+
+
 def test_pipeline_graph_acyclic(sagemaker_session_mock):
     step_a = CustomStep(name="stepA")
     step_b = CustomStep(name="stepB")
@@ -111,7 +123,7 @@ def test_pipeline_graph_acyclic(sagemaker_session_mock):
     _verify_pipeline_graph_traversal(pipeline_graph)
 
 
-def test_pipeline_graph_acyclic_with_condition_step_explicit_dependency(sagemaker_session_mock):
+def test_pipeline_graph_with_condition_step_explicit_dependency(sagemaker_session_mock):
     custom_step = CustomStep(name="TestStep")
     if_step = CustomStep(name="IfStep")
     else_step = CustomStep(name="ElseStep")
@@ -138,7 +150,7 @@ def test_pipeline_graph_acyclic_with_condition_step_explicit_dependency(sagemake
     _verify_pipeline_graph_traversal(pipeline_graph)
 
 
-def test_pipeline_graph_acyclic_with_condition_step_property_reference_dependency(
+def test_pipeline_graph_with_condition_step_property_reference_dependency(
     sagemaker_session_mock,
 ):
     custom_step = CustomStep(name="TestStep")
@@ -162,7 +174,7 @@ def test_pipeline_graph_acyclic_with_condition_step_property_reference_dependenc
     _verify_pipeline_graph_traversal(pipeline_graph)
 
 
-def test_pipeline_graph_acyclic_with_step_collection_explicit_dependency(sagemaker_session_mock):
+def test_pipeline_graph_with_step_collection_explicit_dependency(sagemaker_session_mock):
     custom_step1 = CustomStep(name="TestStep")
     custom_step_collection = CustomStepCollection(
         name="TestStepCollection", depends_on=[custom_step1]
@@ -187,7 +199,7 @@ def test_pipeline_graph_acyclic_with_step_collection_explicit_dependency(sagemak
     _verify_pipeline_graph_traversal(pipeline_graph)
 
 
-def test_pipeline_graph_acyclic_with_step_collection_property_reference_dependency(
+def test_pipeline_graph_with_step_collection_property_reference_dependency(
     sagemaker_session_mock,
 ):
     custom_step_collection = CustomStepCollection(name="TestStepCollection")

@@ -31,6 +31,12 @@ class ExecutionVariable(PipelineVariable):
         """
         self.name = name
 
+    def __eq__(self, other):
+        """Override default equals method"""
+        if not isinstance(other, ExecutionVariable):
+            return NotImplemented
+        return self.name == other.name
+
     def to_string(self) -> PipelineVariable:
         """Prompt the pipeline to convert the pipeline variable to String in runtime
 

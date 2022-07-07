@@ -219,6 +219,8 @@ class Step(Entity):
         """Convert a Step or StepCollection name input to step name."""
         from sagemaker.workflow.step_collections import StepCollection
 
+        if str_input not in step_map:
+            raise ValueError(f"Step {str_input} is undefined.")
         if isinstance(step_map[str_input], StepCollection):
             return step_map[str_input].steps[-1].name
         return str_input
