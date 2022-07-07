@@ -146,7 +146,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         code_location: Optional[str] = None,
         entry_point: Optional[str] = None,
         dependencies: Optional[List[Union[str]]] = None,
-        instance_groups=None,
+        instance_groups: Optional[Dict[str, Union[str, int]]] = None,
         **kwargs,
     ):
         """Initialize an ``EstimatorBase`` instance.
@@ -2140,7 +2140,7 @@ class Estimator(EstimatorBase):
         code_location: Optional[str] = None,
         entry_point: Optional[str] = None,
         dependencies: Optional[List[str]] = None,
-        instance_groups=None,
+        instance_groups: Optional[Dict[str, Union[str, int]]] = None,
         **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
@@ -2429,7 +2429,6 @@ class Estimator(EstimatorBase):
             role,
             instance_count,
             instance_type,
-            instance_groups,
             volume_size,
             volume_kms_key,
             max_run,
@@ -2465,6 +2464,7 @@ class Estimator(EstimatorBase):
             entry_point=entry_point,
             dependencies=dependencies,
             hyperparameters=hyperparameters,
+            instance_groups=instance_groups,
             **kwargs,
         )
 
