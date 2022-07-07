@@ -154,6 +154,12 @@ class SKLearnModel(FrameworkModel):
         drift_check_baselines=None,
         customer_metadata_properties=None,
         domain=None,
+        sample_payload_url=None,
+        task=None,
+        framework=None,
+        framework_version=None,
+        nearest_model_name=None,
+        data_input_configuration=None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -183,6 +189,18 @@ class SKLearnModel(FrameworkModel):
                 metadata properties (default: None).
             domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
                 "MACHINE_LEARNING" (default: None).
+            sample_payload_url (str): The S3 path where the sample payload is stored
+                (default: None).
+            task (str): Task values which are supported by Inference Recommender are "FILL_MASK",
+                "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION", "IMAGE_SEGMENTATION",
+                "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
+            framework (str): Machine learning framework of the model package container image
+                (default: None).
+            framework_version (str): Framework version of the Model Package Container Image
+                (default: None).
+            nearest_model_name (str): Name of a pre-trained machine learning benchmarked by
+                Amazon SageMaker Inference Recommender (default: None).
+            data_input_configuration (str): Input object for the model (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -213,6 +231,12 @@ class SKLearnModel(FrameworkModel):
             drift_check_baselines=drift_check_baselines,
             customer_metadata_properties=customer_metadata_properties,
             domain=domain,
+            sample_payload_url=sample_payload_url,
+            task=task,
+            framework=framework,
+            framework_version=framework_version,
+            nearest_model_name=nearest_model_name,
+            data_input_configuration=data_input_configuration,
         )
 
     def prepare_container_def(
