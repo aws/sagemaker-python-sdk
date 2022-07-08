@@ -578,11 +578,9 @@ class FeatureGroup:
             feature_name=feature_name,
             description=description,
             parameter_additions=[
-                parameter_addition.to_dict() for parameter_addition in parameter_additions
-            ]
-            if parameter_additions is not None
-            else [],
-            parameter_removals=parameter_removals if parameter_removals is not None else [],
+                parameter_addition.to_dict() for parameter_addition in (parameter_additions or [])
+            ],
+            parameter_removals=(parameter_removals or []),
         )
 
     def describe_feature_metadata(self, feature_name: str) -> Dict[str, Any]:
