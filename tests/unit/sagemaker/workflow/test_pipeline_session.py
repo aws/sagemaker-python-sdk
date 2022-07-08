@@ -151,7 +151,6 @@ def test_pipeline_session_context_for_model_step_without_instance_types(
         framework="TENSORFLOW",
         framework_version="2.9",
         nearest_model_name="resnet50",
-        data_input_configuration='{"input_1":[1,224,224,3]}',
     )
 
     expected_output = {
@@ -173,9 +172,6 @@ def test_pipeline_session_context_for_model_step_without_instance_types(
                     "Framework": "TENSORFLOW",
                     "FrameworkVersion": "2.9",
                     "NearestModelName": "resnet50",
-                    "ModelInput": {
-                        "DataInputConfig": '{"input_1":[1,224,224,3]}',
-                    },
                 }
             ],
             "SupportedContentTypes": ["text/csv"],
