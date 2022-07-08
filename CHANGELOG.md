@@ -1,5 +1,25 @@
 # Changelog
 
+## v2.99.0 (2022-07-08)
+
+### Features
+
+ * heterogeneous cluster set up in distribution config
+ * support heterogeneous cluster for training
+ * include fields to work with inference recommender
+
+### Bug Fixes and Other Changes
+
+ * Moving the newly added field instance_group to the end of method
+ * image_uri does not need to be specified with instance_groups
+ * Loosen version of attrs dependency
+ * Add PipelineVariable annotation in estimatory, processing, tuner, transformer base classes
+ * model table link
+
+### Documentation Changes
+
+ * documentation for heterogeneous cluster
+
 ## v2.98.0 (2022-07-05)
 
 ### Features
