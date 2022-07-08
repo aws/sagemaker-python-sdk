@@ -10,7 +10,11 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This module configures the SageMaker Clarify bias and model explainability processor job."""
+"""This module configures the SageMaker Clarify bias and model explainability processor jobs.
+
+SageMaker Clarify
+==================
+"""
 from __future__ import absolute_import, print_function
 
 import copy
@@ -47,22 +51,25 @@ class DataConfig:
         Args:
             s3_data_input_path (str): Dataset S3 prefix/object URI.
             s3_output_path (str): S3 prefix to store the output.
-            s3_analysis_config_output_path (str): S3 prefix to store the analysis_config output
-                If this field is None, then the s3_output_path will be used
-                to store the analysis_config output
-            label (str): Target attribute of the model required by bias metrics (optional for SHAP)
+            s3_analysis_config_output_path (str): S3 prefix to store the analysis config output.
+                If this field is None, then the ``s3_output_path`` will be used
+                to store the ``analysis_config`` output.
+            label (str): Target attribute of the model **required** for bias metrics (both pre-
+                and post-training). Optional when running SHAP explainability.
                 Specified as column name or index for CSV dataset, or as JSONPath for JSONLines.
             headers (list[str]): A list of column names in the input dataset.
             features (str): JSONPath for locating the feature columns for bias metrics if the
                 dataset format is JSONLines.
-            dataset_type (str): Format of the dataset. Valid values are "text/csv" for CSV,
-                "application/jsonlines" for JSONLines, and "application/x-parquet" for Parquet.
-            s3_compression_type (str): Valid options are "None" or "Gzip".
+            dataset_type (str): Format of the dataset. Valid values are ``"text/csv"`` for CSV,
+                ``"application/jsonlines"`` for JSONLines, and
+                ``"application/x-parquet"`` for Parquet.
+            s3_compression_type (str): Valid options are "None" or ``"Gzip"``.
             joinsource (str): The name or index of the column in the dataset that acts as an
                 identifier column (for instance, while performing a join). This column is only
                 used as an identifier, and not used for any other computations. This is an
                 optional field in all cases except when the dataset contains more than one file,
-                and `save_local_shap_values` is set to true in SHAPConfig.
+                and ``save_local_shap_values`` is set to True
+                in :class:`~sagemaker.clarify.SHAPConfig`.
         """
         if dataset_type not in [
             "text/csv",
@@ -96,7 +103,7 @@ class DataConfig:
 
 
 class BiasConfig:
-    """Config object related to bias configurations of the input dataset."""
+    """Config object with user-defined bias configurations of the input dataset."""
 
     def __init__(
         self,
@@ -109,36 +116,44 @@ class BiasConfig:
 
         Args:
             label_values_or_threshold ([int or float or str]): List of label value(s) or threshold
-                to indicate positive outcome used for bias metrics. Dependency on the problem type,
+                to indicate positive outcome used for bias metrics.
+                The appropriate threshold depends on the problem type:
 
-                * Binary problem: The list shall include one positive value.
-                * Categorical problem: The list shall include one or more (but not all) categories
+                * Binary: The list has one positive value.
+                * Categorical:The list has one or more (but not all) categories
                   which are the positive values.
-                * Regression problem: The list shall include one threshold that defines the lower
-                  bound of positive values.
+                * Regression: The list should include one threshold that defines the **exclusive**
+                  lower bound of positive values.
 
-            facet_name (str or int or [str] or [int]): Sensitive attribute column name (or index in
-                the input data) for which you like to compute bias metrics. It can also be a list
-                of names (or indexes) if you like to compute for multiple sensitive attributes.
+            facet_name (str or int or list[str] or list[int]): Sensitive attribute column name
+                (or index in the input data) to use when computing bias metrics. It can also be a
+                list of names (or indexes) for computing metrics for multiple sensitive attributes.
             facet_values_or_threshold ([int or float or str] or [[int or float or str]]):
-                The parameter indicates the sensitive group. If facet_name is a scalar, then it can
-                be None or a list. Depending on the data type of the facet column,
+                The parameter controls the values of the sensitive group.
+                If ``facet_name`` is a scalar, then it can be None or a list.
+                Depending on the data type of the facet column, the values mean:
 
-                * Binary: None means computing the bias metrics for each binary value. Or add one
-                  binary value to the list, to compute its bias metrics only.
-                * Categorical: None means computing the bias metrics for each category. Or add one
-                  or more (but not all) categories to the list, to compute their bias metrics v.s.
-                  the other categories.
-                * Continuous: The list shall include one and only one threshold which defines the
-                  lower bound of a sensitive group.
+                * Binary data: None means computing the bias metrics for each binary value.
+                  Or add one binary value to the list, to compute its bias metrics only.
+                * Categorical data: None means computing the bias metrics for each category. Or add
+                  one or more (but not all) categories to the list, to compute their
+                  bias metrics v.s. the other categories.
+                * Continuous data: The list should include one and only one threshold which defines
+                  the **exclusive** lower bound of a sensitive group.
 
-                If facet_name is a list, then it can be None if all facets are of binary type or
-                categorical type. Otherwise it shall be a list, and each element is the values or
-                threshold of the corresponding facet.
+                If ``facet_name`` is a list, then ``facet_values_or_threshold`` can be None
+                if all facets are of binary or categorical type.
+                Otherwise, ``facet_values_or_threshold`` should be a list, and each element
+                is the value or threshold of the corresponding facet.
             group_name (str): Optional column name or index to indicate a group column to be used
-                for the bias metric 'Conditional Demographic Disparity in Labels - CDDL' or
-                'Conditional Demographic Disparity in Predicted Labels - CDDPL'.
-        """
+                for the bias metric
+                `Conditional Demographic Disparity in Labels `(CDDL) <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-cddl.html>`_
+                or
+                `Conditional Demographic Disparity in Predicted Labels (CDDPL) <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-cddpl.html>`_.
+
+        Raises:
+            ValueError: If the number of ``facet_names`` doesn't equal number of ``facet values``
+        """  # noqa E501  # pylint: disable=c0301
         if isinstance(facet_name, list):
             assert len(facet_name) > 0, "Please provide at least one facet"
             if facet_values_or_threshold is None:
@@ -167,7 +182,7 @@ class BiasConfig:
         _set(group_name, "group_variable", self.analysis_config)
 
     def get_config(self):
-        """Returns part of an analysis config dictionary."""
+        """Returns a dictionary of bias detection configurations, part of the analysis config"""
         return copy.deepcopy(self.analysis_config)
 
 
@@ -192,7 +207,7 @@ class ModelConfig:
             model_name (str): Model name (as created by 'CreateModel').
             instance_count (int): The number of instances of a new endpoint for model inference.
             instance_type (str): The type of EC2 instance to use for model inference,
-                for example, 'ml.c5.xlarge'.
+                for example, ``"ml.c5.xlarge"``.
             accept_type (str): The model output format to be used for getting inferences with the
                 shadow endpoint. Valid values are "text/csv" for CSV and "application/jsonlines".
                 Default is the same as content_type.
@@ -200,9 +215,9 @@ class ModelConfig:
                 shadow endpoint. Valid values are "text/csv" for CSV and "application/jsonlines".
                 Default is the same as dataset format.
             content_template (str): A template string to be used to construct the model input from
-                dataset instances. It is only used when "model_content_type" is
-                "application/jsonlines". The template should have one and only one placeholder
-                $features which will be replaced by a features list for to form the model inference
+                dataset instances. It is only used when ``model_content_type`` is
+                ``"application/jsonlines"``. The template should have one and only one placeholder,
+                "features", which will be replaced by a features list to form the model inference
                 input.
             custom_attributes (str): Provides additional information about a request for an
                 inference submitted to a model hosted at an Amazon SageMaker endpoint. The
@@ -210,14 +225,19 @@ class ModelConfig:
                 value, for example, to provide an ID that you can use to track a request or to
                 provide other metadata that a service endpoint was programmed to process. The value
                 must consist of no more than 1024 visible US-ASCII characters as specified in
-                Section 3.3.6. Field Value Components (
-                https://tools.ietf.org/html/rfc7230#section-3.2.6) of the Hypertext Transfer
-                Protocol (HTTP/1.1).
-            accelerator_type (str): The Elastic Inference accelerator type to deploy to the model
-                endpoint instance for making inferences to the model, see
-                https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html.
+                Section 3.3.6.
+                `Field Value Components <https://tools.ietf.org/html/rfc7230#section-3.2.6>`_
+                of the Hypertext Transfer Protocol (HTTP/1.1).
+            accelerator_type (str): SageMaker
+                `Elastic Inference <https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html>`_
+                accelerator type to deploy to the model endpoint instance
+                for making inferences to the model.
             endpoint_name_prefix (str): The endpoint name prefix of a new endpoint. Must follow
-                pattern "^[a-zA-Z0-9](-\*[a-zA-Z0-9]".
+                pattern ``^[a-zA-Z0-9](-\*[a-zA-Z0-9]``.
+
+        Raises:
+            ValueError: when the ``endpoint_name_prefix`` is invalid, ``accept_type`` is invalid,
+                 ``content_type`` is invalid, or ``content_template`` has no placeholder "features"
         """
         self.predictor_config = {
             "model_name": model_name,
@@ -280,28 +300,30 @@ class ModelPredictedLabelConfig:
         """Initializes a model output config to extract the predicted label or predicted score(s).
 
         The following examples show different parameter configurations depending on the endpoint:
-            * Regression Task: The model returns the score, e.g. 1.2. we don't need to specify
-                anything. For json output, e.g. {'score': 1.2} we can set 'label='score''.
 
-            * Binary classification:
-                * The model returns a single probability and we would like to classify as 'yes'
-                    those with a probability exceeding 0.2.
-                    We can set 'probability_threshold=0.2, label_headers='yes''.
-                * The model returns {'probability': 0.3}, for which we would like to apply a
-                    threshold of 0.5 to obtain a predicted label in {0, 1}. In this case we can set
-                    'label='probability''.
-                * The model returns a tuple of the predicted label and the probability.
-                    In this case we can set 'label=0'.
+        * **Regression task:**
+          The model returns the score, e.g. ``1.2``. We don't need to specify
+          anything. For json output, e.g. ``{'score': 1.2}``, we can set ``label='score'``.
+        * **Binary classification:**
 
-            * Multiclass classification:
-                * The model returns
-                    {'labels': ['cat', 'dog', 'fish'], 'probabilities': [0.35, 0.25, 0.4]}.
-                    In this case we would set the 'probability='probabilities'' and
-                    'label='labels'' and infer the predicted label to be 'fish.'
-                * The model returns {'predicted_label': 'fish', 'probabilities': [0.35, 0.25, 0.4]}.
-                    In this case we would set the 'label='predicted_label''.
-                * The model returns [0.35, 0.25, 0.4]. In this case, we can set
-                    'label_headers=['cat','dog','fish']' and infer the predicted label to be 'fish.'
+          * The model returns a single probability score. We want to classify as ``"yes"``
+            predictions with a probability score over ``0.2``.
+            We can set ``probability_threshold=0.2`` and ``label_headers="yes"``.
+          * The model returns ``{"probability": 0.3}``, for which we would like to apply a
+            threshold of ``0.5`` to obtain a predicted label in ``{0, 1}``.
+            In this case we can set ``label="probability"``.
+          * The model returns a tuple of the predicted label and the probability.
+            In this case we can set ``label = 0``.
+        * **Multiclass classification:**
+
+          * The model returns ``{'labels': ['cat', 'dog', 'fish'],
+            'probabilities': [0.35, 0.25, 0.4]}``. In this case we would set
+            ``probability='probabilities'``, ``label='labels'``,
+            and infer the predicted label to be ``'fish'``.
+          * The model returns ``{'predicted_label': 'fish', 'probabilities': [0.35, 0.25, 0.4]}``.
+            In this case we would set the ``label='predicted_label'``.
+          * The model returns ``[0.35, 0.25, 0.4]``. In this case, we can set
+            ``label_headers=['cat','dog','fish']`` and infer the predicted label to be ``'fish'``.
 
         Args:
             label (str or int): Index or JSONPath location in the model output for the prediction.
@@ -311,11 +333,14 @@ class ModelPredictedLabelConfig:
                 for the predicted score(s).
             probability_threshold (float): An optional value for binary prediction tasks in which
                 the model returns a probability, to indicate the threshold to convert the
-                prediction to a boolean value. Default is 0.5.
+                prediction to a boolean value. Default is ``0.5``.
             label_headers (list[str]): List of headers, each for a predicted score in model output.
                 For bias analysis, it is used to extract the label value with the highest score as
-                predicted label. For explainability job, It is used to beautify the analysis report
-                by replacing placeholders like "label0".
+                predicted label. For explainability jobs, it is used to beautify the analysis report
+                by replacing placeholders like ``'label0'``.
+
+        Raises:
+            TypeError: when the ``probability_threshold`` cannot be cast to a float
         """
         self.label = label
         self.probability = probability
@@ -335,7 +360,7 @@ class ModelPredictedLabelConfig:
         _set(label_headers, "label_headers", self.predictor_config)
 
     def get_predictor_config(self):
-        """Returns probability_threshold, predictor config."""
+        """Returns ``probability_threshold`` and predictor config dictionary."""
         return self.probability_threshold, copy.deepcopy(self.predictor_config)
 
 
@@ -351,41 +376,52 @@ class ExplainabilityConfig(ABC):
 class PDPConfig(ExplainabilityConfig):
     """Config class for Partial Dependence Plots (PDP).
 
-    If PDP is requested, the Partial Dependence Plots will be included in the report, and the
-    corresponding values will be included in the analysis output.
-    """
+    `PDPs <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-partial-dependence-plots.html>`_
+    show the marginal effect (the dependence) a subset of features has on the predicted
+    outcome of an ML model.
+
+    When PDP is requested (by passing in a :class:`~sagemaker.clarify.PDPConfig` to the
+    ``explainability_config`` parameter of :class:`~sagemaker.clarify.SageMakerClarifyProcessor`),
+    the Partial Dependence Plots are included in the output
+    `report <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-feature-attribute-baselines-reports.html>`__
+    and the corresponding values are included in the analysis output.
+    """  # noqa E501
 
     def __init__(self, features=None, grid_resolution=15, top_k_features=10):
-        """Initializes config for PDP.
+        """Initializes PDP config.
 
         Args:
-            features (None or list): List of features names or indices for which partial dependence
-                plots must be computed and plotted. When ShapConfig is provided, this parameter is
-                optional as Clarify will try to compute the partial dependence plots for top
-                feature based on SHAP attributions. When ShapConfig is not provided, 'features'
-                must be provided.
-            grid_resolution (int): In case of numerical features, this number represents that
-                number of buckets that range of values must be divided into. This decides the
+            features (None or list): List of feature names or indices for which partial dependence
+                plots are computed and plotted. When :class:`~sagemaker.clarify.ShapConfig`
+                is provided, this parameter is optional, as Clarify will compute the
+                partial dependence plots for top features based on
+                `SHAP <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-shapley-values.html>`__
+                attributions. When :class:`~sagemaker.clarify.ShapConfig` is not provided,
+                ``features`` must be provided.
+            grid_resolution (int): When using numerical features, this integer represents the
+                number of buckets that the range of values must be divided into. This decides the
                 granularity of the grid in which the PDP are plotted.
-            top_k_features (int): Set the number of top SHAP attributes to be selected to compute
+            top_k_features (int): Sets the number of top SHAP attributes used to compute
                 partial dependence plots.
-        """
+        """  # noqa E501
         self.pdp_config = {"grid_resolution": grid_resolution, "top_k_features": top_k_features}
         if features is not None:
             self.pdp_config["features"] = features
 
     def get_explainability_config(self):
-        """Returns config."""
+        """Returns PDP config dictionary."""
         return copy.deepcopy({"pdp": self.pdp_config})
 
 
 class TextConfig:
-    """Config object to handle text features.
+    """Config object to handle text features for text explainability
 
-    The SHAP analysis will break down longer text into chunks (e.g. tokens, sentences, or paragraphs
-    ) and replace them with the strings specified in the baseline for that feature. The shap value
+    `SHAP analysis <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-model-explainability.html>`__
+    breaks down longer text into chunks (e.g. tokens, sentences, or paragraphs)
+    and replaces them with the strings specified in the baseline for that feature.
+    The `shap value <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-shapley-values.html>`_
     of a chunk then captures how much replacing it affects the prediction.
-    """
+    """  # noqa E501  # pylint: disable=c0301
 
     _SUPPORTED_GRANULARITIES = ["token", "sentence", "paragraph"]
     _SUPPORTED_LANGUAGES = [
@@ -461,19 +497,28 @@ class TextConfig:
     ):
         """Initializes a text configuration.
 
-        Args: granularity (str): Determines the granularity in which text features are broken down
-        to, can be "token", "sentence", or "paragraph". Shap values are computed for these units.
-        language (str): Specifies the language of the text features, can be "chinese", "danish",
-        "dutch", "english", "french", "german", "greek", "italian", "japanese", "lithuanian",
-        "multi-language", "norwegian bokmål", "polish", "portuguese", "romanian", "russian",
-        "spanish", "afrikaans", "albanian", "arabic", "armenian", "basque", "bengali", "bulgarian",
-        "catalan", "croatian", "czech", "estonian", "finnish", "gujarati", "hebrew", "hindi",
-        "hungarian", "icelandic", "indonesian", "irish", "kannada", "kyrgyz", "latvian", "ligurian",
-        "luxembourgish", "macedonian", "malayalam", "marathi", "nepali", "persian", "sanskrit",
-        "serbian", "setswana", "sinhala", "slovak", "slovenian", "swedish", "tagalog", "tamil",
-        "tatar", "telugu", "thai", "turkish", "ukrainian", "urdu", "vietnamese", "yoruba". Use
-        "multi-language" for a mix of mulitple languages.
-        """
+        Args:
+            granularity (str): Determines the granularity in which text features are broken down
+                to. Accepted values are ``"token"``, ``"sentence"``, or ``"paragraph"``.
+                Computes `shap values <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-shapley-values.html>`_
+                for these units.
+            language (str): Specifies the language of the text features. Accepted values are
+                one of the following:
+                "chinese", "danish", "dutch", "english", "french", "german", "greek", "italian",
+                "japanese", "lithuanian", "multi-language", "norwegian bokmål", "polish",
+                "portuguese", "romanian", "russian", "spanish", "afrikaans", "albanian", "arabic",
+                "armenian", "basque", "bengali", "bulgarian", "catalan", "croatian", "czech",
+                "estonian", "finnish", "gujarati", "hebrew", "hindi", "hungarian", "icelandic",
+                "indonesian", "irish", "kannada", "kyrgyz", "latvian", "ligurian", "luxembourgish",
+                "macedonian", "malayalam", "marathi", "nepali", "persian", "sanskrit", "serbian",
+                "setswana", "sinhala", "slovak", "slovenian", "swedish", "tagalog", "tamil",
+                "tatar", "telugu", "thai", "turkish", "ukrainian", "urdu", "vietnamese", "yoruba".
+                Use "multi-language" for a mix of multiple languages.
+
+        Raises:
+            ValueError: when ``granularity`` is not in list of supported values
+                or ``language`` is not in list of supported values
+        """  # noqa E501  # pylint: disable=c0301
         if granularity not in TextConfig._SUPPORTED_GRANULARITIES:
             raise ValueError(
                 f"Invalid granularity {granularity}. Please choose among "
@@ -490,7 +535,7 @@ class TextConfig:
         }
 
     def get_text_config(self):
-        """Returns part of an analysis config dictionary."""
+        """Returns a text config dictionary, part of the analysis config dictionary."""
         return copy.deepcopy(self.text_config)
 
 
@@ -507,32 +552,46 @@ class ImageConfig:
         iou_threshold=None,
         context=None,
     ):
-        """Initializes all configuration parameters needed for SHAP CV explainability
+        """Initializes a config object for Computer Vision (CV) Image explainability.
+
+        `SHAP for CV explainability <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-model-explainability-computer-vision.html>`__.
+        generating heat maps that visualize feature attributions for input images.
+        These heat maps highlight the image's features according
+        to how much they contribute to the CV model prediction.
+
+        ``"IMAGE_CLASSIFICATION"`` and ``"OBJECT_DETECTION"`` are the two supported CV use cases.
 
         Args:
-            model_type (str): Specifies the type of CV model. Options:
-            (IMAGE_CLASSIFICATION | OBJECT_DETECTION).
-            num_segments (None or int): Clarify uses SKLearn's SLIC method for image segmentation
-            to generate features/superpixels. num_segments specifies approximate
-            number of segments to be generated. Default is None. SLIC will default to
-            100 segments.
+            model_type (str): Specifies the type of CV model and use case. Accepted options:
+                ``"IMAGE_CLASSIFICATION"`` or ``"OBJECT_DETECTION"``.
+            num_segments (None or int): Approximate number of segments to generate when running
+                SKLearn's `SLIC method <https://scikit-image.org/docs/dev/api/skimage.segmentation.html?highlight=slic#skimage.segmentation.slic>`_
+                for image segmentation to generate features/superpixels.
+                The default is None. When set to None, runs SLIC with 20 segments.
             feature_extraction_method (None or str): method used for extracting features from the
-            image.ex. "segmentation". Default is segmentation.
+                image (ex: "segmentation"). Default is ``"segmentation"``.
             segment_compactness (None or float): Balances color proximity and space proximity.
-            Higher values give more weight to space proximity, making superpixel
-            shapes more square/cubic. We recommend exploring possible values on a log
-            scale, e.g., 0.01, 0.1, 1, 10, 100, before refining around a chosen value.
-            max_objects (None or int): maximum number of objects displayed. Object detection
-            algorithm may detect more than max_objects number of objects in a single
-            image. The top max_objects number of objects according to confidence score
-            will be displayed.
-            iou_threshold (None or float): minimum intersection over union for the object
-            bounding box to consider its confidence score for computing SHAP values [0.0, 1.0].
-            This parameter is used for the object detection case.
-            context (None or float): refers to the portion of the image outside of the bounding box.
-            Scale is [0.0, 1.0]. If set to 1.0, whole image is considered, if set to
-            0.0 only the image inside bounding box is considered.
-        """
+                Higher values give more weight to space proximity, making superpixel
+                shapes more square/cubic. We recommend exploring possible values on a log
+                scale, e.g., 0.01, 0.1, 1, 10, 100, before refining around a chosen value.
+                The default is None. When set to None, runs with the default value of ``5``.
+            max_objects (None or int): Maximum number of objects displayed when running SHAP
+                with an ``"OBJECT_DETECTION"`` model. The Object detection algorithm may detect
+                more than the ``max_objects`` number of objects in a single image.
+                In that case, the algorithm displays the top ``max_objects`` number of objects
+                according to confidence score. Default value is None. In the ``"OBJECT_DETECTION"``
+                case, passing in None leads to a default value of ``3``.
+            iou_threshold (None or float): Minimum intersection over union for the object
+                bounding box to consider its confidence score for computing SHAP values,
+                in the range ``[0.0, 1.0]``. Used only for the ``"OBJECT_DETECTION"`` case,
+                where passing in None sets the default value of ``0.5``.
+            context (None or float): The portion of the image outside the bounding box used
+                in SHAP analysis, in the range ``[0.0, 1.0]``. If set to ``1.0``, the whole image
+                is considered; if set to ``0.0`` only the image inside bounding box is considered.
+                Only used for the ``"OBJECT_DETECTION"`` case,
+                when passing in None sets the default value of ``1.0``.
+
+        """  # noqa E501  # pylint: disable=c0301
         self.image_config = {}
 
         if model_type not in ["OBJECT_DETECTION", "IMAGE_CLASSIFICATION"]:
@@ -554,7 +613,15 @@ class ImageConfig:
 
 
 class SHAPConfig(ExplainabilityConfig):
-    """Config class of SHAP."""
+    """Config class for `SHAP <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-model-explainability.html>`__.
+
+    The SHAP algorithm calculates feature attributions by computing
+    the contribution of each feature to the prediction outcome, using the concept of
+    `Shapley values <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-shapley-values.html>`_.
+
+    These attributions can be provided for specific predictions (locally)
+    and at a global level for the model as a whole.
+    """  # noqa E501  # pylint: disable=c0301
 
     def __init__(
         self,
@@ -568,38 +635,41 @@ class SHAPConfig(ExplainabilityConfig):
         text_config=None,
         image_config=None,
     ):
-        """Initializes config for SHAP.
+        """Initializes config for SHAP analysis.
 
         Args:
-            baseline (None or str or list): None or S3 object Uri or A list of rows (at least one)
-                to be used asthe baseline dataset in the Kernel SHAP algorithm. The format should
-                be the same as the dataset format. Each row should contain only the feature
-                columns/values and omit the label column/values. If None a baseline will be
-                calculated automatically by using K-means or K-prototypes in the input dataset.
+            baseline (None or str or list): `Baseline dataset <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-feature-attribute-shap-baselines.html>`_
+                for the Kernel SHAP algorithm, accepted in the form of:
+                S3 object URI, a list of rows (with at least one element),
+                or None (for no input baseline). The baseline dataset must have the same format
+                as the input dataset specified in :class:`~sagemaker.clarify.DataConfig`.
+                Each row must have only the feature columns/values and omit the label column/values.
+                If None, a baseline will be calculated automatically on the input dataset
+                using K-means (for numerical data) or K-prototypes (if there is categorical data).
             num_samples (None or int): Number of samples to be used in the Kernel SHAP algorithm.
                 This number determines the size of the generated synthetic dataset to compute the
                 SHAP values. If not provided then Clarify job will choose a proper value according
                 to the count of features.
             agg_method (None or str): Aggregation method for global SHAP values. Valid values are
-                "mean_abs" (mean of absolute SHAP values for all instances),
-                "median" (median of SHAP values for all instances) and
-                "mean_sq" (mean of squared SHAP values for all instances).
-                If not provided then Clarify job uses method "mean_abs"
-            use_logit (bool): Indicator of whether the logit function is to be applied to the model
-                predictions. Default is False. If "use_logit" is true then the SHAP values will
+                ``"mean_abs"`` (mean of absolute SHAP values for all instances),
+                ``"median"`` (median of SHAP values for all instances) and
+                ``"mean_sq"`` (mean of squared SHAP values for all instances).
+                If None is provided, then Clarify job uses the method ``"mean_abs"``.
+            use_logit (bool): Indicates whether to apply the logit function to model predictions.
+                Default is False. If ``use_logit`` is true then the SHAP values will
                 have log-odds units.
-            save_local_shap_values (bool): Indicator of whether to save the local SHAP values
+            save_local_shap_values (bool): Indicates whether to save the local SHAP values
                 in the output location. Default is True.
-            seed (int): seed value to get deterministic SHAP values. Default is None.
-            num_clusters (None or int): If a baseline is not provided, Clarify automatically
-                computes a baseline dataset via a clustering algorithm (K-means/K-prototypes).
-                num_clusters is a parameter for this algorithm. num_clusters will be the resulting
-                size of the baseline dataset. If not provided, Clarify job will use a default value.
-            text_config (:class:`~sagemaker.clarify.TextConfig`): Config to handle text features.
-                Default is None
-            image_config (:class:`~sagemaker.clarify.ImageConfig`): Config to handle image features.
-                Default is None
-        """
+            seed (int): Seed value to get deterministic SHAP values. Default is None.
+            num_clusters (None or int): If a ``baseline`` is not provided, Clarify automatically
+                computes a baseline dataset via a clustering algorithm (K-means/K-prototypes), which
+                takes ``num_clusters`` as a parameter. ``num_clusters`` will be the resulting size
+                of the baseline dataset. If not provided, Clarify job uses a default value.
+            text_config (:class:`~sagemaker.clarify.TextConfig`): Config object for handling
+                text features. Default is None.
+            image_config (:class:`~sagemaker.clarify.ImageConfig`): Config for handling image
+                features. Default is None.
+        """  # noqa E501  # pylint: disable=c0301
         if agg_method is not None and agg_method not in ["mean_abs", "median", "mean_sq"]:
             raise ValueError(
                 f"Invalid agg_method {agg_method}." f" Please choose mean_abs, median, or mean_sq."
@@ -630,12 +700,12 @@ class SHAPConfig(ExplainabilityConfig):
             _set(image_config.get_image_config(), "image_config", self.shap_config)
 
     def get_explainability_config(self):
-        """Returns config."""
+        """Returns a shap config dictionary."""
         return copy.deepcopy({"shap": self.shap_config})
 
 
 class SageMakerClarifyProcessor(Processor):
-    """Handles SageMaker Processing task to compute bias metrics and explain a model."""
+    """Handles SageMaker Processing tasks to compute bias metrics and model explanations."""
 
     _CLARIFY_DATA_INPUT = "/opt/ml/processing/input/data"
     _CLARIFY_CONFIG_INPUT = "/opt/ml/processing/input/config"
@@ -657,7 +727,9 @@ class SageMakerClarifyProcessor(Processor):
         job_name_prefix=None,
         version=None,
     ):
-        """Initializes a ``Processor`` instance, computing bias metrics and model explanations.
+        """Initializes a SageMakerClarifyProcessor to compute bias metrics and model explanations.
+
+        Instance of :class:`~sagemaker.processing.Processor`.
 
         Args:
             role (str): An AWS IAM role name or ARN. Amazon SageMaker Processing
@@ -666,7 +738,7 @@ class SageMakerClarifyProcessor(Processor):
             instance_count (int): The number of instances to run
                 a processing job with.
             instance_type (str): The type of EC2 instance to use for
-                processing, for example, 'ml.c4.xlarge'.
+                processing, for example, ``'ml.c4.xlarge'``.
             volume_size_in_gb (int): Size in GB of the EBS volume
                 to use for storing data during processing (default: 30).
             volume_kms_key (str): A KMS key for the processing
@@ -674,12 +746,13 @@ class SageMakerClarifyProcessor(Processor):
             output_kms_key (str): The KMS key ID for processing job outputs (default: None).
             max_runtime_in_seconds (int): Timeout in seconds (default: None).
                 After this amount of time, Amazon SageMaker terminates the job,
-                regardless of its current status. If `max_runtime_in_seconds` is not
-                specified, the default value is 24 hours.
+                regardless of its current status. If ``max_runtime_in_seconds`` is not
+                specified, the default value is ``86400`` seconds (24 hours).
             sagemaker_session (:class:`~sagemaker.session.Session`):
-                Session object which manages interactions with Amazon SageMaker and
-                any other AWS services needed. If not specified, the processor creates
-                one using the default AWS configuration chain.
+                :class:`~sagemaker.session.Session` object which manages interactions
+                with Amazon SageMaker and any other AWS services needed. If not specified,
+                the Processor creates a :class:`~sagemaker.session.Session`
+                using the default AWS configuration chain.
             env (dict[str, str]): Environment variables to be passed to
                 the processing jobs (default: None).
             tags (list[dict]): List of tags to be passed to the processing job
@@ -690,7 +763,7 @@ class SageMakerClarifyProcessor(Processor):
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
             job_name_prefix (str): Processing job name prefix.
-            version (str): Clarify version want to be used.
+            version (str): Clarify version to use.
         """
         container_uri = image_uris.retrieve("clarify", sagemaker_session.boto_region_name, version)
         self.job_name_prefix = job_name_prefix
@@ -728,7 +801,9 @@ class SageMakerClarifyProcessor(Processor):
         kms_key,
         experiment_config,
     ):
-        """Runs a ProcessingJob with the Sagemaker Clarify container and an analysis config.
+        """Runs a :class:`~sagemaker.processing.ProcessingJob` with the SageMaker Clarify container
+
+        and analysis config.
 
         Args:
             data_config (:class:`~sagemaker.clarify.DataConfig`): Config of the input/output data.
@@ -741,15 +816,16 @@ class SageMakerClarifyProcessor(Processor):
                 user code file (default: None).
             experiment_config (dict[str, str]): Experiment management configuration.
                 Optionally, the dict can contain three keys:
-                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                ``'ExperimentName'``, ``'TrialName'``, and ``'TrialComponentDisplayName'``.
+
                 The behavior of setting these keys is as follows:
-                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
-                automatically created and the job's Trial Component associated with the Trial.
-                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
-                will be associated with the Trial.
-                * If both `ExperimentName` and `TrialName` are not supplied the trial component
-                will be unassociated.
-                * `TrialComponentDisplayName` is used for display in Studio.
+                * If ``'ExperimentName'`` is supplied but ``'TrialName'`` is not, a Trial will be
+                  automatically created and the job's Trial Component associated with the Trial.
+                * If ``'TrialName'`` is supplied and the Trial already exists,
+                  the job's Trial Component will be associated with the Trial.
+                * If both ``'ExperimentName'`` and ``'TrialName'`` are not supplied,
+                  the Trial Component will be unassociated.
+                * ``'TrialComponentDisplayName'`` is used for display in Amazon SageMaker Studio.
         """
         analysis_config["methods"]["report"] = {
             "name": "report",
@@ -810,15 +886,15 @@ class SageMakerClarifyProcessor(Processor):
         kms_key=None,
         experiment_config=None,
     ):
-        """Runs a ProcessingJob to compute the pre-training bias methods of the input data.
+        """Runs a :class:`~sagemaker.processing.ProcessingJob` to compute pre-training bias methods
 
-        Computes the requested methods that compare 'methods' (e.g. fraction of examples) for the
-        sensitive group vs the other examples.
+        Computes the requested ``methods`` on the input data. The ``methods`` compare
+        metrics (e.g. fraction of examples) for the sensitive group(s) vs. the other examples.
 
         Args:
             data_config (:class:`~sagemaker.clarify.DataConfig`): Config of the input/output data.
             data_bias_config (:class:`~sagemaker.clarify.BiasConfig`): Config of sensitive groups.
-            methods (str or list[str]): Selector of a subset of potential metrics:
+            methods (str or list[str]): Selects a subset of potential metrics:
                 ["`CI <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-bias-metric-class-imbalance.html>`_",
                 "`DPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-true-label-imbalance.html>`_",
                 "`KL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-kl-divergence.html>`_",
@@ -831,24 +907,26 @@ class SageMakerClarifyProcessor(Processor):
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when ``wait`` is True (default: True).
-            job_name (str): Processing job name. When ``job_name`` is not specified, if
-                ``job_name_prefix`` in :class:`SageMakerClarifyProcessor` specified, the job name
-                will be composed of ``job_name_prefix`` and current timestamp; otherwise use
-                "Clarify-Pretraining-Bias" as prefix.
+            job_name (str): Processing job name. When ``job_name`` is not specified,
+                if ``job_name_prefix`` in :class:`~sagemaker.clarify.SageMakerClarifyProcessor` is
+                specified, the job name will be the ``job_name_prefix`` and current timestamp;
+                otherwise use ``"Clarify-Pretraining-Bias"`` as prefix.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
             experiment_config (dict[str, str]): Experiment management configuration.
                 Optionally, the dict can contain three keys:
-                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                ``'ExperimentName'``, ``'TrialName'``, and ``'TrialComponentDisplayName'``.
+
                 The behavior of setting these keys is as follows:
-                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
-                automatically created and the job's Trial Component associated with the Trial.
-                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
-                will be associated with the Trial.
-                * If both `ExperimentName` and `TrialName` are not supplied the trial component
-                will be unassociated.
-                * `TrialComponentDisplayName` is used for display in Studio.
-        """  # noqa E501
+
+                * If ``'ExperimentName'`` is supplied but ``'TrialName'`` is not, a Trial will be
+                  automatically created and the job's Trial Component associated with the Trial.
+                * If ``'TrialName'`` is supplied and the Trial already exists,
+                  the job's Trial Component will be associated with the Trial.
+                * If both ``'ExperimentName'`` and ``'TrialName'`` are not supplied,
+                  the Trial Component will be unassociated.
+                * ``'TrialComponentDisplayName'`` is used for display in Amazon SageMaker Studio.
+        """  # noqa E501  # pylint: disable=c0301
         analysis_config = data_config.get_config()
         analysis_config.update(data_bias_config.get_config())
         analysis_config["methods"] = {"pre_training_bias": {"methods": methods}}
@@ -880,12 +958,13 @@ class SageMakerClarifyProcessor(Processor):
         kms_key=None,
         experiment_config=None,
     ):
-        """Runs a ProcessingJob to compute the post-training bias methods of the model predictions.
+        """Runs a :class:`~sagemaker.processing.ProcessingJob` to compute posttraining bias
 
-        Spins up a model endpoint, runs inference over the input example in the
-        's3_data_input_path' to obtain predicted labels. Computes a the requested methods that
-        compare 'methods' (e.g. accuracy, precision, recall) for the sensitive group vs the other
-        examples.
+        Spins up a model endpoint and runs inference over the input dataset in
+        the ``s3_data_input_path`` (from the :class:`~sagemaker.clarify.DataConfig`) to obtain
+        predicted labels. Using model predictions, computes the requested posttraining bias
+        ``methods`` that compare metrics (e.g. accuracy, precision, recall) for the
+        sensitive group(s) versus the other examples.
 
         Args:
             data_config (:class:`~sagemaker.clarify.DataConfig`): Config of the input/output data.
@@ -910,24 +989,26 @@ class SageMakerClarifyProcessor(Processor):
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when ``wait`` is True (default: True).
-            job_name (str): Processing job name. When ``job_name`` is not specified, if
-                ``job_name_prefix`` in :class:`SageMakerClarifyProcessor` specified, the job name
-                will be composed of ``job_name_prefix`` and current timestamp; otherwise use
-                "Clarify-Posttraining-Bias" as prefix.
+            job_name (str): Processing job name. When ``job_name`` is not specified,
+                if ``job_name_prefix`` in :class:`~sagemaker.clarify.SageMakerClarifyProcessor`
+                is specified, the job name will be the ``job_name_prefix`` and current timestamp;
+                otherwise use ``"Clarify-Posttraining-Bias"`` as prefix.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
             experiment_config (dict[str, str]): Experiment management configuration.
                 Optionally, the dict can contain three keys:
-                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                ``'ExperimentName'``, ``'TrialName'``, and ``'TrialComponentDisplayName'``.
+
                 The behavior of setting these keys is as follows:
-                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
-                automatically created and the job's Trial Component associated with the Trial.
-                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
-                will be associated with the Trial.
-                * If both `ExperimentName` and `TrialName` are not supplied the trial component
-                will be unassociated.
-                * `TrialComponentDisplayName` is used for display in Studio.
-        """
+
+                * If ``'ExperimentName'`` is supplied but ``'TrialName'`` is not, a Trial will be
+                  automatically created and the job's Trial Component associated with the Trial.
+                * If ``'TrialName'`` is supplied and the Trial already exists,
+                  the job's Trial Component will be associated with the Trial.
+                * If both ``'ExperimentName'`` and ``'TrialName'`` are not supplied,
+                  the Trial Component will be unassociated.
+                * ``'TrialComponentDisplayName'`` is used for display in Amazon SageMaker Studio.
+        """  # noqa E501  # pylint: disable=c0301
         analysis_config = data_config.get_config()
         analysis_config.update(data_bias_config.get_config())
         (
@@ -967,11 +1048,12 @@ class SageMakerClarifyProcessor(Processor):
         kms_key=None,
         experiment_config=None,
     ):
-        """Runs a ProcessingJob to compute the requested bias methods.
+        """Runs a :class:`~sagemaker.processing.ProcessingJob` to compute the requested bias methods
 
-        It computes the metrics of both the pre-training methods and the post-training methods.
-        To calculate post-training methods, it needs to spin up a model endpoint, runs inference
-        over the input example in the 's3_data_input_path' to obtain predicted labels.
+        Computes metrics for both the pre-training and the post-training methods.
+        To calculate post-training methods, it spins up a model endpoint and runs inference over the
+        input examples in 's3_data_input_path' (from the :class:`~sagemaker.clarify.DataConfig`)
+        to obtain predicted labels.
 
         Args:
             data_config (:class:`~sagemaker.clarify.DataConfig`): Config of the input/output data.
@@ -1006,24 +1088,26 @@ class SageMakerClarifyProcessor(Processor):
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when ``wait`` is True (default: True).
-            job_name (str): Processing job name. When ``job_name`` is not specified, if
-                ``job_name_prefix`` in :class:`SageMakerClarifyProcessor` specified, the job name
-                will be composed of ``job_name_prefix`` and current timestamp; otherwise use
-                "Clarify-Bias" as prefix.
+            job_name (str): Processing job name. When ``job_name`` is not specified,
+                if ``job_name_prefix`` in :class:`~sagemaker.clarify.SageMakerClarifyProcessor` is
+                specified, the job name will be ``job_name_prefix`` and the current timestamp;
+                otherwise use ``"Clarify-Bias"`` as prefix.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
             experiment_config (dict[str, str]): Experiment management configuration.
                 Optionally, the dict can contain three keys:
-                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                ``'ExperimentName'``, ``'TrialName'``, and ``'TrialComponentDisplayName'``.
+
                 The behavior of setting these keys is as follows:
-                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
-                automatically created and the job's Trial Component associated with the Trial.
-                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
-                will be associated with the Trial.
-                * If both `ExperimentName` and `TrialName` are not supplied the trial component
-                will be unassociated.
-                * `TrialComponentDisplayName` is used for display in Studio.
-        """  # noqa E501
+
+                * If ``'ExperimentName'`` is supplied but ``'TrialName'`` is not, a Trial will be
+                  automatically created and the job's Trial Component associated with the Trial.
+                * If ``'TrialName'`` is supplied and the Trial already exists,
+                  the job's Trial Component will be associated with the Trial.
+                * If both ``'ExperimentName'`` and ``'TrialName'`` are not supplied,
+                  the Trial Component will be unassociated.
+                * ``'TrialComponentDisplayName'`` is used for display in Amazon SageMaker Studio.
+        """  # noqa E501  # pylint: disable=c0301
         analysis_config = data_config.get_config()
         analysis_config.update(bias_config.get_config())
         analysis_config["predictor"] = model_config.get_predictor_config()
@@ -1068,50 +1152,65 @@ class SageMakerClarifyProcessor(Processor):
         kms_key=None,
         experiment_config=None,
     ):
-        """Runs a ProcessingJob computing for each example in the input the feature importance.
-
-        Currently, only SHAP is supported as explainability method.
+        """Runs a :class:`~sagemaker.processing.ProcessingJob` computing feature attributions.
 
         Spins up a model endpoint.
-        For each input example in the 's3_data_input_path' the SHAP algorithm determines
-        feature importance, by creating 'num_samples' copies of the example with a subset
-        of features replaced with values from the 'baseline'.
-        Model inference is run to see how the prediction changes with the replaced features.
-        If the model output returns multiple scores importance is computed for each of them.
-        Across examples, feature importance is aggregated using 'agg_method'.
+
+        Currently, only SHAP and  Partial Dependence Plots (PDP) are supported
+        as explainability methods.
+
+        When SHAP is requested in the ``explainability_config``,
+        the SHAP algorithm calculates the feature importance for each input example
+        in the ``s3_data_input_path`` of the :class:`~sagemaker.clarify.DataConfig`,
+        by creating ``num_samples`` copies of the example with a subset of features
+        replaced with values from the ``baseline``.
+        It then runs model inference to see how the model's prediction changes with the replaced
+        features. If the model output returns multiple scores importance is computed for each score.
+        Across examples, feature importance is aggregated using ``agg_method``.
+
+        When PDP is requested in the ``explainability_config``,
+        the PDP algorithm calculates the dependence of the target response
+        on the input features and marginalizes over the values of all other input features.
+        The Partial Dependence Plots are included in the output
+        `report <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-feature-attribute-baselines-reports.html>`__
+        and the corresponding values are included in the analysis output.
 
         Args:
             data_config (:class:`~sagemaker.clarify.DataConfig`): Config of the input/output data.
             model_config (:class:`~sagemaker.clarify.ModelConfig`): Config of the model and its
                 endpoint to be created.
             explainability_config (:class:`~sagemaker.clarify.ExplainabilityConfig` or list):
-                Config of the specific explainability method or a list of ExplainabilityConfig
-                objects. Currently, SHAP and PDP are the two methods supported.
+                Config of the specific explainability method or a list of
+                :class:`~sagemaker.clarify.ExplainabilityConfig` objects.
+                Currently, SHAP and PDP are the two methods supported.
             model_scores (int or str or :class:`~sagemaker.clarify.ModelPredictedLabelConfig`):
                 Index or JSONPath to locate the predicted scores in the model output. This is not
                 required if the model output is a single score. Alternatively, it can be an instance
-                of ModelPredictedLabelConfig to provide more parameters like label_headers.
+                of :class:`~sagemaker.clarify.SageMakerClarifyProcessor`
+                to provide more parameters like ``label_headers``.
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when ``wait`` is True (default: True).
-            job_name (str): Processing job name. When ``job_name`` is not specified, if
-                ``job_name_prefix`` in :class:`SageMakerClarifyProcessor` specified, the job name
-                will be composed of ``job_name_prefix`` and current timestamp; otherwise use
-                "Clarify-Explainability" as prefix.
+            job_name (str): Processing job name. When ``job_name`` is not specified,
+                if ``job_name_prefix`` in :class:`~sagemaker.clarify.SageMakerClarifyProcessor`
+                is specified, the job name will be composed of ``job_name_prefix`` and current
+                timestamp; otherwise use ``"Clarify-Explainability"`` as prefix.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
             experiment_config (dict[str, str]): Experiment management configuration.
                 Optionally, the dict can contain three keys:
-                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                ``'ExperimentName'``, ``'TrialName'``, and ``'TrialComponentDisplayName'``.
+
                 The behavior of setting these keys is as follows:
-                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
-                automatically created and the job's Trial Component associated with the Trial.
-                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
-                will be associated with the Trial.
-                * If both `ExperimentName` and `TrialName` are not supplied the trial component
-                will be unassociated.
-                * `TrialComponentDisplayName` is used for display in Studio.
-        """
+
+                * If ``'ExperimentName'`` is supplied but ``'TrialName'`` is not, a Trial will be
+                  automatically created and the job's Trial Component associated with the Trial.
+                * If ``'TrialName'`` is supplied and the Trial already exists,
+                  the job's Trial Component will be associated with the Trial.
+                * If both ``'ExperimentName'`` and ``'TrialName'`` are not supplied,
+                  the Trial Component will be unassociated.
+                * ``'TrialComponentDisplayName'`` is used for display in Amazon SageMaker Studio.
+        """  # noqa E501  # pylint: disable=c0301
         analysis_config = data_config.get_config()
         predictor_config = model_config.get_predictor_config()
         if isinstance(model_scores, ModelPredictedLabelConfig):
@@ -1165,20 +1264,21 @@ class SageMakerClarifyProcessor(Processor):
 
 
 def _upload_analysis_config(analysis_config_file, s3_output_path, sagemaker_session, kms_key):
-    """Uploads the local analysis_config_file to the s3_output_path.
+    """Uploads the local ``analysis_config_file`` to the ``s3_output_path``.
 
     Args:
         analysis_config_file (str): File path to the local analysis config file.
         s3_output_path (str): S3 prefix to store the analysis config file.
         sagemaker_session (:class:`~sagemaker.session.Session`):
-            Session object which manages interactions with Amazon SageMaker and
-            any other AWS services needed. If not specified, the processor creates
-            one using the default AWS configuration chain.
+            :class:`~sagemaker.session.Session` object which manages interactions with
+            Amazon SageMaker and any other AWS services needed. If not specified,
+            the processor creates a :class:`~sagemaker.session.Session`
+            using the default AWS configuration chain.
         kms_key (str): The ARN of the KMS key that is used to encrypt the
             user code file (default: None).
 
     Returns:
-        The S3 uri of the uploaded file.
+        The S3 URI of the uploaded file.
     """
     return s3.S3Uploader.upload(
         local_path=analysis_config_file,
