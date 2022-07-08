@@ -97,12 +97,12 @@ class Edge:
 
         Format:
             {
-                'source_arn': 'string', 'destination_arn': 'string', 
+                'source_arn': 'string', 'destination_arn': 'string',
                 'association_type': 'string'
             }
-        
+
         """
-        return (str(self.__dict__))
+        return str(self.__dict__)
 
 
 class Vertex:
@@ -147,13 +147,13 @@ class Vertex:
 
         Format:
             {
-                'arn': 'string', 'lineage_entity': 'string', 
-                'lineage_source': 'string', 
+                'arn': 'string', 'lineage_entity': 'string',
+                'lineage_source': 'string',
                 '_session': <sagemaker.session.Session object>
             }
-        
+
         """
-        return (str(self.__dict__))
+        return str(self.__dict__)
 
     def to_lineage_object(self):
         """Convert the ``Vertex`` object to its corresponding lineage object.
@@ -226,29 +226,122 @@ class LineageQueryResult(object):
 
     def __str__(self):
         """Define string representation of ``LineageQueryResult``.
-        
+
         Format:
         {
             'edges':[
                 {
-                    'source_arn': 'string', 'destination_arn': 'string', 
+                    'source_arn': 'string', 'destination_arn': 'string',
                     'association_type': 'string'
                 },
                 ...
             ]
             'vertices':[
                 {
-                    'arn': 'string', 'lineage_entity': 'string', 
-                    'lineage_source': 'string', 
+                    'arn': 'string', 'lineage_entity': 'string',
+                    'lineage_source': 'string',
                     '_session': <sagemaker.session.Session object>
                 },
                 ...
             ]
         }
-        
+
         """
         result_dict = vars(self)
-        return (str({k: [vars(val) for val in v] for k, v in result_dict.items()}))
+        return str({k: [vars(val) for val in v] for k, v in result_dict.items()})
+
+    def _import_visual_modules(self):
+        """Import modules needed for visualization."""
+        import dash_cytoscape as cyto
+
+        from jupyter_dash import JupyterDash
+
+        from dash import html
+
+        return cyto, JupyterDash, html
+
+    def _get_verts(self):
+        """Convert vertices to tuple format for visualizer"""
+        verts = []
+        for vert in self.vertices:
+            verts.append((vert.arn, vert.lineage_source))
+        return verts
+
+    def _get_edges(self):
+        """Convert edges to tuple format for visualizer"""
+        edges = []
+        for edge in self.edges:
+            edges.append((edge.source_arn, edge.destination_arn, edge.association_type))
+        return edges
+
+    def visualize(self):
+        """Visualize lineage query result."""
+
+        cyto, JupyterDash, html = self._import_visual_modules()
+
+        cyto.load_extra_layouts()  # load "klay" layout (hierarchical layout) from extra layouts
+        app = JupyterDash(__name__)
+
+        verts = self._get_verts()
+        edges = self._get_edges()
+
+        nodes = [
+            {
+                "data": {"id": id, "label": label},
+            }
+            for id, label in verts
+        ]
+
+        edges = [
+            {
+                "data": {"source": source, "target": target, "label": label}
+            } 
+            for source, target, label in edges
+        ]
+
+        elements = nodes + edges
+
+        app.layout = html.Div(
+            [
+                cyto.Cytoscape(
+                    id="cytoscape-layout-1",
+                    elements=elements,
+                    style={"width": "100%", "height": "350px"},
+                    layout={"name": "klay"},
+                    stylesheet=[
+                        {
+                            "selector": "node", 
+                            "style": {
+                                "label": "data(label)", 
+                                "font-size": "3.5vw", 
+                                "height": "10vw",
+                                "width": "10vw"
+                            }
+                        },
+                        {
+                            "selector": "edge",
+                            "style": {
+                                "label": "data(label)",
+                                "color": "gray",
+                                "text-halign": "left",
+                                "text-margin-y": "3px",
+                                "text-margin-x": "-2px",
+                                "font-size": "3%",
+                                "width": "1%",
+                                "curve-style": "taxi",
+                                "target-arrow-color": "gray",
+                                "target-arrow-shape": "triangle",
+                                "line-color": "gray",
+                                "arrow-scale": "0.5"
+                            },
+                        },
+                    ],
+                    responsive=True,
+                )
+            ]
+        )
+
+        return app.run_server(mode="inline")
 
 
 class LineageFilter(object):
