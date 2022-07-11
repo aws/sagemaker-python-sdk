@@ -39,6 +39,7 @@ class PyTorch(Framework):
 
     _framework_name = "pytorch"
     LAUNCH_PYTORCH_DDP_ENV_NAME = "sagemaker_pytorch_ddp_enabled"
+    INSTANCE_TYPE = "sagemaker_instance_type"
 
     def __init__(
         self,
@@ -227,6 +228,8 @@ class PyTorch(Framework):
                 training_instance_type=instance_type, distribution=distribution
             )
 
+            self.instance_type = instance_type
+
         if "enable_sagemaker_metrics" not in kwargs:
             # enable sagemaker metrics for PT v1.3 or greater:
             if self.framework_version and Version(self.framework_version) >= Version("1.3"):
@@ -259,6 +262,8 @@ class PyTorch(Framework):
         if "pytorchddp" in distribution:
             pytorch_ddp_enabled = distribution.get("pytorchddp").get("enabled", False)
             distribution_config[self.LAUNCH_PYTORCH_DDP_ENV_NAME] = pytorch_ddp_enabled
+            LOGGER.info("viskaria Setting instance type to: %s", self.instance_type)
+            distribution_config[self.INSTANCE_TYPE] = self.instance_type
         else:
             distribution_config = self._distribution_configuration(distribution=distribution)
         return distribution_config
