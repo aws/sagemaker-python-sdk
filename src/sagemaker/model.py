@@ -679,7 +679,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             self._base_name = (
                 self._base_name
                 or get_jumpstart_base_name_if_jumpstart_model(script_uri, model_uri)
-                or utils.base_name_from_image(image_uri)
+                or utils.base_name_from_image(image_uri, default_base_name=Model.__name__)
             )
 
     def _set_model_name_if_needed(self):
