@@ -201,7 +201,6 @@ class PyTorch(Framework):
             :class:`~sagemaker.estimator.Framework` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
-        logger.info('Calling viskaria fork of python sdk.')
         validate_version_or_image_args(framework_version, py_version, image_uri)
         if py_version == "py2":
             logger.warning(
@@ -211,9 +210,6 @@ class PyTorch(Framework):
         self.py_version = py_version
 
         if distribution is not None:
-            logger.info(
-                        "viskaria distribution is: %s", distribution
-                    )
             instance_type = renamed_kwargs(
                 "train_instance_type", "instance_type", kwargs.get("instance_type"), kwargs
             )
@@ -261,10 +257,7 @@ class PyTorch(Framework):
         """
         distribution_config = {}
         if "pytorchddp" in distribution:
-            logger.info("viskaria pytorchddp found in distribution")
-            pytorch_ddp_dict = distribution["pytorchddp"]
             pytorch_ddp_enabled = distribution.get("pytorchddp").get("enabled", False)
-            logger.info("viskaria pytorch_ddp_enabled is %s", pytorch_ddp_enabled)
             distribution_config[self.LAUNCH_PYTORCH_DDP_ENV_NAME] = pytorch_ddp_enabled
         else:
             distribution_config = self._distribution_configuration(distribution=distribution)
