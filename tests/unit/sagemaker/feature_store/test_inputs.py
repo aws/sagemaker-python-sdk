@@ -19,6 +19,7 @@ from sagemaker.feature_store.inputs import (
     S3StorageConfig,
     DataCatalogConfig,
     OfflineStoreConfig,
+    FeatureParameter,
 )
 
 
@@ -83,3 +84,8 @@ def test_offline_data_store_config():
             "DisableGlueTableCreation": False,
         }
     )
+
+
+def test_feature_metadata():
+    config = FeatureParameter(key="key", value="value")
+    assert ordered(config.to_dict()) == ordered({"Key": "key", "Value": "value"})

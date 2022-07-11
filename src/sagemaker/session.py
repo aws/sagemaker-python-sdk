@@ -4085,7 +4085,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """Describe a FeatureGroup by name in FeatureStore service.
 
         Args:
-            feature_group_name (str): name of the FeatureGroup to descibe.
+            feature_group_name (str): name of the FeatureGroup to describe.
             next_token (str): next_token to get next page of features.
         Returns:
             Response dict from service.
@@ -4094,6 +4094,72 @@ class Session(object):  # pylint: disable=too-many-public-methods
         kwargs = dict(FeatureGroupName=feature_group_name)
         update_args(kwargs, NextToken=next_token)
         return self.sagemaker_client.describe_feature_group(**kwargs)
+
+    def update_feature_group(
+        self, feature_group_name: str, feature_additions: Sequence[Dict[str, str]]
+    ) -> Dict[str, Any]:
+        """Update a FeatureGroup and add new features from the given feature definitions.
+
+        Args:
+            feature_group_name (str): name of the FeatureGroup to update.
+            feature_additions (Sequence[Dict[str, str]): list of feature definitions to be updated.
+        Returns:
+            Response dict from service.
+        """
+
+        return self.sagemaker_client.update_feature_group(
+            FeatureGroupName=feature_group_name, FeatureAdditions=feature_additions
+        )
+
+    def update_feature_metadata(
+        self,
+        feature_group_name: str,
+        feature_name: str,
+        description: str = None,
+        parameter_additions: Sequence[Dict[str, str]] = None,
+        parameter_removals: Sequence[str] = None,
+    ) -> Dict[str, Any]:
+        """Update a feature metadata and add/remove metadata.
+
+        Args:
+            feature_group_name (str): name of the FeatureGroup to update.
+            feature_name (str): name of the feature to update.
+            description (str): description of the feature to update.
+            parameter_additions (Sequence[Dict[str, str]): list of feature parameter to be added.
+            parameter_removals (Sequence[Dict[str, str]): list of feature parameter to be removed.
+        Returns:
+            Response dict from service.
+        """
+
+        request = {
+            "FeatureGroupName": feature_group_name,
+            "FeatureName": feature_name,
+        }
+
+        if description is not None:
+            request["Description"] = description
+        if parameter_additions is not None:
+            request["ParameterAdditions"] = parameter_additions
+        if parameter_removals is not None:
+            request["ParameterRemovals"] = parameter_removals
+
+        return self.sagemaker_client.update_feature_metadata(**request)
+
+    def describe_feature_metadata(
+        self, feature_group_name: str, feature_name: str
+    ) -> Dict[str, Any]:
+        """Describe feature metadata by feature name in FeatureStore service.
+
+        Args:
+            feature_group_name (str): name of the FeatureGroup.
+            feature_name (str): name of the feature.
+        Returns:
+            Response dict from service.
+        """
+
+        return self.sagemaker_client.describe_feature_metadata(
+            FeatureGroupName=feature_group_name, FeatureName=feature_name
+        )
 
     def put_record(
         self,
