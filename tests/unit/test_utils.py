@@ -29,6 +29,8 @@ from mock import call, patch, Mock, MagicMock
 
 import sagemaker
 from sagemaker.session_settings import SessionSettings
+from tests.unit.sagemaker.workflow.helpers import CustomStep
+from sagemaker.workflow.parameters import ParameterString
 
 BUCKET_WITHOUT_WRITING_PERMISSION = "s3://bucket-without-writing-permission"
 
@@ -80,6 +82,46 @@ def test_name_from_image(base_name_from_image, name_from_base):
     sagemaker.utils.name_from_image(image, max_length=max_length)
     base_name_from_image.assert_called_with(image)
     name_from_base.assert_called_with(base_name_from_image.return_value, max_length=max_length)
+
+
+@pytest.mark.parametrize(
+    "inputs",
+    [
+        (
+            CustomStep(name="test-custom-step").properties.OutputDataConfig.S3OutputPath,
+            None,
+            "base_name",
+        ),
+        (
+            CustomStep(name="test-custom-step").properties.OutputDataConfig.S3OutputPath,
+            "whatever",
+            "whatever",
+        ),
+        (ParameterString(name="image_uri"), None, "base_name"),
+        (ParameterString(name="image_uri"), "whatever", "whatever"),
+        (
+            ParameterString(
+                name="image_uri",
+                default_value="922956235488.dkr.ecr.us-west-2.amazonaws.com/analyzer",
+            ),
+            None,
+            "analyzer",
+        ),
+        (
+            ParameterString(
+                name="image_uri",
+                default_value="922956235488.dkr.ecr.us-west-2.amazonaws.com/analyzer",
+            ),
+            "whatever",
+            "analyzer",
+        ),
+    ],
+)
+def test_base_name_from_image_with_pipeline_param(inputs):
+    image, default_base_name, expected = inputs
+    assert expected == sagemaker.utils.base_name_from_image(
+        image=image, default_base_name=default_base_name
+    )
 
 
 @patch("sagemaker.utils.sagemaker_timestamp")

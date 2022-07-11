@@ -105,6 +105,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
     MPI_CUSTOM_MPI_OPTIONS = "sagemaker_mpi_custom_mpi_options"
     SM_DDP_CUSTOM_MPI_OPTIONS = "sagemaker_distributed_dataparallel_custom_mpi_options"
     CONTAINER_CODE_CHANNEL_SOURCEDIR_PATH = "/opt/ml/input/data/code/sourcedir.tar.gz"
+    JOB_CLASS_NAME = "training-job"
 
     def __init__(
         self,
@@ -594,7 +595,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.base_job_name = (
             self.base_job_name
             or get_jumpstart_base_name_if_jumpstart_model(self.source_dir, self.model_uri)
-            or base_name_from_image(self.training_image_uri())
+            or base_name_from_image(
+                self.training_image_uri(), default_base_name=EstimatorBase.JOB_CLASS_NAME
+            )
         )
 
     def _get_or_create_name(self, name=None):
@@ -1007,7 +1010,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
     def _compilation_job_name(self):
         """Placeholder docstring"""
-        base_name = self.base_job_name or base_name_from_image(self.training_image_uri())
+        base_name = self.base_job_name or base_name_from_image(
+            self.training_image_uri(), default_base_name=EstimatorBase.JOB_CLASS_NAME
+        )
         return name_from_base("compilation-" + base_name)
 
     def compile_model(
