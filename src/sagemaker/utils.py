@@ -784,22 +784,20 @@ def construct_container_object(
     Returns:
         dict: container object
     """
+
+    obj.update(
+        {
+            "Framework": framework,
+            "FrameworkVersion": framework_version,
+            "NearestModelName": nearest_model_name,
+        }
+    )
+
     if data_input_configuration is not None:
         obj.update(
             {
-                "Framework": framework,
-                "FrameworkVersion": framework_version,
-                "NearestModelName": nearest_model_name,
                 "ModelInput": {
                     "DataInputConfig": data_input_configuration,
                 },
-            }
-        )
-    else:
-        obj.update(
-            {
-                "Framework": framework,
-                "FrameworkVersion": framework_version,
-                "NearestModelName": nearest_model_name,
             }
         )
