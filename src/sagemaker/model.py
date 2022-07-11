@@ -17,7 +17,6 @@ import abc
 import json
 import logging
 import os
-import re
 import copy
 from typing import List, Dict
 
@@ -35,7 +34,10 @@ from sagemaker.predictor import PredictorBase
 from sagemaker.serverless import ServerlessInferenceConfig
 from sagemaker.transformer import Transformer
 from sagemaker.jumpstart.utils import add_jumpstart_tags, get_jumpstart_base_name_if_jumpstart_model
-from sagemaker.utils import unique_name_from_base
+from sagemaker.utils import (
+    unique_name_from_base,
+    update_container_with_inference_params,
+)
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.predictor_async import AsyncPredictor
 from sagemaker.workflow import is_pipeline_variable
@@ -46,6 +48,8 @@ LOGGER = logging.getLogger("sagemaker")
 NEO_ALLOWED_FRAMEWORKS = set(
     ["mxnet", "tensorflow", "keras", "pytorch", "onnx", "xgboost", "tflite"]
 )
+
+NEO_IOC_TARGET_DEVICES = ["ml_c4", "ml_c5", "ml_m4", "ml_m5", "ml_p2", "ml_p3", "ml_g4dn"]
 
 
 class ModelBase(abc.ABC):
@@ -310,6 +314,12 @@ class Model(ModelBase):
         customer_metadata_properties=None,
         validation_specification=None,
         domain=None,
+        task=None,
+        sample_payload_url=None,
+        framework=None,
+        framework_version=None,
+        nearest_model_name=None,
+        data_input_configuration=None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -339,6 +349,18 @@ class Model(ModelBase):
                 metadata properties (default: None).
             domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
                 "MACHINE_LEARNING" (default: None).
+            sample_payload_url (str): The S3 path where the sample payload is stored
+                (default: None).
+            task (str): Task values which are supported by Inference Recommender are "FILL_MASK",
+                "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION", "IMAGE_SEGMENTATION",
+                "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
+            framework (str): Machine learning framework of the model package container image
+                (default: None).
+            framework_version (str): Framework version of the Model Package Container Image
+                (default: None).
+            nearest_model_name (str): Name of a pre-trained machine learning benchmarked by
+                Amazon SageMaker Inference Recommender (default: None).
+            data_input_configuration (str): Input object for the model (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance or pipeline step arguments
@@ -349,10 +371,22 @@ class Model(ModelBase):
             raise ValueError("SageMaker Model Package cannot be created without model data.")
         if image_uri is not None:
             self.image_uri = image_uri
+
         if model_package_group_name is not None:
             container_def = self.prepare_container_def()
+            update_container_with_inference_params(
+                framework=framework,
+                framework_version=framework_version,
+                nearest_model_name=nearest_model_name,
+                data_input_configuration=data_input_configuration,
+                container_obj=container_def,
+            )
         else:
-            container_def = {"Image": self.image_uri, "ModelDataUrl": self.model_data}
+            container_def = {
+                "Image": self.image_uri,
+                "ModelDataUrl": self.model_data,
+            }
+
         model_pkg_args = sagemaker.get_model_package_args(
             content_types,
             response_types,
@@ -370,6 +404,8 @@ class Model(ModelBase):
             customer_metadata_properties=customer_metadata_properties,
             validation_specification=validation_specification,
             domain=domain,
+            sample_payload_url=sample_payload_url,
+            task=task,
         )
         model_package = self.sagemaker_session.create_model_package_from_containers(
             **model_pkg_args
@@ -728,13 +764,22 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             "Framework": framework.upper(),
         }
 
-        multiple_version_supported_framework_list = ["pytorch", "tensorflow"]
-        if (
-            framework.lower() in multiple_version_supported_framework_list
-            and target_instance_type is not None
-            and re.match("(?=^ml_)(?!ml_inf)", target_instance_type) is not None
-            and framework_version is not None
+        def multi_version_compilation_supported(
+            target_instance_type: str, framework: str, framework_version: str
         ):
+            if target_instance_type and framework and framework_version:
+                framework = framework.lower()
+                multi_version_frameworks_support_mapping = {
+                    "inferentia": ["pytorch", "tensorflow", "mxnet"],
+                    "neo_ioc_targets": ["pytorch", "tensorflow"],
+                }
+                if target_instance_type in NEO_IOC_TARGET_DEVICES:
+                    return framework in multi_version_frameworks_support_mapping["neo_ioc_targets"]
+                if target_instance_type == "ml_inf":
+                    return framework in multi_version_frameworks_support_mapping["inferentia"]
+            return False
+
+        if multi_version_compilation_supported(target_instance_type, framework, framework_version):
             input_model_config["FrameworkVersion"] = utils.get_short_version(framework_version)
 
         role = self.sagemaker_session.expand_role(role)

@@ -17,15 +17,13 @@ import logging
 
 from packaging.version import Version
 
-from sagemaker.deprecations import renamed_kwargs
 from sagemaker.estimator import Framework, EstimatorBase
 from sagemaker.fw_utils import (
     framework_name_from_image,
     framework_version_from_tag,
     python_deprecation_warning,
     validate_version_or_image_args,
-    warn_if_parameter_server_with_multi_gpu,
-    validate_smdistributed,
+    validate_distribution,
 )
 from sagemaker.pytorch import defaults
 from sagemaker.pytorch.model import PyTorchModel
@@ -196,24 +194,6 @@ class PyTorch(Framework):
         self.framework_version = framework_version
         self.py_version = py_version
 
-        if distribution is not None:
-            instance_type = renamed_kwargs(
-                "train_instance_type", "instance_type", kwargs.get("instance_type"), kwargs
-            )
-
-            validate_smdistributed(
-                instance_type=instance_type,
-                framework_name=self._framework_name,
-                framework_version=framework_version,
-                py_version=py_version,
-                distribution=distribution,
-                image_uri=image_uri,
-            )
-
-            warn_if_parameter_server_with_multi_gpu(
-                training_instance_type=instance_type, distribution=distribution
-            )
-
         if "enable_sagemaker_metrics" not in kwargs:
             # enable sagemaker metrics for PT v1.3 or greater:
             if self.framework_version and Version(self.framework_version) >= Version("1.3"):
@@ -222,6 +202,17 @@ class PyTorch(Framework):
         super(PyTorch, self).__init__(
             entry_point, source_dir, hyperparameters, image_uri=image_uri, **kwargs
         )
+        if distribution is not None:
+            distribution = validate_distribution(
+                distribution,
+                self.instance_groups,
+                self._framework_name,
+                framework_version,
+                py_version,
+                image_uri,
+                kwargs,
+            )
+
         self.distribution = distribution or {}
 
     def hyperparameters(self):
