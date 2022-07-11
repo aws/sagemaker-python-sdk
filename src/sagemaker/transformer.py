@@ -13,10 +13,13 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
+from typing import Union, Optional, List, Dict
+
 from botocore import exceptions
 
 from sagemaker.job import _Job
 from sagemaker.session import Session
+from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.utils import base_name_from_image, name_from_base
@@ -29,21 +32,21 @@ class Transformer(object):
 
     def __init__(
         self,
-        model_name,
-        instance_count,
-        instance_type,
-        strategy=None,
-        assemble_with=None,
-        output_path=None,
-        output_kms_key=None,
-        accept=None,
-        max_concurrent_transforms=None,
-        max_payload=None,
-        tags=None,
-        env=None,
-        base_transform_job_name=None,
-        sagemaker_session=None,
-        volume_kms_key=None,
+        model_name: Union[str, PipelineVariable],
+        instance_count: Union[int, PipelineVariable],
+        instance_type: Union[str, PipelineVariable],
+        strategy: Optional[Union[str, PipelineVariable]] = None,
+        assemble_with: Optional[Union[str, PipelineVariable]] = None,
+        output_path: Optional[Union[str, PipelineVariable]] = None,
+        output_kms_key: Optional[Union[str, PipelineVariable]] = None,
+        accept: Optional[Union[str, PipelineVariable]] = None,
+        max_concurrent_transforms: Optional[Union[int, PipelineVariable]] = None,
+        max_payload: Optional[Union[int, PipelineVariable]] = None,
+        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        base_transform_job_name: Optional[str] = None,
+        sagemaker_session: Optional[Session] = None,
+        volume_kms_key: Optional[Union[str, PipelineVariable]] = None,
     ):
         """Initialize a ``Transformer``.
 
@@ -113,19 +116,19 @@ class Transformer(object):
     @runnable_by_pipeline
     def transform(
         self,
-        data,
-        data_type="S3Prefix",
-        content_type=None,
-        compression_type=None,
-        split_type=None,
-        job_name=None,
-        input_filter=None,
-        output_filter=None,
-        join_source=None,
-        experiment_config=None,
-        model_client_config=None,
-        wait=True,
-        logs=True,
+        data: Union[str, PipelineVariable],
+        data_type: Union[str, PipelineVariable] = "S3Prefix",
+        content_type: Optional[Union[str, PipelineVariable]] = None,
+        compression_type: Optional[Union[str, PipelineVariable]] = None,
+        split_type: Optional[Union[str, PipelineVariable]] = None,
+        job_name: Optional[str] = None,
+        input_filter: Optional[Union[str, PipelineVariable]] = None,
+        output_filter: Optional[Union[str, PipelineVariable]] = None,
+        join_source: Optional[Union[str, PipelineVariable]] = None,
+        experiment_config: Optional[Dict[str, str]] = None,
+        model_client_config: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        wait: bool = True,
+        logs: bool = True,
     ):
         """Start a new transform job.
 

@@ -1705,6 +1705,12 @@ CONTAINERS = [
         "Environment": {"SAGEMAKER_DEFAULT_INVOCATIONS_ACCEPT": "application/json"},
         "Image": "mi-1",
         "ModelDataUrl": "s3://bucket/model_1.tar.gz",
+        "Framework": "TENSORFLOW",
+        "FrameworkVersion": "2.9",
+        "NearestModelName": "resnet50",
+        "ModelInput": {
+            "DataInputConfig": '{"input_1":[1,224,224,3]}',
+        },
     },
     {"Environment": {}, "Image": "mi-2", "ModelDataUrl": "s3://bucket/model_2.tar.gz"},
 ]
@@ -2387,6 +2393,8 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
     description = "description"
     customer_metadata_properties = {"key1": "value1"}
     domain = "COMPUTER_VISION"
+    task = "IMAGE_CLASSIFICATION"
+    sample_payload_url = "s3://test-bucket/model"
     sagemaker_session.create_model_package_from_containers(
         containers=containers,
         content_types=content_types,
@@ -2402,6 +2410,8 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
         drift_check_baselines=drift_check_baselines,
         customer_metadata_properties=customer_metadata_properties,
         domain=domain,
+        sample_payload_url=sample_payload_url,
+        task=task,
     )
     expected_args = {
         "ModelPackageName": model_package_name,
@@ -2420,6 +2430,8 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
         "DriftCheckBaselines": drift_check_baselines,
         "CustomerMetadataProperties": customer_metadata_properties,
         "Domain": domain,
+        "SamplePayloadUrl": sample_payload_url,
+        "Task": task,
     }
     sagemaker_session.sagemaker_client.create_model_package.assert_called_with(**expected_args)
 
@@ -2520,6 +2532,59 @@ def test_feature_group_describe(sagemaker_session):
     sagemaker_session.describe_feature_group(feature_group_name="MyFeatureGroup")
     assert sagemaker_session.sagemaker_client.describe_feature_group.called_with(
         FeatureGroupName="MyFeatureGroup",
+    )
+
+
+def test_feature_group_update(sagemaker_session, feature_group_dummy_definitions):
+    sagemaker_session.update_feature_group(
+        feature_group_name="MyFeatureGroup",
+        feature_additions=feature_group_dummy_definitions,
+    )
+    assert sagemaker_session.sagemaker_client.update_feature_group.called_with(
+        FeatureGroupName="MyFeatureGroup",
+        FeatureAdditions=feature_group_dummy_definitions,
+    )
+
+
+def test_feature_metadata_update(sagemaker_session):
+    parameter_additions = [
+        {
+            "key": "TestKey",
+            "value": "TestValue",
+        }
+    ]
+    parameter_removals = ["TestKey"]
+
+    sagemaker_session.update_feature_metadata(
+        feature_group_name="TestFeatureGroup",
+        feature_name="TestFeature",
+        description="TestDescription",
+        parameter_additions=parameter_additions,
+        parameter_removals=parameter_removals,
+    )
+    assert sagemaker_session.sagemaker_client.update_feature_group.called_with(
+        feature_group_name="TestFeatureGroup",
+        FeatureName="TestFeature",
+        Description="TestDescription",
+        ParameterAdditions=parameter_additions,
+        ParameterRemovals=parameter_removals,
+    )
+    sagemaker_session.update_feature_metadata(
+        feature_group_name="TestFeatureGroup",
+        feature_name="TestFeature",
+    )
+    assert sagemaker_session.sagemaker_client.update_feature_group.called_with(
+        feature_group_name="TestFeatureGroup",
+        FeatureName="TestFeature",
+    )
+
+
+def test_feature_metadata_describe(sagemaker_session):
+    sagemaker_session.describe_feature_metadata(
+        feature_group_name="MyFeatureGroup", feature_name="TestFeature"
+    )
+    assert sagemaker_session.sagemaker_client.describe_feature_metadata.called_with(
+        FeatureGroupName="MyFeatureGroup", FeatureName="TestFeature"
     )
 
 
