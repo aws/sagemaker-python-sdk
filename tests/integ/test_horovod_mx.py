@@ -24,6 +24,7 @@ import sagemaker.utils
 import tests.integ as integ
 from sagemaker.mxnet import MXNet
 from tests.integ import timeout
+from tests.integ.utils import gpu_list, retry_with_instance_list
 
 horovod_dir = os.path.join(os.path.dirname(__file__), "..", "data", "horovod")
 
@@ -51,18 +52,19 @@ def test_hvd_cpu(
     and integ.test_region() in integ.TRAINING_NO_P3_REGIONS,
     reason="no ml.p2 or ml.p3 instances in this region",
 )
+@retry_with_instance_list(gpu_list(integ.test_region()))
 def test_hvd_gpu(
     mxnet_training_latest_version,
     mxnet_training_latest_py_version,
     sagemaker_session,
-    gpu_instance_type,
     tmpdir,
+    **kwargs,
 ):
     _create_and_fit_estimator(
         mxnet_training_latest_version,
         mxnet_training_latest_py_version,
         sagemaker_session,
-        gpu_instance_type,
+        kwargs["instance_type"],
         tmpdir,
     )
 

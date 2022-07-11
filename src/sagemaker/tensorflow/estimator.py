@@ -26,6 +26,7 @@ from sagemaker.tensorflow.model import TensorFlowModel
 from sagemaker.transformer import Transformer
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 from sagemaker.workflow import is_pipeline_variable
+from sagemaker.tensorflow.training_compiler.config import TrainingCompilerConfig
 
 logger = logging.getLogger("sagemaker")
 
@@ -45,7 +46,8 @@ class TensorFlow(Framework):
         model_dir=None,
         image_uri=None,
         distribution=None,
-        **kwargs
+        compiler_config=None,
+        **kwargs,
     ):
         """Initialize a ``TensorFlow`` estimator.
 
@@ -157,6 +159,8 @@ class TensorFlow(Framework):
 
                     To learn more, see `Training with parameter servers
                     <https://sagemaker.readthedocs.io/en/stable/frameworks/tensorflow/using_tf.html#training-with-parameter-servers>`_.
+            compiler_config (:class:`~sagemaker.tensorflow.TrainingCompilerConfig`):
+                Configures SageMaker Training Compiler to accelerate training.
 
             **kwargs: Additional kwargs passed to the Framework constructor.
 
@@ -179,29 +183,37 @@ class TensorFlow(Framework):
         self.py_version = py_version
         self.instance_type = instance_type
 
-        if distribution is not None:
-            fw.warn_if_parameter_server_with_multi_gpu(
-                training_instance_type=instance_type, distribution=distribution
-            )
-            fw.validate_smdistributed(
-                instance_type=instance_type,
-                framework_name=self._framework_name,
-                framework_version=framework_version,
-                py_version=py_version,
-                distribution=distribution,
-                image_uri=image_uri,
-            )
-
         if "enable_sagemaker_metrics" not in kwargs:
             # enable sagemaker metrics for TF v1.15 or greater:
             if framework_version and version.Version(framework_version) >= version.Version("1.15"):
                 kwargs["enable_sagemaker_metrics"] = True
 
         super(TensorFlow, self).__init__(image_uri=image_uri, **kwargs)
+        if distribution is not None:
+            distribution = fw.validate_distribution(
+                distribution,
+                self.instance_groups,
+                self._framework_name,
+                framework_version,
+                py_version,
+                image_uri,
+                kwargs,
+            )
         self.model_dir = model_dir
         self.distribution = distribution or {}
 
         self._validate_args(py_version=py_version)
+        if compiler_config is not None:
+            if not isinstance(compiler_config, TrainingCompilerConfig):
+                error_string = (
+                    f"Expected instance of type {TrainingCompilerConfig}"
+                    f"for argument compiler_config. "
+                    f"Instead got {type(compiler_config)}"
+                )
+                raise ValueError(error_string)
+            if compiler_config:
+                compiler_config.validate(self)
+        self.compiler_config = compiler_config
 
     def _validate_args(self, py_version):
         """Placeholder docstring"""
@@ -301,7 +313,7 @@ class TensorFlow(Framework):
         entry_point=None,
         source_dir=None,
         dependencies=None,
-        **kwargs
+        **kwargs,
     ):
         """Creates ``TensorFlowModel`` object to be used for creating SageMaker model entities.
 
@@ -352,7 +364,7 @@ class TensorFlow(Framework):
             entry_point=entry_point,
             source_dir=source_dir,
             dependencies=dependencies,
-            **kwargs
+            **kwargs,
         )
 
     def hyperparameters(self):
@@ -369,6 +381,13 @@ class TensorFlow(Framework):
         hyperparameters.update(
             EstimatorBase._json_encode_hyperparameters(additional_hyperparameters)
         )
+
+        if self.compiler_config:
+            training_compiler_hyperparameters = self.compiler_config._to_hyperparameter_dict()
+            hyperparameters.update(
+                EstimatorBase._json_encode_hyperparameters(training_compiler_hyperparameters)
+            )
+
         return hyperparameters
 
     def _default_s3_path(self, directory, mpi=False):

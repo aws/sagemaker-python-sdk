@@ -22,7 +22,7 @@ import os
 import pathlib
 import logging
 from textwrap import dedent
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import attr
 
@@ -31,10 +31,12 @@ from six.moves.urllib.request import url2pathname
 from sagemaker import s3
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
+from sagemaker.network import NetworkConfig
 from sagemaker.utils import base_name_from_image, get_config_value, name_from_base
 from sagemaker.session import Session
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
+from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.dataset_definition.inputs import S3Input, DatasetDefinition
 from sagemaker.apiutils._base_types import ApiObject
 from sagemaker.s3 import S3Uploader
@@ -47,20 +49,20 @@ class Processor(object):
 
     def __init__(
         self,
-        role,
-        image_uri,
-        instance_count,
-        instance_type,
-        entrypoint=None,
-        volume_size_in_gb=30,
-        volume_kms_key=None,
-        output_kms_key=None,
-        max_runtime_in_seconds=None,
-        base_job_name=None,
-        sagemaker_session=None,
-        env=None,
-        tags=None,
-        network_config=None,
+        role: str,
+        image_uri: Union[str, PipelineVariable],
+        instance_count: Union[int, PipelineVariable],
+        instance_type: Union[str, PipelineVariable],
+        entrypoint: Optional[List[Union[str, PipelineVariable]]] = None,
+        volume_size_in_gb: Union[int, PipelineVariable] = 30,
+        volume_kms_key: Optional[Union[str, PipelineVariable]] = None,
+        output_kms_key: Optional[Union[str, PipelineVariable]] = None,
+        max_runtime_in_seconds: Optional[Union[int, PipelineVariable]] = None,
+        base_job_name: Optional[str] = None,
+        sagemaker_session: Optional[Session] = None,
+        env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        network_config: Optional[NetworkConfig] = None,
     ):
         """Initializes a ``Processor`` instance.
 
@@ -133,14 +135,14 @@ class Processor(object):
     @runnable_by_pipeline
     def run(
         self,
-        inputs=None,
-        outputs=None,
-        arguments=None,
-        wait=True,
-        logs=True,
-        job_name=None,
-        experiment_config=None,
-        kms_key=None,
+        inputs: Optional[List["ProcessingInput"]] = None,
+        outputs: Optional[List["ProcessingOutput"]] = None,
+        arguments: Optional[List[Union[str, PipelineVariable]]] = None,
+        wait: bool = True,
+        logs: bool = True,
+        job_name: Optional[str] = None,
+        experiment_config: Optional[Dict[str, str]] = None,
+        kms_key: Optional[str] = None,
     ):
         """Runs a processing job.
 
@@ -388,20 +390,20 @@ class ScriptProcessor(Processor):
 
     def __init__(
         self,
-        role,
-        image_uri,
-        command,
-        instance_count,
-        instance_type,
-        volume_size_in_gb=30,
-        volume_kms_key=None,
-        output_kms_key=None,
-        max_runtime_in_seconds=None,
-        base_job_name=None,
-        sagemaker_session=None,
-        env=None,
-        tags=None,
-        network_config=None,
+        role: str,
+        image_uri: Union[str, PipelineVariable],
+        command: List[str],
+        instance_count: Union[int, PipelineVariable],
+        instance_type: Union[str, PipelineVariable],
+        volume_size_in_gb: Union[int, PipelineVariable] = 30,
+        volume_kms_key: Optional[Union[str, PipelineVariable]] = None,
+        output_kms_key: Optional[Union[str, PipelineVariable]] = None,
+        max_runtime_in_seconds: Optional[Union[int, PipelineVariable]] = None,
+        base_job_name: Optional[str] = None,
+        sagemaker_session: Optional[Session] = None,
+        env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        network_config: Optional[NetworkConfig] = None,
     ):
         """Initializes a ``ScriptProcessor`` instance.
 
@@ -498,15 +500,15 @@ class ScriptProcessor(Processor):
     @runnable_by_pipeline
     def run(
         self,
-        code,
-        inputs=None,
-        outputs=None,
-        arguments=None,
-        wait=True,
-        logs=True,
-        job_name=None,
-        experiment_config=None,
-        kms_key=None,
+        code: str,
+        inputs: Optional[List["ProcessingInput"]] = None,
+        outputs: Optional[List["ProcessingOutput"]] = None,
+        arguments: Optional[List[Union[str, PipelineVariable]]] = None,
+        wait: bool = True,
+        logs: bool = True,
+        job_name: Optional[str] = None,
+        experiment_config: Optional[Dict[str, str]] = None,
+        kms_key: Optional[str] = None,
     ):
         """Runs a processing job.
 
@@ -537,6 +539,8 @@ class ScriptProcessor(Processor):
                 * If both `ExperimentName` and `TrialName` are not supplied the trial component
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file (default: None).
         """
         normalized_inputs, normalized_outputs = self._normalize_args(
             job_name=job_name,
@@ -1072,16 +1076,16 @@ class ProcessingInput(object):
 
     def __init__(
         self,
-        source=None,
-        destination=None,
-        input_name=None,
-        s3_data_type="S3Prefix",
-        s3_input_mode="File",
-        s3_data_distribution_type="FullyReplicated",
-        s3_compression_type="None",
-        s3_input=None,
-        dataset_definition=None,
-        app_managed=False,
+        source: Optional[Union[str, PipelineVariable]] = None,
+        destination: Optional[Union[str, PipelineVariable]] = None,
+        input_name: Optional[Union[str, PipelineVariable]] = None,
+        s3_data_type: Union[str, PipelineVariable] = "S3Prefix",
+        s3_input_mode: Union[str, PipelineVariable] = "File",
+        s3_data_distribution_type: Union[str, PipelineVariable] = "FullyReplicated",
+        s3_compression_type: Union[str, PipelineVariable] = "None",
+        s3_input: Optional[S3Input] = None,
+        dataset_definition: Optional[DatasetDefinition] = None,
+        app_managed: Union[bool, PipelineVariable] = False,
     ):
         """Initializes a ``ProcessingInput`` instance.
 
@@ -1179,12 +1183,12 @@ class ProcessingOutput(object):
 
     def __init__(
         self,
-        source=None,
-        destination=None,
-        output_name=None,
-        s3_upload_mode="EndOfJob",
-        app_managed=False,
-        feature_store_output=None,
+        source: Optional[Union[str, PipelineVariable]] = None,
+        destination: Optional[Union[str, PipelineVariable]] = None,
+        output_name: Optional[Union[str, PipelineVariable]] = None,
+        s3_upload_mode: Union[str, PipelineVariable] = "EndOfJob",
+        app_managed: Union[bool, PipelineVariable] = False,
+        feature_store_output: Optional["FeatureStoreOutput"] = None,
     ):
         """Initializes a ``ProcessingOutput`` instance.
 
@@ -1195,7 +1199,9 @@ class ProcessingOutput(object):
             source (str): The source for the output.
             destination (str): The destination of the output. If a destination
                 is not provided, one will be generated:
-                "s3://<default-bucket-name>/<job-name>/output/<output-name>".
+                "s3://<default-bucket-name>/<job-name>/output/<output-name>"
+                (Note: this does not apply when used with
+                :class:`~sagemaker.workflow.steps.ProcessingStep`).
             output_name (str): The name of the output. If a name
                 is not provided, one will be generated (eg. "output-1").
             s3_upload_mode (str): Valid options are "EndOfJob" or "Continuous".
@@ -1275,24 +1281,24 @@ class FrameworkProcessor(ScriptProcessor):
     # Added new (kw)args for estimator. The rest are from ScriptProcessor with same defaults.
     def __init__(
         self,
-        estimator_cls,
-        framework_version,
-        role,
-        instance_count,
-        instance_type,
-        py_version="py3",
-        image_uri=None,
-        command=None,
-        volume_size_in_gb=30,
-        volume_kms_key=None,
-        output_kms_key=None,
-        code_location=None,
-        max_runtime_in_seconds=None,
-        base_job_name=None,
-        sagemaker_session=None,
-        env=None,
-        tags=None,
-        network_config=None,
+        estimator_cls: type,
+        framework_version: str,
+        role: str,
+        instance_count: Union[int, PipelineVariable],
+        instance_type: Union[str, PipelineVariable],
+        py_version: str = "py3",
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
+        command: Optional[List[str]] = None,
+        volume_size_in_gb: Union[int, PipelineVariable] = 30,
+        volume_kms_key: Optional[Union[str, PipelineVariable]] = None,
+        output_kms_key: Optional[Union[str, PipelineVariable]] = None,
+        code_location: Optional[str] = None,
+        max_runtime_in_seconds: Optional[Union[int, PipelineVariable]] = None,
+        base_job_name: Optional[str] = None,
+        sagemaker_session: Optional[Session] = None,
+        env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        network_config: Optional[NetworkConfig] = None,
     ):
         """Initializes a ``FrameworkProcessor`` instance.
 
@@ -1484,18 +1490,18 @@ class FrameworkProcessor(ScriptProcessor):
 
     def run(  # type: ignore[override]
         self,
-        code,
-        source_dir=None,
-        dependencies=None,
-        git_config=None,
-        inputs=None,
-        outputs=None,
-        arguments=None,
-        wait=True,
-        logs=True,
-        job_name=None,
-        experiment_config=None,
-        kms_key=None,
+        code: str,
+        source_dir: Optional[str] = None,
+        dependencies: Optional[List[str]] = None,
+        git_config: Optional[Dict[str, str]] = None,
+        inputs: Optional[List[ProcessingInput]] = None,
+        outputs: Optional[List[ProcessingOutput]] = None,
+        arguments: Optional[List[Union[str, PipelineVariable]]] = None,
+        wait: bool = True,
+        logs: bool = True,
+        job_name: Optional[str] = None,
+        experiment_config: Optional[Dict[str, str]] = None,
+        kms_key: Optional[str] = None,
     ):
         """Runs a processing job.
 

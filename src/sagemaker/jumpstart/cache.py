@@ -215,7 +215,7 @@ class JumpStartModelsCache:
 
         error_msg = f"Unable to find model manifest for '{model_id}' with version '{version}'. "
         error_msg += (
-            "Visit https://sagemaker.readthedocs.io/en/stable/doc_utils/jumpstart.html"
+            "Visit https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html"
             " for updated list of models. "
         )
 
