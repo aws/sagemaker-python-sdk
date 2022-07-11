@@ -53,6 +53,7 @@ from sagemaker.feature_store.inputs import (
     OfflineStoreConfig,
     DataCatalogConfig,
     FeatureValue,
+    FeatureParameter,
 )
 
 logger = logging.getLogger(__name__)
@@ -535,6 +536,64 @@ class FeatureGroup:
         """
         return self.sagemaker_session.describe_feature_group(
             feature_group_name=self.name, next_token=next_token
+        )
+
+    def update(self, feature_additions: Sequence[FeatureDefinition]) -> Dict[str, Any]:
+        """Update a FeatureGroup and add new features from the given feature definitions.
+
+        Args:
+            feature_additions (Sequence[Dict[str, str]): list of feature definitions to be updated.
+
+        Returns:
+            Response dict from service.
+        """
+
+        return self.sagemaker_session.update_feature_group(
+            feature_group_name=self.name,
+            feature_additions=[
+                feature_addition.to_dict() for feature_addition in feature_additions
+            ],
+        )
+
+    def update_feature_metadata(
+        self,
+        feature_name: str,
+        description: str = None,
+        parameter_additions: Sequence[FeatureParameter] = None,
+        parameter_removals: Sequence[str] = None,
+    ) -> Dict[str, Any]:
+        """Update a feature metadata and add/remove metadata.
+
+        Args:
+            feature_name (str): name of the feature to update.
+            description (str): description of the feature to update.
+            parameter_additions (Sequence[Dict[str, str]): list of feature parameter to be added.
+            parameter_removals (Sequence[str]): list of feature parameter key to be removed.
+
+        Returns:
+            Response dict from service.
+        """
+        return self.sagemaker_session.update_feature_metadata(
+            feature_group_name=self.name,
+            feature_name=feature_name,
+            description=description,
+            parameter_additions=[
+                parameter_addition.to_dict() for parameter_addition in (parameter_additions or [])
+            ],
+            parameter_removals=(parameter_removals or []),
+        )
+
+    def describe_feature_metadata(self, feature_name: str) -> Dict[str, Any]:
+        """Describe feature metadata by feature name.
+
+        Args:
+            feature_name (str): name of the feature.
+        Returns:
+            Response dict from service.
+        """
+
+        return self.sagemaker_session.describe_feature_metadata(
+            feature_group_name=self.name, feature_name=feature_name
         )
 
     def load_feature_definitions(

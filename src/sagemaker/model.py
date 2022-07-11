@@ -17,7 +17,6 @@ import abc
 import json
 import logging
 import os
-import re
 import copy
 from typing import List, Dict
 
@@ -49,6 +48,8 @@ LOGGER = logging.getLogger("sagemaker")
 NEO_ALLOWED_FRAMEWORKS = set(
     ["mxnet", "tensorflow", "keras", "pytorch", "onnx", "xgboost", "tflite"]
 )
+
+NEO_IOC_TARGET_DEVICES = ["ml_c4", "ml_c5", "ml_m4", "ml_m5", "ml_p2", "ml_p3", "ml_g4dn"]
 
 
 class ModelBase(abc.ABC):
@@ -763,13 +764,22 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             "Framework": framework.upper(),
         }
 
-        multiple_version_supported_framework_list = ["pytorch", "tensorflow"]
-        if (
-            framework.lower() in multiple_version_supported_framework_list
-            and target_instance_type is not None
-            and re.match("(?=^ml_)(?!ml_inf)", target_instance_type) is not None
-            and framework_version is not None
+        def multi_version_compilation_supported(
+            target_instance_type: str, framework: str, framework_version: str
         ):
+            if target_instance_type and framework and framework_version:
+                framework = framework.lower()
+                multi_version_frameworks_support_mapping = {
+                    "inferentia": ["pytorch", "tensorflow", "mxnet"],
+                    "neo_ioc_targets": ["pytorch", "tensorflow"],
+                }
+                if target_instance_type in NEO_IOC_TARGET_DEVICES:
+                    return framework in multi_version_frameworks_support_mapping["neo_ioc_targets"]
+                if target_instance_type == "ml_inf":
+                    return framework in multi_version_frameworks_support_mapping["inferentia"]
+            return False
+
+        if multi_version_compilation_supported(target_instance_type, framework, framework_version):
             input_model_config["FrameworkVersion"] = utils.get_short_version(framework_version)
 
         role = self.sagemaker_session.expand_role(role)
