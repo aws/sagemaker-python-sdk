@@ -336,9 +336,20 @@ def test_processing_step_with_processor(pipeline_session, processing_input):
     )
 
 
-def test_processing_step_with_processor_and_step_args(pipeline_session, processing_input):
+@pytest.mark.parametrize(
+    "image_uri",
+    [
+        IMAGE_URI,
+        ParameterString(name="MyImage"),
+        ParameterString(name="MyImage", default_value="my-image-uri"),
+        Join(on="/", values=["docker", "my-fake-image"]),
+    ],
+)
+def test_processing_step_with_processor_and_step_args(
+    pipeline_session, processing_input, image_uri
+):
     processor = Processor(
-        image_uri=IMAGE_URI,
+        image_uri=image_uri,
         role=ROLE,
         instance_count=1,
         instance_type=INSTANCE_TYPE,
@@ -346,7 +357,6 @@ def test_processing_step_with_processor_and_step_args(pipeline_session, processi
     )
 
     step_args = processor.run(inputs=processing_input)
-
     try:
         ProcessingStep(
             name="MyProcessingStep",

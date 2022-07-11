@@ -47,6 +47,8 @@ logger = logging.getLogger(__name__)
 class Processor(object):
     """Handles Amazon SageMaker Processing tasks."""
 
+    JOB_CLASS_NAME = "processing-job"
+
     def __init__(
         self,
         role: str,
@@ -282,7 +284,9 @@ class Processor(object):
         if self.base_job_name:
             base_name = self.base_job_name
         else:
-            base_name = base_name_from_image(self.image_uri)
+            base_name = base_name_from_image(
+                self.image_uri, default_base_name=Processor.JOB_CLASS_NAME
+            )
 
         return name_from_base(base_name)
 
