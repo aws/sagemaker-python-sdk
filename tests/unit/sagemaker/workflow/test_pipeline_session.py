@@ -228,8 +228,68 @@ def test_pipeline_session_context_for_model_step_without_instance_types(
             ],
             "SupportedContentTypes": ["text/csv"],
             "SupportedResponseMIMETypes": ["text/csv"],
-            "SupportedRealtimeInferenceInstanceTypes": None,
-            "SupportedTransformInstanceTypes": None,
+        },
+        "CertifyForMarketplace": False,
+        "ModelApprovalStatus": "PendingManualApproval",
+        "SamplePayloadUrl": "s3://test-bucket/model",
+        "Task": "IMAGE_CLASSIFICATION",
+    }
+
+    assert register_step_args.create_model_package_request == expected_output
+
+
+def test_pipeline_session_context_for_model_step_with_one_instance_types(
+    pipeline_session_mock,
+):
+    model = Model(
+        name="MyModel",
+        image_uri="fakeimage",
+        model_data=ParameterString(name="ModelData", default_value="s3://my-bucket/file"),
+        sagemaker_session=pipeline_session_mock,
+        entry_point=f"{DATA_DIR}/dummy_script.py",
+        source_dir=f"{DATA_DIR}",
+        role=_ROLE,
+    )
+    register_step_args = model.register(
+        content_types=["text/csv"],
+        response_types=["text/csv"],
+        inference_instances=["ml.t2.medium", "ml.m5.xlarge"],
+        model_package_group_name="MyModelPackageGroup",
+        task="IMAGE_CLASSIFICATION",
+        sample_payload_url="s3://test-bucket/model",
+        framework="TENSORFLOW",
+        framework_version="2.9",
+        nearest_model_name="resnet50",
+        data_input_configuration='{"input_1":[1,224,224,3]}',
+    )
+
+    expected_output = {
+        "ModelPackageGroupName": "MyModelPackageGroup",
+        "InferenceSpecification": {
+            "Containers": [
+                {
+                    "Image": "fakeimage",
+                    "Environment": {
+                        "SAGEMAKER_PROGRAM": "dummy_script.py",
+                        "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
+                        "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
+                        "SAGEMAKER_REGION": "us-west-2",
+                    },
+                    "ModelDataUrl": ParameterString(
+                        name="ModelData",
+                        default_value="s3://my-bucket/file",
+                    ),
+                    "Framework": "TENSORFLOW",
+                    "FrameworkVersion": "2.9",
+                    "NearestModelName": "resnet50",
+                    "ModelInput": {
+                        "DataInputConfig": '{"input_1":[1,224,224,3]}',
+                    },
+                }
+            ],
+            "SupportedContentTypes": ["text/csv"],
+            "SupportedResponseMIMETypes": ["text/csv"],
+            "SupportedRealtimeInferenceInstanceTypes": ["ml.t2.medium", "ml.m5.xlarge"],
         },
         "CertifyForMarketplace": False,
         "ModelApprovalStatus": "PendingManualApproval",
