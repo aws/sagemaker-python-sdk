@@ -299,6 +299,7 @@ def test_pipeline_session_context_for_model_step_with_one_instance_types(
 
     assert register_step_args.create_model_package_request == expected_output
 
+
 def test_pipeline_session_context_for_model_step_without_model_package_group_name(
     pipeline_session_mock,
 ):

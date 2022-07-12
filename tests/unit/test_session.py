@@ -2359,6 +2359,7 @@ def test_create_model_package_from_containers_incomplete_args(sagemaker_session)
             "must be provided if containers is present." == str(error)
         )
 
+
 def test_create_model_package_from_containers_without_model_package_group_name(sagemaker_session):
     model_package_name = "sagemaker-model-package"
     containers = ["dummy-container"]
