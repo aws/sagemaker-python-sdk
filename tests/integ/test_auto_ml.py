@@ -293,6 +293,9 @@ def test_deploy_best_candidate(sagemaker_session, cpu_instance_type):
     tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
     reason="AutoML is not supported in the region yet.",
 )
+@pytest.mark.skip(
+    reason="",
+)
 def test_candidate_estimator_default_rerun_and_deploy(sagemaker_session, cpu_instance_type):
     auto_ml_utils.create_auto_ml_job_if_not_exist(sagemaker_session)
 

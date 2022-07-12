@@ -24,10 +24,10 @@ from sagemaker.parameter import IntegerParameter
 from sagemaker.transformer import Transformer
 from sagemaker.tuner import HyperparameterTuner
 from sagemaker.workflow.pipeline_context import PipelineSession
-from sagemaker.workflow.parameters import ParameterString
+from sagemaker.workflow.parameters import ParameterString, ParameterBoolean
 
 from sagemaker.workflow.steps import TrainingStep
-from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
 from sagemaker.workflow.functions import Join
 
 from sagemaker.estimator import Estimator
@@ -55,7 +55,7 @@ from sagemaker.amazon.object2vec import Object2Vec
 from tests.unit import DATA_DIR
 
 from sagemaker.inputs import TrainingInput
-from tests.unit.sagemaker.workflow.helpers import CustomStep
+from tests.unit.sagemaker.workflow.helpers import CustomStep, ordered
 
 REGION = "us-west-2"
 BUCKET = "my-bucket"
@@ -203,6 +203,8 @@ def hyperparameters():
 def test_training_step_with_estimator(pipeline_session, training_input, hyperparameters):
     custom_step1 = CustomStep("TestStep")
     custom_step2 = CustomStep("SecondTestStep")
+    enable_network_isolation = ParameterBoolean(name="enable_network_isolation")
+    encrypt_container_traffic = ParameterBoolean(name="encrypt_container_traffic")
     estimator = Estimator(
         role=ROLE,
         instance_count=1,
@@ -210,6 +212,8 @@ def test_training_step_with_estimator(pipeline_session, training_input, hyperpar
         sagemaker_session=pipeline_session,
         image_uri=IMAGE_URI,
         hyperparameters=hyperparameters,
+        enable_network_isolation=enable_network_isolation,
+        encrypt_inter_container_traffic=encrypt_container_traffic,
     )
 
     with warnings.catch_warnings(record=True) as w:
@@ -231,8 +235,13 @@ def test_training_step_with_estimator(pipeline_session, training_input, hyperpar
     pipeline = Pipeline(
         name="MyPipeline",
         steps=[step, custom_step1, custom_step2],
+        parameters=[enable_network_isolation, encrypt_container_traffic],
         sagemaker_session=pipeline_session,
     )
+    step_args.args["EnableInterContainerTrafficEncryption"] = {
+        "Get": "Parameters.encrypt_container_traffic"
+    }
+    step_args.args["EnableNetworkIsolation"] = {"Get": "Parameters.encrypt_container_traffic"}
     assert json.loads(pipeline.definition())["Steps"][0] == {
         "Name": "MyTrainingStep",
         "Description": "TrainingStep description",
@@ -242,6 +251,10 @@ def test_training_step_with_estimator(pipeline_session, training_input, hyperpar
         "Arguments": step_args.args,
     }
     assert step.properties.TrainingJobName.expr == {"Get": "Steps.MyTrainingStep.TrainingJobName"}
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert ordered(adjacency_list) == ordered(
+        {"MyTrainingStep": [], "SecondTestStep": ["MyTrainingStep"], "TestStep": ["MyTrainingStep"]}
+    )
 
 
 @pytest.mark.parametrize("estimator", ESTIMATOR_LISTS)

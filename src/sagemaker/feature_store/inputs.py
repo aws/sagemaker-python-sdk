@@ -207,3 +207,27 @@ class FeatureValue(Config):
             FeatureName=self.feature_name,
             ValueAsString=self.value_as_string,
         )
+
+
+@attr.s
+class FeatureParameter(Config):
+    """FeatureParameter for FeatureStore.
+
+    Attributes:
+        key (str): key of the parameter.
+        value (str): value of the parameter.
+    """
+
+    key: str = attr.ib(default=None)
+    value: str = attr.ib(default=None)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Construct a dictionary based on the attributes provided.
+
+        Returns:
+            dict represents the attributes.
+        """
+        return Config.construct_dict(
+            Key=self.key,
+            Value=self.value,
+        )
