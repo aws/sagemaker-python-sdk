@@ -99,7 +99,6 @@ def test_conditional_pytorch_training_model_registration(
     framework = "TENSORFLOW"
     framework_version = "2.9"
     nearest_model_name = "resnet50"
-    data_input_configuration = '{"input_1":[1,224,224,3]}'
 
     # If image_uri is not provided, the instance_type should not be a pipeline variable
     # since instance_type is used to retrieve image_uri in compile time (PySDK)
@@ -132,7 +131,6 @@ def test_conditional_pytorch_training_model_registration(
         framework=framework,
         framework_version=framework_version,
         nearest_model_name=nearest_model_name,
-        data_input_configuration=data_input_configuration,
     )
 
     model = Model(
@@ -219,7 +217,6 @@ def test_mxnet_model_registration(
     framework = "TENSORFLOW"
     framework_version = "2.9"
     nearest_model_name = "resnet50"
-    data_input_configuration = '{"input_1":[1,224,224,3]}'
 
     model = MXNetModel(
         entry_point=entry_point,
@@ -244,7 +241,6 @@ def test_mxnet_model_registration(
         framework=framework,
         framework_version=framework_version,
         nearest_model_name=nearest_model_name,
-        data_input_configuration=data_input_configuration,
     )
 
     pipeline = Pipeline(
@@ -293,7 +289,6 @@ def test_sklearn_xgboost_sip_model_registration(
     framework = "TENSORFLOW"
     framework_version = "2.9"
     nearest_model_name = "resnet50"
-    data_input_configuration = '{"input_1":[1,224,224,3]}'
 
     # The instance_type should not be a pipeline variable
     # since it is used to retrieve image_uri in compile time (PySDK)
@@ -450,7 +445,6 @@ def test_sklearn_xgboost_sip_model_registration(
         framework=framework,
         framework_version=framework_version,
         nearest_model_name=nearest_model_name,
-        data_input_configuration=data_input_configuration,
     )
 
     pipeline = Pipeline(
