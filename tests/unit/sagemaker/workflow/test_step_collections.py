@@ -446,7 +446,6 @@ def test_register_model_tf(estimator_tf, model_metrics, drift_check_baselines):
         framework="TENSORFLOW",
         framework_version="2.9",
         nearest_model_name="resnet50",
-        data_input_configuration='{"input_1":[1,224,224,3]}',
     )
     assert ordered(register_model.request_dicts()) == ordered(
         [
@@ -523,7 +522,6 @@ def test_register_model_sip(estimator, model_metrics, drift_check_baselines):
         framework="TENSORFLOW",
         framework_version="2.9",
         nearest_model_name="resnet50",
-        data_input_configuration='{"input_1":[1,224,224,3]}',
     )
     assert ordered(register_model.request_dicts()) == ordered(
         [
@@ -542,9 +540,6 @@ def test_register_model_sip(estimator, model_metrics, drift_check_baselines):
                                 "Framework": "TENSORFLOW",
                                 "FrameworkVersion": "2.9",
                                 "NearestModelName": "resnet50",
-                                "ModelInput": {
-                                    "DataInputConfig": '{"input_1":[1,224,224,3]}',
-                                },
                             },
                             {
                                 "Image": "fakeimage2",
@@ -553,9 +548,6 @@ def test_register_model_sip(estimator, model_metrics, drift_check_baselines):
                                 "Framework": "TENSORFLOW",
                                 "FrameworkVersion": "2.9",
                                 "NearestModelName": "resnet50",
-                                "ModelInput": {
-                                    "DataInputConfig": '{"input_1":[1,224,224,3]}',
-                                },
                             },
                         ],
                         "SupportedContentTypes": ["content_type"],
@@ -619,7 +611,6 @@ def test_register_model_with_model_repack_with_estimator(
         framework="TENSORFLOW",
         framework_version="2.9",
         nearest_model_name="resnet50",
-        data_input_configuration='{"input_1":[1,224,224,3]}',
     )
 
     request_dicts = register_model.request_dicts()
