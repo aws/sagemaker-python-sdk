@@ -223,6 +223,18 @@ class Step(Entity):
             return step_map[str_input].steps[-1].name
         return str_input
 
+    @staticmethod
+    def _trim_experiment_config(request_dict: Dict):
+        """For job steps, trim the experiment config to keep the trial component display name."""
+        if request_dict.get("ExperimentConfig", {}).get("TrialComponentDisplayName"):
+            request_dict["ExperimentConfig"] = {
+                "TrialComponentDisplayName": request_dict["ExperimentConfig"][
+                    "TrialComponentDisplayName"
+                ]
+            }
+        else:
+            request_dict.pop("ExperimentConfig", None)
+
 
 @attr.s
 class CacheConfig:
@@ -432,7 +444,7 @@ class TrainingStep(ConfigurableRetryStep):
             request_dict["HyperParameters"].pop("sagemaker_job_name", None)
 
         request_dict.pop("TrainingJobName", None)
-        request_dict.pop("ExperimentConfig", None)
+        Step._trim_experiment_config(request_dict)
 
         return request_dict
 
@@ -663,7 +675,8 @@ class TransformStep(ConfigurableRetryStep):
             )
 
         request_dict.pop("TransformJobName", None)
-        request_dict.pop("ExperimentConfig", None)
+        Step._trim_experiment_config(request_dict)
+
         return request_dict
 
     @property
@@ -811,7 +824,8 @@ class ProcessingStep(ConfigurableRetryStep):
             request_dict = self.processor.sagemaker_session._get_process_request(**process_args)
 
         request_dict.pop("ProcessingJobName", None)
-        request_dict.pop("ExperimentConfig", None)
+        Step._trim_experiment_config(request_dict)
+
         return request_dict
 
     @property

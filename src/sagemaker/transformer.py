@@ -186,6 +186,9 @@ class Transformer(object):
                 * If both `ExperimentName` and `TrialName` are not supplied the trial component
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
+                * Both `ExperimentName` and `TrialName` will be ignored if the Transformer instance
+                is built with :class:`~sagemaker.workflow.pipeline_context.PipelineSession`.
+                However, the value of `TrialComponentDisplayName` is honored for display in Studio.
             model_client_config (dict[str, str]): Model configuration.
                 Dictionary contains two optional keys,
                 'InvocationsTimeoutInSeconds', and 'InvocationsMaxRetries'.
@@ -194,6 +197,9 @@ class Transformer(object):
                 (default: ``True``).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when wait is ``True`` (default: ``True``).
+        Returns:
+            None or pipeline step arguments in case the Transformer instance is built with
+            :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
         """
         local_mode = self.sagemaker_session.local_mode
         if not local_mode and not is_pipeline_variable(data) and not data.startswith("s3://"):
