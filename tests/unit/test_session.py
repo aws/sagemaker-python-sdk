@@ -2355,8 +2355,25 @@ def test_create_model_package_from_containers_incomplete_args(sagemaker_session)
             containers=containers,
         )
         assert (
-            "content_types, response_types, inference_inferences and transform_instances "
+            "content_types and response_types "
             "must be provided if containers is present." == str(error)
+        )
+
+def test_create_model_package_from_containers_without_model_package_group_name(sagemaker_session):
+    model_package_name = "sagemaker-model-package"
+    containers = ["dummy-container"]
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    with pytest.raises(ValueError) as error:
+        sagemaker_session.create_model_package_from_containers(
+            model_package_name=model_package_name,
+            containers=containers,
+            content_types=content_types,
+            response_types=response_types,
+        )
+        assert (
+            "inference_inferences and transform_instances "
+            "must be provided if model_package_group_name is not present." == str(error)
         )
 
 
@@ -2437,7 +2454,7 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
 
 
 def test_create_model_package_from_containers_without_instance_types(sagemaker_session):
-    model_package_name = "sagemaker-model-package"
+    model_package_group_name = "sagemaker-model-package-group-name-1.0"
     containers = ["dummy-container"]
     content_types = ["application/json"]
     response_types = ["application/json"]
@@ -2470,7 +2487,7 @@ def test_create_model_package_from_containers_without_instance_types(sagemaker_s
         containers=containers,
         content_types=content_types,
         response_types=response_types,
-        model_package_name=model_package_name,
+        model_package_group_name=model_package_group_name,
         model_metrics=model_metrics,
         metadata_properties=metadata_properties,
         marketplace_cert=marketplace_cert,
@@ -2480,7 +2497,7 @@ def test_create_model_package_from_containers_without_instance_types(sagemaker_s
         customer_metadata_properties=customer_metadata_properties,
     )
     expected_args = {
-        "ModelPackageName": model_package_name,
+        "ModelPackageGroupName": model_package_group_name,
         "InferenceSpecification": {
             "Containers": containers,
             "SupportedContentTypes": content_types,
@@ -2498,7 +2515,7 @@ def test_create_model_package_from_containers_without_instance_types(sagemaker_s
 
 
 def test_create_model_package_from_containers_with_one_instance_types(sagemaker_session):
-    model_package_name = "sagemaker-model-package"
+    model_package_group_name = "sagemaker-model-package-group-name-1.0"
     containers = ["dummy-container"]
     content_types = ["application/json"]
     response_types = ["application/json"]
@@ -2533,7 +2550,7 @@ def test_create_model_package_from_containers_with_one_instance_types(sagemaker_
         content_types=content_types,
         response_types=response_types,
         transform_instances=transform_instances,
-        model_package_name=model_package_name,
+        model_package_group_name=model_package_group_name,
         model_metrics=model_metrics,
         metadata_properties=metadata_properties,
         marketplace_cert=marketplace_cert,
@@ -2543,7 +2560,7 @@ def test_create_model_package_from_containers_with_one_instance_types(sagemaker_
         customer_metadata_properties=customer_metadata_properties,
     )
     expected_args = {
-        "ModelPackageName": model_package_name,
+        "ModelPackageGroupName": model_package_group_name,
         "InferenceSpecification": {
             "Containers": containers,
             "SupportedContentTypes": content_types,

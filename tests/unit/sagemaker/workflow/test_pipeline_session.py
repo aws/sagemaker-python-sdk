@@ -298,3 +298,33 @@ def test_pipeline_session_context_for_model_step_with_one_instance_types(
     }
 
     assert register_step_args.create_model_package_request == expected_output
+
+def test_pipeline_session_context_for_model_step_without_model_package_group_name(
+    pipeline_session_mock,
+):
+    model = Model(
+        name="MyModel",
+        image_uri="fakeimage",
+        model_data=ParameterString(name="ModelData", default_value="s3://my-bucket/file"),
+        sagemaker_session=pipeline_session_mock,
+        entry_point=f"{DATA_DIR}/dummy_script.py",
+        source_dir=f"{DATA_DIR}",
+        role=_ROLE,
+    )
+    with pytest.raises(ValueError) as error:
+        model.register(
+            content_types=["text/csv"],
+            response_types=["text/csv"],
+            inference_instances=["ml.t2.medium", "ml.m5.xlarge"],
+            model_package_name="MyModelPackageName",
+            task="IMAGE_CLASSIFICATION",
+            sample_payload_url="s3://test-bucket/model",
+            framework="TENSORFLOW",
+            framework_version="2.9",
+            nearest_model_name="resnet50",
+            data_input_configuration='{"input_1":[1,224,224,3]}',
+        )
+        assert (
+            "inference_inferences and transform_instances "
+            "must be provided if model_package_group_name is not present." == str(error)
+        )

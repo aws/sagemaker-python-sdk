@@ -4500,18 +4500,28 @@ def get_create_model_package_request(
             "SupportedContentTypes": content_types,
             "SupportedResponseMIMETypes": response_types,
         }
-        if inference_instances is not None:
-            inference_specification.update(
-                {
-                    "SupportedRealtimeInferenceInstanceTypes": inference_instances,
-                }
-            )
-        if transform_instances is not None:
-            inference_specification.update(
-                {
-                    "SupportedTransformInstanceTypes": transform_instances,
-                }
-            )
+        if model_package_group_name is not None:
+            if inference_instances is not None:
+                inference_specification.update(
+                    {
+                        "SupportedRealtimeInferenceInstanceTypes": inference_instances,
+                    }
+                )
+            if transform_instances is not None:
+                inference_specification.update(
+                    {
+                        "SupportedTransformInstanceTypes": transform_instances,
+                    }
+                )
+        else:
+            if not all([inference_instances, transform_instances]):
+                raise ValueError(
+                    "inference_instances and transform_instances " "must be provided if model_package_group_name is not present."
+                )
+            inference_specification.update({
+                "SupportedRealtimeInferenceInstanceTypes": inference_instances,
+                "SupportedTransformInstanceTypes": transform_instances,
+            })
         request_dict["InferenceSpecification"] = inference_specification
     request_dict["CertifyForMarketplace"] = marketplace_cert
     request_dict["ModelApprovalStatus"] = approval_status
