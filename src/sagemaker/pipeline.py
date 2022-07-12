@@ -20,7 +20,10 @@ from sagemaker import ModelMetrics
 from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.session import Session
-from sagemaker.utils import name_from_image
+from sagemaker.utils import (
+    name_from_image,
+    update_container_with_inference_params,
+)
 from sagemaker.transformer import Transformer
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
 
@@ -279,6 +282,12 @@ class PipelineModel(object):
         drift_check_baselines: Optional[DriftCheckBaselines] = None,
         customer_metadata_properties: Optional[Dict[str, str]] = None,
         domain: Optional[str] = None,
+        sample_payload_url: Optional[str] = None,
+        task: Optional[str] = None,
+        framework: Optional[str] = None,
+        framework_version: Optional[str] = None,
+        nearest_model_name: Optional[str] = None,
+        data_input_configuration: Optional[str] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -308,6 +317,18 @@ class PipelineModel(object):
                 metadata properties (default: None).
             domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
                 "MACHINE_LEARNING" (default: None).
+            sample_payload_url (str): The S3 path where the sample payload is stored
+                (default: None).
+            task (str): Task values which are supported by Inference Recommender are "FILL_MASK",
+                "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION", "IMAGE_SEGMENTATION",
+                "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
+            framework (str): Machine learning framework of the model package container image
+                (default: None).
+            framework_version (str): Framework version of the Model Package Container Image
+                (default: None).
+            nearest_model_name (str): Name of a pre-trained machine learning benchmarked by
+                Amazon SageMaker Inference Recommender (default: None).
+            data_input_configuration (str): Input object for the model (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -318,6 +339,13 @@ class PipelineModel(object):
         if model_package_group_name is not None:
             container_def = self.pipeline_container_def(
                 inference_instances[0] if inference_instances else None
+            )
+            update_container_with_inference_params(
+                framework=framework,
+                framework_version=framework_version,
+                nearest_model_name=nearest_model_name,
+                data_input_configuration=data_input_configuration,
+                container_list=container_def,
             )
         else:
             container_def = [
@@ -344,6 +372,8 @@ class PipelineModel(object):
             drift_check_baselines=drift_check_baselines,
             customer_metadata_properties=customer_metadata_properties,
             domain=domain,
+            sample_payload_url=sample_payload_url,
+            task=task,
         )
 
         self.sagemaker_session.create_model_package_from_containers(**model_pkg_args)

@@ -17,7 +17,7 @@ import abc
 import warnings
 
 from enum import Enum
-from typing import Dict, List, Union, Optional, TYPE_CHECKING
+from typing import Dict, List, Set, Union, Optional, Any, TYPE_CHECKING
 from urllib.parse import urlparse
 
 import attr
@@ -35,6 +35,7 @@ from sagemaker.processing import (
 )
 from sagemaker.transformer import Transformer, _TransformJob
 from sagemaker.tuner import HyperparameterTuner, _TuningJob
+from sagemaker.workflow.conditions import Condition
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import (
     DefaultEnumMeta,
@@ -46,6 +47,7 @@ from sagemaker.workflow.properties import (
     PropertyFile,
     Properties,
 )
+from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.functions import Join
 from sagemaker.workflow.retry import RetryPolicy
 
@@ -95,6 +97,15 @@ class Step(Entity):
     @abc.abstractmethod
     def arguments(self) -> RequestType:
         """The arguments to the particular `Step` service call."""
+
+    @property
+    def step_only_arguments(self) -> RequestType:
+        """The arguments to this Step only.
+
+        Compound Steps such as the ConditionStep will have to
+        override this method to return arguments pertaining to only that step.
+        """
+        return self.arguments
 
     @property
     @abc.abstractmethod
@@ -148,8 +159,69 @@ class Step(Entity):
             elif isinstance(step, str):
                 depends_on.append(step)
             else:
-                raise ValueError(f"Invalid input step name: {step}")
+                raise ValueError(f"Invalid input step type: {type(step)}")
         return depends_on
+
+    def _find_step_dependencies(
+        self, step_map: Dict[str, Union["Step", "StepCollection"]]
+    ) -> List[str]:
+        """Find the all step names this step is dependent on."""
+        step_dependencies = set()
+        if self.depends_on:
+            step_dependencies.update(self._find_dependencies_in_depends_on_list(step_map))
+        step_dependencies.update(
+            self._find_dependencies_in_step_arguments(self.step_only_arguments, step_map)
+        )
+        return list(step_dependencies)
+
+    def _find_dependencies_in_depends_on_list(
+        self, step_map: Dict[str, Union["Step", "StepCollection"]]
+    ) -> Set[str]:
+        """Find dependency steps referenced in the depends-on field of this step."""
+        # import here to prevent circular import
+        from sagemaker.workflow.step_collections import StepCollection
+
+        dependencies = set()
+        for step in self.depends_on:
+            if isinstance(step, Step):
+                dependencies.add(step.name)
+            elif isinstance(step, StepCollection):
+                dependencies.add(step.steps[-1].name)
+            elif isinstance(step, str):
+                # step could be the name of a `Step` or a `StepCollection`
+                dependencies.add(self._get_step_name_from_str(step, step_map))
+        return dependencies
+
+    @staticmethod
+    def _find_dependencies_in_step_arguments(
+        obj: Any, step_map: Dict[str, Union["Step", "StepCollection"]]
+    ):
+        """Find the step dependencies referenced in the arguments of this step."""
+        dependencies = set()
+        if isinstance(obj, dict):
+            for value in obj.values():
+                if isinstance(value, (PipelineVariable, Condition)):
+                    for referenced_step in value._referenced_steps:
+                        dependencies.add(Step._get_step_name_from_str(referenced_step, step_map))
+                dependencies.update(Step._find_dependencies_in_step_arguments(value, step_map))
+        elif isinstance(obj, list):
+            for item in obj:
+                if isinstance(item, (PipelineVariable, Condition)):
+                    for referenced_step in item._referenced_steps:
+                        dependencies.add(Step._get_step_name_from_str(referenced_step, step_map))
+                dependencies.update(Step._find_dependencies_in_step_arguments(item, step_map))
+        return dependencies
+
+    @staticmethod
+    def _get_step_name_from_str(
+        str_input: str, step_map: Dict[str, Union["Step", "StepCollection"]]
+    ) -> str:
+        """Convert a Step or StepCollection name input to step name."""
+        from sagemaker.workflow.step_collections import StepCollection
+
+        if isinstance(step_map[str_input], StepCollection):
+            return step_map[str_input].steps[-1].name
+        return str_input
 
 
 @attr.s
@@ -302,9 +374,7 @@ class TrainingStep(ConfigurableRetryStep):
         self.estimator = estimator
         self.inputs = inputs
 
-        self._properties = Properties(
-            path=f"Steps.{name}", shape_name="DescribeTrainingJobResponse"
-        )
+        self._properties = Properties(step_name=name, shape_name="DescribeTrainingJobResponse")
         self.cache_config = cache_config
 
         if self.cache_config:
@@ -442,7 +512,7 @@ class CreateModelStep(ConfigurableRetryStep):
         self.model = model
         self.inputs = inputs or CreateModelInput()
 
-        self._properties = Properties(path=f"Steps.{name}", shape_name="DescribeModelOutput")
+        self._properties = Properties(step_name=name, shape_name="DescribeModelOutput")
 
         warnings.warn(
             (
@@ -549,9 +619,7 @@ class TransformStep(ConfigurableRetryStep):
         self.transformer = transformer
         self.inputs = inputs
         self.cache_config = cache_config
-        self._properties = Properties(
-            path=f"Steps.{name}", shape_name="DescribeTransformJobResponse"
-        )
+        self._properties = Properties(step_name=name, shape_name="DescribeTransformJobResponse")
 
         if not self.step_args:
             if inputs is None:
@@ -684,9 +752,7 @@ class ProcessingStep(ConfigurableRetryStep):
         self.job_name = None
         self.kms_key = kms_key
         self.cache_config = cache_config
-        self._properties = Properties(
-            path=f"Steps.{name}", shape_name="DescribeProcessingJobResponse"
-        )
+        self._properties = Properties(step_name=name, shape_name="DescribeProcessingJobResponse")
 
         if not self.step_args:
             # Examine why run method in `sagemaker.processing.Processor`
@@ -852,7 +918,7 @@ class TuningStep(ConfigurableRetryStep):
         self.inputs = inputs
         self.job_arguments = job_arguments
         self._properties = Properties(
-            path=f"Steps.{name}",
+            step_name=name,
             shape_names=[
                 "DescribeHyperParameterTuningJobResponse",
                 "ListTrainingJobsForHyperParameterTuningJobResponse",

@@ -31,8 +31,42 @@ def gpu_instance_type(request):
     return "ml.p3.2xlarge"
 
 
+@pytest.fixture(scope="module")
+def imagenet_val_set(request, sagemaker_session, tmpdir_factory):
+    """
+    Copies the dataset from the bucket it's hosted in to the local bucket in the test region
+    """
+    local_path = tmpdir_factory.mktemp("trcomp_imagenet_val_set")
+    sagemaker_session.download_data(
+        path=local_path,
+        bucket="collection-of-ml-datasets",
+        key_prefix="Imagenet/TFRecords/validation",
+    )
+    train_input = sagemaker_session.upload_data(
+        path=local_path,
+        key_prefix="integ-test-data/trcomp/tensorflow/imagenet/val",
+    )
+    return train_input
+
+
+@pytest.fixture(scope="module")
+def huggingface_dummy_dataset(request, sagemaker_session):
+    """
+    Copies the dataset from the local disk to the local bucket in the test region
+    """
+    data_path = os.path.join(DATA_DIR, "huggingface")
+    train_input = sagemaker_session.upload_data(
+        path=os.path.join(data_path, "train"),
+        key_prefix="integ-test-data/trcomp/huggingface/dummy/train",
+    )
+    return train_input
+
+
 @pytest.fixture(scope="module", autouse=True)
 def skip_if_incompatible(request):
+    """
+    These tests are for training compiler enabled images/estimators only.
+    """
     if integ.test_region() not in integ.TRAINING_COMPILER_SUPPORTED_REGIONS:
         pytest.skip("SageMaker Training Compiler is not supported in this region")
     if integ.test_region() in integ.TRAINING_NO_P3_REGIONS:
@@ -45,7 +79,11 @@ def test_huggingface_pytorch(
     gpu_instance_type,
     huggingface_training_compiler_latest_version,
     huggingface_training_compiler_pytorch_latest_version,
+    huggingface_dummy_dataset,
 ):
+    """
+    Test the HuggingFace estimator with PyTorch
+    """
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, "huggingface")
 
@@ -73,12 +111,7 @@ def test_huggingface_pytorch(
             compiler_config=HFTrainingCompilerConfig(),
         )
 
-        train_input = hf.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "train"),
-            key_prefix="integ-test-data/huggingface/train",
-        )
-
-        hf.fit(train_input)
+        hf.fit(huggingface_dummy_dataset)
 
 
 @pytest.mark.release
@@ -87,7 +120,11 @@ def test_huggingface_tensorflow(
     gpu_instance_type,
     huggingface_training_compiler_latest_version,
     huggingface_training_compiler_tensorflow_latest_version,
+    huggingface_dummy_dataset,
 ):
+    """
+    Test the HuggingFace estimator with TensorFlow
+    """
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, "huggingface")
 
@@ -112,11 +149,7 @@ def test_huggingface_tensorflow(
             compiler_config=HFTrainingCompilerConfig(),
         )
 
-        train_input = hf.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/huggingface/train"
-        )
-
-        hf.fit(train_input)
+        hf.fit(huggingface_dummy_dataset)
 
 
 @pytest.mark.release
@@ -124,7 +157,11 @@ def test_tensorflow(
     sagemaker_session,
     gpu_instance_type,
     tensorflow_training_latest_version,
+    imagenet_val_set,
 ):
+    """
+    Test the TensorFlow estimator
+    """
     if version.parse(tensorflow_training_latest_version) < version.parse("2.9"):
         pytest.skip("Training Compiler only supports TF >= 2.9")
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
@@ -173,7 +210,7 @@ def test_tensorflow(
         )
 
         tf.fit(
-            inputs="s3://collection-of-ml-datasets/Imagenet/TFRecords/validation",
+            inputs=imagenet_val_set,
             logs=True,
             wait=True,
         )

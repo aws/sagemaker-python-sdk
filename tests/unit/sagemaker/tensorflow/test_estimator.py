@@ -22,6 +22,7 @@ import pytest
 
 from sagemaker.estimator import _TrainingJob
 from sagemaker.tensorflow import TensorFlow
+from sagemaker.instance_group import InstanceGroup
 from tests.unit import DATA_DIR
 
 SCRIPT_FILE = "dummy_script.py"
@@ -538,3 +539,24 @@ def test_custom_image(sagemaker_session):
     custom_image = "tensorflow:latest"
     tf = _build_tf(sagemaker_session, image_uri=custom_image)
     assert custom_image == tf.training_image_uri()
+
+
+def test_tf_heterogeneous_cluster_distribution_config(
+    sagemaker_session, tensorflow_training_version, tensorflow_training_py_version
+):
+    if version.Version(tensorflow_training_version) < version.Version("2.0"):
+        pytest.skip("This test is for TF 2.0 and higher.")
+
+    training_group = InstanceGroup("train_group", "ml.c4.xlarge", 1)
+    expected_return = {"mpi": {"enabled": True}, "instance_groups": ["train_group"]}
+    tf = _build_tf(
+        sagemaker_session,
+        framework_version=tensorflow_training_version,
+        py_version=tensorflow_training_py_version,
+        instance_groups=[training_group],
+        distribution={
+            "mpi": {"enabled": True},
+            "instance_groups": [training_group],
+        },
+    )
+    assert tf.distribution == expected_return

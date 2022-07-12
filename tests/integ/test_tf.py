@@ -182,12 +182,42 @@ def test_server_side_encryption(sagemaker_session, tf_full_version, tf_full_py_v
 
 
 @pytest.mark.release
-def test_mnist_distributed(
+def test_mnist_distributed_cpu(
     sagemaker_session,
-    instance_type,
+    cpu_instance_type,
     tensorflow_training_latest_version,
     tensorflow_training_latest_py_version,
 ):
+    _create_and_fit_estimator(
+        sagemaker_session,
+        tensorflow_training_latest_version,
+        tensorflow_training_latest_py_version,
+        cpu_instance_type,
+    )
+
+
+@pytest.mark.release
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.TRAINING_NO_P2_REGIONS
+    and tests.integ.test_region() in tests.integ.TRAINING_NO_P3_REGIONS,
+    reason="no ml.p2 or ml.p3 instances in this region",
+)
+@retry_with_instance_list(gpu_list(tests.integ.test_region()))
+def test_mnist_distributed_gpu(
+    sagemaker_session,
+    tensorflow_training_latest_version,
+    tensorflow_training_latest_py_version,
+    **kwargs,
+):
+    _create_and_fit_estimator(
+        sagemaker_session,
+        tensorflow_training_latest_version,
+        tensorflow_training_latest_py_version,
+        kwargs["instance_type"],
+    )
+
+
+def _create_and_fit_estimator(sagemaker_session, tf_version, py_version, instance_type):
     estimator = TensorFlow(
         entry_point=SCRIPT,
         source_dir=MNIST_RESOURCE_PATH,
@@ -195,8 +225,8 @@ def test_mnist_distributed(
         instance_count=2,
         instance_type=instance_type,
         sagemaker_session=sagemaker_session,
-        framework_version=tensorflow_training_latest_version,
-        py_version=tensorflow_training_latest_py_version,
+        framework_version=tf_version,
+        py_version=py_version,
         distribution=PARAMETER_SERVER_DISTRIBUTION,
         disable_profiler=True,
     )

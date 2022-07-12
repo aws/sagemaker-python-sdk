@@ -17,8 +17,10 @@
 
 import re
 import logging
+import json
 
-from pandas import DataFrame
+import pandas
+from pandas import DataFrame, Series, read_csv
 
 from sagemaker.feature_store.feature_group import FeatureGroup
 from sagemaker.utils import get_session_from_role
@@ -95,3 +97,96 @@ def get_feature_group_as_dataframe(feature_group_name: str, athena_bucket: str,
     logger.info(f'Data shape retrieve from {feature_group_name}: {dataset.shape}')
 
     return dataset
+
+def _format_column_names(data: pandas.DataFrame):
+    data.rename(columns=lambda x: x.replace(' ', '_').replace('.', '').lower()[:62], inplace=True)
+    return data
+
+
+def _cast_object_to_string(data_frame: pandas.DataFrame):
+    for label in data_frame.select_dtypes(['object', 'O']).columns.tolist():
+        data_frame[label] = data_frame[label].astype("str").astype("string")
+    return data_frame
+
+def get_fg_schema(dataframe_or_path, record_id: str, fg_name: str, role: str, region: str, saving_file_path: str = '',
+                  event_id: str = 'data_as_of_date', mode: str = 'display',
+                  logger_level: int = logging.INFO,
+                  **pandas_read_csv_kwargs):
+    """
+
+    Returns:
+        Save text into a file or displays the feature group schema by teh screen
+    """
+    MODE = ['display', 'make_file']
+
+    logger.setLevel(logger_level)
+
+
+    mode = mode.lower()
+    if mode not in MODE:
+        exc = Exception(f'Invalid value {mode} for parameter mode.\nMode must be in {MODE}')
+        logger.exception(exc)
+        raise exc
+
+    from sagemaker.feature_store.feature_group import FeatureGroup
+
+    if isinstance(dataframe_or_path, DataFrame):
+        data = dataframe_or_path
+    elif isinstance(dataframe_or_path, str):
+        pandas_read_csv_kwargs.pop('filepath_or_buffer', None)
+        data = read_csv(filepath_or_buffer=dataframe_or_path, **pandas_read_csv_kwargs)
+    else:
+        exc = Exception(str(f'Invalid type {type(dataframe_or_path)} for argument dataframe_or_path.' +
+                            f'\nParameter must be of type pandas.DataFrame or string'))
+        logger.exception(exc)
+        raise exc
+
+    # Formating cols
+    data = _format_column_names(data=data)
+    data = _cast_object_to_string(data_frame=data)
+
+    lg_uniq = len(data[record_id].unique())
+    lg_id = len(data[record_id])
+
+    if lg_id != lg_uniq:
+        exc = Exception(str(f'Record identifier {record_id} have {abs(lg_id - lg_uniq)} duplicated rows.' +
+                            f'\nRecord identifier must be unique in each row.'))
+        logger.exception(exc)
+        raise exc
+
+    session = get_session_from_role(role=role, region=region)
+    feature_group = FeatureGroup(
+        name=fg_name, sagemaker_session=session
+    )
+
+    if event_id not in data.columns:
+        import time
+        current_time_sec = int(round(time.time()))
+
+        data[event_id] = Series([current_time_sec] * lg_id, dtype="float64")
+
+    definitions = feature_group.load_feature_definitions(data_frame=data)
+
+    def_list = []
+    for ele in definitions:
+        def_list.append({'FeatureName': ele.feature_name, 'FeatureType': ele.feature_type.name})
+
+    if mode == MODE[0]:  # display
+        logger.info('[')
+        for ele in def_list:
+            _to_print = json.dumps(ele)
+            if ele != def_list[-1]:
+                _to_print += ','
+
+            logger.info(f'{_to_print}')
+        logger.info(']')
+    elif mode == MODE[1]:  # make_file
+        if saving_file_path:
+            logger.info(f'Saving schema to {saving_file_path}')
+            with open(saving_file_path, 'w') as f:
+                f.write(json.dumps(def_list))
+                f.close()
+        else:
+            exc = Exception(str(f'Parameter saving_file_path mandatory if mode {MODE[1]} is specified.'))
+            logger.exception(exc)
+            raise exc

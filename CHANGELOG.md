@@ -1,5 +1,80 @@
 # Changelog
 
+## v2.99.0 (2022-07-08)
+
+### Features
+
+ * heterogeneous cluster set up in distribution config
+ * support heterogeneous cluster for training
+ * include fields to work with inference recommender
+
+### Bug Fixes and Other Changes
+
+ * Moving the newly added field instance_group to the end of method
+ * image_uri does not need to be specified with instance_groups
+ * Loosen version of attrs dependency
+ * Add PipelineVariable annotation in estimatory, processing, tuner, transformer base classes
+ * model table link
+
+### Documentation Changes
+
+ * documentation for heterogeneous cluster
+
+## v2.98.0 (2022-07-05)
+
+### Features
+
+ * Adding deepar image
+
+### Documentation Changes
+
+ * edit to clarify how to use inference.py
+
+## v2.97.0 (2022-06-28)
+
+### Deprecations and Removals
+
+ * remove support for python 3.6
+
+### Features
+
+ * update prebuilt models documentation
+
+### Bug Fixes and Other Changes
+
+ * Skipping test_candidate_estimator_default_rerun_and_deploy
+ * Update model name from 'compiled.pt' to 'model.pth' for neo
+ * update pytest, skip hf integ temp
+ * Add override_pipeline_parameter_var decorator to give grace period to update invalid pipeline var args
+
+## v2.96.0 (2022-06-20)
+
+### Features
+
+ * Add helper method to generate pipeline adjacency list
+
+### Bug Fixes and Other Changes
+
+ * changing trcomp integ tests to be able to run in all regions
+
+## v2.95.0 (2022-06-16)
+
+### Features
+
+ * Adding Training Compiler support for TensorFlow estimator starting TF 2.9
+ * Add support for TF 2.9 training
+
+### Bug Fixes and Other Changes
+
+ * integs fallback from p3 to p2 instance
+ * bucket exists check for session.default_bucket
+ * make instance type fields as optional
+
+### Documentation Changes
+
+ * improvements on the docstring of ModelStep
+ * Add XGBoostProcessor
+
 ## v2.94.0 (2022-06-07)
 
 ### Features

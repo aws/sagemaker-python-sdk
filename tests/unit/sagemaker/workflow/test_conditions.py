@@ -112,7 +112,7 @@ def test_condition_in_mixed():
     assert cond_in.to_request() == {
         "Type": "In",
         "QueryValue": {"Get": "Parameters.MyStr"},
-        "Values": ["abc", {"Get": "foo"}, {"Get": "Execution.StartDateTime"}],
+        "Values": ["abc", {"Get": "Steps.foo"}, {"Get": "Execution.StartDateTime"}],
     }
 
 
