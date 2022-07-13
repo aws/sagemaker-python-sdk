@@ -185,6 +185,23 @@ def test_create_model(sagemaker_session, sklearn_version):
     assert model_values["Image"] == image_uri
 
 
+def test_register_model(sagemaker_session, sklearn_version):
+    source_dir = "s3://mybucket/source"
+
+    sklearn_model = SKLearnModel(
+        model_data=source_dir,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        entry_point=SCRIPT_PATH,
+        framework_version=sklearn_version,
+    )
+    
+    model = sklearn_model.register(
+        content_types=["application/json"],
+        response_types=["application/json"],
+    )
+
+
 @patch("sagemaker.model.FrameworkModel._upload_code")
 def test_create_model_with_network_isolation(upload, sagemaker_session, sklearn_version):
     source_dir = "s3://mybucket/source"
