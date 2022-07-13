@@ -2719,12 +2719,20 @@ class Framework(EstimatorBase):
 
     def _validate_and_set_debugger_configs(self):
         """Set defaults for debugging."""
-        if self.debugger_hook_config is None and _region_supports_debugger(
+        region_supports_debugger = _region_supports_debugger(
             self.sagemaker_session.boto_region_name
-        ):
-            self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
-        elif not self.debugger_hook_config:
-            # set hook config to False if _region_supports_debugger is False
+        )
+
+        if region_supports_debugger:
+            if self.debugger_hook_config is None:
+                self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
+        else:
+            if self.debugger_hook_config != False and self.debugger_hook_config is not None:
+                # when user set debugger config in a unsupported region
+                raise ValueError(
+                    "Current region does not support debugger but debugger hook config is set!"
+                )
+            # disable debugger in unsupported regions
             self.debugger_hook_config = False
 
         # Disable debugger if checkpointing is enabled by the customer
