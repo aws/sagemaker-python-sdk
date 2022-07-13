@@ -3260,7 +3260,6 @@ def test_register_default_image_without_instance_type_args(sagemaker_session):
     framework = "TENSORFLOW"
     framework_version = "2.9"
     nearest_model_name = "resnet50"
-    data_input_config = '{"input_1":[1,224,224,3]}'
 
     estimator.register(
         content_types=content_types,
@@ -3271,7 +3270,6 @@ def test_register_default_image_without_instance_type_args(sagemaker_session):
         framework=framework,
         framework_version=framework_version,
         nearest_model_name=nearest_model_name,
-        data_input_configuration=data_input_config,
     )
     sagemaker_session.create_model.assert_not_called()
 
@@ -3319,7 +3317,6 @@ def test_register_inference_image(sagemaker_session):
     framework = "TENSORFLOW"
     framework_version = "2.9"
     nearest_model_name = "resnet50"
-    data_input_config = '{"input_1":[1,224,224,3]}'
 
     estimator.register(
         content_types=content_types,
@@ -3333,7 +3330,6 @@ def test_register_inference_image(sagemaker_session):
         framework=framework,
         framework_version=framework_version,
         nearest_model_name=nearest_model_name,
-        data_input_configuration=data_input_config,
     )
     sagemaker_session.create_model.assert_not_called()
 
