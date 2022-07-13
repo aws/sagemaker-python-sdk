@@ -787,9 +787,9 @@ class ProcessingJob(_Job):
         process_args = cls._get_process_args(processor, inputs, outputs, experiment_config)
 
         # Print the job name and the user's inputs and outputs as lists of dictionaries.
-        logger.info("Job Name: ", process_args["job_name"])
-        logger.info("Inputs: ", process_args["inputs"])
-        logger.info("Outputs: ", process_args["output_config"]["Outputs"])
+        logger.info("Job Name: {0}".format(process_args["job_name"]))
+        logger.info("Inputs: {0}".format(process_args["inputs"]))
+        logger.info("Outputs: {0}".format(process_args["output_config"]["Outputs"]))
 
         # Call sagemaker_session.process using the arguments dictionary.
         processor.sagemaker_session.process(**process_args)
