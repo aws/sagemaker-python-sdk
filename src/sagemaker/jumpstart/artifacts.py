@@ -12,9 +12,12 @@
 # language governing permissions and limitations under the License.
 """This module contains functions for obtaining JumpStart ECR and S3 URIs."""
 from __future__ import absolute_import
+import os
 from typing import Dict, Optional
 from sagemaker import image_uris
 from sagemaker.jumpstart.constants import (
+    ENV_VARIABLE_JUMPSTART_MODEL_ARTIFACT_BUCKET_OVERRIDE,
+    ENV_VARIABLE_JUMPSTART_SCRIPT_ARTIFACT_BUCKET_OVERRIDE,
     JUMPSTART_DEFAULT_REGION_NAME,
 )
 from sagemaker.jumpstart.enums import (
@@ -217,7 +220,9 @@ def _retrieve_model_uri(
     elif model_scope == JumpStartScriptScope.TRAINING:
         model_artifact_key = model_specs.training_artifact_key
 
-    bucket = get_jumpstart_content_bucket(region)
+    bucket = os.environ.get(
+        ENV_VARIABLE_JUMPSTART_MODEL_ARTIFACT_BUCKET_OVERRIDE
+    ) or get_jumpstart_content_bucket(region)
 
     model_s3_uri = f"s3://{bucket}/{model_artifact_key}"
 
@@ -275,7 +280,9 @@ def _retrieve_script_uri(
     elif script_scope == JumpStartScriptScope.TRAINING:
         model_script_key = model_specs.training_script_key
 
-    bucket = get_jumpstart_content_bucket(region)
+    bucket = os.environ.get(
+        ENV_VARIABLE_JUMPSTART_SCRIPT_ARTIFACT_BUCKET_OVERRIDE
+    ) or get_jumpstart_content_bucket(region)
 
     script_s3_uri = f"s3://{bucket}/{model_script_key}"
 

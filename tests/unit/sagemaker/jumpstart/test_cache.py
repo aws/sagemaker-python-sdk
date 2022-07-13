@@ -15,6 +15,7 @@ import copy
 import datetime
 import io
 import json
+from unittest.mock import Mock, mock_open
 from botocore.stub import Stubber
 import botocore
 
@@ -23,13 +24,17 @@ import pytest
 from mock import patch
 
 from sagemaker.jumpstart.cache import JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY, JumpStartModelsCache
+from sagemaker.jumpstart.constants import (
+    ENV_VARIABLE_JUMPSTART_METADATA_LOCAL_ROOT_OVERRIDE,
+)
 from sagemaker.jumpstart.types import (
     JumpStartModelHeader,
+    JumpStartModelSpecs,
     JumpStartVersionedModelId,
 )
 from tests.unit.sagemaker.jumpstart.utils import (
     get_spec_from_base_spec,
-    patched_get_file_from_s3,
+    patched_retrieval_function,
 )
 
 from tests.unit.sagemaker.jumpstart.constants import (
@@ -38,7 +43,7 @@ from tests.unit.sagemaker.jumpstart.constants import (
 )
 
 
-@patch.object(JumpStartModelsCache, "_get_file_from_s3", patched_get_file_from_s3)
+@patch.object(JumpStartModelsCache, "_retrieval_function", patched_retrieval_function)
 @patch("sagemaker.jumpstart.utils.get_sagemaker_version", lambda: "2.68.3")
 def test_jumpstart_cache_get_header():
 
@@ -582,7 +587,7 @@ def test_jumpstart_cache_makes_correct_s3_calls(mock_boto3_client):
     mock_boto3_client.return_value.head_object.assert_not_called()
 
 
-@patch.object(JumpStartModelsCache, "_get_file_from_s3", patched_get_file_from_s3)
+@patch.object(JumpStartModelsCache, "_retrieval_function", patched_retrieval_function)
 def test_jumpstart_cache_handles_bad_semantic_version_manifest_key_cache():
     cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
 
@@ -625,7 +630,7 @@ def test_jumpstart_cache_handles_bad_semantic_version_manifest_key_cache():
     cache.clear.assert_called_once()
 
 
-@patch.object(JumpStartModelsCache, "_get_file_from_s3", patched_get_file_from_s3)
+@patch.object(JumpStartModelsCache, "_retrieval_function", patched_retrieval_function)
 @patch("sagemaker.jumpstart.utils.get_sagemaker_version", lambda: "2.68.3")
 def test_jumpstart_get_full_manifest():
     cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
@@ -634,7 +639,7 @@ def test_jumpstart_get_full_manifest():
     raw_manifest == BASE_MANIFEST
 
 
-@patch.object(JumpStartModelsCache, "_get_file_from_s3", patched_get_file_from_s3)
+@patch.object(JumpStartModelsCache, "_retrieval_function", patched_retrieval_function)
 @patch("sagemaker.jumpstart.utils.get_sagemaker_version", lambda: "2.68.3")
 def test_jumpstart_cache_get_specs():
     cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
@@ -690,3 +695,70 @@ def test_jumpstart_cache_get_specs():
             model_id=model_id,
             semantic_version_str="5.*",
         )
+
+
+@patch.object(JumpStartModelsCache, "_get_json_file_and_etag_from_s3")
+@patch("sagemaker.jumpstart.utils.get_sagemaker_version", lambda: "2.68.3")
+@patch.dict(
+    "sagemaker.jumpstart.cache.os.environ",
+    {ENV_VARIABLE_JUMPSTART_METADATA_LOCAL_ROOT_OVERRIDE: "/some/directory/metadata/root"},
+)
+@patch("sagemaker.jumpstart.cache.os.path.isdir")
+@patch("builtins.open")
+def test_jumpstart_local_metadata_override_header(
+    mocked_open: Mock, mocked_is_dir: Mock, mocked_get_json_file_and_etag_from_s3: Mock
+):
+    mocked_open.side_effect = mock_open(read_data=json.dumps(BASE_MANIFEST))
+    mocked_is_dir.return_value = True
+    cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
+
+    model_id, version = "tensorflow-ic-imagenet-inception-v3-classification-4", "2.0.0"
+    assert JumpStartModelHeader(
+        {
+            "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
+            "version": "2.0.0",
+            "min_version": "2.49.0",
+            "spec_key": "community_models_specs/tensorflow-ic-imagenet-inception-v3-classification-4/specs_v2.0.0.json",
+        }
+    ) == cache.get_header(model_id=model_id, semantic_version_str=version)
+
+    mocked_is_dir.assert_called_once_with("/some/directory/metadata/root")
+    mocked_open.assert_called_once_with("/some/directory/metadata/root/models_manifest.json", "r")
+    mocked_get_json_file_and_etag_from_s3.assert_not_called()
+
+
+@patch.object(JumpStartModelsCache, "_get_json_file_and_etag_from_s3")
+@patch("sagemaker.jumpstart.utils.get_sagemaker_version", lambda: "2.68.3")
+@patch.dict(
+    "sagemaker.jumpstart.cache.os.environ",
+    {ENV_VARIABLE_JUMPSTART_METADATA_LOCAL_ROOT_OVERRIDE: "/some/directory/metadata/root"},
+)
+@patch("sagemaker.jumpstart.cache.os.path.isdir")
+@patch("builtins.open")
+def test_jumpstart_local_metadata_override_specs(
+    mocked_open: Mock, mocked_is_dir: Mock, mocked_get_json_file_and_etag_from_s3: Mock
+):
+
+    mocked_open.side_effect = [
+        mock_open(read_data=json.dumps(BASE_MANIFEST)).return_value,
+        mock_open(read_data=json.dumps(BASE_SPEC)).return_value,
+    ]
+
+    mocked_is_dir.return_value = True
+    cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
+
+    model_id, version = "tensorflow-ic-imagenet-inception-v3-classification-4", "2.0.0"
+    assert JumpStartModelSpecs(BASE_SPEC) == cache.get_specs(
+        model_id=model_id, semantic_version_str=version
+    )
+
+    mocked_is_dir.assert_called_with("/some/directory/metadata/root")
+    assert mocked_is_dir.call_count == 2
+    mocked_open.assert_any_call("/some/directory/metadata/root/models_manifest.json", "r")
+    mocked_open.assert_any_call(
+        "/some/directory/metadata/root/community_models_specs/tensorflow-ic-imagenet-"
+        "inception-v3-classification-4/specs_v2.0.0.json",
+        "r",
+    )
+    assert mocked_open.call_count == 2
+    mocked_get_json_file_and_etag_from_s3.assert_not_called()
