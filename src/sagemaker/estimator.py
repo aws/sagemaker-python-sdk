@@ -2727,7 +2727,7 @@ class Framework(EstimatorBase):
             if self.debugger_hook_config is None:
                 self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
         else:
-            if self.debugger_hook_config != False and self.debugger_hook_config is not None:
+            if self.debugger_hook_config is not None and self.debugger_hook_config is not False:
                 # when user set debugger config in a unsupported region
                 raise ValueError(
                     "Current region does not support debugger but debugger hook config is set!"
