@@ -15,6 +15,7 @@ from __future__ import absolute_import
 
 from datetime import datetime
 from enum import Enum
+from tracemalloc import start
 from typing import Optional, Union, List, Dict
 
 from sagemaker.lineage._utils import get_resource_name_from_arn
@@ -208,6 +209,7 @@ class LineageQueryResult(object):
         self,
         edges: List[Edge] = None,
         vertices: List[Vertex] = None,
+        startarn: List[str] = None,
     ):
         """Init for LineageQueryResult.
 
@@ -217,12 +219,16 @@ class LineageQueryResult(object):
         """
         self.edges = []
         self.vertices = []
+        self.startarn = []
 
         if edges is not None:
             self.edges = edges
 
         if vertices is not None:
             self.vertices = vertices
+
+        if startarn is not None:
+            self.startarn = startarn
 
     def __str__(self):
         """Define string representation of ``LineageQueryResult``.
@@ -248,7 +254,7 @@ class LineageQueryResult(object):
 
         """
         result_dict = vars(self)
-        return str({k: [vars(val) for val in v] for k, v in result_dict.items()})
+        return str({k: [str(val) for val in v] for k, v in result_dict.items()})
 
     def _import_visual_modules(self):
         """Import modules needed for visualization."""
@@ -417,9 +423,8 @@ class LineageQuery(object):
             sagemaker_session=self._session,
         )
 
-    def _convert_api_response(self, response) -> LineageQueryResult:
+    def _convert_api_response(self, response, converted) -> LineageQueryResult:
         """Convert the lineage query API response to its Python representation."""
-        converted = LineageQueryResult()
         converted.edges = [self._get_edge(edge) for edge in response["Edges"]]
         converted.vertices = [self._get_vertex(vertex) for vertex in response["Vertices"]]
 
@@ -502,7 +507,9 @@ class LineageQuery(object):
             Filters=query_filter._to_request_dict() if query_filter else {},
             MaxDepth=max_depth,
         )
-        query_response = self._convert_api_response(query_response)
+        # create query result for startarn info
+        query_result = LineageQueryResult(startarn=start_arns)
+        query_response = self._convert_api_response(query_response, query_result)
         query_response = self._collapse_cross_account_artifacts(query_response)
 
         return query_response
