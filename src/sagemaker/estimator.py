@@ -776,6 +776,43 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             self.debugger_hook_config.s3_output_path = self.output_path
         self.debugger_rule_configs = self._prepare_debugger_rules()
         self._prepare_collection_configs()
+        self._validate_and_set_debugger_configs()
+
+    def _validate_and_set_debugger_configs(self):
+        """Set defaults for debugging."""
+        region_supports_debugger = _region_supports_debugger(
+            self.sagemaker_session.boto_region_name
+        )
+
+        if region_supports_debugger:
+            if self.debugger_hook_config in [None, {}]:
+                self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
+        else:
+            if self.debugger_hook_config is not False and not self.debugger_hook_config:
+                # when user set debugger config in a unsupported region
+                raise ValueError(
+                    "Current region does not support debugger but debugger hook config is set!"
+                )
+            # disable debugger in unsupported regions
+            self.debugger_hook_config = False
+
+        # Disable debugger if checkpointing is enabled by the customer
+        if self.checkpoint_s3_uri and self.checkpoint_local_path and self.debugger_hook_config:
+            if self._framework_name in {"mxnet", "pytorch", "tensorflow"}:
+                if self.instance_count > 1 or (
+                    hasattr(self, "distribution")
+                    and self.distribution is not None  # pylint: disable=no-member
+                ):
+                    logger.info(
+                        "SMDebug Does Not Currently Support \
+                        Distributed Training Jobs With Checkpointing Enabled"
+                    )
+                    self.debugger_hook_config = False
+
+        if not self.debugger_hook_config:
+            if self.environment is None:
+                self.environment = {}
+            self.environment[DEBUGGER_FLAG] = "0"
 
     def _prepare_debugger_rules(self):
         """Set any necessary values in debugger rules, if they are provided."""
@@ -2689,18 +2726,6 @@ class Framework(EstimatorBase):
         self.checkpoint_local_path = checkpoint_local_path
         self.enable_sagemaker_metrics = enable_sagemaker_metrics
 
-    def _prepare_for_training(self, job_name=None):
-        """Set hyperparameters needed for training. This method will also validate ``source_dir``.
-
-        Args:
-           * job_name (str): Name of the training job to be created. If not
-                specified, one is generated, using the base name given to the
-                constructor if applicable.
-        """
-        super(Framework, self)._prepare_for_training(job_name=job_name)
-
-        self._validate_and_set_debugger_configs()
-
     def _script_mode_hyperparam_update(self, code_dir: str, script: str) -> None:
         """Applies in-place updates to hyperparameters required for script mode with training.
 
@@ -2716,42 +2741,6 @@ class Framework(EstimatorBase):
         hyperparams[SAGEMAKER_REGION_PARAM_NAME] = self.sagemaker_session.boto_region_name
 
         self._hyperparameters.update(hyperparams)
-
-    def _validate_and_set_debugger_configs(self):
-        """Set defaults for debugging."""
-        region_supports_debugger = _region_supports_debugger(
-            self.sagemaker_session.boto_region_name
-        )
-
-        if region_supports_debugger:
-            if self.debugger_hook_config is None:
-                self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
-        else:
-            if self.debugger_hook_config is not None and self.debugger_hook_config is not False:
-                # when user set debugger config in a unsupported region
-                raise ValueError(
-                    "Current region does not support debugger but debugger hook config is set!"
-                )
-            # disable debugger in unsupported regions
-            self.debugger_hook_config = False
-
-        # Disable debugger if checkpointing is enabled by the customer
-        if self.checkpoint_s3_uri and self.checkpoint_local_path and self.debugger_hook_config:
-            if self._framework_name in {"mxnet", "pytorch", "tensorflow"}:
-                if self.instance_count > 1 or (
-                    hasattr(self, "distribution")
-                    and self.distribution is not None  # pylint: disable=no-member
-                ):
-                    logger.info(
-                        "SMDebug Does Not Currently Support \
-                        Distributed Training Jobs With Checkpointing Enabled"
-                    )
-                    self.debugger_hook_config = False
-
-        if self.debugger_hook_config is False:
-            if self.environment is None:
-                self.environment = {}
-            self.environment[DEBUGGER_FLAG] = "0"
 
     def _model_source_dir(self):
         """Get the appropriate value to pass as ``source_dir`` to a model constructor.
