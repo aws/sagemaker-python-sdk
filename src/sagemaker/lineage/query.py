@@ -15,7 +15,6 @@ from __future__ import absolute_import
 
 from datetime import datetime
 from enum import Enum
-from tracemalloc import start
 from typing import Optional, Union, List, Dict
 
 from sagemaker.lineage._utils import get_resource_name_from_arn
@@ -271,14 +270,17 @@ class LineageQueryResult(object):
         return cyto, JupyterDash, html
 
     def _get_verts(self):
-        """Convert vertices to tuple format for visualizer"""
+        """Convert vertices to tuple format for visualizer."""
         verts = []
         for vert in self.vertices:
-            verts.append((vert.arn, vert.lineage_source, vert.lineage_entity))
+            if vert.arn in self.startarn:
+                verts.append((vert.arn, vert.lineage_source, vert.lineage_entity + " startarn"))
+            else:
+                verts.append((vert.arn, vert.lineage_source, vert.lineage_entity))
         return verts
 
     def _get_edges(self):
-        """Convert edges to tuple format for visualizer"""
+        """Convert edges to tuple format for visualizer."""
         edges = []
         for edge in self.edges:
             edges.append((edge.source_arn, edge.destination_arn, edge.association_type))
@@ -286,7 +288,6 @@ class LineageQueryResult(object):
 
     def visualize(self):
         """Visualize lineage query result."""
-
         cyto, JupyterDash, html = self._import_visual_modules()
 
         cyto.load_extra_layouts()  # load "klay" layout (hierarchical layout) from extra layouts
@@ -297,17 +298,11 @@ class LineageQueryResult(object):
         edges = self._get_edges()
 
         nodes = [
-            {
-                "data": {"id": id, "label": label},
-                "classes": classes
-            }
-            for id, label, classes in verts
+            {"data": {"id": id, "label": label}, "classes": classes} for id, label, classes in verts
         ]
 
         edges = [
-            {
-                "data": {"source": source, "target": target, "label": label}
-            } 
+            {"data": {"source": source, "target": target, "label": label}}
             for source, target, label in edges
         ]
 
@@ -322,13 +317,13 @@ class LineageQueryResult(object):
                     layout={"name": "klay"},
                     stylesheet=[
                         {
-                            "selector": "node", 
+                            "selector": "node",
                             "style": {
-                                "label": "data(label)", 
-                                "font-size": "3.5vw", 
+                                "label": "data(label)",
+                                "font-size": "3.5vw",
                                 "height": "10vw",
-                                "width": "10vw"
-                            }
+                                "width": "10vw",
+                            },
                         },
                         {
                             "selector": "edge",
@@ -344,33 +339,14 @@ class LineageQueryResult(object):
                                 "target-arrow-color": "gray",
                                 "target-arrow-shape": "triangle",
                                 "line-color": "gray",
-                                "arrow-scale": "0.5"
+                                "arrow-scale": "0.5",
                             },
                         },
-                        {
-                            "selector": ".Artifact",
-                            "style": {
-                                "background-color": "#146eb4"
-                            }
-                        },
-                        {
-                            "selector": ".Context",
-                            "style": {
-                                "background-color": "#ff9900"
-                            }
-                        },
-                        {
-                            "selector": ".TrialComponent",
-                            "style": {
-                                "background-color": "#f6cf61"
-                            }
-                        },
-                        {
-                            "selector": ".Action",
-                            "style": {
-                                "background-color": "#88c396"
-                            }
-                        }
+                        {"selector": ".Artifact", "style": {"background-color": "#146eb4"}},
+                        {"selector": ".Context", "style": {"background-color": "#ff9900"}},
+                        {"selector": ".TrialComponent", "style": {"background-color": "#f6cf61"}},
+                        {"selector": ".Action", "style": {"background-color": "#88c396"}},
+                        {"selector": ".startarn", "style": {"shape": "star"}},
                     ],
                     responsive=True,
                 )
