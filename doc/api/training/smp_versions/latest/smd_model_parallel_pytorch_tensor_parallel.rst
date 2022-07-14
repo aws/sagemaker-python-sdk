@@ -238,11 +238,11 @@ Tensor Parallelism Module APIs
    number is given by ``num_layers`` argument. For the other
    arguments and methods, refer to
    :class:`smdistributed.modelparallel.torch.nn.DistributedTransformerLayer`.
-   
-   -  If both ``pre_layernorm`` and ``post_layernorm`` are ``True``,
-      layer normalization is applied to both the input and the output of
-      the ``DistributedTransformer``, in addition to the intermediate
-      attention and transformer-output layers.
+
+   If both ``pre_layernorm`` and ``post_layernorm`` are ``True``,
+   layer normalization is applied to both the input and the output of
+   the ``DistributedTransformer``, in addition to the intermediate
+   attention and transformer-output layers.
 
 .. class:: smdistributed.modelparallel.torch.nn.DistributedTransformerLayer(num_attention_heads=32, attention_head_size=32, hidden_size=1024, intermediate_size=4096, attention_dropout_prob=0.1, hidden_dropout_prob=0.1, activation="gelu", layernorm_epsilon=1e-5, initializer_range=0.02, use_normal_initialization=False, causal_mask_size=None, add_cross_attention=False, pre_layernorm=False, post_layernorm=True)
 
