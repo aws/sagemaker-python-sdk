@@ -251,7 +251,8 @@ def test_create_model_package(sagemaker_session, boto_session, iris_image):
     validation_input_path = "s3://" + s3_bucket + "/validation-input-csv/"
     validation_output_path = "s3://" + s3_bucket + "/validation-output-csv/"
 
-    role = "arn:aws:iam::142577830533:role/SageMakerRole"
+    iam = boto_session.resource("iam")
+    role = iam.Role("SageMakerRole").arn
     sm_client = boto_session.client("sagemaker")
     s3_client = boto_session.client("s3")
     s3_client.put_object(
