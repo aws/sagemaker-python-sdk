@@ -223,8 +223,9 @@ def iris_image(sagemaker_session):
                 ecr_image, auth_config={"username": username, "password": password}
             )
             break
-        except requests.exceptions.ConnectionError:
+        except requests.exceptions.ConnectionError as e:
             # This can happen when we try to create multiple repositories in parallel, so we retry
+            print(e.response, e.args, e)
             pass
 
     yield ecr_image
@@ -291,7 +292,6 @@ def test_create_model_package(sagemaker_session, boto_session, iris_image):
     model = Model(
         image_uri=iris_image,
         model_data=validation_input_path + "input.csv",
-        role=role,
         sagemaker_session=sagemaker_session,
         enable_network_isolation=False,
     )
