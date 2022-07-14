@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import json
 
 import pytest
+from botocore.exceptions import MissingParametersError
 
 from mock import Mock
 
@@ -184,3 +185,37 @@ def test_pipeline_interpolates_emr_outputs(sagemaker_session):
     assert ordered(adjacency_list) == ordered(
         {"emr_step_1": [], "emr_step_2": [], "TestStep": ["emr_step_1", "emr_step_2"]}
     )
+
+
+def test_emr_step_with_incorrect_key_value(sagemaker_session):
+    emr_step_config = EMRStepConfig(
+        jar="s3:/script-runner/script-runner.jar",
+        args=["--arg_0", "arg_0_value"],
+        main_class="com.my.main",
+        properties=[{"key": "foo", "value": "foo_value"}],  # <<<
+    )
+
+    emr_step = EMRStep(
+        name="MyEMRStep",
+        display_name="MyEMRStep",
+        description="MyEMRStepDescription",
+        cluster_id="MyClusterID",
+        step_config=emr_step_config,
+        depends_on=["TestStep"],
+        cache_config=CacheConfig(enable_caching=True, expire_after="PT1H"),
+    )
+
+    corret_dict = [{"Key": "foo", "Value": "foo_value"}]
+    assert emr_step.arguments["StepConfig"]["HadoopJarStep"]["Properties"] == corret_dict
+
+
+def test_emr_step_with_no_key_value_fields(sagemaker_session):
+    try:
+        _ = EMRStepConfig(
+            jar="s3:/script-runner/script-runner.jar",
+            args=["--arg_0", "arg_0_value"],
+            main_class="com.my.main",
+            properties=[{"not_a_key": "foo", "not_a_value": "foo_value"}],  # <<<
+        )
+    except Exception as e:
+        assert isinstance(e, MissingParametersError)
