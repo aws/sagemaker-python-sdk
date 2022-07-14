@@ -15,6 +15,8 @@ from __future__ import absolute_import
 
 from typing import List, Union, Optional
 
+from botocore.exceptions import MissingParametersError
+
 from sagemaker.workflow.entities import (
     RequestType,
 )
@@ -47,6 +49,7 @@ class EMRStepConfig:
         self.args = args
         self.main_class = main_class
         self.properties = properties
+        self.validate_prop_dicts()
 
     def to_request(self) -> RequestType:
         """Convert EMRStepConfig object to request dict."""
@@ -59,6 +62,20 @@ class EMRStepConfig:
             config["HadoopJarStep"]["Properties"] = self.properties
 
         return config
+
+    def validate_prop_dicts(self):
+        """Validate k,v structure of properties dictionaries, err if not provided"""
+        if isinstance(self.properties, list) and self.properties:
+            for field_dict in self.properties:
+                try:
+                    if "key" in field_dict.keys():
+                        field_dict["Key"] = field_dict.pop("key")
+                    if "value" in field_dict.keys():
+                        field_dict["Value"] = field_dict.pop("value")
+                except KeyError:
+                    raise MissingParametersError(
+                        object_name=EMRStepConfig, missing=["Key", "Value"]
+                    )
 
 
 class EMRStep(Step):
