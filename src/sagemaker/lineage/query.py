@@ -272,8 +272,10 @@ class LineageQueryResult(object):
     def _get_verts(self):
         """Convert vertices to tuple format for visualizer."""
         verts = []
+        # get vertex info in the form of (id, label, class)
         for vert in self.vertices:
             if vert.arn in self.startarn:
+                # add "startarn" class to node if arn is a startarn
                 verts.append((vert.arn, vert.lineage_source, vert.lineage_entity + " startarn"))
             else:
                 verts.append((vert.arn, vert.lineage_source, vert.lineage_entity))
@@ -282,6 +284,7 @@ class LineageQueryResult(object):
     def _get_edges(self):
         """Convert edges to tuple format for visualizer."""
         edges = []
+        # get edge info in the form of (source, target, label)
         for edge in self.edges:
             edges.append((edge.source_arn, edge.destination_arn, edge.association_type))
         return edges
