@@ -123,8 +123,8 @@ def test_conditional_pytorch_training_model_registration(
         model_data=step_train.properties.ModelArtifacts.S3ModelArtifacts,
         content_types=["*"],
         response_types=["*"],
-        inference_instances=["*"],
-        transform_instances=["*"],
+        inference_instances=["ml.m5.xlarge"],
+        transform_instances=["ml.m5.xlarge"],
         description="test-description",
         sample_payload_url=sample_payload_url,
         task=task,
@@ -234,7 +234,7 @@ def test_mxnet_model_registration(
         content_types=["*"],
         response_types=["*"],
         inference_instances=["ml.m5.xlarge"],
-        transform_instances=["*"],
+        transform_instances=["ml.m5.xlarge"],
         description="test-description",
         sample_payload_url=sample_payload_url,
         task=task,
@@ -670,7 +670,7 @@ def test_model_registration_with_drift_check_baselines(
                 )
                 continue
             assert execution_steps[0]["StepStatus"] == "Succeeded"
-            assert execution_steps[0]["StepName"] == "MyRegisterModelStep"
+            assert execution_steps[0]["StepName"] == "MyRegisterModelStep-RegisterModel"
 
             response = sagemaker_session.sagemaker_client.describe_model_package(
                 ModelPackageName=execution_steps[0]["Metadata"]["RegisterModel"]["Arn"]
