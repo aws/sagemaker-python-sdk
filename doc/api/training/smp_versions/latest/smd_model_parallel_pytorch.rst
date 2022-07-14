@@ -493,74 +493,7 @@ smdistributed.modelparallel.torch.DistributedOptimizer
       a partial \ ``state_dict``, which indicates whether the
       ``state_dict`` contains elements corresponding to only the current
       partition, or to the entire model.
-
-   .. method:: save_optimizer_backcompat(cast_to_cpu=True, gather_if_shard=True, fp32_states_only=False)
-
-      Gets the local optimizer states and FP16 states if FP16 training is enabled.
-
-      :param cast_to_cpu: Whether to cast the optimizer states and FP16 states to CPU.
-      :type cast_to_cpu: boolean
-      :param gather_if_shard: (for smdistributed-modelparallel v1.10 only)
-          Whether to gather the optimizer states and FP16 states to the 0th
-          ``rdp_rank`` when using the `optimizer state sharding
-          <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-optimizer-state-sharding.html>`_ feature.
-          If you want to save optimizer and also further reduce CPU memory
-          utilization for better performance, turn it off by setting
-          ``gather_if_shard=False``. However, you need to make sure that you
-          save the states on all ``rdp_rank``\ s. To handle both cases,
-          use the following example code.
-
-      :type gather_if_shard: boolean
-      :param fp32_states_only: Whether to return the FP32 optimizer states only.
-      :type fp32_states_only: boolean
-
-      **Example Usage:**
-
-      .. code:: python
-
-        import smdistributed.modelparallel.torch as smp
-
-        # wrap optimizer
-        optimizer = torch.optim.AdaDelta(...)
-        optimizer = smp.DistributedOptimizer(optimizer)
-
-        # save optimizer
-        save_dict["optimizer"] = optimizer.save_optimizer_backcompat(
-           gather_if_shard=args.gather_if_shard
-        )
-        if not args.gather_if_shard or smp.rdp_rank() == 0:
-           smp.save(
-              save_dict, output_save_file, partial=True,
-              v3=not args.gather_if_shard
-           )
-
-      The ``v3`` argument of the ``smp.save()`` function checks whether the value of
-      the ``gather_if_shard`` arg is ``True`` or ``False``.
-      If ``gather_if_shard=False``, the ``v3`` arg helps collect optimizer checkpoint
-      files by adding ``pp_rank``, ``tp_rank``, and ``rdp_rank`` as postfix
-      to avoid overwriting optimizer checkpoint files.
-
-   .. method:: load_optimizer_backcompat(state_dict, gather_if_shard=False)
-
-      Loads the saved optimizer states and FP16 states if FP16 training is enabled.
-
-      :param state_dict: The ``state_dict`` to load.
-      :type state_dict: dict
-      :param gather_if_shard: Specify whether the optimizer state was saved with ``gather_if_shard=True``
-          when using the :class:`smdistributed.modelparallel.torch.DistributedOptimizer.save_optimizer_backcompat()` method.
-      :type gather_if_shard: boolean
-
-      **Example Usage:**
-
-      .. code:: python
-
-        import smdistributed.modelparallel.torch as smp
-
-        # load optimizer
-        checkpoint = smp.load(local_ckpt_path, partial=True)
-        optimizer.load_optimizer_backcompat(
-           checkpoint["optimizer"], gather_if_shard=args.gather_if_shard
-        )
+      
 
 smdistributed.modelparallel.torch Context Managers and Util Functions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
