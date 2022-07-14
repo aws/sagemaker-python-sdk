@@ -17,7 +17,7 @@ import the ``smdistributed.modelparallel.torch`` package at the top of your trai
    to learn how to use the following API in your PyTorch training script.
 
 .. contents:: Topics
-  :depth: 3
+  :depth: 1
   :local:
 
 smdistributed.modelparallel.torch.DistributedModel
@@ -421,14 +421,14 @@ smdistributed.modelparallel.torch.DistributedOptimizer
       * ``"consecutive_hysteresis"``: Default is ``False``
    :type dynamic_loss_args: dict
 
-   **Example Usage for an FP32 Optimizer:**
+   **Example usage of an FP32 Optimizer:**
 
    .. code:: python
 
       optimizer = torch.optim.AdaDelta(...)
       optimizer = smdistributed.modelparallel.torch.DistributedOptimizer(optimizer)
 
-   **Example Usage for an FP16 Optimizer with static loss scale:**
+   **Example usage of an FP16 Optimizer with static loss scale:**
 
    .. code:: python
 
@@ -438,7 +438,7 @@ smdistributed.modelparallel.torch.DistributedOptimizer
           static_loss_scale=1.0
       )
 
-   **Example Usage for an FP16 Optimizer with dynamic loss scale:**
+   **Example usage of an FP16 Optimizer with dynamic loss scale:**
 
    .. code:: python
 
@@ -493,7 +493,7 @@ smdistributed.modelparallel.torch.DistributedOptimizer
       a partial \ ``state_dict``, which indicates whether the
       ``state_dict`` contains elements corresponding to only the current
       partition, or to the entire model.
-      
+
 
 smdistributed.modelparallel.torch Context Managers and Util Functions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -515,10 +515,15 @@ smdistributed.modelparallel.torch Context Managers and Util Functions
       * Any model that causes out-of-memory problems with FP32 initialization
         is recommended to be created with
         :class:`smdistributed.modelparallel.torch.delayed_parameter_initialization`.
-      * ``FP16_Module`` casts the model back to FP16 if FP16 training is enabled with the ``smp`` config.
-   :type dtype: torch.dtype
+      * ``FP16_Module`` casts the model back to FP16 if FP16 training is enabled
+        with the ``smp`` config. For more inforamtion about FP16 training
+        in SageMaker with the model parallel library, see `FP16 Training
+        <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-fp16.html>`_
+        in the *Amazon SageMaker Developer Guide*.
+
+   :type dtype: ``torch.dtype``
    :param distribute_embedding: Whether to enable vocabulary parallelism for NLP models.
-   :type dtype: boolean
+   :type distribute_embedding: boolean
    :param tensor_parallel_config: kwargs to specifiy other tensor parallel configs.
       This is not used if ``tensor_parallelism`` is ``False``.
    :type tensor_parallel_config: dict
@@ -639,12 +644,13 @@ smdistributed.modelparallel.torch Context Managers and Util Functions
 
 .. _pytorch_saving_loading:
 
-APIs for Saving and Loading
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+smdistributed.modelparallel.torch APIs for Saving and Loading
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. function:: smdistributed.modelparallel.torch.save( )
+.. function:: smdistributed.modelparallel.torch.save(obj, f, partial=True, pickel_module=picklemodule, pickle_protocol=2, )
 
-   Saves an object. This operation is similar to ``torch.save()``, except
+   Saves an object. This operation is similar to `torch.save()
+   <https://pytorch.org/docs/stable/generated/torch.save.html>`_, except that
    it has an additional keyword argument, ``partial``, and accepts only
    string type for the argument ``f`` (file). If ``partial=True``, each
    ``mp_rank`` saves a separate checkpoint file and the library adds an ``mp_rank``
@@ -663,10 +669,8 @@ APIs for Saving and Loading
       A module used for pickling metadata and objects.
    -  ``pickle_protocol``  (int, default=2): Can be specified to
       override the defaultprotocol.
-   - ``v3`` (bool, default=``False``): When set to ``True``, save optimizer state checkpoints
-     in V3 file format to add all ``pp_rank``, ``tp_rank``, and ``rdp_rank`` as postfix.
 
-.. function:: smdistributed.modelparallel.torch.load( )
+.. function:: smdistributed.modelparallel.torch.load(f, map_location, pickle_module, pickle_load_args, partial=True)
 
    Loads an object saved with ``smdistributed.modelparallel.torch.save()`` from a file.
 
@@ -690,10 +694,83 @@ APIs for Saving and Loading
       ``mp_rank`` loads the checkpoint corresponding to the ``mp_rank``.
       Should be used when loading a model trained with the library.
 
+.. function:: smdistributed.modelparallel.torch.save_checkpoint(path, tag, partial=True, model=None, optimizer=None, user_content=None, translate_if_full=True, num_kept_partial_checkpoints=None)
+
+   Saves a checkpoint. While :class:`smdistributed.modelparallel.torch.save` saves
+   model and optimizer objects,
+   this function checkpoints model and optimizer and saves the checkpoints as separate files.
+   It creates checkpoint folders in the following structure.
+
+   .. code:: text
+
+      - path
+      - ${tag}_partial        (folder for partial checkpoint)
+        - model_rankinfo.pt
+        - optimizer_rankinfo.pt
+        - fp16_states_rankinfo.pt
+        - user_content.pt
+      - $tag                  (checkpoint file for full checkpoint)
+      - user_content_$tag     (user_content file for full checkpoint)
+      - newest                (a file that indicates the newest checkpoint)
+
+   **Parameters**
+
+   * ``path`` (str) (required): Path to save the checkpoint. The library creates
+     the directory if it does not already exist.
+     For example, ``/opt/ml/checkpoint/model_parallel``.
+   * ``tag`` (str) (required): A tag for the current checkpoint, usually the train
+     steps. Note: tag needs to be the same across all ranks (GPU workers).
+     When ``partial=False`` this will be the checkpoint file name.
+   * ``partial`` (boolean) (default: True): Whether to save the partial checkpoint.
+   * ``model`` (:class:`smdistributed.modelparallel.torch.DistributedModel`)
+     (default: None): The model to save. It needs to an ``smp.DistributedModel`` object.
+   * ``optimizer`` (:class:`smdistributed.modelparallel.torch.DistributedOptimizer`)
+     (default: None): The optimizer to save. It needs to be an ``smp.DistributedOptimizer`` object.
+   * ``user_content`` (any) (default: None): User-defined content to save.
+   * ``translate_if_full`` (boolean) (default: True): Whether to translate the
+     full ``state_dict`` to HF ``state_dict`` if possible.
+   * ``num_kept_partial_checkpoints`` (int) (default: None): The maximum number
+     of partial checkpoints to keep on disk.
+
+.. function:: smdistributed.modelparallel.torch.resume_from_checkpoint(path, tag=None, partial=True, strict=True, load_optimizer_states=True, translate_function=None)
+
+   While :class:`smdistributed.modelparallel.torch.load` loads saved
+   model and optimizer objects, this function resumes from a saved checkpoint file.
+
+   **Parameters**
+
+   * ``path`` (str) (required): Path to load the checkpoint.
+   * ``tag`` (str) (default: None): Tag of the checkpoint to resume. If not provided,
+     the library tries to locate the newest checkpoint from the saved newest file.
+   * ``partial`` (boolean) (default: True): Whether to load the partial checkpoint.
+   * ``strict`` (boolean) (default: True): Load with strict load, no extra key or
+     missing key is allowed.
+   * ``load_optimizer_states`` (boolean) (default: True): Whether to load ``optimizer_states``.
+   * ``translate_function`` (function) (default: None): function to translate the full
+     checkpoint into smdistributed.modelparallel format.
+     For supported models, this is not required.
+
+   **Example usage**
+
+   .. code:: python
+
+     # Save
+     smp.save_checkpoint(
+         checkpoint_dir,
+         tag=f"total_steps{total_steps}",
+         partial=True,
+         model=model,
+         optimizer=optimizer,
+         user_content=user_content
+         num_kept_partial_checkpoints=args.num_kept_checkpoints)
+
+     # Load: this will automatically load the newest checkpoint
+     user_content = smp.resume_from_checkpoint(path, partial=partial)
+
 .. _pytorch_saving_loading_instructions:
 
-General Instruction For Saving and Loading
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+General instruction on saving and loading
+-----------------------------------------
 
 The library can save partial or full checkpoints.
 
