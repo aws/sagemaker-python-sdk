@@ -3726,7 +3726,6 @@ def test_script_mode_estimator_same_calls_as_framework(
         source_dir=script_uri,
         image_uri=IMAGE_URI,
         model_uri=model_uri,
-        environment={"USE_SMDEBUG": "0"},
         dependencies=[],
         debugger_hook_config={},
     )
@@ -3751,7 +3750,6 @@ def test_script_mode_estimator_same_calls_as_framework(
         debugger_hook_config={},
     )
     framework_estimator.fit(training_data_uri)
-
     assert len(generic_estimator_tar_and_upload_dir_args) == 1
     assert len(generic_estimator_train_args) == 1
     assert generic_estimator_tar_and_upload_dir_args == patched_tar_and_upload_dir.call_args_list
