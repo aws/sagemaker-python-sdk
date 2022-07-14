@@ -236,18 +236,22 @@ class LineageQueryResult(object):
         Format:
         {
             'edges':[
-                {
+                "{
                     'source_arn': 'string', 'destination_arn': 'string',
                     'association_type': 'string'
-                },
+                }",
                 ...
-            ]
+            ],
             'vertices':[
-                {
+                "{
                     'arn': 'string', 'lineage_entity': 'string',
                     'lineage_source': 'string',
                     '_session': <sagemaker.session.Session object>
-                },
+                }",
+                ...
+            ],
+            'startarn':[
+                'string',
                 ...
             ]
         }
@@ -270,7 +274,7 @@ class LineageQueryResult(object):
         """Convert vertices to tuple format for visualizer"""
         verts = []
         for vert in self.vertices:
-            verts.append((vert.arn, vert.lineage_source))
+            verts.append((vert.arn, vert.lineage_source, vert.lineage_entity))
         return verts
 
     def _get_edges(self):
@@ -288,14 +292,16 @@ class LineageQueryResult(object):
         cyto.load_extra_layouts()  # load "klay" layout (hierarchical layout) from extra layouts
         app = JupyterDash(__name__)
 
+        # get vertices and edges info for graph
         verts = self._get_verts()
         edges = self._get_edges()
 
         nodes = [
             {
                 "data": {"id": id, "label": label},
+                "classes": classes
             }
-            for id, label in verts
+            for id, label, classes in verts
         ]
 
         edges = [
@@ -341,6 +347,30 @@ class LineageQueryResult(object):
                                 "arrow-scale": "0.5"
                             },
                         },
+                        {
+                            "selector": ".Artifact",
+                            "style": {
+                                "background-color": "#146eb4"
+                            }
+                        },
+                        {
+                            "selector": ".Context",
+                            "style": {
+                                "background-color": "#ff9900"
+                            }
+                        },
+                        {
+                            "selector": ".TrialComponent",
+                            "style": {
+                                "background-color": "#f6cf61"
+                            }
+                        },
+                        {
+                            "selector": ".Action",
+                            "style": {
+                                "background-color": "#88c396"
+                            }
+                        }
                     ],
                     responsive=True,
                 )
