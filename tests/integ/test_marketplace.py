@@ -199,6 +199,8 @@ def test_marketplace_model(sagemaker_session, cpu_instance_type):
 
 @pytest.fixture(scope="module")
 def iris_image(sagemaker_session):
+
+    print("_/_/_/ BASIL CREATING IRIS IMAGE REPOSITORY ")
     algorithm_name = unique_name_from_base("iris-classifier")
     ecr_image = _ecr_image_uri(sagemaker_session, algorithm_name)
     ecr_client = sagemaker_session.boto_session.client("ecr")
@@ -216,12 +218,15 @@ def iris_image(sagemaker_session):
     image.tag(ecr_image, tag="latest")
     _create_repository(ecr_client, algorithm_name)
 
+    print(ecr_image, ecr_client, algorithm_name)
+
     # Retry docker image push
     for _ in retries(3, "Upload docker image to ECR repo", seconds_to_sleep=10):
         try:
             docker_client.images.push(
                 ecr_image, auth_config={"username": username, "password": password}
             )
+            print("WORKED WORKED WORKED")
             break
         except requests.exceptions.ConnectionError as e:
             # This can happen when we try to create multiple repositories in parallel, so we retry
