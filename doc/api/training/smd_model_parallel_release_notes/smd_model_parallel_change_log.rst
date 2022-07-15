@@ -16,9 +16,11 @@ The following new features are added for PyTorch.
 
 * Added support for FP16 training by implementing smdistributed.modelparallel
   modification of Apex FP16_Module and FP16_Optimizer. To learn more, see
-  ` <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-fp16.html>`_.
+  `FP16 Training with Model Parallelism
+  <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-fp16.html>`_.
 * New checkpoint APIs for CPU memory usage optimization. To learn more, see
-  ` <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-checkpoint.html>`_.
+  `Checkpointing Distributed Models and Optimizer States
+  <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-checkpoint.html>`_.
 
 **Improvements**
 
