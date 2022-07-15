@@ -498,7 +498,7 @@ smdistributed.modelparallel.torch.DistributedOptimizer
 smdistributed.modelparallel.torch Context Managers and Util Functions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. function:: smdistributed.modelparallel.torch.model_creation(tensor_parallelism=False, dtype=None, distribute_embedding=False, **tensor_parallel_config)
+.. function:: smdistributed.modelparallel.torch.model_creation(tensor_parallelism=False, dtype=None, **tensor_parallel_config)
 
    Context manager to create a ``torch`` model. This API combines both the
    :class:`smdistributed.modelparallel.torch.tensor_parallelism` and
@@ -522,8 +522,6 @@ smdistributed.modelparallel.torch Context Managers and Util Functions
         in the *Amazon SageMaker Developer Guide*.
 
    :type dtype: ``torch.dtype``
-   :param distribute_embedding: Whether to enable vocabulary parallelism for NLP models.
-   :type distribute_embedding: boolean
    :param tensor_parallel_config: kwargs to specifiy other tensor parallel configs.
       This is not used if ``tensor_parallelism`` is ``False``.
    :type tensor_parallel_config: dict
@@ -536,8 +534,7 @@ smdistributed.modelparallel.torch Context Managers and Util Functions
 
       with smp.model_creation(
           tensor_parallelism=smp.tp_size() > 1,
-          dtype=torch.float16 if args.fp16 else torch.get_default_dtype(),
-          distribute_embedding=False
+          dtype=torch.float16 if args.fp16 else torch.get_default_dtype()
       ):
           model = MyModel(...)
 
