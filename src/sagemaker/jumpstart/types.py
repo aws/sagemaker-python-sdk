@@ -65,7 +65,7 @@ class JumpStartDataHolderType:
         {'content_bucket': 'bucket', 'region_name': 'us-west-2'}"
         """
 
-        att_dict = {att: getattr(self, att) for att in self.__slots__}
+        att_dict = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
         return f"{type(self).__name__}: {str(att_dict)}"
 
     def __repr__(self) -> str:
@@ -75,7 +75,7 @@ class JumpStartDataHolderType:
         {'content_bucket': 'bucket', 'region_name': 'us-west-2'}"
         """
 
-        att_dict = {att: getattr(self, att) for att in self.__slots__}
+        att_dict = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
         return f"{type(self).__name__} at {hex(id(self))}: {str(att_dict)}"
 
 

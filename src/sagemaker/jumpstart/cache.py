@@ -22,7 +22,8 @@ import botocore
 from packaging.version import Version
 from packaging.specifiers import SpecifierSet
 from sagemaker.jumpstart.constants import (
-    ENV_VARIABLE_JUMPSTART_METADATA_LOCAL_ROOT_OVERRIDE,
+    ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE,
+    ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE,
     JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY,
     JUMPSTART_DEFAULT_REGION_NAME,
 )
@@ -244,16 +245,23 @@ class JumpStartModelsCache:
 
     def _is_local_metadata_mode(self) -> bool:
         """Returns True if the cache should use local metadata mode, based off env variables."""
-        return (ENV_VARIABLE_JUMPSTART_METADATA_LOCAL_ROOT_OVERRIDE in os.environ
-                and os.path.isdir(os.environ[ENV_VARIABLE_JUMPSTART_METADATA_LOCAL_ROOT_OVERRIDE]))
+        return (ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE in os.environ
+                and os.path.isdir(os.environ[ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE])
+                and ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE in os.environ
+                and os.path.isdir(os.environ[ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE]))
 
-    def _get_json_file(self, key: str) -> Tuple[Union[dict, list], Optional[str]]:
+    def _get_json_file(
+        self,
+        key: str,
+        filetype: JumpStartS3FileType
+    ) -> Tuple[Union[dict, list], Optional[str]]:
         """Returns json file either from s3 or local file system.
 
-        Returns etag along with json object for s3, otherwise just returns json object and None.
+        Returns etag along with json object for s3, or just the json
+        object and None when reading from the local file system.
         """
         if self._is_local_metadata_mode():
-            return self._get_json_file_from_local_override(key), None
+            return self._get_json_file_from_local_override(key, filetype), None
         return self._get_json_file_and_etag_from_s3(key)
 
     def _get_json_md5_hash(self, key: str):
@@ -266,9 +274,20 @@ class JumpStartModelsCache:
             raise ValueError("Cannot get md5 hash of local file.")
         return self._s3_client.head_object(Bucket=self.s3_bucket_name, Key=key)["ETag"]
 
-    def _get_json_file_from_local_override(self, key: str) -> Union[dict, list]:
+    def _get_json_file_from_local_override(
+        self,
+        key: str,
+        filetype: JumpStartS3FileType
+    ) -> Union[dict, list]:
         """Reads json file from local filesystem and returns data."""
-        metadata_local_root = os.environ[ENV_VARIABLE_JUMPSTART_METADATA_LOCAL_ROOT_OVERRIDE]
+        if filetype == JumpStartS3FileType.MANIFEST:
+            metadata_local_root = (
+                os.environ[ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE]
+            )
+        elif filetype == JumpStartS3FileType.SPECS:
+            metadata_local_root = os.environ[ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE]
+        else:
+            raise ValueError(f"Unsupported file type for local override: {filetype}")
         file_path = os.path.join(metadata_local_root, key)
         with open(file_path, 'r') as f:
             data = json.load(f)
@@ -299,13 +318,13 @@ class JumpStartModelsCache:
                 etag = self._get_json_md5_hash(s3_key)
                 if etag == value.md5_hash:
                     return value
-            formatted_body, etag = self._get_json_file(s3_key)
+            formatted_body, etag = self._get_json_file(s3_key, file_type)
             return JumpStartCachedS3ContentValue(
                 formatted_content=utils.get_formatted_manifest(formatted_body),
                 md5_hash=etag,
             )
         if file_type == JumpStartS3FileType.SPECS:
-            formatted_body, _ = self._get_json_file(s3_key)
+            formatted_body, _ = self._get_json_file(s3_key, file_type)
             return JumpStartCachedS3ContentValue(
                 formatted_content=JumpStartModelSpecs(formatted_body)
             )

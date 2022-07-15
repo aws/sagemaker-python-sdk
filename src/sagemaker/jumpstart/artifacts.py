@@ -179,6 +179,8 @@ def _retrieve_model_uri(
 ):
     """Retrieves the model artifact S3 URI for the model matching the given arguments.
 
+    Optionally uses a bucket override specified by environment variable.
+
     Args:
         model_id (str): JumpStart model ID of the JumpStart model for which to retrieve
             the model artifact S3 URI.
@@ -238,6 +240,8 @@ def _retrieve_script_uri(
     tolerate_deprecated_model: bool,
 ):
     """Retrieves the script S3 URI associated with the model matching the given arguments.
+
+    Optionally uses a bucket override specified by environment variable.
 
     Args:
         model_id (str): JumpStart model ID of the JumpStart model for which to
