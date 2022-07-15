@@ -267,7 +267,9 @@ class LineageQueryResult(object):
 
         from dash import html
 
-        return cyto, JupyterDash, html
+        from dash.dependencies import Input, Output
+
+        return cyto, JupyterDash, html, Input, Output
 
     def _get_verts(self):
         """Convert vertices to tuple format for visualizer."""
@@ -287,11 +289,12 @@ class LineageQueryResult(object):
         # get edge info in the form of (source, target, label)
         for edge in self.edges:
             edges.append((edge.source_arn, edge.destination_arn, edge.association_type))
+        edges.append((self.edges[1].destination_arn, self.edges[1].source_arn, self.edges[1].association_type))
         return edges
 
     def visualize(self):
         """Visualize lineage query result."""
-        cyto, JupyterDash, html = self._import_visual_modules()
+        cyto, JupyterDash, html, Input, Output = self._import_visual_modules()
 
         cyto.load_extra_layouts()  # load "klay" layout (hierarchical layout) from extra layouts
         app = JupyterDash(__name__)
@@ -314,7 +317,7 @@ class LineageQueryResult(object):
         app.layout = html.Div(
             [
                 cyto.Cytoscape(
-                    id="cytoscape-layout-1",
+                    id="cytoscape-graph",
                     elements=elements,
                     style={"width": "100%", "height": "350px"},
                     layout={"name": "klay"},
@@ -326,6 +329,9 @@ class LineageQueryResult(object):
                                 "font-size": "3.5vw",
                                 "height": "10vw",
                                 "width": "10vw",
+                                "border-width": "0.8",
+                                "border-opacity": "0", 
+                                "border-color": "#232f3e"
                             },
                         },
                         {
@@ -334,11 +340,13 @@ class LineageQueryResult(object):
                                 "label": "data(label)",
                                 "color": "gray",
                                 "text-halign": "left",
-                                "text-margin-y": "3px",
-                                "text-margin-x": "-2px",
-                                "font-size": "3%",
-                                "width": "1%",
-                                "curve-style": "taxi",
+                                "text-margin-y": "2.5",
+                                "font-size": "3",
+                                "width": "1",
+                                "curve-style": "bezier",
+                                "control-point-step-size": "15",
+                                # "taxi-direction": "rightward",
+                                # "taxi-turn": "50%",
                                 "target-arrow-color": "gray",
                                 "target-arrow-shape": "triangle",
                                 "line-color": "gray",
@@ -350,11 +358,24 @@ class LineageQueryResult(object):
                         {"selector": ".TrialComponent", "style": {"background-color": "#f6cf61"}},
                         {"selector": ".Action", "style": {"background-color": "#88c396"}},
                         {"selector": ".startarn", "style": {"shape": "star"}},
+                        {"selector": ".select", "style": { "border-opacity": "0.7"}},
                     ],
                     responsive=True,
                 )
             ]
         )
+
+        @app.callback(Output("cytoscape-graph", "elements"),
+                        Input("cytoscape-graph", "tapNodeData"))
+        def selectNode(data):
+            for n in nodes:
+                if data != None and n["data"]["id"] == data["id"]:
+                    n["classes"] += " select"
+                else:
+                    n["classes"] = n["classes"].replace("select", "")
+
+            elements = nodes + edges
+            return elements
 
         return app.run_server(mode="inline")
 
