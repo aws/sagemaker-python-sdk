@@ -27,7 +27,11 @@ from sagemaker.workflow.conditions import (
 )
 from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.parameters import ParameterInteger, ParameterString
-from tests.unit.sagemaker.workflow.helpers import ordered, CustomStep, CustomStepCollection
+from tests.unit.sagemaker.workflow.helpers import (
+    ordered,
+    CustomStep,
+    CustomStepCollection,
+)
 
 
 @pytest.fixture
@@ -40,6 +44,44 @@ def sagemaker_session_mock():
 @pytest.fixture
 def role_arn():
     return "arn:role"
+
+
+#         ┌──►F
+#         │
+# A──►B──►C──►E──►G──►H──►I
+#     │           ▲   │
+#     └──►D───────┘   └──►J
+@pytest.fixture
+def pipeline_graph_get_sub_dag(sagemaker_session_mock):
+    step_a = CustomStep(name="stepA")
+    step_b = CustomStep(name="stepB", depends_on=[step_a])
+    step_c = CustomStep(name="stepC", depends_on=[step_b])
+    step_d = CustomStep(name="stepD", depends_on=[step_b])
+    step_e = CustomStep(name="stepE", depends_on=[step_c])
+    step_f = CustomStep(name="stepF", depends_on=[step_c])
+    step_g = CustomStep(name="stepG", depends_on=[step_e, step_d])
+    step_h = CustomStep(name="stepH", depends_on=[step_g])
+    step_i = CustomStep(name="stepI", depends_on=[step_h])
+    step_j = CustomStep(name="stepJ", depends_on=[step_h])
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[
+            step_a,
+            step_b,
+            step_c,
+            step_d,
+            step_e,
+            step_f,
+            step_g,
+            step_h,
+            step_i,
+            step_j,
+        ],
+        sagemaker_session=sagemaker_session_mock,
+    )
+
+    return PipelineGraph.from_pipeline(pipeline)
 
 
 def test_pipeline_duplicate_step_name(sagemaker_session_mock):
@@ -59,7 +101,10 @@ def test_pipeline_duplicate_step_name_in_condition_step(sagemaker_session_mock):
     custom_step = CustomStep(name="foo")
     custom_step2 = CustomStep(name="foo")
     condition_step = ConditionStep(
-        name="condStep", conditions=[cond], depends_on=[custom_step], if_steps=[custom_step2]
+        name="condStep",
+        conditions=[cond],
+        depends_on=[custom_step],
+        if_steps=[custom_step2],
     )
     with pytest.raises(ValueError) as error:
         pipeline = Pipeline(
@@ -145,7 +190,12 @@ def test_pipeline_graph_with_condition_step_explicit_dependency(sagemaker_sessio
     pipeline_graph = PipelineGraph.from_pipeline(pipeline)
     adjacency_list = pipeline_graph.adjacency_list
     assert ordered(adjacency_list) == ordered(
-        {"condStep": ["ElseStep", "IfStep"], "ElseStep": [], "IfStep": [], "TestStep": ["condStep"]}
+        {
+            "condStep": ["ElseStep", "IfStep"],
+            "ElseStep": [],
+            "IfStep": [],
+            "TestStep": ["condStep"],
+        }
     )
     _verify_pipeline_graph_traversal(pipeline_graph)
 
@@ -169,12 +219,19 @@ def test_pipeline_graph_with_condition_step_property_reference_dependency(
     pipeline_graph = PipelineGraph.from_pipeline(pipeline)
     adjacency_list = pipeline_graph.adjacency_list
     assert ordered(adjacency_list) == ordered(
-        {"condStep": ["ElseStep", "IfStep"], "ElseStep": [], "IfStep": [], "TestStep": ["condStep"]}
+        {
+            "condStep": ["ElseStep", "IfStep"],
+            "ElseStep": [],
+            "IfStep": [],
+            "TestStep": ["condStep"],
+        }
     )
     _verify_pipeline_graph_traversal(pipeline_graph)
 
 
-def test_pipeline_graph_with_step_collection_explicit_dependency(sagemaker_session_mock):
+def test_pipeline_graph_with_step_collection_explicit_dependency(
+    sagemaker_session_mock,
+):
     custom_step1 = CustomStep(name="TestStep")
     custom_step_collection = CustomStepCollection(
         name="TestStepCollection", depends_on=[custom_step1]
@@ -231,12 +288,61 @@ def test_pipeline_graph_cyclic(sagemaker_session_mock):
     step_c = CustomStep(name="stepC", depends_on=["stepB"])
 
     pipeline = Pipeline(
-        name="MyPipeline", steps=[step_a, step_b, step_c], sagemaker_session=sagemaker_session_mock
+        name="MyPipeline",
+        steps=[step_a, step_b, step_c],
+        sagemaker_session=sagemaker_session_mock,
     )
 
     with pytest.raises(ValueError) as error:
         PipelineGraph.from_pipeline(pipeline)
     assert "Cycle detected in pipeline step graph." in str(error.value)
+
+
+@pytest.mark.parametrize(
+    "step_name, expected_steps",
+    [
+        (
+            "stepA",
+            {
+                "stepA",
+                "stepB",
+                "stepC",
+                "stepD",
+                "stepE",
+                "stepF",
+                "stepG",
+                "stepH",
+                "stepI",
+                "stepJ",
+            },
+        ),
+        (
+            "stepB",
+            {
+                "stepB",
+                "stepC",
+                "stepD",
+                "stepE",
+                "stepF",
+                "stepG",
+                "stepH",
+                "stepI",
+                "stepJ",
+            },
+        ),
+        ("stepC", {"stepC", "stepE", "stepF", "stepG", "stepH", "stepI", "stepJ"}),
+        ("stepD", {"stepD", "stepG", "stepH", "stepI", "stepJ"}),
+        ("stepE", {"stepE", "stepG", "stepH", "stepI", "stepJ"}),
+        ("stepF", {"stepF"}),
+        ("stepG", {"stepG", "stepH", "stepI", "stepJ"}),
+        ("stepH", {"stepH", "stepI", "stepJ"}),
+        ("stepI", {"stepI"}),
+        ("stepJ", {"stepJ"}),
+    ],
+)
+def test_get_steps_in_sub_dag(pipeline_graph_get_sub_dag, step_name, expected_steps):
+    sub_steps = pipeline_graph_get_sub_dag.get_steps_in_sub_dag(step_name)
+    assert sub_steps == expected_steps
 
 
 def test_condition_comparison(sagemaker_session):

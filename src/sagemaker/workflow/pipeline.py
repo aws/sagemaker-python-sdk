@@ -17,7 +17,7 @@ import json
 
 import logging
 from copy import deepcopy
-from typing import Any, Dict, List, Sequence, Union, Optional
+from typing import Any, Dict, List, Set, Sequence, Union, Optional
 
 import attr
 import botocore
@@ -660,6 +660,20 @@ class PipelineGraph:
                 if is_cyclic_helper(step):
                     return True
         return False
+
+    def get_steps_in_sub_dag(self, current_step: str, steps: Set[str] = None) -> Set[str]:
+        """Get names of all steps (including current step) in the sub dag of current step.
+
+        Returns a set of step names in the sub dag.
+        """
+        if steps is None:
+            steps = set()
+        if current_step not in self.adjacency_list:
+            raise ValueError("Step: %s does not exist in the pipeline." % current_step)
+        steps.add(current_step)
+        for step in self.adjacency_list[current_step]:
+            self.get_steps_in_sub_dag(step, steps)
+        return steps
 
     def __iter__(self):
         """Perform topological sort traversal of the Pipeline Graph."""
