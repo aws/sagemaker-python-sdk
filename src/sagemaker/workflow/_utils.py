@@ -341,16 +341,11 @@ class _RegisterModelStep(ConfigurableRetryStep):
         super(_RegisterModelStep, self).__init__(
             name, StepTypeEnum.REGISTER_MODEL, display_name, description, depends_on, retry_policies
         )
-        deprecated_args_missing = (
-            content_types is None
-            or response_types is None
-            or inference_instances is None
-            or transform_instances is None
-        )
+        deprecated_args_missing = content_types is None or response_types is None
         if not (step_args is None) ^ deprecated_args_missing:
             raise ValueError(
                 "step_args and the set of (content_types, response_types, "
-                "inference_instances, transform_instances) are mutually exclusive. "
+                ") are mutually exclusive. "
                 "Either of them should be provided."
             )
 
