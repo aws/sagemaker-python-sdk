@@ -56,9 +56,7 @@ EXPERIMENT_CONFIG = {
     "TrialComponentDisplayName": "tc",
 }
 
-DISTRIBUTION_PYTORCH_DDP_ENABLED = {
-    "pytorchddp": {"enabled": True, "nnodes": 2, "nproc_per_node": 8}
-}
+DISTRIBUTION_PYTORCH_DDP_ENABLED = {"pytorchddp": {"enabled": True}}
 
 
 @pytest.fixture(name="sagemaker_session")
@@ -776,7 +774,7 @@ def test_pytorch_ddp_distribution_configuration(
         framework_version=pytorch_training_version,
         py_version=pytorch_training_py_version,
         distribution=DISTRIBUTION_PYTORCH_DDP_ENABLED,
-        instance_type = test_instance_type,
+        instance_type=test_instance_type,
     )
     actual_pytorch_ddp = pytorch._pytorch_distribution_configuration(
         distribution=pytorch.distribution

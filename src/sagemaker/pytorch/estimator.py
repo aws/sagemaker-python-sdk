@@ -209,26 +209,7 @@ class PyTorch(Framework):
             )
         self.framework_version = framework_version
         self.py_version = py_version
-
-        if distribution is not None:
-            instance_type = renamed_kwargs(
-                "train_instance_type", "instance_type", kwargs.get("instance_type"), kwargs
-            )
-
-            validate_smdistributed(
-                instance_type=instance_type,
-                framework_name=self._framework_name,
-                framework_version=framework_version,
-                py_version=py_version,
-                distribution=distribution,
-                image_uri=image_uri,
-            )
-
-            warn_if_parameter_server_with_multi_gpu(
-                training_instance_type=instance_type, distribution=distribution
-            )
-
-            self.instance_type = instance_type
+        self.instance_type = instance_type
 
         if "enable_sagemaker_metrics" not in kwargs:
             # enable sagemaker metrics for PT v1.3 or greater:
@@ -262,7 +243,6 @@ class PyTorch(Framework):
         if "pytorchddp" in distribution:
             pytorch_ddp_enabled = distribution.get("pytorchddp").get("enabled", False)
             distribution_config[self.LAUNCH_PYTORCH_DDP_ENV_NAME] = pytorch_ddp_enabled
-            LOGGER.info("viskaria Setting instance type to: %s", self.instance_type)
             distribution_config[self.INSTANCE_TYPE] = self.instance_type
         else:
             distribution_config = self._distribution_configuration(distribution=distribution)
