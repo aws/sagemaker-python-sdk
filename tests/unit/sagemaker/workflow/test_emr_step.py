@@ -15,7 +15,6 @@ from __future__ import absolute_import
 import json
 
 import pytest
-from botocore.exceptions import MissingParametersError
 
 from mock import Mock
 
@@ -187,12 +186,12 @@ def test_pipeline_interpolates_emr_outputs(sagemaker_session):
     )
 
 
-def test_emr_step_with_incorrect_key_value(sagemaker_session):
+def test_emr_step_config_with_lowercase_keys(sagemaker_session):
     emr_step_config = EMRStepConfig(
         jar="s3:/script-runner/script-runner.jar",
         args=["--arg_0", "arg_0_value"],
         main_class="com.my.main",
-        properties=[{"key": "foo", "value": "foo_value"}],  # <<<
+        properties=[{"key": "foo", "value": "foo_value"}],  # lowercase key structure
     )
 
     emr_step = EMRStep(
@@ -205,17 +204,20 @@ def test_emr_step_with_incorrect_key_value(sagemaker_session):
         cache_config=CacheConfig(enable_caching=True, expire_after="PT1H"),
     )
 
-    corret_dict = [{"Key": "foo", "Value": "foo_value"}]
-    assert emr_step.arguments["StepConfig"]["HadoopJarStep"]["Properties"] == corret_dict
+    correct_dict = [{"Key": "foo", "Value": "foo_value"}]
+    assert emr_step.arguments["StepConfig"]["HadoopJarStep"]["Properties"] == correct_dict
 
 
-def test_emr_step_with_no_key_value_fields(sagemaker_session):
-    try:
+def test_emr_step_config_with_unknown_keys(sagemaker_session):
+    with pytest.raises(Exception) as error:
         _ = EMRStepConfig(
             jar="s3:/script-runner/script-runner.jar",
             args=["--arg_0", "arg_0_value"],
             main_class="com.my.main",
-            properties=[{"not_a_key": "foo", "not_a_value": "foo_value"}],  # <<<
+            properties=[{"not_a_key": "foo", "not_a_value": "foo_value"}],  # unknown key structure
         )
-    except Exception as e:
-        assert isinstance(e, MissingParametersError)
+
+    assert (
+        str(error.value)
+        == "The following required parameters are missing for EMRStepConfig: ['Key', 'Value']"
+    )

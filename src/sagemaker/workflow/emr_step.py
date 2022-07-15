@@ -64,17 +64,16 @@ class EMRStepConfig:
         return config
 
     def validate_prop_dicts(self):
-        """Validate k,v structure of properties dictionaries, err if not provided"""
-        if isinstance(self.properties, list) and self.properties:
+        """Validate k,v structure of properties dictionaries"""
+        if isinstance(self.properties, list):
             for field_dict in self.properties:
-                try:
-                    if "key" in field_dict.keys():
-                        field_dict["Key"] = field_dict.pop("key")
-                    if "value" in field_dict.keys():
-                        field_dict["Value"] = field_dict.pop("value")
-                except KeyError:
+                if "key" in field_dict:
+                    field_dict["Key"] = field_dict.pop("key")
+                if "value" in field_dict:
+                    field_dict["Value"] = field_dict.pop("value")
+                if not field_dict.keys() >= {"Key", "Value"}:
                     raise MissingParametersError(
-                        object_name=EMRStepConfig, missing=["Key", "Value"]
+                        object_name=EMRStepConfig.__name__, missing=["Key", "Value"]
                     )
 
 
