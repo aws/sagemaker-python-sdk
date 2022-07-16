@@ -24,7 +24,7 @@ from torch.optim.lr_scheduler import StepLR
 from smdistributed.dataparallel.torch.parallel.distributed import DistributedDataParallel as DDP
 import smdistributed.dataparallel.torch.distributed as dist
 
-dist.init_process_group()
+dist.init_process_group(backend="nccl")
 
 
 class Net(nn.Module):

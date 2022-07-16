@@ -13,12 +13,9 @@
 from __future__ import absolute_import
 
 import os
-
 import pytest
-
 import sagemaker.utils
 import tests.integ as integ
-
 from sagemaker.pytorch import PyTorch
 from tests.integ import timeout
 from tests.integ.test_pytorch import _upload_training_data
