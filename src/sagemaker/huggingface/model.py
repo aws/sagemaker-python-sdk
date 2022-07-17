@@ -86,11 +86,13 @@ def _validate_pt_tf_versions(pytorch_version, tensorflow_version, image_uri):
 
 
 def fetch_framework_and_framework_version(tensorflow_version, pytorch_version):
+    """Function to check the framework used in HuggingFace class"""
+
     if tensorflow_version is not None:  # pylint: disable=no-member
         return ("tensorflow", tensorflow_version)  # pylint: disable=no-member
     else:
         return ("pytorch", pytorch_version)  # pylint: disable=no-member
-        
+
 
 class HuggingFaceModel(FrameworkModel):
     """A Hugging Face SageMaker ``Model`` that can be deployed to a SageMaker ``Endpoint``."""
@@ -296,7 +298,6 @@ class HuggingFaceModel(FrameworkModel):
             serverless_inference_config,
         )
 
-
     def register(
         self,
         content_types,
@@ -395,8 +396,14 @@ class HuggingFaceModel(FrameworkModel):
             domain=domain,
             sample_payload_url=sample_payload_url,
             task=task,
-            framework=framework or fetch_framework_and_framework_version()[0],
-            framework_version=framework_version or fetch_framework_and_framework_version()[1],
+            framework=framework
+            or fetch_framework_and_framework_version(self.tensorflow_version, self.pytorch_version)[
+                0
+            ],
+            framework_version=framework_version
+            or fetch_framework_and_framework_version(self.tensorflow_version, self.pytorch_version)[
+                1
+            ],
             nearest_model_name=nearest_model_name,
             data_input_configuration=data_input_configuration,
         )
