@@ -90,8 +90,7 @@ def fetch_framework_and_framework_version(tensorflow_version, pytorch_version):
 
     if tensorflow_version is not None:  # pylint: disable=no-member
         return ("tensorflow", tensorflow_version)  # pylint: disable=no-member
-    else:
-        return ("pytorch", pytorch_version)  # pylint: disable=no-member
+    return ("pytorch", pytorch_version)  # pylint: disable=no-member
 
 
 class HuggingFaceModel(FrameworkModel):
