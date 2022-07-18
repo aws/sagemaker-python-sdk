@@ -67,10 +67,16 @@ class TrainingInput(object):
                 AugmentedManifestFile formats are described at `S3DataSource
                 <https://docs.aws.amazon.com/sagemaker/latest/dg/API_S3DataSource.html>`_
                 in the `Amazon SageMaker API reference`.
-            instance_groups (list[str]): Optional. A list of ``instance_group_name``\ s
-                of a heterogeneous cluster that's configured using the
+            instance_groups (list[str]): Optional. A list of instance group names in string format
+                that you specified while configuring a heterogeneous cluster using the
                 :class:`sagemaker.instance_group.InstanceGroup`.
                 S3 data will be sent to all instance groups in the specified list.
+                For instructions on how to use InstanceGroup objects
+                to configure a heterogeneous cluster
+                through the SageMaker generic and framework estimator classes, see
+                `Train Using a Heterogeneous Cluster
+                <https://docs.aws.amazon.com/sagemaker/latest/dg/train-heterogeneous-cluster.html>`_
+                in the *Amazon SageMaker developer guide*.
                 (default: None)
             input_mode (str): Optional override for this channel's input mode (default: None).
                 By default, channels will use the input mode defined on
