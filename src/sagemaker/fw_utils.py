@@ -835,6 +835,52 @@ def validate_pytorch_distribution(
         raise ValueError(err_msg)
 
 
+def validate_distribution_instance(sagemaker_session, distribution, instance_type):
+    """Check to prevent launching a modelparallel job on CPU only instances.
+
+    Args:
+        sagemaker_session (sagemaker.session.Session): Session object which
+            manages interactions with Amazon SageMaker APIs and any other
+            AWS services needed.
+        distribution (dict): A dictionary with information to enable distributed training.
+            distribution = {
+                "smdistributed": {
+                    "modelparallel": {
+                        "enabled": True,
+                        "parameters": {
+                            ...
+                        },
+                    },
+                },
+                ...
+            }
+        instance_type (str): A string representing the type of training instance selected.
+
+    Raises:
+        ValueError: when modelparallel is enabled, if the instance_type does not support GPU.
+    """
+    if "smdistributed" not in distribution:
+        # Distribution strategy other than smdistributed is selected
+        return
+
+    if "modelparallel" not in distribution["smdistributed"]:
+        # Strategy other than modelparallel is selected
+        return
+
+    if not distribution["smdistributed"]["modelparallel"]["enabled"]:
+        # Strategy modelparallel is not enabled
+        return
+
+    instance_desc = sagemaker_session.boto_session.client("ec2").describe_instance_types(
+        InstanceTypes=[f"{instance_type}"]
+    )
+    if "GpuInfo" not in instance_desc["InstanceTypes"][0]:
+        raise ValueError(
+            f"modelparallel only runs on GPU-enabled instances. "
+            f"{instance_type} does not support GPU."
+        )
+
+
 def python_deprecation_warning(framework, latest_supported_version):
     """Placeholder docstring"""
     return PYTHON_2_DEPRECATION_WARNING.format(
