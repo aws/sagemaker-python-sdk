@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 from sagemaker.workflow.properties import Properties
-from sagemaker.workflow.steps import Step, StepTypeEnum
+from sagemaker.workflow.steps import ConfigurableRetryStep, StepTypeEnum
 from sagemaker.workflow.step_collections import StepCollection
 
 
@@ -37,11 +37,19 @@ def ordered(obj):
         return obj
 
 
-class CustomStep(Step):
-    def __init__(self, name, input_data=None, display_name=None, description=None, depends_on=None):
+class CustomStep(ConfigurableRetryStep):
+    def __init__(
+        self,
+        name,
+        input_data=None,
+        display_name=None,
+        description=None,
+        depends_on=None,
+        retry_policies=None,
+    ):
         self.input_data = input_data
         super(CustomStep, self).__init__(
-            name, display_name, description, StepTypeEnum.TRAINING, depends_on
+            name, StepTypeEnum.TRAINING, display_name, description, depends_on, retry_policies
         )
         # for testing property reference, we just use DescribeTrainingJobResponse shape here.
         self._properties = Properties(name, shape_name="DescribeTrainingJobResponse")
