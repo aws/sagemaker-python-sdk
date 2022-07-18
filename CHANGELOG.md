@@ -1,5 +1,28 @@
 # Changelog
 
+## v2.100.0 (2022-07-18)
+
+### Features
+
+ * upgrade to support python 3.10
+ * Add target_model to support multi-model endpoints
+ * Added support for feature group schema change and feature parameters
+
+### Bug Fixes and Other Changes
+
+ * enable model.register without 'inference' & 'transform' instances
+ * rename RegisterModel inner steps to prevent duplicate step names
+ * remove primitive_or_expr() from conditions
+ * support pipeline variables for spark processors run arguments
+ * make 'ModelInput' field optional for inference recommendation
+ * Fix processing image uri param
+ * fix: neo inferentia as compilation target not using framework ver
+
+### Documentation Changes
+
+ * SageMaker model parallel library v1.10.0 documentation
+ * add detail & links to clarify docstrings
+
 ## v2.99.0 (2022-07-08)
 
 ### Features
