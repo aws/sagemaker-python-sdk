@@ -289,7 +289,6 @@ class LineageQueryResult(object):
         # get edge info in the form of (source, target, label)
         for edge in self.edges:
             edges.append((edge.source_arn, edge.destination_arn, edge.association_type))
-        edges.append((self.edges[1].destination_arn, self.edges[1].source_arn, self.edges[1].association_type))
         return edges
 
     def visualize(self):
@@ -319,7 +318,7 @@ class LineageQueryResult(object):
                 cyto.Cytoscape(
                     id="cytoscape-graph",
                     elements=elements,
-                    style={"width": "100%", "height": "350px"},
+                    style={"width": "85%", "height": "350px", 'display': 'inline-block', 'border-width': '1vw', "border-color": "#232f3e"},
                     layout={"name": "klay"},
                     stylesheet=[
                         {
@@ -331,7 +330,8 @@ class LineageQueryResult(object):
                                 "width": "10vw",
                                 "border-width": "0.8",
                                 "border-opacity": "0", 
-                                "border-color": "#232f3e"
+                                "border-color": "#232f3e",
+                                "font-family": "verdana"
                             },
                         },
                         {
@@ -351,6 +351,7 @@ class LineageQueryResult(object):
                                 "target-arrow-shape": "triangle",
                                 "line-color": "gray",
                                 "arrow-scale": "0.5",
+                                "font-family": "verdana"
                             },
                         },
                         {"selector": ".Artifact", "style": {"background-color": "#146eb4"}},
@@ -361,7 +362,101 @@ class LineageQueryResult(object):
                         {"selector": ".select", "style": { "border-opacity": "0.7"}},
                     ],
                     responsive=True,
-                )
+                ),
+                html.Div([
+                    html.Div([
+                        html.Div(
+                            style={
+                                'background-color': "#f6cf61",
+                                'width': '1.5vw',
+                                'height': '1.5vw',
+                                'display': 'inline-block'
+                            }
+                        ),
+                        html.Div(
+                            style={
+                                'width': '0.5vw',
+                                'height': '1.5vw',
+                                'display': 'inline-block'
+                            }
+                        ),
+                        html.Div(' Trial Component', style={'display': 'inline-block', "font-size": "1.5vw"}),
+                    ]),
+                    html.Div([
+                        html.Div(
+                            style={
+                                'background-color': "#ff9900",
+                                'width': '1.5vw',
+                                'height': '1.5vw',
+                                'display': 'inline-block'
+                            }
+                        ),
+                        html.Div(
+                            style={
+                                'width': '0.5vw',
+                                'height': '1.5vw',
+                                'display': 'inline-block'
+                            }
+                        ),
+                        html.Div(' Context', style={'display': 'inline-block', "font-size": "1.5vw"}),
+                    ]),
+                    html.Div([
+                        html.Div(
+                            style={
+                                'background-color': "#88c396",
+                                'width': '1.5vw',
+                                'height': '1.5vw',
+                                'display': 'inline-block'
+                            }
+                        ),
+                        html.Div(
+                            style={
+                                'width': '0.5vw',
+                                'height': '1.5vw',
+                                'display': 'inline-block'
+                            }
+                        ),
+                        html.Div(' Action', style={'display': 'inline-block', "font-size": "1.5vw"}),
+                    ]),
+                    html.Div([
+                        html.Div(
+                            style={
+                                'background-color': "#146eb4",
+                                'width': '1.5vw',
+                                'height': '1.5vw',
+                                'display': 'inline-block'
+                            }
+                        ),
+                        html.Div(
+                            style={
+                                'width': '0.5vw',
+                                'height': '1.5vw',
+                                'display': 'inline-block'
+                            }
+                        ),
+                        html.Div(' Artifact', style={'display': 'inline-block', "font-size": "1.5vw"}),
+                    ]),
+                    html.Div([
+                        html.Div(
+                            "★",
+                            style={
+                                'background-color': "white",
+                                'width': '1.5vw',
+                                'height': '1.5vw',
+                                'display': 'inline-block',
+                                "font-size": "1.5vw"
+                            }
+                        ),
+                        html.Div(
+                            style={
+                                'width': '0.5vw',
+                                'height': '1.5vw',
+                                'display': 'inline-block'
+                            }
+                        ),
+                        html.Div('StartArn', style={'display': 'inline-block', "font-size": "1.5vw"}),
+                    ]),
+                ], style={'width': '15%', 'display': 'inline-block', "font-size": "1vw", "font-family": "verdana", "vertical-align": "top"})
             ]
         )
 
