@@ -201,6 +201,7 @@ def test_marketplace_model(sagemaker_session, cpu_instance_type):
 def iris_image(sagemaker_session):
 
     print("_/_/_/ BASIL CREATING IRIS IMAGE REPOSITORY ")
+    logger.info("TEST BASIL")
     algorithm_name = unique_name_from_base("iris-classifier")
     ecr_image = _ecr_image_uri(sagemaker_session, algorithm_name)
     ecr_client = sagemaker_session.boto_session.client("ecr")
@@ -231,6 +232,8 @@ def iris_image(sagemaker_session):
         except requests.exceptions.ConnectionError as e:
             # This can happen when we try to create multiple repositories in parallel, so we retry
             print(e.response, e.args, e)
+            logger.exception("upload docker image to ECR repo failed")
+            print("upload docker image to ECR repo failed")
             pass
 
     yield ecr_image
