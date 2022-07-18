@@ -166,7 +166,7 @@ def get_using_dot_notation(dictionary, keys):
         Nested object within dictionary as defined by "keys"
 
     Raises:
-     KeyError or IndexError if the provided key does not exist in input dictionary
+     KeyError/IndexError/TypeError if the provided key does not exist in input dictionary
     """
     if keys is None:
         return dictionary
@@ -175,14 +175,23 @@ def get_using_dot_notation(dictionary, keys):
     rest = None
     if len(split_keys) > 1:
         rest = split_keys[1]
-    list_accessor = re.search(r"(\w+)\[(\d+)]", key)
-    if list_accessor:
-        key = list_accessor.group(1)
-        list_index = int(list_accessor.group(2))
-        return get_using_dot_notation(dictionary[key][list_index], rest)
-    dict_accessor = re.search(r"(\w+)\[['\"](\S+)['\"]]", key)
-    if dict_accessor:
-        key = dict_accessor.group(1)
-        inner_key = dict_accessor.group(2)
-        return get_using_dot_notation(dictionary[key][inner_key], rest)
-    return get_using_dot_notation(dictionary[key], rest)
+    bracket_accessors = re.findall(r"\[(.+?)]", key)
+    if bracket_accessors:
+        pre_bracket_key = key.split("[", 1)[0]
+        inner_dict = dictionary[pre_bracket_key]
+    else:
+        inner_dict = dictionary[key]
+    for bracket_accessor in bracket_accessors:
+        if (
+            bracket_accessor.startswith("'")
+            and bracket_accessor.endswith("'")
+            or bracket_accessor.startswith('"')
+            and bracket_accessor.endswith('"')
+        ):
+            # key accessor
+            inner_key = bracket_accessor[1:-1]
+        else:
+            # list accessor
+            inner_key = int(bracket_accessor)
+        inner_dict = inner_dict[inner_key]
+    return get_using_dot_notation(inner_dict, rest)

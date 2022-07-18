@@ -11,9 +11,12 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
-from mock import Mock, PropertyMock, patch
 
 import pytest
+from mock import Mock, patch, PropertyMock
+
+from botocore.exceptions import ClientError
+
 from sagemaker.estimator import Estimator
 from sagemaker.inputs import TrainingInput
 from sagemaker.debugger import ProfilerConfig
@@ -31,22 +34,16 @@ from sagemaker.workflow.conditions import (
     ConditionOr,
 )
 from sagemaker.workflow.fail_step import FailStep
-
-from botocore.exceptions import ClientError
-
 from sagemaker.workflow.parameters import ParameterInteger, ParameterString
 from sagemaker.workflow.pipeline import Pipeline
-from sagemaker.workflow.steps import CreateModelStep, StepTypeEnum
-from sagemaker.model import Model
 from sagemaker.workflow.pipeline_context import PipelineSession
 from sagemaker.workflow.steps import (
     ProcessingStep,
     TrainingStep,
     TransformStep,
     TransformInput,
+    StepTypeEnum,
 )
-
-from sagemaker.local import LocalSession
 from sagemaker.local.pipeline import (
     _ConditionStepExecutor,
     _FailStepExecutor,
@@ -59,42 +56,48 @@ from sagemaker.local.pipeline import (
 )
 from sagemaker.local.entities import _LocalExecutionStatus, _LocalPipelineExecution
 from sagemaker.workflow.execution_variables import ExecutionVariables
-from sagemaker.workflow.functions import Join
+from sagemaker.workflow.functions import Join, JsonGet, PropertyFile
+from sagemaker.local.local_session import LocalSession
 from tests.unit.sagemaker.workflow.helpers import CustomStep
 
 STRING_PARAMETER = ParameterString("MyStr", "DefaultParameter")
+INSTANCE_COUNT_PIPELINE_PARAMETER = ParameterInteger(name="InstanceCount", default_value=6)
 INPUT_STEP = CustomStep(name="InputStep")
 IMAGE_URI = "fakeimage"
 ROLE = "DummyRole"
 BUCKET = "my-bucket"
 REGION = "us-west-2"
 INSTANCE_TYPE = "ml.m4.xlarge"
-INSTANCE_COUNT_PIPELINE_PARAMETER = ParameterInteger(name="InstanceCount", default_value=6)
-
-
-@pytest.fixture()
-def local_sagemaker_session():
-    return LocalSession()
+PROPERTY_FILE_CONTENT = (
+    "{"
+    '  "my-processing-output": {'
+    '    "nested_object1": {'
+    '      "metric1": 45.22,'
+    '      "metric2": 76'
+    "    },"
+    '    "nested_object2": {'
+    '      "nested_list": ['
+    "        {"
+    '          "list_object1": {'
+    '            "metric1": 55,'
+    '            "metric2": 66.34'
+    "          }"
+    "        },"
+    "        {"
+    '          "list_object2": {'
+    '            "metric1": 33'
+    "           }"
+    "         }"
+    "      ]"
+    "    }"
+    "  }"
+    "}"
+)
 
 
 @pytest.fixture
 def role_arn():
     return "arn:role"
-
-
-@pytest.fixture
-def boto_session(client):
-    role_mock = Mock()
-    type(role_mock).arn = PropertyMock(return_value=ROLE)
-
-    resource_mock = Mock()
-    resource_mock.Role.return_value = role_mock
-
-    session_mock = Mock(region_name=REGION)
-    session_mock.resource.return_value = resource_mock
-    session_mock.client.return_value = client
-
-    return session_mock
 
 
 @pytest.fixture
@@ -115,12 +118,32 @@ def client():
 
 
 @pytest.fixture
+def boto_session(client):
+    role_mock = Mock()
+    type(role_mock).arn = PropertyMock(return_value=ROLE)
+
+    resource_mock = Mock()
+    resource_mock.Role.return_value = role_mock
+
+    session_mock = Mock(region_name=REGION)
+    session_mock.resource.return_value = resource_mock
+    session_mock.client.return_value = client
+
+    return session_mock
+
+
+@pytest.fixture
 def pipeline_session(boto_session, client):
     return PipelineSession(
         boto_session=boto_session,
         sagemaker_client=client,
         default_bucket=BUCKET,
     )
+
+
+@pytest.fixture()
+def local_sagemaker_session(boto_session):
+    return LocalSession(boto_session=boto_session, default_bucket="my-bucket")
 
 
 @pytest.fixture
@@ -225,54 +248,6 @@ def test_evaluate_parameter(local_sagemaker_session):
     assert evaluated_args["input_data"] == "test_string"
 
 
-def test_evaluate_parameter_undefined(local_sagemaker_session, role_arn):
-    parameter = ParameterString("MyStr")
-    step = CustomStep(name="MyStep", input_data=parameter)
-    pipeline = Pipeline(
-        name="MyPipeline",
-        parameters=[parameter],
-        steps=[step],
-        sagemaker_session=local_sagemaker_session,
-    )
-    with pytest.raises(ClientError) as error:
-        pipeline.create(role_arn, "test pipeline")
-        pipeline.start()
-    assert f"Parameter '{parameter.name}' is undefined." in str(error.value)
-
-
-def test_evaluate_parameter_unknown(local_sagemaker_session, role_arn):
-    parameter = ParameterString("MyStr")
-    step = CustomStep(name="MyStep", input_data=parameter)
-    pipeline = Pipeline(
-        name="MyPipeline",
-        parameters=[parameter],
-        steps=[step],
-        sagemaker_session=local_sagemaker_session,
-    )
-    with pytest.raises(ClientError) as error:
-        pipeline.create(role_arn, "test pipeline")
-        pipeline.start({"MyStr": "test-test", "UnknownParameterFoo": "foo"})
-    assert "Unknown parameter 'UnknownParameterFoo'" in str(error.value)
-
-
-def test_evaluate_parameter_wrong_type(local_sagemaker_session, role_arn):
-    parameter = ParameterString("MyStr")
-    step = CustomStep(name="MyStep", input_data=parameter)
-    pipeline = Pipeline(
-        name="MyPipeline",
-        parameters=[parameter],
-        steps=[step],
-        sagemaker_session=local_sagemaker_session,
-    )
-    with pytest.raises(ClientError) as error:
-        pipeline.create(role_arn, "test pipeline")
-        pipeline.start({"MyStr": True})
-    assert (
-        f"Unexpected type for parameter '{parameter.name}'. Expected "
-        f"{parameter.parameter_type.python_type} but found {type(True)}." in str(error.value)
-    )
-
-
 @pytest.mark.parametrize(
     "property_reference, expected",
     [
@@ -365,22 +340,250 @@ def test_evaluate_join_function(local_sagemaker_session, join_value, expected):
     assert evaluated_args["input_data"] == expected
 
 
-def test_execute_unsupported_step_type(role_arn, local_sagemaker_session):
-    step = CreateModelStep(
-        name="MyRegisterModelStep",
-        model=Model(image_uri="mock_image_uri"),
+@pytest.mark.parametrize(
+    "json_path_value, expected",
+    [
+        ("my-processing-output.nested_object1.metric1", 45.22),
+        ("my-processing-output.nested_object1['metric2']", 76),
+        ("my-processing-output.nested_object2.nested_list[0].list_object1.metric1", 55),
+        ("my-processing-output.nested_object2.nested_list[0].list_object1['metric2']", 66.34),
+        ("my-processing-output.nested_object2.nested_list[1].list_object2.metric1", 33),
+    ],
+)
+@patch("sagemaker.session.Session.read_s3_file", return_value=PROPERTY_FILE_CONTENT)
+def test_evaluate_json_get_function(
+    read_s3_file, local_sagemaker_session, json_path_value, expected
+):
+    property_file = PropertyFile(
+        name="my-property-file", output_name="TestOutputName", path="processing_output.json"
+    )
+    processor = Processor(
+        image_uri="some_image_uri",
+        role="DummyRole",
+        instance_count=1,
+        instance_type="c4.4xlarge",
+        sagemaker_session=local_sagemaker_session,
+    )
+    processing_step = ProcessingStep(
+        name="inputProcessingStep",
+        processor=processor,
+        outputs=[ProcessingOutput(output_name="TestOutputName")],
+        property_files=[property_file],
+    )
+
+    step = CustomStep(
+        name="TestStep",
+        input_data=JsonGet(
+            step_name=processing_step.name, property_file=property_file, json_path=json_path_value
+        ),
     )
     pipeline = Pipeline(
         name="MyPipeline",
         parameters=[STRING_PARAMETER],
-        steps=[step],
+        steps=[processing_step, step],
         sagemaker_session=local_sagemaker_session,
     )
-    create_pipeline_response = pipeline.create(role_arn, "test pipeline")
-    assert create_pipeline_response["PipelineArn"] == "MyPipeline"
-    with pytest.raises(ClientError) as e:
-        pipeline.start()
-    assert f"Step type {step.step_type.value} is not supported in local mode." in str(e.value)
+
+    execution = _LocalPipelineExecution("my-execution", pipeline)
+    execution.step_execution["inputProcessingStep"].properties = {
+        "ProcessingOutputConfig": {
+            "Outputs": [
+                {
+                    "OutputName": "TestOutputName",
+                    "S3Output": {"S3Uri": "s3://my-bucket/processing/output"},
+                }
+            ]
+        }
+    }
+    evaluated_args = LocalPipelineExecutor(
+        execution, local_sagemaker_session
+    ).evaluate_step_arguments(step)
+    assert evaluated_args["input_data"] == expected
+
+
+def test_evaluate_json_get_function_processing_output_not_available(local_sagemaker_session):
+    property_file = PropertyFile(
+        name="my-property-file", output_name="TestOutputName", path="processing_output.json"
+    )
+    processor = Processor(
+        image_uri="some_image_uri",
+        role="DummyRole",
+        instance_count=1,
+        instance_type="c4.4xlarge",
+        sagemaker_session=local_sagemaker_session,
+    )
+    processing_step = ProcessingStep(
+        name="inputProcessingStep",
+        processor=processor,
+        outputs=[ProcessingOutput(output_name="TestOutputName")],
+        property_files=[property_file],
+    )
+    step = CustomStep(
+        name="TestStep",
+        input_data=JsonGet(
+            step_name=processing_step.name, property_file=property_file, json_path="mse"
+        ),
+    )
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[STRING_PARAMETER],
+        steps=[processing_step, step],
+        sagemaker_session=local_sagemaker_session,
+    )
+    execution = _LocalPipelineExecution("my-execution", pipeline)
+    with pytest.raises(StepExecutionException) as e:
+        LocalPipelineExecutor(execution, local_sagemaker_session).evaluate_step_arguments(step)
+    assert f"Step '{processing_step.name}' does not yet contain processing outputs." in str(e.value)
+
+
+@patch(
+    "sagemaker.session.Session.read_s3_file",
+    side_effect=ClientError({"Code": "NoSuchKey", "Message": "bad key"}, "GetObject"),
+)
+def test_evaluate_json_get_function_s3_client_error(read_s3_file, local_sagemaker_session):
+    property_file = PropertyFile(
+        name="my-property-file", output_name="TestOutputName", path="processing_output.json"
+    )
+    processor = Processor(
+        image_uri="some_image_uri",
+        role="DummyRole",
+        instance_count=1,
+        instance_type="c4.4xlarge",
+        sagemaker_session=local_sagemaker_session,
+    )
+    processing_step = ProcessingStep(
+        name="inputProcessingStep",
+        processor=processor,
+        outputs=[ProcessingOutput(output_name="TestOutputName")],
+        property_files=[property_file],
+    )
+    step = CustomStep(
+        name="TestStep",
+        input_data=JsonGet(
+            step_name=processing_step.name, property_file=property_file, json_path="mse"
+        ),
+    )
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[STRING_PARAMETER],
+        steps=[processing_step, step],
+        sagemaker_session=local_sagemaker_session,
+    )
+    execution = _LocalPipelineExecution("my-execution", pipeline)
+    execution.step_execution["inputProcessingStep"].properties = {
+        "ProcessingOutputConfig": {
+            "Outputs": [
+                {
+                    "OutputName": "TestOutputName",
+                    "S3Output": {"S3Uri": "s3://my-bucket/processing/output"},
+                }
+            ]
+        }
+    }
+    with pytest.raises(StepExecutionException) as e:
+        LocalPipelineExecutor(execution, local_sagemaker_session).evaluate_step_arguments(step)
+    assert f"Received an error while file reading file '{property_file.path}' from S3" in str(
+        e.value
+    )
+
+
+@patch("sagemaker.session.Session.read_s3_file", return_value="['invalid_json']")
+def test_evaluate_json_get_function_bad_json_in_property_file(
+    read_s3_file, local_sagemaker_session
+):
+    property_file = PropertyFile(
+        name="my-property-file", output_name="TestOutputName", path="processing_output.json"
+    )
+    processor = Processor(
+        image_uri="some_image_uri",
+        role="DummyRole",
+        instance_count=1,
+        instance_type="c4.4xlarge",
+        sagemaker_session=local_sagemaker_session,
+    )
+    processing_step = ProcessingStep(
+        name="inputProcessingStep",
+        processor=processor,
+        outputs=[ProcessingOutput(output_name="TestOutputName")],
+        property_files=[property_file],
+    )
+    step = CustomStep(
+        name="TestStep",
+        input_data=JsonGet(
+            step_name=processing_step.name, property_file=property_file, json_path="mse"
+        ),
+    )
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[STRING_PARAMETER],
+        steps=[processing_step, step],
+        sagemaker_session=local_sagemaker_session,
+    )
+
+    execution = _LocalPipelineExecution("my-execution", pipeline)
+    execution.step_execution["inputProcessingStep"].properties = {
+        "ProcessingOutputConfig": {
+            "Outputs": [
+                {
+                    "OutputName": "TestOutputName",
+                    "S3Output": {"S3Uri": "s3://my-bucket/processing/output"},
+                }
+            ]
+        }
+    }
+    with pytest.raises(StepExecutionException) as e:
+        LocalPipelineExecutor(execution, local_sagemaker_session).evaluate_step_arguments(step)
+    assert f"Contents of property file '{property_file.name}' are not in valid JSON format." in str(
+        e.value
+    )
+
+
+@patch("sagemaker.session.Session.read_s3_file", return_value=PROPERTY_FILE_CONTENT)
+def test_evaluate_json_get_function_invalid_json_path(read_s3_file, local_sagemaker_session):
+    property_file = PropertyFile(
+        name="my-property-file", output_name="TestOutputName", path="processing_output.json"
+    )
+    processor = Processor(
+        image_uri="some_image_uri",
+        role="DummyRole",
+        instance_count=1,
+        instance_type="c4.4xlarge",
+        sagemaker_session=local_sagemaker_session,
+    )
+    processing_step = ProcessingStep(
+        name="inputProcessingStep",
+        processor=processor,
+        outputs=[ProcessingOutput(output_name="TestOutputName")],
+        property_files=[property_file],
+    )
+    step = CustomStep(
+        name="TestStep",
+        input_data=JsonGet(
+            step_name=processing_step.name,
+            property_file=property_file,
+            json_path="some.json.path[1].does.not['exist']",
+        ),
+    )
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[STRING_PARAMETER],
+        steps=[processing_step, step],
+        sagemaker_session=local_sagemaker_session,
+    )
+    execution = _LocalPipelineExecution("my-execution", pipeline)
+    execution.step_execution["inputProcessingStep"].properties = {
+        "ProcessingOutputConfig": {
+            "Outputs": [
+                {
+                    "OutputName": "TestOutputName",
+                    "S3Output": {"S3Uri": "s3://my-bucket/processing/output"},
+                }
+            ]
+        }
+    }
+    with pytest.raises(StepExecutionException) as e:
+        LocalPipelineExecutor(execution, local_sagemaker_session).evaluate_step_arguments(step)
+    assert "Invalid json path 'some.json.path[1].does.not['exist']'" in str(e.value)
 
 
 @pytest.mark.parametrize(
@@ -644,14 +847,12 @@ def test_execute_pipeline_condition_step_test_conditions(
             execution.step_execution.get(succeeded_step).status
             == _LocalExecutionStatus.SUCCEEDED.value
         )
+        assert execution.step_execution.get(succeeded_step).name == succeeded_step
         assert execution.step_execution.get(succeeded_step).properties != {}
         assert execution.step_execution.get(succeeded_step).failure_reason is None
 
     for executing_step in executing_steps:
-        assert (
-            execution.step_execution.get(executing_step).status
-            == _LocalExecutionStatus.STARTING.value
-        )
+        assert execution.step_execution.get(executing_step).name == executing_step
         assert execution.step_execution.get(executing_step).properties == {}
         assert execution.step_execution.get(executing_step).failure_reason is None
 
@@ -719,7 +920,7 @@ def test_pipeline_execution_condition_step_execution_path(
 
     actual_path = []
     for step_name, step_execution in execution.step_execution.items():
-        if step_execution.status != _LocalExecutionStatus.STARTING.value:
+        if step_execution.status is not None:
             actual_path.append(step_name)
     assert actual_path == expected_path
 
@@ -752,9 +953,7 @@ def test_condition_step_incompatible_types(local_sagemaker_session):
         + "type [<class 'str'>] are not of the same type."
         in execution.failure_reason
     )
-    assert execution.step_execution["stepA"].status == _LocalExecutionStatus.STARTING.value
-    assert execution.step_execution["stepB"].status == _LocalExecutionStatus.STARTING.value
-    execution.step_execution["stepCondition"].status == _LocalExecutionStatus.FAILED.value
+    assert execution.step_execution["stepCondition"].status == _LocalExecutionStatus.FAILED.value
 
 
 @patch("sagemaker.local.local_session._LocalTrainingJob")
