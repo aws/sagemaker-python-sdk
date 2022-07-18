@@ -32,7 +32,7 @@ from sagemaker.workflow.pipeline_experiment_config import (
 )
 from sagemaker.workflow.step_collections import StepCollection
 from tests.unit.sagemaker.workflow.helpers import ordered, CustomStep
-from sagemaker.local import LocalSession
+from sagemaker.local.local_session import LocalSession
 
 
 @pytest.fixture

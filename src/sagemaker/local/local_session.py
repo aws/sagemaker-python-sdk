@@ -595,7 +595,9 @@ class LocalSession(Session):
     :class:`~sagemaker.session.Session`.
     """
 
-    def __init__(self, boto_session=None, s3_endpoint_url=None, disable_local_code=False):
+    def __init__(
+        self, boto_session=None, default_bucket=None, s3_endpoint_url=None, disable_local_code=False
+    ):
         """Create a Local SageMaker Session.
 
         Args:
@@ -614,7 +616,7 @@ class LocalSession(Session):
         # discourage external use:
         self._disable_local_code = disable_local_code
 
-        super(LocalSession, self).__init__(boto_session)
+        super(LocalSession, self).__init__(boto_session=boto_session, default_bucket=default_bucket)
 
         if platform.system() == "Windows":
             logger.warning("Windows Support for Local Mode is Experimental")
@@ -718,9 +720,12 @@ class file_input(object):
 class LocalPipelineSession(LocalSession):
     """Class representing a local session for SageMaker Pipelines executions."""
 
-    def __init__(self, boto_session=None, s3_endpoint_url=None, disable_local_code=False):
+    def __init__(
+        self, boto_session=None, default_bucket=None, s3_endpoint_url=None, disable_local_code=False
+    ):
         super().__init__(
             boto_session=boto_session,
+            default_bucket=default_bucket,
             s3_endpoint_url=s3_endpoint_url,
             disable_local_code=disable_local_code,
         )

@@ -625,7 +625,7 @@ class _LocalEndpoint(object):
 
 
 class _LocalPipeline(object):
-    """Placeholder docstring"""
+    """Class representing a local SageMaker Pipeline"""
 
     _executions = {}
 
@@ -645,7 +645,7 @@ class _LocalPipeline(object):
         self.last_modified_time = now_time
 
     def describe(self):
-        """Placeholder docstring"""
+        """Describe Pipeline"""
         response = {
             "PipelineArn": self.pipeline.name,
             "PipelineDefinition": self.pipeline.definition(),
@@ -659,7 +659,7 @@ class _LocalPipeline(object):
         return response
 
     def start(self, **kwargs):
-        """Placeholder docstring"""
+        """Start a pipeline execution. Returns a _LocalPipelineExecution object."""
         from sagemaker.local.pipeline import LocalPipelineExecutor
 
         execution_id = str(uuid4())
@@ -670,7 +670,7 @@ class _LocalPipeline(object):
 
 
 class _LocalPipelineExecution(object):
-    """Placeholder docstring"""
+    """Class representing a local SageMaker pipeline execution."""
 
     def __init__(
         self,
@@ -693,7 +693,7 @@ class _LocalPipelineExecution(object):
         self.blockout_steps = {}
 
     def describe(self):
-        """Placeholder docstring"""
+        """Describe Pipeline Execution."""
         response = {
             "CreationTime": self.creation_time,
             "LastModifiedTime": self.creation_time,
@@ -708,8 +708,14 @@ class _LocalPipelineExecution(object):
         return filtered_response
 
     def list_steps(self):
-        """Placeholder docstring"""
-        # TODO
+        """List pipeline execution steps."""
+        return {
+            "PipelineExecutionSteps": [
+                step.to_list_steps_response()
+                for step in self.step_execution.values()
+                if step.status is not None
+            ]
+        }
 
     def update_execution_success(self):
         """Mark execution as succeeded."""
@@ -730,8 +736,8 @@ class _LocalPipelineExecution(object):
         self.step_execution.get(step_name).update_step_failure(failure_message)
 
     def mark_step_executing(self, step_name):
-        """Update step's status to EXECUTING"""
-        self.step_execution.get(step_name).status = _LocalExecutionStatus.EXECUTING.value
+        """Update pipelines step's status to EXECUTING and start_time to now."""
+        self.step_execution.get(step_name).mark_step_executing()
 
     def _initialize_step_execution(self, steps):
         """Initialize step_execution dict."""
@@ -751,7 +757,9 @@ class _LocalPipelineExecution(object):
                     "Step type {} is not supported in local mode.".format(step.step_type.value)
                 )
                 raise ClientError(error_msg, "start_pipeline_execution")
-            self.step_execution[step.name] = _LocalPipelineStepExecution(step.name, step.step_type)
+            self.step_execution[step.name] = _LocalPipelineExecutionStep(
+                step.name, step.step_type, step.description, step.display_name
+            )
             if step.step_type == StepTypeEnum.CONDITION:
                 self._initialize_step_execution(step.if_steps + step.else_steps)
 
@@ -790,44 +798,105 @@ class _LocalPipelineExecution(object):
         return {"Error": {"Code": "ValidationException", "Message": exception_msg}}
 
 
-class _LocalPipelineStepExecution(object):
-    """Placeholder docstring"""
+class _LocalPipelineExecutionStep(object):
+    """Class representing a local pipeline execution step."""
 
     def __init__(
         self,
-        step_name,
+        name,
         step_type,
-        last_modified_time=None,
+        description,
+        display_name=None,
+        start_time=None,
+        end_time=None,
         status=None,
         properties=None,
         failure_reason=None,
     ):
-        self.step_name = step_name
-        self.step_type = step_type
-        self.status = status or _LocalExecutionStatus.STARTING.value
+        from sagemaker.workflow.steps import StepTypeEnum
+
+        self.name = name
+        self.type = step_type
+        self.description = description
+        self.display_name = display_name
+        self.status = status
         self.failure_reason = failure_reason
         self.properties = properties or {}
-        self.creation_time = datetime.datetime.now()
-        self.last_modified_time = last_modified_time or self.creation_time
+        self.start_time = start_time
+        self.end_time = end_time
+        self._step_type_to_output_format_map = {
+            StepTypeEnum.TRAINING: self._construct_training_metadata,
+            StepTypeEnum.PROCESSING: self._construct_processing_metadata,
+            StepTypeEnum.TRANSFORM: self._construct_transform_metadata,
+            StepTypeEnum.CONDITION: self._construct_condition_metadata,
+            StepTypeEnum.FAIL: self._construct_fail_metadata,
+        }
 
     def update_step_properties(self, properties):
         """Update pipeline step execution output properties."""
-        logger.info("Successfully completed step %s.", self.step_name)
+        logger.info("Successfully completed step %s.", self.name)
         self.properties = deepcopy(properties)
         self.status = _LocalExecutionStatus.SUCCEEDED.value
+        self.end_time = datetime.datetime.now()
 
     def update_step_failure(self, failure_message):
         """Update pipeline step execution failure status and message."""
         logger.error(failure_message)
         self.failure_reason = failure_message
         self.status = _LocalExecutionStatus.FAILED.value
-        raise StepExecutionException(self.step_name, failure_message)
+        self.end_time = datetime.datetime.now()
+        raise StepExecutionException(self.name, failure_message)
+
+    def mark_step_executing(self):
+        """Update pipelines step's status to EXECUTING and start_time to now"""
+        self.status = _LocalExecutionStatus.EXECUTING.value
+        self.start_time = datetime.datetime.now()
+
+    def to_list_steps_response(self):
+        """Convert to response dict for list_steps calls."""
+        response = {
+            "EndTime": self.end_time,
+            "FailureReason": self.failure_reason,
+            "Metadata": self._construct_metadata(),
+            "StartTime": self.start_time,
+            "StepDescription": self.description,
+            "StepDisplayName": self.display_name,
+            "StepName": self.name,
+            "StepStatus": self.status,
+        }
+        filtered_response = {k: v for k, v in response.items() if v is not None}
+        return filtered_response
+
+    def _construct_metadata(self):
+        """Constructs the metadata shape for the list_steps_response."""
+        if self.properties:
+            return self._step_type_to_output_format_map[self.type]()
+        return None
+
+    def _construct_training_metadata(self):
+        """Construct training job metadata response."""
+        return {"TrainingJob": {"Arn": self.properties.TrainingJobArn}}
+
+    def _construct_processing_metadata(self):
+        """Construct processing job metadata response."""
+        return {"ProcessingJob": {"Arn": self.properties.ProcessingJobArn}}
+
+    def _construct_transform_metadata(self):
+        """Construct transform job metadata response."""
+        return {"TransformJob": {"Arn": self.properties.TransformJobArn}}
+
+    def _construct_condition_metadata(self):
+        """Construct condition step metadata response."""
+        return {"Condition": {"Outcome": self.properties.Outcome}}
+
+    def _construct_fail_metadata(self):
+        """Construct fail step metadata response."""
+        return {"Fail": {"ErrorMessage": self.properties.ErrorMessage}}
 
 
 class _LocalExecutionStatus(enum.Enum):
-    """Placeholder docstring"""
+    """Pipeline execution status."""
 
-    STARTING = "Starting"
     EXECUTING = "Executing"
     SUCCEEDED = "Succeeded"
     FAILED = "Failed"
