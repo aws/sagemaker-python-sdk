@@ -236,7 +236,7 @@ class PyTorch(Framework):
 
     def _pytorch_distribution_configuration(self, distribution):
         """Returns a dict of distribution config for PyTorch training
-        
+
         Args:
             distribution (dict): A dictionary with information on how to run distributed training.
         Returns:
