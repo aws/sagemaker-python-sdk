@@ -235,18 +235,18 @@ class LineageQueryResult(object):
         Format:
         {
             'edges':[
-                "{
+                {
                     'source_arn': 'string', 'destination_arn': 'string',
                     'association_type': 'string'
-                }",
+                },
                 ...
             ],
             'vertices':[
-                "{
+                {
                     'arn': 'string', 'lineage_entity': 'string',
                     'lineage_source': 'string',
                     '_session': <sagemaker.session.Session object>
-                }",
+                },
                 ...
             ],
             'startarn':[
@@ -271,7 +271,7 @@ class LineageQueryResult(object):
 
         return cyto, JupyterDash, html, Input, Output
 
-    def _get_verts(self):
+    def _covert_vertices_to_tuples(self):
         """Convert vertices to tuple format for visualizer."""
         verts = []
         # get vertex info in the form of (id, label, class)
@@ -283,7 +283,7 @@ class LineageQueryResult(object):
                 verts.append((vert.arn, vert.lineage_source, vert.lineage_entity))
         return verts
 
-    def _get_edges(self):
+    def _covert_edges_to_tuples(self):
         """Convert edges to tuple format for visualizer."""
         edges = []
         # get edge info in the form of (source, target, label)
@@ -291,16 +291,11 @@ class LineageQueryResult(object):
             edges.append((edge.source_arn, edge.destination_arn, edge.association_type))
         return edges
 
-    def visualize(self):
-        """Visualize lineage query result."""
-        cyto, JupyterDash, html, Input, Output = self._import_visual_modules()
-
-        cyto.load_extra_layouts()  # load "klay" layout (hierarchical layout) from extra layouts
-        app = JupyterDash(__name__)
-
+    def _get_visualization_elements(self):
+        """Get elements for visualization."""
         # get vertices and edges info for graph
-        verts = self._get_verts()
-        edges = self._get_edges()
+        verts = self._covert_vertices_to_tuples()
+        edges = self._covert_edges_to_tuples()
 
         nodes = [
             {"data": {"id": id, "label": label}, "classes": classes} for id, label, classes in verts
@@ -312,6 +307,17 @@ class LineageQueryResult(object):
         ]
 
         elements = nodes + edges
+
+        return elements
+
+    def visualize(self):
+        """Visualize lineage query result."""
+        cyto, JupyterDash, html, Input, Output = self._import_visual_modules()
+
+        cyto.load_extra_layouts()  # load "klay" layout (hierarchical layout) from extra layouts
+        app = JupyterDash(__name__)
+
+        elements = self._get_visualization_elements()   
 
         app.layout = html.Div(
             [
@@ -461,15 +467,17 @@ class LineageQueryResult(object):
         )
 
         @app.callback(Output("cytoscape-graph", "elements"),
-                        Input("cytoscape-graph", "tapNodeData"))
-        def selectNode(data):
-            for n in nodes:
-                if data != None and n["data"]["id"] == data["id"]:
+                        Input("cytoscape-graph", "tapNodeData"),
+                        Input("cytoscape-graph", "elements"))
+        def selectNode(tapData, elements):
+            for n in elements:
+                if tapData != None and n["data"]["id"] == tapData["id"]:
+                    # if is tapped node, add "select" class to node
                     n["classes"] += " select"
-                else:
+                elif "classes" in n:
+                    # remove "select" class in "classes" if node not selected
                     n["classes"] = n["classes"].replace("select", "")
 
-            elements = nodes + edges
             return elements
 
         return app.run_server(mode="inline")
