@@ -207,7 +207,13 @@ class DashVisualizer(object):
     def __init__(self):
         """Init for DashVisualizer."""
         # import visualization packages
-        self.cyto, self.JupyterDash, self.html, self.Input, self.Output = self._import_visual_modules()
+        (
+            self.cyto,
+            self.JupyterDash,
+            self.html,
+            self.Input,
+            self.Output,
+        ) = self._import_visual_modules()
 
     def _import_visual_modules(self):
         """Import modules needed for visualization."""
@@ -239,7 +245,6 @@ class DashVisualizer(object):
             print("Try: pip install dash")
             raise
 
-
         return cyto, JupyterDash, html, Input, Output
 
     def _get_app(self, elements):
@@ -252,7 +257,13 @@ class DashVisualizer(object):
                 self.cyto.Cytoscape(
                     id="cytoscape-graph",
                     elements=elements,
-                    style={"width": "85%", "height": "350px", 'display': 'inline-block', 'border-width': '1vw', "border-color": "#232f3e"},
+                    style={
+                        "width": "85%",
+                        "height": "350px",
+                        "display": "inline-block",
+                        "border-width": "1vw",
+                        "border-color": "#232f3e",
+                    },
                     layout={"name": "klay"},
                     stylesheet=[
                         {
@@ -263,9 +274,9 @@ class DashVisualizer(object):
                                 "height": "10vw",
                                 "width": "10vw",
                                 "border-width": "0.8",
-                                "border-opacity": "0", 
+                                "border-opacity": "0",
                                 "border-color": "#232f3e",
-                                "font-family": "verdana"
+                                "font-family": "verdana",
                             },
                         },
                         {
@@ -279,13 +290,11 @@ class DashVisualizer(object):
                                 "width": "1",
                                 "curve-style": "bezier",
                                 "control-point-step-size": "15",
-                                # "taxi-direction": "rightward",
-                                # "taxi-turn": "50%",
                                 "target-arrow-color": "gray",
                                 "target-arrow-shape": "triangle",
                                 "line-color": "gray",
                                 "arrow-scale": "0.5",
-                                "font-family": "verdana"
+                                "font-family": "verdana",
                             },
                         },
                         {"selector": ".Artifact", "style": {"background-color": "#146eb4"}},
@@ -293,113 +302,149 @@ class DashVisualizer(object):
                         {"selector": ".TrialComponent", "style": {"background-color": "#f6cf61"}},
                         {"selector": ".Action", "style": {"background-color": "#88c396"}},
                         {"selector": ".startarn", "style": {"shape": "star"}},
-                        {"selector": ".select", "style": { "border-opacity": "0.7"}},
+                        {"selector": ".select", "style": {"border-opacity": "0.7"}},
                     ],
                     responsive=True,
                 ),
-                self.html.Div([
-                    self.html.Div([
+                self.html.Div(
+                    [
                         self.html.Div(
-                            style={
-                                'background-color': "#f6cf61",
-                                'width': '1.5vw',
-                                'height': '1.5vw',
-                                'display': 'inline-block'
-                            }
+                            [
+                                self.html.Div(
+                                    style={
+                                        "background-color": "#f6cf61",
+                                        "width": "1.5vw",
+                                        "height": "1.5vw",
+                                        "display": "inline-block",
+                                    }
+                                ),
+                                self.html.Div(
+                                    style={
+                                        "width": "0.5vw",
+                                        "height": "1.5vw",
+                                        "display": "inline-block",
+                                    }
+                                ),
+                                self.html.Div(
+                                    " Trial Component",
+                                    style={"display": "inline-block", "font-size": "1.5vw"},
+                                ),
+                            ]
                         ),
                         self.html.Div(
-                            style={
-                                'width': '0.5vw',
-                                'height': '1.5vw',
-                                'display': 'inline-block'
-                            }
-                        ),
-                        self.html.Div(' Trial Component', style={'display': 'inline-block', "font-size": "1.5vw"}),
-                    ]),
-                    self.html.Div([
-                        self.html.Div(
-                            style={
-                                'background-color': "#ff9900",
-                                'width': '1.5vw',
-                                'height': '1.5vw',
-                                'display': 'inline-block'
-                            }
-                        ),
-                        self.html.Div(
-                            style={
-                                'width': '0.5vw',
-                                'height': '1.5vw',
-                                'display': 'inline-block'
-                            }
-                        ),
-                        self.html.Div(' Context', style={'display': 'inline-block', "font-size": "1.5vw"}),
-                    ]),
-                    self.html.Div([
-                        self.html.Div(
-                            style={
-                                'background-color': "#88c396",
-                                'width': '1.5vw',
-                                'height': '1.5vw',
-                                'display': 'inline-block'
-                            }
+                            [
+                                self.html.Div(
+                                    style={
+                                        "background-color": "#ff9900",
+                                        "width": "1.5vw",
+                                        "height": "1.5vw",
+                                        "display": "inline-block",
+                                    }
+                                ),
+                                self.html.Div(
+                                    style={
+                                        "width": "0.5vw",
+                                        "height": "1.5vw",
+                                        "display": "inline-block",
+                                    }
+                                ),
+                                self.html.Div(
+                                    " Context",
+                                    style={"display": "inline-block", "font-size": "1.5vw"},
+                                ),
+                            ]
                         ),
                         self.html.Div(
-                            style={
-                                'width': '0.5vw',
-                                'height': '1.5vw',
-                                'display': 'inline-block'
-                            }
-                        ),
-                        self.html.Div(' Action', style={'display': 'inline-block', "font-size": "1.5vw"}),
-                    ]),
-                    self.html.Div([
-                        self.html.Div(
-                            style={
-                                'background-color': "#146eb4",
-                                'width': '1.5vw',
-                                'height': '1.5vw',
-                                'display': 'inline-block'
-                            }
-                        ),
-                        self.html.Div(
-                            style={
-                                'width': '0.5vw',
-                                'height': '1.5vw',
-                                'display': 'inline-block'
-                            }
-                        ),
-                        self.html.Div(' Artifact', style={'display': 'inline-block', "font-size": "1.5vw"}),
-                    ]),
-                    self.html.Div([
-                        self.html.Div(
-                            "★",
-                            style={
-                                'background-color': "white",
-                                'width': '1.5vw',
-                                'height': '1.5vw',
-                                'display': 'inline-block',
-                                "font-size": "1.5vw"
-                            }
+                            [
+                                self.html.Div(
+                                    style={
+                                        "background-color": "#88c396",
+                                        "width": "1.5vw",
+                                        "height": "1.5vw",
+                                        "display": "inline-block",
+                                    }
+                                ),
+                                self.html.Div(
+                                    style={
+                                        "width": "0.5vw",
+                                        "height": "1.5vw",
+                                        "display": "inline-block",
+                                    }
+                                ),
+                                self.html.Div(
+                                    " Action",
+                                    style={"display": "inline-block", "font-size": "1.5vw"},
+                                ),
+                            ]
                         ),
                         self.html.Div(
-                            style={
-                                'width': '0.5vw',
-                                'height': '1.5vw',
-                                'display': 'inline-block'
-                            }
+                            [
+                                self.html.Div(
+                                    style={
+                                        "background-color": "#146eb4",
+                                        "width": "1.5vw",
+                                        "height": "1.5vw",
+                                        "display": "inline-block",
+                                    }
+                                ),
+                                self.html.Div(
+                                    style={
+                                        "width": "0.5vw",
+                                        "height": "1.5vw",
+                                        "display": "inline-block",
+                                    }
+                                ),
+                                self.html.Div(
+                                    " Artifact",
+                                    style={"display": "inline-block", "font-size": "1.5vw"},
+                                ),
+                            ]
                         ),
-                        self.html.Div('StartArn', style={'display': 'inline-block', "font-size": "1.5vw"}),
-                    ]),
-                ], style={'width': '15%', 'display': 'inline-block', "font-size": "1vw", "font-family": "verdana", "vertical-align": "top"})
+                        self.html.Div(
+                            [
+                                self.html.Div(
+                                    "★",
+                                    style={
+                                        "background-color": "white",
+                                        "width": "1.5vw",
+                                        "height": "1.5vw",
+                                        "display": "inline-block",
+                                        "font-size": "1.5vw",
+                                    },
+                                ),
+                                self.html.Div(
+                                    style={
+                                        "width": "0.5vw",
+                                        "height": "1.5vw",
+                                        "display": "inline-block",
+                                    }
+                                ),
+                                self.html.Div(
+                                    "StartArn",
+                                    style={"display": "inline-block", "font-size": "1.5vw"},
+                                ),
+                            ]
+                        ),
+                    ],
+                    style={
+                        "width": "15%",
+                        "display": "inline-block",
+                        "font-size": "1vw",
+                        "font-family": "verdana",
+                        "vertical-align": "top",
+                    },
+                ),
             ]
         )
 
-        @app.callback(self.Output("cytoscape-graph", "elements"),
-                        self.Input("cytoscape-graph", "tapNodeData"),
-                        self.Input("cytoscape-graph", "elements"))
+        @app.callback(
+            self.Output("cytoscape-graph", "elements"),
+            self.Input("cytoscape-graph", "tapNodeData"),
+            self.Input("cytoscape-graph", "elements"),
+        )
         def selectNode(tapData, elements):
             for n in elements:
-                if tapData != None and n["data"]["id"] == tapData["id"]:
+                if tapData is not None and n["data"]["id"] == tapData["id"]:
                     # if is tapped node, add "select" class to node
                     n["classes"] += " select"
                 elif "classes" in n:
@@ -415,6 +460,7 @@ class DashVisualizer(object):
         app = self._get_app(elements)
 
         return app.run_server(mode=mode)
+
 
 class LineageQueryResult(object):
     """A wrapper around the results of a lineage query."""
@@ -450,18 +496,18 @@ class LineageQueryResult(object):
         Format:
         {
             'edges':[
-                {
+                "{
                     'source_arn': 'string', 'destination_arn': 'string',
                     'association_type': 'string'
-                },
+                }",
                 ...
             ],
             'vertices':[
-                {
+                "{
                     'arn': 'string', 'lineage_entity': 'string',
                     'lineage_source': 'string',
                     '_session': <sagemaker.session.Session object>
-                },
+                }",
                 ...
             ],
             'startarn':[
@@ -515,7 +561,7 @@ class LineageQueryResult(object):
 
     def visualize(self):
         """Visualize lineage query result."""
-        elements = self._get_visualization_elements()   
+        elements = self._get_visualization_elements()
 
         # initialize DashVisualizer instance to render graph & interactive components
         dash_vis = DashVisualizer()
@@ -523,6 +569,7 @@ class LineageQueryResult(object):
         dash_server = dash_vis.render(elements=elements, mode="inline")
 
         return dash_server
+
 
 class LineageFilter(object):
     """A filter used in a lineage query."""
