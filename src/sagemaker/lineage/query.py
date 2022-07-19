@@ -215,19 +215,22 @@ class DashVisualizer(object):
             import dash_cytoscape as cyto
         except ImportError as e:
             print(e)
-            print("try pip install dash-cytoscape")
+            print("Try: pip install dash-cytoscape")
+            raise
 
         try:
             from jupyter_dash import JupyterDash
         except ImportError as e:
             print(e)
-            print("try pip install jupyter-dash")
+            print("Try: pip install jupyter-dash")
+            raise
 
         try:
             from dash import html
         except ImportError as e:
             print(e)
-            print("try pip install dash")
+            print("Try: pip install dash")
+            raise
 
         return cyto, JupyterDash, html
 
