@@ -1713,11 +1713,15 @@ in the AWS documentation.
 SageMaker Workflow
 ******************
 
-You can use Apache Airflow to author, schedule and monitor SageMaker workflow.
+You can use the following machine learning frameworks to author, schedule and monitor SageMaker workflow.
 
-For more information, see `SageMaker Workflow in Apache Airflow`_.
+.. toctree::
+    :maxdepth: 2
 
-.. _SageMaker Workflow in Apache Airflow: https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/workflow/README.rst
+    workflows/airflow/index
+    workflows/step_functions/index
+    workflows/pipelines/index
+    workflows/lineage/index
 
 ************************************
 SageMaker Model Building Pipeline
