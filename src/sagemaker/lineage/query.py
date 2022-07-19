@@ -258,7 +258,7 @@ class DashVisualizer(object):
                     id="cytoscape-graph",
                     elements=elements,
                     style={
-                        "width": "85%",
+                        "width": "84%",
                         "height": "350px",
                         "display": "inline-block",
                         "border-width": "1vw",
@@ -305,6 +305,15 @@ class DashVisualizer(object):
                         {"selector": ".select", "style": {"border-opacity": "0.7"}},
                     ],
                     responsive=True,
+                ),
+                self.html.Div(
+                    style={
+                        "width": "0.5%",
+                        "display": "inline-block",
+                        "font-size": "1vw",
+                        "font-family": "verdana",
+                        "vertical-align": "top",
+                    },
                 ),
                 self.html.Div(
                     [
@@ -427,7 +436,6 @@ class DashVisualizer(object):
                         ),
                     ],
                     style={
-                        "width": "15%",
                         "display": "inline-block",
                         "font-size": "1vw",
                         "font-family": "verdana",
