@@ -2594,6 +2594,7 @@ def test_generic_to_fit_no_input(time, sagemaker_session):
 
     args.pop("job_name")
     args.pop("role")
+    args.pop("debugger_hook_config")
 
     assert args == NO_INPUT_TRAIN_CALL
 
@@ -2618,6 +2619,7 @@ def test_generic_to_fit_no_hps(time, sagemaker_session):
 
     args.pop("job_name")
     args.pop("role")
+    args.pop("debugger_hook_config")
 
     assert args == BASE_TRAIN_CALL
 
@@ -2644,6 +2646,7 @@ def test_generic_to_fit_with_hps(time, sagemaker_session):
 
     args.pop("job_name")
     args.pop("role")
+    args.pop("debugger_hook_config")
 
     assert args == HP_TRAIN_CALL
 
@@ -2675,6 +2678,7 @@ def test_generic_to_fit_with_experiment_config(time, sagemaker_session):
 
     args.pop("job_name")
     args.pop("role")
+    args.pop("debugger_hook_config")
 
     assert args == EXP_TRAIN_CALL
 
@@ -2828,6 +2832,7 @@ def test_generic_to_deploy(time, sagemaker_session):
 
     args.pop("job_name")
     args.pop("role")
+    args.pop("debugger_hook_config")
 
     assert args == HP_TRAIN_CALL
 
