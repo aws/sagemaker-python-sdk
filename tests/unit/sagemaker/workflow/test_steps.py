@@ -341,7 +341,6 @@ def test_training_step_base_estimator(sagemaker_session):
         steps=[step, custom_step1, custom_step2],
         sagemaker_session=sagemaker_session,
     )
-
     assert json.loads(pipeline.definition())["Steps"][0] == {
         "Name": "MyTrainingStep",
         "Type": "Training",
@@ -387,6 +386,9 @@ def test_training_step_base_estimator(sagemaker_session):
             },
             "RoleArn": ROLE,
             "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
+            "DebugHookConfig": {
+                "S3OutputPath": {"Std:Join": {"On": "/", "Values": ["s3:/", "a", "b"]}},
+                "CollectionConfigurations": []},
             "ProfilerConfig": {
                 "ProfilingIntervalInMilliseconds": 500,
                 "S3OutputPath": {"Std:Join": {"On": "/", "Values": ["s3:/", "a", "b"]}},
