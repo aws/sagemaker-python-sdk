@@ -481,7 +481,7 @@ def test_fit_ps(time, strftime, sagemaker_session):
     expected_train_args = _create_train_job("1.11", ps=True, py_version="py2")
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
     expected_train_args["hyperparameters"][TensorFlow.LAUNCH_PS_ENV_NAME] = json.dumps(True)
-    expected_train_args["environment"] = {'USE_SMDEBUG': '0'}
+    expected_train_args["environment"] = {"USE_SMDEBUG": "0"}
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert actual_train_args == expected_train_args
