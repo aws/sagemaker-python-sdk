@@ -527,10 +527,10 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 artifact should be repackaged into a new S3 object. (default: False).
         """
         local_code = utils.get_config_value("local.local_code", self.sagemaker_session.config)
+        bucket = self.bucket or self.sagemaker_session.default_bucket()
         if (self.sagemaker_session.local_mode and local_code) or self.entry_point is None:
             self.uploaded_code = None
         elif not repack:
-            bucket = self.bucket or self.sagemaker_session.default_bucket()
             self.uploaded_code = fw_utils.tar_and_upload_dir(
                 session=self.sagemaker_session.boto_session,
                 bucket=bucket,
@@ -557,6 +557,9 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                     )
                     return
                 self.sagemaker_session.context.need_runtime_repack.add(id(self))
+                self.sagemaker_session.context.runtime_repack_output_prefix = "s3://{}/{}".format(
+                    bucket, key_prefix
+                )
                 # Add the uploaded_code and repacked_model_data to update the container env
                 self.repacked_model_data = self.model_data
                 self.uploaded_code = fw_utils.UploadedCode(
@@ -567,7 +570,6 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             if local_code and self.model_data.startswith("file://"):
                 repacked_model_data = self.model_data
             else:
-                bucket = self.bucket or self.sagemaker_session.default_bucket()
                 repacked_model_data = "s3://" + "/".join([bucket, key_prefix, "model.tar.gz"])
                 self.uploaded_code = fw_utils.UploadedCode(
                     s3_prefix=repacked_model_data, script_name=os.path.basename(self.entry_point)
