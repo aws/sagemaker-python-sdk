@@ -215,6 +215,13 @@ class DashVisualizer(object):
             self.Output,
         ) = self._import_visual_modules()
 
+        self.entity_color = {
+            "TrialComponent": "#f6cf61",
+            "Context": "#ff9900",
+            "Action": "#88c396",
+            "Artifact": "#146eb4",
+        }
+
     def _import_visual_modules(self):
         """Import modules needed for visualization."""
         try:
@@ -247,6 +254,38 @@ class DashVisualizer(object):
 
         return cyto, JupyterDash, html, Input, Output
 
+    def _create_legend_component(self, text, color, colorText=""):
+        """Create legend component div."""
+        return self.html.Div(
+            [
+                self.html.Div(
+                    colorText,
+                    style={
+                        "background-color": color,
+                        "width": "1.5vw",
+                        "height": "1.5vw",
+                        "display": "inline-block",
+                        "font-size": "1.5vw",
+                    },
+                ),
+                self.html.Div(
+                    style={
+                        "width": "0.5vw",
+                        "height": "1.5vw",
+                        "display": "inline-block",
+                    }
+                ),
+                self.html.Div(
+                    text,
+                    style={"display": "inline-block", "font-size": "1.5vw"},
+                ),
+            ]
+        )
+
+    def _create_entity_selector(self, entity_name, color):
+        """Create selector for each lineage entity."""
+        return {"selector": "." + entity_name, "style": {"background-color": color}}
+
     def _get_app(self, elements):
         """Create JupyterDash app for interactivity on Jupyter notebook."""
         app = self.JupyterDash(__name__)
@@ -254,6 +293,7 @@ class DashVisualizer(object):
 
         app.layout = self.html.Div(
             [
+                # graph section
                 self.cyto.Cytoscape(
                     id="cytoscape-graph",
                     elements=elements,
@@ -297,13 +337,10 @@ class DashVisualizer(object):
                                 "font-family": "verdana",
                             },
                         },
-                        {"selector": ".Artifact", "style": {"background-color": "#146eb4"}},
-                        {"selector": ".Context", "style": {"background-color": "#ff9900"}},
-                        {"selector": ".TrialComponent", "style": {"background-color": "#f6cf61"}},
-                        {"selector": ".Action", "style": {"background-color": "#88c396"}},
                         {"selector": ".startarn", "style": {"shape": "star"}},
                         {"selector": ".select", "style": {"border-opacity": "0.7"}},
-                    ],
+                    ]
+                    + [self._create_entity_selector(k, v) for k, v in self.entity_color.items()],
                     responsive=True,
                 ),
                 self.html.Div(
@@ -315,126 +352,10 @@ class DashVisualizer(object):
                         "vertical-align": "top",
                     },
                 ),
+                # legend section
                 self.html.Div(
-                    [
-                        self.html.Div(
-                            [
-                                self.html.Div(
-                                    style={
-                                        "background-color": "#f6cf61",
-                                        "width": "1.5vw",
-                                        "height": "1.5vw",
-                                        "display": "inline-block",
-                                    }
-                                ),
-                                self.html.Div(
-                                    style={
-                                        "width": "0.5vw",
-                                        "height": "1.5vw",
-                                        "display": "inline-block",
-                                    }
-                                ),
-                                self.html.Div(
-                                    " Trial Component",
-                                    style={"display": "inline-block", "font-size": "1.5vw"},
-                                ),
-                            ]
-                        ),
-                        self.html.Div(
-                            [
-                                self.html.Div(
-                                    style={
-                                        "background-color": "#ff9900",
-                                        "width": "1.5vw",
-                                        "height": "1.5vw",
-                                        "display": "inline-block",
-                                    }
-                                ),
-                                self.html.Div(
-                                    style={
-                                        "width": "0.5vw",
-                                        "height": "1.5vw",
-                                        "display": "inline-block",
-                                    }
-                                ),
-                                self.html.Div(
-                                    " Context",
-                                    style={"display": "inline-block", "font-size": "1.5vw"},
-                                ),
-                            ]
-                        ),
-                        self.html.Div(
-                            [
-                                self.html.Div(
-                                    style={
-                                        "background-color": "#88c396",
-                                        "width": "1.5vw",
-                                        "height": "1.5vw",
-                                        "display": "inline-block",
-                                    }
-                                ),
-                                self.html.Div(
-                                    style={
-                                        "width": "0.5vw",
-                                        "height": "1.5vw",
-                                        "display": "inline-block",
-                                    }
-                                ),
-                                self.html.Div(
-                                    " Action",
-                                    style={"display": "inline-block", "font-size": "1.5vw"},
-                                ),
-                            ]
-                        ),
-                        self.html.Div(
-                            [
-                                self.html.Div(
-                                    style={
-                                        "background-color": "#146eb4",
-                                        "width": "1.5vw",
-                                        "height": "1.5vw",
-                                        "display": "inline-block",
-                                    }
-                                ),
-                                self.html.Div(
-                                    style={
-                                        "width": "0.5vw",
-                                        "height": "1.5vw",
-                                        "display": "inline-block",
-                                    }
-                                ),
-                                self.html.Div(
-                                    " Artifact",
-                                    style={"display": "inline-block", "font-size": "1.5vw"},
-                                ),
-                            ]
-                        ),
-                        self.html.Div(
-                            [
-                                self.html.Div(
-                                    "★",
-                                    style={
-                                        "background-color": "white",
-                                        "width": "1.5vw",
-                                        "height": "1.5vw",
-                                        "display": "inline-block",
-                                        "font-size": "1.5vw",
-                                    },
-                                ),
-                                self.html.Div(
-                                    style={
-                                        "width": "0.5vw",
-                                        "height": "1.5vw",
-                                        "display": "inline-block",
-                                    }
-                                ),
-                                self.html.Div(
-                                    "StartArn",
-                                    style={"display": "inline-block", "font-size": "1.5vw"},
-                                ),
-                            ]
-                        ),
-                    ],
+                    [self._create_legend_component(k, v) for k, v in self.entity_color.items()]
+                    + [self._create_legend_component("StartArn", "#ffffff", "★")],
                     style={
                         "display": "inline-block",
                         "font-size": "1vw",
