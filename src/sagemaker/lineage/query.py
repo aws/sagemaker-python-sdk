@@ -204,7 +204,7 @@ class Vertex:
 class DashVisualizer(object):
     """Create object used for visualizing graph using Dash library."""
 
-    def __init__(self):
+    def __init__(self, graph_styles):
         """Init for DashVisualizer."""
         # import visualization packages
         (
@@ -215,12 +215,7 @@ class DashVisualizer(object):
             self.Output,
         ) = self._import_visual_modules()
 
-        self.entity_color = {
-            "TrialComponent": "#f6cf61",
-            "Context": "#ff9900",
-            "Action": "#88c396",
-            "Artifact": "#146eb4",
-        }
+        self.graph_styles = graph_styles
 
     def _import_visual_modules(self):
         """Import modules needed for visualization."""
@@ -254,12 +249,19 @@ class DashVisualizer(object):
 
         return cyto, JupyterDash, html, Input, Output
 
-    def _create_legend_component(self, text, color, colorText=""):
+    def _create_legend_component(self, style):
         """Create legend component div."""
+        text = style["name"]
+        symbol = ""
+        color = "#ffffff"
+        if style["isShape"] == "False":
+            color = style["style"]["background-color"]
+        else:
+            symbol = style["symbol"]
         return self.html.Div(
             [
                 self.html.Div(
-                    colorText,
+                    symbol,
                     style={
                         "background-color": color,
                         "width": "1.5vw",
@@ -282,9 +284,9 @@ class DashVisualizer(object):
             ]
         )
 
-    def _create_entity_selector(self, entity_name, color):
+    def _create_entity_selector(self, entity_name, style):
         """Create selector for each lineage entity."""
-        return {"selector": "." + entity_name, "style": {"background-color": color}}
+        return {"selector": "." + entity_name, "style": style["style"]}
 
     def _get_app(self, elements):
         """Create JupyterDash app for interactivity on Jupyter notebook."""
@@ -337,10 +339,9 @@ class DashVisualizer(object):
                                 "font-family": "verdana",
                             },
                         },
-                        {"selector": ".startarn", "style": {"shape": "star"}},
                         {"selector": ".select", "style": {"border-opacity": "0.7"}},
                     ]
-                    + [self._create_entity_selector(k, v) for k, v in self.entity_color.items()],
+                    + [self._create_entity_selector(k, v) for k, v in self.graph_styles.items()],
                     responsive=True,
                 ),
                 self.html.Div(
@@ -354,8 +355,7 @@ class DashVisualizer(object):
                 ),
                 # legend section
                 self.html.Div(
-                    [self._create_legend_component(k, v) for k, v in self.entity_color.items()]
-                    + [self._create_legend_component("StartArn", "#ffffff", "★")],
+                    [self._create_legend_component(v) for k, v in self.graph_styles.items()],
                     style={
                         "display": "inline-block",
                         "font-size": "1vw",
@@ -492,8 +492,38 @@ class LineageQueryResult(object):
         """Visualize lineage query result."""
         elements = self._get_visualization_elements()
 
+        lineage_graph = {
+            # nodes can have shape / color
+            "TrialComponent": {
+                "name": "Trial Component",
+                "style": {"background-color": "#f6cf61"},
+                "isShape": "False",
+            },
+            "Context": {
+                "name": "Context",
+                "style": {"background-color": "#ff9900"},
+                "isShape": "False",
+            },
+            "Action": {
+                "name": "Action",
+                "style": {"background-color": "#88c396"},
+                "isShape": "False",
+            },
+            "Artifact": {
+                "name": "Artifact",
+                "style": {"background-color": "#146eb4"},
+                "isShape": "False",
+            },
+            "StartArn": {
+                "name": "StartArn",
+                "style": {"shape": "star"},
+                "isShape": "True",
+                "symbol": "★",  # shape symbol for legend
+            },
+        }
+
         # initialize DashVisualizer instance to render graph & interactive components
-        dash_vis = DashVisualizer()
+        dash_vis = DashVisualizer(lineage_graph)
 
         dash_server = dash_vis.render(elements=elements, mode="inline")
 
