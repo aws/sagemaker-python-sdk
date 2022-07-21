@@ -208,6 +208,11 @@ to be matching with the specs of the ML instance type you use.
 And then launch the training job using the SageMaker PyTorch estimator
 with the ``pytorchddp`` option as the distribution strategy.
 
+.. note::
+
+  This PyTorch DistributedDataParallel support is available
+  in the SageMaker PyTorch Deep Learning Container v1.12 and later.
+
 Adapt your Training Script
 --------------------------
 
@@ -246,14 +251,10 @@ When you run multi-node training, SageMaker imports your training script,
 replicates the script to all workers (GPUs), and runs the script on each worker
 in the cluster.
 
-If you’re using the `PyTorch DistributedDataParallel (DDP) package
+If using the `PyTorch DistributedDataParallel (DDP) package
 <https://pytorch.org/docs/master/generated/torch.nn.parallel.DistributedDataParallel.html>`_
 for distributed training, you can launch the training job by choosing
 the ``pytorchddp`` as the distributed training option.
-
-.. note::
-
-  This is available from SageMaker PyTorch DLC v1.12 and later.
 
 With the ``pytorchddp`` option, the SageMaker PyTorch estimator runs a SageMaker
 training container for PyTorch, sets up the environment for MPI, and launches
