@@ -200,7 +200,7 @@ fit Optional Arguments
 Distributed PyTorch Training
 ============================
 
-SageMaker supports the `PyTorch DistributedDataParallel
+SageMaker supports the `PyTorch DistributedDataParallel (DDP)
 <https://pytorch.org/docs/master/generated/torch.nn.parallel.DistributedDataParallel.html>`_
 package. You simply need to check the variables in your distributed training script,
 such as the world size and the rank of the current host,
@@ -210,8 +210,8 @@ with the ``pytorchddp`` option as the distribution strategy.
 
 .. note::
 
-  This PyTorch DistributedDataParallel support is available
-  in the SageMaker PyTorch Deep Learning Container v1.12 and later.
+  This PyTorch DDP support is available
+  in the SageMaker PyTorch Deep Learning Containers v1.12 and later.
 
 Adapt your Training Script
 --------------------------
@@ -262,7 +262,7 @@ the training job using the ``mpirun`` command.
 
 .. note::
 
-  The SageMaker PyTorch estimator doesn’t use torchrun for distributed training.
+  The SageMaker PyTorch estimator doesn’t use ``torchrun`` for distributed training.
 
 For more information about setting up PyTorch DDP in your training script,
 see `Getting Started with Distributed Data Parallel
@@ -270,7 +270,7 @@ see `Getting Started with Distributed Data Parallel
 PyTorch documentation.
 
 The following example shows how to run a PyTorch DDP training in SageMaker
-using 8 ``ml.p4d.24xlarge`` instances:
+using two ``ml.p4d.24xlarge`` instances:
 
 .. code:: python
 
@@ -281,13 +281,12 @@ using 8 ``ml.p4d.24xlarge`` instances:
       role="SageMakerRole",
       framework_version="1.12.0",
       py_version="py38",
-      instance_count=8,
+      instance_count=2,
       instance_type="ml.p4d.24xlarge",
-      sagemaker_session=sess,
       distribution={
           "pytorchddp": {
               "enabled": True
-          },
+          }
       }
   )
 
