@@ -41,8 +41,8 @@ def get_recommendations_handler(event, context):
 
     return [
         {
-            "InstanceType": x.instanceType,
-            "EnvironmentVariables": {str(k): str(v) for k, v in x.env.items()},
+            "instanceType": x.instanceType,
+            "env": {str(k): str(v) for k, v in x.env.items()},
         }
         for x in recommendations
     ]

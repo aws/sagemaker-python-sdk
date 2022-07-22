@@ -17,15 +17,15 @@ class TestGetRecommendationLambda(TestCase):
 
         expected = [
             {
-                "InstanceType": "ml.c5.large",
-                "EnvironmentVariables": {
+                "instanceType": "ml.c5.large",
+                "env": {
                     "OMP_NUM_THREADS": "1",
                     "TS_DEFAULT_WORKERS_PER_MODEL": "1",
                 },
             },
             {
-                "InstanceType": "ml.c5d.large",
-                "EnvironmentVariables": {
+                "instanceType": "ml.c5d.large",
+                "env": {
                     "OMP_NUM_THREADS": "1",
                     "TS_DEFAULT_WORKERS_PER_MODEL": "1",
                 },
