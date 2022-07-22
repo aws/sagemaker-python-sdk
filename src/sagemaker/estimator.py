@@ -814,7 +814,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             if self.debugger_hook_config in [None, {}]:
                 self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
         else:
-            if self.debugger_hook_config is not False and not self.debugger_hook_config:
+            if self.debugger_hook_config is not False and self.debugger_hook_config:
                 # when user set debugger config in a unsupported region
                 raise ValueError(
                     "Current region does not support debugger but debugger hook config is set!"
@@ -1842,7 +1842,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         """
         self._ensure_latest_training_job()
-
         if (
             not rules
             and not system_monitor_interval_millis
