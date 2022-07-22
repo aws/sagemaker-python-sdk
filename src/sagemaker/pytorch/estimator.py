@@ -165,7 +165,8 @@ class PyTorch(Framework):
                             }
                         }
 
-                        To learn more, see <TBD>
+                        To learn more, see `Distributed PyTorch Training
+                        <https://sagemaker.readthedocs.io/en/stable/frameworks/pytorch/using_pytorch.html#distributed-pytorch-training>`_.
 
                 **To enable MPI:**
 

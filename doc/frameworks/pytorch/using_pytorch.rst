@@ -219,7 +219,7 @@ Adapt your Training Script
 To initialize distributed training in your script, call
 `torch.distributed.init_process_group
 <https://pytorch.org/docs/master/distributed.html#torch.distributed.init_process_group>`_
-with the desired backend and the rank of the current hoset.
+with the desired backend and the rank of the current host.
 
 .. code:: python
 
@@ -243,17 +243,20 @@ but you can also overwrite them.
 Launching a Distributed Training Job
 ------------------------------------
 
-You can run a multi-node distributed PyTorch training using the SageMaker
-PyTorch estimator. With ``instance_count=1``, the PyTorch estimator submits a
-single-node training job to SageMaker. If you set ``instance_count`` to be greater
-than one, a multi-node training job is launched with the fit class method call.
-When you run multi-node training, SageMaker imports your training script,
-replicates the script to all workers (GPUs), and runs the script on each worker
-in the cluster.
+You can run multi-node distributed PyTorch training jobs using the
+:class:`sagemaker.pytorch.estimator.PyTorch`.
+With ``instance_count=1``, the estimator submits a
+single-node training job to SageMaker; with the ``instance_count`` value that's greater
+than one, a multi-node training job is launched.
+When the distributed training starts, SageMaker runs PyTorch containers in each node,
+imports your training script, copies the script to all workers (GPUs),
+and runs the script on each worker in the cluster with the given information
+during the PyTorch DDP initialization.
 
-If using the `PyTorch DistributedDataParallel (DDP) package
-<https://pytorch.org/docs/master/generated/torch.nn.parallel.DistributedDataParallel.html>`_
-for distributed training, you can launch the training job by choosing
+To run your training script set for distributed training using
+the `PyTorch DistributedDataParallel (DDP) package
+<https://pytorch.org/docs/master/generated/torch.nn.parallel.DistributedDataParallel.html>`_,
+launch the training job by choosing
 the ``pytorchddp`` as the distributed training option.
 
 With the ``pytorchddp`` option, the SageMaker PyTorch estimator runs a SageMaker
