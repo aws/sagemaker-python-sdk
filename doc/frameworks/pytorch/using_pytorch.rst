@@ -202,10 +202,11 @@ Distributed PyTorch Training
 
 SageMaker supports the `PyTorch DistributedDataParallel (DDP)
 <https://pytorch.org/docs/master/generated/torch.nn.parallel.DistributedDataParallel.html>`_
-package. You simply need to check the variables in your distributed training script,
-such as the world size and the rank of the current host,
-to be matching with the specs of the ML instance type you use.
-And then launch the training job using the SageMaker PyTorch estimator
+package. You simply need to check the variables in your training script,
+such as the world size and the rank of the current host, when initializing
+process groups for distributed training.
+And then, launch the training job using the
+:class:`sagemaker.pytorch.estimator.PyTorch` estimator class
 with the ``pytorchddp`` option as the distribution strategy.
 
 .. note::
@@ -213,7 +214,7 @@ with the ``pytorchddp`` option as the distribution strategy.
   This PyTorch DDP support is available
   in the SageMaker PyTorch Deep Learning Containers v1.12 and later.
 
-Adapt your Training Script
+Adapt Your Training Script
 --------------------------
 
 To initialize distributed training in your script, call
