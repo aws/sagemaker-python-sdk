@@ -244,24 +244,20 @@ Launching a Distributed Training Job
 ------------------------------------
 
 You can run multi-node distributed PyTorch training jobs using the
-:class:`sagemaker.pytorch.estimator.PyTorch`.
+:class:`sagemaker.pytorch.estimator.PyTorch` estimator class.
 With ``instance_count=1``, the estimator submits a
-single-node training job to SageMaker; with the ``instance_count`` value that's greater
+single-node training job to SageMaker; with ``instance_count`` greater
 than one, a multi-node training job is launched.
-When the distributed training starts, SageMaker runs PyTorch containers in each node,
-imports your training script, copies the script to all workers (GPUs),
-and runs the script on each worker in the cluster with the given information
-during the PyTorch DDP initialization.
 
-To run your training script set for distributed training using
+To run a distributed training script that adopts
 the `PyTorch DistributedDataParallel (DDP) package
 <https://pytorch.org/docs/master/generated/torch.nn.parallel.DistributedDataParallel.html>`_,
-launch the training job by choosing
-the ``pytorchddp`` as the distributed training option.
+choose the ``pytorchddp`` as the distributed training option in the ``PyTorch`` estimator.
 
 With the ``pytorchddp`` option, the SageMaker PyTorch estimator runs a SageMaker
 training container for PyTorch, sets up the environment for MPI, and launches
-the training job using the ``mpirun`` command.
+the training job using the ``mpirun`` command on each worker with the given information
+during the PyTorch DDP initialization.
 
 .. note::
 
