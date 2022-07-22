@@ -234,11 +234,11 @@ def iris_image(sagemaker_session):
 
 
 def test_create_model_package(sagemaker_session, boto_session, iris_image):
-
+    MODEL_NAME = "iris-classifier-mp"
     # Prepare
     s3_bucket = sagemaker_session.default_bucket()
 
-    model_name = "my-flower-detection-model"
+    model_name = unique_name_from_base(MODEL_NAME)
     model_description = "This model accepts petal length, petal width, sepal length, sepal width and predicts whether \
     flower is of type setosa, versicolor, or virginica"
 
@@ -311,10 +311,10 @@ def test_create_model_package(sagemaker_session, boto_session, iris_image):
     # wait for model execution to complete
     time.sleep(60 * 3)
 
-    # query for all model packages with the name "my-flower-detection-model"
+    # query for all model packages with the name <MODEL_NAME>
     response = sm_client.list_model_packages(
         MaxResults=10,
-        NameContains="my-flower-detection-model",
+        NameContains=MODEL_NAME,
         SortBy="CreationTime",
         SortOrder="Descending",
     )
