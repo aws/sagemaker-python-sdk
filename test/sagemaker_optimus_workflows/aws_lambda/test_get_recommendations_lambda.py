@@ -11,25 +11,13 @@ class TestGetRecommendationLambda(TestCase):
             {
                 "NearestModelName": "resnet152-torchvision",
                 "Framework": "pytorch",
+                "Count": 1,
+                "InstanceTypes": ["ml.g4dn.2xlarge"],
             },
             Mock(),
         )
 
-        expected = [
-            {
-                "instanceType": "ml.c5.large",
-                "env": {
-                    "OMP_NUM_THREADS": "1",
-                    "TS_DEFAULT_WORKERS_PER_MODEL": "1",
-                },
-            },
-            {
-                "instanceType": "ml.c5d.large",
-                "env": {
-                    "OMP_NUM_THREADS": "1",
-                    "TS_DEFAULT_WORKERS_PER_MODEL": "1",
-                },
-            }
-        ]
-
-        self.assertTrue(all([x in recommendations for x in expected]))
+        self.assertEqual(1, len(recommendations))
+        self.assertEquals("ml.g4dn.2xlarge", recommendations[0]["instanceType"])
+        self.assertTrue("OMP_NUM_THREADS" in recommendations[0]["env"])
+        self.assertTrue("TS_DEFAULT_WORKERS_PER_MODEL" in recommendations[0]["env"])

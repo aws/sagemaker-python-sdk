@@ -14,7 +14,7 @@ transformer = recommender.fit(df)
 
 instance_info = InstanceInfos()
 instances = instance_info.instances
-env_variables_of_instance = {
+default_env = {
     instance: {
         # we want to allow threads less than the number of cpus
         OptimusNaming.omp_num_threads: choice(range(1, instance_info(instance).num_cpu))
@@ -31,12 +31,17 @@ env_variables_of_instance = {
 def get_recommendations_handler(event, context):
     nearest_model_name = event["NearestModelName"]
     framework = event["Framework"]
+    count = event["Count"]
+    instance_types = event["InstanceTypes"]
+
+    # filter only instances supported
+    env = {k: v for (k, v) in default_env.items() if k in instance_types}
 
     recommendations = recommender.transform(
-        num_recommendation=10,
+        num_recommendation=count,
         nearest_model_name=nearest_model_name,
         framework=framework,
-        env=env_variables_of_instance,
+        env=env if env else default_env,
     )
 
     return [
