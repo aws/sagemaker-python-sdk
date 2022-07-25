@@ -261,8 +261,10 @@ class JumpStartModelsCache:
         object and None when reading from the local file system.
         """
         if self._is_local_metadata_mode():
-            return self._get_json_file_from_local_override(key, filetype), None
-        return self._get_json_file_and_etag_from_s3(key)
+            file_content, etag = self._get_json_file_from_local_override(key, filetype), None
+        else:
+            file_content, etag = self._get_json_file_and_etag_from_s3(key)
+        return file_content, etag
 
     def _get_json_md5_hash(self, key: str):
         """Retrieves md5 object hash for s3 objects, using `s3.head_object`.
