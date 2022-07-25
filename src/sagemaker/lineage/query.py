@@ -408,6 +408,7 @@ class PyvisVisualizer(object):
         import pyvis
         from pyvis.network import Network
         from pyvis.options import Options
+        # No module named 'pyvis'
 
         return pyvis, Network, Options
 
@@ -415,15 +416,15 @@ class PyvisVisualizer(object):
         options = """
             var options = {
             "configure":{
-                "enabled": true
+                "enabled": false
             },
             "layout": {
                 "hierarchical": {
                     "enabled": true,
-                    "blockShifting": false,
+                    "blockShifting": true,
                     "direction": "LR",
                     "sortMethod": "directed",
-                    "shakeTowards": "roots"
+                    "shakeTowards": "leaves"
                 }
             },
             "interaction": {
