@@ -94,6 +94,12 @@ def test_conditional_pytorch_training_model_registration(
     good_enough_input = ParameterInteger(name="GoodEnoughInput", default_value=1)
     in_condition_input = ParameterString(name="Foo", default_value="Foo")
 
+    task = "IMAGE_CLASSIFICATION"
+    sample_payload_url = "s3://test-bucket/model"
+    framework = "TENSORFLOW"
+    framework_version = "2.9"
+    nearest_model_name = "resnet50"
+
     # If image_uri is not provided, the instance_type should not be a pipeline variable
     # since instance_type is used to retrieve image_uri in compile time (PySDK)
     pytorch_estimator = PyTorch(
@@ -117,9 +123,14 @@ def test_conditional_pytorch_training_model_registration(
         model_data=step_train.properties.ModelArtifacts.S3ModelArtifacts,
         content_types=["*"],
         response_types=["*"],
-        inference_instances=["*"],
-        transform_instances=["*"],
+        inference_instances=["ml.m5.xlarge"],
+        transform_instances=["ml.m5.xlarge"],
         description="test-description",
+        sample_payload_url=sample_payload_url,
+        task=task,
+        framework=framework,
+        framework_version=framework_version,
+        nearest_model_name=nearest_model_name,
     )
 
     model = Model(
@@ -201,6 +212,12 @@ def test_mxnet_model_registration(
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
     instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
 
+    task = "IMAGE_CLASSIFICATION"
+    sample_payload_url = "s3://test-bucket/model"
+    framework = "TENSORFLOW"
+    framework_version = "2.9"
+    nearest_model_name = "resnet50"
+
     model = MXNetModel(
         entry_point=entry_point,
         source_dir=source_dir,
@@ -217,8 +234,13 @@ def test_mxnet_model_registration(
         content_types=["*"],
         response_types=["*"],
         inference_instances=["ml.m5.xlarge"],
-        transform_instances=["*"],
+        transform_instances=["ml.m5.xlarge"],
         description="test-description",
+        sample_payload_url=sample_payload_url,
+        task=task,
+        framework=framework,
+        framework_version=framework_version,
+        nearest_model_name=nearest_model_name,
     )
 
     pipeline = Pipeline(
@@ -261,6 +283,12 @@ def test_sklearn_xgboost_sip_model_registration(
     bucket_name = sagemaker_session.default_bucket()
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
     instance_type = "ml.m5.xlarge"
+
+    task = "IMAGE_CLASSIFICATION"
+    sample_payload_url = "s3://test-bucket/model"
+    framework = "TENSORFLOW"
+    framework_version = "2.9"
+    nearest_model_name = "resnet50"
 
     # The instance_type should not be a pipeline variable
     # since it is used to retrieve image_uri in compile time (PySDK)
@@ -412,6 +440,11 @@ def test_sklearn_xgboost_sip_model_registration(
         inference_instances=["ml.t2.medium", "ml.m5.xlarge"],
         transform_instances=["ml.m5.xlarge"],
         model_package_group_name="windturbine",
+        sample_payload_url=sample_payload_url,
+        task=task,
+        framework=framework,
+        framework_version=framework_version,
+        nearest_model_name=nearest_model_name,
     )
 
     pipeline = Pipeline(
@@ -555,6 +588,12 @@ def test_model_registration_with_drift_check_baselines(
     )
     customer_metadata_properties = {"key1": "value1"}
     domain = "COMPUTER_VISION"
+    task = "IMAGE_CLASSIFICATION"
+    sample_payload_url = "s3://test-bucket/model"
+    framework = "TENSORFLOW"
+    framework_version = "2.9"
+    nearest_model_name = "resnet50"
+    data_input_configuration = '{"input_1":[1,224,224,3]}'
 
     # If image_uri is not provided, the instance_type should not be a pipeline variable
     # since instance_type is used to retrieve image_uri in compile time (PySDK)
@@ -568,6 +607,7 @@ def test_model_registration_with_drift_check_baselines(
         py_version="py3",
         role=role,
     )
+
     step_register = RegisterModel(
         name="MyRegisterModelStep",
         estimator=estimator,
@@ -581,6 +621,12 @@ def test_model_registration_with_drift_check_baselines(
         drift_check_baselines=drift_check_baselines,
         customer_metadata_properties=customer_metadata_properties,
         domain=domain,
+        sample_payload_url=sample_payload_url,
+        task=task,
+        framework=framework,
+        framework_version=framework_version,
+        nearest_model_name=nearest_model_name,
+        data_input_configuration=data_input_configuration,
     )
 
     pipeline = Pipeline(
@@ -624,7 +670,7 @@ def test_model_registration_with_drift_check_baselines(
                 )
                 continue
             assert execution_steps[0]["StepStatus"] == "Succeeded"
-            assert execution_steps[0]["StepName"] == "MyRegisterModelStep"
+            assert execution_steps[0]["StepName"] == "MyRegisterModelStep-RegisterModel"
 
             response = sagemaker_session.sagemaker_client.describe_model_package(
                 ModelPackageName=execution_steps[0]["Metadata"]["RegisterModel"]["Arn"]
@@ -652,6 +698,8 @@ def test_model_registration_with_drift_check_baselines(
             )
             assert response["CustomerMetadataProperties"] == customer_metadata_properties
             assert response["Domain"] == domain
+            assert response["Task"] == task
+            assert response["SamplePayloadUrl"] == sample_payload_url
             break
     finally:
         try:

@@ -2822,6 +2822,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         customer_metadata_properties=None,
         validation_specification=None,
         domain=None,
+        sample_payload_url=None,
+        task=None,
     ):
         """Get request dictionary for CreateModelPackage API.
 
@@ -2851,6 +2853,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 metadata properties (default: None).
             domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
                 "MACHINE_LEARNING" (default: None).
+            sample_payload_url (str): The S3 path where the sample payload is stored
+                (default: None).
+            task (str): Task values which are supported by Inference Recommender are "FILL_MASK",
+                "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION", "IMAGE_SEGMENTATION",
+                "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
         """
 
         model_pkg_request = get_create_model_package_request(
@@ -2870,6 +2877,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             customer_metadata_properties=customer_metadata_properties,
             validation_specification=validation_specification,
             domain=domain,
+            sample_payload_url=sample_payload_url,
+            task=task,
         )
 
         def submit(request):
@@ -4076,7 +4085,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """Describe a FeatureGroup by name in FeatureStore service.
 
         Args:
-            feature_group_name (str): name of the FeatureGroup to descibe.
+            feature_group_name (str): name of the FeatureGroup to describe.
             next_token (str): next_token to get next page of features.
         Returns:
             Response dict from service.
@@ -4085,6 +4094,72 @@ class Session(object):  # pylint: disable=too-many-public-methods
         kwargs = dict(FeatureGroupName=feature_group_name)
         update_args(kwargs, NextToken=next_token)
         return self.sagemaker_client.describe_feature_group(**kwargs)
+
+    def update_feature_group(
+        self, feature_group_name: str, feature_additions: Sequence[Dict[str, str]]
+    ) -> Dict[str, Any]:
+        """Update a FeatureGroup and add new features from the given feature definitions.
+
+        Args:
+            feature_group_name (str): name of the FeatureGroup to update.
+            feature_additions (Sequence[Dict[str, str]): list of feature definitions to be updated.
+        Returns:
+            Response dict from service.
+        """
+
+        return self.sagemaker_client.update_feature_group(
+            FeatureGroupName=feature_group_name, FeatureAdditions=feature_additions
+        )
+
+    def update_feature_metadata(
+        self,
+        feature_group_name: str,
+        feature_name: str,
+        description: str = None,
+        parameter_additions: Sequence[Dict[str, str]] = None,
+        parameter_removals: Sequence[str] = None,
+    ) -> Dict[str, Any]:
+        """Update a feature metadata and add/remove metadata.
+
+        Args:
+            feature_group_name (str): name of the FeatureGroup to update.
+            feature_name (str): name of the feature to update.
+            description (str): description of the feature to update.
+            parameter_additions (Sequence[Dict[str, str]): list of feature parameter to be added.
+            parameter_removals (Sequence[Dict[str, str]): list of feature parameter to be removed.
+        Returns:
+            Response dict from service.
+        """
+
+        request = {
+            "FeatureGroupName": feature_group_name,
+            "FeatureName": feature_name,
+        }
+
+        if description is not None:
+            request["Description"] = description
+        if parameter_additions is not None:
+            request["ParameterAdditions"] = parameter_additions
+        if parameter_removals is not None:
+            request["ParameterRemovals"] = parameter_removals
+
+        return self.sagemaker_client.update_feature_metadata(**request)
+
+    def describe_feature_metadata(
+        self, feature_group_name: str, feature_name: str
+    ) -> Dict[str, Any]:
+        """Describe feature metadata by feature name in FeatureStore service.
+
+        Args:
+            feature_group_name (str): name of the FeatureGroup.
+            feature_name (str): name of the feature.
+        Returns:
+            Response dict from service.
+        """
+
+        return self.sagemaker_client.describe_feature_metadata(
+            FeatureGroupName=feature_group_name, FeatureName=feature_name
+        )
 
     def put_record(
         self,
@@ -4241,6 +4316,8 @@ def get_model_package_args(
     customer_metadata_properties=None,
     validation_specification=None,
     domain=None,
+    sample_payload_url=None,
+    task=None,
 ):
     """Get arguments for create_model_package method.
 
@@ -4273,6 +4350,11 @@ def get_model_package_args(
             metadata properties (default: None).
         domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
             "MACHINE_LEARNING" (default: None).
+        sample_payload_url (str): The S3 path where the sample payload is stored (default: None).
+        task (str): Task values which are supported by Inference Recommender are "FILL_MASK",
+            "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION", "IMAGE_SEGMENTATION",
+            "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
+
     Returns:
         dict: A dictionary of method argument names and values.
     """
@@ -4316,6 +4398,10 @@ def get_model_package_args(
         model_package_args["validation_specification"] = validation_specification
     if domain is not None:
         model_package_args["domain"] = domain
+    if sample_payload_url is not None:
+        model_package_args["sample_payload_url"] = sample_payload_url
+    if task is not None:
+        model_package_args["task"] = task
     return model_package_args
 
 
@@ -4337,6 +4423,8 @@ def get_create_model_package_request(
     customer_metadata_properties=None,
     validation_specification=None,
     domain=None,
+    sample_payload_url=None,
+    task=None,
 ):
     """Get request dictionary for CreateModelPackage API.
 
@@ -4367,6 +4455,10 @@ def get_create_model_package_request(
             metadata properties (default: None).
         domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
             "MACHINE_LEARNING" (default: None).
+        sample_payload_url (str): The S3 path where the sample payload is stored (default: None).
+        task (str): Task values which are supported by Inference Recommender are "FILL_MASK",
+            "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION", "IMAGE_SEGMENTATION",
+            "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
     """
 
     if all([model_package_name, model_package_group_name]):
@@ -4394,6 +4486,10 @@ def get_create_model_package_request(
         request_dict["ValidationSpecification"] = validation_specification
     if domain is not None:
         request_dict["Domain"] = domain
+    if sample_payload_url is not None:
+        request_dict["SamplePayloadUrl"] = sample_payload_url
+    if task is not None:
+        request_dict["Task"] = task
     if containers is not None:
         if not all([content_types, response_types]):
             raise ValueError(
@@ -4403,9 +4499,32 @@ def get_create_model_package_request(
             "Containers": containers,
             "SupportedContentTypes": content_types,
             "SupportedResponseMIMETypes": response_types,
-            "SupportedRealtimeInferenceInstanceTypes": inference_instances,
-            "SupportedTransformInstanceTypes": transform_instances,
         }
+        if model_package_group_name is not None:
+            if inference_instances is not None:
+                inference_specification.update(
+                    {
+                        "SupportedRealtimeInferenceInstanceTypes": inference_instances,
+                    }
+                )
+            if transform_instances is not None:
+                inference_specification.update(
+                    {
+                        "SupportedTransformInstanceTypes": transform_instances,
+                    }
+                )
+        else:
+            if not all([inference_instances, transform_instances]):
+                raise ValueError(
+                    "inference_instances and transform_instances "
+                    "must be provided if model_package_group_name is not present."
+                )
+            inference_specification.update(
+                {
+                    "SupportedRealtimeInferenceInstanceTypes": inference_instances,
+                    "SupportedTransformInstanceTypes": transform_instances,
+                }
+            )
         request_dict["InferenceSpecification"] = inference_specification
     request_dict["CertifyForMarketplace"] = marketplace_cert
     request_dict["ModelApprovalStatus"] = approval_status

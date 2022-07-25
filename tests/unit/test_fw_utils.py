@@ -25,6 +25,7 @@ from mock import Mock, patch
 from sagemaker import fw_utils
 from sagemaker.utils import name_from_image
 from sagemaker.session_settings import SessionSettings
+from sagemaker.instance_group import InstanceGroup
 
 TIMESTAMP = "2017-10-10-14-14-15"
 
@@ -585,6 +586,125 @@ def test_validate_version_or_image_args_raises():
     for framework_version, py_version, image_uri in bad_args:
         with pytest.raises(ValueError):
             fw_utils.validate_version_or_image_args(framework_version, py_version, image_uri)
+
+
+def test_validate_distribution_not_raises():
+    train_group = InstanceGroup("train_group", "ml.p3.16xlarge", 1)
+    other_group = InstanceGroup("other_group", "ml.p3.16xlarge", 1)
+    instance_groups = [train_group, other_group]
+
+    smdataparallel_enabled = {"smdistributed": {"dataparallel": {"enabled": True}}}
+    smdataparallel_enabled_custom_mpi = {
+        "smdistributed": {"dataparallel": {"enabled": True, "custom_mpi_options": "--verbose"}}
+    }
+    smdataparallel_disabled = {"smdistributed": {"dataparallel": {"enabled": False}}}
+    mpi_enabled = {"mpi": {"enabled": True, "processes_per_host": 2}}
+    mpi_disabled = {"mpi": {"enabled": False}}
+
+    instance_types = list(fw_utils.SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES)
+
+    good_args_normal = [
+        smdataparallel_enabled,
+        smdataparallel_enabled_custom_mpi,
+        smdataparallel_disabled,
+        mpi_enabled,
+        mpi_disabled,
+    ]
+
+    frameworks = ["tensorflow", "pytorch"]
+
+    for framework, instance_type in product(frameworks, instance_types):
+        for distribution in good_args_normal:
+            fw_utils.validate_distribution(
+                distribution,
+                None,  # instance_groups
+                framework,
+                None,  # framework_version
+                None,  # py_version
+                "custom-container",
+                {"instance_type": instance_type},  # kwargs
+            )
+
+    for framework in frameworks:
+        good_args_hc = [
+            {
+                "smdistributed": {"dataparallel": {"enabled": True}},
+                "instance_groups": [train_group],
+            },  # smdataparallel_enabled_hc
+            {
+                "mpi": {"enabled": True, "processes_per_host": 2},
+                "instance_groups": [train_group],
+            },  # mpi_enabled_hc
+            {
+                "smdistributed": {
+                    "dataparallel": {"enabled": True, "custom_mpi_options": "--verbose"},
+                },
+                "instance_groups": [train_group],
+            },  # smdataparallel_enabled_custom_mpi_hc
+        ]
+        for distribution in good_args_hc:
+            fw_utils.validate_distribution(
+                distribution,
+                instance_groups,  # instance_groups
+                framework,
+                None,  # framework_version
+                None,  # py_version
+                "custom-container",
+                {},  # kwargs
+            )
+
+
+def test_validate_distribution_raises():
+    train_group = InstanceGroup("train_group", "ml.p3.16xlarge", 1)
+    other_group = InstanceGroup("other_group", "ml.p3.16xlarge", 1)
+    dummy_group = InstanceGroup("dummy_group", "ml.p3.16xlarge", 1)
+    instance_groups = [train_group, other_group, dummy_group]
+
+    mpi_enabled_hc = {
+        "mpi": {"enabled": True, "processes_per_host": 2},
+        "instance_groups": [train_group, other_group],
+    }
+    smdataparallel_enabled_hc = {
+        "smdistributed": {"dataparallel": {"enabled": True}},
+        "instance_groups": [],
+    }
+
+    instance_types = list(fw_utils.SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES)
+
+    bad_args_normal = [
+        {"smdistributed": "dummy"},
+        {"smdistributed": {"dummy"}},
+        {"smdistributed": {"dummy": "val"}},
+        {"smdistributed": {"dummy": {"enabled": True}}},
+    ]
+    bad_args_hc = [mpi_enabled_hc, smdataparallel_enabled_hc]
+    frameworks = ["tensorflow", "pytorch"]
+
+    for framework, instance_type in product(frameworks, instance_types):
+        for distribution in bad_args_normal:
+            with pytest.raises(ValueError):
+                fw_utils.validate_distribution(
+                    distribution,
+                    None,  # instance_groups
+                    framework,
+                    None,  # framework_version
+                    None,  # py_version
+                    "custom-container",
+                    {"instance_type": instance_type},  # kwargs
+                )
+
+    for framework in frameworks:
+        for distribution in bad_args_hc:
+            with pytest.raises(ValueError):
+                fw_utils.validate_distribution(
+                    distribution,
+                    instance_groups,  # instance_groups
+                    framework,
+                    None,  # framework_version
+                    None,  # py_version
+                    "custom-container",
+                    {},  # kwargs
+                )
 
 
 def test_validate_smdistributed_not_raises():

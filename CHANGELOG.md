@@ -1,5 +1,75 @@
 # Changelog
 
+## v2.100.0 (2022-07-18)
+
+### Features
+
+ * upgrade to support python 3.10
+ * Add target_model to support multi-model endpoints
+ * Added support for feature group schema change and feature parameters
+
+### Bug Fixes and Other Changes
+
+ * enable model.register without 'inference' & 'transform' instances
+ * rename RegisterModel inner steps to prevent duplicate step names
+ * remove primitive_or_expr() from conditions
+ * support pipeline variables for spark processors run arguments
+ * make 'ModelInput' field optional for inference recommendation
+ * Fix processing image uri param
+ * fix: neo inferentia as compilation target not using framework ver
+
+### Documentation Changes
+
+ * SageMaker model parallel library v1.10.0 documentation
+ * add detail & links to clarify docstrings
+
+## v2.99.0 (2022-07-08)
+
+### Features
+
+ * heterogeneous cluster set up in distribution config
+ * support heterogeneous cluster for training
+ * include fields to work with inference recommender
+
+### Bug Fixes and Other Changes
+
+ * Moving the newly added field instance_group to the end of method
+ * image_uri does not need to be specified with instance_groups
+ * Loosen version of attrs dependency
+ * Add PipelineVariable annotation in estimatory, processing, tuner, transformer base classes
+ * model table link
+
+### Documentation Changes
+
+ * documentation for heterogeneous cluster
+
+## v2.98.0 (2022-07-05)
+
+### Features
+
+ * Adding deepar image
+
+### Documentation Changes
+
+ * edit to clarify how to use inference.py
+
+## v2.97.0 (2022-06-28)
+
+### Deprecations and Removals
+
+ * remove support for python 3.6
+
+### Features
+
+ * update prebuilt models documentation
+
+### Bug Fixes and Other Changes
+
+ * Skipping test_candidate_estimator_default_rerun_and_deploy
+ * Update model name from 'compiled.pt' to 'model.pth' for neo
+ * update pytest, skip hf integ temp
+ * Add override_pipeline_parameter_var decorator to give grace period to update invalid pipeline var args
+
 ## v2.96.0 (2022-06-20)
 
 ### Features

@@ -285,6 +285,8 @@ class _RegisterModelStep(ConfigurableRetryStep):
         drift_check_baselines=None,
         customer_metadata_properties=None,
         domain=None,
+        sample_payload_url=None,
+        task=None,
         **kwargs,
     ):
         """Constructor of a register model step.
@@ -329,21 +331,21 @@ class _RegisterModelStep(ConfigurableRetryStep):
                 metadata properties (default: None).
             domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
                 "MACHINE_LEARNING" (default: None).
+            sample_payload_url (str): The S3 path where the sample payload is stored
+                (default: None).
+            task (str): Task values which are supported by Inference Recommender are "FILL_MASK",
+                "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION", "IMAGE_SEGMENTATION",
+                "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
             **kwargs: additional arguments to `create_model`.
         """
         super(_RegisterModelStep, self).__init__(
             name, StepTypeEnum.REGISTER_MODEL, display_name, description, depends_on, retry_policies
         )
-        deprecated_args_missing = (
-            content_types is None
-            or response_types is None
-            or inference_instances is None
-            or transform_instances is None
-        )
+        deprecated_args_missing = content_types is None or response_types is None
         if not (step_args is None) ^ deprecated_args_missing:
             raise ValueError(
                 "step_args and the set of (content_types, response_types, "
-                "inference_instances, transform_instances) are mutually exclusive. "
+                ") are mutually exclusive. "
                 "Either of them should be provided."
             )
 
@@ -360,6 +362,8 @@ class _RegisterModelStep(ConfigurableRetryStep):
         self.drift_check_baselines = drift_check_baselines
         self.customer_metadata_properties = customer_metadata_properties
         self.domain = domain
+        self.sample_payload_url = sample_payload_url
+        self.task = task
         self.metadata_properties = metadata_properties
         self.approval_status = approval_status
         self.image_uri = image_uri
@@ -438,6 +442,8 @@ class _RegisterModelStep(ConfigurableRetryStep):
                 container_def_list=self.container_def_list,
                 customer_metadata_properties=self.customer_metadata_properties,
                 domain=self.domain,
+                sample_payload_url=self.sample_payload_url,
+                task=self.task,
             )
 
             request_dict = get_create_model_package_request(**model_package_args)

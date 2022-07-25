@@ -43,6 +43,7 @@ from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.estimator import Estimator, EstimatorBase, Framework, _TrainingJob
 from sagemaker.fw_utils import PROFILER_UNSUPPORTED_REGIONS
 from sagemaker.inputs import ShuffleConfig
+from sagemaker.instance_group import InstanceGroup
 from sagemaker.model import FrameworkModel
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.predictor import Predictor
@@ -320,6 +321,31 @@ def test_framework_all_init_args(sagemaker_session):
         "checkpoint_local_path": "file://local/checkpoint",
         "enable_sagemaker_metrics": True,
         "enable_network_isolation": True,
+    }
+
+
+def test_framework_with_heterogeneous_cluster(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args["resource_config"]["InstanceGroups"][0] == {
+        "InstanceGroupName": "group1",
+        "InstanceCount": 1,
+        "InstanceType": "ml.c4.xlarge",
+    }
+    assert args["resource_config"]["InstanceGroups"][1] == {
+        "InstanceGroupName": "group2",
+        "InstanceCount": 2,
+        "InstanceType": "ml.m4.xlarge",
     }
 
 
@@ -1306,6 +1332,68 @@ def test_invalid_custom_code_bucket(sagemaker_session):
     with pytest.raises(ValueError) as error:
         t.fit("s3://bucket/mydata")
     assert "Expecting 's3' scheme" in str(error)
+
+
+def test_get_instance_type_gpu(sagemaker_session):
+    estimator = Estimator(
+        image_uri="some-image",
+        role="some_image",
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.p3.16xlarge", 2),
+        ],
+        sagemaker_session=sagemaker_session,
+        base_job_name="base_job_name",
+    )
+
+    assert "ml.p3.16xlarge" == estimator._get_instance_type()
+
+
+def test_get_instance_type_cpu(sagemaker_session):
+    estimator = Estimator(
+        image_uri="some-image",
+        role="some_image",
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.c5.xlarge", 2),
+        ],
+        sagemaker_session=sagemaker_session,
+        base_job_name="base_job_name",
+    )
+
+    assert "ml.c4.xlarge" == estimator._get_instance_type()
+
+
+def test_get_instance_type_no_instance_groups(sagemaker_session):
+    estimator = Estimator(
+        image_uri="some-image",
+        role="some_image",
+        instance_type="ml.c4.xlarge",
+        instance_count=1,
+        sagemaker_session=sagemaker_session,
+        base_job_name="base_job_name",
+    )
+
+    assert "ml.c4.xlarge" == estimator._get_instance_type()
+
+
+def test_get_instance_type_no_instance_groups_or_instance_type(sagemaker_session):
+    estimator = Estimator(
+        image_uri="some-image",
+        role="some_image",
+        instance_type=None,
+        instance_count=None,
+        instance_groups=None,
+        sagemaker_session=sagemaker_session,
+        base_job_name="base_job_name",
+    )
+    with pytest.raises(ValueError) as error:
+        estimator._get_instance_type()
+
+    assert (
+        "instance_groups must be set if instance_type is not set and instance_groups must be a list."
+        in str(error)
+    )
 
 
 def test_augmented_manifest(sagemaker_session):
@@ -3114,6 +3202,12 @@ def test_register_default_image(sagemaker_session):
     response_types = ["application/json"]
     inference_instances = ["ml.m4.xlarge"]
     transform_instances = ["ml.m4.xlarget"]
+    sample_payload_url = "s3://test-bucket/model"
+    task = "IMAGE_CLASSIFICATION"
+    framework = "TENSORFLOW"
+    framework_version = "2.9"
+    nearest_model_name = "resnet50"
+    data_input_config = '{"input_1":[1,224,224,3]}'
 
     estimator.register(
         content_types=content_types,
@@ -3121,6 +3215,12 @@ def test_register_default_image(sagemaker_session):
         inference_instances=inference_instances,
         transform_instances=transform_instances,
         model_package_name=model_package_name,
+        sample_payload_url=sample_payload_url,
+        task=task,
+        framework=framework,
+        framework_version=framework_version,
+        nearest_model_name=nearest_model_name,
+        data_input_configuration=data_input_config,
     )
     sagemaker_session.create_model.assert_not_called()
 
@@ -3137,6 +3237,8 @@ def test_register_default_image(sagemaker_session):
         "transform_instances": transform_instances,
         "model_package_name": model_package_name,
         "marketplace_cert": False,
+        "sample_payload_url": sample_payload_url,
+        "task": task,
     }
     sagemaker_session.create_model_package_from_containers.assert_called_with(
         **expected_create_model_package_request
@@ -3158,11 +3260,21 @@ def test_register_default_image_without_instance_type_args(sagemaker_session):
     model_package_name = "test-estimator-register-model"
     content_types = ["application/json"]
     response_types = ["application/json"]
+    sample_payload_url = "s3://test-bucket/model"
+    task = "IMAGE_CLASSIFICATION"
+    framework = "TENSORFLOW"
+    framework_version = "2.9"
+    nearest_model_name = "resnet50"
 
     estimator.register(
         content_types=content_types,
         response_types=response_types,
         model_package_name=model_package_name,
+        sample_payload_url=sample_payload_url,
+        task=task,
+        framework=framework,
+        framework_version=framework_version,
+        nearest_model_name=nearest_model_name,
     )
     sagemaker_session.create_model.assert_not_called()
 
@@ -3179,6 +3291,8 @@ def test_register_default_image_without_instance_type_args(sagemaker_session):
         "transform_instances": None,
         "model_package_name": model_package_name,
         "marketplace_cert": False,
+        "sample_payload_url": sample_payload_url,
+        "task": task,
     }
     sagemaker_session.create_model_package_from_containers.assert_called_with(
         **expected_create_model_package_request
@@ -3203,6 +3317,11 @@ def test_register_inference_image(sagemaker_session):
     inference_instances = ["ml.m4.xlarge"]
     transform_instances = ["ml.m4.xlarget"]
     inference_image = "fake-inference-image"
+    sample_payload_url = "s3://test-bucket/model"
+    task = "IMAGE_CLASSIFICATION"
+    framework = "TENSORFLOW"
+    framework_version = "2.9"
+    nearest_model_name = "resnet50"
 
     estimator.register(
         content_types=content_types,
@@ -3210,7 +3329,12 @@ def test_register_inference_image(sagemaker_session):
         inference_instances=inference_instances,
         transform_instances=transform_instances,
         model_package_name=model_package_name,
+        sample_payload_url=sample_payload_url,
+        task=task,
         image_uri=inference_image,
+        framework=framework,
+        framework_version=framework_version,
+        nearest_model_name=nearest_model_name,
     )
     sagemaker_session.create_model.assert_not_called()
 
@@ -3227,6 +3351,8 @@ def test_register_inference_image(sagemaker_session):
         "transform_instances": transform_instances,
         "model_package_name": model_package_name,
         "marketplace_cert": False,
+        "sample_payload_url": sample_payload_url,
+        "task": task,
     }
     sagemaker_session.create_model_package_from_containers.assert_called_with(
         **expected_create_model_package_request

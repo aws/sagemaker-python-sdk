@@ -74,6 +74,7 @@ class _Job(object):
         resource_config = _Job._prepare_resource_config(
             estimator.instance_count,
             estimator.instance_type,
+            estimator.instance_groups,
             estimator.volume_size,
             estimator.volume_kms_key,
         )
@@ -283,15 +284,31 @@ class _Job(object):
         return config
 
     @staticmethod
-    def _prepare_resource_config(instance_count, instance_type, volume_size, volume_kms_key):
+    def _prepare_resource_config(
+        instance_count, instance_type, instance_groups, volume_size, volume_kms_key
+    ):
         """Placeholder docstring"""
         resource_config = {
-            "InstanceCount": instance_count,
-            "InstanceType": instance_type,
             "VolumeSizeInGB": volume_size,
         }
         if volume_kms_key is not None:
             resource_config["VolumeKmsKeyId"] = volume_kms_key
+        if instance_groups is not None:
+            if instance_count is not None or instance_type is not None:
+                raise ValueError(
+                    "instance_count and instance_type cannot be set when instance_groups is set"
+                )
+
+            resource_config["InstanceGroups"] = [
+                group._to_request_dict() for group in instance_groups
+            ]
+        else:
+            if instance_count is None or instance_type is None:
+                raise ValueError(
+                    "instance_count and instance_type must be set if instance_groups is not set"
+                )
+            resource_config["InstanceCount"] = instance_count
+            resource_config["InstanceType"] = instance_type
 
         return resource_config
 
