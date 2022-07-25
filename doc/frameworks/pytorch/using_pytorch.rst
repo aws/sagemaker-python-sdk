@@ -224,14 +224,14 @@ with the desired backend and the rank of the current host.
 
 .. code:: python
 
-  import torch.distributed as dist
+    import torch.distributed as dist
 
-  if args.distributed:
-      # Initialize the distributed environment.
-      world_size = len(args.hosts)
-      os.environ['WORLD_SIZE'] = str(world_size)
-      host_rank = args.hosts.index(args.current_host)
-      dist.init_process_group(backend=args.backend, rank=host_rank)
+    if args.distributed:
+        # Initialize the distributed environment.
+        world_size = len(args.hosts)
+        os.environ['WORLD_SIZE'] = str(world_size)
+        host_rank = args.hosts.index(args.current_host)
+        dist.init_process_group(backend=args.backend, rank=host_rank)
 
 SageMaker sets ``'MASTER_ADDR'`` and ``'MASTER_PORT'`` environment variables for you,
 but you can also overwrite them.
@@ -274,23 +274,23 @@ using two ``ml.p4d.24xlarge`` instances:
 
 .. code:: python
 
-  from sagemaker.pytorch import PyTorch
+    from sagemaker.pytorch import PyTorch
 
-  pt_estimator = PyTorch(
-      entry_point="train_ptddp.py",
-      role="SageMakerRole",
-      framework_version="1.12.0",
-      py_version="py38",
-      instance_count=2,
-      instance_type="ml.p4d.24xlarge",
-      distribution={
-          "pytorchddp": {
-              "enabled": True
-          }
-      }
-  )
+    pt_estimator = PyTorch(
+        entry_point="train_ptddp.py",
+        role="SageMakerRole",
+        framework_version="1.12.0",
+        py_version="py38",
+        instance_count=2,
+        instance_type="ml.p4d.24xlarge",
+        distribution={
+            "pytorchddp": {
+                "enabled": True
+            }
+        }
+    )
 
-  pt_estimator.fit("s3://bucket/path/to/training/data")
+    pt_estimator.fit("s3://bucket/path/to/training/data")
 
 
 
