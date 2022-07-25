@@ -390,6 +390,78 @@ class DashVisualizer(object):
 
         return app.run_server(mode=mode)
 
+class PyvisVisualizer(object):
+    """Create object used for visualizing graph using Pyvis library."""
+
+    def __init__(self, graph_styles):
+        """Init for PyvisVisualizer."""
+        # import visualization packages
+        (
+            self.pyvis,
+            self.Network,
+            self.Options,
+        ) = self._import_visual_modules()
+
+        self.graph_styles = graph_styles
+
+    def _import_visual_modules(self):
+        import pyvis
+        from pyvis.network import Network
+        from pyvis.options import Options
+
+        return pyvis, Network, Options
+
+    def _get_options(self):
+        options = """
+            var options = {
+            "configure":{
+                "enabled": true
+            },
+            "layout": {
+                "hierarchical": {
+                    "enabled": true,
+                    "blockShifting": false,
+                    "direction": "LR",
+                    "sortMethod": "directed",
+                    "shakeTowards": "roots"
+                }
+            },
+            "interaction": {
+                "multiselect": true,
+                "navigationButtons": true
+            },
+            "physics": {
+                "enabled": false,
+                "hierarchicalRepulsion": {
+                    "centralGravity": 0,
+                    "avoidOverlap": null
+                },
+                "minVelocity": 0.75,
+                "solver": "hierarchicalRepulsion"
+            }
+        }
+            """
+        return options
+
+    def _node_color(self, n):
+        return self.graph_styles[n[2]]["style"]["background-color"]
+
+    def render(self, elements):
+        net = self.Network(height='500px', width='100%', notebook = True, directed = True)
+        options = self._get_options()
+        net.set_options(options)  
+
+        for n in elements["nodes"]:
+            if(n[3]==True): # startarn
+                net.add_node(n[0], label=n[1], title=n[1], color=self._node_color(n), shape="star")
+            else:
+                net.add_node(n[0], label=n[1], title=n[1], color=self._node_color(n))
+
+        for e in elements["edges"]:
+            print(e)
+            net.add_edge(e[0], e[1], title=e[2])  
+
+        return net.show('pyvisExample.html')    
 
 class LineageQueryResult(object):
     """A wrapper around the results of a lineage query."""
@@ -469,6 +541,18 @@ class LineageQueryResult(object):
             edges.append((edge.source_arn, edge.destination_arn, edge.association_type))
         return edges
 
+    def _pyvis_covert_vertices_to_tuples(self):
+        """Convert vertices to tuple format for visualizer."""
+        verts = []
+        # get vertex info in the form of (id, label, class)
+        for vert in self.vertices:
+            if vert.arn in self.startarn:
+                # add "startarn" class to node if arn is a startarn
+                verts.append((vert.arn, vert.lineage_source, vert.lineage_entity, True))
+            else:
+                verts.append((vert.arn, vert.lineage_source, vert.lineage_entity, False))
+        return verts
+
     def _get_visualization_elements(self):
         """Get elements for visualization."""
         # get vertices and edges info for graph
@@ -486,6 +570,16 @@ class LineageQueryResult(object):
 
         elements = nodes + edges
 
+        return elements
+
+    def _get_pyvis_visualization_elements(self):
+        verts = self._pyvis_covert_vertices_to_tuples()
+        edges = self._covert_edges_to_tuples()
+
+        elements = {
+            "nodes": verts,
+            "edges": edges
+        }
         return elements
 
     def visualize(self):
@@ -523,11 +617,15 @@ class LineageQueryResult(object):
         }
 
         # initialize DashVisualizer instance to render graph & interactive components
-        dash_vis = DashVisualizer(lineage_graph)
+        # dash_vis = DashVisualizer(lineage_graph)
 
-        dash_server = dash_vis.render(elements=elements, mode="inline")
+        # dash_server = dash_vis.render(elements=elements, mode="inline")
 
-        return dash_server
+        # return dash_server
+
+        pyvis_vis = PyvisVisualizer(lineage_graph)
+        elements = self._get_pyvis_visualization_elements()
+        return pyvis_vis.render(elements=elements)
 
 
 class LineageFilter(object):
