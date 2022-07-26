@@ -1,0 +1,51 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
+"""This module contains code to test SageMaker ``LineageQueryResult.visualize()``"""
+
+import datetime
+import logging
+import time
+
+import pytest
+
+import sagemaker.lineage.query
+
+from tests.integ.sagemaker.lineage.helpers import name, names, retry, LineageResourceHelper
+
+def test_LineageResourceHelper():
+    lineage_resource_helper = LineageResourceHelper()
+    art1 = lineage_resource_helper.create_artifact(artifact_name=name())
+    art2 = lineage_resource_helper.create_artifact(artifact_name=name())
+    lineage_resource_helper.create_association(source_arn=art1, dest_arn=art2)
+    lineage_resource_helper.clean_all()
+
+def test_wide_graphs(sagemaker_session):
+    lineage_resource_helper = LineageResourceHelper()
+    art_root = lineage_resource_helper.create_artifact(artifact_name=name())
+    try:
+        for i in range(10):
+            art = lineage_resource_helper.create_artifact(artifact_name=name())
+            lineage_resource_helper.create_association(source_arn=art_root, dest_arn=art)
+            time.sleep(0.1)
+    except(e):
+        lineage_resource_helper.clean_all()
+
+    try:
+        lq = sagemaker.lineage.query.LineageQuery(sagemaker_session)
+        result = lq.query(start_arns=[art_root])
+        print(result)
+    except(e):
+        lineage_resource_helper.clean_all()
+
+    lineage_resource_helper.clean_all()
+
