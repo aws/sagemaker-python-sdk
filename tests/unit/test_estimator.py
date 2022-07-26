@@ -753,7 +753,6 @@ def test_framework_with_debugger_config_set_up_in_unsupported_region(region):
 
 @pytest.mark.parametrize("region", PROFILER_UNSUPPORTED_REGIONS)
 def test_framework_enable_profiling_in_unsupported_region(region):
-    #anchor
     with pytest.raises(ValueError) as error:
         boto_mock = Mock(name="boto_session", region_name=region)
         sms = MagicMock(
@@ -780,7 +779,6 @@ def test_framework_enable_profiling_in_unsupported_region(region):
 
 @pytest.mark.parametrize("region", PROFILER_UNSUPPORTED_REGIONS)
 def test_framework_update_profiling_in_unsupported_region(region):
-    #anchor
     with pytest.raises(ValueError) as error:
         boto_mock = Mock(name="boto_session", region_name=region)
         sms = MagicMock(
@@ -807,7 +805,6 @@ def test_framework_update_profiling_in_unsupported_region(region):
 
 @pytest.mark.parametrize("region", PROFILER_UNSUPPORTED_REGIONS)
 def test_framework_disable_profiling_in_unsupported_region(region):
-    #anchor
     with pytest.raises(ValueError) as error:
         boto_mock = Mock(name="boto_session", region_name=region)
         sms = MagicMock(
