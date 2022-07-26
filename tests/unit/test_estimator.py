@@ -744,7 +744,7 @@ def test_framework_with_debugger_config_set_up_in_unsupported_region(region):
             sagemaker_session=sms,
             instance_count=INSTANCE_COUNT,
             instance_type=INSTANCE_TYPE,
-            debugger_hook_config=DebuggerHookConfig(s3_output_path="s3://output")
+            debugger_hook_config=DebuggerHookConfig(s3_output_path="s3://output"),
         )
         f.fit("s3://mydata")
 
@@ -769,7 +769,7 @@ def test_framework_enable_profiling_in_unsupported_region(region):
             role=ROLE,
             sagemaker_session=sms,
             instance_count=INSTANCE_COUNT,
-            instance_type=INSTANCE_TYPE
+            instance_type=INSTANCE_TYPE,
         )
         f.fit("s3://mydata")
         f.enable_default_profiling()
@@ -795,7 +795,7 @@ def test_framework_update_profiling_in_unsupported_region(region):
             role=ROLE,
             sagemaker_session=sms,
             instance_count=INSTANCE_COUNT,
-            instance_type=INSTANCE_TYPE
+            instance_type=INSTANCE_TYPE,
         )
         f.fit("s3://mydata")
         f.update_profiler(system_monitor_interval_millis=1000)
@@ -821,7 +821,7 @@ def test_framework_disable_profiling_in_unsupported_region(region):
             role=ROLE,
             sagemaker_session=sms,
             instance_count=INSTANCE_COUNT,
-            instance_type=INSTANCE_TYPE
+            instance_type=INSTANCE_TYPE,
         )
         f.fit("s3://mydata")
         f.disable_profiling()
