@@ -166,32 +166,35 @@ def get_using_dot_notation(dictionary, keys):
         Nested object within dictionary as defined by "keys"
 
     Raises:
-     KeyError/IndexError/TypeError if the provided key does not exist in input dictionary
+     ValueError if the provided key does not exist in input dictionary
     """
-    if keys is None:
-        return dictionary
-    split_keys = keys.split(".", 1)
-    key = split_keys[0]
-    rest = None
-    if len(split_keys) > 1:
-        rest = split_keys[1]
-    bracket_accessors = re.findall(r"\[(.+?)]", key)
-    if bracket_accessors:
-        pre_bracket_key = key.split("[", 1)[0]
-        inner_dict = dictionary[pre_bracket_key]
-    else:
-        inner_dict = dictionary[key]
-    for bracket_accessor in bracket_accessors:
-        if (
-            bracket_accessor.startswith("'")
-            and bracket_accessor.endswith("'")
-            or bracket_accessor.startswith('"')
-            and bracket_accessor.endswith('"')
-        ):
-            # key accessor
-            inner_key = bracket_accessor[1:-1]
+    try:
+        if keys is None:
+            return dictionary
+        split_keys = keys.split(".", 1)
+        key = split_keys[0]
+        rest = None
+        if len(split_keys) > 1:
+            rest = split_keys[1]
+        bracket_accessors = re.findall(r"\[(.+?)]", key)
+        if bracket_accessors:
+            pre_bracket_key = key.split("[", 1)[0]
+            inner_dict = dictionary[pre_bracket_key]
         else:
-            # list accessor
-            inner_key = int(bracket_accessor)
-        inner_dict = inner_dict[inner_key]
-    return get_using_dot_notation(inner_dict, rest)
+            inner_dict = dictionary[key]
+        for bracket_accessor in bracket_accessors:
+            if (
+                bracket_accessor.startswith("'")
+                and bracket_accessor.endswith("'")
+                or bracket_accessor.startswith('"')
+                and bracket_accessor.endswith('"')
+            ):
+                # key accessor
+                inner_key = bracket_accessor[1:-1]
+            else:
+                # list accessor
+                inner_key = int(bracket_accessor)
+            inner_dict = inner_dict[inner_key]
+        return get_using_dot_notation(inner_dict, rest)
+    except (KeyError, IndexError, TypeError):
+        raise ValueError(f"{keys} does not exist in input dictionary.")

@@ -14,7 +14,6 @@
 from __future__ import absolute_import
 from abc import ABC, abstractmethod
 
-import logging
 import json
 from copy import deepcopy
 from datetime import datetime
@@ -32,8 +31,8 @@ from sagemaker.workflow.pipeline import PipelineGraph
 from sagemaker.local.exceptions import StepExecutionException
 from sagemaker.local.utils import get_using_dot_notation
 from sagemaker.utils import unique_name_from_base
+from sagemaker.s3 import parse_s3_url, s3_path_join
 
-logger = logging.getLogger(__name__)
 
 PRIMITIVES = (str, int, bool, float)
 BINARY_CONDITION_TYPES = (
@@ -59,14 +58,14 @@ class LocalPipelineExecutor(object):
         self.execution = execution
         self.pipeline_dag = PipelineGraph.from_pipeline(self.execution.pipeline)
         self.local_sagemaker_client = self.sagemaker_session.sagemaker_client
-        self.blockout_steps = set()
+        self._blocked_steps = set()
         self._step_executor_factory = _StepExecutorFactory(self)
 
     def execute(self):
         """Execute a local pipeline."""
         try:
             for step in self.pipeline_dag:
-                if step.name not in self.blockout_steps:
+                if step.name not in self._blocked_steps:
                     self._execute_step(step)
         except StepExecutionException as e:
             self.execution.update_execution_failure(e.step_name, e.message)
@@ -110,7 +109,7 @@ class LocalPipelineExecutor(object):
             value = self.execution.pipeline_parameters.get(pipeline_variable.name)
         elif isinstance(pipeline_variable, Join):
             evaluated = [
-                self.evaluate_pipeline_variable(v, step_name) for v in pipeline_variable.values
+                str(self.evaluate_pipeline_variable(v, step_name)) for v in pipeline_variable.values
             ]
             value = pipeline_variable.on.join(evaluated)
         elif isinstance(pipeline_variable, Properties):
@@ -134,7 +133,7 @@ class LocalPipelineExecutor(object):
             referenced_step_name = pipeline_variable.step_name
             step_properties = self.execution.step_execution.get(referenced_step_name).properties
             return get_using_dot_notation(step_properties, pipeline_variable.path)
-        except (KeyError, IndexError, TypeError):
+        except ValueError:
             self.execution.update_step_failure(step_name, f"{pipeline_variable.expr} is undefined.")
 
     def _evaluate_execution_variable(self, pipeline_variable):
@@ -178,14 +177,13 @@ class LocalPipelineExecutor(object):
                 step_name,
                 f"Step '{pipeline_variable.step_name}' does not yet contain processing outputs.",
             )
-        processing_output_s3_bucket = None
-        for output in processing_step_response["ProcessingOutputConfig"]["Outputs"]:
-            if output["OutputName"] == property_file.output_name:
-                processing_output_s3_bucket = output["S3Output"]["S3Uri"]
-                break
+        processing_output_s3_bucket = processing_step_response["ProcessingOutputConfig"]["Outputs"][
+            property_file.output_name
+        ]["S3Output"]["S3Uri"]
         try:
+            s3_bucket, s3_key_prefix = parse_s3_url(processing_output_s3_bucket)
             file_content = self.sagemaker_session.read_s3_file(
-                processing_output_s3_bucket, property_file.path
+                s3_bucket, s3_path_join(s3_key_prefix, property_file.path)
             )
             file_json = json.loads(file_content)
             return get_using_dot_notation(file_json, pipeline_variable.json_path)
@@ -200,7 +198,7 @@ class LocalPipelineExecutor(object):
                 step_name,
                 f"Contents of property file '{property_file.name}' are not in valid JSON format.",
             )
-        except (KeyError, IndexError, TypeError):
+        except ValueError:
             self.execution.update_step_failure(
                 step_name, f"Invalid json path '{pipeline_variable.json_path}'"
             )
@@ -228,19 +226,18 @@ class _StepExecutor(ABC):
         """
 
         try:
-            rest = get_using_dot_notation(dictionary, path_to_list)
-        except (KeyError, IndexError, TypeError):
-            raise RuntimeError("%s does not exist in %s" % path_to_list, dictionary)
-        if not isinstance(rest, list):
+            list_to_convert = get_using_dot_notation(dictionary, path_to_list)
+        except ValueError:
+            raise RuntimeError(f"{path_to_list} does not exist in {dictionary}")
+        if not isinstance(list_to_convert, list):
             raise RuntimeError(
-                "%s of type %s is not a list to be converted into a dictionary!" % rest,
-                type(rest),
+                f"Element at path {path_to_list} is not a list. Actual type {type(list_to_convert)}"
             )
         converted_map = {}
-        for element in rest:
+        for element in list_to_convert:
             if not isinstance(element, dict):
                 raise RuntimeError(
-                    "Cannot convert element of type %s into dictionary entry" % type(element)
+                    f"Cannot convert element of type {type(element)} into dictionary entry"
                 )
             converted_map[element[reducing_key]] = element
         return converted_map
@@ -277,12 +274,19 @@ class _ProcessingStepExecutor(_StepExecutor):
             job_describe_response = (
                 self.pipline_executor.local_sagemaker_client.describe_processing_job(job_name)
             )
-            job_describe_response["ProcessingOutputConfig"]["Outputs"] = self._convert_list_to_dict(
-                job_describe_response, "ProcessingOutputConfig.Outputs", "OutputName"
-            )
-            job_describe_response["ProcessingInputs"] = self._convert_list_to_dict(
-                job_describe_response, "ProcessingInputs", "InputName"
-            )
+            if (
+                "ProcessingOutputConfig" in job_describe_response
+                and "Outputs" in job_describe_response["ProcessingOutputConfig"]
+            ):
+                job_describe_response["ProcessingOutputConfig"][
+                    "Outputs"
+                ] = self._convert_list_to_dict(
+                    job_describe_response, "ProcessingOutputConfig.Outputs", "OutputName"
+                )
+            if "ProcessingInputs" in job_describe_response:
+                job_describe_response["ProcessingInputs"] = self._convert_list_to_dict(
+                    job_describe_response, "ProcessingInputs", "InputName"
+                )
             return job_describe_response
 
         except Exception as e:  # pylint: disable=W0703
@@ -296,13 +300,13 @@ class _ConditionStepExecutor(_StepExecutor):
     """Executor class to execute ConditionStep locally"""
 
     def execute(self):
-        def _blockout_all_downstream_steps(steps: List[Step]):
-            step_to_blockout = set()
+        def _block_all_downstream_steps(steps: List[Step]):
+            steps_to_block = set()
             for step in steps:
-                step_to_blockout.update(
+                steps_to_block.update(
                     self.pipline_executor.pipeline_dag.get_steps_in_sub_dag(step.name)
                 )
-            self.pipline_executor.blockout_steps.update(step_to_blockout)
+            self.pipline_executor._blocked_steps.update(steps_to_block)
 
         if_steps = self.step.if_steps
         else_steps = self.step.else_steps
@@ -313,9 +317,9 @@ class _ConditionStepExecutor(_StepExecutor):
         outcome = self._evaluate_conjunction(step_only_arguments["Conditions"])
 
         if not outcome:
-            _blockout_all_downstream_steps(if_steps)
+            _block_all_downstream_steps(if_steps)
         else:
-            _blockout_all_downstream_steps(else_steps)
+            _block_all_downstream_steps(else_steps)
 
         return dict(Outcome=outcome)
 
@@ -356,7 +360,7 @@ class _ConditionStepExecutor(_StepExecutor):
         elif condition_type == ConditionTypeEnum.IN.value:
             outcome = self._resolve_in_condition(condition)
         else:
-            raise NotImplementedError("Condition of type [%s] is not supported." % condition_type)
+            raise NotImplementedError(f"Condition of type [{condition_type}] is not supported.")
 
         return outcome
 
@@ -396,7 +400,7 @@ class _ConditionStepExecutor(_StepExecutor):
                 outcome = left_value <= right_value
             else:
                 raise NotImplementedError(
-                    "Binary condition of type [%s] is not supported" % binary_condition_type
+                    f"Binary condition of type [{binary_condition_type}] is not supported"
                 )
             return outcome
 
@@ -470,6 +474,22 @@ class _TransformStepExecutor(_StepExecutor):
             )
 
 
+class _CreateModelStepExecutor(_StepExecutor):
+    """Executor class to execute CreateModelStep locally"""
+
+    def execute(self):
+        model_name = unique_name_from_base(self.step.name)
+        step_arguments = self.pipline_executor.evaluate_step_arguments(self.step)
+        try:
+            self.pipline_executor.local_sagemaker_client.create_model(model_name, **step_arguments)
+            return self.pipline_executor.local_sagemaker_client.describe_model(model_name)
+        except Exception as e:  # pylint: disable=W0703
+            self.pipline_executor.execution.update_step_failure(
+                self.step.name,
+                f"Error when executing step {self.step.name} of type {type(self.step)}: {e}",
+            )
+
+
 class _FailStepExecutor(_StepExecutor):
     """Executor class to execute FailStep locally"""
 
@@ -502,6 +522,8 @@ class _StepExecutorFactory:
             step_executor = _ProcessingStepExecutor(self.pipeline_executor, step)
         elif step_type == StepTypeEnum.TRANSFORM:
             step_executor = _TransformStepExecutor(self.pipeline_executor, step)
+        elif step_type == StepTypeEnum.CREATE_MODEL:
+            step_executor = _CreateModelStepExecutor(self.pipeline_executor, step)
         elif step_type == StepTypeEnum.FAIL:
             step_executor = _FailStepExecutor(self.pipeline_executor, step)
         elif step_type == StepTypeEnum.CONDITION:

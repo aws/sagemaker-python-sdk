@@ -51,6 +51,7 @@ from sagemaker.local.pipeline import (
     _StepExecutorFactory,
     _TrainingStepExecutor,
     _TransformStepExecutor,
+    _CreateModelStepExecutor,
     LocalPipelineExecutor,
     StepExecutionException,
 )
@@ -387,12 +388,12 @@ def test_evaluate_json_get_function(
     execution = _LocalPipelineExecution("my-execution", pipeline)
     execution.step_execution["inputProcessingStep"].properties = {
         "ProcessingOutputConfig": {
-            "Outputs": [
-                {
+            "Outputs": {
+                "TestOutputName": {
                     "OutputName": "TestOutputName",
                     "S3Output": {"S3Uri": "s3://my-bucket/processing/output"},
                 }
-            ]
+            }
         }
     }
     evaluated_args = LocalPipelineExecutor(
@@ -472,12 +473,12 @@ def test_evaluate_json_get_function_s3_client_error(read_s3_file, local_sagemake
     execution = _LocalPipelineExecution("my-execution", pipeline)
     execution.step_execution["inputProcessingStep"].properties = {
         "ProcessingOutputConfig": {
-            "Outputs": [
-                {
+            "Outputs": {
+                "TestOutputName": {
                     "OutputName": "TestOutputName",
                     "S3Output": {"S3Uri": "s3://my-bucket/processing/output"},
                 }
-            ]
+            }
         }
     }
     with pytest.raises(StepExecutionException) as e:
@@ -523,12 +524,12 @@ def test_evaluate_json_get_function_bad_json_in_property_file(
     execution = _LocalPipelineExecution("my-execution", pipeline)
     execution.step_execution["inputProcessingStep"].properties = {
         "ProcessingOutputConfig": {
-            "Outputs": [
-                {
+            "Outputs": {
+                "TestOutputName": {
                     "OutputName": "TestOutputName",
                     "S3Output": {"S3Uri": "s3://my-bucket/processing/output"},
                 }
-            ]
+            }
         }
     }
     with pytest.raises(StepExecutionException) as e:
@@ -573,12 +574,12 @@ def test_evaluate_json_get_function_invalid_json_path(read_s3_file, local_sagema
     execution = _LocalPipelineExecution("my-execution", pipeline)
     execution.step_execution["inputProcessingStep"].properties = {
         "ProcessingOutputConfig": {
-            "Outputs": [
-                {
+            "Outputs": {
+                "TestOutputName": {
                     "OutputName": "TestOutputName",
                     "S3Output": {"S3Uri": "s3://my-bucket/processing/output"},
                 }
-            ]
+            }
         }
     }
     with pytest.raises(StepExecutionException) as e:
@@ -594,6 +595,7 @@ def test_evaluate_json_get_function_invalid_json_path(read_s3_file, local_sagema
         (Mock(step_type=StepTypeEnum.TRANSFORM), _TransformStepExecutor),
         (Mock(step_type=StepTypeEnum.CONDITION), _ConditionStepExecutor),
         (Mock(step_type=StepTypeEnum.FAIL), _FailStepExecutor),
+        (Mock(step_type=StepTypeEnum.CREATE_MODEL), _CreateModelStepExecutor),
     ],
 )
 def test_step_executor_factory(step, step_executor_class):
