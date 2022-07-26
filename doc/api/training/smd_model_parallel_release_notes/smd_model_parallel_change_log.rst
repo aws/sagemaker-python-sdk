@@ -5,8 +5,57 @@ Release Notes
 New features, bug fixes, and improvements are regularly made to the SageMaker
 distributed model parallel library.
 
+SageMaker Distributed Model Parallel 1.10.0 Release Notes
+=========================================================
+
+*Date: July. 19. 2022*
+
+**New Features**
+
+The following new features are added for PyTorch.
+
+* Added support for FP16 training by implementing smdistributed.modelparallel
+  modification of Apex FP16_Module and FP16_Optimizer. To learn more, see
+  `FP16 Training with Model Parallelism
+  <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-fp16.html>`_.
+* New checkpoint APIs for CPU memory usage optimization. To learn more, see
+  `Checkpointing Distributed Models and Optimizer States
+  <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-checkpoint.html>`_.
+
+**Improvements**
+
+* The SageMaker distributed model parallel library manages and optimizes CPU
+  memory by garbage-collecting non-local parameters in general and during checkpointing.
+* Changes in the `GPT-2 translate functions
+  <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-hugging-face.html>`_
+  (``smdistributed.modelparallel.torch.nn.huggingface.gpt2``)
+  to save memory by not maintaining two copies of weights at the same time.
+
+**Migration to AWS Deep Learning Containers**
+
+This version passed benchmark testing and is migrated to the following AWS Deep Learning Containers (DLC):
+
+- PyTorch 1.11.0 DLC
+
+  .. code::
+
+    763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.11.0-gpu-py38-cu113-ubuntu20.04-sagemaker
+
+Binary file of this version of the library for custom container users:
+
+  .. code::
+
+    https://sagemaker-distributed-model-parallel.s3.us-west-2.amazonaws.com/pytorch-1.11.0/build-artifacts/2022-07-11-19-23/smdistributed_modelparallel-1.10.0-cp38-cp38-linux_x86_64.whl
+
+
+
+----
+
+Release History
+===============
+
 SageMaker Distributed Model Parallel 1.9.0 Release Notes
-========================================================
+--------------------------------------------------------
 
 *Date: May. 3. 2022*
 
@@ -31,11 +80,6 @@ Binary file of this version of the library for custom container users:
     https://sagemaker-distributed-model-parallel.s3.us-west-2.amazonaws.com/pytorch-1.11.0/build-artifacts/2022-04-20-17-05/smdistributed_modelparallel-1.9.0-cp38-cp38-linux_x86_64.whl
 
 
-
-----
-
-Release History
-===============
 
 SageMaker Distributed Model Parallel 1.8.1 Release Notes
 --------------------------------------------------------
