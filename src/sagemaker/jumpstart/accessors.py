@@ -79,7 +79,7 @@ class JumpStartModelsAccessor(object):
             JumpStartModelsAccessor._curr_region = region
 
     @staticmethod
-    def get_manifest(region: str = JUMPSTART_DEFAULT_REGION_NAME) -> List[JumpStartModelHeader]:
+    def _get_manifest(region: str = JUMPSTART_DEFAULT_REGION_NAME) -> List[JumpStartModelHeader]:
         """Return entire JumpStart models manifest.
 
         Raises:
