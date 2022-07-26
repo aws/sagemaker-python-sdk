@@ -57,6 +57,9 @@ class StepCollection:
 class RegisterModel(StepCollection):  # pragma: no cover
     """Register Model step collection for workflow."""
 
+    _REGISTER_MODEL_NAME_BASE = "RegisterModel"
+    _REPACK_MODEL_NAME_BASE = "RepackModel"
+
     def __init__(
         self,
         name: str,
@@ -168,7 +171,7 @@ class RegisterModel(StepCollection):  # pragma: no cover
             kwargs = dict(**kwargs, output_kms_key=kwargs.pop("model_kms_key", None))
 
             repack_model_step = _RepackModelStep(
-                name=f"{name}RepackModel",
+                name="{}-{}".format(self.name, self._REPACK_MODEL_NAME_BASE),
                 depends_on=depends_on,
                 retry_policies=repack_model_step_retry_policies,
                 sagemaker_session=estimator.sagemaker_session,
@@ -212,7 +215,7 @@ class RegisterModel(StepCollection):  # pragma: no cover
                     model_name = model_entity.name or model_entity._framework_name
 
                     repack_model_step = _RepackModelStep(
-                        name=f"{model_name}RepackModel",
+                        name="{}-{}".format(model_name, self._REPACK_MODEL_NAME_BASE),
                         depends_on=depends_on,
                         retry_policies=repack_model_step_retry_policies,
                         sagemaker_session=sagemaker_session,
@@ -256,7 +259,7 @@ class RegisterModel(StepCollection):  # pragma: no cover
             )
 
         register_model_step = _RegisterModelStep(
-            name=name,
+            name="{}-{}".format(self.name, self._REGISTER_MODEL_NAME_BASE),
             estimator=estimator,
             model_data=model_data,
             content_types=content_types,

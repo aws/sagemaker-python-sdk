@@ -178,6 +178,16 @@ PyTorch-specific Parameters
     - 1
     - The number of devices over which the tensor parallel modules will be distributed.
       If ``tensor_parallel_degree`` is greater than 1, then ``ddp`` must be set to ``True``.
+  * - ``fp16`` (**smdistributed-modelparallel**>=v1.10)
+    - bool
+    - ``False``
+    - To run FP16 training, add ``"fp16"'": True`` to the smp configuration.
+      Other APIs remain the same between FP16 and FP32.
+      If ``fp16`` is enabled and when user calls ``smp.DistributedModel``,
+      the model will be wrapped with ``FP16_Module``, which converts the model
+      to FP16 dtype and deals with forward pass in FP16.
+      If ``fp16`` is enabled and when user calls ``smp.DistributedOptimizer``,
+      the optimizer will be wrapped with ``FP16_Optimizer``.
   * - ``fp16_params`` (**smdistributed-modelparallel**>=v1.6)
     - bool
     - ``False``
