@@ -653,7 +653,7 @@ def test_register_chainer_model_auto_infer_framework(
                 "Image": image_uri,
                 "Environment": ANY,
                 "ModelDataUrl": ANY,
-                "Framework": "chainer",
+                "Framework": "CHAINER",
                 "FrameworkVersion": chainer_version,
             },
         ],

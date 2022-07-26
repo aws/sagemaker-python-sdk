@@ -548,7 +548,7 @@ def test_register_hf_pytorch_model_auto_infer_framework(
                 "Image": image_uri,
                 "Environment": ANY,
                 "ModelDataUrl": ANY,
-                "Framework": "pytorch",
+                "Framework": "PYTORCH",
                 "FrameworkVersion": huggingface_training_compiler_pytorch_version,
             },
         ],

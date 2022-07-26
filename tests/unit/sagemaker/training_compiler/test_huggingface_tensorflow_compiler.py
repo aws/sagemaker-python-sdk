@@ -559,7 +559,7 @@ def test_register_hf_tfs_model_auto_infer_framework(
                 "Image": image_uri,
                 "Environment": ANY,
                 "ModelDataUrl": ANY,
-                "Framework": "tensorflow",
+                "Framework": "TENSORFLOW",
                 "FrameworkVersion": huggingface_training_compiler_tensorflow_version,
             },
         ],

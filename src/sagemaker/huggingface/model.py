@@ -395,10 +395,12 @@ class HuggingFaceModel(FrameworkModel):
             domain=domain,
             sample_payload_url=sample_payload_url,
             task=task,
-            framework=framework
-            or fetch_framework_and_framework_version(self.tensorflow_version, self.pytorch_version)[
-                0
-            ],
+            framework=(
+                framework
+                or fetch_framework_and_framework_version(
+                    self.tensorflow_version, self.pytorch_version
+                )[0]
+            ).upper(),
             framework_version=framework_version
             or fetch_framework_and_framework_version(self.tensorflow_version, self.pytorch_version)[
                 1

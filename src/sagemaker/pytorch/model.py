@@ -239,7 +239,7 @@ class PyTorchModel(FrameworkModel):
             domain=domain,
             sample_payload_url=sample_payload_url,
             task=task,
-            framework=framework or self._framework_name,
+            framework=(framework or self._framework_name).upper(),
             framework_version=framework_version or self.framework_version,
             nearest_model_name=nearest_model_name,
             data_input_configuration=data_input_configuration,

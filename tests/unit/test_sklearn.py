@@ -619,7 +619,7 @@ def test_register_sklearn_model_auto_infer_framework(sagemaker_session, sklearn_
                 "Image": image_uri,
                 "Environment": ANY,
                 "ModelDataUrl": source_dir,
-                "Framework": "sklearn",
+                "Framework": "SKLEARN",
                 "FrameworkVersion": sklearn_version,
             },
         ],

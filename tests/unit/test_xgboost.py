@@ -709,7 +709,7 @@ def test_register_xgboost_model_auto_infer_framework(sagemaker_session, xgboost_
                 "Image": image_uri,
                 "Environment": ANY,
                 "ModelDataUrl": ANY,
-                "Framework": "xgboost",
+                "Framework": "XGBOOST",
                 "FrameworkVersion": xgboost_framework_version,
             },
         ],

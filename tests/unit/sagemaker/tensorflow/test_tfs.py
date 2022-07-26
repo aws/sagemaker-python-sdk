@@ -487,7 +487,7 @@ def test_register_tfs_model_auto_infer_framework(sagemaker_session, tensorflow_i
                 "Image": image_uri,
                 "Environment": ANY,
                 "ModelDataUrl": ANY,
-                "Framework": "tensorflow",
+                "Framework": "TENSORFLOW",
                 "FrameworkVersion": tensorflow_inference_version,
             },
         ],

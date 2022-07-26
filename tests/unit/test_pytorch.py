@@ -749,7 +749,7 @@ def test_register_pytorch_model_auto_infer_framework(
                 "Image": image_uri,
                 "Environment": ANY,
                 "ModelDataUrl": ANY,
-                "Framework": "pytorch",
+                "Framework": "PYTORCH",
                 "FrameworkVersion": pytorch_inference_version,
             },
         ],

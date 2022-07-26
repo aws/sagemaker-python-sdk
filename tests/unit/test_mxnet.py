@@ -1140,7 +1140,7 @@ def test_register_mxnet_model_auto_infer_framework(
                 "Image": image_uri,
                 "Environment": ANY,
                 "ModelDataUrl": MODEL_DATA,
-                "Framework": "mxnet",
+                "Framework": FRAMEWORK.upper(),
                 "FrameworkVersion": mxnet_inference_version,
             },
         ],
