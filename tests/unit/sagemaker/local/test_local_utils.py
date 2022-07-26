@@ -153,15 +153,15 @@ def test_get_using_dot_notation(json_path, expected):
 
 
 def test_get_using_dot_notation_type_error():
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         sagemaker.local.utils.get_using_dot_notation({"foo": "bar"}, "foo.test")
 
 
 def test_get_using_dot_notation_key_error():
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError):
         sagemaker.local.utils.get_using_dot_notation({"foo": {"bar": 1}}, "foo.test")
 
 
 def test_get_using_dot_notation_index_error():
-    with pytest.raises(IndexError):
+    with pytest.raises(ValueError):
         sagemaker.local.utils.get_using_dot_notation({"foo": ["bar"]}, "foo[1]")

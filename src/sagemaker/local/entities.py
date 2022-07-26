@@ -200,6 +200,7 @@ class _LocalTrainingJob(object):
         self.start_time = None
         self.end_time = None
         self.environment = None
+        self.training_job_name = ""
 
     def start(self, input_data_config, output_data_config, hyperparameters, environment, job_name):
         """Starts a local training job.
@@ -244,10 +245,13 @@ class _LocalTrainingJob(object):
         )
         self.end_time = datetime.datetime.now()
         self.state = self._COMPLETED
+        self.training_job_name = job_name
 
     def describe(self):
         """Placeholder docstring"""
         response = {
+            "TrainingJobName": self.training_job_name,
+            "TrainingJobArn": _UNUSED_ARN,
             "ResourceConfig": {"InstanceCount": self.container.instance_count},
             "TrainingJobStatus": self.state,
             "TrainingStartTime": self.start_time,
@@ -640,9 +644,8 @@ class _LocalPipeline(object):
         self.local_session = local_session or LocalSession()
         self.pipeline = pipeline
         self.pipeline_description = pipeline_description
-        now_time = datetime.datetime.now()
-        self.creation_time = now_time
-        self.last_modified_time = now_time
+        self.creation_time = datetime.datetime.now().timestamp()
+        self.last_modified_time = self.creation_time
 
     def describe(self):
         """Describe Pipeline"""
@@ -666,6 +669,13 @@ class _LocalPipeline(object):
         execution = _LocalPipelineExecution(execution_id, self.pipeline, **kwargs)
 
         self._executions[execution_id] = execution
+        logger.info(
+            "Starting execution for pipeline %s. Execution ID is %s",
+            self.pipeline.name,
+            execution_id,
+        )
+        self.last_modified_time = datetime.datetime.now().timestamp()
+
         return LocalPipelineExecutor(execution, self.local_session).execute()
 
 
@@ -686,17 +696,18 @@ class _LocalPipelineExecution(object):
         self.pipeline_execution_display_name = PipelineExecutionDisplayName
         self.status = _LocalExecutionStatus.EXECUTING.value
         self.failure_reason = None
-        self.creation_time = datetime.datetime.now()
+        self.creation_time = datetime.datetime.now().timestamp()
+        self.last_modified_time = self.creation_time
         self.step_execution = {}
         self._initialize_step_execution(self.pipeline.steps)
         self.pipeline_parameters = self._initialize_and_validate_parameters(PipelineParameters)
-        self.blockout_steps = {}
+        self._blocked_steps = {}
 
     def describe(self):
         """Describe Pipeline Execution."""
         response = {
             "CreationTime": self.creation_time,
-            "LastModifiedTime": self.creation_time,
+            "LastModifiedTime": self.last_modified_time,
             "FailureReason": self.failure_reason,
             "PipelineArn": self.pipeline.name,
             "PipelineExecutionArn": self.pipeline_execution_name,
@@ -720,23 +731,33 @@ class _LocalPipelineExecution(object):
     def update_execution_success(self):
         """Mark execution as succeeded."""
         self.status = _LocalExecutionStatus.SUCCEEDED.value
+        self.last_modified_time = datetime.datetime.now().timestamp()
+        logger.info("Pipeline execution %s SUCCEEDED", self.pipeline_execution_name)
 
     def update_execution_failure(self, step_name, failure_message):
         """Mark execution as failed."""
         self.status = _LocalExecutionStatus.FAILED.value
         self.failure_reason = f"Step {step_name} failed with message: {failure_message}"
-        logger.error("Pipeline execution failed because step %s failed.", step_name)
+        self.last_modified_time = datetime.datetime.now().timestamp()
+        logger.info(
+            "Pipeline execution %s FAILED because step %s failed.",
+            self.pipeline_execution_name,
+            step_name,
+        )
 
     def update_step_properties(self, step_name, step_properties):
         """Update pipeline step execution output properties."""
         self.step_execution.get(step_name).update_step_properties(step_properties)
+        logger.info("Pipeline step %s SUCCEEDED.", step_name)
 
     def update_step_failure(self, step_name, failure_message):
         """Mark step_name as failed."""
         self.step_execution.get(step_name).update_step_failure(failure_message)
+        logger.info("Pipeline step %s FAILED. Failure message is: %s", step_name, failure_message)
 
     def mark_step_executing(self, step_name):
         """Update pipelines step's status to EXECUTING and start_time to now."""
+        logger.info("Starting pipeline step: %s", step_name)
         self.step_execution.get(step_name).mark_step_executing()
 
     def _initialize_step_execution(self, steps):
@@ -749,6 +770,7 @@ class _LocalPipelineExecution(object):
             StepTypeEnum.TRANSFORM,
             StepTypeEnum.CONDITION,
             StepTypeEnum.FAIL,
+            StepTypeEnum.CREATE_MODEL,
         )
 
         for step in steps:
@@ -828,29 +850,28 @@ class _LocalPipelineExecutionStep(object):
             StepTypeEnum.TRAINING: self._construct_training_metadata,
             StepTypeEnum.PROCESSING: self._construct_processing_metadata,
             StepTypeEnum.TRANSFORM: self._construct_transform_metadata,
+            StepTypeEnum.CREATE_MODEL: self._construct_model_metadata,
             StepTypeEnum.CONDITION: self._construct_condition_metadata,
             StepTypeEnum.FAIL: self._construct_fail_metadata,
         }
 
     def update_step_properties(self, properties):
         """Update pipeline step execution output properties."""
-        logger.info("Successfully completed step %s.", self.name)
         self.properties = deepcopy(properties)
         self.status = _LocalExecutionStatus.SUCCEEDED.value
-        self.end_time = datetime.datetime.now()
+        self.end_time = datetime.datetime.now().timestamp()
 
     def update_step_failure(self, failure_message):
         """Update pipeline step execution failure status and message."""
-        logger.error(failure_message)
         self.failure_reason = failure_message
         self.status = _LocalExecutionStatus.FAILED.value
-        self.end_time = datetime.datetime.now()
+        self.end_time = datetime.datetime.now().timestamp()
         raise StepExecutionException(self.name, failure_message)
 
     def mark_step_executing(self):
         """Update pipelines step's status to EXECUTING and start_time to now"""
         self.status = _LocalExecutionStatus.EXECUTING.value
-        self.start_time = datetime.datetime.now()
+        self.start_time = datetime.datetime.now().timestamp()
 
     def to_list_steps_response(self):
         """Convert to response dict for list_steps calls."""
@@ -875,23 +896,27 @@ class _LocalPipelineExecutionStep(object):
 
     def _construct_training_metadata(self):
         """Construct training job metadata response."""
-        return {"TrainingJob": {"Arn": self.properties.TrainingJobArn}}
+        return {"TrainingJob": {"Arn": self.properties["TrainingJobName"]}}
 
     def _construct_processing_metadata(self):
         """Construct processing job metadata response."""
-        return {"ProcessingJob": {"Arn": self.properties.ProcessingJobArn}}
+        return {"ProcessingJob": {"Arn": self.properties["ProcessingJobName"]}}
 
     def _construct_transform_metadata(self):
         """Construct transform job metadata response."""
-        return {"TransformJob": {"Arn": self.properties.TransformJobArn}}
+        return {"TransformJob": {"Arn": self.properties["TransformJobName"]}}
+
+    def _construct_model_metadata(self):
+        """Construct create model step metadata response."""
+        return {"Model": {"Arn": self.properties["ModelName"]}}
 
     def _construct_condition_metadata(self):
         """Construct condition step metadata response."""
-        return {"Condition": {"Outcome": self.properties.Outcome}}
+        return {"Condition": {"Outcome": self.properties["Outcome"]}}
 
     def _construct_fail_metadata(self):
         """Construct fail step metadata response."""
-        return {"Fail": {"ErrorMessage": self.properties.ErrorMessage}}
+        return {"Fail": {"ErrorMessage": self.properties["ErrorMessage"]}}
 
 
 class _LocalExecutionStatus(enum.Enum):

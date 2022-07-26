@@ -43,7 +43,6 @@ from sagemaker.workflow.steps import Step, StepTypeEnum
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.utilities import list_to_request
-from sagemaker.workflow.pipeline_context import LocalPipelineSession
 
 logger = logging.getLogger(__name__)
 
@@ -164,7 +163,7 @@ class Pipeline(Entity):
         # If pipeline definition is large, upload to S3 bucket and
         # provide PipelineDefinitionS3Location to request instead.
         if len(pipeline_definition.encode("utf-8")) < 1024 * 100 or isinstance(
-            self.sagemaker_session, (LocalSession, LocalPipelineSession)
+            self.sagemaker_session, LocalSession
         ):
             kwargs["PipelineDefinition"] = pipeline_definition
         else:
