@@ -448,7 +448,9 @@ class LocalSagemakerClient(object):  # pylint: disable=too-many-public-methods
             }
             raise ClientError(error_response, "update_pipeline")
         LocalSagemakerClient._pipelines[pipeline.name].pipeline_description = pipeline_description
-        LocalSagemakerClient._pipelines[pipeline.name].last_modified_time = datetime.now()
+        LocalSagemakerClient._pipelines[
+            pipeline.name
+        ].last_modified_time = datetime.now().timestamp()
         return {"PipelineArn": pipeline.name}
 
     def describe_pipeline(self, PipelineName):
@@ -715,17 +717,3 @@ class file_input(object):
 
         if content_type is not None:
             self.config["ContentType"] = content_type
-
-
-class LocalPipelineSession(LocalSession):
-    """Class representing a local session for SageMaker Pipelines executions."""
-
-    def __init__(
-        self, boto_session=None, default_bucket=None, s3_endpoint_url=None, disable_local_code=False
-    ):
-        super().__init__(
-            boto_session=boto_session,
-            default_bucket=default_bucket,
-            s3_endpoint_url=s3_endpoint_url,
-            disable_local_code=disable_local_code,
-        )

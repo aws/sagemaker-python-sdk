@@ -20,10 +20,9 @@ from mock import patch, Mock
 from botocore.exceptions import ClientError
 
 import sagemaker.local
-from sagemaker.model import Model
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline import Pipeline
-from sagemaker.workflow.steps import CreateModelStep
+from sagemaker.workflow.lambda_step import LambdaStep
 from tests.unit.sagemaker.workflow.helpers import CustomStep
 
 
@@ -230,10 +229,7 @@ def test_start_local_pipeline(mock_local_pipeline_executor, sagemaker_local_sess
 
 
 def test_start_local_pipeline_with_unsupported_step_type(sagemaker_local_session):
-    step = CreateModelStep(
-        name="MyRegisterModelStep",
-        model=Model(image_uri="mock_image_uri"),
-    )
+    step = LambdaStep(name="MyLambdaStep", lambda_func=Mock())
     pipeline = Pipeline(
         name="MyPipeline",
         parameters=[],

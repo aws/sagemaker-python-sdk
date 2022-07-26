@@ -19,7 +19,7 @@ from functools import wraps
 from typing import Dict, Optional
 
 from sagemaker.session import Session, SessionSettings
-from sagemaker.local import LocalPipelineSession
+from sagemaker.local import LocalSession
 
 
 class _StepArguments:
@@ -152,6 +152,20 @@ class PipelineSession(Session):
             self._context = _ModelStepArguments(model)
 
 
+class LocalPipelineSession(LocalSession, PipelineSession):
+    """Class representing a local session for SageMaker Pipelines executions."""
+
+    def __init__(
+        self, boto_session=None, default_bucket=None, s3_endpoint_url=None, disable_local_code=False
+    ):
+        super().__init__(
+            boto_session=boto_session,
+            default_bucket=default_bucket,
+            s3_endpoint_url=s3_endpoint_url,
+            disable_local_code=disable_local_code,
+        )
+
+
 def runnable_by_pipeline(run_func):
     """A convenient Decorator
 
@@ -171,7 +185,7 @@ def runnable_by_pipeline(run_func):
     @wraps(run_func)
     def wrapper(*args, **kwargs):
         self_instance = args[0]
-        if isinstance(self_instance.sagemaker_session, (PipelineSession, LocalPipelineSession)):
+        if isinstance(self_instance.sagemaker_session, PipelineSession):
             run_func_params = inspect.signature(run_func).parameters
             arg_list = list(args)
 

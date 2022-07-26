@@ -18,5 +18,4 @@ from .local_session import (  # noqa: F401
     LocalSagemakerClient,
     LocalSagemakerRuntimeClient,
     LocalSession,
-    LocalPipelineSession,
 )
