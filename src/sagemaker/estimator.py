@@ -1756,6 +1756,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         Debugger monitoring is disabled.
         """
         self._ensure_latest_training_job()
+        if not _region_supports_debugger(self.sagemaker_session.boto_region_name):
+            raise ValueError("Current region does not support profiler / debugger!")
 
         training_job_details = self.latest_training_job.describe()
 
@@ -1789,6 +1791,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         """
         self._ensure_latest_training_job()
+        if not _region_supports_debugger(self.sagemaker_session.boto_region_name):
+            raise ValueError("Current region does not support profiler / debugger!")
 
         training_job_details = self.latest_training_job.describe()
 
@@ -1842,6 +1846,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         """
         self._ensure_latest_training_job()
+        if not _region_supports_debugger(self.sagemaker_session.boto_region_name):
+            raise ValueError("Current region does not support profiler / debugger!")
+
         if (
             not rules
             and not system_monitor_interval_millis

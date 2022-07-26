@@ -553,6 +553,11 @@ def test_region_supports_debugger_feature_returns_true_for_supported_regions():
 def test_region_supports_debugger_feature_returns_false_for_unsupported_regions():
     assert fw_utils._region_supports_debugger("us-iso-east-1") is False
     assert fw_utils._region_supports_debugger("ap-southeast-3") is False
+    assert fw_utils._region_supports_debugger("ap-southeast-4") is False
+    assert fw_utils._region_supports_debugger("eu-south-2") is False
+    assert fw_utils._region_supports_debugger("me-central-1") is False
+    assert fw_utils._region_supports_debugger("ap-south-2") is False
+    assert fw_utils._region_supports_debugger("eu-central-2") is False
 
 
 def test_warn_if_parameter_server_with_multi_gpu(caplog):
