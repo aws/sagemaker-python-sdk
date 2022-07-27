@@ -250,7 +250,7 @@ class RegisterModel(StepCollection):  # pragma: no cover
                     )
                 ]
 
-            update_container_with_inference_params(
+            self.container_def_list = update_container_with_inference_params(
                 framework=framework,
                 framework_version=framework_version,
                 nearest_model_name=nearest_model_name,

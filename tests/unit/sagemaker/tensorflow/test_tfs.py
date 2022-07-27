@@ -18,7 +18,7 @@ import logging
 
 import mock
 import pytest
-from mock import Mock, patch
+from mock import Mock, patch, ANY
 
 from sagemaker.serializers import CSVSerializer, IdentitySerializer
 from sagemaker.tensorflow import TensorFlow, TensorFlowModel, TensorFlowPredictor
@@ -454,3 +454,51 @@ def mock_response(expected_response, sagemaker_session, content_type=JSON_CONTEN
         "ContentType": content_type,
         "Body": io.BytesIO(expected_response),
     }
+
+
+def test_register_tfs_model_auto_infer_framework(sagemaker_session, tensorflow_inference_version):
+    model_package_group_name = "test-tfs-register-model"
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarge"]
+    image_uri = "fakeimage"
+
+    tfs_model = TensorFlowModel(
+        "s3://some/data.tar.gz",
+        role=ROLE,
+        framework_version=tensorflow_inference_version,
+        sagemaker_session=sagemaker_session,
+    )
+
+    tfs_model.register(
+        content_types,
+        response_types,
+        inference_instances,
+        transform_instances,
+        model_package_group_name=model_package_group_name,
+        marketplace_cert=True,
+        image_uri=image_uri,
+    )
+
+    expected_create_model_package_request = {
+        "containers": [
+            {
+                "Image": image_uri,
+                "Environment": ANY,
+                "ModelDataUrl": ANY,
+                "Framework": "TENSORFLOW",
+                "FrameworkVersion": tensorflow_inference_version,
+            },
+        ],
+        "content_types": content_types,
+        "response_types": response_types,
+        "inference_instances": inference_instances,
+        "transform_instances": transform_instances,
+        "model_package_group_name": model_package_group_name,
+        "marketplace_cert": True,
+    }
+
+    sagemaker_session.create_model_package_from_containers.assert_called_with(
+        **expected_create_model_package_request
+    )
