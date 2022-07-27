@@ -17,7 +17,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional, Union, List, Dict
 
-from sagemaker.lineage._utils import get_resource_name_from_arn
+from sagemaker.lineage._utils import get_resource_name_from_arn, get_module
 
 
 class LineageEntityEnum(Enum):
@@ -208,7 +208,6 @@ class PyvisVisualizer(object):
         """Init for PyvisVisualizer."""
         # import visualization packages
         (
-            self.pyvis,
             self.Network,
             self.Options,
         ) = self._import_visual_modules()
@@ -217,28 +216,11 @@ class PyvisVisualizer(object):
 
     def _import_visual_modules(self):
         """Import modules needed for visualization."""
-        try:
-            import pyvis
-        except ImportError as e:
-            print(e)
-            print("Try: pip install pyvis")
-            raise
+        get_module("pyvis")
+        from pyvis.network import Network
+        from pyvis.options import Options
 
-        try:
-            from pyvis.network import Network
-        except ImportError as e:
-            print(e)
-            print("Try: pip install pyvis")
-            raise
-
-        try:
-            from pyvis.options import Options
-        except ImportError as e:
-            print(e)
-            print("Try: pip install pyvis")
-            raise
-
-        return pyvis, Network, Options
+        return Network, Options
 
     def _get_options(self):
         """Get pyvis graph options."""
