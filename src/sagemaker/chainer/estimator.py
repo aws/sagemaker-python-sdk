@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import logging
+from typing import Union, Optional
 
 from sagemaker.estimator import Framework, EstimatorBase
 from sagemaker.fw_utils import (
@@ -25,6 +26,7 @@ from sagemaker.fw_utils import (
 from sagemaker.chainer import defaults
 from sagemaker.chainer.model import ChainerModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
+from sagemaker.workflow.entities import PipelineVariable
 
 logger = logging.getLogger("sagemaker")
 
@@ -42,12 +44,12 @@ class Chainer(Framework):
 
     def __init__(
         self,
-        entry_point,
+        entry_point: Union[str, PipelineVariable],
         use_mpi=None,
         num_processes=None,
         process_slots_per_host=None,
         additional_mpi_options=None,
-        source_dir=None,
+        source_dir: Optional[Union[str, PipelineVariable]] = None,
         hyperparameters=None,
         framework_version=None,
         py_version=None,
