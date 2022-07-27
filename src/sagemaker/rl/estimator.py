@@ -282,6 +282,11 @@ class RLEstimator(Framework):
         """
         if self.image_uri:
             return self.image_uri
+
+        logger.info(
+            "image_uri is not presented, retrieving image_uri based on instance_type, "
+            "framework etc."
+        )
         return image_uris.retrieve(
             self._image_framework(),
             self.sagemaker_session.boto_region_name,
