@@ -127,3 +127,29 @@ def test_jumpstart_common_script_uri(
             script_scope="training",
             model_id="pytorch-ic-mobilenet-v2",
         )
+
+
+@patch("sagemaker.jumpstart.artifacts.verify_model_region_and_return_specs")
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+@patch.dict(
+    "sagemaker.jumpstart.cache.os.environ",
+    {
+        sagemaker_constants.ENV_VARIABLE_JUMPSTART_SCRIPT_ARTIFACT_BUCKET_OVERRIDE: "some-cool-bucket-name"
+    },
+)
+def test_jumpstart_artifact_bucket_override(
+    patched_get_model_specs, patched_verify_model_region_and_return_specs
+):
+
+    patched_verify_model_region_and_return_specs.side_effect = verify_model_region_and_return_specs
+    patched_get_model_specs.side_effect = get_spec_from_base_spec
+
+    uri = script_uris.retrieve(
+        script_scope="training",
+        model_id="pytorch-ic-mobilenet-v2",
+        model_version="*",
+    )
+    assert (
+        uri
+        == "s3://some-cool-bucket-name/source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz"
+    )

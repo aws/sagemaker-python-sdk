@@ -13,6 +13,8 @@
 """This module contains accessors related to SageMaker JumpStart."""
 from __future__ import absolute_import
 from typing import Any, Dict, List, Optional
+
+from sagemaker.deprecations import deprecated
 from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartModelSpecs
 from sagemaker.jumpstart import cache
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
@@ -77,6 +79,22 @@ class JumpStartModelsAccessor(object):
                 region=region, **cache_kwargs
             )
             JumpStartModelsAccessor._curr_region = region
+
+    @staticmethod
+    def _get_manifest(region: str = JUMPSTART_DEFAULT_REGION_NAME) -> List[JumpStartModelHeader]:
+        """Return entire JumpStart models manifest.
+
+        Raises:
+            ValueError: If region in `cache_kwargs` is inconsistent with `region` argument.
+
+        Args:
+            region (str): Optional. The region to use for the cache.
+        """
+        cache_kwargs = JumpStartModelsAccessor._validate_and_mutate_region_cache_kwargs(
+            JumpStartModelsAccessor._cache_kwargs, region
+        )
+        JumpStartModelsAccessor._set_cache_and_region(region, cache_kwargs)
+        return JumpStartModelsAccessor._cache.get_manifest()  # type: ignore
 
     @staticmethod
     def get_model_header(region: str, model_id: str, version: str) -> JumpStartModelHeader:
@@ -152,6 +170,7 @@ class JumpStartModelsAccessor(object):
         JumpStartModelsAccessor.set_cache_kwargs(cache_kwargs_dict, region)
 
     @staticmethod
+    @deprecated()
     def get_manifest(
         cache_kwargs: Optional[Dict[str, Any]] = None, region: Optional[str] = None
     ) -> List[JumpStartModelHeader]:
