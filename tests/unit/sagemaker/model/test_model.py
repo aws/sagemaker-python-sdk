@@ -742,6 +742,7 @@ def test_script_mode_model_uses_proper_sagemaker_submit_dir(repack_model, sagema
 
 @patch("sagemaker.get_model_package_args")
 def test_register_calls_model_package_args(get_model_package_args, sagemaker_session):
+    """model.register() should pass the ValidationSpecification to get_model_package_args()"""
 
     source_dir = "s3://blah/blah/blah"
     t = Model(
