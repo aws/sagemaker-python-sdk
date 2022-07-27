@@ -709,3 +709,57 @@ def test_pt_heterogeneous_cluster_distribution_config(
         },
     )
     assert pytorch.distribution == expected_return
+
+
+@patch("sagemaker.utils.repack_model", MagicMock())
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+def test_register_pytorch_model_auto_infer_framework(
+    sagemaker_session, pytorch_inference_version, pytorch_inference_py_version
+):
+
+    model_package_group_name = "test-pytorch-register-model"
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarge"]
+    image_uri = "fakeimage"
+
+    pytorch_model = PyTorchModel(
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        framework_version=pytorch_inference_version,
+        py_version=pytorch_inference_py_version,
+        sagemaker_session=sagemaker_session,
+    )
+
+    pytorch_model.register(
+        content_types,
+        response_types,
+        inference_instances,
+        transform_instances,
+        model_package_group_name=model_package_group_name,
+        marketplace_cert=True,
+        image_uri=image_uri,
+    )
+
+    expected_create_model_package_request = {
+        "containers": [
+            {
+                "Image": image_uri,
+                "Environment": ANY,
+                "ModelDataUrl": ANY,
+                "Framework": "PYTORCH",
+                "FrameworkVersion": pytorch_inference_version,
+            },
+        ],
+        "content_types": content_types,
+        "response_types": response_types,
+        "inference_instances": inference_instances,
+        "transform_instances": transform_instances,
+        "model_package_group_name": model_package_group_name,
+        "marketplace_cert": True,
+    }
+    sagemaker_session.create_model_package_from_containers.assert_called_with(
+        **expected_create_model_package_request
+    )

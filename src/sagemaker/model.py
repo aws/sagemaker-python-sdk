@@ -374,12 +374,12 @@ class Model(ModelBase):
 
         if model_package_group_name is not None:
             container_def = self.prepare_container_def()
-            update_container_with_inference_params(
+            container_def = update_container_with_inference_params(
                 framework=framework,
                 framework_version=framework_version,
                 nearest_model_name=nearest_model_name,
                 data_input_configuration=data_input_configuration,
-                container_obj=container_def,
+                container_def=container_def,
             )
         else:
             container_def = {
