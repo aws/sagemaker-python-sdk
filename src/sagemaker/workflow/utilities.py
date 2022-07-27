@@ -29,6 +29,8 @@ from sagemaker.workflow.entities import (
     RequestType,
 )
 
+logger = logging.getLogger(__name__)
+
 if TYPE_CHECKING:
     from sagemaker.workflow.step_collections import StepCollection
 
@@ -173,26 +175,26 @@ def override_pipeline_parameter_var(func):
     We should remove this decorator after the grace period.
     """
     warning_msg_template = (
-        "%s should not be a pipeline variable (%s). "
-        "The default_value of this Parameter object will be used to override it. "
-        "Please remove this pipeline variable and use python primitives instead."
+        "The input argument %s of function (%s) is a pipeline variable (%s), which is not allowed. "
+        "The default_value of this Parameter object will be used to override it."
     )
 
     @wraps(func)
     def wrapper(*args, **kwargs):
+        func_name = "{}.{}".format(func.__module__, func.__name__)
         params = inspect.signature(func).parameters
         args = list(args)
         for i, (arg_name, _) in enumerate(params.items()):
             if i >= len(args):
                 break
             if isinstance(args[i], Parameter):
-                logging.warning(warning_msg_template, arg_name, type(args[i]))
+                logger.warning(warning_msg_template, arg_name, func_name, type(args[i]))
                 args[i] = args[i].default_value
         args = tuple(args)
 
         for arg_name, value in kwargs.items():
             if isinstance(value, Parameter):
-                logging.warning(warning_msg_template, arg_name, type(value))
+                logger.warning(warning_msg_template, arg_name, func_name, type(value))
                 kwargs[arg_name] = value.default_value
         return func(*args, **kwargs)
 

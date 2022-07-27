@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import logging
+from typing import Union, Optional
 
 from sagemaker import image_uris
 from sagemaker.deprecations import renamed_kwargs
@@ -26,6 +27,7 @@ from sagemaker.fw_utils import (
 from sagemaker.sklearn import defaults
 from sagemaker.sklearn.model import SKLearnModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
+from sagemaker.workflow.entities import PipelineVariable
 
 logger = logging.getLogger("sagemaker")
 
@@ -37,10 +39,10 @@ class SKLearn(Framework):
 
     def __init__(
         self,
-        entry_point,
+        entry_point: Union[str, PipelineVariable],
         framework_version=None,
         py_version="py3",
-        source_dir=None,
+        source_dir: Optional[Union[str, PipelineVariable]] = None,
         hyperparameters=None,
         image_uri=None,
         image_uri_region=None,

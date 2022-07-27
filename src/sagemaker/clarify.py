@@ -45,6 +45,12 @@ class DataConfig:
         dataset_type="text/csv",
         s3_compression_type="None",
         joinsource=None,
+        facet_dataset_uri=None,
+        facet_headers=None,
+        predicted_label_dataset_uri=None,
+        predicted_label_headers=None,
+        predicted_label=None,
+        excluded_columns=None,
     ):
         """Initializes a configuration of both input and output datasets.
 
@@ -54,22 +60,57 @@ class DataConfig:
             s3_analysis_config_output_path (str): S3 prefix to store the analysis config output.
                 If this field is None, then the ``s3_output_path`` will be used
                 to store the ``analysis_config`` output.
-            label (str): Target attribute of the model **required** for bias metrics (both pre-
-                and post-training). Optional when running SHAP explainability.
-                Specified as column name or index for CSV dataset, or as JSONPath for JSONLines.
-            headers (list[str]): A list of column names in the input dataset.
+            label (str): Target attribute of the model required by bias metrics.
+                Specified as column name or index for CSV dataset or as JSONPath for JSONLines.
+                *Required parameter* except for when the input dataset does not contain the label.
+                Cannot be used at the same time as ``predicted_label``.
             features (str): JSONPath for locating the feature columns for bias metrics if the
                 dataset format is JSONLines.
             dataset_type (str): Format of the dataset. Valid values are ``"text/csv"`` for CSV,
                 ``"application/jsonlines"`` for JSONLines, and
                 ``"application/x-parquet"`` for Parquet.
             s3_compression_type (str): Valid options are "None" or ``"Gzip"``.
-            joinsource (str): The name or index of the column in the dataset that acts as an
-                identifier column (for instance, while performing a join). This column is only
-                used as an identifier, and not used for any other computations. This is an
-                optional field in all cases except when the dataset contains more than one file,
-                and ``save_local_shap_values`` is set to True
-                in :class:`~sagemaker.clarify.SHAPConfig`.
+            joinsource (str or int): The name or index of the column in the dataset that
+                acts as an identifier column (for instance, while performing a join).
+                This column is only used as an identifier, and not used for any other computations.
+                This is an optional field in all cases except:
+
+                * The dataset contains more than one file and `save_local_shap_values`
+                  is set to true in :class:`~sagemaker.clarify.ShapConfig`, and/or
+                * When the dataset and/or facet dataset and/or predicted label dataset
+                  are in separate files.
+
+            facet_dataset_uri (str): Dataset S3 prefix/object URI that contains facet attribute(s),
+                used for bias analysis on datasets without facets.
+
+                * If the dataset and the facet dataset are one single file each, then
+                  the original dataset and facet dataset must have the same number of rows.
+                * If the dataset and facet dataset are in multiple files (either one), then
+                  an index column, ``joinsource``, is required to join the two datasets.
+
+                Clarify will not use the ``joinsource`` column and columns present in the facet
+                dataset when calling model inference APIs.
+            facet_headers (list[str]): List of column names in the facet dataset.
+            predicted_label_dataset_uri (str): Dataset S3 prefix/object URI with predicted labels,
+                which are used directly for analysis instead of making model inference API calls.
+
+                * If the dataset and the predicted label dataset are one single file each, then the
+                  original dataset and predicted label dataset must have the same number of rows.
+                * If the dataset and predicted label dataset are in multiple files (either one),
+                  then an index column, ``joinsource``, is required to join the two datasets.
+
+            predicted_label_headers (list[str]): List of column names in the predicted label dataset
+            predicted_label (str or int): Predicted label of the target attribute of the model
+                required for running bias analysis. Specified as column name or index for CSV data.
+                Clarify uses the predicted labels directly instead of making model inference API
+                calls. Cannot be used at the same time as ``label``.
+            excluded_columns (list[int] or list[str]): A list of names or indices of the columns
+                which are to be excluded from making model inference API calls.
+
+        Raises:
+            ValueError: when the ``dataset_type`` is invalid, predicted label dataset parameters
+                are used with un-supported ``dataset_type``, or facet dataset parameters
+                are used with un-supported ``dataset_type``
         """
         if dataset_type not in [
             "text/csv",
@@ -81,6 +122,32 @@ class DataConfig:
                 f"Invalid dataset_type '{dataset_type}'."
                 f" Please check the API documentation for the supported dataset types."
             )
+        # parameters for analysis on datasets without facets are only supported for CSV datasets
+        if dataset_type != "text/csv":
+            if predicted_label:
+                raise ValueError(
+                    f"The parameter 'predicted_label' is not supported"
+                    f" for dataset_type '{dataset_type}'."
+                    f" Please check the API documentation for the supported dataset types."
+                )
+            if excluded_columns:
+                raise ValueError(
+                    f"The parameter 'excluded_columns' is not supported"
+                    f" for dataset_type '{dataset_type}'."
+                    f" Please check the API documentation for the supported dataset types."
+                )
+            if facet_dataset_uri or facet_headers:
+                raise ValueError(
+                    f"The parameters 'facet_dataset_uri' and 'facet_headers'"
+                    f" are not supported for dataset_type '{dataset_type}'."
+                    f" Please check the API documentation for the supported dataset types."
+                )
+            if predicted_label_dataset_uri or predicted_label_headers:
+                raise ValueError(
+                    f"The parameters 'predicted_label_dataset_uri' and 'predicted_label_headers'"
+                    f" are not supported for dataset_type '{dataset_type}'."
+                    f" Please check the API documentation for the supported dataset types."
+                )
         self.s3_data_input_path = s3_data_input_path
         self.s3_output_path = s3_output_path
         self.s3_analysis_config_output_path = s3_analysis_config_output_path
@@ -89,6 +156,12 @@ class DataConfig:
         self.label = label
         self.headers = headers
         self.features = features
+        self.facet_dataset_uri = facet_dataset_uri
+        self.facet_headers = facet_headers
+        self.predicted_label_dataset_uri = predicted_label_dataset_uri
+        self.predicted_label_headers = predicted_label_headers
+        self.predicted_label = predicted_label
+        self.excluded_columns = excluded_columns
         self.analysis_config = {
             "dataset_type": dataset_type,
         }
@@ -96,6 +169,12 @@ class DataConfig:
         _set(headers, "headers", self.analysis_config)
         _set(label, "label", self.analysis_config)
         _set(joinsource, "joinsource_name_or_index", self.analysis_config)
+        _set(facet_dataset_uri, "facet_dataset_uri", self.analysis_config)
+        _set(facet_headers, "facet_headers", self.analysis_config)
+        _set(predicted_label_dataset_uri, "predicted_label_dataset_uri", self.analysis_config)
+        _set(predicted_label_headers, "predicted_label_headers", self.analysis_config)
+        _set(predicted_label, "predicted_label", self.analysis_config)
+        _set(excluded_columns, "excluded_columns", self.analysis_config)
 
     def get_config(self):
         """Returns part of an analysis config dictionary."""
@@ -205,21 +284,23 @@ class ModelConfig:
         r"""Initializes a configuration of a model and the endpoint to be created for it.
 
         Args:
-            model_name (str): Model name (as created by 'CreateModel').
+            model_name (str): Model name (as created by
+                `CreateModel <https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateModel.html>`_.
             instance_count (int): The number of instances of a new endpoint for model inference.
-            instance_type (str): The type of EC2 instance to use for model inference,
-                for example, ``"ml.c5.xlarge"``.
+            instance_type (str): The type of
+                `EC2 instance <https://aws.amazon.com/ec2/instance-types/>`_
+                to use for model inference; for example, ``"ml.c5.xlarge"``.
             accept_type (str): The model output format to be used for getting inferences with the
-                shadow endpoint. Valid values are "text/csv" for CSV and "application/jsonlines".
-                Default is the same as content_type.
+                shadow endpoint. Valid values are ``"text/csv"`` for CSV and
+                ``"application/jsonlines"``. Default is the same as ``content_type``.
             content_type (str): The model input format to be used for getting inferences with the
-                shadow endpoint. Valid values are "text/csv" for CSV and "application/jsonlines".
-                Default is the same as dataset format.
+                shadow endpoint. Valid values are ``"text/csv"`` for CSV and
+                ``"application/jsonlines"``. Default is the same as ``dataset_format``.
             content_template (str): A template string to be used to construct the model input from
                 dataset instances. It is only used when ``model_content_type`` is
                 ``"application/jsonlines"``. The template should have one and only one placeholder,
-                "features", which will be replaced by a features list to form the model inference
-                input.
+                ``"features"``, which will be replaced by a features list to form the model
+                inference input.
             custom_attributes (str): Provides additional information about a request for an
                 inference submitted to a model hosted at an Amazon SageMaker endpoint. The
                 information is an opaque value that is forwarded verbatim. You could use this
@@ -509,16 +590,20 @@ class TextConfig:
                 for these units.
             language (str): Specifies the language of the text features. Accepted values are
                 one of the following:
-                "chinese", "danish", "dutch", "english", "french", "german", "greek", "italian",
-                "japanese", "lithuanian", "multi-language", "norwegian bokmål", "polish",
-                "portuguese", "romanian", "russian", "spanish", "afrikaans", "albanian", "arabic",
-                "armenian", "basque", "bengali", "bulgarian", "catalan", "croatian", "czech",
-                "estonian", "finnish", "gujarati", "hebrew", "hindi", "hungarian", "icelandic",
-                "indonesian", "irish", "kannada", "kyrgyz", "latvian", "ligurian", "luxembourgish",
-                "macedonian", "malayalam", "marathi", "nepali", "persian", "sanskrit", "serbian",
-                "setswana", "sinhala", "slovak", "slovenian", "swedish", "tagalog", "tamil",
-                "tatar", "telugu", "thai", "turkish", "ukrainian", "urdu", "vietnamese", "yoruba".
-                Use "multi-language" for a mix of multiple languages.
+                ``"chinese"``, ``"danish"``, ``"dutch"``, ``"english"``, ``"french"``, ``"german"``,
+                ``"greek"``, ``"italian"``, ``"japanese"``, ``"lithuanian"``, ``"multi-language"``,
+                ``"norwegian bokmål"``, ``"polish"``, ``"portuguese"``, ``"romanian"``,
+                ``"russian"``, ``"spanish"``, ``"afrikaans"``, ``"albanian"``, ``"arabic"``,
+                ``"armenian"``, ``"basque"``, ``"bengali"``, ``"bulgarian"``, ``"catalan"``,
+                ``"croatian"``, ``"czech"``, ``"estonian"``, ``"finnish"``, ``"gujarati"``,
+                ``"hebrew"``, ``"hindi"``, ``"hungarian"``, ``"icelandic"``, ``"indonesian"``,
+                ``"irish"``, ``"kannada"``, ``"kyrgyz"``, ``"latvian"``, ``"ligurian"``,
+                ``"luxembourgish"``, ``"macedonian"``, ``"malayalam"``, ``"marathi"``, ``"nepali"``,
+                ``"persian"``, ``"sanskrit"``, ``"serbian"``, ``"setswana"``, ``"sinhala"``,
+                ``"slovak"``, ``"slovenian"``, ``"swedish"``, ``"tagalog"``, ``"tamil"``,
+                ``"tatar"``, ``"telugu"``, ``"thai"``, ``"turkish"``, ``"ukrainian"``, ``"urdu"``,
+                ``"vietnamese"``, ``"yoruba"``.
+                Use ``"multi-language"`` for a mix of multiple languages.
 
         Raises:
             ValueError: when ``granularity`` is not in list of supported values
@@ -742,12 +827,15 @@ class SageMakerClarifyProcessor(Processor):
                 data stored in Amazon S3.
             instance_count (int): The number of instances to run
                 a processing job with.
-            instance_type (str): The type of EC2 instance to use for
-                processing, for example, ``'ml.c4.xlarge'``.
-            volume_size_in_gb (int): Size in GB of the EBS volume
-                to use for storing data during processing (default: 30).
-            volume_kms_key (str): A KMS key for the processing
-                volume (default: None).
+            instance_type (str): The type of
+                `EC2 instance <https://aws.amazon.com/ec2/instance-types/>`_
+                to use for model inference; for example, ``"ml.c5.xlarge"``.
+            volume_size_in_gb (int): Size in GB of the
+                `EBS volume <https://docs.aws.amazon.com/sagemaker/latest/dg/host-instance-storage.html>`_.
+                to use for storing data during processing (default: 30 GB).
+            volume_kms_key (str): A
+                `KMS key <https://docs.aws.amazon.com/sagemaker/latest/dg/key-management.html>`_
+                for the processing volume (default: None).
             output_kms_key (str): The KMS key ID for processing job outputs (default: None).
             max_runtime_in_seconds (int): Timeout in seconds (default: None).
                 After this amount of time, Amazon SageMaker terminates the job,
@@ -769,7 +857,7 @@ class SageMakerClarifyProcessor(Processor):
                 inter-container traffic, security group IDs, and subnets.
             job_name_prefix (str): Processing job name prefix.
             version (str): Clarify version to use.
-        """
+        """  # noqa E501  # pylint: disable=c0301
         container_uri = image_uris.retrieve("clarify", sagemaker_session.boto_region_name, version)
         self.job_name_prefix = job_name_prefix
         super(SageMakerClarifyProcessor, self).__init__(
@@ -1163,6 +1251,7 @@ class SageMakerClarifyProcessor(Processor):
 
         Currently, only SHAP and  Partial Dependence Plots (PDP) are supported
         as explainability methods.
+        You can request both methods or one at a time with the ``explainability_config`` parameter.
 
         When SHAP is requested in the ``explainability_config``,
         the SHAP algorithm calculates the feature importance for each input example
@@ -1188,6 +1277,8 @@ class SageMakerClarifyProcessor(Processor):
                 Config of the specific explainability method or a list of
                 :class:`~sagemaker.clarify.ExplainabilityConfig` objects.
                 Currently, SHAP and PDP are the two methods supported.
+                You can request multiple methods at once by passing in a list of
+                `~sagemaker.clarify.ExplainabilityConfig`.
             model_scores (int or str or :class:`~sagemaker.clarify.ModelPredictedLabelConfig`):
                 Index or JSONPath to locate the predicted scores in the model output. This is not
                 required if the model output is a single score. Alternatively, it can be an instance

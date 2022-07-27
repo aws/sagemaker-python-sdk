@@ -15,6 +15,7 @@ from __future__ import absolute_import
 
 import logging
 import re
+from typing import Optional, Union, Dict
 
 from sagemaker.deprecations import renamed_kwargs
 from sagemaker.estimator import Framework, EstimatorBase
@@ -27,6 +28,7 @@ from sagemaker.huggingface.model import HuggingFaceModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 from sagemaker.huggingface.training_compiler.config import TrainingCompilerConfig
+from sagemaker.workflow.entities import PipelineVariable
 
 logger = logging.getLogger("sagemaker")
 
@@ -38,16 +40,16 @@ class HuggingFace(Framework):
 
     def __init__(
         self,
-        py_version,
-        entry_point,
-        transformers_version=None,
-        tensorflow_version=None,
-        pytorch_version=None,
-        source_dir=None,
-        hyperparameters=None,
-        image_uri=None,
-        distribution=None,
-        compiler_config=None,
+        py_version: str,
+        entry_point: Union[str, PipelineVariable],
+        transformers_version: Optional[str] = None,
+        tensorflow_version: Optional[str] = None,
+        pytorch_version: Optional[str] = None,
+        source_dir: Optional[Union[str, PipelineVariable]] = None,
+        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
+        distribution: Optional[Dict] = None,
+        compiler_config: Optional[TrainingCompilerConfig] = None,
         **kwargs,
     ):
         """This estimator runs a Hugging Face training script in a SageMaker training environment.
