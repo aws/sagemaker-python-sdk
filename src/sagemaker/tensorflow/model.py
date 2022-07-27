@@ -24,6 +24,8 @@ from sagemaker.serializers import JSONSerializer
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.pipeline_context import PipelineSession
 
+logger = logging.getLogger(__name__)
+
 
 class TensorFlowPredictor(Predictor):
     """A ``Predictor`` implementation for inference against TensorFlow Serving endpoints."""
@@ -363,13 +365,10 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             instance_type, accelerator_type, serverless_inference_config=serverless_inference_config
         )
         env = self._get_container_env()
+        key_prefix = sagemaker.fw_utils.model_code_key_prefix(self.key_prefix, self.name, image_uri)
+        bucket = self.bucket or self.sagemaker_session.default_bucket()
 
         if self.entry_point and not is_pipeline_variable(self.model_data):
-            key_prefix = sagemaker.fw_utils.model_code_key_prefix(
-                self.key_prefix, self.name, image_uri
-            )
-
-            bucket = self.bucket or self.sagemaker_session.default_bucket()
             model_data = s3.s3_path_join("s3://", bucket, key_prefix, "model.tar.gz")
 
             sagemaker.utils.repack_model(
@@ -385,6 +384,9 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             # model is not yet there, defer repacking to later during pipeline execution
             if isinstance(self.sagemaker_session, PipelineSession):
                 self.sagemaker_session.context.need_runtime_repack.add(id(self))
+                self.sagemaker_session.context.runtime_repack_output_prefix = "s3://{}/{}".format(
+                    bucket, key_prefix
+                )
             else:
                 logging.warning(
                     "The model_data is a Pipeline variable of type %s, "
@@ -426,6 +428,10 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         if self.image_uri:
             return self.image_uri
 
+        logger.info(
+            "image_uri is not presented, retrieving image_uri based on instance_type, "
+            "framework etc."
+        )
         return image_uris.retrieve(
             self._framework_name,
             region_name or self.sagemaker_session.boto_region_name,

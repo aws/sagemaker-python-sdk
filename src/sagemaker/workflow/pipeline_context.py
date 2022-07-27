@@ -67,6 +67,7 @@ class _ModelStepArguments(_StepArguments):
         self.create_model_package_request = None
         self.create_model_request = None
         self.need_runtime_repack = set()
+        self.runtime_repack_output_prefix = None
 
 
 class PipelineSession(Session):
@@ -139,14 +140,14 @@ class PipelineSession(Session):
         else:
             self.context = _JobStepArguments(func_name, request)
 
-    def init_step_arguments(self, model):
+    def init_model_step_arguments(self, model):
         """Create a `_ModelStepArguments` (if not exist) as pipeline context
 
         Args:
             model (Model or PipelineModel): A `sagemaker.model.Model`
                 or `sagemaker.pipeline.PipelineModel` instance
         """
-        if not self._context or not isinstance(self._context, _ModelStepArguments):
+        if not isinstance(self._context, _ModelStepArguments):
             self._context = _ModelStepArguments(model)
 
 
@@ -197,7 +198,7 @@ def runnable_by_pipeline(run_func):
                 UserWarning,
             )
             if run_func.__name__ in ["register", "create"]:
-                self_instance.sagemaker_session.init_step_arguments(self_instance)
+                self_instance.sagemaker_session.init_model_step_arguments(self_instance)
                 run_func(*args, **kwargs)
                 context = self_instance.sagemaker_session.context
                 self_instance.sagemaker_session.context = None
