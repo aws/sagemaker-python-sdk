@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import logging
+from typing import Union, Optional
 
 from sagemaker import image_uris
 from sagemaker.deprecations import renamed_kwargs
@@ -25,6 +26,7 @@ from sagemaker.fw_utils import (
 )
 from sagemaker.session import Session
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
+from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.xgboost import defaults
 from sagemaker.xgboost.model import XGBoostModel
 from sagemaker.xgboost.utils import validate_py_version, validate_framework_version
@@ -42,9 +44,9 @@ class XGBoost(Framework):
 
     def __init__(
         self,
-        entry_point,
+        entry_point: Union[str, PipelineVariable],
         framework_version,
-        source_dir=None,
+        source_dir: Optional[Union[str, PipelineVariable]] = None,
         hyperparameters=None,
         py_version="py3",
         image_uri=None,

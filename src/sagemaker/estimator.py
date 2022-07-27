@@ -47,6 +47,7 @@ from sagemaker.fw_utils import (
     get_mp_parameters,
     tar_and_upload_dir,
     validate_source_dir,
+    validate_source_code_input_against_pipeline_variables,
 )
 from sagemaker.inputs import TrainingInput, FileSystemInput
 from sagemaker.job import _Job
@@ -140,12 +141,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         disable_profiler: bool = False,
         environment: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         max_retry_attempts: Optional[Union[int, PipelineVariable]] = None,
-        source_dir: Optional[str] = None,
+        source_dir: Optional[Union[str, PipelineVariable]] = None,
         git_config: Optional[Dict[str, str]] = None,
         hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         container_log_level: Union[int, PipelineVariable] = logging.INFO,
         code_location: Optional[str] = None,
-        entry_point: Optional[str] = None,
+        entry_point: Optional[Union[str, PipelineVariable]] = None,
         dependencies: Optional[List[Union[str]]] = None,
         instance_groups: Optional[Dict[str, Union[str, int]]] = None,
         **kwargs,
@@ -461,6 +462,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             "train_volume_kms_key", "volume_kms_key", volume_kms_key, kwargs
         )
 
+        validate_source_code_input_against_pipeline_variables(
+            entry_point=entry_point,
+            source_dir=source_dir,
+            git_config=git_config,
+            enable_network_isolation=enable_network_isolation,
+        )
+
         self.role = role
         self.instance_count = instance_count
         self.instance_type = instance_type
@@ -663,7 +671,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             # validate source dir will raise a ValueError if there is something wrong with
             # the source directory. We are intentionally not handling it because this is a
             # critical error.
-            if self.source_dir and not self.source_dir.lower().startswith("s3://"):
+            if (
+                self.source_dir
+                and not is_pipeline_variable(self.source_dir)
+                and not self.source_dir.lower().startswith("s3://")
+            ):
                 validate_source_dir(self.entry_point, self.source_dir)
 
             # if we are in local mode with local_code=True. We want the container to just
@@ -2151,11 +2163,11 @@ class Estimator(EstimatorBase):
         disable_profiler: bool = False,
         environment: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         max_retry_attempts: Optional[Union[int, PipelineVariable]] = None,
-        source_dir: Optional[str] = None,
+        source_dir: Optional[Union[str, PipelineVariable]] = None,
         git_config: Optional[Dict[str, str]] = None,
         container_log_level: Union[int, PipelineVariable] = logging.INFO,
         code_location: Optional[str] = None,
-        entry_point: Optional[str] = None,
+        entry_point: Optional[Union[str, PipelineVariable]] = None,
         dependencies: Optional[List[str]] = None,
         instance_groups: Optional[Dict[str, Union[str, int]]] = None,
         **kwargs,
@@ -2603,8 +2615,8 @@ class Framework(EstimatorBase):
 
     def __init__(
         self,
-        entry_point: str,
-        source_dir: Optional[str] = None,
+        entry_point: Union[str, PipelineVariable],
+        source_dir: Optional[Union[str, PipelineVariable]] = None,
         hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         container_log_level: Union[int, PipelineVariable] = logging.INFO,
         code_location: Optional[str] = None,
@@ -2783,7 +2795,14 @@ class Framework(EstimatorBase):
         """
         super(Framework, self).__init__(enable_network_isolation=enable_network_isolation, **kwargs)
         image_uri = renamed_kwargs("image_name", "image_uri", image_uri, kwargs)
-        if entry_point.startswith("s3://"):
+
+        validate_source_code_input_against_pipeline_variables(
+            entry_point=entry_point,
+            source_dir=source_dir,
+            git_config=git_config,
+            enable_network_isolation=enable_network_isolation,
+        )
+        if not is_pipeline_variable(entry_point) and entry_point.startswith("s3://"):
             raise ValueError(
                 "Invalid entry point script: {}. Must be a path to a local file.".format(
                     entry_point

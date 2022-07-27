@@ -52,6 +52,7 @@ from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.tensorflow.estimator import TensorFlow
 from sagemaker.predictor_async import AsyncPredictor
 from sagemaker.transformer import Transformer
+from sagemaker.workflow.parameters import ParameterString, ParameterBoolean
 from sagemaker.workflow.pipeline_context import PipelineSession
 from sagemaker.xgboost.estimator import XGBoost
 
@@ -4214,3 +4215,74 @@ def test_all_framework_estimators_add_jumpstart_base_name(
         sagemaker_session.endpoint_from_production_variants.reset_mock()
         sagemaker_session.create_model.reset_mock()
         sagemaker_session.train.reset_mock()
+
+
+def test_insert_invalid_source_code_args():
+    with pytest.raises(TypeError) as err:
+        Estimator(
+            image_uri="IMAGE_URI",
+            role=ROLE,
+            entry_point=ParameterString(name="EntryPoint"),
+            instance_type="ml.m5.xlarge",
+            instance_count=1,
+            enable_network_isolation=True,
+        )
+    assert (
+        "entry_point, source_dir should not be pipeline variables "
+        "when enable_network_isolation is a pipeline variable or it is set to True."
+    ) in str(err.value)
+
+    with pytest.raises(TypeError) as err:
+        Estimator(
+            image_uri="IMAGE_URI",
+            role=ROLE,
+            entry_point="dummy.py",
+            source_dir=ParameterString(name="SourceDir"),
+            instance_type="ml.m5.xlarge",
+            instance_count=1,
+            enable_network_isolation=ParameterBoolean(name="EnableNetworkIsolation"),
+        )
+    assert (
+        "entry_point, source_dir should not be pipeline variables "
+        "when enable_network_isolation is a pipeline variable or it is set to True."
+    ) in str(err.value)
+
+    with pytest.raises(TypeError) as err:
+        Estimator(
+            image_uri=IMAGE_URI,
+            role=ROLE,
+            git_config={"repo": GIT_REPO, "branch": BRANCH, "commit": COMMIT},
+            source_dir=ParameterString(name="SourceDir"),
+            entry_point=ParameterString(name="EntryPoint"),
+            instance_type="ml.m5.xlarge",
+            instance_count=1,
+        )
+    assert (
+        "entry_point, source_dir should not be pipeline variables when git_config is given"
+        in str(err.value)
+    )
+
+    with pytest.raises(TypeError) as err:
+        Estimator(
+            image_uri=IMAGE_URI,
+            role=ROLE,
+            entry_point=ParameterString(name="EntryPoint"),
+            instance_type="ml.m5.xlarge",
+            instance_count=1,
+        )
+    assert "The entry_point should not be a pipeline variable when source_dir is missing" in str(
+        err.value
+    )
+
+    with pytest.raises(TypeError) as err:
+        Estimator(
+            image_uri="IMAGE_URI",
+            role=ROLE,
+            entry_point=ParameterString(name="EntryPoint"),
+            source_dir="file://my-file/",
+            instance_type="ml.m5.xlarge",
+            instance_count=1,
+        )
+    assert (
+        "The entry_point should not be a pipeline variable " "when source_dir is a local path"
+    ) in str(err.value)
