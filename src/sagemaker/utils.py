@@ -739,7 +739,7 @@ def update_container_with_inference_params(
     framework_version=None,
     nearest_model_name=None,
     data_input_configuration=None,
-    container_obj=None,
+    container_def=None,
     container_list=None,
 ):
     """Function to check if inference recommender parameters exist and update container.
@@ -752,27 +752,29 @@ def update_container_with_inference_params(
         nearest_model_name (str): Name of a pre-trained machine learning benchmarked by
             Amazon SageMaker Inference Recommender (default: None).
         data_input_configuration (str): Input object for the model (default: None).
-        container_obj (dict): object to be updated.
+        container_def (dict): object to be updated.
         container_list (list): list to be updated.
 
     Returns:
         dict: dict with inference recommender params
     """
 
-    if framework is not None and framework_version is not None and nearest_model_name is not None:
-        if container_list is not None:
-            for obj in container_list:
-                construct_container_object(
-                    obj, data_input_configuration, framework, framework_version, nearest_model_name
-                )
-        if container_obj is not None:
+    if container_list is not None:
+        for obj in container_list:
             construct_container_object(
-                container_obj,
-                data_input_configuration,
-                framework,
-                framework_version,
-                nearest_model_name,
+                obj, data_input_configuration, framework, framework_version, nearest_model_name
             )
+
+    if container_def is not None:
+        construct_container_object(
+            container_def,
+            data_input_configuration,
+            framework,
+            framework_version,
+            nearest_model_name,
+        )
+
+    return container_list or container_def
 
 
 def construct_container_object(
@@ -788,20 +790,32 @@ def construct_container_object(
         nearest_model_name (str): Name of a pre-trained machine learning benchmarked by
             Amazon SageMaker Inference Recommender (default: None).
         data_input_configuration (str): Input object for the model (default: None).
-        container_obj (dict): object to be updated.
-        container_list (list): list to be updated.
+        obj (dict): object to be updated.
 
     Returns:
         dict: container object
     """
 
-    obj.update(
-        {
-            "Framework": framework,
-            "FrameworkVersion": framework_version,
-            "NearestModelName": nearest_model_name,
-        }
-    )
+    if framework is not None:
+        obj.update(
+            {
+                "Framework": framework,
+            }
+        )
+
+    if framework_version is not None:
+        obj.update(
+            {
+                "FrameworkVersion": framework_version,
+            }
+        )
+
+    if nearest_model_name is not None:
+        obj.update(
+            {
+                "NearestModelName": nearest_model_name,
+            }
+        )
 
     if data_input_configuration is not None:
         obj.update(
@@ -811,3 +825,5 @@ def construct_container_object(
                 },
             }
         )
+
+    return obj

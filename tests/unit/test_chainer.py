@@ -18,7 +18,7 @@ import os
 from distutils.util import strtobool
 
 import pytest
-from mock import MagicMock, Mock
+from mock import MagicMock, Mock, ANY
 from mock import patch
 
 from sagemaker.chainer import defaults
@@ -614,3 +614,57 @@ def test_model_py2_warning(warning, sagemaker_session, chainer_version):
     )
     assert model.py_version == "py2"
     warning.assert_called_with(model._framework_name, defaults.LATEST_PY2_VERSION)
+
+
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+def test_register_chainer_model_auto_infer_framework(
+    sagemaker_session, chainer_version, chainer_py_version
+):
+
+    model_package_group_name = "test-chainer-register-model"
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarge"]
+    image_uri = "fakeimage"
+
+    chainer_model = ChainerModel(
+        "s3://some/data.tar.gz",
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
+        framework_version=chainer_version,
+        py_version=chainer_py_version,
+    )
+
+    chainer_model.register(
+        content_types,
+        response_types,
+        inference_instances,
+        transform_instances,
+        model_package_group_name=model_package_group_name,
+        marketplace_cert=True,
+        image_uri=image_uri,
+    )
+
+    expected_create_model_package_request = {
+        "containers": [
+            {
+                "Image": image_uri,
+                "Environment": ANY,
+                "ModelDataUrl": ANY,
+                "Framework": "CHAINER",
+                "FrameworkVersion": chainer_version,
+            },
+        ],
+        "content_types": content_types,
+        "response_types": response_types,
+        "inference_instances": inference_instances,
+        "transform_instances": transform_instances,
+        "model_package_group_name": model_package_group_name,
+        "marketplace_cert": True,
+    }
+
+    sagemaker_session.create_model_package_from_containers.assert_called_with(
+        **expected_create_model_package_request
+    )

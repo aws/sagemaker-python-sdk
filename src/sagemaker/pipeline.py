@@ -340,12 +340,12 @@ class PipelineModel(object):
             container_def = self.pipeline_container_def(
                 inference_instances[0] if inference_instances else None
             )
-            update_container_with_inference_params(
+            container_def = update_container_with_inference_params(
                 framework=framework,
                 framework_version=framework_version,
                 nearest_model_name=nearest_model_name,
                 data_input_configuration=data_input_configuration,
-                container_list=container_def,
+                container_def=container_def,
             )
         else:
             container_def = [

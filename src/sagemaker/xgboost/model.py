@@ -124,6 +124,108 @@ class XGBoostModel(FrameworkModel):
         validate_py_version(py_version)
         validate_framework_version(framework_version)
 
+    def register(
+        self,
+        content_types,
+        response_types,
+        inference_instances=None,
+        transform_instances=None,
+        model_package_name=None,
+        model_package_group_name=None,
+        image_uri=None,
+        model_metrics=None,
+        metadata_properties=None,
+        marketplace_cert=False,
+        approval_status=None,
+        description=None,
+        drift_check_baselines=None,
+        customer_metadata_properties=None,
+        domain=None,
+        sample_payload_url=None,
+        task=None,
+        framework=None,
+        framework_version=None,
+        nearest_model_name=None,
+        data_input_configuration=None,
+    ):
+        """Creates a model package for creating SageMaker models or listing on Marketplace.
+
+        Args:
+            content_types (list): The supported MIME types for the input data.
+            response_types (list): The supported MIME types for the output data.
+            inference_instances (list): A list of the instance types that are used to
+                generate inferences in real-time.
+            transform_instances (list): A list of the instance types on which a transformation
+                job can be run or on which an endpoint can be deployed.
+            model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
+                using `model_package_name` makes the Model Package un-versioned (default: None).
+            model_package_group_name (str): Model Package Group name, exclusive to
+                `model_package_name`, using `model_package_group_name` makes the Model Package
+                versioned (default: None).
+            image_uri (str): Inference image uri for the container. Model class' self.image will
+                be used if it is None (default: None).
+            model_metrics (ModelMetrics): ModelMetrics object (default: None).
+            metadata_properties (MetadataProperties): MetadataProperties (default: None).
+            marketplace_cert (bool): A boolean value indicating if the Model Package is certified
+                for AWS Marketplace (default: False).
+            approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
+                or "PendingManualApproval" (default: "PendingManualApproval").
+            description (str): Model Package description (default: None).
+            drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
+            customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
+                metadata properties (default: None).
+            domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
+                "MACHINE_LEARNING" (default: None).
+            sample_payload_url (str): The S3 path where the sample payload is stored
+                (default: None).
+            task (str): Task values which are supported by Inference Recommender are "FILL_MASK",
+                "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION", "IMAGE_SEGMENTATION",
+                "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
+            framework (str): Machine learning framework of the model package container image
+                (default: None).
+            framework_version (str): Framework version of the Model Package Container Image
+                (default: None).
+            nearest_model_name (str): Name of a pre-trained machine learning benchmarked by
+                Amazon SageMaker Inference Recommender (default: None).
+            data_input_configuration (str): Input object for the model (default: None).
+
+        Returns:
+            str: A string of SageMaker Model Package ARN.
+        """
+        instance_type = inference_instances[0]
+        self._init_sagemaker_session_if_does_not_exist(instance_type)
+
+        if image_uri:
+            self.image_uri = image_uri
+        if not self.image_uri:
+            self.image_uri = self.serving_image_uri(
+                region_name=self.sagemaker_session.boto_session.region_name,
+                instance_type=instance_type,
+            )
+        return super(XGBoostModel, self).register(
+            content_types,
+            response_types,
+            inference_instances,
+            transform_instances,
+            model_package_name,
+            model_package_group_name,
+            image_uri,
+            model_metrics,
+            metadata_properties,
+            marketplace_cert,
+            approval_status,
+            description,
+            drift_check_baselines=drift_check_baselines,
+            customer_metadata_properties=customer_metadata_properties,
+            domain=domain,
+            sample_payload_url=sample_payload_url,
+            task=task,
+            framework=(framework or self._framework_name).upper(),
+            framework_version=framework_version or self.framework_version,
+            nearest_model_name=nearest_model_name,
+            data_input_configuration=data_input_configuration,
+        )
+
     def prepare_container_def(
         self, instance_type=None, accelerator_type=None, serverless_inference_config=None
     ):
