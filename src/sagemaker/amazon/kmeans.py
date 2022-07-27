@@ -13,6 +13,8 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
+from typing import Union, Optional
+
 from sagemaker import image_uris
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase
 from sagemaker.amazon.common import RecordSerializer, RecordDeserializer
@@ -21,7 +23,9 @@ from sagemaker.amazon.validation import gt, isin, ge, le
 from sagemaker.predictor import Predictor
 from sagemaker.model import Model
 from sagemaker.session import Session
+from sagemaker.utils import pop_out_unused_kwarg
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
+from sagemaker.workflow.entities import PipelineVariable
 
 
 class KMeans(AmazonAlgorithmEstimatorBase):
@@ -246,7 +250,13 @@ class KMeansModel(Model):
     Predictor to performs k-means cluster assignment.
     """
 
-    def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
+    def __init__(
+        self,
+        model_data: Union[str, PipelineVariable],
+        role: str,
+        sagemaker_session: Optional[Session] = None,
+        **kwargs
+    ):
         """Initialization for KMeansModel class.
 
         Args:
@@ -270,6 +280,8 @@ class KMeansModel(Model):
             sagemaker_session.boto_region_name,
             version=KMeans.repo_version,
         )
+        pop_out_unused_kwarg("predictor_cls", kwargs, KMeansPredictor.__name__)
+        pop_out_unused_kwarg("image_uri", kwargs, image_uri)
         super(KMeansModel, self).__init__(
             image_uri,
             model_data,
