@@ -27,6 +27,7 @@ import json
 import abc
 import uuid
 from datetime import datetime
+from typing import Optional
 
 import botocore
 from six.moves.urllib import parse
@@ -827,3 +828,20 @@ def construct_container_object(
         )
 
     return obj
+
+
+def pop_out_unused_kwarg(arg_name: str, kwargs: dict, override_val: Optional[str] = None):
+    """Pop out the unused key-word argument and give a warning.
+
+    Args:
+        arg_name (str): The name of the argument to be checked if it is unused.
+        kwargs (dict): The key-word argument dict.
+        override_val (str): The value used to override the unused argument (default: None).
+    """
+    if arg_name not in kwargs:
+        return
+    warn_msg = "{} supplied in kwargs will be ignored".format(arg_name)
+    if override_val:
+        warn_msg += " and further overridden with {}.".format(override_val)
+    logging.warning(warn_msg)
+    kwargs.pop(arg_name)

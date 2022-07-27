@@ -761,3 +761,15 @@ def test_partition_by_region():
     assert sagemaker.utils._aws_partition("us-gov-east-1") == "aws-us-gov"
     assert sagemaker.utils._aws_partition("us-iso-east-1") == "aws-iso"
     assert sagemaker.utils._aws_partition("us-isob-east-1") == "aws-iso-b"
+
+
+def test_pop_out_unused_kwarg():
+    # The given arg_name is in kwargs
+    kwargs = dict(arg1=1, arg2=2)
+    sagemaker.utils.pop_out_unused_kwarg("arg1", kwargs)
+    assert "arg1" not in kwargs
+
+    # The given arg_name is not in kwargs
+    kwargs = dict(arg1=1, arg2=2)
+    sagemaker.utils.pop_out_unused_kwarg("arg3", kwargs)
+    assert len(kwargs) == 2
