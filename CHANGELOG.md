@@ -1,5 +1,25 @@
 # Changelog
 
+## v2.101.0 (2022-07-27)
+
+### Features
+
+ * Algorithms region launch on CGK
+ * enhance-bucket-override-support
+ * infer framework and version
+ * support clarify bias detection when facets not included
+ * Add CGK region to frameworks by DLC
+
+### Bug Fixes and Other Changes
+
+ * Make repack step output path align with model repack path
+ * Support parameterized source code input for TrainingStep
+
+### Documentation Changes
+
+ * heterogeneous cluster api doc fix
+ * smdmp v1.10 release note
+
 ## v2.100.0 (2022-07-18)
 
 ### Features
