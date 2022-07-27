@@ -131,7 +131,7 @@ def get_spec_from_base_spec(
     return JumpStartModelSpecs(spec)
 
 
-def patched_get_file_from_s3(
+def patched_retrieval_function(
     _modelCacheObj: JumpStartModelsCache,
     key: JumpStartCachedS3ContentKey,
     value: JumpStartCachedS3ContentValue,
