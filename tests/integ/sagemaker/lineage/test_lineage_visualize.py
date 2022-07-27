@@ -22,12 +22,14 @@ import sagemaker.lineage.query
 
 from tests.integ.sagemaker.lineage.helpers import name, names, retry, LineageResourceHelper
 
+
 def test_LineageResourceHelper():
     lineage_resource_helper = LineageResourceHelper()
     art1 = lineage_resource_helper.create_artifact(artifact_name=name())
     art2 = lineage_resource_helper.create_artifact(artifact_name=name())
     lineage_resource_helper.create_association(source_arn=art1, dest_arn=art2)
     lineage_resource_helper.clean_all()
+
 
 def test_wide_graphs(sagemaker_session):
     lineage_resource_helper = LineageResourceHelper()
@@ -36,16 +38,17 @@ def test_wide_graphs(sagemaker_session):
         for i in range(10):
             art = lineage_resource_helper.create_artifact(artifact_name=name())
             lineage_resource_helper.create_association(source_arn=art_root, dest_arn=art)
-            time.sleep(0.1)
-    except(e):
+            time.sleep(0.2)
+    except Exception as e:
+        print(e)
         lineage_resource_helper.clean_all()
 
     try:
         lq = sagemaker.lineage.query.LineageQuery(sagemaker_session)
-        result = lq.query(start_arns=[art_root])
-        print(result)
-    except(e):
+        lq_result = lq.query(start_arns=[art_root])
+        lq_result.visualize()
+    except Exception as e:
+        print(e)
         lineage_resource_helper.clean_all()
 
     lineage_resource_helper.clean_all()
-

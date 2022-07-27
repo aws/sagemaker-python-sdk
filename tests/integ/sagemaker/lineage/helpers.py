@@ -85,35 +85,29 @@ def traverse_graph_forward(start_arn, sagemaker_session):
 
 
 class LineageResourceHelper:
-
     def __init__(self):
-        self.client = boto3.client('sagemaker')
+        self.client = boto3.client("sagemaker")
         self.artifacts = []
         self.associations = []
 
-    def create_artifact(self, artifact_name, artifact_type='Dataset'):
+    def create_artifact(self, artifact_name, artifact_type="Dataset"):
         response = self.client.create_artifact(
             ArtifactName=artifact_name,
             Source={
-                'SourceUri': "Test-artifact-" + artifact_name,
-                'SourceTypes': [
-                    {
-                        'SourceIdType': 'S3ETag',
-                        'Value': 'Test-artifact-sourceId-value'
-                    },
-                ]
+                "SourceUri": "Test-artifact-" + artifact_name,
+                "SourceTypes": [
+                    {"SourceIdType": "S3ETag", "Value": "Test-artifact-sourceId-value"},
+                ],
             },
-            ArtifactType=artifact_type
+            ArtifactType=artifact_type,
         )
-        self.artifacts.append(response['ArtifactArn'])
+        self.artifacts.append(response["ArtifactArn"])
 
-        return response['ArtifactArn']
+        return response["ArtifactArn"]
 
-    def create_association(self, source_arn, dest_arn, association_type='AssociatedWith'):
+    def create_association(self, source_arn, dest_arn, association_type="AssociatedWith"):
         response = self.client.add_association(
-            SourceArn=source_arn,
-            DestinationArn=dest_arn,
-            AssociationType=association_type
+            SourceArn=source_arn, DestinationArn=dest_arn, AssociationType=association_type
         )
         if "SourceArn" in response.keys():
             self.associations.append((source_arn, dest_arn))
@@ -124,12 +118,9 @@ class LineageResourceHelper:
     def clean_all(self):
         for source, dest in self.associations:
             try:
-                self.client.delete_association(
-                    SourceArn=source,
-                    DestinationArn=dest
-                )
+                self.client.delete_association(SourceArn=source, DestinationArn=dest)
                 time.sleep(2)
-            except(e):
+            except (e):
                 print("skipped " + str(e))
 
         for artifact_arn in self.artifacts:
