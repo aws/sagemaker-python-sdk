@@ -20,7 +20,7 @@ import time
 import shutil
 import tempfile
 from collections import namedtuple
-from typing import Optional
+from typing import Optional, Union, Dict
 
 import sagemaker.image_uris
 from sagemaker.session_settings import SessionSettings
@@ -28,6 +28,7 @@ import sagemaker.utils
 from sagemaker.workflow import is_pipeline_variable
 
 from sagemaker.deprecations import renamed_warning, renamed_kwargs
+from sagemaker.workflow.entities import PipelineVariable
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +123,58 @@ def validate_source_dir(script, directory):
             )
 
     return True
+
+
+def validate_source_code_input_against_pipeline_variables(
+    entry_point: Optional[Union[str, PipelineVariable]] = None,
+    source_dir: Optional[Union[str, PipelineVariable]] = None,
+    git_config: Optional[Dict[str, str]] = None,
+    enable_network_isolation: Union[bool, PipelineVariable] = False,
+):
+    """Validate source code input against pipeline variables
+
+    Args:
+        entry_point (str, PipelineVariable): The path to the local Python source file that
+            should be executed as the entry point to training (default: None).
+        source_dir (str, PipelineVariable): The Path to a directory with any other
+            training source code dependencies aside from the entry point file (default: None).
+        git_config (Dict[str, str]): Git configurations used for cloning files (default: None).
+        enable_network_isolation (bool, PipelineVariable): Specifies whether container will run
+            in network isolation mode (default: False).
+    """
+    if is_pipeline_variable(enable_network_isolation) or enable_network_isolation is True:
+        if is_pipeline_variable(entry_point) or is_pipeline_variable(source_dir):
+            raise TypeError(
+                "entry_point, source_dir should not be pipeline variables "
+                "when enable_network_isolation is a pipeline variable or it is set to True."
+            )
+    if git_config:
+        if is_pipeline_variable(entry_point) or is_pipeline_variable(source_dir):
+            raise TypeError(
+                "entry_point, source_dir should not be pipeline variables when git_config is given."
+            )
+    if is_pipeline_variable(entry_point):
+        if not source_dir:
+            raise TypeError(
+                "The entry_point should not be a pipeline variable when source_dir is missing."
+            )
+        if not is_pipeline_variable(source_dir) and not source_dir.lower().startswith("s3://"):
+            raise TypeError(
+                "The entry_point should not be a pipeline variable when source_dir is a local path."
+            )
+        logger.warning(
+            "The entry_point is a pipeline variable: %s. During pipeline execution, "
+            "the interpreted value of entry_point has to be a local path in the container "
+            "pointing to a Python source file which is located at the root of source_dir.",
+            type(entry_point),
+        )
+    if is_pipeline_variable(source_dir):
+        logger.warning(
+            "The source_dir is a pipeline variable: %s. During pipeline execution, "
+            "the interpreted value of source_dir has to be an S3 URI and "
+            "must point to a tar.gz file",
+            type(source_dir),
+        )
 
 
 def get_mp_parameters(distribution):
@@ -265,7 +318,7 @@ def tar_and_upload_dir(
         sagemaker.fw_utils.UserCode: An object with the S3 bucket and key (S3 prefix) and
             script name.
     """
-    if directory and directory.lower().startswith("s3://"):
+    if directory and (is_pipeline_variable(directory) or directory.lower().startswith("s3://")):
         return UploadedCode(s3_prefix=directory, script_name=script)
 
     script_name = script if directory else os.path.basename(script)

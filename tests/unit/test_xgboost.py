@@ -19,6 +19,7 @@ import pytest
 
 from mock import Mock
 from mock import patch
+from mock import ANY
 from packaging.version import Version
 
 
@@ -672,3 +673,54 @@ def test_unsupported_xgboost_version_error(sagemaker_session):
     error_message = "XGBoost 1.1 is not supported"
     assert error_message in str(error1)
     assert error_message in str(error2)
+
+
+def test_register_xgboost_model_auto_infer_framework(sagemaker_session, xgboost_framework_version):
+    source_dir = "s3://mybucket/source"
+
+    model_package_group_name = "test-pytorch-register-model"
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarge"]
+    image_uri = "fakeimage"
+
+    xgboost_model = XGBoostModel(
+        model_data=source_dir,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        entry_point=SCRIPT_PATH,
+        framework_version=xgboost_framework_version,
+    )
+
+    xgboost_model.register(
+        content_types,
+        response_types,
+        inference_instances,
+        transform_instances,
+        model_package_group_name=model_package_group_name,
+        marketplace_cert=True,
+        image_uri=image_uri,
+    )
+
+    expected_create_model_package_request = {
+        "containers": [
+            {
+                "Image": image_uri,
+                "Environment": ANY,
+                "ModelDataUrl": ANY,
+                "Framework": "XGBOOST",
+                "FrameworkVersion": xgboost_framework_version,
+            },
+        ],
+        "content_types": content_types,
+        "response_types": response_types,
+        "inference_instances": inference_instances,
+        "transform_instances": transform_instances,
+        "model_package_group_name": model_package_group_name,
+        "marketplace_cert": True,
+    }
+
+    sagemaker_session.create_model_package_from_containers.assert_called_with(
+        **expected_create_model_package_request
+    )

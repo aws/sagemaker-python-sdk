@@ -18,6 +18,7 @@ from six import string_types
 
 from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.local import file_input
+from sagemaker.workflow import is_pipeline_variable
 
 
 class _Job(object):
@@ -168,14 +169,14 @@ class _Job(object):
         target_attribute_name=None,
     ):
         """Placeholder docstring"""
+        s3_input_result = TrainingInput(
+            uri_input,
+            content_type=content_type,
+            input_mode=input_mode,
+            compression=compression,
+            target_attribute_name=target_attribute_name,
+        )
         if isinstance(uri_input, str) and validate_uri and uri_input.startswith("s3://"):
-            s3_input_result = TrainingInput(
-                uri_input,
-                content_type=content_type,
-                input_mode=input_mode,
-                compression=compression,
-                target_attribute_name=target_attribute_name,
-            )
             return s3_input_result
         if isinstance(uri_input, str) and validate_uri and uri_input.startswith("file://"):
             return file_input(uri_input)
@@ -185,16 +186,11 @@ class _Job(object):
                 '"file://"'.format(uri_input)
             )
         if isinstance(uri_input, str):
-            s3_input_result = TrainingInput(
-                uri_input,
-                content_type=content_type,
-                input_mode=input_mode,
-                compression=compression,
-                target_attribute_name=target_attribute_name,
-            )
             return s3_input_result
         if isinstance(uri_input, (TrainingInput, file_input, FileSystemInput)):
             return uri_input
+        if is_pipeline_variable(uri_input):
+            return s3_input_result
 
         raise ValueError(
             "Cannot format input {}. Expecting one of str, TrainingInput, file_input or "

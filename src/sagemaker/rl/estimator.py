@@ -16,6 +16,7 @@ from __future__ import absolute_import
 import enum
 import logging
 import re
+from typing import Union, Optional
 
 from sagemaker import image_uris, fw_utils
 from sagemaker.estimator import Framework, EstimatorBase
@@ -23,6 +24,7 @@ from sagemaker.model import FrameworkModel, SAGEMAKER_OUTPUT_LOCATION
 from sagemaker.mxnet.model import MXNetModel
 from sagemaker.tensorflow.model import TensorFlowModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
+from sagemaker.workflow.entities import PipelineVariable
 
 logger = logging.getLogger("sagemaker")
 
@@ -74,11 +76,11 @@ class RLEstimator(Framework):
 
     def __init__(
         self,
-        entry_point,
+        entry_point: Union[str, PipelineVariable],
         toolkit=None,
         toolkit_version=None,
         framework=None,
-        source_dir=None,
+        source_dir: Optional[Union[str, PipelineVariable]] = None,
         hyperparameters=None,
         image_uri=None,
         metric_definitions=None,
@@ -280,6 +282,11 @@ class RLEstimator(Framework):
         """
         if self.image_uri:
             return self.image_uri
+
+        logger.info(
+            "image_uri is not presented, retrieving image_uri based on instance_type, "
+            "framework etc."
+        )
         return image_uris.retrieve(
             self._image_framework(),
             self.sagemaker_session.boto_region_name,
