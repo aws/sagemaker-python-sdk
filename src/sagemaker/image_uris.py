@@ -32,7 +32,6 @@ ECR_URI_TEMPLATE = "{registry}.dkr.{hostname}/{repository}"
 HUGGING_FACE_FRAMEWORK = "huggingface"
 
 
-# TODO: we should remove this decorator later
 @override_pipeline_parameter_var
 def retrieve(
     framework,
@@ -117,7 +116,11 @@ def retrieve(
     args = dict(locals())
     for name, val in args.items():
         if is_pipeline_variable(val):
-            raise ValueError("%s should not be a pipeline variable (%s)" % (name, type(val)))
+            raise ValueError(
+                "When retrieving the image_uri, the argument %s should not be a pipeline variable "
+                "(%s) since pipeline variables are only interpreted in the pipeline execution time."
+                % (name, type(val))
+            )
 
     if is_jumpstart_model_input(model_id, model_version):
         return artifacts._retrieve_image_uri(
@@ -487,6 +490,9 @@ def get_training_image_uri(
     if image_uri:
         return image_uri
 
+    logger.info(
+        "image_uri is not presented, retrieving image_uri based on instance_type, framework etc."
+    )
     base_framework_version: Optional[str] = None
 
     if tensorflow_version is not None or pytorch_version is not None:
