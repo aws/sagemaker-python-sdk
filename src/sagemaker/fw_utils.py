@@ -60,6 +60,7 @@ DEBUGGER_UNSUPPORTED_REGIONS = (
     "me-central-1",
     "ap-south-2",
     "eu-central-2",
+    "us-gov-east-1",
 )
 PROFILER_UNSUPPORTED_REGIONS = (
     "us-iso-east-1",
@@ -69,6 +70,7 @@ PROFILER_UNSUPPORTED_REGIONS = (
     "me-central-1",
     "ap-south-2",
     "eu-central-2",
+    "us-gov-east-1",
 )
 
 SINGLE_GPU_INSTANCE_TYPES = ("ml.p2.xlarge", "ml.p3.2xlarge")
