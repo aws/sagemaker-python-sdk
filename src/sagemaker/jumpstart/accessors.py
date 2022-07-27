@@ -175,8 +175,10 @@ class JumpStartModelsAccessor(object):
         cache_kwargs: Optional[Dict[str, Any]] = None, region: Optional[str] = None
     ) -> List[JumpStartModelHeader]:
         """Return entire JumpStart models manifest.
+
         Raises:
             ValueError: If region in `cache_kwargs` is inconsistent with `region` argument.
+
         Args:
             cache_kwargs (Dict[str, Any]): Optional. Cache kwargs to use.
                 (Default: None).
