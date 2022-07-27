@@ -284,7 +284,7 @@ def _generate_jumpstart_model_versions(  # pylint: disable=redefined-builtin
     if isinstance(filter, str):
         filter = Identity(filter)
 
-    models_manifest_list = accessors.JumpStartModelsAccessor.get_manifest(region=region)
+    models_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(region=region)
     manifest_keys = set(models_manifest_list[0].__slots__)
 
     all_keys: Set[str] = set()

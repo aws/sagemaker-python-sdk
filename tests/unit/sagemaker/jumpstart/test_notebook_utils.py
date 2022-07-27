@@ -22,7 +22,7 @@ from sagemaker.jumpstart.notebook_utils import (
 )
 
 
-@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_manifest")
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 @patch("sagemaker.jumpstart.notebook_utils._generate_jumpstart_model_versions")
 def test_list_jumpstart_scripts(
@@ -66,7 +66,7 @@ def test_list_jumpstart_scripts(
     assert patched_get_model_specs.call_count == len(PROTOTYPICAL_MODEL_SPECS_DICT)
 
 
-@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_manifest")
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 @patch("sagemaker.jumpstart.notebook_utils._generate_jumpstart_model_versions")
 def test_list_jumpstart_tasks(
@@ -106,7 +106,7 @@ def test_list_jumpstart_tasks(
     patched_get_model_specs.assert_not_called()
 
 
-@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_manifest")
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 @patch("sagemaker.jumpstart.notebook_utils._generate_jumpstart_model_versions")
 def test_list_jumpstart_frameworks(
@@ -161,7 +161,7 @@ def test_list_jumpstart_frameworks(
 
 
 class ListJumpStartModels(TestCase):
-    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_manifest")
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     def test_list_jumpstart_models_simple_case(
         self, patched_get_model_specs: Mock, patched_get_manifest: Mock
@@ -182,7 +182,7 @@ class ListJumpStartModels(TestCase):
         patched_get_manifest.assert_called()
         patched_get_model_specs.assert_not_called()
 
-    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_manifest")
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     def test_list_jumpstart_models_script_filter(
         self, patched_get_model_specs: Mock, patched_get_manifest: Mock
@@ -232,7 +232,7 @@ class ListJumpStartModels(TestCase):
         assert patched_get_model_specs.call_count == manifest_length
         patched_get_manifest.assert_called_once()
 
-    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_manifest")
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     def test_list_jumpstart_models_task_filter(
         self, patched_get_model_specs: Mock, patched_get_manifest: Mock
@@ -287,7 +287,7 @@ class ListJumpStartModels(TestCase):
         patched_get_model_specs.assert_not_called()
         patched_get_manifest.assert_called_once()
 
-    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_manifest")
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     def test_list_jumpstart_models_framework_filter(
         self, patched_get_model_specs: Mock, patched_get_manifest: Mock
@@ -367,7 +367,7 @@ class ListJumpStartModels(TestCase):
         patched_get_model_specs.assert_not_called()
         patched_get_manifest.assert_called_once()
 
-    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_manifest")
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     def test_list_jumpstart_models_region(
         self, patched_get_model_specs: Mock, patched_get_manifest: Mock
@@ -380,7 +380,7 @@ class ListJumpStartModels(TestCase):
 
         patched_get_manifest.assert_called_once_with(region="some-region")
 
-    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_manifest")
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @patch("sagemaker.jumpstart.notebook_utils.get_sagemaker_version")
     def test_list_jumpstart_models_unsupported_models(
@@ -412,7 +412,7 @@ class ListJumpStartModels(TestCase):
         assert [] != list_jumpstart_models("training_supported in [False, True]")
         patched_get_model_specs.assert_called()
 
-    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_manifest")
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     def test_list_jumpstart_models_old_models(
         self,
@@ -483,7 +483,7 @@ class ListJumpStartModels(TestCase):
             list_old_models=False, list_versions=True
         ) == list_jumpstart_models(list_versions=True)
 
-    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_manifest")
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     def test_list_jumpstart_models_vulnerable_models(
         self,
@@ -532,7 +532,7 @@ class ListJumpStartModels(TestCase):
 
         assert patched_get_model_specs.call_count == 0
 
-    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_manifest")
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     def test_list_jumpstart_models_deprecated_models(
         self,
@@ -562,7 +562,7 @@ class ListJumpStartModels(TestCase):
 
         assert patched_get_model_specs.call_count == 0
 
-    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_manifest")
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     def test_list_jumpstart_models_no_versions(
         self,
@@ -587,7 +587,7 @@ class ListJumpStartModels(TestCase):
 
         assert list_jumpstart_models(list_versions=False) == all_model_ids
 
-    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_manifest")
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     def test_list_jumpstart_models_complex_queries(
         self,
@@ -630,7 +630,7 @@ class ListJumpStartModels(TestCase):
             )
         ) == ["tensorflow-ic-bit-m-r101x1-ilsvrc2012-classification-1"]
 
-    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_manifest")
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     def test_list_jumpstart_models_multiple_level_index(
         self,
