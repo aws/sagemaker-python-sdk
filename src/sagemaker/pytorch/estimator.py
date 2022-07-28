@@ -216,9 +216,6 @@ class PyTorch(Framework):
             if self.framework_version and Version(self.framework_version) >= Version("1.3"):
                 kwargs["enable_sagemaker_metrics"] = True
 
-        if "instance_type" in kwargs:
-            self.instance_type = kwargs["instance_type"]
-
         super(PyTorch, self).__init__(
             entry_point, source_dir, hyperparameters, image_uri=image_uri, **kwargs
         )
@@ -246,11 +243,14 @@ class PyTorch(Framework):
         distribution_config = {}
         if "pytorchddp" in distribution:
             pytorch_ddp_enabled = distribution.get("pytorchddp").get("enabled", False)
+
+        if pytorch_ddp_enabled:
             distribution_config[self.LAUNCH_PYTORCH_DDP_ENV_NAME] = pytorch_ddp_enabled
             if self.instance_type is not None:
                 distribution_config[self.INSTANCE_TYPE_ENV_NAME] = self.instance_type
         else:
             distribution_config = self._distribution_configuration(distribution=distribution)
+
         return distribution_config
 
     def hyperparameters(self):
