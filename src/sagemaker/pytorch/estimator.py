@@ -241,6 +241,7 @@ class PyTorch(Framework):
             dict containing Pytorch DDP config
         """
         distribution_config = {}
+        pytorch_ddp_enabled = False
         if "pytorchddp" in distribution:
             pytorch_ddp_enabled = distribution.get("pytorchddp").get("enabled", False)
 

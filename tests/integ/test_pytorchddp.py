@@ -33,8 +33,8 @@ pytorchddp_dir = os.path.join(os.path.dirname(__file__), "..", "data", "pytorch_
 )
 def test_pytorchddp_pt_mnist(
     sagemaker_session,
-    pytorch_training_latest_version,
-    pytorch_training_latest_py_version,
+    pytorch_ddp_framework_version,
+    pytorch_ddp_py_version,
 ):
     job_name = sagemaker.utils.unique_name_from_base("pt-pytorch-ddp")
     estimator = PyTorch(
@@ -44,8 +44,8 @@ def test_pytorchddp_pt_mnist(
         instance_count=2,
         instance_type="ml.p3.16xlarge",
         sagemaker_session=sagemaker_session,
-        framework_version=pytorch_training_latest_version,
-        py_version=pytorch_training_latest_py_version,
+        framework_version=pytorch_ddp_framework_version,
+        py_version=pytorch_ddp_py_version,
         distribution={"pytorchddp": {"enabled": True}},
     )
 

@@ -765,6 +765,8 @@ def test_register_pytorch_model_auto_infer_framework(
     sagemaker_session.create_model_package_from_containers.assert_called_with(
         **expected_create_model_package_request
     )
+
+
 def test_pytorch_ddp_distribution_configuration(
     sagemaker_session, pytorch_ddp_framework_version, pytorch_ddp_py_version
 ):
