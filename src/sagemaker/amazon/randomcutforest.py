@@ -13,6 +13,8 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
+from typing import Optional, Union
+
 from sagemaker import image_uris
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase
 from sagemaker.amazon.common import RecordSerializer, RecordDeserializer
@@ -21,7 +23,9 @@ from sagemaker.amazon.validation import ge, le
 from sagemaker.predictor import Predictor
 from sagemaker.model import Model
 from sagemaker.session import Session
+from sagemaker.utils import pop_out_unused_kwarg
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
+from sagemaker.workflow.entities import PipelineVariable
 
 
 class RandomCutForest(AmazonAlgorithmEstimatorBase):
@@ -209,7 +213,13 @@ class RandomCutForestModel(Model):
     Predictor that calculates anomaly scores for datapoints.
     """
 
-    def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
+    def __init__(
+        self,
+        model_data: Union[str, PipelineVariable],
+        role: str,
+        sagemaker_session: Optional[Session] = None,
+        **kwargs
+    ):
         """Initialization for RandomCutForestModel class.
 
         Args:
@@ -233,6 +243,8 @@ class RandomCutForestModel(Model):
             sagemaker_session.boto_region_name,
             version=RandomCutForest.repo_version,
         )
+        pop_out_unused_kwarg("predictor_cls", kwargs, RandomCutForestPredictor.__name__)
+        pop_out_unused_kwarg("image_uri", kwargs, image_uri)
         super(RandomCutForestModel, self).__init__(
             image_uri,
             model_data,
