@@ -25,23 +25,28 @@ from tests.integ.sagemaker.lineage.helpers import name, names, retry, LineageRes
 
 def test_LineageResourceHelper():
     lineage_resource_helper = LineageResourceHelper()
-    art1 = lineage_resource_helper.create_artifact(artifact_name=name())
-    art2 = lineage_resource_helper.create_artifact(artifact_name=name())
-    lineage_resource_helper.create_association(source_arn=art1, dest_arn=art2)
-    lineage_resource_helper.clean_all()
+    try:
+        art1 = lineage_resource_helper.create_artifact(artifact_name=name())
+        art2 = lineage_resource_helper.create_artifact(artifact_name=name())
+        lineage_resource_helper.create_association(source_arn=art1, dest_arn=art2)
+        lineage_resource_helper.clean_all()
+    except Exception as e:
+        print(e)
+        assert False
 
 
 def test_wide_graphs(sagemaker_session):
     lineage_resource_helper = LineageResourceHelper()
     art_root = lineage_resource_helper.create_artifact(artifact_name=name())
     try:
-        for i in range(10):
+        for i in range(500):
             art = lineage_resource_helper.create_artifact(artifact_name=name())
             lineage_resource_helper.create_association(source_arn=art_root, dest_arn=art)
             time.sleep(0.2)
     except Exception as e:
         print(e)
         lineage_resource_helper.clean_all()
+        assert False
 
     try:
         lq = sagemaker.lineage.query.LineageQuery(sagemaker_session)
@@ -50,5 +55,6 @@ def test_wide_graphs(sagemaker_session):
     except Exception as e:
         print(e)
         lineage_resource_helper.clean_all()
+        assert False
 
     lineage_resource_helper.clean_all()

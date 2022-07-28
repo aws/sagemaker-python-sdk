@@ -17,6 +17,7 @@ import uuid
 from datetime import datetime
 import time
 import boto3
+from botocore.config import Config
 from sagemaker.lineage import association
 from sagemaker.lineage.artifact import Artifact
 from sagemaker.lineage.association import Association
@@ -86,7 +87,7 @@ def traverse_graph_forward(start_arn, sagemaker_session):
 
 class LineageResourceHelper:
     def __init__(self):
-        self.client = boto3.client("sagemaker")
+        self.client = boto3.client("sagemaker", config=Config(connect_timeout=5, read_timeout=60, retries={'max_attempts': 20}))
         self.artifacts = []
         self.associations = []
 
@@ -119,9 +120,13 @@ class LineageResourceHelper:
         for source, dest in self.associations:
             try:
                 self.client.delete_association(SourceArn=source, DestinationArn=dest)
-                time.sleep(2)
-            except (e):
+                time.sleep(0.5)
+            except Exception as e:
                 print("skipped " + str(e))
 
         for artifact_arn in self.artifacts:
-            self.client.delete_artifact(ArtifactArn=artifact_arn)
+            try:
+                self.client.delete_artifact(ArtifactArn=artifact_arn)
+                time.sleep(0.5)
+            except Exception as e:
+                print("skipped " + str(e))
