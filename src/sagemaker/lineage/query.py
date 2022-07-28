@@ -274,7 +274,6 @@ class PyvisVisualizer(object):
 
         # add edges to graph
         for e in elements["edges"]:
-            print(e)
             net.add_edge(e[0], e[1], title=e[2])
 
         return net.show(path)
@@ -366,7 +365,7 @@ class LineageQueryResult(object):
         elements = {"nodes": verts, "edges": edges}
         return elements
 
-    def visualize(self):
+    def visualize(self, path="pyvisExample.html"):
         """Visualize lineage query result."""
         lineage_graph = {
             # nodes can have shape / color
@@ -400,7 +399,7 @@ class LineageQueryResult(object):
 
         pyvis_vis = PyvisVisualizer(lineage_graph)
         elements = self._get_visualization_elements()
-        return pyvis_vis.render(elements=elements)
+        return pyvis_vis.render(elements=elements, path=path)
 
 
 class LineageFilter(object):
