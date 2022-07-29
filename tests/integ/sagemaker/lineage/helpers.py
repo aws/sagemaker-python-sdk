@@ -16,7 +16,8 @@ from __future__ import absolute_import
 import uuid
 from datetime import datetime
 import time
-
+import boto3
+from botocore.config import Config
 
 def name():
     return "lineage-integ-{}-{}".format(
@@ -78,3 +79,4 @@ def traverse_graph_forward(start_arn, sagemaker_session):
 
     ret = []
     return visit(start_arn, set())
+

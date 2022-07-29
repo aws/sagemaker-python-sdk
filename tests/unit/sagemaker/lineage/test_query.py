@@ -524,3 +524,31 @@ def test_vertex_to_object_unconvertable(sagemaker_session):
 
     with pytest.raises(ValueError):
         vertex.to_lineage_object()
+
+
+def test_get_visualization_elements(sagemaker_session):
+    lineage_query = LineageQuery(sagemaker_session)
+    sagemaker_session.sagemaker_client.query_lineage.return_value = {
+        "Vertices": [
+            {"Arn": "arn1", "Type": "Endpoint", "LineageType": "Artifact"},
+            {"Arn": "arn2", "Type": "Model", "LineageType": "Context"},
+        ],
+        "Edges": [{"SourceArn": "arn1", "DestinationArn": "arn2", "AssociationType": "Produced"}],
+    }
+
+    query_response = lineage_query.query(
+        start_arns=["arn:aws:sagemaker:us-west-2:0123456789012:context/mycontext"]
+    )
+
+    print(query_response)
+
+    elements = query_response._get_visualization_elements()
+
+    print(elements)
+
+    assert elements["nodes"][0] == ("arn1", "Endpoint", "Artifact", False)
+    assert elements["nodes"][1] == ("arn2", "Model", "Context", False)
+    assert elements["edges"][0] == ("arn1", "arn2", "Produced")
+
+    
+
