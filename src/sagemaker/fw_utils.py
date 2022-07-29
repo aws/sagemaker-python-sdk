@@ -808,10 +808,10 @@ def validate_pytorch_distribution(
         # We need to validate only for PyTorch framework
         return
     if "pytorchddp" in distribution:
-            pytorch_ddp_enabled = distribution.get("pytorchddp").get("enabled", False)
-            if not pytorch_ddp_enabled:
-                # Distribution strategy other than pytorchddp is selected
-                return
+        pytorch_ddp_enabled = distribution.get("pytorchddp").get("enabled", False)
+        if not pytorch_ddp_enabled:
+            # Distribution strategy other than pytorchddp is selected
+            return
 
     err_msg = ""
     if not image_uri:

@@ -858,7 +858,7 @@ def test_validate_pytorchddp_not_raises():
         py_version="py3",
         image_uri="custom-container",
     )
-    # Case 2: Framework is PyTorch, but distribution is not PyTorchDDP 
+    # Case 2: Framework is PyTorch, but distribution is not PyTorchDDP
     pytorchddp_disabled = {"pytorchddp": {"enabled": False}}
     fw_utils.validate_pytorch_distribution(
         distribution=pytorchddp_disabled,
@@ -867,9 +867,17 @@ def test_validate_pytorchddp_not_raises():
         py_version="py3",
         image_uri="custom-container",
     )
-     # Case 3: Framework is PyTorch, Distribution is PyTorchDDP enabled, supported framework and py versions
+    # Case 3: Framework is PyTorch, Distribution is PyTorchDDP enabled, supported framework and py versions
     pytorchddp_enabled = {"pytorchddp": {"enabled": True}}
-    pytorchddp_supported_fw_versions = ["1.10","1.10.0", "1.10.2","1.11","1.11.0","1.12","1.12.0"]
+    pytorchddp_supported_fw_versions = [
+        "1.10",
+        "1.10.0",
+        "1.10.2",
+        "1.11",
+        "1.11.0",
+        "1.12",
+        "1.12.0",
+    ]
     for framework_version in pytorchddp_supported_fw_versions:
         fw_utils.validate_pytorch_distribution(
             distribution=pytorchddp_enabled,
@@ -892,7 +900,7 @@ def test_validate_pytorchddp_raises():
             image_uri=None,
         )
 
-    # Case 2: Unsupported Py version 
+    # Case 2: Unsupported Py version
     with pytest.raises(ValueError):
         fw_utils.validate_pytorch_distribution(
             distribution=pytorchddp_enabled,
