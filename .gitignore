@@ -30,3 +30,4 @@ env/
 .vscode/
 **/tmp
 .python-version
+*.html
