@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 """This module contains helper methods for tests of SageMaker Lineage"""
 from __future__ import absolute_import
+from urllib import response
 
 import uuid
 from datetime import datetime
@@ -86,9 +87,12 @@ def traverse_graph_forward(start_arn, sagemaker_session):
 
 
 class LineageResourceHelper:
-    def __init__(self):
-        self.client = boto3.client("sagemaker", config=Config(connect_timeout=5, read_timeout=60, retries={'max_attempts': 20}))
+    def __init__(self, sagemaker_session):
+        self.client = sagemaker_session.sagemaker_client
         self.artifacts = []
+        self.actions = []
+        self.contexts = []
+        self.trialComponents = []
         self.associations = []
 
     def create_artifact(self, artifact_name, artifact_type="Dataset"):
@@ -105,6 +109,42 @@ class LineageResourceHelper:
         self.artifacts.append(response["ArtifactArn"])
 
         return response["ArtifactArn"]
+
+    def create_action(self, action_name, action_type="ModelDeployment"):
+        response = self.client.create_action(
+            ActionName=action_name,
+            Source={
+                "SourceUri": "Test-action-" + action_name,
+                "SourceTypes": [
+                    {"SourceIdType": "S3ETag", "Value": "Test-action-sourceId-value"},
+                ],
+            },
+            ActionType=action_type
+        )
+        self.actions.append(response["ActionArn"])
+
+        return response["ActionArn"]
+
+    def create_context(self, context_name, context_type="Endpoint"):
+        response = self.client.create_context(
+            ContextName=context_name,
+            Source={
+                "SourceUri": "Test-context-" + context_name,
+                "SourceTypes": [
+                    {"SourceIdType": "S3ETag", "Value": "Test-context-sourceId-value"},
+                ],
+            },
+            ContextType=context_type
+        )
+        self.contexts.append(response["ContextArn"])
+
+        return response["ContextArn"]
+
+    def create_trialComponent(self, trialComponent_name, trialComponent_type="TrainingJob"):
+        response = self.client.create_trial_component(
+            TrialComponentName=trialComponent_name,
+            
+        )
 
     def create_association(self, source_arn, dest_arn, association_type="AssociatedWith"):
         response = self.client.add_association(
@@ -127,6 +167,13 @@ class LineageResourceHelper:
         for artifact_arn in self.artifacts:
             try:
                 self.client.delete_artifact(ArtifactArn=artifact_arn)
+                time.sleep(0.5)
+            except Exception as e:
+                print("skipped " + str(e))
+
+        for action_arn in self.actions:
+            try:
+                self.client.delete_action(ActionArn=action_arn)
                 time.sleep(0.5)
             except Exception as e:
                 print("skipped " + str(e))
