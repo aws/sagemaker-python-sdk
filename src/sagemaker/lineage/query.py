@@ -214,17 +214,7 @@ class PyvisVisualizer(object):
 
         self.graph_styles = graph_styles
 
-    def _import_visual_modules(self):
-        """Import modules needed for visualization."""
-        get_module("pyvis")
-        from pyvis.network import Network
-        from pyvis.options import Options
-
-        return Network, Options
-
-    def _get_options(self):
-        """Get pyvis graph options."""
-        options = """
+        self._options = """
             var options = {
             "configure":{
                 "enabled": false
@@ -253,28 +243,36 @@ class PyvisVisualizer(object):
             }
         }
             """
-        return options
 
-    def _node_color(self, n):
+    def _import_visual_modules(self):
+        """Import modules needed for visualization."""
+        get_module("pyvis")
+        from pyvis.network import Network
+        from pyvis.options import Options
+
+        return Network, Options
+
+    def _node_color(self, entity):
         """Return node color by background-color specified in graph styles."""
-        return self.graph_styles[n[2]]["style"]["background-color"]
+        return self.graph_styles[entity]["style"]["background-color"]
 
     def render(self, elements, path="pyvisExample.html"):
         """Render graph for lineage query result."""
         net = self.Network(height="500px", width="100%", notebook=True, directed=True)
-        options = self._get_options()
-        net.set_options(options)
+        net.set_options(self._options)
 
         # add nodes to graph
-        for n in elements["nodes"]:
-            if n[3]:  # startarn
-                net.add_node(n[0], label=n[1], title=n[2], color=self._node_color(n), shape="star")
+        for arn, source, entity, is_start_arn in elements["nodes"]:
+            if is_start_arn:  # startarn
+                net.add_node(
+                    arn, label=source, title=entity, color=self._node_color(entity), shape="star"
+                )
             else:
-                net.add_node(n[0], label=n[1], title=n[2], color=self._node_color(n))
+                net.add_node(arn, label=source, title=entity, color=self._node_color(entity))
 
         # add edges to graph
-        for e in elements["edges"]:
-            net.add_edge(e[0], e[1], title=e[2])
+        for src, dest, asso_type in elements["edges"]:
+            net.add_edge(src, dest, title=asso_type)
 
         return net.show(path)
 
