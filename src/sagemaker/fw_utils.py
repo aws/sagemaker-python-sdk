@@ -804,14 +804,16 @@ def validate_pytorch_distribution(
             `py_version` is not python3 or
             `framework_version` is not in PYTORCHDDP_SUPPORTED_FRAMEWORK_VERSIONS
     """
-    if framework_name != "pytorch":
+    if framework_name and framework_name != "pytorch":
         # We need to validate only for PyTorch framework
         return
+
+    pytorch_ddp_enabled = False
     if "pytorchddp" in distribution:
         pytorch_ddp_enabled = distribution.get("pytorchddp").get("enabled", False)
-        if not pytorch_ddp_enabled:
-            # Distribution strategy other than pytorchddp is selected
-            return
+    if not pytorch_ddp_enabled:
+        # Distribution strategy other than pytorchddp is selected
+        return
 
     err_msg = ""
     if not image_uri:
