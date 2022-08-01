@@ -1088,11 +1088,8 @@ class SageMakerClarifyProcessor(Processor):
             bias_config,
             methods
         )
-        if job_name is None:
-            if self.job_name_prefix:
-                job_name = utils.name_from_base(self.job_name_prefix)
-            else:
-                job_name = utils.name_from_base("Clarify-Pretraining-Bias")
+        # when name is either not provided (is None) or an empty string ("")
+        job_name = job_name or utils.name_from_base(self.job_name_prefix or "Clarify-Pretraining-Bias")
         return self._run(
             data_config,
             analysis_config,
@@ -1174,11 +1171,8 @@ class SageMakerClarifyProcessor(Processor):
             methods,
             model_config
         )
-        if job_name is None:
-            if self.job_name_prefix:
-                job_name = utils.name_from_base(self.job_name_prefix)
-            else:
-                job_name = utils.name_from_base("Clarify-Posttraining-Bias")
+        # when name is either not provided (is None) or an empty string ("")
+        job_name = job_name or utils.name_from_base(self.job_name_prefix or "Clarify-Posttraining-Bias")
         return self._run(
             data_config,
             analysis_config,
@@ -1271,11 +1265,8 @@ class SageMakerClarifyProcessor(Processor):
             pre_training_methods,
             post_training_methods,
         )
-        if job_name is None:
-            if self.job_name_prefix:
-                job_name = utils.name_from_base(self.job_name_prefix)
-            else:
-                job_name = utils.name_from_base("Clarify-Bias")
+        # when name is either not provided (is None) or an empty string ("")
+        job_name = job_name or utils.name_from_base(self.job_name_prefix or "Clarify-Bias")
         return self._run(
             data_config,
             analysis_config,
@@ -1366,11 +1357,8 @@ class SageMakerClarifyProcessor(Processor):
             model_scores,
             explainability_config
         )
-        if job_name is None:
-            if self.job_name_prefix:
-                job_name = utils.name_from_base(self.job_name_prefix)
-            else:
-                job_name = utils.name_from_base("Clarify-Explainability")
+        # when name is either not provided (is None) or an empty string ("")
+        job_name = job_name or utils.name_from_base(self.job_name_prefix or "Clarify-Explainability")
         return self._run(
             data_config,
             analysis_config,
