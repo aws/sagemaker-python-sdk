@@ -845,3 +845,14 @@ def pop_out_unused_kwarg(arg_name: str, kwargs: dict, override_val: Optional[str
         warn_msg += " and further overridden with {}.".format(override_val)
     logging.warning(warn_msg)
     kwargs.pop(arg_name)
+
+
+def to_string(obj: object):
+    """Convert an object to string
+
+    This helper function handles converting PipelineVariable object to string as well
+
+    Args:
+        obj (object): The object to be converted
+    """
+    return obj.to_string() if is_pipeline_variable(obj) else str(obj)

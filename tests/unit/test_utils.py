@@ -30,7 +30,8 @@ from mock import call, patch, Mock, MagicMock
 import sagemaker
 from sagemaker.session_settings import SessionSettings
 from tests.unit.sagemaker.workflow.helpers import CustomStep
-from sagemaker.workflow.parameters import ParameterString
+from sagemaker.workflow.parameters import ParameterString, ParameterInteger
+
 
 BUCKET_WITHOUT_WRITING_PERMISSION = "s3://bucket-without-writing-permission"
 
@@ -773,3 +774,16 @@ def test_pop_out_unused_kwarg():
     kwargs = dict(arg1=1, arg2=2)
     sagemaker.utils.pop_out_unused_kwarg("arg3", kwargs)
     assert len(kwargs) == 2
+
+
+def test_to_string():
+    var = 1
+    assert sagemaker.utils.to_string(var) == "1"
+
+    var = ParameterInteger(name="MyInt")
+    assert sagemaker.utils.to_string(var).expr == {
+        "Std:Join": {
+            "On": "",
+            "Values": [{"Get": "Parameters.MyInt"}],
+        },
+    }
