@@ -45,10 +45,10 @@ def role_arn():
 def test_pipeline_duplicate_step_name(sagemaker_session_mock):
     step1 = CustomStep(name="foo")
     step2 = CustomStep(name="foo")
-    pipeline = Pipeline(
-        name="MyPipeline", steps=[step1, step2], sagemaker_session=sagemaker_session_mock
-    )
     with pytest.raises(ValueError) as error:
+        pipeline = Pipeline(
+            name="MyPipeline", steps=[step1, step2], sagemaker_session=sagemaker_session_mock
+        )
         PipelineGraph.from_pipeline(pipeline)
     assert "Pipeline steps cannot have duplicate names." in str(error.value)
 
@@ -61,12 +61,12 @@ def test_pipeline_duplicate_step_name_in_condition_step(sagemaker_session_mock):
     condition_step = ConditionStep(
         name="condStep", conditions=[cond], depends_on=[custom_step], if_steps=[custom_step2]
     )
-    pipeline = Pipeline(
-        name="MyPipeline",
-        steps=[custom_step, condition_step],
-        sagemaker_session=sagemaker_session_mock,
-    )
     with pytest.raises(ValueError) as error:
+        pipeline = Pipeline(
+            name="MyPipeline",
+            steps=[custom_step, condition_step],
+            sagemaker_session=sagemaker_session_mock,
+        )
         PipelineGraph.from_pipeline(pipeline)
     assert "Pipeline steps cannot have duplicate names." in str(error.value)
 
@@ -74,12 +74,12 @@ def test_pipeline_duplicate_step_name_in_condition_step(sagemaker_session_mock):
 def test_pipeline_duplicate_step_name_in_step_collection(sagemaker_session_mock):
     custom_step = CustomStep(name="foo-1")
     custom_step_collection = CustomStepCollection(name="foo", depends_on=[custom_step])
-    pipeline = Pipeline(
-        name="MyPipeline",
-        steps=[custom_step, custom_step_collection],
-        sagemaker_session=sagemaker_session_mock,
-    )
     with pytest.raises(ValueError) as error:
+        pipeline = Pipeline(
+            name="MyPipeline",
+            steps=[custom_step, custom_step_collection],
+            sagemaker_session=sagemaker_session_mock,
+        )
         PipelineGraph.from_pipeline(pipeline)
     assert "Pipeline steps cannot have duplicate names." in str(error.value)
 

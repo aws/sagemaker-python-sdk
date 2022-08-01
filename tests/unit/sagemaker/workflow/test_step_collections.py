@@ -20,6 +20,8 @@ import shutil
 import pytest
 
 from sagemaker.drift_check_baselines import DriftCheckBaselines
+from sagemaker.workflow.condition_step import ConditionStep
+from sagemaker.workflow.conditions import ConditionEquals
 from sagemaker.workflow.model_step import (
     ModelStep,
     _CREATE_MODEL_NAME_BASE,
@@ -357,6 +359,154 @@ def test_step_collection_is_depended_on(pipeline_session, sagemaker_session):
             "MyModel-RepackModel": [],
             "RegisterModelStep-RegisterModel": ["MyStep2", "MyStep3"],
         }
+    )
+
+
+def test_step_collection_in_condition_branch_is_depended_on(pipeline_session, sagemaker_session):
+    custom_step1 = CustomStep(name="MyStep1")
+
+    # Define a step collection which will be inserted into the ConditionStep
+    model_name = "MyModel"
+    model = Model(
+        name=model_name,
+        image_uri=IMAGE_URI,
+        model_data=ParameterString(name="ModelData", default_value="s3://my-bucket/file"),
+        sagemaker_session=pipeline_session,
+        entry_point=f"{DATA_DIR}/dummy_script.py",
+        source_dir=f"{DATA_DIR}",
+        role=ROLE,
+    )
+    step_args = model.create(
+        instance_type="c4.4xlarge",
+        accelerator_type="ml.eia1.medium",
+    )
+    model_step_name = "MyModelStep"
+    model_step = ModelStep(
+        name=model_step_name,
+        step_args=step_args,
+    )
+
+    # Define another step collection which will be inserted into the ConditionStep
+    # This StepCollection object depends on a StepCollection object in the ConditionStep
+    # And a normal step outside ConditionStep
+    model.sagemaker_session = sagemaker_session
+    register_model_name = "RegisterModelStep"
+    register_model = RegisterModel(
+        name=register_model_name,
+        model=model,
+        model_data="s3://",
+        content_types=["content_type"],
+        response_types=["response_type"],
+        inference_instances=["inference_instance"],
+        transform_instances=["transform_instance"],
+        model_package_group_name="mpg",
+        depends_on=["MyStep1", model_step],
+    )
+
+    # StepCollection objects are depended on by a normal step in the ConditionStep
+    custom_step2 = CustomStep(
+        name="MyStep2", depends_on=["MyStep1", model_step, register_model_name]
+    )
+    # StepCollection objects are depended on by a normal step outside the ConditionStep
+    custom_step3 = CustomStep(
+        name="MyStep3", depends_on=[custom_step1, model_step_name, register_model]
+    )
+
+    cond_step = ConditionStep(
+        name="CondStep",
+        conditions=[ConditionEquals(left=2, right=1)],
+        if_steps=[],
+        else_steps=[model_step, register_model, custom_step2],
+    )
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[cond_step, custom_step1, custom_step3],
+    )
+    step_list = json.loads(pipeline.definition())["Steps"]
+    assert len(step_list) == 3
+    for step in step_list:
+        if step["Name"] == "MyStep1":
+            assert "DependsOn" not in step
+        elif step["Name"] == "CondStep":
+            assert not step["Arguments"]["IfSteps"]
+            for sub_step in step["Arguments"]["ElseSteps"]:
+                if sub_step["Name"] == f"{model_name}-RepackModel":
+                    assert set(sub_step["DependsOn"]) == {
+                        "MyStep1",
+                        f"{model_step_name}-{_REPACK_MODEL_NAME_BASE}-{model_name}",
+                        f"{model_step_name}-{_CREATE_MODEL_NAME_BASE}",
+                    }
+                if sub_step["Name"] == "MyStep2":
+                    assert set(sub_step["DependsOn"]) == {
+                        "MyStep1",
+                        f"{model_step_name}-{_REPACK_MODEL_NAME_BASE}-{model_name}",
+                        f"{model_step_name}-{_CREATE_MODEL_NAME_BASE}",
+                        f"{model_name}-RepackModel",
+                        f"{register_model_name}-RegisterModel",
+                    }
+        else:
+            assert set(step["DependsOn"]) == {
+                "MyStep1",
+                f"{model_step_name}-{_REPACK_MODEL_NAME_BASE}-{model_name}",
+                f"{model_step_name}-{_CREATE_MODEL_NAME_BASE}",
+                f"{model_name}-RepackModel",
+                f"{register_model_name}-RegisterModel",
+            }
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert ordered(adjacency_list) == ordered(
+        {
+            "CondStep": ["MyModel-RepackModel", "MyModelStep-RepackModel-MyModel", "MyStep2"],
+            "MyStep1": ["MyStep2", "MyStep3", "MyModel-RepackModel"],
+            "MyStep2": [],
+            "MyStep3": [],
+            "MyModelStep-RepackModel-MyModel": ["MyModelStep-CreateModel"],
+            "MyModelStep-CreateModel": ["MyStep2", "MyStep3", "MyModel-RepackModel"],
+            "MyModel-RepackModel": [],
+            "RegisterModelStep-RegisterModel": ["MyStep2", "MyStep3"],
+        }
+    )
+
+
+def test_condition_step_depends_on_step_collection():
+    step1 = CustomStep(name="MyStep1")
+    step2 = CustomStep(name="MyStep2", input_data=step1.properties)
+    step_collection = StepCollection(name="MyStepCollection", steps=[step1, step2])
+    cond_step = ConditionStep(
+        name="MyConditionStep",
+        depends_on=[step_collection],
+        conditions=[ConditionEquals(left=2, right=1)],
+        if_steps=[],
+        else_steps=[],
+    )
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[step_collection, cond_step],
+    )
+    step_list = json.loads(pipeline.definition())["Steps"]
+    assert len(step_list) == 3
+    for step in step_list:
+        if step["Name"] != "MyConditionStep":
+            continue
+        assert step == {
+            "Name": "MyConditionStep",
+            "Type": "Condition",
+            "DependsOn": ["MyStep1", "MyStep2"],
+            "Arguments": {
+                "Conditions": [
+                    {
+                        "Type": "Equals",
+                        "LeftValue": 2,
+                        "RightValue": 1,
+                    },
+                ],
+                "IfSteps": [],
+                "ElseSteps": [],
+            },
+        }
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert ordered(adjacency_list) == ordered(
+        [("MyConditionStep", []), ("MyStep1", ["MyStep2"]), ("MyStep2", ["MyConditionStep"])]
     )
 
 
