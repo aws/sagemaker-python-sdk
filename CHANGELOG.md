@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.101.1 (2022-07-28)
+
+### Bug Fixes and Other Changes
+
+ * added more ml frameworks supported by SageMaker Workflows
+ * test: Vspecinteg2
+ * Add PipelineVariable annotation in amazon models
+
 ## v2.101.0 (2022-07-27)
 
 ### Features
