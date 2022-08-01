@@ -983,6 +983,10 @@ class SageMakerClarifyProcessor(Processor):
                   the Trial Component will be unassociated.
                 * ``'TrialComponentDisplayName'`` is used for display in Amazon SageMaker Studio.
         """
+        # for debugging: to access locally, i.e. without a need to look for it in an S3 bucket
+        self._last_analysis_config = analysis_config
+        logger.info("Analysis Config: ", analysis_config)
+
         with tempfile.TemporaryDirectory() as tmpdirname:
             analysis_config_file = os.path.join(tmpdirname, "analysis_config.json")
             with open(analysis_config_file, "w") as f:
