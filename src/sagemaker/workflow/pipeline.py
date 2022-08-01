@@ -37,48 +37,58 @@ from sagemaker.workflow.parameters import Parameter
 from sagemaker.workflow.pipeline_experiment_config import PipelineExperimentConfig
 from sagemaker.workflow.parallelism_config import ParallelismConfiguration
 from sagemaker.workflow.properties import Properties
-from sagemaker.workflow.steps import Step
+from sagemaker.workflow.steps import Step, StepTypeEnum
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.utilities import list_to_request
 
+_DEFAULT_EXPERIMENT_CFG = PipelineExperimentConfig(
+    ExecutionVariables.PIPELINE_NAME, ExecutionVariables.PIPELINE_EXECUTION_ID
+)
 
-@attr.s
+
 class Pipeline(Entity):
-    """Pipeline for workflow.
+    """Pipeline for workflow."""
 
-    Attributes:
-        name (str): The name of the pipeline.
-        parameters (Sequence[Parameter]): The list of the parameters.
-        pipeline_experiment_config (Optional[PipelineExperimentConfig]): If set,
-            the workflow will attempt to create an experiment and trial before
-            executing the steps. Creation will be skipped if an experiment or a trial with
-            the same name already exists. By default, pipeline name is used as
-            experiment name and execution id is used as the trial name.
-            If set to None, no experiment or trial will be created automatically.
-        steps (Sequence[Union[Step, StepCollection]]): The list of the non-conditional steps
-            associated with the pipeline. Any steps that are within the
-            `if_steps` or `else_steps` of a `ConditionStep` cannot be listed in the steps of a
-            pipeline. Of particular note, the workflow service rejects any pipeline definitions that
-            specify a step in the list of steps of a pipeline and that step in the `if_steps` or
-            `else_steps` of any `ConditionStep`.
-        sagemaker_session (sagemaker.session.Session): Session object that manages interactions
-            with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
-            pipeline creates one using the default AWS configuration chain.
-    """
+    def __init__(
+        self,
+        name: str = "",
+        parameters: Optional[Sequence[Parameter]] = None,
+        pipeline_experiment_config: Optional[PipelineExperimentConfig] = _DEFAULT_EXPERIMENT_CFG,
+        steps: Optional[Sequence[Union[Step, StepCollection]]] = None,
+        sagemaker_session: Optional[Session] = None,
+    ):
+        """Initialize a Pipeline
 
-    name: str = attr.ib(factory=str)
-    parameters: Sequence[Parameter] = attr.ib(factory=list)
-    pipeline_experiment_config: Optional[PipelineExperimentConfig] = attr.ib(
-        default=PipelineExperimentConfig(
-            ExecutionVariables.PIPELINE_NAME, ExecutionVariables.PIPELINE_EXECUTION_ID
-        )
-    )
-    steps: Sequence[Union[Step, StepCollection]] = attr.ib(factory=list)
-    sagemaker_session: Session = attr.ib(factory=Session)
+        Args:
+            name (str): The name of the pipeline.
+            parameters (Sequence[Parameter]): The list of the parameters.
+            pipeline_experiment_config (Optional[PipelineExperimentConfig]): If set,
+                the workflow will attempt to create an experiment and trial before
+                executing the steps. Creation will be skipped if an experiment or a trial with
+                the same name already exists. By default, pipeline name is used as
+                experiment name and execution id is used as the trial name.
+                If set to None, no experiment or trial will be created automatically.
+            steps (Sequence[Union[Step, StepCollection]]): The list of the non-conditional steps
+                associated with the pipeline. Any steps that are within the
+                `if_steps` or `else_steps` of a `ConditionStep` cannot be listed in the steps of a
+                pipeline. Of particular note, the workflow service rejects any pipeline definitions
+                that specify a step in the list of steps of a pipeline and that step in the
+                `if_steps` or `else_steps` of any `ConditionStep`.
+            sagemaker_session (sagemaker.session.Session): Session object that manages interactions
+                with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
+                pipeline creates one using the default AWS configuration chain.
+        """
+        self.name = name
+        self.parameters = parameters if parameters else []
+        self.pipeline_experiment_config = pipeline_experiment_config
+        self.steps = steps if steps else []
+        self.sagemaker_session = sagemaker_session if sagemaker_session else Session()
 
-    _version: str = "2020-12-01"
-    _metadata: Dict[str, Any] = dict()
+        self._version = "2020-12-01"
+        self._metadata = dict()
+        self._step_map = dict()
+        _generate_step_map(self.steps, self._step_map)
 
     def to_request(self) -> RequestType:
         """Gets the request structure for workflow service calls."""
@@ -193,6 +203,8 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         Returns:
             A response dict from the service.
         """
+        self._step_map = dict()
+        _generate_step_map(self.steps, self._step_map)
         kwargs = self._create_args(role_arn, description, parallelism_config)
         return self.sagemaker_session.sagemaker_client.update_pipeline(**kwargs)
 
@@ -305,23 +317,27 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
 
         return json.dumps(request_dict)
 
-    def _interpolate_step_collection_name_in_depends_on(self, step_requests: dict):
+    def _interpolate_step_collection_name_in_depends_on(self, step_requests: list):
         """Insert step names as per `StepCollection` name in depends_on list
 
         Args:
-            step_requests (dict): The raw step request dict without any interpolation.
+            step_requests (list): The list of raw step request dicts without any interpolation.
         """
-        step_name_map = {s.name: s for s in self.steps}
         for step_request in step_requests:
-            if not step_request.get("DependsOn", None):
-                continue
             depends_on = []
-            for depend_step_name in step_request["DependsOn"]:
-                if isinstance(step_name_map[depend_step_name], StepCollection):
-                    depends_on.extend([s.name for s in step_name_map[depend_step_name].steps])
+            for depend_step_name in step_request.get("DependsOn", []):
+                if isinstance(self._step_map[depend_step_name], StepCollection):
+                    depends_on.extend([s.name for s in self._step_map[depend_step_name].steps])
                 else:
                     depends_on.append(depend_step_name)
-            step_request["DependsOn"] = depends_on
+            if depends_on:
+                step_request["DependsOn"] = depends_on
+
+            if step_request["Type"] == StepTypeEnum.CONDITION.value:
+                sub_step_requests = (
+                    step_request["Arguments"]["IfSteps"] + step_request["Arguments"]["ElseSteps"]
+                )
+                self._interpolate_step_collection_name_in_depends_on(sub_step_requests)
 
 
 def format_start_parameters(parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -448,6 +464,20 @@ def update_args(args: Dict[str, Any], **kwargs):
             args.update({key: value})
 
 
+def _generate_step_map(
+    steps: Sequence[Union[Step, StepCollection]], step_map: dict
+) -> Dict[str, Any]:
+    """Helper method to create a mapping from Step/Step Collection name to itself."""
+    for step in steps:
+        if step.name in step_map:
+            raise ValueError("Pipeline steps cannot have duplicate names.")
+        step_map[step.name] = step
+        if isinstance(step, ConditionStep):
+            _generate_step_map(step.if_steps + step.else_steps, step_map)
+        if isinstance(step, StepCollection):
+            _generate_step_map(step.steps, step_map)
+
+
 @attr.s
 class _PipelineExecution:
     """Internal class for encapsulating pipeline execution instances.
@@ -547,21 +577,10 @@ class PipelineGraph:
 
     def __init__(self, steps: Sequence[Union[Step, StepCollection]]):
         self.step_map = {}
-        self._generate_step_map(steps)
+        _generate_step_map(steps, self.step_map)
         self.adjacency_list = self._initialize_adjacency_list()
         if self.is_cyclic():
             raise ValueError("Cycle detected in pipeline step graph.")
-
-    def _generate_step_map(self, steps: Sequence[Union[Step, StepCollection]]):
-        """Helper method to create a mapping from Step/Step Collection name to itself."""
-        for step in steps:
-            if step.name in self.step_map:
-                raise ValueError("Pipeline steps cannot have duplicate names.")
-            self.step_map[step.name] = step
-            if isinstance(step, ConditionStep):
-                self._generate_step_map(step.if_steps + step.else_steps)
-            if isinstance(step, StepCollection):
-                self._generate_step_map(step.steps)
 
     @classmethod
     def from_pipeline(cls, pipeline: Pipeline):
