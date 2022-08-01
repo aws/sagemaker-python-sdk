@@ -1167,16 +1167,13 @@ class SageMakerClarifyProcessor(Processor):
                   the Trial Component will be unassociated.
                 * ``'TrialComponentDisplayName'`` is used for display in Amazon SageMaker Studio.
         """  # noqa E501  # pylint: disable=c0301
-        analysis_config = data_config.get_config()
-        analysis_config.update(data_bias_config.get_config())
-        (
-            probability_threshold,
-            predictor_config,
-        ) = model_predicted_label_config.get_predictor_config()
-        predictor_config.update(model_config.get_predictor_config())
-        analysis_config["methods"] = {"post_training_bias": {"methods": methods}}
-        analysis_config["predictor"] = predictor_config
-        _set(probability_threshold, "probability_threshold", analysis_config)
+        analysis_config = _AnalysisConfigGenerator.bias_post_training(
+            data_config,
+            data_bias_config,
+            model_predicted_label_config,
+            methods,
+            model_config
+        )
         if job_name is None:
             if self.job_name_prefix:
                 job_name = utils.name_from_base(self.job_name_prefix)
@@ -1445,6 +1442,26 @@ class _AnalysisConfigGenerator:
         analysis_config = data_config.get_config()
         analysis_config.update(data_bias_config.get_config())
         analysis_config["methods"] = {"pre_training_bias": {"methods": methods}}
+        return analysis_config
+
+    @staticmethod
+    def bias_post_training(
+            data_config,
+            data_bias_config,
+            model_predicted_label_config,
+            methods,
+            model_config
+    ):
+        analysis_config = data_config.get_config()
+        analysis_config.update(data_bias_config.get_config())
+        analysis_config["methods"] = {"post_training_bias": {"methods": methods}}
+        (
+            probability_threshold,
+            predictor_config,
+        ) = model_predicted_label_config.get_predictor_config()
+        predictor_config.update(model_config.get_predictor_config())
+        analysis_config["predictor"] = predictor_config
+        _set(probability_threshold, "probability_threshold", analysis_config)
         return analysis_config
 
     @staticmethod
