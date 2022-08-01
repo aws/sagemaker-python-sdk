@@ -44,8 +44,7 @@ from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
 
 from sagemaker.session import Session
-from sagemaker.utils import base_from_name, base_name_from_image, name_from_base
-from sagemaker.workflow import is_pipeline_variable
+from sagemaker.utils import base_from_name, base_name_from_image, name_from_base, to_string
 
 AMAZON_ESTIMATOR_MODULE = "sagemaker"
 AMAZON_ESTIMATOR_CLS_NAMES = {
@@ -414,8 +413,7 @@ class HyperparameterTuner(object):
         """Prepare static hyperparameters for one estimator before tuning."""
         # Remove any hyperparameter that will be tuned
         static_hyperparameters = {
-            str(k): str(v) if not is_pipeline_variable(v) else v.to_string()
-            for (k, v) in estimator.hyperparameters().items()
+            str(k): to_string(v) for (k, v) in estimator.hyperparameters().items()
         }
         for hyperparameter_name in hyperparameter_ranges.keys():
             static_hyperparameters.pop(hyperparameter_name, None)

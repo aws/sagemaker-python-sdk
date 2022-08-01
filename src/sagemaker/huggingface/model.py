@@ -14,18 +14,24 @@
 from __future__ import absolute_import
 
 import logging
+from typing import Optional, Union, List, Dict
 
 import sagemaker
-from sagemaker import image_uris
+from sagemaker import image_uris, ModelMetrics
 from sagemaker.deserializers import JSONDeserializer
+from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.fw_utils import (
     model_code_key_prefix,
     validate_version_or_image_args,
 )
+from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import JSONSerializer
 from sagemaker.session import Session
+from sagemaker.utils import to_string
+from sagemaker.workflow import is_pipeline_variable
+from sagemaker.workflow.entities import PipelineVariable
 
 logger = logging.getLogger("sagemaker")
 
@@ -100,16 +106,16 @@ class HuggingFaceModel(FrameworkModel):
 
     def __init__(
         self,
-        role,
-        model_data=None,
-        entry_point=None,
-        transformers_version=None,
-        tensorflow_version=None,
-        pytorch_version=None,
-        py_version=None,
-        image_uri=None,
-        predictor_cls=HuggingFacePredictor,
-        model_server_workers=None,
+        role: str,
+        model_data: Optional[Union[str, PipelineVariable]] = None,
+        entry_point: Optional[str] = None,
+        transformers_version: Optional[str] = None,
+        tensorflow_version: Optional[str] = None,
+        pytorch_version: Optional[str] = None,
+        py_version: Optional[str] = None,
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
+        predictor_cls: callable = HuggingFacePredictor,
+        model_server_workers: Optional[Union[int, PipelineVariable]] = None,
         **kwargs,
     ):
         """Initialize a HuggingFaceModel.
@@ -299,27 +305,27 @@ class HuggingFaceModel(FrameworkModel):
 
     def register(
         self,
-        content_types,
-        response_types,
-        inference_instances=None,
-        transform_instances=None,
-        model_package_name=None,
-        model_package_group_name=None,
-        image_uri=None,
-        model_metrics=None,
-        metadata_properties=None,
-        marketplace_cert=False,
-        approval_status=None,
-        description=None,
-        drift_check_baselines=None,
-        customer_metadata_properties=None,
-        domain=None,
-        sample_payload_url=None,
-        task=None,
-        framework=None,
-        framework_version=None,
-        nearest_model_name=None,
-        data_input_configuration=None,
+        content_types: List[Union[str, PipelineVariable]],
+        response_types: List[Union[str, PipelineVariable]],
+        inference_instances: Optional[List[Union[str, PipelineVariable]]] = None,
+        transform_instances: Optional[List[Union[str, PipelineVariable]]] = None,
+        model_package_name: Optional[Union[str, PipelineVariable]] = None,
+        model_package_group_name: Optional[Union[str, PipelineVariable]] = None,
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
+        model_metrics: Optional[ModelMetrics] = None,
+        metadata_properties: Optional[MetadataProperties] = None,
+        marketplace_cert: bool = False,
+        approval_status: Optional[Union[str, PipelineVariable]] = None,
+        description: Optional[str] = None,
+        drift_check_baselines: Optional[DriftCheckBaselines] = None,
+        customer_metadata_properties: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        domain: Optional[Union[str, PipelineVariable]] = None,
+        sample_payload_url: Optional[Union[str, PipelineVariable]] = None,
+        task: Optional[Union[str, PipelineVariable]] = None,
+        framework: Optional[Union[str, PipelineVariable]] = None,
+        framework_version: Optional[Union[str, PipelineVariable]] = None,
+        nearest_model_name: Optional[Union[str, PipelineVariable]] = None,
+        data_input_configuration: Optional[Union[str, PipelineVariable]] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -377,6 +383,13 @@ class HuggingFaceModel(FrameworkModel):
                 region_name=self.sagemaker_session.boto_session.region_name,
                 instance_type=instance_type,
             )
+        if not is_pipeline_variable(framework):
+            framework = (
+                framework
+                or fetch_framework_and_framework_version(
+                    self.tensorflow_version, self.pytorch_version
+                )[0]
+            ).upper()
         return super(HuggingFaceModel, self).register(
             content_types,
             response_types,
@@ -395,12 +408,7 @@ class HuggingFaceModel(FrameworkModel):
             domain=domain,
             sample_payload_url=sample_payload_url,
             task=task,
-            framework=(
-                framework
-                or fetch_framework_and_framework_version(
-                    self.tensorflow_version, self.pytorch_version
-                )[0]
-            ).upper(),
+            framework=framework,
             framework_version=framework_version
             or fetch_framework_and_framework_version(self.tensorflow_version, self.pytorch_version)[
                 1
@@ -449,7 +457,9 @@ class HuggingFaceModel(FrameworkModel):
         deploy_env.update(self._script_mode_env_vars())
 
         if self.model_server_workers:
-            deploy_env[MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = str(self.model_server_workers)
+            deploy_env[MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = to_string(
+                self.model_server_workers
+            )
         return sagemaker.container_def(
             deploy_image, self.repacked_model_data or self.model_data, deploy_env
         )
