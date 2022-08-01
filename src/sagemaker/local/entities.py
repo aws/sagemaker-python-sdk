@@ -669,10 +669,8 @@ class _LocalPipeline(object):
         execution = _LocalPipelineExecution(execution_id, self.pipeline, **kwargs)
 
         self._executions[execution_id] = execution
-        logger.info(
-            "Starting execution for pipeline %s. Execution ID is %s",
-            self.pipeline.name,
-            execution_id,
+        print(
+            f"Starting execution for pipeline {self.pipeline.name}. Execution ID is {execution_id}"
         )
         self.last_modified_time = datetime.datetime.now().timestamp()
 
@@ -690,6 +688,8 @@ class _LocalPipelineExecution(object):
         PipelineExecutionDescription=None,
         PipelineExecutionDisplayName=None,
     ):
+        from sagemaker.workflow.pipeline import PipelineGraph
+
         self.pipeline = pipeline
         self.pipeline_execution_name = execution_id
         self.pipeline_execution_description = PipelineExecutionDescription
@@ -699,7 +699,8 @@ class _LocalPipelineExecution(object):
         self.creation_time = datetime.datetime.now().timestamp()
         self.last_modified_time = self.creation_time
         self.step_execution = {}
-        self._initialize_step_execution(self.pipeline.steps)
+        self.pipeline_dag = PipelineGraph.from_pipeline(self.pipeline)
+        self._initialize_step_execution(self.pipeline_dag.step_map.values())
         self.pipeline_parameters = self._initialize_and_validate_parameters(PipelineParameters)
         self._blocked_steps = {}
 
@@ -732,37 +733,36 @@ class _LocalPipelineExecution(object):
         """Mark execution as succeeded."""
         self.status = _LocalExecutionStatus.SUCCEEDED.value
         self.last_modified_time = datetime.datetime.now().timestamp()
-        logger.info("Pipeline execution %s SUCCEEDED", self.pipeline_execution_name)
+        print(f"Pipeline execution {self.pipeline_execution_name} SUCCEEDED")
 
     def update_execution_failure(self, step_name, failure_message):
         """Mark execution as failed."""
         self.status = _LocalExecutionStatus.FAILED.value
-        self.failure_reason = f"Step {step_name} failed with message: {failure_message}"
+        self.failure_reason = f"Step '{step_name}' failed with message: {failure_message}"
         self.last_modified_time = datetime.datetime.now().timestamp()
-        logger.info(
-            "Pipeline execution %s FAILED because step %s failed.",
-            self.pipeline_execution_name,
-            step_name,
+        print(
+            f"Pipeline execution {self.pipeline_execution_name} FAILED because step "
+            f"'{step_name}' failed."
         )
 
     def update_step_properties(self, step_name, step_properties):
         """Update pipeline step execution output properties."""
         self.step_execution.get(step_name).update_step_properties(step_properties)
-        logger.info("Pipeline step %s SUCCEEDED.", step_name)
+        print(f"Pipeline step '{step_name}' SUCCEEDED.")
 
     def update_step_failure(self, step_name, failure_message):
         """Mark step_name as failed."""
+        print(f"Pipeline step '{step_name}' FAILED. Failure message is: {failure_message}")
         self.step_execution.get(step_name).update_step_failure(failure_message)
-        logger.info("Pipeline step %s FAILED. Failure message is: %s", step_name, failure_message)
 
     def mark_step_executing(self, step_name):
         """Update pipelines step's status to EXECUTING and start_time to now."""
-        logger.info("Starting pipeline step: %s", step_name)
+        print(f"Starting pipeline step: '{step_name}'")
         self.step_execution.get(step_name).mark_step_executing()
 
     def _initialize_step_execution(self, steps):
         """Initialize step_execution dict."""
-        from sagemaker.workflow.steps import StepTypeEnum
+        from sagemaker.workflow.steps import StepTypeEnum, Step
 
         supported_steps_types = (
             StepTypeEnum.TRAINING,
@@ -774,16 +774,17 @@ class _LocalPipelineExecution(object):
         )
 
         for step in steps:
-            if step.step_type not in supported_steps_types:
-                error_msg = self._construct_validation_exception_message(
-                    "Step type {} is not supported in local mode.".format(step.step_type.value)
+            if isinstance(step, Step):
+                if step.step_type not in supported_steps_types:
+                    error_msg = self._construct_validation_exception_message(
+                        "Step type {} is not supported in local mode.".format(step.step_type.value)
+                    )
+                    raise ClientError(error_msg, "start_pipeline_execution")
+                self.step_execution[step.name] = _LocalPipelineExecutionStep(
+                    step.name, step.step_type, step.description, step.display_name
                 )
-                raise ClientError(error_msg, "start_pipeline_execution")
-            self.step_execution[step.name] = _LocalPipelineExecutionStep(
-                step.name, step.step_type, step.description, step.display_name
-            )
-            if step.step_type == StepTypeEnum.CONDITION:
-                self._initialize_step_execution(step.if_steps + step.else_steps)
+                if step.step_type == StepTypeEnum.CONDITION:
+                    self._initialize_step_execution(step.if_steps + step.else_steps)
 
     def _initialize_and_validate_parameters(self, overridden_parameters):
         """Initialize and validate pipeline parameters."""

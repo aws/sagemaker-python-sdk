@@ -26,7 +26,6 @@ from botocore.exceptions import ClientError
 from sagemaker import s3
 from sagemaker._studio import _append_project_tags
 from sagemaker.session import Session
-from sagemaker.local import LocalSession
 from sagemaker.workflow.callback_step import CallbackOutput, CallbackStep
 from sagemaker.workflow.lambda_step import LambdaOutput, LambdaStep
 from sagemaker.workflow.entities import (
@@ -162,9 +161,7 @@ class Pipeline(Entity):
 
         # If pipeline definition is large, upload to S3 bucket and
         # provide PipelineDefinitionS3Location to request instead.
-        if len(pipeline_definition.encode("utf-8")) < 1024 * 100 or isinstance(
-            self.sagemaker_session, LocalSession
-        ):
+        if len(pipeline_definition.encode("utf-8")) < 1024 * 100:
             kwargs["PipelineDefinition"] = pipeline_definition
         else:
             desired_s3_uri = s3.s3_path_join(
@@ -660,19 +657,28 @@ class PipelineGraph:
                     return True
         return False
 
-    def get_steps_in_sub_dag(self, current_step: str, steps: Set[str] = None) -> Set[str]:
+    def get_steps_in_sub_dag(
+        self, current_step: Union[Step, StepCollection], sub_dag_steps: Set[str] = None
+    ) -> Set[str]:
         """Get names of all steps (including current step) in the sub dag of current step.
 
         Returns a set of step names in the sub dag.
         """
-        if steps is None:
-            steps = set()
-        if current_step not in self.adjacency_list:
-            raise ValueError("Step: %s does not exist in the pipeline." % current_step)
-        steps.add(current_step)
-        for step in self.adjacency_list[current_step]:
-            self.get_steps_in_sub_dag(step, steps)
-        return steps
+        if sub_dag_steps is None:
+            sub_dag_steps = set()
+
+        if isinstance(current_step, StepCollection):
+            current_steps = current_step.steps
+        else:
+            current_steps = [current_step]
+
+        for step in current_steps:
+            if step.name not in self.adjacency_list:
+                raise ValueError("Step: %s does not exist in the pipeline." % step.name)
+            sub_dag_steps.add(step.name)
+            for sub_step in self.adjacency_list[step.name]:
+                self.get_steps_in_sub_dag(self.step_map.get(sub_step), sub_dag_steps)
+        return sub_dag_steps
 
     def __iter__(self):
         """Perform topological sort traversal of the Pipeline Graph."""
