@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 import time
 import json
+import os
 
 import pytest
 
@@ -264,7 +265,10 @@ def test_graph_visualize(sagemaker_session):
     except Exception as e:
         print(e)
         lineage_resource_helper.clean_all()
+        os.remove("testGraph.html")
         assert False
 
+    # delete generated test graph
+    os.remove("testGraph.html")
     # clean lineage data
     lineage_resource_helper.clean_all()
