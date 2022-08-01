@@ -1367,6 +1367,9 @@ class SageMakerClarifyProcessor(Processor):
 
 
 class _AnalysisConfigGenerator:
+    """
+    Creates analysis_config objects for different type of runs.
+    """
     @classmethod
     def explainability(
         cls,
@@ -1397,15 +1400,15 @@ class _AnalysisConfigGenerator:
             if not len(explainability_methods.keys()) == len(explainability_config):
                 raise ValueError("Duplicate explainability configs are provided")
             if (
-                    "shap" not in explainability_methods
-                    and explainability_methods["pdp"].get("features", None) is None
+                "shap" not in explainability_methods
+                and explainability_methods["pdp"].get("features", None) is None
             ):
                 raise ValueError("PDP features must be provided when ShapConfig is not provided")
         else:
             if (
-                    isinstance(explainability_config, PDPConfig)
-                    and explainability_config.get_explainability_config()["pdp"].get("features", None)
-                    is None
+                isinstance(explainability_config, PDPConfig)
+                and explainability_config.get_explainability_config()["pdp"].get("features", None)
+                is None
             ):
                 raise ValueError("PDP features must be provided when ShapConfig is not provided")
             explainability_methods = explainability_config.get_explainability_config()
@@ -1415,9 +1418,11 @@ class _AnalysisConfigGenerator:
 
     @classmethod
     def bias_pre_training(cls, data_config, bias_config, methods):
-        analysis_config = data_config.get_config()
-        analysis_config.update(bias_config.get_config())
-        analysis_config["methods"] = {"pre_training_bias": {"methods": methods}}
+        analysis_config = {
+            **data_config.get_config(),
+            **bias_config.get_config(),
+            "methods": {"pre_training_bias": {"methods": methods}}
+        }
         return cls._common(analysis_config)
 
     @classmethod
@@ -1429,16 +1434,17 @@ class _AnalysisConfigGenerator:
         methods,
         model_config
     ):
-        analysis_config = data_config.get_config()
-        analysis_config.update(bias_config.get_config())
-        analysis_config["methods"] = {"post_training_bias": {"methods": methods}}
-        (
-            probability_threshold,
-            predictor_config,
-        ) = model_predicted_label_config.get_predictor_config()
-        predictor_config.update(model_config.get_predictor_config())
-        analysis_config["predictor"] = predictor_config
-        _set(probability_threshold, "probability_threshold", analysis_config)
+        analysis_config = {
+            **data_config.get_config(),
+            **bias_config.get_config(),
+            "predictor": {**model_config.get_predictor_config()},
+            "methods": {"post_training_bias": {"methods": methods}},
+        }
+        if model_predicted_label_config:
+            probability_threshold, predictor_config = model_predicted_label_config.get_predictor_config()
+            if predictor_config:
+                analysis_config["predictor"].update(predictor_config)
+            _set(probability_threshold, "probability_threshold", analysis_config)
         return cls._common(analysis_config)
 
     @classmethod
@@ -1451,23 +1457,20 @@ class _AnalysisConfigGenerator:
         pre_training_methods="all",
         post_training_methods="all",
     ):
-        analysis_config = data_config.get_config()
-        analysis_config.update(bias_config.get_config())
-        analysis_config["predictor"] = model_config.get_predictor_config()
+        analysis_config = {
+            **data_config.get_config(),
+            **bias_config.get_config(),
+            "predictor": model_config.get_predictor_config(),
+            "methods": {
+                "pre_training_bias": {"methods": pre_training_methods},
+                "post_training_bias": {"methods": post_training_methods},
+            }
+        }
         if model_predicted_label_config:
-            (
-                probability_threshold,
-                predictor_config,
-            ) = model_predicted_label_config.get_predictor_config()
+            probability_threshold, predictor_config = model_predicted_label_config.get_predictor_config()
             if predictor_config:
                 analysis_config["predictor"].update(predictor_config)
-            if probability_threshold is not None:
-                analysis_config["probability_threshold"] = probability_threshold
-
-        analysis_config["methods"] = {
-            "pre_training_bias": {"methods": pre_training_methods},
-            "post_training_bias": {"methods": post_training_methods},
-        }
+            _set(probability_threshold, "probability_threshold", analysis_config)
         return cls._common(analysis_config)
 
     @staticmethod
