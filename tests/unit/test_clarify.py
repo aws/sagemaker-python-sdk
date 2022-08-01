@@ -1303,3 +1303,19 @@ def test_analysis_config_generator_for_explainability(data_config, model_config)
                               'probability': 'pr'}}
     assert actual == expected
 
+
+def test_analysis_config_generator_for_bias_pre_training(data_config, data_bias_config):
+    actual = _AnalysisConfigGenerator.bias_pre_training(
+        data_config,
+        data_bias_config,
+        methods="all"
+    )
+    expected = {'dataset_type': 'text/csv',
+                'facet': [{'name_or_index': 'F1'}],
+                'group_variable': 'F2',
+                'headers': ['Label', 'F1', 'F2', 'F3', 'F4'],
+                'joinsource_name_or_index': 'F4',
+                'label': 'Label',
+                'label_values_or_threshold': [1],
+                'methods': {'pre_training_bias': {'methods': 'all'}}}
+    assert actual == expected
