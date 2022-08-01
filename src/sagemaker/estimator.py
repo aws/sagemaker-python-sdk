@@ -76,6 +76,7 @@ from sagemaker.utils import (
     build_dict,
     get_config_value,
     name_from_base,
+    to_string,
 )
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
@@ -1947,10 +1948,7 @@ class _TrainingJob(_Job):
 
         current_hyperparameters = estimator.hyperparameters()
         if current_hyperparameters is not None:
-            hyperparameters = {
-                str(k): (v.to_string() if is_pipeline_variable(v) else str(v))
-                for (k, v) in current_hyperparameters.items()
-            }
+            hyperparameters = {str(k): to_string(v) for (k, v) in current_hyperparameters.items()}
 
         train_args = config.copy()
         train_args["input_mode"] = estimator.input_mode

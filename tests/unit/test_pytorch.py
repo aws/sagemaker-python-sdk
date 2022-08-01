@@ -56,6 +56,8 @@ EXPERIMENT_CONFIG = {
     "TrialComponentDisplayName": "tc",
 }
 
+DISTRIBUTION_PYTORCH_DDP_ENABLED = {"pytorchddp": {"enabled": True}}
+
 
 @pytest.fixture(name="sagemaker_session")
 def fixture_sagemaker_session():
@@ -97,7 +99,7 @@ def _pytorch_estimator(
     py_version,
     instance_type=None,
     base_job_name=None,
-    **kwargs
+    **kwargs,
 ):
     return PyTorch(
         entry_point=SCRIPT_PATH,
@@ -108,7 +110,7 @@ def _pytorch_estimator(
         instance_count=INSTANCE_COUNT,
         instance_type=instance_type if instance_type else INSTANCE_TYPE,
         base_job_name=base_job_name,
-        **kwargs
+        **kwargs,
     )
 
 
@@ -763,3 +765,38 @@ def test_register_pytorch_model_auto_infer_framework(
     sagemaker_session.create_model_package_from_containers.assert_called_with(
         **expected_create_model_package_request
     )
+
+
+def test_pytorch_ddp_distribution_configuration(
+    sagemaker_session, pytorch_ddp_framework_version, pytorch_ddp_py_version
+):
+    test_instance_type = "ml.p4d.24xlarge"
+    pytorch = _pytorch_estimator(
+        sagemaker_session,
+        framework_version=pytorch_ddp_framework_version,
+        py_version=pytorch_ddp_py_version,
+        distribution=DISTRIBUTION_PYTORCH_DDP_ENABLED,
+        instance_type=test_instance_type,
+    )
+    actual_pytorch_ddp = pytorch._pytorch_distribution_configuration(
+        distribution=pytorch.distribution
+    )
+    expected_torch_ddp = {
+        "sagemaker_pytorch_ddp_enabled": True,
+        "sagemaker_instance_type": test_instance_type,
+    }
+    assert actual_pytorch_ddp == expected_torch_ddp
+
+
+def test_pytorch_ddp_distribution_configuration_unsupported(sagemaker_session):
+    unsupported_framework_version = "1.9.1"
+    unsupported_py_version = "py2"
+    with pytest.raises(ValueError) as error:
+        _pytorch_estimator(
+            sagemaker_session,
+            framework_version=unsupported_framework_version,
+            py_version=unsupported_py_version,
+            distribution=DISTRIBUTION_PYTORCH_DDP_ENABLED,
+        )
+    assert (f"framework_version {unsupported_framework_version} is not supported") in str(error)
+    assert (f"py_version {unsupported_py_version} is not supported") in str(error)
