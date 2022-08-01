@@ -20,6 +20,8 @@ import pytest
 from mock import Mock
 
 from sagemaker import s3
+from sagemaker.workflow.condition_step import ConditionStep
+from sagemaker.workflow.conditions import ConditionEquals
 from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
@@ -28,6 +30,7 @@ from sagemaker.workflow.pipeline_experiment_config import (
     PipelineExperimentConfig,
     PipelineExperimentConfigProperties,
 )
+from sagemaker.workflow.step_collections import StepCollection
 from tests.unit.sagemaker.workflow.helpers import ordered, CustomStep
 
 
@@ -78,7 +81,7 @@ def test_large_pipeline_create(sagemaker_session_mock, role_arn):
     pipeline = Pipeline(
         name="MyPipeline",
         parameters=[parameter],
-        steps=[CustomStep(name="MyStep", input_data=parameter)] * 2000,
+        steps=_generate_large_pipeline_steps(parameter),
         sagemaker_session=sagemaker_session_mock,
     )
 
@@ -105,6 +108,25 @@ def test_pipeline_update(sagemaker_session_mock, role_arn):
         sagemaker_session=sagemaker_session_mock,
     )
     pipeline.update(role_arn=role_arn)
+    assert len(json.loads(pipeline.definition())["Steps"]) == 0
+    assert sagemaker_session_mock.sagemaker_client.update_pipeline.called_with(
+        PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn=role_arn
+    )
+
+    step1 = CustomStep(name="MyStep1")
+    step2 = CustomStep(name="MyStep2", input_data=step1.properties)
+    step_collection = StepCollection(name="MyStepCollection", steps=[step1, step2])
+    cond_step = ConditionStep(
+        name="MyConditionStep",
+        depends_on=[],
+        conditions=[ConditionEquals(left=2, right=1)],
+        if_steps=[step_collection],
+        else_steps=[],
+    )
+    step3 = CustomStep(name="MyStep3", depends_on=[step_collection])
+    pipeline.steps = [cond_step, step3]
+    pipeline.update(role_arn=role_arn)
+    assert len(json.loads(pipeline.definition())["Steps"]) > 0
     assert sagemaker_session_mock.sagemaker_client.update_pipeline.called_with(
         PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn=role_arn
     )
@@ -132,7 +154,7 @@ def test_large_pipeline_update(sagemaker_session_mock, role_arn):
     pipeline = Pipeline(
         name="MyPipeline",
         parameters=[parameter],
-        steps=[CustomStep(name="MyStep", input_data=parameter)] * 2000,
+        steps=_generate_large_pipeline_steps(parameter),
         sagemaker_session=sagemaker_session_mock,
     )
 
@@ -437,3 +459,10 @@ def test_pipeline_execution_basics(sagemaker_session_mock):
         PipelineExecutionArn="my:arn"
     )
     assert len(steps) == 1
+
+
+def _generate_large_pipeline_steps(input_data: object):
+    steps = []
+    for i in range(2000):
+        steps.append(CustomStep(name=f"MyStep{i}", input_data=input_data))
+    return steps
