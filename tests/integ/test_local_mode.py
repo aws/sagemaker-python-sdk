@@ -30,11 +30,11 @@ from sagemaker import image_uris
 
 from sagemaker.model import Model
 from sagemaker.transformer import Transformer
-from sagemaker.inputs import CreateModelInput
 from sagemaker.processing import ProcessingInput, ProcessingOutput, ScriptProcessor
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.workflow.pipeline import Pipeline
-from sagemaker.workflow.steps import TrainingStep, ProcessingStep, TransformStep, CreateModelStep
+from sagemaker.workflow.steps import TrainingStep, ProcessingStep, TransformStep
+from sagemaker.workflow.model_step import ModelStep
 from sagemaker.workflow.parameters import ParameterInteger
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.fail_step import FailStep
@@ -546,8 +546,8 @@ def test_local_pipeline_with_training_and_transform_steps(
     mxnet_training_latest_py_version,
     tmpdir,
 ):
-    instance_count = ParameterInteger(name="InstanceCountParam")
     session = LocalPipelineNoS3Session()
+    instance_count = ParameterInteger(name="InstanceCountParam")
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
     script_path = os.path.join(data_path, "check_env.py")
     output_path = "file://%s" % (str(tmpdir))
@@ -587,19 +587,12 @@ def test_local_pipeline_with_training_and_transform_steps(
     )
 
     # define create model step
-    inputs = CreateModelInput(
-        instance_type="local",
-        accelerator_type="local",
-    )
-    create_model_step = CreateModelStep(
-        name="mxnet_mnist_model",
-        model=model,
-        inputs=inputs,
-    )
+    model_step_args = model.create(instance_type="local", accelerator_type="local")
+    model_step = ModelStep(name="mxnet_mnist_model", step_args=model_step_args)
 
     # define transformer
     transformer = Transformer(
-        model_name=create_model_step.properties.ModelName,
+        model_name=model_step.properties.ModelName,
         instance_type="local",
         instance_count=instance_count,
         output_path=output_path,
@@ -619,7 +612,7 @@ def test_local_pipeline_with_training_and_transform_steps(
     pipeline = Pipeline(
         name="local_pipeline_training_transform",
         parameters=[instance_count],
-        steps=[training_step, create_model_step, transform_step],
+        steps=[training_step, model_step, transform_step],
         sagemaker_session=session,
     )
 

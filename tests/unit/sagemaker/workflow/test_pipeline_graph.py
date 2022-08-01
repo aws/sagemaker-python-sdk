@@ -61,7 +61,7 @@ def pipeline_graph_get_sub_dag(sagemaker_session_mock):
     step_f = CustomStep(name="stepF", depends_on=[step_c])
     step_g = CustomStep(name="stepG", depends_on=[step_e, step_d])
     step_h = CustomStep(name="stepH", depends_on=[step_g])
-    step_i = CustomStep(name="stepI", depends_on=[step_h])
+    step_i = CustomStepCollection(name="stepI", depends_on=[step_h])
     step_j = CustomStep(name="stepJ", depends_on=[step_h])
 
     pipeline = Pipeline(
@@ -312,7 +312,8 @@ def test_pipeline_graph_cyclic(sagemaker_session_mock):
                 "stepF",
                 "stepG",
                 "stepH",
-                "stepI",
+                "stepI-0",
+                "stepI-1",
                 "stepJ",
             },
         ),
@@ -326,22 +327,24 @@ def test_pipeline_graph_cyclic(sagemaker_session_mock):
                 "stepF",
                 "stepG",
                 "stepH",
-                "stepI",
+                "stepI-0",
+                "stepI-1",
                 "stepJ",
             },
         ),
-        ("stepC", {"stepC", "stepE", "stepF", "stepG", "stepH", "stepI", "stepJ"}),
-        ("stepD", {"stepD", "stepG", "stepH", "stepI", "stepJ"}),
-        ("stepE", {"stepE", "stepG", "stepH", "stepI", "stepJ"}),
+        ("stepC", {"stepC", "stepE", "stepF", "stepG", "stepH", "stepI-0", "stepI-1", "stepJ"}),
+        ("stepD", {"stepD", "stepG", "stepH", "stepI-0", "stepI-1", "stepJ"}),
+        ("stepE", {"stepE", "stepG", "stepH", "stepI-0", "stepI-1", "stepJ"}),
         ("stepF", {"stepF"}),
-        ("stepG", {"stepG", "stepH", "stepI", "stepJ"}),
-        ("stepH", {"stepH", "stepI", "stepJ"}),
-        ("stepI", {"stepI"}),
+        ("stepG", {"stepG", "stepH", "stepI-0", "stepI-1", "stepJ"}),
+        ("stepH", {"stepH", "stepI-0", "stepI-1", "stepJ"}),
+        ("stepI", {"stepI-0", "stepI-1"}),
         ("stepJ", {"stepJ"}),
     ],
 )
 def test_get_steps_in_sub_dag(pipeline_graph_get_sub_dag, step_name, expected_steps):
-    sub_steps = pipeline_graph_get_sub_dag.get_steps_in_sub_dag(step_name)
+    step = pipeline_graph_get_sub_dag.step_map.get(step_name)
+    sub_steps = pipeline_graph_get_sub_dag.get_steps_in_sub_dag(step)
     assert sub_steps == expected_steps
 
 

@@ -887,16 +887,25 @@ def test_create_describe_update_pipeline():
         steps=[CustomStep(name="MyStep", input_data=parameter)],
         sagemaker_session=LocalSession(),
     )
+    definition = pipeline.definition()
     pipeline.create("dummy-role", "pipeline-description")
 
     pipeline_describe_response1 = pipeline.describe()
     assert pipeline_describe_response1["PipelineArn"] == "MyPipeline"
-    assert pipeline_describe_response1["PipelineDefinition"] == pipeline.definition()
+    assert pipeline_describe_response1["PipelineDefinition"] == definition
     assert pipeline_describe_response1["PipelineDescription"] == "pipeline-description"
 
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[parameter],
+        steps=[CustomStep(name="MyStepUpdated", input_data=parameter)],
+        sagemaker_session=LocalSession(),
+    )
+    updated_definition = pipeline.definition()
     pipeline.update("dummy-role", "pipeline-description-2")
     pipeline_describe_response2 = pipeline.describe()
     assert pipeline_describe_response2["PipelineDescription"] == "pipeline-description-2"
+    assert pipeline_describe_response2["PipelineDefinition"] == updated_definition
     assert (
         pipeline_describe_response2["CreationTime"]
         != pipeline_describe_response2["LastModifiedTime"]
