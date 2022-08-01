@@ -983,10 +983,6 @@ class SageMakerClarifyProcessor(Processor):
                   the Trial Component will be unassociated.
                 * ``'TrialComponentDisplayName'`` is used for display in Amazon SageMaker Studio.
         """
-        analysis_config["methods"]["report"] = {
-            "name": "report",
-            "title": "Analysis Report",
-        }
         with tempfile.TemporaryDirectory() as tmpdirname:
             analysis_config_file = os.path.join(tmpdirname, "analysis_config.json")
             with open(analysis_config_file, "w") as f:
@@ -1371,8 +1367,9 @@ class SageMakerClarifyProcessor(Processor):
 
 
 class _AnalysisConfigGenerator:
-    @staticmethod
+    @classmethod
     def explainability(
+        cls,
         data_config,
         model_config,
         model_scores,
@@ -1414,22 +1411,23 @@ class _AnalysisConfigGenerator:
             explainability_methods = explainability_config.get_explainability_config()
         analysis_config["methods"] = explainability_methods
         analysis_config["predictor"] = predictor_config
-        return analysis_config
+        return cls._common(analysis_config)
 
-    @staticmethod
-    def bias_pre_training(data_config, bias_config, methods):
+    @classmethod
+    def bias_pre_training(cls, data_config, bias_config, methods):
         analysis_config = data_config.get_config()
         analysis_config.update(bias_config.get_config())
         analysis_config["methods"] = {"pre_training_bias": {"methods": methods}}
-        return analysis_config
+        return cls._common(analysis_config)
 
-    @staticmethod
+    @classmethod
     def bias_post_training(
-            data_config,
-            bias_config,
-            model_predicted_label_config,
-            methods,
-            model_config
+        cls,
+        data_config,
+        bias_config,
+        model_predicted_label_config,
+        methods,
+        model_config
     ):
         analysis_config = data_config.get_config()
         analysis_config.update(bias_config.get_config())
@@ -1441,10 +1439,11 @@ class _AnalysisConfigGenerator:
         predictor_config.update(model_config.get_predictor_config())
         analysis_config["predictor"] = predictor_config
         _set(probability_threshold, "probability_threshold", analysis_config)
-        return analysis_config
+        return cls._common(analysis_config)
 
-    @staticmethod
+    @classmethod
     def bias(
+        cls,
         data_config,
         bias_config,
         model_config,
@@ -1469,7 +1468,7 @@ class _AnalysisConfigGenerator:
             "pre_training_bias": {"methods": pre_training_methods},
             "post_training_bias": {"methods": post_training_methods},
         }
-        return analysis_config
+        return cls._common(analysis_config)
 
     @staticmethod
     def _common(analysis_config):

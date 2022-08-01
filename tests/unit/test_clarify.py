@@ -765,7 +765,10 @@ def test_pre_training_bias(
             "label_values_or_threshold": [1],
             "facet": [{"name_or_index": "F1"}],
             "group_variable": "F2",
-            "methods": {"pre_training_bias": {"methods": "all"}},
+            "methods": {
+                'report': {'name': 'report', 'title': 'Analysis Report'},
+                "pre_training_bias": {"methods": "all"}
+            },
         }
         mock_method.assert_called_with(
             data_config,
@@ -828,7 +831,10 @@ def test_post_training_bias(
             "joinsource_name_or_index": "F4",
             "facet": [{"name_or_index": "F1"}],
             "group_variable": "F2",
-            "methods": {"post_training_bias": {"methods": "all"}},
+            "methods": {
+                'report': {'name': 'report', 'title': 'Analysis Report'},
+                "post_training_bias": {"methods": "all"}
+            },
             "predictor": {
                 "model_name": "xgboost-model",
                 "instance_type": "ml.c5.xlarge",
@@ -986,7 +992,10 @@ def _run_test_explain(
                 "grid_resolution": 20,
                 "top_k_features": 10,
             }
-        expected_analysis_config["methods"] = expected_explanation_configs
+        expected_analysis_config["methods"] = {
+            'report': {'name': 'report', 'title': 'Analysis Report'},
+            **expected_explanation_configs,
+        }
         mock_method.assert_called_with(
             data_config,
             expected_analysis_config,
@@ -1295,7 +1304,10 @@ def test_analysis_config_generator_for_explainability(data_config, model_config)
                 'headers': ['Label', 'F1', 'F2', 'F3', 'F4'],
                 'joinsource_name_or_index': 'F4',
                 'label': 'Label',
-                'methods': {'shap': {'save_local_shap_values': True, 'use_logit': False}},
+                'methods': {
+                    'report': {'name': 'report', 'title': 'Analysis Report'},
+                    'shap': {'save_local_shap_values': True, 'use_logit': False}
+                },
                 'predictor': {'initial_instance_count': 1,
                               'instance_type': 'ml.c5.xlarge',
                               'label_headers': ['success'],
@@ -1317,7 +1329,10 @@ def test_analysis_config_generator_for_bias_pre_training(data_config, data_bias_
                 'joinsource_name_or_index': 'F4',
                 'label': 'Label',
                 'label_values_or_threshold': [1],
-                'methods': {'pre_training_bias': {'methods': 'all'}}}
+                'methods': {
+                    'report': {'name': 'report', 'title': 'Analysis Report'},
+                    'pre_training_bias': {'methods': 'all'}}
+                }
     assert actual == expected
 
 
@@ -1340,7 +1355,10 @@ def test_analysis_config_generator_for_bias_post_training(data_config, data_bias
                 'joinsource_name_or_index': 'F4',
                 'label': 'Label',
                 'label_values_or_threshold': [1],
-                'methods': {'post_training_bias': {'methods': 'all'}},
+                'methods': {
+                    'report': {'name': 'report', 'title': 'Analysis Report'},
+                    'post_training_bias': {'methods': 'all'}
+                },
                 'predictor': {'initial_instance_count': 1,
                               'instance_type': 'ml.c5.xlarge',
                               'label_headers': ['success'],
@@ -1369,8 +1387,10 @@ def test_analysis_config_generator_for_bias(data_config, data_bias_config, model
                            'joinsource_name_or_index': 'F4',
                            'label': 'Label',
                            'label_values_or_threshold': [1],
-                           'methods': {'post_training_bias': {'methods': 'all'},
-                                       'pre_training_bias': {'methods': 'all'}},
+                           'methods': {
+                               'report': {'name': 'report', 'title': 'Analysis Report'},
+                               'post_training_bias': {'methods': 'all'},
+                               'pre_training_bias': {'methods': 'all'}},
                            'predictor': {'initial_instance_count': 1,
                                          'instance_type': 'ml.c5.xlarge',
                                          'label_headers': ['success'],
