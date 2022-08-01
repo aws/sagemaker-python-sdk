@@ -1034,7 +1034,7 @@ class SageMakerClarifyProcessor(Processor):
     def run_pre_training_bias(
         self,
         data_config,
-        data_bias_config,
+        bias_config,
         methods="all",
         wait=True,
         logs=True,
@@ -1049,7 +1049,7 @@ class SageMakerClarifyProcessor(Processor):
 
         Args:
             data_config (:class:`~sagemaker.clarify.DataConfig`): Config of the input/output data.
-            data_bias_config (:class:`~sagemaker.clarify.BiasConfig`): Config of sensitive groups.
+            bias_config (:class:`~sagemaker.clarify.BiasConfig`): Config of sensitive groups.
             methods (str or list[str]): Selects a subset of potential metrics:
                 ["`CI <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-bias-metric-class-imbalance.html>`_",
                 "`DPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-true-label-imbalance.html>`_",
@@ -1085,7 +1085,7 @@ class SageMakerClarifyProcessor(Processor):
         """  # noqa E501  # pylint: disable=c0301
         analysis_config = _AnalysisConfigGenerator.bias_pre_training(
             data_config,
-            data_bias_config,
+            bias_config,
             methods
         )
         if job_name is None:
@@ -1106,7 +1106,7 @@ class SageMakerClarifyProcessor(Processor):
     def run_post_training_bias(
         self,
         data_config,
-        data_bias_config,
+        bias_config,
         model_config,
         model_predicted_label_config,
         methods="all",
@@ -1126,7 +1126,7 @@ class SageMakerClarifyProcessor(Processor):
 
         Args:
             data_config (:class:`~sagemaker.clarify.DataConfig`): Config of the input/output data.
-            data_bias_config (:class:`~sagemaker.clarify.BiasConfig`): Config of sensitive groups.
+            bias_config (:class:`~sagemaker.clarify.BiasConfig`): Config of sensitive groups.
             model_config (:class:`~sagemaker.clarify.ModelConfig`): Config of the model and its
                 endpoint to be created.
             model_predicted_label_config (:class:`~sagemaker.clarify.ModelPredictedLabelConfig`):
@@ -1169,7 +1169,7 @@ class SageMakerClarifyProcessor(Processor):
         """  # noqa E501  # pylint: disable=c0301
         analysis_config = _AnalysisConfigGenerator.bias_post_training(
             data_config,
-            data_bias_config,
+            bias_config,
             model_predicted_label_config,
             methods,
             model_config
@@ -1263,23 +1263,14 @@ class SageMakerClarifyProcessor(Processor):
                   the Trial Component will be unassociated.
                 * ``'TrialComponentDisplayName'`` is used for display in Amazon SageMaker Studio.
         """  # noqa E501  # pylint: disable=c0301
-        analysis_config = data_config.get_config()
-        analysis_config.update(bias_config.get_config())
-        analysis_config["predictor"] = model_config.get_predictor_config()
-        if model_predicted_label_config:
-            (
-                probability_threshold,
-                predictor_config,
-            ) = model_predicted_label_config.get_predictor_config()
-            if predictor_config:
-                analysis_config["predictor"].update(predictor_config)
-            if probability_threshold is not None:
-                analysis_config["probability_threshold"] = probability_threshold
-
-        analysis_config["methods"] = {
-            "pre_training_bias": {"methods": pre_training_methods},
-            "post_training_bias": {"methods": post_training_methods},
-        }
+        analysis_config = _AnalysisConfigGenerator.bias(
+            data_config,
+            bias_config,
+            model_config,
+            model_predicted_label_config,
+            pre_training_methods,
+            post_training_methods,
+        )
         if job_name is None:
             if self.job_name_prefix:
                 job_name = utils.name_from_base(self.job_name_prefix)
@@ -1438,22 +1429,22 @@ class _AnalysisConfigGenerator:
         return analysis_config
 
     @staticmethod
-    def bias_pre_training(data_config, data_bias_config, methods):
+    def bias_pre_training(data_config, bias_config, methods):
         analysis_config = data_config.get_config()
-        analysis_config.update(data_bias_config.get_config())
+        analysis_config.update(bias_config.get_config())
         analysis_config["methods"] = {"pre_training_bias": {"methods": methods}}
         return analysis_config
 
     @staticmethod
     def bias_post_training(
             data_config,
-            data_bias_config,
+            bias_config,
             model_predicted_label_config,
             methods,
             model_config
     ):
         analysis_config = data_config.get_config()
-        analysis_config.update(data_bias_config.get_config())
+        analysis_config.update(bias_config.get_config())
         analysis_config["methods"] = {"post_training_bias": {"methods": methods}}
         (
             probability_threshold,
@@ -1462,6 +1453,34 @@ class _AnalysisConfigGenerator:
         predictor_config.update(model_config.get_predictor_config())
         analysis_config["predictor"] = predictor_config
         _set(probability_threshold, "probability_threshold", analysis_config)
+        return analysis_config
+
+    @staticmethod
+    def bias(
+        data_config,
+        bias_config,
+        model_config,
+        model_predicted_label_config,
+        pre_training_methods="all",
+        post_training_methods="all",
+    ):
+        analysis_config = data_config.get_config()
+        analysis_config.update(bias_config.get_config())
+        analysis_config["predictor"] = model_config.get_predictor_config()
+        if model_predicted_label_config:
+            (
+                probability_threshold,
+                predictor_config,
+            ) = model_predicted_label_config.get_predictor_config()
+            if predictor_config:
+                analysis_config["predictor"].update(predictor_config)
+            if probability_threshold is not None:
+                analysis_config["probability_threshold"] = probability_threshold
+
+        analysis_config["methods"] = {
+            "pre_training_bias": {"methods": pre_training_methods},
+            "post_training_bias": {"methods": post_training_methods},
+        }
         return analysis_config
 
     @staticmethod
