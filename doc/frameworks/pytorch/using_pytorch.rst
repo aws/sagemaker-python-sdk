@@ -200,16 +200,31 @@ fit Optional Arguments
 Distributed PyTorch Training
 ============================
 
-You can run a multi-machine, distributed PyTorch training using the PyTorch Estimator. By default, PyTorch objects will
-submit single-machine training jobs to SageMaker. If you set ``instance_count`` to be greater than one, multi-machine
-training jobs will be launched when ``fit`` is called. When you run multi-machine training, SageMaker will import your
-training script and run it on each host in the cluster.
+SageMaker supports the `PyTorch DistributedDataParallel (DDP)
+<https://pytorch.org/docs/master/generated/torch.nn.parallel.DistributedDataParallel.html>`_
+package. You simply need to check the variables in your training script,
+such as the world size and the rank of the current host, when initializing
+process groups for distributed training.
+And then, launch the training job using the
+:class:`sagemaker.pytorch.estimator.PyTorch` estimator class
+with the ``pytorchddp`` option as the distribution strategy.
 
-To initialize distributed training in your script you would call ``dist.init_process_group`` providing desired backend
-and rank and setting 'WORLD_SIZE' environment variable similar to how you would do it outside of SageMaker using
-environment variable initialization:
+.. note::
+
+  This PyTorch DDP support is available
+  in the SageMaker PyTorch Deep Learning Containers v1.12 and later.
+
+Adapt Your Training Script
+--------------------------
+
+To initialize distributed training in your script, call
+`torch.distributed.init_process_group
+<https://pytorch.org/docs/master/distributed.html#torch.distributed.init_process_group>`_
+with the desired backend and the rank of the current host.
 
 .. code:: python
+
+    import torch.distributed as dist
 
     if args.distributed:
         # Initialize the distributed environment.
@@ -218,11 +233,65 @@ environment variable initialization:
         host_rank = args.hosts.index(args.current_host)
         dist.init_process_group(backend=args.backend, rank=host_rank)
 
-SageMaker sets 'MASTER_ADDR' and 'MASTER_PORT' environment variables for you, but you can overwrite them.
+SageMaker sets ``'MASTER_ADDR'`` and ``'MASTER_PORT'`` environment variables for you,
+but you can also overwrite them.
 
-Supported backends:
--  `gloo` and `tcp` for cpu instances
--  `gloo` and `nccl` for gpu instances
+**Supported backends:**
+
+-  ``gloo`` and ``tcp`` for CPU instances
+-  ``gloo`` and ``nccl`` for GPU instances
+
+Launching a Distributed Training Job
+------------------------------------
+
+You can run multi-node distributed PyTorch training jobs using the
+:class:`sagemaker.pytorch.estimator.PyTorch` estimator class.
+With ``instance_count=1``, the estimator submits a
+single-node training job to SageMaker; with ``instance_count`` greater
+than one, a multi-node training job is launched.
+
+To run a distributed training script that adopts
+the `PyTorch DistributedDataParallel (DDP) package
+<https://pytorch.org/docs/master/generated/torch.nn.parallel.DistributedDataParallel.html>`_,
+choose the ``pytorchddp`` as the distributed training option in the ``PyTorch`` estimator.
+
+With the ``pytorchddp`` option, the SageMaker PyTorch estimator runs a SageMaker
+training container for PyTorch, sets up the environment for MPI, and launches
+the training job using the ``mpirun`` command on each worker with the given information
+during the PyTorch DDP initialization.
+
+.. note::
+
+  The SageMaker PyTorch estimator doesn’t use ``torchrun`` for distributed training.
+
+For more information about setting up PyTorch DDP in your training script,
+see `Getting Started with Distributed Data Parallel
+<https://pytorch.org/tutorials/intermediate/ddp_tutorial.html>`_ in the
+PyTorch documentation.
+
+The following example shows how to run a PyTorch DDP training in SageMaker
+using two ``ml.p4d.24xlarge`` instances:
+
+.. code:: python
+
+    from sagemaker.pytorch import PyTorch
+
+    pt_estimator = PyTorch(
+        entry_point="train_ptddp.py",
+        role="SageMakerRole",
+        framework_version="1.12.0",
+        py_version="py38",
+        instance_count=2,
+        instance_type="ml.p4d.24xlarge",
+        distribution={
+            "pytorchddp": {
+                "enabled": True
+            }
+        }
+    )
+
+    pt_estimator.fit("s3://bucket/path/to/training/data")
+
 
 
 *********************

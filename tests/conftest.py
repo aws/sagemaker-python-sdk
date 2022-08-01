@@ -411,6 +411,18 @@ def tf_full_py_version(tf_full_version):
     return "py39"
 
 
+@pytest.fixture(scope="module")
+def pytorch_ddp_py_version():
+    return "py3"
+
+
+@pytest.fixture(
+    scope="module", params=["1.10", "1.10.0", "1.10.2", "1.11", "1.11.0", "1.12", "1.12.0"]
+)
+def pytorch_ddp_framework_version(request):
+    return request.param
+
+
 @pytest.fixture(scope="session")
 def cpu_instance_type(sagemaker_session, request):
     region = sagemaker_session.boto_session.region_name
