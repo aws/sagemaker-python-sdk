@@ -1370,6 +1370,36 @@ class SageMakerClarifyProcessor(Processor):
                   the Trial Component will be unassociated.
                 * ``'TrialComponentDisplayName'`` is used for display in Amazon SageMaker Studio.
         """  # noqa E501  # pylint: disable=c0301
+        analysis_config = _AnalysisConfigGenerator.explainability(
+            data_config,
+            model_config,
+            model_scores,
+            explainability_config
+        )
+        if job_name is None:
+            if self.job_name_prefix:
+                job_name = utils.name_from_base(self.job_name_prefix)
+            else:
+                job_name = utils.name_from_base("Clarify-Explainability")
+        return self._run(
+            data_config,
+            analysis_config,
+            wait,
+            logs,
+            job_name,
+            kms_key,
+            experiment_config,
+        )
+
+
+class _AnalysisConfigGenerator:
+    @staticmethod
+    def explainability(
+        data_config,
+        model_config,
+        model_scores,
+        explainability_config
+    ):
         analysis_config = data_config.get_config()
         predictor_config = model_config.get_predictor_config()
         if isinstance(model_scores, ModelPredictedLabelConfig):
@@ -1392,34 +1422,21 @@ class SageMakerClarifyProcessor(Processor):
             if not len(explainability_methods.keys()) == len(explainability_config):
                 raise ValueError("Duplicate explainability configs are provided")
             if (
-                "shap" not in explainability_methods
-                and explainability_methods["pdp"].get("features", None) is None
+                    "shap" not in explainability_methods
+                    and explainability_methods["pdp"].get("features", None) is None
             ):
                 raise ValueError("PDP features must be provided when ShapConfig is not provided")
         else:
             if (
-                isinstance(explainability_config, PDPConfig)
-                and explainability_config.get_explainability_config()["pdp"].get("features", None)
-                is None
+                    isinstance(explainability_config, PDPConfig)
+                    and explainability_config.get_explainability_config()["pdp"].get("features", None)
+                    is None
             ):
                 raise ValueError("PDP features must be provided when ShapConfig is not provided")
             explainability_methods = explainability_config.get_explainability_config()
         analysis_config["methods"] = explainability_methods
         analysis_config["predictor"] = predictor_config
-        if job_name is None:
-            if self.job_name_prefix:
-                job_name = utils.name_from_base(self.job_name_prefix)
-            else:
-                job_name = utils.name_from_base("Clarify-Explainability")
-        return self._run(
-            data_config,
-            analysis_config,
-            wait,
-            logs,
-            job_name,
-            kms_key,
-            experiment_config,
-        )
+        return analysis_config
 
 
 def _upload_analysis_config(analysis_config_file, s3_output_path, sagemaker_session, kms_key):

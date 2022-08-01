@@ -29,6 +29,7 @@ from sagemaker.clarify import (
     SHAPConfig,
     TextConfig,
     ImageConfig,
+    _AnalysisConfigGenerator,
 )
 
 JOB_NAME_PREFIX = "my-prefix"
@@ -1277,3 +1278,28 @@ def test_shap_with_image_config(
         expected_predictor_config,
         expected_image_config=expected_image_config,
     )
+
+
+def test_analysis_config_generator_for_explainability(data_config, model_config):
+    model_scores = ModelPredictedLabelConfig(
+        probability="pr",
+        label_headers=["success"],
+    )
+    actual = _AnalysisConfigGenerator.explainability(
+        data_config,
+        model_config,
+        model_scores,
+        SHAPConfig(),
+    )
+    expected = {'dataset_type': 'text/csv',
+                'headers': ['Label', 'F1', 'F2', 'F3', 'F4'],
+                'joinsource_name_or_index': 'F4',
+                'label': 'Label',
+                'methods': {'shap': {'save_local_shap_values': True, 'use_logit': False}},
+                'predictor': {'initial_instance_count': 1,
+                              'instance_type': 'ml.c5.xlarge',
+                              'label_headers': ['success'],
+                              'model_name': 'xgboost-model',
+                              'probability': 'pr'}}
+    assert actual == expected
+
