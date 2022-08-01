@@ -17,11 +17,12 @@ from abc import ABC, abstractmethod
 import json
 from copy import deepcopy
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict, List, Union
 from botocore.exceptions import ClientError
 
 from sagemaker.workflow.conditions import ConditionTypeEnum
 from sagemaker.workflow.steps import StepTypeEnum, Step
+from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.parameters import Parameter
 from sagemaker.workflow.functions import Join, JsonGet, PropertyFile
@@ -256,8 +257,7 @@ class _TrainingStepExecutor(_StepExecutor):
             return self.pipline_executor.local_sagemaker_client.describe_training_job(job_name)
         except Exception as e:  # pylint: disable=W0703
             self.pipline_executor.execution.update_step_failure(
-                self.step.name,
-                f"Error when executing step {self.step.name} of type {type(self.step)}: {e}",
+                self.step.name, f"{type(e).__name__}: {str(e)}"
             )
 
 
@@ -291,8 +291,7 @@ class _ProcessingStepExecutor(_StepExecutor):
 
         except Exception as e:  # pylint: disable=W0703
             self.pipline_executor.execution.update_step_failure(
-                self.step.name,
-                f"Error when executing step {self.step.name} of type {type(self.step)}: {e}",
+                self.step.name, f"{type(e).__name__}: {str(e)}"
             )
 
 
@@ -300,12 +299,10 @@ class _ConditionStepExecutor(_StepExecutor):
     """Executor class to execute ConditionStep locally"""
 
     def execute(self):
-        def _block_all_downstream_steps(steps: List[Step]):
+        def _block_all_downstream_steps(steps: List[Union[Step, StepCollection]]):
             steps_to_block = set()
             for step in steps:
-                steps_to_block.update(
-                    self.pipline_executor.pipeline_dag.get_steps_in_sub_dag(step.name)
-                )
+                steps_to_block.update(self.pipline_executor.pipeline_dag.get_steps_in_sub_dag(step))
             self.pipline_executor._blocked_steps.update(steps_to_block)
 
         if_steps = self.step.if_steps
@@ -469,8 +466,7 @@ class _TransformStepExecutor(_StepExecutor):
             return self.pipline_executor.local_sagemaker_client.describe_transform_job(job_name)
         except Exception as e:  # pylint: disable=W0703
             self.pipline_executor.execution.update_step_failure(
-                self.step.name,
-                f"Error when executing step {self.step.name} of type {type(self.step)}: {e}",
+                self.step.name, f"{type(e).__name__}: {str(e)}"
             )
 
 
@@ -485,8 +481,7 @@ class _CreateModelStepExecutor(_StepExecutor):
             return self.pipline_executor.local_sagemaker_client.describe_model(model_name)
         except Exception as e:  # pylint: disable=W0703
             self.pipline_executor.execution.update_step_failure(
-                self.step.name,
-                f"Error when executing step {self.step.name} of type {type(self.step)}: {e}",
+                self.step.name, f"{type(e).__name__}: {str(e)}"
             )
 
 
