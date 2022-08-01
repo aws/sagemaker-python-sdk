@@ -13,10 +13,10 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-from typing import Optional, Dict
+from typing import Optional, Dict, List, Union
 
 import sagemaker
-from sagemaker import ModelMetrics
+from sagemaker import ModelMetrics, Model
 from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.session import Session
@@ -25,6 +25,7 @@ from sagemaker.utils import (
     update_container_with_inference_params,
 )
 from sagemaker.transformer import Transformer
+from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
 
 
@@ -36,13 +37,13 @@ class PipelineModel(object):
 
     def __init__(
         self,
-        models,
-        role,
-        predictor_cls=None,
-        name=None,
-        vpc_config=None,
-        sagemaker_session=None,
-        enable_network_isolation=False,
+        models: List[Model],
+        role: str,
+        predictor_cls: Optional[callable] = None,
+        name: Optional[str] = None,
+        vpc_config: Optional[Dict[str, List[Union[str, PipelineVariable]]]] = None,
+        sagemaker_session: Optional[Session] = None,
+        enable_network_isolation: Union[bool, PipelineVariable] = False,
     ):
         """Initialize a SageMaker `Model` instance.
 
@@ -267,27 +268,27 @@ class PipelineModel(object):
     @runnable_by_pipeline
     def register(
         self,
-        content_types: list,
-        response_types: list,
-        inference_instances: Optional[list] = None,
-        transform_instances: Optional[list] = None,
-        model_package_name: Optional[str] = None,
-        model_package_group_name: Optional[str] = None,
-        image_uri: Optional[str] = None,
+        content_types: List[Union[str, PipelineVariable]],
+        response_types: List[Union[str, PipelineVariable]],
+        inference_instances: Optional[List[Union[str, PipelineVariable]]] = None,
+        transform_instances: Optional[List[Union[str, PipelineVariable]]] = None,
+        model_package_name: Optional[Union[str, PipelineVariable]] = None,
+        model_package_group_name: Optional[Union[str, PipelineVariable]] = None,
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
         model_metrics: Optional[ModelMetrics] = None,
         metadata_properties: Optional[MetadataProperties] = None,
         marketplace_cert: bool = False,
-        approval_status: Optional[str] = None,
+        approval_status: Optional[Union[str, PipelineVariable]] = None,
         description: Optional[str] = None,
         drift_check_baselines: Optional[DriftCheckBaselines] = None,
-        customer_metadata_properties: Optional[Dict[str, str]] = None,
-        domain: Optional[str] = None,
-        sample_payload_url: Optional[str] = None,
-        task: Optional[str] = None,
-        framework: Optional[str] = None,
-        framework_version: Optional[str] = None,
-        nearest_model_name: Optional[str] = None,
-        data_input_configuration: Optional[str] = None,
+        customer_metadata_properties: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        domain: Optional[Union[str, PipelineVariable]] = None,
+        sample_payload_url: Optional[Union[str, PipelineVariable]] = None,
+        task: Optional[Union[str, PipelineVariable]] = None,
+        framework: Optional[Union[str, PipelineVariable]] = None,
+        framework_version: Optional[Union[str, PipelineVariable]] = None,
+        nearest_model_name: Optional[Union[str, PipelineVariable]] = None,
+        data_input_configuration: Optional[Union[str, PipelineVariable]] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -345,7 +346,7 @@ class PipelineModel(object):
                 framework_version=framework_version,
                 nearest_model_name=nearest_model_name,
                 data_input_configuration=data_input_configuration,
-                container_def=container_def,
+                container_list=container_def,
             )
         else:
             container_def = [
