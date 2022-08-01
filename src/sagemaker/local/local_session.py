@@ -448,6 +448,7 @@ class LocalSagemakerClient(object):  # pylint: disable=too-many-public-methods
             }
             raise ClientError(error_response, "update_pipeline")
         LocalSagemakerClient._pipelines[pipeline.name].pipeline_description = pipeline_description
+        LocalSagemakerClient._pipelines[pipeline.name].pipeline = pipeline
         LocalSagemakerClient._pipelines[
             pipeline.name
         ].last_modified_time = datetime.now().timestamp()
