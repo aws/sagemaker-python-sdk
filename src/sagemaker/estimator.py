@@ -792,6 +792,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         if self.rules is not None:
             for rule in self.rules:
                 if isinstance(rule, Rule):
+                    # Add check for xgboost rules
+                    self._check_debugger_rule(rule)
                     self.debugger_rules.append(rule)
                 elif isinstance(rule, ProfilerRule):
                     self.profiler_rules.append(rule)
@@ -800,6 +802,16 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                         "Rules list can only contain sagemaker.debugger.Rule "
                         + "and sagemaker.debugger.ProfilerRule"
                     )
+
+    def _check_debugger_rule(self, rule):
+        """Add warning for incorrectly used xgboost rules."""
+        _xgboost_specific_rules = ["FeatureImportanceOverweight", "TreeDepth"]
+        if rule.name in _xgboost_specific_rules:
+            logger.warning(
+                "TreeDepth and FeatureImportanceOverweight rules are valid "
+                "only for the XGBoost algorithm. Please make sure this estimator "
+                "is used for XGBoost algorithm. "
+            )
 
     def _prepare_debugger_for_training(self):
         """Prepare debugger rules and debugger configs for training."""
