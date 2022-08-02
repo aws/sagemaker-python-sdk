@@ -25,6 +25,7 @@ from sagemaker.fw_utils import (
     python_deprecation_warning,
     validate_version_or_image_args,
     validate_distribution,
+    validate_distribution_instance,
 )
 from sagemaker.pytorch import defaults
 from sagemaker.pytorch.model import PyTorchModel
@@ -220,6 +221,12 @@ class PyTorch(Framework):
             entry_point, source_dir, hyperparameters, image_uri=image_uri, **kwargs
         )
         if distribution is not None:
+            instance_type = self._get_instance_type()
+            # remove "ml." prefix
+            if instance_type[:3] == "ml.":
+                instance_type = instance_type[3:]
+            validate_distribution_instance(self.sagemaker_session, distribution, instance_type)
+
             distribution = validate_distribution(
                 distribution,
                 self.instance_groups,
