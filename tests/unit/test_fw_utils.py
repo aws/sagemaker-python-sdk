@@ -49,6 +49,15 @@ def sagemaker_session():
     session_mock.sagemaker_client.describe_training_job = Mock(
         return_value={"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
     )
+    session_mock.boto_session.client("ec2").describe_instance_types = Mock(
+        return_value={
+            "InstanceTypes": [
+                {
+                    "CpuInfo": {},
+                },
+            ],
+        }
+    )
     return session_mock
 
 
@@ -731,6 +740,31 @@ def test_validate_smdistributed_not_raises():
                 distribution=distribution,
                 image_uri=image_uri,
             )
+
+
+def test_validate_distribution_instance_no_smdistributed(sagemaker_session):
+    distribution = {}
+    instance_type = "mock_type"
+    fw_utils.validate_distribution_instance(sagemaker_session, distribution, instance_type)
+
+
+def test_validate_distribution_instance_no_modelparallel(sagemaker_session):
+    distribution = {"smdistributed": {}}
+    instance_type = "mock_type"
+    fw_utils.validate_distribution_instance(sagemaker_session, distribution, instance_type)
+
+
+def test_validate_distribution_instance_disabled_modelparallel(sagemaker_session):
+    distribution = {"smdistributed": {"modelparallel": {"enabled": False}}}
+    instance_type = "mock_type"
+    fw_utils.validate_distribution_instance(sagemaker_session, distribution, instance_type)
+
+
+def test_validate_distribution_instance_raise(sagemaker_session):
+    distribution = {"smdistributed": {"modelparallel": {"enabled": True}}}
+    instance_type = "mock_type"
+    with pytest.raises(ValueError):
+        fw_utils.validate_distribution_instance(sagemaker_session, distribution, instance_type)
 
 
 def test_validate_smdistributed_raises():
