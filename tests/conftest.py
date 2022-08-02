@@ -415,7 +415,7 @@ def tf_full_version(tensorflow_training_latest_version, tensorflow_inference_lat
         )
     )
     # Hack. See https://github.com/aws/sagemaker-python-sdk/pull/3251
-    if version === "2.9.0":
+    if version == "2.9.0":
         return "2.9"
     return version
 
