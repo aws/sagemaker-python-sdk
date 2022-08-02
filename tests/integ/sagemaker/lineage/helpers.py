@@ -16,8 +16,7 @@ from __future__ import absolute_import
 import uuid
 from datetime import datetime
 import time
-import boto3
-from botocore.config import Config
+
 
 def name():
     return "lineage-integ-{}-{}".format(

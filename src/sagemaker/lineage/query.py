@@ -339,17 +339,21 @@ class LineageQueryResult(object):
             'edges':[
                 {'source_arn': 'string', 'destination_arn': 'string', 'association_type': 'string'},
                 ...],
-    
+
             'vertices':[
-                {'arn': 'string', 'lineage_entity': 'string', 'lineage_source': 'string', '_session': <sagemaker.session.Session object>},
+                {'arn': 'string', 'lineage_entity': 'string', 'lineage_source': 'string',
+                '_session': <sagemaker.session.Session object>},
                 ...],
-    
+
             'startarn':['string', ...]
         }
 
         """
-        result_dict = vars(self)
-        return '{\n' + '\n\n'.join('\'{}\': {},'.format(key, val) for key, val in self.__dict__.items()) + '\n}'
+        return (
+            "{\n"
+            + "\n\n".join("'{}': {},".format(key, val) for key, val in self.__dict__.items())
+            + "\n}"
+        )
 
     def _covert_edges_to_tuples(self):
         """Convert edges to tuple format for visualizer."""

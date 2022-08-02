@@ -18,6 +18,7 @@ from sagemaker.lineage.action import Action
 from sagemaker.lineage.lineage_trial_component import LineageTrialComponent
 from sagemaker.lineage.query import LineageEntityEnum, LineageSourceEnum, Vertex, LineageQuery
 import pytest
+import re
 
 
 def test_lineage_query(sagemaker_session):
@@ -540,15 +541,37 @@ def test_get_visualization_elements(sagemaker_session):
         start_arns=["arn:aws:sagemaker:us-west-2:0123456789012:context/mycontext"]
     )
 
-    print(query_response)
-
     elements = query_response._get_visualization_elements()
-
-    print(elements)
 
     assert elements["nodes"][0] == ("arn1", "Endpoint", "Artifact", False)
     assert elements["nodes"][1] == ("arn2", "Model", "Context", False)
     assert elements["edges"][0] == ("arn1", "arn2", "Produced")
 
-    
 
+def test_query_lineage_result_str(sagemaker_session):
+    lineage_query = LineageQuery(sagemaker_session)
+    sagemaker_session.sagemaker_client.query_lineage.return_value = {
+        "Vertices": [
+            {"Arn": "arn1", "Type": "Endpoint", "LineageType": "Artifact"},
+            {"Arn": "arn2", "Type": "Model", "LineageType": "Context"},
+        ],
+        "Edges": [{"SourceArn": "arn1", "DestinationArn": "arn2", "AssociationType": "Produced"}],
+    }
+
+    query_response = lineage_query.query(
+        start_arns=["arn:aws:sagemaker:us-west-2:0123456789012:context/mycontext"]
+    )
+
+    response_str = query_response.__str__()
+    pattern = "Mock id='\d*'"
+    replace = "Mock id=''"
+    response_str = re.sub(pattern, replace, response_str)
+
+    assert (
+        response_str
+        == "{\n'edges': [\n\t{'source_arn': 'arn1', 'destination_arn': 'arn2', 'association_type': 'Produced'}],"
+        + "\n\n'vertices': [\n\t{'arn': 'arn1', 'lineage_entity': 'Artifact', 'lineage_source': 'Endpoint', "
+        + "'_session': <Mock id=''>}, \n\t{'arn': 'arn2', 'lineage_entity': 'Context', 'lineage_source': "
+        + "'Model', '_session': <Mock id=''>}],\n\n'startarn': "
+        + "['arn:aws:sagemaker:us-west-2:0123456789012:context/mycontext'],\n}"
+    )
