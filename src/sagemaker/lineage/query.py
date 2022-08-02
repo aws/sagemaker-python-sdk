@@ -104,6 +104,18 @@ class Edge:
         """
         return str(self.__dict__)
 
+    def __repr__(self):
+        """Define string representation of ``Edge``.
+
+        Format:
+            {
+                'source_arn': 'string', 'destination_arn': 'string',
+                'association_type': 'string'
+            }
+
+        """
+        return "\n\t" + str(self.__dict__)
+
 
 class Vertex:
     """A vertex for a lineage graph."""
@@ -154,6 +166,19 @@ class Vertex:
 
         """
         return str(self.__dict__)
+
+    def __repr__(self):
+        """Define string representation of ``Vertex``.
+
+        Format:
+            {
+                'arn': 'string', 'lineage_entity': 'string',
+                'lineage_source': 'string',
+                '_session': <sagemaker.session.Session object>
+            }
+
+        """
+        return "\n\t" + str(self.__dict__)
 
     def to_lineage_object(self):
         """Convert the ``Vertex`` object to its corresponding lineage object.
@@ -312,29 +337,19 @@ class LineageQueryResult(object):
         Format:
         {
             'edges':[
-                "{
-                    'source_arn': 'string', 'destination_arn': 'string',
-                    'association_type': 'string'
-                }",
-                ...
-            ],
+                {'source_arn': 'string', 'destination_arn': 'string', 'association_type': 'string'},
+                ...],
+    
             'vertices':[
-                "{
-                    'arn': 'string', 'lineage_entity': 'string',
-                    'lineage_source': 'string',
-                    '_session': <sagemaker.session.Session object>
-                }",
-                ...
-            ],
-            'startarn':[
-                'string',
-                ...
-            ]
+                {'arn': 'string', 'lineage_entity': 'string', 'lineage_source': 'string', '_session': <sagemaker.session.Session object>},
+                ...],
+    
+            'startarn':['string', ...]
         }
 
         """
         result_dict = vars(self)
-        return str({k: [str(val) for val in v] for k, v in result_dict.items()})
+        return '{\n' + '\n\n'.join('\'{}\': {},'.format(key, val) for key, val in self.__dict__.items()) + '\n}'
 
     def _covert_edges_to_tuples(self):
         """Convert edges to tuple format for visualizer."""
