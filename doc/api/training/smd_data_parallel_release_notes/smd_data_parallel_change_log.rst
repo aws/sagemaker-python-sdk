@@ -7,8 +7,45 @@ Release Notes
 New features, bug fixes, and improvements are regularly made to the SageMaker
 distributed data parallel library.
 
-SageMaker Distributed Data Parallel 1.4.1 Release Notes
+SageMaker Distributed Data Parallel 1.5.0 Release Notes
 =======================================================
+
+*Date: Jul. 26. 2022*
+
+**Currency Updates**
+
+* Added support for PyTorch 1.12.0.
+
+**Bug Fixes**
+
+* Improved stability for long-running training jobs.
+
+
+**Migration to AWS Deep Learning Containers**
+
+This version passed benchmark testing and is migrated to the following AWS Deep Learning Containers (DLC):
+
+- PyTorch 1.12.0 DLC
+
+  .. code::
+
+    763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.12.0-gpu-py38-cu113-ubuntu20.04-sagemaker
+
+Binary file of this version of the library for `custom container
+<https://docs.aws.amazon.com/sagemaker/latest/dg/data-parallel-use-api.html#data-parallel-bring-your-own-container>`_ users:
+
+  .. code::
+
+    https://smdataparallel.s3.amazonaws.com/binary/pytorch/1.12.0/cu113/2022-07-01/smdistributed_dataparallel-1.5.0-cp38-cp38-linux_x86_64.whl
+
+
+----
+
+Release History
+===============
+
+SageMaker Distributed Data Parallel 1.4.1 Release Notes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 *Date: May. 3. 2022*
 
@@ -18,7 +55,9 @@ SageMaker Distributed Data Parallel 1.4.1 Release Notes
 
 **Known Issues**
 
-* The library currently does not support the PyTorch sub-process groups API (torch.distributed.new_group (https://pytorch.org/docs/stable/distributed.html#torch.distributed.new_group)).
+* The library currently does not support the PyTorch sub-process groups API
+  (`torch.distributed.new_group
+  <https://pytorch.org/docs/stable/distributed.html#torch.distributed.new_group>`_).
 
 
 **Migration to AWS Deep Learning Containers**
@@ -37,11 +76,6 @@ Binary file of this version of the library for custom container users:
 
     https://smdataparallel.s3.amazonaws.com/binary/pytorch/1.11.0/cu113/2022-04-14/smdistributed_dataparallel-1.4.1-cp38-cp38-linux_x86_64.whl
 
-
-----
-
-Release History
-===============
 
 SageMaker Distributed Data Parallel 1.4.0 Release Notes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
