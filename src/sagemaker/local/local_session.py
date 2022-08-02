@@ -667,7 +667,7 @@ class LocalSession(Session):
                 logger.error(_module_import_error("yaml", "Local mode", "local"))
                 raise e
 
-            self.config = yaml.load(open(sagemaker_config_file, "r"))
+            self.config = yaml.safe_load(open(sagemaker_config_file, "r"))
             if self._disable_local_code and "local" in self.config:
                 self.config["local"]["local_code"] = False
 
