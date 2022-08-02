@@ -26,8 +26,8 @@ depending on the version of the library you use.
    <https://docs.aws.amazon.com/sagemaker/latest/dg/data-parallel-use-api.html#data-parallel-use-python-skd-api>`_
    for more information.
 
-Version 1.4.0, 1.4.1 (Latest)
-=============================
+Version 1.4.0, 1.4.1, 1.5.0 (Latest)
+====================================
 
 .. toctree::
    :maxdepth: 1
