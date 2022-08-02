@@ -408,12 +408,16 @@ def tf_full_version(tensorflow_training_latest_version, tensorflow_inference_lat
     Fixture exists as such, since TF training and TFS have different latest versions.
     Otherwise, this would simply be a single latest version.
     """
-    return str(
+    version = str(
         min(
             Version(tensorflow_training_latest_version),
             Version(tensorflow_inference_latest_version),
         )
     )
+    # Hack. See https://github.com/aws/sagemaker-python-sdk/pull/3251
+    if version === "2.9.0":
+        return "2.9"
+    return version
 
 
 @pytest.fixture(scope="module")
