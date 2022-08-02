@@ -22,7 +22,6 @@ import shutil
 import tempfile
 from collections import namedtuple
 from typing import Optional, Union, Dict
-import yaml
 
 import sagemaker.image_uris
 from sagemaker.session_settings import SessionSettings
@@ -248,7 +247,7 @@ def parse_mp_parameters(params):
 
     Raises:
         ValueError: if params is not a string or a dict, or
-                    the config file cannot be parsed as json or yaml.
+                    the config file cannot be parsed as json.
     """
     parsed = None
     if isinstance(params, dict):
@@ -258,11 +257,7 @@ def parse_mp_parameters(params):
             with open(params, "r") as fp:
                 parsed = json.load(fp)
         except json.decoder.JSONDecodeError:
-            try:
-                with open(params, "r") as fp:
-                    parsed = yaml.load(fp)
-            except yaml.YAMLError:
-                pass
+            pass
     else:
         raise ValueError(
             f"Expected a string path to an existing modelparallel config, or a dictionary. "
@@ -270,7 +265,7 @@ def parse_mp_parameters(params):
         )
 
     if parsed is None:
-        raise ValueError(f"Cannot parse {params} as a json or yaml file.")
+        raise ValueError(f"Cannot parse {params} as a json file.")
 
     return parsed
 
