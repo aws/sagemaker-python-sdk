@@ -563,8 +563,8 @@ def test_query_lineage_result_str(sagemaker_session):
     )
 
     response_str = query_response.__str__()
-    pattern = "Mock id='\d*'"
-    replace = "Mock id=''"
+    pattern = r"Mock id='\d*'"
+    replace = r"Mock id=''"
     response_str = re.sub(pattern, replace, response_str)
 
     assert (
