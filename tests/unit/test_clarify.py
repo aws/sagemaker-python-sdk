@@ -1382,18 +1382,18 @@ def test_analysis_config_generator_for_bias(data_config, data_bias_config, model
     )
     expected = {'dataset_type': 'text/csv',
                 'facet': [{'name_or_index': 'F1'}],
-                           'group_variable': 'F2',
-                           'headers': ['Label', 'F1', 'F2', 'F3', 'F4'],
-                           'joinsource_name_or_index': 'F4',
-                           'label': 'Label',
-                           'label_values_or_threshold': [1],
-                           'methods': {
-                               'report': {'name': 'report', 'title': 'Analysis Report'},
-                               'post_training_bias': {'methods': 'all'},
-                               'pre_training_bias': {'methods': 'all'}},
-                           'predictor': {'initial_instance_count': 1,
-                                         'instance_type': 'ml.c5.xlarge',
-                                         'label_headers': ['success'],
-                                         'model_name': 'xgboost-model',
-                                         'probability': 'pr'}}
+                'group_variable': 'F2',
+                'headers': ['Label', 'F1', 'F2', 'F3', 'F4'],
+                'joinsource_name_or_index': 'F4',
+                'label': 'Label',
+                'label_values_or_threshold': [1],
+                'methods': {
+                    'report': {'name': 'report', 'title': 'Analysis Report'},
+                    'post_training_bias': {'methods': 'all'},
+                    'pre_training_bias': {'methods': 'all'}},
+                'predictor': {'initial_instance_count': 1,
+                              'instance_type': 'ml.c5.xlarge',
+                              'label_headers': ['success'],
+                              'model_name': 'xgboost-model',
+                              'probability': 'pr'}}
     assert actual == expected

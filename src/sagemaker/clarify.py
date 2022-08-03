@@ -25,6 +25,8 @@ import re
 
 import tempfile
 from abc import ABC, abstractmethod
+from typing import List, Union
+
 from sagemaker import image_uris, s3, utils
 from sagemaker.processing import ProcessingInput, ProcessingOutput, Processor
 
@@ -1034,7 +1036,7 @@ class SageMakerClarifyProcessor(Processor):
     def run_pre_training_bias(
         self,
         data_config,
-        bias_config,
+        data_bias_config,
         methods="all",
         wait=True,
         logs=True,
@@ -1049,7 +1051,7 @@ class SageMakerClarifyProcessor(Processor):
 
         Args:
             data_config (:class:`~sagemaker.clarify.DataConfig`): Config of the input/output data.
-            bias_config (:class:`~sagemaker.clarify.BiasConfig`): Config of sensitive groups.
+            data_bias_config (:class:`~sagemaker.clarify.BiasConfig`): Config of sensitive groups.
             methods (str or list[str]): Selects a subset of potential metrics:
                 ["`CI <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-bias-metric-class-imbalance.html>`_",
                 "`DPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-true-label-imbalance.html>`_",
@@ -1085,7 +1087,7 @@ class SageMakerClarifyProcessor(Processor):
         """  # noqa E501  # pylint: disable=c0301
         analysis_config = _AnalysisConfigGenerator.bias_pre_training(
             data_config,
-            bias_config,
+            data_bias_config,
             methods
         )
         # when name is either not provided (is None) or an empty string ("")
@@ -1103,7 +1105,7 @@ class SageMakerClarifyProcessor(Processor):
     def run_post_training_bias(
         self,
         data_config,
-        bias_config,
+        data_bias_config,
         model_config,
         model_predicted_label_config,
         methods="all",
@@ -1123,7 +1125,7 @@ class SageMakerClarifyProcessor(Processor):
 
         Args:
             data_config (:class:`~sagemaker.clarify.DataConfig`): Config of the input/output data.
-            bias_config (:class:`~sagemaker.clarify.BiasConfig`): Config of sensitive groups.
+            data_bias_config (:class:`~sagemaker.clarify.BiasConfig`): Config of sensitive groups.
             model_config (:class:`~sagemaker.clarify.ModelConfig`): Config of the model and its
                 endpoint to be created.
             model_predicted_label_config (:class:`~sagemaker.clarify.ModelPredictedLabelConfig`):
@@ -1166,7 +1168,7 @@ class SageMakerClarifyProcessor(Processor):
         """  # noqa E501  # pylint: disable=c0301
         analysis_config = _AnalysisConfigGenerator.bias_post_training(
             data_config,
-            bias_config,
+            data_bias_config,
             model_predicted_label_config,
             methods,
             model_config
@@ -1377,10 +1379,10 @@ class _AnalysisConfigGenerator:
     @classmethod
     def explainability(
         cls,
-        data_config,
-        model_config,
-        model_scores,
-        explainability_config
+        data_config: DataConfig,
+        model_config: ModelConfig,
+        model_scores: ModelPredictedLabelConfig,
+        explainability_config: ExplainabilityConfig,
     ):
         analysis_config = data_config.get_config()
         predictor_config = model_config.get_predictor_config()
@@ -1421,7 +1423,7 @@ class _AnalysisConfigGenerator:
         return cls._common(analysis_config)
 
     @classmethod
-    def bias_pre_training(cls, data_config, bias_config, methods):
+    def bias_pre_training(cls, data_config: DataConfig, bias_config: BiasConfig, methods: Union[str, List[str]]):
         analysis_config = {
             **data_config.get_config(),
             **bias_config.get_config(),
@@ -1432,11 +1434,11 @@ class _AnalysisConfigGenerator:
     @classmethod
     def bias_post_training(
         cls,
-        data_config,
-        bias_config,
-        model_predicted_label_config,
-        methods,
-        model_config
+        data_config: DataConfig,
+        bias_config: BiasConfig,
+        model_predicted_label_config: ModelPredictedLabelConfig,
+        methods: Union[str, List[str]],
+        model_config: ModelConfig,
     ):
         analysis_config = {
             **data_config.get_config(),
@@ -1454,12 +1456,12 @@ class _AnalysisConfigGenerator:
     @classmethod
     def bias(
         cls,
-        data_config,
-        bias_config,
-        model_config,
-        model_predicted_label_config,
-        pre_training_methods="all",
-        post_training_methods="all",
+        data_config: DataConfig,
+        bias_config: BiasConfig,
+        model_config: ModelConfig,
+        model_predicted_label_config: ModelPredictedLabelConfig,
+        pre_training_methods: Union[str, List[str]] = "all",
+        post_training_methods: Union[str, List[str]] = "all",
     ):
         analysis_config = {
             **data_config.get_config(),
