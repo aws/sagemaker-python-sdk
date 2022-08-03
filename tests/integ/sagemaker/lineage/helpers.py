@@ -142,6 +142,10 @@ class LineageResourceHelper:
             return False
 
     def clean_all(self):
+        # clean all lineage data created by LineageResourceHelper
+
+        time.sleep(1)  # avoid GSI race condition between create & delete
+
         for source, dest in self.associations:
             try:
                 self.client.delete_association(SourceArn=source, DestinationArn=dest)

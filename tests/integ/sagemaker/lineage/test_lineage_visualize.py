@@ -29,10 +29,11 @@ def test_LineageResourceHelper(sagemaker_session):
         art1 = lineage_resource_helper.create_artifact(artifact_name=name())
         art2 = lineage_resource_helper.create_artifact(artifact_name=name())
         lineage_resource_helper.create_association(source_arn=art1, dest_arn=art2)
-        lineage_resource_helper.clean_all()
     except Exception as e:
         print(e)
         assert False
+    finally:
+        lineage_resource_helper.clean_all()
 
 
 @pytest.mark.skip("visualizer load test")
@@ -46,7 +47,7 @@ def test_wide_graph_visualize(sagemaker_session):
     #         \ \--> Artifact
     #          \--->  ...
     try:
-        for i in range(200):
+        for i in range(150):
             artifact_arn = lineage_resource_helper.create_artifact(artifact_name=name())
             lineage_resource_helper.create_association(
                 source_arn=wide_graph_root_arn, dest_arn=artifact_arn
@@ -55,6 +56,10 @@ def test_wide_graph_visualize(sagemaker_session):
         lq = sagemaker.lineage.query.LineageQuery(sagemaker_session)
         lq_result = lq.query(start_arns=[wide_graph_root_arn])
         lq_result.visualize(path="wideGraph.html")
+
+        print("vertex len = ")
+        print(len(lq_result.vertices))
+        assert False
 
     except Exception as e:
         print(e)
