@@ -13,7 +13,6 @@
 """This module contains code to test SageMaker ``LineageQueryResult.visualize()``"""
 from __future__ import absolute_import
 import time
-import json
 import os
 
 import pytest
@@ -47,26 +46,22 @@ def test_wide_graph_visualize(sagemaker_session):
     #         \ \--> Artifact
     #          \--->  ...
     try:
-        for i in range(10):
+        for i in range(200):
             artifact_arn = lineage_resource_helper.create_artifact(artifact_name=name())
             lineage_resource_helper.create_association(
                 source_arn=wide_graph_root_arn, dest_arn=artifact_arn
             )
-    except Exception as e:
-        print(e)
-        lineage_resource_helper.clean_all()
-        assert False
 
-    try:
         lq = sagemaker.lineage.query.LineageQuery(sagemaker_session)
         lq_result = lq.query(start_arns=[wide_graph_root_arn])
         lq_result.visualize(path="wideGraph.html")
+
     except Exception as e:
         print(e)
-        lineage_resource_helper.clean_all()
         assert False
 
-    lineage_resource_helper.clean_all()
+    finally:
+        lineage_resource_helper.clean_all()
 
 
 @pytest.mark.skip("visualizer load test")
@@ -84,27 +79,23 @@ def test_long_graph_visualize(sagemaker_session):
                 source_arn=last_arn, dest_arn=new_artifact_arn
             )
             last_arn = new_artifact_arn
-    except Exception as e:
-        print(e)
-        lineage_resource_helper.clean_all()
-        assert False
 
-    try:
         lq = sagemaker.lineage.query.LineageQuery(sagemaker_session)
         lq_result = lq.query(
             start_arns=[long_graph_root_arn], direction=LineageQueryDirectionEnum.DESCENDANTS
         )
         # max depth = 10 -> graph rendered only has length of ten (in DESCENDANTS direction)
         lq_result.visualize(path="longGraph.html")
+
     except Exception as e:
         print(e)
-        lineage_resource_helper.clean_all()
         assert False
 
-    lineage_resource_helper.clean_all()
+    finally:
+        lineage_resource_helper.clean_all()
 
 
-def test_graph_visualize(sagemaker_session):
+def test_graph_visualize(sagemaker_session, extract_data_from_html):
     lineage_resource_helper = LineageResourceHelper(sagemaker_session=sagemaker_session)
 
     # create lineage data
@@ -141,24 +132,14 @@ def test_graph_visualize(sagemaker_session):
             dest_arn=endpoint_context,
             association_type="AssociatedWith",
         )
-        time.sleep(1)
-    except Exception as e:
-        print(e)
-        lineage_resource_helper.clean_all()
-        assert False
+        time.sleep(3)
 
-    # visualize
-    try:
+        # visualize
         lq = sagemaker.lineage.query.LineageQuery(sagemaker_session)
         lq_result = lq.query(start_arns=[graph_startarn])
         lq_result.visualize(path="testGraph.html")
-    except Exception as e:
-        print(e)
-        lineage_resource_helper.clean_all()
-        assert False
 
-    # check generated graph info
-    try:
+        # check generated graph info
         fo = open("testGraph.html", "r")
         lines = fo.readlines()
         for line in lines:
@@ -167,108 +148,85 @@ def test_graph_visualize(sagemaker_session):
             if "edges = " in line:
                 edge = line
 
-        # extract node data
-        start = node.find("[")
-        end = node.find("]")
-        res = node[start + 1 : end].split("}, ")
-        res = [i + "}" for i in res]
-        res[-1] = res[-1][:-1]
-        node_dict = [json.loads(i) for i in res]
-
-        # extract edge data
-        start = edge.find("[")
-        end = edge.find("]")
-        res = edge[start + 1 : end].split("}, ")
-        res = [i + "}" for i in res]
-        res[-1] = res[-1][:-1]
-        edge_dict = [json.loads(i) for i in res]
+        node_dict = extract_data_from_html(node)
+        edge_dict = extract_data_from_html(edge)
 
         # check node number
         assert len(node_dict) == 5
 
-        # check startarn
-        found_value = next(
-            dictionary for dictionary in node_dict if dictionary["id"] == graph_startarn
-        )
-        assert found_value["color"] == "#146eb4"
-        assert found_value["label"] == "Model"
-        assert found_value["shape"] == "star"
-        assert found_value["title"] == "Artifact"
+        expected_nodes = {
+            graph_startarn: {
+                "color": "#146eb4",
+                "label": "Model",
+                "shape": "star",
+                "title": "Artifact",
+            },
+            image_artifact: {
+                "color": "#146eb4",
+                "label": "Image",
+                "shape": "dot",
+                "title": "Artifact",
+            },
+            dataset_artifact: {
+                "color": "#146eb4",
+                "label": "DataSet",
+                "shape": "dot",
+                "title": "Artifact",
+            },
+            modeldeploy_action: {
+                "color": "#88c396",
+                "label": "ModelDeploy",
+                "shape": "dot",
+                "title": "Action",
+            },
+            endpoint_context: {
+                "color": "#ff9900",
+                "label": "Endpoint",
+                "shape": "dot",
+                "title": "Context",
+            },
+        }
 
-        # check image artifact
-        found_value = next(
-            dictionary for dictionary in node_dict if dictionary["id"] == image_artifact
-        )
-        assert found_value["color"] == "#146eb4"
-        assert found_value["label"] == "Image"
-        assert found_value["shape"] == "dot"
-        assert found_value["title"] == "Artifact"
-
-        # check dataset artifact
-        found_value = next(
-            dictionary for dictionary in node_dict if dictionary["id"] == dataset_artifact
-        )
-        assert found_value["color"] == "#146eb4"
-        assert found_value["label"] == "DataSet"
-        assert found_value["shape"] == "dot"
-        assert found_value["title"] == "Artifact"
-
-        # check modeldeploy action
-        found_value = next(
-            dictionary for dictionary in node_dict if dictionary["id"] == modeldeploy_action
-        )
-        assert found_value["color"] == "#88c396"
-        assert found_value["label"] == "ModelDeploy"
-        assert found_value["shape"] == "dot"
-        assert found_value["title"] == "Action"
-
-        # check endpoint context
-        found_value = next(
-            dictionary for dictionary in node_dict if dictionary["id"] == endpoint_context
-        )
-        assert found_value["color"] == "#ff9900"
-        assert found_value["label"] == "Endpoint"
-        assert found_value["shape"] == "dot"
-        assert found_value["title"] == "Context"
+        # check node properties
+        for node in node_dict:
+            for label, val in expected_nodes[node["id"]].items():
+                assert node[label] == val
 
         # check edge number
         assert len(edge_dict) == 4
 
-        # check image_artifact ->  model_artifact(startarn) edge
-        found_value = next(
-            dictionary for dictionary in edge_dict if dictionary["from"] == image_artifact
-        )
-        assert found_value["to"] == graph_startarn
-        assert found_value["title"] == "ContributedTo"
+        expected_edges = {
+            image_artifact: {
+                "from": image_artifact,
+                "to": graph_startarn,
+                "title": "ContributedTo",
+            },
+            dataset_artifact: {
+                "from": dataset_artifact,
+                "to": graph_startarn,
+                "title": "AssociatedWith",
+            },
+            graph_startarn: {
+                "from": graph_startarn,
+                "to": modeldeploy_action,
+                "title": "ContributedTo",
+            },
+            modeldeploy_action: {
+                "from": modeldeploy_action,
+                "to": endpoint_context,
+                "title": "AssociatedWith",
+            },
+        }
 
-        # check dataset_artifact ->  model_artifact(startarn) edge
-        found_value = next(
-            dictionary for dictionary in edge_dict if dictionary["from"] == dataset_artifact
-        )
-        assert found_value["to"] == graph_startarn
-        assert found_value["title"] == "AssociatedWith"
-
-        # check model_artifact(startarn) ->  modeldeploy_action edge
-        found_value = next(
-            dictionary for dictionary in edge_dict if dictionary["from"] == graph_startarn
-        )
-        assert found_value["to"] == modeldeploy_action
-        assert found_value["title"] == "ContributedTo"
-
-        # check modeldeploy_action ->  endpoint_context edge
-        found_value = next(
-            dictionary for dictionary in edge_dict if dictionary["from"] == modeldeploy_action
-        )
-        assert found_value["to"] == endpoint_context
-        assert found_value["title"] == "AssociatedWith"
+        # check edge properties
+        for edge in edge_dict:
+            for label, val in expected_edges[edge["from"]].items():
+                assert edge[label] == val
 
     except Exception as e:
         print(e)
-        lineage_resource_helper.clean_all()
-        os.remove("testGraph.html")
         assert False
 
-    # delete generated test graph
-    os.remove("testGraph.html")
-    # clean lineage data
-    lineage_resource_helper.clean_all()
+    finally:
+        lineage_resource_helper.clean_all()
+        os.remove("testGraph.html")

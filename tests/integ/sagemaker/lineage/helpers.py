@@ -145,27 +145,23 @@ class LineageResourceHelper:
         for source, dest in self.associations:
             try:
                 self.client.delete_association(SourceArn=source, DestinationArn=dest)
-                time.sleep(0.5)
             except Exception as e:
                 print("skipped " + str(e))
 
         for artifact_arn in self.artifacts:
             try:
                 self.client.delete_artifact(ArtifactArn=artifact_arn)
-                time.sleep(0.5)
             except Exception as e:
                 print("skipped " + str(e))
 
         for action_arn in self.actions:
             try:
                 self.client.delete_action(ActionArn=action_arn)
-                time.sleep(0.5)
             except Exception as e:
                 print("skipped " + str(e))
 
         for context_arn in self.contexts:
             try:
                 self.client.delete_context(ContextArn=context_arn)
-                time.sleep(0.5)
             except Exception as e:
                 print("skipped " + str(e))
