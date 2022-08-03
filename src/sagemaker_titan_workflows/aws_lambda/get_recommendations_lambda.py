@@ -14,18 +14,22 @@ transformer = recommender.fit(df)
 
 instance_info = InstanceInfos()
 instances = instance_info.instances
-default_env = {
-    instance: {
-        # we want to allow threads less than the number of cpus
-        OptimusNaming.omp_num_threads: choice(range(1, instance_info(instance).num_cpu))
-        if instance_info(instance).num_gpu == 0
-        # gpu instances shouldn't have multiple threads
-        else choice([1]),
-        # we want to allow workers less than the number of cpus
-        OptimusNaming.num_workers: choice(range(1, instance_info(instance).num_cpu)),
+
+
+def get_config(instance):
+    num_gpu = instance_info(instance).num_gpu
+    num_cpu = instance_info(instance).num_cpu
+
+    if num_gpu > 0:
+        return {OptimusNaming.num_workers: choice(range(1, num_cpu))}
+
+    return {
+        OptimusNaming.omp_num_threads: choice(range(1, num_cpu)),
+        OptimusNaming.num_workers: choice(range(1, num_cpu)),
     }
-    for instance in instances
-}
+
+
+default_env = {instance: get_config(instance) for instance in instances}
 
 
 def get_recommendations_handler(event, context):

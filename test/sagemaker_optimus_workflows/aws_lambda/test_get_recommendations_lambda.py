@@ -19,5 +19,21 @@ class TestGetRecommendationLambda(TestCase):
 
         self.assertEqual(1, len(recommendations))
         self.assertEquals("ml.g4dn.2xlarge", recommendations[0]["instanceType"])
+        self.assertTrue("OMP_NUM_THREADS" not in recommendations[0]["env"])
+        self.assertTrue("TS_DEFAULT_WORKERS_PER_MODEL" in recommendations[0]["env"])
+
+    def test_get_recommendation_handler_cpu(self):
+        recommendations = get_recommendations_handler(
+            {
+                "NearestModelName": "resnet152-torchvision",
+                "Framework": "pytorch",
+                "Count": 1,
+                "InstanceTypes": ["ml.c5.xlarge"],
+            },
+            Mock(),
+        )
+
+        self.assertEqual(1, len(recommendations))
+        self.assertEquals("ml.c5.xlarge", recommendations[0]["instanceType"])
         self.assertTrue("OMP_NUM_THREADS" in recommendations[0]["env"])
         self.assertTrue("TS_DEFAULT_WORKERS_PER_MODEL" in recommendations[0]["env"])
