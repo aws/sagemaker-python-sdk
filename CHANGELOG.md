@@ -1,5 +1,25 @@
 # Changelog
 
+## v2.102.0 (2022-08-04)
+
+### Features
+
+ * add warnings for xgboost specific rules in debugger rules
+ * Add PyTorch DDP distribution support
+ * Add test for profiler enablement with debugger_hook false
+
+### Bug Fixes and Other Changes
+
+ * Two letter language code must be supported
+ * add a check to prevent launching a modelparallel job on CPU only instances
+ * Allow StepCollection added in ConditionStep to be depended on
+ * Add PipelineVariable annotation in framework models
+ * skip managed spot training mxnet nb
+
+### Documentation Changes
+
+ * smdistributed libraries currency updates
+
 ## v2.101.1 (2022-07-28)
 
 ### Bug Fixes and Other Changes
