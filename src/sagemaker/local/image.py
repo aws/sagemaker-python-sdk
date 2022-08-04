@@ -759,7 +759,9 @@ class _SageMakerContainer(object):
         # for GPU support pass in nvidia as the runtime, this is equivalent
         # to setting --runtime=nvidia in the docker commandline.
         if self.instance_type == "local_gpu":
-            host_config["runtime"] = "nvidia"
+            host_config["deploy"] = {
+                "resources": {"reservations": {"devices": [{"capabilities": ["gpu"]}]}}
+            }
 
         if command == "serve":
             serving_port = (
