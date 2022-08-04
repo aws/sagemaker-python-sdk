@@ -533,6 +533,11 @@ def test_get_visualization_elements(sagemaker_session):
         "Vertices": [
             {"Arn": "arn1", "Type": "Endpoint", "LineageType": "Artifact"},
             {"Arn": "arn2", "Type": "Model", "LineageType": "Context"},
+            {
+                "Arn": "arn:aws:sagemaker:us-west-2:0123456789012:context/mycontext",
+                "Type": "Model",
+                "LineageType": "Context",
+            },
         ],
         "Edges": [{"SourceArn": "arn1", "DestinationArn": "arn2", "AssociationType": "Produced"}],
     }
@@ -545,6 +550,12 @@ def test_get_visualization_elements(sagemaker_session):
 
     assert elements["nodes"][0] == ("arn1", "Endpoint", "Artifact", False)
     assert elements["nodes"][1] == ("arn2", "Model", "Context", False)
+    assert elements["nodes"][2] == (
+        "arn:aws:sagemaker:us-west-2:0123456789012:context/mycontext",
+        "Model",
+        "Context",
+        True,
+    )
     assert elements["edges"][0] == ("arn1", "arn2", "Produced")
 
 
