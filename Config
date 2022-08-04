@@ -51,7 +51,7 @@ package.SageMakerTitanWorkflowsPythonLambda = {
 
             # Dependencies for build-time linting. Controlled in `setup.py`
             BrazilPython-Flake8 = any;
-            Python-flake8 = 3.7.x;
+            Python-flake8 = 3.8.x;
             Python-pep8-naming = 0.x;
         };
     };
