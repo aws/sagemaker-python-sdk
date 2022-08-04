@@ -574,8 +574,10 @@ def test_container_has_gpu_support(tmpdir, sagemaker_session):
     )
 
     docker_host = sagemaker_container._create_docker_host("host-1", {}, set(), "train", [])
-    assert "runtime" in docker_host
-    assert docker_host["runtime"] == "nvidia"
+    assert "deploy" in docker_host
+    assert docker_host["deploy"] == {
+        "resources": {"reservations": {"devices": [{"capabilities": ["gpu"]}]}}
+    }
 
 
 def test_container_does_not_enable_nvidia_docker_for_cpu_containers(sagemaker_session):
