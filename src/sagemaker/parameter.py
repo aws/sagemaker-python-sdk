@@ -38,9 +38,9 @@ class ParameterRange(object):
         """Initialize a parameter range.
 
         Args:
-            min_value (float or int): The minimum value for the range.
-            max_value (float or int): The maximum value for the range.
-            scaling_type (str): The scale used for searching the range during
+            min_value (float or int or PipelineVariable): The minimum value for the range.
+            max_value (float or int or PipelineVariable): The maximum value for the range.
+            scaling_type (str or PipelineVariable): The scale used for searching the range during
                 tuning (default: 'Auto'). Valid values: 'Auto', 'Linear',
                 'Logarithmic' and 'ReverseLogarithmic'.
         """

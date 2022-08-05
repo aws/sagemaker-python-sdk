@@ -316,16 +316,16 @@ class RecordSet(object):
         """A collection of Amazon :class:~`Record` objects serialized and stored in S3.
 
         Args:
-            s3_data (str): The S3 location of the training data
+            s3_data (str or PipelineVariable): The S3 location of the training data
             num_records (int): The number of records in the set.
             feature_dim (int): The dimensionality of "values" arrays in the
                 Record features, and label (if each Record is labeled).
-            s3_data_type (str): Valid values: 'S3Prefix', 'ManifestFile'. If
-                'S3Prefix', ``s3_data`` defines a prefix of s3 objects to train
+            s3_data_type (str or PipelineVariable): Valid values: 'S3Prefix', 'ManifestFile'.
+                If 'S3Prefix', ``s3_data`` defines a prefix of s3 objects to train
                 on. All objects with s3 keys beginning with ``s3_data`` will be
                 used to train. If 'ManifestFile', then ``s3_data`` defines a
                 single s3 manifest file, listing each s3 object to train on.
-            channel (str): The SageMaker Training Job channel this RecordSet
+            channel (str or PipelineVariable): The SageMaker Training Job channel this RecordSet
                 should be bound to
         """
         self.s3_data = s3_data

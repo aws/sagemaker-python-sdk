@@ -162,12 +162,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if it needs to access an AWS resource.
-            instance_count (int): Number of Amazon EC2 instances to use
+            instance_count (int or PipelineVariable): Number of Amazon EC2 instances to use
                 for training. Required if instance_groups is not set.
-            instance_type (str): Type of EC2 instance to use for training,
+            instance_type (str or PipelineVariable): Type of EC2 instance to use for training,
                 for example, ``'ml.c4.xlarge'``. Required if instance_groups is
                 not set.
-            volume_size (int): Size in GB of the storage volume to use for
+            volume_size (int or PipelineVariable): Size in GB of the storage volume to use for
                 storing input and output data during training (default: 30).
 
                 Must be large enough to store training data if File mode is
@@ -205,12 +205,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 Folders for Training Datasets, Checkpoints, Model Artifacts,
                 and Outputs
                 <https://docs.aws.amazon.com/sagemaker/latest/dg/model-train-storage.html>`_.
-            volume_kms_key (str): Optional. KMS key ID for encrypting EBS
+            volume_kms_key (str or PipelineVariable): Optional. KMS key ID for encrypting EBS
                 volume attached to the training instance (default: None).
-            max_run (int): Timeout in seconds for training (default: 24 *
+            max_run (int or PipelineVariable): Timeout in seconds for training (default: 24 *
                 60 * 60). After this amount of time Amazon SageMaker terminates
                 the job regardless of its current status.
-            input_mode (str): The input mode that the algorithm supports
+            input_mode (str or PipelineVariable): The input mode that the algorithm supports
                 (default: 'File'). Valid modes:
                 'File' - Amazon SageMaker copies the training dataset from the
                 S3 location to a local directory.
@@ -220,14 +220,14 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 downloading the entire dataset before training begins. This argument can
                 be overriden on a per-channel basis using
                 ``sagemaker.inputs.TrainingInput.input_mode``.
-            output_path (str): S3 location for saving the training result (model
+            output_path (str or PipelineVariable): S3 location for saving the training result (model
                 artifacts and output files). If not specified, results are
                 stored to a default bucket. If the bucket with the specific name
                 does not exist, the estimator creates the bucket during the
                 :meth:`~sagemaker.estimator.EstimatorBase.fit` method execution.
                 file:// urls are used for local mode. For example: 'file://model/'
                 will save to the model folder in the current directory.
-            output_kms_key (str): Optional. KMS key ID for encrypting the
+            output_kms_key (str or PipelineVariable): Optional. KMS key ID for encrypting the
                 training output (default: Your IAM role's KMS key for Amazon S3).
                 If you don't provide a KMS key ID, Amazon SageMaker uses the
                 default KMS key for Amazon S3 of the account linked to your
@@ -240,13 +240,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
-            tags (list[dict]): List of tags for labeling a training job. For
-                more, see
+            tags (list[dict[str, str] or list[dict[str, PipelineVariable]]):
+                List of tags for labeling a training job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
-            subnets (list[str]): List of subnet ids. If not specified training
-                job will be created without VPC config.
-            security_group_ids (list[str]): List of security group ids. If not
+            subnets (list[str] or list[PipelineVariable]): List of subnet ids. If not
                 specified training job will be created without VPC config.
+            security_group_ids (list[str] or list[PipelineVariable]): List of security group ids.
+                If not specified training job will be created without VPC config.
             model_uri (str): URI where a pre-trained model is stored, either
                 locally or in S3 (default: None). If specified, the estimator
                 will create a channel pointing to the model so the training job
@@ -260,31 +260,31 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
                 More information:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html#td-deserialization
-            model_channel_name (str): Name of the channel where 'model_uri' will
+            model_channel_name (str or PipelineVariable): Name of the channel where 'model_uri' will
                 be downloaded (default: 'model').
-            metric_definitions (list[dict]): A list of dictionaries that defines
-                the metric(s) used to evaluate the training jobs. Each
-                dictionary contains two keys: 'Name' for the name of the metric,
+            metric_definitions (list[dict[str, str] or list[dict[str, PipelineVariable]]):
+                A list of dictionaries that defines the metric(s) used to evaluate the
+                training jobs. Each dictionary contains two keys: 'Name' for the name of the metric,
                 and 'Regex' for the regular expression used to extract the
                 metric from the logs. This should be defined only for jobs that
                 don't use an Amazon algorithm.
-            encrypt_inter_container_traffic (bool): Specifies whether traffic
+            encrypt_inter_container_traffic (bool or PipelineVariable): Specifies whether traffic
                 between training containers is encrypted for the training job
                 (default: ``False``).
-            use_spot_instances (bool): Specifies whether to use SageMaker
+            use_spot_instances (bool or PipelineVariable): Specifies whether to use SageMaker
                 Managed Spot instances for training. If enabled then the
                 ``max_wait`` arg should also be set.
                 More information:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/model-managed-spot-training.html
                 (default: ``False``).
-            max_wait (int): Timeout in seconds waiting for spot training
+            max_wait (int or PipelineVariable): Timeout in seconds waiting for spot training
                 job (default: None). After this amount of time Amazon
                 SageMaker will stop waiting for managed spot training job to
                 complete (default: None).
-            checkpoint_s3_uri (str): The S3 URI in which to persist checkpoints
+            checkpoint_s3_uri (str or PipelineVariable): The S3 URI in which to persist checkpoints
                 that the algorithm persists (if any) during training. (default:
                 ``None``).
-            checkpoint_local_path (str): The local path that the algorithm
+            checkpoint_local_path (str or PipelineVariable): The local path that the algorithm
                 writes its checkpoints to. SageMaker will persist all files
                 under this path to `checkpoint_s3_uri` continually during
                 training. On job startup the reverse happens - data from the
@@ -314,13 +314,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 see `Capture real time tensorboard data
                 <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html#
                 capture-real-time-tensorboard-data-from-the-debugging-hook>`_.
-            enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
+            enable_sagemaker_metrics (bool or PipelineVariable): enable SageMaker Metrics Time
                 Series. For more information, see `AlgorithmSpecification API
                 <https://docs.aws.amazon.com/sagemaker/latest/dg/
                 API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-
                 EnableSageMakerMetricsTimeSeries>`_.
                 (default: None).
-            enable_network_isolation (bool): Specifies whether container will
+            enable_network_isolation (bool or PipelineVariable): Specifies whether container will
                 run in network isolation mode (default: ``False``). Network
                 isolation mode restricts the container access to outside networks
                 (such as the Internet). The container does not make any inbound or
@@ -335,17 +335,17 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 ``disable_profiler`` parameter to ``True``.
             disable_profiler (bool): Specifies whether Debugger monitoring and profiling
                 will be disabled (default: ``False``).
-            environment (dict[str, str]) : Environment variables to be set for
-                use during training job (default: None)
-            max_retry_attempts (int): The number of times to move a job to the STARTING status.
-                You can specify between 1 and 30 attempts.
+            environment (dict[str, str] or dict[str, PipelineVariable]) : Environment variables
+                to be set for use during training job (default: None)
+            max_retry_attempts (int or PipelineVariable): The number of times to move a job
+                to the STARTING status. You can specify between 1 and 30 attempts.
                 If the value of attempts is greater than zero,
                 the job is retried on InternalServerFailure
                 the same number of attempts as the value.
                 You can cap the total duration for your job by setting ``max_wait`` and ``max_run``
                 (default: None)
-            source_dir (str): The absolute, relative, or  S3 URI Path to a directory
-                with any other training source code dependencies aside from the entry
+            source_dir (str or PipelineVariable): The absolute, relative, or S3 URI Path to
+                a directory with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
                 point to a tar.gz file. The structure within this directory is preserved
                 when training on Amazon SageMaker. If 'git_config' is provided,
@@ -412,9 +412,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 authentication if they are provided. If they are not provided,
                 the SageMaker Python SDK attempts to use either the CodeCommit
                 credential helper or local credential storage for authentication.
-            hyperparameters (dict): A dictionary containing the hyperparameters to
+            hyperparameters (dict[str, str] or dict[str, PipelineVariable]):
+                A dictionary containing the hyperparameters to
                 initialize this estimator with. (Default: None).
-            container_log_level (int): The log level to use within the container
+            container_log_level (int or PipelineVariable): The log level to use within the container
                 (default: logging.INFO). Valid values are defined in the Python
                 logging module.
             code_location (str): The S3 prefix URI where custom code is
@@ -422,7 +423,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 a string prepended with a "/" is appended to ``code_location``. The code
                 file uploaded to S3 is 'code_location/job-name/source/sourcedir.tar.gz'.
                 If not specified, the default ``code location`` is 's3://output_bucket/job-name/'.
-            entry_point (str): The absolute or relative path to the local Python
+            entry_point (str or PipelineVariable): The absolute or relative path to the local Python
                 source file that should be executed as the entry point to
                 training. (Default: None). If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
@@ -2258,18 +2259,18 @@ class Estimator(EstimatorBase):
         """Initialize an ``Estimator`` instance.
 
         Args:
-            image_uri (str): The container image to use for training.
+            image_uri (str or PipelineVariable): The container image to use for training.
             role (str): An AWS IAM role (either name or full ARN). The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if it needs to access an AWS resource.
-            instance_count (int): Number of Amazon EC2 instances to use
+            instance_count (int or PipelineVariable): Number of Amazon EC2 instances to use
                 for training. Required if instance_groups is not set.
-            instance_type (str): Type of EC2 instance to use for training,
+            instance_type (str or PipelineVariable): Type of EC2 instance to use for training,
                 for example, ``'ml.c4.xlarge'``. Required if instance_groups is
                 not set.
-            volume_size (int): Size in GB of the storage volume to use for
+            volume_size (int or PipelineVariable): Size in GB of the storage volume to use for
                 storing input and output data during training (default: 30).
 
                 Must be large enough to store training data if File mode is
@@ -2307,12 +2308,12 @@ class Estimator(EstimatorBase):
                 Folders for Training Datasets, Checkpoints, Model Artifacts,
                 and Outputs
                 <https://docs.aws.amazon.com/sagemaker/latest/dg/model-train-storage.html>`_.
-            volume_kms_key (str): Optional. KMS key ID for encrypting EBS
+            volume_kms_key (str or PipelineVariable): Optional. KMS key ID for encrypting EBS
                 volume attached to the training instance (default: None).
-            max_run (int): Timeout in seconds for training (default: 24 *
+            max_run (int or PipelineVariable): Timeout in seconds for training (default: 24 *
                 60 * 60). After this amount of time Amazon SageMaker terminates
                 the job regardless of its current status.
-            input_mode (str): The input mode that the algorithm supports
+            input_mode (str or PipelineVariable): The input mode that the algorithm supports
                 (default: 'File'). Valid modes:
 
                 * 'File' - Amazon SageMaker copies the training dataset from the
@@ -2322,12 +2323,12 @@ class Estimator(EstimatorBase):
 
                 This argument can be overriden on a per-channel basis using
                 ``sagemaker.inputs.TrainingInput.input_mode``.
-            output_path (str): S3 location for saving the training result (model
-                artifacts and output files). If not specified, results are
+            output_path (str or PipelineVariable): S3 location for saving the training result
+                (model artifacts and output files). If not specified, results are
                 stored to a default bucket. If the bucket with the specific name
                 does not exist, the estimator creates the bucket during the
                 :meth:`~sagemaker.estimator.EstimatorBase.fit` method execution.
-            output_kms_key (str): Optional. KMS key ID for encrypting the
+            output_kms_key (str or PipelineVariable): Optional. KMS key ID for encrypting the
                 training output (default: None).
             base_job_name (str): Prefix for training job name when the
                 :meth:`~sagemaker.estimator.EstimatorBase.fit` method launches.
@@ -2337,15 +2338,15 @@ class Estimator(EstimatorBase):
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
-            hyperparameters (dict): Dictionary containing the hyperparameters to
-                initialize this estimator with.
-            tags (list[dict]): List of tags for labeling a training job. For
-                more, see
+            hyperparameters (dict[str, str] or dict[str, PipelineVariable]):
+                Dictionary containing the hyperparameters to initialize this estimator with.
+            tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): List of tags for
+                labeling a training job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
-            subnets (list[str]): List of subnet ids. If not specified training
-                job will be created without VPC config.
-            security_group_ids (list[str]): List of security group ids. If not
-                specified training job will be created without VPC config.
+            subnets (list[str] or list[PipelineVariable]): List of subnet ids.
+                If not specified training job will be created without VPC config.
+            security_group_ids (list[str] or list[PipelineVariable]): List of security group ids.
+                If not specified training job will be created without VPC config.
             model_uri (str): URI where a pre-trained model is stored, either
                 locally or in S3 (default: None). If specified, the estimator
                 will create a channel pointing to the model so the training job
@@ -2359,32 +2360,32 @@ class Estimator(EstimatorBase):
 
                 More information:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html#td-deserialization
-            model_channel_name (str): Name of the channel where 'model_uri' will
+            model_channel_name (str or PipelineVariable): Name of the channel where 'model_uri' will
                 be downloaded (default: 'model').
-            metric_definitions (list[dict]): A list of dictionaries that defines
-                the metric(s) used to evaluate the training jobs. Each
+            metric_definitions (list[dict[str, str] or list[dict[str, PipelineVariable]]): A list of
+                dictionaries that defines the metric(s) used to evaluate the training jobs. Each
                 dictionary contains two keys: 'Name' for the name of the metric,
                 and 'Regex' for the regular expression used to extract the
                 metric from the logs. This should be defined only for jobs that
                 don't use an Amazon algorithm.
-            encrypt_inter_container_traffic (bool): Specifies whether traffic
+            encrypt_inter_container_traffic (bool or PipelineVariable): Specifies whether traffic
                 between training containers is encrypted for the training job
                 (default: ``False``).
-            use_spot_instances (bool): Specifies whether to use SageMaker
+            use_spot_instances (bool or PipelineVariable): Specifies whether to use SageMaker
                 Managed Spot instances for training. If enabled then the
                 ``max_wait`` arg should also be set.
 
                 More information:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/model-managed-spot-training.html
                 (default: ``False``).
-            max_wait (int): Timeout in seconds waiting for spot training
+            max_wait (int or PipelineVariable): Timeout in seconds waiting for spot training
                 job (default: None). After this amount of time Amazon
                 SageMaker will stop waiting for managed spot training job to
                 complete (default: None).
-            checkpoint_s3_uri (str): The S3 URI in which to persist checkpoints
+            checkpoint_s3_uri (str or PipelineVariable): The S3 URI in which to persist checkpoints
                 that the algorithm persists (if any) during training. (default:
                 None).
-            checkpoint_local_path (str): The local path that the algorithm
+            checkpoint_local_path (str or PipelineVariable): The local path that the algorithm
                 writes its checkpoints to. SageMaker will persist all files
                 under this path to `checkpoint_s3_uri` continually during
                 training. On job startup the reverse happens - data from the
@@ -2392,7 +2393,7 @@ class Estimator(EstimatorBase):
                 started. If the path is unset then SageMaker assumes the
                 checkpoints will be provided under `/opt/ml/checkpoints/`.
                 (default: None).
-            enable_network_isolation (bool): Specifies whether container will
+            enable_network_isolation (bool or PipelineVariable): Specifies whether container will
                 run in network isolation mode (default: ``False``). Network
                 isolation mode restricts the container access to outside networks
                 (such as the Internet). The container does not make any inbound or
@@ -2419,7 +2420,7 @@ class Estimator(EstimatorBase):
                 see `Capture real time tensorboard data
                 <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html#
                 capture-real-time-tensorboard-data-from-the-debugging-hook>`_.
-            enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
+            enable_sagemaker_metrics (bool or PipelineVariable): enable SageMaker Metrics Time
                 Series. For more information, see `AlgorithmSpecification API
                 <https://docs.aws.amazon.com/sagemaker/latest/dg/
                 API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-
@@ -2436,17 +2437,17 @@ class Estimator(EstimatorBase):
                 ``disable_profiler`` parameter to ``True``.
             disable_profiler (bool): Specifies whether Debugger monitoring and profiling
                 will be disabled (default: ``False``).
-            environment (dict[str, str]) : Environment variables to be set for
-                use during training job (default: None)
-            max_retry_attempts (int): The number of times to move a job to the STARTING status.
-                You can specify between 1 and 30 attempts.
+            environment (dict[str, str] or dict[str, PipelineVariable]) : Environment variables to
+                be set for use during training job (default: None)
+            max_retry_attempts (int or PipelineVariable): The number of times to move a job
+                to the STARTING status. You can specify between 1 and 30 attempts.
                 If the value of attempts is greater than zero,
                 the job is retried on InternalServerFailure
                 the same number of attempts as the value.
                 You can cap the total duration for your job by setting ``max_wait`` and ``max_run``
                 (default: None)
-            source_dir (str): The absolute, relative, or S3 URI Path to a directory
-                with any other training source code dependencies aside from the entry
+            source_dir (str or PipelineVariable): The absolute, relative, or S3 URI Path to
+                a directory with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
                 point to a tar.gz file. Structure within this directory is preserved
                 when training on Amazon SageMaker. If 'git_config' is provided,
@@ -2515,7 +2516,7 @@ class Estimator(EstimatorBase):
                 authentication if they are provided. If they are not provided,
                 the SageMaker Python SDK attempts to use either the CodeCommit
                 credential helper or local credential storage for authentication.
-            container_log_level (int): The log level to use within the container
+            container_log_level (int or PipelineVariable): The log level to use within the container
                 (default: logging.INFO). Valid values are defined in the Python
                 logging module.
             code_location (str): The S3 prefix URI where custom code is
@@ -2523,7 +2524,7 @@ class Estimator(EstimatorBase):
                 a string prepended with a "/" is appended to ``code_location``. The code
                 file uploaded to S3 is 'code_location/job-name/source/sourcedir.tar.gz'.
                 If not specified, the default ``code location`` is 's3://output_bucket/job-name/'.
-            entry_point (str): The absolute or relative path to the local Python
+            entry_point (str or PipelineVariable): The absolute or relative path to the local Python
                 source file that should be executed as the entry point to
                 training. If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
@@ -2751,8 +2752,8 @@ class Framework(EstimatorBase):
         Subclasses which override ``__init__`` should invoke ``super()``.
 
         Args:
-            entry_point (str): Path (absolute or relative) to the local Python
-                source file which should be executed as the entry point to
+            entry_point (str or PipelineVariable): Path (absolute or relative) to
+                the local Python source file which should be executed as the entry point to
                 training. If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
                 If 'git_config' is provided, 'entry_point' should be
@@ -2767,9 +2768,9 @@ class Framework(EstimatorBase):
                     >>>         |----- test.py
 
                     You can assign entry_point='src/train.py'.
-            source_dir (str): Path (absolute, relative or an S3 URI) to a directory
-                with any other training source code dependencies aside from the entry
-                point file (default: None). If ``source_dir`` is an S3 URI, it must
+            source_dir (str or PipelineVariable): Path (absolute, relative or an S3 URI)
+                to a directory with any other training source code dependencies aside from
+                the entry point file (default: None). If ``source_dir`` is an S3 URI, it must
                 point to a tar.gz file. Structure within this directory are preserved
                 when training on Amazon SageMaker. If 'git_config' is provided,
                 'source_dir' should be a relative location to a directory in the Git
@@ -2787,13 +2788,13 @@ class Framework(EstimatorBase):
                     and you need 'train.py' as entry point and 'test.py' as
                     training source code as well, you can assign
                     entry_point='train.py', source_dir='src'.
-            hyperparameters (dict): Hyperparameters that will be used for
-                training (default: None). The hyperparameters are made
+            hyperparameters (dict[str, str] or dict[str, PipelineVariable]): Hyperparameters
+                that will be used for training (default: None). The hyperparameters are made
                 accessible as a dict[str, str] to the training code on
                 SageMaker. For convenience, this accepts other types for keys
                 and values, but ``str()`` will be called to convert them before
                 training.
-            container_log_level (int): Log level to use within the container
+            container_log_level (int or PipelineVariable): Log level to use within the container
                 (default: logging.INFO). Valid values are defined in the Python
                 logging module.
             code_location (str): The S3 prefix URI where custom code will be
@@ -2801,7 +2802,7 @@ class Framework(EstimatorBase):
                 a string prepended with a "/" is appended to ``code_location``. The code
                 file uploaded to S3 is 'code_location/job-name/source/sourcedir.tar.gz'.
                 If not specified, the default ``code location`` is s3://output_bucket/job-name/.
-            image_uri (str): An alternate image name to use instead of the
+            image_uri (str or PipelineVariable): An alternate image name to use instead of the
                 official Sagemaker image for the framework. This is useful to
                 run one of the Sagemaker supported frameworks with an image
                 containing custom dependencies.
@@ -2830,7 +2831,7 @@ class Framework(EstimatorBase):
                     >>>     |------ virtual-env
 
                 This is not supported with "local code" in Local Mode.
-            enable_network_isolation (bool): Specifies whether container will
+            enable_network_isolation (bool or PipelineVariable): Specifies whether container will
                 run in network isolation mode. Network isolation mode restricts
                 the container access to outside networks (such as the internet).
                 The container does not make any inbound or outbound network
@@ -2887,10 +2888,10 @@ class Framework(EstimatorBase):
                 authentication if they are provided; otherwise, python SDK will
                 try to use either CodeCommit credential helper or local
                 credential storage for authentication.
-            checkpoint_s3_uri (str): The S3 URI in which to persist checkpoints
+            checkpoint_s3_uri (str or PipelineVariable): The S3 URI in which to persist checkpoints
                 that the algorithm persists (if any) during training. (default:
                 None).
-            checkpoint_local_path (str): The local path that the algorithm
+            checkpoint_local_path (str or PipelineVariable): The local path that the algorithm
                 writes its checkpoints to. SageMaker will persist all files
                 under this path to `checkpoint_s3_uri` continually during
                 training. On job startup the reverse happens - data from the
@@ -2898,7 +2899,7 @@ class Framework(EstimatorBase):
                 started. If the path is unset then SageMaker assumes the
                 checkpoints will be provided under `/opt/ml/checkpoints/`.
                 (default: None).
-            enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
+            enable_sagemaker_metrics (bool or PipelineVariable): enable SageMaker Metrics Time
                 Series. For more information see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
                 (default: None).
