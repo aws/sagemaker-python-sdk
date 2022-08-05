@@ -31,6 +31,7 @@ from sagemaker.fw_utils import (
 from sagemaker.pytorch import defaults
 from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
+from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
 
 logger = logging.getLogger("sagemaker")
@@ -51,7 +52,7 @@ class PyTorch(Framework):
         source_dir: Optional[Union[str, PipelineVariable]] = None,
         hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
-        distribution: Dict = None,
+        distribution: Optional[Dict] = None,
         **kwargs
     ):
         """This ``Estimator`` executes a PyTorch script in a managed PyTorch execution environment.
@@ -224,7 +225,7 @@ class PyTorch(Framework):
         if distribution is not None:
             instance_type = self._get_instance_type()
             # remove "ml." prefix
-            if instance_type[:3] == "ml.":
+            if not is_pipeline_variable(instance_type) and instance_type[:3] == "ml.":
                 instance_type = instance_type[3:]
             validate_distribution_instance(self.sagemaker_session, distribution, instance_type)
 
