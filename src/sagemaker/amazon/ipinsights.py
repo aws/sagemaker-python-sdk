@@ -13,6 +13,8 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
+from typing import Union, Optional
+
 from sagemaker import image_uris
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
@@ -22,7 +24,9 @@ from sagemaker.predictor import Predictor
 from sagemaker.model import Model
 from sagemaker.serializers import CSVSerializer
 from sagemaker.session import Session
+from sagemaker.utils import pop_out_unused_kwarg
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
+from sagemaker.workflow.entities import PipelineVariable
 
 
 class IPInsights(AmazonAlgorithmEstimatorBase):
@@ -222,7 +226,13 @@ class IPInsightsModel(Model):
     Predictor that calculates anomaly scores for data points.
     """
 
-    def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
+    def __init__(
+        self,
+        model_data: Union[str, PipelineVariable],
+        role: str,
+        sagemaker_session: Optional[Session] = None,
+        **kwargs
+    ):
         """Creates object to get insights on S3 model data.
 
         Args:
@@ -246,6 +256,8 @@ class IPInsightsModel(Model):
             sagemaker_session.boto_region_name,
             version=IPInsights.repo_version,
         )
+        pop_out_unused_kwarg("predictor_cls", kwargs, IPInsightsPredictor.__name__)
+        pop_out_unused_kwarg("image_uri", kwargs, image_uri)
         super(IPInsightsModel, self).__init__(
             image_uri,
             model_data,

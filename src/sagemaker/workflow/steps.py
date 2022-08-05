@@ -407,7 +407,10 @@ class TrainingStep(ConfigurableRetryStep):
             # To avoid this, hash the contents of the training script and include it
             # in the `job_name` passed to the `Estimator`, which will be used
             # instead of the timestamped path.
-            self.job_name = self._generate_code_upload_path()
+            if not is_pipeline_variable(estimator.source_dir) and not is_pipeline_variable(
+                estimator.entry_point
+            ):
+                self.job_name = self._generate_code_upload_path()
 
     @property
     def arguments(self) -> RequestType:

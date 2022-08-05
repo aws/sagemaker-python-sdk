@@ -17,10 +17,11 @@ import json
 import os
 
 import pytest
-from mock import MagicMock, Mock, patch
+from mock import MagicMock, Mock, patch, ANY
 
 from sagemaker import image_uris
 from sagemaker.huggingface import HuggingFace, TrainingCompilerConfig
+from sagemaker.huggingface.model import HuggingFaceModel
 
 from tests.unit.sagemaker.training_compiler import EC2_GPU_INSTANCE_CLASSES
 
@@ -517,3 +518,59 @@ def test_attach(
     )
     assert estimator.source_dir == "s3://some/sourcedir.tar.gz"
     assert estimator.entry_point == "iris-dnn-classifier.py"
+
+
+def test_register_hf_tfs_model_auto_infer_framework(
+    sagemaker_session,
+    huggingface_training_compiler_version,
+    huggingface_training_compiler_tensorflow_version,
+    huggingface_training_compiler_py_version,
+):
+
+    model_package_group_name = "test-hf-tfs-register-model"
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarge"]
+    image_uri = "fakeimage"
+
+    hf_model = HuggingFaceModel(
+        model_data="s3://some/data.tar.gz",
+        role=ROLE,
+        transformers_version=huggingface_training_compiler_version,
+        tensorflow_version=huggingface_training_compiler_tensorflow_version,
+        py_version=huggingface_training_compiler_py_version,
+        sagemaker_session=sagemaker_session,
+    )
+
+    hf_model.register(
+        content_types,
+        response_types,
+        inference_instances,
+        transform_instances,
+        model_package_group_name=model_package_group_name,
+        marketplace_cert=True,
+        image_uri=image_uri,
+    )
+
+    expected_create_model_package_request = {
+        "containers": [
+            {
+                "Image": image_uri,
+                "Environment": ANY,
+                "ModelDataUrl": ANY,
+                "Framework": "TENSORFLOW",
+                "FrameworkVersion": huggingface_training_compiler_tensorflow_version,
+            },
+        ],
+        "content_types": content_types,
+        "response_types": response_types,
+        "inference_instances": inference_instances,
+        "transform_instances": transform_instances,
+        "model_package_group_name": model_package_group_name,
+        "marketplace_cert": True,
+    }
+
+    sagemaker_session.create_model_package_from_containers.assert_called_with(
+        **expected_create_model_package_request
+    )

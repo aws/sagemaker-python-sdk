@@ -1,5 +1,53 @@
 # Changelog
 
+## v2.102.0 (2022-08-04)
+
+### Features
+
+ * add warnings for xgboost specific rules in debugger rules
+ * Add PyTorch DDP distribution support
+ * Add test for profiler enablement with debugger_hook false
+
+### Bug Fixes and Other Changes
+
+ * Two letter language code must be supported
+ * add a check to prevent launching a modelparallel job on CPU only instances
+ * Allow StepCollection added in ConditionStep to be depended on
+ * Add PipelineVariable annotation in framework models
+ * skip managed spot training mxnet nb
+
+### Documentation Changes
+
+ * smdistributed libraries currency updates
+
+## v2.101.1 (2022-07-28)
+
+### Bug Fixes and Other Changes
+
+ * added more ml frameworks supported by SageMaker Workflows
+ * test: Vspecinteg2
+ * Add PipelineVariable annotation in amazon models
+
+## v2.101.0 (2022-07-27)
+
+### Features
+
+ * Algorithms region launch on CGK
+ * enhance-bucket-override-support
+ * infer framework and version
+ * support clarify bias detection when facets not included
+ * Add CGK region to frameworks by DLC
+
+### Bug Fixes and Other Changes
+
+ * Make repack step output path align with model repack path
+ * Support parameterized source code input for TrainingStep
+
+### Documentation Changes
+
+ * heterogeneous cluster api doc fix
+ * smdmp v1.10 release note
+
 ## v2.100.0 (2022-07-18)
 
 ### Features

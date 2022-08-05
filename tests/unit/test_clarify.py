@@ -42,6 +42,7 @@ def test_uri():
 
 
 def test_data_config():
+    # facets in input dataset
     s3_data_input_path = "s3://path/to/input.csv"
     s3_output_path = "s3://path/to/output"
     label_name = "Label"
@@ -66,19 +67,124 @@ def test_data_config():
         "headers": headers,
         "label": "Label",
     }
+
     assert expected_config == data_config.get_config()
     assert s3_data_input_path == data_config.s3_data_input_path
     assert s3_output_path == data_config.s3_output_path
     assert "None" == data_config.s3_compression_type
     assert "FullyReplicated" == data_config.s3_data_distribution_type
 
+    # facets NOT in input dataset
+    joinsource = 5
+    facet_dataset_uri = "s3://path/to/facet.csv"
+    facet_headers = ["Age"]
+    predicted_label_dataset_uri = "s3://path/to/pred.csv"
+    predicted_label_headers = ["Label", "F1", "F2", "F3", "F4", "Age"]
+    predicted_label = "predicted_label"
+    excluded_columns = "F4"
+
+    data_config_no_facet = DataConfig(
+        s3_data_input_path=s3_data_input_path,
+        s3_output_path=s3_output_path,
+        label=label_name,
+        headers=headers,
+        dataset_type=dataset_type,
+        joinsource=joinsource,
+        facet_dataset_uri=facet_dataset_uri,
+        facet_headers=facet_headers,
+        predicted_label_dataset_uri=predicted_label_dataset_uri,
+        predicted_label_headers=predicted_label_headers,
+        predicted_label=predicted_label,
+        excluded_columns=excluded_columns,
+    )
+
+    expected_config_no_facet = {
+        "dataset_type": "text/csv",
+        "headers": headers,
+        "label": label_name,
+        "joinsource_name_or_index": joinsource,
+        "facet_dataset_uri": facet_dataset_uri,
+        "facet_headers": facet_headers,
+        "predicted_label_dataset_uri": predicted_label_dataset_uri,
+        "predicted_label_headers": predicted_label_headers,
+        "predicted_label": predicted_label,
+        "excluded_columns": excluded_columns,
+    }
+
+    assert expected_config_no_facet == data_config_no_facet.get_config()
+    assert joinsource == data_config_no_facet.analysis_config["joinsource_name_or_index"]
+    assert facet_dataset_uri == data_config_no_facet.facet_dataset_uri
+    assert facet_headers == data_config_no_facet.facet_headers
+    assert predicted_label_dataset_uri == data_config_no_facet.predicted_label_dataset_uri
+    assert predicted_label_headers == data_config_no_facet.predicted_label_headers
+    assert predicted_label == data_config_no_facet.predicted_label
+
+    excluded_columns = "F4"
+    data_config_excluded_cols = DataConfig(
+        s3_data_input_path=s3_data_input_path,
+        s3_output_path=s3_output_path,
+        label=label_name,
+        headers=headers,
+        dataset_type=dataset_type,
+        joinsource=joinsource,
+        excluded_columns=excluded_columns,
+    )
+
+    expected_config_excluded_cols = {
+        "dataset_type": "text/csv",
+        "headers": headers,
+        "label": label_name,
+        "joinsource_name_or_index": joinsource,
+        "excluded_columns": excluded_columns,
+    }
+
+    assert expected_config_excluded_cols == data_config_excluded_cols.get_config()
+    assert joinsource == data_config_excluded_cols.analysis_config["joinsource_name_or_index"]
+    assert excluded_columns == data_config_excluded_cols.excluded_columns
+
 
 def test_invalid_data_config():
+    # facets included in input dataset
     with pytest.raises(ValueError, match=r"^Invalid dataset_type"):
         DataConfig(
             s3_data_input_path="s3://bucket/inputpath",
             s3_output_path="s3://bucket/outputpath",
             dataset_type="whatnot_type",
+        )
+    # facets NOT included in input dataset
+    error_msg = r"^The parameter 'predicted_label' is not supported for dataset_type"
+    with pytest.raises(ValueError, match=error_msg):
+        DataConfig(
+            s3_data_input_path="s3://bucket/inputpath",
+            s3_output_path="s3://bucket/outputpath",
+            dataset_type="application/x-parquet",
+            predicted_label="label",
+        )
+    error_msg = r"^The parameter 'excluded_columns' is not supported for dataset_type"
+    with pytest.raises(ValueError, match=error_msg):
+        DataConfig(
+            s3_data_input_path="s3://bucket/inputpath",
+            s3_output_path="s3://bucket/outputpath",
+            dataset_type="application/x-image",
+            excluded_columns="excluded",
+        )
+    error_msg = r"^The parameters 'facet_dataset_uri' and 'facet_headers' are not supported for dataset_type"  # noqa E501  # pylint: disable=c0301
+    with pytest.raises(ValueError, match=error_msg):
+        DataConfig(
+            s3_data_input_path="s3://bucket/inputpath",
+            s3_output_path="s3://bucket/outputpath",
+            dataset_type="application/x-image",
+            facet_dataset_uri="facet_dataset/URI",
+            facet_headers="facet",
+        )
+    error_msg = r"^The parameters 'predicted_label_dataset_uri' and 'predicted_label_headers' are not supported for dataset_type"  # noqa E501  # pylint: disable=c0301
+    with pytest.raises(ValueError, match=error_msg):
+        DataConfig(
+            s3_data_input_path="s3://bucket/inputpath",
+            s3_output_path="s3://bucket/outputpath",
+            dataset_type="application/jsonlines",
+            predicted_label_dataset_uri="pred_dataset/URI",
+            predicted_label_headers="prediction",
         )
 
 

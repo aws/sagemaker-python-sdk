@@ -47,6 +47,7 @@ from sagemaker.fw_utils import (
     get_mp_parameters,
     tar_and_upload_dir,
     validate_source_dir,
+    validate_source_code_input_against_pipeline_variables,
 )
 from sagemaker.inputs import TrainingInput, FileSystemInput
 from sagemaker.job import _Job
@@ -75,6 +76,7 @@ from sagemaker.utils import (
     build_dict,
     get_config_value,
     name_from_base,
+    to_string,
 )
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
@@ -140,12 +142,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         disable_profiler: bool = False,
         environment: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         max_retry_attempts: Optional[Union[int, PipelineVariable]] = None,
-        source_dir: Optional[str] = None,
+        source_dir: Optional[Union[str, PipelineVariable]] = None,
         git_config: Optional[Dict[str, str]] = None,
         hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         container_log_level: Union[int, PipelineVariable] = logging.INFO,
         code_location: Optional[str] = None,
-        entry_point: Optional[str] = None,
+        entry_point: Optional[Union[str, PipelineVariable]] = None,
         dependencies: Optional[List[Union[str]]] = None,
         instance_groups: Optional[Dict[str, Union[str, int]]] = None,
         **kwargs,
@@ -461,6 +463,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             "train_volume_kms_key", "volume_kms_key", volume_kms_key, kwargs
         )
 
+        validate_source_code_input_against_pipeline_variables(
+            entry_point=entry_point,
+            source_dir=source_dir,
+            git_config=git_config,
+            enable_network_isolation=enable_network_isolation,
+        )
+
         self.role = role
         self.instance_count = instance_count
         self.instance_type = instance_type
@@ -664,7 +673,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             # validate source dir will raise a ValueError if there is something wrong with
             # the source directory. We are intentionally not handling it because this is a
             # critical error.
-            if self.source_dir and not self.source_dir.lower().startswith("s3://"):
+            if (
+                self.source_dir
+                and not is_pipeline_variable(self.source_dir)
+                and not self.source_dir.lower().startswith("s3://")
+            ):
                 validate_source_dir(self.entry_point, self.source_dir)
 
             # if we are in local mode with local_code=True. We want the container to just
@@ -780,6 +793,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         if self.rules is not None:
             for rule in self.rules:
                 if isinstance(rule, Rule):
+                    # Add check for xgboost rules
+                    self._check_debugger_rule(rule)
                     self.debugger_rules.append(rule)
                 elif isinstance(rule, ProfilerRule):
                     self.profiler_rules.append(rule)
@@ -788,6 +803,16 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                         "Rules list can only contain sagemaker.debugger.Rule "
                         + "and sagemaker.debugger.ProfilerRule"
                     )
+
+    def _check_debugger_rule(self, rule):
+        """Add warning for incorrectly used xgboost rules."""
+        _xgboost_specific_rules = ["FeatureImportanceOverweight", "TreeDepth"]
+        if rule.name in _xgboost_specific_rules:
+            logger.warning(
+                "TreeDepth and FeatureImportanceOverweight rules are valid "
+                "only for the XGBoost algorithm. Please make sure this estimator "
+                "is used for XGBoost algorithm. "
+            )
 
     def _prepare_debugger_for_training(self):
         """Prepare debugger rules and debugger configs for training."""
@@ -1965,10 +1990,7 @@ class _TrainingJob(_Job):
 
         current_hyperparameters = estimator.hyperparameters()
         if current_hyperparameters is not None:
-            hyperparameters = {
-                str(k): (v.to_string() if is_pipeline_variable(v) else str(v))
-                for (k, v) in current_hyperparameters.items()
-            }
+            hyperparameters = {str(k): to_string(v) for (k, v) in current_hyperparameters.items()}
 
         train_args = config.copy()
         train_args["input_mode"] = estimator.input_mode
@@ -2181,11 +2203,11 @@ class Estimator(EstimatorBase):
         disable_profiler: bool = False,
         environment: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         max_retry_attempts: Optional[Union[int, PipelineVariable]] = None,
-        source_dir: Optional[str] = None,
+        source_dir: Optional[Union[str, PipelineVariable]] = None,
         git_config: Optional[Dict[str, str]] = None,
         container_log_level: Union[int, PipelineVariable] = logging.INFO,
         code_location: Optional[str] = None,
-        entry_point: Optional[str] = None,
+        entry_point: Optional[Union[str, PipelineVariable]] = None,
         dependencies: Optional[List[str]] = None,
         instance_groups: Optional[Dict[str, Union[str, int]]] = None,
         **kwargs,
@@ -2633,8 +2655,8 @@ class Framework(EstimatorBase):
 
     def __init__(
         self,
-        entry_point: str,
-        source_dir: Optional[str] = None,
+        entry_point: Union[str, PipelineVariable],
+        source_dir: Optional[Union[str, PipelineVariable]] = None,
         hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         container_log_level: Union[int, PipelineVariable] = logging.INFO,
         code_location: Optional[str] = None,
@@ -2813,7 +2835,14 @@ class Framework(EstimatorBase):
         """
         super(Framework, self).__init__(enable_network_isolation=enable_network_isolation, **kwargs)
         image_uri = renamed_kwargs("image_name", "image_uri", image_uri, kwargs)
-        if entry_point.startswith("s3://"):
+
+        validate_source_code_input_against_pipeline_variables(
+            entry_point=entry_point,
+            source_dir=source_dir,
+            git_config=git_config,
+            enable_network_isolation=enable_network_isolation,
+        )
+        if not is_pipeline_variable(entry_point) and entry_point.startswith("s3://"):
             raise ValueError(
                 "Invalid entry point script: {}. Must be a path to a local file.".format(
                     entry_point
