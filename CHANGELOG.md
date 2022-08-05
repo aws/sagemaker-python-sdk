@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.103.0 (2022-08-05)
+
+### Features
+
+ * AutoGluon 0.4.3 and 0.5.2 image_uris
+
+### Bug Fixes and Other Changes
+
+ * Revert "change: add a check to prevent launching a modelparallel job on CPU only instances"
+ * Add gpu capability to local
+ * Link PyTorch 1.11 to 1.11.0
+
 ## v2.102.0 (2022-08-04)
 
 ### Features
