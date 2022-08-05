@@ -57,10 +57,6 @@ def test_wide_graph_visualize(sagemaker_session):
         lq_result = lq.query(start_arns=[wide_graph_root_arn])
         lq_result.visualize(path="wideGraph.html")
 
-        print("vertex len = ")
-        print(len(lq_result.vertices))
-        assert False
-
     except Exception as e:
         print(e)
         assert False
