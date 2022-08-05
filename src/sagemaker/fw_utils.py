@@ -871,6 +871,14 @@ def validate_distribution_instance(sagemaker_session, distribution, instance_typ
         # Strategy modelparallel is not enabled
         return
 
+    if is_pipeline_variable(instance_type):
+        logger.warning(
+            "instance_type is a pipeline variable, which is only interpreted in "
+            "pipeline execution time. As modelparallel only runs on GPU-enabled "
+            "instances, in execution time, the specified instance type has to support GPU."
+        )
+        return
+
     instance_desc = sagemaker_session.boto_session.client("ec2").describe_instance_types(
         InstanceTypes=[f"{instance_type}"]
     )

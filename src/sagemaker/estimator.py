@@ -50,6 +50,7 @@ from sagemaker.fw_utils import (
     validate_source_code_input_against_pipeline_variables,
 )
 from sagemaker.inputs import TrainingInput, FileSystemInput
+from sagemaker.instance_group import InstanceGroup
 from sagemaker.job import _Job
 from sagemaker.jumpstart.utils import (
     add_jumpstart_tags,
@@ -149,7 +150,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         code_location: Optional[str] = None,
         entry_point: Optional[Union[str, PipelineVariable]] = None,
         dependencies: Optional[List[Union[str]]] = None,
-        instance_groups: Optional[Dict[str, Union[str, int]]] = None,
+        instance_groups: Optional[List[InstanceGroup]] = None,
         **kwargs,
     ):
         """Initialize an ``EstimatorBase`` instance.
@@ -1580,6 +1581,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         for instance_group in self.instance_groups:
             instance_type = instance_group.instance_type
+            if is_pipeline_variable(instance_type):
+                continue
             match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
 
             if match:
@@ -2179,7 +2182,7 @@ class Estimator(EstimatorBase):
         code_location: Optional[str] = None,
         entry_point: Optional[Union[str, PipelineVariable]] = None,
         dependencies: Optional[List[str]] = None,
-        instance_groups: Optional[Dict[str, Union[str, int]]] = None,
+        instance_groups: Optional[List[InstanceGroup]] = None,
         **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
