@@ -63,7 +63,6 @@ class DataConfig:
             label (str): Target attribute of the model required by bias metrics.
                 Specified as column name or index for CSV dataset or as JSONPath for JSONLines.
                 *Required parameter* except for when the input dataset does not contain the label.
-                Cannot be used at the same time as ``predicted_label``.
             features (str): JSONPath for locating the feature columns for bias metrics if the
                 dataset format is JSONLines.
             dataset_type (str): Format of the dataset. Valid values are ``"text/csv"`` for CSV,
@@ -103,7 +102,7 @@ class DataConfig:
             predicted_label (str or int): Predicted label of the target attribute of the model
                 required for running bias analysis. Specified as column name or index for CSV data.
                 Clarify uses the predicted labels directly instead of making model inference API
-                calls. Cannot be used at the same time as ``label``.
+                calls.
             excluded_columns (list[int] or list[str]): A list of names or indices of the columns
                 which are to be excluded from making model inference API calls.
 
