@@ -13,15 +13,19 @@
 """Defines the InstanceGroup class that configures a heterogeneous cluster."""
 from __future__ import absolute_import
 
+from typing import Optional, Union
+
+from sagemaker.workflow.entities import PipelineVariable
+
 
 class InstanceGroup(object):
     """The class to create instance groups for a heterogeneous cluster."""
 
     def __init__(
         self,
-        instance_group_name=None,
-        instance_type=None,
-        instance_count=None,
+        instance_group_name: Optional[Union[str, PipelineVariable]] = None,
+        instance_type: Optional[Union[str, PipelineVariable]] = None,
+        instance_count: Optional[Union[int, PipelineVariable]] = None,
     ):
         """It initializes an ``InstanceGroup`` instance.
 

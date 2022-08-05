@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import json
 
 from random import getrandbits
-from typing import Optional
+from typing import Optional, List
 from typing_extensions import get_origin
 
 from sagemaker import Model, PipelineModel, AlgorithmEstimator
@@ -368,14 +368,14 @@ class PipelineVarCompatiTestTemplate:
         self,
         param_with_none: str,
         step_dsl: str,
-        step_dsl_obj: object,
+        step_dsl_obj: List[dict],
     ):
         """verify pipeline definition regarding composite objects against pipeline variables
 
         Args:
             param_with_none (str): The name of the parameter with None value.
             step_dsl (str): The step definition retrieved from the pipeline definition DSL.
-            step_dsl_obj (objet): The json load object of the step definition.
+            step_dsl_obj (List[dict]): The json load object of the step definition.
         """
         # TODO: remove the following hard code assertion once recursive assignment is added
         if issubclass(self.clazz, Processor):
@@ -398,6 +398,12 @@ class PipelineVarCompatiTestTemplate:
                     assert '{"Get": "Parameters.proc_input_s3_data_type"}' in step_dsl
                     assert '{"Get": "Parameters.proc_input_app_managed"}' in step_dsl
         elif issubclass(self.clazz, EstimatorBase):
+            if (
+                param_with_none != "instance_groups"
+                and self.default_args[CLAZZ_ARGS]["instance_groups"]
+            ):
+                assert '{"Get": "Parameters.instance_group_name"}' in step_dsl
+                assert '{"Get": "Parameters.instance_group_instance_count"}' in step_dsl
             if issubclass(self.clazz, AmazonAlgorithmEstimatorBase):
                 # AmazonAlgorithmEstimatorBase's input is records
                 if param_with_none != "records":
@@ -415,6 +421,7 @@ class PipelineVarCompatiTestTemplate:
                     assert '{"Get": "Parameters.train_inputs_input_mode"}' in step_dsl
                     assert '{"Get": "Parameters.train_inputs_attribute_name"}' in step_dsl
                     assert '{"Get": "Parameters.train_inputs_target_attr_name"}' in step_dsl
+                    assert '{"Get": "Parameters.train_inputs_instance_groups"}' in step_dsl
             if not issubclass(self.clazz, (TensorFlow, MXNet, PyTorch, AlgorithmEstimator)):
                 # debugger_hook_config may be disabled for these first 3 frameworks
                 # AlgorithmEstimator ignores the kwargs

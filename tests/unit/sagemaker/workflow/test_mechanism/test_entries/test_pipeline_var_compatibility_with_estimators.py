@@ -291,7 +291,6 @@ def test_sklearn_estimator_compatibility():
         clazz_args=dict(
             py_version="py3",
             instance_count=1,
-            instance_type="ml.m5.xlarge",
             framework_version="0.20.0",
         ),
         func_args=dict(),

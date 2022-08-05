@@ -19,6 +19,7 @@ from typing import List
 
 from sagemaker import ModelMetrics, MetricsSource, FileSource, Predictor
 from sagemaker.drift_check_baselines import DriftCheckBaselines
+from sagemaker.instance_group import InstanceGroup
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.model import FrameworkModel
 from sagemaker.parameter import IntegerParameter
@@ -233,6 +234,10 @@ def _generate_all_pipeline_vars() -> dict:
     )
 
 
+# TODO: we should remove the _IS_TRUE_TMP and replace its usages with IS_TRUE
+# As currently the `instance_groups` does not work well with some estimator subclasses,
+# we temporarily hard code it to False which disables the instance_groups
+_IS_TRUE_TMP = False
 IS_TRUE = bool(getrandbits(1))
 PIPELINE_SESSION = _generate_mock_pipeline_session()
 PIPELINE_VARIABLES = _generate_all_pipeline_vars()
@@ -240,7 +245,6 @@ PIPELINE_VARIABLES = _generate_all_pipeline_vars()
 # TODO: need to recursively assign with Pipeline Variable in later changes
 FIXED_ARGUMENTS = dict(
     common=dict(
-        instance_type=INSTANCE_TYPE,
         role=ROLE,
         sagemaker_session=PIPELINE_SESSION,
         source_dir=f"s3://{BUCKET}/source",
@@ -281,6 +285,7 @@ FIXED_ARGUMENTS = dict(
         response_types=["application/json"],
     ),
     processor=dict(
+        instance_type=INSTANCE_TYPE,
         estimator_cls=PyTorch,
         code=f"s3://{BUCKET}/code",
         spark_event_logs_s3_uri=f"s3://{BUCKET}/my-spark-output-path",
@@ -438,13 +443,33 @@ FIXED_ARGUMENTS = dict(
                 input_mode=ParameterString(name="train_inputs_input_mode"),
                 attribute_names=[ParameterString(name="train_inputs_attribute_name")],
                 target_attribute_name=ParameterString(name="train_inputs_target_attr_name"),
+                instance_groups=[ParameterString(name="train_inputs_instance_groups")],
             ),
         },
+        instance_groups=[
+            InstanceGroup(
+                instance_group_name=ParameterString(name="instance_group_name"),
+                # hard code the instance_type here because InstanceGroup.instance_type
+                # would be used to retrieve image_uri if image_uri is not presented
+                # and currently the test mechanism does not support skip the test case
+                # relating to bonded parameters in composite variables (i.e. the InstanceGroup)
+                # TODO: we should support skip testing on bonded parameters in composite vars
+                instance_type="ml.m5.xlarge",
+                instance_count=ParameterString(name="instance_group_instance_count"),
+            ),
+        ]
+        if _IS_TRUE_TMP
+        else None,
+        instance_type="ml.m5.xlarge" if not _IS_TRUE_TMP else None,
+        instance_count=1 if not _IS_TRUE_TMP else None,
+        distribution={} if not _IS_TRUE_TMP else None,
     ),
     transformer=dict(
+        instance_type=INSTANCE_TYPE,
         data=f"s3://{BUCKET}/data",
     ),
     tuner=dict(
+        instance_type=INSTANCE_TYPE,
         estimator=TensorFlow(
             entry_point=TENSORFLOW_ENTRY_POINT,
             role=ROLE,
@@ -475,12 +500,14 @@ FIXED_ARGUMENTS = dict(
         include_cls_metadata={"estimator-1": IS_TRUE},
     ),
     model=dict(
+        instance_type=INSTANCE_TYPE,
         serverless_inference_config=ServerlessInferenceConfig(),
         framework_version="1.11.0",
         py_version="py3",
         accelerator_type="ml.eia2.xlarge",
     ),
     pipelinemodel=dict(
+        instance_type=INSTANCE_TYPE,
         models=[
             SparkMLModel(
                 name="MySparkMLModel",
@@ -577,12 +604,17 @@ BASE_CLASS_PARAMS_EXCLUDED_IN_SUB_CLASS = dict(
         },
     ),
 )
-# A dict to keep the optional arguments which should not be None according to the logic
-# specific to the subclass.
+# A dict to keep the optional arguments which should not be set to None
+# in the test iteration according to the logic specific to the subclass.
 PARAMS_SHOULD_NOT_BE_NONE = dict(
     estimator=dict(
         init=dict(
-            common={"instance_count", "instance_type"},
+            # TODO: we should remove the three instance_ parameters here
+            # For mutually exclusive parameters: instance group
+            # vs instance count/instance type, if any side is set to None during iteration,
+            # the other side should get a not None value, instead of listing them here
+            # and force them to be not None
+            common={"instance_count", "instance_type", "instance_groups"},
             LDA={"mini_batch_size"},
         )
     ),
@@ -692,7 +724,10 @@ UNSET_PARAM_BONDED_WITH_NOT_NONE = dict(
     ),
     estimator=dict(
         init=dict(
-            common=dict(),
+            common=dict(
+                entry_point={"enable_network_isolation"},
+                source_dir={"enable_network_isolation"},
+            ),
             TensorFlow=dict(
                 image_uri={"compiler_config"},
                 compiler_config={"image_uri"},
@@ -701,7 +736,13 @@ UNSET_PARAM_BONDED_WITH_NOT_NONE = dict(
                 image_uri={"compiler_config"},
                 compiler_config={"image_uri"},
             ),
-        )
+        ),
+        fit=dict(
+            common=dict(
+                instance_count={"instance_groups"},
+                instance_type={"instance_groups"},
+            ),
+        ),
     ),
 )
 
