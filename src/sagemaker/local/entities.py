@@ -314,7 +314,7 @@ class _LocalTransformJob(object):
         endpoint_url = "http://%s:%d/execution-parameters" % (get_docker_host(), serving_port)
         response, code = _perform_request(endpoint_url)
         if code == 200:
-            execution_parameters = json.loads(response.read())
+            execution_parameters = json.loads(response.data.decode("utf-8"))
             # MaxConcurrentTransforms is ignored because we currently only support 1
             for setting in ("BatchStrategy", "MaxPayloadInMB"):
                 if setting not in kwargs and setting in execution_parameters:
