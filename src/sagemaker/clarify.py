@@ -924,6 +924,7 @@ class SageMakerClarifyProcessor(Processor):
             version (str): Clarify version to use.
         """  # noqa E501  # pylint: disable=c0301
         container_uri = image_uris.retrieve("clarify", sagemaker_session.boto_region_name, version)
+        self._last_analysis_config = None
         self.job_name_prefix = job_name_prefix
         super(SageMakerClarifyProcessor, self).__init__(
             role,
@@ -987,7 +988,7 @@ class SageMakerClarifyProcessor(Processor):
         """
         # for debugging: to access locally, i.e. without a need to look for it in an S3 bucket
         self._last_analysis_config = analysis_config
-        logger.info("Analysis Config: ", analysis_config)
+        logger.info("Analysis Config: %s", analysis_config)
 
         with tempfile.TemporaryDirectory() as tmpdirname:
             analysis_config_file = os.path.join(tmpdirname, "analysis_config.json")
@@ -1086,12 +1087,12 @@ class SageMakerClarifyProcessor(Processor):
                 * ``'TrialComponentDisplayName'`` is used for display in Amazon SageMaker Studio.
         """  # noqa E501  # pylint: disable=c0301
         analysis_config = _AnalysisConfigGenerator.bias_pre_training(
-            data_config,
-            data_bias_config,
-            methods
+            data_config, data_bias_config, methods
         )
         # when name is either not provided (is None) or an empty string ("")
-        job_name = job_name or utils.name_from_base(self.job_name_prefix or "Clarify-Pretraining-Bias")
+        job_name = job_name or utils.name_from_base(
+            self.job_name_prefix or "Clarify-Pretraining-Bias"
+        )
         return self._run(
             data_config,
             analysis_config,
@@ -1167,14 +1168,12 @@ class SageMakerClarifyProcessor(Processor):
                 * ``'TrialComponentDisplayName'`` is used for display in Amazon SageMaker Studio.
         """  # noqa E501  # pylint: disable=c0301
         analysis_config = _AnalysisConfigGenerator.bias_post_training(
-            data_config,
-            data_bias_config,
-            model_predicted_label_config,
-            methods,
-            model_config
+            data_config, data_bias_config, model_predicted_label_config, methods, model_config
         )
         # when name is either not provided (is None) or an empty string ("")
-        job_name = job_name or utils.name_from_base(self.job_name_prefix or "Clarify-Posttraining-Bias")
+        job_name = job_name or utils.name_from_base(
+            self.job_name_prefix or "Clarify-Posttraining-Bias"
+        )
         return self._run(
             data_config,
             analysis_config,
@@ -1354,13 +1353,12 @@ class SageMakerClarifyProcessor(Processor):
                 * ``'TrialComponentDisplayName'`` is used for display in Amazon SageMaker Studio.
         """  # noqa E501  # pylint: disable=c0301
         analysis_config = _AnalysisConfigGenerator.explainability(
-            data_config,
-            model_config,
-            model_scores,
-            explainability_config
+            data_config, model_config, model_scores, explainability_config
         )
         # when name is either not provided (is None) or an empty string ("")
-        job_name = job_name or utils.name_from_base(self.job_name_prefix or "Clarify-Explainability")
+        job_name = job_name or utils.name_from_base(
+            self.job_name_prefix or "Clarify-Explainability"
+        )
         return self._run(
             data_config,
             analysis_config,
@@ -1373,9 +1371,8 @@ class SageMakerClarifyProcessor(Processor):
 
 
 class _AnalysisConfigGenerator:
-    """
-    Creates analysis_config objects for different type of runs.
-    """
+    """Creates analysis_config objects for different type of runs."""
+
     @classmethod
     def explainability(
         cls,
@@ -1384,6 +1381,7 @@ class _AnalysisConfigGenerator:
         model_scores: ModelPredictedLabelConfig,
         explainability_config: ExplainabilityConfig,
     ):
+        """Generates a config for Explainability"""
         analysis_config = data_config.get_config()
         predictor_config = model_config.get_predictor_config()
         if isinstance(model_scores, ModelPredictedLabelConfig):
@@ -1423,11 +1421,14 @@ class _AnalysisConfigGenerator:
         return cls._common(analysis_config)
 
     @classmethod
-    def bias_pre_training(cls, data_config: DataConfig, bias_config: BiasConfig, methods: Union[str, List[str]]):
+    def bias_pre_training(
+        cls, data_config: DataConfig, bias_config: BiasConfig, methods: Union[str, List[str]]
+    ):
+        """Generates a config for Bias Pre Training"""
         analysis_config = {
             **data_config.get_config(),
             **bias_config.get_config(),
-            "methods": {"pre_training_bias": {"methods": methods}}
+            "methods": {"pre_training_bias": {"methods": methods}},
         }
         return cls._common(analysis_config)
 
@@ -1440,6 +1441,7 @@ class _AnalysisConfigGenerator:
         methods: Union[str, List[str]],
         model_config: ModelConfig,
     ):
+        """Generates a config for Bias Post Training"""
         analysis_config = {
             **data_config.get_config(),
             **bias_config.get_config(),
@@ -1447,7 +1449,10 @@ class _AnalysisConfigGenerator:
             "methods": {"post_training_bias": {"methods": methods}},
         }
         if model_predicted_label_config:
-            probability_threshold, predictor_config = model_predicted_label_config.get_predictor_config()
+            (
+                probability_threshold,
+                predictor_config,
+            ) = model_predicted_label_config.get_predictor_config()
             if predictor_config:
                 analysis_config["predictor"].update(predictor_config)
             _set(probability_threshold, "probability_threshold", analysis_config)
@@ -1463,6 +1468,7 @@ class _AnalysisConfigGenerator:
         pre_training_methods: Union[str, List[str]] = "all",
         post_training_methods: Union[str, List[str]] = "all",
     ):
+        """Generates a config for Bias"""
         analysis_config = {
             **data_config.get_config(),
             **bias_config.get_config(),
@@ -1470,10 +1476,13 @@ class _AnalysisConfigGenerator:
             "methods": {
                 "pre_training_bias": {"methods": pre_training_methods},
                 "post_training_bias": {"methods": post_training_methods},
-            }
+            },
         }
         if model_predicted_label_config:
-            probability_threshold, predictor_config = model_predicted_label_config.get_predictor_config()
+            (
+                probability_threshold,
+                predictor_config,
+            ) = model_predicted_label_config.get_predictor_config()
             if predictor_config:
                 analysis_config["predictor"].update(predictor_config)
             _set(probability_threshold, "probability_threshold", analysis_config)
@@ -1481,6 +1490,7 @@ class _AnalysisConfigGenerator:
 
     @staticmethod
     def _common(analysis_config):
+        """Extends analysis config with common values"""
         analysis_config["methods"]["report"] = {
             "name": "report",
             "title": "Analysis Report",
