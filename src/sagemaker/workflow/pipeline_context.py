@@ -153,11 +153,34 @@ class PipelineSession(Session):
 
 
 class LocalPipelineSession(LocalSession, PipelineSession):
-    """Class representing a local session for SageMaker Pipelines executions."""
+    """Managing a session that executes Sagemaker pipelines and jobs locally in a pipeline context.
+
+    This class inherits from the LocalSession and PipelineSession classes.
+    When running Sagemaker pipelines locally, this class is preferred over LocalSession.
+    """
 
     def __init__(
         self, boto_session=None, default_bucket=None, s3_endpoint_url=None, disable_local_code=False
     ):
+        """Initialize a ``LocalPipelineSession``.
+
+        Args:
+            boto_session (boto3.session.Session): The underlying Boto3 session which AWS service
+                calls are delegated to (default: None). If not provided, one is created with
+                default AWS configuration chain.
+            default_bucket (str): The default Amazon S3 bucket to be used by this session.
+                This will be created the next time an Amazon S3 bucket is needed (by calling
+                :func:`default_bucket`).
+                If not provided, a default bucket will be created based on the following format:
+                "sagemaker-{region}-{aws-account-id}".
+                Example: "sagemaker-my-custom-bucket".
+            s3_endpoint_url (str): Override the default endpoint URL for Amazon S3,
+                if set (default: None).
+            disable_local_code (bool): Set to True to override the default AWS configuration chain
+                to disable the `local.local_code` setting, which may not be supported for some SDK
+                features (default: False).
+        """
+
         super().__init__(
             boto_session=boto_session,
             default_bucket=default_bucket,
