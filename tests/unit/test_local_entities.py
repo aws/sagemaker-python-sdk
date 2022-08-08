@@ -106,7 +106,7 @@ def test_start_local_transform_job(_perform_batch_inference, _perform_request, l
 
     response = Mock()
     _perform_request.return_value = (response, 200)
-    response.read.return_value = '{"BatchStrategy": "SingleRecord"}'
+    response.data = '{"BatchStrategy": "SingleRecord"}'.encode("UTF-8")
     local_transform_job.primary_container["ModelDataUrl"] = "file:///some/model"
     local_transform_job.start(input_data, output_data, transform_resources, Environment={})
 
@@ -176,9 +176,9 @@ def test_start_local_transform_job_from_remote_docker_host(
     output_data = {}
     transform_resources = {"InstanceType": "local"}
     m_get_docker_host.return_value = "some_host"
-    perform_request_mock = Mock()
-    m_perform_request.return_value = (perform_request_mock, 200)
-    perform_request_mock.read.return_value = '{"BatchStrategy": "SingleRecord"}'
+    response = Mock()
+    m_perform_request.return_value = (response, 200)
+    response.data = '{"BatchStrategy": "SingleRecord"}'.encode("UTF-8")
     local_transform_job.primary_container["ModelDataUrl"] = "file:///some/model"
     local_transform_job.start(input_data, output_data, transform_resources, Environment={})
     endpoints = [
