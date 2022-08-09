@@ -332,14 +332,14 @@ class PyvisVisualizer(object):
         for arn, source, entity, is_start_arn in elements["nodes"]:
             if is_start_arn:  # startarn
                 net.add_node(
-                    arn, label=source, title=entity, color=self._node_color(entity), shape="star"
+                    arn, label=source, title=entity, color=self._node_color(entity), shape="star", borderWidth=3
                 )
             else:
-                net.add_node(arn, label=source, title=entity, color=self._node_color(entity))
+                net.add_node(arn, label=source, title=entity, color=self._node_color(entity), borderWidth=3)
 
         # add edges to graph
         for src, dest, asso_type in elements["edges"]:
-            net.add_edge(src, dest, title=asso_type)
+            net.add_edge(src, dest, title=asso_type, width=2)
 
         return net.show(path)
 
