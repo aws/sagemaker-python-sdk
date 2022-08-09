@@ -234,7 +234,8 @@ class PyvisVisualizer(object):
 
         Args:
             graph_styles: A dictionary that contains graph style for node and edges by their type.
-                Example: Display the nodes with different color by their lineage entity / different shape by start arn.
+                Example: Display the nodes with different color by their lineage entity / different
+                    shape by start arn.
                         lineage_graph = {
                             "TrialComponent": {
                                 "name": "Trial Component",
@@ -312,10 +313,11 @@ class PyvisVisualizer(object):
         Args:
             elements: A dictionary that contains the node and the edges of the graph.
                 Example:
-                    elements["nodes"] contains a list of tuples, each tuple represents a node in the format
-                        (node arn, node lineage source, node lineage entity, node is start arn)
-                    elements["edges"] contains a list of tuples, each tuple represents an edge in the format
-                        (edge source arn, edge destination arn, edge association type)
+                    elements["nodes"] contains list of tuples, each tuple represents a node
+                        format: (node arn, node lineage source, node lineage entity,
+                            node is start arn)
+                    elements["edges"] contains list of tuples, each tuple represents an edge
+                        format: (edge source arn, edge destination arn, edge association type)
 
             path(optional): The path/filemname of the rendered graph html file. (default path: "pyvisExample.html")
 
@@ -425,8 +427,10 @@ class LineageQueryResult(object):
     def visualize(self, path="pyvisExample.html"):
         """Visualize lineage query result.
 
-        Creates a PyvisVisualizer object to render network graph with Pyvis library. The elements(nodes & edges) are
-        preprocessed in this method and sent to PyvisVisualizer for rendering graph.
+        Creates a PyvisVisualizer object to render network graph with Pyvis library.
+        Pyvis library should be installed before using this method (run "pip install pyvis")
+        The elements(nodes & edges) are preprocessed in this method and sent to
+        PyvisVisualizer for rendering graph.
 
         Args:
             path(optional): The path/filemname of the rendered graph html file. (default path: "pyvisExample.html")
