@@ -284,8 +284,8 @@ class ModelConfig:
         r"""Initializes a configuration of a model and the endpoint to be created for it.
 
         Args:
-            model_name (str): Model name (as created by
-                `CreateModel <https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateModel.html>`_.
+            model_name (str): Model name (of the model created by
+                `CreateModel <https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateModel.html>`_)
             instance_count (int): The number of instances of a new endpoint for model inference.
             instance_type (str): The type of
                 `EC2 instance <https://aws.amazon.com/ec2/instance-types/>`_
