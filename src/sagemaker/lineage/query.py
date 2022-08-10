@@ -15,7 +15,9 @@ from __future__ import absolute_import
 
 from datetime import datetime
 from enum import Enum
+from platform import node
 from typing import Optional, Union, List, Dict
+import re
 
 from sagemaker.lineage._utils import get_resource_name_from_arn, get_module
 
@@ -330,12 +332,14 @@ class PyvisVisualizer(object):
 
         # add nodes to graph
         for arn, source, entity, is_start_arn in elements["nodes"]:
+            source = re.sub(r"(\w)([A-Z])", r"\1 \2", source)
+            node_info = "Entity: " + entity + "\n" + "Type: " + source + "\n" + "Name: " + arn
             if is_start_arn:  # startarn
                 net.add_node(
-                    arn, label=source, title=entity+"\n"+arn, color=self._node_color(entity), shape="star", borderWidth=3
+                    arn, label=source, title=node_info, color=self._node_color(entity), shape="star", borderWidth=3
                 )
             else:
-                net.add_node(arn, label=source, title=entity+"\n"+arn, color=self._node_color(entity), borderWidth=3)
+                net.add_node(arn, label=source, title=node_info, color=self._node_color(entity), borderWidth=3)
 
         # add edges to graph
         for src, dest, asso_type in elements["edges"]:
@@ -391,7 +395,7 @@ class LineageQueryResult(object):
 
         """
         return (
-            "{\n"
+            "{"
             + "\n\n".join("'{}': {},".format(key, val) for key, val in self.__dict__.items())
             + "\n}"
         )
