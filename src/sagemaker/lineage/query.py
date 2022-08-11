@@ -262,6 +262,8 @@ class PyvisVisualizer(object):
         (
             self.Network,
             self.Options,
+            self.IFrame,
+            self.BeautifulSoup
         ) = self._import_visual_modules()
 
         self.graph_styles = graph_styles
@@ -302,12 +304,21 @@ class PyvisVisualizer(object):
         get_module("pyvis")
         from pyvis.network import Network
         from pyvis.options import Options
+        from IPython.display import IFrame
 
-        return Network, Options
+        get_module("bs4")
+        from bs4 import BeautifulSoup
+
+        return Network, Options, IFrame, BeautifulSoup
 
     def _node_color(self, entity):
         """Return node color by background-color specified in graph styles."""
         return self.graph_styles[entity]["style"]["background-color"]
+
+    def _add_legend(self, path):
+        f = open(path, "r+")
+        soup = self.BeautifulSoup(f, 'html.parser')
+        print(soup.prettify())
 
     def render(self, elements, path="pyvisExample.html"):
         """Render graph for lineage query result.
@@ -345,7 +356,10 @@ class PyvisVisualizer(object):
         for src, dest, asso_type in elements["edges"]:
             net.add_edge(src, dest, title=asso_type, width=2)
 
-        return net.show(path)
+        net.write_html(path)
+        self._add_legend(path)
+
+        return self.IFrame(path, width="100%", height="500px")
 
 
 class LineageQueryResult(object):
