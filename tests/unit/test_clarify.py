@@ -232,7 +232,8 @@ def test_invalid_bias_config():
 
     # Two facets but only one value
     with pytest.raises(
-        ValueError, match="The number of facet names doesn't match the number of facet values"
+        ValueError,
+        match="The number of facet names doesn't match the number of facet values",
     ):
         BiasConfig(
             label_values_or_threshold=[1],
@@ -295,7 +296,10 @@ def test_invalid_bias_config():
             {
                 "facet": [
                     {"name_or_index": "Feature1", "value_or_threshold": [1]},
-                    {"name_or_index": 1, "value_or_threshold": ["category1, category2"]},
+                    {
+                        "name_or_index": 1,
+                        "value_or_threshold": ["category1, category2"],
+                    },
                     {"name_or_index": "Feature3", "value_or_threshold": [0.5]},
                 ],
             },
@@ -1094,7 +1098,9 @@ def test_explainability_with_invalid_config(
         "initial_instance_count": 1,
     }
     with pytest.raises(
-        AttributeError, match="'NoneType' object has no attribute 'get_explainability_config'"
+        AttributeError,
+        match="analysis_config must have at least one working method: "
+        "One of the `pre_training_methods`, `post_training_methods`, `explainability_config`.",
     ):
         _run_test_explain(
             name_from_base,
@@ -1306,6 +1312,86 @@ def test_analysis_config_generator_for_explainability(data_config, model_config)
         "joinsource_name_or_index": "F4",
         "label": "Label",
         "methods": {
+            "report": {"name": "report", "title": "Analysis Report"},
+            "shap": {"save_local_shap_values": True, "use_logit": False},
+        },
+        "predictor": {
+            "initial_instance_count": 1,
+            "instance_type": "ml.c5.xlarge",
+            "label_headers": ["success"],
+            "model_name": "xgboost-model",
+            "probability": "pr",
+        },
+    }
+    assert actual == expected
+
+
+def test_analysis_config_generator_for_explainability_failing(data_config, model_config):
+    model_scores = ModelPredictedLabelConfig(
+        probability="pr",
+        label_headers=["success"],
+    )
+    with pytest.raises(
+        ValueError,
+        match="PDP features must be provided when ShapConfig is not provided",
+    ):
+        _AnalysisConfigGenerator.explainability(
+            data_config,
+            model_config,
+            model_scores,
+            PDPConfig(),
+        )
+
+    with pytest.raises(ValueError, match="Duplicate explainability configs are provided"):
+        _AnalysisConfigGenerator.explainability(
+            data_config,
+            model_config,
+            model_scores,
+            [SHAPConfig(), SHAPConfig()],
+        )
+
+    with pytest.raises(
+        AttributeError,
+        match="analysis_config must have at least one working method: "
+        "One of the "
+        "`pre_training_methods`, `post_training_methods`, `explainability_config`.",
+    ):
+        _AnalysisConfigGenerator.explainability(
+            data_config,
+            model_config,
+            model_scores,
+            [],
+        )
+
+
+def test_analysis_config_generator_for_bias_explainability(
+    data_config, data_bias_config, model_config
+):
+    model_predicted_label_config = ModelPredictedLabelConfig(
+        probability="pr",
+        label_headers=["success"],
+    )
+    actual = _AnalysisConfigGenerator.bias_and_explainability(
+        data_config,
+        model_config,
+        model_predicted_label_config,
+        [SHAPConfig(), PDPConfig()],
+        data_bias_config,
+        pre_training_methods="all",
+        post_training_methods="all",
+    )
+    expected = {
+        "dataset_type": "text/csv",
+        "facet": [{"name_or_index": "F1"}],
+        "group_variable": "F2",
+        "headers": ["Label", "F1", "F2", "F3", "F4"],
+        "joinsource_name_or_index": "F4",
+        "label": "Label",
+        "label_values_or_threshold": [1],
+        "methods": {
+            "pdp": {"grid_resolution": 15, "top_k_features": 10},
+            "post_training_bias": {"methods": "all"},
+            "pre_training_bias": {"methods": "all"},
             "report": {"name": "report", "title": "Analysis Report"},
             "shap": {"save_local_shap_values": True, "use_logit": False},
         },
