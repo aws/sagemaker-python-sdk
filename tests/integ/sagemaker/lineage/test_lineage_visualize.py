@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 import time
 import os
+import re
 
 import pytest
 
@@ -160,31 +161,56 @@ def test_graph_visualize(sagemaker_session, extract_data_from_html):
                 "color": "#146eb4",
                 "label": "Model",
                 "shape": "star",
-                "title": "Artifact",
+                "title": "Entity: Artifact"
+                + "\nType: Model"
+                + "\nAccount ID: "
+                + str(re.search(r":\d{12}:", graph_startarn).group()[1:-1])
+                + "\nName: "
+                + str(re.search(r"\/.*", graph_startarn).group()[1:]),
             },
             image_artifact: {
                 "color": "#146eb4",
                 "label": "Image",
                 "shape": "dot",
-                "title": "Artifact",
+                "title": "Entity: Artifact"
+                + "\nType: Image"
+                + "\nAccount ID: "
+                + str(re.search(r":\d{12}:", image_artifact).group()[1:-1])
+                + "\nName: "
+                + str(re.search(r"\/.*", image_artifact).group()[1:]),
             },
             dataset_artifact: {
                 "color": "#146eb4",
-                "label": "DataSet",
+                "label": "Data Set",
                 "shape": "dot",
-                "title": "Artifact",
+                "title": "Entity: Artifact"
+                + "\nType: Data Set"
+                + "\nAccount ID: "
+                + str(re.search(r":\d{12}:", dataset_artifact).group()[1:-1])
+                + "\nName: "
+                + str(re.search(r"\/.*", dataset_artifact).group()[1:]),
             },
             modeldeploy_action: {
                 "color": "#88c396",
-                "label": "ModelDeploy",
+                "label": "Model Deploy",
                 "shape": "dot",
-                "title": "Action",
+                "title": "Entity: Action"
+                + "\nType: Model Deploy"
+                + "\nAccount ID: "
+                + str(re.search(r":\d{12}:", modeldeploy_action).group()[1:-1])
+                + "\nName: "
+                + str(re.search(r"\/.*", modeldeploy_action).group()[1:]),
             },
             endpoint_context: {
                 "color": "#ff9900",
                 "label": "Endpoint",
                 "shape": "dot",
-                "title": "Context",
+                "title": "Entity: Context"
+                + "\nType: Endpoint"
+                + "\nAccount ID: "
+                + str(re.search(r":\d{12}:", endpoint_context).group()[1:-1])
+                + "\nName: "
+                + str(re.search(r"\/.*", endpoint_context).group()[1:]),
             },
         }
 
