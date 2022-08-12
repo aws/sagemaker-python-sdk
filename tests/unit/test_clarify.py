@@ -739,6 +739,41 @@ def pdp_config():
     return PDPConfig(features=["F1", "F2"], grid_resolution=20)
 
 
+def test_model_config_validations():
+    new_model_endpoint_definition = {
+        "model_name": "xgboost-model",
+        "instance_type": "ml.c5.xlarge",
+        "instance_count": 1,
+    }
+    existing_endpoint_definition = {"endpoint_name": "existing_endpoint"}
+
+    with pytest.raises(AssertionError):
+        # should be one of them
+        ModelConfig(
+            **new_model_endpoint_definition,
+            **existing_endpoint_definition,
+        )
+
+    with pytest.raises(AssertionError):
+        # should be one of them
+        ModelConfig(
+            endpoint_name_prefix="prefix",
+            **existing_endpoint_definition,
+        )
+
+    # success path for new model
+    assert ModelConfig(**new_model_endpoint_definition).predictor_config == {
+        "initial_instance_count": 1,
+        "instance_type": "ml.c5.xlarge",
+        "model_name": "xgboost-model",
+    }
+
+    # success path for existing endpoint
+    assert (
+        ModelConfig(**existing_endpoint_definition).predictor_config == existing_endpoint_definition
+    )
+
+
 @patch("sagemaker.utils.name_from_base", return_value=JOB_NAME)
 def test_pre_training_bias(
     name_from_base,
@@ -1400,6 +1435,47 @@ def test_analysis_config_generator_for_bias_explainability(
             "instance_type": "ml.c5.xlarge",
             "label_headers": ["success"],
             "model_name": "xgboost-model",
+            "probability": "pr",
+        },
+    }
+    assert actual == expected
+
+
+def test_analysis_config_generator_for_bias_explainability_with_existing_endpoint(
+    data_config, data_bias_config
+):
+    model_config = ModelConfig(endpoint_name="existing_endpoint_name")
+    model_predicted_label_config = ModelPredictedLabelConfig(
+        probability="pr",
+        label_headers=["success"],
+    )
+    actual = _AnalysisConfigGenerator.bias_and_explainability(
+        data_config,
+        model_config,
+        model_predicted_label_config,
+        [SHAPConfig(), PDPConfig()],
+        data_bias_config,
+        pre_training_methods="all",
+        post_training_methods="all",
+    )
+    expected = {
+        "dataset_type": "text/csv",
+        "facet": [{"name_or_index": "F1"}],
+        "group_variable": "F2",
+        "headers": ["Label", "F1", "F2", "F3", "F4"],
+        "joinsource_name_or_index": "F4",
+        "label": "Label",
+        "label_values_or_threshold": [1],
+        "methods": {
+            "pdp": {"grid_resolution": 15, "top_k_features": 10},
+            "post_training_bias": {"methods": "all"},
+            "pre_training_bias": {"methods": "all"},
+            "report": {"name": "report", "title": "Analysis Report"},
+            "shap": {"save_local_shap_values": True, "use_logit": False},
+        },
+        "predictor": {
+            "label_headers": ["success"],
+            "endpoint_name": "existing_endpoint_name",
             "probability": "pr",
         },
     }

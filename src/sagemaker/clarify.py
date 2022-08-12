@@ -275,26 +275,33 @@ class ModelConfig:
 
     def __init__(
         self,
-        model_name,
-        instance_count,
-        instance_type,
-        accept_type=None,
-        content_type=None,
-        content_template=None,
-        custom_attributes=None,
-        accelerator_type=None,
-        endpoint_name_prefix=None,
-        target_model=None,
+        model_name: str = None,
+        instance_count: int = None,
+        instance_type: str = None,
+        accept_type: str = None,
+        content_type: str = None,
+        content_template: str = None,
+        custom_attributes: str = None,
+        accelerator_type: str = None,
+        endpoint_name_prefix: str = None,
+        target_model: str = None,
+        endpoint_name: str = None,
     ):
         r"""Initializes a configuration of a model and the endpoint to be created for it.
 
         Args:
             model_name (str): Model name (as created by
                 `CreateModel <https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateModel.html>`_.
+                Cannot be set when ``endpoint_name`` is set.
+                Must be set with ``instance_count``, ``instance_type``
             instance_count (int): The number of instances of a new endpoint for model inference.
+                Cannot be set when ``endpoint_name`` is set.
+                Must be set with ``model_name``, ``instance_type``
             instance_type (str): The type of
                 `EC2 instance <https://aws.amazon.com/ec2/instance-types/>`_
                 to use for model inference; for example, ``"ml.c5.xlarge"``.
+                Cannot be set when ``endpoint_name`` is set.
+                Must be set with ``instance_count``, ``model_name``
             accept_type (str): The model output format to be used for getting inferences with the
                 shadow endpoint. Valid values are ``"text/csv"`` for CSV and
                 ``"application/jsonlines"``. Default is the same as ``content_type``.
@@ -324,17 +331,41 @@ class ModelConfig:
             target_model (str): Sets the target model name when using a multi-model endpoint. For
                 more information about multi-model endpoints, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/multi-model-endpoints.html
+            endpoint_name (str): Sets the endpoint_name when re-uses an existing endpoint.
+                Cannot be set when ``model_name``, ``instance_count``,
+                and ``instance_type`` set
 
         Raises:
-            ValueError: when the ``endpoint_name_prefix`` is invalid, ``accept_type`` is invalid,
-                 ``content_type`` is invalid, or ``content_template`` has no placeholder "features"
+            ValueError: when the
+                - ``endpoint_name_prefix`` is invalid,
+                - ``accept_type`` is invalid,
+                - ``content_type`` is invalid,
+                - ``content_template`` has no placeholder "features"
+                - both [``endpoint_name``]
+                   AND [``model_name``, ``instance_count``, ``instance_type``] are set
+                - both [``endpoint_name``] AND [``endpoint_name_prefix``] are set
         """
-        self.predictor_config = {
-            "model_name": model_name,
-            "instance_type": instance_type,
-            "initial_instance_count": instance_count,
-        }
-        if endpoint_name_prefix is not None:
+
+        # validation
+        _model_endpoint_config_rule = (
+            all([model_name, instance_count, instance_type]),
+            all([endpoint_name]),
+        )
+        assert any(_model_endpoint_config_rule) and not all(_model_endpoint_config_rule)
+        if endpoint_name:
+            assert not endpoint_name_prefix
+
+        # main init logic
+        self.predictor_config = (
+            {
+                "model_name": model_name,
+                "instance_type": instance_type,
+                "initial_instance_count": instance_count,
+            }
+            if not endpoint_name
+            else {"endpoint_name": endpoint_name}
+        )
+        if endpoint_name_prefix:
             if re.search("^[a-zA-Z0-9](-*[a-zA-Z0-9])", endpoint_name_prefix) is None:
                 raise ValueError(
                     "Invalid endpoint_name_prefix."
