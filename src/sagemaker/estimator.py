@@ -1025,6 +1025,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 * If both `ExperimentName` and `TrialName` are not supplied the trial component
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
+                * Both `ExperimentName` and `TrialName` will be ignored if the Estimator instance
+                is built with :class:`~sagemaker.workflow.pipeline_context.PipelineSession`.
+                However, the value of `TrialComponentDisplayName` is honored for display in Studio.
+        Returns:
+            None or pipeline step arguments in case the Estimator instance is built with
+            :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
         """
         self._prepare_for_training(job_name=job_name)
 
