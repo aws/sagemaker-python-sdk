@@ -16,6 +16,7 @@ from __future__ import absolute_import
 import json
 import logging
 import tempfile
+from typing import Union
 
 from six.moves.urllib.parse import urlparse
 
@@ -27,6 +28,7 @@ from sagemaker.deprecations import renamed_warning
 from sagemaker.estimator import EstimatorBase, _TrainingJob
 from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.utils import sagemaker_timestamp
+from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
 
 logger = logging.getLogger(__name__)
@@ -304,7 +306,12 @@ class RecordSet(object):
     """Placeholder docstring"""
 
     def __init__(
-        self, s3_data, num_records, feature_dim, s3_data_type="ManifestFile", channel="train"
+        self,
+        s3_data: Union[str, PipelineVariable],
+        num_records: int,
+        feature_dim: int,
+        s3_data_type: Union[str, PipelineVariable] = "ManifestFile",
+        channel: Union[str, PipelineVariable] = "train",
     ):
         """A collection of Amazon :class:~`Record` objects serialized and stored in S3.
 
