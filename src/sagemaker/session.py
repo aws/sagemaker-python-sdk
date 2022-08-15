@@ -2633,7 +2633,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             request["VpcConfig"] = vpc_config
 
         if enable_network_isolation:
-            request["EnableNetworkIsolation"] = True
+            # enable_network_isolation may be a pipeline variable which is
+            # parsed in execution time
+            request["EnableNetworkIsolation"] = enable_network_isolation
 
         return request
 
