@@ -580,7 +580,7 @@ def test_query_lineage_result_str(sagemaker_session):
 
     assert (
         response_str
-        == "{\n'edges': [\n\t{'source_arn': 'arn1', 'destination_arn': 'arn2', 'association_type': 'Produced'}],"
+        == "{'edges': [\n\t{'source_arn': 'arn1', 'destination_arn': 'arn2', 'association_type': 'Produced'}],"
         + "\n\n'vertices': [\n\t{'arn': 'arn1', 'lineage_entity': 'Artifact', 'lineage_source': 'Endpoint', "
         + "'_session': <Mock id=''>}, \n\t{'arn': 'arn2', 'lineage_entity': 'Context', 'lineage_source': "
         + "'Model', '_session': <Mock id=''>}],\n\n'startarn': "
