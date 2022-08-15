@@ -573,6 +573,8 @@ Here is an example:
         # When you are done using your endpoint
         model.sagemaker_session.delete_endpoint('my-endpoint')
 
+.. _built-in-algos:
+
 ***********************************************************************
 Use Built-in Algorithms with Pre-trained Models in SageMaker Python SDK
 ***********************************************************************
