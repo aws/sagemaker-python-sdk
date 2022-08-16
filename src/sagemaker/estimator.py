@@ -100,6 +100,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
     instance.
     """
 
+    LAUNCH_PT_XLA_ENV_NAME = "sagemaker_pytorch_xla_multi_worker_enabled"
     LAUNCH_PS_ENV_NAME = "sagemaker_parameter_server_enabled"
     LAUNCH_MPI_ENV_NAME = "sagemaker_mpi_enabled"
     LAUNCH_SM_DDP_ENV_NAME = "sagemaker_distributed_dataparallel_enabled"
@@ -3229,6 +3230,10 @@ class Framework(EstimatorBase):
             distribution_config["sagemaker_distribution_instance_groups"] = distribution[
                 "instance_groups"
             ]
+
+        if "pytorch_xla" in distribution:
+            pt_xla_enabled = distribution.get("pytorch_xla").get("enabled", False)
+            distribution_config[self.LAUNCH_PT_XLA_ENV_NAME] = pt_xla_enabled
 
         if "parameter_server" in distribution:
             ps_enabled = distribution.get("parameter_server").get("enabled", False)

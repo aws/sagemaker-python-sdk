@@ -278,6 +278,39 @@ def test_unsupported_python_2(
         ).fit()
 
 
+def test_unsupported_distribution(
+    huggingface_training_compiler_version,
+    huggingface_training_compiler_tensorflow_version,
+):
+    with pytest.raises(ValueError):
+        HuggingFace(
+            py_version="py38",
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            instance_count=2,
+            instance_type=INSTANCE_TYPE,
+            transformers_version=huggingface_training_compiler_version,
+            tensorflow_version=huggingface_training_compiler_tensorflow_version,
+            enable_sagemaker_metrics=False,
+            compiler_config=TrainingCompilerConfig(),
+            distribution={"smdistributed": {"dataparallel": {"enabled": True}}},
+        ).fit()
+
+    with pytest.raises(ValueError):
+        HuggingFace(
+            py_version="py38",
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            instance_count=2,
+            instance_type=INSTANCE_TYPE,
+            transformers_version=huggingface_training_compiler_version,
+            tensorflow_version=huggingface_training_compiler_tensorflow_version,
+            enable_sagemaker_metrics=False,
+            compiler_config=TrainingCompilerConfig(),
+            distribution={"pytorch_xla": {"enabled": True}},
+        ).fit()
+
+
 @patch("sagemaker.utils.repack_model", MagicMock())
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 @patch("sagemaker.estimator.name_from_base", return_value=JOB_NAME)

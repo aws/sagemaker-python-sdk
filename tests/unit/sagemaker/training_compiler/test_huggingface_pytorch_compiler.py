@@ -22,6 +22,7 @@ from mock import MagicMock, Mock, patch, ANY
 from sagemaker import image_uris
 from sagemaker.huggingface import HuggingFace, TrainingCompilerConfig
 from sagemaker.huggingface.model import HuggingFaceModel
+from sagemaker.instance_group import InstanceGroup
 
 from tests.unit.sagemaker.training_compiler import EC2_GPU_INSTANCE_CLASSES
 
@@ -41,7 +42,7 @@ JOB_NAME = "{}-{}".format(IMAGE_URI, TIMESTAMP)
 ROLE = "Dummy"
 REGION = "us-east-1"
 GPU = "ml.p3.2xlarge"
-SUPPORTED_GPU_INSTANCE_CLASSES = {"p3", "p3dn", "g4dn", "p4dn"}
+SUPPORTED_GPU_INSTANCE_CLASSES = {"p3", "p3dn", "g4dn", "p4d", "g5"}
 UNSUPPORTED_GPU_INSTANCE_CLASSES = EC2_GPU_INSTANCE_CLASSES - SUPPORTED_GPU_INSTANCE_CLASSES
 
 LIST_TAGS_RESULT = {"Tags": [{"Key": "TagtestKey", "Value": "TagtestValue"}]}
@@ -269,6 +270,134 @@ def test_unsupported_python_2(
             enable_sagemaker_metrics=False,
             compiler_config=TrainingCompilerConfig(),
         ).fit()
+
+
+def test_unsupported_instance_group(
+    huggingface_training_compiler_version,
+    huggingface_training_compiler_pytorch_version,
+):
+    with pytest.raises(ValueError):
+        HuggingFace(
+            py_version="py38",
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            instance_groups=[
+                InstanceGroup("ml.p3dn.24xlarge", "ml.p3dn.24xlarge", 16),
+                InstanceGroup("ml.p4d.24xlarge", "ml.p4d.24xlarge", 16),
+            ],
+            transformers_version=huggingface_training_compiler_version,
+            pytorch_version=huggingface_training_compiler_pytorch_version,
+            enable_sagemaker_metrics=False,
+            compiler_config=TrainingCompilerConfig(),
+        ).fit()
+
+
+def test_unsupported_distribution(
+    huggingface_training_compiler_version,
+    huggingface_training_compiler_pytorch_version,
+):
+    with pytest.raises(ValueError):
+        HuggingFace(
+            py_version="py38",
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            instance_count=2,
+            instance_type=INSTANCE_TYPE,
+            transformers_version=huggingface_training_compiler_version,
+            pytorch_version=huggingface_training_compiler_pytorch_version,
+            enable_sagemaker_metrics=False,
+            compiler_config=TrainingCompilerConfig(),
+            distribution={"smdistributed": {"dataparallel": {"enabled": True}}},
+        ).fit()
+
+    with pytest.raises(ValueError):
+        HuggingFace(
+            py_version="py38",
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            instance_count=2,
+            instance_type=INSTANCE_TYPE,
+            transformers_version="4.17",
+            pytorch_version="1.10",
+            enable_sagemaker_metrics=False,
+            compiler_config=TrainingCompilerConfig(),
+            distribution={"pytorch_xla": {"enabled": True}},
+        ).fit()
+
+    with pytest.raises(ValueError):
+        HuggingFace(
+            py_version="py38",
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            instance_count=2,
+            instance_type=INSTANCE_TYPE,
+            transformers_version=huggingface_training_compiler_version,
+            pytorch_version=huggingface_training_compiler_pytorch_version,
+            enable_sagemaker_metrics=False,
+            compiler_config=TrainingCompilerConfig(),
+            distribution={"mpi": {"enabled": True}},
+        ).fit()
+
+
+@patch("sagemaker.utils.repack_model", MagicMock())
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+@patch("sagemaker.estimator.name_from_base", return_value=JOB_NAME)
+@patch("time.time", return_value=TIME)
+@pytest.mark.parametrize("instance_class", SUPPORTED_GPU_INSTANCE_CLASSES)
+def test_pytorch_xla_distribution(
+    time,
+    name_from_base,
+    sagemaker_session,
+    huggingface_training_compiler_version,
+    huggingface_training_compiler_pytorch_version,
+    instance_class,
+):
+    compiler_config = TrainingCompilerConfig()
+    instance_type = f"ml.{instance_class}.xlarge"
+
+    hf = HuggingFace(
+        py_version="py38",
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=2,
+        instance_type=instance_type,
+        transformers_version=huggingface_training_compiler_version,
+        pytorch_version=huggingface_training_compiler_pytorch_version,
+        enable_sagemaker_metrics=False,
+        compiler_config=TrainingCompilerConfig(),
+        distribution={"pytorch_xla": {"enabled": True}},
+    )
+
+    inputs = "s3://mybucket/train"
+
+    hf.fit(inputs=inputs, experiment_config=EXPERIMENT_CONFIG)
+
+    sagemaker_call_names = [c[0] for c in sagemaker_session.method_calls]
+    assert sagemaker_call_names == ["train", "logs_for_job"]
+    boto_call_names = [c[0] for c in sagemaker_session.boto_session.method_calls]
+    assert boto_call_names == ["resource"]
+
+    expected_train_args = _create_train_job(
+        huggingface_training_compiler_version,
+        f"pytorch{huggingface_training_compiler_pytorch_version}",
+        instance_type,
+        compiler_config,
+    )
+    expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
+    expected_train_args["enable_sagemaker_metrics"] = False
+    expected_train_args["hyperparameters"][TrainingCompilerConfig.HP_ENABLE_COMPILER] = json.dumps(
+        True
+    )
+    expected_train_args["hyperparameters"][HuggingFace.LAUNCH_PT_XLA_ENV_NAME] = json.dumps(True)
+    expected_train_args["hyperparameters"][TrainingCompilerConfig.HP_ENABLE_DEBUG] = json.dumps(
+        False
+    )
+
+    actual_train_args = sagemaker_session.method_calls[0][2]
+    assert (
+        actual_train_args == expected_train_args
+    ), f"{json.dumps(actual_train_args, indent=2)} != {json.dumps(expected_train_args, indent=2)}"
 
 
 @patch("sagemaker.utils.repack_model", MagicMock())

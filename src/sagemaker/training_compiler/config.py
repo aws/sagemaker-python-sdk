@@ -21,7 +21,7 @@ class TrainingCompilerConfig(object):
     """The SageMaker Training Compiler configuration class."""
 
     DEBUG_PATH = "/opt/ml/output/data/compiler/"
-    SUPPORTED_INSTANCE_CLASS_PREFIXES = ["p3", "g4dn", "p4"]
+    SUPPORTED_INSTANCE_CLASS_PREFIXES = ["p3", "g4dn", "p4d", "g5"]
 
     HP_ENABLE_COMPILER = "sagemaker_training_compiler_enabled"
     HP_ENABLE_DEBUG = "sagemaker_training_compiler_debug_mode"
@@ -123,7 +123,7 @@ class TrainingCompilerConfig(object):
         """Checks if SageMaker Training Compiler is configured correctly.
 
         Args:
-            estimator (str): A estimator object
+            estimator (sagemaker.Estimator): A estimator object
                 When SageMaker Training Compiler is enabled, it validates if
                 the estimator is configured to be compatible with Training Compiler.
 
@@ -132,31 +132,31 @@ class TrainingCompilerConfig(object):
             ValueError: Raised if the requested configuration is not compatible
                         with SageMaker Training Compiler.
         """
-
-        if "local" not in estimator.instance_type:
-            requested_instance_class = estimator.instance_type.split(".")[
-                1
-            ]  # Expecting ml.class.size
-            if not any(
-                [
-                    requested_instance_class.startswith(i)
-                    for i in cls.SUPPORTED_INSTANCE_CLASS_PREFIXES
-                ]
-            ):
+        if estimator.instance_type:
+            if "local" not in estimator.instance_type:
+                requested_instance_class = estimator.instance_type.split(".")[
+                    1
+                ]  # Expecting ml.class.size
+                if not any(
+                    [
+                        requested_instance_class.startswith(i)
+                        for i in cls.SUPPORTED_INSTANCE_CLASS_PREFIXES
+                    ]
+                ):
+                    error_helper_string = "Unsupported Instance class {}. SageMaker Training Compiler only supports {}"
+                    error_helper_string = error_helper_string.format(
+                        requested_instance_class, cls.SUPPORTED_INSTANCE_CLASS_PREFIXES
+                    )
+                    raise ValueError(error_helper_string)
+            elif estimator.instance_type == "local":
                 error_helper_string = (
-                    "Unsupported Instance class {}. SageMaker Training Compiler only supports {}"
+                    "The local mode is not supported by SageMaker Training Compiler."
+                    "It only supports the following GPU instances: {}"
                 )
                 error_helper_string = error_helper_string.format(
-                    requested_instance_class, cls.SUPPORTED_INSTANCE_CLASS_PREFIXES
+                    cls.SUPPORTED_INSTANCE_CLASS_PREFIXES
                 )
                 raise ValueError(error_helper_string)
-        elif estimator.instance_type == "local":
-            error_helper_string = (
-                "The local mode is not supported by SageMaker Training Compiler."
-                "It only supports the following GPU instances: {}"
-            )
-            error_helper_string = error_helper_string.format(cls.SUPPORTED_INSTANCE_CLASS_PREFIXES)
-            raise ValueError(error_helper_string)
 
         if estimator.distribution and "smdistributed" in estimator.distribution:
             raise ValueError(
@@ -180,3 +180,12 @@ class TrainingCompilerConfig(object):
                 estimator.debugger_hook_config, estimator.disable_profiler
             )
             logger.warning(helper_string)
+
+        if estimator.instance_groups:
+            raise ValueError(
+                "SageMaker Training Compiler currently only supports homogeneous clusters of "
+                "the following GPU instance families: {}. Please use the 'instance_type' "
+                "and 'instance_count' parameters instead of 'instance_groups'".format(
+                    cls.SUPPORTED_INSTANCE_CLASS_PREFIXES
+                )
+            )

@@ -13,6 +13,8 @@
 """Configuration for the SageMaker Training Compiler."""
 from __future__ import absolute_import
 import logging
+from packaging.specifiers import SpecifierSet
+from packaging.version import Version
 from typing import Union
 
 from sagemaker.training_compiler.config import TrainingCompilerConfig as BaseConfig
@@ -24,7 +26,7 @@ logger = logging.getLogger(__name__)
 class TrainingCompilerConfig(BaseConfig):
     """The SageMaker Training Compiler configuration class."""
 
-    SUPPORTED_INSTANCE_CLASS_PREFIXES = ["p3", "g4dn", "p4"]
+    SUPPORTED_INSTANCE_CLASS_PREFIXES = ["p3", "g4dn", "p4d", "g5"]
 
     def __init__(
         self,
@@ -85,7 +87,7 @@ class TrainingCompilerConfig(BaseConfig):
         """Checks if SageMaker Training Compiler is configured correctly.
 
         Args:
-            estimator (str): A estimator object
+            estimator (sagemaker.huggingface.HuggingFace): A estimator object
                 If SageMaker Training Compiler is enabled, it will validate whether
                 the estimator is configured to be compatible with Training Compiler.
 
@@ -105,3 +107,40 @@ class TrainingCompilerConfig(BaseConfig):
                 "transformer_version, tensorflow_version or pytorch_version, and compiler_config."
             )
             raise ValueError(error_helper_string)
+
+        if estimator.distribution:
+            pt_xla_present = "pytorch_xla" in estimator.distribution
+            pt_xla_enabled = estimator.distribution.get("pytorch_xla", {}).get("enabled", False)
+            if pt_xla_enabled:
+                if estimator.tensorflow_version:
+                    error_helper_string = (
+                        "Distribution mechanism 'pytorch_xla' is currently only supported for "
+                        "PyTorch >= 1.11 when Training Compiler is enabled. Received "
+                        "tensorflow_version={} which is unsupported."
+                    )
+                    raise ValueError(error_helper_string.format(estimator.tensorflow_version))
+                elif estimator.pytorch_version:
+                    if Version(estimator.pytorch_version) in SpecifierSet("< 1.11"):
+                        error_helper_string = (
+                            "Distribution mechanism 'pytorch_xla' is currently only supported for "
+                            "PyTorch >= 1.11 when Training Compiler is enabled. Received "
+                            "pytorch_version={} which is unsupported."
+                        )
+                        raise ValueError(error_helper_string.format(estimator.pytorch_version))
+            if not pt_xla_present:
+                if estimator.pytorch_version:
+                    if Version(estimator.pytorch_version) in SpecifierSet(">= 1.11"):
+                        error_helper_string = (
+                            "'pytorch_xla' is the only distribution mechanism currently supported "
+                            "for PyTorch >= 1.11 when Training Compiler is enabled. Received "
+                            "distribution={} which is unsupported."
+                        )
+                        raise ValueError(error_helper_string.format(estimator.distribution))
+        elif estimator.instance_count and estimator.instance_count > 1:
+            if estimator.pytorch_version:
+                if Version(estimator.pytorch_version) in SpecifierSet(">= 1.11"):
+                    logger.warning(
+                        "Consider setting 'distribution' to 'pytorch_xla' for distributed "
+                        "training with PyTorch >= 1.11 with Training Compiler enabled. This "
+                        "will become the default configuration in the future."
+                    )

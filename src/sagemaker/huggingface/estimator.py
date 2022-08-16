@@ -141,6 +141,16 @@ class HuggingFace(Framework):
                             }
                         }
                     }
+
+                To enable distributed training with Training Compiler for PyTorch:
+
+                .. code:: python
+
+                    {
+                        "pytorch_xla": {
+                            "enabled": True
+                        }
+                    }
             compiler_config (:class:`~sagemaker.huggingface.TrainingCompilerConfig`):
                 Configures SageMaker Training Compiler to accelerate training.
 
@@ -204,6 +214,11 @@ class HuggingFace(Framework):
                 raise ValueError(error_string)
             if compiler_config:
                 compiler_config.validate(self)
+        elif distribution is not None and "pytorch_xla" in distribution:
+            raise ValueError(
+                "Distributed training through PyTorch XLA is currently only supported "
+                "when Training Compiler is enabled."
+            )
         self.compiler_config = compiler_config
 
     def _validate_args(self, image_uri):
