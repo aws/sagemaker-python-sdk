@@ -13,20 +13,24 @@
 """This file contains code related to model metrics, including metric source and file source."""
 from __future__ import absolute_import
 
+from typing import Optional, Union
+
+from sagemaker.workflow.entities import PipelineVariable
+
 
 class ModelMetrics(object):
     """Accepts model metrics parameters for conversion to request dict."""
 
     def __init__(
         self,
-        model_statistics=None,
-        model_constraints=None,
-        model_data_statistics=None,
-        model_data_constraints=None,
-        bias=None,
-        explainability=None,
-        bias_pre_training=None,
-        bias_post_training=None,
+        model_statistics: Optional["MetricsSource"] = None,
+        model_constraints: Optional["MetricsSource"] = None,
+        model_data_statistics: Optional["MetricsSource"] = None,
+        model_data_constraints: Optional["MetricsSource"] = None,
+        bias: Optional["MetricsSource"] = None,
+        explainability: Optional["MetricsSource"] = None,
+        bias_pre_training: Optional["MetricsSource"] = None,
+        bias_post_training: Optional["MetricsSource"] = None,
     ):
         """Initialize a ``ModelMetrics`` instance and turn parameters into dict.
 
@@ -99,9 +103,9 @@ class MetricsSource(object):
 
     def __init__(
         self,
-        content_type,
-        s3_uri,
-        content_digest=None,
+        content_type: Union[str, PipelineVariable],
+        s3_uri: Union[str, PipelineVariable],
+        content_digest: Optional[Union[str, PipelineVariable]] = None,
     ):
         """Initialize a ``MetricsSource`` instance and turn parameters into dict.
 
@@ -127,9 +131,9 @@ class FileSource(object):
 
     def __init__(
         self,
-        s3_uri,
-        content_digest=None,
-        content_type=None,
+        s3_uri: Union[str, PipelineVariable],
+        content_digest: Optional[Union[str, PipelineVariable]] = None,
+        content_type: Optional[Union[str, PipelineVariable]] = None,
     ):
         """Initialize a ``FileSource`` instance and turn parameters into dict.
 

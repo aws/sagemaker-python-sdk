@@ -13,7 +13,10 @@
 """Amazon SageMaker channel configurations for S3 data sources and file system data sources"""
 from __future__ import absolute_import, print_function
 
+from typing import Union, Optional, List
 import attr
+
+from sagemaker.workflow.entities import PipelineVariable
 
 FILE_SYSTEM_TYPES = ["FSxLustre", "EFS"]
 FILE_SYSTEM_ACCESS_MODES = ["ro", "rw"]
@@ -29,17 +32,17 @@ class TrainingInput(object):
 
     def __init__(
         self,
-        s3_data,
-        distribution=None,
-        compression=None,
-        content_type=None,
-        record_wrapping=None,
-        s3_data_type="S3Prefix",
-        instance_groups=None,
-        input_mode=None,
-        attribute_names=None,
-        target_attribute_name=None,
-        shuffle_config=None,
+        s3_data: Union[str, PipelineVariable],
+        distribution: Optional[Union[str, PipelineVariable]] = None,
+        compression: Optional[Union[str, PipelineVariable]] = None,
+        content_type: Optional[Union[str, PipelineVariable]] = None,
+        record_wrapping: Optional[Union[str, PipelineVariable]] = None,
+        s3_data_type: Union[str, PipelineVariable] = "S3Prefix",
+        instance_groups: Optional[List[Union[str, PipelineVariable]]] = None,
+        input_mode: Optional[Union[str, PipelineVariable]] = None,
+        attribute_names: Optional[List[Union[str, PipelineVariable]]] = None,
+        target_attribute_name: Optional[Union[str, PipelineVariable]] = None,
+        shuffle_config: Optional["ShuffleConfig"] = None,
     ):
         r"""Create a definition for input data used by an SageMaker training job.
 

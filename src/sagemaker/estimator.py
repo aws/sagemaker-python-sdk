@@ -50,6 +50,7 @@ from sagemaker.fw_utils import (
     validate_source_code_input_against_pipeline_variables,
 )
 from sagemaker.inputs import TrainingInput, FileSystemInput
+from sagemaker.instance_group import InstanceGroup
 from sagemaker.job import _Job
 from sagemaker.jumpstart.utils import (
     add_jumpstart_tags,
@@ -149,7 +150,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         code_location: Optional[str] = None,
         entry_point: Optional[Union[str, PipelineVariable]] = None,
         dependencies: Optional[List[Union[str]]] = None,
-        instance_groups: Optional[Dict[str, Union[str, int]]] = None,
+        instance_groups: Optional[List[InstanceGroup]] = None,
         **kwargs,
     ):
         """Initialize an ``EstimatorBase`` instance.
@@ -1057,6 +1058,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 * If both `ExperimentName` and `TrialName` are not supplied the trial component
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
+                * Both `ExperimentName` and `TrialName` will be ignored if the Estimator instance
+                is built with :class:`~sagemaker.workflow.pipeline_context.PipelineSession`.
+                However, the value of `TrialComponentDisplayName` is honored for display in Studio.
+        Returns:
+            None or pipeline step arguments in case the Estimator instance is built with
+            :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
         """
         self._prepare_for_training(job_name=job_name)
 
@@ -1612,6 +1619,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         for instance_group in self.instance_groups:
             instance_type = instance_group.instance_type
+            if is_pipeline_variable(instance_type):
+                continue
             match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
 
             if match:
@@ -2211,7 +2220,7 @@ class Estimator(EstimatorBase):
         code_location: Optional[str] = None,
         entry_point: Optional[Union[str, PipelineVariable]] = None,
         dependencies: Optional[List[str]] = None,
-        instance_groups: Optional[Dict[str, Union[str, int]]] = None,
+        instance_groups: Optional[List[InstanceGroup]] = None,
         **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
@@ -2938,7 +2947,15 @@ class Framework(EstimatorBase):
         # Disable debugger if checkpointing is enabled by the customer
         if self.checkpoint_s3_uri and self.checkpoint_local_path and self.debugger_hook_config:
             if self._framework_name in {"mxnet", "pytorch", "tensorflow"}:
-                if self.instance_count > 1 or (
+                if is_pipeline_variable(self.instance_count):
+                    logger.warning(
+                        "SMDebug does not currently support distributed training jobs "
+                        "with checkpointing enabled. Therefore, to allow parameterized "
+                        "instance_count and allow to change it to any values in execution time, "
+                        "the debugger_hook_config is disabled."
+                    )
+                    self.debugger_hook_config = False
+                elif self.instance_count > 1 or (
                     hasattr(self, "distribution")
                     and self.distribution is not None  # pylint: disable=no-member
                 ):

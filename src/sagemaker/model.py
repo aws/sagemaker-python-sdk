@@ -18,7 +18,7 @@ import json
 import logging
 import os
 import copy
-from typing import List, Dict
+from typing import List, Dict, Optional, Union
 
 import sagemaker
 from sagemaker import (
@@ -29,7 +29,11 @@ from sagemaker import (
     utils,
     git_utils,
 )
+from sagemaker.session import Session
+from sagemaker.model_metrics import ModelMetrics
 from sagemaker.deprecations import removed_kwargs
+from sagemaker.drift_check_baselines import DriftCheckBaselines
+from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.predictor import PredictorBase
 from sagemaker.serverless import ServerlessInferenceConfig
 from sagemaker.transformer import Transformer
@@ -37,10 +41,12 @@ from sagemaker.jumpstart.utils import add_jumpstart_tags, get_jumpstart_base_nam
 from sagemaker.utils import (
     unique_name_from_base,
     update_container_with_inference_params,
+    to_string,
 )
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.predictor_async import AsyncPredictor
 from sagemaker.workflow import is_pipeline_variable
+from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline, PipelineSession
 
 LOGGER = logging.getLogger("sagemaker")
@@ -82,23 +88,23 @@ class Model(ModelBase):
 
     def __init__(
         self,
-        image_uri,
-        model_data=None,
-        role=None,
-        predictor_cls=None,
-        env=None,
-        name=None,
-        vpc_config=None,
-        sagemaker_session=None,
-        enable_network_isolation=False,
-        model_kms_key=None,
-        image_config=None,
-        source_dir=None,
-        code_location=None,
-        entry_point=None,
-        container_log_level=logging.INFO,
-        dependencies=None,
-        git_config=None,
+        image_uri: Union[str, PipelineVariable],
+        model_data: Optional[Union[str, PipelineVariable]] = None,
+        role: Optional[str] = None,
+        predictor_cls: Optional[callable] = None,
+        env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        name: Optional[str] = None,
+        vpc_config: Optional[Dict[str, List[Union[str, PipelineVariable]]]] = None,
+        sagemaker_session: Optional[Session] = None,
+        enable_network_isolation: Union[bool, PipelineVariable] = False,
+        model_kms_key: Optional[str] = None,
+        image_config: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        source_dir: Optional[str] = None,
+        code_location: Optional[str] = None,
+        entry_point: Optional[str] = None,
+        container_log_level: Union[int, PipelineVariable] = logging.INFO,
+        dependencies: Optional[List[str]] = None,
+        git_config: Optional[Dict[str, str]] = None,
     ):
         """Initialize an SageMaker ``Model``.
 
@@ -298,28 +304,28 @@ class Model(ModelBase):
     @runnable_by_pipeline
     def register(
         self,
-        content_types,
-        response_types,
-        inference_instances=None,
-        transform_instances=None,
-        model_package_name=None,
-        model_package_group_name=None,
-        image_uri=None,
-        model_metrics=None,
-        metadata_properties=None,
-        marketplace_cert=False,
-        approval_status=None,
-        description=None,
-        drift_check_baselines=None,
-        customer_metadata_properties=None,
-        validation_specification=None,
-        domain=None,
-        task=None,
-        sample_payload_url=None,
-        framework=None,
-        framework_version=None,
-        nearest_model_name=None,
-        data_input_configuration=None,
+        content_types: List[Union[str, PipelineVariable]],
+        response_types: List[Union[str, PipelineVariable]],
+        inference_instances: Optional[List[Union[str, PipelineVariable]]] = None,
+        transform_instances: Optional[List[Union[str, PipelineVariable]]] = None,
+        model_package_name: Optional[Union[str, PipelineVariable]] = None,
+        model_package_group_name: Optional[Union[str, PipelineVariable]] = None,
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
+        model_metrics: Optional[ModelMetrics] = None,
+        metadata_properties: Optional[MetadataProperties] = None,
+        marketplace_cert: bool = False,
+        approval_status: Optional[Union[str, PipelineVariable]] = None,
+        description: Optional[str] = None,
+        drift_check_baselines: Optional[DriftCheckBaselines] = None,
+        customer_metadata_properties: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        validation_specification: Optional[Union[str, PipelineVariable]] = None,
+        domain: Optional[Union[str, PipelineVariable]] = None,
+        task: Optional[Union[str, PipelineVariable]] = None,
+        sample_payload_url: Optional[Union[str, PipelineVariable]] = None,
+        framework: Optional[Union[str, PipelineVariable]] = None,
+        framework_version: Optional[Union[str, PipelineVariable]] = None,
+        nearest_model_name: Optional[Union[str, PipelineVariable]] = None,
+        data_input_configuration: Optional[Union[str, PipelineVariable]] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -349,11 +355,11 @@ class Model(ModelBase):
                 metadata properties (default: None).
             domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
                 "MACHINE_LEARNING" (default: None).
-            sample_payload_url (str): The S3 path where the sample payload is stored
-                (default: None).
             task (str): Task values which are supported by Inference Recommender are "FILL_MASK",
                 "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION", "IMAGE_SEGMENTATION",
                 "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
+            sample_payload_url (str): The S3 path where the sample payload is stored
+                (default: None).
             framework (str): Machine learning framework of the model package container image
                 (default: None).
             framework_version (str): Framework version of the Model Package Container Image
@@ -421,10 +427,10 @@ class Model(ModelBase):
     @runnable_by_pipeline
     def create(
         self,
-        instance_type: str = None,
-        accelerator_type: str = None,
-        serverless_inference_config: ServerlessInferenceConfig = None,
-        tags: List[Dict[str, str]] = None,
+        instance_type: Optional[str] = None,
+        accelerator_type: Optional[str] = None,
+        serverless_inference_config: Optional[ServerlessInferenceConfig] = None,
+        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
     ):
         """Create a SageMaker Model Entity
 
@@ -608,7 +614,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         return {
             SCRIPT_PARAM_NAME.upper(): script_name or str(),
             DIR_PARAM_NAME.upper(): dir_name or str(),
-            CONTAINER_LOG_LEVEL_PARAM_NAME.upper(): str(self.container_log_level),
+            CONTAINER_LOG_LEVEL_PARAM_NAME.upper(): to_string(self.container_log_level),
             SAGEMAKER_REGION_PARAM_NAME.upper(): self.sagemaker_session.boto_region_name,
         }
 
@@ -1286,19 +1292,19 @@ class FrameworkModel(Model):
 
     def __init__(
         self,
-        model_data,
-        image_uri,
-        role,
-        entry_point,
-        source_dir=None,
-        predictor_cls=None,
-        env=None,
-        name=None,
-        container_log_level=logging.INFO,
-        code_location=None,
-        sagemaker_session=None,
-        dependencies=None,
-        git_config=None,
+        model_data: Union[str, PipelineVariable],
+        image_uri: Union[str, PipelineVariable],
+        role: str,
+        entry_point: str,
+        source_dir: Optional[str] = None,
+        predictor_cls: Optional[callable] = None,
+        env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        name: Optional[str] = None,
+        container_log_level: Union[int, PipelineVariable] = logging.INFO,
+        code_location: Optional[str] = None,
+        sagemaker_session: Optional[Session] = None,
+        dependencies: Optional[List[str]] = None,
+        git_config: Optional[Dict[str, str]] = None,
         **kwargs,
     ):
         """Initialize a ``FrameworkModel``.

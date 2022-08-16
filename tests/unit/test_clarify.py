@@ -29,6 +29,7 @@ from sagemaker.clarify import (
     SHAPConfig,
     TextConfig,
     ImageConfig,
+    _AnalysisConfigGenerator,
 )
 
 JOB_NAME_PREFIX = "my-prefix"
@@ -764,7 +765,10 @@ def test_pre_training_bias(
             "label_values_or_threshold": [1],
             "facet": [{"name_or_index": "F1"}],
             "group_variable": "F2",
-            "methods": {"pre_training_bias": {"methods": "all"}},
+            "methods": {
+                "report": {"name": "report", "title": "Analysis Report"},
+                "pre_training_bias": {"methods": "all"},
+            },
         }
         mock_method.assert_called_with(
             data_config,
@@ -827,7 +831,10 @@ def test_post_training_bias(
             "joinsource_name_or_index": "F4",
             "facet": [{"name_or_index": "F1"}],
             "group_variable": "F2",
-            "methods": {"post_training_bias": {"methods": "all"}},
+            "methods": {
+                "report": {"name": "report", "title": "Analysis Report"},
+                "post_training_bias": {"methods": "all"},
+            },
             "predictor": {
                 "model_name": "xgboost-model",
                 "instance_type": "ml.c5.xlarge",
@@ -985,7 +992,10 @@ def _run_test_explain(
                 "grid_resolution": 20,
                 "top_k_features": 10,
             }
-        expected_analysis_config["methods"] = expected_explanation_configs
+        expected_analysis_config["methods"] = {
+            "report": {"name": "report", "title": "Analysis Report"},
+            **expected_explanation_configs,
+        }
         mock_method.assert_called_with(
             data_config,
             expected_analysis_config,
@@ -1277,3 +1287,128 @@ def test_shap_with_image_config(
         expected_predictor_config,
         expected_image_config=expected_image_config,
     )
+
+
+def test_analysis_config_generator_for_explainability(data_config, model_config):
+    model_scores = ModelPredictedLabelConfig(
+        probability="pr",
+        label_headers=["success"],
+    )
+    actual = _AnalysisConfigGenerator.explainability(
+        data_config,
+        model_config,
+        model_scores,
+        SHAPConfig(),
+    )
+    expected = {
+        "dataset_type": "text/csv",
+        "headers": ["Label", "F1", "F2", "F3", "F4"],
+        "joinsource_name_or_index": "F4",
+        "label": "Label",
+        "methods": {
+            "report": {"name": "report", "title": "Analysis Report"},
+            "shap": {"save_local_shap_values": True, "use_logit": False},
+        },
+        "predictor": {
+            "initial_instance_count": 1,
+            "instance_type": "ml.c5.xlarge",
+            "label_headers": ["success"],
+            "model_name": "xgboost-model",
+            "probability": "pr",
+        },
+    }
+    assert actual == expected
+
+
+def test_analysis_config_generator_for_bias_pre_training(data_config, data_bias_config):
+    actual = _AnalysisConfigGenerator.bias_pre_training(
+        data_config, data_bias_config, methods="all"
+    )
+    expected = {
+        "dataset_type": "text/csv",
+        "facet": [{"name_or_index": "F1"}],
+        "group_variable": "F2",
+        "headers": ["Label", "F1", "F2", "F3", "F4"],
+        "joinsource_name_or_index": "F4",
+        "label": "Label",
+        "label_values_or_threshold": [1],
+        "methods": {
+            "report": {"name": "report", "title": "Analysis Report"},
+            "pre_training_bias": {"methods": "all"},
+        },
+    }
+    assert actual == expected
+
+
+def test_analysis_config_generator_for_bias_post_training(
+    data_config, data_bias_config, model_config
+):
+    model_predicted_label_config = ModelPredictedLabelConfig(
+        probability="pr",
+        label_headers=["success"],
+    )
+    actual = _AnalysisConfigGenerator.bias_post_training(
+        data_config,
+        data_bias_config,
+        model_predicted_label_config,
+        methods="all",
+        model_config=model_config,
+    )
+    expected = {
+        "dataset_type": "text/csv",
+        "facet": [{"name_or_index": "F1"}],
+        "group_variable": "F2",
+        "headers": ["Label", "F1", "F2", "F3", "F4"],
+        "joinsource_name_or_index": "F4",
+        "label": "Label",
+        "label_values_or_threshold": [1],
+        "methods": {
+            "report": {"name": "report", "title": "Analysis Report"},
+            "post_training_bias": {"methods": "all"},
+        },
+        "predictor": {
+            "initial_instance_count": 1,
+            "instance_type": "ml.c5.xlarge",
+            "label_headers": ["success"],
+            "model_name": "xgboost-model",
+            "probability": "pr",
+        },
+    }
+    assert actual == expected
+
+
+def test_analysis_config_generator_for_bias(data_config, data_bias_config, model_config):
+    model_predicted_label_config = ModelPredictedLabelConfig(
+        probability="pr",
+        label_headers=["success"],
+    )
+    actual = _AnalysisConfigGenerator.bias(
+        data_config,
+        data_bias_config,
+        model_config,
+        model_predicted_label_config,
+        pre_training_methods="all",
+        post_training_methods="all",
+    )
+    expected = {
+        "dataset_type": "text/csv",
+        "facet": [{"name_or_index": "F1"}],
+        "group_variable": "F2",
+        "headers": ["Label", "F1", "F2", "F3", "F4"],
+        "joinsource_name_or_index": "F4",
+        "label": "Label",
+        "label_values_or_threshold": [1],
+        "methods": {
+            "report": {"name": "report", "title": "Analysis Report"},
+            "post_training_bias": {"methods": "all"},
+            "pre_training_bias": {"methods": "all"},
+        },
+        "predictor": {
+            "initial_instance_count": 1,
+            "instance_type": "ml.c5.xlarge",
+            "label_headers": ["success"],
+            "model_name": "xgboost-model",
+            "probability": "pr",
+        },
+    }
+    assert actual == expected
