@@ -101,6 +101,8 @@ SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
         "1.10.2",
         "1.11",
         "1.11.0",
+        "1.12",
+        "1.12.0",
     ],
 }
 
