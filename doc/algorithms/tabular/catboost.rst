@@ -25,7 +25,7 @@ The following table outlines a variety of sample notebooks that address differen
    * - Notebook Title
      - Description
    * - `Tabular classification with Amazon SageMaker LightGBM and CatBoost algorithm <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/lightgbm_catboost_tabular/Amazon_Tabular_Classification_LightGBM_CatBoost.ipynb>`__
-     - This notebook demonstrates the use of the Amazon SageMaker CatBoost algorithm to train and host a tabular classification model. 
+     - This notebook demonstrates the use of the Amazon SageMaker CatBoost algorithm to train and host a tabular classification model.
    * - `Tabular regression with Amazon SageMaker LightGBM and CatBoost algorithm <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/lightgbm_catboost_tabular/Amazon_Tabular_Regression_LightGBM_CatBoost.ipynb>`__
      - This notebook demonstrates the use of the Amazon SageMaker CatBoost algorithm to train and host a tabular regression model.
 
