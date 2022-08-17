@@ -823,6 +823,29 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             self.debugger_hook_config.s3_output_path = self.output_path
         self.debugger_rule_configs = self._prepare_debugger_rules()
         self._prepare_collection_configs()
+        self._validate_and_set_debugger_configs()
+        if not self.debugger_hook_config:
+            if self.environment is None:
+                self.environment = {}
+            self.environment[DEBUGGER_FLAG] = "0"
+
+    def _validate_and_set_debugger_configs(self):
+        """Set defaults for debugging."""
+        region_supports_debugger = _region_supports_debugger(
+            self.sagemaker_session.boto_region_name
+        )
+
+        if region_supports_debugger:
+            if self.debugger_hook_config in [None, {}]:
+                self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
+            else:
+                if self.debugger_hook_config is not False and self.debugger_hook_config:
+                    # when user set debugger config in a unsupported region
+                    raise ValueError(
+                        "Current region does not support debugger but debugger hook config is set!"
+                    )
+                # disable debugger in unsupported regions
+                self.debugger_hook_config = False
 
     def _prepare_debugger_rules(self):
         """Set any necessary values in debugger rules, if they are provided."""
@@ -1766,6 +1789,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         Debugger monitoring is disabled.
         """
         self._ensure_latest_training_job()
+        if not _region_supports_debugger(self.sagemaker_session.boto_region_name):
+            raise ValueError("Current region does not support profiler / debugger!")
 
         training_job_details = self.latest_training_job.describe()
 
@@ -1799,6 +1824,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         """
         self._ensure_latest_training_job()
+        if not _region_supports_debugger(self.sagemaker_session.boto_region_name):
+            raise ValueError("Current region does not support profiler / debugger!")
 
         training_job_details = self.latest_training_job.describe()
 
@@ -1852,6 +1879,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         """
         self._ensure_latest_training_job()
+        if not _region_supports_debugger(self.sagemaker_session.boto_region_name):
+            raise ValueError("Current region does not support profiler / debugger!")
 
         if (
             not rules
@@ -2872,13 +2901,7 @@ class Framework(EstimatorBase):
 
     def _validate_and_set_debugger_configs(self):
         """Set defaults for debugging."""
-        if self.debugger_hook_config is None and _region_supports_debugger(
-            self.sagemaker_session.boto_region_name
-        ):
-            self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
-        elif not self.debugger_hook_config:
-            # set hook config to False if _region_supports_debugger is False
-            self.debugger_hook_config = False
+        super(Framework, self)._validate_and_set_debugger_configs()
 
         # Disable debugger if checkpointing is enabled by the customer
         if self.checkpoint_s3_uri and self.checkpoint_local_path and self.debugger_hook_config:
@@ -2900,11 +2923,6 @@ class Framework(EstimatorBase):
                         Distributed Training Jobs With Checkpointing Enabled"
                     )
                     self.debugger_hook_config = False
-
-        if self.debugger_hook_config is False:
-            if self.environment is None:
-                self.environment = {}
-            self.environment[DEBUGGER_FLAG] = "0"
 
     def _model_source_dir(self):
         """Get the appropriate value to pass as ``source_dir`` to a model constructor.
