@@ -140,6 +140,7 @@ def create_jumpstart_model_table():
 
     file_content = []
 
+    file_content.append(".. _all-pretrained-models:\n\n")
     file_content.append(".. |external-link| raw:: html\n\n")
     file_content.append('   <i class="fa fa-external-link"></i>\n\n')
 
