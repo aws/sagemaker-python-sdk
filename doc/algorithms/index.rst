@@ -1,5 +1,5 @@
 ######################
-First-Party Algorithms
+Built-in Algorithms
 ######################
 
 Amazon SageMaker provides implementations of some common machine learning algorithms optimized for GPU architecture and massive datasets.
@@ -7,14 +7,9 @@ Amazon SageMaker provides implementations of some common machine learning algori
 .. toctree::
     :maxdepth: 2
 
-    sagemaker.amazon.amazon_estimator
-    factorization_machines
-    ipinsights
-    kmeans
-    knn
-    lda
-    linear_learner
-    ntm
-    object2vec
-    pca
-    randomcutforest
+    tabular/index
+    text/index
+    time_series/index
+    unsupervised/index
+    vision/index
+    other/index
