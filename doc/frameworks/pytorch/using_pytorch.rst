@@ -212,7 +212,8 @@ with the ``pytorchddp`` option as the distribution strategy.
 .. note::
 
   This PyTorch DDP support is available
-  in the SageMaker PyTorch Deep Learning Containers v1.12 and later.
+  in the SageMaker PyTorch Deep Learning Containers v1.11 and later
+  on GPU instances.
 
 Adapt Your Training Script
 --------------------------
@@ -238,7 +239,6 @@ but you can also overwrite them.
 
 **Supported backends:**
 
--  ``gloo`` and ``tcp`` for CPU instances
 -  ``gloo`` and ``nccl`` for GPU instances
 
 Launching a Distributed Training Job

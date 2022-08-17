@@ -855,6 +855,7 @@ def test_validate_smdataparallel_args_not_raises():
 def test_validate_pytorchddp_not_raises():
     # Case 1: Framework is not PyTorch
     fw_utils.validate_pytorch_distribution(
+        instance_type="ml.p4d.24xlarge",
         distribution=None,
         framework_name="tensorflow",
         framework_version="2.9.1",
@@ -864,18 +865,17 @@ def test_validate_pytorchddp_not_raises():
     # Case 2: Framework is PyTorch, but distribution is not PyTorchDDP
     pytorchddp_disabled = {"pytorchddp": {"enabled": False}}
     fw_utils.validate_pytorch_distribution(
+        instance_type="ml.p4d.24xlarge",
         distribution=pytorchddp_disabled,
         framework_name="pytorch",
-        framework_version="1.10",
+        framework_version="1.11",
         py_version="py3",
         image_uri="custom-container",
     )
-    # Case 3: Framework is PyTorch, Distribution is PyTorchDDP enabled, supported framework and py versions
+    # Case 3: Framework is PyTorch, Distribution is PyTorchDDP enabled,
+    # Framework version, py version and instance_type are supported
     pytorchddp_enabled = {"pytorchddp": {"enabled": True}}
     pytorchddp_supported_fw_versions = [
-        "1.10",
-        "1.10.0",
-        "1.10.2",
         "1.11",
         "1.11.0",
         "1.12",
@@ -883,6 +883,7 @@ def test_validate_pytorchddp_not_raises():
     ]
     for framework_version in pytorchddp_supported_fw_versions:
         fw_utils.validate_pytorch_distribution(
+            instance_type="local_gpu",
             distribution=pytorchddp_enabled,
             framework_name="pytorch",
             framework_version=framework_version,
@@ -896,6 +897,7 @@ def test_validate_pytorchddp_raises():
     # Case 1: Unsupported framework version
     with pytest.raises(ValueError):
         fw_utils.validate_pytorch_distribution(
+            instance_type="ml.p4d.24xlarge",
             distribution=pytorchddp_enabled,
             framework_name="pytorch",
             framework_version="1.8",
@@ -906,9 +908,21 @@ def test_validate_pytorchddp_raises():
     # Case 2: Unsupported Py version
     with pytest.raises(ValueError):
         fw_utils.validate_pytorch_distribution(
+            instance_type="ml.p4d.24xlarge",
             distribution=pytorchddp_enabled,
             framework_name="pytorch",
             framework_version="1.10",
             py_version="py2",
+            image_uri=None,
+        )
+
+    # Case 3: Unsupported instance type
+    with pytest.raises(ValueError):
+        fw_utils.validate_pytorch_distribution(
+            instance_type="ml.c5.xlarge",
+            distribution=pytorchddp_enabled,
+            framework_name="pytorch",
+            framework_version="1.12",
+            py_version="py3",
             image_uri=None,
         )

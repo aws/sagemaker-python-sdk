@@ -107,9 +107,6 @@ SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
 }
 
 PYTORCHDDP_SUPPORTED_FRAMEWORK_VERSIONS = [
-    "1.10",
-    "1.10.0",
-    "1.10.2",
     "1.11",
     "1.11.0",
     "1.12",
@@ -742,6 +739,7 @@ def validate_distribution(
                 image_uri=image_uri,
             )
             validate_pytorch_distribution(
+                instance_type=instance_type,
                 distribution=distribution,
                 framework_name=framework_name,
                 framework_version=framework_version,
@@ -768,6 +766,7 @@ def validate_distribution(
             image_uri=image_uri,
         )
         validate_pytorch_distribution(
+            instance_type=instance_type,
             distribution=distribution,
             framework_name=framework_name,
             framework_version=framework_version,
@@ -781,11 +780,12 @@ def validate_distribution(
 
 
 def validate_pytorch_distribution(
-    distribution, framework_name, framework_version, py_version, image_uri
+    instance_type, distribution, framework_name, framework_version, py_version, image_uri
 ):
     """Check if pytorch distribution strategy is correctly invoked by the user.
 
     Args:
+        instance_type (str): A string representing the type of training instance selected. Ex: `ml.p3.16xlarge`
         distribution (dict): A dictionary with information to enable distributed training.
             (Defaults to None if distributed training is not enabled.) For example:
 
@@ -818,6 +818,23 @@ def validate_pytorch_distribution(
         return
 
     err_msg = ""
+
+    instance_type_match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+    if instance_type_match:
+        family = instance_type_match[1]
+
+    # PyTorch DDP supports local_gpu and GPU instances as instance_type
+    is_instance_type_supported = (instance_type == "local_gpu") or (
+        instance_type_match and family[0] in ("g", "p")
+    )
+
+    if not is_instance_type_supported:
+        err_msg += (
+            "CPU training in not supported by pytorchddp. "
+            "Please pick a GPU-based instance type from here: "
+            "https://aws.amazon.com/ec2/instance-types/"
+        )
+
     if not image_uri:
         # ignore framework_version and py_version if image_uri is set
         # in case image_uri is not set, then both are mandatory
