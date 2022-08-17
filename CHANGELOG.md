@@ -1,5 +1,29 @@
 # Changelog
 
+## v2.104.0 (2022-08-17)
+
+### Features
+
+ * local mode executor implementation
+ * Pipelines local mode setup
+ * Add PT 1.12 support
+ * added _AnalysisConfigGenerator for clarify
+
+### Bug Fixes and Other Changes
+
+ * yaml safe_load sagemaker config
+ * pipelines local mode minor bug fixes
+ * add local mode integ tests
+ * implement local JsonGet function
+ * Add Pipeline annotation in model base class and tensorflow estimator
+ * Allow users to customize trial component display names for pipeline launched jobs
+ * Update localmode code to decode urllib response as UTF8
+
+### Documentation Changes
+
+ * New content for Pipelines local mode
+ * Correct documentation error
+
 ## v2.103.0 (2022-08-05)
 
 ### Features
