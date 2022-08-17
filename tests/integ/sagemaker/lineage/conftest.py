@@ -141,7 +141,7 @@ def action_objs(sagemaker_session):
 @pytest.fixture
 def artifact_obj(sagemaker_session):
     obj = artifact.Artifact.create(
-        artifact_name="SDKIntegrationTest",
+        artifact_name=name(),
         artifact_type="SDKIntegrationTest",
         source_uri=name(),
         properties={"k1": "v1"},
