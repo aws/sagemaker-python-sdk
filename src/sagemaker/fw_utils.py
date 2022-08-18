@@ -53,8 +53,26 @@ PARAMETER_SERVER_MULTI_GPU_WARNING = (
     "only one worker per host regardless of the number of GPUs."
 )
 
-DEBUGGER_UNSUPPORTED_REGIONS = ("us-iso-east-1",)
-PROFILER_UNSUPPORTED_REGIONS = ("us-iso-east-1",)
+DEBUGGER_UNSUPPORTED_REGIONS = (
+    "us-iso-east-1",
+    "ap-southeast-3",
+    "ap-southeast-4",
+    "eu-south-2",
+    "me-central-1",
+    "ap-south-2",
+    "eu-central-2",
+    "us-gov-east-1",
+)
+PROFILER_UNSUPPORTED_REGIONS = (
+    "us-iso-east-1",
+    "ap-southeast-3",
+    "ap-southeast-4",
+    "eu-south-2",
+    "me-central-1",
+    "ap-south-2",
+    "eu-central-2",
+    "us-gov-east-1",
+)
 
 SINGLE_GPU_INSTANCE_TYPES = ("ml.p2.xlarge", "ml.p3.2xlarge")
 SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES = (
@@ -101,6 +119,8 @@ SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
         "1.10.2",
         "1.11",
         "1.11.0",
+        "1.12",
+        "1.12.0",
     ],
 }
 
