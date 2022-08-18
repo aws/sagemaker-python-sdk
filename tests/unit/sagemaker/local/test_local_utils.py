@@ -116,3 +116,52 @@ def test_get_docker_host(m_subprocess):
             cmd, stdout=m_subprocess.PIPE, stderr=m_subprocess.PIPE
         )
         assert host == endpoint["result"]
+
+
+@pytest.mark.parametrize(
+    "json_path, expected",
+    [
+        ("Name", "John Doe"),
+        ("Age", 31),
+        ("Experiences[0].Company", "Foo Inc."),
+        ("Experiences[0].Tenure", 5),
+        ("Experiences[0].Projects[0]['XYZ project']", "Backend Rest Api development"),
+        ("Experiences[0].Projects[1]['ABC project']", "Data migration"),
+        ("Experiences[1].Company", "Bar Ltd."),
+        ("Experiences[1].Tenure", 2),
+    ],
+)
+def test_get_using_dot_notation(json_path, expected):
+    resume = {
+        "Name": "John Doe",
+        "Age": 31,
+        "Experiences": [
+            {
+                "Company": "Foo Inc.",
+                "Role": "SDE",
+                "Tenure": 5,
+                "Projects": [
+                    {"XYZ project": "Backend Rest Api development"},
+                    {"ABC project": "Data migration"},
+                ],
+            },
+            {"Company": "Bar Ltd.", "Role": "Web developer", "Tenure": 2},
+        ],
+    }
+    actual = sagemaker.local.utils.get_using_dot_notation(resume, json_path)
+    assert actual == expected
+
+
+def test_get_using_dot_notation_type_error():
+    with pytest.raises(ValueError):
+        sagemaker.local.utils.get_using_dot_notation({"foo": "bar"}, "foo.test")
+
+
+def test_get_using_dot_notation_key_error():
+    with pytest.raises(ValueError):
+        sagemaker.local.utils.get_using_dot_notation({"foo": {"bar": 1}}, "foo.test")
+
+
+def test_get_using_dot_notation_index_error():
+    with pytest.raises(ValueError):
+        sagemaker.local.utils.get_using_dot_notation({"foo": ["bar"]}, "foo[1]")

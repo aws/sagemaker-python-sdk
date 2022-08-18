@@ -50,6 +50,7 @@ from sagemaker.fw_utils import (
     validate_source_code_input_against_pipeline_variables,
 )
 from sagemaker.inputs import TrainingInput, FileSystemInput
+from sagemaker.instance_group import InstanceGroup
 from sagemaker.job import _Job
 from sagemaker.jumpstart.utils import (
     add_jumpstart_tags,
@@ -149,7 +150,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         code_location: Optional[str] = None,
         entry_point: Optional[Union[str, PipelineVariable]] = None,
         dependencies: Optional[List[Union[str]]] = None,
-        instance_groups: Optional[Dict[str, Union[str, int]]] = None,
+        instance_groups: Optional[List[InstanceGroup]] = None,
         **kwargs,
     ):
         """Initialize an ``EstimatorBase`` instance.
@@ -822,6 +823,29 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             self.debugger_hook_config.s3_output_path = self.output_path
         self.debugger_rule_configs = self._prepare_debugger_rules()
         self._prepare_collection_configs()
+        self._validate_and_set_debugger_configs()
+        if not self.debugger_hook_config:
+            if self.environment is None:
+                self.environment = {}
+            self.environment[DEBUGGER_FLAG] = "0"
+
+    def _validate_and_set_debugger_configs(self):
+        """Set defaults for debugging."""
+        region_supports_debugger = _region_supports_debugger(
+            self.sagemaker_session.boto_region_name
+        )
+
+        if region_supports_debugger:
+            if self.debugger_hook_config in [None, {}]:
+                self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
+        else:
+            if self.debugger_hook_config is not False and self.debugger_hook_config:
+                # when user set debugger config in a unsupported region
+                raise ValueError(
+                    "Current region does not support debugger but debugger hook config is set!"
+                )
+            # disable debugger in unsupported regions
+            self.debugger_hook_config = False
 
     def _prepare_debugger_rules(self):
         """Set any necessary values in debugger rules, if they are provided."""
@@ -1025,6 +1049,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 * If both `ExperimentName` and `TrialName` are not supplied the trial component
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
+                * Both `ExperimentName` and `TrialName` will be ignored if the Estimator instance
+                is built with :class:`~sagemaker.workflow.pipeline_context.PipelineSession`.
+                However, the value of `TrialComponentDisplayName` is honored for display in Studio.
+        Returns:
+            None or pipeline step arguments in case the Estimator instance is built with
+            :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
         """
         self._prepare_for_training(job_name=job_name)
 
@@ -1580,6 +1610,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         for instance_group in self.instance_groups:
             instance_type = instance_group.instance_type
+            if is_pipeline_variable(instance_type):
+                continue
             match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
 
             if match:
@@ -1757,6 +1789,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         Debugger monitoring is disabled.
         """
         self._ensure_latest_training_job()
+        if not _region_supports_debugger(self.sagemaker_session.boto_region_name):
+            raise ValueError("Current region does not support profiler / debugger!")
 
         training_job_details = self.latest_training_job.describe()
 
@@ -1790,6 +1824,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         """
         self._ensure_latest_training_job()
+        if not _region_supports_debugger(self.sagemaker_session.boto_region_name):
+            raise ValueError("Current region does not support profiler / debugger!")
 
         training_job_details = self.latest_training_job.describe()
 
@@ -1843,6 +1879,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         """
         self._ensure_latest_training_job()
+        if not _region_supports_debugger(self.sagemaker_session.boto_region_name):
+            raise ValueError("Current region does not support profiler / debugger!")
 
         if (
             not rules
@@ -2179,7 +2217,7 @@ class Estimator(EstimatorBase):
         code_location: Optional[str] = None,
         entry_point: Optional[Union[str, PipelineVariable]] = None,
         dependencies: Optional[List[str]] = None,
-        instance_groups: Optional[Dict[str, Union[str, int]]] = None,
+        instance_groups: Optional[List[InstanceGroup]] = None,
         **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
@@ -2863,18 +2901,20 @@ class Framework(EstimatorBase):
 
     def _validate_and_set_debugger_configs(self):
         """Set defaults for debugging."""
-        if self.debugger_hook_config is None and _region_supports_debugger(
-            self.sagemaker_session.boto_region_name
-        ):
-            self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
-        elif not self.debugger_hook_config:
-            # set hook config to False if _region_supports_debugger is False
-            self.debugger_hook_config = False
+        super(Framework, self)._validate_and_set_debugger_configs()
 
         # Disable debugger if checkpointing is enabled by the customer
         if self.checkpoint_s3_uri and self.checkpoint_local_path and self.debugger_hook_config:
             if self._framework_name in {"mxnet", "pytorch", "tensorflow"}:
-                if self.instance_count > 1 or (
+                if is_pipeline_variable(self.instance_count):
+                    logger.warning(
+                        "SMDebug does not currently support distributed training jobs "
+                        "with checkpointing enabled. Therefore, to allow parameterized "
+                        "instance_count and allow to change it to any values in execution time, "
+                        "the debugger_hook_config is disabled."
+                    )
+                    self.debugger_hook_config = False
+                elif self.instance_count > 1 or (
                     hasattr(self, "distribution")
                     and self.distribution is not None  # pylint: disable=no-member
                 ):
@@ -2883,11 +2923,6 @@ class Framework(EstimatorBase):
                         Distributed Training Jobs With Checkpointing Enabled"
                     )
                     self.debugger_hook_config = False
-
-        if self.debugger_hook_config is False:
-            if self.environment is None:
-                self.environment = {}
-            self.environment[DEBUGGER_FLAG] = "0"
 
     def _model_source_dir(self):
         """Get the appropriate value to pass as ``source_dir`` to a model constructor.

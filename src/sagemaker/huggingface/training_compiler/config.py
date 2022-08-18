@@ -13,8 +13,10 @@
 """Configuration for the SageMaker Training Compiler."""
 from __future__ import absolute_import
 import logging
+from typing import Union
 
 from sagemaker.training_compiler.config import TrainingCompilerConfig as BaseConfig
+from sagemaker.workflow.entities import PipelineVariable
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +28,8 @@ class TrainingCompilerConfig(BaseConfig):
 
     def __init__(
         self,
-        enabled=True,
-        debug=False,
+        enabled: Union[bool, PipelineVariable] = True,
+        debug: Union[bool, PipelineVariable] = False,
     ):
         """This class initializes a ``TrainingCompilerConfig`` instance.
 

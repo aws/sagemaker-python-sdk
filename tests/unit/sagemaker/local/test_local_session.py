@@ -20,6 +20,11 @@ from mock import Mock, patch
 from tests.unit import DATA_DIR
 
 import sagemaker
+from sagemaker.workflow.parameters import ParameterString
+from sagemaker.workflow.pipeline import Pipeline
+from tests.unit.sagemaker.workflow.helpers import CustomStep
+from sagemaker.local.local_session import LocalSession
+from sagemaker.local.entities import _LocalPipelineExecution
 
 
 OK_RESPONSE = urllib3.HTTPResponse()
@@ -872,3 +877,82 @@ def test_invoke_local_endpoint_with_remote_docker_host(
         Body, "local_endpoint"
     )
     m_request.assert_called_with("POST", url, body=Body, preload_content=False, headers={})
+
+
+def test_create_describe_update_pipeline():
+    parameter = ParameterString("MyStr", default_value="test")
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[parameter],
+        steps=[CustomStep(name="MyStep", input_data=parameter)],
+        sagemaker_session=LocalSession(),
+    )
+    definition = pipeline.definition()
+    pipeline.create("dummy-role", "pipeline-description")
+
+    pipeline_describe_response1 = pipeline.describe()
+    assert pipeline_describe_response1["PipelineArn"] == "MyPipeline"
+    assert pipeline_describe_response1["PipelineDefinition"] == definition
+    assert pipeline_describe_response1["PipelineDescription"] == "pipeline-description"
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[parameter],
+        steps=[CustomStep(name="MyStepUpdated", input_data=parameter)],
+        sagemaker_session=LocalSession(),
+    )
+    updated_definition = pipeline.definition()
+    pipeline.update("dummy-role", "pipeline-description-2")
+    pipeline_describe_response2 = pipeline.describe()
+    assert pipeline_describe_response2["PipelineDescription"] == "pipeline-description-2"
+    assert pipeline_describe_response2["PipelineDefinition"] == updated_definition
+    assert (
+        pipeline_describe_response2["CreationTime"]
+        != pipeline_describe_response2["LastModifiedTime"]
+    )
+
+
+@patch("sagemaker.local.pipeline.LocalPipelineExecutor.execute")
+def test_start_pipeline(mock_local_pipeline_executor):
+    parameter = ParameterString("MyStr", default_value="test")
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[parameter],
+        steps=[CustomStep(name="MyStep", input_data=parameter)],
+        sagemaker_session=LocalSession(),
+    )
+    pipeline.create("dummy-role", "pipeline-description")
+    mock_local_pipeline_executor.return_value = _LocalPipelineExecution("execution-id", pipeline)
+
+    pipeline_execution = pipeline.start()
+    pipeline_execution_describe_response = pipeline_execution.describe()
+    assert pipeline_execution_describe_response["PipelineArn"] == "MyPipeline"
+    assert pipeline_execution_describe_response["PipelineExecutionArn"] == "execution-id"
+    assert pipeline_execution_describe_response["CreationTime"] is not None
+
+
+def test_update_undefined_pipeline():
+    session = LocalSession()
+    parameter = ParameterString("MyStr", default_value="test")
+    pipeline = Pipeline(
+        name="UndefinedPipeline",
+        parameters=[parameter],
+        steps=[CustomStep(name="MyStep", input_data=parameter)],
+        sagemaker_session=session,
+    )
+
+    with pytest.raises(ClientError) as e:
+        session.sagemaker_client.update_pipeline(pipeline, "some_description")
+    assert "Pipeline {} does not exist".format(pipeline.name) in str(e.value)
+
+
+def test_describe_undefined_pipeline():
+    with pytest.raises(ClientError) as e:
+        LocalSession().sagemaker_client.describe_pipeline("UndefinedPipeline")
+    assert "Pipeline UndefinedPipeline does not exist" in str(e.value)
+
+
+def test_start_undefined_pipeline():
+    with pytest.raises(ClientError) as e:
+        LocalSession().sagemaker_client.start_pipeline_execution("UndefinedPipeline")
+    assert "Pipeline UndefinedPipeline does not exist" in str(e.value)
