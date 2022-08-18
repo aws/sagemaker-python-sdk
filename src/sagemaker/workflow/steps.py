@@ -48,7 +48,7 @@ from sagemaker.workflow.properties import (
     Properties,
 )
 from sagemaker.workflow.entities import PipelineVariable
-from sagemaker.workflow.functions import Join
+from sagemaker.workflow.functions import Join, JsonGet
 from sagemaker.workflow.retry import RetryPolicy
 
 if TYPE_CHECKING:
@@ -192,9 +192,8 @@ class Step(Entity):
                 dependencies.add(self._get_step_name_from_str(step, step_map))
         return dependencies
 
-    @staticmethod
     def _find_dependencies_in_step_arguments(
-        obj: Any, step_map: Dict[str, Union["Step", "StepCollection"]]
+        self, obj: Any, step_map: Dict[str, Union["Step", "StepCollection"]]
     ):
         """Find the step dependencies referenced in the arguments of this step."""
         dependencies = set()
@@ -202,15 +201,55 @@ class Step(Entity):
             for value in obj.values():
                 if isinstance(value, (PipelineVariable, Condition)):
                     for referenced_step in value._referenced_steps:
-                        dependencies.add(Step._get_step_name_from_str(referenced_step, step_map))
-                dependencies.update(Step._find_dependencies_in_step_arguments(value, step_map))
+                        dependencies.add(self._get_step_name_from_str(referenced_step, step_map))
+                    if isinstance(value, JsonGet):
+                        self._validate_json_get_function(value, step_map)
+                dependencies.update(self._find_dependencies_in_step_arguments(value, step_map))
         elif isinstance(obj, list):
             for item in obj:
                 if isinstance(item, (PipelineVariable, Condition)):
                     for referenced_step in item._referenced_steps:
-                        dependencies.add(Step._get_step_name_from_str(referenced_step, step_map))
-                dependencies.update(Step._find_dependencies_in_step_arguments(item, step_map))
+                        dependencies.add(self._get_step_name_from_str(referenced_step, step_map))
+                    if isinstance(item, JsonGet):
+                        self._validate_json_get_function(item, step_map)
+                dependencies.update(self._find_dependencies_in_step_arguments(item, step_map))
         return dependencies
+
+    def _validate_json_get_function(
+        self, json_get: JsonGet, step_map: Dict[str, Union["Step", "StepCollection"]]
+    ):
+        """Validate the JsonGet function inputs."""
+        property_file_reference = json_get.property_file
+        processing_step = step_map[json_get.step_name]
+        property_file = None
+        if isinstance(property_file_reference, str):
+            if not isinstance(processing_step, ProcessingStep):
+                raise ValueError(
+                    f"Invalid JsonGet function {json_get.expr} in step '{self.name}'. JsonGet "
+                    f"function can only be evaluated on processing step outputs."
+                )
+            for file in processing_step.property_files:
+                if file.name == property_file_reference:
+                    property_file = file
+                    break
+        elif isinstance(property_file_reference, PropertyFile):
+            property_file = property_file_reference
+        if property_file is None:
+            raise ValueError(
+                f"Invalid JsonGet function {json_get.expr} in step '{self.name}'. Property file "
+                f"reference '{property_file_reference}' is undefined in step "
+                f"'{processing_step.name}'."
+            )
+        property_file_output = None
+        if "ProcessingOutputConfig" in processing_step.arguments:
+            for output in processing_step.arguments["ProcessingOutputConfig"]["Outputs"]:
+                if output["OutputName"] == property_file.output_name:
+                    property_file_output = output
+        if property_file_output is None:
+            raise ValueError(
+                f"Processing output name '{property_file.output_name}' defined in property file "
+                f"'{property_file.name}' not found in processing step '{processing_step.name}'."
+            )
 
     @staticmethod
     def _get_step_name_from_str(
@@ -219,6 +258,8 @@ class Step(Entity):
         """Convert a Step or StepCollection name input to step name."""
         from sagemaker.workflow.step_collections import StepCollection
 
+        if str_input not in step_map:
+            raise ValueError(f"Step {str_input} is undefined.")
         if isinstance(step_map[str_input], StepCollection):
             return step_map[str_input].steps[-1].name
         return str_input
@@ -764,7 +805,7 @@ class ProcessingStep(ConfigurableRetryStep):
         self.outputs = outputs
         self.job_arguments = job_arguments
         self.code = code
-        self.property_files = property_files
+        self.property_files = property_files or []
         self.job_name = None
         self.kms_key = kms_key
         self.cache_config = cache_config
