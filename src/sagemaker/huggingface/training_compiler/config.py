@@ -142,5 +142,4 @@ class TrainingCompilerConfig(BaseConfig):
                     logger.warning(
                         "Consider setting 'distribution' to 'pytorch_xla' for distributed "
                         "training with PyTorch >= 1.11 with Training Compiler enabled. This "
-                        "will become the default configuration in the future."
                     )
