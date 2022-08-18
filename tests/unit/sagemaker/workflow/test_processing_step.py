@@ -18,6 +18,8 @@ from mock import Mock, PropertyMock
 import pytest
 import warnings
 
+from copy import deepcopy
+
 from sagemaker.estimator import Estimator
 from sagemaker.parameter import IntegerParameter
 from sagemaker.transformer import Transformer
@@ -244,7 +246,34 @@ def network_config():
     )
 
 
-def test_processing_step_with_processor(pipeline_session, processing_input):
+@pytest.mark.parametrize(
+    "experiment_config, expected_experiment_config",
+    [
+        (
+            {
+                "ExperimentName": "experiment-name",
+                "TrialName": "trial-name",
+                "TrialComponentDisplayName": "display-name",
+            },
+            {"TrialComponentDisplayName": "display-name"},
+        ),
+        (
+            {"TrialComponentDisplayName": "display-name"},
+            {"TrialComponentDisplayName": "display-name"},
+        ),
+        (
+            {
+                "ExperimentName": "experiment-name",
+                "TrialName": "trial-name",
+            },
+            None,
+        ),
+        (None, None),
+    ],
+)
+def test_processing_step_with_processor(
+    pipeline_session, processing_input, experiment_config, expected_experiment_config
+):
     custom_step1 = CustomStep("TestStep")
     custom_step2 = CustomStep("SecondTestStep")
     processor = Processor(
@@ -256,7 +285,7 @@ def test_processing_step_with_processor(pipeline_session, processing_input):
     )
 
     with warnings.catch_warnings(record=True) as w:
-        step_args = processor.run(inputs=processing_input)
+        step_args = processor.run(inputs=processing_input, experiment_config=experiment_config)
         assert len(w) == 1
         assert issubclass(w[-1].category, UserWarning)
         assert "Running within a PipelineSession" in str(w[-1].message)
@@ -283,13 +312,21 @@ def test_processing_step_with_processor(pipeline_session, processing_input):
         steps=[step, custom_step1, custom_step2],
         sagemaker_session=pipeline_session,
     )
+
+    expected_step_arguments = deepcopy(step_args.args)
+    if expected_experiment_config is None:
+        expected_step_arguments.pop("ExperimentConfig", None)
+    else:
+        expected_step_arguments["ExperimentConfig"] = expected_experiment_config
+    del expected_step_arguments["ProcessingJobName"]
+
     assert json.loads(pipeline.definition())["Steps"][0] == {
         "Name": "MyProcessingStep",
         "Description": "ProcessingStep description",
         "DisplayName": "MyProcessingStep",
         "Type": "Processing",
         "DependsOn": ["TestStep", "SecondTestStep"],
-        "Arguments": step_args.args,
+        "Arguments": expected_step_arguments,
         "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
         "PropertyFiles": [
             {

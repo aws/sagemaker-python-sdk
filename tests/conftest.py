@@ -24,7 +24,7 @@ from packaging.version import Version
 
 from sagemaker import Session, image_uris, utils
 from sagemaker.local import LocalSession
-from sagemaker.workflow.pipeline_context import PipelineSession
+from sagemaker.workflow.pipeline_context import PipelineSession, LocalPipelineSession
 
 DEFAULT_REGION = "us-west-2"
 CUSTOM_BUCKET_NAME_PREFIX = "sagemaker-custom-bucket"
@@ -160,6 +160,11 @@ def sagemaker_local_session(boto_session):
 @pytest.fixture(scope="session")
 def pipeline_session(boto_session):
     return PipelineSession(boto_session=boto_session)
+
+
+@pytest.fixture(scope="session")
+def local_pipeline_session(boto_session):
+    return LocalPipelineSession(boto_session=boto_session)
 
 
 @pytest.fixture(scope="module")

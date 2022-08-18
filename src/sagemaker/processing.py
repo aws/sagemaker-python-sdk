@@ -173,9 +173,14 @@ class Processor(object):
                 * If both `ExperimentName` and `TrialName` are not supplied the trial component
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
+                * Both `ExperimentName` and `TrialName` will be ignored if the Processor instance
+                is built with :class:`~sagemaker.workflow.pipeline_context.PipelineSession`.
+                However, the value of `TrialComponentDisplayName` is honored for display in Studio.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
-
+        Returns:
+            None or pipeline step arguments in case the Processor instance is built with
+            :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
         Raises:
             ValueError: if ``logs`` is True but ``wait`` is False.
         """
@@ -543,8 +548,14 @@ class ScriptProcessor(Processor):
                 * If both `ExperimentName` and `TrialName` are not supplied the trial component
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
+                * Both `ExperimentName` and `TrialName` will be ignored if the Processor instance
+                is built with :class:`~sagemaker.workflow.pipeline_context.PipelineSession`.
+                However, the value of `TrialComponentDisplayName` is honored for display in Studio.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
+        Returns:
+            None or pipeline step arguments in case the Processor instance is built with
+            :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
         """
         normalized_inputs, normalized_outputs = self._normalize_args(
             job_name=job_name,
@@ -1601,8 +1612,14 @@ class FrameworkProcessor(ScriptProcessor):
                 * If both `ExperimentName` and `TrialName` are not supplied the trial component
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
+                * Both `ExperimentName` and `TrialName` will be ignored if the Processor instance
+                is built with :class:`~sagemaker.workflow.pipeline_context.PipelineSession`.
+                However, the value of `TrialComponentDisplayName` is honored for display in Studio.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
+        Returns:
+            None or pipeline step arguments in case the Processor instance is built with
+            :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
         """
         s3_runproc_sh, inputs, job_name = self._pack_and_upload_code(
             code, source_dir, dependencies, git_config, job_name, inputs
