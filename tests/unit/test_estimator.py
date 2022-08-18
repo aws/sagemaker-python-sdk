@@ -726,6 +726,110 @@ def test_framework_with_no_default_profiler_in_unsupported_region(region):
     assert args.get("profiler_rule_configs") is None
 
 
+@pytest.mark.parametrize("region", PROFILER_UNSUPPORTED_REGIONS)
+def test_framework_with_debugger_config_set_up_in_unsupported_region(region):
+    with pytest.raises(ValueError) as error:
+        boto_mock = Mock(name="boto_session", region_name=region)
+        sms = MagicMock(
+            name="sagemaker_session",
+            boto_session=boto_mock,
+            boto_region_name=region,
+            config=None,
+            local_mode=False,
+            s3_client=None,
+            s3_resource=None,
+        )
+        f = DummyFramework(
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            sagemaker_session=sms,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
+            debugger_hook_config=DebuggerHookConfig(s3_output_path="s3://output"),
+        )
+        f.fit("s3://mydata")
+
+    assert "Current region does not support debugger but debugger hook config is set!" in str(error)
+
+
+@pytest.mark.parametrize("region", PROFILER_UNSUPPORTED_REGIONS)
+def test_framework_enable_profiling_in_unsupported_region(region):
+    with pytest.raises(ValueError) as error:
+        boto_mock = Mock(name="boto_session", region_name=region)
+        sms = MagicMock(
+            name="sagemaker_session",
+            boto_session=boto_mock,
+            boto_region_name=region,
+            config=None,
+            local_mode=False,
+            s3_client=None,
+            s3_resource=None,
+        )
+        f = DummyFramework(
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            sagemaker_session=sms,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
+        )
+        f.fit("s3://mydata")
+        f.enable_default_profiling()
+
+    assert "Current region does not support profiler / debugger!" in str(error)
+
+
+@pytest.mark.parametrize("region", PROFILER_UNSUPPORTED_REGIONS)
+def test_framework_update_profiling_in_unsupported_region(region):
+    with pytest.raises(ValueError) as error:
+        boto_mock = Mock(name="boto_session", region_name=region)
+        sms = MagicMock(
+            name="sagemaker_session",
+            boto_session=boto_mock,
+            boto_region_name=region,
+            config=None,
+            local_mode=False,
+            s3_client=None,
+            s3_resource=None,
+        )
+        f = DummyFramework(
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            sagemaker_session=sms,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
+        )
+        f.fit("s3://mydata")
+        f.update_profiler(system_monitor_interval_millis=1000)
+
+    assert "Current region does not support profiler / debugger!" in str(error)
+
+
+@pytest.mark.parametrize("region", PROFILER_UNSUPPORTED_REGIONS)
+def test_framework_disable_profiling_in_unsupported_region(region):
+    with pytest.raises(ValueError) as error:
+        boto_mock = Mock(name="boto_session", region_name=region)
+        sms = MagicMock(
+            name="sagemaker_session",
+            boto_session=boto_mock,
+            boto_region_name=region,
+            config=None,
+            local_mode=False,
+            s3_client=None,
+            s3_resource=None,
+        )
+        f = DummyFramework(
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            sagemaker_session=sms,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
+        )
+        f.fit("s3://mydata")
+        f.disable_profiling()
+
+    assert "Current region does not support profiler / debugger!" in str(error)
+
+
 def test_framework_with_profiler_config_and_profiler_disabled(sagemaker_session):
     with pytest.raises(RuntimeError) as error:
         f = DummyFramework(
@@ -2683,6 +2787,7 @@ def test_generic_to_fit_no_input(time, sagemaker_session):
 
     args.pop("job_name")
     args.pop("role")
+    args.pop("debugger_hook_config")
 
     assert args == NO_INPUT_TRAIN_CALL
 
@@ -2707,6 +2812,7 @@ def test_generic_to_fit_no_hps(time, sagemaker_session):
 
     args.pop("job_name")
     args.pop("role")
+    args.pop("debugger_hook_config")
 
     assert args == BASE_TRAIN_CALL
 
@@ -2733,6 +2839,7 @@ def test_generic_to_fit_with_hps(time, sagemaker_session):
 
     args.pop("job_name")
     args.pop("role")
+    args.pop("debugger_hook_config")
 
     assert args == HP_TRAIN_CALL
 
@@ -2764,6 +2871,7 @@ def test_generic_to_fit_with_experiment_config(time, sagemaker_session):
 
     args.pop("job_name")
     args.pop("role")
+    args.pop("debugger_hook_config")
 
     assert args == EXP_TRAIN_CALL
 
@@ -2917,6 +3025,7 @@ def test_generic_to_deploy(time, sagemaker_session):
 
     args.pop("job_name")
     args.pop("role")
+    args.pop("debugger_hook_config")
 
     assert args == HP_TRAIN_CALL
 
@@ -3727,7 +3836,6 @@ def test_script_mode_estimator_same_calls_as_framework(
         source_dir=script_uri,
         image_uri=IMAGE_URI,
         model_uri=model_uri,
-        environment={"USE_SMDEBUG": "0"},
         dependencies=[],
         debugger_hook_config={},
     )
