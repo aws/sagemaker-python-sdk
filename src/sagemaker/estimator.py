@@ -838,14 +838,14 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         if region_supports_debugger:
             if self.debugger_hook_config in [None, {}]:
                 self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
-            else:
-                if self.debugger_hook_config is not False and self.debugger_hook_config:
-                    # when user set debugger config in a unsupported region
-                    raise ValueError(
-                        "Current region does not support debugger but debugger hook config is set!"
-                    )
-                # disable debugger in unsupported regions
-                self.debugger_hook_config = False
+        else:
+            if self.debugger_hook_config is not False and self.debugger_hook_config:
+                # when user set debugger config in a unsupported region
+                raise ValueError(
+                    "Current region does not support debugger but debugger hook config is set!"
+                )
+            # disable debugger in unsupported regions
+            self.debugger_hook_config = False
 
     def _prepare_debugger_rules(self):
         """Set any necessary values in debugger rules, if they are provided."""
