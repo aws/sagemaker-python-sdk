@@ -123,7 +123,7 @@ class TrainingCompilerConfig(object):
         """Checks if SageMaker Training Compiler is configured correctly.
 
         Args:
-            estimator (sagemaker.Estimator): A estimator object
+            estimator (:class:`sagemaker.estimator.Estimator`): An estimator object.
                 When SageMaker Training Compiler is enabled, it validates if
                 the estimator is configured to be compatible with Training Compiler.
 
