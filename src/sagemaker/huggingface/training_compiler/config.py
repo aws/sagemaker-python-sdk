@@ -141,5 +141,5 @@ class TrainingCompilerConfig(BaseConfig):
                 if Version(estimator.pytorch_version) in SpecifierSet(">= 1.11"):
                     logger.warning(
                         "Consider setting 'distribution' to 'pytorch_xla' for distributed "
-                        "training with PyTorch >= 1.11 with Training Compiler enabled. This "
+                        "training with PyTorch >= 1.11 and SageMaker Training Compiler enabled."
                     )
