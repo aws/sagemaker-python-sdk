@@ -97,6 +97,54 @@ When you use :class:`sagemaker.workflow.pipeline_context.PipelineSession` rather
 .. warning::
    A :class:`sagemaker.workflow.pipeline_context.PipelineSession` must be given in order to start the job during pipeline execution time. Otherwise, a training job will get started immediately.
 
+Local Pipeline Session
+======================
+
+Like Pipeline Session, Local Pipeline Session provides a convenient way to capture input job arguments without starting the job. These input arguments can be provided in the :code:`step_args` parameter to their corresponding `Pipelines step type <https://sagemaker.readthedocs.io/en/stable/workflows/pipelines/sagemaker.workflow.pipelines.html#sagemaker.workflow.steps.Step>`__. The difference between :class:`sagemaker.workflow.pipeline_context.PipelineSession` and :class:`sagemaker.workflow.pipeline_context.LocalPipelineSession` is that :class:`sagemaker.workflow.pipeline_context.LocalPipelineSession` is used to run SageMaker pipelines locally (in local mode) whereas using :class:`sagemaker.workflow.pipeline_context.PipelineSession` runs the job on the managed service.
+
+.. code-block:: python
+
+    from sagemaker.workflow.pipeline_context import LocalPipelineSession
+
+    local_pipeline_session = LocalPipelineSession()
+
+    pytorch_estimator = PyTorch(
+        sagemaker_session=local_pipeline_session,
+        role=sagemaker.get_execution_role(),
+        instance_type="ml.c5.xlarge",
+        instance_count=1,
+        framework_version="1.8.0",
+        py_version="py36",
+        entry_point="./entry_point.py",
+    )
+
+    step = TrainingStep(
+        name="MyTrainingStep",
+        step_args=pytorch_estimator.fit(
+            inputs=TrainingInput(s3_data="s3://my-bucket/my-data/train"),
+        )
+    )
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[step],
+        sagemaker_session=local_pipeline_session
+    )
+
+    pipeline.create(
+        role_arn=sagemaker.get_execution_role(),
+        description="local pipeline example"
+    )
+
+    // pipeline will execute locally
+    pipeline.start()
+
+    steps = pipeline.list_steps()
+
+    training_job_name = steps['PipelineExecutionSteps'][0]['Metadata']['TrainingJob']['Arn']
+
+    step_outputs = pipeline_session.sagemaker_client.describe_training_job(TrainingJobName = training_job_name)
+
 
 Pipeline Parameters
 ======================

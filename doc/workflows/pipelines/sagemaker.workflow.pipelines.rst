@@ -91,6 +91,9 @@ Pipeline Context
 .. autoclass:: sagemaker.workflow.pipeline_context.PipelineSession
     :members:
 
+.. autoclass:: sagemaker.workflow.pipeline_context.LocalPipelineSession
+    :members:
+
 
 Parallelism Configuration
 -------------------------

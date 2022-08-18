@@ -90,7 +90,7 @@ class ConditionStep(Step):
     @property
     def step_only_arguments(self):
         """Argument dict pertaining to the step only, and not the `if_steps` or `else_steps`."""
-        return [condition.to_request() for condition in self.conditions]
+        return dict(Conditions=[condition.to_request() for condition in self.conditions])
 
     @property
     def properties(self):

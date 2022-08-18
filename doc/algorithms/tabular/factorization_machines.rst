@@ -1,4 +1,4 @@
-FactorizationMachines
+Factorization Machines
 -------------------------
 
 The Amazon SageMaker Factorization Machines algorithm.

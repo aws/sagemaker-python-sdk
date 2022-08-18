@@ -138,7 +138,9 @@ def data_path_no_label_index(training_set_no_label):
 def data_path_label_index(training_set_label_index):
     features, label, index = training_set_label_index
     data = pd.concat(
-        [pd.DataFrame(label), pd.DataFrame(features), pd.DataFrame(index)], axis=1, sort=False
+        [pd.DataFrame(label), pd.DataFrame(features), pd.DataFrame(index)],
+        axis=1,
+        sort=False,
     )
     with tempfile.TemporaryDirectory() as tmpdirname:
         filename = os.path.join(tmpdirname, "train_label_index.csv")
@@ -151,7 +153,12 @@ def data_path_label_index(training_set_label_index):
 def data_path_label_index_6col(training_set_label_index):
     features, label, index = training_set_label_index
     data = pd.concat(
-        [pd.DataFrame(label), pd.DataFrame(features), pd.DataFrame(features), pd.DataFrame(index)],
+        [
+            pd.DataFrame(label),
+            pd.DataFrame(features),
+            pd.DataFrame(features),
+            pd.DataFrame(index),
+        ],
         axis=1,
         sort=False,
     )
@@ -551,7 +558,10 @@ def test_pre_training_bias(clarify_processor, data_config, data_bias_config, sag
 
 
 def test_pre_training_bias_facets_not_included(
-    clarify_processor, data_config_facets_not_included, data_bias_config, sagemaker_session
+    clarify_processor,
+    data_config_facets_not_included,
+    data_bias_config,
+    sagemaker_session,
 ):
     with timeout.timeout(minutes=CLARIFY_DEFAULT_TIMEOUT_MINUTES):
         clarify_processor.run_pre_training_bias(
@@ -643,7 +653,9 @@ def test_post_training_bias_facets_not_included_excluded_columns(
             <= 1.0
         )
         check_analysis_config(
-            data_config_facets_not_included_multiple_files, sagemaker_session, "post_training_bias"
+            data_config_facets_not_included_multiple_files,
+            sagemaker_session,
+            "post_training_bias",
         )
 
 
@@ -702,6 +714,50 @@ def test_shap(clarify_processor, data_config, model_config, shap_config, sagemak
             <= 1
         )
         check_analysis_config(data_config, sagemaker_session, "shap")
+
+
+def test_bias_and_explainability(
+    clarify_processor,
+    data_config,
+    model_config,
+    shap_config,
+    data_bias_config,
+    sagemaker_session,
+):
+    with timeout.timeout(minutes=CLARIFY_DEFAULT_TIMEOUT_MINUTES):
+        clarify_processor.run_bias_and_explainability(
+            data_config,
+            model_config,
+            shap_config,
+            data_bias_config,
+            pre_training_methods="all",
+            post_training_methods="all",
+            model_predicted_label_config="score",
+            job_name=utils.unique_name_from_base("clarify-bias-and-explainability"),
+            wait=True,
+        )
+        analysis_result_json = s3.S3Downloader.read_file(
+            data_config.s3_output_path + "/analysis.json",
+            sagemaker_session,
+        )
+        analysis_result = json.loads(analysis_result_json)
+        assert (
+            math.fabs(
+                analysis_result["explanations"]["kernel_shap"]["label0"]["global_shap_values"]["F2"]
+            )
+            <= 1
+        )
+        check_analysis_config(data_config, sagemaker_session, "shap")
+
+        assert (
+            math.fabs(
+                analysis_result["post_training_bias_metrics"]["facets"]["F1"][0]["metrics"][0][
+                    "value"
+                ]
+            )
+            <= 1.0
+        )
+        check_analysis_config(data_config, sagemaker_session, "post_training_bias")
 
 
 def check_analysis_config(data_config, sagemaker_session, method):
