@@ -25,7 +25,7 @@ import re
 
 import tempfile
 from abc import ABC, abstractmethod
-from typing import List, Union
+from typing import List, Union, Dict
 
 from sagemaker import image_uris, s3, utils
 from sagemaker.processing import ProcessingInput, ProcessingOutput, Processor
@@ -172,7 +172,11 @@ class DataConfig:
         _set(joinsource, "joinsource_name_or_index", self.analysis_config)
         _set(facet_dataset_uri, "facet_dataset_uri", self.analysis_config)
         _set(facet_headers, "facet_headers", self.analysis_config)
-        _set(predicted_label_dataset_uri, "predicted_label_dataset_uri", self.analysis_config)
+        _set(
+            predicted_label_dataset_uri,
+            "predicted_label_dataset_uri",
+            self.analysis_config,
+        )
         _set(predicted_label_headers, "predicted_label_headers", self.analysis_config)
         _set(predicted_label, "predicted_label", self.analysis_config)
         _set(excluded_columns, "excluded_columns", self.analysis_config)
@@ -271,26 +275,33 @@ class ModelConfig:
 
     def __init__(
         self,
-        model_name,
-        instance_count,
-        instance_type,
-        accept_type=None,
-        content_type=None,
-        content_template=None,
-        custom_attributes=None,
-        accelerator_type=None,
-        endpoint_name_prefix=None,
-        target_model=None,
+        model_name: str = None,
+        instance_count: int = None,
+        instance_type: str = None,
+        accept_type: str = None,
+        content_type: str = None,
+        content_template: str = None,
+        custom_attributes: str = None,
+        accelerator_type: str = None,
+        endpoint_name_prefix: str = None,
+        target_model: str = None,
+        endpoint_name: str = None,
     ):
         r"""Initializes a configuration of a model and the endpoint to be created for it.
 
         Args:
             model_name (str): Model name (as created by
                 `CreateModel <https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateModel.html>`_.
+                Cannot be set when ``endpoint_name`` is set.
+                Must be set with ``instance_count``, ``instance_type``
             instance_count (int): The number of instances of a new endpoint for model inference.
+                Cannot be set when ``endpoint_name`` is set.
+                Must be set with ``model_name``, ``instance_type``
             instance_type (str): The type of
                 `EC2 instance <https://aws.amazon.com/ec2/instance-types/>`_
                 to use for model inference; for example, ``"ml.c5.xlarge"``.
+                Cannot be set when ``endpoint_name`` is set.
+                Must be set with ``instance_count``, ``model_name``
             accept_type (str): The model output format to be used for getting inferences with the
                 shadow endpoint. Valid values are ``"text/csv"`` for CSV and
                 ``"application/jsonlines"``. Default is the same as ``content_type``.
@@ -320,17 +331,41 @@ class ModelConfig:
             target_model (str): Sets the target model name when using a multi-model endpoint. For
                 more information about multi-model endpoints, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/multi-model-endpoints.html
+            endpoint_name (str): Sets the endpoint_name when re-uses an existing endpoint.
+                Cannot be set when ``model_name``, ``instance_count``,
+                and ``instance_type`` set
 
         Raises:
-            ValueError: when the ``endpoint_name_prefix`` is invalid, ``accept_type`` is invalid,
-                 ``content_type`` is invalid, or ``content_template`` has no placeholder "features"
+            ValueError: when the
+                - ``endpoint_name_prefix`` is invalid,
+                - ``accept_type`` is invalid,
+                - ``content_type`` is invalid,
+                - ``content_template`` has no placeholder "features"
+                - both [``endpoint_name``]
+                   AND [``model_name``, ``instance_count``, ``instance_type``] are set
+                - both [``endpoint_name``] AND [``endpoint_name_prefix``] are set
         """
-        self.predictor_config = {
-            "model_name": model_name,
-            "instance_type": instance_type,
-            "initial_instance_count": instance_count,
-        }
-        if endpoint_name_prefix is not None:
+
+        # validation
+        _model_endpoint_config_rule = (
+            all([model_name, instance_count, instance_type]),
+            all([endpoint_name]),
+        )
+        assert any(_model_endpoint_config_rule) and not all(_model_endpoint_config_rule)
+        if endpoint_name:
+            assert not endpoint_name_prefix
+
+        # main init logic
+        self.predictor_config = (
+            {
+                "model_name": model_name,
+                "instance_type": instance_type,
+                "initial_instance_count": instance_count,
+            }
+            if not endpoint_name
+            else {"endpoint_name": endpoint_name}
+        )
+        if endpoint_name_prefix:
             if re.search("^[a-zA-Z0-9](-*[a-zA-Z0-9])", endpoint_name_prefix) is None:
                 raise ValueError(
                     "Invalid endpoint_name_prefix."
@@ -491,7 +526,10 @@ class PDPConfig(ExplainabilityConfig):
             top_k_features (int): Sets the number of top SHAP attributes used to compute
                 partial dependence plots.
         """  # noqa E501
-        self.pdp_config = {"grid_resolution": grid_resolution, "top_k_features": top_k_features}
+        self.pdp_config = {
+            "grid_resolution": grid_resolution,
+            "top_k_features": top_k_features,
+        }
         if features is not None:
             self.pdp_config["features"] = features
 
@@ -824,7 +862,11 @@ class SHAPConfig(ExplainabilityConfig):
             image_config (:class:`~sagemaker.clarify.ImageConfig`): Config for handling image
                 features. Default is None.
         """  # noqa E501  # pylint: disable=c0301
-        if agg_method is not None and agg_method not in ["mean_abs", "median", "mean_sq"]:
+        if agg_method is not None and agg_method not in [
+            "mean_abs",
+            "median",
+            "mean_sq",
+        ]:
             raise ValueError(
                 f"Invalid agg_method {agg_method}." f" Please choose mean_abs, median, or mean_sq."
             )
@@ -1167,7 +1209,11 @@ class SageMakerClarifyProcessor(Processor):
                 * ``'TrialComponentDisplayName'`` is used for display in Amazon SageMaker Studio.
         """  # noqa E501  # pylint: disable=c0301
         analysis_config = _AnalysisConfigGenerator.bias_post_training(
-            data_config, data_bias_config, model_predicted_label_config, methods, model_config
+            data_config,
+            data_bias_config,
+            model_predicted_label_config,
+            methods,
+            model_config,
         )
         # when name is either not provided (is None) or an empty string ("")
         job_name = job_name or utils.name_from_base(
@@ -1368,68 +1414,198 @@ class SageMakerClarifyProcessor(Processor):
             experiment_config,
         )
 
+    def run_bias_and_explainability(
+        self,
+        data_config: DataConfig,
+        model_config: ModelConfig,
+        explainability_config: Union[ExplainabilityConfig, List[ExplainabilityConfig]],
+        bias_config: BiasConfig,
+        pre_training_methods: Union[str, List[str]] = "all",
+        post_training_methods: Union[str, List[str]] = "all",
+        model_predicted_label_config: ModelPredictedLabelConfig = None,
+        wait=True,
+        logs=True,
+        job_name=None,
+        kms_key=None,
+        experiment_config=None,
+    ):
+        """Runs a :class:`~sagemaker.processing.ProcessingJob` computing feature attributions.
+
+        For bias:
+        Computes metrics for both the pre-training and the post-training methods.
+        To calculate post-training methods, it spins up a model endpoint and runs inference over the
+        input examples in 's3_data_input_path' (from the :class:`~sagemaker.clarify.DataConfig`)
+        to obtain predicted labels.
+
+        For Explainability:
+        Spins up a model endpoint.
+
+        Currently, only SHAP and  Partial Dependence Plots (PDP) are supported
+        as explainability methods.
+        You can request both methods or one at a time with the ``explainability_config`` parameter.
+
+        When SHAP is requested in the ``explainability_config``,
+        the SHAP algorithm calculates the feature importance for each input example
+        in the ``s3_data_input_path`` of the :class:`~sagemaker.clarify.DataConfig`,
+        by creating ``num_samples`` copies of the example with a subset of features
+        replaced with values from the ``baseline``.
+        It then runs model inference to see how the model's prediction changes with the replaced
+        features. If the model output returns multiple scores importance is computed for each score.
+        Across examples, feature importance is aggregated using ``agg_method``.
+
+        When PDP is requested in the ``explainability_config``,
+        the PDP algorithm calculates the dependence of the target response
+        on the input features and marginalizes over the values of all other input features.
+        The Partial Dependence Plots are included in the output
+        `report <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-feature-attribute-baselines-reports.html>`__
+        and the corresponding values are included in the analysis output.
+
+        Args:
+            data_config (:class:`~sagemaker.clarify.DataConfig`): Config of the input/output data.
+            model_config (:class:`~sagemaker.clarify.ModelConfig`): Config of the model and its
+                endpoint to be created.
+            explainability_config (:class:`~sagemaker.clarify.ExplainabilityConfig` or list):
+                Config of the specific explainability method or a list of
+                :class:`~sagemaker.clarify.ExplainabilityConfig` objects.
+                Currently, SHAP and PDP are the two methods supported.
+                You can request multiple methods at once by passing in a list of
+                `~sagemaker.clarify.ExplainabilityConfig`.
+            bias_config (:class:`~sagemaker.clarify.BiasConfig`): Config of sensitive groups.
+            pre_training_methods (str or list[str]): Selector of a subset of potential metrics:
+                ["`CI <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-bias-metric-class-imbalance.html>`_",
+                "`DPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-true-label-imbalance.html>`_",
+                "`KL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-kl-divergence.html>`_",
+                "`JS <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-jensen-shannon-divergence.html>`_",
+                "`LP <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-lp-norm.html>`_",
+                "`TVD <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-total-variation-distance.html>`_",
+                "`KS <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-kolmogorov-smirnov.html>`_",
+                "`CDDL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-cddl.html>`_"].
+                Defaults to str "all" to run all metrics if left unspecified.
+            post_training_methods (str or list[str]): Selector of a subset of potential metrics:
+                ["`DPPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dppl.html>`_"
+                , "`DI <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-di.html>`_",
+                "`DCA <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dca.html>`_",
+                "`DCR <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dcr.html>`_",
+                "`RD <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-rd.html>`_",
+                "`DAR <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dar.html>`_",
+                "`DRR <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-drr.html>`_",
+                "`AD <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ad.html>`_",
+                "`CDDPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-cddpl.html>`_
+                ", "`TE <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-te.html>`_",
+                "`FT <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ft.html>`_"].
+                Defaults to str "all" to run all metrics if left unspecified.
+            model_predicted_label_config (
+                int or
+                str or
+                :class:`~sagemaker.clarify.ModelPredictedLabelConfig`
+            ):
+                Index or JSONPath to locate the predicted scores in the model output. This is not
+                required if the model output is a single score. Alternatively, it can be an instance
+                of :class:`~sagemaker.clarify.SageMakerClarifyProcessor`
+                to provide more parameters like ``label_headers``.
+            wait (bool): Whether the call should wait until the job completes (default: True).
+            logs (bool): Whether to show the logs produced by the job.
+                Only meaningful when ``wait`` is True (default: True).
+            job_name (str): Processing job name. When ``job_name`` is not specified,
+                if ``job_name_prefix`` in :class:`~sagemaker.clarify.SageMakerClarifyProcessor`
+                is specified, the job name will be composed of ``job_name_prefix`` and current
+                timestamp; otherwise use ``"Clarify-Explainability"`` as prefix.
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file (default: None).
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Optionally, the dict can contain three keys:
+                ``'ExperimentName'``, ``'TrialName'``, and ``'TrialComponentDisplayName'``.
+
+                The behavior of setting these keys is as follows:
+
+                * If ``'ExperimentName'`` is supplied but ``'TrialName'`` is not, a Trial will be
+                  automatically created and the job's Trial Component associated with the Trial.
+                * If ``'TrialName'`` is supplied and the Trial already exists,
+                  the job's Trial Component will be associated with the Trial.
+                * If both ``'ExperimentName'`` and ``'TrialName'`` are not supplied,
+                  the Trial Component will be unassociated.
+                * ``'TrialComponentDisplayName'`` is used for display in Amazon SageMaker Studio.
+        """  # noqa E501  # pylint: disable=c0301
+        analysis_config = _AnalysisConfigGenerator.bias_and_explainability(
+            data_config,
+            model_config,
+            model_predicted_label_config,
+            explainability_config,
+            bias_config,
+            pre_training_methods,
+            post_training_methods,
+        )
+        # when name is either not provided (is None) or an empty string ("")
+        job_name = job_name or utils.name_from_base(
+            self.job_name_prefix or "Clarify-Bias-And-Explainability"
+        )
+        return self._run(
+            data_config,
+            analysis_config,
+            wait,
+            logs,
+            job_name,
+            kms_key,
+            experiment_config,
+        )
+
 
 class _AnalysisConfigGenerator:
     """Creates analysis_config objects for different type of runs."""
+
+    @classmethod
+    def bias_and_explainability(
+        cls,
+        data_config: DataConfig,
+        model_config: ModelConfig,
+        model_predicted_label_config: ModelPredictedLabelConfig,
+        explainability_config: Union[ExplainabilityConfig, List[ExplainabilityConfig]],
+        bias_config: BiasConfig,
+        pre_training_methods: Union[str, List[str]] = "all",
+        post_training_methods: Union[str, List[str]] = "all",
+    ):
+        """Generates a config for Bias and Explainability"""
+        analysis_config = {**data_config.get_config(), **bias_config.get_config()}
+        analysis_config = cls._add_methods(
+            analysis_config,
+            pre_training_methods=pre_training_methods,
+            post_training_methods=post_training_methods,
+            explainability_config=explainability_config,
+        )
+        analysis_config = cls._add_predictor(
+            analysis_config, model_config, model_predicted_label_config
+        )
+        return analysis_config
 
     @classmethod
     def explainability(
         cls,
         data_config: DataConfig,
         model_config: ModelConfig,
-        model_scores: ModelPredictedLabelConfig,
-        explainability_config: ExplainabilityConfig,
+        model_predicted_label_config: ModelPredictedLabelConfig,
+        explainability_config: Union[ExplainabilityConfig, List[ExplainabilityConfig]],
     ):
         """Generates a config for Explainability"""
-        analysis_config = data_config.get_config()
-        predictor_config = model_config.get_predictor_config()
-        if isinstance(model_scores, ModelPredictedLabelConfig):
-            (
-                probability_threshold,
-                predicted_label_config,
-            ) = model_scores.get_predictor_config()
-            _set(probability_threshold, "probability_threshold", analysis_config)
-            predictor_config.update(predicted_label_config)
-        else:
-            _set(model_scores, "label", predictor_config)
-
-        explainability_methods = {}
-        if isinstance(explainability_config, list):
-            if len(explainability_config) == 0:
-                raise ValueError("Please provide at least one explainability config.")
-            for config in explainability_config:
-                explain_config = config.get_explainability_config()
-                explainability_methods.update(explain_config)
-            if not len(explainability_methods.keys()) == len(explainability_config):
-                raise ValueError("Duplicate explainability configs are provided")
-            if (
-                "shap" not in explainability_methods
-                and explainability_methods["pdp"].get("features", None) is None
-            ):
-                raise ValueError("PDP features must be provided when ShapConfig is not provided")
-        else:
-            if (
-                isinstance(explainability_config, PDPConfig)
-                and explainability_config.get_explainability_config()["pdp"].get("features", None)
-                is None
-            ):
-                raise ValueError("PDP features must be provided when ShapConfig is not provided")
-            explainability_methods = explainability_config.get_explainability_config()
-        analysis_config["methods"] = explainability_methods
-        analysis_config["predictor"] = predictor_config
-        return cls._common(analysis_config)
+        analysis_config = data_config.analysis_config
+        analysis_config = cls._add_predictor(
+            analysis_config, model_config, model_predicted_label_config
+        )
+        analysis_config = cls._add_methods(
+            analysis_config, explainability_config=explainability_config
+        )
+        return analysis_config
 
     @classmethod
     def bias_pre_training(
-        cls, data_config: DataConfig, bias_config: BiasConfig, methods: Union[str, List[str]]
+        cls,
+        data_config: DataConfig,
+        bias_config: BiasConfig,
+        methods: Union[str, List[str]],
     ):
         """Generates a config for Bias Pre Training"""
-        analysis_config = {
-            **data_config.get_config(),
-            **bias_config.get_config(),
-            "methods": {"pre_training_bias": {"methods": methods}},
-        }
-        return cls._common(analysis_config)
+        analysis_config = {**data_config.get_config(), **bias_config.get_config()}
+        analysis_config = cls._add_methods(analysis_config, pre_training_methods=methods)
+        return analysis_config
 
     @classmethod
     def bias_post_training(
@@ -1441,21 +1617,12 @@ class _AnalysisConfigGenerator:
         model_config: ModelConfig,
     ):
         """Generates a config for Bias Post Training"""
-        analysis_config = {
-            **data_config.get_config(),
-            **bias_config.get_config(),
-            "predictor": {**model_config.get_predictor_config()},
-            "methods": {"post_training_bias": {"methods": methods}},
-        }
-        if model_predicted_label_config:
-            (
-                probability_threshold,
-                predictor_config,
-            ) = model_predicted_label_config.get_predictor_config()
-            if predictor_config:
-                analysis_config["predictor"].update(predictor_config)
-            _set(probability_threshold, "probability_threshold", analysis_config)
-        return cls._common(analysis_config)
+        analysis_config = {**data_config.get_config(), **bias_config.get_config()}
+        analysis_config = cls._add_methods(analysis_config, post_training_methods=methods)
+        analysis_config = cls._add_predictor(
+            analysis_config, model_config, model_predicted_label_config
+        )
+        return analysis_config
 
     @classmethod
     def bias(
@@ -1468,16 +1635,28 @@ class _AnalysisConfigGenerator:
         post_training_methods: Union[str, List[str]] = "all",
     ):
         """Generates a config for Bias"""
-        analysis_config = {
-            **data_config.get_config(),
-            **bias_config.get_config(),
-            "predictor": model_config.get_predictor_config(),
-            "methods": {
-                "pre_training_bias": {"methods": pre_training_methods},
-                "post_training_bias": {"methods": post_training_methods},
-            },
-        }
-        if model_predicted_label_config:
+        analysis_config = {**data_config.get_config(), **bias_config.get_config()}
+        analysis_config = cls._add_methods(
+            analysis_config,
+            pre_training_methods=pre_training_methods,
+            post_training_methods=post_training_methods,
+        )
+        analysis_config = cls._add_predictor(
+            analysis_config, model_config, model_predicted_label_config
+        )
+        return analysis_config
+
+    @classmethod
+    def _add_predictor(
+        cls,
+        analysis_config: Dict,
+        model_config: ModelConfig,
+        model_predicted_label_config: ModelPredictedLabelConfig,
+    ):
+        """Extends analysis config with predictor."""
+        analysis_config = {**analysis_config}
+        analysis_config["predictor"] = model_config.get_predictor_config()
+        if isinstance(model_predicted_label_config, ModelPredictedLabelConfig):
             (
                 probability_threshold,
                 predictor_config,
@@ -1485,16 +1664,81 @@ class _AnalysisConfigGenerator:
             if predictor_config:
                 analysis_config["predictor"].update(predictor_config)
             _set(probability_threshold, "probability_threshold", analysis_config)
-        return cls._common(analysis_config)
-
-    @staticmethod
-    def _common(analysis_config):
-        """Extends analysis config with common values"""
-        analysis_config["methods"]["report"] = {
-            "name": "report",
-            "title": "Analysis Report",
-        }
+        else:
+            _set(model_predicted_label_config, "label", analysis_config["predictor"])
         return analysis_config
+
+    @classmethod
+    def _add_methods(
+        cls,
+        analysis_config: Dict,
+        pre_training_methods: Union[str, List[str]] = None,
+        post_training_methods: Union[str, List[str]] = None,
+        explainability_config: Union[ExplainabilityConfig, List[ExplainabilityConfig]] = None,
+        report=True,
+    ):
+        """Extends analysis config with methods."""
+        # validate
+        params = [pre_training_methods, post_training_methods, explainability_config]
+        if not any(params):
+            raise AttributeError(
+                "analysis_config must have at least one working method: "
+                "One of the "
+                "`pre_training_methods`, `post_training_methods`, `explainability_config`."
+            )
+
+        # main logic
+        analysis_config = {**analysis_config}
+        if "methods" not in analysis_config:
+            analysis_config["methods"] = {}
+
+        if report:
+            analysis_config["methods"]["report"] = {
+                "name": "report",
+                "title": "Analysis Report",
+            }
+
+        if pre_training_methods:
+            analysis_config["methods"]["pre_training_bias"] = {"methods": pre_training_methods}
+
+        if post_training_methods:
+            analysis_config["methods"]["post_training_bias"] = {"methods": post_training_methods}
+
+        if explainability_config is not None:
+            explainability_methods = cls._merge_explainability_configs(explainability_config)
+            analysis_config["methods"] = {
+                **analysis_config["methods"],
+                **explainability_methods,
+            }
+        return analysis_config
+
+    @classmethod
+    def _merge_explainability_configs(
+        cls,
+        explainability_config: Union[ExplainabilityConfig, List[ExplainabilityConfig]],
+    ):
+        """Merges explainability configs, when more than one."""
+        if isinstance(explainability_config, list):
+            explainability_methods = {}
+            if len(explainability_config) == 0:
+                raise ValueError("Please provide at least one explainability config.")
+            for config in explainability_config:
+                explain_config = config.get_explainability_config()
+                explainability_methods.update(explain_config)
+            if not len(explainability_methods) == len(explainability_config):
+                raise ValueError("Duplicate explainability configs are provided")
+            if (
+                "shap" not in explainability_methods
+                and "features" not in explainability_methods["pdp"]
+            ):
+                raise ValueError("PDP features must be provided when ShapConfig is not provided")
+            return explainability_methods
+        if (
+            isinstance(explainability_config, PDPConfig)
+            and "features" not in explainability_config.get_explainability_config()["pdp"]
+        ):
+            raise ValueError("PDP features must be provided when ShapConfig is not provided")
+        return explainability_config.get_explainability_config()
 
 
 def _upload_analysis_config(analysis_config_file, s3_output_path, sagemaker_session, kms_key):
