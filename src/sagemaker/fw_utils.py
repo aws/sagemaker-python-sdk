@@ -53,8 +53,26 @@ PARAMETER_SERVER_MULTI_GPU_WARNING = (
     "only one worker per host regardless of the number of GPUs."
 )
 
-DEBUGGER_UNSUPPORTED_REGIONS = ("us-iso-east-1",)
-PROFILER_UNSUPPORTED_REGIONS = ("us-iso-east-1",)
+DEBUGGER_UNSUPPORTED_REGIONS = (
+    "us-iso-east-1",
+    "ap-southeast-3",
+    "ap-southeast-4",
+    "eu-south-2",
+    "me-central-1",
+    "ap-south-2",
+    "eu-central-2",
+    "us-gov-east-1",
+)
+PROFILER_UNSUPPORTED_REGIONS = (
+    "us-iso-east-1",
+    "ap-southeast-3",
+    "ap-southeast-4",
+    "eu-south-2",
+    "me-central-1",
+    "ap-south-2",
+    "eu-central-2",
+    "us-gov-east-1",
+)
 
 SINGLE_GPU_INSTANCE_TYPES = ("ml.p2.xlarge", "ml.p3.2xlarge")
 SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES = (
@@ -101,6 +119,8 @@ SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
         "1.10.2",
         "1.11",
         "1.11.0",
+        "1.12",
+        "1.12.0",
     ],
 }
 
@@ -833,52 +853,6 @@ def validate_pytorch_distribution(
             )
     if err_msg:
         raise ValueError(err_msg)
-
-
-def validate_distribution_instance(sagemaker_session, distribution, instance_type):
-    """Check to prevent launching a modelparallel job on CPU only instances.
-
-    Args:
-        sagemaker_session (sagemaker.session.Session): Session object which
-            manages interactions with Amazon SageMaker APIs and any other
-            AWS services needed.
-        distribution (dict): A dictionary with information to enable distributed training.
-            distribution = {
-                "smdistributed": {
-                    "modelparallel": {
-                        "enabled": True,
-                        "parameters": {
-                            ...
-                        },
-                    },
-                },
-                ...
-            }
-        instance_type (str): A string representing the type of training instance selected.
-
-    Raises:
-        ValueError: when modelparallel is enabled, if the instance_type does not support GPU.
-    """
-    if "smdistributed" not in distribution:
-        # Distribution strategy other than smdistributed is selected
-        return
-
-    if "modelparallel" not in distribution["smdistributed"]:
-        # Strategy other than modelparallel is selected
-        return
-
-    if not distribution["smdistributed"]["modelparallel"]["enabled"]:
-        # Strategy modelparallel is not enabled
-        return
-
-    instance_desc = sagemaker_session.boto_session.client("ec2").describe_instance_types(
-        InstanceTypes=[f"{instance_type}"]
-    )
-    if "GpuInfo" not in instance_desc["InstanceTypes"][0]:
-        raise ValueError(
-            f"modelparallel only runs on GPU-enabled instances. "
-            f"{instance_type} does not support GPU."
-        )
 
 
 def python_deprecation_warning(framework, latest_supported_version):

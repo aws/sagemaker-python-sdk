@@ -1,5 +1,61 @@
 # Changelog
 
+## v2.104.0 (2022-08-17)
+
+### Features
+
+ * local mode executor implementation
+ * Pipelines local mode setup
+ * Add PT 1.12 support
+ * added _AnalysisConfigGenerator for clarify
+
+### Bug Fixes and Other Changes
+
+ * yaml safe_load sagemaker config
+ * pipelines local mode minor bug fixes
+ * add local mode integ tests
+ * implement local JsonGet function
+ * Add Pipeline annotation in model base class and tensorflow estimator
+ * Allow users to customize trial component display names for pipeline launched jobs
+ * Update localmode code to decode urllib response as UTF8
+
+### Documentation Changes
+
+ * New content for Pipelines local mode
+ * Correct documentation error
+
+## v2.103.0 (2022-08-05)
+
+### Features
+
+ * AutoGluon 0.4.3 and 0.5.2 image_uris
+
+### Bug Fixes and Other Changes
+
+ * Revert "change: add a check to prevent launching a modelparallel job on CPU only instances"
+ * Add gpu capability to local
+ * Link PyTorch 1.11 to 1.11.0
+
+## v2.102.0 (2022-08-04)
+
+### Features
+
+ * add warnings for xgboost specific rules in debugger rules
+ * Add PyTorch DDP distribution support
+ * Add test for profiler enablement with debugger_hook false
+
+### Bug Fixes and Other Changes
+
+ * Two letter language code must be supported
+ * add a check to prevent launching a modelparallel job on CPU only instances
+ * Allow StepCollection added in ConditionStep to be depended on
+ * Add PipelineVariable annotation in framework models
+ * skip managed spot training mxnet nb
+
+### Documentation Changes
+
+ * smdistributed libraries currency updates
+
 ## v2.101.1 (2022-07-28)
 
 ### Bug Fixes and Other Changes

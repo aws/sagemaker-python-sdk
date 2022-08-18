@@ -17,7 +17,13 @@ import pytest
 
 from mock import patch, Mock
 
+from botocore.exceptions import ClientError
+
 import sagemaker.local
+from sagemaker.workflow.parameters import ParameterString
+from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.lambda_step import LambdaStep
+from tests.unit.sagemaker.workflow.helpers import CustomStep
 
 
 @pytest.fixture(scope="session")
@@ -106,7 +112,7 @@ def test_start_local_transform_job(_perform_batch_inference, _perform_request, l
 
     response = Mock()
     _perform_request.return_value = (response, 200)
-    response.read.return_value = '{"BatchStrategy": "SingleRecord"}'
+    response.data = '{"BatchStrategy": "SingleRecord"}'.encode("UTF-8")
     local_transform_job.primary_container["ModelDataUrl"] = "file:///some/model"
     local_transform_job.start(input_data, output_data, transform_resources, Environment={})
 
@@ -176,9 +182,9 @@ def test_start_local_transform_job_from_remote_docker_host(
     output_data = {}
     transform_resources = {"InstanceType": "local"}
     m_get_docker_host.return_value = "some_host"
-    perform_request_mock = Mock()
-    m_perform_request.return_value = (perform_request_mock, 200)
-    perform_request_mock.read.return_value = '{"BatchStrategy": "SingleRecord"}'
+    response = Mock()
+    m_perform_request.return_value = (response, 200)
+    response.data = '{"BatchStrategy": "SingleRecord"}'.encode("UTF-8")
     local_transform_job.primary_container["ModelDataUrl"] = "file:///some/model"
     local_transform_job.start(input_data, output_data, transform_resources, Environment={})
     endpoints = [
@@ -188,3 +194,100 @@ def test_start_local_transform_job_from_remote_docker_host(
     calls = m_perform_request.call_args_list
     for call, endpoint in zip(calls, endpoints):
         assert call[0][0] == endpoint
+
+
+@patch("sagemaker.local.pipeline.LocalPipelineExecutor.execute")
+def test_start_local_pipeline(mock_local_pipeline_executor, sagemaker_local_session):
+    parameter = ParameterString("MyStr", default_value="test")
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[parameter],
+        steps=[CustomStep(name="MyStep", input_data=parameter)],
+        sagemaker_session=sagemaker_local_session,
+    )
+    local_pipeline = sagemaker.local.entities._LocalPipeline(pipeline)
+
+    describe_pipeline_response = local_pipeline.describe()
+    assert describe_pipeline_response["PipelineArn"] == "MyPipeline"
+    assert describe_pipeline_response["CreationTime"] is not None
+
+    mock_executor_return_value = sagemaker.local.entities._LocalPipelineExecution(
+        "execution-id", pipeline
+    )
+    mock_executor_return_value.step_execution["MyStep"].status = "Executing"
+    mock_local_pipeline_executor.return_value = mock_executor_return_value
+    pipeline_execution = local_pipeline.start()
+
+    describe_pipeline_execution_response = pipeline_execution.describe()
+    assert describe_pipeline_execution_response["PipelineArn"] == "MyPipeline"
+    assert describe_pipeline_execution_response["PipelineExecutionArn"] == "execution-id"
+    assert describe_pipeline_execution_response["CreationTime"] is not None
+
+    list_steps_response = pipeline_execution.list_steps()
+    assert list_steps_response["PipelineExecutionSteps"][0]["StepName"] == "MyStep"
+    assert list_steps_response["PipelineExecutionSteps"][0]["StepStatus"] == "Executing"
+
+
+def test_start_local_pipeline_with_unsupported_step_type(sagemaker_local_session):
+    step = LambdaStep(name="MyLambdaStep", lambda_func=Mock())
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[],
+        steps=[step],
+        sagemaker_session=sagemaker_local_session,
+    )
+    local_pipeline = sagemaker.local.entities._LocalPipeline(pipeline)
+
+    with pytest.raises(ClientError) as e:
+        local_pipeline.start()
+    assert f"Step type {step.step_type.value} is not supported in local mode." in str(e.value)
+
+
+def test_start_local_pipeline_with_undefined_parameter(sagemaker_local_session):
+    parameter = ParameterString("MyStr")
+    step = CustomStep(name="MyStep", input_data=parameter)
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[parameter],
+        steps=[step],
+        sagemaker_session=sagemaker_local_session,
+    )
+    local_pipeline = sagemaker.local.entities._LocalPipeline(pipeline)
+    with pytest.raises(ClientError) as error:
+        local_pipeline.start()
+    assert f"Parameter '{parameter.name}' is undefined." in str(error.value)
+
+
+def test_start_local_pipeline_with_unknown_parameter(sagemaker_local_session):
+    parameter = ParameterString("MyStr")
+    step = CustomStep(name="MyStep", input_data=parameter)
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[parameter],
+        steps=[step],
+        sagemaker_session=sagemaker_local_session,
+    )
+    local_pipeline = sagemaker.local.entities._LocalPipeline(pipeline)
+    with pytest.raises(ClientError) as error:
+        local_pipeline.start(
+            PipelineParameters={"MyStr": "test-test", "UnknownParameterFoo": "foo"}
+        )
+    assert "Unknown parameter 'UnknownParameterFoo'" in str(error.value)
+
+
+def test_start_local_pipeline_with_wrong_parameter_type(sagemaker_local_session):
+    parameter = ParameterString("MyStr")
+    step = CustomStep(name="MyStep", input_data=parameter)
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[parameter],
+        steps=[step],
+        sagemaker_session=sagemaker_local_session,
+    )
+    local_pipeline = sagemaker.local.entities._LocalPipeline(pipeline)
+    with pytest.raises(ClientError) as error:
+        local_pipeline.start(PipelineParameters={"MyStr": True})
+    assert (
+        f"Unexpected type for parameter '{parameter.name}'. Expected "
+        f"{parameter.parameter_type.python_type} but found {type(True)}." in str(error.value)
+    )

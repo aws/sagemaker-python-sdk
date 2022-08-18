@@ -24,12 +24,15 @@ import time
 
 from abc import ABC
 
+from typing import Union, Optional, List, Dict
+
 import attr
 
 import smdebug_rulesconfig as rule_configs
 
 from sagemaker import image_uris
 from sagemaker.utils import build_dict
+from sagemaker.workflow.entities import PipelineVariable
 
 framework_name = "debugger"
 DEBUGGER_FLAG = "USE_SMDEBUG"
@@ -311,17 +314,17 @@ class Rule(RuleBase):
     @classmethod
     def custom(
         cls,
-        name,
-        image_uri,
-        instance_type,
-        volume_size_in_gb,
-        source=None,
-        rule_to_invoke=None,
-        container_local_output_path=None,
-        s3_output_path=None,
-        other_trials_s3_input_paths=None,
-        rule_parameters=None,
-        collections_to_save=None,
+        name: str,
+        image_uri: Union[str, PipelineVariable],
+        instance_type: Union[str, PipelineVariable],
+        volume_size_in_gb: Union[int, PipelineVariable],
+        source: Optional[str] = None,
+        rule_to_invoke: Optional[Union[str, PipelineVariable]] = None,
+        container_local_output_path: Optional[Union[str, PipelineVariable]] = None,
+        s3_output_path: Optional[Union[str, PipelineVariable]] = None,
+        other_trials_s3_input_paths: Optional[List[Union[str, PipelineVariable]]] = None,
+        rule_parameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        collections_to_save: Optional[List["CollectionConfig"]] = None,
         actions=None,
     ):
         """Initialize a ``Rule`` object for a *custom* debugging rule.
@@ -610,10 +613,10 @@ class DebuggerHookConfig(object):
 
     def __init__(
         self,
-        s3_output_path=None,
-        container_local_output_path=None,
-        hook_parameters=None,
-        collection_configs=None,
+        s3_output_path: Optional[Union[str, PipelineVariable]] = None,
+        container_local_output_path: Optional[Union[str, PipelineVariable]] = None,
+        hook_parameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        collection_configs: Optional[List["CollectionConfig"]] = None,
     ):
         """Initialize the DebuggerHookConfig instance.
 
@@ -679,7 +682,11 @@ class DebuggerHookConfig(object):
 class TensorBoardOutputConfig(object):
     """Create a tensor ouput configuration object for debugging visualizations on TensorBoard."""
 
-    def __init__(self, s3_output_path, container_local_output_path=None):
+    def __init__(
+        self,
+        s3_output_path: Union[str, PipelineVariable],
+        container_local_output_path: Optional[Union[str, PipelineVariable]] = None,
+    ):
         """Initialize the TensorBoardOutputConfig instance.
 
         Args:
@@ -708,7 +715,11 @@ class TensorBoardOutputConfig(object):
 class CollectionConfig(object):
     """Creates tensor collections for SageMaker Debugger."""
 
-    def __init__(self, name, parameters=None):
+    def __init__(
+        self,
+        name: Union[str, PipelineVariable],
+        parameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+    ):
         """Constructor for collection configuration.
 
         Args:
