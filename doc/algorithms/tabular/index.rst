@@ -15,4 +15,3 @@ Amazon SageMaker provides built-in algorithms that are tailored to the analysis 
     linear_learner
     tabtransformer
     xgboost
-    object2vec
