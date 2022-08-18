@@ -87,7 +87,7 @@ class TrainingCompilerConfig(BaseConfig):
         """Checks if SageMaker Training Compiler is configured correctly.
 
         Args:
-            estimator (sagemaker.huggingface.HuggingFace): A estimator object
+            estimator (:class:`sagemaker.huggingface.HuggingFace`): An estimator object.
                 If SageMaker Training Compiler is enabled, it will validate whether
                 the estimator is configured to be compatible with Training Compiler.
 
