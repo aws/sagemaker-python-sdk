@@ -9,7 +9,7 @@ distributed model parallel library.
 SageMaker Distributed Model Parallel 1.11.0 Release Notes
 =========================================================
 
-*Date: July. 19. 2022*
+*Date: August. 17. 2022*
 
 **New Features**
 
@@ -51,7 +51,7 @@ Release History
 SageMaker Distributed Model Parallel 1.10.1 Release Notes
 ---------------------------------------------------------
 
-*Date: July. 19. 2022*
+*Date: August. 8. 2022*
 
 **Currency Updates**
 
