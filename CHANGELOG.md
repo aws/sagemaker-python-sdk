@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.105.0 (2022-08-19)
+
+### Features
+
+ * Added endpoint_name to clarify.ModelConfig
+ * adding workgroup functionality to athena query
+
+### Bug Fixes and Other Changes
+
+ * disable debugger/profiler in cgk region
+ * using unique name for lineage test to unblock PR checks
+
+### Documentation Changes
+
+ * update first-party algorithms and structural updates
+
 ## v2.104.0 (2022-08-17)
 
 ### Features
