@@ -370,6 +370,10 @@ def test_training_step_base_estimator(sagemaker_session):
             },
             "RoleArn": ROLE,
             "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
+            "DebugHookConfig": {
+                "S3OutputPath": {"Std:Join": {"On": "/", "Values": ["s3:/", "a", "b"]}},
+                "CollectionConfigurations": [],
+            },
             "ProfilerConfig": {
                 "ProfilingIntervalInMilliseconds": 500,
                 "S3OutputPath": {"Std:Join": {"On": "/", "Values": ["s3:/", "a", "b"]}},
