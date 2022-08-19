@@ -1,3 +1,5 @@
+.. _all-pretrained-models:
+
 .. |external-link| raw:: html
 
    <i class="fa fa-external-link"></i>
@@ -384,176 +386,176 @@ Built-in Algorithms with pre-trained Model Table
      - `LightGBM <https://lightgbm.readthedocs.io/en/latest/>`__ |external-link|
    * - mxnet-is-mask-rcnn-fpn-resnet101-v1d-coco
      - False
-     - 1.1.0
-     - 2.75.0
+     - 1.2.0
+     - 2.100.0
      - Instance Segmentation
      - `GluonCV <https://cv.gluon.ai/model_zoo/segmentation.html>`__ |external-link|
    * - mxnet-is-mask-rcnn-fpn-resnet18-v1b-coco
      - False
-     - 1.1.0
-     - 2.75.0
+     - 1.2.0
+     - 2.100.0
      - Instance Segmentation
      - `GluonCV <https://cv.gluon.ai/model_zoo/segmentation.html>`__ |external-link|
    * - mxnet-is-mask-rcnn-fpn-resnet50-v1b-coco
      - False
-     - 1.1.0
-     - 2.75.0
+     - 1.2.0
+     - 2.100.0
      - Instance Segmentation
      - `GluonCV <https://cv.gluon.ai/model_zoo/segmentation.html>`__ |external-link|
    * - mxnet-is-mask-rcnn-resnet18-v1b-coco
      - False
-     - 1.1.0
-     - 2.75.0
+     - 1.2.0
+     - 2.100.0
      - Instance Segmentation
      - `GluonCV <https://cv.gluon.ai/model_zoo/segmentation.html>`__ |external-link|
    * - mxnet-od-faster-rcnn-fpn-resnet101-v1d-coco
      - False
-     - 1.1.0
-     - 2.75.0
+     - 1.2.0
+     - 2.100.0
      - Object Detection
      - `GluonCV <https://cv.gluon.ai/model_zoo/detection.html>`__ |external-link|
    * - mxnet-od-faster-rcnn-fpn-resnet50-v1b-coco
      - False
-     - 1.1.0
-     - 2.75.0
+     - 1.2.0
+     - 2.100.0
      - Object Detection
      - `GluonCV <https://cv.gluon.ai/model_zoo/detection.html>`__ |external-link|
    * - mxnet-od-faster-rcnn-resnet101-v1d-coco
      - False
-     - 1.1.0
-     - 2.75.0
+     - 1.2.0
+     - 2.100.0
      - Object Detection
      - `GluonCV <https://cv.gluon.ai/model_zoo/detection.html>`__ |external-link|
    * - mxnet-od-faster-rcnn-resnet50-v1b-coco
      - False
-     - 1.1.0
-     - 2.75.0
+     - 1.2.0
+     - 2.100.0
      - Object Detection
      - `GluonCV <https://cv.gluon.ai/model_zoo/detection.html>`__ |external-link|
    * - mxnet-od-faster-rcnn-resnet50-v1b-voc
      - False
-     - 1.1.0
-     - 2.75.0
+     - 1.2.0
+     - 2.100.0
      - Object Detection
      - `GluonCV <https://cv.gluon.ai/model_zoo/detection.html>`__ |external-link|
    * - mxnet-od-ssd-300-vgg16-atrous-coco
      - True
-     - 1.2.3
-     - 2.75.0
+     - 1.3.0
+     - 2.100.0
      - Object Detection
      - `GluonCV <https://cv.gluon.ai/model_zoo/detection.html>`__ |external-link|
    * - mxnet-od-ssd-300-vgg16-atrous-voc
      - True
-     - 1.2.3
-     - 2.75.0
+     - 1.3.0
+     - 2.100.0
      - Object Detection
      - `GluonCV <https://cv.gluon.ai/model_zoo/detection.html>`__ |external-link|
    * - mxnet-od-ssd-512-mobilenet1-0-coco
      - True
-     - 1.2.3
-     - 2.75.0
+     - 1.3.0
+     - 2.100.0
      - Object Detection
      - `GluonCV <https://cv.gluon.ai/model_zoo/detection.html>`__ |external-link|
    * - mxnet-od-ssd-512-mobilenet1-0-voc
      - True
-     - 1.2.3
-     - 2.75.0
+     - 1.3.0
+     - 2.100.0
      - Object Detection
      - `GluonCV <https://cv.gluon.ai/model_zoo/detection.html>`__ |external-link|
    * - mxnet-od-ssd-512-resnet50-v1-coco
      - True
-     - 1.2.3
-     - 2.75.0
+     - 1.3.0
+     - 2.100.0
      - Object Detection
      - `GluonCV <https://cv.gluon.ai/model_zoo/detection.html>`__ |external-link|
    * - mxnet-od-ssd-512-resnet50-v1-voc
      - True
-     - 1.2.3
-     - 2.75.0
+     - 1.3.0
+     - 2.100.0
      - Object Detection
      - `GluonCV <https://cv.gluon.ai/model_zoo/detection.html>`__ |external-link|
    * - mxnet-od-ssd-512-vgg16-atrous-coco
      - True
-     - 1.2.3
-     - 2.75.0
+     - 1.3.0
+     - 2.100.0
      - Object Detection
      - `GluonCV <https://cv.gluon.ai/model_zoo/detection.html>`__ |external-link|
    * - mxnet-od-ssd-512-vgg16-atrous-voc
      - True
-     - 1.2.3
-     - 2.75.0
+     - 1.3.0
+     - 2.100.0
      - Object Detection
      - `GluonCV <https://cv.gluon.ai/model_zoo/detection.html>`__ |external-link|
    * - mxnet-od-yolo3-darknet53-coco
      - False
-     - 1.1.0
-     - 2.75.0
+     - 1.2.0
+     - 2.100.0
      - Object Detection
      - `GluonCV <https://cv.gluon.ai/model_zoo/detection.html>`__ |external-link|
    * - mxnet-od-yolo3-darknet53-voc
      - False
-     - 1.1.0
-     - 2.75.0
+     - 1.2.0
+     - 2.100.0
      - Object Detection
      - `GluonCV <https://cv.gluon.ai/model_zoo/detection.html>`__ |external-link|
    * - mxnet-od-yolo3-mobilenet1-0-coco
      - False
-     - 1.1.0
-     - 2.75.0
+     - 1.2.0
+     - 2.100.0
      - Object Detection
      - `GluonCV <https://cv.gluon.ai/model_zoo/detection.html>`__ |external-link|
    * - mxnet-od-yolo3-mobilenet1-0-voc
      - False
-     - 1.1.0
-     - 2.75.0
+     - 1.2.0
+     - 2.100.0
      - Object Detection
      - `GluonCV <https://cv.gluon.ai/model_zoo/detection.html>`__ |external-link|
    * - mxnet-semseg-fcn-resnet101-ade
      - True
-     - 1.3.5
-     - 2.75.0
+     - 1.4.0
+     - 2.100.0
      - Semantic Segmentation
      - `GluonCV <https://cv.gluon.ai/model_zoo/segmentation.html>`__ |external-link|
    * - mxnet-semseg-fcn-resnet101-coco
      - True
-     - 1.3.5
-     - 2.75.0
+     - 1.4.0
+     - 2.100.0
      - Semantic Segmentation
      - `GluonCV <https://cv.gluon.ai/model_zoo/segmentation.html>`__ |external-link|
    * - mxnet-semseg-fcn-resnet101-voc
      - True
-     - 1.3.5
-     - 2.75.0
+     - 1.4.0
+     - 2.100.0
      - Semantic Segmentation
      - `GluonCV <https://cv.gluon.ai/model_zoo/segmentation.html>`__ |external-link|
    * - mxnet-semseg-fcn-resnet50-ade
      - True
-     - 1.3.5
-     - 2.75.0
+     - 1.4.0
+     - 2.100.0
      - Semantic Segmentation
      - `GluonCV <https://cv.gluon.ai/model_zoo/segmentation.html>`__ |external-link|
    * - mxnet-tcembedding-robertafin-base-uncased
      - False
-     - 1.1.0
-     - 2.75.0
+     - 1.2.0
+     - 2.100.0
      - Text Embedding
      - `GluonCV <https://nlp.gluon.ai/master/_modules/gluonnlp/models/roberta.html>`__ |external-link|
    * - mxnet-tcembedding-robertafin-base-wiki-uncased
      - False
-     - 1.1.0
-     - 2.75.0
+     - 1.2.0
+     - 2.100.0
      - Text Embedding
      - `GluonCV <https://nlp.gluon.ai/master/_modules/gluonnlp/models/roberta.html>`__ |external-link|
    * - mxnet-tcembedding-robertafin-large-uncased
      - False
-     - 1.1.0
-     - 2.75.0
+     - 1.2.0
+     - 2.100.0
      - Text Embedding
      - `GluonCV <https://nlp.gluon.ai/master/_modules/gluonnlp/models/roberta.html>`__ |external-link|
    * - mxnet-tcembedding-robertafin-large-wiki-uncased
      - False
-     - 1.1.0
-     - 2.75.0
+     - 1.2.0
+     - 2.100.0
      - Text Embedding
      - `GluonCV <https://nlp.gluon.ai/master/_modules/gluonnlp/models/roberta.html>`__ |external-link|
    * - pytorch-eqa-bert-base-cased

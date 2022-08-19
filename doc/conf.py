@@ -96,8 +96,9 @@ autosummary_generate = True
 # autosectionlabel
 autosectionlabel_prefix_document = True
 
-
+'''
 def setup(app):
     sys.stdout.write("Generating JumpStart model table...")
     sys.stdout.flush()
     create_jumpstart_model_table()
+'''

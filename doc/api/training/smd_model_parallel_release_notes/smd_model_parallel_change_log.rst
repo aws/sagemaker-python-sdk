@@ -16,13 +16,13 @@ SageMaker Distributed Model Parallel 1.11.0 Release Notes
 The following new features are added for PyTorch.
 
 * The library implements sharded data parallelism, which is a memory-saving
-distributed training technique that splits the training state of a model
-(model parameters, gradients, and optimizer states) across data parallel groups.
-With sharded data parallelism, you can reduce the per-GPU memory footprint of
-a model by sharding the training state over multiple GPUs. To learn more,
-see `Sharded Data Parallelism
-<https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-sharded-data-parallelism.html>`_
-in the *Amazon SageMaker Developer Guide*. 
+  distributed training technique that splits the training state of a model
+  (model parameters, gradients, and optimizer states) across data parallel groups.
+  With sharded data parallelism, you can reduce the per-GPU memory footprint of
+  a model by sharding the training state over multiple GPUs. To learn more,
+  see `Sharded Data Parallelism
+  <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-sharded-data-parallelism.html>`_
+  in the *Amazon SageMaker Developer Guide*.
 
 **Migration to AWS Deep Learning Containers**
 
@@ -48,7 +48,7 @@ Binary file of this version of the library for `custom container
 Release History
 ===============
 
-SageMaker Distributed Model Parallel 1.11.0 Release Notes
+SageMaker Distributed Model Parallel 1.10.1 Release Notes
 ---------------------------------------------------------
 
 *Date: July. 19. 2022*

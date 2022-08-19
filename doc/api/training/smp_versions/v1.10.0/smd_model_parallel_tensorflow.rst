@@ -17,7 +17,6 @@ you need to add the following import statement at the top of your training scrip
 
 .. class:: smp.DistributedModel
    :noindex:
-   :noindex:
 
    A sub-class of the Keras \ ``Model`` class, which defines the model to
    be partitioned. Model definition is done by sub-classing

@@ -24,7 +24,7 @@ smdistributed.modelparallel.torch.DistributedModel
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. class:: smdistributed.modelparallel.torch.DistributedModel
-   :noindex:
+  :noindex:
 
    A sub-class of ``torch.nn.Module`` which specifies the model to be
    partitioned. Accepts a ``torch.nn.Module`` object ``module`` which is
@@ -493,6 +493,7 @@ smdistributed.modelparallel.torch.DistributedOptimizer
    This wrapper returns an ``optimizer`` object with the following methods overridden:
 
    .. method:: state_dict( )
+      :noindex:
 
       Returns the ``state_dict`` that contains optimizer state for the entire model.
       It first collects the ``local_state_dict`` and gathers and merges
@@ -500,6 +501,7 @@ smdistributed.modelparallel.torch.DistributedOptimizer
       ``state_dict``.
 
    .. method::  load_state_dict( )
+      :noindex:
 
       Same as the ``torch.optimizer.load_state_dict()`` , except:
 
@@ -509,6 +511,7 @@ smdistributed.modelparallel.torch.DistributedOptimizer
             rank knows its local parameters.
 
    .. method::  local_state_dict( )
+      :noindex:
 
       Returns the ``state_dict`` that contains the
       local optimizer state that belongs to the current \ ``mp_rank``. This
