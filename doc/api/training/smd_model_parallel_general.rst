@@ -247,12 +247,14 @@ PyTorch-specific Parameters
     - int
     - 1
     - To run a training job using sharded data parallelism, add this parameter and specify a number greater than 1.
+      Sharded data parallelism is a memory-saving distributed training technique that splits the training state of a model (model parameters, gradients, and optimizer states) across GPUs in a data parallel group.
       For more information, see `Sharded Data Parallelism
       <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-sharded-data-parallelism.html>`_.
   * - ``sdp_reduce_bucket_size`` (**smdistributed-modelparallel**>=v1.11)
     - int
     - 5e8
-    - Specifies the size of PyTorch DDP gradient buckets in number of elements of the default dtype.
+    - Configuration parameter for sharded data parallelism (for ``sharded_data_parallel_degree > 2``).
+      Specifies the size of PyTorch DDP gradient buckets in number of elements of the default dtype.
   * - ``sdp_param_persistence_threshold`` (**smdistributed-modelparallel**>=v1.11)
     - int
     - 1e6
