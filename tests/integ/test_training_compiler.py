@@ -122,7 +122,7 @@ def test_huggingface_pytorch(
             sagemaker_session=sagemaker_session,
             disable_profiler=True,
             compiler_config=HFTrainingCompilerConfig(),
-            distribution={"pytorch_xla": {"enabled": True}} if instance_count > 1 else None,
+            distribution={"pytorchxla": {"enabled": True}} if instance_count > 1 else None,
         )
 
         hf.fit(huggingface_dummy_dataset)

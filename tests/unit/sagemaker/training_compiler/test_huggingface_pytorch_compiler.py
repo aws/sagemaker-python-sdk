@@ -321,7 +321,7 @@ def test_unsupported_distribution(
             pytorch_version="1.10",
             enable_sagemaker_metrics=False,
             compiler_config=TrainingCompilerConfig(),
-            distribution={"pytorch_xla": {"enabled": True}},
+            distribution={"pytorchxla": {"enabled": True}},
         ).fit()
 
     with pytest.raises(ValueError):
@@ -344,7 +344,7 @@ def test_unsupported_distribution(
 @patch("sagemaker.estimator.name_from_base", return_value=JOB_NAME)
 @patch("time.time", return_value=TIME)
 @pytest.mark.parametrize("instance_class", SUPPORTED_GPU_INSTANCE_CLASSES)
-def test_pytorch_xla_distribution(
+def test_pytorchxla_distribution(
     time,
     name_from_base,
     sagemaker_session,
@@ -366,7 +366,7 @@ def test_pytorch_xla_distribution(
         pytorch_version=huggingface_training_compiler_pytorch_version,
         enable_sagemaker_metrics=False,
         compiler_config=TrainingCompilerConfig(),
-        distribution={"pytorch_xla": {"enabled": True}},
+        distribution={"pytorchxla": {"enabled": True}},
     )
 
     inputs = "s3://mybucket/train"

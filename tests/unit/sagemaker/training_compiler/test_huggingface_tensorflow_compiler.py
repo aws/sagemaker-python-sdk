@@ -307,7 +307,7 @@ def test_unsupported_distribution(
             tensorflow_version=huggingface_training_compiler_tensorflow_version,
             enable_sagemaker_metrics=False,
             compiler_config=TrainingCompilerConfig(),
-            distribution={"pytorch_xla": {"enabled": True}},
+            distribution={"pytorchxla": {"enabled": True}},
         ).fit()
 
 

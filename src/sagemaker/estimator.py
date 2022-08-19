@@ -3249,8 +3249,8 @@ class Framework(EstimatorBase):
                 "instance_groups"
             ]
 
-        if "pytorch_xla" in distribution:
-            pt_xla_enabled = distribution.get("pytorch_xla").get("enabled", False)
+        if "pytorchxla" in distribution:
+            pt_xla_enabled = distribution.get("pytorchxla").get("enabled", False)
             distribution_config[self.LAUNCH_PT_XLA_ENV_NAME] = pt_xla_enabled
 
         if "parameter_server" in distribution:
