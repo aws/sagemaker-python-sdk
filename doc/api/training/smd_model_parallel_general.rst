@@ -246,7 +246,7 @@ PyTorch-specific Parameters
   * - ``sharded_data_parallel_degree`` (**smdistributed-modelparallel**>=v1.11)
     - int
     - 1
-    - To run a training job using sharded data parallelism, specify a number greater than 1.
+    - To run a training job using sharded data parallelism, add this parameter and specify a number greater than 1.
       For more information, see `Sharded Data Parallelism
       <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-sharded-data-parallelism.html>`_.
   * - ``sdp_reduce_bucket_size`` (**smdistributed-modelparallel**>=v1.11)
