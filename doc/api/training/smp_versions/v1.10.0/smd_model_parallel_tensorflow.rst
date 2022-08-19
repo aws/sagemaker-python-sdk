@@ -17,6 +17,7 @@ you need to add the following import statement at the top of your training scrip
 
 .. class:: smp.DistributedModel
    :noindex:
+   :noindex:
 
    A sub-class of the Keras \ ``Model`` class, which defines the model to
    be partitioned. Model definition is done by sub-classing
@@ -43,6 +44,7 @@ you need to add the following import statement at the top of your training scrip
    **Methods:**
 
    .. function:: save_model(save_path="/opt/ml/model")
+      :noindex:
 
       **Inputs**
       - ``save_path`` (``string``): A path to save an unpartitioned model with latest training weights.
@@ -53,6 +55,7 @@ you need to add the following import statement at the top of your training scrip
       SageMaker monitors to upload the model artifacts to Amazon S3.
 
 .. function:: smp.partition(index)
+   :noindex:
 
    **Inputs**
 
@@ -84,6 +87,7 @@ you need to add the following import statement at the top of your training scrip
 
 
 .. function:: register_post_partition_hook(hook)
+   :noindex:
 
     Registers a callable ``hook`` to
     be executed after the model is partitioned. This is useful in situations
@@ -99,6 +103,7 @@ you need to add the following import statement at the top of your training scrip
             tf.print("Entered hook through eager context")
 
 .. class:: smp.CheckpointManager
+   :noindex:
 
 
    A subclass of TensorFlow
@@ -136,10 +141,12 @@ you need to add the following import statement at the top of your training scrip
    **Methods:**
 
    .. function:: save( )
+      :noindex:
 
       Saves a new checkpoint in the specified directory. Internally uses ``tf.train.CheckpointManager.save()``.
 
    .. function:: restore( )
+      :noindex:
 
       Restores the latest checkpoint in the specified directory.
       Internally uses ``tf.train.CheckpointManager.restore()``.

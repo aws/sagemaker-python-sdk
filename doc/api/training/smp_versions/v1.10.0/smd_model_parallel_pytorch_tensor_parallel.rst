@@ -1,4 +1,5 @@
 .. _smdmp-pytorch-tensor-parallel:
+   :noindex:
 
 PyTorch API for Tensor Parallelism
 ==================================
@@ -32,6 +33,7 @@ For more information, see the following topics.
   :local:
 
 .. _registering-tp-modules:
+   :noindex:
 
 Registering Tensor Parallelism Distributed Modules
 --------------------------------------------------
@@ -50,6 +52,7 @@ These implementations are functionally equivalent to their distributed
 versions in ``smdistributed.modelparallel.torch.nn`` module.
 
 .. class:: smdistributed.modelparallel.torch.tp_register(dist_module, init_hook=None, forward_hook=None, return_hook=None)
+   :noindex:
 
    -  A decorator class that registers the ``dist_module`` class with
       the module class that it is attached to. The hooks can be used to
@@ -104,6 +107,7 @@ versions in ``smdistributed.modelparallel.torch.nn`` module.
                  ...
 
 .. function:: smdistributed.modelparallel.torch.tp_register_with_module(module_cls, dist_module, init_hook=None, forward_hook=None, return_hook=None)
+   :noindex:
 
    -  When you do not have direct access to model definition code, you
       can use this API to similarly register a distributed module with
@@ -157,6 +161,7 @@ versions in ``smdistributed.modelparallel.torch.nn`` module.
                                      init_hook=init_hook)
 
 .. _smdmp-supported-modules-for-tp:
+   :noindex:
 
 Supported Modules for Tensor Parallelism
 ----------------------------------------
@@ -168,6 +173,7 @@ The following modules are supported for tensor parallelism.
   :local:
 
 .. _tp-module-api:
+   :noindex:
 
 Tensor Parallelism Module APIs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -181,6 +187,7 @@ Tensor Parallelism Module APIs
 -  :class:`smdistributed.modelparallel.torch.nn.DistributedEmbedding`
 
 .. class:: smdistributed.modelparallel.torch.nn.DistributedLinear(in_features, out_features)
+   :noindex:
 
     Tensor-parallel implementation of the ``nn.Linear`` class.
     Functionally equivalent to an ``nn.Linear`` module with the same
@@ -200,6 +207,7 @@ Tensor Parallelism Module APIs
          linear layer across all tensor-parallel ranks.
 
 .. class:: smdistributed.modelparallel.torch.nn.DistributedTransformerLMHead(num_layers=12, num_attention_heads=32, attention_head_size=32, hidden_size=1024, intermediate_size=4096, vocab_size=30522, num_positions=1024, attention_dropout_prob=0.1, hidden_dropout_prob=0.1, activation="gelu", layernorm_epsilon=1e-5, num_token_types=0, causal_mask_size=None, add_cross_attention=False, add_lm_head=True,  initializer_range=0.02, use_normal_initialization=False, pre_layernorm=False, post_layernorm=True)
+   :noindex:
 
     Constructs a distributed transformer model, including embeddings
     and a single LM head. A word embedding of size
@@ -233,6 +241,7 @@ Tensor Parallelism Module APIs
             ``[N, S]``, where 1 represents a masked position.
 
 .. class:: smdistributed.modelparallel.torch.nn.DistributedTransformer(num_layers=12, num_attention_heads=32, attention_head_size=32, hidden_size=1024, intermediate_size=4096, attention_dropout_prob=0.1, hidden_dropout_prob=0.1, activation="gelu", layernorm_epsilon=1e-5, initializer_range=0.02, use_normal_initialization=False, causal_mask_size=None, add_cross_attention=False, pre_layernorm=False, post_layernorm=True)
+   :noindex:
 
    A sequence of :class:`smdistributed.modelparallel.torch.nn.DistributedTransformerLayer`\ s, whose
    number is given by ``num_layers`` argument. For the other
@@ -245,6 +254,7 @@ Tensor Parallelism Module APIs
    attention and transformer-output layers.
 
 .. class:: smdistributed.modelparallel.torch.nn.DistributedTransformerLayer(num_attention_heads=32, attention_head_size=32, hidden_size=1024, intermediate_size=4096, attention_dropout_prob=0.1, hidden_dropout_prob=0.1, activation="gelu", layernorm_epsilon=1e-5, initializer_range=0.02, use_normal_initialization=False, causal_mask_size=None, add_cross_attention=False, pre_layernorm=False, post_layernorm=True)
+   :noindex:
 
    Tensor-parallel implementation of a single transformer layer.
    Number of attention heads, hidden size, and intermediate size
@@ -351,6 +361,7 @@ Tensor Parallelism Module APIs
                arguments.
 
 .. class:: smdistributed.modelparallel.torch.nn.DistributedAttentionLayer(num_attention_heads=32, attention_head_size=32, hidden_size=1024, attention_dropout_prob=0.1, hidden_dropout_prob=0.1, layernorm_epsilon=1e-5, initializer_range=0.02, use_normal_initialization=False, cross_attention=False, causal_mask_size=None, pre_layernorm=False, post_layernorm=True)
+   :noindex:
 
    A distributed implementation for the attention block. Includes the
    computation of the self- or cross-attention (context layer),
@@ -402,6 +413,7 @@ Tensor Parallelism Module APIs
                layer.
 
 .. class:: smdistributed.modelparallel.torch.nn.DistributedTransformerOutputLayer(hidden_size=1024, intermediate_size=4096,  hidden_dropout_prob=0.1, activation="gelu", layernorm_epsilon=1e-5, initializer_range=0.02, use_normal_initialization=False, pre_layernorm=False, post_layernorm=True, fp32_residual_addition=False)
+   :noindex:
 
    -  Distributed implementation of a single transformer output layer. A
       single :class:`smdistributed.modelparallel.torch.nn.DistributedTransformerLayer` with
@@ -423,6 +435,7 @@ Tensor Parallelism Module APIs
         when using FP16. (Default: False)
 
 .. class:: smdistributed.modelparallel.torch.nn.DistributedEmbedding(num_embeddings,embedding_dim, padding_idx=None, max_norm=None, norm_type=2.0, scale_grad_by_freq=False, sparse=False, _weight=None, initializer_range=0.02, _skip_allgather=False,_skip_scatter_and_merge=False,)
+   :noindex:
 
    -  Distributed implementation of a single Embedding Layer. Currently
       only supports splitting across the embedding_dim.
@@ -432,6 +445,7 @@ Tensor Parallelism Module APIs
          arguments.
 
 .. _enabling-tp:
+   :noindex:
 
 Enabling Tensor Parallelism
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -513,6 +527,7 @@ following API:
 
 
 .. function:: smdistributed.modelparallel.torch.set_tensor_parallelism(module, enabled=True, **kwargs)
+   :noindex:
 
    -  Enables or disables tensor parallelism for the supported
       submodules of ``module``. If enabling, the outermost supported
@@ -548,6 +563,7 @@ following API:
          optimizer = smp.DistributedOptimizer(optimizer)
 
 .. _activation-checkpointing-api:
+   :noindex:
 
 Activation Checkpointing APIs
 -----------------------------
@@ -562,6 +578,7 @@ For a conceptual guide and examples, see
 in the *SageMaker's Distributed Model Parallel developer guide*.
 
 .. class:: smdistributed.modelparallel.torch.patches.checkpoint.checkpoint(module, *args, preserve_rng_state=True)
+   :noindex:
 
    -  Checkpoints the module passed. Throws error if, during manual
       partitioning, all children of module are not on same rank as the
@@ -583,6 +600,7 @@ in the *SageMaker's Distributed Model Parallel developer guide*.
          restoring the RNG state during each checkpoint.
 
 .. class:: smdistributed.modelparallel.torch.patches.checkpoint.checkpoint_sequential(sequential_module, input, strategy="each", preserve_rng_state=True, pack_args_as_tuple=False)
+   :noindex:
 
    -  Checkpoints the modules inside
       `nn.Sequential <https://pytorch.org/docs/stable/generated/torch.nn.Sequential.html>`__.
@@ -635,6 +653,7 @@ in the *SageMaker's Distributed Model Parallel developer guide*.
          input, then this needs to be set to True.
 
 .. class:: smdistributed.modelparallel.torch.set_activation_checkpointing(module, preserve_rng_state=True, pack_args_as_tuple=False, strategy="each")
+   :noindex:
 
    -  This API is recommended when importing pretrained models from
       libraries, such as PyTorch and Hugging Face Transformers. This is
@@ -682,6 +701,7 @@ in the *SageMaker's Distributed Model Parallel developer guide*.
             checkpointed together on ``pp_rank1``.
 
 .. _smdmp-tp-appendix:
+   :noindex:
 
 Appendix: Reference Implementations for Modules
 -----------------------------------------------

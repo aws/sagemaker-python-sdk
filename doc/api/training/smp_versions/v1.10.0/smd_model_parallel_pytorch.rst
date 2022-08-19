@@ -24,6 +24,7 @@ smdistributed.modelparallel.torch.DistributedModel
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. class:: smdistributed.modelparallel.torch.DistributedModel
+   :noindex:
 
    A sub-class of ``torch.nn.Module`` which specifies the model to be
    partitioned. Accepts a ``torch.nn.Module`` object ``module`` which is
@@ -176,6 +177,7 @@ smdistributed.modelparallel.torch.DistributedModel
    **Methods**
 
    .. function:: backward(tensors, grad_tensors)
+      :noindex:
 
       Triggers a distributed backward
       pass across model partitions. Example usage provided in the previous
@@ -184,11 +186,13 @@ smdistributed.modelparallel.torch.DistributedModel
       ``retain_grad`` and ``create_graph``  flags are not supported.
 
    .. function:: local_buffers( )
+      :noindex:
 
       Returns an iterator over buffers for the modules in
       the partitioned model that have been assigned to the current process.
 
    .. function:: local_named_buffers( )
+      :noindex:
 
       Returns an iterator over buffers for the
       modules in the partitioned model that have been assigned to the current
@@ -196,12 +200,14 @@ smdistributed.modelparallel.torch.DistributedModel
       itself.
 
    .. function:: local_parameters( )
+      :noindex:
 
       Returns an iterator over parameters for the
       modules in the partitioned model that have been assigned to the current
       process.
 
    .. function:: local_named_parameters( )
+      :noindex:
 
       Returns an iterator over parameters for
       the modules in the partitioned model that have been assigned to the
@@ -209,17 +215,20 @@ smdistributed.modelparallel.torch.DistributedModel
       the parameter itself.
 
    .. function:: local_modules( )
+      :noindex:
 
       Returns an iterator over the modules in the
       partitioned model that have been assigned to the current process.
 
    .. function:: local_named_modules( )
+      :noindex:
 
       Returns an iterator over the modules in the
       partitioned model that have been assigned to the current process. This
       yields both the name of the module as well as the module itself.
 
    .. function:: local_state_dict( )
+      :noindex:
 
       Returns the ``state_dict`` that contains local
       parameters that belong to the current \ ``mp_rank``. This ``state_dict``
@@ -229,6 +238,7 @@ smdistributed.modelparallel.torch.DistributedModel
       partition, or to the entire model.
 
    .. function:: state_dict( )
+      :noindex:
 
       Returns the ``state_dict`` that contains parameters
       for the entire model. It first collects the \ ``local_state_dict``  and
@@ -238,6 +248,7 @@ smdistributed.modelparallel.torch.DistributedModel
       If it is only called on all such ranks, it can hang.
 
    .. function:: load_state_dict( )
+      :noindex:
 
       Same as the ``torch.module.load_state_dict()`` ,
       except: It first gathers and merges the ``state_dict``\ s across
@@ -245,6 +256,7 @@ smdistributed.modelparallel.torch.DistributedModel
       model partition so that each rank knows its local parameters.
 
    .. function:: register_post_partition_hook(hook)
+      :noindex:
 
       Registers a callable ``hook`` to
       be executed after the model is partitioned. This is useful in situations
@@ -254,11 +266,13 @@ smdistributed.modelparallel.torch.DistributedModel
       which can be used to remove the hook by calling ``handle.remove()``.
 
    .. function:: cpu( )
+      :noindex:
 
       Allgathers parameters and buffers across all ``mp_rank``\ s and moves them
       to the CPU.
 
    .. function:: join( )
+      :noindex:
 
       A context manager to be used in conjunction with an instance of
       ``smdistributed.modelparallel.torch.DistributedModel`` to be able to train with uneven inputs across
@@ -268,6 +282,7 @@ smdistributed.modelparallel.torch.DistributedModel
       in the PyTorch documentation.
 
    .. function:: register_comm_hook( state, callable )
+      :noindex:
 
       **Available for PyTorch 1.8.1 only**
       Registers a communication hook which is an enhancement that provides
@@ -358,38 +373,45 @@ smdistributed.modelparallel.torch.DistributedModel
   `documentation <https://sagemaker.readthedocs.io/en/stable/api/training/smp_versions/v1.2.0/smd_model_parallel_pytorch.html#smp.DistributedModel>`__.
 
   .. function:: distributed_modules()
+   :noindex:
 
      -  An iterator that runs over the set of distributed
         (tensor-parallelized) modules in the model
 
   .. function:: is_distributed_parameter(param)
+   :noindex:
 
      -  Returns ``True`` if the given ``nn.Parameter`` is distributed over
         tensor-parallel ranks.
 
   .. function::  is_distributed_buffer(buf)
+   :noindex:
 
      -  Returns ``True`` if the given buffer is distributed over
         tensor-parallel ranks.
 
   .. function::  is_scaled_batch_parameter(param)
+   :noindex:
 
      -  Returns ``True`` if the given ``nn.Parameter`` is operates on the
         scaled batch (batch over the entire ``TP_GROUP``, and not only the
         local batch).
 
   .. function::  is_scaled_batch_buffer(buf)
+   :noindex:
 
      -  Returns ``True`` if the parameter corresponding to the given
         buffer operates on the scaled batch (batch over the entire
         ``TP_GROUP``, and not only the local batch).
 
   .. function::  default_reducer_named_parameters()
+   :noindex:
 
      -  Returns an iterator that runs over ``(name, param)`` tuples, for
         ``param`` that is allreduced over the ``DP_GROUP``.
 
   .. function::  scaled_batch_reducer_named_parameters()
+   :noindex:
 
      -  Returns an iterator that runs over ``(name, param)`` tuples, for
         ``param`` that is allreduced over the ``RDP_GROUP``.
@@ -398,6 +420,7 @@ smdistributed.modelparallel.torch.DistributedOptimizer
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. class:: smdistributed.modelparallel.torch.DistributedOptimizer(optimizer, static_loss_scale=1.0, dynamic_loss_scale=False, **dynamic_loss_args)
+   :noindex:
 
    An optimizer wrapper for saving and loading optimizer states.
 
@@ -499,6 +522,7 @@ smdistributed.modelparallel.torch Context Managers and Util Functions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. function:: smdistributed.modelparallel.torch.model_creation(tensor_parallelism=False, dtype=None, **tensor_parallel_config)
+   :noindex:
 
    Context manager to create a ``torch`` model. This API combines both the
    :class:`smdistributed.modelparallel.torch.tensor_parallelism` and
@@ -539,6 +563,7 @@ smdistributed.modelparallel.torch Context Managers and Util Functions
           model = MyModel(...)
 
 .. function:: smdistributed.modelparallel.torch.partition(index)
+   :noindex:
 
    :param index: The index of the partition.
    :type index: int
@@ -575,24 +600,28 @@ smdistributed.modelparallel.torch Context Managers and Util Functions
               self.child3 = Child3()                # child3 on default_partition
 
 .. data:: smdistributed.modelparallel.torch.amp.GradScaler
+   :noindex:
 
    `Torch AMP Gradscaler <https://pytorch.org/docs/stable/amp.html#torch.cuda.amp.GradScaler>`__
    currently doesn’t work with the library. ``smdistributed.modelparallel.torch.amp.GradScaler`` replaces
    ``torch.amp.GradScaler`` and provides the same functionality.
 
 .. function:: smdistributed.modelparallel.torch.delay_param_initialization(enabled=True)
+   :noindex:
 
    If enabled, it delays the initialization of parameters
    to save CPU memory. That is, parameter initialization takes place
    after the model is partitioned on GPUs.
 
 .. function:: smdistributed.modelparallel.torch.get_world_process_group( )
+   :noindex:
 
    Returns a ``torch.distributed`` ``ProcessGroup`` that consists of all
    processes, which can be used with the ``torch.distributed`` API.
    Requires ``"ddp": True`` in SageMaker Python SDK parameters.
 
 .. function:: smdistributed.modelparallel.torch.get_mp_process_group( )
+   :noindex:
 
    Returns a ``torch.distributed`` ``ProcessGroup`` that consists of the
    processes in the ``MP_GROUP`` which contains the current process, which
@@ -600,6 +629,7 @@ smdistributed.modelparallel.torch Context Managers and Util Functions
    ``"ddp": True`` in SageMaker Python SDK parameters.
 
 .. function:: smdistributed.modelparallel.torch.get_dp_process_group( )
+   :noindex:
 
    Returns a ``torch.distributed`` ``ProcessGroup`` that consists of the
    processes in the ``DP_GROUP`` which contains the current process, which
@@ -607,16 +637,19 @@ smdistributed.modelparallel.torch Context Managers and Util Functions
    ``"ddp": True`` in SageMaker Python SDK parameters.
 
 .. function:: smdistributed.modelparallel.torch.is_initialized( )
+   :noindex:
 
    Returns ``True`` if ``smdistributed.modelparallel.torch.init`` has already been called for the
    process, and ``False`` otherwise.
 
 .. function::smp.is_tracing( )
+   :noindex:
 
    Returns ``True`` if the current process is running the tracing step, and
    ``False`` otherwise.
 
 .. data:: smdistributed.modelparallel.torch.nn.FusedLayerNorm
+   :noindex:
 
    `Apex Fused Layer Norm <https://nvidia.github.io/apex/layernorm.html>`__ is currently not
    supported by the library. ``smdistributed.modelparallel.torch.nn.FusedLayerNorm`` replaces ``apex``
@@ -624,6 +657,7 @@ smdistributed.modelparallel.torch Context Managers and Util Functions
    ``apex`` to be installed on the system.
 
 .. data:: smdistributed.modelparallel.torch.optimizers.FusedNovoGrad
+   :noindex:
 
 
    `Fused Novo Grad optimizer <https://nvidia.github.io/apex/optimizers.html#apex.optimizers.FusedNovoGrad>`__ is
@@ -632,6 +666,7 @@ smdistributed.modelparallel.torch Context Managers and Util Functions
    be installed on the system.
 
 .. data:: smdistributed.modelparallel.torch.optimizers.FusedLamb
+   :noindex:
 
 
    `FusedLamb optimizer <https://nvidia.github.io/apex/optimizers.html#apex.optimizers.FusedLAMB>`__
@@ -640,11 +675,13 @@ smdistributed.modelparallel.torch Context Managers and Util Functions
    This requires ``apex`` to be installed on the system.
 
 .. _pytorch_saving_loading:
+   :noindex:
 
 smdistributed.modelparallel.torch APIs for Saving and Loading
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. function:: smdistributed.modelparallel.torch.save(obj, f, partial=True, pickel_module=picklemodule, pickle_protocol=2, )
+   :noindex:
 
    Saves an object. This operation is similar to `torch.save()
    <https://pytorch.org/docs/stable/generated/torch.save.html>`_, except that
@@ -668,6 +705,7 @@ smdistributed.modelparallel.torch APIs for Saving and Loading
       override the defaultprotocol.
 
 .. function:: smdistributed.modelparallel.torch.load(f, map_location, pickle_module, pickle_load_args, partial=True)
+   :noindex:
 
    Loads an object saved with ``smdistributed.modelparallel.torch.save()`` from a file.
 
@@ -692,6 +730,7 @@ smdistributed.modelparallel.torch APIs for Saving and Loading
       Should be used when loading a model trained with the library.
 
 .. function:: smdistributed.modelparallel.torch.save_checkpoint(path, tag, partial=True, model=None, optimizer=None, user_content=None, translate_if_full=True, num_kept_partial_checkpoints=None)
+   :noindex:
 
    Saves a checkpoint. While :class:`smdistributed.modelparallel.torch.save` saves
    model and optimizer objects,
@@ -730,6 +769,7 @@ smdistributed.modelparallel.torch APIs for Saving and Loading
      of partial checkpoints to keep on disk.
 
 .. function:: smdistributed.modelparallel.torch.resume_from_checkpoint(path, tag=None, partial=True, strict=True, load_optimizer_states=True, translate_function=None)
+   :noindex:
 
    While :class:`smdistributed.modelparallel.torch.load` loads saved
    model and optimizer objects, this function resumes from a saved checkpoint file.
@@ -765,6 +805,7 @@ smdistributed.modelparallel.torch APIs for Saving and Loading
      user_content = smp.resume_from_checkpoint(path, partial=partial)
 
 .. _pytorch_saving_loading_instructions:
+   :noindex:
 
 General instruction on saving and loading
 -----------------------------------------
