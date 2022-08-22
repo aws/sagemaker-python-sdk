@@ -2634,7 +2634,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             request["VpcConfig"] = vpc_config
 
         if enable_network_isolation:
-            request["EnableNetworkIsolation"] = True
+            # enable_network_isolation may be a pipeline variable which is
+            # parsed in execution time
+            request["EnableNetworkIsolation"] = enable_network_isolation
 
         return request
 
@@ -4186,6 +4188,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         query_string: str,
         output_location: str,
         kms_key: str = None,
+        workgroup: str = None,
     ) -> Dict[str, str]:
         """Start Athena query execution.
 
@@ -4195,6 +4198,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             query_string (str): SQL expression.
             output_location (str): S3 location of the output file.
             kms_key (str): KMS key id will be used to encrypt the result if given.
+            workgroup (str): The name of the workgroup in which the query is being started.
+            If the workgroup is not specified, the default workgroup is used.
 
         Returns:
             Response dict from the service.
@@ -4208,6 +4213,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 EncryptionConfiguration=dict(EncryptionOption="SSE_KMS", KmsKey=kms_key)
             )
         kwargs.update(ResultConfiguration=result_config)
+
+        if workgroup:
+            kwargs.update(WorkGroup=workgroup)
 
         athena_client = self.boto_session.client("athena", region_name=self.boto_region_name)
         return athena_client.start_query_execution(**kwargs)

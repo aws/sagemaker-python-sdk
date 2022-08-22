@@ -15,8 +15,9 @@ from __future__ import absolute_import
 
 import json
 
+import logging
 from copy import deepcopy
-from typing import Any, Dict, List, Sequence, Union, Optional
+from typing import Any, Dict, List, Set, Sequence, Union, Optional
 
 import attr
 import botocore
@@ -41,6 +42,8 @@ from sagemaker.workflow.steps import Step, StepTypeEnum
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.utilities import list_to_request
+
+logger = logging.getLogger(__name__)
 
 _DEFAULT_EXPERIMENT_CFG = PipelineExperimentConfig(
     ExecutionVariables.PIPELINE_NAME, ExecutionVariables.PIPELINE_EXECUTION_ID
@@ -123,6 +126,10 @@ class Pipeline(Entity):
         Returns:
             A response dict from the service.
         """
+        if self.sagemaker_session.local_mode:
+            if parallelism_config:
+                logger.warning("Pipeline parallelism config is not supported in the local mode.")
+            return self.sagemaker_session.sagemaker_client.create_pipeline(self, description)
         tags = _append_project_tags(tags)
         kwargs = self._create_args(role_arn, description, parallelism_config)
         update_args(
@@ -203,8 +210,14 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         Returns:
             A response dict from the service.
         """
+        if self.sagemaker_session.local_mode:
+            if parallelism_config:
+                logger.warning("Pipeline parallelism config is not supported in the local mode.")
+            return self.sagemaker_session.sagemaker_client.update_pipeline(self, description)
+
         self._step_map = dict()
         _generate_step_map(self.steps, self._step_map)
+
         kwargs = self._create_args(role_arn, description, parallelism_config)
         return self.sagemaker_session.sagemaker_client.update_pipeline(**kwargs)
 
@@ -289,11 +302,14 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         kwargs = dict(PipelineName=self.name)
         update_args(
             kwargs,
-            PipelineParameters=format_start_parameters(parameters),
             PipelineExecutionDescription=execution_description,
             PipelineExecutionDisplayName=execution_display_name,
             ParallelismConfiguration=parallelism_config,
         )
+        if self.sagemaker_session.local_mode:
+            update_args(kwargs, PipelineParameters=parameters)
+            return self.sagemaker_session.sagemaker_client.start_pipeline_execution(**kwargs)
+        update_args(kwargs, PipelineParameters=format_start_parameters(parameters))
         response = self.sagemaker_session.sagemaker_client.start_pipeline_execution(**kwargs)
         return _PipelineExecution(
             arn=response["PipelineExecutionArn"],
@@ -640,6 +656,29 @@ class PipelineGraph:
                 if is_cyclic_helper(step):
                     return True
         return False
+
+    def get_steps_in_sub_dag(
+        self, current_step: Union[Step, StepCollection], sub_dag_steps: Set[str] = None
+    ) -> Set[str]:
+        """Get names of all steps (including current step) in the sub dag of current step.
+
+        Returns a set of step names in the sub dag.
+        """
+        if sub_dag_steps is None:
+            sub_dag_steps = set()
+
+        if isinstance(current_step, StepCollection):
+            current_steps = current_step.steps
+        else:
+            current_steps = [current_step]
+
+        for step in current_steps:
+            if step.name not in self.adjacency_list:
+                raise ValueError("Step: %s does not exist in the pipeline." % step.name)
+            sub_dag_steps.add(step.name)
+            for sub_step in self.adjacency_list[step.name]:
+                self.get_steps_in_sub_dag(self.step_map.get(sub_step), sub_dag_steps)
+        return sub_dag_steps
 
     def __iter__(self):
         """Perform topological sort traversal of the Pipeline Graph."""

@@ -468,14 +468,18 @@ def query(sagemaker_session_mock):
 
 
 def test_athena_query_run(sagemaker_session_mock, query):
+    WORKGROUP = "workgroup"
     sagemaker_session_mock.start_query_execution.return_value = {"QueryExecutionId": "query_id"}
-    query.run(query_string="query", output_location="s3://some-bucket/some-path")
+    query.run(
+        query_string="query", output_location="s3://some-bucket/some-path", workgroup=WORKGROUP
+    )
     sagemaker_session_mock.start_query_execution.assert_called_with(
         catalog="catalog",
         database="database",
         query_string="query",
         output_location="s3://some-bucket/some-path",
         kms_key=None,
+        workgroup=WORKGROUP,
     )
     assert "some-bucket" == query._result_bucket
     assert "some-path" == query._result_file_prefix
