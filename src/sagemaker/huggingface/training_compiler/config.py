@@ -115,7 +115,7 @@ class TrainingCompilerConfig(BaseConfig):
                 if estimator.tensorflow_version:
                     error_helper_string = (
                         "Distribution mechanism 'pytorchxla' is currently only supported for "
-                        "PyTorch >= 1.11 when Training Compiler is enabled. Received "
+                        "PyTorch >= 1.11 when SageMaker Training Compiler is enabled. Received "
                         "tensorflow_version={} which is unsupported."
                     )
                     raise ValueError(error_helper_string.format(estimator.tensorflow_version))
