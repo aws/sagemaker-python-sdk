@@ -274,7 +274,7 @@ def create_jumpstart_model_table():
             ):
                 file_content_single_entry.append("\n")
                 file_content_single_entry.append(".. list-table:: Available Models\n")
-                file_content_single_entry.append("   :widths: 50 20 20 20 30 20\n")
+                file_content_single_entry.append("   :widths: 50 20 20 20 20\n")
                 file_content_single_entry.append("   :header-rows: 1\n")
                 file_content_single_entry.append("   :class: datatable\n")
                 file_content_single_entry.append("\n")
@@ -282,7 +282,6 @@ def create_jumpstart_model_table():
                 file_content_single_entry.append("     - Fine Tunable?\n")
                 file_content_single_entry.append("     - Latest Version\n")
                 file_content_single_entry.append("     - Min SDK Version\n")
-                file_content_single_entry.append("     - Problem Type\n")
                 file_content_single_entry.append("     - Source\n")
 
                 dynamic_table_files.append(
@@ -293,7 +292,6 @@ def create_jumpstart_model_table():
             file_content_single_entry.append("     - {}\n".format(model_spec["training_supported"]))
             file_content_single_entry.append("     - {}\n".format(model["version"]))
             file_content_single_entry.append("     - {}\n".format(model["min_version"]))
-            file_content_single_entry.append("     - {}\n".format(model_task))
             file_content_single_entry.append(
                 "     - `{} <{}>`__\n".format(model_source, model_spec["url"])
             )
