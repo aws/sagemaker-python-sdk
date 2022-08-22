@@ -57,6 +57,7 @@ class ProblemTypes(str, Enum):
     TABULAR_REGRESSION = "Regression"
     TABULAR_CLASSIFICATION = "Classification"
 
+
 class Frameworks(str, Enum):
     """Possible frameworks for JumpStart models"""
 
@@ -104,7 +105,7 @@ TO_FRAMEWORK = {
     "LightGBM": Frameworks.LIGHTGBM,
     "XGBoost": Frameworks.XGBOOST,
     "ScikitLearn": Frameworks.SCIKIT_LEARN,
-    "Source": Frameworks.SOURCE
+    "Source": Frameworks.SOURCE,
 }
 
 
@@ -117,16 +118,37 @@ MODALITY_MAP = {
     (Tasks.OD, Frameworks.PYTORCH): "algorithms/vision/object_detection_pytorch.rst",
     (Tasks.OD, Frameworks.TENSORFLOW): "algorithms/vision/object_detection_tensorflow.rst",
     (Tasks.SEMSEG, Frameworks.GLUONCV): "algorithms/vision/semantic_segmentation_mxnet.rst",
-    (Tasks.TRANSLATION, Frameworks.HUGGINGFACE): "algorithms/text/machine_translation_hugging_face.rst",
+    (
+        Tasks.TRANSLATION,
+        Frameworks.HUGGINGFACE,
+    ): "algorithms/text/machine_translation_hugging_face.rst",
     (Tasks.NER, Frameworks.GLUONCV): "algorithms/text/named_entity_recognition_hugging_face.rst",
     (Tasks.EQA, Frameworks.PYTORCH): "algorithms/text/question_answering_pytorch.rst",
-    (Tasks.SPC, Frameworks.HUGGINGFACE): "algorithms/text/sentence_pair_classification_hugging_face.rst",
-    (Tasks.SPC, Frameworks.TENSORFLOW): "algorithms/text/sentence_pair_classification_tensorflow.rst",
+    (
+        Tasks.SPC,
+        Frameworks.HUGGINGFACE,
+    ): "algorithms/text/sentence_pair_classification_hugging_face.rst",
+    (
+        Tasks.SPC,
+        Frameworks.TENSORFLOW,
+    ): "algorithms/text/sentence_pair_classification_tensorflow.rst",
     (Tasks.TC, Frameworks.TENSORFLOW): "algorithms/text/text_classification_tensorflow.rst",
-    (Tasks.TC_EMBEDDING, Frameworks.GLUONCV): "algorithms/text/text_embedding_tensorflow_mxnet.rst",
-    (Tasks.TC_EMBEDDING, Frameworks.TENSORFLOW): "algorithms/text/text_embedding_tensorflow_mxnet.rst",
-    (Tasks.TEXT_GENERATION, Frameworks.HUGGINGFACE): "algorithms/text/text_generation_hugging_face.rst",
-    (Tasks.SUMMARIZATION, Frameworks.HUGGINGFACE): "algorithms/text/text_summarization_hugging_face.rst",
+    (
+        Tasks.TC_EMBEDDING,
+        Frameworks.GLUONCV,
+    ): "algorithms/vision/text_embedding_tensorflow_mxnet.rst",
+    (
+        Tasks.TC_EMBEDDING,
+        Frameworks.TENSORFLOW,
+    ): "algorithms/vision/text_embedding_tensorflow_mxnet.rst",
+    (
+        Tasks.TEXT_GENERATION,
+        Frameworks.HUGGINGFACE,
+    ): "algorithms/text/text_generation_hugging_face.rst",
+    (
+        Tasks.SUMMARIZATION,
+        Frameworks.HUGGINGFACE,
+    ): "algorithms/text/text_summarization_hugging_face.rst",
 }
 
 
@@ -246,7 +268,10 @@ def create_jumpstart_model_table():
         if (string_model_task, TO_FRAMEWORK[model_source]) in MODALITY_MAP:
             file_content_single_entry = []
 
-            if MODALITY_MAP[(string_model_task, TO_FRAMEWORK[model_source])] not in dynamic_table_files:
+            if (
+                MODALITY_MAP[(string_model_task, TO_FRAMEWORK[model_source])]
+                not in dynamic_table_files
+            ):
                 file_content_single_entry.append("\n")
                 file_content_single_entry.append(".. list-table:: Available Models\n")
                 file_content_single_entry.append("   :widths: 50 20 20 20 30 20\n")
@@ -259,8 +284,10 @@ def create_jumpstart_model_table():
                 file_content_single_entry.append("     - Min SDK Version\n")
                 file_content_single_entry.append("     - Problem Type\n")
                 file_content_single_entry.append("     - Source\n")
-                
-                dynamic_table_files.append(MODALITY_MAP[(string_model_task, TO_FRAMEWORK[model_source])])
+
+                dynamic_table_files.append(
+                    MODALITY_MAP[(string_model_task, TO_FRAMEWORK[model_source])]
+                )
 
             file_content_single_entry.append("   * - {}\n".format(model_spec["model_id"]))
             file_content_single_entry.append("     - {}\n".format(model_spec["training_supported"]))
@@ -268,7 +295,7 @@ def create_jumpstart_model_table():
             file_content_single_entry.append("     - {}\n".format(model["min_version"]))
             file_content_single_entry.append("     - {}\n".format(model_task))
             file_content_single_entry.append(
-                "     - `{} <{}>`__ \n".format(model_source, model_spec["url"])
+                "     - `{} <{}>`__\n".format(model_source, model_spec["url"])
             )
             f = open(MODALITY_MAP[(string_model_task, TO_FRAMEWORK[model_source])], "a")
             f.writelines(file_content_single_entry)
