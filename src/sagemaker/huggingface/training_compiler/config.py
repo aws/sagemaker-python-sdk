@@ -132,7 +132,7 @@ class TrainingCompilerConfig(BaseConfig):
                     if Version(estimator.pytorch_version) in SpecifierSet(">= 1.11"):
                         error_helper_string = (
                             "'pytorchxla' is the only distribution mechanism currently supported "
-                            "for PyTorch >= 1.11 when Training Compiler is enabled. Received "
+                            "for PyTorch >= 1.11 when SageMaker Training Compiler is enabled. Received "
                             "distribution={} which is unsupported."
                         )
                         raise ValueError(error_helper_string.format(estimator.distribution))
