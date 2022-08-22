@@ -151,6 +151,12 @@ class HuggingFace(Framework):
                             "enabled": True
                         }
                     }
+                    
+                To learn more, see `SageMaker Training Compiler <https://docs.aws.amazon.com/sagemaker/latest/dg/training-compiler.html>`_ in the *Amazon SageMaker Developer Guide*.
+                
+                .. note::
+                
+                    When you use this PyTorch XLA option for distributed training strategy, you must add the ``compiler_config`` parameter and activate SageMaker Training Compiler.
             compiler_config (:class:`~sagemaker.huggingface.TrainingCompilerConfig`):
                 Configures SageMaker Training Compiler to accelerate training.
 
