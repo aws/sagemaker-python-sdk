@@ -142,7 +142,7 @@ class HuggingFace(Framework):
                         }
                     }
 
-                To enable distributed training with Training Compiler for PyTorch:
+                To enable distributed training with `SageMaker Training Compiler <https://docs.aws.amazon.com/sagemaker/latest/dg/training-compiler.html>`_ for PyTorch:
 
                 .. code:: python
 
