@@ -223,7 +223,7 @@ class HuggingFace(Framework):
         elif distribution is not None and "pytorchxla" in distribution:
             raise ValueError(
                 "Distributed training through PyTorch XLA is currently only supported "
-                "when Training Compiler is enabled."
+                "when SageMaker Training Compiler is enabled. To learn more, see Enable SageMaker Training Compiler at https://docs.aws.amazon.com/sagemaker/latest/dg/training-compiler-enable.html."
             )
         self.compiler_config = compiler_config
 
