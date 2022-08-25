@@ -10,6 +10,7 @@ Amazon SageMaker provides algorithms that are tailored to the analysis of textua
     blazing_text
     lda
     ntm
+    object2vec
     sequence_to_sequence
     text_classification_tensorflow
     sentence_pair_classification_tensorflow
@@ -19,4 +20,3 @@ Amazon SageMaker provides algorithms that are tailored to the analysis of textua
     text_summarization_hugging_face
     text_generation_hugging_face
     machine_translation_hugging_face
-    text_embedding_tensorflow_mxnet
