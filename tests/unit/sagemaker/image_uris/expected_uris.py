@@ -11,7 +11,6 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
-import re
 
 ALTERNATE_DOMAINS = {
     "cn-north-1": "amazonaws.com.cn",
@@ -30,11 +29,22 @@ def framework_uri(repo, fw_version, account, py_version=None, processor="cpu", r
 
     return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
 
-def neuron_framework_uri(repo, fw_version, account, py_version=None, instance_type="ml_trn", inference_tool="neuron", region=REGION, sdk_version="sdk2.2.1", container_version="ubuntu18.04"):
-    domain = ALTERNATE_DOMAINS.get(region, DOMAIN) 
+
+def neuron_framework_uri(
+        repo, 
+        fw_version, 
+        account, 
+        py_version=None, 
+        inference_tool="neuron", 
+        region=REGION, 
+        sdk_version="sdk2.2.1", 
+        container_version="ubuntu18.04"
+    ):
+    domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
     tag = "-".join(x for x in (fw_version, inference_tool, py_version, sdk_version, container_version) if x)
 
     return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
+
 
 def algo_uri(algo, account, region, version=1):
     domain = ALTERNATE_DOMAINS.get(region, DOMAIN)

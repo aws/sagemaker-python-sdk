@@ -12,8 +12,6 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import pytest
-
 from sagemaker import image_uris
 from tests.unit.sagemaker.image_uris import expected_uris
 
@@ -48,14 +46,14 @@ ACCOUNTS = {
 TRAINIUM_REGIONS = ACCOUNTS.keys()
 
 
-def _expected_trainium_framework_uri(framework, version, region="us-west-2", instance_type="ml_trn"):
+def _expected_trainium_framework_uri(framework, version, region="us-west-2", inference_tool="neuron"):
     return expected_uris.neuron_framework_uri(
         "{}-neuron".format(framework),
         fw_version=version,
         py_version="py38",
         account=ACCOUNTS[region],
         region=region,
-        instance_type=instance_type,
+        inference_tool=inference_tool,
     )
 
 
@@ -65,7 +63,7 @@ def _test_trainium_framework_uris(framework, version):
             framework, region, instance_type="ml.trn1.xlarge", version=version
         )
         expected = _expected_trainium_framework_uri(
-            "{}-training".format(framework), version, region=region, instance_type="ml.trn1.xlarge"
+            "{}-training".format(framework), version, region=region, inference_tool="neuron"
         )
         assert expected == uri
 
