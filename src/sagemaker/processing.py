@@ -392,7 +392,6 @@ class Processor(object):
                     output.destination = s3_uri
                 normalized_outputs.append(output)
         return normalized_outputs
-        return normalized_outputs
 
 
 class ScriptProcessor(Processor):
