@@ -329,6 +329,11 @@ def huggingface_neuron_latest_inference_py_version():
 
 
 @pytest.fixture(scope="module")
+def pytorch_neuron_version():
+    return "1.10"
+    
+
+@pytest.fixture(scope="module")
 def pytorch_eia_py_version():
     return "py3"
 

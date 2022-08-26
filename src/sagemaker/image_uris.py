@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 ECR_URI_TEMPLATE = "{registry}.dkr.{hostname}/{repository}"
 HUGGING_FACE_FRAMEWORK = "huggingface"
+PYTORCH_FRAMEWORK = "pytorch"
 
 
 @override_pipeline_parameter_var
@@ -147,7 +148,7 @@ def retrieve(
         )
     else:
         _framework = framework
-        if framework == HUGGING_FACE_FRAMEWORK:
+        if framework in [HUGGING_FACE_FRAMEWORK, PYTORCH_FRAMEWORK]:
             inference_tool = _get_inference_tool(inference_tool, instance_type)
             if inference_tool == "neuron":
                 _framework = f"{framework}-{inference_tool}"
@@ -181,6 +182,12 @@ def retrieve(
     # if container version is available in .json file, utilize that
     if version_config.get("container_version"):
         container_version = version_config["container_version"][processor]
+
+    # Append sdk version in case of trainium instances
+    if repo in ["pytorch-training-neuron"]:
+        if not sdk_version:
+            sdk_version = _get_latest_versions(version_config["sdk_versions"])
+        container_version = sdk_version + "-" + container_version
 
     if framework == HUGGING_FACE_FRAMEWORK:
         pt_or_tf_version = (
@@ -291,7 +298,7 @@ def _get_inference_tool(inference_tool, instance_type):
     """Extract the inference tool name from instance type."""
     if not inference_tool and instance_type:
         match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
-        if match and match[1].startswith("inf"):
+        if match and (match[1].startswith("inf") or match[1].startswith("trn")):
             return "neuron"
     return inference_tool
 
@@ -382,6 +389,8 @@ def _processor(instance_type, available_processors, serverless_inference_config=
                 processor = family
             elif family.startswith("inf"):
                 processor = "inf"
+            elif family.startswith("trn"):
+                processor = "trn"
             elif family[0] in ("g", "p"):
                 processor = "gpu"
             else:
