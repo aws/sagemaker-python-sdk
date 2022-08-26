@@ -13,9 +13,9 @@
 """Configuration for the SageMaker Training Compiler."""
 from __future__ import absolute_import
 import logging
+from typing import Union
 from packaging.specifiers import SpecifierSet
 from packaging.version import Version
-from typing import Union
 
 from sagemaker.training_compiler.config import TrainingCompilerConfig as BaseConfig
 from sagemaker.workflow.entities import PipelineVariable
@@ -119,12 +119,12 @@ class TrainingCompilerConfig(BaseConfig):
                         "tensorflow_version={} which is unsupported."
                     )
                     raise ValueError(error_helper_string.format(estimator.tensorflow_version))
-                elif estimator.pytorch_version:
+                if estimator.pytorch_version:
                     if Version(estimator.pytorch_version) in SpecifierSet("< 1.11"):
                         error_helper_string = (
                             "Distribution mechanism 'pytorchxla' is currently only supported for "
-                            "PyTorch >= 1.11 when SageMaker Training Compiler is enabled. Received "
-                            "pytorch_version={} which is unsupported."
+                            "PyTorch >= 1.11 when SageMaker Training Compiler is enabled."
+                            " Received pytorch_version={} which is unsupported."
                         )
                         raise ValueError(error_helper_string.format(estimator.pytorch_version))
             if not pt_xla_present:
@@ -132,8 +132,8 @@ class TrainingCompilerConfig(BaseConfig):
                     if Version(estimator.pytorch_version) in SpecifierSet(">= 1.11"):
                         error_helper_string = (
                             "'pytorchxla' is the only distribution mechanism currently supported "
-                            "for PyTorch >= 1.11 when SageMaker Training Compiler is enabled. Received "
-                            "distribution={} which is unsupported."
+                            "for PyTorch >= 1.11 when SageMaker Training Compiler is enabled."
+                            " Received distribution={} which is unsupported."
                         )
                         raise ValueError(error_helper_string.format(estimator.distribution))
         elif estimator.instance_count and estimator.instance_count > 1:

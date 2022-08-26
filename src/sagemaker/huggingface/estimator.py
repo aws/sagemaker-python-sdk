@@ -142,7 +142,9 @@ class HuggingFace(Framework):
                         }
                     }
 
-                To enable distributed training with `SageMaker Training Compiler <https://docs.aws.amazon.com/sagemaker/latest/dg/training-compiler.html>`_ for PyTorch:
+                To enable distributed training with
+                `SageMaker Training Compiler <https://docs.aws.amazon.com/sagemaker/latest/dg/training-compiler.html>`_
+                for PyTorch:
 
                 .. code:: python
 
@@ -151,12 +153,15 @@ class HuggingFace(Framework):
                             "enabled": True
                         }
                     }
-                    
-                To learn more, see `SageMaker Training Compiler <https://docs.aws.amazon.com/sagemaker/latest/dg/training-compiler.html>`_ in the *Amazon SageMaker Developer Guide*.
-                
+
+                To learn more, see `SageMaker Training Compiler
+                <https://docs.aws.amazon.com/sagemaker/latest/dg/training-compiler.html>`_
+                in the *Amazon SageMaker Developer Guide*.
+
                 .. note::
-                
-                    When you use this PyTorch XLA option for distributed training strategy, you must add the ``compiler_config`` parameter and activate SageMaker Training Compiler.
+
+                    When you use this PyTorch XLA option for distributed training strategy, you must add the
+                    ``compiler_config`` parameter and activate SageMaker Training Compiler.
             compiler_config (:class:`~sagemaker.huggingface.TrainingCompilerConfig`):
                 Configures SageMaker Training Compiler to accelerate training.
 
@@ -223,7 +228,9 @@ class HuggingFace(Framework):
         elif distribution is not None and "pytorchxla" in distribution:
             raise ValueError(
                 "Distributed training through PyTorch XLA is currently only supported "
-                "when SageMaker Training Compiler is enabled. To learn more, see Enable SageMaker Training Compiler at https://docs.aws.amazon.com/sagemaker/latest/dg/training-compiler-enable.html."
+                "when SageMaker Training Compiler is enabled. To learn more, "
+                "see Enable SageMaker Training Compiler at "
+                "https://docs.aws.amazon.com/sagemaker/latest/dg/training-compiler-enable.html."
             )
         self.compiler_config = compiler_config
 
