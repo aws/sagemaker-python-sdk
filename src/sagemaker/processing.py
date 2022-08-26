@@ -392,6 +392,7 @@ class Processor(object):
                     output.destination = s3_uri
                 normalized_outputs.append(output)
         return normalized_outputs
+        return normalized_outputs
 
 
 class ScriptProcessor(Processor):
@@ -1622,7 +1623,7 @@ class FrameworkProcessor(ScriptProcessor):
             :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
         """
         s3_runproc_sh, inputs, job_name = self._pack_and_upload_code(
-            code, source_dir, dependencies, git_config, job_name, inputs
+            code, source_dir, dependencies, git_config, job_name, inputs, kms_key
         )
 
         # Submit a processing job.
@@ -1638,7 +1639,9 @@ class FrameworkProcessor(ScriptProcessor):
             kms_key=kms_key,
         )
 
-    def _pack_and_upload_code(self, code, source_dir, dependencies, git_config, job_name, inputs):
+    def _pack_and_upload_code(
+        self, code, source_dir, dependencies, git_config, job_name, inputs, kms_key=None
+    ):
         """Pack local code bundle and upload to Amazon S3."""
         if code.startswith("s3://"):
             return code, inputs, job_name
@@ -1676,6 +1679,7 @@ class FrameworkProcessor(ScriptProcessor):
         s3_runproc_sh = S3Uploader.upload_string_as_file_body(
             self._generate_framework_script(script),
             desired_s3_uri=entrypoint_s3_uri,
+            kms_key=kms_key,
             sagemaker_session=self.sagemaker_session,
         )
         logger.info("runproc.sh uploaded to %s", s3_runproc_sh)
