@@ -31,17 +31,19 @@ def framework_uri(repo, fw_version, account, py_version=None, processor="cpu", r
 
 
 def neuron_framework_uri(
-        repo, 
-        fw_version, 
-        account, 
-        py_version=None, 
-        inference_tool="neuron", 
-        region=REGION, 
-        sdk_version="sdk2.2.1", 
-        container_version="ubuntu18.04"
-    ):
+    repo,
+    fw_version,
+    account,
+    py_version=None,
+    inference_tool="neuron",
+    region=REGION,
+    sdk_version="sdk2.2.1",
+    container_version="ubuntu18.04",
+):
     domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
-    tag = "-".join(x for x in (fw_version, inference_tool, py_version, sdk_version, container_version) if x)
+    tag = "-".join(
+        x for x in (fw_version, inference_tool, py_version, sdk_version, container_version) if x
+    )
 
     return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
 

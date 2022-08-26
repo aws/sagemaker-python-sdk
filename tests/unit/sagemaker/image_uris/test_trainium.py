@@ -46,7 +46,9 @@ ACCOUNTS = {
 TRAINIUM_REGIONS = ACCOUNTS.keys()
 
 
-def _expected_trainium_framework_uri(framework, version, region="us-west-2", inference_tool="neuron"):
+def _expected_trainium_framework_uri(
+    framework, version, region="us-west-2", inference_tool="neuron"
+):
     return expected_uris.neuron_framework_uri(
         "{}-neuron".format(framework),
         fw_version=version,
