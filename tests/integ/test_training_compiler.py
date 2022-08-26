@@ -81,7 +81,7 @@ def skip_if_incompatible(gpu_instance_type, request):
 
 @pytest.mark.release
 @pytest.mark.parametrize(
-    "gpu_instance_type instance_count",
+    "gpu_instance_type,instance_count",
     [
         ("ml.p3.2xlarge", 1),
         ("ml.p3.16xlarge", 2),
