@@ -14,9 +14,9 @@ from __future__ import absolute_import
 
 import os
 
-import airflow
 import pytest
 import numpy as np
+from airflow import utils
 from airflow import DAG
 from airflow.contrib.operators.sagemaker_training_operator import SageMakerTrainingOperator
 from airflow.contrib.operators.sagemaker_transform_operator import SageMakerTransformOperator
@@ -624,7 +624,7 @@ def _build_airflow_workflow(estimator, instance_type, inputs=None, mini_batch_si
 
     default_args = {
         "owner": "airflow",
-        "start_date": airflow.utils.dates.days_ago(2),
+        "start_date": utils.dates.days_ago(2),
         "provide_context": True,
     }
 
