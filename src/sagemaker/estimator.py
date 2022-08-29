@@ -182,16 +182,21 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
                 .. note::
 
-                    When using an ML instance with `NVMe SSD volumes
-                    <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ssd-instance-store.html#nvme-ssd-volumes>`_,
+                    When you use an ML instance with `NVMe SSD volumes
+                    <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ssd-instance-store.html#nvme-ssd-volumes>`_
+                    such as ``ml.p4d``, ``ml.g4dn``, and ``ml.g5``,
+                    do not include this parameter in the estimator configuration.
+                    If you use one of those ML instance types,
                     SageMaker doesn't provision Amazon EBS General Purpose SSD
-                    (gp2) storage.
-                    Available storage is fixed to the NVMe-type instance's storage
+                    (gp2) storage nor take this parameter to adjust the NVMe instance storage.
+                    Available storage is fixed to the NVMe instance storage
                     capacity. SageMaker configures storage paths for training
                     datasets, checkpoints, model artifacts, and outputs to use the
-                    entire capacity of the instance storage. For example, ML
-                    instance families with the NVMe-type instance storage include
-                    ``ml.p4d``, ``ml.g4dn``, and ``ml.g5``.
+                    entire capacity of the instance storage.
+
+                    Note that if you include this parameter and specify a number that
+                    exceeds the size of the NVMe volume attached to the instance type,
+                    SageMaker returns an ``Invalid VolumeSizeInGB`` error.
 
                 To look up instance types and their instance storage types
                 and volumes, see `Amazon EC2 Instance Types
@@ -2264,7 +2269,7 @@ class Estimator(EstimatorBase):
             instance_count (int): Number of Amazon EC2 instances to use
                 for training. Required if instance_groups is not set.
             instance_type (str): Type of EC2 instance to use for training,
-                for example, 'ml.c4.xlarge'. Required if instance_groups is
+                for example, ``'ml.c4.xlarge'``. Required if instance_groups is
                 not set.
             volume_size (int): Size in GB of the storage volume to use for
                 storing input and output data during training (default: 30).
@@ -2282,16 +2287,21 @@ class Estimator(EstimatorBase):
 
                 .. note::
 
-                    When using an ML instance with `NVMe SSD volumes
-                    <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ssd-instance-store.html#nvme-ssd-volumes>`_,
+                    When you use an ML instance with `NVMe SSD volumes
+                    <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ssd-instance-store.html#nvme-ssd-volumes>`_
+                    such as ``ml.p4d``, ``ml.g4dn``, and ``ml.g5``,
+                    do not include this parameter in the estimator configuration.
+                    If you use one of those ML instance types,
                     SageMaker doesn't provision Amazon EBS General Purpose SSD
-                    (gp2) storage.
-                    Available storage is fixed to the NVMe-type instance's storage
+                    (gp2) storage nor take this parameter to adjust the NVMe instance storage.
+                    Available storage is fixed to the NVMe instance storage
                     capacity. SageMaker configures storage paths for training
                     datasets, checkpoints, model artifacts, and outputs to use the
-                    entire capacity of the instance storage. For example, ML
-                    instance families with the NVMe-type instance storage include
-                    ``ml.p4d``, ``ml.g4dn``, and ``ml.g5``.
+                    entire capacity of the instance storage.
+
+                    Note that if you include this parameter and specify a number that
+                    exceeds the size of the NVMe volume attached to the instance type,
+                    SageMaker returns an ``Invalid VolumeSizeInGB`` error.
 
                 To look up instance types and their instance storage types
                 and volumes, see `Amazon EC2 Instance Types
