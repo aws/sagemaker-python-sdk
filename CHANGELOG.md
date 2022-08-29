@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.107.0 (2022-08-29)
+
+### Features
+
+ * support python 3.10, update airflow dependency
+
+### Bug Fixes and Other Changes
+
+ * Add retry in session.py to check if training is finished
+
+### Documentation Changes
+
+ * remove Other tab in Built-in algorithms section and mi…
+
 ## v2.106.0 (2022-08-24)
 
 ### Features
