@@ -172,13 +172,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 Must be large enough to store training data if File mode is
                 used, which is the default mode.
 
-                When using an ML instance with the EBS-only storage option and
-                without instance storage such as `NVMe SSD volumes
-                <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ssd-instance-store.html#nvme-ssd-volumes>`_,
-                you must define the size of EBS
+                When you use an ML instance with the EBS-only storage option
+                such as ``ml.c5`` and ``ml.p2``,
+                you must define the size of the EBS
                 volume through the ``volume_size`` parameter in the estimator class.
-                For example, ML instance families that use EBS volumes include
-                ``ml.c5`` and ``ml.p2``.
 
                 .. note::
 
@@ -2277,13 +2274,10 @@ class Estimator(EstimatorBase):
                 Must be large enough to store training data if File mode is
                 used, which is the default mode.
 
-                When using an ML instance with the EBS-only storage option and
-                without instance storage such as `NVMe SSD volumes
-                <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ssd-instance-store.html#nvme-ssd-volumes>`_,
-                you must define the size of EBS
+                When you use an ML instance with the EBS-only storage option
+                such as ``ml.c5`` and ``ml.p2``,
+                you must define the size of the EBS
                 volume through the ``volume_size`` parameter in the estimator class.
-                For example, ML instance families that use EBS volumes include
-                ``ml.c5`` and ``ml.p2``.
 
                 .. note::
 
