@@ -359,6 +359,8 @@ def test_pytorchxla_distribution(
     huggingface_training_compiler_pytorch_version,
     instance_class,
 ):
+    if Version(huggingface_training_compiler_pytorch_version) < Version("1.11"):
+        pytest.skip("This test is intended for PyTorch 1.11 and above")
     compiler_config = TrainingCompilerConfig()
     instance_type = f"ml.{instance_class}.xlarge"
 
