@@ -252,16 +252,28 @@ def huggingface_pytorch_training_py_version(huggingface_pytorch_training_version
 
 @pytest.fixture(scope="module")
 def huggingface_training_compiler_pytorch_version(huggingface_training_compiler_version):
-    return _huggingface_base_fm_version(
+    versions = _huggingface_base_fm_version(
         huggingface_training_compiler_version, "pytorch", "huggingface_training_compiler"
-    )[0]
+    )
+    if not versions:
+        pytest.skip(
+            f"Hugging Face Training Compiler version {huggingface_training_compiler_version} does "
+            f"not have a PyTorch release."
+        )
+    return versions[0]
 
 
 @pytest.fixture(scope="module")
 def huggingface_training_compiler_tensorflow_version(huggingface_training_compiler_version):
-    return _huggingface_base_fm_version(
+    versions = _huggingface_base_fm_version(
         huggingface_training_compiler_version, "tensorflow", "huggingface_training_compiler"
-    )[0]
+    )
+    if not versions:
+        pytest.skip(
+            f"Hugging Face Training Compiler version {huggingface_training_compiler_version} "
+            f"does not have a TensorFlow release."
+        )
+    return versions[0]
 
 
 @pytest.fixture(scope="module")
@@ -552,11 +564,6 @@ def _huggingface_base_fm_version(huggingface_version, base_fw, fixture_prefix):
             if len(original_version.split(".")) == 2:
                 base_fw_version = ".".join(base_fw_version.split(".")[:-1])
             versions.append(base_fw_version)
-    if not versions:
-        pytest.skip(
-            f"{fixture_prefix} version {huggingface_version} does not have an"
-            f" image URI configuration for {base_fw}"
-        )
     return sorted(versions, reverse=True)
 
 
