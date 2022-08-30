@@ -27,6 +27,13 @@ class TrainingCompilerConfig(BaseConfig):
     """The SageMaker Training Compiler configuration class."""
 
     SUPPORTED_INSTANCE_CLASS_PREFIXES = ["p3", "g4dn", "p4d", "g5"]
+    SUPPORTED_INSTANCE_TYPES_WITH_EFA = [
+        "ml.g4dn.8xlarge",
+        "ml.g4dn.12xlarge",
+        "ml.g5.48xlarge",
+        "ml.p3dn.24xlarge",
+        "ml.p4d.24xlarge",
+    ]
 
     def __init__(
         self,
@@ -127,6 +134,13 @@ class TrainingCompilerConfig(BaseConfig):
                             " Received pytorch_version={} which is unsupported."
                         )
                         raise ValueError(error_helper_string.format(estimator.pytorch_version))
+                    if estimator.instance_type not in cls.SUPPORTED_INSTANCE_TYPES_WITH_EFA:
+                        logger.warning(
+                            "Consider using instances with EFA support when "
+                            "training with PyTorch >= 1.11 and SageMaker Training Compiler "
+                            "enabled. SageMaker Training Compiler leverages EFA to provide better "
+                            "performance for distributed training."
+                        )
             if not pt_xla_present:
                 if estimator.pytorch_version:
                     if Version(estimator.pytorch_version) in SpecifierSet(">= 1.11"):
