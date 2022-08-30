@@ -153,7 +153,7 @@ class TrainingCompilerConfig(object):
                     raise ValueError(error_helper_string)
             elif estimator.instance_type == "local":
                 error_helper_string = (
-                    "The local mode is not supported by SageMaker Training Compiler."
+                    "SageMaker Training Compiler doesn't support local mode."
                     "It only supports the following GPU instances: {}"
                 )
                 error_helper_string = error_helper_string.format(
