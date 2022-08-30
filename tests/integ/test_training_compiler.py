@@ -65,7 +65,7 @@ def huggingface_dummy_dataset(request, sagemaker_session):
     return train_input
 
 
-@pytest.fixture(scope="module", autouse=True)
+@pytest.fixture(autouse=True)
 def skip_if_incompatible(gpu_instance_type, request):
     """
     These tests are for training compiler enabled images/estimators only.
