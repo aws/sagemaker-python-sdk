@@ -160,8 +160,9 @@ class HuggingFace(Framework):
 
                 .. note::
 
-                    When you use this PyTorch XLA option for distributed training strategy, you must add the
-                    ``compiler_config`` parameter and activate SageMaker Training Compiler.
+                    When you use this PyTorch XLA option for distributed training strategy,
+                    you must add the ``compiler_config`` parameter and activate SageMaker
+                    Training Compiler.
             compiler_config (:class:`~sagemaker.huggingface.TrainingCompilerConfig`):
                 Configures SageMaker Training Compiler to accelerate training.
 

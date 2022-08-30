@@ -143,7 +143,10 @@ class TrainingCompilerConfig(object):
                         for i in cls.SUPPORTED_INSTANCE_CLASS_PREFIXES
                     ]
                 ):
-                    error_helper_string = "Unsupported Instance class {}. SageMaker Training Compiler only supports {}"
+                    error_helper_string = (
+                        "Unsupported Instance class {}."
+                        "SageMaker Training Compiler only supports {}"
+                    )
                     error_helper_string = error_helper_string.format(
                         requested_instance_class, cls.SUPPORTED_INSTANCE_CLASS_PREFIXES
                     )
