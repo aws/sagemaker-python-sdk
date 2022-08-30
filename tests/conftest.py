@@ -265,12 +265,19 @@ def huggingface_training_compiler_tensorflow_version(huggingface_training_compil
 
 
 @pytest.fixture(scope="module")
-def huggingface_training_compiler_py_version(huggingface_training_compiler_tensorflow_version):
+def huggingface_training_compiler_tensorflow_py_version(
+    huggingface_training_compiler_tensorflow_version,
+):
     return (
         "py37"
         if Version(huggingface_training_compiler_tensorflow_version) < Version("2.6")
         else "py38"
     )
+
+
+@pytest.fixture(scope="module")
+def huggingface_training_compiler_pytorch_py_version(huggingface_training_compiler_pytorch_version):
+    return "py38"
 
 
 @pytest.fixture(scope="module")
@@ -545,6 +552,11 @@ def _huggingface_base_fm_version(huggingface_version, base_fw, fixture_prefix):
             if len(original_version.split(".")) == 2:
                 base_fw_version = ".".join(base_fw_version.split(".")[:-1])
             versions.append(base_fw_version)
+    if not versions:
+        pytest.skip(
+            f"{fixture_prefix} version {huggingface_version} does not have an"
+            f" image URI configuration for {base_fw}"
+        )
     return sorted(versions, reverse=True)
 
 

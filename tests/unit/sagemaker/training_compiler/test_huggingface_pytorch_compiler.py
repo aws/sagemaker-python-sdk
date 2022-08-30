@@ -18,6 +18,7 @@ import os
 
 import pytest
 from mock import MagicMock, Mock, patch, ANY
+from packaging.version import Version
 
 from sagemaker import image_uris
 from sagemaker.huggingface import HuggingFace, TrainingCompilerConfig
@@ -96,7 +97,9 @@ def _get_full_gpu_image_uri(
     )
 
 
-def _create_train_job(version, base_framework_version, instance_type, training_compiler_config):
+def _create_train_job(
+    version, base_framework_version, instance_type, training_compiler_config, instance_count=1
+):
     return {
         "image_uri": _get_full_gpu_image_uri(
             version, base_framework_version, instance_type, training_compiler_config
@@ -118,7 +121,7 @@ def _create_train_job(version, base_framework_version, instance_type, training_c
         "output_config": {"S3OutputPath": "s3://{}/".format(BUCKET_NAME)},
         "resource_config": {
             "InstanceType": instance_type,
-            "InstanceCount": 1,
+            "InstanceCount": instance_count,
             "VolumeSizeInGB": 30,
         },
         "hyperparameters": {
@@ -276,6 +279,8 @@ def test_unsupported_instance_group(
     huggingface_training_compiler_version,
     huggingface_training_compiler_pytorch_version,
 ):
+    if Version(huggingface_training_compiler_pytorch_version) < Version("1.11"):
+        pytest.skip("This test is intended for PyTorch 1.11 and above")
     with pytest.raises(ValueError):
         HuggingFace(
             py_version="py38",
@@ -296,6 +301,8 @@ def test_unsupported_distribution(
     huggingface_training_compiler_version,
     huggingface_training_compiler_pytorch_version,
 ):
+    if Version(huggingface_training_compiler_pytorch_version) < Version("1.11"):
+        pytest.skip("This test is intended for PyTorch 1.11 and above")
     with pytest.raises(ValueError):
         HuggingFace(
             py_version="py38",
@@ -383,6 +390,7 @@ def test_pytorchxla_distribution(
         f"pytorch{huggingface_training_compiler_pytorch_version}",
         instance_type,
         compiler_config,
+        instance_count=2,
     )
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
     expected_train_args["enable_sagemaker_metrics"] = False
@@ -642,7 +650,7 @@ def test_register_hf_pytorch_model_auto_infer_framework(
     sagemaker_session,
     huggingface_training_compiler_version,
     huggingface_training_compiler_pytorch_version,
-    huggingface_training_compiler_py_version,
+    huggingface_training_compiler_pytorch_py_version,
 ):
 
     model_package_group_name = "test-hf-tfs-register-model"
@@ -657,7 +665,7 @@ def test_register_hf_pytorch_model_auto_infer_framework(
         role=ROLE,
         transformers_version=huggingface_training_compiler_version,
         pytorch_version=huggingface_training_compiler_pytorch_version,
-        py_version=huggingface_training_compiler_py_version,
+        py_version=huggingface_training_compiler_pytorch_py_version,
         sagemaker_session=sagemaker_session,
     )
 
