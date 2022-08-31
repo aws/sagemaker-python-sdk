@@ -26,10 +26,12 @@ from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout
 
 
+@pytest.fixture(scope="module")
 def gpu_instance_type(request):
     return "ml.p3.2xlarge"
 
 
+@pytest.fixture(scope="module")
 def instance_count(request):
     return 1
 
