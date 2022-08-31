@@ -1,5 +1,47 @@
 # Changelog
 
+## v2.107.0 (2022-08-29)
+
+### Features
+
+ * support python 3.10, update airflow dependency
+
+### Bug Fixes and Other Changes
+
+ * Add retry in session.py to check if training is finished
+
+### Documentation Changes
+
+ * remove Other tab in Built-in algorithms section and mi…
+
+## v2.106.0 (2022-08-24)
+
+### Features
+
+ * Implement Kendra Search in RTD website
+
+### Bug Fixes and Other Changes
+
+ * Add primitive_or_expr() back to conditions
+ * remove specifying env-vars when creating model from model package
+ * Add CGK in config for Spark Image
+
+## v2.105.0 (2022-08-19)
+
+### Features
+
+ * Added endpoint_name to clarify.ModelConfig
+ * adding workgroup functionality to athena query
+
+### Bug Fixes and Other Changes
+
+ * disable debugger/profiler in cgk region
+ * using unique name for lineage test to unblock PR checks
+
+### Documentation Changes
+
+ * update first-party algorithms and structural updates
+
 ## v2.104.0 (2022-08-17)
 
 ### Features
