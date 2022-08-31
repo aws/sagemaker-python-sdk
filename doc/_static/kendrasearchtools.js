@@ -533,6 +533,7 @@ var KendraSearch = {
   _pulse_status : -1,
 
   init : function() {
+      var filters = {};
       var params = $.getQueryParameters();
       if (params.q) {
           var query = params.q[0];
