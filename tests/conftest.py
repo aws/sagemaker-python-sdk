@@ -252,25 +252,44 @@ def huggingface_pytorch_training_py_version(huggingface_pytorch_training_version
 
 @pytest.fixture(scope="module")
 def huggingface_training_compiler_pytorch_version(huggingface_training_compiler_version):
-    return _huggingface_base_fm_version(
+    versions = _huggingface_base_fm_version(
         huggingface_training_compiler_version, "pytorch", "huggingface_training_compiler"
-    )[0]
+    )
+    if not versions:
+        pytest.skip(
+            f"Hugging Face Training Compiler version {huggingface_training_compiler_version} does "
+            f"not have a PyTorch release."
+        )
+    return versions[0]
 
 
 @pytest.fixture(scope="module")
 def huggingface_training_compiler_tensorflow_version(huggingface_training_compiler_version):
-    return _huggingface_base_fm_version(
+    versions = _huggingface_base_fm_version(
         huggingface_training_compiler_version, "tensorflow", "huggingface_training_compiler"
-    )[0]
+    )
+    if not versions:
+        pytest.skip(
+            f"Hugging Face Training Compiler version {huggingface_training_compiler_version} "
+            f"does not have a TensorFlow release."
+        )
+    return versions[0]
 
 
 @pytest.fixture(scope="module")
-def huggingface_training_compiler_py_version(huggingface_training_compiler_tensorflow_version):
+def huggingface_training_compiler_tensorflow_py_version(
+    huggingface_training_compiler_tensorflow_version,
+):
     return (
         "py37"
         if Version(huggingface_training_compiler_tensorflow_version) < Version("2.6")
         else "py38"
     )
+
+
+@pytest.fixture(scope="module")
+def huggingface_training_compiler_pytorch_py_version(huggingface_training_compiler_pytorch_version):
+    return "py38"
 
 
 @pytest.fixture(scope="module")
