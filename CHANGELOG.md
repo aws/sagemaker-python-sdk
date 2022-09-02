@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.108.0 (2022-09-02)
+
+### Features
+
+ * Adding support in HuggingFace estimator for Training Compiler enhanced PyTorch 1.11
+
+### Bug Fixes and Other Changes
+
+ * add sagemaker clarify image account for cgk region
+ * set PYTHONHASHSEED env variable to fixed value to fix intermittent failures in release pipeline
+ * trcomp fixtures to override default fixtures for integ tests
+
+### Documentation Changes
+
+ * add more info about volume_size
+
 ## v2.107.0 (2022-08-29)
 
 ### Features
