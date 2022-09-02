@@ -124,8 +124,9 @@ class ModelStep(StepCollection):
                 Session.create_model.__name__,
                 Session.create_model_package_from_containers.__name__,
             },
-            error_message="The step_args of ModelStep must be obtained from model.create() "
-            "or model.register(). For more, see: https://sagemaker.readthedocs.io/en/stable/"
+            error_message="The step_args of ModelStep must be obtained from the create method "
+            "or register method of a Model object and the Model object must be built with "
+            "PipelineSession. For more, see: https://sagemaker.readthedocs.io/en/stable/"
             "amazon_sagemaker_model_building_pipeline.html#model-step",
         )
         if not (step_args.create_model_request is None) ^ (

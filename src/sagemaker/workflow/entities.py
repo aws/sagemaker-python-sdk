@@ -85,8 +85,11 @@ class PipelineVariable(Expression):
         """Override built-in String function for PipelineVariable"""
         raise TypeError(
             "Pipeline variables do not support __str__ operation. "
-            "Please use `.to_string()` to convert it to string type in execution time"
-            "or use `.expr` to translate it to Json for display purpose in Python SDK."
+            "If you are trying to use a pipeline variable in an Estimator, Processor or Model "
+            "object, please make sure the object is built with a PipelineSession object."
+            "If you are trying to convert a pipeline variable of any type into a pipeline variable "
+            "of string type, please use `.to_string()` method."
+            "Use `.expr` method to display the expression structure of the pipeline variable."
         )
 
     def __int__(self):
