@@ -17,7 +17,7 @@ from enum import Enum
 from typing import List
 import attr
 
-from sagemaker.workflow.entities import Entity, DefaultEnumMeta, RequestType
+from sagemaker.workflow.entities import Entity, RequestType
 
 
 DEFAULT_BACKOFF_RATE = 2.0
@@ -26,14 +26,14 @@ MAX_ATTEMPTS_CAP = 20
 MAX_EXPIRE_AFTER_MIN = 14400
 
 
-class StepExceptionTypeEnum(Enum, metaclass=DefaultEnumMeta):
+class StepExceptionTypeEnum(Enum):
     """Step ExceptionType enum."""
 
     SERVICE_FAULT = "Step.SERVICE_FAULT"
     THROTTLING = "Step.THROTTLING"
 
 
-class SageMakerJobExceptionTypeEnum(Enum, metaclass=DefaultEnumMeta):
+class SageMakerJobExceptionTypeEnum(Enum):
     """SageMaker Job ExceptionType enum."""
 
     INTERNAL_ERROR = "SageMaker.JOB_INTERNAL_ERROR"

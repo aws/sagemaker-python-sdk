@@ -24,14 +24,11 @@ from sagemaker.workflow.entities import (
 from sagemaker.workflow.properties import (
     Properties,
 )
-from sagemaker.workflow.entities import (
-    DefaultEnumMeta,
-)
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.steps import Step, StepTypeEnum, CacheConfig
 
 
-class CallbackOutputTypeEnum(Enum, metaclass=DefaultEnumMeta):
+class CallbackOutputTypeEnum(Enum):
     """CallbackOutput type enum."""
 
     String = "String"

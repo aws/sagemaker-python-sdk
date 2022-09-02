@@ -24,15 +24,12 @@ from sagemaker.workflow.entities import (
 from sagemaker.workflow.properties import (
     Properties,
 )
-from sagemaker.workflow.entities import (
-    DefaultEnumMeta,
-)
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.steps import Step, StepTypeEnum, CacheConfig
 from sagemaker.lambda_helper import Lambda
 
 
-class LambdaOutputTypeEnum(Enum, metaclass=DefaultEnumMeta):
+class LambdaOutputTypeEnum(Enum):
     """LambdaOutput type enum."""
 
     String = "String"

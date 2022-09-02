@@ -20,7 +20,6 @@ from typing import Dict, List, Type
 import attr
 
 from sagemaker.workflow.entities import (
-    DefaultEnumMeta,
     Entity,
     PrimitiveType,
     RequestType,
@@ -28,7 +27,7 @@ from sagemaker.workflow.entities import (
 )
 
 
-class ParameterTypeEnum(Enum, metaclass=DefaultEnumMeta):
+class ParameterTypeEnum(Enum):
     """Parameter type enum."""
 
     STRING = "String"
@@ -59,7 +58,7 @@ class Parameter(PipelineVariable, Entity):
     """
 
     name: str = attr.ib(factory=str)
-    parameter_type: ParameterTypeEnum = attr.ib(factory=ParameterTypeEnum.factory)
+    parameter_type: ParameterTypeEnum = attr.ib(default=None)
     default_value: PrimitiveType = attr.ib(default=None)
 
     @default_value.validator

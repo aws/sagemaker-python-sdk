@@ -26,7 +26,6 @@ import attr
 
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import (
-    DefaultEnumMeta,
     Entity,
     Expression,
     PrimitiveType,
@@ -41,7 +40,7 @@ from sagemaker.workflow.entities import PipelineVariable
 ConditionValueType = Union[ExecutionVariable, Parameter, Properties]
 
 
-class ConditionTypeEnum(Enum, metaclass=DefaultEnumMeta):
+class ConditionTypeEnum(Enum):
     """Condition type enum."""
 
     EQ = "Equals"
@@ -62,7 +61,7 @@ class Condition(Entity):
         condition_type (ConditionTypeEnum): The type of condition.
     """
 
-    condition_type: ConditionTypeEnum = attr.ib(factory=ConditionTypeEnum.factory)
+    condition_type: ConditionTypeEnum = attr.ib(default=None)
 
     @property
     @abc.abstractmethod

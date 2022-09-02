@@ -40,11 +40,7 @@ CheckJobConfig
 Entities
 --------
 
-.. autoclass:: sagemaker.workflow.entities.Entity
-
-.. autoclass:: sagemaker.workflow.entities.DefaultEnumMeta
-
-.. autoclass:: sagemaker.workflow.entities.Expression
+.. autoclass:: sagemaker.workflow.entities.PipelineVariable
 
 .. autoclass:: sagemaker.workflow.entities.PipelineVariable
 

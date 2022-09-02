@@ -17,14 +17,9 @@ import json
 
 import pytest
 
-from enum import Enum
-
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.conditions import ConditionGreaterThan
-from sagemaker.workflow.entities import (
-    DefaultEnumMeta,
-    Entity,
-)
+from sagemaker.workflow.entities import Entity
 from sagemaker.workflow.fail_step import FailStep
 from sagemaker.workflow.functions import Join, JsonGet
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
@@ -40,11 +35,6 @@ class CustomEntity(Entity):
         return {"foo": self.foo}
 
 
-class CustomEnum(Enum, metaclass=DefaultEnumMeta):
-    A = 1
-    B = 2
-
-
 @pytest.fixture
 def custom_entity():
     return CustomEntity(1)
@@ -58,10 +48,6 @@ def custom_entity_list():
 def test_entity(custom_entity):
     request_struct = {"foo": 1}
     assert custom_entity.to_request() == request_struct
-
-
-def test_default_enum_meta():
-    assert CustomEnum().value == 1
 
 
 def test_pipeline_variable_in_pipeline_definition(sagemaker_session):

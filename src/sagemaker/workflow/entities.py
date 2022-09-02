@@ -15,7 +15,6 @@ from __future__ import absolute_import
 
 import abc
 
-from enum import EnumMeta
 from typing import Any, Dict, List, Union
 
 PrimitiveType = Union[str, int, bool, float, None]
@@ -31,20 +30,6 @@ class Entity(abc.ABC):
     @abc.abstractmethod
     def to_request(self) -> RequestType:
         """Get the request structure for workflow service calls."""
-
-
-class DefaultEnumMeta(EnumMeta):
-    """An EnumMeta which defaults to the first value in the Enum list."""
-
-    default = object()
-
-    def __call__(cls, *args, value=default, **kwargs):
-        """Defaults to the first value in the Enum list."""
-        if value is DefaultEnumMeta.default:
-            return next(iter(cls))
-        return super().__call__(value, *args, **kwargs)
-
-    factory = __call__
 
 
 class Expression(abc.ABC):

@@ -38,7 +38,6 @@ from sagemaker.tuner import HyperparameterTuner, _TuningJob
 from sagemaker.workflow.conditions import Condition
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import (
-    DefaultEnumMeta,
     Entity,
     RequestType,
 )
@@ -55,7 +54,7 @@ if TYPE_CHECKING:
     from sagemaker.workflow.step_collections import StepCollection
 
 
-class StepTypeEnum(Enum, metaclass=DefaultEnumMeta):
+class StepTypeEnum(Enum):
     """Enum of `Step` types."""
 
     CONDITION = "Condition"
@@ -91,7 +90,7 @@ class Step(Entity):
     name: str = attr.ib(factory=str)
     display_name: Optional[str] = attr.ib(default=None)
     description: Optional[str] = attr.ib(default=None)
-    step_type: StepTypeEnum = attr.ib(factory=StepTypeEnum.factory)
+    step_type: StepTypeEnum = attr.ib(default=None)
     depends_on: Optional[List[Union[str, "Step", "StepCollection"]]] = attr.ib(default=None)
 
     @property
