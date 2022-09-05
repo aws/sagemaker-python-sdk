@@ -16,6 +16,11 @@ import os
 
 import pytest
 import numpy as np
+
+with open('/root/airflow/airflow.cfg', "r") as f:
+    configfile = f.read()
+    print(configfile)
+
 from airflow import utils
 from airflow import DAG
 from airflow.providers.amazon.aws.operators.sagemaker import SageMakerTrainingOperator
