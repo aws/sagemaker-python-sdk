@@ -414,6 +414,14 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 credential helper or local credential storage for authentication.
             hyperparameters (dict): A dictionary containing the hyperparameters to
                 initialize this estimator with. (Default: None).
+
+                .. caution::
+
+                    You must not include any security sensitive information, such as
+                    account access IDs, secrets, and tokens, in the dictionary for configuring
+                    hyperparameters. &SM; rejects the training job request and returns an
+                    exception error for detected credentials, if such user input is found.
+
             container_log_level (int): The log level to use within the container
                 (default: logging.INFO). Valid values are defined in the Python
                 logging module.
@@ -2339,6 +2347,14 @@ class Estimator(EstimatorBase):
                 using the default AWS configuration chain.
             hyperparameters (dict): Dictionary containing the hyperparameters to
                 initialize this estimator with.
+
+                .. caution::
+
+                    You must not include any security sensitive information, such as
+                    account access IDs, secrets, and tokens, in the dictionary for configuring
+                    hyperparameters. &SM; rejects the training job request and returns an
+                    exception error for detected credentials, if such user input is found.
+
             tags (list[dict]): List of tags for labeling a training job. For
                 more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
@@ -2793,6 +2809,14 @@ class Framework(EstimatorBase):
                 SageMaker. For convenience, this accepts other types for keys
                 and values, but ``str()`` will be called to convert them before
                 training.
+
+                .. caution::
+
+                    You must not include any security sensitive information, such as
+                    account access IDs, secrets, and tokens, in the dictionary for configuring
+                    hyperparameters. &SM; rejects the training job request and returns an
+                    exception error for detected credentials, if such user input is found.
+                    
             container_log_level (int): Log level to use within the container
                 (default: logging.INFO). Valid values are defined in the Python
                 logging module.
