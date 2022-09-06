@@ -2816,7 +2816,7 @@ class Framework(EstimatorBase):
                     account access IDs, secrets, and tokens, in the dictionary for configuring
                     hyperparameters. &SM; rejects the training job request and returns an
                     exception error for detected credentials, if such user input is found.
-                    
+
             container_log_level (int): Log level to use within the container
                 (default: logging.INFO). Valid values are defined in the Python
                 logging module.
