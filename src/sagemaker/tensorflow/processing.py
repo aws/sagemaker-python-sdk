@@ -17,8 +17,13 @@ data validation, and model evaluation and interpretation on SageMaker.
 """
 from __future__ import absolute_import
 
+from typing import Union, List, Dict, Optional
+
+from sagemaker.session import Session
+from sagemaker.network import NetworkConfig
 from sagemaker.processing import FrameworkProcessor
 from sagemaker.tensorflow.estimator import TensorFlow
+from sagemaker.workflow.entities import PipelineVariable
 
 
 class TensorFlowProcessor(FrameworkProcessor):
@@ -28,23 +33,23 @@ class TensorFlowProcessor(FrameworkProcessor):
 
     def __init__(
         self,
-        framework_version,  # New arg
-        role,
-        instance_count,
-        instance_type,
-        py_version="py3",  # New kwarg
-        image_uri=None,
-        command=None,
-        volume_size_in_gb=30,
-        volume_kms_key=None,
-        output_kms_key=None,
-        code_location=None,  # New arg
-        max_runtime_in_seconds=None,
-        base_job_name=None,
-        sagemaker_session=None,
-        env=None,
-        tags=None,
-        network_config=None,
+        framework_version: str,  # New arg
+        role: str,
+        instance_count: Union[int, PipelineVariable],
+        instance_type: Union[str, PipelineVariable],
+        py_version: str = "py3",  # New kwarg
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
+        command: Optional[List[str]] = None,
+        volume_size_in_gb: Union[int, PipelineVariable] = 30,
+        volume_kms_key: Optional[Union[str, PipelineVariable]] = None,
+        output_kms_key: Optional[Union[str, PipelineVariable]] = None,
+        code_location: Optional[str] = None,  # New arg
+        max_runtime_in_seconds: Optional[Union[int, PipelineVariable]] = None,
+        base_job_name: Optional[str] = None,
+        sagemaker_session: Optional[Session] = None,
+        env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        network_config: Optional[NetworkConfig] = None,
     ):
         """This processor executes a Python script in a TensorFlow execution environment.
 
