@@ -2350,7 +2350,7 @@ class Estimator(EstimatorBase):
 
                 .. caution::
 
-                    You must not include any security sensitive information, such as
+                    You must not include any security-sensitive information, such as
                     account access IDs, secrets, and tokens, in the dictionary for configuring
                     hyperparameters. SageMaker rejects the training job request and returns an
                     exception error for detected credentials, if such user input is found.
