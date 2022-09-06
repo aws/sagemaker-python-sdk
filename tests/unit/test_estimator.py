@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+from copy import deepcopy
 
 import logging
 import json
@@ -3825,6 +3826,12 @@ def test_script_mode_estimator_same_calls_as_framework(
 
     model_uri = "s3://someprefix2/models/model.tar.gz"
     training_data_uri = "s3://bucket/mydata"
+    hyperparameters = {
+        "int_hyperparam": 1,
+        "string_hyperparam": "hello",
+        "stringified_numeric_hyperparam": "44",
+        "float_hyperparam": 1.234,
+    }
 
     generic_estimator = Estimator(
         entry_point=SCRIPT_PATH,
@@ -3838,6 +3845,7 @@ def test_script_mode_estimator_same_calls_as_framework(
         model_uri=model_uri,
         dependencies=[],
         debugger_hook_config={},
+        hyperparameters=deepcopy(hyperparameters),
     )
     generic_estimator.fit(training_data_uri)
 
@@ -3858,6 +3866,7 @@ def test_script_mode_estimator_same_calls_as_framework(
         model_uri=model_uri,
         dependencies=[],
         debugger_hook_config={},
+        hyperparameters=deepcopy(hyperparameters),
     )
     framework_estimator.fit(training_data_uri)
 
