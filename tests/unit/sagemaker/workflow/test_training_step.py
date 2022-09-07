@@ -162,9 +162,7 @@ INPUT_PARAM_LISTS = [
 @pytest.fixture
 def client():
     """Mock client.
-
     Considerations when appropriate:
-
         * utilize botocore.stub.Stubber
         * separate runtime client from client
     """
