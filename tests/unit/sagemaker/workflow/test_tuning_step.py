@@ -44,9 +44,7 @@ INSTANCE_TYPE = "ml.m4.xlarge"
 @pytest.fixture
 def client():
     """Mock client.
-
     Considerations when appropriate:
-
         * utilize botocore.stub.Stubber
         * separate runtime client from client
     """
