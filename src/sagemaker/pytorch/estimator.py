@@ -40,6 +40,7 @@ class PyTorch(Framework):
     _framework_name = "pytorch"
     LAUNCH_PYTORCH_DDP_ENV_NAME = "sagemaker_pytorch_ddp_enabled"
     INSTANCE_TYPE_ENV_NAME = "sagemaker_instance_type"
+    ACCL_ENABLED_ENV_NAME = "sagemaker_accl_enabled"
 
     def __init__(
         self,
@@ -242,13 +243,16 @@ class PyTorch(Framework):
         """
         distribution_config = {}
         pytorch_ddp_enabled = False
+        pytorch_ddp_dict = distribution.get("pytorchddp")
         if "pytorchddp" in distribution:
-            pytorch_ddp_enabled = distribution.get("pytorchddp").get("enabled", False)
+            pytorch_ddp_enabled = pytorch_ddp_dict.get("enabled", False)
 
         if pytorch_ddp_enabled:
             distribution_config[self.LAUNCH_PYTORCH_DDP_ENV_NAME] = pytorch_ddp_enabled
             if self.instance_type is not None:
                 distribution_config[self.INSTANCE_TYPE_ENV_NAME] = self.instance_type
+            is_accl_enabled = pytorch_ddp_dict.get("use_accl", True)
+            distribution_config[self.ACCL_ENABLED_ENV_NAME] = is_accl_enabled
         else:
             distribution_config = self._distribution_configuration(distribution=distribution)
 

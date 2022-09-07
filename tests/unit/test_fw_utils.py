@@ -880,9 +880,6 @@ def test_validate_pytorchddp_not_raises():
     # Case 3: Framework is PyTorch, Distribution is PyTorchDDP enabled, supported framework and py versions
     pytorchddp_enabled = {"pytorchddp": {"enabled": True}}
     pytorchddp_supported_fw_versions = [
-        "1.10",
-        "1.10.0",
-        "1.10.2",
         "1.11",
         "1.11.0",
         "1.12",
@@ -905,7 +902,7 @@ def test_validate_pytorchddp_raises():
         fw_utils.validate_pytorch_distribution(
             distribution=pytorchddp_enabled,
             framework_name="pytorch",
-            framework_version="1.8",
+            framework_version="1.10",
             py_version="py3",
             image_uri=None,
         )

@@ -57,6 +57,7 @@ EXPERIMENT_CONFIG = {
 }
 
 DISTRIBUTION_PYTORCH_DDP_ENABLED = {"pytorchddp": {"enabled": True}}
+DISTRIBUTION_PYTORCH_ACCL_DISABLED = {"pytorchddp": {"enabled": True, "use_accl": False}}
 
 
 @pytest.fixture(name="sagemaker_session")
@@ -784,6 +785,7 @@ def test_pytorch_ddp_distribution_configuration(
     expected_torch_ddp = {
         "sagemaker_pytorch_ddp_enabled": True,
         "sagemaker_instance_type": test_instance_type,
+        "sagemaker_accl_enabled": True,
     }
     assert actual_pytorch_ddp == expected_torch_ddp
 
@@ -800,3 +802,25 @@ def test_pytorch_ddp_distribution_configuration_unsupported(sagemaker_session):
         )
     assert (f"framework_version {unsupported_framework_version} is not supported") in str(error)
     assert (f"py_version {unsupported_py_version} is not supported") in str(error)
+
+
+def test_pytorch_ddp_accl_disabled(
+    sagemaker_session, pytorch_ddp_framework_version, pytorch_ddp_py_version
+):
+    test_instance_type = "ml.p4d.24xlarge"
+    pytorch = _pytorch_estimator(
+        sagemaker_session,
+        framework_version=pytorch_ddp_framework_version,
+        py_version=pytorch_ddp_py_version,
+        distribution=DISTRIBUTION_PYTORCH_ACCL_DISABLED,
+        instance_type=test_instance_type,
+    )
+    actual_pytorch_ddp = pytorch._pytorch_distribution_configuration(
+        distribution=pytorch.distribution
+    )
+    expected_torch_ddp = {
+        "sagemaker_pytorch_ddp_enabled": True,
+        "sagemaker_instance_type": test_instance_type,
+        "sagemaker_accl_enabled": False,
+    }
+    assert actual_pytorch_ddp == expected_torch_ddp

@@ -212,7 +212,7 @@ with the ``pytorchddp`` option as the distribution strategy.
 .. note::
 
   This PyTorch DDP support is available
-  in the SageMaker PyTorch Deep Learning Containers v1.12 and later.
+  in the SageMaker PyTorch Deep Learning Containers v1.11 and later.
 
 Adapt Your Training Script
 --------------------------
