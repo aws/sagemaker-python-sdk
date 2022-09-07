@@ -133,9 +133,6 @@ SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
 }
 
 PYTORCHDDP_SUPPORTED_FRAMEWORK_VERSIONS = [
-    "1.10",
-    "1.10.0",
-    "1.10.2",
     "1.11",
     "1.11.0",
     "1.12",
@@ -149,6 +146,12 @@ TORCH_DISTRIBUTED_SUPPORTED_FRAMEWORK_VERSIONS = ["1.11", "1.11.0"]
 
 TRAINIUM_SUPPORTED_DISTRIBUTION_STRATEGIES = ["torch_distributed"]
 
+# TODO: Change to 1.12.1 before merging
+ACCL_SUPPORTED_FRAMEWORK_VERSIONS = (
+    "1.12",
+    "1.12.0",
+)
+ACCL_SUPPORTED_INSTANCE_TYPES = ("ml.p4d.24xlarge",)
 
 SMDISTRIBUTED_SUPPORTED_STRATEGIES = ["dataparallel", "modelparallel"]
 
@@ -1060,7 +1063,6 @@ def validate_torch_distributed_distribution(
     if not torch_distributed_enabled:
         # Distribution strategy other than torch_distributed is selected
         return
-
     err_msg = ""
     if not image_uri:
         # ignore framework_version and py_version if image_uri is set
@@ -1097,6 +1099,60 @@ def validate_torch_distributed_distribution(
 
     if err_msg:
         raise ValueError(err_msg)
+
+def validate_accl_support(
+    use_accl, framework_version, py_version, image_uri, instance_type, instance_count
+):
+    """Check if ACCL is supported for current invocation.
+
+    Args:
+        framework_version (str): A string representing the framework version selected.
+        py_version (str): A string representing the python version selected.
+        image_uri (str): A string representing a Docker image URI.
+        instance_type (str): SageMaker instance type.
+        instance_count (int): Number of training instances to use.
+
+    Raises:
+        ValueError: if `use_accl` is set to true and validation fails, i.e.
+            `instance_type` is not in ACCL_SUPPORTED_INSTANCE_TYPES or
+            `py_version` is not python3 or
+            `framework_version` is not in ACCL_SUPPORTED_FRAMEWORK_VERSIONS or
+            `instance_count` is not greater than 1
+    """
+    err_msg = ""
+    if not image_uri:
+        # ignore framework_version and py_version if image_uri is set
+        # in case image_uri is not set, then both are mandatory
+        if framework_version not in ACCL_SUPPORTED_FRAMEWORK_VERSIONS:
+            err_msg += (
+                f"Provided framework_version {framework_version} is not supported by"
+                " ACCL.\n"
+                "Please specify one of the supported framework versions:"
+                f" {ACCL_SUPPORTED_FRAMEWORK_VERSIONS}.\n"
+            )
+        if "py3" not in py_version:
+            err_msg += (
+                f"Provided py_version {py_version} is not supported by ACCL.\n"
+                "Please specify py_version>=py3.\n"
+            )
+    if instance_type not in ACCL_SUPPORTED_INSTANCE_TYPES:
+        err_msg += (
+            f"Provided instance_type {instance_type} is not supported by ACCL.\n"
+            "Please specify one of the supported instance types:"
+            f"{ACCL_SUPPORTED_INSTANCE_TYPES}.\n"
+        )
+    if instance_count == 1:
+        # ACCL is not supported for single-node jobs
+        err_msg += (
+            "ACCL is not supported for single-node jobs.\n"
+            "Please increase instance_count to be greater than 1.\n"
+        )
+    if not err_msg:
+        return True
+    if use_accl:
+        raise ValueError(f"Could not enable ACCL.\n {err_msg}")
+    logger.warning("Could not enable ACCL.\n %s", err_msg)
+    return False
 
 
 def python_deprecation_warning(framework, latest_supported_version):

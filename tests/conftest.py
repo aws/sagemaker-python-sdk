@@ -476,9 +476,7 @@ def pytorch_ddp_py_version():
     return "py3"
 
 
-@pytest.fixture(
-    scope="module", params=["1.10", "1.10.0", "1.10.2", "1.11", "1.11.0", "1.12", "1.12.0"]
-)
+@pytest.fixture(scope="module", params=["1.11", "1.11.0", "1.12", "1.12.0"])
 def pytorch_ddp_framework_version(request):
     return request.param
 

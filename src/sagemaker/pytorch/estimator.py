@@ -25,6 +25,7 @@ from sagemaker.fw_utils import (
     python_deprecation_warning,
     validate_version_or_image_args,
     validate_distribution,
+    validate_accl_support,
 )
 from sagemaker.pytorch import defaults
 from sagemaker.pytorch.model import PyTorchModel
@@ -42,6 +43,7 @@ class PyTorch(Framework):
     LAUNCH_PYTORCH_DDP_ENV_NAME = "sagemaker_pytorch_ddp_enabled"
     LAUNCH_TORCH_DISTRIBUTED_ENV_NAME = "sagemaker_torch_distributed_enabled"
     INSTANCE_TYPE_ENV_NAME = "sagemaker_instance_type"
+    ACCL_ENABLED_ENV_NAME = "sagemaker_accl_enabled"
 
     def __init__(
         self,
@@ -308,15 +310,18 @@ class PyTorch(Framework):
         pytorch_ddp_enabled = False
         torch_distributed_enabled = False
 
-        if "pytorchddp" in distribution:
-            pytorch_ddp_enabled = distribution.get("pytorchddp").get("enabled", False)
+        pytorch_ddp_dict = distribution.get("pytorchddp")
+        if pytorch_ddp_dict:
+            pytorch_ddp_enabled = pytorch_ddp_dict.get("enabled", False)
         elif "torch_distributed" in distribution:
             torch_distributed_enabled = distribution.get("torch_distributed").get("enabled", False)
-
+        
         if pytorch_ddp_enabled:
             distribution_config[self.LAUNCH_PYTORCH_DDP_ENV_NAME] = pytorch_ddp_enabled
             if self.instance_type is not None:
                 distribution_config[self.INSTANCE_TYPE_ENV_NAME] = self.instance_type
+            is_accl_enabled = self._get_accl_enabled(pytorch_ddp_dict)
+            distribution_config[self.ACCL_ENABLED_ENV_NAME] = is_accl_enabled
         elif torch_distributed_enabled:
             distribution_config[self.LAUNCH_TORCH_DISTRIBUTED_ENV_NAME] = torch_distributed_enabled
             if self.instance_type is not None:
@@ -325,6 +330,41 @@ class PyTorch(Framework):
             distribution_config = self._distribution_configuration(distribution=distribution)
 
         return distribution_config
+
+    def _get_accl_enabled(self, pytorch_ddp_dict):
+        """Evaluates if ACCL should be enabled for current training jobs.
+
+        Case 1: Customer explicitly disables ACCL by setting use_accl to False.
+        Return false.
+
+        Case 2: Customer explicitly enables ACCL by setting use_accl to True.
+        Test if configuration is supported for ACCL.
+        If yes, return true. If not, throw an error.
+
+        Case 3: Customer does not specify use_accl. We try to enable by default.
+        Test if configuration is supported for ACCL.
+        If not, we return false.
+
+        Args:
+            pytorch_ddp_dict (dict): A dictionary with options for pytorchddp distribution.
+        Returns:
+            A boolean that indicates whether to enable ACCL
+        """
+        use_accl = pytorch_ddp_dict.get("use_accl")
+        is_accl_supported = validate_accl_support(
+            use_accl,
+            self.framework_version,
+            self.py_version,
+            self.image_uri,
+            self.instance_type,
+            self.instance_count,
+        )
+
+        if use_accl is False or not is_accl_supported:
+            return False
+        if use_accl and is_accl_supported:
+            return True
+        return use_accl
 
     def hyperparameters(self):
         """Return hyperparameters used by your custom PyTorch code during model training."""

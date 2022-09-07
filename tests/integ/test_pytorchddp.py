@@ -51,3 +51,29 @@ def test_pytorchddp_pt_mnist(
 
     with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
         estimator.fit({"training": _upload_training_data(estimator)}, job_name=job_name)
+
+
+@pytest.mark.skip(
+    reason="This test is skipped for now due ML capacity error."
+    "This test should be re-enabled later."
+)
+@pytest.mark.skipif(
+    integ.test_region() not in integ.DATA_PARALLEL_TESTING_REGIONS,
+    reason="Only allow this test to run in IAD and CMH to limit usage of p3.16xlarge",
+)
+def test_pytorchddp_pt_mnist_accl_disabled(sagemaker_session):
+    job_name = sagemaker.utils.unique_name_from_base("pt-pytorch-ddp")
+    estimator = PyTorch(
+        entry_point="mnist_pt.py",
+        role="SageMakerRole",
+        source_dir=pytorchddp_dir,
+        instance_count=2,
+        instance_type="ml.p3.16xlarge",
+        sagemaker_session=sagemaker_session,
+        framework_version="1.12",
+        py_version="py3",
+        distribution={"pytorchddp": {"enabled": True, "use_accl": False}},
+    )
+
+    with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        estimator.fit({"training": _upload_training_data(estimator)}, job_name=job_name)
