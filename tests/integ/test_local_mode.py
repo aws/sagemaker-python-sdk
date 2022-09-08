@@ -35,7 +35,7 @@ from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.steps import TrainingStep, ProcessingStep, TransformStep
 from sagemaker.workflow.model_step import ModelStep
-from sagemaker.workflow.parameters import ParameterInteger
+from sagemaker.workflow.parameters import ParameterInteger, ParameterString
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.fail_step import FailStep
 from sagemaker.workflow.conditions import ConditionLessThanOrEqualTo
@@ -496,6 +496,7 @@ def test_local_processing_script_processor(sagemaker_local_session, sklearn_imag
 
 @pytest.mark.local_mode
 def test_local_pipeline_with_processing_step(sklearn_latest_version, local_pipeline_session):
+    string_container_arg = ParameterString(name="ProcessingContainerArg", default_value="foo")
     sklearn_processor = SKLearnProcessor(
         framework_version=sklearn_latest_version,
         role="SageMakerRole",
@@ -509,6 +510,7 @@ def test_local_pipeline_with_processing_step(sklearn_latest_version, local_pipel
     processing_args = sklearn_processor.run(
         code=script_path,
         inputs=[ProcessingInput(source=input_file_path, destination="/opt/ml/processing/inputs/")],
+        arguments=["--container_arg", string_container_arg],
     )
     processing_step = ProcessingStep(
         name="sklearn_processor_local_pipeline", step_args=processing_args
@@ -517,6 +519,7 @@ def test_local_pipeline_with_processing_step(sklearn_latest_version, local_pipel
         name="local_pipeline_processing",
         steps=[processing_step],
         sagemaker_session=local_pipeline_session,
+        parameters=[string_container_arg],
     )
     pipeline.create("SageMakerRole", "pipeline for sdk integ testing")
 
