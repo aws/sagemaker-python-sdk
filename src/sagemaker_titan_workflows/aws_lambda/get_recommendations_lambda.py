@@ -33,8 +33,8 @@ default_env = {instance: get_config(instance) for instance in instances}
 
 
 def get_recommendations_handler(event, context):
-    nearest_model_name = event.get("NearestModelName")
-    framework = event["Framework"]
+    nearest_model_name = event["CustomerModelDetails"].get("NearestModelName")
+    framework = event["CustomerModelDetails"].get("Framework")
     count = event["Count"]
     instance_types = event["InstanceTypes"]
 
