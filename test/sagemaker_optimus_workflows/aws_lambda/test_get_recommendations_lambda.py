@@ -37,3 +37,18 @@ class TestGetRecommendationLambda(TestCase):
         self.assertEquals("ml.c5.xlarge", recommendations[0]["instanceType"])
         self.assertTrue("OMP_NUM_THREADS" in recommendations[0]["env"])
         self.assertTrue("TS_DEFAULT_WORKERS_PER_MODEL" in recommendations[0]["env"])
+
+    def test_get_recommendation_without_nearest_model_name(self):
+        recommendations = get_recommendations_handler(
+            {
+                "Framework": "pytorch",
+                "Count": 1,
+                "InstanceTypes": ["ml.c5.xlarge"],
+            },
+            Mock(),
+        )
+
+        self.assertEqual(1, len(recommendations))
+        self.assertEquals("ml.c5.xlarge", recommendations[0]["instanceType"])
+        self.assertTrue("OMP_NUM_THREADS" in recommendations[0]["env"])
+        self.assertTrue("TS_DEFAULT_WORKERS_PER_MODEL" in recommendations[0]["env"])
