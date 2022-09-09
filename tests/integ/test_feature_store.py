@@ -24,6 +24,7 @@ from pandas import DataFrame
 
 from sagemaker.feature_store.feature_definition import FractionalFeatureDefinition
 from sagemaker.feature_store.feature_group import FeatureGroup
+from sagemaker.feature_store.feature_store import FeatureStore
 from sagemaker.feature_store.inputs import FeatureValue, FeatureParameter, TableFormatEnum
 from sagemaker.session import get_execution_role, Session
 from tests.integ.timeout import timeout
@@ -314,6 +315,25 @@ def test_update_feature_group(
         _wait_for_feature_group_update(feature_group)
         feature_definitions = feature_group.describe().get("FeatureDefinitions")
         assert any([True for elem in feature_definitions if new_feature_name in elem.values()])
+
+
+def test_list_feature_groups(feature_store_session, role, feature_group_name, pandas_data_frame):
+    feature_store = FeatureStore(sagemaker_session=feature_store_session)
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+
+    with cleanup_feature_group(feature_group):
+        feature_group.create(
+            s3_uri=False,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+        )
+        _wait_for_feature_group_create(feature_group)
+        output = feature_store.list_feature_groups(name_contains=feature_group_name)
+
+    assert output["FeatureGroupSummaries"][0]["FeatureGroupName"] == feature_group_name
 
 
 def test_feature_metadata(

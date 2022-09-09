@@ -4332,6 +4332,61 @@ class Session(object):  # pylint: disable=too-many-public-methods
             FeatureGroupName=feature_group_name, FeatureAdditions=feature_additions
         )
 
+    def list_feature_groups(
+        self,
+        name_contains,
+        feature_group_status_equals,
+        offline_store_status_equals,
+        creation_time_after,
+        creation_time_before,
+        sort_order,
+        sort_by,
+        max_results,
+        next_token,
+    ) -> Dict[str, Any]:
+        """List all FeatureGroups satisfying given filters.
+
+        Args:
+            name_contains (str): A string that partially matches one or more FeatureGroups' names.
+                Filters FeatureGroups by name.
+            feature_group_status_equals (str): A FeatureGroup status.
+                Filters FeatureGroups by FeatureGroup status.
+            offline_store_status_equals (str): An OfflineStore status.
+                Filters FeatureGroups by OfflineStore status.
+            creation_time_after (datetime.datetime): Use this parameter to search for FeatureGroups
+                created after a specific date and time.
+            creation_time_before (datetime.datetime): Use this parameter to search for FeatureGroups
+                created before a specific date and time.
+            sort_order (str): The order in which FeatureGroups are listed.
+            sort_by (str): The value on which the FeatureGroup list is sorted.
+            max_results (int): The maximum number of results returned by ListFeatureGroups.
+            next_token (str): A token to resume pagination of ListFeatureGroups results.
+        Returns:
+            Response dict from service.
+        """
+        list_feature_groups_args = {}
+
+        if name_contains:
+            list_feature_groups_args["NameContains"] = name_contains
+        if feature_group_status_equals:
+            list_feature_groups_args["FeatureGroupStatusEquals"] = feature_group_status_equals
+        if offline_store_status_equals:
+            list_feature_groups_args["OfflineStoreStatusEquals"] = offline_store_status_equals
+        if creation_time_after:
+            list_feature_groups_args["CreationTimeAfter"] = creation_time_after
+        if creation_time_before:
+            list_feature_groups_args["CreationTimeBefore"] = creation_time_before
+        if sort_order:
+            list_feature_groups_args["SortOrder"] = sort_order
+        if sort_by:
+            list_feature_groups_args["SortBy"] = sort_by
+        if max_results:
+            list_feature_groups_args["MaxResults"] = max_results
+        if next_token:
+            list_feature_groups_args["NextToken"] = next_token
+
+        return self.sagemaker_client.list_feature_groups(**list_feature_groups_args)
+
     def update_feature_metadata(
         self,
         feature_group_name: str,
