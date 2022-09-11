@@ -863,20 +863,11 @@ def validate_accl_support(framework_version, py_version, image_uri, instance_typ
     """Check if ACCL is supported for current invocation.
 
     Args:
-        distribution (dict): A dictionary with information to enable distributed training.
-            (Defaults to None if distributed training is not enabled.) For example:
-
-            .. code:: python
-
-                {
-                    "pytorchddp": {
-                        "enabled": True
-                    }
-                }
-        framework_name (str): A string representing the name of framework selected.
         framework_version (str): A string representing the framework version selected.
         py_version (str): A string representing the python version selected.
         image_uri (str): A string representing a Docker image URI.
+        instance_type (str): SageMaker instance type.
+        instance_count (int): Number of training instances to use.
 
     Raises:
         ValueError: if
@@ -913,7 +904,6 @@ def validate_accl_support(framework_version, py_version, image_uri, instance_typ
             f"ACCL is not supported for single-node jobs.\n"
             "Please increase instance_count to be greater than 1.\n"
         )
-    logger.error(f"err_msg is {err_msg}\n")
     return err_msg
 
 

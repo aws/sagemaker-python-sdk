@@ -262,7 +262,7 @@ class PyTorch(Framework):
     def _should_enable_accl(self, pytorch_ddp_dict):
         """Evaluates if ACCL should be enabled for current training jobs/
         Case 1: Customer explicitly disables ACCL by setting use_accl to False.
-        Return false
+        Return false.
 
         Case 2: Customer explicitly enables ACCL by setting use_accl to True.
         Test if configuration is supported for ACCL.
@@ -286,7 +286,6 @@ class PyTorch(Framework):
             self.instance_count,
         )
 
-        logger.warning(f"get_accl_support_validation_msg is {get_accl_support_validation_msg}\n")
         is_accl_supported = get_accl_support_validation_msg == ""
         # Case 1
         if use_accl == False:
