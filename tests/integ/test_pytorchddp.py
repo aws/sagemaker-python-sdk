@@ -61,11 +61,7 @@ def test_pytorchddp_pt_mnist(
     integ.test_region() not in integ.DATA_PARALLEL_TESTING_REGIONS,
     reason="Only allow this test to run in IAD and CMH to limit usage of p3.16xlarge",
 )
-def test_pytorchddp_pt_mnist_accl_disabled(
-    sagemaker_session,
-    pytorch_ddp_framework_version,
-    pytorch_ddp_py_version,
-):
+def test_pytorchddp_pt_mnist_accl_disabled(sagemaker_session):
     job_name = sagemaker.utils.unique_name_from_base("pt-pytorch-ddp")
     estimator = PyTorch(
         entry_point="mnist_pt.py",
@@ -74,8 +70,8 @@ def test_pytorchddp_pt_mnist_accl_disabled(
         instance_count=2,
         instance_type="ml.p3.16xlarge",
         sagemaker_session=sagemaker_session,
-        framework_version=pytorch_ddp_framework_version,
-        py_version=pytorch_ddp_py_version,
+        framework_version="1.12",
+        py_version="py3",
         distribution={"pytorchddp": {"enabled": True, "use_accl": False}},
     )
 
