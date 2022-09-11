@@ -863,7 +863,7 @@ def test_pytorch_ddp_accl_explicit_enabled_and_unsupported(sagemaker_session):
     with pytest.raises(ValueError) as error:
         pytorch._pytorch_distribution_configuration(distribution=pytorch.distribution)
     assert (f"framework_version {unsupported_framework_version} is not supported") in str(error)
-    assert (f"ACCL is not supported for single-node jobs.") in str(error)
+    assert ("ACCL is not supported for single-node jobs.") in str(error)
 
 
 def test_pytorch_ddp_accl_default_on_and_supported(sagemaker_session):

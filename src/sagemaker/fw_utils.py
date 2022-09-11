@@ -892,7 +892,7 @@ def validate_accl_support(framework_version, py_version, image_uri, instance_typ
                 f"Provided py_version {py_version} is not supported by ACCL.\n"
                 "Please specify py_version>=py3.\n"
             )
-    if not instance_type in ACCL_SUPPORTED_INSTANCE_TYPES:
+    if instance_type not in ACCL_SUPPORTED_INSTANCE_TYPES:
         err_msg += (
             f"Provided instance_type {instance_type} is not supported by ACCL.\n"
             "Please specify one of the supported instance types:"
@@ -901,7 +901,7 @@ def validate_accl_support(framework_version, py_version, image_uri, instance_typ
     if instance_count == 1:
         # ACCL is not supported for single-node jobs
         err_msg += (
-            f"ACCL is not supported for single-node jobs.\n"
+            "ACCL is not supported for single-node jobs.\n"
             "Please increase instance_count to be greater than 1.\n"
         )
     return err_msg

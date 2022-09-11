@@ -921,15 +921,12 @@ def test_validate_pytorchddp_raises():
 def test_validate_accl_support_no_error():
     expected_err_msg = ""
     #  Framework is PyTorch, Distribution is PyTorchDDP enabled, all supported parameters
-    pytorchddp_enabled = {"pytorchddp": {"enabled": True}}
     accl_supported_fw_versions = [
         "1.12",
         "1.12.0",
     ]
     for framework_version in accl_supported_fw_versions:
         assert expected_err_msg == fw_utils.validate_accl_support(
-            distribution=pytorchddp_enabled,
-            framework_name="pytorch",
             framework_version=framework_version,
             py_version="py3",
             image_uri="custom-container",
@@ -939,11 +936,8 @@ def test_validate_accl_support_no_error():
 
 
 def test_validate_accl_support_error():
-    pytorchddp_enabled = {"pytorchddp": {"enabled": True}}
     # Case 1: Unsupported framework version
     err_msg = fw_utils.validate_accl_support(
-        distribution=pytorchddp_enabled,
-        framework_name="pytorch",
         framework_version="1.10",
         py_version="py3",
         image_uri=None,
@@ -954,8 +948,6 @@ def test_validate_accl_support_error():
 
     # Case 2: Unsupported Py version
     err_msg = fw_utils.validate_accl_support(
-        distribution=pytorchddp_enabled,
-        framework_name="pytorch",
         framework_version="1.10",
         py_version="py2",
         image_uri=None,
@@ -966,8 +958,6 @@ def test_validate_accl_support_error():
 
     # Case 3: Unsupported Instance Type
     err_msg = fw_utils.validate_accl_support(
-        distribution=pytorchddp_enabled,
-        framework_name="pytorch",
         framework_version="1.10",
         py_version="py2",
         image_uri=None,
@@ -978,8 +968,6 @@ def test_validate_accl_support_error():
 
     # Case 4: Unsupported Instance Count
     err_msg = fw_utils.validate_accl_support(
-        distribution=pytorchddp_enabled,
-        framework_name="pytorch",
         framework_version="1.10",
         py_version="py2",
         image_uri=None,

@@ -260,7 +260,8 @@ class PyTorch(Framework):
         return distribution_config
 
     def _should_enable_accl(self, pytorch_ddp_dict):
-        """Evaluates if ACCL should be enabled for current training jobs/
+        """Evaluates if ACCL should be enabled for current training jobs.
+
         Case 1: Customer explicitly disables ACCL by setting use_accl to False.
         Return false.
 
@@ -288,17 +289,15 @@ class PyTorch(Framework):
 
         is_accl_supported = get_accl_support_validation_msg == ""
         # Case 1
-        if use_accl == False:
+        if use_accl is False:
             return False
         # Case 2
-        if use_accl == True:
+        if use_accl:
             if is_accl_supported:
                 return True
-            else:
-                raise ValueError(get_accl_support_validation_msg)
+            raise ValueError(get_accl_support_validation_msg)
         # Case 3
-        else:
-            return is_accl_supported
+        return is_accl_supported
 
     def hyperparameters(self):
         """Return hyperparameters used by your custom PyTorch code during model training."""
