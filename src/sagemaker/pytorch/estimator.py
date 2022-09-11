@@ -25,6 +25,7 @@ from sagemaker.fw_utils import (
     python_deprecation_warning,
     validate_version_or_image_args,
     validate_distribution,
+    validate_accl_support,
 )
 from sagemaker.pytorch import defaults
 from sagemaker.pytorch.model import PyTorchModel
@@ -51,7 +52,7 @@ class PyTorch(Framework):
         hyperparameters=None,
         image_uri=None,
         distribution=None,
-        **kwargs
+        **kwargs,
     ):
         """This ``Estimator`` executes a PyTorch script in a managed PyTorch execution environment.
 
@@ -244,19 +245,61 @@ class PyTorch(Framework):
         distribution_config = {}
         pytorch_ddp_enabled = False
         pytorch_ddp_dict = distribution.get("pytorchddp")
-        if "pytorchddp" in distribution:
+        if pytorch_ddp_dict is not None:
             pytorch_ddp_enabled = pytorch_ddp_dict.get("enabled", False)
 
         if pytorch_ddp_enabled:
             distribution_config[self.LAUNCH_PYTORCH_DDP_ENV_NAME] = pytorch_ddp_enabled
             if self.instance_type is not None:
                 distribution_config[self.INSTANCE_TYPE_ENV_NAME] = self.instance_type
-            is_accl_enabled = pytorch_ddp_dict.get("use_accl", True)
+            is_accl_enabled = self._should_enable_accl(pytorch_ddp_dict)
             distribution_config[self.ACCL_ENABLED_ENV_NAME] = is_accl_enabled
         else:
             distribution_config = self._distribution_configuration(distribution=distribution)
 
         return distribution_config
+
+    def _should_enable_accl(self, pytorch_ddp_dict):
+        """Evaluates if ACCL should be enabled for current training jobs/
+        Case 1: Customer explicitly disables ACCL by setting use_accl to False.
+        Return false
+
+        Case 2: Customer explicitly enables ACCL by setting use_accl to True.
+        Test if configuration is supported for ACCL.
+        If yes, return true. If not, throw an error.
+
+        Case 3: Customer does not specify use_accl. We try to enable by default.
+        Test if configuration is supported for ACCL.
+        If yes, return true. If not, we return false.
+
+        Args:
+            pytorch_ddp_dict (dict): A dictionary with options for pytorchddp distribution.
+        Returns:
+            A boolean that indicates whether to enable ACCL
+        """
+        use_accl = pytorch_ddp_dict.get("use_accl")
+        get_accl_support_validation_msg = validate_accl_support(
+            self.framework_version,
+            self.py_version,
+            self.image_uri,
+            self.instance_type,
+            self.instance_count,
+        )
+
+        logger.warning(f"get_accl_support_validation_msg is {get_accl_support_validation_msg}\n")
+        is_accl_supported = get_accl_support_validation_msg == ""
+        # Case 1
+        if use_accl == False:
+            return False
+        # Case 2
+        if use_accl == True:
+            if is_accl_supported:
+                return True
+            else:
+                raise ValueError(get_accl_support_validation_msg)
+        # Case 3
+        else:
+            return is_accl_supported
 
     def hyperparameters(self):
         """Return hyperparameters used by your custom PyTorch code during model training."""
@@ -277,7 +320,7 @@ class PyTorch(Framework):
         entry_point=None,
         source_dir=None,
         dependencies=None,
-        **kwargs
+        **kwargs,
     ):
         """Create a SageMaker ``PyTorchModel`` object that can be deployed to an ``Endpoint``.
 
@@ -328,7 +371,7 @@ class PyTorch(Framework):
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             dependencies=(dependencies or self.dependencies),
-            **kwargs
+            **kwargs,
         )
 
     @classmethod

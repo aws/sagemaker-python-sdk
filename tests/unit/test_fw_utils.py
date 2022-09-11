@@ -916,3 +916,95 @@ def test_validate_pytorchddp_raises():
             py_version="py2",
             image_uri=None,
         )
+
+
+def test_validate_accl_support_no_error():
+    expected_err_msg = ""
+    # Case 1: Framework is not PyTorch
+    assert expected_err_msg == fw_utils.validate_accl_support(
+        distribution=None,
+        framework_name="tensorflow",
+        framework_version="2.9.1",
+        py_version="py3",
+        image_uri="custom-container",
+        instance_type="ml.p3.16xlarge",
+        instance_count=2,
+    )
+    # Case 2: Framework is PyTorch, but distribution is not PyTorchDDP
+    pytorchddp_disabled = {"pytorchddp": {"enabled": False}}
+    assert expected_err_msg == fw_utils.validate_accl_support(
+        distribution=pytorchddp_disabled,
+        framework_name="pytorch",
+        framework_version="1.10",
+        py_version="py3",
+        image_uri="custom-container",
+        instance_type="ml.p3.16xlarge",
+        instance_count=2,
+    )
+    # Case 3: Framework is PyTorch, Distribution is PyTorchDDP enabled, all supported parameters
+    pytorchddp_enabled = {"pytorchddp": {"enabled": True}}
+    accl_supported_fw_versions = [
+        "1.12",
+        "1.12.0",
+    ]
+    for framework_version in accl_supported_fw_versions:
+        assert expected_err_msg == fw_utils.validate_accl_support(
+            distribution=pytorchddp_enabled,
+            framework_name="pytorch",
+            framework_version=framework_version,
+            py_version="py3",
+            image_uri="custom-container",
+            instance_type="ml.p4d.24xlarge",
+            instance_count=2,
+        )
+
+
+def test_validate_accl_support_error():
+    pytorchddp_enabled = {"pytorchddp": {"enabled": True}}
+    # Case 1: Unsupported framework version
+    err_msg = fw_utils.validate_accl_support(
+        distribution=pytorchddp_enabled,
+        framework_name="pytorch",
+        framework_version="1.10",
+        py_version="py3",
+        image_uri=None,
+        instance_type="ml.p4d.24xlarge",
+        instance_count=2,
+    )
+    assert "supported framework versions" in err_msg
+
+    # Case 2: Unsupported Py version
+    err_msg = fw_utils.validate_accl_support(
+        distribution=pytorchddp_enabled,
+        framework_name="pytorch",
+        framework_version="1.10",
+        py_version="py2",
+        image_uri=None,
+        instance_type="ml.p4d.24xlarge",
+        instance_count=2,
+    )
+    assert "specify py_version>=py3" in err_msg
+
+    # Case 3: Unsupported Instance Type
+    err_msg = fw_utils.validate_accl_support(
+        distribution=pytorchddp_enabled,
+        framework_name="pytorch",
+        framework_version="1.10",
+        py_version="py2",
+        image_uri=None,
+        instance_type="ml.p3.16xlarge",
+        instance_count=2,
+    )
+    assert "supported instance types" in err_msg
+
+    # Case 4: Unsupported Instance Count
+    err_msg = fw_utils.validate_accl_support(
+        distribution=pytorchddp_enabled,
+        framework_name="pytorch",
+        framework_version="1.10",
+        py_version="py2",
+        image_uri=None,
+        instance_type="ml.p4d.24xlarge",
+        instance_count=1,
+    )
+    assert "increase instance_count" in err_msg
