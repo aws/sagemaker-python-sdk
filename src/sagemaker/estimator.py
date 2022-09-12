@@ -2629,6 +2629,8 @@ class Estimator(EstimatorBase):
             **kwargs,
         )
 
+        self.set_hyperparameters(**self._hyperparameters)
+
     def training_image_uri(self):
         """Returns the docker image to use for training.
 
@@ -2644,9 +2646,15 @@ class Estimator(EstimatorBase):
         training code on SageMaker. For convenience, this accepts other types
         for keys and values, but ``str()`` will be called to convert them before
         training.
+
+        If a source directory is specified, this method escapes the dict argument as JSON,
+        and updates the private hyperparameter attribute.
         """
-        for k, v in kwargs.items():
-            self._hyperparameters[k] = v
+        if self.source_dir:
+            self._hyperparameters.update(EstimatorBase._json_encode_hyperparameters(kwargs))
+        else:
+            for k, v in kwargs.items():
+                self._hyperparameters[k] = v
 
     def hyperparameters(self):
         """Returns the hyperparameters as a dictionary to use for training.
