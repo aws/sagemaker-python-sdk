@@ -100,6 +100,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
     instance.
     """
 
+    LAUNCH_PT_XLA_ENV_NAME = "sagemaker_pytorch_xla_multi_worker_enabled"
     LAUNCH_PS_ENV_NAME = "sagemaker_parameter_server_enabled"
     LAUNCH_MPI_ENV_NAME = "sagemaker_mpi_enabled"
     LAUNCH_SM_DDP_ENV_NAME = "sagemaker_distributed_dataparallel_enabled"
@@ -166,10 +167,44 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             instance_type (str): Type of EC2 instance to use for training,
                 for example, ``'ml.c4.xlarge'``. Required if instance_groups is
                 not set.
-            volume_size (int): Size in GB of the EBS volume to use for
-                storing input data during training (default: 30). Must be large
-                enough to store training data if File Mode is used (which is the
-                default).
+            volume_size (int): Size in GB of the storage volume to use for
+                storing input and output data during training (default: 30).
+
+                Must be large enough to store training data if File mode is
+                used, which is the default mode.
+
+                When you use an ML instance with the EBS-only storage option
+                such as ``ml.c5`` and ``ml.p2``,
+                you must define the size of the EBS
+                volume through the ``volume_size`` parameter in the estimator class.
+
+                .. note::
+
+                    When you use an ML instance with `NVMe SSD volumes
+                    <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ssd-instance-store.html#nvme-ssd-volumes>`_
+                    such as ``ml.p4d``, ``ml.g4dn``, and ``ml.g5``,
+                    do not include this parameter in the estimator configuration.
+                    If you use one of those ML instance types,
+                    SageMaker doesn't provision Amazon EBS General Purpose SSD
+                    (gp2) storage nor take this parameter to adjust the NVMe instance storage.
+                    Available storage is fixed to the NVMe instance storage
+                    capacity. SageMaker configures storage paths for training
+                    datasets, checkpoints, model artifacts, and outputs to use the
+                    entire capacity of the instance storage.
+
+                    Note that if you include this parameter and specify a number that
+                    exceeds the size of the NVMe volume attached to the instance type,
+                    SageMaker returns an ``Invalid VolumeSizeInGB`` error.
+
+                To look up instance types and their instance storage types
+                and volumes, see `Amazon EC2 Instance Types
+                <http://aws.amazon.com/ec2/instance-types/>`_.
+
+                To find the default local paths defined by the SageMaker
+                training platform, see `Amazon SageMaker Training Storage
+                Folders for Training Datasets, Checkpoints, Model Artifacts,
+                and Outputs
+                <https://docs.aws.amazon.com/sagemaker/latest/dg/model-train-storage.html>`_.
             volume_kms_key (str): Optional. KMS key ID for encrypting EBS
                 volume attached to the training instance (default: None).
             max_run (int): Timeout in seconds for training (default: 24 *
@@ -2232,12 +2267,46 @@ class Estimator(EstimatorBase):
             instance_count (int): Number of Amazon EC2 instances to use
                 for training. Required if instance_groups is not set.
             instance_type (str): Type of EC2 instance to use for training,
-                for example, 'ml.c4.xlarge'. Required if instance_groups is
+                for example, ``'ml.c4.xlarge'``. Required if instance_groups is
                 not set.
-            volume_size (int): Size in GB of the EBS volume to use for
-                storing input data during training (default: 30). Must be large
-                enough to store training data if File Mode is used (which is the
-                default).
+            volume_size (int): Size in GB of the storage volume to use for
+                storing input and output data during training (default: 30).
+
+                Must be large enough to store training data if File mode is
+                used, which is the default mode.
+
+                When you use an ML instance with the EBS-only storage option
+                such as ``ml.c5`` and ``ml.p2``,
+                you must define the size of the EBS
+                volume through the ``volume_size`` parameter in the estimator class.
+
+                .. note::
+
+                    When you use an ML instance with `NVMe SSD volumes
+                    <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ssd-instance-store.html#nvme-ssd-volumes>`_
+                    such as ``ml.p4d``, ``ml.g4dn``, and ``ml.g5``,
+                    do not include this parameter in the estimator configuration.
+                    If you use one of those ML instance types,
+                    SageMaker doesn't provision Amazon EBS General Purpose SSD
+                    (gp2) storage nor take this parameter to adjust the NVMe instance storage.
+                    Available storage is fixed to the NVMe instance storage
+                    capacity. SageMaker configures storage paths for training
+                    datasets, checkpoints, model artifacts, and outputs to use the
+                    entire capacity of the instance storage.
+
+                    Note that if you include this parameter and specify a number that
+                    exceeds the size of the NVMe volume attached to the instance type,
+                    SageMaker returns an ``Invalid VolumeSizeInGB`` error.
+
+                To look up instance types and their instance storage types
+                and volumes, see `Amazon EC2 Instance Types
+                <http://aws.amazon.com/ec2/instance-types/>`_.
+
+                To find the default local paths defined by the SageMaker
+                training platform, see `Amazon SageMaker Training Storage
+                Folders for Training Datasets, Checkpoints, Model Artifacts,
+                and Outputs
+                <https://docs.aws.amazon.com/sagemaker/latest/dg/model-train-storage.html>`_.
             volume_kms_key (str): Optional. KMS key ID for encrypting EBS
                 volume attached to the training instance (default: None).
             max_run (int): Timeout in seconds for training (default: 24 *
@@ -2560,6 +2629,8 @@ class Estimator(EstimatorBase):
             **kwargs,
         )
 
+        self.set_hyperparameters(**self._hyperparameters)
+
     def training_image_uri(self):
         """Returns the docker image to use for training.
 
@@ -2575,9 +2646,15 @@ class Estimator(EstimatorBase):
         training code on SageMaker. For convenience, this accepts other types
         for keys and values, but ``str()`` will be called to convert them before
         training.
+
+        If a source directory is specified, this method escapes the dict argument as JSON,
+        and updates the private hyperparameter attribute.
         """
-        for k, v in kwargs.items():
-            self._hyperparameters[k] = v
+        if self.source_dir:
+            self._hyperparameters.update(EstimatorBase._json_encode_hyperparameters(kwargs))
+        else:
+            for k, v in kwargs.items():
+                self._hyperparameters[k] = v
 
     def hyperparameters(self):
         """Returns the hyperparameters as a dictionary to use for training.
@@ -3247,6 +3324,10 @@ class Framework(EstimatorBase):
             distribution_config["sagemaker_distribution_instance_groups"] = distribution[
                 "instance_groups"
             ]
+
+        if "pytorchxla" in distribution:
+            pt_xla_enabled = distribution.get("pytorchxla").get("enabled", False)
+            distribution_config[self.LAUNCH_PT_XLA_ENV_NAME] = pt_xla_enabled
 
         if "parameter_server" in distribution:
             ps_enabled = distribution.get("parameter_server").get("enabled", False)

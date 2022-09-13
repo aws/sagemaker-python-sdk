@@ -1,5 +1,52 @@
 # Changelog
 
+## v2.109.0 (2022-09-09)
+
+### Features
+
+ * add search filters
+
+### Bug Fixes and Other Changes
+
+ * local pipeline step argument parsing bug
+ * support fail_on_violation flag for check steps
+ * fix links per app security scan
+ * Add PipelineVariable annotation for all processor subclasses
+
+### Documentation Changes
+
+ * the SageMaker model parallel library 1.11.0 release
+
+## v2.108.0 (2022-09-02)
+
+### Features
+
+ * Adding support in HuggingFace estimator for Training Compiler enhanced PyTorch 1.11
+
+### Bug Fixes and Other Changes
+
+ * add sagemaker clarify image account for cgk region
+ * set PYTHONHASHSEED env variable to fixed value to fix intermittent failures in release pipeline
+ * trcomp fixtures to override default fixtures for integ tests
+
+### Documentation Changes
+
+ * add more info about volume_size
+
+## v2.107.0 (2022-08-29)
+
+### Features
+
+ * support python 3.10, update airflow dependency
+
+### Bug Fixes and Other Changes
+
+ * Add retry in session.py to check if training is finished
+
+### Documentation Changes
+
+ * remove Other tab in Built-in algorithms section and mi…
+
 ## v2.106.0 (2022-08-24)
 
 ### Features

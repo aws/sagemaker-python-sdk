@@ -41,7 +41,7 @@ JOB_NAME = "{}-{}".format(IMAGE_URI, TIMESTAMP)
 ROLE = "Dummy"
 REGION = "us-east-1"
 GPU = "ml.p3.2xlarge"
-SUPPORTED_GPU_INSTANCE_CLASSES = {"p3", "p3dn", "g4dn", "p4dn", "g5"}
+SUPPORTED_GPU_INSTANCE_CLASSES = {"p3", "p3dn", "g4dn", "p4d", "g5"}
 UNSUPPORTED_GPU_INSTANCE_CLASSES = EC2_GPU_INSTANCE_CLASSES - SUPPORTED_GPU_INSTANCE_CLASSES
 
 LIST_TAGS_RESULT = {"Tags": [{"Key": "TagtestKey", "Value": "TagtestValue"}]}
