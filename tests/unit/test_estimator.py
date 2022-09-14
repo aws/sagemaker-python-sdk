@@ -388,6 +388,7 @@ def test_framework_with_debugger_and_built_in_rule(sagemaker_session):
         ],
     }
     assert args["profiler_config"] == {
+        "DisableProfiler": False,
         "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
     }
 
@@ -552,6 +553,7 @@ def test_framework_without_debugger_and_profiler(time, sagemaker_session):
     }
     assert "debugger_rule_configs" not in args
     assert args["profiler_config"] == {
+        "DisableProfiler": False,
         "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
     }
     assert args["profiler_rule_configs"] == [
@@ -622,6 +624,7 @@ def test_framework_with_debugger_and_profiler_rules(sagemaker_session):
         ],
     }
     assert args["profiler_config"] == {
+        "DisableProfiler": False,
         "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
     }
     assert args["profiler_rule_configs"] == [
@@ -657,6 +660,7 @@ def test_framework_with_only_profiler_rule_specified(sagemaker_session):
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
     assert args["profiler_config"] == {
+        "DisableProfiler": False,
         "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
     }
     assert args["profiler_rule_configs"] == [
@@ -689,6 +693,7 @@ def test_framework_with_profiler_config_without_s3_output_path(time, sagemaker_s
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
     assert args["profiler_config"] == {
+        "DisableProfiler": False,
         "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         "ProfilingIntervalInMilliseconds": 1000,
     }
@@ -723,7 +728,9 @@ def test_framework_with_no_default_profiler_in_unsupported_region(region):
     f.fit("s3://mydata")
     sms.train.assert_called_once()
     _, args = sms.train.call_args
-    assert args.get("profiler_config") is None
+    # assert args.get("profiler_config") == {"DisableProfiler": True}
+    # temporarily check if "DisableProfiler" flag is true until s3_output is changed to optional in service
+    assert args.get("profiler_config")["DisableProfiler"] == True
     assert args.get("profiler_rule_configs") is None
 
 
@@ -905,6 +912,7 @@ def test_framework_with_enabling_default_profiling(
     sagemaker_session.update_training_job.assert_called_once()
     _, args = sagemaker_session.update_training_job.call_args
     assert args["profiler_config"] == {
+        "DisableProfiler": False,
         "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
     }
     assert args["profiler_rule_configs"] == [
@@ -938,6 +946,7 @@ def test_framework_with_enabling_default_profiling_with_existed_s3_output_path(
     sagemaker_session.update_training_job.assert_called_once()
     _, args = sagemaker_session.update_training_job.call_args
     assert args["profiler_config"] == {
+        "DisableProfiler": False,
         "S3OutputPath": "s3://custom/",
     }
     assert args["profiler_rule_configs"] == [
@@ -979,7 +988,9 @@ def test_framework_with_disabling_profiling(sagemaker_session, training_job_desc
     f.disable_profiling()
     sagemaker_session.update_training_job.assert_called_once()
     _, args = sagemaker_session.update_training_job.call_args
-    assert args["profiler_config"] == {"DisableProfiler": True}
+    # assert args["profiler_config"] == {"DisableProfiler": True}
+    # temporarily check if "DisableProfiler" flag is true until s3_output is changed to optional in service
+    assert args.get("profiler_config")["DisableProfiler"] == True
 
 
 def test_framework_with_update_profiler_when_no_training_job(sagemaker_session):
@@ -1036,6 +1047,7 @@ def test_framework_with_update_profiler_config(sagemaker_session):
     sagemaker_session.update_training_job.assert_called_once()
     _, args = sagemaker_session.update_training_job.call_args
     assert args["profiler_config"] == {
+        "DisableProfiler": False,
         "ProfilingIntervalInMilliseconds": 1000,
     }
     assert "profiler_rule_configs" not in args
@@ -1064,7 +1076,7 @@ def test_framework_with_update_profiler_report_rule(sagemaker_session):
             "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
         }
     ]
-    assert "profiler_config" not in args
+    assert args["profiler_config"]["DisableProfiler"] == False
 
 
 def test_framework_with_disable_framework_metrics(sagemaker_session):
@@ -1079,7 +1091,7 @@ def test_framework_with_disable_framework_metrics(sagemaker_session):
     f.update_profiler(disable_framework_metrics=True)
     sagemaker_session.update_training_job.assert_called_once()
     _, args = sagemaker_session.update_training_job.call_args
-    assert args["profiler_config"] == {"ProfilingParameters": {}}
+    assert args["profiler_config"] == {"DisableProfiler": False, "ProfilingParameters": {}}
     assert "profiler_rule_configs" not in args
 
 
@@ -1096,6 +1108,7 @@ def test_framework_with_disable_framework_metrics_and_update_system_metrics(sage
     sagemaker_session.update_training_job.assert_called_once()
     _, args = sagemaker_session.update_training_job.call_args
     assert args["profiler_config"] == {
+        "DisableProfiler": False,
         "ProfilingIntervalInMilliseconds": 1000,
         "ProfilingParameters": {},
     }
@@ -1138,7 +1151,10 @@ def test_framework_with_update_profiler_config_and_profiler_rule(sagemaker_sessi
     f.update_profiler(rules=[profiler_custom_rule], system_monitor_interval_millis=1000)
     sagemaker_session.update_training_job.assert_called_once()
     _, args = sagemaker_session.update_training_job.call_args
-    assert args["profiler_config"] == {"ProfilingIntervalInMilliseconds": 1000}
+    assert args["profiler_config"] == {
+        "DisableProfiler": False,
+        "ProfilingIntervalInMilliseconds": 1000,
+    }
     assert args["profiler_rule_configs"] == [
         {
             "InstanceType": "c4.4xlarge",
@@ -2608,7 +2624,7 @@ NO_INPUT_TRAIN_CALL = {
     "input_config": None,
     "input_mode": "File",
     "output_config": {"S3OutputPath": OUTPUT_PATH},
-    "profiler_config": {"S3OutputPath": OUTPUT_PATH},
+    "profiler_config": {"DisableProfiler": False, "S3OutputPath": OUTPUT_PATH},
     "profiler_rule_configs": [
         {
             "RuleConfigurationName": "ProfilerReport-1510006209",

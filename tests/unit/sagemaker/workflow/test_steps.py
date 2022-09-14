@@ -375,6 +375,7 @@ def test_training_step_base_estimator(sagemaker_session):
                 "CollectionConfigurations": [],
             },
             "ProfilerConfig": {
+                "DisableProfiler": False,
                 "ProfilingIntervalInMilliseconds": 500,
                 "S3OutputPath": {"Std:Join": {"On": "/", "Values": ["s3:/", "a", "b"]}},
             },
@@ -484,7 +485,7 @@ def test_training_step_tensorflow(sagemaker_session):
                 "sagemaker_instance_type": {"Get": "Parameters.InstanceType"},
                 "sagemaker_distributed_dataparallel_custom_mpi_options": '""',
             },
-            "ProfilerConfig": {"S3OutputPath": "s3://my-bucket/"},
+            "ProfilerConfig": {"DisableProfiler": False, "S3OutputPath": "s3://my-bucket/"},
             "Environment": {DEBUGGER_FLAG: "0"},
         },
         "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},

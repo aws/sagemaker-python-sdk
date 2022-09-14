@@ -167,6 +167,7 @@ def _get_train_args(job_name):
             }
         ],
         "profiler_config": {
+            "DisableProfiler": False,
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
     }

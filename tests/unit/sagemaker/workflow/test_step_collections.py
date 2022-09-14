@@ -795,6 +795,7 @@ def test_register_model_with_model_repack_with_estimator(
                         "CollectionConfigurations": [],
                         "S3OutputPath": f"s3://{BUCKET}/",
                     },
+                    "ProfilerConfig": {"DisableProfiler": True, "S3OutputPath": "s3://my-bucket/"},
                     "HyperParameters": {
                         "inference_script": '"dummy_script.py"',
                         "dependencies": f'"{dummy_requirements}"',
@@ -922,6 +923,7 @@ def test_register_model_with_model_repack_with_model(model, model_metrics, drift
                         "CollectionConfigurations": [],
                         "S3OutputPath": f"s3://{BUCKET}/",
                     },
+                    "ProfilerConfig": {"DisableProfiler": True, "S3OutputPath": "s3://my-bucket/"},
                     "HyperParameters": {
                         "inference_script": '"dummy_script.py"',
                         "model_archive": '"s3://my-bucket/model.tar.gz"',
@@ -1051,6 +1053,7 @@ def test_register_model_with_model_repack_with_pipeline_model(
                         "CollectionConfigurations": [],
                         "S3OutputPath": f"s3://{BUCKET}/",
                     },
+                    "ProfilerConfig": {"DisableProfiler": True, "S3OutputPath": "s3://my-bucket/"},
                     "HyperParameters": {
                         "dependencies": "null",
                         "inference_script": '"dummy_script.py"',
@@ -1242,6 +1245,7 @@ def test_estimator_transformer_with_model_repack_with_estimator(estimator):
                     "TrainingImage": "246618743249.dkr.ecr.us-west-2.amazonaws.com/"
                     + "sagemaker-scikit-learn:0.23-1-cpu-py3",
                 },
+                "ProfilerConfig": {"DisableProfiler": True, "S3OutputPath": "s3://my-bucket/"},
                 "OutputDataConfig": {"S3OutputPath": "s3://my-bucket/"},
                 "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
                 "ResourceConfig": {
