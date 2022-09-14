@@ -161,6 +161,7 @@ def _create_train_job(version, instance_count=1, instance_type="ml.c4.4xlarge"):
             }
         ],
         "profiler_config": {
+            "DisableProfiler": False,
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
     }
