@@ -511,6 +511,33 @@ def test_framework_version_from_tag_other():
     assert version is None
 
 
+def test_xgboost_version_from_tag():
+    tags = (
+        "1.5-1-cpu-py3",
+        "1.5-1",
+    )
+
+    for tag in tags:
+        version = fw_utils.framework_version_from_tag(tag)
+        assert "1.5-1" == version
+
+
+def test_framework_name_from_xgboost_image_short_tag():
+    ecr_uri = "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost"
+    image_tag = "1.5-1"
+    image_uri = f"{ecr_uri}:{image_tag}"
+    expected_result = ("xgboost", "py3", "1.5-1", None)
+    assert expected_result == fw_utils.framework_name_from_image(image_uri)
+
+
+def test_framework_name_from_xgboost_image_long_tag():
+    ecr_uri = "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost"
+    image_tag = "1.5-1-cpu-py3"
+    image_uri = f"{ecr_uri}:{image_tag}"
+    expected_result = ("xgboost", "py3", "1.5-1-cpu-py3", None)
+    assert expected_result == fw_utils.framework_name_from_image(image_uri)
+
+
 def test_model_code_key_prefix_with_all_values_present():
     key_prefix = fw_utils.model_code_key_prefix("prefix", "model_name", "image_uri")
     assert key_prefix == "prefix/model_name"
