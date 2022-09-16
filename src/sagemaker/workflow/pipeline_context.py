@@ -71,6 +71,18 @@ class _ModelStepArguments(_StepArguments):
 
 
 class _Pipeline_Config:
+    """
+    Config object that associates a step with its containing pipeline,
+    storing configuration from both. This object is used as a static variable
+    available to job classes so the pipeline name can be passed down and used
+    during request object generation
+
+    Args:
+        pipeline_name (str): pipeline name
+        step_name (str): step name
+        code_hash (str): a hash of the code artifact for the particular step
+        config_hash (str): a hash of the config artifact for the particular step (Processing)
+    """
     def __init__(self, pipeline_name, step_name, code_hash, config_hash):
         self.pipeline_name = pipeline_name
         self.step_name = step_name

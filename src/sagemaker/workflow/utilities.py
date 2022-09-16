@@ -20,8 +20,8 @@ from pathlib import Path
 from typing import List, Sequence, Union, Set, TYPE_CHECKING
 import hashlib
 from urllib.parse import unquote, urlparse
-from _hashlib import HASH as Hash
 from contextlib import contextmanager
+from _hashlib import HASH as Hash
 
 from sagemaker.workflow.parameters import Parameter
 from sagemaker.workflow.pipeline_context import _StepArguments, _Pipeline_Config
@@ -60,6 +60,11 @@ def list_to_request(entities: Sequence[Union[Entity, "StepCollection"]]) -> List
 
 @contextmanager
 def _PipelineConfigManager(pipeline_name, step_name, code_hash, config_hash):
+    """
+    Expose static _pipeline_config variable to other modules with contextmanager,
+    and clean up when calling clode block is finished.
+    """
+    # pylint: disable=W0603
     global _pipeline_config
     _pipeline_config = _Pipeline_Config(pipeline_name, step_name, code_hash, config_hash)
     try:
