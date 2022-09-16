@@ -70,6 +70,14 @@ class _ModelStepArguments(_StepArguments):
         self.runtime_repack_output_prefix = None
 
 
+class _Pipeline_Config:
+    def __init__(self, pipeline_name, step_name, code_hash, config_hash):
+        self.pipeline_name = pipeline_name
+        self.step_name = step_name
+        self.code_hash = code_hash
+        self.config_hash = config_hash
+
+
 class PipelineSession(Session):
     """Managing interactions with SageMaker APIs and AWS services needed under Pipeline Context
 
