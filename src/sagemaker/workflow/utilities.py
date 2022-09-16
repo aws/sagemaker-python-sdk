@@ -60,10 +60,8 @@ def list_to_request(entities: Sequence[Union[Entity, "StepCollection"]]) -> List
 
 @contextmanager
 def _PipelineConfigManager(pipeline_name, step_name, code_hash, config_hash):
-    """
-    Expose static _pipeline_config variable to other modules with contextmanager,
-    and clean up when calling clode block is finished.
-    """
+    """Expose static _pipeline_config variable to other modules"""
+
     # pylint: disable=W0603
     global _pipeline_config
     _pipeline_config = _Pipeline_Config(pipeline_name, step_name, code_hash, config_hash)
@@ -74,9 +72,7 @@ def _PipelineConfigManager(pipeline_name, step_name, code_hash, config_hash):
 
 
 def build_steps(steps: Sequence[Entity], pipeline_name: str):
-    """
-    Get the request structure for list of steps, leveraging _PipelineConfigManager to
-    provide job classes with config data via static _pipeline_config variable.
+    """Get the request structure for list of steps, with _PipelineConfigManager.
 
     Args:
         steps (Sequence[Entity]): A list of steps, (Entity type because Step causes circular import)
