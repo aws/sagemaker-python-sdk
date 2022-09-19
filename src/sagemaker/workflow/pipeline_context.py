@@ -70,7 +70,7 @@ class _ModelStepArguments(_StepArguments):
         self.runtime_repack_output_prefix = None
 
 
-class _Pipeline_Config:
+class _PipelineConfig:
     """Config object that associates a step with its containing pipeline
 
     Args:

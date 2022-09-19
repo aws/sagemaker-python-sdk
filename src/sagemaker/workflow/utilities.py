@@ -24,7 +24,7 @@ from contextlib import contextmanager
 from _hashlib import HASH as Hash
 
 from sagemaker.workflow.parameters import Parameter
-from sagemaker.workflow.pipeline_context import _StepArguments, _Pipeline_Config
+from sagemaker.workflow.pipeline_context import _StepArguments, _PipelineConfig
 from sagemaker.workflow.entities import (
     Entity,
     RequestType,
@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     from sagemaker.workflow.step_collections import StepCollection
 
 BUF_SIZE = 65536  # 64KiB
-_pipeline_config: _Pipeline_Config = None
+_pipeline_config: _PipelineConfig = None
 
 
 def list_to_request(entities: Sequence[Union[Entity, "StepCollection"]]) -> List[RequestType]:
@@ -59,12 +59,12 @@ def list_to_request(entities: Sequence[Union[Entity, "StepCollection"]]) -> List
 
 
 @contextmanager
-def _PipelineConfigManager(pipeline_name, step_name, code_hash, config_hash):
+def _pipeline_config_manager(pipeline_name, step_name, code_hash, config_hash):
     """Expose static _pipeline_config variable to other modules"""
 
     # pylint: disable=W0603
     global _pipeline_config
-    _pipeline_config = _Pipeline_Config(pipeline_name, step_name, code_hash, config_hash)
+    _pipeline_config = _PipelineConfig(pipeline_name, step_name, code_hash, config_hash)
     try:
         yield
     finally:
@@ -87,7 +87,7 @@ def build_steps(steps: Sequence[Entity], pipeline_name: str):
         if isinstance(step, StepCollection):
             request_dicts.extend(step.request_dicts())
         else:
-            with _PipelineConfigManager(pipeline_name, step.name, None, None):
+            with _pipeline_config_manager(pipeline_name, step.name, None, None):
                 request_dicts.append(step.to_request())
     return request_dicts
 
