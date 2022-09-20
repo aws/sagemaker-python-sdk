@@ -60,10 +60,10 @@ class TensorFlow(Framework):
                 training code. Defaults to ``None``. Required unless ``image_uri`` is provided.
                 List of supported versions:
                 https://github.com/aws/sagemaker-python-sdk#tensorflow-sagemaker-estimators.
-            model_dir (str): S3 location where the checkpoint data and models can be exported to
-                during training (default: None). It will be passed in the training script as one of
-                the command line arguments. If not specified, one is provided based on
-                your training configuration:
+            model_dir (str or PipelineVariable): S3 location where the checkpoint data and models
+                can be exported to during training (default: None). It will be passed in the
+                training script as one of the command line arguments. If not specified,
+                one is provided based on your training configuration:
 
                 * *distributed training with SMDistributed or MPI with Horovod* - ``/opt/ml/model``
                 * *single-machine training or distributed training without MPI* - \
@@ -73,9 +73,10 @@ class TensorFlow(Framework):
 
                 To disable having ``model_dir`` passed to your training script,
                 set ``model_dir=False``.
-            image_uri (str): If specified, the estimator will use this image for training and
-                hosting, instead of selecting the appropriate SageMaker official image based on
-                framework_version and py_version. It can be an ECR url or dockerhub image and tag.
+            image_uri (str or PipelineVariable): If specified, the estimator will use this image
+                for training and hosting, instead of selecting the appropriate SageMaker official
+                image based on framework_version and py_version.
+                It can be an ECR url or dockerhub image and tag.
 
                 Examples:
                     123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0

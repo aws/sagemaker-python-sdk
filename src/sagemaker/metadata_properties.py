@@ -32,10 +32,10 @@ class MetadataProperties(object):
 
         # TODO: flesh out docstrings
         Args:
-            commit_id (str):
-            repository (str):
-            generated_by (str):
-            project_id (str):
+            commit_id (str or PipelineVariable):
+            repository (str or PipelineVariable):
+            generated_by (str or PipelineVariable):
+            project_id (str or PipelineVariable):
         """
         self.commit_id = commit_id
         self.repository = repository
