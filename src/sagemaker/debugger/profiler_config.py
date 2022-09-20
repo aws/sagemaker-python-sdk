@@ -40,14 +40,15 @@ class ProfilerConfig(object):
         class and SageMaker Framework estimators.
 
         Args:
-            s3_output_path (str): The location in Amazon S3 to store the output.
+            s3_output_path (str or PipelineVariable): The location in Amazon S3 to store
+                the output.
                 The default Debugger output path for profiling data is created under the
                 default output path of the :class:`~sagemaker.estimator.Estimator` class.
                 For example,
                 s3://sagemaker-<region>-<12digit_account_id>/<training-job-name>/profiler-output/.
-            system_monitor_interval_millis (int): The time interval in milliseconds
-                to collect system metrics. Available values are 100, 200, 500, 1000 (1 second),
-                5000 (5 seconds), and 60000 (1 minute) milliseconds.
+            system_monitor_interval_millis (int or PipelineVariable): The time interval in
+                milliseconds to collect system metrics. Available values are 100, 200, 500,
+                1000 (1 second), 5000 (5 seconds), and 60000 (1 minute) milliseconds.
                 The default is 500 milliseconds.
             framework_profile_params (:class:`~sagemaker.debugger.FrameworkProfile`):
                 A parameter object for framework metrics profiling. Configure it using
