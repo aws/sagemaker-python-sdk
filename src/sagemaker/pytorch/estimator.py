@@ -245,21 +245,21 @@ class PyTorch(Framework):
         distribution_config = {}
         pytorch_ddp_enabled = False
         pytorch_ddp_dict = distribution.get("pytorchddp")
-        if pytorch_ddp_dict is not None:
+        if pytorch_ddp_dict:
             pytorch_ddp_enabled = pytorch_ddp_dict.get("enabled", False)
 
         if pytorch_ddp_enabled:
             distribution_config[self.LAUNCH_PYTORCH_DDP_ENV_NAME] = pytorch_ddp_enabled
             if self.instance_type is not None:
                 distribution_config[self.INSTANCE_TYPE_ENV_NAME] = self.instance_type
-            is_accl_enabled = self._should_enable_accl(pytorch_ddp_dict)
+            is_accl_enabled = self._get_accl_enabled(pytorch_ddp_dict)
             distribution_config[self.ACCL_ENABLED_ENV_NAME] = is_accl_enabled
         else:
             distribution_config = self._distribution_configuration(distribution=distribution)
 
         return distribution_config
 
-    def _should_enable_accl(self, pytorch_ddp_dict):
+    def _get_accl_enabled(self, pytorch_ddp_dict):
         """Evaluates if ACCL should be enabled for current training jobs.
 
         Case 1: Customer explicitly disables ACCL by setting use_accl to False.
@@ -271,7 +271,7 @@ class PyTorch(Framework):
 
         Case 3: Customer does not specify use_accl. We try to enable by default.
         Test if configuration is supported for ACCL.
-        If yes, return true. If not, we return false.
+        If not, we return false.
 
         Args:
             pytorch_ddp_dict (dict): A dictionary with options for pytorchddp distribution.
@@ -279,7 +279,8 @@ class PyTorch(Framework):
             A boolean that indicates whether to enable ACCL
         """
         use_accl = pytorch_ddp_dict.get("use_accl")
-        get_accl_support_validation_msg = validate_accl_support(
+        is_accl_supported = validate_accl_support(
+            use_accl,
             self.framework_version,
             self.py_version,
             self.image_uri,
@@ -287,17 +288,11 @@ class PyTorch(Framework):
             self.instance_count,
         )
 
-        is_accl_supported = get_accl_support_validation_msg == ""
-        # Case 1
-        if use_accl is False:
+        if use_accl is False or not is_accl_supported:
             return False
-        # Case 2
-        if use_accl:
-            if is_accl_supported:
-                return True
-            raise ValueError(get_accl_support_validation_msg)
-        # Case 3
-        return is_accl_supported
+        if use_accl and is_accl_supported:
+            return True
+        return use_accl
 
     def hyperparameters(self):
         """Return hyperparameters used by your custom PyTorch code during model training."""

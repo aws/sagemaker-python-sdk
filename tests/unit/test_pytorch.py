@@ -885,7 +885,7 @@ def test_pytorch_ddp_accl_default_on_and_supported(sagemaker_session):
     expected_torch_ddp = {
         "sagemaker_pytorch_ddp_enabled": True,
         "sagemaker_instance_type": valid_instance_type,
-        "sagemaker_accl_enabled": True,
+        "sagemaker_accl_enabled": None,
     }
     assert actual_pytorch_ddp == expected_torch_ddp
 

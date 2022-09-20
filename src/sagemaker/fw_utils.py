@@ -859,7 +859,9 @@ def validate_pytorch_distribution(
         raise ValueError(err_msg)
 
 
-def validate_accl_support(framework_version, py_version, image_uri, instance_type, instance_count):
+def validate_accl_support(
+    use_accl, framework_version, py_version, image_uri, instance_type, instance_count
+):
     """Check if ACCL is supported for current invocation.
 
     Args:
@@ -870,7 +872,7 @@ def validate_accl_support(framework_version, py_version, image_uri, instance_typ
         instance_count (int): Number of training instances to use.
 
     Raises:
-        ValueError: if
+        ValueError: if `use_accl` is set to true and validation fails, i.e.
             `instance_type` is not in ACCL_SUPPORTED_INSTANCE_TYPES or
             `py_version` is not python3 or
             `framework_version` is not in ACCL_SUPPORTED_FRAMEWORK_VERSIONS or
@@ -904,7 +906,12 @@ def validate_accl_support(framework_version, py_version, image_uri, instance_typ
             "ACCL is not supported for single-node jobs.\n"
             "Please increase instance_count to be greater than 1.\n"
         )
-    return err_msg
+    if not err_msg:
+        return True
+    if use_accl:
+        raise ValueError(f"Could not enable ACCL.\n {err_msg}")
+    logger.warning("Could not enable ACCL.\n %s", err_msg)
+    return False
 
 
 def python_deprecation_warning(framework, latest_supported_version):

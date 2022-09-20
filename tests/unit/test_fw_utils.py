@@ -918,60 +918,82 @@ def test_validate_pytorchddp_raises():
         )
 
 
-def test_validate_accl_support_no_error():
-    expected_err_msg = ""
+def test_validate_accl_support_true():
     #  Framework is PyTorch, Distribution is PyTorchDDP enabled, all supported parameters
     accl_supported_fw_versions = [
         "1.12",
         "1.12.0",
     ]
     for framework_version in accl_supported_fw_versions:
-        assert expected_err_msg == fw_utils.validate_accl_support(
-            framework_version=framework_version,
-            py_version="py3",
-            image_uri="custom-container",
-            instance_type="ml.p4d.24xlarge",
-            instance_count=2,
+        assert (
+            fw_utils.validate_accl_support(
+                use_accl=True,
+                framework_version=framework_version,
+                py_version="py3",
+                image_uri=None,
+                instance_type="ml.p4d.24xlarge",
+                instance_count=2,
+            )
+            is True
         )
+
+
+def test_validate_accl_support_false():
+    #  Framework is PyTorch, Distribution is PyTorchDDP enabled, all supported parameters
+    assert (
+        fw_utils.validate_accl_support(
+            use_accl=False,
+            framework_version="1.11",
+            py_version="py3",
+            image_uri=None,
+            instance_type="ml.p3dn.24xlarge",
+            instance_count=1,
+        )
+        is False
+    )
 
 
 def test_validate_accl_support_error():
     # Case 1: Unsupported framework version
-    err_msg = fw_utils.validate_accl_support(
-        framework_version="1.10",
-        py_version="py3",
-        image_uri=None,
-        instance_type="ml.p4d.24xlarge",
-        instance_count=2,
-    )
-    assert "supported framework versions" in err_msg
+    with pytest.raises(ValueError):
+        fw_utils.validate_accl_support(
+            use_accl=True,
+            framework_version="1.10",
+            py_version="py3",
+            image_uri=None,
+            instance_type="ml.p4d.24xlarge",
+            instance_count=2,
+        )
 
     # Case 2: Unsupported Py version
-    err_msg = fw_utils.validate_accl_support(
-        framework_version="1.10",
-        py_version="py2",
-        image_uri=None,
-        instance_type="ml.p4d.24xlarge",
-        instance_count=2,
-    )
-    assert "specify py_version>=py3" in err_msg
+    with pytest.raises(ValueError):
+        fw_utils.validate_accl_support(
+            use_accl=True,
+            framework_version="1.10",
+            py_version="py2",
+            image_uri=None,
+            instance_type="ml.p4d.24xlarge",
+            instance_count=2,
+        )
 
     # Case 3: Unsupported Instance Type
-    err_msg = fw_utils.validate_accl_support(
-        framework_version="1.10",
-        py_version="py2",
-        image_uri=None,
-        instance_type="ml.p3.16xlarge",
-        instance_count=2,
-    )
-    assert "supported instance types" in err_msg
+    with pytest.raises(ValueError):
+        fw_utils.validate_accl_support(
+            use_accl=True,
+            framework_version="1.10",
+            py_version="py2",
+            image_uri=None,
+            instance_type="ml.p3.16xlarge",
+            instance_count=2,
+        )
 
     # Case 4: Unsupported Instance Count
-    err_msg = fw_utils.validate_accl_support(
-        framework_version="1.10",
-        py_version="py2",
-        image_uri=None,
-        instance_type="ml.p4d.24xlarge",
-        instance_count=1,
-    )
-    assert "increase instance_count" in err_msg
+    with pytest.raises(ValueError):
+        fw_utils.validate_accl_support(
+            use_accl=True,
+            framework_version="1.10",
+            py_version="py2",
+            image_uri=None,
+            instance_type="ml.p4d.24xlarge",
+            instance_count=1,
+        )
