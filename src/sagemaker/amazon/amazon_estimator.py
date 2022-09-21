@@ -16,7 +16,7 @@ from __future__ import absolute_import
 import json
 import logging
 import tempfile
-from typing import Union
+from typing import Union, Optional, Dict
 
 from six.moves.urllib.parse import urlparse
 
@@ -30,6 +30,7 @@ from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.utils import sagemaker_timestamp
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
+from sagemaker.workflow import is_pipeline_variable
 
 logger = logging.getLogger(__name__)
 
@@ -40,18 +41,20 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
     This class isn't intended to be instantiated directly.
     """
 
-    feature_dim = hp("feature_dim", validation.gt(0), data_type=int)
-    mini_batch_size = hp("mini_batch_size", validation.gt(0), data_type=int)
-    repo_name = None
-    repo_version = None
+    feature_dim: hp = hp("feature_dim", validation.gt(0), data_type=int)
+    mini_batch_size: hp = hp("mini_batch_size", validation.gt(0), data_type=int)
+    repo_name: Optional[str] = None
+    repo_version: Optional[str] = None
+
+    DEFAULT_MINI_BATCH_SIZE: Optional[int] = None
 
     def __init__(
         self,
-        role,
-        instance_count=None,
-        instance_type=None,
-        data_location=None,
-        enable_network_isolation=False,
+        role: str,
+        instance_count: Optional[Union[int, PipelineVariable]] = None,
+        instance_type: Optional[Union[str, PipelineVariable]] = None,
+        data_location: Optional[str] = None,
+        enable_network_isolation: Union[bool, PipelineVariable] = False,
         **kwargs
     ):
         """Initialize an AmazonAlgorithmEstimatorBase.
@@ -62,16 +65,16 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if it needs to access an AWS resource.
-            instance_count (int): Number of Amazon EC2 instances to use
+            instance_count (int or PipelineVariable): Number of Amazon EC2 instances to use
                 for training. Required.
-            instance_type (str): Type of EC2 instance to use for training,
+            instance_type (str or PipelineVariable): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'. Required.
             data_location (str or None): The s3 prefix to upload RecordSet
                 objects to, expressed as an S3 url. For example
                 "s3://example-bucket/some-key-prefix/". Objects will be saved in
                 a unique sub-directory of the specified location. If None, a
                 default data location will be used.
-            enable_network_isolation (bool): Specifies whether container will
+            enable_network_isolation (bool or PipelineVariable): Specifies whether container will
                 run in network isolation mode. Network isolation mode restricts
                 the container access to outside networks (such as the internet).
                 Also known as internet-free mode (default: ``False``).
@@ -113,8 +116,14 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         return self._data_location
 
     @data_location.setter
-    def data_location(self, data_location):
+    def data_location(self, data_location: str):
         """Placeholder docstring"""
+        if is_pipeline_variable(data_location):
+            raise TypeError(
+                "Invalid input: data_location should be a plain string "
+                "rather than a pipeline variable - ({}).".format(type(data_location))
+            )
+
         if not data_location.startswith("s3://"):
             raise ValueError(
                 'Expecting an S3 URL beginning with "s3://". Got "{}"'.format(data_location)
@@ -198,12 +207,12 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
     @runnable_by_pipeline
     def fit(
         self,
-        records,
-        mini_batch_size=None,
-        wait=True,
-        logs=True,
-        job_name=None,
-        experiment_config=None,
+        records: "RecordSet",
+        mini_batch_size: Optional[int] = None,
+        wait: bool = True,
+        logs: bool = True,
+        job_name: Optional[str] = None,
+        experiment_config: Optional[Dict[str, str]] = None,
     ):
         """Fit this Estimator on serialized Record objects, stored in S3.
 
@@ -300,6 +309,20 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             feature_dim=train.shape[1],
             channel=channel,
         )
+
+    def _get_default_mini_batch_size(self, num_records: int):
+        """Generate the default mini_batch_size"""
+        if is_pipeline_variable(self.instance_count):
+            logger.warning(
+                "mini_batch_size is not given in .fit() and instance_count is a "
+                "pipeline variable (%s) which is only interpreted in pipeline execution time. "
+                "Thus setting mini_batch_size to 1, since it can't be greater than "
+                "number of records per instance_count, otherwise the training job fails.",
+                type(self.instance_count),
+            )
+            return 1
+
+        return min(self.DEFAULT_MINI_BATCH_SIZE, max(1, int(num_records / self.instance_count)))
 
 
 class RecordSet(object):
@@ -461,7 +484,7 @@ def upload_numpy_to_s3_shards(
             raise ex
 
 
-def get_image_uri(region_name, repo_name, repo_version=1):
+def get_image_uri(region_name, repo_name, repo_version="1"):
     """Deprecated method. Please use sagemaker.image_uris.retrieve().
 
     Args:
