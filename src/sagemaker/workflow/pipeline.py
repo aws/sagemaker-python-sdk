@@ -486,7 +486,10 @@ def _generate_step_map(
     """Helper method to create a mapping from Step/Step Collection name to itself."""
     for step in steps:
         if step.name in step_map:
-            raise ValueError("Pipeline steps cannot have duplicate names.")
+            raise ValueError(
+                "Pipeline steps cannot have duplicate names. In addition, steps added in "
+                "the ConditionStep cannot be added in the Pipeline steps list."
+            )
         step_map[step.name] = step
         if isinstance(step, ConditionStep):
             _generate_step_map(step.if_steps + step.else_steps, step_map)
