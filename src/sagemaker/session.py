@@ -821,6 +821,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         job_name,
         profiler_rule_configs=None,
         profiler_config=None,
+        resource_config=None,
     ):
         """Calls the UpdateTrainingJob API for the given job name and returns the response.
 
@@ -829,11 +830,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
             profiler_rule_configs (list): List of profiler rule configurations. (default: ``None``).
             profiler_config(dict): Configuration for how profiling information is emitted with
                 SageMaker Profiler. (default: ``None``).
+            resource_config (dict): Configuration for resource of the training job. (default: None).
         """
         update_training_job_request = self._get_update_training_job_request(
             job_name=job_name,
             profiler_rule_configs=profiler_rule_configs,
             profiler_config=profiler_config,
+            resource_config=resource_config,
         )
         LOGGER.info("Updating training job with name %s", job_name)
         LOGGER.debug("Update request: %s", json.dumps(update_training_job_request, indent=4))
@@ -844,6 +847,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         job_name,
         profiler_rule_configs=None,
         profiler_config=None,
+        resource_config=None,
     ):
         """Constructs a request compatible for updateing an Amazon SageMaker training job.
 
@@ -852,6 +856,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             profiler_rule_configs (list): List of profiler rule configurations. (default: ``None``).
             profiler_config(dict): Configuration for how profiling information is emitted with
                 SageMaker Profiler. (default: ``None``).
+            resource_config (dict): Configuration for resource of the training job. (default: None).
 
         Returns:
             Dict: an update training request dict
@@ -865,6 +870,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if profiler_config is not None:
             update_training_job_request["ProfilerConfig"] = profiler_config
+
+        if resource_config is not None:
+            update_training_job_request["ResourceConfig"] = resource_config
 
         return update_training_job_request
 
