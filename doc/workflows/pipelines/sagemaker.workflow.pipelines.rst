@@ -46,6 +46,8 @@ Entities
 
 .. autoclass:: sagemaker.workflow.entities.Expression
 
+.. autoclass:: sagemaker.workflow.entities.PipelineVariable
+
 Execution Variables
 -------------------
 

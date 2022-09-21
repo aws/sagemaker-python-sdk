@@ -40,12 +40,13 @@ class NetworkConfig(object):
         these parameters into a dictionary.
 
         Args:
-            enable_network_isolation (bool): Boolean that determines whether to enable
-                network isolation.
-            security_group_ids ([str]): A list of strings representing security group IDs.
-            subnets ([str]): A list of strings representing subnets.
-            encrypt_inter_container_traffic (bool): Boolean that determines whether to
-                encrypt inter-container traffic. Default value is None.
+            enable_network_isolation (bool or PipelineVariable): Boolean that determines
+                whether to enable network isolation.
+            security_group_ids (list[str] or list[PipelineVariable]): A list of strings representing
+                security group IDs.
+            subnets (list[str] or list[PipelineVariable]): A list of strings representing subnets.
+            encrypt_inter_container_traffic (bool or PipelineVariable): Boolean that determines
+                whether to encrypt inter-container traffic. Default value is None.
         """
         self.enable_network_isolation = enable_network_isolation
         self.security_group_ids = security_group_ids

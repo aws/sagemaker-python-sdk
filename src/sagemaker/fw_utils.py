@@ -165,12 +165,12 @@ def validate_source_code_input_against_pipeline_variables(
     """Validate source code input against pipeline variables
 
     Args:
-        entry_point (str, PipelineVariable): The path to the local Python source file that
+        entry_point (str or PipelineVariable): The path to the local Python source file that
             should be executed as the entry point to training (default: None).
-        source_dir (str, PipelineVariable): The Path to a directory with any other
+        source_dir (str or PipelineVariable): The Path to a directory with any other
             training source code dependencies aside from the entry point file (default: None).
         git_config (Dict[str, str]): Git configurations used for cloning files (default: None).
-        enable_network_isolation (bool, PipelineVariable): Specifies whether container will run
+        enable_network_isolation (bool or PipelineVariable): Specifies whether container will run
             in network isolation mode (default: False).
     """
     if is_pipeline_variable(enable_network_isolation) or enable_network_isolation is True:
