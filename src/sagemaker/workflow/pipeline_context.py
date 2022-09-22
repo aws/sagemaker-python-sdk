@@ -221,7 +221,7 @@ def runnable_by_pipeline(run_func):
 
 
 def retrieve_caller_name(job_instance):
-    """Convenience method or runnable_by_pipeline decorator
+    """Convenience method for runnable_by_pipeline decorator
 
     This function takes an instance of a job class and maps it
     to the pipeline session function that creates the job request.
