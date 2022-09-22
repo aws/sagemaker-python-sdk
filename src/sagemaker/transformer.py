@@ -51,32 +51,32 @@ class Transformer(object):
         """Initialize a ``Transformer``.
 
         Args:
-            model_name (str): Name of the SageMaker model being used for the
-                transform job.
-            instance_count (int): Number of EC2 instances to use.
-            instance_type (str): Type of EC2 instance to use, for example,
+            model_name (str or PipelineVariable): Name of the SageMaker model being
+                used for the transform job.
+            instance_count (int or PipelineVariable): Number of EC2 instances to use.
+            instance_type (str or PipelineVariable): Type of EC2 instance to use, for example,
                 'ml.c4.xlarge'.
-            strategy (str): The strategy used to decide how to batch records in
-                a single request (default: None). Valid values: 'MultiRecord'
+            strategy (str or PipelineVariable): The strategy used to decide how to batch records
+                in a single request (default: None). Valid values: 'MultiRecord'
                 and 'SingleRecord'.
-            assemble_with (str): How the output is assembled (default: None).
+            assemble_with (str or PipelineVariable): How the output is assembled (default: None).
                 Valid values: 'Line' or 'None'.
-            output_path (str): S3 location for saving the transform result. If
+            output_path (str or PipelineVariable): S3 location for saving the transform result. If
                 not specified, results are stored to a default bucket.
-            output_kms_key (str): Optional. KMS key ID for encrypting the
+            output_kms_key (str or PipelineVariable): Optional. KMS key ID for encrypting the
                 transform output (default: None).
-            accept (str): The accept header passed by the client to
+            accept (str or PipelineVariable): The accept header passed by the client to
                 the inference endpoint. If it is supported by the endpoint,
                 it will be the format of the batch transform output.
-            max_concurrent_transforms (int): The maximum number of HTTP requests
+            max_concurrent_transforms (int or PipelineVariable): The maximum number of HTTP requests
                 to be made to each individual transform container at one time.
-            max_payload (int): Maximum size of the payload in a single HTTP
+            max_payload (int or PipelineVariable): Maximum size of the payload in a single HTTP
                 request to the container in MB.
-            tags (list[dict]): List of tags for labeling a transform job
-                (default: None). For more, see the SageMaker API documentation for
-                `Tag <https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html>`_.
-            env (dict): Environment variables to be set for use during the
-                transform job (default: None).
+            tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): List of tags for
+                labeling a transform job (default: None). For more, see the SageMaker API
+                documentation for `Tag <https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html>`_.
+            env (dict[str, str] or dict[str, PipelineVariable]): Environment variables to be set
+                for use during the transform job (default: None).
             base_transform_job_name (str): Prefix for the transform job when the
                 :meth:`~sagemaker.transformer.Transformer.transform` method
                 launches. If not specified, a default prefix will be generated
@@ -86,8 +86,8 @@ class Transformer(object):
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
-            volume_kms_key (str): Optional. KMS key ID for encrypting the volume
-                attached to the ML compute instance (default: None).
+            volume_kms_key (str or PipelineVariable): Optional. KMS key ID for encrypting
+                the volume attached to the ML compute instance (default: None).
         """
         self.model_name = model_name
         self.strategy = strategy
@@ -133,8 +133,8 @@ class Transformer(object):
         """Start a new transform job.
 
         Args:
-            data (str): Input data location in S3.
-            data_type (str): What the S3 location defines (default: 'S3Prefix').
+            data (str or PipelineVariable): Input data location in S3.
+            data_type (str or PipelineVariable): What the S3 location defines (default: 'S3Prefix').
                 Valid values:
 
                 * 'S3Prefix' - the S3 URI defines a key name prefix. All objects with this prefix
@@ -143,15 +143,15 @@ class Transformer(object):
                 * 'ManifestFile' - the S3 URI points to a single manifest file listing each S3
                     object to use as an input for the transform job.
 
-            content_type (str): MIME type of the input data (default: None).
-            compression_type (str): Compression type of the input data, if
+            content_type (str or PipelineVariable): MIME type of the input data (default: None).
+            compression_type (str or PipelineVariable): Compression type of the input data, if
                 compressed (default: None). Valid values: 'Gzip', None.
-            split_type (str): The record delimiter for the input object
+            split_type (str or PipelineVariable): The record delimiter for the input object
                 (default: 'None'). Valid values: 'None', 'Line', 'RecordIO', and
                 'TFRecord'.
             job_name (str): job name (default: None). If not specified, one will
                 be generated.
-            input_filter (str): A JSONPath to select a portion of the input to
+            input_filter (str or PipelineVariable): A JSONPath to select a portion of the input to
                 pass to the algorithm container for inference. If you omit the
                 field, it gets the value '$', representing the entire input.
                 For CSV data, each row is taken as a JSON array,
@@ -164,13 +164,13 @@ class Transformer(object):
                 `CreateTransformJob
                 <https://docs.aws.amazon.com/sagemaker/latest/dg/API_CreateTransformJob.html>`_.
                 Some examples: "$[1:]", "$.features" (default: None).
-            output_filter (str): A JSONPath to select a portion of the
+            output_filter (str or PipelineVariable): A JSONPath to select a portion of the
                 joined/original output to return as the output.
                 For more information, see the SageMaker API documentation for
                 `CreateTransformJob
                 <https://docs.aws.amazon.com/sagemaker/latest/dg/API_CreateTransformJob.html>`_.
                 Some examples: "$[1:]", "$.prediction" (default: None).
-            join_source (str): The source of data to be joined to the transform
+            join_source (str or PipelineVariable): The source of data to be joined to the transform
                 output. It can be set to 'Input' meaning the entire input record
                 will be joined to the inference result. You can use OutputFilter
                 to select the useful portion before uploading to S3. (default:
@@ -186,14 +186,20 @@ class Transformer(object):
                 * If both `ExperimentName` and `TrialName` are not supplied the trial component
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
-            model_client_config (dict[str, str]): Model configuration.
-                Dictionary contains two optional keys,
+                * Both `ExperimentName` and `TrialName` will be ignored if the Transformer instance
+                is built with :class:`~sagemaker.workflow.pipeline_context.PipelineSession`.
+                However, the value of `TrialComponentDisplayName` is honored for display in Studio.
+            model_client_config (dict[str, str] or dict[str, PipelineVariable]): Model
+                configuration. Dictionary contains two optional keys,
                 'InvocationsTimeoutInSeconds', and 'InvocationsMaxRetries'.
                 (default: ``None``).
             wait (bool): Whether the call should wait until the job completes
                 (default: ``True``).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when wait is ``True`` (default: ``True``).
+        Returns:
+            None or pipeline step arguments in case the Transformer instance is built with
+            :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
         """
         local_mode = self.sagemaker_session.local_mode
         if not local_mode and not is_pipeline_variable(data) and not data.startswith("s3://"):

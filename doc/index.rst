@@ -39,7 +39,7 @@ The SageMaker Python SDK supports managed training and inference for a variety o
 
 
 ********************************
-SageMaker First-Party Algorithms
+SageMaker Built-in Algorithms
 ********************************
 Amazon SageMaker provides implementations of some common machine learning algorithms optimized for GPU architecture and massive datasets.
 

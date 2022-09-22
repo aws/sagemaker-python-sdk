@@ -19,6 +19,8 @@ from mock import Mock, PropertyMock
 import pytest
 import warnings
 
+from copy import deepcopy
+
 from sagemaker import Processor, Model
 from sagemaker.parameter import IntegerParameter
 from sagemaker.transformer import Transformer
@@ -160,9 +162,7 @@ INPUT_PARAM_LISTS = [
 @pytest.fixture
 def client():
     """Mock client.
-
     Considerations when appropriate:
-
         * utilize botocore.stub.Stubber
         * separate runtime client from client
     """
@@ -207,7 +207,34 @@ def hyperparameters():
     return {"test-key": "test-val"}
 
 
-def test_training_step_with_estimator(pipeline_session, training_input, hyperparameters):
+@pytest.mark.parametrize(
+    "experiment_config, expected_experiment_config",
+    [
+        (
+            {
+                "ExperimentName": "experiment-name",
+                "TrialName": "trial-name",
+                "TrialComponentDisplayName": "display-name",
+            },
+            {"TrialComponentDisplayName": "display-name"},
+        ),
+        (
+            {"TrialComponentDisplayName": "display-name"},
+            {"TrialComponentDisplayName": "display-name"},
+        ),
+        (
+            {
+                "ExperimentName": "experiment-name",
+                "TrialName": "trial-name",
+            },
+            None,
+        ),
+        (None, None),
+    ],
+)
+def test_training_step_with_estimator(
+    pipeline_session, training_input, hyperparameters, experiment_config, expected_experiment_config
+):
     custom_step1 = CustomStep("TestStep")
     custom_step2 = CustomStep("SecondTestStep")
     enable_network_isolation = ParameterBoolean(name="enable_network_isolation")
@@ -226,7 +253,9 @@ def test_training_step_with_estimator(pipeline_session, training_input, hyperpar
     with warnings.catch_warnings(record=True) as w:
         # TODO: remove job_name once we merge
         # https://github.com/aws/sagemaker-python-sdk/pull/3158/files
-        step_args = estimator.fit(inputs=training_input, job_name="TestJob")
+        step_args = estimator.fit(
+            inputs=training_input, job_name="TestJob", experiment_config=experiment_config
+        )
         assert len(w) == 1
         assert issubclass(w[-1].category, UserWarning)
         assert "Running within a PipelineSession" in str(w[-1].message)
@@ -247,17 +276,28 @@ def test_training_step_with_estimator(pipeline_session, training_input, hyperpar
         parameters=[enable_network_isolation, encrypt_container_traffic],
         sagemaker_session=pipeline_session,
     )
-    step_args.args["EnableInterContainerTrafficEncryption"] = {
+
+    expected_step_arguments = deepcopy(step_args.args)
+
+    expected_step_arguments["EnableInterContainerTrafficEncryption"] = {
         "Get": "Parameters.encrypt_container_traffic"
     }
-    step_args.args["EnableNetworkIsolation"] = {"Get": "Parameters.encrypt_container_traffic"}
+    expected_step_arguments["EnableNetworkIsolation"] = {
+        "Get": "Parameters.enable_network_isolation"
+    }
+    if expected_experiment_config is None:
+        expected_step_arguments.pop("ExperimentConfig", None)
+    else:
+        expected_step_arguments["ExperimentConfig"] = expected_experiment_config
+    del expected_step_arguments["TrainingJobName"]
+
     assert json.loads(pipeline.definition())["Steps"][0] == {
         "Name": "MyTrainingStep",
         "Description": "TrainingStep description",
         "DisplayName": "MyTrainingStep",
         "Type": "Training",
         "DependsOn": ["TestStep", "SecondTestStep"],
-        "Arguments": step_args.args,
+        "Arguments": expected_step_arguments,
     }
     assert step.properties.TrainingJobName.expr == {"Get": "Steps.MyTrainingStep.TrainingJobName"}
     adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
