@@ -425,7 +425,7 @@ class TrainingStep(ConfigurableRetryStep):
             self.step_args.func(*self.step_args.func_args, **self.step_args.func_kwargs)
 
             # populate request dict with args
-            estimator = self.estimator if self.estimator else self.step_args.func_args[0]
+            estimator = self.step_args.func_args[0]
             request_dict = estimator.sagemaker_session.context.args
         else:
             self.estimator._prepare_for_training(self.job_name)
@@ -654,7 +654,7 @@ class TransformStep(ConfigurableRetryStep):
             self.step_args.func(*self.step_args.func_args, **self.step_args.func_kwargs)
 
             # populate request dict with args
-            transformer = self.transformer if self.transformer else self.step_args.func_args[0]
+            transformer = self.step_args.func_args[0]
             request_dict = transformer.sagemaker_session.context.args
         else:
             transform_args = _TransformJob._get_transform_args(
@@ -812,7 +812,7 @@ class ProcessingStep(ConfigurableRetryStep):
             self.step_args.func(*self.step_args.func_args, **self.step_args.func_kwargs)
 
             # populate request dict with args
-            processor = self.processor if self.processor else self.step_args.func_args[0]
+            processor = self.step_args.func_args[0]
             request_dict = processor.sagemaker_session.context.args
         else:
             normalized_inputs, normalized_outputs = self.processor._normalize_args(
@@ -970,7 +970,7 @@ class TuningStep(ConfigurableRetryStep):
             self.step_args.func(*self.step_args.func_args, **self.step_args.func_kwargs)
 
             # populate request dict with args
-            tuner = self.tuner if self.tuner else self.step_args.func_args[0]
+            tuner = self.step_args.func_args[0]
             request_dict = tuner.sagemaker_session.context.args
         else:
             if self.tuner.estimator is not None:

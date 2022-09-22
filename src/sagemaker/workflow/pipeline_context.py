@@ -24,7 +24,7 @@ from sagemaker.session import Session, SessionSettings
 class _StepArguments:
     """Step arguments entity for `Step`"""
 
-    def __init__(self, *func_args, caller_name: str = None, func: Callable = None, **func_kwargs):
+    def __init__(self, caller_name: str = None, func: Callable = None, *func_args, **func_kwargs):
         """Create a `_StepArguments`
 
         Args:
@@ -32,8 +32,8 @@ class _StepArguments:
                 PipelineSession to get the step arguments.
             func (Callable): The job class function that generates the step arguments used
                 when creating the job ( fit() for a training job )
-            *args: The args for func
-            **kwargs: The kwargs for func
+            *func_args: The args for func
+            **func_kwargs: The kwargs for func
         """
         self.caller_name = caller_name
         self.func = func
@@ -212,7 +212,7 @@ def runnable_by_pipeline(run_func):
                 return context
 
             return _StepArguments(
-                *args, caller_name=retrieve_caller_name(self_instance), func=run_func, **kwargs
+                retrieve_caller_name(self_instance), run_func, *args, **kwargs
             )
 
         return run_func(*args, **kwargs)
@@ -232,17 +232,8 @@ def retrieve_caller_name(job_instance):
     """
 
     from sagemaker.processing import Processor
-    from sagemaker.estimator import Estimator, Framework
-    from sagemaker.amazon.knn import KNN
-    from sagemaker.amazon.kmeans import KMeans
-    from sagemaker.amazon.linear_learner import LinearLearner
-    from sagemaker.amazon.randomcutforest import RandomCutForest
-    from sagemaker.amazon.lda import LDA
-    from sagemaker.amazon.object2vec import Object2Vec
-    from sagemaker.amazon.ntm import NTM
-    from sagemaker.amazon.pca import PCA
-    from sagemaker.amazon.factorization_machines import FactorizationMachines
-    from sagemaker.amazon.ipinsights import IPInsights
+    from sagemaker.estimator import EstimatorBase
+    from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase
     from sagemaker.transformer import Transformer
     from sagemaker.tuner import HyperparameterTuner
 
@@ -251,18 +242,8 @@ def retrieve_caller_name(job_instance):
     if isinstance(
         job_instance,
         (
-            Estimator,
-            Framework,
-            KNN,
-            KMeans,
-            LinearLearner,
-            RandomCutForest,
-            LDA,
-            Object2Vec,
-            NTM,
-            PCA,
-            FactorizationMachines,
-            IPInsights,
+            EstimatorBase,
+            AmazonAlgorithmEstimatorBase
         ),
     ):
         return "train"
