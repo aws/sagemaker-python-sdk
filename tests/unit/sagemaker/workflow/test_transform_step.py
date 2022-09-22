@@ -23,7 +23,7 @@ from sagemaker.estimator import Estimator
 from sagemaker.parameter import IntegerParameter
 from sagemaker.tuner import HyperparameterTuner
 from sagemaker.workflow.pipeline_context import PipelineSession
-from tests.unit.sagemaker.workflow.helpers import CustomStep
+from tests.unit.sagemaker.workflow.helpers import CustomStep, get_step_args_helper
 
 from sagemaker.workflow.steps import TransformStep, TransformInput
 from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
@@ -41,6 +41,7 @@ DUMMY_S3_SCRIPT_PATH = "s3://dummy-s3/dummy_script.py"
 DUMMY_S3_SOURCE_DIR = "s3://dummy-s3-source-dir/"
 INSTANCE_TYPE = "ml.m4.xlarge"
 BUCKET = "my-bucket"
+custom_step = CustomStep(name="my-custom-step")
 
 
 @pytest.fixture
@@ -91,7 +92,7 @@ def pipeline_session(boto_session, client):
         ParameterString("ModelName"),
         ParameterString("ModelName", default_value="my-model"),
         Join(on="-", values=["my", "model"]),
-        CustomStep(name="custom-step").properties.RoleArn,
+        custom_step.properties.RoleArn,
     ],
 )
 @pytest.mark.parametrize(
@@ -101,7 +102,7 @@ def pipeline_session(boto_session, client):
         ParameterString("MyTransformInput"),
         ParameterString("MyTransformInput", default_value="s3://my-model"),
         Join(on="/", values=["s3://my-bucket", "my-transform-data", "input"]),
-        CustomStep(name="custom-step").properties.OutputDataConfig.S3OutputPath,
+        custom_step.properties.OutputDataConfig.S3OutputPath,
     ],
 )
 @pytest.mark.parametrize(
@@ -111,7 +112,7 @@ def pipeline_session(boto_session, client):
         ParameterString("MyOutputPath"),
         ParameterString("MyOutputPath", default_value="s3://my-output"),
         Join(on="/", values=["s3://my-bucket", "my-transform-data", "output"]),
-        CustomStep(name="custom-step").properties.OutputDataConfig.S3OutputPath,
+        custom_step.properties.OutputDataConfig.S3OutputPath,
     ],
 )
 def test_transform_step_with_transformer(model_name, data, output_path, pipeline_session):
@@ -149,11 +150,11 @@ def test_transform_step_with_transformer(model_name, data, output_path, pipeline
 
     pipeline = Pipeline(
         name="MyPipeline",
-        steps=[step],
+        steps=[step, custom_step],
         parameters=[model_name, data],
         sagemaker_session=pipeline_session,
     )
-    step_args = step_args.args
+    step_args = get_step_args_helper(step_args, "Transform")
     step_def = json.loads(pipeline.definition())["Steps"][0]
     step_args["ModelName"] = model_name.expr if is_pipeline_variable(model_name) else model_name
     step_args["TransformInput"]["DataSource"]["S3DataSource"]["S3Uri"] = (
@@ -175,7 +176,10 @@ def test_transform_step_with_transformer(model_name, data, output_path, pipeline
     )
     assert step_def == {"Name": "MyTransformStep", "Type": "Transform", "Arguments": step_args}
     adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
-    assert adjacency_list == {"MyTransformStep": []}
+    assert adjacency_list == {"MyTransformStep": [], "my-custom-step": []} or adjacency_list == {
+        "MyTransformStep": [],
+        "my-custom-step": ["MyTransformStep"],
+    }
 
 
 @pytest.mark.parametrize(

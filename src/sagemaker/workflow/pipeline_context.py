@@ -16,7 +16,7 @@ from __future__ import absolute_import
 import warnings
 import inspect
 from functools import wraps
-from typing import Dict, Optional
+from typing import Dict, Optional, Callable
 
 from sagemaker.session import Session, SessionSettings
 
@@ -24,14 +24,21 @@ from sagemaker.session import Session, SessionSettings
 class _StepArguments:
     """Step arguments entity for `Step`"""
 
-    def __init__(self, caller_name: str = None):
+    def __init__(self, *func_args, caller_name: str = None, func: Callable = None, **func_kwargs):
         """Create a `_StepArguments`
 
         Args:
             caller_name (str): The name of the caller function which is intercepted by the
                 PipelineSession to get the step arguments.
+            func (Callable): The job class function that generates the step arguments used
+                when creating the job ( fit() for a training job )
+            *args: The args for func
+            **kwargs: The kwargs for func
         """
         self.caller_name = caller_name
+        self.func = func
+        self.func_args = func_args
+        self.func_kwargs = func_kwargs
 
 
 class _JobStepArguments(_StepArguments):
@@ -204,9 +211,64 @@ def runnable_by_pipeline(run_func):
                 self_instance.sagemaker_session.context = None
                 return context
 
-            run_func(*args, **kwargs)
-            return self_instance.sagemaker_session.context
+            return _StepArguments(
+                *args, caller_name=retrieve_caller_name(self_instance), func=run_func, **kwargs
+            )
 
         return run_func(*args, **kwargs)
 
     return wrapper
+
+
+def retrieve_caller_name(job_instance):
+    """Convenience method or runnable_by_pipeline decorator
+
+    This function takes an instance of a job class and maps it
+    to the pipeline session function that creates the job request.
+
+    Args:
+            job_instance: A job class instance, one of the following
+                imported types
+    """
+
+    from sagemaker.processing import Processor
+    from sagemaker.estimator import Estimator, Framework
+    from sagemaker.amazon.knn import KNN
+    from sagemaker.amazon.kmeans import KMeans
+    from sagemaker.amazon.linear_learner import LinearLearner
+    from sagemaker.amazon.randomcutforest import RandomCutForest
+    from sagemaker.amazon.lda import LDA
+    from sagemaker.amazon.object2vec import Object2Vec
+    from sagemaker.amazon.ntm import NTM
+    from sagemaker.amazon.pca import PCA
+    from sagemaker.amazon.factorization_machines import FactorizationMachines
+    from sagemaker.amazon.ipinsights import IPInsights
+    from sagemaker.transformer import Transformer
+    from sagemaker.tuner import HyperparameterTuner
+
+    if isinstance(job_instance, Processor):
+        return "process"
+    if isinstance(
+        job_instance,
+        (
+            Estimator,
+            Framework,
+            KNN,
+            KMeans,
+            LinearLearner,
+            RandomCutForest,
+            LDA,
+            Object2Vec,
+            NTM,
+            PCA,
+            FactorizationMachines,
+            IPInsights,
+        ),
+    ):
+        return "train"
+    if isinstance(job_instance, Transformer):
+        return "transform"
+    if isinstance(job_instance, HyperparameterTuner):
+        return "create_tuning_job"
+
+    return None

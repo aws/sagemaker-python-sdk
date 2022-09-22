@@ -370,7 +370,7 @@ class TrainingStep(ConfigurableRetryStep):
                 error_message="The step_args of TrainingStep must be obtained from estimator.fit().",
             )
 
-        self.step_args = step_args.args if step_args else None
+        self.step_args = step_args
         self.estimator = estimator
         self.inputs = inputs
 
@@ -420,7 +420,13 @@ class TrainingStep(ConfigurableRetryStep):
         The `TrainingJobName` and `ExperimentConfig` attributes cannot be included.
         """
         if self.step_args:
-            request_dict = self.step_args
+            # execute fit function with saved parameters,
+            # and store args in PipelineSession's _context
+            self.step_args.func(*self.step_args.func_args, **self.step_args.func_kwargs)
+
+            # populate request dict with args
+            estimator = self.estimator if self.estimator else self.step_args.func_args[0]
+            request_dict = estimator.sagemaker_session.context.args
         else:
             self.estimator._prepare_for_training(self.job_name)
             train_args = _TrainingJob._get_train_args(
@@ -618,7 +624,7 @@ class TransformStep(ConfigurableRetryStep):
                 "from transformer.transform().",
             )
 
-        self.step_args = step_args.args if step_args else None
+        self.step_args = step_args
         self.transformer = transformer
         self.inputs = inputs
         self.cache_config = cache_config
@@ -643,7 +649,13 @@ class TransformStep(ConfigurableRetryStep):
         `TransformJobName` and `ExperimentConfig` cannot be included in the arguments.
         """
         if self.step_args:
-            request_dict = self.step_args
+            # execute transform function with saved parameters,
+            # and store args in PipelineSession's _context
+            self.step_args.func(*self.step_args.func_args, **self.step_args.func_kwargs)
+
+            # populate request dict with args
+            transformer = self.transformer if self.transformer else self.step_args.func_args[0]
+            request_dict = transformer.sagemaker_session.context.args
         else:
             transform_args = _TransformJob._get_transform_args(
                 transformer=self.transformer,
@@ -745,7 +757,7 @@ class ProcessingStep(ConfigurableRetryStep):
                 error_message="The step_args of ProcessingStep must be obtained from processor.run().",
             )
 
-        self.step_args = step_args.args if step_args else None
+        self.step_args = step_args
         self.processor = processor
         self.inputs = inputs
         self.outputs = outputs
@@ -795,7 +807,13 @@ class ProcessingStep(ConfigurableRetryStep):
         `ProcessingJobName` and `ExperimentConfig` cannot be included in the arguments.
         """
         if self.step_args:
-            request_dict = self.step_args
+            # execute run function with saved parameters,
+            # and store args in PipelineSession's _context
+            self.step_args.func(*self.step_args.func_args, **self.step_args.func_kwargs)
+
+            # populate request dict with args
+            processor = self.processor if self.processor else self.step_args.func_args[0]
+            request_dict = processor.sagemaker_session.context.args
         else:
             normalized_inputs, normalized_outputs = self.processor._normalize_args(
                 job_name=self.job_name,
@@ -916,7 +934,7 @@ class TuningStep(ConfigurableRetryStep):
                 error_message="The step_args of TuningStep must be obtained from tuner.fit().",
             )
 
-        self.step_args = step_args.args if step_args else None
+        self.step_args = step_args
         self.tuner = tuner
         self.inputs = inputs
         self.job_arguments = job_arguments
@@ -947,7 +965,13 @@ class TuningStep(ConfigurableRetryStep):
         The `HyperParameterTuningJobName` attribute cannot be included.
         """
         if self.step_args:
-            request_dict = self.step_args
+            # execute fit function with saved parameters,
+            # and store args in PipelineSession's _context
+            self.step_args.func(*self.step_args.func_args, **self.step_args.func_kwargs)
+
+            # populate request dict with args
+            tuner = self.tuner if self.tuner else self.step_args.func_args[0]
+            request_dict = tuner.sagemaker_session.context.args
         else:
             if self.tuner.estimator is not None:
                 self.tuner.estimator._prepare_for_training()
