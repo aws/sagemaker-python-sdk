@@ -1,5 +1,104 @@
 # Changelog
 
+## v2.109.0 (2022-09-09)
+
+### Features
+
+ * add search filters
+
+### Bug Fixes and Other Changes
+
+ * local pipeline step argument parsing bug
+ * support fail_on_violation flag for check steps
+ * fix links per app security scan
+ * Add PipelineVariable annotation for all processor subclasses
+
+### Documentation Changes
+
+ * the SageMaker model parallel library 1.11.0 release
+
+## v2.108.0 (2022-09-02)
+
+### Features
+
+ * Adding support in HuggingFace estimator for Training Compiler enhanced PyTorch 1.11
+
+### Bug Fixes and Other Changes
+
+ * add sagemaker clarify image account for cgk region
+ * set PYTHONHASHSEED env variable to fixed value to fix intermittent failures in release pipeline
+ * trcomp fixtures to override default fixtures for integ tests
+
+### Documentation Changes
+
+ * add more info about volume_size
+
+## v2.107.0 (2022-08-29)
+
+### Features
+
+ * support python 3.10, update airflow dependency
+
+### Bug Fixes and Other Changes
+
+ * Add retry in session.py to check if training is finished
+
+### Documentation Changes
+
+ * remove Other tab in Built-in algorithms section and mi…
+
+## v2.106.0 (2022-08-24)
+
+### Features
+
+ * Implement Kendra Search in RTD website
+
+### Bug Fixes and Other Changes
+
+ * Add primitive_or_expr() back to conditions
+ * remove specifying env-vars when creating model from model package
+ * Add CGK in config for Spark Image
+
+## v2.105.0 (2022-08-19)
+
+### Features
+
+ * Added endpoint_name to clarify.ModelConfig
+ * adding workgroup functionality to athena query
+
+### Bug Fixes and Other Changes
+
+ * disable debugger/profiler in cgk region
+ * using unique name for lineage test to unblock PR checks
+
+### Documentation Changes
+
+ * update first-party algorithms and structural updates
+
+## v2.104.0 (2022-08-17)
+
+### Features
+
+ * local mode executor implementation
+ * Pipelines local mode setup
+ * Add PT 1.12 support
+ * added _AnalysisConfigGenerator for clarify
+
+### Bug Fixes and Other Changes
+
+ * yaml safe_load sagemaker config
+ * pipelines local mode minor bug fixes
+ * add local mode integ tests
+ * implement local JsonGet function
+ * Add Pipeline annotation in model base class and tensorflow estimator
+ * Allow users to customize trial component display names for pipeline launched jobs
+ * Update localmode code to decode urllib response as UTF8
+
+### Documentation Changes
+
+ * New content for Pipelines local mode
+ * Correct documentation error
+
 ## v2.103.0 (2022-08-05)
 
 ### Features

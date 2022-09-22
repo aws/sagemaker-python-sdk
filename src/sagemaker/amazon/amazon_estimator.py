@@ -16,6 +16,7 @@ from __future__ import absolute_import
 import json
 import logging
 import tempfile
+from typing import Union
 
 from six.moves.urllib.parse import urlparse
 
@@ -27,6 +28,7 @@ from sagemaker.deprecations import renamed_warning
 from sagemaker.estimator import EstimatorBase, _TrainingJob
 from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.utils import sagemaker_timestamp
+from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
 
 logger = logging.getLogger(__name__)
@@ -304,21 +306,26 @@ class RecordSet(object):
     """Placeholder docstring"""
 
     def __init__(
-        self, s3_data, num_records, feature_dim, s3_data_type="ManifestFile", channel="train"
+        self,
+        s3_data: Union[str, PipelineVariable],
+        num_records: int,
+        feature_dim: int,
+        s3_data_type: Union[str, PipelineVariable] = "ManifestFile",
+        channel: Union[str, PipelineVariable] = "train",
     ):
         """A collection of Amazon :class:~`Record` objects serialized and stored in S3.
 
         Args:
-            s3_data (str): The S3 location of the training data
+            s3_data (str or PipelineVariable): The S3 location of the training data
             num_records (int): The number of records in the set.
             feature_dim (int): The dimensionality of "values" arrays in the
                 Record features, and label (if each Record is labeled).
-            s3_data_type (str): Valid values: 'S3Prefix', 'ManifestFile'. If
-                'S3Prefix', ``s3_data`` defines a prefix of s3 objects to train
+            s3_data_type (str or PipelineVariable): Valid values: 'S3Prefix', 'ManifestFile'.
+                If 'S3Prefix', ``s3_data`` defines a prefix of s3 objects to train
                 on. All objects with s3 keys beginning with ``s3_data`` will be
                 used to train. If 'ManifestFile', then ``s3_data`` defines a
                 single s3 manifest file, listing each s3 object to train on.
-            channel (str): The SageMaker Training Job channel this RecordSet
+            channel (str or PipelineVariable): The SageMaker Training Job channel this RecordSet
                 should be bound to
         """
         self.s3_data = s3_data

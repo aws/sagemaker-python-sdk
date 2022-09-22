@@ -27,8 +27,8 @@ class ServerlessInferenceConfig(object):
 
     def __init__(
         self,
-        memory_size_in_mb=2048,
-        max_concurrency=5,
+        memory_size_in_mb: int = 2048,
+        max_concurrency: int = 5,
     ):
         """Initialize a ServerlessInferenceConfig object for serverless inference configuration.
 

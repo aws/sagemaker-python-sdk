@@ -106,8 +106,8 @@ class WarmStartConfig(object):
         Args:
             warm_start_type (sagemaker.tuner.WarmStartTypes): This should be one
                 of the supported warm start types in WarmStartType
-            parents (set{str}): Set of parent tuning jobs which will be used to
-                warm start the new tuning job.
+            parents (set[str] or set[PipelineVariable]): Set of parent tuning jobs which
+                will be used to warm start the new tuning job.
         """
 
         if warm_start_type not in list(WarmStartTypes):
@@ -237,7 +237,7 @@ class HyperparameterTuner(object):
                 that has been initialized with the desired configuration. There
                 does not need to be a training job associated with this
                 instance.
-            objective_metric_name (str): Name of the metric for evaluating
+            objective_metric_name (str or PipelineVariable): Name of the metric for evaluating
                 training jobs.
             hyperparameter_ranges (dict[str, sagemaker.parameter.ParameterRange]): Dictionary of
                 parameter ranges. These parameter ranges can be one
@@ -245,24 +245,24 @@ class HyperparameterTuner(object):
                 the dictionary are the names of the hyperparameter, and the
                 values are the appropriate parameter range class to represent
                 the range.
-            metric_definitions (list[dict]): A list of dictionaries that defines
-                the metric(s) used to evaluate the training jobs (default:
+            metric_definitions (list[dict[str, str] or list[dict[str, PipelineVariable]]): A list of
+                dictionaries that defines the metric(s) used to evaluate the training jobs (default:
                 None). Each dictionary contains two keys: 'Name' for the name of
                 the metric, and 'Regex' for the regular expression used to
                 extract the metric from the logs. This should be defined only
                 for hyperparameter tuning jobs that don't use an Amazon
                 algorithm.
-            strategy (str): Strategy to be used for hyperparameter estimations
+            strategy (str or PipelineVariable): Strategy to be used for hyperparameter estimations
                 (default: 'Bayesian').
-            objective_type (str): The type of the objective metric for
+            objective_type (str or PipelineVariable): The type of the objective metric for
                 evaluating training jobs. This value can be either 'Minimize' or
                 'Maximize' (default: 'Maximize').
-            max_jobs (int): Maximum total number of training jobs to start for
+            max_jobs (int or PipelineVariable): Maximum total number of training jobs to start for
                 the hyperparameter tuning job (default: 1).
-            max_parallel_jobs (int): Maximum number of parallel training jobs to
+            max_parallel_jobs (int or PipelineVariable): Maximum number of parallel training jobs to
                 start (default: 1).
-            tags (list[dict]): List of tags for labeling the tuning job
-                (default: None). For more, see
+            tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): List of tags for
+                labeling the tuning job (default: None). For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             base_tuning_job_name (str): Prefix for the hyperparameter tuning job
                 name when the :meth:`~sagemaker.tuner.HyperparameterTuner.fit`
@@ -272,7 +272,7 @@ class HyperparameterTuner(object):
             warm_start_config (sagemaker.tuner.WarmStartConfig): A
                 ``WarmStartConfig`` object that has been initialized with the
                 configuration defining the nature of warm start tuning job.
-            early_stopping_type (str): Specifies whether early stopping is
+            early_stopping_type (str or PipelineVariable): Specifies whether early stopping is
                 enabled for the job. Can be either 'Auto' or 'Off' (default:
                 'Off'). If set to 'Off', early stopping will not be attempted.
                 If set to 'Auto', early stopping of some training jobs may
