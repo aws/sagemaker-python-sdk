@@ -24,6 +24,7 @@ ACCOUNTS = {
     "ap-south-1": "126357580389",
     "ap-southeast-1": "245545462676",
     "ap-southeast-2": "563025443158",
+    "ap-southeast-3": "669540362728",
     "ca-central-1": "536280801234",
     "cn-north-1": "453000072557",
     "cn-northwest-1": "453252182341",
