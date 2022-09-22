@@ -365,13 +365,13 @@ def test_training_step_with_framework_estimator(
     rule_config_name_step_args = step_args["ProfilerRuleConfigurations"][0]["RuleConfigurationName"]
     step_args["ProfilerRuleConfigurations"][0][
         "RuleConfigurationName"
-    ] = rule_config_name_step_args[:-5]
+    ] = rule_config_name_step_args[:-11]
     rule_config_name_step_def = step_def["Arguments"]["ProfilerRuleConfigurations"][0][
         "RuleConfigurationName"
     ]
     step_def["Arguments"]["ProfilerRuleConfigurations"][0][
         "RuleConfigurationName"
-    ] = rule_config_name_step_def[:-5]
+    ] = rule_config_name_step_def[:-11]
 
     if "sagemaker_s3_output" in step_args["HyperParameters"]:
         del step_args["HyperParameters"]["sagemaker_s3_output"]
@@ -457,13 +457,13 @@ def test_training_step_with_algorithm_base(algo_estimator, training_input, pipel
     rule_config_name_step_args = step_args["ProfilerRuleConfigurations"][0]["RuleConfigurationName"]
     step_args["ProfilerRuleConfigurations"][0][
         "RuleConfigurationName"
-    ] = rule_config_name_step_args[:-5]
+    ] = rule_config_name_step_args[:-11]
     rule_config_name_step_def = step_def["Arguments"]["ProfilerRuleConfigurations"][0][
         "RuleConfigurationName"
     ]
     step_def["Arguments"]["ProfilerRuleConfigurations"][0][
         "RuleConfigurationName"
-    ] = rule_config_name_step_def[:-5]
+    ] = rule_config_name_step_def[:-11]
 
     assert step_def == {
         "Name": "MyTrainingStep",

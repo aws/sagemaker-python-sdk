@@ -167,13 +167,13 @@ def test_tuning_step_with_single_algo_tuner(pipeline_session, training_input, en
     ]
     step_args["TrainingJobDefinition"]["StaticHyperParameters"][
         "sagemaker_job_name"
-    ] = step_args_sm_job_name[:-6]
+    ] = step_args_sm_job_name[:-24]
     step_def_sm_job_name = step_def["Arguments"]["TrainingJobDefinition"]["StaticHyperParameters"][
         "sagemaker_job_name"
     ]
     step_def["Arguments"]["TrainingJobDefinition"]["StaticHyperParameters"][
         "sagemaker_job_name"
-    ] = step_def_sm_job_name[:-6]
+    ] = step_def_sm_job_name[:-24]
 
     # delete S3 path assertions for now because job name is included with timestamp. These will be re-enabled once
     # next PRs are submitted with s3 path updates, removing the job name.
@@ -257,13 +257,13 @@ def test_tuning_step_with_multi_algo_tuner(pipeline_session, entry_point):
         step_args_sm_job_name = step["StaticHyperParameters"]["sagemaker_job_name"]
         step_args["TrainingJobDefinitions"][i]["StaticHyperParameters"][
             "sagemaker_job_name"
-        ] = step_args_sm_job_name[:-4]
+        ] = step_args_sm_job_name[:-24]
         step_def_sm_job_name = step_def["Arguments"]["TrainingJobDefinitions"][i][
             "StaticHyperParameters"
         ]["sagemaker_job_name"]
         step_def["Arguments"]["TrainingJobDefinitions"][i]["StaticHyperParameters"][
             "sagemaker_job_name"
-        ] = step_def_sm_job_name[:-4]
+        ] = step_def_sm_job_name[:-24]
 
         # delete S3 path assertions for now because job name is included with timestamp. These will be re-enabled once
         # next PRs are submitted with s3 path updates, removing the job name.
