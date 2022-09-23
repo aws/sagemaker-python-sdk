@@ -946,3 +946,9 @@ def test_validate_pytorchddp_raises():
             py_version="py2",
             image_uri=None,
         )
+
+
+def test_instance_type_supports_profiler():
+    assert fw_utils._instance_type_supports_profiler("ml.trn1.xlarge") == False
+    assert fw_utils._instance_type_supports_profiler("ml.m4.xlarge") == True
+    assert fw_utils._instance_type_supports_profiler("local") == True

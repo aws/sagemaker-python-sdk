@@ -44,6 +44,7 @@ from sagemaker.fw_utils import (
     UploadedCode,
     _region_supports_debugger,
     _region_supports_profiler,
+    _instance_type_supports_profiler,
     get_mp_parameters,
     tar_and_upload_dir,
     validate_source_dir,
@@ -592,7 +593,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         self.max_retry_attempts = max_retry_attempts
 
-        if not _region_supports_profiler(self.sagemaker_session.boto_region_name):
+        if not _region_supports_profiler(
+            self.sagemaker_session.boto_region_name
+        ) or not _instance_type_supports_profiler(self.instance_type):
             self.disable_profiler = True
 
         self.profiler_rule_configs = None

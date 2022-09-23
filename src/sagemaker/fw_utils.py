@@ -904,6 +904,21 @@ def _region_supports_profiler(region_name):
     return region_name.lower() not in PROFILER_UNSUPPORTED_REGIONS
 
 
+def _instance_type_supports_profiler(instance_type):
+    """Returns bool indicating whether instance_type supports Amazon SageMaker Debugger profiling feature.
+
+    Args:
+        instance_type (str): Name of the instance_type to check against.
+
+    Returns:
+        bool: Whether or not the region supports Amazon SageMaker Debugger profiling feature.
+    """
+    match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+    if match and match[1].startswith("trn"):
+        return False
+    return True
+
+
 def validate_version_or_image_args(framework_version, py_version, image_uri):
     """Checks if version or image arguments are specified.
 
