@@ -169,7 +169,6 @@ def test_transform_step_with_transformer(model_name, data, output_path, pipeline
         output_path.expr if is_pipeline_variable(output_path) else output_path
     )
 
-
     step_def = json.loads(pipeline.definition())["Steps"][0]
     assert step_def == {
         "Name": "MyTransformStep",

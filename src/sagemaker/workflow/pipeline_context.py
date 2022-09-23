@@ -25,6 +25,7 @@ from sagemaker.local import LocalSession
 class _StepArguments:
     """Step arguments entity for `Step`"""
 
+    # pylint: disable=keyword-arg-before-vararg
     def __init__(self, caller_name: str = None, func: Callable = None, *func_args, **func_kwargs):
         """Create a `_StepArguments`
 
@@ -249,9 +250,7 @@ def runnable_by_pipeline(run_func):
                 self_instance.sagemaker_session.context = None
                 return context
 
-            return _StepArguments(
-                retrieve_caller_name(self_instance), run_func, *args, **kwargs
-            )
+            return _StepArguments(retrieve_caller_name(self_instance), run_func, *args, **kwargs)
 
         return run_func(*args, **kwargs)
 
