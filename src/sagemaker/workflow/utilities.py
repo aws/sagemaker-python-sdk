@@ -20,11 +20,10 @@ from pathlib import Path
 from typing import List, Sequence, Union, Set, TYPE_CHECKING
 import hashlib
 from urllib.parse import unquote, urlparse
-from contextlib import contextmanager
 from _hashlib import HASH as Hash
 
 from sagemaker.workflow.parameters import Parameter
-from sagemaker.workflow.pipeline_context import _StepArguments, _PipelineConfig
+from sagemaker.workflow.pipeline_context import _StepArguments
 from sagemaker.workflow.entities import (
     Entity,
     RequestType,
@@ -36,7 +35,6 @@ if TYPE_CHECKING:
     from sagemaker.workflow.step_collections import StepCollection
 
 BUF_SIZE = 65536  # 64KiB
-_pipeline_config: _PipelineConfig = None
 
 
 def list_to_request(entities: Sequence[Union[Entity, "StepCollection"]]) -> List[RequestType]:
@@ -55,40 +53,6 @@ def list_to_request(entities: Sequence[Union[Entity, "StepCollection"]]) -> List
             request_dicts.append(entity.to_request())
         elif isinstance(entity, StepCollection):
             request_dicts.extend(entity.request_dicts())
-    return request_dicts
-
-
-@contextmanager
-def _pipeline_config_manager(pipeline_name, step_name, code_hash, config_hash):
-    """Expose static _pipeline_config variable to other modules"""
-
-    # pylint: disable=W0603
-    global _pipeline_config
-    _pipeline_config = _PipelineConfig(pipeline_name, step_name, code_hash, config_hash)
-    try:
-        yield
-    finally:
-        _pipeline_config = None
-
-
-def build_steps(steps: Sequence[Entity], pipeline_name: str):
-    """Get the request structure for list of steps, with _PipelineConfigManager.
-
-    Args:
-        steps (Sequence[Entity]): A list of steps, (Entity type because Step causes circular import)
-        pipeline_name (str): The name of the pipeline, passed down from pipeline.to_request()
-    Returns:
-        list: A request structure object for a service call for the list of pipeline steps
-    """
-    from sagemaker.workflow.step_collections import StepCollection
-
-    request_dicts = []
-    for step in steps:
-        if isinstance(step, StepCollection):
-            request_dicts.extend(step.request_dicts())
-        else:
-            with _pipeline_config_manager(pipeline_name, step.name, None, None):
-                request_dicts.append(step.to_request())
     return request_dicts
 
 
