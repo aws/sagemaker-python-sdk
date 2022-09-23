@@ -24,6 +24,7 @@ def read(fname):
     Args:
         fname:
     """
+    print('test')
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 
