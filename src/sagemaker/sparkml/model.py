@@ -85,7 +85,7 @@ class SparkMLModel(Model):
         """Initialize a SparkMLModel.
 
         Args:
-            model_data (str): The S3 location of a SageMaker model data
+            model_data (str or PipelineVariable): The S3 location of a SageMaker model data
                 ``.tar.gz`` file. For SparkML, this will be the output that has
                 been produced by the Spark job after serializing the Model via
                 MLeap.

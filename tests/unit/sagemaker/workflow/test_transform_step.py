@@ -18,6 +18,8 @@ from mock import Mock, PropertyMock
 import pytest
 import warnings
 
+from copy import deepcopy
+
 from sagemaker import Model, Processor
 from sagemaker.estimator import Estimator
 from sagemaker.parameter import IntegerParameter
@@ -154,32 +156,111 @@ def test_transform_step_with_transformer(model_name, data, output_path, pipeline
         parameters=[model_name, data],
         sagemaker_session=pipeline_session,
     )
+
     step_args = get_step_args_helper(step_args, "Transform")
-    step_def = json.loads(pipeline.definition())["Steps"][0]
-    step_args["ModelName"] = model_name.expr if is_pipeline_variable(model_name) else model_name
-    step_args["TransformInput"]["DataSource"]["S3DataSource"]["S3Uri"] = (
+    expected_step_arguments = deepcopy(step_args)
+    expected_step_arguments["ModelName"] = (
+        model_name.expr if is_pipeline_variable(model_name) else model_name
+    )
+    expected_step_arguments["TransformInput"]["DataSource"]["S3DataSource"]["S3Uri"] = (
         data.expr if is_pipeline_variable(data) else data
     )
-    step_args["TransformOutput"]["S3OutputPath"] = (
+    expected_step_arguments["TransformOutput"]["S3OutputPath"] = (
         output_path.expr if is_pipeline_variable(output_path) else output_path
     )
 
-    del (
-        step_args["ModelName"],
-        step_args["TransformInput"]["DataSource"]["S3DataSource"]["S3Uri"],
-        step_args["TransformOutput"]["S3OutputPath"],
-    )
-    del (
-        step_def["Arguments"]["ModelName"],
-        step_def["Arguments"]["TransformInput"]["DataSource"]["S3DataSource"]["S3Uri"],
-        step_def["Arguments"]["TransformOutput"]["S3OutputPath"],
-    )
-    assert step_def == {"Name": "MyTransformStep", "Type": "Transform", "Arguments": step_args}
-    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
-    assert adjacency_list == {"MyTransformStep": [], "my-custom-step": []} or adjacency_list == {
-        "MyTransformStep": [],
-        "my-custom-step": ["MyTransformStep"],
+
+    step_def = json.loads(pipeline.definition())["Steps"][0]
+    assert step_def == {
+        "Name": "MyTransformStep",
+        "Type": "Transform",
+        "Arguments": expected_step_arguments,
     }
+
+
+@pytest.mark.parametrize(
+    "experiment_config, expected_experiment_config",
+    [
+        (
+            {
+                "ExperimentName": "experiment-name",
+                "TrialName": "trial-name",
+                "TrialComponentDisplayName": "display-name",
+            },
+            {"TrialComponentDisplayName": "display-name"},
+        ),
+        (
+            {"TrialComponentDisplayName": "display-name"},
+            {"TrialComponentDisplayName": "display-name"},
+        ),
+        (
+            {
+                "ExperimentName": "experiment-name",
+                "TrialName": "trial-name",
+            },
+            None,
+        ),
+        (None, None),
+    ],
+)
+def test_transform_step_with_transformer_experiment_config(
+    experiment_config, expected_experiment_config, pipeline_session
+):
+    transformer = Transformer(
+        model_name="my_model",
+        instance_type="ml.m5.xlarge",
+        instance_count=1,
+        output_path="s3://my-bucket/my-output-path",
+        sagemaker_session=pipeline_session,
+    )
+    transform_inputs = TransformInput(data="s3://my-bucket/my-data")
+
+    with warnings.catch_warnings(record=True) as w:
+        step_args = transformer.transform(
+            data=transform_inputs.data,
+            data_type=transform_inputs.data_type,
+            content_type=transform_inputs.content_type,
+            compression_type=transform_inputs.compression_type,
+            split_type=transform_inputs.split_type,
+            input_filter=transform_inputs.input_filter,
+            output_filter=transform_inputs.output_filter,
+            join_source=transform_inputs.join_source,
+            model_client_config=transform_inputs.model_client_config,
+            experiment_config=experiment_config,
+        )
+        assert len(w) == 1
+        assert issubclass(w[-1].category, UserWarning)
+        assert "Running within a PipelineSession" in str(w[-1].message)
+
+    with warnings.catch_warnings(record=True) as w:
+        step = TransformStep(
+            name="MyTransformStep",
+            step_args=step_args,
+        )
+        assert len(w) == 0
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[step],
+        sagemaker_session=pipeline_session,
+    )
+
+    step_args = get_step_args_helper(step_args, "Transform")
+    expected_step_arguments = deepcopy(step_args)
+    if expected_experiment_config is None:
+        expected_step_arguments.pop("ExperimentConfig", None)
+    else:
+        expected_step_arguments["ExperimentConfig"] = expected_experiment_config
+
+    step_def = json.loads(pipeline.definition())["Steps"][0]
+    assert step_def == {
+        "Name": "MyTransformStep",
+        "Type": "Transform",
+        "Arguments": expected_step_arguments,
+    }
+
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert adjacency_list == {"MyTransformStep": []}
 
 
 @pytest.mark.parametrize(

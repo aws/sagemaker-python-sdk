@@ -1,20 +1,19 @@
 ######################
-First-Party Algorithms
+Built-in Algorithms
 ######################
 
-Amazon SageMaker provides implementations of some common machine learning algorithms optimized for GPU architecture and massive datasets.
+Built-in algorithms are offered in 2 modes:
+
+* Container mode algorithms offered through :ref:`Estimators <estimators>` & :ref:`Amazon Estimators <amazon_estimators>`
+
+* Script mode algorithms based on `pre-built SageMaker Docker Images <https://docs.aws.amazon.com/sagemaker/latest/dg/docker-containers-prebuilt.html>`__ offered through Estimators
 
 .. toctree::
     :maxdepth: 2
 
     sagemaker.amazon.amazon_estimator
-    factorization_machines
-    ipinsights
-    kmeans
-    knn
-    lda
-    linear_learner
-    ntm
-    object2vec
-    pca
-    randomcutforest
+    tabular/index
+    text/index
+    time_series/index
+    unsupervised/index
+    vision/index

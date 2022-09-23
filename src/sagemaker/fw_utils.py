@@ -53,8 +53,26 @@ PARAMETER_SERVER_MULTI_GPU_WARNING = (
     "only one worker per host regardless of the number of GPUs."
 )
 
-DEBUGGER_UNSUPPORTED_REGIONS = ("us-iso-east-1",)
-PROFILER_UNSUPPORTED_REGIONS = ("us-iso-east-1",)
+DEBUGGER_UNSUPPORTED_REGIONS = (
+    "us-iso-east-1",
+    "ap-southeast-3",
+    "ap-southeast-4",
+    "eu-south-2",
+    "me-central-1",
+    "ap-south-2",
+    "eu-central-2",
+    "us-gov-east-1",
+)
+PROFILER_UNSUPPORTED_REGIONS = (
+    "us-iso-east-1",
+    "ap-southeast-3",
+    "ap-southeast-4",
+    "eu-south-2",
+    "me-central-1",
+    "ap-south-2",
+    "eu-central-2",
+    "us-gov-east-1",
+)
 
 SINGLE_GPU_INSTANCE_TYPES = ("ml.p2.xlarge", "ml.p3.2xlarge")
 SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES = (
@@ -101,6 +119,8 @@ SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
         "1.10.2",
         "1.11",
         "1.11.0",
+        "1.12",
+        "1.12.0",
     ],
 }
 
@@ -145,12 +165,12 @@ def validate_source_code_input_against_pipeline_variables(
     """Validate source code input against pipeline variables
 
     Args:
-        entry_point (str, PipelineVariable): The path to the local Python source file that
+        entry_point (str or PipelineVariable): The path to the local Python source file that
             should be executed as the entry point to training (default: None).
-        source_dir (str, PipelineVariable): The Path to a directory with any other
+        source_dir (str or PipelineVariable): The Path to a directory with any other
             training source code dependencies aside from the entry point file (default: None).
         git_config (Dict[str, str]): Git configurations used for cloning files (default: None).
-        enable_network_isolation (bool, PipelineVariable): Specifies whether container will run
+        enable_network_isolation (bool or PipelineVariable): Specifies whether container will run
             in network isolation mode (default: False).
     """
     if is_pipeline_variable(enable_network_isolation) or enable_network_isolation is True:
@@ -555,7 +575,7 @@ def validate_smdistributed(
     if "smdistributed" not in distribution:
         # Distribution strategy other than smdistributed is selected
         return
-    if is_pipeline_variable(instance_type):
+    if is_pipeline_variable(instance_type) or is_pipeline_variable(image_uri):
         # The instance_type is not available in compile time.
         # Rather, it's given in Pipeline execution time
         return
