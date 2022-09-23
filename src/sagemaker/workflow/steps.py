@@ -475,7 +475,6 @@ class TrainingStep(ConfigurableRetryStep):
         if self.step_args:
             # execute fit function with saved parameters,
             # and store args in PipelineSession's _context
-            print("step_args: ", self.step_args)
             self.step_args.func(*self.step_args.func_args, **self.step_args.func_kwargs)
 
             # populate request dict with args
