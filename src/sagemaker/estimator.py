@@ -168,10 +168,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             instance_type (str or PipelineVariable): Type of EC2 instance to use for training,
                 for example, ``'ml.c4.xlarge'``. Required if instance_groups is
                 not set.
-            keep_alive_period_in_seconds (int): How long in seconds (default: None)
-                    will the resource including instances, volumes, ecr imges etc. used
-                    by this training job be kept alive for reuse for the next follow-up
-                    training job.
+            keep_alive_period_in_seconds (int): The duration of time in seconds
+                to retain configured resources in a warm pool for subsequent
+                training jobs (default: None).
             volume_size (int or PipelineVariable): Size in GB of the storage volume to use for
                 storing input and output data during training (default: 30).
 
@@ -2148,7 +2147,9 @@ class _TrainingJob(_Job):
                 updated in the training job. (default: None).
             profiler_config (dict): Configuration for how profiling information is emitted with
                 SageMaker Debugger. (default: None).
-            resource_config (dict): Configuration for resource of the training job. (default: None).
+            resource_config (dict): Configuration for resource of the training job. Currently only
+                support updating the warm pool retention length after a training job is created.
+                (default: None).
 
         Returns:
             sagemaker.estimator._TrainingJob: Constructed object that captures
@@ -2172,7 +2173,9 @@ class _TrainingJob(_Job):
                 updated in the training job. (default: None).
             profiler_config (dict): Configuration for how profiling information is emitted with
                 SageMaker Debugger. (default: None).
-            resource_config (dict): Configuration for resource of the training job. (default: None).
+            resource_config (dict): Configuration for resource of the training job. Currently only
+                support updating the warm pool retention length after a training job is created.
+                (default: None).
 
         Returns:
             Dict: dict for `sagemaker.session.Session.update_training_job` method
@@ -2289,10 +2292,9 @@ class Estimator(EstimatorBase):
             instance_type (str or PipelineVariable): Type of EC2 instance to use for training,
                 for example, ``'ml.c4.xlarge'``. Required if instance_groups is
                 not set.
-            keep_alive_period_in_seconds (int): How long in seconds (default: None)
-                    will the resource including instances, volumes, ecr imges etc. used
-                    by this training job be kept alive for reuse for the next follow-up
-                    training job.
+            keep_alive_period_in_seconds (int): The duration of time in seconds
+                to retain configured resources in a warm pool for subsequent
+                training jobs (default: None).
             volume_size (int or PipelineVariable): Size in GB of the storage volume to use for
                 storing input and output data during training (default: 30).
 

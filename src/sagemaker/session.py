@@ -830,7 +830,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             profiler_rule_configs (list): List of profiler rule configurations. (default: ``None``).
             profiler_config(dict): Configuration for how profiling information is emitted with
                 SageMaker Profiler. (default: ``None``).
-            resource_config (dict): Configuration for resource of the training job. (default: None).
+            resource_config (dict): Configuration for resource of the training job. Currently only
+                support updating the warm pool retention length after a training job is created.
+                (default: None).
         """
         update_training_job_request = self._get_update_training_job_request(
             job_name=job_name,
@@ -849,14 +851,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
         profiler_config=None,
         resource_config=None,
     ):
-        """Constructs a request compatible for updateing an Amazon SageMaker training job.
+        """Constructs a request compatible for updating an Amazon SageMaker training job.
 
         Args:
             job_name (str): Name of the training job being updated.
             profiler_rule_configs (list): List of profiler rule configurations. (default: ``None``).
             profiler_config(dict): Configuration for how profiling information is emitted with
                 SageMaker Profiler. (default: ``None``).
-            resource_config (dict): Configuration for resource of the training job. (default: None).
+            resource_config (dict): Configuration for resource of the training job. Currently only
+                support updating the warm pool retention length after a training job is created.
+                (default: None).
 
         Returns:
             Dict: an update training request dict
