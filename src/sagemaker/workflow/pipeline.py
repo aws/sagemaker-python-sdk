@@ -41,7 +41,7 @@ from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.steps import Step, StepTypeEnum
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.condition_step import ConditionStep
-from sagemaker.workflow.utilities import list_to_request, build_steps
+from sagemaker.workflow.utilities import list_to_request
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +102,7 @@ class Pipeline(Entity):
             "PipelineExperimentConfig": self.pipeline_experiment_config.to_request()
             if self.pipeline_experiment_config is not None
             else None,
-            "Steps": build_steps(self.steps, self.name),
+            "Steps": list_to_request(self.steps),
         }
 
     def create(

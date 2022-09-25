@@ -37,6 +37,27 @@ def ordered(obj):
         return obj
 
 
+def get_step_args_helper(step_args, step_type):
+    step_args.func(*step_args.func_args, **step_args.func_kwargs)
+    request_args = step_args.func_args[0].sagemaker_session.context.args
+
+    if step_type == "Processing":
+        request_args.pop("ProcessingJobName", None)
+        request_args.pop("ExperimentConfig", None)
+    elif step_type == "Training":
+        if "HyperParameters" in request_args:
+            request_args["HyperParameters"].pop("sagemaker_job_name", None)
+        request_args.pop("TrainingJobName", None)
+        request_args.pop("ExperimentConfig", None)
+    elif step_type == "Transform":
+        request_args.pop("TransformJobName", None)
+        request_args.pop("ExperimentConfig", None)
+    elif step_type == "HyperParameterTuning":
+        request_args.pop("HyperParameterTuningJobName", None)
+
+    return request_args
+
+
 class CustomStep(ConfigurableRetryStep):
     def __init__(
         self,

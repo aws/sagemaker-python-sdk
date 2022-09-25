@@ -63,7 +63,6 @@ from sagemaker.workflow.steps import (
     CreateModelStep,
     CacheConfig,
 )
-from sagemaker.workflow.pipeline_context import _JobStepArguments
 from sagemaker.pipeline import PipelineModel
 from sagemaker.sparkml import SparkMLModel
 from sagemaker.predictor import Predictor
@@ -1456,10 +1455,15 @@ def test_multi_algo_tuning_step(sagemaker_session):
 
 
 def test_pipeline_dag_json_get_bad_step_type(sagemaker_session):
-    training_step = TrainingStep(
-        name="inputTrainingStep",
-        step_args=_JobStepArguments(sagemaker_session.train.__name__, {"arg1": "value"}),
+    instance_count = ParameterInteger(name="InstanceCount", default_value=1)
+    estimator = Estimator(
+        image_uri=IMAGE_URI,
+        role=ROLE,
+        instance_count=instance_count,
+        instance_type="ml.c5.4xlarge",
+        sagemaker_session=sagemaker_session,
     )
+    training_step = TrainingStep(name="inputTrainingStep", estimator=estimator)
     json_get_function = JsonGet(
         step_name=training_step.name, property_file="my-property-file", json_path="mse"
     )
@@ -1479,10 +1483,14 @@ def test_pipeline_dag_json_get_bad_step_type(sagemaker_session):
 
 
 def test_pipeline_dag_json_get_undefined_property_file(sagemaker_session):
-    processing_step = ProcessingStep(
-        name="inputProcessingStep",
-        step_args=_JobStepArguments(sagemaker_session.process.__name__, {"arg1": "value"}),
+    processor = Processor(
+        image_uri=IMAGE_URI,
+        role=ROLE,
+        instance_count=1,
+        instance_type="c4.4xlarge",
+        sagemaker_session=sagemaker_session,
     )
+    processing_step = ProcessingStep(name="inputProcessingStep", processor=processor)
 
     json_get_function = JsonGet(
         step_name=processing_step.name, property_file="undefined-property-file", json_path="mse"
