@@ -314,6 +314,7 @@ class Processor(object):
         Raises:
             TypeError: if the inputs are not ``ProcessingInput`` objects.
         """
+        from sagemaker.workflow.utilities import _pipeline_config
         # Initialize a list of normalized ProcessingInput objects.
         normalized_inputs = []
         if inputs is not None:
@@ -335,13 +336,23 @@ class Processor(object):
                 # and save the S3 uri in the ProcessingInput source.
                 parse_result = urlparse(file_input.s3_input.s3_uri)
                 if parse_result.scheme != "s3":
-                    desired_s3_uri = s3.s3_path_join(
-                        "s3://",
-                        self.sagemaker_session.default_bucket(),
-                        self._current_job_name,
-                        "input",
-                        file_input.input_name,
-                    )
+                    if _pipeline_config:
+                        desired_s3_uri = s3.s3_path_join(
+                            "s3://",
+                            self.sagemaker_session.default_bucket(),
+                            _pipeline_config.pipeline_name,
+                            _pipeline_config.step_name,
+                            "input",
+                            file_input.input_name,
+                        )
+                    else:
+                        desired_s3_uri = s3.s3_path_join(
+                            "s3://",
+                            self.sagemaker_session.default_bucket(),
+                            self._current_job_name,
+                            "input",
+                            file_input.input_name,
+                        )
                     s3_uri = s3.S3Uploader.upload(
                         local_path=file_input.s3_input.s3_uri,
                         desired_s3_uri=desired_s3_uri,
@@ -679,13 +690,23 @@ class ScriptProcessor(Processor):
             str: The S3 URI of the uploaded file or directory.
 
         """
-        desired_s3_uri = s3.s3_path_join(
-            "s3://",
-            self.sagemaker_session.default_bucket(),
-            self._current_job_name,
-            "input",
-            self._CODE_CONTAINER_INPUT_NAME,
-        )
+        from sagemaker.workflow.utilities import _pipeline_config
+        if _pipeline_config:
+            desired_s3_uri = s3.s3_path_join(
+                "s3://",
+                self.sagemaker_session.default_bucket(),
+                _pipeline_config.pipeline_name,
+                self._CODE_CONTAINER_INPUT_NAME,
+                _pipeline_config.code_hash
+            )
+        else:
+            desired_s3_uri = s3.s3_path_join(
+                "s3://",
+                self.sagemaker_session.default_bucket(),
+                self._current_job_name,
+                "input",
+                self._CODE_CONTAINER_INPUT_NAME,
+            )
         return s3.S3Uploader.upload(
             local_path=code,
             desired_s3_uri=desired_s3_uri,

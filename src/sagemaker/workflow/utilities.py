@@ -87,7 +87,7 @@ def build_steps(steps: Sequence[Entity], pipeline_name: str):
         if isinstance(step, StepCollection):
             request_dicts.extend(step.request_dicts())
         else:
-            with _pipeline_config_manager(pipeline_name, step.name, None, None):
+            with _pipeline_config_manager(pipeline_name, step.name, "codehash123456789asdfhjkl", "confighash123456789asdfjkl"):
                 request_dicts.append(step.to_request())
     return request_dicts
 
