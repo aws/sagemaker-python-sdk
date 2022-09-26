@@ -1,9 +1,9 @@
 {
     "training": {
         "processors": ["trn"],
-        "version_aliases": {"1.10": "1.10.2"},
+        "version_aliases": {"1.11": "1.11.0"},
         "versions": {
-                "1.10.2": {
+                "1.11.0": {
                     "py_versions": ["py38"],
                     "repository": "pytorch-training-neuron",
                     "registries": {
@@ -33,7 +33,7 @@
                         "us-west-1": "763104351884",
                         "us-west-2": "763104351884"
                     },
-                    "container_version": {"trn": "ubuntu18.04"},
+                    "container_version": {"trn": "ubuntu20.04"},
                     "sdk_versions": ["sdk2.3.0"]
                 }
             }
