@@ -2149,7 +2149,7 @@ class _TrainingJob(_Job):
                 SageMaker Debugger. (default: None).
             resource_config (dict): Configuration of the resources for the training job. You can
                 update the keep-alive period if the warm pool status is `Available`. No other fields
-                can be updated. (default: ``None``).
+                can be updated. (default: None).
 
         Returns:
             sagemaker.estimator._TrainingJob: Constructed object that captures
@@ -2175,7 +2175,7 @@ class _TrainingJob(_Job):
                 SageMaker Debugger. (default: None).
             resource_config (dict): Configuration of the resources for the training job. You can
                 update the keep-alive period if the warm pool status is `Available`. No other fields
-                can be updated. (default: ``None``).
+                can be updated. (default: None).
 
         Returns:
             Dict: dict for `sagemaker.session.Session.update_training_job` method
