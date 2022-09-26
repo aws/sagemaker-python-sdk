@@ -4999,7 +4999,12 @@ def _rule_statuses_changed(current_statuses, last_statuses):
 def _logs_init(sagemaker_session, description, job):
     """Placeholder docstring"""
     if job == "Training":
-        instance_count = description["ResourceConfig"]["InstanceCount"]
+        if description["ResourceConfig"]["InstanceCount"] is not None:
+            instance_count = description["ResourceConfig"]["InstanceCount"]
+        else:
+            instance_count = 0
+            for instanceGroup in description["ResourceConfig"]["InstanceGroups"]:
+                instance_count += instanceGroup["InstanceCount"]
     elif job == "Transform":
         instance_count = description["TransformResources"]["InstanceCount"]
     elif job == "Processing":

@@ -914,6 +914,7 @@ def test_run_on_s3_analysis_config_file(
     processor_run, sagemaker_session, clarify_processor, data_config
 ):
     analysis_config = {
+        "dataset_type": "text/csv",
         "methods": {"post_training_bias": {"methods": "all"}},
     }
     with patch("sagemaker.clarify._upload_analysis_config", return_value=None) as mock_method:
