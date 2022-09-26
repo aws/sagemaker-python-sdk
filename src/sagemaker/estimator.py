@@ -2147,9 +2147,9 @@ class _TrainingJob(_Job):
                 updated in the training job. (default: None).
             profiler_config (dict): Configuration for how profiling information is emitted with
                 SageMaker Debugger. (default: None).
-            resource_config (dict): Configuration for resource of the training job. Currently only
-                support updating the warm pool retention length after a training job is created.
-                (default: None).
+            resource_config (dict): Configuration of the resources for the training job. You can
+                update the keep-alive period if the warm pool status is `Available`. No other fields
+                can be updated. (default: ``None``).
 
         Returns:
             sagemaker.estimator._TrainingJob: Constructed object that captures
@@ -2173,9 +2173,9 @@ class _TrainingJob(_Job):
                 updated in the training job. (default: None).
             profiler_config (dict): Configuration for how profiling information is emitted with
                 SageMaker Debugger. (default: None).
-            resource_config (dict): Configuration for resource of the training job. Currently only
-                support updating the warm pool retention length after a training job is created.
-                (default: None).
+            resource_config (dict): Configuration of the resources for the training job. You can
+                update the keep-alive period if the warm pool status is `Available`. No other fields
+                can be updated. (default: ``None``).
 
         Returns:
             Dict: dict for `sagemaker.session.Session.update_training_job` method

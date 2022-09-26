@@ -830,9 +830,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             profiler_rule_configs (list): List of profiler rule configurations. (default: ``None``).
             profiler_config(dict): Configuration for how profiling information is emitted with
                 SageMaker Profiler. (default: ``None``).
-            resource_config (dict): Configuration for resource of the training job. Currently only
-                support updating the warm pool retention length after a training job is created.
-                (default: None).
+            resource_config (dict): Configuration of the resources for the training job. You can
+                update the keep-alive period if the warm pool status is `Available`. No other fields
+                can be updated. (default: ``None``).
         """
         update_training_job_request = self._get_update_training_job_request(
             job_name=job_name,
@@ -858,9 +858,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             profiler_rule_configs (list): List of profiler rule configurations. (default: ``None``).
             profiler_config(dict): Configuration for how profiling information is emitted with
                 SageMaker Profiler. (default: ``None``).
-            resource_config (dict): Configuration for resource of the training job. Currently only
-                support updating the warm pool retention length after a training job is created.
-                (default: None).
+            resource_config (dict): Configuration of the resources for the training job. You can
+                update the keep-alive period if the warm pool status is `Available`. No other fields
+                can be updated. (default: ``None``).
 
         Returns:
             Dict: an update training request dict
