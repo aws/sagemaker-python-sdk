@@ -157,7 +157,7 @@ def test_repack_model_step(estimator):
                 }
             ],
             "OutputDataConfig": {"S3OutputPath": f"s3://{BUCKET}/"},
-            "ProfilerConfig": {"DisableProfiler": True, "S3OutputPath": f"s3://{BUCKET}/"},
+            "ProfilerConfig": {"DisableProfiler": True},
             "ResourceConfig": {
                 "InstanceCount": 1,
                 "InstanceType": "ml.m5.large",
@@ -239,7 +239,7 @@ def test_repack_model_step_with_source_dir(estimator, source_dir):
                 }
             ],
             "OutputDataConfig": {"S3OutputPath": f"s3://{BUCKET}/"},
-            "ProfilerConfig": {"DisableProfiler": True, "S3OutputPath": f"s3://{BUCKET}/"},
+            "ProfilerConfig": {"DisableProfiler": True},
             "ResourceConfig": {
                 "InstanceCount": 1,
                 "InstanceType": "ml.m5.large",

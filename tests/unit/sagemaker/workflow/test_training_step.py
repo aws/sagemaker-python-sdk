@@ -307,10 +307,6 @@ def test_training_step_with_estimator(
     }
     step_definition = json.loads(pipeline.definition())["Steps"][0]
 
-    # delete profiler rule configurations because of timestamp collision
-    del step_definition["Arguments"]["ProfilerRuleConfigurations"]
-    del expected_step_arguments["ProfilerRuleConfigurations"]
-
     assert step_definition == {
         "Name": "MyTrainingStep",
         "Description": "TrainingStep description",
@@ -427,18 +423,6 @@ def test_training_step_with_framework_estimator(
     del step_args["OutputDataConfig"]["S3OutputPath"]
     del step_def["Arguments"]["OutputDataConfig"]["S3OutputPath"]
 
-    # trim timestamp so RuleConfigurationName will match
-    rule_config_name_step_args = step_args["ProfilerRuleConfigurations"][0]["RuleConfigurationName"]
-    step_args["ProfilerRuleConfigurations"][0][
-        "RuleConfigurationName"
-    ] = rule_config_name_step_args[:-11]
-    rule_config_name_step_def = step_def["Arguments"]["ProfilerRuleConfigurations"][0][
-        "RuleConfigurationName"
-    ]
-    step_def["Arguments"]["ProfilerRuleConfigurations"][0][
-        "RuleConfigurationName"
-    ] = rule_config_name_step_def[:-11]
-
     if "sagemaker_s3_output" in step_args["HyperParameters"]:
         del step_args["HyperParameters"]["sagemaker_s3_output"]
         del step_def["Arguments"]["HyperParameters"]["sagemaker_s3_output"]
@@ -518,18 +502,6 @@ def test_training_step_with_algorithm_base(algo_estimator, training_input, pipel
     step_args["HyperParameters"]["sagemaker_submit_directory"] = {"Get": "Parameters.SourceDir"}
     del step_args["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"]
     del step_def["Arguments"]["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"]
-
-    # trim timestamp so RuleConfigurationName will match
-    rule_config_name_step_args = step_args["ProfilerRuleConfigurations"][0]["RuleConfigurationName"]
-    step_args["ProfilerRuleConfigurations"][0][
-        "RuleConfigurationName"
-    ] = rule_config_name_step_args[:-11]
-    rule_config_name_step_def = step_def["Arguments"]["ProfilerRuleConfigurations"][0][
-        "RuleConfigurationName"
-    ]
-    step_def["Arguments"]["ProfilerRuleConfigurations"][0][
-        "RuleConfigurationName"
-    ] = rule_config_name_step_def[:-11]
 
     assert step_def == {
         "Name": "MyTrainingStep",

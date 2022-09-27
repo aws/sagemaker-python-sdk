@@ -578,13 +578,6 @@ def test_framework_without_debugger_and_profiler(time, sagemaker_session):
         "DisableProfiler": False,
         "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
     }
-    assert args["profiler_rule_configs"] == [
-        {
-            "RuleConfigurationName": "ProfilerReport-1510006209",
-            "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
-            "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
-        }
-    ]
 
 
 def test_framework_with_debugger_and_profiler_rules(sagemaker_session):
@@ -719,13 +712,6 @@ def test_framework_with_profiler_config_without_s3_output_path(time, sagemaker_s
         "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         "ProfilingIntervalInMilliseconds": 1000,
     }
-    assert args["profiler_rule_configs"] == [
-        {
-            "RuleConfigurationName": "ProfilerReport-1510006209",
-            "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
-            "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
-        }
-    ]
 
 
 @pytest.mark.parametrize("region", PROFILER_UNSUPPORTED_REGIONS)
@@ -752,7 +738,7 @@ def test_framework_with_no_default_profiler_in_unsupported_region(region):
     _, args = sms.train.call_args
     # assert args.get("profiler_config") == {"DisableProfiler": True}
     # temporarily check if "DisableProfiler" flag is true until s3_output is changed to optional in service
-    assert args.get("profiler_config")["DisableProfiler"] == True
+    assert args.get("profiler_config")["DisableProfiler"] is True
     assert args.get("profiler_rule_configs") is None
 
 
@@ -872,7 +858,9 @@ def test_framework_with_profiler_config_and_profiler_disabled(sagemaker_session)
             disable_profiler=True,
         )
         f.fit("s3://mydata")
-    assert "profiler_config cannot be set when disable_profiler is True." in str(error)
+    assert "profiler_config.disable_profiler cannot be False when disable_profiler is True." in str(
+        error
+    )
 
 
 def test_framework_with_profiler_rule_and_profiler_disabled(sagemaker_session):
@@ -937,13 +925,6 @@ def test_framework_with_enabling_default_profiling(
         "DisableProfiler": False,
         "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
     }
-    assert args["profiler_rule_configs"] == [
-        {
-            "RuleConfigurationName": "ProfilerReport-1510006209",
-            "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
-            "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
-        }
-    ]
 
 
 @patch("time.time", return_value=TIME)
@@ -971,13 +952,6 @@ def test_framework_with_enabling_default_profiling_with_existed_s3_output_path(
         "DisableProfiler": False,
         "S3OutputPath": "s3://custom/",
     }
-    assert args["profiler_rule_configs"] == [
-        {
-            "RuleConfigurationName": "ProfilerReport-1510006209",
-            "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
-            "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
-        }
-    ]
 
 
 def test_framework_with_disabling_profiling_when_profiler_is_already_disabled(
@@ -1012,7 +986,7 @@ def test_framework_with_disabling_profiling(sagemaker_session, training_job_desc
     _, args = sagemaker_session.update_training_job.call_args
     # assert args["profiler_config"] == {"DisableProfiler": True}
     # temporarily check if "DisableProfiler" flag is true until s3_output is changed to optional in service
-    assert args.get("profiler_config")["DisableProfiler"] == True
+    assert args.get("profiler_config")["DisableProfiler"] is True
 
 
 def test_framework_with_update_profiler_when_no_training_job(sagemaker_session):
@@ -1098,7 +1072,7 @@ def test_framework_with_update_profiler_report_rule(sagemaker_session):
             "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
         }
     ]
-    assert args["profiler_config"]["DisableProfiler"] == False
+    assert args["profiler_config"]["DisableProfiler"] is False
 
 
 def test_framework_with_disable_framework_metrics(sagemaker_session):
@@ -2647,13 +2621,6 @@ NO_INPUT_TRAIN_CALL = {
     "input_mode": "File",
     "output_config": {"S3OutputPath": OUTPUT_PATH},
     "profiler_config": {"DisableProfiler": False, "S3OutputPath": OUTPUT_PATH},
-    "profiler_rule_configs": [
-        {
-            "RuleConfigurationName": "ProfilerReport-1510006209",
-            "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
-            "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
-        }
-    ],
     "resource_config": {
         "InstanceCount": INSTANCE_COUNT,
         "InstanceType": INSTANCE_TYPE,

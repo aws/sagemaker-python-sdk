@@ -13,7 +13,6 @@
 from __future__ import absolute_import
 
 import os
-import re
 import time
 import uuid
 
@@ -22,7 +21,6 @@ import pytest
 from sagemaker.debugger import (
     DebuggerHookConfig,
     FrameworkProfile,
-    get_rule_container_image_uri,
     ProfilerConfig,
     ProfilerRule,
     Rule,
@@ -93,8 +91,6 @@ def test_mxnet_with_default_profiler_config_and_profiler_rule(
         )
 
         job_description = mx.latest_training_job.describe()
-        # Temporarily added until the service package changes are updated
-        job_description["ProfilerConfig"]["DisableProfiler"] = False
         assert (
             job_description["ProfilerConfig"]
             == ProfilerConfig(
@@ -102,13 +98,6 @@ def test_mxnet_with_default_profiler_config_and_profiler_rule(
             )._to_request_dict()
         )
         assert job_description.get("ProfilingStatus") == "Enabled"
-
-        profiler_rule_configuration = job_description.get("ProfilerRuleConfigurations")[0]
-        assert re.match(r"ProfilerReport-\d*", profiler_rule_configuration["RuleConfigurationName"])
-        assert profiler_rule_configuration["RuleEvaluatorImage"] == get_rule_container_image_uri(
-            mx.sagemaker_session.boto_region_name
-        )
-        assert profiler_rule_configuration["RuleParameters"] == {"rule_to_invoke": "ProfilerReport"}
 
         with pytest.raises(ValueError) as error:
             mx.enable_default_profiling()
@@ -155,17 +144,8 @@ def test_mxnet_with_custom_profiler_config_then_update_rule_and_config(
         )
 
         job_description = mx.latest_training_job.describe()
-        # Temporarily added until the service package changes are updated
-        job_description["ProfilerConfig"]["DisableProfiler"] = False
         assert job_description.get("ProfilerConfig") == profiler_config._to_request_dict()
         assert job_description.get("ProfilingStatus") == "Enabled"
-
-        profiler_rule_configuration = job_description.get("ProfilerRuleConfigurations")[0]
-        assert re.match(r"ProfilerReport-\d*", profiler_rule_configuration["RuleConfigurationName"])
-        assert profiler_rule_configuration["RuleEvaluatorImage"] == get_rule_container_image_uri(
-            mx.sagemaker_session.boto_region_name
-        )
-        assert profiler_rule_configuration["RuleParameters"] == {"rule_to_invoke": "ProfilerReport"}
 
         _wait_until_training_can_be_updated(sagemaker_session.sagemaker_client, training_job_name)
 
@@ -177,13 +157,6 @@ def test_mxnet_with_custom_profiler_config_then_update_rule_and_config(
         job_description = mx.latest_training_job.describe()
         assert job_description["ProfilerConfig"]["S3OutputPath"] == profiler_config.s3_output_path
         assert job_description["ProfilerConfig"]["ProfilingIntervalInMilliseconds"] == 500
-
-        profiler_report_rule_config = job_description.get("ProfilerRuleConfigurations")[0]
-        assert re.match(r"ProfilerReport-\d*", profiler_report_rule_config["RuleConfigurationName"])
-        assert profiler_report_rule_config["RuleEvaluatorImage"] == get_rule_container_image_uri(
-            mx.sagemaker_session.boto_region_name
-        )
-        assert profiler_report_rule_config["RuleParameters"] == {"rule_to_invoke": "ProfilerReport"}
 
 
 def test_mxnet_with_built_in_profiler_rule_with_custom_parameters(
@@ -225,8 +198,6 @@ def test_mxnet_with_built_in_profiler_rule_with_custom_parameters(
         )
 
         job_description = mx.latest_training_job.describe()
-        # Temporarily added until the service package changes are updated
-        job_description["ProfilerConfig"]["DisableProfiler"] = False
         assert job_description.get("ProfilingStatus") == "Enabled"
         assert (
             job_description.get("ProfilerConfig")
@@ -298,8 +269,6 @@ def test_mxnet_with_profiler_and_debugger_then_disable_framework_metrics(
         )
 
         job_description = mx.latest_training_job.describe()
-        # Temporarily added until the service package changes are updated
-        job_description["ProfilerConfig"]["DisableProfiler"] = False
         assert job_description["ProfilerConfig"] == profiler_config._to_request_dict()
         assert job_description["DebugHookConfig"] == debugger_hook_config._to_request_dict()
         assert job_description.get("ProfilingStatus") == "Enabled"
@@ -387,13 +356,6 @@ def test_mxnet_with_enable_framework_metrics_then_update_framework_metrics(
             == updated_framework_profile.profiling_parameters
         )
 
-        profiler_rule_configuration = job_description.get("ProfilerRuleConfigurations")[0]
-        assert re.match(r"ProfilerReport-\d*", profiler_rule_configuration["RuleConfigurationName"])
-        assert profiler_rule_configuration["RuleEvaluatorImage"] == get_rule_container_image_uri(
-            mx.sagemaker_session.boto_region_name
-        )
-        assert profiler_rule_configuration["RuleParameters"] == {"rule_to_invoke": "ProfilerReport"}
-
 
 def test_mxnet_with_disable_profiler_then_enable_default_profiling(
     sagemaker_session,
@@ -431,15 +393,11 @@ def test_mxnet_with_disable_profiler_then_enable_default_profiling(
         )
 
         job_description = mx.latest_training_job.describe()
-        # when the profiler is disabled, ProfilerConfig is not None. Temporarily remove this check until the service packages are updated.
-        # assert job_description.get("ProfilerConfig") is None
         assert job_description.get("ProfilerRuleConfigurations") is None
-        #  Temporarily remove this check until the service packages are updated.
-        # assert job_description.get("ProfilingStatus") == "Disabled"
+        assert job_description.get("ProfilingStatus") == "Disabled"
 
         _wait_until_training_can_be_updated(sagemaker_session.sagemaker_client, training_job_name)
-        # profilingStatus is currently wrong, temporarily remove this check until the service packages are updated.
-        # mx.enable_default_profiling()
+        mx.enable_default_profiling()
 
         job_description = mx.latest_training_job.describe()
         assert job_description["ProfilerConfig"]["S3OutputPath"] == mx.output_path
