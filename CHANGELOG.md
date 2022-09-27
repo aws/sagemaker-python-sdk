@@ -1,5 +1,24 @@
 # Changelog
 
+## v2.110.0 (2022-09-27)
+
+### Features
+
+ * Support KeepAlivePeriodInSeconds for Training APIs
+ * added ANALYSIS_CONFIG_SCHEMA_V1_0 in clarify
+ * add model monitor image accounts for ap-southeast-3
+
+### Bug Fixes and Other Changes
+
+ * huggingface release test
+ * Fixing the logic to return instanceCount for heterogeneousClusters
+ * Disable type hints in doc signature and add PipelineVariable annotations in docstring
+ * estimator hyperparameters in script mode
+
+### Documentation Changes
+
+ * Added link to example notebook for Pipelines local mode
+
 ## v2.109.0 (2022-09-09)
 
 ### Features
