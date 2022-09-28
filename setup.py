@@ -67,8 +67,10 @@ extras = {
     "local": read_requirements("requirements/extras/local_requirements.txt"),
     "scipy": read_requirements("requirements/extras/scipy_requirements.txt"),
 }
+
 # Meta dependency groups
 extras["all"] = [item for group in extras.values() for item in group]
+
 # Tests specific dependencies (do not need to be included in 'all')
 extras["test"] = (extras["all"] + read_requirements("requirements/extras/test_requirements.txt"),)
 
