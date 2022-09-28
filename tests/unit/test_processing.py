@@ -37,6 +37,7 @@ from sagemaker.mxnet.processing import MXNetProcessor
 from sagemaker.network import NetworkConfig
 from sagemaker.processing import FeatureStoreOutput
 from sagemaker.fw_utils import UploadedCode
+from sagemaker.workflow.pipeline_context import PipelineSession, _PipelineConfig
 
 BUCKET_NAME = "mybucket"
 REGION = "us-west-2"
@@ -44,6 +45,9 @@ ROLE = "arn:aws:iam::012345678901:role/SageMakerRole"
 ECR_HOSTNAME = "ecr.us-west-2.amazonaws.com"
 CUSTOM_IMAGE_URI = "012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri"
 MOCKED_S3_URI = "s3://mocked_s3_uri_from_upload_data"
+MOCKED_PIPELINE_CONFIG = _PipelineConfig(
+    "test-pipeline", "test-processing-step", "code-hash-abcdefg", "config-hash-abcdefg"
+)
 
 
 @pytest.fixture(autouse=True)
@@ -70,6 +74,28 @@ def sagemaker_session():
     session_mock.describe_processing_job = MagicMock(
         name="describe_processing_job", return_value=_get_describe_response_inputs_and_ouputs()
     )
+    return session_mock
+
+
+@pytest.fixture()
+def pipeline_session():
+    boto_mock = Mock(name="boto_session", region_name=REGION)
+    session_mock = MagicMock(
+        name="sagemaker_session",
+        boto_session=boto_mock,
+        boto_region_name=REGION,
+        config=None,
+        local_mode=False,
+    )
+    session_mock.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
+
+    session_mock.upload_data = Mock(name="upload_data", return_value=MOCKED_S3_URI)
+    session_mock.download_data = Mock(name="download_data")
+    session_mock.expand_role.return_value = ROLE
+    session_mock.describe_processing_job = MagicMock(
+        name="describe_processing_job", return_value=_get_describe_response_inputs_and_ouputs()
+    )
+    session_mock.__class__ = PipelineSession
     return session_mock
 
 
@@ -703,6 +729,39 @@ def test_processor_with_missing_network_config_parameters(sagemaker_session):
     expected_args["network_config"] = {"EnableNetworkIsolation": True}
 
     sagemaker_session.process.assert_called_with(**expected_args)
+
+
+@patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
+def test_processor_with_pipeline_s3_output_paths(pipeline_session):
+    processor = Processor(
+        role=ROLE,
+        image_uri=CUSTOM_IMAGE_URI,
+        instance_count=1,
+        instance_type="ml.m4.xlarge",
+        sagemaker_session=pipeline_session,
+    )
+
+    outputs = [
+        ProcessingOutput(output_name="train", source="/opt/ml/processing/train"),
+    ]
+
+    step_args = processor.run(outputs=outputs)
+    # execute process.run() and generate args, S3 paths
+    step_args.func(*step_args.func_args, **step_args.func_kwargs)
+    expected_path = {
+        "Std:Join": {
+            "On": "/",
+            "Values": [
+                "s3:/",
+                BUCKET_NAME,
+                "test-pipeline",
+                {"Get": "Execution.PipelineExecutionId"},
+                "test-training-step",
+                "output",
+                "train",
+            ],
+        }
+    }
 
 
 def test_processor_with_encryption_parameter_in_network_config(sagemaker_session):

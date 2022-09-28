@@ -16,6 +16,7 @@ import pytest
 from mock import MagicMock, Mock, patch
 
 from sagemaker.transformer import _TransformJob, Transformer
+from sagemaker.workflow.pipeline_context import _PipelineConfig
 from tests.integ import test_local_mode
 
 MODEL_NAME = "model"
@@ -43,6 +44,10 @@ INIT_PARAMS = {
 MODEL_DESC_PRIMARY_CONTAINER = {"PrimaryContainer": {"Image": IMAGE_URI}}
 
 MODEL_DESC_CONTAINERS_ONLY = {"Containers": [{"Image": IMAGE_URI}]}
+
+MOCKED_PIPELINE_CONFIG = _PipelineConfig(
+    "test-pipeline", "test-training-step", "code-hash-0123456789", "config-hash-0123456789"
+)
 
 
 @pytest.fixture(autouse=True)
@@ -294,6 +299,37 @@ def test_transform_with_generated_output_path(start_new_job, transformer, sagema
 
     transformer.transform(DATA, job_name=JOB_NAME)
     assert transformer.output_path == "s3://{}/{}".format(S3_BUCKET, JOB_NAME)
+
+
+@patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
+def test_transform_with_generated_output_path_pipeline_config(sagemaker_session):
+    sage_mock = Mock(name="sagemaker_client")
+    sage_mock.describe_model.return_value = {"PrimaryContainer": {"Image": IMAGE_URI}}
+    sagemaker_session.sagemaker_client = sage_mock
+    transformer = Transformer(
+        MODEL_NAME,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        sagemaker_session=sagemaker_session,
+        volume_kms_key=KMS_KEY_ID,
+    )
+    step_args = transformer.transform(DATA)
+    # execute transform.transform() and generate args, S3 paths
+    step_args.func(*step_args.func_args, **step_args.func_kwargs)
+    expected_path = {
+        "Std:Join": {
+            "On": "/",
+            "Values": [
+                "s3:/",
+                S3_BUCKET,
+                "test-pipeline",
+                {"Get": "Execution.PipelineExecutionId"},
+                "test-training-step",
+                "output",
+            ],
+        }
+    }
+    assert expected_path == transformer.output_path.expr
 
 
 def test_transform_with_invalid_s3_uri(transformer):

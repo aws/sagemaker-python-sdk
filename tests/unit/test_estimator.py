@@ -18,6 +18,8 @@ import json
 import os
 import subprocess
 from time import sleep
+
+from build.lib.sagemaker.workflow.pipeline_context import _PipelineConfig
 from sagemaker.fw_utils import UploadedCode
 
 
@@ -140,6 +142,10 @@ DISTRIBUTION_MPI_ENABLED = {
 DISTRIBUTION_SM_DDP_ENABLED = {
     "smdistributed": {"dataparallel": {"enabled": True, "custom_mpi_options": "options"}}
 }
+MOCKED_S3_URI = "s3://mocked_s3_uri_from_source_dir"
+MOCKED_PIPELINE_CONFIG = _PipelineConfig(
+    "test-pipeline", "test-training-step", "code-hash-0123456789", "config-hash-0123456789"
+)
 
 
 class DummyFramework(Framework):
@@ -3806,6 +3812,38 @@ def test_script_mode_estimator(patched_stage_user_code, sagemaker_session):
 
     patched_stage_user_code.assert_called_once()
     sagemaker_session.train.assert_called_once()
+
+
+@patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
+def test_estimator_s3_output_paths(pipeline_session):
+    script_uri = "s3://codebucket/someprefix/sourcedir.tar.gz"
+    image_uri = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.9.0-gpu-py38"
+    estimator = Estimator(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=pipeline_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        source_dir=script_uri,
+        image_uri=image_uri,
+    )
+    step_args = estimator.fit()
+    # execute estimator.fit() and generate args, S3 paths
+    step_args.func(*step_args.func_args, **step_args.func_kwargs)
+    expected_path = {
+        "Std:Join": {
+            "On": "/",
+            "Values": [
+                "s3:/",
+                BUCKET_NAME,
+                "test-pipeline",
+                {"Get": "Execution.PipelineExecutionId"},
+                "test-training-step",
+                "output",
+            ],
+        }
+    }
+    assert expected_path == estimator.output_path.expr
 
 
 @patch("time.time", return_value=TIME)
