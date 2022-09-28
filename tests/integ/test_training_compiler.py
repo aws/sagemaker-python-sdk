@@ -243,7 +243,7 @@ def test_tensorflow(
             py_version="py39",
             git_config={
                 "repo": "https://github.com/tensorflow/models.git",
-                "branch": tensorflow_training_latest_version,
+                "branch": "v"+tensorflow_training_latest_version,
             },
             source_dir=".",
             entry_point="official/vision/train.py",
