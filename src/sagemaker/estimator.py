@@ -3402,15 +3402,19 @@ def _s3_uri_without_prefix_from_input(input_data):
 
 
 def _assign_s3_prefix(job_name, key_prefix=""):
-    """
-        Backwards compatibility for new s3 path logic to include pipeline name instead of timestamp appended job name
-            - assign new s3 path structure if within a pipeline workflow that has set the _pipeline_config
-                and respective name/hash variables
+    """Include pipeline name+step name instead of timestamp appended job name in uploaded s3 path
+
+    Assign new s3 path structure if within a pipeline workflow that has set the _pipeline_config
+        and respective name/hash variables
     """
     from sagemaker.workflow.utilities import _pipeline_config
+
     code_s3_prefix = "/".join(filter(None, [key_prefix, job_name, "source"]))
     if _pipeline_config:
-        code_s3_prefix = "/".join(filter(
-            None, [key_prefix, _pipeline_config.pipeline_name, "code", _pipeline_config.code_hash]
-        ))
+        code_s3_prefix = "/".join(
+            filter(
+                None,
+                [key_prefix, _pipeline_config.pipeline_name, "code", _pipeline_config.code_hash],
+            )
+        )
     return code_s3_prefix

@@ -144,10 +144,7 @@ DISTRIBUTION_SM_DDP_ENABLED = {
 }
 MOCKED_S3_URI = "s3://mocked_s3_uri_from_source_dir"
 MOCKED_PIPELINE_CONFIG = _PipelineConfig(
-    "test-pipeline",
-    "test-training-step",
-    "code-hash-0123456789",
-    "config-hash-0123456789"
+    "test-pipeline", "test-training-step", "code-hash-0123456789", "config-hash-0123456789"
 )
 
 
@@ -3669,7 +3666,7 @@ def test_prepare_for_training_with_name_based_on_algorithm(sagemaker_session):
     assert "scikit-decision-trees-1542410022" in estimator._current_job_name
 
 
-@patch('sagemaker.workflow.utilities._pipeline_config', MOCKED_PIPELINE_CONFIG)
+@patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
 def test_prepare_for_training_with_pipeline_name_in_s3_path_no_source_dir(pipeline_session):
     # script_uri is NOT provided -> use new cache key behavior that builds path using pipeline name + code_hash
     image_uri = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.9.0-gpu-py38"
@@ -3688,7 +3685,6 @@ def test_prepare_for_training_with_pipeline_name_in_s3_path_no_source_dir(pipeli
     step_args.func(*step_args.func_args, **step_args.func_kwargs)
     expected_path = "/".join(["test-pipeline", "code", "code-hash-0123456789"])
     assert expected_path in estimator.uploaded_code.s3_prefix
-
 
 
 @patch(
