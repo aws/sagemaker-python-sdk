@@ -201,6 +201,22 @@ def test_feature_metadata_describe(sagemaker_session_mock):
     )
 
 
+def test_get_record(sagemaker_session_mock):
+    feature_group_name = "MyFeatureGroup"
+    feature_names = ["MyFeature1", "MyFeature2"]
+    record_identifier_value_as_string = "1.0"
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=sagemaker_session_mock)
+    feature_group.get_record(
+        record_identifier_value_as_string=record_identifier_value_as_string,
+        feature_names=feature_names,
+    )
+    sagemaker_session_mock.get_record.assert_called_with(
+        feature_group_name=feature_group_name,
+        record_identifier_value_as_string=record_identifier_value_as_string,
+        feature_names=feature_names,
+    )
+
+
 def test_put_record(sagemaker_session_mock):
     feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
     feature_group.put_record(record=[])

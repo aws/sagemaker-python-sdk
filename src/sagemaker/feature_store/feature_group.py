@@ -644,6 +644,23 @@ class FeatureGroup:
         self.feature_definitions = feature_definitions
         return self.feature_definitions
 
+    def get_record(
+        self, record_identifier_value_as_string: str, feature_names: Sequence[str] = None
+    ) -> Sequence[Dict[str, str]]:
+        """Get a single record in a FeatureGroup
+
+        Args:
+            record_identifier_value_as_string (String):
+                a String representing the value of the record identifier.
+            feature_names (Sequence[String]):
+                a list of Strings representing feature names.
+        """
+        return self.sagemaker_session.get_record(
+            record_identifier_value_as_string=record_identifier_value_as_string,
+            feature_group_name=self.name,
+            feature_names=feature_names,
+        ).get("Record")
+
     def put_record(self, record: Sequence[FeatureValue]):
         """Put a single record in the FeatureGroup.
 
