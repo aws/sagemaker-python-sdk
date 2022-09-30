@@ -71,6 +71,9 @@ def test_deploy(name_from_base, prepare_container_def, production_variant, sagem
         INSTANCE_COUNT,
         accelerator_type=None,
         serverless_inference_config=None,
+        volume_size=None,
+        model_data_download_timeout=None,
+        container_startup_health_check_timeout=None,
     )
 
     sagemaker_session.create_model.assert_called_with(
@@ -120,6 +123,9 @@ def test_deploy_accelerator_type(
         INSTANCE_COUNT,
         accelerator_type=ACCELERATOR_TYPE,
         serverless_inference_config=None,
+        volume_size=None,
+        model_data_download_timeout=None,
+        container_startup_health_check_timeout=None,
     )
 
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
@@ -363,6 +369,9 @@ def test_deploy_serverless_inference(production_variant, create_sagemaker_model,
         None,
         accelerator_type=None,
         serverless_inference_config=serverless_inference_config_dict,
+        volume_size=None,
+        model_data_download_timeout=None,
+        container_startup_health_check_timeout=None,
     )
 
     sagemaker_session.endpoint_from_production_variants.assert_called_with(

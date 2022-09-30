@@ -3173,6 +3173,9 @@ def test_generic_to_deploy_kms(create_model, sagemaker_session):
         data_capture_config=None,
         async_inference_config=None,
         serverless_inference_config=None,
+        volume_size=None,
+        model_data_download_timeout=None,
+        container_startup_health_check_timeout=None,
     )
 
 

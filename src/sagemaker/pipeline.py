@@ -122,6 +122,9 @@ class PipelineModel(object):
         update_endpoint=False,
         data_capture_config=None,
         kms_key=None,
+        volume_size=None,
+        model_data_download_timeout=None,
+        container_startup_health_check_timeout=None,
     ):
         """Deploy the ``Model`` to an ``Endpoint``.
 
@@ -170,6 +173,16 @@ class PipelineModel(object):
             kms_key (str): The ARN, Key ID or Alias of the KMS key that is used to
                 encrypt the data on the storage volume attached to the instance hosting
                 the endpoint.
+            volume_size (int): The size, in GB, of the ML storage volume attached to individual
+                inference instance associated with the production variant. Currenly only Amazon EBS
+                gp2 storage volumes are supported.
+            model_data_download_timeout (int): The timeout value, in seconds, to download and extract
+                model data from Amazon S3 to the individual inference instance associated with this
+                production variant.
+            container_startup_health_check_timeout (int): The timeout value, in seconds, for your
+                inference container to pass health check by SageMaker Hosting. For more information
+                about health check see:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html#your-algorithms-inference-algo-ping-requests
 
         Returns:
             callable[string, sagemaker.session.Session] or None: Invocation of
@@ -191,7 +204,10 @@ class PipelineModel(object):
         )
 
         production_variant = sagemaker.production_variant(
-            self.name, instance_type, initial_instance_count
+            self.name, instance_type, initial_instance_count,
+            volume_size=volume_size,
+            model_data_download_timeout=model_data_download_timeout,
+            container_startup_health_check_timeout=container_startup_health_check_timeout,
         )
         self.endpoint_name = endpoint_name or self.name
 
@@ -208,6 +224,9 @@ class PipelineModel(object):
                 tags=tags,
                 kms_key=kms_key,
                 data_capture_config_dict=data_capture_config_dict,
+                volume_size=volume_size,
+                model_data_download_timeout=model_data_download_timeout,
+                container_startup_health_check_timeout=container_startup_health_check_timeout,
             )
             self.sagemaker_session.update_endpoint(
                 self.endpoint_name, endpoint_config_name, wait=wait
