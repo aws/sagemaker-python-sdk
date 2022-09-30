@@ -81,7 +81,6 @@ def skip_if_incompatible(gpu_instance_type, request):
         pytest.skip("no ml.p3 instances in this region")
 
 
-@pytest.mark.release
 @pytest.mark.parametrize(
     "gpu_instance_type,instance_count",
     [
@@ -125,6 +124,46 @@ def test_huggingface_pytorch(
             disable_profiler=True,
             compiler_config=HFTrainingCompilerConfig(),
             distribution={"pytorchxla": {"enabled": True}} if instance_count > 1 else None,
+        )
+
+        hf.fit(huggingface_dummy_dataset)
+
+
+@pytest.mark.release
+def test_huggingface_pytorch_release(
+    sagemaker_session,
+    gpu_instance_type,
+    huggingface_training_compiler_latest_version,
+    huggingface_training_compiler_pytorch_latest_version,
+    huggingface_dummy_dataset,
+):
+    """
+    Test the HuggingFace estimator with PyTorch
+    """
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        data_path = os.path.join(DATA_DIR, "huggingface")
+
+        hf = HuggingFace(
+            py_version="py38",
+            entry_point=os.path.join(data_path, "run_glue.py"),
+            role="SageMakerRole",
+            transformers_version=huggingface_training_compiler_latest_version,
+            pytorch_version=huggingface_training_compiler_pytorch_latest_version,
+            instance_count=1,
+            instance_type=gpu_instance_type,
+            hyperparameters={
+                "model_name_or_path": "distilbert-base-cased",
+                "task_name": "wnli",
+                "do_train": True,
+                "do_eval": True,
+                "max_seq_length": 128,
+                "fp16": True,
+                "per_device_train_batch_size": 128,
+                "output_dir": "/opt/ml/model",
+            },
+            sagemaker_session=sagemaker_session,
+            disable_profiler=True,
+            compiler_config=HFTrainingCompilerConfig(),
         )
 
         hf.fit(huggingface_dummy_dataset)
@@ -204,7 +243,7 @@ def test_tensorflow(
             py_version="py39",
             git_config={
                 "repo": "https://github.com/tensorflow/models.git",
-                "branch": "v2.9.2",
+                "branch": "v" + ".".join(tensorflow_training_latest_version.split(".")[:2]) + ".0",
             },
             source_dir=".",
             entry_point="official/vision/train.py",

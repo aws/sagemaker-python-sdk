@@ -116,6 +116,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         role: str,
         instance_count: Optional[Union[int, PipelineVariable]] = None,
         instance_type: Optional[Union[str, PipelineVariable]] = None,
+        keep_alive_period_in_seconds: Optional[Union[int, PipelineVariable]] = None,
         volume_size: Union[int, PipelineVariable] = 30,
         volume_kms_key: Optional[Union[str, PipelineVariable]] = None,
         max_run: Union[int, PipelineVariable] = 24 * 60 * 60,
@@ -167,6 +168,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             instance_type (str or PipelineVariable): Type of EC2 instance to use for training,
                 for example, ``'ml.c4.xlarge'``. Required if instance_groups is
                 not set.
+            keep_alive_period_in_seconds (int): The duration of time in seconds
+                to retain configured resources in a warm pool for subsequent
+                training jobs (default: None).
             volume_size (int or PipelineVariable): Size in GB of the storage volume to use for
                 storing input and output data during training (default: 30).
 
@@ -510,6 +514,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.role = role
         self.instance_count = instance_count
         self.instance_type = instance_type
+        self.keep_alive_period_in_seconds = keep_alive_period_in_seconds
         self.instance_groups = instance_groups
         self.volume_size = volume_size
         self.volume_kms_key = volume_kms_key
@@ -1578,6 +1583,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         if "EnableNetworkIsolation" in job_details:
             init_params["enable_network_isolation"] = job_details["EnableNetworkIsolation"]
 
+        if "KeepAlivePeriodInSeconds" in job_details["ResourceConfig"]:
+            init_params["keep_alive_period_in_seconds"] = job_details["ResourceConfig"][
+                "keepAlivePeriodInSeconds"
+            ]
+
         has_hps = "HyperParameters" in job_details
         init_params["hyperparameters"] = job_details["HyperParameters"] if has_hps else {}
 
@@ -2126,7 +2136,9 @@ class _TrainingJob(_Job):
         return isinstance(input_uri, string_types) and input_uri.startswith("file://")
 
     @classmethod
-    def update(cls, estimator, profiler_rule_configs=None, profiler_config=None):
+    def update(
+        cls, estimator, profiler_rule_configs=None, profiler_config=None, resource_config=None
+    ):
         """Update a running Amazon SageMaker training job.
 
         Args:
@@ -2135,18 +2147,23 @@ class _TrainingJob(_Job):
                 updated in the training job. (default: None).
             profiler_config (dict): Configuration for how profiling information is emitted with
                 SageMaker Debugger. (default: None).
+            resource_config (dict): Configuration of the resources for the training job. You can
+                update the keep-alive period if the warm pool status is `Available`. No other fields
+                can be updated. (default: None).
 
         Returns:
             sagemaker.estimator._TrainingJob: Constructed object that captures
             all information about the updated training job.
         """
-        update_args = cls._get_update_args(estimator, profiler_rule_configs, profiler_config)
+        update_args = cls._get_update_args(
+            estimator, profiler_rule_configs, profiler_config, resource_config
+        )
         estimator.sagemaker_session.update_training_job(**update_args)
 
         return estimator.latest_training_job
 
     @classmethod
-    def _get_update_args(cls, estimator, profiler_rule_configs, profiler_config):
+    def _get_update_args(cls, estimator, profiler_rule_configs, profiler_config, resource_config):
         """Constructs a dict of arguments for updating an Amazon SageMaker training job.
 
         Args:
@@ -2156,6 +2173,9 @@ class _TrainingJob(_Job):
                 updated in the training job. (default: None).
             profiler_config (dict): Configuration for how profiling information is emitted with
                 SageMaker Debugger. (default: None).
+            resource_config (dict): Configuration of the resources for the training job. You can
+                update the keep-alive period if the warm pool status is `Available`. No other fields
+                can be updated. (default: None).
 
         Returns:
             Dict: dict for `sagemaker.session.Session.update_training_job` method
@@ -2163,6 +2183,7 @@ class _TrainingJob(_Job):
         update_args = {"job_name": estimator.latest_training_job.name}
         update_args.update(build_dict("profiler_rule_configs", profiler_rule_configs))
         update_args.update(build_dict("profiler_config", profiler_config))
+        update_args.update(build_dict("resource_config", resource_config))
 
         return update_args
 
@@ -2218,6 +2239,7 @@ class Estimator(EstimatorBase):
         role: str,
         instance_count: Optional[Union[int, PipelineVariable]] = None,
         instance_type: Optional[Union[str, PipelineVariable]] = None,
+        keep_alive_period_in_seconds: Optional[Union[int, PipelineVariable]] = None,
         volume_size: Union[int, PipelineVariable] = 30,
         volume_kms_key: Optional[Union[str, PipelineVariable]] = None,
         max_run: Union[int, PipelineVariable] = 24 * 60 * 60,
@@ -2270,6 +2292,9 @@ class Estimator(EstimatorBase):
             instance_type (str or PipelineVariable): Type of EC2 instance to use for training,
                 for example, ``'ml.c4.xlarge'``. Required if instance_groups is
                 not set.
+            keep_alive_period_in_seconds (int): The duration of time in seconds
+                to retain configured resources in a warm pool for subsequent
+                training jobs (default: None).
             volume_size (int or PipelineVariable): Size in GB of the storage volume to use for
                 storing input and output data during training (default: 30).
 
@@ -2591,6 +2616,7 @@ class Estimator(EstimatorBase):
             role,
             instance_count,
             instance_type,
+            keep_alive_period_in_seconds,
             volume_size,
             volume_kms_key,
             max_run,
