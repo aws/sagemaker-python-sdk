@@ -410,6 +410,8 @@ def framework_name_from_image(image_uri):
             '<account>.dkr.ecr.<region>.amazonaws.com/sagemaker-rl-<fw>:<rl_toolkit><rl_version>-<device>-<py_ver>'
             current:
             '<account>.dkr.ecr.<region>.amazonaws.com/<fw>-<image_scope>:<fw_version>-<device>-<py_ver>'
+            current:
+            '<account>.dkr.ecr.<region>.amazonaws.com/sagemaker-xgboost:<fw_version>-<container_version>'
 
     Returns:
         tuple: A tuple containing:
@@ -450,6 +452,16 @@ def framework_name_from_image(image_uri):
     legacy_match = legacy_name_pattern.match(sagemaker_match.group(9))
     if legacy_match is not None:
         return (legacy_match.group(1), legacy_match.group(2), legacy_match.group(4), None)
+
+    # sagemaker-xgboost images are tagged with two aliases, e.g.:
+    # 1. Long tag: "315553699071.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:1.5-1-cpu-py3"
+    # 2. Short tag: "315553699071.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:1.5-1"
+    # Note 1: Both tags point to the same image
+    # Note 2: Both tags have full GPU capabilities, despite "cpu" delineation in the long tag
+    short_xgboost_tag_pattern = re.compile(r"^sagemaker-(xgboost):(.*)$")
+    short_xgboost_tag_match = short_xgboost_tag_pattern.match(sagemaker_match.group(9))
+    if short_xgboost_tag_match is not None:
+        return (short_xgboost_tag_match.group(1), "py3", short_xgboost_tag_match.group(2), None)
     return None, None, None, None
 
 
@@ -459,12 +471,16 @@ def framework_version_from_tag(image_tag):
     Args:
         image_tag (str): Image tag, which should take the form
             '<framework_version>-<device>-<py_version>'
+            '<xgboost_version>-<container_version>'
 
     Returns:
         str: The framework version.
     """
     tag_pattern = re.compile(r"^(.*)-(cpu|gpu)-(py2|py3\d*)$")
     tag_match = tag_pattern.match(image_tag)
+    if tag_match is None:
+        short_xgboost_tag_pattern = re.compile(r"^(\d\.\d+\-\d)$")
+        tag_match = short_xgboost_tag_pattern.match(image_tag)
     return None if tag_match is None else tag_match.group(1)
 
 
