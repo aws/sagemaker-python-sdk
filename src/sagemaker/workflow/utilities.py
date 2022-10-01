@@ -87,9 +87,16 @@ def build_steps(steps: Sequence[Entity], pipeline_name: str):
         if isinstance(step, StepCollection):
             request_dicts.extend(step.request_dicts())
         else:
+            _assign_path_hashes(step)
             with _pipeline_config_manager(pipeline_name, step.name, None, None):
                 request_dicts.append(step.to_request())
     return request_dicts
+
+
+def _assign_path_hashes(step):
+    if step.step_type.value is "Training":
+        _pipeline_config.code_hash = hash_files_or_dirs([step.step_args.func_kwargs["entry_point"]]
+                                                        + step.step_args.func_kwargs["dependencies"])
 
 
 def hash_file(path: str) -> str:
