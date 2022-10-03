@@ -1802,7 +1802,7 @@ class FrameworkProcessor(ScriptProcessor):
             entry_point=entry_point,
             source_dir=source_dir,
             dependencies=dependencies,
-            git_config=git_config
+            git_config=git_config,
         )
 
         estimator._prepare_for_training(job_name=job_name)
