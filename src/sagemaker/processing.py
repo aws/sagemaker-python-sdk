@@ -1493,6 +1493,7 @@ class FrameworkProcessor(ScriptProcessor):
             enable_network_isolation=False,  # True -> uploads to input channel. Not what we want!
             image_uri=self.image_uri,
             role=self.role,
+            output_kms_key=self.output_kms_key,
             # Estimator instance_count doesn't currently matter to FrameworkProcessor, and the
             # SKLearn Framework Estimator requires instance_type==1. So here we hard-wire it to 1,
             # but if it matters in future perhaps we could take self.instance_count here and have
@@ -1801,7 +1802,7 @@ class FrameworkProcessor(ScriptProcessor):
             entry_point=entry_point,
             source_dir=source_dir,
             dependencies=dependencies,
-            git_config=git_config,
+            git_config=git_config
         )
 
         estimator._prepare_for_training(job_name=job_name)
