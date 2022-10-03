@@ -671,6 +671,25 @@ class FeatureGroup:
             feature_group_name=self.name, record=[value.to_dict() for value in record]
         )
 
+    def delete_record(
+        self,
+        record_identifier_value_as_string: str,
+        event_time: str,
+    ):
+        """Delete a single record from a FeatureGroup.
+
+        Args:
+            record_identifier_value_as_string (String):
+                a String representing the value of the record identifier.
+            event_time (String):
+                a timestamp format String indicating when the deletion event occurred.
+        """
+        return self.sagemaker_session.delete_record(
+            feature_group_name=self.name,
+            record_identifier_value_as_string=record_identifier_value_as_string,
+            event_time=event_time,
+        )
+
     def ingest(
         self,
         data_frame: DataFrame,

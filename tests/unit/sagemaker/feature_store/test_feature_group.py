@@ -225,6 +225,21 @@ def test_put_record(sagemaker_session_mock):
     )
 
 
+def test_delete_record(sagemaker_session_mock):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    record_identifier_value_as_string = "1.0"
+    event_time = "2022-09-14"
+    feature_group.delete_record(
+        record_identifier_value_as_string=record_identifier_value_as_string,
+        event_time=event_time,
+    )
+    sagemaker_session_mock.delete_record.assert_called_with(
+        feature_group_name="MyFeatureGroup",
+        record_identifier_value_as_string=record_identifier_value_as_string,
+        event_time=event_time,
+    )
+
+
 def test_load_feature_definition(sagemaker_session_mock):
     feature_group = FeatureGroup(name="SomeGroup", sagemaker_session=sagemaker_session_mock)
     df = pd.DataFrame(

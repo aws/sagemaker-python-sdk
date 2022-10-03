@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 import json
 import time
+import datetime
 from contextlib import contextmanager
 
 import boto3
@@ -332,6 +333,45 @@ def test_get_record(
         # Retrieve data
         retrieved_record = feature_group.get_record(
             record_identifier_value_as_string="1.0",
+        )
+        assert retrieved_record is None
+
+
+def test_delete_record(
+    feature_store_session,
+    role,
+    feature_group_name,
+    pandas_data_frame,
+    record,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+
+    record_identifier_value_as_string = record[0].value_as_string
+    with cleanup_feature_group(feature_group):
+        feature_group.create(
+            s3_uri=False,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+        )
+        _wait_for_feature_group_create(feature_group)
+        # Ingest data
+        feature_group.put_record(record=record)
+        # Retrieve data
+        retrieved_record = feature_group.get_record(
+            record_identifier_value_as_string=record_identifier_value_as_string,
+        )
+        assert retrieved_record is not None
+        # Delete data
+        feature_group.delete_record(
+            record_identifier_value_as_string=record_identifier_value_as_string,
+            event_time=datetime.datetime.now().replace(microsecond=0).isoformat() + "Z",
+        )
+        # Retrieve data
+        retrieved_record = feature_group.get_record(
+            record_identifier_value_as_string=record_identifier_value_as_string,
         )
         assert retrieved_record is None
 
