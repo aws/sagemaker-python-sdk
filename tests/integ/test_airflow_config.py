@@ -18,8 +18,8 @@ import pytest
 import numpy as np
 from airflow import utils
 from airflow import DAG
-from airflow.contrib.operators.sagemaker_training_operator import SageMakerTrainingOperator
-from airflow.contrib.operators.sagemaker_transform_operator import SageMakerTransformOperator
+from airflow.providers.amazon.aws.operators.sagemaker import SageMakerTrainingOperator
+from airflow.providers.amazon.aws.operators.sagemaker_transform import SageMakerTransformOperator
 from six.moves.urllib.parse import urlparse
 
 import tests.integ
