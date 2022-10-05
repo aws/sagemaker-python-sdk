@@ -37,12 +37,12 @@ def prepare_framework(estimator, s3_operations):
     """
     if estimator.code_location is not None:
         bucket, key = s3.parse_s3_url(estimator.code_location)
-        key = os.path.join(key, estimator._current_job_name, "source", "sourcedir.tar.gz")
+        key = "/".join([key, estimator._current_job_name, "source", "sourcedir.tar.gz"])
     elif estimator.uploaded_code is not None:
         bucket, key = s3.parse_s3_url(estimator.uploaded_code.s3_prefix)
     else:
         bucket = estimator.sagemaker_session._default_bucket
-        key = os.path.join(estimator._current_job_name, "source", "sourcedir.tar.gz")
+        key = "/".join([estimator._current_job_name, "source", "sourcedir.tar.gz"])
 
     script = os.path.basename(estimator.entry_point)
 
