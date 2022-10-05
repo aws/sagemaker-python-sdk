@@ -59,8 +59,15 @@ def list_to_request(entities: Sequence[Union[Entity, "StepCollection"]]) -> List
 
 
 @contextmanager
-def _pipeline_config_manager(pipeline_name, step_name, code_hash, config_hash):
-    """Expose static _pipeline_config variable to other modules"""
+def _pipeline_config_manager(pipeline_name: str, step_name: str, code_hash: str, config_hash: str):
+    """Expose static _pipeline_config variable to other modules
+
+    Args:
+        pipeline_name (str): pipeline name
+        step_name (str): step name
+        code_hash (str): a hash of the code artifact for the particular step
+        config_hash (str): a hash of the config artifact for the particular step (Processing)
+    """
 
     # pylint: disable=W0603
     global _pipeline_config
