@@ -1,5 +1,24 @@
 # Changelog
 
+## v2.111.0 (2022-10-05)
+
+### Features
+
+ * Edit test file for supporting TF 2.10 training
+
+### Bug Fixes and Other Changes
+
+ * support kms key in processor pack local code
+ * security issue by bumping apache-airflow from 2.3.4 to 2.4.0
+ * instance count retrieval logic
+ * Add regex for short-form sagemaker-xgboost tags
+ * Upgrade attrs>=20.3.0,<23
+ * Add PipelineVariable annotation to Amazon estimators
+
+### Documentation Changes
+
+ * add context for pytorch
+
 ## v2.110.0 (2022-09-27)
 
 ### Features
