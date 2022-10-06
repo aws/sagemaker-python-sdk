@@ -135,7 +135,7 @@ def get_code_hash(step: Entity) -> str:
     return None
 
 
-def get_processing_code_hash(code: str, source_dir: str, dependencies: list[str]) -> str:
+def get_processing_code_hash(code: str, source_dir: str, dependencies: List[str]) -> str:
     """Get the hash of a processing step's code artifact(s).
 
     Args:
@@ -162,7 +162,7 @@ def get_processing_code_hash(code: str, source_dir: str, dependencies: list[str]
     return None
 
 
-def get_training_code_hash(entry_point: str, source_dir: str, dependencies: list[str]) -> str:
+def get_training_code_hash(entry_point: str, source_dir: str, dependencies: List[str]) -> str:
     """Get the hash of a training step's code artifact(s).
 
     Args:
