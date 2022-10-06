@@ -19,7 +19,6 @@ import pytest
 
 from mock import Mock
 from mock import patch
-from mock import ANY
 from packaging.version import Version
 
 

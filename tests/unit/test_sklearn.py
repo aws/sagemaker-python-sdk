@@ -17,7 +17,7 @@ import json
 import os
 import pytest
 
-from mock import Mock, ANY
+from mock import Mock
 from mock import patch
 
 from sagemaker.fw_utils import UploadedCode
