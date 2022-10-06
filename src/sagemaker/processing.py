@@ -315,6 +315,7 @@ class Processor(object):
             TypeError: if the inputs are not ``ProcessingInput`` objects.
         """
         from sagemaker.workflow.utilities import _pipeline_config
+
         # Initialize a list of normalized ProcessingInput objects.
         normalized_inputs = []
         if inputs is not None:
@@ -691,7 +692,8 @@ class ScriptProcessor(Processor):
 
         """
         from sagemaker.workflow.utilities import _pipeline_config
-        if _pipeline_config:
+
+        if _pipeline_config and _pipeline_config.code_hash:
             desired_s3_uri = s3.s3_path_join(
                 "s3://",
                 self.sagemaker_session.default_bucket(),

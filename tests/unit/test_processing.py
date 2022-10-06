@@ -29,6 +29,7 @@ from sagemaker.processing import (
     ScriptProcessor,
     ProcessingJob,
 )
+from sagemaker.spark.processing import PySparkProcessor
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.pytorch.processing import PyTorchProcessor
 from sagemaker.tensorflow.processing import TensorFlowProcessor
@@ -697,7 +698,7 @@ def test_script_processor_with_all_parameters_via_run_args(
 
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
-@patch('sagemaker.processing._pipeline_config', MOCKED_PIPELINE_CONFIG)
+@patch('sagemaker.workflow.utilities._pipeline_config', MOCKED_PIPELINE_CONFIG)
 def test_script_processor_code_path_with_pipeline_config(
     exists_mock,
     isfile_mock,
@@ -888,6 +889,32 @@ def test_extend_processing_args(sagemaker_session):
 
     assert extended_inputs == inputs
     assert extended_outputs == outputs
+
+
+@patch("os.path.exists", return_value=True)
+@patch("os.path.isfile", return_value=True)
+@patch('sagemaker.workflow.utilities._pipeline_config', MOCKED_PIPELINE_CONFIG)
+def test_pyspark_processor_configuration_path_pipeline_config(
+    exists_mock,
+    isfile_mock,
+    pipeline_session
+):
+    processor = PySparkProcessor(
+        role=ROLE,
+        image_uri=CUSTOM_IMAGE_URI,
+        instance_count=1,
+        instance_type="ml.m4.xlarge",
+        sagemaker_session=pipeline_session
+    )
+
+    extended_inputs, extended_outputs = processor._extend_processing_args(
+        inputs=[],
+        outputs=[],
+        configuration={'Classification': 'hadoop-env', 'Properties': {}}
+    )
+
+    s3_uri = extended_inputs[0].s3_input.s3_uri
+    assert s3_uri == "s3://mybucket/test-pipeline/test-processing-step/input/conf/config-hash-abcdefg/configuration.json"
 
 
 def _get_script_processor(sagemaker_session):

@@ -399,12 +399,22 @@ class _SparkProcessorBase(ScriptProcessor):
         Args:
             configuration (Dict): the configuration dict for the EMR application configuration.
         """
+        from sagemaker.workflow.utilities import _pipeline_config
 
         serialized_configuration = BytesIO(json.dumps(configuration).encode("utf-8"))
-        s3_uri = (
-            f"s3://{self.sagemaker_session.default_bucket()}/{self._current_job_name}/"
-            f"input/{self._conf_container_input_name}/{self._conf_file_name}"
-        )
+
+        if _pipeline_config and _pipeline_config.config_hash:
+            s3_uri = (
+                f"s3://{self.sagemaker_session.default_bucket()}/{_pipeline_config.pipeline_name}/"
+                f"{_pipeline_config.step_name}/input/"
+                f"{self._conf_container_input_name}/{_pipeline_config.config_hash}/"
+                f"{self._conf_file_name}"
+            )
+        else:
+            s3_uri = (
+                f"s3://{self.sagemaker_session.default_bucket()}/{self._current_job_name}/"
+                f"input/{self._conf_container_input_name}/{self._conf_file_name}"
+            )
 
         S3Uploader.upload_string_as_file_body(
             body=serialized_configuration,
