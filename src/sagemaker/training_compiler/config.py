@@ -14,6 +14,8 @@
 from __future__ import absolute_import
 import logging
 
+from sagemaker.workflow import is_pipeline_variable
+
 logger = logging.getLogger(__name__)
 
 
@@ -132,7 +134,14 @@ class TrainingCompilerConfig(object):
             ValueError: Raised if the requested configuration is not compatible
                         with SageMaker Training Compiler.
         """
-        if estimator.instance_type:
+        if is_pipeline_variable(estimator.instance_type):
+            warn_msg = (
+                "Estimator instance_type is a PipelineVariable (%s), "
+                "which has to be interpreted as one of the "
+                "[p3, g4dn, p4d, g5] classes in execution time."
+            )
+            logger.warning(warn_msg, type(estimator.instance_type))
+        elif estimator.instance_type:
             if "local" not in estimator.instance_type:
                 requested_instance_class = estimator.instance_type.split(".")[
                     1
