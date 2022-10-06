@@ -95,10 +95,7 @@ def build_steps(steps: Sequence[Entity], pipeline_name: str):
             request_dicts.extend(step.request_dicts())
         else:
             with _pipeline_config_manager(
-                pipeline_name,
-                step.name,
-                get_code_hash(step),
-                get_config_hash(step)
+                pipeline_name, step.name, get_code_hash(step), get_config_hash(step)
             ):
                 request_dicts.append(step.to_request())
     return request_dicts
@@ -115,9 +112,9 @@ def get_code_hash(step: Entity) -> str:
     from sagemaker.workflow.steps import ProcessingStep, TrainingStep
 
     if isinstance(step, ProcessingStep) and step.step_args:
-        source_dir = step.step_args.func_kwargs.get('source_dir')
-        dependencies = step.step_args.func_kwargs.get('dependencies')
-        code = step.step_args.func_kwargs.get('code')
+        source_dir = step.step_args.func_kwargs.get("source_dir")
+        dependencies = step.step_args.func_kwargs.get("dependencies")
+        code = step.step_args.func_kwargs.get("code")
 
         return get_processing_code_hash(code, source_dir, dependencies)
 
@@ -127,11 +124,7 @@ def get_code_hash(step: Entity) -> str:
         dependencies = job_obj.dependencies
         entry_point = job_obj.entry_point
 
-        return get_training_code_hash(
-            entry_point,
-            source_dir,
-            dependencies
-        )
+        return get_training_code_hash(entry_point, source_dir, dependencies)
     return None
 
 
@@ -152,9 +145,7 @@ def get_processing_code_hash(code: str, source_dir: str, dependencies: List[str]
     if source_dir:
         source_dir_url = urlparse(source_dir)
         if source_dir_url.scheme == "" or source_dir_url.scheme == "file":
-            return hash_files_or_dirs(
-                [source_dir] + dependencies
-            )
+            return hash_files_or_dirs([source_dir] + dependencies)
     if code:
         code_url = urlparse(code)
         if code_url.scheme == "" or code_url.scheme == "file":
@@ -183,15 +174,11 @@ def get_training_code_hash(entry_point: str, source_dir: str, dependencies: List
         if source_dir:
             source_dir_url = urlparse(source_dir)
             if source_dir_url.scheme == "" or source_dir_url.scheme == "file":
-                return hash_files_or_dirs(
-                    [source_dir] + dependencies
-                )
+                return hash_files_or_dirs([source_dir] + dependencies)
         elif entry_point:
             entry_point_url = urlparse(entry_point)
             if entry_point_url.scheme == "" or entry_point_url.scheme == "file":
-                return hash_files_or_dirs(
-                    [entry_point] + dependencies
-                )
+                return hash_files_or_dirs([entry_point] + dependencies)
     return None
 
 
@@ -206,7 +193,7 @@ def get_config_hash(step: Entity):
     from sagemaker.workflow.steps import ProcessingStep
 
     if isinstance(step, ProcessingStep) and step.step_args:
-        config = step.step_args.func_kwargs.get('configuration')
+        config = step.step_args.func_kwargs.get("configuration")
         if config:
             return hash_object(config)
     return None

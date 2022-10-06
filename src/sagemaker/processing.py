@@ -699,7 +699,7 @@ class ScriptProcessor(Processor):
                 self.sagemaker_session.default_bucket(),
                 _pipeline_config.pipeline_name,
                 self._CODE_CONTAINER_INPUT_NAME,
-                _pipeline_config.code_hash
+                _pipeline_config.code_hash,
             )
         else:
             desired_s3_uri = s3.s3_path_join(
