@@ -42,6 +42,7 @@ from sagemaker.network import NetworkConfig
 from sagemaker.spark import defaults
 
 from sagemaker.workflow import is_pipeline_variable
+from sagemaker.workflow.pipeline_context import runnable_by_pipeline
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.functions import Join
 
@@ -211,6 +212,7 @@ class _SparkProcessorBase(ScriptProcessor):
             arguments=arguments,
         )
 
+    @runnable_by_pipeline
     def run(
         self,
         submit_app,
@@ -834,6 +836,7 @@ class PySparkProcessor(_SparkProcessorBase):
             arguments=arguments,
         )
 
+    @runnable_by_pipeline
     def run(
         self,
         submit_app: str,
@@ -1093,6 +1096,7 @@ class SparkJarProcessor(_SparkProcessorBase):
             arguments=arguments,
         )
 
+    @runnable_by_pipeline
     def run(
         self,
         submit_app: str,
