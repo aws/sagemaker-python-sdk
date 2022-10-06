@@ -59,8 +59,15 @@ def list_to_request(entities: Sequence[Union[Entity, "StepCollection"]]) -> List
 
 
 @contextmanager
-def _pipeline_config_manager(pipeline_name, step_name, code_hash, config_hash):
-    """Expose static _pipeline_config variable to other modules"""
+def _pipeline_config_manager(pipeline_name: str, step_name: str, code_hash: str, config_hash: str):
+    """Expose static _pipeline_config variable to other modules
+
+    Args:
+        pipeline_name (str): pipeline name
+        step_name (str): step name
+        code_hash (str): a hash of the code artifact for the particular step
+        config_hash (str): a hash of the config artifact for the particular step (Processing)
+    """
 
     # pylint: disable=W0603
     global _pipeline_config
@@ -87,16 +94,120 @@ def build_steps(steps: Sequence[Entity], pipeline_name: str):
         if isinstance(step, StepCollection):
             request_dicts.extend(step.request_dicts())
         else:
-            _assign_path_hashes(step)
-            with _pipeline_config_manager(pipeline_name, step.name, None, None):
+            with _pipeline_config_manager(
+                pipeline_name, step.name, get_code_hash(step), get_config_hash(step)
+            ):
                 request_dicts.append(step.to_request())
     return request_dicts
 
 
-def _assign_path_hashes(step):
-    if step.step_type.value is "Training":
-        _pipeline_config.code_hash = hash_files_or_dirs([step.step_args.func_kwargs["entry_point"]]
-                                                        + step.step_args.func_kwargs["dependencies"])
+def get_code_hash(step: Entity) -> str:
+    """Get the hash of the code artifact(s) for the given step
+
+    Args:
+        step (Entity): A pipeline step object (Entity type because Step causes circular import)
+    Returns:
+        str: A hash string representing the unique code artifact(s) for the step
+    """
+    from sagemaker.workflow.steps import ProcessingStep, TrainingStep
+
+    if isinstance(step, ProcessingStep) and step.step_args:
+        source_dir = step.step_args.func_kwargs.get("source_dir")
+        dependencies = step.step_args.func_kwargs.get("dependencies")
+        code = step.step_args.func_kwargs.get("code")
+
+        return get_processing_code_hash(code, source_dir, dependencies)
+
+    if isinstance(step, TrainingStep) and step.step_args:
+        job_obj = step.step_args.func_args[0]
+        source_dir = job_obj.source_dir
+        dependencies = job_obj.dependencies
+        entry_point = job_obj.entry_point
+
+        return get_training_code_hash(entry_point, source_dir, dependencies)
+    return None
+
+
+def get_processing_code_hash(code: str, source_dir: str, dependencies: List[str]) -> str:
+    """Get the hash of a processing step's code artifact(s).
+
+    Args:
+        code (str): Path to a file with the processing script to run
+        source_dir (str): Path to a directory with any other processing
+                source code dependencies aside from the entry point file
+        dependencies (str): A list of paths to directories (absolute
+                or relative) with any additional libraries that will be exported
+                to the container
+    Returns:
+        str: A hash string representing the unique code artifact(s) for the step
+    """
+
+    if source_dir:
+        source_dir_url = urlparse(source_dir)
+        if source_dir_url.scheme == "" or source_dir_url.scheme == "file":
+            return hash_files_or_dirs([source_dir] + dependencies)
+    if code:
+        code_url = urlparse(code)
+        if code_url.scheme == "" or code_url.scheme == "file":
+            return hash_file(code)
+    return None
+
+
+def get_training_code_hash(entry_point: str, source_dir: str, dependencies: List[str]) -> str:
+    """Get the hash of a training step's code artifact(s).
+
+    Args:
+        entry_point (str): The absolute or relative path to the local Python
+                source file that should be executed as the entry point to
+                training
+        source_dir (str): Path to a directory with any other training source
+                code dependencies aside from the entry point file
+        dependencies (str): A list of paths to directories (absolute
+                or relative) with any additional libraries that will be exported
+                to the container
+    Returns:
+        str: A hash string representing the unique code artifact(s) for the step
+    """
+    from sagemaker.workflow import is_pipeline_variable
+
+    if not is_pipeline_variable(source_dir) and not is_pipeline_variable(entry_point):
+        if source_dir:
+            source_dir_url = urlparse(source_dir)
+            if source_dir_url.scheme == "" or source_dir_url.scheme == "file":
+                return hash_files_or_dirs([source_dir] + dependencies)
+        elif entry_point:
+            entry_point_url = urlparse(entry_point)
+            if entry_point_url.scheme == "" or entry_point_url.scheme == "file":
+                return hash_files_or_dirs([entry_point] + dependencies)
+    return None
+
+
+def get_config_hash(step: Entity):
+    """Get the hash of the config artifact(s) for the given step
+
+    Args:
+        step (Entity): A pipeline step object (Entity type because Step causes circular import)
+    Returns:
+        str: A hash string representing the unique config artifact(s) for the step
+    """
+    from sagemaker.workflow.steps import ProcessingStep
+
+    if isinstance(step, ProcessingStep) and step.step_args:
+        config = step.step_args.func_kwargs.get("configuration")
+        if config:
+            return hash_object(config)
+    return None
+
+
+def hash_object(obj) -> str:
+    """Get the MD5 hash of an object.
+
+    Args:
+        obj (dict): The object
+    Returns:
+        str: The MD5 hash of the object
+    """
+    return hashlib.md5(str(obj).encode()).hexdigest()
 
 
 def hash_file(path: str) -> str:

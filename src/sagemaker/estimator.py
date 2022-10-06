@@ -85,7 +85,6 @@ from sagemaker.workflow.pipeline_context import (
     PipelineSession,
     runnable_by_pipeline,
 )
-from sagemaker.workflow.utilities import hash_files_or_dirs
 
 logger = logging.getLogger(__name__)
 
@@ -815,15 +814,15 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         )
 
     def _assign_s3_prefix(self, key_prefix=""):
-        """Include pipeline name+step name instead of timestamp appended job name in uploaded s3 path
+        """Include pipeline name+step name instead of job name in s3 path
 
-        Assign new s3 path structure if within a pipeline workflow that has set the _pipeline_config
-            and respective name/hash variables
+        Assign new s3 path structure if within a pipeline workflow that has
+            set the _pipeline_config and respective name/hash variables
         """
         from sagemaker.workflow.utilities import _pipeline_config
 
         code_s3_prefix = "/".join(filter(None, [key_prefix, self._current_job_name, "source"]))
-        if _pipeline_config:
+        if _pipeline_config and _pipeline_config.code_hash:
             code_s3_prefix = "/".join(
                 filter(
                     None,
