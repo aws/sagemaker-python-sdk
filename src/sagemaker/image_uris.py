@@ -25,6 +25,7 @@ from sagemaker.spark import defaults
 from sagemaker.jumpstart import artifacts
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.utilities import override_pipeline_parameter_var
+from sagemaker.fw_utils import GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY, GRAVITON_ALLOWED_FRAMEWORKS
 
 logger = logging.getLogger(__name__)
 
@@ -151,6 +152,7 @@ def retrieve(
             inference_tool = _get_inference_tool(inference_tool, instance_type)
             if inference_tool == "neuron":
                 _framework = f"{framework}-{inference_tool}"
+        image_scope = _get_image_scope_for_instance_type(_framework, instance_type, image_scope)
         config = _config_for_framework_and_scope(_framework, image_scope, accelerator_type)
 
     original_version = version
@@ -215,6 +217,9 @@ def retrieve(
         tag_prefix = f"{pt_or_tf_version}-transformers{_version}"
     else:
         tag_prefix = version_config.get("tag_prefix", version)
+
+    if repo == f"{framework}-inference-graviton":
+        container_version = f"{container_version}-sagemaker"
 
     tag = _format_tag(tag_prefix, processor, py_version, container_version, inference_tool)
 
@@ -285,6 +290,15 @@ def config_for_framework(framework):
     fname = os.path.join(os.path.dirname(__file__), "image_uri_config", "{}.json".format(framework))
     with open(fname) as f:
         return json.load(f)
+
+
+def _get_image_scope_for_instance_type(framework, instance_type, image_scope):
+    """Extract the image scope from instance type."""
+    if framework in GRAVITON_ALLOWED_FRAMEWORKS and isinstance(instance_type, str):
+        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        if match and match[1] in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY:
+            return "inference_graviton"
+    return image_scope
 
 
 def _get_inference_tool(inference_tool, instance_type):
