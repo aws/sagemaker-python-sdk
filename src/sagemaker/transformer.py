@@ -17,7 +17,6 @@ from typing import Union, Optional, List, Dict
 
 from botocore import exceptions
 
-from sagemaker import s3
 from sagemaker.job import _Job
 from sagemaker.session import Session
 from sagemaker.workflow.entities import PipelineVariable

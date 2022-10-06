@@ -13,11 +13,14 @@
 from __future__ import absolute_import
 
 import pytest
-from mock import MagicMock, Mock, patch
+from mock import MagicMock, Mock, patch, PropertyMock
 
 from sagemaker.transformer import _TransformJob, Transformer
-from sagemaker.workflow.pipeline_context import _PipelineConfig
+from sagemaker.workflow.pipeline_context import PipelineSession, _PipelineConfig
 from tests.integ import test_local_mode
+
+ROLE = "DummyRole"
+REGION = "us-west-2"
 
 MODEL_NAME = "model"
 IMAGE_URI = "image-for-model"
@@ -60,6 +63,25 @@ def mock_create_tar_file():
 def sagemaker_session():
     boto_mock = Mock(name="boto_session")
     return Mock(name="sagemaker_session", boto_session=boto_mock, local_mode=False)
+
+
+@pytest.fixture()
+def pipeline_session():
+    client_mock = Mock()
+    client_mock._client_config.user_agent = (
+        "Boto3/1.14.24 Python/3.8.5 Linux/5.4.0-42-generic Botocore/1.17.24 Resource"
+    )
+    client_mock.describe_model.return_value = {"PrimaryContainer": {"Image": IMAGE_URI}}
+    role_mock = Mock()
+    type(role_mock).arn = PropertyMock(return_value=ROLE)
+    resource_mock = Mock()
+    resource_mock.Role.return_value = role_mock
+    session_mock = Mock(region_name=REGION)
+    session_mock.resource.return_value = resource_mock
+    session_mock.client.return_value = client_mock
+    return PipelineSession(
+        boto_session=session_mock, sagemaker_client=client_mock, default_bucket=S3_BUCKET
+    )
 
 
 @pytest.fixture()
@@ -302,15 +324,12 @@ def test_transform_with_generated_output_path(start_new_job, transformer, sagema
 
 
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
-def test_transform_with_generated_output_path_pipeline_config(sagemaker_session):
-    sage_mock = Mock(name="sagemaker_client")
-    sage_mock.describe_model.return_value = {"PrimaryContainer": {"Image": IMAGE_URI}}
-    sagemaker_session.sagemaker_client = sage_mock
+def test_transform_with_generated_output_path_pipeline_config(pipeline_session):
     transformer = Transformer(
         MODEL_NAME,
         INSTANCE_COUNT,
         INSTANCE_TYPE,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=pipeline_session,
         volume_kms_key=KMS_KEY_ID,
     )
     step_args = transformer.transform(DATA)
@@ -325,7 +344,6 @@ def test_transform_with_generated_output_path_pipeline_config(sagemaker_session)
                 "test-pipeline",
                 {"Get": "Execution.PipelineExecutionId"},
                 "test-training-step",
-                "output",
             ],
         }
     }

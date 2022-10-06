@@ -36,7 +36,7 @@ from sagemaker.utils import base_name_from_image, get_config_value, name_from_ba
 from sagemaker.session import Session
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.functions import Join
-from sagemaker.workflow.pipeline_context import runnable_by_pipeline, PipelineSession
+from sagemaker.workflow.pipeline_context import runnable_by_pipeline
 from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.dataset_definition.inputs import S3Input, DatasetDefinition

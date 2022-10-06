@@ -18,8 +18,6 @@ import json
 import os
 import subprocess
 from time import sleep
-
-from build.lib.sagemaker.workflow.pipeline_context import _PipelineConfig
 from sagemaker.fw_utils import UploadedCode
 
 
@@ -56,7 +54,7 @@ from sagemaker.tensorflow.estimator import TensorFlow
 from sagemaker.predictor_async import AsyncPredictor
 from sagemaker.transformer import Transformer
 from sagemaker.workflow.parameters import ParameterString, ParameterBoolean
-from sagemaker.workflow.pipeline_context import PipelineSession
+from sagemaker.workflow.pipeline_context import PipelineSession, _PipelineConfig
 from sagemaker.xgboost.estimator import XGBoost
 
 MODEL_DATA = "s3://bucket/model.tar.gz"

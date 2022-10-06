@@ -25,7 +25,6 @@ from six import string_types, with_metaclass
 from six.moves.urllib.parse import urlparse
 
 import sagemaker
-from sagemaker import s3
 from sagemaker import git_utils, image_uris, vpc_utils
 from sagemaker.analytics import TrainingJobAnalytics
 from sagemaker.debugger import (  # noqa: F401 # pylint: disable=unused-import
