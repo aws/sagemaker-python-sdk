@@ -472,10 +472,12 @@ class TrainingStep(ConfigurableRetryStep):
         NOTE: The `CreateTrainingJob` request is not quite the args list that workflow needs.
         The `TrainingJobName` and `ExperimentConfig` attributes cannot be included.
         """
+        from sagemaker.workflow.utilities import execute_job_functions
+
         if self.step_args:
             # execute fit function with saved parameters,
             # and store args in PipelineSession's _context
-            self.step_args.func(*self.step_args.func_args, **self.step_args.func_kwargs)
+            execute_job_functions(self.step_args)
 
             # populate request dict with args
             estimator = self.step_args.func_args[0]
@@ -701,10 +703,12 @@ class TransformStep(ConfigurableRetryStep):
         NOTE: The `CreateTransformJob` request is not quite the args list that workflow needs.
         `TransformJobName` and `ExperimentConfig` cannot be included in the arguments.
         """
+        from sagemaker.workflow.utilities import execute_job_functions
+
         if self.step_args:
             # execute transform function with saved parameters,
             # and store args in PipelineSession's _context
-            self.step_args.func(*self.step_args.func_args, **self.step_args.func_kwargs)
+            execute_job_functions(self.step_args)
 
             # populate request dict with args
             transformer = self.step_args.func_args[0]
@@ -860,10 +864,12 @@ class ProcessingStep(ConfigurableRetryStep):
         NOTE: The `CreateProcessingJob` request is not quite the args list that workflow needs.
         `ProcessingJobName` and `ExperimentConfig` cannot be included in the arguments.
         """
+        from sagemaker.workflow.utilities import execute_job_functions
+
         if self.step_args:
             # execute run function with saved parameters,
             # and store args in PipelineSession's _context
-            self.step_args.func(*self.step_args.func_args, **self.step_args.func_kwargs)
+            execute_job_functions(self.step_args)
 
             # populate request dict with args
             processor = self.step_args.func_args[0]
@@ -1019,10 +1025,12 @@ class TuningStep(ConfigurableRetryStep):
             args list that workflow needs.
         The `HyperParameterTuningJobName` attribute cannot be included.
         """
+        from sagemaker.workflow.utilities import execute_job_functions
+
         if self.step_args:
             # execute fit function with saved parameters,
             # and store args in PipelineSession's _context
-            self.step_args.func(*self.step_args.func_args, **self.step_args.func_kwargs)
+            execute_job_functions(self.step_args)
 
             # populate request dict with args
             tuner = self.step_args.func_args[0]

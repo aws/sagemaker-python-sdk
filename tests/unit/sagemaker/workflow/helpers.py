@@ -16,6 +16,7 @@ from __future__ import absolute_import
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.steps import ConfigurableRetryStep, StepTypeEnum
 from sagemaker.workflow.step_collections import StepCollection
+from sagemaker.workflow.utilities import execute_job_functions
 
 
 def ordered(obj):
@@ -38,7 +39,7 @@ def ordered(obj):
 
 
 def get_step_args_helper(step_args, step_type):
-    step_args.func(*step_args.func_args, **step_args.func_kwargs)
+    execute_job_functions(step_args)
     request_args = step_args.func_args[0].sagemaker_session.context.args
 
     if step_type == "Processing":

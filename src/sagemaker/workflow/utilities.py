@@ -353,3 +353,23 @@ def override_pipeline_parameter_var(func):
         return func(*args, **kwargs)
 
     return wrapper
+
+
+def execute_job_functions(step_args: _StepArguments):
+    """Execute the job class functions during pipeline definition construction
+
+    Executes the job functions such as run(), fit(), or transform() that have been
+    delayed until the pipeline gets built, for steps built with a PipelineSession.
+
+    Handles multiple functions in instances where job functions are chained
+    together from the inheritance of different job classes (e.g. PySparkProcessor,
+    ScriptProcessor, and Processor).
+
+    Args:
+        step_args (_StepArguments): A `_StepArguments` object to be used for composing
+            a pipeline step, contains the necessary function information
+    """
+
+    chained_args = step_args.func(*step_args.func_args, **step_args.func_kwargs)
+    if chained_args:
+        execute_job_functions(chained_args)
