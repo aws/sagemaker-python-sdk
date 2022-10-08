@@ -281,8 +281,8 @@ def retrieve_caller_name(job_instance):
     to the pipeline session function that creates the job request.
 
     Args:
-            job_instance: A job class instance, one of the following
-                imported types
+        job_instance: A job class instance, one of the following
+            imported types
     """
 
     from sagemaker.processing import Processor
