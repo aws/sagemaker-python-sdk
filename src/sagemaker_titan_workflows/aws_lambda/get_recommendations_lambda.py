@@ -1,3 +1,5 @@
+import math
+
 from titan_ml.dataset.optimus import OptimusNaming, load_optimus_data
 from titan_ml.instance_info import InstanceInfos
 from titan_ml.optimizer.search_space import choice
@@ -14,6 +16,8 @@ transformer = recommender.fit(df)
 
 instance_info = InstanceInfos()
 instances = instance_info.instances
+
+integer_env_vars = ["OMP_NUM_THREADS", "TS_DEFAULT_WORKERS_PER_MODEL"]
 
 
 def get_config(instance):
@@ -51,7 +55,11 @@ def get_recommendations_handler(event, context):
     return [
         {
             "instanceType": x.instanceType,
-            "env": {str(k): str(v) for k, v in x.env.items()},
+            "env": {
+                str(k): str(int(v)) if k in integer_env_vars else str(v)
+                for k, v in x.env.items()
+                if not math.isnan(v)
+            },
         }
         for x in recommendations
     ]
