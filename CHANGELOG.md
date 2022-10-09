@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.112.0 (2022-10-09)
+
+### Features
+
+ * added monitor batch transform step (pipeline)
+
+### Bug Fixes and Other Changes
+
+ * Add PipelineVariable annotation to framework estimators
+
 ## v2.111.0 (2022-10-05)
 
 ### Features
