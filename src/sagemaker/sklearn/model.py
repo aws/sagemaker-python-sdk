@@ -248,7 +248,7 @@ class SKLearnModel(FrameworkModel):
             sample_payload_url=sample_payload_url,
             task=task,
             framework=framework,
-            framework_version=framework_version or self.framework_version,
+            framework_version=framework_version,
             nearest_model_name=nearest_model_name,
             data_input_configuration=data_input_configuration,
         )
