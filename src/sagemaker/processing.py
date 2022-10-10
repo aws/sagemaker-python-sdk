@@ -35,7 +35,9 @@ from sagemaker.network import NetworkConfig
 from sagemaker.utils import base_name_from_image, get_config_value, name_from_base
 from sagemaker.session import Session
 from sagemaker.workflow import is_pipeline_variable
+from sagemaker.workflow.functions import Join
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
+from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.dataset_definition.inputs import S3Input, DatasetDefinition
 from sagemaker.apiutils._base_types import ApiObject
@@ -381,6 +383,8 @@ class Processor(object):
             TypeError: if the outputs are not ``ProcessingOutput`` objects.
         """
         # Initialize a list of normalized ProcessingOutput objects.
+        from sagemaker.workflow.utilities import _pipeline_config
+
         normalized_outputs = []
         if outputs is not None:
             # Iterate through the provided list of outputs.
@@ -396,13 +400,27 @@ class Processor(object):
                 # If the output's destination is not an s3_uri, create one.
                 parse_result = urlparse(output.destination)
                 if parse_result.scheme != "s3":
-                    s3_uri = s3.s3_path_join(
-                        "s3://",
-                        self.sagemaker_session.default_bucket(),
-                        self._current_job_name,
-                        "output",
-                        output.output_name,
-                    )
+                    if _pipeline_config:
+                        s3_uri = Join(
+                            on="/",
+                            values=[
+                                "s3:/",
+                                self.sagemaker_session.default_bucket(),
+                                _pipeline_config.pipeline_name,
+                                ExecutionVariables.PIPELINE_EXECUTION_ID,
+                                _pipeline_config.step_name,
+                                "output",
+                                output.output_name,
+                            ],
+                        )
+                    else:
+                        s3_uri = s3.s3_path_join(
+                            "s3://",
+                            self.sagemaker_session.default_bucket(),
+                            self._current_job_name,
+                            "output",
+                            output.output_name,
+                        )
                     output.destination = s3_uri
                 normalized_outputs.append(output)
         return normalized_outputs

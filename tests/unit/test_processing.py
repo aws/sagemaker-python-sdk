@@ -39,6 +39,8 @@ from sagemaker.network import NetworkConfig
 from sagemaker.processing import FeatureStoreOutput
 from sagemaker.fw_utils import UploadedCode
 from sagemaker.workflow.pipeline_context import PipelineSession, _PipelineConfig
+from sagemaker.workflow.functions import Join
+from sagemaker.workflow.execution_variables import ExecutionVariables
 
 BUCKET_NAME = "mybucket"
 REGION = "us-west-2"
@@ -750,6 +752,70 @@ def test_processor_with_missing_network_config_parameters(sagemaker_session):
     expected_args["network_config"] = {"EnableNetworkIsolation": True}
 
     sagemaker_session.process.assert_called_with(**expected_args)
+
+
+@patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
+def test_processor_with_pipeline_s3_output_paths(pipeline_session):
+    processor = Processor(
+        role=ROLE,
+        image_uri=CUSTOM_IMAGE_URI,
+        instance_count=1,
+        instance_type="ml.m4.xlarge",
+        sagemaker_session=pipeline_session,
+    )
+
+    outputs = [
+        ProcessingOutput(output_name="train", source="/opt/ml/processing/train"),
+    ]
+
+    step_args = processor.run(outputs=outputs)
+    # execute process.run() and generate args, S3 paths
+    step_args.func(*step_args.func_args, **step_args.func_kwargs)
+    expected_output_config = {
+        "Outputs": [
+            {
+                "OutputName": "train",
+                "AppManaged": False,
+                "S3Output": {
+                    "S3Uri": Join(
+                        on="/",
+                        values=[
+                            "s3:/",
+                            "mybucket",
+                            "test-pipeline",
+                            ExecutionVariables.PIPELINE_EXECUTION_ID,
+                            "test-processing-step",
+                            "output",
+                            "train",
+                        ],
+                    ),
+                    "LocalPath": "/opt/ml/processing/train",
+                    "S3UploadMode": "EndOfJob",
+                },
+            }
+        ]
+    }
+    pipeline_session.process.assert_called_with(
+        inputs=[],
+        output_config=expected_output_config,
+        experiment_config=None,
+        job_name=processor._current_job_name,
+        resources={
+            "ClusterConfig": {
+                "InstanceType": "ml.m4.xlarge",
+                "InstanceCount": 1,
+                "VolumeSizeInGB": 30,
+            }
+        },
+        stopping_condition=None,
+        app_specification={
+            "ImageUri": "012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri"
+        },
+        environment=None,
+        network_config=None,
+        role_arn="arn:aws:iam::012345678901:role/SageMakerRole",
+        tags=None,
+    )
 
 
 def test_processor_with_encryption_parameter_in_network_config(sagemaker_session):

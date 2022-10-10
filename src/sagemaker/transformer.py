@@ -20,8 +20,10 @@ from botocore import exceptions
 from sagemaker.job import _Job
 from sagemaker.session import Session
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.workflow.functions import Join
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
 from sagemaker.workflow import is_pipeline_variable
+from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.utils import base_name_from_image, name_from_base
 
 
@@ -201,6 +203,8 @@ class Transformer(object):
             None or pipeline step arguments in case the Transformer instance is built with
             :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
         """
+        from sagemaker.workflow.utilities import _pipeline_config
+
         local_mode = self.sagemaker_session.local_mode
         if not local_mode and not is_pipeline_variable(data) and not data.startswith("s3://"):
             raise ValueError("Invalid S3 URI: {}".format(data))
@@ -220,9 +224,21 @@ class Transformer(object):
             self._current_job_name = name_from_base(base_name)
 
         if self.output_path is None or self._reset_output_path is True:
-            self.output_path = "s3://{}/{}".format(
-                self.sagemaker_session.default_bucket(), self._current_job_name
-            )
+            if _pipeline_config:
+                self.output_path = Join(
+                    on="/",
+                    values=[
+                        "s3:/",
+                        self.sagemaker_session.default_bucket(),
+                        _pipeline_config.pipeline_name,
+                        ExecutionVariables.PIPELINE_EXECUTION_ID,
+                        _pipeline_config.step_name,
+                    ],
+                )
+            else:
+                self.output_path = "s3://{}/{}".format(
+                    self.sagemaker_session.default_bucket(), self._current_job_name
+                )
             self._reset_output_path = True
 
         self.latest_transform_job = _TransformJob.start_new(
