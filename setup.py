@@ -32,7 +32,7 @@ setup(
     # Use custom sphinx command which adds an index.html that's compatible with
     # code.amazon.com links.
     # doc_command='amazon_doc_utils_build_sphinx',
-    check_format=False,  # Enable build-time format checking
+    check_format=True,  # Enable build-time format checking
     test_mypy=False,  # Enable type checking
     test_flake8=False,  # Enable linting at build time
 )

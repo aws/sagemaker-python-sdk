@@ -3,8 +3,7 @@ import math
 from titan_ml.dataset.optimus import OptimusNaming, load_optimus_data
 from titan_ml.instance_info import InstanceInfos
 from titan_ml.optimizer.search_space import choice
-from titan_ml.recommendation.pareto_select_recommender import \
-    ParetoSelectRecommender
+from titan_ml.recommendation.pareto_select_recommender import ParetoSelectRecommender
 
 df, input_columns, output_columns = load_optimus_data()
 

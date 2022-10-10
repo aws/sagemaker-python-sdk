@@ -1,8 +1,9 @@
 from unittest import TestCase
 from unittest.mock import Mock
 
-from sagemaker_titan_workflows.aws_lambda.get_recommendations_lambda import \
-    get_recommendations_handler
+from sagemaker_titan_workflows.aws_lambda.get_recommendations_lambda import (
+    get_recommendations_handler,
+)
 
 
 class TestGetRecommendationLambda(TestCase):
