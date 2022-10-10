@@ -32,6 +32,7 @@ from sagemaker.session import (
     NOTEBOOK_METADATA_FILE,
 )
 from sagemaker.tuner import WarmStartConfig, WarmStartTypes
+from sagemaker.inputs import BatchDataCaptureConfig
 
 STATIC_HPs = {"feature_dim": "784"}
 
@@ -1373,6 +1374,7 @@ def test_transform_pack_to_request(sagemaker_session):
         model_client_config=None,
         tags=None,
         data_processing=data_processing,
+        batch_data_capture_config=None,
     )
 
     _, _, actual_args = sagemaker_session.sagemaker_client.method_calls[0]
@@ -1384,6 +1386,12 @@ def test_transform_pack_to_request_with_optional_params(sagemaker_session):
     max_concurrent_transforms = 1
     max_payload = 0
     env = {"FOO": "BAR"}
+
+    batch_data_capture_config = BatchDataCaptureConfig(
+        destination_s3_uri="test_uri",
+        kms_key_id="",
+        generate_inference_id=False,
+    )
 
     sagemaker_session.transform(
         job_name=JOB_NAME,
@@ -1399,6 +1407,7 @@ def test_transform_pack_to_request_with_optional_params(sagemaker_session):
         model_client_config=MODEL_CLIENT_CONFIG,
         tags=TAGS,
         data_processing=None,
+        batch_data_capture_config=batch_data_capture_config,
     )
 
     _, _, actual_args = sagemaker_session.sagemaker_client.method_calls[0]
@@ -1409,6 +1418,7 @@ def test_transform_pack_to_request_with_optional_params(sagemaker_session):
     assert actual_args["Tags"] == TAGS
     assert actual_args["ExperimentConfig"] == EXPERIMENT_CONFIG
     assert actual_args["ModelClientConfig"] == MODEL_CLIENT_CONFIG
+    assert actual_args["DataCaptureConfig"] == batch_data_capture_config._to_request_dict()
 
 
 @patch("sys.stdout", new_callable=io.BytesIO if six.PY2 else io.StringIO)

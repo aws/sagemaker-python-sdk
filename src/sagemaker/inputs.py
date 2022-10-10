@@ -176,6 +176,7 @@ class TransformInput(object):
     output_filter: str = attr.ib(default=None)
     join_source: str = attr.ib(default=None)
     model_client_config: dict = attr.ib(default=None)
+    batch_data_capture_config: dict = attr.ib(default=None)
 
 
 class FileSystemInput(object):
@@ -232,3 +233,45 @@ class FileSystemInput(object):
 
         if content_type:
             self.config["ContentType"] = content_type
+
+
+class BatchDataCaptureConfig(object):
+    """Configuration object passed in when create a batch transform job.
+
+    Specifies configuration related to batch transform job data capture for use with
+    Amazon SageMaker Model Monitoring
+    """
+
+    def __init__(
+        self,
+        destination_s3_uri: str,
+        kms_key_id: str = None,
+        generate_inference_id: bool = None,
+    ):
+        """Create new BatchDataCaptureConfig
+
+        Args:
+            destination_s3_uri (str): S3 Location to store the captured data
+            kms_key_id (str): The KMS key to use when writing to S3.
+                KmsKeyId can be an ID of a KMS key, ARN of a KMS key, alias of a KMS key,
+                or alias of a KMS key. The KmsKeyId is applied to all outputs.
+                (default: None)
+            generate_inference_id (bool): Flag to generate an inference id
+                (default: None)
+        """
+        self.destination_s3_uri = destination_s3_uri
+        self.kms_key_id = kms_key_id
+        self.generate_inference_id = generate_inference_id
+
+    def _to_request_dict(self):
+        """Generates a request dictionary using the parameters provided to the class."""
+        batch_data_capture_config = {
+            "DestinationS3Uri": self.destination_s3_uri,
+        }
+
+        if self.kms_key_id is not None:
+            batch_data_capture_config["KmsKeyId"] = self.kms_key_id
+        if self.generate_inference_id is not None:
+            batch_data_capture_config["GenerateInferenceId"] = self.generate_inference_id
+
+        return batch_data_capture_config
