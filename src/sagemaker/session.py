@@ -34,7 +34,7 @@ from sagemaker import vpc_utils
 
 from sagemaker._studio import _append_project_tags
 from sagemaker.deprecations import deprecated_class
-from sagemaker.inputs import ShuffleConfig, TrainingInput
+from sagemaker.inputs import ShuffleConfig, TrainingInput, BatchDataCaptureConfig
 from sagemaker.user_agent import prepend_user_agent
 from sagemaker.utils import (
     name_from_image,
@@ -2454,6 +2454,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         tags,
         data_processing,
         model_client_config=None,
+        batch_data_capture_config: BatchDataCaptureConfig = None,
     ):
         """Construct an dict can be used to create an Amazon SageMaker transform job.
 
@@ -2489,6 +2490,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             model_client_config (dict): A dictionary describing the model configuration for the
                 job. Dictionary contains two optional keys,
                 'InvocationsTimeoutInSeconds', and 'InvocationsMaxRetries'.
+            batch_data_capture_config (BatchDataCaptureConfig): Configuration object which
+                specifies the configurations related to the batch data capture for the transform job
+                (default: None)
 
         Returns:
             Dict: a create transform job request dict
@@ -2525,6 +2529,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if model_client_config and len(model_client_config) > 0:
             transform_request["ModelClientConfig"] = model_client_config
 
+        if batch_data_capture_config is not None:
+            transform_request["DataCaptureConfig"] = batch_data_capture_config._to_request_dict()
+
         return transform_request
 
     def transform(
@@ -2542,6 +2549,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         tags,
         data_processing,
         model_client_config=None,
+        batch_data_capture_config: BatchDataCaptureConfig = None,
     ):
         """Create an Amazon SageMaker transform job.
 
@@ -2577,6 +2585,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             model_client_config (dict): A dictionary describing the model configuration for the
                 job. Dictionary contains two optional keys,
                 'InvocationsTimeoutInSeconds', and 'InvocationsMaxRetries'.
+            batch_data_capture_config (BatchDataCaptureConfig): Configuration object which
+                specifies the configurations related to the batch data capture for the transform job
         """
         tags = _append_project_tags(tags)
         transform_request = self._get_transform_request(
@@ -2593,6 +2603,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             tags=tags,
             data_processing=data_processing,
             model_client_config=model_client_config,
+            batch_data_capture_config=batch_data_capture_config,
         )
 
         def submit(request):
