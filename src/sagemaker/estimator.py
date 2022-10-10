@@ -770,13 +770,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         if is_pipeline_variable(self.output_path):
             if self.code_location is None:
                 code_bucket = self.sagemaker_session.default_bucket()
-                code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
+                code_s3_prefix = self._assign_s3_prefix()
                 kms_key = None
             else:
                 code_bucket, key_prefix = parse_s3_url(self.code_location)
-                code_s3_prefix = "/".join(
-                    filter(None, [key_prefix, self._current_job_name, "source"])
-                )
+                code_s3_prefix = self._assign_s3_prefix(key_prefix)
 
                 output_bucket = self.sagemaker_session.default_bucket()
                 kms_key = self.output_kms_key if code_bucket == output_bucket else None
@@ -785,24 +783,20 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             if local_mode:
                 if self.code_location is None:
                     code_bucket = self.sagemaker_session.default_bucket()
-                    code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
+                    code_s3_prefix = self._assign_s3_prefix()
                     kms_key = None
                 else:
                     code_bucket, key_prefix = parse_s3_url(self.code_location)
-                    code_s3_prefix = "/".join(
-                        filter(None, [key_prefix, self._current_job_name, "source"])
-                    )
+                    code_s3_prefix = self._assign_s3_prefix(key_prefix)
                     kms_key = None
             else:
                 if self.code_location is None:
                     code_bucket, _ = parse_s3_url(self.output_path)
-                    code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
+                    code_s3_prefix = self._assign_s3_prefix()
                     kms_key = self.output_kms_key
                 else:
                     code_bucket, key_prefix = parse_s3_url(self.code_location)
-                    code_s3_prefix = "/".join(
-                        filter(None, [key_prefix, self._current_job_name, "source"])
-                    )
+                    code_s3_prefix = self._assign_s3_prefix(key_prefix)
 
                     output_bucket, _ = parse_s3_url(self.output_path)
                     kms_key = self.output_kms_key if code_bucket == output_bucket else None
@@ -818,6 +812,29 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             s3_resource=self.sagemaker_session.s3_resource,
             settings=self.sagemaker_session.settings,
         )
+
+    def _assign_s3_prefix(self, key_prefix=""):
+        """Include pipeline name+step name instead of job name in s3 path
+
+        Assign new s3 path structure if within a pipeline workflow that has
+            set the _pipeline_config and respective name/hash variables
+        """
+        from sagemaker.workflow.utilities import _pipeline_config
+
+        code_s3_prefix = "/".join(filter(None, [key_prefix, self._current_job_name, "source"]))
+        if _pipeline_config and _pipeline_config.code_hash:
+            code_s3_prefix = "/".join(
+                filter(
+                    None,
+                    [
+                        key_prefix,
+                        _pipeline_config.pipeline_name,
+                        "code",
+                        _pipeline_config.code_hash,
+                    ],
+                )
+            )
+        return code_s3_prefix
 
     def _prepare_rules(self):
         """Rules list includes both debugger and profiler rules.
