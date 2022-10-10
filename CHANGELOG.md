@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.112.1 (2022-10-10)
+
+### Bug Fixes and Other Changes
+
+ * fix(local-mode): loosen docker requirement to allow 6.0.0
+ * CreateModelPackage API error for Scikit-learn and XGBoost frameworkss
+
 ## v2.112.0 (2022-10-09)
 
 ### Features
