@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 ECR_URI_TEMPLATE = "{registry}.dkr.{hostname}/{repository}"
 HUGGING_FACE_FRAMEWORK = "huggingface"
-PYTORCH_FRAMEWORK = "pytorch"
+TRAINIUM_ALLOWED_FRAMEWORKS = ("pytorch")
 
 
 @override_pipeline_parameter_var
@@ -148,7 +148,7 @@ def retrieve(
         )
     else:
         _framework = framework
-        if framework in [HUGGING_FACE_FRAMEWORK, PYTORCH_FRAMEWORK]:
+        if framework == HUGGING_FACE_FRAMEWORK or framework in TRAINIUM_ALLOWED_FRAMEWORKS:
             inference_tool = _get_inference_tool(inference_tool, instance_type)
             if inference_tool == "neuron":
                 _framework = f"{framework}-{inference_tool}"
@@ -282,6 +282,9 @@ def _config_for_framework_and_scope(framework, image_scope, accelerator_type=Non
             available_scopes[0],
         )
         image_scope = available_scopes[0]
+        
+    if image_scope is None and framework not in TRAINIUM_ALLOWED_FRAMEWORKS:
+        _validate_framework(framework, TRAINIUM_ALLOWED_FRAMEWORKS, "framework")
 
     _validate_arg(image_scope, available_scopes, "image scope")
     return config if "scope" in config else config[image_scope]
@@ -452,6 +455,15 @@ def _validate_arg(arg, available_options, arg_name):
             "Unsupported {arg_name}: {arg}. You may need to upgrade your SDK version "
             "(pip install -U sagemaker) for newer {arg_name}s. Supported {arg_name}(s): "
             "{options}.".format(arg_name=arg_name, arg=arg, options=", ".join(available_options))
+        )
+
+
+def _validate_framework(framework, allowed_frameworks, arg_name):
+    """Checks if the framework is in the allowed frameworks, and raises a ``ValueError`` if not."""
+    if framework not in allowed_frameworks:
+        raise ValueError(
+            f"Unsupported {arg_name}: {framework}. "
+            f"Supported {arg_name}(s) for trainium instances: {allowed_frameworks}."
         )
 
 
