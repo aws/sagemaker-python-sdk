@@ -1,5 +1,32 @@
 # Changelog
 
+## v2.112.2 (2022-10-11)
+
+### Bug Fixes and Other Changes
+
+ * Update Neo-TF2.x versions to TF2.9(.2)
+
+### Documentation Changes
+
+ * fix typo in PR template
+
+## v2.112.1 (2022-10-10)
+
+### Bug Fixes and Other Changes
+
+ * fix(local-mode): loosen docker requirement to allow 6.0.0
+ * CreateModelPackage API error for Scikit-learn and XGBoost frameworkss
+
+## v2.112.0 (2022-10-09)
+
+### Features
+
+ * added monitor batch transform step (pipeline)
+
+### Bug Fixes and Other Changes
+
+ * Add PipelineVariable annotation to framework estimators
+
 ## v2.111.0 (2022-10-05)
 
 ### Features

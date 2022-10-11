@@ -16,7 +16,7 @@ from __future__ import absolute_import
 import enum
 import logging
 import re
-from typing import Union, Optional
+from typing import Union, Optional, List, Dict
 
 from sagemaker import image_uris, fw_utils
 from sagemaker.estimator import Framework, EstimatorBase
@@ -77,13 +77,13 @@ class RLEstimator(Framework):
     def __init__(
         self,
         entry_point: Union[str, PipelineVariable],
-        toolkit=None,
-        toolkit_version=None,
-        framework=None,
+        toolkit: Optional[RLToolkit] = None,
+        toolkit_version: Optional[str] = None,
+        framework: Optional[Framework] = None,
         source_dir: Optional[Union[str, PipelineVariable]] = None,
-        hyperparameters=None,
-        image_uri=None,
-        metric_definitions=None,
+        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
+        metric_definitions: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
         **kwargs
     ):
         """Creates an RLEstimator for managed Reinforcement Learning (RL).
@@ -122,19 +122,19 @@ class RLEstimator(Framework):
                 the entry point file (default: None). If ``source_dir`` is an S3 URI, it must
                 point to a tar.gz file. Structure within this directory are preserved
                 when training on Amazon SageMaker.
-            hyperparameters (dict): Hyperparameters that will be used for
-                training (default: None). The hyperparameters are made
+            hyperparameters (dict[str, str] or dict[str, PipelineVariable]): Hyperparameters
+                that will be used for training (default: None). The hyperparameters are made
                 accessible as a dict[str, str] to the training code on
                 SageMaker. For convenience, this accepts other types for keys
                 and values.
-            image_uri (str): An ECR url. If specified, the estimator will use
+            image_uri (str or PipelineVariable): An ECR url. If specified, the estimator will use
                 this image for training and hosting, instead of selecting the
                 appropriate SageMaker official image based on framework_version
                 and py_version. Example:
                 123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
-            metric_definitions (list[dict]): A list of dictionaries that defines
-                the metric(s) used to evaluate the training jobs. Each
-                dictionary contains two keys: 'Name' for the name of the metric,
+            metric_definitions (list[dict[str, str] or list[dict[str, PipelineVariable]]):
+                A list of dictionaries that defines the metric(s) used to evaluate the
+                training jobs. Each dictionary contains two keys: 'Name' for the name of the metric,
                 and 'Regex' for the regular expression used to extract the
                 metric from the logs. This should be defined only for jobs that
                 don't use an Amazon algorithm.
