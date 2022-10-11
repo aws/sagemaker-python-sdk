@@ -29,6 +29,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
+from importlib import import_module
 import botocore
 from six.moves.urllib import parse
 
@@ -590,6 +591,27 @@ def retries(
     )
 
 
+def retry_with_backoff(callable_func, num_attempts=8):
+    """Retry with backoff until maximum attempts are reached
+
+    Args:
+        callable_func (callable): The callable function to retry.
+        num_attempts (int): The maximum number of attempts to retry.
+    """
+    if num_attempts < 1:
+        raise ValueError(
+            "The num_attempts must be >= 1, but the given value is {}.".format(num_attempts)
+        )
+    for i in range(num_attempts):
+        try:
+            return callable_func()
+        except Exception as ex:  # pylint: disable=broad-except
+            if i == num_attempts - 1:
+                raise ex
+            logger.error("Retrying in attempt %s, due to %s", (i + 1), str(ex))
+            time.sleep(2**i)
+
+
 def _botocore_resolver():
     """Get the DNS suffix for the given region.
 
@@ -874,3 +896,19 @@ def _start_waiting(waiting_time: int):
         print(progress, end="\r")
         time.sleep(interval)
     print(len(progress) * " ", end="\r")
+
+
+def get_module(module_name):
+    """Import a module.
+
+    Args:
+        module_name (str): name of the module to import.
+
+    Returns:
+        [obj]: The imported module.
+        Raises exceptions when the module name is not found
+    """
+    try:
+        return import_module(module_name)
+    except ImportError:
+        raise Exception("Cannot import module {}, please try again.".format(module_name))

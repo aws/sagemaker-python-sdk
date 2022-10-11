@@ -29,6 +29,7 @@ from mock import call, patch, Mock, MagicMock
 
 import sagemaker
 from sagemaker.session_settings import SessionSettings
+from sagemaker.utils import retry_with_backoff
 from tests.unit.sagemaker.workflow.helpers import CustomStep
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
 
@@ -795,3 +796,30 @@ def test_start_waiting(capfd):
     out, _ = capfd.readouterr()
 
     assert "." * sagemaker.utils.WAITING_DOT_NUMBER in out
+
+
+def test_retry_with_backoff():
+    callable_func = Mock()
+
+    # Invalid input
+    with pytest.raises(ValueError) as value_err:
+        retry_with_backoff(callable_func, 0)
+    assert "The num_attempts must be >= 1" in str(value_err)
+    callable_func.assert_not_called()
+
+    # All retries fail
+    run_err_msg = "Test Retry Error"
+    callable_func.side_effect = RuntimeError(run_err_msg)
+    with pytest.raises(RuntimeError) as run_err:
+        retry_with_backoff(callable_func, 2)
+    assert run_err_msg in str(run_err)
+
+    # One retry passes
+    func_return_val = "Test Return"
+    callable_func.side_effect = [RuntimeError(run_err_msg), func_return_val]
+    assert retry_with_backoff(callable_func, 2) == func_return_val
+
+    # No retry
+    callable_func.side_effect = None
+    callable_func.return_value = func_return_val
+    assert retry_with_backoff(callable_func, 2) == func_return_val

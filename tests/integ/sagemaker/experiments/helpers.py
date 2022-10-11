@@ -12,16 +12,18 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import os
+from sagemaker import utils
+
+EXP_INTEG_TEST_NAME_PREFIX = "experiments-integ"
 
 
-# TODO-experiment-plus: Remove this line, which loads the internal boto models.
-# The corresponding model jsons were generated from the coral model package and should
-# be updated regularly.
-normal_json = "file://./tests/data/experiment/sagemaker-2017-07-24.normal.json"
-os.system(f"aws configure add-model --service-model {normal_json} --service-name sagemaker")
+def name():
+    return utils.unique_name_from_base(EXP_INTEG_TEST_NAME_PREFIX)
 
-metrics_model_json = "file://./tests/data/experiment/sagemaker-metrics-2022-09-30.normal.json"
-os.system(
-    f"aws configure add-model --service-model {metrics_model_json} --service-name sagemaker-metrics"
-)
+
+def names():
+    return [utils.unique_name_from_base(EXP_INTEG_TEST_NAME_PREFIX) for i in range(3)]
+
+
+def to_seconds(dt):
+    return int(dt.timestamp())

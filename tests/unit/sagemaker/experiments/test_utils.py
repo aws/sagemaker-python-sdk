@@ -12,16 +12,25 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import os
+from src.sagemaker.experiments._utils import resolve_artifact_name, guess_media_type
 
 
-# TODO-experiment-plus: Remove this line, which loads the internal boto models.
-# The corresponding model jsons were generated from the coral model package and should
-# be updated regularly.
-normal_json = "file://./tests/data/experiment/sagemaker-2017-07-24.normal.json"
-os.system(f"aws configure add-model --service-model {normal_json} --service-name sagemaker")
+def test_resolve_artifact_name():
+    file_names = {
+        "a": "a",
+        "a.txt": "a.txt",
+        "b.": "b.",
+        ".c": ".c",
+        "/x/a/a.txt": "a.txt",
+        "/a/b/c.": "c.",
+        "./.a": ".a",
+        "../b.txt": "b.txt",
+        "~/a.txt": "a.txt",
+        "c/d.txt": "d.txt",
+    }
+    for file_name, artifact_name in file_names.items():
+        assert artifact_name == resolve_artifact_name(file_name)
 
-metrics_model_json = "file://./tests/data/experiment/sagemaker-metrics-2022-09-30.normal.json"
-os.system(
-    f"aws configure add-model --service-model {metrics_model_json} --service-name sagemaker-metrics"
-)
+
+def test_guess_media_type():
+    assert "text/plain" == guess_media_type("foo.txt")

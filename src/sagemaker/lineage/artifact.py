@@ -29,8 +29,9 @@ from sagemaker.lineage.query import (
     LineageEntityEnum,
     LineageQueryDirectionEnum,
 )
-from sagemaker.lineage._utils import get_module, _disassociate, get_resource_name_from_arn
+from sagemaker.lineage._utils import _disassociate, get_resource_name_from_arn
 from sagemaker.lineage.association import Association
+from sagemaker.utils import get_module
 
 LOGGER = logging.getLogger("sagemaker")
 
@@ -211,6 +212,8 @@ class Artifact(_base_types.Record):
             # no outgoing associations for this artifact
             return []
 
+        # TODO: remove all imports from smexperiment sdk in a separate change.
+        # Instead, import trial_component and search_expression defined in this main sdk
         get_module("smexperiments")
         from smexperiments import trial_component, search_expression
 

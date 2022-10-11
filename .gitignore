@@ -32,3 +32,6 @@ env/
 .python-version
 **/_repack_model.py
 **/_repack_script_launcher.sh
+tests/data/experiment/docker/boto
+tests/data/experiment/docker/sagemaker-dev.tar.gz
+tests/data/**/_repack_model.py
