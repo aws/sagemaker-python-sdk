@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 ECR_URI_TEMPLATE = "{registry}.dkr.{hostname}/{repository}"
 HUGGING_FACE_FRAMEWORK = "huggingface"
-TRAINIUM_ALLOWED_FRAMEWORKS = ("pytorch")
+TRAINIUM_ALLOWED_FRAMEWORKS = "pytorch"
 
 
 @override_pipeline_parameter_var
@@ -282,7 +282,7 @@ def _config_for_framework_and_scope(framework, image_scope, accelerator_type=Non
             available_scopes[0],
         )
         image_scope = available_scopes[0]
-        
+
     if image_scope is None and framework not in TRAINIUM_ALLOWED_FRAMEWORKS:
         _validate_framework(framework, TRAINIUM_ALLOWED_FRAMEWORKS, "framework")
 

@@ -949,6 +949,6 @@ def test_validate_pytorchddp_raises():
 
 
 def test_instance_type_supports_profiler():
-    assert fw_utils._instance_type_supports_profiler("ml.trn1.xlarge") == False
-    assert fw_utils._instance_type_supports_profiler("ml.m4.xlarge") == True
-    assert fw_utils._instance_type_supports_profiler("local") == True
+    assert fw_utils._instance_type_supports_profiler("ml.trn1.xlarge") is False
+    assert fw_utils._instance_type_supports_profiler("ml.m4.xlarge") is True
+    assert fw_utils._instance_type_supports_profiler("local") is True
