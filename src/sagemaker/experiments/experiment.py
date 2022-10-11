@@ -13,7 +13,11 @@
 """Contains the SageMaker Experiment class."""
 from __future__ import absolute_import
 
+import time
+
 from sagemaker.apiutils import _base_types
+from sagemaker.experiments.trial import _Trial
+from sagemaker.experiments.trial_component import _TrialComponent
 
 
 class _Experiment(_base_types.Record):
@@ -43,6 +47,8 @@ class _Experiment(_base_types.Record):
 
     _boto_update_members = ["experiment_name", "description", "display_name"]
     _boto_delete_members = ["experiment_name"]
+
+    _MAX_DELETE_ALL_ATTEMPTS = 3
 
     def save(self):
         """Save the state of this Experiment to SageMaker.
@@ -160,3 +166,72 @@ class _Experiment(_base_types.Record):
                 sagemaker_session=sagemaker_session,
             )
         return experiment
+
+    def list_trials(self, created_before=None, created_after=None, sort_by=None, sort_order=None):
+        """List trials in this experiment matching the specified criteria.
+
+        Args:
+            created_before (datetime.datetime): Return trials created before this instant
+                (default: None).
+            created_after (datetime.datetime): Return trials created after this instant
+                (default: None).
+            sort_by (str): Which property to sort results by. One of 'Name', 'CreationTime'
+                (default: None).
+            sort_order (str): One of 'Ascending', or 'Descending' (default: None).
+
+        Returns:
+            collections.Iterator[experiments._api_types.TrialSummary] :
+                An iterator over trials matching the criteria.
+        """
+        return _Trial.list(
+            experiment_name=self.experiment_name,
+            created_before=created_before,
+            created_after=created_after,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            sagemaker_session=self.sagemaker_session,
+        )
+
+    def delete_all(self, action):
+        """Force to delete the experiment and associated trials, trial components.
+
+        Args:
+            action (str): The string '--force' is required to pass in to confirm recursively
+                delete the experiments, and all its trials and trial components.
+        """
+        if action != "--force":
+            raise ValueError(
+                "Must confirm with string '--force' in order to delete the experiment and "
+                "associated trials, trial components."
+            )
+
+        delete_attempt_count = 0
+        last_exception = None
+        while True:
+            if delete_attempt_count == self._MAX_DELETE_ALL_ATTEMPTS:
+                raise Exception("Failed to delete, please try again.") from last_exception
+            try:
+                for trial_summary in self.list_trials():
+                    trial = _Trial.load(
+                        sagemaker_session=self.sagemaker_session,
+                        trial_name=trial_summary.trial_name,
+                    )
+                    for (
+                        trial_component_summary
+                    ) in trial.list_trial_components():  # pylint: disable=no-member
+                        tc = _TrialComponent.load(
+                            sagemaker_session=self.sagemaker_session,
+                            trial_component_name=trial_component_summary.trial_component_name,
+                        )
+                        tc.delete(force_disassociate=True)
+                        # to prevent throttling
+                        time.sleep(1.2)
+                    trial.delete()  # pylint: disable=no-member
+                    # to prevent throttling
+                    time.sleep(1.2)
+                self.delete()
+                break
+            except Exception as ex:  # pylint: disable=broad-except
+                last_exception = ex
+            finally:
+                delete_attempt_count = delete_attempt_count + 1

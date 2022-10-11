@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 from sagemaker.apiutils import _base_types
+from sagemaker.experiments import _api_types
 from sagemaker.experiments.trial_component import _TrialComponent
 
 
@@ -116,6 +117,52 @@ class _Trial(_base_types.Record):
             sagemaker_session=sagemaker_session,
         )
         return trial
+
+    @classmethod
+    def list(
+        cls,
+        experiment_name=None,
+        trial_component_name=None,
+        created_before=None,
+        created_after=None,
+        sort_by=None,
+        sort_order=None,
+        sagemaker_session=None,
+    ):
+        """List all trials matching the specified criteria.
+
+        Args:
+            experiment_name (str): Name of the experiment. If specified, only trials in
+                the experiment will be returned (default: None).
+            trial_component_name (str): Name of the trial component. If specified, only
+                trials with this trial component name will be returned (default: None).
+            created_before (datetime.datetime): Return trials created before this instant
+                (default: None).
+            created_after (datetime.datetime): Return trials created after this instant
+                (default: None).
+            sort_by (str): Which property to sort results by. One of 'Name', 'CreationTime'
+                (default: None).
+            sort_order (str): One of 'Ascending', or 'Descending' (default: None).
+            sagemaker_session (sagemaker.session.Session): Session object which
+                manages interactions with Amazon SageMaker APIs and any other
+                AWS services needed. If not specified, one is created using the
+                default AWS configuration chain.
+        Returns:
+            collections.Iterator[experiments._api_types.TrialSummary]: An iterator over trials
+                matching the specified criteria.
+        """
+        return super(_Trial, cls)._list(
+            "list_trials",
+            _api_types.TrialSummary.from_boto,
+            "TrialSummaries",
+            experiment_name=experiment_name,
+            trial_component_name=trial_component_name,
+            created_before=created_before,
+            created_after=created_after,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            sagemaker_session=sagemaker_session,
+        )
 
     def add_trial_component(self, trial_component):
         """Add the specified trial component to this trial.

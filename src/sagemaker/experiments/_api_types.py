@@ -224,3 +224,19 @@ class TrialComponentSearchResult(_base_types.ApiObject):
     source_detail = None
     tags = None
     parents = None
+
+
+class TrialSummary(_base_types.ApiObject):
+    """Summary model of a trial.
+
+    Attributes:
+        trial_arn (str): The ARN of the trial.
+        trial_name (str): The name of the trial.
+        creation_time (datetime):  When the trial was created.
+        last_modified_time (datetime): When the trial was last modified.
+    """
+
+    trial_arn = None
+    trial_name = None
+    creation_time = None
+    last_modified_time = None

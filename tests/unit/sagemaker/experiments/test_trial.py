@@ -20,6 +20,7 @@ import datetime
 from mock.mock import patch
 
 from sagemaker import Session
+from sagemaker.experiments._api_types import TrialSummary
 from sagemaker.experiments.trial import _Trial
 from sagemaker.experiments.trial_component import _TrialComponent
 
@@ -211,3 +212,89 @@ def test_load_or_create_when_not_exist(mock_create, mock_load):
         tags=None,
         sagemaker_session=sagemaker_session,
     )
+
+
+def test_list_trials_without_experiment_name(sagemaker_session, datetime_obj):
+    client = sagemaker_session.sagemaker_client
+    client.list_trials.return_value = {
+        "TrialSummaries": [
+            {
+                "TrialName": "trial-1",
+                "CreationTime": datetime_obj,
+                "LastModifiedTime": datetime_obj,
+            },
+            {
+                "TrialName": "trial-2",
+                "CreationTime": datetime_obj,
+                "LastModifiedTime": datetime_obj,
+            },
+        ]
+    }
+    expected = [
+        TrialSummary(
+            trial_name="trial-1", creation_time=datetime_obj, last_modified_time=datetime_obj
+        ),
+        TrialSummary(
+            trial_name="trial-2", creation_time=datetime_obj, last_modified_time=datetime_obj
+        ),
+    ]
+    assert expected == list(_Trial.list(sagemaker_session=sagemaker_session))
+    client.list_trials.assert_called_with(**{})
+
+
+def test_list_trials_with_experiment_name(sagemaker_session, datetime_obj):
+    client = sagemaker_session.sagemaker_client
+    client.list_trials.return_value = {
+        "TrialSummaries": [
+            {
+                "TrialName": "trial-1",
+                "CreationTime": datetime_obj,
+                "LastModifiedTime": datetime_obj,
+            },
+            {
+                "TrialName": "trial-2",
+                "CreationTime": datetime_obj,
+                "LastModifiedTime": datetime_obj,
+            },
+        ]
+    }
+    expected = [
+        TrialSummary(
+            trial_name="trial-1", creation_time=datetime_obj, last_modified_time=datetime_obj
+        ),
+        TrialSummary(
+            trial_name="trial-2", creation_time=datetime_obj, last_modified_time=datetime_obj
+        ),
+    ]
+    assert expected == list(_Trial.list(experiment_name="foo", sagemaker_session=sagemaker_session))
+    client.list_trials.assert_called_with(ExperimentName="foo")
+
+
+def test_list_trials_with_trial_component_name(sagemaker_session, datetime_obj):
+    client = sagemaker_session.sagemaker_client
+    client.list_trials.return_value = {
+        "TrialSummaries": [
+            {
+                "TrialName": "trial-1",
+                "CreationTime": datetime_obj,
+                "LastModifiedTime": datetime_obj,
+            },
+            {
+                "TrialName": "trial-2",
+                "CreationTime": datetime_obj,
+                "LastModifiedTime": datetime_obj,
+            },
+        ]
+    }
+    expected = [
+        TrialSummary(
+            trial_name="trial-1", creation_time=datetime_obj, last_modified_time=datetime_obj
+        ),
+        TrialSummary(
+            trial_name="trial-2", creation_time=datetime_obj, last_modified_time=datetime_obj
+        ),
+    ]
+    assert expected == list(
+        _Trial.list(trial_component_name="tc-foo", sagemaker_session=sagemaker_session)
+    )
+    client.list_trials.assert_called_with(TrialComponentName="tc-foo")

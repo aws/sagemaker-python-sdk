@@ -12,13 +12,10 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import base64
 import glob
 import logging
 import os
 import shutil
-import subprocess
-import sys
 import tempfile
 import time
 import uuid
@@ -26,14 +23,9 @@ import uuid
 import boto3
 import pytest
 
-import docker
-
-from tests.integ import lock
-from tests.integ.utils import create_repository
 from tests.integ import DATA_DIR
 
 from sagemaker.experiments import trial_component, trial, experiment
-from sagemaker.s3 import S3Uploader
 from sagemaker.utils import retry_with_backoff
 from tests.integ.sagemaker.experiments.helpers import name, names
 
@@ -137,96 +129,16 @@ def tempdir():
     shutil.rmtree(temp_dir)
 
 
-@pytest.fixture(scope="module")
-def bucket(sagemaker_session):
-    return sagemaker_session.default_bucket()
+_EXP_PLUS_SDK_TAR = "sagemaker-beta-1.0.tar.gz"
 
 
 @pytest.fixture(scope="module")
-def training_input_s3_uri(sagemaker_session, tempdir, bucket):
-    filepath = os.path.join(tempdir, name())
-    with open(filepath, "w") as w:
-        w.write("Hello World!")
-    s3_uri = f"s3://{bucket}/experiments/training-input/{name()}"
-    return S3Uploader.upload(
-        local_path=filepath, desired_s3_uri=s3_uri, sagemaker_session=sagemaker_session
-    )
-
-
-@pytest.fixture(scope="module")
-def training_output_s3_uri(bucket):
-    return f"s3://{bucket}/experiments/training-output/"
-
-
-# TODO we should remove the boto model file once the Run API changes release
-BOTO_MODEL_LOCAL_PATH = os.path.join(DATA_DIR, "experiment", "sagemaker-2017-07-24.normal.json")
-METRICS_MODEL_LOCAL_PATH = os.path.join(
-    DATA_DIR, "experiment", "sagemaker-metrics-2022-09-30.normal.json"
-)
-IMAGE_REPO_NAME = "sagemaker-experiments-test"
-IMAGE_VERSION = "1.0.92"  # We should bump it up if need to update the docker image
-SM_SDK_TAR_NAME_IN_IMAGE = "sagemaker-dev.tar.gz"
-SM_BOTO_MODEL_PATH_IN_IMAGE = "boto/sagemaker-2017-07-24.normal.json"
-SM_METRICS_MODEL_PATH_IN_IMAGE = "boto/sagemaker-metrics-2022-09-30.normal.json"
-
-
-@pytest.fixture(scope="module")
-def docker_image(sagemaker_session):
-    # requires docker to be running
-    docker_client = docker.from_env()
-    ecr_client = sagemaker_session.boto_session.client("ecr")
-
-    token = ecr_client.get_authorization_token()
-    username, password = (
-        base64.b64decode(token["authorizationData"][0]["authorizationToken"]).decode().split(":")
-    )
-    registry = token["authorizationData"][0]["proxyEndpoint"]
-    repository_name = IMAGE_REPO_NAME
-    tag = "{}/{}:{}".format(registry, repository_name, IMAGE_VERSION)[8:]
-    docker_dir = os.path.join(DATA_DIR, "experiment", "docker")
-
-    with lock.lock():
-        # initialize the docker image repository
-        create_repository(ecr_client, repository_name)
-
-        # pull existing image for layer cache
-        try:
-            docker_client.images.pull(tag, auth_config={"username": username, "password": password})
-            print("Docker image with tag {} already exists.".format(tag))
-            return tag
-        except docker.errors.NotFound:
-            print("Docker image with tag {} does not exist. Will create one.".format(tag))
-
-        # copy boto model under docker dir
-        os.makedirs(os.path.join(docker_dir, "boto"), exist_ok=True)
-        shutil.copy(
-            BOTO_MODEL_LOCAL_PATH,
-            os.path.join(docker_dir, SM_BOTO_MODEL_PATH_IN_IMAGE),
-        )
-        shutil.copy(
-            METRICS_MODEL_LOCAL_PATH,
-            os.path.join(docker_dir, SM_METRICS_MODEL_PATH_IN_IMAGE),
-        )
-
-        # generate sdk tar file from package and put it under docker dir
-        subprocess.check_call([sys.executable, "setup.py", "sdist"])
-        sdist_path = max(glob.glob("dist/sagemaker-*"), key=os.path.getctime)
-        shutil.copy(sdist_path, os.path.join(docker_dir, SM_SDK_TAR_NAME_IN_IMAGE))
-
-        docker_client.images.build(
-            path=docker_dir,
-            dockerfile="Dockerfile",
-            tag=tag,
-            cache_from=[tag],
-            buildargs={
-                "library": SM_SDK_TAR_NAME_IN_IMAGE,
-                "botomodel": SM_BOTO_MODEL_PATH_IN_IMAGE,
-                "script": "scripts/train_job_script_for_run_clz.py",
-                "metricsmodel": SM_METRICS_MODEL_PATH_IN_IMAGE,
-            },
-        )
-        docker_client.images.push(tag, auth_config={"username": username, "password": password})
-        return tag
+def job_resource_dir():
+    resource_dir = os.path.join(DATA_DIR, "experiment/resources")
+    os.system("python setup.py sdist")
+    sdist_path = max(glob.glob("dist/sagemaker-*"), key=os.path.getctime)
+    shutil.copy(sdist_path, os.path.join(resource_dir, _EXP_PLUS_SDK_TAR))
+    return resource_dir
 
 
 def _delete_associations(arn, sagemaker_session):

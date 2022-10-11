@@ -12,7 +12,10 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+from contextlib import contextmanager
+
 from sagemaker import utils
+from sagemaker.experiments.experiment import _Experiment
 
 EXP_INTEG_TEST_NAME_PREFIX = "experiments-integ"
 
@@ -27,3 +30,13 @@ def names():
 
 def to_seconds(dt):
     return int(dt.timestamp())
+
+
+@contextmanager
+def cleanup_exp_resources(exp_names, sagemaker_session):
+    try:
+        yield
+    finally:
+        for exp_name in exp_names:
+            exp = _Experiment.load(experiment_name=exp_name, sagemaker_session=sagemaker_session)
+            exp.delete_all(action="--force")

@@ -20,6 +20,7 @@ from mock.mock import patch
 
 from sagemaker import Session
 from sagemaker.experiments import experiment
+from sagemaker.experiments._api_types import TrialSummary
 
 
 @pytest.fixture
@@ -131,3 +132,198 @@ def test_load_or_create_when_not_exist(mock_create, mock_load):
         tags=None,
         sagemaker_session=sagemaker_session,
     )
+
+
+def test_list_trials_empty(sagemaker_session):
+    sagemaker_session.sagemaker_client.list_trials.return_value = {"TrialSummaries": []}
+    experiment_obj = experiment._Experiment(sagemaker_session=sagemaker_session)
+    assert list(experiment_obj.list_trials()) == []
+
+
+def test_list_trials_single(sagemaker_session, datetime_obj):
+    experiment_obj = experiment._Experiment(sagemaker_session=sagemaker_session)
+    sagemaker_session.sagemaker_client.list_trials.return_value = {
+        "TrialSummaries": [
+            {"Name": "trial-foo", "CreationTime": datetime_obj, "LastModifiedTime": datetime_obj}
+        ]
+    }
+
+    assert list(experiment_obj.list_trials()) == [
+        TrialSummary(name="trial-foo", creation_time=datetime_obj, last_modified_time=datetime_obj)
+    ]
+
+
+def test_list_trials_two_values(sagemaker_session, datetime_obj):
+    experiment_obj = experiment._Experiment(sagemaker_session=sagemaker_session)
+    sagemaker_session.sagemaker_client.list_trials.return_value = {
+        "TrialSummaries": [
+            {"Name": "trial-foo-1", "CreationTime": datetime_obj, "LastModifiedTime": datetime_obj},
+            {"Name": "trial-foo-2", "CreationTime": datetime_obj, "LastModifiedTime": datetime_obj},
+        ]
+    }
+
+    assert list(experiment_obj.list_trials()) == [
+        TrialSummary(
+            name="trial-foo-1", creation_time=datetime_obj, last_modified_time=datetime_obj
+        ),
+        TrialSummary(
+            name="trial-foo-2", creation_time=datetime_obj, last_modified_time=datetime_obj
+        ),
+    ]
+
+
+def test_next_token(sagemaker_session, datetime_obj):
+    experiment_obj = experiment._Experiment(sagemaker_session)
+    client = sagemaker_session.sagemaker_client
+    client.list_trials.side_effect = [
+        {
+            "TrialSummaries": [
+                {
+                    "Name": "trial-foo-1",
+                    "CreationTime": datetime_obj,
+                    "LastModifiedTime": datetime_obj,
+                },
+                {
+                    "Name": "trial-foo-2",
+                    "CreationTime": datetime_obj,
+                    "LastModifiedTime": datetime_obj,
+                },
+            ],
+            "NextToken": "foo",
+        },
+        {
+            "TrialSummaries": [
+                {
+                    "Name": "trial-foo-3",
+                    "CreationTime": datetime_obj,
+                    "LastModifiedTime": datetime_obj,
+                }
+            ]
+        },
+    ]
+
+    assert list(experiment_obj.list_trials()) == [
+        TrialSummary(
+            name="trial-foo-1", creation_time=datetime_obj, last_modified_time=datetime_obj
+        ),
+        TrialSummary(
+            name="trial-foo-2", creation_time=datetime_obj, last_modified_time=datetime_obj
+        ),
+        TrialSummary(
+            name="trial-foo-3", creation_time=datetime_obj, last_modified_time=datetime_obj
+        ),
+    ]
+
+    client.list_trials.assert_any_call(**{})
+    client.list_trials.assert_any_call(NextToken="foo")
+
+
+def test_list_trials_call_args(sagemaker_session):
+    client = sagemaker_session.sagemaker_client
+    created_before = datetime.datetime(1999, 10, 12, 0, 0, 0)
+    created_after = datetime.datetime(1990, 10, 12, 0, 0, 0)
+    experiment_obj = experiment._Experiment(sagemaker_session=sagemaker_session)
+    client.list_trials.return_value = {}
+    assert [] == list(
+        experiment_obj.list_trials(created_after=created_after, created_before=created_before)
+    )
+    client.list_trials.assert_called_with(CreatedBefore=created_before, CreatedAfter=created_after)
+
+
+def test_delete_all_with_incorrect_action_name(sagemaker_session):
+    obj = experiment._Experiment(sagemaker_session, experiment_name="foo", description="bar")
+    with pytest.raises(ValueError) as err:
+        obj.delete_all(action="abc")
+
+    assert "Must confirm with string '--force'" in str(err)
+
+
+def test_delete_all(sagemaker_session):
+    obj = experiment._Experiment(sagemaker_session, experiment_name="foo", description="bar")
+    client = sagemaker_session.sagemaker_client
+    client.list_trials.return_value = {
+        "TrialSummaries": [
+            {
+                "TrialName": "trial-1",
+                "CreationTime": datetime_obj,
+                "LastModifiedTime": datetime_obj,
+            },
+            {
+                "TrialName": "trial-2",
+                "CreationTime": datetime_obj,
+                "LastModifiedTime": datetime_obj,
+            },
+        ]
+    }
+    client.describe_trial.side_effect = [
+        {"Trialname": "trial-1", "ExperimentName": "experiment-name-value"},
+        {"Trialname": "trial-2", "ExperimentName": "experiment-name-value"},
+    ]
+    client.list_trial_components.side_effect = [
+        {
+            "TrialComponentSummaries": [
+                {
+                    "TrialComponentName": "trial-component-1",
+                    "CreationTime": datetime_obj,
+                    "LastModifiedTime": datetime_obj,
+                },
+                {
+                    "TrialComponentName": "trial-component-2",
+                    "CreationTime": datetime_obj,
+                    "LastModifiedTime": datetime_obj,
+                },
+            ]
+        },
+        {
+            "TrialComponentSummaries": [
+                {
+                    "TrialComponentName": "trial-component-3",
+                    "CreationTime": datetime_obj,
+                    "LastModifiedTime": datetime_obj,
+                },
+                {
+                    "TrialComponentName": "trial-component-4",
+                    "CreationTime": datetime_obj,
+                    "LastModifiedTime": datetime_obj,
+                },
+            ]
+        },
+    ]
+
+    client.describe_trial_component.side_effect = [
+        {"TrialComponentName": "trial-component-1"},
+        {"TrialComponentName": "trial-component-2"},
+        {"TrialComponentName": "trial-component-3"},
+        {"TrialComponentName": "trial-component-4"},
+    ]
+
+    client.delete_trial_component.return_value = {}
+    client.delete_trial.return_value = {}
+    client.delete_experiment.return_value = {}
+
+    obj.delete_all(action="--force")
+
+    client.delete_experiment.assert_called_with(ExperimentName="foo")
+
+    delete_trial_expected_calls = [
+        unittest.mock.call(TrialName="trial-1"),
+        unittest.mock.call(TrialName="trial-2"),
+    ]
+    assert delete_trial_expected_calls == client.delete_trial.mock_calls
+
+    delete_trial_component_expected_calls = [
+        unittest.mock.call(TrialComponentName="trial-component-1"),
+        unittest.mock.call(TrialComponentName="trial-component-2"),
+        unittest.mock.call(TrialComponentName="trial-component-3"),
+        unittest.mock.call(TrialComponentName="trial-component-4"),
+    ]
+    assert delete_trial_component_expected_calls == client.delete_trial_component.mock_calls
+
+
+def test_delete_all_fail(sagemaker_session):
+    obj = experiment._Experiment(sagemaker_session, experiment_name="foo", description="bar")
+    sagemaker_session.sagemaker_client.list_trials.side_effect = Exception
+    with pytest.raises(Exception) as e:
+        obj.delete_all(action="--force")
+
+    assert str(e.value) == "Failed to delete, please try again."
