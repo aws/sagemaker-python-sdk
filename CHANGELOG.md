@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.112.2 (2022-10-11)
+
+### Bug Fixes and Other Changes
+
+ * Update Neo-TF2.x versions to TF2.9(.2)
+
+### Documentation Changes
+
+ * fix typo in PR template
+
 ## v2.112.1 (2022-10-10)
 
 ### Bug Fixes and Other Changes
