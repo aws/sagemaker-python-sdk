@@ -954,6 +954,132 @@ When model repacking is needed, :class:`sagemaker.workflow.model_step.ModelStep`
 
 :class:`sagemaker.workflow.model_step.ModelStep` uses the provided inputs to automatically detect if a repack is needed. If a repack is needed, :class:`sagemaker.workflow.steps.TrainingStep` is added to the step collection for that repack. Then, either :class:`sagemaker.workflow.steps.CreateModelStep` or :class:`sagemaker.workflow.step_collections.RegisterModelStep` will be chained after it.
 
+MonitorBatchTransform Step
+===========================
+
+MonitorBatchTransformStep is a new step type that allows customers to use SageMaker Model Monitor with batch transform jobs that are a part of their pipeline. Using this step, customers can set up the following monitors for their batch transform job: data quality, model quality, model bias, and feature attribution.
+
+
+When configuring this step, customers have the flexibility to run the monitoring job before or after the transform job executes. There is an additional flag called :code:`fail_on_violation` which will fail the step if set to true and there is a monitoring violation, or will continue to execute the step if set to false.
+
+Here is an example showing you how to configure a :class:`sagemaker.workflow.monitor_batch_transform_step.MonitorBatchTransformStep` with a Data Quality monitor.
+
+.. code-block:: python
+
+    from sagemaker.workflow.pipeline_context import PipelineSession
+
+    from sagemaker.transformer import Transformer
+    from sagemaker.model_monitor import DefaultModelMonitor
+    from sagemaker.model_monitor.dataset_format import DatasetFormat
+    from sagemaker.workflow.check_job_config import CheckJobConfig
+    from sagemaker.workflow.quality_check_step import DataQualityCheckConfig
+
+    from sagemaker.workflow.parameters import ParameterString
+
+    pipeline_session = PipelineSession()
+
+    transform_input_param = ParameterString(
+        name="transform_input",
+        default_value=f"s3://my-bucket/my-prefix/my-transform-input",
+    )
+
+    # the resource configuration for the monitoring job
+    job_config = CheckJobConfig(
+        role=role,
+        instance_count=1,
+        instance_type="ml.m5.xlarge",
+        ...
+    )
+
+The following code sample demonstrates how to set up an on-demand batch transform *data quality* monitor:
+
+.. code-block:: python
+
+    # configure your transformer
+    transformer = Transformer(..., sagemaker_session=pipeline_session)
+    transform_arg = transformer.transform(
+        transform_input_param,
+        content_type="text/csv",
+        split_type="Line",
+        ...
+    )
+
+    data_quality_config = DataQualityCheckConfig(
+        baseline_dataset=transform_input_param,
+        dataset_format=DatasetFormat.csv(header=False),
+        output_s3_uri="s3://my-report-path",
+    )
+
+    from sagemaker.workflow.monitor_batch_transform_step import MonitorBatchTransformStep
+
+    transform_and_monitor_step = MonitorBatchTransformStep(
+        name="MyMonitorBatchTransformStep",
+        transform_step_args=transform_arg,
+        monitor_configuration=data_quality_config,
+        check_job_configuration=job_config,
+        # since data quality only looks at the inputs,
+        # so there is no need to wait for the transform output.
+        monitor_before_transform=True,
+        # if violation is detected in the monitoring, and you want to skip it
+        # and continue running batch transform, you can set fail_on_violation
+        # to false.
+        fail_on_violation=False,
+        supplied_baseline_statistics="s3://my-baseline-statistics.json",
+        supplied_baseline_constraints="s3://my-baseline-constraints.json",
+    )
+    ...
+
+The same example can be extended for model quality, bias, and feature attribute monitoring.
+
+.. warning::
+    Note that to run on-demand model quality, you will need to have the ground truth data ready. When running the transform job, include the ground truth inside your transform input, and join the transform inference input and output. Then you can indicate which attribute or column name/index points to the ground truth when run the monitoring job.
+
+.. code-block:: python
+
+    transformer = Transformer(..., sagemaker_session=pipeline_session)
+
+    transform_arg = transformer.transform(
+        transform_input_param,
+        content_type="text/csv",
+        split_type="Line",
+        # Note that we need to join both the inference input and output
+        # into transform outputs. The inference input needs to have the ground truth.
+        # details can be found here
+        # https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform-data-processing.html
+        join_source="Input",
+        # We need to exclude the ground truth inside the inference input
+        # before passing it to the prediction model.
+        # Assume the first column of our csv file is the ground truth
+        input_filter="$[1:]",
+        ...
+    )
+
+    model_quality_config = ModelQualityCheckConfig(
+        baseline_dataset=transformer.output_path,
+        problem_type="BinaryClassification",
+        dataset_format=DatasetFormat.csv(header=False),
+        output_s3_uri="s3://my-output",
+        # assume the model output is at column idx 10
+        inference_attribute="_c10",
+        # As pointed out previously, the first column is the ground truth.
+        ground_truth_attribute="_c0",
+    )
+    from sagemaker.workflow.monitor_batch_transform_step import MonitorBatchTransformStep
+
+    transform_and_monitor_step = MonitorBatchTransformStep(
+        name="MyMonitorBatchTransformStep",
+        transform_step_args=transform_arg,
+        monitor_configuration=data_quality_config,
+        check_job_configuration=job_config,
+        # model quality job needs the transform outputs, therefore
+        # monitor_before_transform can not be true for model quality
+        monitor_before_transform=False,
+        fail_on_violation=True,
+        supplied_baseline_statistics="s3://my-baseline-statistics.json",
+        supplied_baseline_constraints="s3://my-baseline-constraints.json",
+    )
+    ...
+
 =================
 Example Notebooks
 =================
