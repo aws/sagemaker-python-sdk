@@ -729,7 +729,7 @@ smdistributed.modelparallel.torch APIs for Saving and Loading
    * ``num_kept_partial_checkpoints`` (int) (default: None): The maximum number
      of partial checkpoints to keep on disk.
 
-.. function:: smdistributed.modelparallel.torch.resume_from_checkpoint(path, tag=None, partial=True, strict=True, load_optimizer=True, load_optimizer_states=True, translate_function=None)
+.. function:: smdistributed.modelparallel.torch.resume_from_checkpoint(path, tag=None, partial=True, strict=True, load_optimizer=True, load_sharded_optimizer_state=True, translate_function=None)
 
    While :class:`smdistributed.modelparallel.torch.load` loads saved
    model and optimizer objects, this function resumes from a saved checkpoint file.
