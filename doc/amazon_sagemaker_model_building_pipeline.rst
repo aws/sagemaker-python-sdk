@@ -980,7 +980,7 @@ Here is an example showing you how to configure a :class:`sagemaker.workflow.mon
 
     transform_input_param = ParameterString(
         name="transform_input",
-        default_value=f"s3://{bucket}/{prefix}/my-transform-input",
+        default_value=f"s3://my-bucket/my-prefix/my-transform-input",
     )
 
     # the resource configuration for the monitoring job
@@ -1017,10 +1017,12 @@ The following code sample demonstrates how to set up an on-demand batch transfor
         transform_step_args=transform_arg,
         monitor_configuration=data_quality_config,
         check_job_configuration=job_config,
-        # no need to wait for the transform output.
+        # since data quality only looks at the inputs,
+        # so there is no need to wait for the transform output.
         monitor_before_transform=True,
-        # if violation is detected in the monitoring, you can skip it
-        # and continue running batch transform
+        # if violation is detected in the monitoring, and you want to skip it
+        # and continue running batch transform, you can set fail_on_violation
+        # to false.
         fail_on_violation=False,
         supplied_baseline_statistics="s3://my-baseline-statistics.json",
         supplied_baseline_constraints="s3://my-baseline-constraints.json",
@@ -1059,7 +1061,7 @@ The same example can be extended for model quality, bias, and feature attribute 
         output_s3_uri="s3://my-output",
         # assume the model output is at column idx 10
         inference_attribute="_c10",
-        # remember the first column is the ground truth.
+        # As pointed out previously, the first column is the ground truth.
         ground_truth_attribute="_c0",
     )
     from sagemaker.workflow.monitor_batch_transform_step import MonitorBatchTransformStep
@@ -1069,7 +1071,8 @@ The same example can be extended for model quality, bias, and feature attribute 
         transform_step_args=transform_arg,
         monitor_configuration=data_quality_config,
         check_job_configuration=job_config,
-        # in fact, monitor_before_transform can not be true for model quality
+        # model quality job needs the transform outputs, therefore
+        # monitor_before_transform can not be true for model quality
         monitor_before_transform=False,
         fail_on_violation=True,
         supplied_baseline_statistics="s3://my-baseline-statistics.json",
