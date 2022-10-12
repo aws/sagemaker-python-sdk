@@ -537,6 +537,10 @@ class ScriptProcessor(Processor):
             arguments (list[str]): A list of string arguments to be passed to a
                 processing job (default: None).
         """
+        logger.warning(
+            "This function has been deprecated and could break pipeline step caching. "
+            "We recommend using the run() function directly with pipeline sessions to access step arguments."
+        )
         return RunArgs(code=code, inputs=inputs, outputs=outputs, arguments=arguments)
 
     @runnable_by_pipeline
