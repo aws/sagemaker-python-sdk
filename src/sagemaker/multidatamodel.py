@@ -58,8 +58,8 @@ class MultiDataModel(Model):
                 If this is present, the attributes from this model are used when
                 deploying the ``MultiDataModel``.  Parameters 'image_uri', 'role' and 'kwargs'
                 are not permitted when model parameter is set.
-            image_uri (str): A Docker image URI. It can be null if the 'model' parameter
-                is passed to during ``MultiDataModel`` initialization (default: None)
+            image_uri (str or PipelineVariable): A Docker image URI. It can be null if the 'model'
+                parameter is passed to during ``MultiDataModel`` initialization (default: None)
             role (str): An AWS IAM role (either name or full ARN). The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker
                 endpoints use this role to access training data and model

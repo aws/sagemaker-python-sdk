@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+from copy import deepcopy
 
 import logging
 import json
@@ -68,6 +69,7 @@ TIME = 1510006209.073025
 BUCKET_NAME = "mybucket"
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = "c4.4xlarge"
+KEEP_ALIVE_PERIOD_IN_SECONDS = 1800
 ACCELERATOR_TYPE = "ml.eia.medium"
 ROLE = "DummyRole"
 IMAGE_URI = "fakeimage"
@@ -348,6 +350,23 @@ def test_framework_with_heterogeneous_cluster(sagemaker_session):
         "InstanceCount": 2,
         "InstanceType": "ml.m4.xlarge",
     }
+
+
+def test_framework_with_keep_alive_period(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+        keep_alive_period_in_seconds=KEEP_ALIVE_PERIOD_IN_SECONDS,
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args["resource_config"]["KeepAlivePeriodInSeconds"] == KEEP_ALIVE_PERIOD_IN_SECONDS
 
 
 def test_framework_with_debugger_and_built_in_rule(sagemaker_session):
@@ -3825,6 +3844,12 @@ def test_script_mode_estimator_same_calls_as_framework(
 
     model_uri = "s3://someprefix2/models/model.tar.gz"
     training_data_uri = "s3://bucket/mydata"
+    hyperparameters = {
+        "int_hyperparam": 1,
+        "string_hyperparam": "hello",
+        "stringified_numeric_hyperparam": "44",
+        "float_hyperparam": 1.234,
+    }
 
     generic_estimator = Estimator(
         entry_point=SCRIPT_PATH,
@@ -3838,6 +3863,7 @@ def test_script_mode_estimator_same_calls_as_framework(
         model_uri=model_uri,
         dependencies=[],
         debugger_hook_config={},
+        hyperparameters=deepcopy(hyperparameters),
     )
     generic_estimator.fit(training_data_uri)
 
@@ -3858,6 +3884,7 @@ def test_script_mode_estimator_same_calls_as_framework(
         model_uri=model_uri,
         dependencies=[],
         debugger_hook_config={},
+        hyperparameters=deepcopy(hyperparameters),
     )
     framework_estimator.fit(training_data_uri)
 
@@ -4394,3 +4421,51 @@ def test_insert_invalid_source_code_args():
     assert (
         "The entry_point should not be a pipeline variable " "when source_dir is a local path"
     ) in str(err.value)
+
+
+@patch("time.time", return_value=TIME)
+@patch("sagemaker.estimator.tar_and_upload_dir")
+@patch("sagemaker.model.Model._upload_code")
+def test_script_mode_estimator_escapes_hyperparameters_as_json(
+    patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+):
+    patched_tar_and_upload_dir.return_value = UploadedCode(
+        s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
+    )
+    sagemaker_session.boto_region_name = REGION
+
+    instance_type = "ml.p2.xlarge"
+    instance_count = 1
+
+    training_data_uri = "s3://bucket/mydata"
+
+    jumpstart_source_dir = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[0]}/source_dirs/source.tar.gz"
+
+    hyperparameters = {
+        "int_hyperparam": 1,
+        "string_hyperparam": "hello",
+        "stringified_numeric_hyperparam": "44",
+        "float_hyperparam": 1.234,
+    }
+
+    generic_estimator = Estimator(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        region=REGION,
+        sagemaker_session=sagemaker_session,
+        instance_count=instance_count,
+        instance_type=instance_type,
+        source_dir=jumpstart_source_dir,
+        image_uri=IMAGE_URI,
+        model_uri=MODEL_DATA,
+        hyperparameters=hyperparameters,
+    )
+    generic_estimator.fit(training_data_uri)
+
+    formatted_hyperparams = EstimatorBase._json_encode_hyperparameters(hyperparameters)
+
+    assert (
+        set(formatted_hyperparams.items())
+        - set(sagemaker_session.train.call_args_list[0][1]["hyperparameters"].items())
+        == set()
+    )

@@ -710,16 +710,16 @@ class PySparkProcessor(_SparkProcessorBase):
                 to access training data and model artifacts. After the endpoint
                 is created, the inference code might use the IAM role, if it
                 needs to access an AWS resource.
-            instance_type (str): Type of EC2 instance to use for
+            instance_type (str or PipelineVariable): Type of EC2 instance to use for
                 processing, for example, 'ml.c4.xlarge'.
-            instance_count (int): The number of instances to run
+            instance_count (int or PipelineVariable): The number of instances to run
                 the Processing job with. Defaults to 1.
-            volume_size_in_gb (int): Size in GB of the EBS volume to
+            volume_size_in_gb (int or PipelineVariable): Size in GB of the EBS volume to
                 use for storing data during processing (default: 30).
-            volume_kms_key (str): A KMS key for the processing
+            volume_kms_key (str or PipelineVariable): A KMS key for the processing
                 volume.
-            output_kms_key (str): The KMS key id for all ProcessingOutputs.
-            max_runtime_in_seconds (int): Timeout in seconds.
+            output_kms_key (str or PipelineVariable): The KMS key id for all ProcessingOutputs.
+            max_runtime_in_seconds (int or PipelineVariable): Timeout in seconds.
                 After this amount of time Amazon SageMaker terminates the job
                 regardless of its current status.
             base_job_name (str): Prefix for processing name. If not specified,
@@ -729,8 +729,10 @@ class PySparkProcessor(_SparkProcessorBase):
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, the processor creates one
                 using the default AWS configuration chain.
-            env (dict): Environment variables to be passed to the processing job.
-            tags ([dict]): List of tags to be passed to the processing job.
+            env (dict[str, str] or dict[str, PipelineVariable]): Environment variables to
+                be passed to the processing job.
+            tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): List of tags to
+                be passed to the processing job.
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
@@ -844,20 +846,20 @@ class PySparkProcessor(_SparkProcessorBase):
         Args:
             submit_app (str): Path (local or S3) to Python file to submit to Spark
                 as the primary application
-            submit_py_files (list[str]): List of paths (local or S3) to provide for
-                `spark-submit --py-files` option
-            submit_jars (list[str]): List of paths (local or S3) to provide for
-                `spark-submit --jars` option
-            submit_files (list[str]): List of paths (local or S3) to provide for
-                `spark-submit --files` option
+            submit_py_files (list[str] or list[PipelineVariable]): List of paths (local or S3)
+                to provide for `spark-submit --py-files` option
+            submit_jars (list[str] or list[PipelineVariable]): List of paths (local or S3)
+                to provide for `spark-submit --jars` option
+            submit_files (list[str] or list[PipelineVariable]): List of paths (local or S3)
+                to provide for `spark-submit --files` option
             inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
                 the processing job. These must be provided as
                 :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
             outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
                 the processing job. These can be specified as either path strings or
                 :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
-            arguments (list[str]): A list of string arguments to be passed to a
-                processing job (default: None).
+            arguments (list[str] or list[PipelineVariable]): A list of string arguments to
+                be passed to a processing job (default: None).
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when wait is True (default: True).
@@ -877,8 +879,8 @@ class PySparkProcessor(_SparkProcessorBase):
             configuration (list[dict] or dict): Configuration for Hadoop, Spark, or Hive.
                 List or dictionary of EMR-style classifications.
                 https://docs.aws.amazon.com/emr/latest/ReleaseGuide/emr-configure-apps.html
-            spark_event_logs_s3_uri (str): S3 path where spark application events will
-                be published to.
+            spark_event_logs_s3_uri (str or PipelineVariable): S3 path where spark application
+                events will be published to.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
         """
@@ -967,16 +969,16 @@ class SparkJarProcessor(_SparkProcessorBase):
                 to access training data and model artifacts. After the endpoint
                 is created, the inference code might use the IAM role, if it
                 needs to access an AWS resource.
-            instance_type (str): Type of EC2 instance to use for
+            instance_type (str or PipelineVariable): Type of EC2 instance to use for
                 processing, for example, 'ml.c4.xlarge'.
-            instance_count (int): The number of instances to run
+            instance_count (int or PipelineVariable): The number of instances to run
                 the Processing job with. Defaults to 1.
-            volume_size_in_gb (int): Size in GB of the EBS volume to
+            volume_size_in_gb (int or PipelineVariable): Size in GB of the EBS volume to
                 use for storing data during processing (default: 30).
-            volume_kms_key (str): A KMS key for the processing
+            volume_kms_key (str or PipelineVariable): A KMS key for the processing
                 volume.
-            output_kms_key (str): The KMS key id for all ProcessingOutputs.
-            max_runtime_in_seconds (int): Timeout in seconds.
+            output_kms_key (str or PipelineVariable): The KMS key id for all ProcessingOutputs.
+            max_runtime_in_seconds (int or PipelineVariable): Timeout in seconds.
                 After this amount of time Amazon SageMaker terminates the job
                 regardless of its current status.
             base_job_name (str): Prefix for processing name. If not specified,
@@ -986,8 +988,10 @@ class SparkJarProcessor(_SparkProcessorBase):
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, the processor creates one
                 using the default AWS configuration chain.
-            env (dict): Environment variables to be passed to the processing job.
-            tags ([dict]): List of tags to be passed to the processing job.
+            env (dict[str, str] or dict[str, PipelineVariable]): Environment variables to
+                be passed to the processing job.
+            tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): List of tags to
+                be passed to the processing job.
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
@@ -1101,20 +1105,20 @@ class SparkJarProcessor(_SparkProcessorBase):
         Args:
             submit_app (str): Path (local or S3) to Jar file to submit to Spark as
                 the primary application
-            submit_class (str): Java class reference to submit to Spark as the primary
-                application
-            submit_jars (list[str]): List of paths (local or S3) to provide for
-                `spark-submit --jars` option
-            submit_files (list[str]): List of paths (local or S3) to provide for
-                `spark-submit --files` option
+            submit_class (str or PipelineVariable): Java class reference to submit to Spark
+                as the primary application
+            submit_jars (list[str] or list[PipelineVariable]): List of paths (local or S3)
+                to provide for `spark-submit --jars` option
+            submit_files (list[str] or list[PipelineVariable]): List of paths (local or S3)
+                to provide for `spark-submit --files` option
             inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
                 the processing job. These must be provided as
                 :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
             outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
                 the processing job. These can be specified as either path strings or
                 :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
-            arguments (list[str]): A list of string arguments to be passed to a
-                processing job (default: None).
+            arguments (list[str] or list[PipelineVariable]): A list of string arguments to
+                be passed to a processing job (default: None).
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when wait is True (default: True).
@@ -1134,8 +1138,8 @@ class SparkJarProcessor(_SparkProcessorBase):
             configuration (list[dict] or dict): Configuration for Hadoop, Spark, or Hive.
                 List or dictionary of EMR-style classifications.
                 https://docs.aws.amazon.com/emr/latest/ReleaseGuide/emr-configure-apps.html
-            spark_event_logs_s3_uri (str): S3 path where spark application events will
-                be published to.
+            spark_event_logs_s3_uri (str or PipelineVariable): S3 path where spark application
+                events will be published to.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
         """

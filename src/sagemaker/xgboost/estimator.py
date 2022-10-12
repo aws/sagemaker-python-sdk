@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import logging
-from typing import Union, Optional
+from typing import Union, Optional, Dict
 
 from sagemaker import image_uris
 from sagemaker.deprecations import renamed_kwargs
@@ -45,12 +45,12 @@ class XGBoost(Framework):
     def __init__(
         self,
         entry_point: Union[str, PipelineVariable],
-        framework_version,
+        framework_version: str,
         source_dir: Optional[Union[str, PipelineVariable]] = None,
-        hyperparameters=None,
-        py_version="py3",
-        image_uri=None,
-        image_uri_region=None,
+        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        py_version: str = "py3",
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
+        image_uri_region: Optional[str] = None,
         **kwargs
     ):
         """An estimator that executes an XGBoost-based SageMaker Training Job.
@@ -69,25 +69,27 @@ class XGBoost(Framework):
         https://github.com/aws/sagemaker-python-sdk
 
         Args:
-            entry_point (str): Path (absolute or relative) to the Python source file which should
-                be executed as the entry point to training.  If ``source_dir`` is specified,
-                then ``entry_point`` must point to a file located at the root of ``source_dir``.
+            entry_point (str or PipelineVariable): Path (absolute or relative) to
+                the Python source file which should be executed as the entry point to training.
+                If ``source_dir`` is specified, then ``entry_point`` must point to
+                a file located at the root of ``source_dir``.
             framework_version (str): XGBoost version you want to use for executing your model
                 training code.
-            source_dir (str): Path (absolute, relative or an S3 URI) to a directory
-                with any other training source code dependencies aside from the entry
+            source_dir (str or PipelineVariable): Path (absolute, relative or an S3 URI) to
+                a directory with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
                 point to a tar.gz file. Structure within this directory are preserved
                 when training on Amazon SageMaker.
-            hyperparameters (dict): Hyperparameters that will be used for training (default: None).
+            hyperparameters (dict[str, str] or dict[str, PipelineVariable]): Hyperparameters
+                that will be used for training (default: None).
                 The hyperparameters are made accessible as a dict[str, str] to the training code
                 on SageMaker. For convenience, this accepts other types for keys and values, but
                 ``str()`` will be called to convert them before training.
             py_version (str): Python version you want to use for executing your model
                 training code (default: 'py3').
-            image_uri (str): If specified, the estimator will use this image for training and
-                hosting, instead of selecting the appropriate SageMaker official image
-                based on framework_version and py_version. It can be an ECR url or
+            image_uri (str or PipelineVariable): If specified, the estimator will use this image
+                for training and hosting, instead of selecting the appropriate SageMaker official
+                image based on framework_version and py_version. It can be an ECR url or
                 dockerhub image and tag.
                 Examples:
                     123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0

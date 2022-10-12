@@ -89,16 +89,15 @@ class LocalPipelineExecutor(object):
         if isinstance(obj, dict):
             obj_copy = deepcopy(obj)
             for k, v in obj.items():
-                if isinstance(v, dict):
-                    obj_copy[k] = self._parse_arguments(v, step_name)
-                elif isinstance(v, list):
-                    list_copy = []
-                    for item in v:
-                        list_copy.append(self._parse_arguments(item, step_name))
-                    obj_copy[k] = list_copy
-                elif isinstance(v, PipelineVariable):
-                    obj_copy[k] = self.evaluate_pipeline_variable(v, step_name)
+                obj_copy[k] = self._parse_arguments(v, step_name)
             return obj_copy
+        if isinstance(obj, list):
+            list_copy = []
+            for item in obj:
+                list_copy.append(self._parse_arguments(item, step_name))
+            return list_copy
+        if isinstance(obj, PipelineVariable):
+            return self.evaluate_pipeline_variable(obj, step_name)
         return obj
 
     def evaluate_pipeline_variable(self, pipeline_variable, step_name):

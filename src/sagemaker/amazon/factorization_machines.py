@@ -37,83 +37,83 @@ class FactorizationMachines(AmazonAlgorithmEstimatorBase):
     sparse datasets economically.
     """
 
-    repo_name = "factorization-machines"
-    repo_version = 1
+    repo_name: str = "factorization-machines"
+    repo_version: str = "1"
 
-    num_factors = hp("num_factors", gt(0), "An integer greater than zero", int)
-    predictor_type = hp(
+    num_factors: hp = hp("num_factors", gt(0), "An integer greater than zero", int)
+    predictor_type: hp = hp(
         "predictor_type",
         isin("binary_classifier", "regressor"),
         'Value "binary_classifier" or "regressor"',
         str,
     )
-    epochs = hp("epochs", gt(0), "An integer greater than 0", int)
-    clip_gradient = hp("clip_gradient", (), "A float value", float)
-    eps = hp("eps", (), "A float value", float)
-    rescale_grad = hp("rescale_grad", (), "A float value", float)
-    bias_lr = hp("bias_lr", ge(0), "A non-negative float", float)
-    linear_lr = hp("linear_lr", ge(0), "A non-negative float", float)
-    factors_lr = hp("factors_lr", ge(0), "A non-negative float", float)
-    bias_wd = hp("bias_wd", ge(0), "A non-negative float", float)
-    linear_wd = hp("linear_wd", ge(0), "A non-negative float", float)
-    factors_wd = hp("factors_wd", ge(0), "A non-negative float", float)
-    bias_init_method = hp(
+    epochs: hp = hp("epochs", gt(0), "An integer greater than 0", int)
+    clip_gradient: hp = hp("clip_gradient", (), "A float value", float)
+    eps: hp = hp("eps", (), "A float value", float)
+    rescale_grad: hp = hp("rescale_grad", (), "A float value", float)
+    bias_lr: hp = hp("bias_lr", ge(0), "A non-negative float", float)
+    linear_lr: hp = hp("linear_lr", ge(0), "A non-negative float", float)
+    factors_lr: hp = hp("factors_lr", ge(0), "A non-negative float", float)
+    bias_wd: hp = hp("bias_wd", ge(0), "A non-negative float", float)
+    linear_wd: hp = hp("linear_wd", ge(0), "A non-negative float", float)
+    factors_wd: hp = hp("factors_wd", ge(0), "A non-negative float", float)
+    bias_init_method: hp = hp(
         "bias_init_method",
         isin("normal", "uniform", "constant"),
         'Value "normal", "uniform" or "constant"',
         str,
     )
-    bias_init_scale = hp("bias_init_scale", ge(0), "A non-negative float", float)
-    bias_init_sigma = hp("bias_init_sigma", ge(0), "A non-negative float", float)
-    bias_init_value = hp("bias_init_value", (), "A float value", float)
-    linear_init_method = hp(
+    bias_init_scale: hp = hp("bias_init_scale", ge(0), "A non-negative float", float)
+    bias_init_sigma: hp = hp("bias_init_sigma", ge(0), "A non-negative float", float)
+    bias_init_value: hp = hp("bias_init_value", (), "A float value", float)
+    linear_init_method: hp = hp(
         "linear_init_method",
         isin("normal", "uniform", "constant"),
         'Value "normal", "uniform" or "constant"',
         str,
     )
-    linear_init_scale = hp("linear_init_scale", ge(0), "A non-negative float", float)
-    linear_init_sigma = hp("linear_init_sigma", ge(0), "A non-negative float", float)
-    linear_init_value = hp("linear_init_value", (), "A float value", float)
-    factors_init_method = hp(
+    linear_init_scale: hp = hp("linear_init_scale", ge(0), "A non-negative float", float)
+    linear_init_sigma: hp = hp("linear_init_sigma", ge(0), "A non-negative float", float)
+    linear_init_value: hp = hp("linear_init_value", (), "A float value", float)
+    factors_init_method: hp = hp(
         "factors_init_method",
         isin("normal", "uniform", "constant"),
         'Value "normal", "uniform" or "constant"',
         str,
     )
-    factors_init_scale = hp("factors_init_scale", ge(0), "A non-negative float", float)
-    factors_init_sigma = hp("factors_init_sigma", ge(0), "A non-negative float", float)
-    factors_init_value = hp("factors_init_value", (), "A float value", float)
+    factors_init_scale: hp = hp("factors_init_scale", ge(0), "A non-negative float", float)
+    factors_init_sigma: hp = hp("factors_init_sigma", ge(0), "A non-negative float", float)
+    factors_init_value: hp = hp("factors_init_value", (), "A float value", float)
 
     def __init__(
         self,
-        role,
-        instance_count=None,
-        instance_type=None,
-        num_factors=None,
-        predictor_type=None,
-        epochs=None,
-        clip_gradient=None,
-        eps=None,
-        rescale_grad=None,
-        bias_lr=None,
-        linear_lr=None,
-        factors_lr=None,
-        bias_wd=None,
-        linear_wd=None,
-        factors_wd=None,
-        bias_init_method=None,
-        bias_init_scale=None,
-        bias_init_sigma=None,
-        bias_init_value=None,
-        linear_init_method=None,
-        linear_init_scale=None,
-        linear_init_sigma=None,
-        linear_init_value=None,
-        factors_init_method=None,
-        factors_init_scale=None,
-        factors_init_sigma=None,
-        factors_init_value=None,
+        role: str,
+        instance_count: Optional[Union[int, PipelineVariable]] = None,
+        instance_type: Optional[Union[str, PipelineVariable]] = None,
+        num_factors: Optional[int] = None,
+        predictor_type: Optional[str] = None,
+        epochs: Optional[int] = None,
+        clip_gradient: Optional[float] = None,
+        eps: Optional[float] = None,
+        rescale_grad: Optional[float] = None,
+        bias_lr: Optional[float] = None,
+        linear_lr: Optional[float] = None,
+        factors_lr: Optional[float] = None,
+        bias_wd: Optional[float] = None,
+        linear_wd: Optional[float] = None,
+        factors_wd: Optional[float] = None,
+        bias_init_method: Optional[str] = None,
+        bias_init_scale: Optional[float] = None,
+        bias_init_sigma: Optional[float] = None,
+        bias_init_value: Optional[float] = None,
+        linear_init_method: Optional[str] = None,
+        linear_init_scale: Optional[float] = None,
+        linear_init_sigma: Optional[float] = None,
+        linear_init_value: Optional[float] = None,
+        factors_init_method: Optional[str] = None,
+        factors_init_scale: Optional[float] = None,
+        factors_init_sigma: Optional[float] = None,
+        factors_init_value: Optional[float] = None,
         **kwargs
     ):
         """Factorization Machines is :class:`Estimator` for general-purpose supervised learning.
@@ -160,9 +160,9 @@ class FactorizationMachines(AmazonAlgorithmEstimatorBase):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if accessing AWS resource.
-            instance_count (int): Number of Amazon EC2 instances to use
+            instance_count (int or PipelineVariable): Number of Amazon EC2 instances to use
                 for training.
-            instance_type (str): Type of EC2 instance to use for training,
+            instance_type (str or PipelineVariable): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'.
             num_factors (int): Dimensionality of factorization.
             predictor_type (str): Type of predictor 'binary_classifier' or
@@ -183,7 +183,7 @@ class FactorizationMachines(AmazonAlgorithmEstimatorBase):
             linear_wd (float): Non-negative weight decay for linear terms.
             factors_wd (float): Non-negative weight decay for factorization
                 terms.
-            bias_init_method (string): Initialization method for the bias term:
+            bias_init_method (str): Initialization method for the bias term:
                 'normal', 'uniform' or 'constant'.
             bias_init_scale (float): Non-negative range for initialization of
                 the bias term that takes effect when bias_init_method parameter
@@ -193,7 +193,7 @@ class FactorizationMachines(AmazonAlgorithmEstimatorBase):
                 bias_init_method parameter is 'normal'.
             bias_init_value (float): Initial value of the bias term that takes
                 effect when bias_init_method parameter is 'constant'.
-            linear_init_method (string): Initialization method for linear term:
+            linear_init_method (str): Initialization method for linear term:
                 'normal', 'uniform' or 'constant'.
             linear_init_scale (float): Non-negative range for initialization of
                 linear terms that takes effect when linear_init_method parameter
@@ -203,7 +203,7 @@ class FactorizationMachines(AmazonAlgorithmEstimatorBase):
                 linear_init_method parameter is 'normal'.
             linear_init_value (float): Initial value of linear terms that takes
                 effect when linear_init_method parameter is 'constant'.
-            factors_init_method (string): Initialization method for
+            factors_init_method (str): Initialization method for
                 factorization term: 'normal', 'uniform' or 'constant'.
             factors_init_scale (float): Non-negative range for initialization of
                 factorization terms that takes effect when factors_init_method
@@ -333,7 +333,7 @@ class FactorizationMachinesModel(Model):
         """Initialization for FactorizationMachinesModel class.
 
         Args:
-            model_data (str): The S3 location of a SageMaker model data
+            model_data (str or PipelineVariable): The S3 location of a SageMaker model data
                 ``.tar.gz`` file.
             role (str): An AWS IAM role (either name or full ARN). The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker

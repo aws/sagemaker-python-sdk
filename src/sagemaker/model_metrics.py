@@ -110,9 +110,11 @@ class MetricsSource(object):
         """Initialize a ``MetricsSource`` instance and turn parameters into dict.
 
         Args:
-            content_type (str): Specifies the type of content in S3 URI
-            s3_uri (str): The S3 URI of the metric
-            content_digest (str): The digest of the metric (default: None)
+            content_type (str or PipelineVariable): Specifies the type of content
+                in S3 URI
+            s3_uri (str or PipelineVariable): The S3 URI of the metric
+            content_digest (str or PipelineVariable): The digest of the metric
+                (default: None)
         """
         self.content_type = content_type
         self.s3_uri = s3_uri
@@ -138,9 +140,11 @@ class FileSource(object):
         """Initialize a ``FileSource`` instance and turn parameters into dict.
 
         Args:
-            s3_uri (str): The S3 URI of the metric
-            content_digest (str): The digest of the metric (default: None)
-            content_type (str): Specifies the type of content in S3 URI (default: None)
+            s3_uri (str or PipelineVariable): The S3 URI of the metric
+            content_digest (str or PipelineVariable): The digest of the metric
+                (default: None)
+            content_type (str or PipelineVariable): Specifies the type of content
+                in S3 URI (default: None)
         """
         self.content_type = content_type
         self.s3_uri = s3_uri

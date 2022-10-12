@@ -17,7 +17,7 @@ import json
 import os
 import pytest
 
-from mock import Mock, ANY
+from mock import Mock
 from mock import patch
 
 from sagemaker.fw_utils import UploadedCode
@@ -406,7 +406,7 @@ def test_fail_gpu_training(sagemaker_session, sklearn_version):
             py_version=PYTHON_VERSION,
             framework_version=sklearn_version,
         )
-    assert "GPU training in not supported for Scikit-Learn." in str(error)
+    assert "GPU training is not supported for Scikit-Learn." in str(error)
 
 
 def test_model(sagemaker_session, sklearn_version):
@@ -587,49 +587,3 @@ def test_model_py2_raises(sagemaker_session, sklearn_version):
             framework_version=sklearn_version,
             py_version="py2",
         )
-
-
-def test_register_sklearn_model_auto_infer_framework(sagemaker_session, sklearn_version):
-    source_dir = "s3://mybucket/source"
-
-    model_package_group_name = "test-sklearn-register-model"
-    content_types = ["application/json"]
-    response_types = ["application/json"]
-    image_uri = "fakeimage"
-
-    sklearn_model = SKLearnModel(
-        model_data=source_dir,
-        role=ROLE,
-        sagemaker_session=sagemaker_session,
-        entry_point=SCRIPT_PATH,
-        framework_version=sklearn_version,
-    )
-
-    sklearn_model.register(
-        content_types,
-        response_types,
-        model_package_group_name=model_package_group_name,
-        marketplace_cert=True,
-        image_uri=image_uri,
-    )
-
-    expected_create_model_package_request = {
-        "containers": [
-            {
-                "Image": image_uri,
-                "Environment": ANY,
-                "ModelDataUrl": source_dir,
-                "Framework": "SKLEARN",
-                "FrameworkVersion": sklearn_version,
-            },
-        ],
-        "content_types": content_types,
-        "response_types": response_types,
-        "inference_instances": None,
-        "transform_instances": None,
-        "model_package_group_name": model_package_group_name,
-        "marketplace_cert": True,
-    }
-    sagemaker_session.create_model_package_from_containers.assert_called_with(
-        **expected_create_model_package_request
-    )

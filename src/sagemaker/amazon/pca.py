@@ -35,22 +35,24 @@ class PCA(AmazonAlgorithmEstimatorBase):
     retain as much information as possible.
     """
 
-    repo_name = "pca"
-    repo_version = 1
+    repo_name: str = "pca"
+    repo_version: str = "1"
 
-    DEFAULT_MINI_BATCH_SIZE = 500
+    DEFAULT_MINI_BATCH_SIZE: int = 500
 
-    num_components = hp("num_components", gt(0), "Value must be an integer greater than zero", int)
-    algorithm_mode = hp(
+    num_components: hp = hp(
+        "num_components", gt(0), "Value must be an integer greater than zero", int
+    )
+    algorithm_mode: hp = hp(
         "algorithm_mode",
         isin("regular", "randomized"),
         'Value must be one of "regular" and "randomized"',
         str,
     )
-    subtract_mean = hp(
+    subtract_mean: hp = hp(
         name="subtract_mean", validation_message="Value must be a boolean", data_type=bool
     )
-    extra_components = hp(
+    extra_components: hp = hp(
         name="extra_components",
         validation_message="Value must be an integer greater than or equal to 0, or -1.",
         data_type=int,
@@ -58,13 +60,13 @@ class PCA(AmazonAlgorithmEstimatorBase):
 
     def __init__(
         self,
-        role,
-        instance_count=None,
-        instance_type=None,
-        num_components=None,
-        algorithm_mode=None,
-        subtract_mean=None,
-        extra_components=None,
+        role: str,
+        instance_count: Optional[Union[int, PipelineVariable]] = None,
+        instance_type: Optional[Union[str, PipelineVariable]] = None,
+        num_components: Optional[int] = None,
+        algorithm_mode: Optional[str] = None,
+        subtract_mean: Optional[bool] = None,
+        extra_components: Optional[int] = None,
         **kwargs
     ):
         """A Principal Components Analysis (PCA)
@@ -107,9 +109,9 @@ class PCA(AmazonAlgorithmEstimatorBase):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if accessing AWS resource.
-            instance_count (int): Number of Amazon EC2 instances to use
+            instance_count (int or PipelineVariable): Number of Amazon EC2 instances to use
                 for training.
-            instance_type (str): Type of EC2 instance to use for training,
+            instance_type (str or PipelineVariable): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'.
             num_components (int): The number of principal components. Must be
                 greater than zero.
@@ -179,10 +181,7 @@ class PCA(AmazonAlgorithmEstimatorBase):
             num_records = records.num_records
 
         # mini_batch_size is a required parameter
-        default_mini_batch_size = min(
-            self.DEFAULT_MINI_BATCH_SIZE, max(1, int(num_records / self.instance_count))
-        )
-        use_mini_batch_size = mini_batch_size or default_mini_batch_size
+        use_mini_batch_size = mini_batch_size or self._get_default_mini_batch_size(num_records)
 
         super(PCA, self)._prepare_for_training(
             records=records, mini_batch_size=use_mini_batch_size, job_name=job_name
@@ -251,7 +250,7 @@ class PCAModel(Model):
         """Initialization for PCAModel.
 
         Args:
-            model_data (str): The S3 location of a SageMaker model data
+            model_data (str or PipelineVariable): The S3 location of a SageMaker model data
                 ``.tar.gz`` file.
             role (str): An AWS IAM role (either name or full ARN). The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker

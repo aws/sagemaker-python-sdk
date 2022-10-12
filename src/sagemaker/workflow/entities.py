@@ -62,7 +62,12 @@ class Expression(abc.ABC):
 class PipelineVariable(Expression):
     """Base object for pipeline variables
 
-    PipelineVariables must implement the expr property.
+    PipelineVariable subclasses must implement the expr property. Its subclasses include:
+    :class:`~sagemaker.workflow.parameters.Parameter`,
+    :class:`~sagemaker.workflow.properties.Properties`,
+    :class:`~sagemaker.workflow.functions.Join`,
+    :class:`~sagemaker.workflow.functions.JsonGet`,
+    :class:`~sagemaker.workflow.execution_variables.ExecutionVariable`.
     """
 
     def __add__(self, other: Union[Expression, PrimitiveType]):
