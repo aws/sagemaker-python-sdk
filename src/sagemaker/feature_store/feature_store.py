@@ -18,11 +18,14 @@ manage features for machine learning (ML) models.
 from __future__ import absolute_import
 
 import datetime
-from typing import Dict, Any
+from typing import Any, Dict, Sequence, Union
 
 import attr
+import pandas as pd
 
 from sagemaker import Session
+from sagemaker.feature_store.dataset_builder import DatasetBuilder
+from sagemaker.feature_store.feature_group import FeatureGroup
 
 
 @attr.s
@@ -36,6 +39,50 @@ class FeatureStore:
     """
 
     sagemaker_session: Session = attr.ib(default=Session)
+
+    @staticmethod
+    def create_dataset(
+        base: Union[FeatureGroup, pd.DataFrame],
+        output_path: str,
+        record_identifier_feature_name: str = None,
+        event_time_identifier_feature_name: str = None,
+        included_feature_names: Sequence[str] = None,
+        kms_key_id: str = None,
+    ) -> DatasetBuilder:
+        """Create a Dataset Builder for generating a Dataset.
+
+        Args:
+            base (Union[FeatureGroup, DataFrame]): A base which can be either a FeatureGroup or a
+                pandas.DataFrame and will be used to merge other FeatureGroups and generate a
+                Dataset.
+            output_path (str): An S3 URI which stores the output .csv file.
+            record_identifier_feature_name (str): A string representing the record identifier
+                feature if base is a DataFrame (default: None).
+            event_time_identifier_feature_name (str): A string representing the event time
+                identifier feature if base is a DataFrame (default: None).
+            included_feature_names (List[str]): A list of features to be included in the output
+                (default: None).
+            kms_key_id (str): An KMS key id. If set, will be used to encrypt the result file
+                (default: None).
+
+        Raises:
+            ValueError: Base is a Pandas DataFrame but no record identifier feature name nor event
+                time identifier feature name is provided.
+        """
+        if isinstance(base, pd.DataFrame):
+            if record_identifier_feature_name is None or event_time_identifier_feature_name is None:
+                raise ValueError(
+                    "You must provide a record identifier feature name and an event time "
+                    + "identifier feature name if specify DataFrame as base."
+                )
+        return DatasetBuilder(
+            base,
+            output_path,
+            record_identifier_feature_name,
+            event_time_identifier_feature_name,
+            included_feature_names,
+            kms_key_id,
+        )
 
     def list_feature_groups(
         self,
