@@ -478,7 +478,26 @@ def _create_or_update_code_dir(
         download_file_from_url(source_directory, local_code_path, sagemaker_session)
 
         with tarfile.open(name=local_code_path, mode="r:gz") as t:
-            t.extractall(path=code_dir)
+            def is_within_directory(directory, target):
+                
+                abs_directory = os.path.abspath(directory)
+                abs_target = os.path.abspath(target)
+            
+                prefix = os.path.commonprefix([abs_directory, abs_target])
+                
+                return prefix == abs_directory
+            
+            def safe_extract(tar, path=".", members=None, *, numeric_owner=False):
+            
+                for member in tar.getmembers():
+                    member_path = os.path.join(path, member.name)
+                    if not is_within_directory(path, member_path):
+                        raise Exception("Attempted Path Traversal in Tar File")
+            
+                tar.extractall(path, members, numeric_owner=numeric_owner) 
+                
+            
+            safe_extract(t, path=code_dir)
 
     elif source_directory:
         if os.path.exists(code_dir):
@@ -515,7 +534,26 @@ def _extract_model(model_uri, sagemaker_session, tmp):
     else:
         local_model_path = model_uri.replace("file://", "")
     with tarfile.open(name=local_model_path, mode="r:gz") as t:
-        t.extractall(path=tmp_model_dir)
+        def is_within_directory(directory, target):
+            
+            abs_directory = os.path.abspath(directory)
+            abs_target = os.path.abspath(target)
+        
+            prefix = os.path.commonprefix([abs_directory, abs_target])
+            
+            return prefix == abs_directory
+        
+        def safe_extract(tar, path=".", members=None, *, numeric_owner=False):
+        
+            for member in tar.getmembers():
+                member_path = os.path.join(path, member.name)
+                if not is_within_directory(path, member_path):
+                    raise Exception("Attempted Path Traversal in Tar File")
+        
+            tar.extractall(path, members, numeric_owner=numeric_owner) 
+            
+        
+        safe_extract(t, path=tmp_model_dir)
     return tmp_model_dir
 
 
