@@ -700,6 +700,7 @@ EXPERIMENT_CONFIG = {
     "ExperimentName": "dummyExp",
     "TrialName": "dummyT",
     "TrialComponentDisplayName": "dummyTC",
+    "RunName": "dummyRN",
 }
 MODEL_CLIENT_CONFIG = {"InvocationsMaxRetries": 2, "InvocationsTimeoutInSeconds": 60}
 

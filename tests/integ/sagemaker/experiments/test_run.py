@@ -167,6 +167,12 @@ _ENTRY_POINT_PATH = os.path.join(DATA_DIR, "experiment/scripts/train_job_script_
 _PYTHON_SCRIPT_PATH = os.path.join(DATA_DIR, "experiment/scripts/launcher.sh")
 
 
+@pytest.mark.skip(
+    reason=(
+        "Waiting for the CR https://code.amazon.com/reviews/CR-75915367/revisions/1#/details "
+        "to deploy to us-west-2"
+    )
+)
 def test_run_from_local_and_train_job_and_all_exp_cfg_match(sagemaker_session, job_resource_dir):
     # Notes:
     # 1. The 1st Run TC created locally
@@ -208,6 +214,12 @@ def test_run_from_local_and_train_job_and_all_exp_cfg_match(sagemaker_session, j
             )
 
 
+@pytest.mark.skip(
+    reason=(
+        "Waiting for the CR https://code.amazon.com/reviews/CR-75915367/revisions/1#/details "
+        "to deploy to us-west-2"
+    )
+)
 def test_run_from_local_and_train_job_and_exp_cfg_not_match(sagemaker_session, job_resource_dir):
     # Notes:
     # 1. The 1st Run TC created locally
@@ -249,6 +261,12 @@ def test_run_from_local_and_train_job_and_exp_cfg_not_match(sagemaker_session, j
             )
 
 
+@pytest.mark.skip(
+    reason=(
+        "Waiting for the CR https://code.amazon.com/reviews/CR-75915367/revisions/1#/details "
+        "to deploy to us-west-2"
+    )
+)
 def test_run_from_train_job(sagemaker_session, job_resource_dir):
     # Notes:
     # 1. No Run TC created locally or specified in experiment config

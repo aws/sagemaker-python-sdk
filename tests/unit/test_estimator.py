@@ -2489,7 +2489,12 @@ def test_start_new(sagemaker_session):
         hyperparameters=hyperparameters,
     )
 
-    exp_config = {"ExperimentName": "exp", "TrialName": "t", "TrialComponentDisplayName": "tc"}
+    exp_config = {
+        "ExperimentName": "exp",
+        "TrialName": "t",
+        "TrialComponentDisplayName": "tc",
+        "RunName": "rn",
+    }
 
     started_training_job = training_job.start_new(estimator, inputs, experiment_config=exp_config)
     called_args = sagemaker_session.train.call_args
@@ -2680,6 +2685,7 @@ EXP_TRAIN_CALL.update(
             "ExperimentName": "exp",
             "TrialName": "trial",
             "TrialComponentDisplayName": "tc",
+            "RunName": "rn",
         }
     }
 )
@@ -2884,6 +2890,7 @@ def test_generic_to_fit_with_experiment_config(time, sagemaker_session):
             "ExperimentName": "exp",
             "TrialName": "trial",
             "TrialComponentDisplayName": "tc",
+            "RunName": "rn",
         },
     )
 
