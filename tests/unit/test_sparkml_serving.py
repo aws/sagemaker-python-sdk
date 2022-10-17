@@ -49,7 +49,7 @@ def sagemaker_session():
 
 def test_sparkml_model(sagemaker_session):
     sparkml = SparkMLModel(sagemaker_session=sagemaker_session, model_data=MODEL_DATA, role=ROLE)
-    assert sparkml.image_uri == image_uris.retrieve("sparkml-serving", REGION, version="2.4")
+    assert sparkml.image_uri == image_uris.retrieve("sparkml-serving", REGION, version="3.3")
 
 
 def test_predictor_type(sagemaker_session):
