@@ -905,7 +905,7 @@ def _region_supports_profiler(region_name):
 
 
 def _instance_type_supports_profiler(instance_type):
-    """Returns bool indicating whether instance_type supports Amazon SageMaker Debugger profiling feature.
+    """Returns bool indicating whether instance_type supports SageMaker Debugger profiling feature.
 
     Args:
         instance_type (str): Name of the instance_type to check against.
