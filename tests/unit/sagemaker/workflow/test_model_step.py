@@ -69,6 +69,7 @@ _XGBOOST_PATH = os.path.join(DATA_DIR, "xgboost_abalone")
 _TENSORFLOW_PATH = os.path.join(DATA_DIR, "tfs/tfs-test-entrypoint-and-dependencies")
 _REPACK_OUTPUT_KEY_PREFIX = "code-output"
 _MODEL_CODE_LOCATION = f"s3://{_BUCKET}/{_REPACK_OUTPUT_KEY_PREFIX}"
+_MODEL_CODE_LOCATION_TRAILING_SLASH = _MODEL_CODE_LOCATION + "/"
 
 
 @pytest.fixture
@@ -690,7 +691,7 @@ def test_conditional_model_create_and_regis(
                 entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
                 role=_ROLE,
                 enable_network_isolation=True,
-                code_location=_MODEL_CODE_LOCATION,
+                code_location=_MODEL_CODE_LOCATION_TRAILING_SLASH,
             ),
             2,
         ),
@@ -714,7 +715,7 @@ def test_conditional_model_create_and_regis(
                 entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
                 role=_ROLE,
                 framework_version="1.5.0",
-                code_location=_MODEL_CODE_LOCATION,
+                code_location=_MODEL_CODE_LOCATION_TRAILING_SLASH,
             ),
             2,
         ),
@@ -746,7 +747,7 @@ def test_conditional_model_create_and_regis(
                 image_uri=_IMAGE_URI,
                 entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
                 role=_ROLE,
-                code_location=_MODEL_CODE_LOCATION,
+                code_location=_MODEL_CODE_LOCATION_TRAILING_SLASH,
             ),
             2,
         ),
@@ -769,7 +770,9 @@ def test_create_model_among_different_model_types(test_input, pipeline_session, 
         assert len(steps) == expected_step_num
         if expected_step_num == 2:
             assert steps[0]["Type"] == "Training"
-            if model.key_prefix == _REPACK_OUTPUT_KEY_PREFIX:
+            if model.key_prefix is not None and model.key_prefix.startswith(
+                _REPACK_OUTPUT_KEY_PREFIX
+            ):
                 assert steps[0]["Arguments"]["OutputDataConfig"]["S3OutputPath"] == (
                     f"{_MODEL_CODE_LOCATION}/{model.name}"
                 )

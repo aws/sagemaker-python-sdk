@@ -396,8 +396,8 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             # model is not yet there, defer repacking to later during pipeline execution
             if isinstance(self.sagemaker_session, PipelineSession):
                 self.sagemaker_session.context.need_runtime_repack.add(id(self))
-                self.sagemaker_session.context.runtime_repack_output_prefix = "s3://{}/{}".format(
-                    bucket, key_prefix
+                self.sagemaker_session.context.runtime_repack_output_prefix = s3.s3_path_join(
+                    "s3://", bucket, key_prefix
                 )
             else:
                 logging.warning(
