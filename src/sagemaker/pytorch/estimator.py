@@ -39,6 +39,7 @@ class PyTorch(Framework):
 
     _framework_name = "pytorch"
     LAUNCH_PYTORCH_DDP_ENV_NAME = "sagemaker_pytorch_ddp_enabled"
+    LAUNCH_TORCH_DISTRIBUTED_ENV_NAME = "sagemaker_torch_distributed_enabled"
     INSTANCE_TYPE_ENV_NAME = "sagemaker_instance_type"
 
     def __init__(
@@ -168,6 +169,19 @@ class PyTorch(Framework):
                     To learn more, see `Distributed PyTorch Training
                     <https://sagemaker.readthedocs.io/en/stable/frameworks/pytorch/using_pytorch.html#distributed-pytorch-training>`_.
 
+                **To enable Torch Distributed (for Trainium instances only):**
+
+                    .. code:: python
+
+                        {
+                            "torch_distributed": {
+                                "enabled": True
+                            }
+                        }
+
+                    To learn more, see `Distributed PyTorch Training on Trainium
+                    <https://sagemaker.readthedocs.io/en/stable/frameworks/pytorch/using_pytorch.html#distributed-pytorch-training-on-trainium>`_.
+
                 **To enable MPI:**
 
                     .. code:: python
@@ -219,6 +233,10 @@ class PyTorch(Framework):
         super(PyTorch, self).__init__(
             entry_point, source_dir, hyperparameters, image_uri=image_uri, **kwargs
         )
+
+        if "entry_point" not in kwargs:
+            kwargs["entry_point"] = entry_point
+
         if distribution is not None:
             distribution = validate_distribution(
                 distribution,
@@ -242,11 +260,19 @@ class PyTorch(Framework):
         """
         distribution_config = {}
         pytorch_ddp_enabled = False
+        torch_distributed_enabled = False
+
         if "pytorchddp" in distribution:
             pytorch_ddp_enabled = distribution.get("pytorchddp").get("enabled", False)
+        elif "torch_distributed" in distribution:
+            torch_distributed_enabled = distribution.get("torch_distributed").get("enabled", False)
 
         if pytorch_ddp_enabled:
             distribution_config[self.LAUNCH_PYTORCH_DDP_ENV_NAME] = pytorch_ddp_enabled
+            if self.instance_type is not None:
+                distribution_config[self.INSTANCE_TYPE_ENV_NAME] = self.instance_type
+        elif torch_distributed_enabled:
+            distribution_config[self.LAUNCH_TORCH_DISTRIBUTED_ENV_NAME] = torch_distributed_enabled
             if self.instance_type is not None:
                 distribution_config[self.INSTANCE_TYPE_ENV_NAME] = self.instance_type
         else:
