@@ -32,6 +32,7 @@ from sagemaker.sparkml import SparkMLModel
 from sagemaker.tensorflow import TensorFlowModel
 from sagemaker.transformer import Transformer
 from sagemaker.tuner import HyperparameterTuner
+from sagemaker.workflow._utils import REPACK_SCRIPT_LAUNCHER
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.conditions import ConditionGreaterThanOrEqualTo
 from sagemaker.workflow.model_step import (
@@ -188,7 +189,9 @@ def test_register_model_with_runtime_repack(pipeline_session, model_data_param, 
             }
             assert arguments["HyperParameters"]["inference_script"] == '"dummy_script.py"'
             assert arguments["HyperParameters"]["model_archive"] == {"Get": "Parameters.ModelData"}
-            assert arguments["HyperParameters"]["sagemaker_program"] == '"_repack_model.py"'
+            assert (
+                arguments["HyperParameters"]["sagemaker_program"] == f'"{REPACK_SCRIPT_LAUNCHER}"'
+            )
             assert "s3://" in arguments["HyperParameters"]["sagemaker_submit_directory"]
             assert arguments["HyperParameters"]["dependencies"] == "null"
             assert step["RetryPolicies"] == [
@@ -269,7 +272,9 @@ def test_create_model_with_runtime_repack(pipeline_session, model_data_param, mo
             }
             assert arguments["HyperParameters"]["inference_script"] == '"dummy_script.py"'
             assert arguments["HyperParameters"]["model_archive"] == {"Get": "Parameters.ModelData"}
-            assert arguments["HyperParameters"]["sagemaker_program"] == '"_repack_model.py"'
+            assert (
+                arguments["HyperParameters"]["sagemaker_program"] == f'"{REPACK_SCRIPT_LAUNCHER}"'
+            )
             assert "s3://" in arguments["HyperParameters"]["sagemaker_submit_directory"]
             assert arguments["HyperParameters"]["dependencies"] == "null"
             assert "repack a model with customer scripts" in step["Description"]
@@ -360,7 +365,9 @@ def test_create_pipeline_model_with_runtime_repack(pipeline_session, model_data_
             }
             assert arguments["HyperParameters"]["inference_script"] == '"dummy_script.py"'
             assert arguments["HyperParameters"]["model_archive"] == {"Get": "Parameters.ModelData"}
-            assert arguments["HyperParameters"]["sagemaker_program"] == '"_repack_model.py"'
+            assert (
+                arguments["HyperParameters"]["sagemaker_program"] == f'"{REPACK_SCRIPT_LAUNCHER}"'
+            )
             assert "s3://" in arguments["HyperParameters"]["sagemaker_submit_directory"]
             assert arguments["HyperParameters"]["dependencies"] == "null"
             assert step["RetryPolicies"] == [
@@ -460,7 +467,9 @@ def test_register_pipeline_model_with_runtime_repack(pipeline_session, model_dat
             }
             assert arguments["HyperParameters"]["inference_script"] == '"dummy_script.py"'
             assert arguments["HyperParameters"]["model_archive"] == {"Get": "Parameters.ModelData"}
-            assert arguments["HyperParameters"]["sagemaker_program"] == '"_repack_model.py"'
+            assert (
+                arguments["HyperParameters"]["sagemaker_program"] == f'"{REPACK_SCRIPT_LAUNCHER}"'
+            )
             assert "s3://" in arguments["HyperParameters"]["sagemaker_submit_directory"]
             assert arguments["HyperParameters"]["dependencies"] == "null"
         elif step["Type"] == "RegisterModel":
@@ -641,7 +650,9 @@ def test_conditional_model_create_and_regis(
             }
             assert arguments["HyperParameters"]["inference_script"] == '"dummy_script.py"'
             assert arguments["HyperParameters"]["model_archive"] == {"Get": "Parameters.ModelData"}
-            assert arguments["HyperParameters"]["sagemaker_program"] == '"_repack_model.py"'
+            assert (
+                arguments["HyperParameters"]["sagemaker_program"] == f'"{REPACK_SCRIPT_LAUNCHER}"'
+            )
             assert "s3://" in arguments["HyperParameters"]["sagemaker_submit_directory"]
             assert arguments["HyperParameters"]["dependencies"] == "null"
         elif step["Type"] == "RegisterModel":
