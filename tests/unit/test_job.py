@@ -23,6 +23,7 @@ from sagemaker.inputs import FileSystemInput
 from sagemaker.instance_group import InstanceGroup
 from sagemaker.job import _Job
 from sagemaker.model import FrameworkModel
+from sagemaker.workflow.parameters import ParameterString
 
 BUCKET_NAME = "s3://mybucket/train"
 S3_OUTPUT_PATH = "s3://bucket/prefix"
@@ -216,6 +217,15 @@ def test_load_config_with_code_channel_no_code_uri(framework):
     assert "KmsKeyId" not in config["output_config"]
     assert config["resource_config"]["InstanceCount"] == INSTANCE_COUNT
     assert config["resource_config"]["InstanceType"] == INSTANCE_TYPE
+
+
+def test_load_config_with_role_as_pipeline_parameter(estimator):
+    inputs = TrainingInput(BUCKET_NAME)
+    estimator.role = ParameterString(name="Role")
+
+    config = _Job._load_config(inputs, estimator)
+
+    assert config["role"] == estimator.role
 
 
 def test_format_inputs_none():

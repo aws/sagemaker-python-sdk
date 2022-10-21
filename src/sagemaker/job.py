@@ -68,7 +68,7 @@ class _Job(object):
         input_config = _Job._format_inputs_to_input_config(inputs, validate_uri)
         role = (
             estimator.sagemaker_session.expand_role(estimator.role)
-            if expand_role
+            if (expand_role and not is_pipeline_variable(estimator.role))
             else estimator.role
         )
         output_config = _Job._prepare_output_config(estimator.output_path, estimator.output_kms_key)
