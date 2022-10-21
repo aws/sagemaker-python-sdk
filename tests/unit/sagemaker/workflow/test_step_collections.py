@@ -20,6 +20,7 @@ import shutil
 import pytest
 
 from sagemaker.drift_check_baselines import DriftCheckBaselines
+from sagemaker.workflow._utils import REPACK_SCRIPT_LAUNCHER
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.conditions import ConditionEquals
 from sagemaker.workflow.model_step import (
@@ -799,7 +800,7 @@ def test_register_model_with_model_repack_with_estimator(
                         "inference_script": '"dummy_script.py"',
                         "dependencies": f'"{dummy_requirements}"',
                         "model_archive": '"s3://my-bucket/model.tar.gz"',
-                        "sagemaker_program": '"_repack_model.py"',
+                        "sagemaker_program": f'"{REPACK_SCRIPT_LAUNCHER}"',
                         "sagemaker_container_log_level": "20",
                         "sagemaker_region": f'"{REGION}"',
                         "source_dir": "null",
@@ -925,7 +926,7 @@ def test_register_model_with_model_repack_with_model(model, model_metrics, drift
                     "HyperParameters": {
                         "inference_script": '"dummy_script.py"',
                         "model_archive": '"s3://my-bucket/model.tar.gz"',
-                        "sagemaker_program": '"_repack_model.py"',
+                        "sagemaker_program": f'"{REPACK_SCRIPT_LAUNCHER}"',
                         "sagemaker_container_log_level": "20",
                         "sagemaker_region": f'"{REGION}"',
                         "dependencies": "null",
@@ -1055,7 +1056,7 @@ def test_register_model_with_model_repack_with_pipeline_model(
                         "dependencies": "null",
                         "inference_script": '"dummy_script.py"',
                         "model_archive": '"s3://my-bucket/model.tar.gz"',
-                        "sagemaker_program": '"_repack_model.py"',
+                        "sagemaker_program": f'"{REPACK_SCRIPT_LAUNCHER}"',
                         "sagemaker_container_log_level": "20",
                         "sagemaker_region": f'"{REGION}"',
                         "source_dir": "null",
@@ -1267,7 +1268,7 @@ def test_estimator_transformer_with_model_repack_with_estimator(estimator):
                     "model_archive": '"s3://my-bucket/model.tar.gz"',
                     "dependencies": "null",
                     "source_dir": "null",
-                    "sagemaker_program": '"_repack_model.py"',
+                    "sagemaker_program": f'"{REPACK_SCRIPT_LAUNCHER}"',
                     "sagemaker_container_log_level": "20",
                     "sagemaker_region": '"us-west-2"',
                 },

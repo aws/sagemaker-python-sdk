@@ -30,3 +30,5 @@ env/
 .vscode/
 **/tmp
 .python-version
+**/_repack_model.py
+**/_repack_script_launcher.sh

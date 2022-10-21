@@ -40,6 +40,21 @@ if TYPE_CHECKING:
 FRAMEWORK_VERSION = "0.23-1"
 INSTANCE_TYPE = "ml.m5.large"
 REPACK_SCRIPT = "_repack_model.py"
+REPACK_SCRIPT_LAUNCHER = "_repack_script_launcher.sh"
+LAUNCH_REPACK_SCRIPT_CMD = """
+#!/bin/bash
+
+var_dependencies="${SM_HP_DEPENDENCIES}"
+var_inference_script="${SM_HP_INFERENCE_SCRIPT}"
+var_model_archive="${SM_HP_MODEL_ARCHIVE}"
+var_source_dir="${SM_HP_SOURCE_DIR}"
+
+python _repack_model.py \
+--dependencies "${var_dependencies}" \
+--inference_script "${var_inference_script}" \
+--model_archive "${var_model_archive}" \
+--source_dir "${var_source_dir}"
+"""
 
 
 class _RepackModelStep(TrainingStep):
@@ -155,7 +170,7 @@ class _RepackModelStep(TrainingStep):
         repacker = SKLearn(
             framework_version=FRAMEWORK_VERSION,
             instance_type=INSTANCE_TYPE,
-            entry_point=REPACK_SCRIPT,
+            entry_point=REPACK_SCRIPT_LAUNCHER,
             source_dir=self._source_dir,
             dependencies=self._dependencies,
             sagemaker_session=self.sagemaker_session,
@@ -189,7 +204,7 @@ class _RepackModelStep(TrainingStep):
         if self._source_dir is None:
             self._establish_source_dir()
 
-        self._inject_repack_script()
+        self._inject_repack_script_and_launcher()
 
     def _establish_source_dir(self):
         """If the source_dir is None, creates it for the repacking job.
@@ -206,18 +221,28 @@ class _RepackModelStep(TrainingStep):
         shutil.copy2(self._entry_point, os.path.join(self._source_dir, self._entry_point_basename))
         self._entry_point = self._entry_point_basename
 
-    def _inject_repack_script(self):
-        """Injects the _repack_model.py script into S3 or local source directory.
+    def _inject_repack_script_and_launcher(self):
+        """Injects the _repack_model.py script and _repack_script_launcher.sh
+
+        into S3 or local source directory.
+
+        Note: The bash file is needed because if not supplied, the SKLearn
+        training job will auto install all dependencies listed in requirements.txt.
+        However, this auto install behavior is not expected in _RepackModelStep,
+        since it should just simply repack the model along with other supplied files,
+        e.g. the requirements.txt.
 
         If the source_dir is an S3 path:
             1) downloads the source_dir tar.gz
             2) extracts it
             3) copies the _repack_model.py script into the extracted directory
-            4) rezips the directory
-            5) overwrites the S3 source_dir with the new tar.gz
+            4) creates the _repack_script_launcher.sh in the extracted dir
+            5) rezips the directory
+            6) overwrites the S3 source_dir with the new tar.gz
 
         If the source_dir is a local path:
             1) copies the _repack_model.py script into the source dir
+            2) creates the _repack_script_launcher.sh in the source dir
         """
         fname = os.path.join(os.path.dirname(__file__), REPACK_SCRIPT)
         if self._source_dir.lower().startswith("s3://"):
@@ -231,6 +256,10 @@ class _RepackModelStep(TrainingStep):
                     t.extractall(path=targz_contents_dir)
 
                 shutil.copy2(fname, os.path.join(targz_contents_dir, REPACK_SCRIPT))
+                with open(
+                    os.path.join(targz_contents_dir, REPACK_SCRIPT_LAUNCHER), "w"
+                ) as launcher_file:
+                    launcher_file.write(LAUNCH_REPACK_SCRIPT_CMD)
 
                 new_targz_path = os.path.join(tmp, "new.tar.gz")
                 with tarfile.open(new_targz_path, mode="w:gz") as t:
@@ -239,6 +268,8 @@ class _RepackModelStep(TrainingStep):
                 _save_model(self._source_dir, new_targz_path, self.sagemaker_session, kms_key=None)
         else:
             shutil.copy2(fname, os.path.join(self._source_dir, REPACK_SCRIPT))
+            with open(os.path.join(self._source_dir, REPACK_SCRIPT_LAUNCHER), "w") as launcher_file:
+                launcher_file.write(LAUNCH_REPACK_SCRIPT_CMD)
 
     @property
     def arguments(self) -> RequestType:
