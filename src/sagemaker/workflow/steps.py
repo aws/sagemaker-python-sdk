@@ -710,6 +710,7 @@ class TransformStep(ConfigurableRetryStep):
                 join_source=self.inputs.join_source,
                 model_client_config=self.inputs.model_client_config,
                 experiment_config=dict(),
+                batch_data_capture_config=self.inputs.batch_data_capture_config,
             )
             request_dict = self.transformer.sagemaker_session._get_transform_request(
                 **transform_args
