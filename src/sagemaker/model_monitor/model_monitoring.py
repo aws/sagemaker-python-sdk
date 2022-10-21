@@ -23,6 +23,8 @@ import os
 import pathlib
 import logging
 import uuid
+from typing import Union
+import attr
 
 from six import string_types
 from six.moves.urllib.parse import urlparse
@@ -31,6 +33,7 @@ from botocore.exceptions import ClientError
 from sagemaker import image_uris, s3
 from sagemaker.exceptions import UnexpectedStatusException
 from sagemaker.model_monitor.monitoring_files import Constraints, ConstraintViolations, Statistics
+from sagemaker.model_monitor.dataset_format import MonitoringDatasetFormat
 from sagemaker.network import NetworkConfig
 from sagemaker.processing import Processor, ProcessingInput, ProcessingJob, ProcessingOutput
 from sagemaker.session import Session
@@ -217,12 +220,13 @@ class ModelMonitor(object):
 
     def create_monitoring_schedule(
         self,
-        endpoint_input,
-        output,
+        endpoint_input=None,
+        output=None,
         statistics=None,
         constraints=None,
         monitor_schedule_name=None,
         schedule_cron_expression=None,
+        batch_transform_input=None,
     ):
         """Creates a monitoring schedule to monitor an Amazon SageMaker Endpoint.
 
@@ -233,22 +237,25 @@ class ModelMonitor(object):
 
         Args:
             endpoint_input (str or sagemaker.model_monitor.EndpointInput): The endpoint to monitor.
-                This can either be the endpoint name or an EndpointInput.
+                This can either be the endpoint name or an EndpointInput. (default: None)
             output (sagemaker.model_monitor.MonitoringOutput): The output of the monitoring
-                schedule.
+                schedule. (default: None)
             statistics (sagemaker.model_monitor.Statistic or str): If provided alongside
                 constraints, these will be used for monitoring the endpoint. This can be a
                 sagemaker.model_monitor.Statistic object or an S3 uri pointing to a statistic
-                JSON file.
+                JSON file. (default: None)
             constraints (sagemaker.model_monitor.Constraints or str): If provided alongside
                 statistics, these will be used for monitoring the endpoint. This can be a
                 sagemaker.model_monitor.Constraints object or an S3 uri pointing to a constraints
-                JSON file.
+                JSON file. (default: None)
             monitor_schedule_name (str): Schedule name. If not specified, the processor generates
-                a default job name, based on the image name and current timestamp.
+                a default job name, based on the image name and current timestamp. (default: None)
             schedule_cron_expression (str): The cron expression that dictates the frequency that
                 this job runs at. See sagemaker.model_monitor.CronExpressionGenerator for valid
-                expressions. Default: Daily.
+                expressions. Default: Daily. (default: None)
+            batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to
+                run the monitoring schedule on the batch transform
+                (default: None)
 
         """
         if self.monitoring_schedule_name is not None:
@@ -260,11 +267,28 @@ class ModelMonitor(object):
             print(message)
             raise ValueError(message)
 
+        if not output:
+            raise ValueError("output can not be None.")
+
+        if (batch_transform_input is not None) ^ (endpoint_input is None):
+            message = (
+                "Need to have either batch_transform_input or endpoint_input to create an "
+                "Amazon Model Monitoring Schedule. "
+                "Please provide only one of the above required inputs"
+            )
+            _LOGGER.error(message)
+            raise ValueError(message)
+
         self.monitoring_schedule_name = self._generate_monitoring_schedule_name(
             schedule_name=monitor_schedule_name
         )
 
-        normalized_endpoint_input = self._normalize_endpoint_input(endpoint_input=endpoint_input)
+        if batch_transform_input is not None:
+            normalized_monitoring_input = batch_transform_input._to_request_dict()
+        else:
+            normalized_monitoring_input = self._normalize_endpoint_input(
+                endpoint_input=endpoint_input
+            )._to_request_dict()
 
         normalized_monitoring_output = self._normalize_monitoring_output_fields(output=output)
 
@@ -301,7 +325,7 @@ class ModelMonitor(object):
             schedule_expression=schedule_cron_expression,
             statistics_s3_uri=statistics_s3_uri,
             constraints_s3_uri=constraints_s3_uri,
-            monitoring_inputs=[normalized_endpoint_input._to_request_dict()],
+            monitoring_inputs=[normalized_monitoring_input],
             monitoring_output_config=monitoring_output_config,
             instance_count=self.instance_count,
             instance_type=self.instance_type,
@@ -1498,7 +1522,7 @@ class DefaultModelMonitor(ModelMonitor):
 
     def create_monitoring_schedule(
         self,
-        endpoint_input,
+        endpoint_input=None,
         record_preprocessor_script=None,
         post_analytics_processor_script=None,
         output_s3_uri=None,
@@ -1507,6 +1531,7 @@ class DefaultModelMonitor(ModelMonitor):
         monitor_schedule_name=None,
         schedule_cron_expression=None,
         enable_cloudwatch_metrics=True,
+        batch_transform_input=None,
     ):
         """Creates a monitoring schedule to monitor an Amazon SageMaker Endpoint.
 
@@ -1517,7 +1542,7 @@ class DefaultModelMonitor(ModelMonitor):
 
         Args:
             endpoint_input (str or sagemaker.model_monitor.EndpointInput): The endpoint to monitor.
-                This can either be the endpoint name or an EndpointInput.
+                This can either be the endpoint name or an EndpointInput. (default: None)
             record_preprocessor_script (str): The path to the record preprocessor script. This can
                 be a local path or an S3 uri.
             post_analytics_processor_script (str): The path to the record post-analytics processor
@@ -1540,12 +1565,23 @@ class DefaultModelMonitor(ModelMonitor):
                 expressions. Default: Daily.
             enable_cloudwatch_metrics (bool): Whether to publish cloudwatch metrics as part of
                 the baselining or monitoring jobs.
+            batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to
+                run the monitoring schedule on the batch transform (default: None)
         """
         if self.job_definition_name is not None or self.monitoring_schedule_name is not None:
             message = (
                 "It seems that this object was already used to create an Amazon Model "
                 "Monitoring Schedule. To create another, first delete the existing one "
                 "using my_monitor.delete_monitoring_schedule()."
+            )
+            _LOGGER.error(message)
+            raise ValueError(message)
+
+        if (batch_transform_input is not None) ^ (endpoint_input is None):
+            message = (
+                "Need to have either batch_transform_input or endpoint_input to create an "
+                "Amazon Model Monitoring Schedule. "
+                "Please provide only one of the above required inputs"
             )
             _LOGGER.error(message)
             raise ValueError(message)
@@ -1579,6 +1615,7 @@ class DefaultModelMonitor(ModelMonitor):
             env=self.env,
             tags=self.tags,
             network_config=self.network_config,
+            batch_transform_input=batch_transform_input,
         )
         self.sagemaker_session.sagemaker_client.create_data_quality_job_definition(**request_dict)
 
@@ -1804,6 +1841,7 @@ class DefaultModelMonitor(ModelMonitor):
         max_runtime_in_seconds=None,
         env=None,
         network_config=None,
+        batch_transform_input=None,
     ):
         """Updates the existing monitoring schedule.
 
@@ -1844,6 +1882,8 @@ class DefaultModelMonitor(ModelMonitor):
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
+            batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to
+                run the monitoring schedule on the batch transform (default: None)
         """
         valid_args = {
             arg: value for arg, value in locals().items() if arg != "self" and value is not None
@@ -1885,6 +1925,7 @@ class DefaultModelMonitor(ModelMonitor):
             env=env,
             tags=self.tags,
             network_config=network_config,
+            batch_transform_input=batch_transform_input,
         )
         self.sagemaker_session.sagemaker_client.create_data_quality_job_definition(**request_dict)
         try:
@@ -2132,6 +2173,7 @@ class DefaultModelMonitor(ModelMonitor):
         env=None,
         tags=None,
         network_config=None,
+        batch_transform_input=None,
     ):
         """Build the request for job definition creation API
 
@@ -2169,6 +2211,8 @@ class DefaultModelMonitor(ModelMonitor):
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
+            batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to
+            run the monitoring schedule on the batch transform
 
         Returns:
             dict: request parameters to create job definition.
@@ -2247,6 +2291,8 @@ class DefaultModelMonitor(ModelMonitor):
                 endpoint_input=endpoint_input
             )
             job_input = normalized_endpoint_input._to_request_dict()
+        elif batch_transform_input is not None:
+            job_input = batch_transform_input._to_request_dict()
 
         # job output
         if output_s3_uri is not None:
@@ -2518,9 +2564,9 @@ class ModelQualityMonitor(ModelMonitor):
     # noinspection PyMethodOverriding
     def create_monitoring_schedule(
         self,
-        endpoint_input,
-        ground_truth_input,
-        problem_type,
+        endpoint_input=None,
+        ground_truth_input=None,
+        problem_type=None,
         record_preprocessor_script=None,
         post_analytics_processor_script=None,
         output_s3_uri=None,
@@ -2528,15 +2574,19 @@ class ModelQualityMonitor(ModelMonitor):
         monitor_schedule_name=None,
         schedule_cron_expression=None,
         enable_cloudwatch_metrics=True,
+        batch_transform_input=None,
     ):
         """Creates a monitoring schedule.
 
         Args:
             endpoint_input (str or sagemaker.model_monitor.EndpointInput): The endpoint to
                 monitor. This can either be the endpoint name or an EndpointInput.
+                (default: None)
             ground_truth_input (str): S3 URI to ground truth dataset.
+                (default: None)
             problem_type (str): The type of problem of this model quality monitoring. Valid
                 values are "Regression", "BinaryClassification", "MulticlassClassification".
+                (default: None)
             record_preprocessor_script (str): The path to the record preprocessor script. This can
                 be a local path or an S3 uri.
             post_analytics_processor_script (str): The path to the record post-analytics processor
@@ -2553,12 +2603,31 @@ class ModelQualityMonitor(ModelMonitor):
                 expressions. Default: Daily.
             enable_cloudwatch_metrics (bool): Whether to publish cloudwatch metrics as part of
                 the baselining or monitoring jobs.
+            batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to
+                run the monitoring schedule on the batch transform
         """
+        # we default below two parameters to None in the function signature
+        # but verify they are giving here for positional argument
+        # backward compatibility reason.
+        if not ground_truth_input:
+            raise ValueError("ground_truth_input can not be None.")
+        if not problem_type:
+            raise ValueError("problem_type can not be None.")
+
         if self.job_definition_name is not None or self.monitoring_schedule_name is not None:
             message = (
                 "It seems that this object was already used to create an Amazon Model "
                 "Monitoring Schedule. To create another, first delete the existing one "
                 "using my_monitor.delete_monitoring_schedule()."
+            )
+            _LOGGER.error(message)
+            raise ValueError(message)
+
+        if (batch_transform_input is not None) ^ (endpoint_input is None):
+            message = (
+                "Need to have either batch_transform_input or endpoint_input to create an "
+                "Amazon Model Monitoring Schedule. "
+                "Please provide only one of the above required inputs"
             )
             _LOGGER.error(message)
             raise ValueError(message)
@@ -2593,6 +2662,7 @@ class ModelQualityMonitor(ModelMonitor):
             env=self.env,
             tags=self.tags,
             network_config=self.network_config,
+            batch_transform_input=batch_transform_input,
         )
         self.sagemaker_session.sagemaker_client.create_model_quality_job_definition(**request_dict)
 
@@ -2637,6 +2707,7 @@ class ModelQualityMonitor(ModelMonitor):
         max_runtime_in_seconds=None,
         env=None,
         network_config=None,
+        batch_transform_input=None,
     ):
         """Updates the existing monitoring schedule.
 
@@ -2679,6 +2750,8 @@ class ModelQualityMonitor(ModelMonitor):
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
+            batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to
+                run the monitoring schedule on the batch transform
         """
         valid_args = {
             arg: value for arg, value in locals().items() if arg != "self" and value is not None
@@ -2721,6 +2794,7 @@ class ModelQualityMonitor(ModelMonitor):
             env=env,
             tags=self.tags,
             network_config=network_config,
+            batch_transform_input=batch_transform_input,
         )
         self.sagemaker_session.sagemaker_client.create_model_quality_job_definition(**request_dict)
         try:
@@ -2832,6 +2906,7 @@ class ModelQualityMonitor(ModelMonitor):
         env=None,
         tags=None,
         network_config=None,
+        batch_transform_input=None,
     ):
         """Build the request for job definition creation API
 
@@ -2872,6 +2947,8 @@ class ModelQualityMonitor(ModelMonitor):
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
+            batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to
+                run the monitoring schedule on the batch transform
 
         Returns:
             dict: request parameters to create job definition.
@@ -2947,6 +3024,9 @@ class ModelQualityMonitor(ModelMonitor):
                 endpoint_input=endpoint_input
             )
             job_input = normalized_endpoint_input._to_request_dict()
+        elif batch_transform_input is not None:
+            job_input = batch_transform_input._to_request_dict()
+
         if ground_truth_input is not None:
             job_input["GroundTruthS3Input"] = dict(S3Uri=ground_truth_input)
 
@@ -3380,6 +3460,123 @@ class EndpointInput(object):
 
         endpoint_input_request = {"EndpointInput": endpoint_input}
         return endpoint_input_request
+
+
+@attr.s
+class MonitoringInput(object):
+    """Accepts parameters specifying batch transform or endpoint inputs for monitoring execution.
+
+    MonitoringInput accepts parameters that specify additional parameters while monitoring jobs.
+    It also provides a method to turn those parameters into a dictionary.
+
+    Args:
+        start_time_offset (str): Monitoring start time offset, e.g. "-PT1H"
+        end_time_offset (str): Monitoring end time offset, e.g. "-PT0H".
+        features_attribute (str): JSONpath to locate features in JSONlines dataset.
+            Only used for ModelBiasMonitor and ModelExplainabilityMonitor
+        inference_attribute (str): Index or JSONpath to locate predicted label(s).
+            Only used for ModelQualityMonitor, ModelBiasMonitor, and ModelExplainabilityMonitor
+        probability_attribute (str): Index or JSONpath to locate probabilities.
+            Only used for ModelQualityMonitor, ModelBiasMonitor and ModelExplainabilityMonitor
+        probability_threshold_attribute (float): threshold to convert probabilities to binaries
+            Only used for ModelQualityMonitor, ModelBiasMonitor and ModelExplainabilityMonitor
+    """
+
+    start_time_offset: str = attr.ib()
+    end_time_offset: str = attr.ib()
+    features_attribute: str = attr.ib()
+    inference_attribute: str = attr.ib()
+    probability_attribute: Union[str, int] = attr.ib()
+    probability_threshold_attribute: float = attr.ib()
+
+
+class BatchTransformInput(MonitoringInput):
+    """Accepts parameters that specify a batch transform input for monitoring schedule.
+
+    It also provides a method to turn those parameters into a dictionary.
+    """
+
+    def __init__(
+        self,
+        data_captured_destination_s3_uri: str,
+        destination: str,
+        dataset_format: MonitoringDatasetFormat,
+        s3_input_mode: str = "File",
+        s3_data_distribution_type: str = "FullyReplicated",
+        start_time_offset: str = None,
+        end_time_offset: str = None,
+        features_attribute: str = None,
+        inference_attribute: str = None,
+        probability_attribute: str = None,
+        probability_threshold_attribute: str = None,
+    ):
+        """Initialize a `BatchTransformInput` instance.
+
+        Args:
+            data_captured_destination_s3_uri (str): Location to the batch transform captured data
+                file which needs to be analysed.
+            destination (str): The destination of the input.
+            s3_input_mode (str): The S3 input mode. Can be one of: "File", "Pipe. (default: File)
+            s3_data_distribution_type (str): The S3 Data Distribution Type. Can be one of:
+                "FullyReplicated", "ShardedByS3Key" (default: FullyReplicated)
+            start_time_offset (str): Monitoring start time offset, e.g. "-PT1H" (default: None)
+            end_time_offset (str): Monitoring end time offset, e.g. "-PT0H". (default: None)
+            features_attribute (str): JSONpath to locate features in JSONlines dataset.
+                Only used for ModelBiasMonitor and ModelExplainabilityMonitor (default: None)
+            inference_attribute (str): Index or JSONpath to locate predicted label(s).
+                Only used for ModelQualityMonitor, ModelBiasMonitor, and ModelExplainabilityMonitor
+                (default: None)
+            probability_attribute (str): Index or JSONpath to locate probabilities.
+                Only used for ModelQualityMonitor, ModelBiasMonitor and ModelExplainabilityMonitor
+                (default: None)
+            probability_threshold_attribute (float): threshold to convert probabilities to binaries
+                Only used for ModelQualityMonitor, ModelBiasMonitor and ModelExplainabilityMonitor
+                (default: None)
+
+        """
+        self.data_captured_destination_s3_uri = data_captured_destination_s3_uri
+        self.destination = destination
+        self.s3_input_mode = s3_input_mode
+        self.s3_data_distribution_type = s3_data_distribution_type
+        self.dataset_format = dataset_format
+
+        super(BatchTransformInput, self).__init__(
+            start_time_offset=start_time_offset,
+            end_time_offset=end_time_offset,
+            features_attribute=features_attribute,
+            inference_attribute=inference_attribute,
+            probability_attribute=probability_attribute,
+            probability_threshold_attribute=probability_threshold_attribute,
+        )
+
+    def _to_request_dict(self):
+        """Generates a request dictionary using the parameters provided to the class."""
+        batch_transform_input_data = {
+            "DataCapturedDestinationS3Uri": self.data_captured_destination_s3_uri,
+            "LocalPath": self.destination,
+            "S3InputMode": self.s3_input_mode,
+            "S3DataDistributionType": self.s3_data_distribution_type,
+            "DatasetFormat": self.dataset_format,
+        }
+
+        if self.start_time_offset is not None:
+            batch_transform_input_data["StartTimeOffset"] = self.start_time_offset
+        if self.end_time_offset is not None:
+            batch_transform_input_data["EndTimeOffset"] = self.end_time_offset
+        if self.features_attribute is not None:
+            batch_transform_input_data["FeaturesAttribute"] = self.features_attribute
+        if self.inference_attribute is not None:
+            batch_transform_input_data["InferenceAttribute"] = self.inference_attribute
+        if self.probability_attribute is not None:
+            batch_transform_input_data["ProbabilityAttribute"] = self.probability_attribute
+        if self.probability_threshold_attribute is not None:
+            batch_transform_input_data[
+                "ProbabilityThresholdAttribute"
+            ] = self.probability_threshold_attribute
+
+        batch_transform_input_request = {"BatchTransformInput": batch_transform_input_data}
+
+        return batch_transform_input_request
 
 
 class MonitoringOutput(object):
