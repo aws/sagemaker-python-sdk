@@ -26,7 +26,12 @@ from mock import (
 )
 
 from sagemaker.estimator import Estimator
-from sagemaker.workflow._utils import _RepackModelStep, _RegisterModelStep
+from sagemaker.workflow._utils import (
+    _RepackModelStep,
+    _RegisterModelStep,
+    REPACK_SCRIPT,
+    REPACK_SCRIPT_LAUNCHER,
+)
 from sagemaker.workflow.properties import Properties
 from tests.unit.test_utils import FakeS3, list_tar_files
 from tests.unit import DATA_DIR
@@ -115,14 +120,19 @@ def test_repack_model_step(estimator):
         depends_on=["TestStep"],
     )
     request_dict = step.to_request()
+    # No source_dir supplied to _RepackModelStep
+    # so a temp dir will be created and
+    # the repack script and launcher files will be moved/created there
+    assert os.path.isfile(f"{step._source_dir}/{REPACK_SCRIPT}")
+    assert os.path.isfile(f"{step._source_dir}/{REPACK_SCRIPT_LAUNCHER}")
 
     hyperparameters = request_dict["Arguments"]["HyperParameters"]
     assert hyperparameters["inference_script"] == '"dummy_script.py"'
     assert hyperparameters["model_archive"] == '"s3://my-bucket/model.tar.gz"'
-    assert hyperparameters["sagemaker_program"] == '"_repack_model.py"'
+    assert hyperparameters["sagemaker_program"] == f'"{REPACK_SCRIPT_LAUNCHER}"'
     assert (
         hyperparameters["sagemaker_submit_directory"]
-        == '"s3://my-bucket/MyRepackModelStep-1be10316814854973ed1b445db3ef84e/source/sourcedir.tar.gz"'
+        == '"s3://my-bucket/MyRepackModelStep-b5ea77f701b47a8d075605497462ccc2/source/sourcedir.tar.gz"'
     )
 
     del request_dict["Arguments"]["HyperParameters"]
@@ -195,14 +205,17 @@ def test_repack_model_step_with_source_dir(estimator, source_dir):
         source_dir=source_dir,
     )
     request_dict = step.to_request()
-    assert os.path.isfile(f"{source_dir}/_repack_model.py")
+    # The repack script and launcher files will be moved/created to
+    # the specified source_dir
+    assert os.path.isfile(f"{source_dir}/{REPACK_SCRIPT}")
+    assert os.path.isfile(f"{source_dir}/{REPACK_SCRIPT_LAUNCHER}")
 
     hyperparameters = request_dict["Arguments"]["HyperParameters"]
     assert hyperparameters["inference_script"] == '"inference.py"'
     assert hyperparameters["model_archive"].expr == {
         "Std:Join": {"On": "", "Values": [{"Get": "Steps.MyStep"}]}
     }
-    assert hyperparameters["sagemaker_program"] == '"_repack_model.py"'
+    assert hyperparameters["sagemaker_program"] == f'"{REPACK_SCRIPT_LAUNCHER}"'
 
     del request_dict["Arguments"]["HyperParameters"]
     del request_dict["Arguments"]["AlgorithmSpecification"]["TrainingImage"]
@@ -250,7 +263,6 @@ def fake_s3(tmp):
 
 
 def test_inject_repack_script_s3(estimator, tmp, fake_s3):
-
     create_file_tree(
         tmp,
         [
@@ -274,12 +286,13 @@ def test_inject_repack_script_s3(estimator, tmp, fake_s3):
 
     fake_s3.tar_and_upload("model-dir", "s3://fake/location")
 
-    step._inject_repack_script()
+    step._prepare_for_repacking()
 
     assert list_tar_files(fake_s3.fake_upload_path, tmp) == {
         "/aa",
         "/foo/inference.py",
-        "/_repack_model.py",
+        f"/{REPACK_SCRIPT}",
+        f"/{REPACK_SCRIPT_LAUNCHER}",
     }
 
 

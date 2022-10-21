@@ -12,7 +12,9 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import os
 import re
+import tarfile
 
 import boto3
 from six.moves.urllib.parse import urlparse
@@ -43,3 +45,14 @@ def assert_s3_file_patterns_exist(sagemaker_session, s3_url, file_patterns):
         found = [x["Key"] for x in contents if search_pattern.search(x["Key"])]
         if not found:
             raise ValueError("File {} is not found under {}".format(pattern, s3_url))
+
+
+def extract_files_from_s3(s3_url, tmpdir, sagemaker_session):
+    parsed_url = urlparse(s3_url)
+    s3 = boto3.resource("s3", region_name=sagemaker_session.boto_region_name)
+
+    model = os.path.join(tmpdir, "model")
+    s3.Bucket(parsed_url.netloc).download_file(parsed_url.path.lstrip("/"), model)
+
+    with tarfile.open(model, "r") as tar_file:
+        tar_file.extractall(tmpdir)
