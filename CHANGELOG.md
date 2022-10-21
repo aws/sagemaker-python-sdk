@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.113.0 (2022-10-21)
+
+### Features
+
+ * support torch_distributed distribution for Trainium instances
+
+### Bug Fixes and Other Changes
+
+ * bump apache-airflow from 2.4.0 to 2.4.1 in /requirements/extras
+
+### Documentation Changes
+
+ * fix kwargs and descriptions of the smdmp checkpoint function
+ * add the doc for the MonitorBatchTransformStep
+
 ## v2.112.2 (2022-10-11)
 
 ### Bug Fixes and Other Changes
