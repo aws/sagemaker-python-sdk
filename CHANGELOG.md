@@ -1,5 +1,85 @@
 # Changelog
 
+## v2.113.0 (2022-10-21)
+
+### Features
+
+ * support torch_distributed distribution for Trainium instances
+
+### Bug Fixes and Other Changes
+
+ * bump apache-airflow from 2.4.0 to 2.4.1 in /requirements/extras
+
+### Documentation Changes
+
+ * fix kwargs and descriptions of the smdmp checkpoint function
+ * add the doc for the MonitorBatchTransformStep
+
+## v2.112.2 (2022-10-11)
+
+### Bug Fixes and Other Changes
+
+ * Update Neo-TF2.x versions to TF2.9(.2)
+
+### Documentation Changes
+
+ * fix typo in PR template
+
+## v2.112.1 (2022-10-10)
+
+### Bug Fixes and Other Changes
+
+ * fix(local-mode): loosen docker requirement to allow 6.0.0
+ * CreateModelPackage API error for Scikit-learn and XGBoost frameworkss
+
+## v2.112.0 (2022-10-09)
+
+### Features
+
+ * added monitor batch transform step (pipeline)
+
+### Bug Fixes and Other Changes
+
+ * Add PipelineVariable annotation to framework estimators
+
+## v2.111.0 (2022-10-05)
+
+### Features
+
+ * Edit test file for supporting TF 2.10 training
+
+### Bug Fixes and Other Changes
+
+ * support kms key in processor pack local code
+ * security issue by bumping apache-airflow from 2.3.4 to 2.4.0
+ * instance count retrieval logic
+ * Add regex for short-form sagemaker-xgboost tags
+ * Upgrade attrs>=20.3.0,<23
+ * Add PipelineVariable annotation to Amazon estimators
+
+### Documentation Changes
+
+ * add context for pytorch
+
+## v2.110.0 (2022-09-27)
+
+### Features
+
+ * Support KeepAlivePeriodInSeconds for Training APIs
+ * added ANALYSIS_CONFIG_SCHEMA_V1_0 in clarify
+ * add model monitor image accounts for ap-southeast-3
+
+### Bug Fixes and Other Changes
+
+ * huggingface release test
+ * Fixing the logic to return instanceCount for heterogeneousClusters
+ * Disable type hints in doc signature and add PipelineVariable annotations in docstring
+ * estimator hyperparameters in script mode
+
+### Documentation Changes
+
+ * Added link to example notebook for Pipelines local mode
+
 ## v2.109.0 (2022-09-09)
 
 ### Features

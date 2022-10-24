@@ -69,6 +69,7 @@ TIME = 1510006209.073025
 BUCKET_NAME = "mybucket"
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = "c4.4xlarge"
+KEEP_ALIVE_PERIOD_IN_SECONDS = 1800
 ACCELERATOR_TYPE = "ml.eia.medium"
 ROLE = "DummyRole"
 IMAGE_URI = "fakeimage"
@@ -349,6 +350,23 @@ def test_framework_with_heterogeneous_cluster(sagemaker_session):
         "InstanceCount": 2,
         "InstanceType": "ml.m4.xlarge",
     }
+
+
+def test_framework_with_keep_alive_period(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+        keep_alive_period_in_seconds=KEEP_ALIVE_PERIOD_IN_SECONDS,
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args["resource_config"]["KeepAlivePeriodInSeconds"] == KEEP_ALIVE_PERIOD_IN_SECONDS
 
 
 def test_framework_with_debugger_and_built_in_rule(sagemaker_session):

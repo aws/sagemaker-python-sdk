@@ -729,7 +729,7 @@ smdistributed.modelparallel.torch APIs for Saving and Loading
    * ``num_kept_partial_checkpoints`` (int) (default: None): The maximum number
      of partial checkpoints to keep on disk.
 
-.. function:: smdistributed.modelparallel.torch.resume_from_checkpoint(path, tag=None, partial=True, strict=True, load_optimizer_states=True, translate_function=None)
+.. function:: smdistributed.modelparallel.torch.resume_from_checkpoint(path, tag=None, partial=True, strict=True, load_optimizer=True, load_sharded_optimizer_state=True, translate_function=None)
 
    While :class:`smdistributed.modelparallel.torch.load` loads saved
    model and optimizer objects, this function resumes from a saved checkpoint file.
@@ -742,7 +742,16 @@ smdistributed.modelparallel.torch APIs for Saving and Loading
    * ``partial`` (boolean) (default: True): Whether to load the partial checkpoint.
    * ``strict`` (boolean) (default: True): Load with strict load, no extra key or
      missing key is allowed.
-   * ``load_optimizer_states`` (boolean) (default: True): Whether to load ``optimizer_states``.
+   * ``load_optimizer`` (boolean) (default: True): Whether to load ``optimizer``.
+   * ``load_sharded_optimizer_state`` (boolean) (default: True): Whether to load
+     the sharded optimizer state of a model.
+     It can be used only when you activate
+     the `sharded data parallelism
+     <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-sharded-data-parallelism.html>`_
+     feature of the SageMaker model parallel library.
+     When this is ``False``, the library only loads the FP16
+     states, such as FP32 master parameters and the loss scaling factor,
+     not the sharded optimizer states.
    * ``translate_function`` (function) (default: None): function to translate the full
      checkpoint into smdistributed.modelparallel format.
      For supported models, this is not required.

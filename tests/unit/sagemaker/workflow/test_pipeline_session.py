@@ -50,7 +50,7 @@ def test_pipeline_session_init(sagemaker_client_config, boto_session):
         sagemaker_client=sagemaker_client,
     )
     assert sess.sagemaker_client is not None
-    assert sess.default_bucket() is not None
+    assert sess.default_bucket is not None
     assert sess.context is None
 
 
