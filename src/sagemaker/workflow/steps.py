@@ -1038,8 +1038,8 @@ class TuningStep(ConfigurableRetryStep):
             request_dict = tuner.sagemaker_session.context.args
         else:
             # Pass a pre-defined job name to the estimator in cases where
-            # the training jobs are created from a parent tuning job, so
-            # problems with output model paths are avoided
+            # the training jobs are created from a parent tuning job, to
+            # avoid problems with output model paths
             if self.tuner.estimator is not None:
                 self.tuner.estimator._prepare_for_training(
                     f"{self.tuner.estimator._get_or_create_name()}"
