@@ -1048,8 +1048,7 @@ class TuningStep(ConfigurableRetryStep):
             else:
                 for estimator_name, estimator in self.tuner.estimator_dict.items():
                     estimator._prepare_for_training(
-                        f"{self.tuner.estimator._get_or_create_name()}"
-                        f"-{HyperparameterTuner.PARENT_TUNER_CONTEXT}"
+                        f"{estimator_name}" f"-{HyperparameterTuner.PARENT_TUNER_CONTEXT}"
                     )
 
             self.tuner._prepare_for_tuning()
