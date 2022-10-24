@@ -85,8 +85,6 @@ from sagemaker.workflow.pipeline_context import (
     PipelineSession,
     runnable_by_pipeline,
 )
-from sagemaker.workflow.execution_variables import ExecutionVariables
-from sagemaker.workflow.functions import Join
 
 logger = logging.getLogger(__name__)
 
@@ -692,9 +690,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 specified, one is generated, using the base name given to the
                 constructor if applicable.
         """
-        from sagemaker.workflow.utilities import _pipeline_config
-        from sagemaker.tuner import HyperparameterTuner
-
         self._current_job_name = self._get_or_create_name(job_name)
 
         # if output_path was specified we use it otherwise initialize here.
@@ -704,23 +699,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             if self.sagemaker_session.local_mode and local_code:
                 self.output_path = ""
             else:
-                if (
-                    _pipeline_config
-                    and HyperparameterTuner.PARENT_TUNER_CONTEXT not in self._current_job_name
-                ):
-                    self.output_path = Join(
-                        on="/",
-                        values=[
-                            "s3:/",
-                            self.sagemaker_session.default_bucket(),
-                            _pipeline_config.pipeline_name,
-                            ExecutionVariables.PIPELINE_EXECUTION_ID,
-                            _pipeline_config.step_name,
-                            "output",
-                        ],
-                    )
-                else:
-                    self.output_path = "s3://{}/".format(self.sagemaker_session.default_bucket())
+                self.output_path = "s3://{}/".format(self.sagemaker_session.default_bucket())
 
         if self.git_config:
             updated_paths = git_utils.git_clone_repo(

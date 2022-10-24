@@ -1037,19 +1037,11 @@ class TuningStep(ConfigurableRetryStep):
             tuner = self.step_args.func_args[0]
             request_dict = tuner.sagemaker_session.context.args
         else:
-            # Pass a pre-defined job name to the estimator in cases where
-            # the training jobs are created from a parent tuning job, to
-            # avoid problems with output model paths
             if self.tuner.estimator is not None:
-                self.tuner.estimator._prepare_for_training(
-                    f"{self.tuner.estimator._get_or_create_name()}"
-                    f"-{HyperparameterTuner.PARENT_TUNER_CONTEXT}"
-                )
+                self.tuner.estimator._prepare_for_training()
             else:
-                for estimator_name, estimator in self.tuner.estimator_dict.items():
-                    estimator._prepare_for_training(
-                        f"{estimator_name}" f"-{HyperparameterTuner.PARENT_TUNER_CONTEXT}"
-                    )
+                for _, estimator in self.tuner.estimator_dict.items():
+                    estimator._prepare_for_training()
 
             self.tuner._prepare_for_tuning()
             tuner_args = _TuningJob._get_tuner_args(self.tuner, self.inputs)

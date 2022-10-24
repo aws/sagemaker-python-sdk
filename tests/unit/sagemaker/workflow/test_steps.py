@@ -449,21 +449,7 @@ def test_training_step_tensorflow(sagemaker_session):
                 "TrainingImage": "fakeimage",
                 "EnableSageMakerMetricsTimeSeries": True,
             },
-            "OutputDataConfig": {
-                "S3OutputPath": {
-                    "Std:Join": {
-                        "On": "/",
-                        "Values": [
-                            "s3:/",
-                            "my-bucket",
-                            "MyPipeline",
-                            {"Get": "Execution.PipelineExecutionId"},
-                            "MyTrainingStep",
-                            "output",
-                        ],
-                    }
-                }
-            },
+            "OutputDataConfig": {"S3OutputPath": "s3://my-bucket/"},
             "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
             "ResourceConfig": {
                 "InstanceCount": {"Get": "Parameters.InstanceCount"},
@@ -497,21 +483,7 @@ def test_training_step_tensorflow(sagemaker_session):
                 "sagemaker_instance_type": {"Get": "Parameters.InstanceType"},
                 "sagemaker_distributed_dataparallel_custom_mpi_options": '""',
             },
-            "ProfilerConfig": {
-                "S3OutputPath": {
-                    "Std:Join": {
-                        "On": "/",
-                        "Values": [
-                            "s3:/",
-                            "my-bucket",
-                            "MyPipeline",
-                            {"Get": "Execution.PipelineExecutionId"},
-                            "MyTrainingStep",
-                            "output",
-                        ],
-                    }
-                }
-            },
+            "ProfilerConfig": {"S3OutputPath": "s3://my-bucket/"},
             "Environment": {DEBUGGER_FLAG: "0"},
         },
         "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
