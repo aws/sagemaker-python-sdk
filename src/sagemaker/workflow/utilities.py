@@ -112,9 +112,18 @@ def get_code_hash(step: Entity) -> str:
     from sagemaker.workflow.steps import ProcessingStep, TrainingStep
 
     if isinstance(step, ProcessingStep) and step.step_args:
-        source_dir = step.step_args.func_kwargs.get("source_dir")
-        dependencies = step.step_args.func_kwargs.get("dependencies")
-        code = step.step_args.func_kwargs.get("code")
+        kwargs = step.step_args.func_kwargs
+        source_dir = kwargs.get("source_dir")
+        dependencies = get_processing_dependencies(
+            [
+                kwargs.get("dependencies"),
+                kwargs.get("submit_py_files"),
+                kwargs.get("submit_class"),
+                kwargs.get("submit_jars"),
+                kwargs.get("submit_files"),
+            ]
+        )
+        code = kwargs.get("submit_app") or kwargs.get("code")
 
         return get_processing_code_hash(code, source_dir, dependencies)
 
@@ -126,6 +135,23 @@ def get_code_hash(step: Entity) -> str:
 
         return get_training_code_hash(entry_point, source_dir, dependencies)
     return None
+
+
+def get_processing_dependencies(dependency_args: List[List[str]]) -> List[str]:
+    """Get the Processing job dependencies from the processor run kwargs
+
+    Args:
+        dependency_args: A list of dependency args from processor.run()
+    Returns:
+        List[str]: A list of code dependencies for the job
+    """
+
+    dependencies = []
+    for arg in dependency_args:
+        if arg:
+            dependencies += arg
+
+    return dependencies
 
 
 def get_processing_code_hash(code: str, source_dir: str, dependencies: List[str]) -> str:
@@ -142,14 +168,16 @@ def get_processing_code_hash(code: str, source_dir: str, dependencies: List[str]
         str: A hash string representing the unique code artifact(s) for the step
     """
 
+    # FrameworkProcessor
     if source_dir:
         source_dir_url = urlparse(source_dir)
         if source_dir_url.scheme == "" or source_dir_url.scheme == "file":
             return hash_files_or_dirs([source_dir] + dependencies)
+    # Other Processors - Spark, Script, Base, etc.
     if code:
         code_url = urlparse(code)
         if code_url.scheme == "" or code_url.scheme == "file":
-            return hash_file(code)
+            return hash_files_or_dirs([code] + dependencies)
     return None
 
 

@@ -1205,21 +1205,7 @@ def test_single_algo_tuning_step(sagemaker_session):
                     "augmentation_type": "crop",
                 },
                 "RoleArn": "DummyRole",
-                "OutputDataConfig": {
-                    "S3OutputPath": {
-                        "Std:Join": {
-                            "On": "/",
-                            "Values": [
-                                "s3:/",
-                                "my-bucket",
-                                "MyPipeline",
-                                {"Get": "Execution.PipelineExecutionId"},
-                                "MyTuningStep",
-                                "output",
-                            ],
-                        }
-                    }
-                },
+                "OutputDataConfig": {"S3OutputPath": "s3://my-bucket/"},
                 "ResourceConfig": {
                     "InstanceCount": 1,
                     "InstanceType": "ml.c5.4xlarge",
@@ -1371,21 +1357,7 @@ def test_multi_algo_tuning_step(sagemaker_session):
                         "augmentation_type": "crop",
                     },
                     "RoleArn": "DummyRole",
-                    "OutputDataConfig": {
-                        "S3OutputPath": {
-                            "Std:Join": {
-                                "On": "/",
-                                "Values": [
-                                    "s3:/",
-                                    "my-bucket",
-                                    "MyPipeline",
-                                    {"Get": "Execution.PipelineExecutionId"},
-                                    "MyTuningStep",
-                                    "output",
-                                ],
-                            }
-                        }
-                    },
+                    "OutputDataConfig": {"S3OutputPath": "s3://my-bucket/"},
                     "ResourceConfig": {
                         "InstanceCount": {"Get": "Parameters.InstanceCount"},
                         "InstanceType": "ml.c5.4xlarge",
@@ -1452,21 +1424,7 @@ def test_multi_algo_tuning_step(sagemaker_session):
                         "augmentation_type": "crop",
                     },
                     "RoleArn": "DummyRole",
-                    "OutputDataConfig": {
-                        "S3OutputPath": {
-                            "Std:Join": {
-                                "On": "/",
-                                "Values": [
-                                    "s3:/",
-                                    "my-bucket",
-                                    "MyPipeline",
-                                    {"Get": "Execution.PipelineExecutionId"},
-                                    "MyTuningStep",
-                                    "output",
-                                ],
-                            }
-                        }
-                    },
+                    "OutputDataConfig": {"S3OutputPath": "s3://my-bucket/"},
                     "ResourceConfig": {
                         "InstanceCount": {"Get": "Parameters.InstanceCount"},
                         "InstanceType": "ml.c5.4xlarge",

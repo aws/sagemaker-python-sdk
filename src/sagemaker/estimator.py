@@ -688,6 +688,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 constructor if applicable.
         """
         from sagemaker.workflow.utilities import _pipeline_config
+        from sagemaker.tuner import HyperparameterTuner
 
         self._current_job_name = self._get_or_create_name(job_name)
 
@@ -698,7 +699,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             if self.sagemaker_session.local_mode and local_code:
                 self.output_path = ""
             else:
-                if _pipeline_config:
+                if (
+                    _pipeline_config
+                    and HyperparameterTuner.PARENT_TUNER_CONTEXT not in self._current_job_name
+                ):
                     self.output_path = Join(
                         on="/",
                         values=[
@@ -835,6 +839,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         Assign new s3 path structure if within a pipeline workflow that has
             set the _pipeline_config and respective name/hash variables
+
+        Args:
+            key_prefix (str): Prefix for the S3 key, often netloc of url:
+            https://docs.python.org/3.9/library/urllib.parse.html#urllib.parse.netloc
+
+        Returns:
+            str: S3 path prefix that occurs before filename
         """
         from sagemaker.workflow.utilities import _pipeline_config
 
@@ -1569,7 +1580,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             model_uri = os.path.join(
                 self.output_path, self._current_job_name, "output", "model.tar.gz"
             )
-
         return model_uri
 
     @abstractmethod

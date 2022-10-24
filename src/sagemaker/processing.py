@@ -539,7 +539,8 @@ class ScriptProcessor(Processor):
         """
         logger.warning(
             "This function has been deprecated and could break pipeline step caching. "
-            "We recommend using the run() function directly with pipeline sessions to access step arguments."
+            "We recommend using the run() function directly with pipeline sessions"
+            "to access step arguments."
         )
         return RunArgs(code=code, inputs=inputs, outputs=outputs, arguments=arguments)
 
@@ -1544,6 +1545,12 @@ class FrameworkProcessor(ScriptProcessor):
             job_name (str): Processing job name. If not specified, the processor generates
                 a default job name, based on the base job name and current timestamp.
         """
+        logger.warning(
+            "This function has been deprecated and could break pipeline step caching. "
+            "We recommend using the run() function directly with pipeline sessions"
+            "to access step arguments."
+        )
+
         # When job_name is None, the job_name to upload code (+payload) will
         # differ from job_name used by run().
         s3_runproc_sh, inputs, job_name = self._pack_and_upload_code(

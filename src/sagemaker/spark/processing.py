@@ -455,11 +455,6 @@ class _SparkProcessorBase(ScriptProcessor):
         if not input_channel_name:
             raise ValueError("input_channel_name value may not be empty.")
 
-        input_channel_s3_uri = (
-            f"s3://{self.sagemaker_session.default_bucket()}"
-            f"/{self._current_job_name}/input/{input_channel_name}"
-        )
-
         use_input_channel = False
         spark_opt_s3_uris = []
         spark_opt_s3_uris_has_pipeline_var = False
@@ -493,6 +488,19 @@ class _SparkProcessorBase(ScriptProcessor):
 
             # If any local files were found and copied, upload the temp directory to S3
             if os.listdir(tmpdir):
+                from sagemaker.workflow.utilities import _pipeline_config
+
+                if _pipeline_config and _pipeline_config.code_hash:
+                    input_channel_s3_uri = (
+                        f"s3://{self.sagemaker_session.default_bucket()}"
+                        f"/{_pipeline_config.pipeline_name}/code/{input_channel_name}"
+                        f"/{_pipeline_config.code_hash}"
+                    )
+                else:
+                    input_channel_s3_uri = (
+                        f"s3://{self.sagemaker_session.default_bucket()}"
+                        f"/{self._current_job_name}/input/{input_channel_name}"
+                    )
                 logger.info(
                     "Uploading dependencies from tmpdir %s to S3 %s", tmpdir, input_channel_s3_uri
                 )

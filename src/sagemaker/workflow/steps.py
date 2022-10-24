@@ -431,7 +431,7 @@ class TrainingStep(ConfigurableRetryStep):
         self.cache_config = cache_config
 
         if self.cache_config:
-            if (self.step_args and "ProfilerConfig" in self.step_args) or (
+            if (self.step_args and "ProfilerConfig" in self.step_args.func_kwargs) or (
                 self.estimator is not None and not self.estimator.disable_profiler
             ):
                 msg = (
@@ -1036,11 +1036,20 @@ class TuningStep(ConfigurableRetryStep):
             tuner = self.step_args.func_args[0]
             request_dict = tuner.sagemaker_session.context.args
         else:
+            # Pass a pre-defined job name to the estimator in cases where
+            # the training jobs are created from a parent tuning job, so
+            # problems with output model paths are avoided
             if self.tuner.estimator is not None:
-                self.tuner.estimator._prepare_for_training()
+                self.tuner.estimator._prepare_for_training(
+                    f"{self.tuner.estimator._get_or_create_name()}"
+                    f"-{HyperparameterTuner.PARENT_TUNER_CONTEXT}"
+                )
             else:
-                for _, estimator in self.tuner.estimator_dict.items():
-                    estimator._prepare_for_training()
+                for estimator_name, estimator in self.tuner.estimator_dict.items():
+                    estimator._prepare_for_training(
+                        f"{self.tuner.estimator._get_or_create_name()}"
+                        f"-{HyperparameterTuner.PARENT_TUNER_CONTEXT}"
+                    )
 
             self.tuner._prepare_for_tuning()
             tuner_args = _TuningJob._get_tuner_args(self.tuner, self.inputs)

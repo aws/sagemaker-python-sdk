@@ -211,6 +211,8 @@ class HyperparameterTuner(object):
     DEFAULT_ESTIMATOR_MODULE = "sagemaker.estimator"
     DEFAULT_ESTIMATOR_CLS_NAME = "Estimator"
 
+    PARENT_TUNER_CONTEXT = "from_parent_tuner"
+
     def __init__(
         self,
         estimator: EstimatorBase,
