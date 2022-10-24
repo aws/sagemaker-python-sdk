@@ -132,6 +132,8 @@ Step Collections
 
 .. autoclass:: sagemaker.workflow.model_step.ModelStep
 
+.. autoclass:: sagemaker.workflow.monitor_batch_transform_step.MonitorBatchTransformStep
+
 Steps
 -----
 

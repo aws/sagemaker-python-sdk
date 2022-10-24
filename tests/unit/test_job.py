@@ -29,6 +29,7 @@ S3_OUTPUT_PATH = "s3://bucket/prefix"
 LOCAL_FILE_NAME = "file://local/file"
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = "c4.4xlarge"
+KEEP_ALIVE_PERIOD = 1800
 INSTANCE_GROUP = InstanceGroup("group", "ml.c4.xlarge", 1)
 VOLUME_SIZE = 1
 MAX_RUNTIME = 1
@@ -599,7 +600,7 @@ def test_prepare_output_config_kms_key_none():
 
 def test_prepare_resource_config():
     resource_config = _Job._prepare_resource_config(
-        INSTANCE_COUNT, INSTANCE_TYPE, None, VOLUME_SIZE, None
+        INSTANCE_COUNT, INSTANCE_TYPE, None, VOLUME_SIZE, None, None
     )
 
     assert resource_config == {
@@ -609,9 +610,23 @@ def test_prepare_resource_config():
     }
 
 
+def test_prepare_resource_config_with_keep_alive_period():
+    resource_config = _Job._prepare_resource_config(
+        INSTANCE_COUNT, INSTANCE_TYPE, None, VOLUME_SIZE, VOLUME_KMS_KEY, KEEP_ALIVE_PERIOD
+    )
+
+    assert resource_config == {
+        "InstanceCount": INSTANCE_COUNT,
+        "InstanceType": INSTANCE_TYPE,
+        "VolumeSizeInGB": VOLUME_SIZE,
+        "VolumeKmsKeyId": VOLUME_KMS_KEY,
+        "KeepAlivePeriodInSeconds": KEEP_ALIVE_PERIOD,
+    }
+
+
 def test_prepare_resource_config_with_volume_kms():
     resource_config = _Job._prepare_resource_config(
-        INSTANCE_COUNT, INSTANCE_TYPE, None, VOLUME_SIZE, VOLUME_KMS_KEY
+        INSTANCE_COUNT, INSTANCE_TYPE, None, VOLUME_SIZE, VOLUME_KMS_KEY, None
     )
 
     assert resource_config == {
@@ -628,6 +643,7 @@ def test_prepare_resource_config_with_heterogeneous_cluster():
         None,
         [InstanceGroup("group1", "ml.c4.xlarge", 1), InstanceGroup("group2", "ml.m4.xlarge", 2)],
         VOLUME_SIZE,
+        None,
         None,
     )
 
@@ -648,6 +664,7 @@ def test_prepare_resource_config_with_instance_groups_instance_type_instance_cou
             [INSTANCE_GROUP],
             VOLUME_SIZE,
             None,
+            None,
         )
     assert "instance_count and instance_type cannot be set when instance_groups is set" in str(
         error
@@ -661,6 +678,7 @@ def test_prepare_resource_config_with_instance_groups_instance_type_instance_cou
             None,
             None,
             VOLUME_SIZE,
+            None,
             None,
         )
     assert "instance_count and instance_type must be set if instance_groups is not set" in str(
