@@ -134,6 +134,13 @@ PYTORCHDDP_SUPPORTED_FRAMEWORK_VERSIONS = [
     "1.12.0",
 ]
 
+
+TORCH_DISTRIBUTED_SUPPORTED_FRAMEWORK_VERSIONS = ["1.11", "1.11.0"]
+
+
+TRAINIUM_SUPPORTED_DISTRIBUTION_STRATEGIES = ["torch_distributed"]
+
+
 SMDISTRIBUTED_SUPPORTED_STRATEGIES = ["dataparallel", "modelparallel"]
 
 
@@ -154,6 +161,12 @@ def validate_source_dir(script, directory):
             )
 
     return True
+
+
+GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY = ["c6g", "t4g", "r6g", "m6g"]
+
+
+GRAVITON_ALLOWED_FRAMEWORKS = set(["tensorflow", "pytorch"])
 
 
 def validate_source_code_input_against_pipeline_variables(
@@ -701,7 +714,13 @@ def _validate_smdataparallel_args(
 
 
 def validate_distribution(
-    distribution, instance_groups, framework_name, framework_version, py_version, image_uri, kwargs
+    distribution,
+    instance_groups,
+    framework_name,
+    framework_version,
+    py_version,
+    image_uri,
+    kwargs,
 ):
     """Check if distribution strategy is correctly invoked by the user.
 
@@ -767,6 +786,10 @@ def validate_distribution(
                     f"Invalid training instance group {train_instance_group.instance_group_name} !"
                 )
             instance_type = train_instance_group.instance_type
+            validate_distribution_for_instance_type(
+                instance_type=instance_type,
+                distribution=distribution,
+            )
             validate_smdistributed(
                 instance_type=instance_type,
                 framework_name=framework_name,
@@ -775,13 +798,23 @@ def validate_distribution(
                 distribution=distribution,
                 image_uri=image_uri,
             )
-            validate_pytorch_distribution(
-                distribution=distribution,
-                framework_name=framework_name,
-                framework_version=framework_version,
-                py_version=py_version,
-                image_uri=image_uri,
-            )
+            if framework_name and framework_name == "pytorch":
+                # We need to validate only for PyTorch framework
+                validate_pytorch_distribution(
+                    distribution=distribution,
+                    framework_name=framework_name,
+                    framework_version=framework_version,
+                    py_version=py_version,
+                    image_uri=image_uri,
+                )
+                validate_torch_distributed_distribution(
+                    instance_type=instance_type,
+                    distribution=distribution,
+                    framework_version=framework_version,
+                    py_version=py_version,
+                    image_uri=image_uri,
+                    entry_point=kwargs["entry_point"],
+                )
             warn_if_parameter_server_with_multi_gpu(
                 training_instance_type=instance_type, distribution=distribution
             )
@@ -793,6 +826,10 @@ def validate_distribution(
         instance_type = renamed_kwargs(
             "train_instance_type", "instance_type", kwargs.get("instance_type"), kwargs
         )
+        validate_distribution_for_instance_type(
+            instance_type=instance_type,
+            distribution=distribution,
+        )
         validate_smdistributed(
             instance_type=instance_type,
             framework_name=framework_name,
@@ -801,17 +838,61 @@ def validate_distribution(
             distribution=distribution,
             image_uri=image_uri,
         )
-        validate_pytorch_distribution(
-            distribution=distribution,
-            framework_name=framework_name,
-            framework_version=framework_version,
-            py_version=py_version,
-            image_uri=image_uri,
-        )
+        if framework_name and framework_name == "pytorch":
+            # We need to validate only for PyTorch framework
+            validate_pytorch_distribution(
+                distribution=distribution,
+                framework_name=framework_name,
+                framework_version=framework_version,
+                py_version=py_version,
+                image_uri=image_uri,
+            )
+            validate_torch_distributed_distribution(
+                instance_type=instance_type,
+                distribution=distribution,
+                framework_version=framework_version,
+                py_version=py_version,
+                image_uri=image_uri,
+                entry_point=kwargs["entry_point"],
+            )
         warn_if_parameter_server_with_multi_gpu(
             training_instance_type=instance_type, distribution=distribution
         )
     return distribution
+
+
+def validate_distribution_for_instance_type(instance_type, distribution):
+    """Check if the provided distribution strategy is supported for the instance_type
+
+    Args:
+        instance_type (str): A string representing the type of training instance selected.
+        distribution (dict): A dictionary with information to enable distributed training.
+    """
+    err_msg = ""
+    if isinstance(instance_type, str):
+        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        if match and match[1].startswith("trn"):
+            keys = list(distribution.keys())
+            if len(keys) == 0:
+                return
+            if len(keys) == 1:
+                distribution_strategy = keys[0]
+                if distribution_strategy != "torch_distributed":
+                    err_msg += (
+                        f"Provided distribution strategy {distribution_strategy} is not supported"
+                        " for Trainium instances.\n"
+                        "Please specify one of the following supported distribution strategies:"
+                        f" {TRAINIUM_SUPPORTED_DISTRIBUTION_STRATEGIES} \n"
+                    )
+            elif len(keys) > 1:
+                err_msg += (
+                    "Multiple distribution strategies are not supported for Trainium instances.\n"
+                    "Please specify one of the following supported distribution strategies:"
+                    f" {TRAINIUM_SUPPORTED_DISTRIBUTION_STRATEGIES} "
+                )
+
+    if err_msg:
+        raise ValueError(err_msg)
 
 
 def validate_pytorch_distribution(
@@ -867,6 +948,86 @@ def validate_pytorch_distribution(
                 f"Provided py_version {py_version} is not supported by pytorchddp.\n"
                 "Please specify py_version>=py3"
             )
+    if err_msg:
+        raise ValueError(err_msg)
+
+
+def validate_torch_distributed_distribution(
+    instance_type,
+    distribution,
+    framework_version,
+    py_version,
+    image_uri,
+    entry_point,
+):
+    """Check if torch_distributed distribution strategy is correctly invoked by the user.
+
+    Args:
+        instance_type (str): A string representing the type of training instance selected.
+        distribution (dict): A dictionary with information to enable distributed training.
+            (Defaults to None if distributed training is not enabled.) For example:
+
+            .. code:: python
+
+                {
+                    "torch_distributed": {
+                        "enabled": True
+                    }
+                }
+        framework_version (str): A string representing the framework version selected.
+        py_version (str): A string representing the python version selected.
+        image_uri (str): A string representing a Docker image URI.
+        entry_point (str or PipelineVariable): The absolute or relative path to the local Python
+            source file that should be executed as the entry point to
+            training.
+
+    Raises:
+        ValueError: if
+            `py_version` is not python3 or
+            `framework_version` is not in TORCH_DISTRIBUTED_SUPPORTED_FRAMEWORK_VERSIONS
+    """
+
+    torch_distributed_enabled = False
+    if "torch_distributed" in distribution:
+        torch_distributed_enabled = distribution.get("torch_distributed").get("enabled", False)
+    if not torch_distributed_enabled:
+        # Distribution strategy other than torch_distributed is selected
+        return
+
+    err_msg = ""
+    if not image_uri:
+        # ignore framework_version and py_version if image_uri is set
+        # in case image_uri is not set, then both are mandatory
+        if framework_version not in TORCH_DISTRIBUTED_SUPPORTED_FRAMEWORK_VERSIONS:
+            err_msg += (
+                f"Provided framework_version {framework_version} is not supported by"
+                " torch_distributed.\n"
+                "Please specify one of the supported framework versions:"
+                f" {TORCH_DISTRIBUTED_SUPPORTED_FRAMEWORK_VERSIONS} \n"
+            )
+        if "py3" not in py_version:
+            err_msg += (
+                f"Provided py_version {py_version} is not supported by torch_distributed.\n"
+                "Please specify py_version>=py3"
+            )
+
+    # Check instance compatibility
+    match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+    if match:
+        if not match[1].startswith("trn"):
+            err_msg += (
+                "torch_distributed is currently supported only for trainium instances.\n"
+                " Please refer https://sagemaker.readthedocs.io/en/stable/frameworks/pytorch/using_pytorch.html#distributed-pytorch-training \n"  # noqa E501  # pylint: disable=c0301
+                "for information regarding distributed training on non-trainium instances"
+            )
+
+    # Check entry point type
+    if not entry_point.endswith(".py"):
+        err_msg += (
+            "Unsupported entry point type for the distribution torch_distributed.\n"
+            "Only python programs (*.py) are supported."
+        )
+
     if err_msg:
         raise ValueError(err_msg)
 

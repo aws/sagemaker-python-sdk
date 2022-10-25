@@ -16,6 +16,7 @@ import pytest
 from mock import MagicMock, Mock, patch
 
 from sagemaker.transformer import _TransformJob, Transformer
+from sagemaker.inputs import BatchDataCaptureConfig
 from tests.integ import test_local_mode
 
 MODEL_NAME = "model"
@@ -168,6 +169,9 @@ def test_transform_with_all_params(start_new_job, transformer):
         "TrialComponentDisplayName": "tc",
     }
     model_client_config = {"InvocationsTimeoutInSeconds": 60, "InvocationsMaxRetries": 2}
+    batch_data_capture_config = BatchDataCaptureConfig(
+        destination_s3_uri=OUTPUT_PATH, kms_key_id=KMS_KEY_ID, generate_inference_id=False
+    )
 
     transformer.transform(
         DATA,
@@ -181,6 +185,7 @@ def test_transform_with_all_params(start_new_job, transformer):
         join_source=join_source,
         experiment_config=experiment_config,
         model_client_config=model_client_config,
+        batch_data_capture_config=batch_data_capture_config,
     )
 
     assert transformer._current_job_name == JOB_NAME
@@ -197,6 +202,7 @@ def test_transform_with_all_params(start_new_job, transformer):
         join_source,
         experiment_config,
         model_client_config,
+        batch_data_capture_config,
     )
 
 
@@ -433,6 +439,10 @@ def test_start_new(prepare_data_processing, load_config, sagemaker_session):
     join_source = "Input"
     model_client_config = {"InvocationsTimeoutInSeconds": 60, "InvocationsMaxRetries": 2}
 
+    batch_data_capture_config = BatchDataCaptureConfig(
+        destination_s3_uri=OUTPUT_PATH, kms_key_id=KMS_KEY_ID, generate_inference_id=False
+    )
+
     job = _TransformJob.start_new(
         transformer=transformer,
         data=DATA,
@@ -445,6 +455,7 @@ def test_start_new(prepare_data_processing, load_config, sagemaker_session):
         join_source=join_source,
         experiment_config={"ExperimentName": "exp"},
         model_client_config=model_client_config,
+        batch_data_capture_config=batch_data_capture_config,
     )
 
     assert job.sagemaker_session == sagemaker_session
@@ -469,6 +480,7 @@ def test_start_new(prepare_data_processing, load_config, sagemaker_session):
         model_client_config=model_client_config,
         tags=tags,
         data_processing=prepare_data_processing.return_value,
+        batch_data_capture_config=batch_data_capture_config,
     )
 
 

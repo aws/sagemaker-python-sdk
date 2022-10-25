@@ -309,6 +309,16 @@ def huggingface_pytorch_latest_inference_py_version(huggingface_inference_pytorc
 
 
 @pytest.fixture(scope="module")
+def graviton_tensorflow_version():
+    return "2.9.1"
+
+
+@pytest.fixture(scope="module")
+def graviton_pytorch_version():
+    return "1.12.1"
+
+
+@pytest.fixture(scope="module")
 def huggingface_tensorflow_latest_training_py_version():
     return "py38"
 
@@ -444,6 +454,16 @@ def pytorch_ddp_py_version():
     scope="module", params=["1.10", "1.10.0", "1.10.2", "1.11", "1.11.0", "1.12", "1.12.0"]
 )
 def pytorch_ddp_framework_version(request):
+    return request.param
+
+
+@pytest.fixture(scope="module")
+def torch_distributed_py_version():
+    return "py3"
+
+
+@pytest.fixture(scope="module", params=["1.11.0"])
+def torch_distributed_framework_version(request):
     return request.param
 
 

@@ -16,10 +16,9 @@ import os
 
 import pytest
 import numpy as np
-from airflow import utils
-from airflow import DAG
-from airflow.providers.amazon.aws.operators.sagemaker import SageMakerTrainingOperator
-from airflow.providers.amazon.aws.operators.sagemaker_transform import SageMakerTransformOperator
+from configparser import ParsingError
+from sagemaker.utils import retries
+
 from six.moves.urllib.parse import urlparse
 
 import tests.integ
@@ -48,6 +47,23 @@ from sagemaker.xgboost import XGBoost
 from tests.integ import datasets, DATA_DIR
 from tests.integ.record_set import prepare_record_set_from_local_files
 from tests.integ.timeout import timeout
+
+for _ in retries(
+    max_retry_count=10,  # 10*6 = 1min
+    exception_message_prefix="airflow import ",
+    seconds_to_sleep=6,
+):
+    try:
+        from airflow import utils
+        from airflow import DAG
+        from airflow.providers.amazon.aws.operators.sagemaker import SageMakerTrainingOperator
+        from airflow.providers.amazon.aws.operators.sagemaker_transform import (
+            SageMakerTransformOperator,
+        )
+
+        break
+    except ParsingError:
+        pass
 
 PYTORCH_MNIST_DIR = os.path.join(DATA_DIR, "pytorch_mnist")
 PYTORCH_MNIST_SCRIPT = os.path.join(PYTORCH_MNIST_DIR, "mnist.py")
