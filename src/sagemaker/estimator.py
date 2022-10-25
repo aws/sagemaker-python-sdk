@@ -1377,9 +1377,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             volume_size (int): The size, in GB, of the ML storage volume attached to individual
                 inference instance associated with the production variant. Currenly only Amazon EBS
                 gp2 storage volumes are supported.
-            model_data_download_timeout (int): The timeout value, in seconds, to download and extract
-                model data from Amazon S3 to the individual inference instance associated with this
-                production variant.
+            model_data_download_timeout (int): The timeout value, in seconds, to download and
+                extract model data from Amazon S3 to the individual inference instance associated
+                with this production variant.
             container_startup_health_check_timeout (int): The timeout value, in seconds, for your
                 inference container to pass health check by SageMaker Hosting. For more information
                 about health check see:

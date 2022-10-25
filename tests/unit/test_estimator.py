@@ -3336,10 +3336,14 @@ def test_deploy_with_customized_volume_size_timeout(create_model, sagemaker_sess
     model = MagicMock()
     create_model.return_value = model
 
-    estimator.deploy(INSTANCE_COUNT, INSTANCE_TYPE, endpoint_name=endpoint_name,
-                     volume_size=volume_size_gb,
-                     model_data_download_timeout=model_data_download_timeout_sec,
-                     container_startup_health_check_timeout=startup_health_check_timeout_sec)
+    estimator.deploy(
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        endpoint_name=endpoint_name,
+        volume_size=volume_size_gb,
+        model_data_download_timeout=model_data_download_timeout_sec,
+        container_startup_health_check_timeout=startup_health_check_timeout_sec,
+    )
 
     model.deploy.assert_called_with(
         instance_type=INSTANCE_TYPE,

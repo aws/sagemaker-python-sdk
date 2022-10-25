@@ -402,9 +402,9 @@ class AutoML(object):
             volume_size (int): The size, in GB, of the ML storage volume attached to individual
                 inference instance associated with the production variant. Currenly only Amazon EBS
                 gp2 storage volumes are supported.
-            model_data_download_timeout (int): The timeout value, in seconds, to download and extract
-                model data from Amazon S3 to the individual inference instance associated with this
-                production variant.
+            model_data_download_timeout (int): The timeout value, in seconds, to download and
+                extract model data from Amazon S3 to the individual inference instance associated
+                with this production variant.
             container_startup_health_check_timeout (int): The timeout value, in seconds, for your
                 inference container to pass health check by SageMaker Hosting. For more information
                 about health check see:
@@ -434,11 +434,11 @@ class AutoML(object):
             deserializer=deserializer,
             endpoint_name=endpoint_name,
             kms_key=model_kms_key,
+            tags=tags,
+            wait=wait,
             volume_size=volume_size,
             model_data_download_timeout=model_data_download_timeout,
             container_startup_health_check_timeout=container_startup_health_check_timeout,
-            tags=tags,
-            wait=wait,
         )
 
     def _check_problem_type_and_job_objective(self, problem_type, job_objective):
