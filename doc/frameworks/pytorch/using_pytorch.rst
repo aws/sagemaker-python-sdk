@@ -293,6 +293,121 @@ using two ``ml.p4d.24xlarge`` instances:
 
     pt_estimator.fit("s3://bucket/path/to/training/data")
 
+.. _distributed-pytorch-training-on-trainium:
+
+Distributed Training with PyTorch Neuron on Trn1 instances
+==========================================================
+
+SageMaker Training supports Amazon EC2 Trn1 instances powered by
+`AWS Trainium <https://aws.amazon.com/machine-learning/trainium/>`_ device,
+the second generation purpose-built machine learning accelerator from AWS.
+Each Trn1 instance consists of up to 16 Trainium devices, and each
+Trainium device consists of two `NeuronCores
+<https://awsdocs-neuron.readthedocs-hosted.com/en/latest/general/arch/neuron-hardware/trn1-arch.html#trainium-architecture>`_
+in the *AWS Neuron Documentation*.
+
+You can run distributed training job on Trn1 instances.
+SageMaker supports the ``xla`` package through ``torchrun``.
+With this, you do not need to manually pass ``RANK``,
+``WORLD_SIZE``, ``MASTER_ADDR``, and ``MASTER_PORT``.
+You can launch the training job using the
+:class:`sagemaker.pytorch.estimator.PyTorch` estimator class
+with the ``torch_distributed`` option as the distribution strategy.
+
+.. note::
+
+  This ``torch_distributed`` support is available
+  in the AWS Deep Learning Containers for PyTorch Neuron starting v1.11.0.
+  To find a complete list of supported versions of PyTorch Neuron, see
+  `Neuron Containers <https://github.com/aws/deep-learning-containers/blob/master/available_images.md#neuron-containers>`_
+  in the *AWS Deep Learning Containers GitHub repository*.
+
+.. note::
+
+  SageMaker Debugger is currently not supported with Trn1 instances.
+
+Adapt Your Training Script to Initialize with the XLA backend
+-------------------------------------------------------------
+
+To initialize distributed training in your script, call
+`torch.distributed.init_process_group
+<https://pytorch.org/docs/master/distributed.html#torch.distributed.init_process_group>`_
+with the ``xla`` backend as shown below.
+
+.. code:: python
+
+    import torch.distributed as dist
+
+    dist.init_process_group('xla')
+
+SageMaker takes care of ``'MASTER_ADDR'`` and ``'MASTER_PORT'`` for you via ``torchrun``
+
+For detailed documentation about modifying your training script for Trainium, see `Multi-worker data-parallel MLP training using torchrun <https://awsdocs-neuron.readthedocs-hosted.com/en/latest/frameworks/torch/torch-neuronx/tutorials/training/mlp.html?highlight=torchrun#multi-worker-data-parallel-mlp-training-using-torchrun>`_ in the *AWS Neuron Documentation*.
+
+**Currently Supported backends:**
+
+-  ``xla`` for Trainium (Trn1) instances
+
+For up-to-date information on supported backends for Trn1 instances, see `AWS Neuron Documentation <https://awsdocs-neuron.readthedocs-hosted.com/en/latest/index.html>`_.
+
+Launching a Distributed Training Job on Trainium
+------------------------------------------------
+
+You can run multi-node distributed PyTorch training jobs on Trn1 instances using the
+:class:`sagemaker.pytorch.estimator.PyTorch` estimator class.
+With ``instance_count=1``, the estimator submits a
+single-node training job to SageMaker; with ``instance_count`` greater
+than one, a multi-node training job is launched.
+
+With the ``torch_distributed`` option, the SageMaker PyTorch estimator runs a SageMaker
+training container for PyTorch Neuron, sets up the environment, and launches
+the training job using the ``torchrun`` command on each worker with the given information.
+
+**Examples**
+
+The following examples show how to run a PyTorch training using ``torch_distributed`` in SageMaker
+on one ``ml.trn1.2xlarge`` instance and two ``ml.trn1.32xlarge`` instances:
+
+.. code:: python
+
+    from sagemaker.pytorch import PyTorch
+
+    pt_estimator = PyTorch(
+        entry_point="train_torch_distributed.py",
+        role="SageMakerRole",
+        framework_version="1.11.0",
+        py_version="py38",
+        instance_count=1,
+        instance_type="ml.trn1.2xlarge",
+        distribution={
+            "torch_distributed": {
+                "enabled": True
+            }
+        }
+    )
+
+    pt_estimator.fit("s3://bucket/path/to/training/data")
+
+.. code:: python
+
+    from sagemaker.pytorch import PyTorch
+
+    pt_estimator = PyTorch(
+        entry_point="train_torch_distributed.py",
+        role="SageMakerRole",
+        framework_version="1.11.0",
+        py_version="py38",
+        instance_count=2,
+        instance_type="ml.trn1.32xlarge",
+        distribution={
+            "torch_distributed": {
+                "enabled": True
+            }
+        }
+    )
+
+    pt_estimator.fit("s3://bucket/path/to/training/data")
+
 *********************
 Deploy PyTorch Models
 *********************
