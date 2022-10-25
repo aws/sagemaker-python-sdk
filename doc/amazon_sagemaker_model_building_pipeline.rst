@@ -322,6 +322,9 @@ Example:
 
 .. code-block:: python
 
+    bucket = "my-bucket"
+    model_prefix = "my-model"
+
     step_tune = TuningStep(...)
     # tuning step can launch multiple training jobs, thus producing multiple model artifacts
     # we can create a model with the best performance
@@ -329,22 +332,24 @@ Example:
         model_data=Join(
             on="/",
             values=[
-                "s3://my-bucket",
+                f"s3://{bucket}/{model_prefix}",
                 # from DescribeHyperParameterTuningJob
                 step_tune.properties.BestTrainingJob.TrainingJobName,
                 "output/model.tar.gz",
             ],
+        )
     )
     # we can also access any top-k best as we wish
     second_best_model = Model(
         model_data=Join(
             on="/",
             values=[
-                "s3://my-bucket",
+                f"s3://{bucket}/{model_prefix}",
                 # from ListTrainingJobsForHyperParameterTuningJob
                 step_tune.properties.TrainingJobSummaries[1].TrainingJobName,
                 "output/model.tar.gz",
             ],
+        )
     )
 
 :class:`sagemaker.workflow.steps.TuningStep` also has a helper function to generate any :code:`top-k` model data URI easily:
