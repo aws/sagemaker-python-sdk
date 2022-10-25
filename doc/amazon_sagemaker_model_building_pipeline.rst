@@ -358,7 +358,7 @@ Example:
 
     model_data = step_tune.get_top_model_s3_uri(
         top_k=0, # best model
-        s3_bucket="s3://my-bucket",
+        s3_bucket=bucket,
         prefix=model_prefix
     )
 
