@@ -144,6 +144,12 @@ TRAINIUM_SUPPORTED_DISTRIBUTION_STRATEGIES = ["torch_distributed"]
 SMDISTRIBUTED_SUPPORTED_STRATEGIES = ["dataparallel", "modelparallel"]
 
 
+GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY = ["c6g", "t4g", "r6g", "m6g"]
+
+
+GRAVITON_ALLOWED_FRAMEWORKS = set(["tensorflow", "pytorch", "xgboost", "sklearn"])
+
+
 def validate_source_dir(script, directory):
     """Validate that the source directory exists and it contains the user script.
 
@@ -161,12 +167,6 @@ def validate_source_dir(script, directory):
             )
 
     return True
-
-
-GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY = ["c6g", "t4g", "r6g", "m6g"]
-
-
-GRAVITON_ALLOWED_FRAMEWORKS = set(["tensorflow", "pytorch"])
 
 
 def validate_source_code_input_against_pipeline_variables(
