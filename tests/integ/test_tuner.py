@@ -601,7 +601,7 @@ def test_tuning_tf(
 
     hyperparameter_ranges = {"epochs": IntegerParameter(1, 2)}
     objective_metric_name = "accuracy"
-    metric_definitions = [{"Name": objective_metric_name, "Regex": "accuracy = ([0-9\\.]+)"}]
+    metric_definitions = [{"Name": objective_metric_name, "Regex": "Accuracy: ([0-9\\.]+)"}]
 
     tuner = HyperparameterTuner(
         estimator,
@@ -656,7 +656,7 @@ def test_tuning_tf_vpc_multi(
 
     hyperparameter_ranges = {"epochs": IntegerParameter(1, 2)}
     objective_metric_name = "accuracy"
-    metric_definitions = [{"Name": objective_metric_name, "Regex": "accuracy = ([0-9\\.]+)"}]
+    metric_definitions = [{"Name": objective_metric_name, "Regex": "Accuracy: ([0-9\\.]+)"}]
 
     tuner = HyperparameterTuner(
         estimator,
