@@ -31,6 +31,8 @@ logger = logging.getLogger(__name__)
 
 ECR_URI_TEMPLATE = "{registry}.dkr.{hostname}/{repository}"
 HUGGING_FACE_FRAMEWORK = "huggingface"
+XGBOOST_FRAMEWORK = "xgboost"
+SKLEARN_FRAMEWORK = "sklearn"
 
 
 @override_pipeline_parameter_var
@@ -152,8 +154,8 @@ def retrieve(
             inference_tool = _get_inference_tool(inference_tool, instance_type)
             if inference_tool == "neuron":
                 _framework = f"{framework}-{inference_tool}"
-        image_scope = _get_image_scope_for_instance_type(_framework, instance_type, image_scope)
-        config = _config_for_framework_and_scope(_framework, image_scope, accelerator_type)
+        final_image_scope = _get_final_image_scope(framework, instance_type, image_scope)
+        config = _config_for_framework_and_scope(_framework, final_image_scope, accelerator_type)
 
     original_version = version
     version = _validate_version_and_set_if_needed(version, config, framework)
@@ -221,33 +223,90 @@ def retrieve(
     if repo == f"{framework}-inference-graviton":
         container_version = f"{container_version}-sagemaker"
 
-    tag = _format_tag(tag_prefix, processor, py_version, container_version, inference_tool)
-
-    if instance_type is not None and _should_auto_select_container_version(
-        instance_type, distribution
-    ):
-        container_versions = {
-            "tensorflow-2.3-gpu-py37": "cu110-ubuntu18.04-v3",
-            "tensorflow-2.3.1-gpu-py37": "cu110-ubuntu18.04",
-            "tensorflow-2.3.2-gpu-py37": "cu110-ubuntu18.04",
-            "tensorflow-1.15-gpu-py37": "cu110-ubuntu18.04-v8",
-            "tensorflow-1.15.4-gpu-py37": "cu110-ubuntu18.04",
-            "tensorflow-1.15.5-gpu-py37": "cu110-ubuntu18.04",
-            "mxnet-1.8-gpu-py37": "cu110-ubuntu16.04-v1",
-            "mxnet-1.8.0-gpu-py37": "cu110-ubuntu16.04",
-            "pytorch-1.6-gpu-py36": "cu110-ubuntu18.04-v3",
-            "pytorch-1.6.0-gpu-py36": "cu110-ubuntu18.04",
-            "pytorch-1.6-gpu-py3": "cu110-ubuntu18.04-v3",
-            "pytorch-1.6.0-gpu-py3": "cu110-ubuntu18.04",
-        }
-        key = "-".join([framework, tag])
-        if key in container_versions:
-            tag = "-".join([tag, container_versions[key]])
+    tag = _get_image_tag(
+        container_version,
+        distribution,
+        framework,
+        inference_tool,
+        instance_type,
+        processor,
+        py_version,
+        tag_prefix,
+        version,
+    )
 
     if tag:
         repo += ":{}".format(tag)
 
     return ECR_URI_TEMPLATE.format(registry=registry, hostname=hostname, repository=repo)
+
+
+def _get_instance_type_family(instance_type):
+    """Return the family of the instance type.
+
+    Regex matches either "ml.<family>.<size>" or "ml_<family>. If input is None
+    or there is no match, return an empty string.
+    """
+    instance_type_family = ""
+    if isinstance(instance_type, str):
+        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        if match is not None:
+            instance_type_family = match[1]
+    return instance_type_family
+
+
+def _get_image_tag(
+    container_version,
+    distribution,
+    framework,
+    inference_tool,
+    instance_type,
+    processor,
+    py_version,
+    tag_prefix,
+    version,
+):
+    """Return image tag based on framework, container, and compute configuration(s)."""
+    instance_type_family = _get_instance_type_family(instance_type)
+    if (
+        framework in (XGBOOST_FRAMEWORK, SKLEARN_FRAMEWORK)
+        and instance_type_family in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
+    ):
+        version_to_arm64_tag_mapping = {
+            "xgboost": {
+                "1.5-1": "1.5-1-arm64",
+                "1.3-1": "1.3-1-arm64",
+            },
+            "sklearn": {
+                "1.0-1": "1.0-1-arm64-cpu-py3",
+            },
+        }
+        tag = version_to_arm64_tag_mapping[framework][version]
+    else:
+        tag = _format_tag(tag_prefix, processor, py_version, container_version, inference_tool)
+
+        if instance_type is not None and _should_auto_select_container_version(
+            instance_type, distribution
+        ):
+            container_versions = {
+                "tensorflow-2.3-gpu-py37": "cu110-ubuntu18.04-v3",
+                "tensorflow-2.3.1-gpu-py37": "cu110-ubuntu18.04",
+                "tensorflow-2.3.2-gpu-py37": "cu110-ubuntu18.04",
+                "tensorflow-1.15-gpu-py37": "cu110-ubuntu18.04-v8",
+                "tensorflow-1.15.4-gpu-py37": "cu110-ubuntu18.04",
+                "tensorflow-1.15.5-gpu-py37": "cu110-ubuntu18.04",
+                "mxnet-1.8-gpu-py37": "cu110-ubuntu16.04-v1",
+                "mxnet-1.8.0-gpu-py37": "cu110-ubuntu16.04",
+                "pytorch-1.6-gpu-py36": "cu110-ubuntu18.04-v3",
+                "pytorch-1.6.0-gpu-py36": "cu110-ubuntu18.04",
+                "pytorch-1.6-gpu-py3": "cu110-ubuntu18.04-v3",
+                "pytorch-1.6.0-gpu-py3": "cu110-ubuntu18.04",
+            }
+            key = "-".join([framework, tag])
+            if key in container_versions:
+                tag = "-".join([tag, container_versions[key]])
+
+    return tag
 
 
 def _config_for_framework_and_scope(framework, image_scope, accelerator_type=None):
@@ -263,16 +322,16 @@ def _config_for_framework_and_scope(framework, image_scope, accelerator_type=Non
             )
         image_scope = "eia"
 
-    available_scopes = config.get("scope", config.keys())
+    available_scopes = config.get("scope", list(config.keys()))
 
     if len(available_scopes) == 1:
-        if image_scope and image_scope != list(available_scopes)[0]:
+        if image_scope and image_scope != available_scopes[0]:
             logger.warning(
                 "Defaulting to only supported image scope: %s. Ignoring image scope: %s.",
                 available_scopes[0],
                 image_scope,
             )
-        image_scope = list(available_scopes)[0]
+        image_scope = available_scopes[0]
 
     if not image_scope and "scope" in config and set(available_scopes) == {"training", "inference"}:
         logger.info(
@@ -292,20 +351,27 @@ def config_for_framework(framework):
         return json.load(f)
 
 
-def _get_image_scope_for_instance_type(framework, instance_type, image_scope):
-    """Extract the image scope from instance type."""
-    if framework in GRAVITON_ALLOWED_FRAMEWORKS and isinstance(instance_type, str):
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
-        if match and match[1] in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY:
-            return "inference_graviton"
+def _get_final_image_scope(framework, instance_type, image_scope):
+    """Return final image scope based on provided framework and instance type."""
+    if (
+        framework in GRAVITON_ALLOWED_FRAMEWORKS
+        and _get_instance_type_family(instance_type) in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
+    ):
+        return "inference_graviton"
+    if image_scope is None and framework in (XGBOOST_FRAMEWORK, SKLEARN_FRAMEWORK):
+        # Preserves backwards compatibility with XGB/SKLearn configs which no
+        # longer define top-level "scope" keys after introducing support for
+        # Graviton inference. Training and inference configs for XGB/SKLearn are
+        # identical, so default to training.
+        return "training"
     return image_scope
 
 
 def _get_inference_tool(inference_tool, instance_type):
     """Extract the inference tool name from instance type."""
-    if not inference_tool and instance_type:
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
-        if match and match[1].startswith("inf"):
+    if not inference_tool:
+        instance_type_family = _get_instance_type_family(instance_type)
+        if instance_type_family.startswith("inf"):
             return "neuron"
     return inference_tool
 
@@ -385,10 +451,8 @@ def _processor(instance_type, available_processors, serverless_inference_config=
         processor = "neuron"
     else:
         # looks for either "ml.<family>.<size>" or "ml_<family>"
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
-        if match:
-            family = match[1]
-
+        family = _get_instance_type_family(instance_type)
+        if family:
             # For some frameworks, we have optimized images for specific families, e.g c5 or p3.
             # In those cases, we use the family name in the image tag. In other cases, we use
             # 'cpu' or 'gpu'.
@@ -415,9 +479,8 @@ def _should_auto_select_container_version(instance_type, distribution):
     p4d = False
     if instance_type:
         # looks for either "ml.<family>.<size>" or "ml_<family>"
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
-        if match:
-            family = match[1]
+        family = _get_instance_type_family(instance_type)
+        if family:
             p4d = family == "p4d"
 
     smdistributed = False
