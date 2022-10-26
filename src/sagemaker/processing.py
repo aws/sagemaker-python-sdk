@@ -1564,6 +1564,7 @@ class FrameworkProcessor(ScriptProcessor):
             arguments=arguments,
         )
 
+    @runnable_by_pipeline
     def run(  # type: ignore[override]
         self,
         code: str,
