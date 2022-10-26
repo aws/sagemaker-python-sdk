@@ -493,8 +493,8 @@ class _SparkProcessorBase(ScriptProcessor):
                 if _pipeline_config and _pipeline_config.code_hash:
                     input_channel_s3_uri = (
                         f"s3://{self.sagemaker_session.default_bucket()}"
-                        f"/{_pipeline_config.pipeline_name}/code/{input_channel_name}"
-                        f"/{_pipeline_config.code_hash}"
+                        f"/{_pipeline_config.pipeline_name}/code/{_pipeline_config.code_hash}"
+                        f"/{input_channel_name}"
                     )
                 else:
                     input_channel_s3_uri = (

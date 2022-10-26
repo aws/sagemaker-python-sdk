@@ -1185,7 +1185,7 @@ def test_caching_behavior(
 
     input_data = f"s3://sagemaker-sample-data-{region_name}/processing/census/census-income.csv"
 
-    # additionally add abalone input so we can test input s3 file from local upload
+    # additionally add abalone input, so we can test input s3 file from local upload
     abalone_input = ProcessingInput(
         input_name="abalone_data",
         source=os.path.join(data_path, "abalone-dataset.csv"),
