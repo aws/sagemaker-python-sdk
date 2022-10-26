@@ -15,6 +15,8 @@ from __future__ import absolute_import
 from sagemaker import image_uris
 from tests.unit.sagemaker.image_uris import expected_uris
 
+import pytest
+
 GRAVITON_ALGOS = ("tensorflow", "pytotch")
 GRAVITON_INSTANCE_TYPES = [
     "ml.c6g.4xlarge",
@@ -71,6 +73,55 @@ def test_graviton_tensorflow(graviton_tensorflow_version):
 
 def test_graviton_pytorch(graviton_pytorch_version):
     _test_graviton_framework_uris("pytorch", graviton_pytorch_version)
+
+
+def test_graviton_xgboost(graviton_xgboost_versions):
+    for xgboost_version in graviton_xgboost_versions:
+        for instance_type in GRAVITON_INSTANCE_TYPES:
+            uri = image_uris.retrieve(
+                "xgboost", "us-west-2", version=xgboost_version, instance_type=instance_type
+            )
+            expected = (
+                "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:"
+                f"{xgboost_version}-arm64"
+            )
+            assert expected == uri
+
+
+def test_graviton_xgboost_unsupported_version(graviton_xgboost_unsupported_versions):
+    for xgboost_version in graviton_xgboost_unsupported_versions:
+        for instance_type in GRAVITON_INSTANCE_TYPES:
+            with pytest.raises(ValueError) as error:
+                image_uris.retrieve(
+                    "xgboost", "us-west-2", version=xgboost_version, instance_type=instance_type
+                )
+            assert f"Unsupported xgboost version: {xgboost_version}." in str(error)
+
+
+def test_graviton_sklearn(graviton_sklearn_versions):
+    for sklearn_version in graviton_sklearn_versions:
+        for instance_type in GRAVITON_INSTANCE_TYPES:
+            uri = image_uris.retrieve(
+                "sklearn", "us-west-2", version=sklearn_version, instance_type=instance_type
+            )
+            expected = (
+                "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:"
+                f"{sklearn_version}-arm64-cpu-py3"
+            )
+            assert expected == uri
+
+
+def test_graviton_sklearn_unsupported_version(graviton_sklearn_unsupported_versions):
+    for sklearn_version in graviton_sklearn_unsupported_versions:
+        for instance_type in GRAVITON_INSTANCE_TYPES:
+            uri = image_uris.retrieve(
+                "sklearn", "us-west-2", version=sklearn_version, instance_type=instance_type
+            )
+            # Expected URI for SKLearn instead of ValueError because it only
+            # supports one version for Graviton and therefore will always return
+            # the default. See: image_uris._validate_version_and_set_if_needed
+            expected = "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.0-1-arm64-cpu-py3"
+            assert expected == uri
 
 
 def _expected_graviton_framework_uri(framework, version, region):
