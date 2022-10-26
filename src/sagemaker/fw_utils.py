@@ -134,9 +134,12 @@ PYTORCHDDP_SUPPORTED_FRAMEWORK_VERSIONS = [
     "1.12.0",
 ]
 
+
 TORCH_DISTRIBUTED_SUPPORTED_FRAMEWORK_VERSIONS = ["1.11", "1.11.0"]
 
+
 TRAINIUM_SUPPORTED_DISTRIBUTION_STRATEGIES = ["torch_distributed"]
+
 
 SMDISTRIBUTED_SUPPORTED_STRATEGIES = ["dataparallel", "modelparallel"]
 
@@ -158,6 +161,12 @@ def validate_source_dir(script, directory):
             )
 
     return True
+
+
+GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY = ["c6g", "t4g", "r6g", "m6g"]
+
+
+GRAVITON_ALLOWED_FRAMEWORKS = set(["tensorflow", "pytorch"])
 
 
 def validate_source_code_input_against_pipeline_variables(

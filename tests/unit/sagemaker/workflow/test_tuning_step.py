@@ -248,8 +248,6 @@ def test_tuning_step_with_multi_algo_tuner(pipeline_session, entry_point):
     step_args = get_step_args_helper(step_args, "HyperParameterTuning")
     step_def = json.loads(pipeline.definition())["Steps"][0]
 
-    print("num of training jobs: ", len(step_def["Arguments"]["TrainingJobDefinitions"]))
-
     for i, step in enumerate(step_args["TrainingJobDefinitions"]):
         # trim timestamp so sagemaker_job_name will still match
         step_args_sm_job_name = step["StaticHyperParameters"]["sagemaker_job_name"]

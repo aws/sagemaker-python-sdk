@@ -569,8 +569,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                     )
                     return
                 self.sagemaker_session.context.need_runtime_repack.add(id(self))
-                self.sagemaker_session.context.runtime_repack_output_prefix = "s3://{}/{}".format(
-                    bucket, key_prefix
+                self.sagemaker_session.context.runtime_repack_output_prefix = s3.s3_path_join(
+                    "s3://", bucket, key_prefix
                 )
                 # Add the uploaded_code and repacked_model_data to update the container env
                 self.repacked_model_data = self.model_data
