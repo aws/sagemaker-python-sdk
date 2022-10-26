@@ -26,7 +26,7 @@ from mock import (
     patch,
 )
 
-from sagemaker.debugger import DEBUGGER_FLAG, ProfilerConfig
+from sagemaker.debugger import ProfilerConfig
 from sagemaker.estimator import Estimator
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.inputs import TrainingInput, TransformInput, CreateModelInput
@@ -485,7 +485,6 @@ def test_training_step_tensorflow(sagemaker_session):
                 "sagemaker_distributed_dataparallel_custom_mpi_options": '""',
             },
             "ProfilerConfig": {"S3OutputPath": "s3://my-bucket/"},
-            "Environment": {DEBUGGER_FLAG: "0"},
         },
         "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
     }

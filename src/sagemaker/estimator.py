@@ -865,10 +865,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.debugger_rule_configs = self._prepare_debugger_rules()
         self._prepare_collection_configs()
         self._validate_and_set_debugger_configs()
-        if not self.debugger_hook_config:
-            if self.environment is None:
-                self.environment = {}
-            self.environment[DEBUGGER_FLAG] = "0"
 
     def _validate_and_set_debugger_configs(self):
         """Set defaults for debugging."""
