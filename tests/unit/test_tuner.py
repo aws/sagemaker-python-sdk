@@ -1774,3 +1774,22 @@ def test_no_tags_prefixes_non_jumpstart_models(
     assert sagemaker_session.create_model.call_args_list[0][1]["tags"] == []
 
     assert sagemaker_session.endpoint_from_production_variants.call_args_list[0][1]["tags"] == []
+
+
+def test_create_tuner_with_grid_search_strategy():
+    tuner = HyperparameterTuner.create(
+        base_tuning_job_name=BASE_JOB_NAME,
+        estimator_dict={ESTIMATOR_NAME: ESTIMATOR},
+        objective_metric_name_dict={ESTIMATOR_NAME: OBJECTIVE_METRIC_NAME},
+        hyperparameter_ranges_dict={ESTIMATOR_NAME: HYPERPARAMETER_RANGES},
+        metric_definitions_dict={ESTIMATOR_NAME: METRIC_DEFINITIONS},
+        strategy="GridSearch",
+        objective_type="Minimize",
+        max_parallel_jobs=1,
+        tags=TAGS,
+        warm_start_config=WARM_START_CONFIG,
+        early_stopping_type="Auto",
+    )
+
+    assert tuner is not None
+    assert tuner.max_jobs is None
