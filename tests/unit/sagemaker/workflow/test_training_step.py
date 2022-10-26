@@ -305,7 +305,13 @@ def test_training_step_with_estimator(
     assert step_condition.conditions[0].left.expr == {
         "Get": "Steps.MyTrainingStep.FinalMetricDataList['val:acc'].Value"
     }
-    assert json.loads(pipeline.definition())["Steps"][0] == {
+    step_definition = json.loads(pipeline.definition())["Steps"][0]
+
+    # delete profiler rule configurations because of timestamp collision
+    del step_definition["Arguments"]["ProfilerRuleConfigurations"]
+    del expected_step_arguments["ProfilerRuleConfigurations"]
+
+    assert step_definition == {
         "Name": "MyTrainingStep",
         "Description": "TrainingStep description",
         "DisplayName": "MyTrainingStep",
