@@ -1006,7 +1006,7 @@ You use the following S3 paths when uploading local input and code artifacts, an
 *Training*
 
 - Code: :code:`s3://bucket_name/code_location/pipeline_name/code/<code_hash>/code.tar.gz`
-- Output: :code:`s3://bucket_name/pipeline_name/<execution_id>/step_name/output`
+- Output: The output paths for Training jobs can vary - the default output path is the root of the s3 bucket: :code:`s3://bucket_name`. For Training jobs created from a Tuning job, the default path includes the Training job name created by the Training platform, formatted as :code:`s3://bucket_name/<training_job_name>/output/model.tar.gz`.
 
 *Transform*
 
