@@ -1326,4 +1326,3 @@ def test_caching_behavior(
         except Exception:
             os.remove(script_dir + "/dummy_script.py")
             pass
-        
