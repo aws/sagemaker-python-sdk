@@ -71,6 +71,7 @@ WARM_START_TYPE = "WarmStartType"
 HYPERBAND_STRATEGY_CONFIG = "HyperbandStrategyConfig"
 HYPERBAND_MIN_RESOURCE = "MinResource"
 HYPERBAND_MAX_RESOURCE = "MaxResource"
+GRID_SEARCH = "GridSearch"
 
 logger = logging.getLogger(__name__)
 
@@ -404,7 +405,7 @@ class HyperparameterTuner(object):
         metric_definitions: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
         strategy: Union[str, PipelineVariable] = "Bayesian",
         objective_type: Union[str, PipelineVariable] = "Maximize",
-        max_jobs: Union[int, PipelineVariable] = 1,
+        max_jobs: Union[int, PipelineVariable] = None,
         max_parallel_jobs: Union[int, PipelineVariable] = 1,
         tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
         base_tuning_job_name: Optional[str] = None,
@@ -444,7 +445,8 @@ class HyperparameterTuner(object):
                 evaluating training jobs. This value can be either 'Minimize' or
                 'Maximize' (default: 'Maximize').
             max_jobs (int or PipelineVariable): Maximum total number of training jobs to start for
-                the hyperparameter tuning job (default: 1).
+                the hyperparameter tuning job. The default value is unspecified fot the GridSearch
+                strategy and the default value is 1 for all others strategies (default: None).
             max_parallel_jobs (int or PipelineVariable): Maximum number of parallel training jobs to
                 start (default: 1).
             tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): List of tags for
@@ -500,7 +502,12 @@ class HyperparameterTuner(object):
         self.strategy = strategy
         self.strategy_config = strategy_config
         self.objective_type = objective_type
+        # For the GridSearch strategy we expect the max_jobs equals None and recalculate it later.
+        # For all other strategies for the backward compatibility we keep
+        # the default value as 1 (previous default value).
         self.max_jobs = max_jobs
+        if max_jobs is None and strategy is not GRID_SEARCH:
+            self.max_jobs = 1
         self.max_parallel_jobs = max_parallel_jobs
 
         self.tags = tags
@@ -1514,7 +1521,7 @@ class HyperparameterTuner(object):
         strategy="Bayesian",
         strategy_config=None,
         objective_type="Maximize",
-        max_jobs=1,
+        max_jobs=None,
         max_parallel_jobs=1,
         tags=None,
         warm_start_config=None,
@@ -1566,7 +1573,8 @@ class HyperparameterTuner(object):
             objective_type (str): The type of the objective metric for evaluating training jobs.
                 This value can be either 'Minimize' or 'Maximize' (default: 'Maximize').
             max_jobs (int): Maximum total number of training jobs to start for the hyperparameter
-                tuning job (default: 1).
+                tuning job. The default value is unspecified fot the GridSearch strategy
+                and the value is 1 for all others strategies (default: None).
             max_parallel_jobs (int): Maximum number of parallel training jobs to start
                 (default: 1).
             tags (list[dict]): List of tags for labeling the tuning job (default: None). For more,

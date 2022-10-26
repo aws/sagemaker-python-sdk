@@ -1833,3 +1833,22 @@ def test_hyperband_strategy_config_init(min_resource, max_resource):
     strategy_config = strategy_config.to_input_req()
     assert strategy_config[HYPERBAND_STRATEGY_CONFIG][HYPERBAND_MIN_RESOURCE] == min_resource
     assert strategy_config[HYPERBAND_STRATEGY_CONFIG][HYPERBAND_MAX_RESOURCE] == max_resource
+
+
+def test_create_tuner_with_grid_search_strategy():
+    tuner = HyperparameterTuner.create(
+        base_tuning_job_name=BASE_JOB_NAME,
+        estimator_dict={ESTIMATOR_NAME: ESTIMATOR},
+        objective_metric_name_dict={ESTIMATOR_NAME: OBJECTIVE_METRIC_NAME},
+        hyperparameter_ranges_dict={ESTIMATOR_NAME: HYPERPARAMETER_RANGES},
+        metric_definitions_dict={ESTIMATOR_NAME: METRIC_DEFINITIONS},
+        strategy="GridSearch",
+        objective_type="Minimize",
+        max_parallel_jobs=1,
+        tags=TAGS,
+        warm_start_config=WARM_START_CONFIG,
+        early_stopping_type="Auto",
+    )
+
+    assert tuner is not None
+    assert tuner.max_jobs is None

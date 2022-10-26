@@ -1,5 +1,26 @@
 # Changelog
 
+## v2.114.0 (2022-10-26)
+
+### Features
+
+ * Graviton support for XGB and SKLearn frameworks
+ * Graviton support for PyTorch and Tensorflow frameworks
+ * do not expand estimator role when it is pipeline parameter
+ * added support for batch transform with model monitoring
+
+### Bug Fixes and Other Changes
+
+ * regex in tuning integs
+ * remove debugger environment var set up
+ * adjacent slash in s3 key
+ * Fix Repack step auto install behavior
+ * Add retry for airflow ParsingError
+
+### Documentation Changes
+
+ * doc fix
+
 ## v2.113.0 (2022-10-21)
 
 ### Features
