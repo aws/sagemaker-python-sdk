@@ -1168,12 +1168,7 @@ def _verify_repack_output(repack_step_dict, sagemaker_session):
 
 
 def test_caching_behavior(
-    pipeline_session,
-    role,
-    cpu_instance_type,
-    pipeline_name,
-    script_dir,
-    athena_dataset_definition
+    pipeline_session, role, cpu_instance_type, pipeline_name, script_dir, athena_dataset_definition
 ):
     default_bucket = pipeline_session.default_bucket()
     data_path = os.path.join(DATA_DIR, "workflow")
@@ -1189,7 +1184,7 @@ def test_caching_behavior(
     abalone_input = ProcessingInput(
         input_name="abalone_data",
         source=os.path.join(data_path, "abalone-dataset.csv"),
-        destination="/opt/ml/processing/input"
+        destination="/opt/ml/processing/input",
     )
 
     # define processing step
@@ -1203,14 +1198,9 @@ def test_caching_behavior(
     )
     processor_args = sklearn_processor.run(
         inputs=[
-            ProcessingInput(
-                source=input_data,
-                destination="/opt/ml/processing/input"
-            ),
-            ProcessingInput(
-                dataset_definition=athena_dataset_definition
-            ),
-            abalone_input
+            ProcessingInput(source=input_data, destination="/opt/ml/processing/input"),
+            ProcessingInput(dataset_definition=athena_dataset_definition),
+            abalone_input,
         ],
         outputs=[
             ProcessingOutput(output_name="train_data", source="/opt/ml/processing/train"),
@@ -1235,7 +1225,7 @@ def test_caching_behavior(
         name="my-process",
         display_name="ProcessingStep",
         description="description for Processing step",
-        step_args=processor_args
+        step_args=processor_args,
     )
 
     # define training step
@@ -1258,7 +1248,7 @@ def test_caching_behavior(
         name="my-train",
         display_name="TrainingStep",
         description="description for Training step",
-        step_args=train_args
+        step_args=train_args,
     )
 
     # define pipeline
@@ -1277,26 +1267,20 @@ def test_caching_behavior(
         del definition["Steps"][1]["Arguments"]["ProfilerRuleConfigurations"]
 
         # verify input path
-        expected_abalone_input_path = \
-            f"{pipeline_name}/{step_process.name}" \
-            f"/input/abalone_data"
+        expected_abalone_input_path = f"{pipeline_name}/{step_process.name}" f"/input/abalone_data"
         expected_abalone_input_file = f"{expected_abalone_input_path}/abalone-dataset.csv"
 
         s3_input_objects = pipeline_session.list_s3_files(
-            bucket=default_bucket,
-            key_prefix=expected_abalone_input_path
+            bucket=default_bucket, key_prefix=expected_abalone_input_path
         )
         assert expected_abalone_input_file in s3_input_objects
 
         # verify code path
-        expected_code_path = \
-            f"{pipeline_name}/code/" \
-            f"{hash_files_or_dirs([script_dir])}"
+        expected_code_path = f"{pipeline_name}/code/" f"{hash_files_or_dirs([script_dir])}"
         expected_training_file = f"{expected_code_path}/sourcedir.tar.gz"
 
         s3_code_objects = pipeline_session.list_s3_files(
-            bucket=default_bucket,
-            key_prefix=expected_code_path
+            bucket=default_bucket, key_prefix=expected_code_path
         )
         assert expected_training_file in s3_code_objects
 
