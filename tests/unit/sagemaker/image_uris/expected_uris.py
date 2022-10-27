@@ -37,7 +37,7 @@ def neuron_framework_uri(
     py_version=None,
     inference_tool="neuron",
     region=REGION,
-    sdk_version="sdk2.3.0",
+    sdk_version="sdk2.4.0",
     container_version="ubuntu20.04",
 ):
     domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
