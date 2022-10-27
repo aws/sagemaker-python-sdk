@@ -102,6 +102,8 @@ SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
         "2.8.0",
         "2.9",
         "2.9.1",
+        "2.10",
+        "2.10.0",
     ],
     "pytorch": [
         "1.6",
@@ -144,7 +146,16 @@ TRAINIUM_SUPPORTED_DISTRIBUTION_STRATEGIES = ["torch_distributed"]
 SMDISTRIBUTED_SUPPORTED_STRATEGIES = ["dataparallel", "modelparallel"]
 
 
-GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY = ["c6g", "t4g", "r6g", "m6g"]
+GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY = [
+    "m6g",
+    "m6gd",
+    "c6g",
+    "c6gd",
+    "c6gn",
+    "c7g",
+    "r6g",
+    "r6gd",
+]
 
 
 GRAVITON_ALLOWED_FRAMEWORKS = set(["tensorflow", "pytorch", "xgboost", "sklearn"])
@@ -1063,6 +1074,22 @@ def _region_supports_profiler(region_name):
 
     """
     return region_name.lower() not in PROFILER_UNSUPPORTED_REGIONS
+
+
+def _instance_type_supports_profiler(instance_type):
+    """Returns bool indicating whether instance_type supports SageMaker Debugger profiling feature.
+
+    Args:
+        instance_type (str): Name of the instance_type to check against.
+
+    Returns:
+        bool: Whether or not the region supports Amazon SageMaker Debugger profiling feature.
+    """
+    if isinstance(instance_type, str):
+        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        if match and match[1].startswith("trn"):
+            return True
+    return False
 
 
 def validate_version_or_image_args(framework_version, py_version, image_uri):

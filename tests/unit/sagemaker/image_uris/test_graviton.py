@@ -17,12 +17,26 @@ from tests.unit.sagemaker.image_uris import expected_uris
 
 import pytest
 
+GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY = [
+    "m6g",
+    "m6gd",
+    "c6g",
+    "c6gd",
+    "c6gn",
+    "c7g",
+    "r6g",
+    "r6gd",
+]
 GRAVITON_ALGOS = ("tensorflow", "pytotch")
 GRAVITON_INSTANCE_TYPES = [
-    "ml.c6g.4xlarge",
-    "ml.t4g.2xlarge",
-    "ml.r6g.2xlarge",
     "ml.m6g.4xlarge",
+    "ml.m6gd.2xlarge",
+    "ml.c6g.2xlarge",
+    "ml.c6gd.4xlarge",
+    "ml.c6gn.4xlarge",
+    "ml.c7g.2xlarge",
+    "ml.r6g.2xlarge",
+    "ml.r6gd.4xlarge",
 ]
 
 ACCOUNTS = {
