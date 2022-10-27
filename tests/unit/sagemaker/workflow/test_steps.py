@@ -1459,12 +1459,9 @@ def test_pipeline_dag_json_get_bad_step_type(sagemaker_session):
         role=ROLE,
         instance_count=2,
         instance_type="ml.m5.large",
-        sagemaker_session=sagemaker_session
+        sagemaker_session=sagemaker_session,
     )
-    training_step = TrainingStep(
-        name="inputTrainingStep",
-        estimator=estimator
-    )
+    training_step = TrainingStep(name="inputTrainingStep", estimator=estimator)
     json_get_function = JsonGet(
         step_name=training_step.name, property_file="my-property-file", json_path="mse"
     )
@@ -1491,10 +1488,7 @@ def test_pipeline_dag_json_get_undefined_property_file(sagemaker_session):
         instance_type="c4.4xlarge",
         sagemaker_session=sagemaker_session,
     )
-    processing_step = ProcessingStep(
-        name="inputProcessingStep",
-        processor=processor
-    )
+    processing_step = ProcessingStep(name="inputProcessingStep", processor=processor)
     json_get_function = JsonGet(
         step_name=processing_step.name, property_file="undefined-property-file", json_path="mse"
     )
