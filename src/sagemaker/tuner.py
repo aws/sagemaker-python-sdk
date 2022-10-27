@@ -68,6 +68,9 @@ AMAZON_ESTIMATOR_CLS_NAMES = {
 HYPERPARAMETER_TUNING_JOB_NAME = "HyperParameterTuningJobName"
 PARENT_HYPERPARAMETER_TUNING_JOBS = "ParentHyperParameterTuningJobs"
 WARM_START_TYPE = "WarmStartType"
+HYPERBAND_STRATEGY_CONFIG = "HyperbandStrategyConfig"
+HYPERBAND_MIN_RESOURCE = "MinResource"
+HYPERBAND_MAX_RESOURCE = "MaxResource"
 GRID_SEARCH = "GridSearch"
 
 logger = logging.getLogger(__name__)
@@ -207,6 +210,179 @@ class WarmStartConfig(object):
         }
 
 
+class HyperbandStrategyConfig(object):
+    """The configuration for Hyperband, a multi-fidelity based hyperparameter tuning strategy.
+
+    Hyperband uses the final and intermediate results of a training job to dynamically allocate
+    resources to hyperparameter configurations being evaluated while automatically stopping
+    under-performing configurations. This parameter should be provided only if Hyperband is
+    selected as the Strategy under the HyperParameterTuningJobConfig.
+
+    Examples:
+        >>> hyperband_strategy_config = HyperbandStrategyConfig(
+        >>>                                 max_resource=10, min_resource = 1)
+        >>> hyperband_strategy_config.max_resource
+        10
+        >>> hyperband_strategy_config.min_resource
+        1
+    """
+
+    def __init__(self, max_resource: int, min_resource: int):
+        """Creates a ``HyperbandStrategyConfig`` with provided `min_resource`` and ``max_resource``.
+
+        Args:
+            max_resource (int): The maximum number of resources (such as epochs) that can be used
+            by a training job launched by a hyperparameter tuning job.
+                Once a job reaches the MaxResource value, it is stopped.
+                If a value for MaxResource is not provided, and Hyperband is selected as the
+                hyperparameter tuning strategy, HyperbandTrainingJ attempts to infer MaxResource
+                from the following keys (if present) in StaticsHyperParameters:
+                    epochs
+                    numepochs
+                    n-epochs
+                    n_epochs
+                    num_epochs
+                If HyperbandStrategyConfig is unable to infer a value for MaxResource, it generates
+                a validation error.
+                The maximum value is 20,000 epochs. All metrics that correspond to an objective
+                metric are used to derive early stopping decisions.
+                For distributed training jobs, ensure that duplicate metrics are not printed in the
+                logs across the individual nodes in a training job.
+                If multiple nodes are publishing duplicate or incorrect metrics, hyperband
+                optimisation algorithm may make an incorrect stopping decision and stop the job
+                prematurely.
+            min_resource (int): The minimum number of resources (such as epochs)
+                that can be used by a training job launched by a hyperparameter tuning job.
+                If the value for MinResource has not been reached, the training job will not be
+                stopped by Hyperband.
+        """
+        self.min_resource = min_resource
+        self.max_resource = max_resource
+
+    @classmethod
+    def from_job_desc(cls, hyperband_strategy_config):
+        """Creates a ``HyperbandStrategyConfig`` from a hyperband strategy configuration response.
+
+        This is the Hyperband strategy configuration from the DescribeTuningJob response.
+
+        Examples:
+            >>> hyperband_strategy_config =
+            >>>     HyperbandStrategyConfig.from_job_desc(hyperband_strategy_config={
+            >>>         "MaxResource": 10,
+            >>>         "MinResource": 1
+            >>>     })
+            >>> hyperband_strategy_config.max_resource
+            10
+            >>> hyperband_strategy_config.min_resource
+            1
+
+        Args:
+            hyperband_strategy_config (dict): The expected format of the
+                ``hyperband_strategy_config`` contains two first-class fields
+
+        Returns:
+            sagemaker.tuner.HyperbandStrategyConfig: De-serialized instance of
+            HyperbandStrategyConfig containing the max_resource and min_resource provided as part of
+            ``hyperband_strategy_config``.
+        """
+        return cls(
+            min_resource=hyperband_strategy_config[HYPERBAND_MIN_RESOURCE],
+            max_resource=hyperband_strategy_config[HYPERBAND_MAX_RESOURCE],
+        )
+
+    def to_input_req(self):
+        """Converts the ``self`` instance to the desired input request format.
+
+        Examples:
+            >>> hyperband_strategy_config = HyperbandStrategyConfig (
+                max_resource=10,
+                min_resource=1
+            )
+            >>> hyperband_strategy_config.to_input_req()
+            {
+                "MaxResource":10,
+                "MinResource": 1
+            }
+
+        Returns:
+            dict: Containing the "MaxResource" and
+            "MinResource" as the first class fields.
+        """
+        return {
+            HYPERBAND_MIN_RESOURCE: self.min_resource,
+            HYPERBAND_MAX_RESOURCE: self.max_resource,
+        }
+
+
+class StrategyConfig(object):
+    """The configuration for a training job launched by a hyperparameter tuning job.
+
+    Choose Bayesian for Bayesian optimization, and Random for random search optimization.
+    For more advanced use cases, use Hyperband, which evaluates objective metrics for training jobs
+    after every epoch.
+    """
+
+    def __init__(
+        self,
+        hyperband_strategy_config: HyperbandStrategyConfig,
+    ):
+        """Creates a ``StrategyConfig`` with provided ``HyperbandStrategyConfig``.
+
+        Args:
+            hyperband_strategy_config (sagemaker.tuner.HyperbandStrategyConfig): The configuration
+            for the object that specifies the Hyperband strategy.
+                This parameter is only supported for the Hyperband selection for Strategy within
+                the HyperParameterTuningJobConfig.
+        """
+
+        self.hyperband_strategy_config = hyperband_strategy_config
+
+    @classmethod
+    def from_job_desc(cls, strategy_config):
+        """Creates a ``HyperbandStrategyConfig`` from a hyperband strategy configuration response.
+
+        This is the hyper band strategy configuration from the DescribeTuningJob response.
+
+        Args:
+            strategy_config (dict): The expected format of the
+                ``strategy_config`` contains one first-class field
+
+        Returns:
+            sagemaker.tuner.StrategyConfig: De-serialized instance of
+            StrategyConfig containing the strategy configuration.
+        """
+        return cls(
+            hyperband_strategy_config=HyperbandStrategyConfig.from_job_desc(
+                strategy_config[HYPERBAND_STRATEGY_CONFIG]
+            )
+        )
+
+    def to_input_req(self):
+        """Converts the ``self`` instance to the desired input request format.
+
+        Examples:
+            >>> strategy_config = StrategyConfig(
+                HyperbandStrategyConfig(
+                    max_resource=10,
+                    min_resource=1
+                )
+            )
+            >>> strategy_config.to_input_req()
+            {
+                "HyperbandStrategyConfig": {
+                    "MaxResource":10,
+                    "MinResource": 1
+                }
+            }
+
+        Returns:
+            dict: Containing the strategy configurations.
+        """
+        return {
+            HYPERBAND_STRATEGY_CONFIG: self.hyperband_strategy_config.to_input_req(),
+        }
+
+
 class HyperparameterTuner(object):
     """Defines interaction with Amazon SageMaker hyperparameter tuning jobs.
 
@@ -234,6 +410,7 @@ class HyperparameterTuner(object):
         tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
         base_tuning_job_name: Optional[str] = None,
         warm_start_config: Optional[WarmStartConfig] = None,
+        strategy_config: Optional[StrategyConfig] = None,
         early_stopping_type: Union[str, PipelineVariable] = "Off",
         estimator_name: Optional[str] = None,
     ):
@@ -283,6 +460,8 @@ class HyperparameterTuner(object):
             warm_start_config (sagemaker.tuner.WarmStartConfig): A
                 ``WarmStartConfig`` object that has been initialized with the
                 configuration defining the nature of warm start tuning job.
+            strategy_config (sagemaker.tuner.StrategyConfig): A configuration for "Hyperparameter"
+            tuning job optimisation strategy.
             early_stopping_type (str or PipelineVariable): Specifies whether early stopping is
                 enabled for the job. Can be either 'Auto' or 'Off' (default:
                 'Off'). If set to 'Off', early stopping will not be attempted.
@@ -321,6 +500,7 @@ class HyperparameterTuner(object):
         self._validate_parameter_ranges(estimator, hyperparameter_ranges)
 
         self.strategy = strategy
+        self.strategy_config = strategy_config
         self.objective_type = objective_type
         # For the GridSearch strategy we expect the max_jobs equals None and recalculate it later.
         # For all other strategies for the backward compatibility we keep
@@ -1295,6 +1475,7 @@ class HyperparameterTuner(object):
                 objective_metric_name=self.objective_metric_name,
                 hyperparameter_ranges=self._hyperparameter_ranges,
                 strategy=self.strategy,
+                strategy_config=self.strategy_config,
                 objective_type=self.objective_type,
                 max_jobs=self.max_jobs,
                 max_parallel_jobs=self.max_parallel_jobs,
@@ -1321,6 +1502,7 @@ class HyperparameterTuner(object):
             hyperparameter_ranges_dict=self._hyperparameter_ranges_dict,
             metric_definitions_dict=self.metric_definitions_dict,
             strategy=self.strategy,
+            strategy_config=self.strategy_config,
             objective_type=self.objective_type,
             max_jobs=self.max_jobs,
             max_parallel_jobs=self.max_parallel_jobs,
@@ -1337,6 +1519,7 @@ class HyperparameterTuner(object):
         metric_definitions_dict=None,
         base_tuning_job_name=None,
         strategy="Bayesian",
+        strategy_config=None,
         objective_type="Maximize",
         max_jobs=None,
         max_parallel_jobs=1,
@@ -1380,11 +1563,13 @@ class HyperparameterTuner(object):
                 metric from the logs. This should be defined only for hyperparameter tuning jobs
                 that don't use an Amazon algorithm.
             base_tuning_job_name (str): Prefix for the hyperparameter tuning job name when the
-                :meth:`~sagemaker.tuner.HyperparameterTuner.fit` method launches. If not specified,
-                a default job name is generated, based on the training image name and current
-                timestamp.
+                :meth:`~sagemaker.tuner.HyperparameterTuner.fit` method launches.
+                If not specified, a default job name is generated,
+                based on the training image name and current timestamp.
             strategy (str): Strategy to be used for hyperparameter estimations
                 (default: 'Bayesian').
+            strategy_config (dict): The configuration for a training job launched by a
+            hyperparameter tuning job.
             objective_type (str): The type of the objective metric for evaluating training jobs.
                 This value can be either 'Minimize' or 'Maximize' (default: 'Maximize').
             max_jobs (int): Maximum total number of training jobs to start for the hyperparameter
@@ -1432,6 +1617,7 @@ class HyperparameterTuner(object):
             hyperparameter_ranges=hyperparameter_ranges_dict[first_estimator_name],
             metric_definitions=metric_definitions,
             strategy=strategy,
+            strategy_config=strategy_config,
             objective_type=objective_type,
             max_jobs=max_jobs,
             max_parallel_jobs=max_parallel_jobs,
@@ -1588,6 +1774,9 @@ class _TuningJob(_Job):
             "max_parallel_jobs": tuner.max_parallel_jobs,
             "early_stopping_type": tuner.early_stopping_type,
         }
+
+        if tuner.strategy_config is not None:
+            tuning_config["strategy_config"] = tuner.strategy_config
 
         if tuner.objective_metric_name is not None:
             tuning_config["objective_type"] = tuner.objective_type
