@@ -1040,3 +1040,9 @@ def test_validate_unsupported_distributions_trainium_raises():
             distribution=smdataparallel_enabled,
             instance_type="ml.trn1.32xlarge",
         )
+
+
+def test_instance_type_supports_profiler():
+    assert fw_utils._instance_type_supports_profiler("ml.trn1.xlarge") is True
+    assert fw_utils._instance_type_supports_profiler("ml.m4.xlarge") is False
+    assert fw_utils._instance_type_supports_profiler("local") is False
