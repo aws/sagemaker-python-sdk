@@ -40,8 +40,8 @@ class FeatureStore:
 
     sagemaker_session: Session = attr.ib(default=Session)
 
-    @staticmethod
     def create_dataset(
+        self,
         base: Union[FeatureGroup, pd.DataFrame],
         output_path: str,
         record_identifier_feature_name: str = None,
@@ -76,6 +76,7 @@ class FeatureStore:
                     + "identifier feature name if specify DataFrame as base."
                 )
         return DatasetBuilder(
+            self.sagemaker_session,
             base,
             output_path,
             record_identifier_feature_name,

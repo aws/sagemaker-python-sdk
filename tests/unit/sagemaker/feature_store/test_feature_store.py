@@ -39,6 +39,7 @@ def test_minimal_create_dataset(sagemaker_session_mock, feature_group_mock):
         base=feature_group_mock,
         output_path="file/to/path",
     )
+    assert dataset_builder._sagemaker_session == sagemaker_session_mock
     assert dataset_builder._base == feature_group_mock
     assert dataset_builder._output_path == "file/to/path"
 
@@ -51,6 +52,7 @@ def test_complete_create_dataset(sagemaker_session_mock, feature_group_mock):
         output_path="file/to/path",
         kms_key_id="kms-key-id",
     )
+    assert dataset_builder._sagemaker_session == sagemaker_session_mock
     assert dataset_builder._base == feature_group_mock
     assert dataset_builder._included_feature_names == ["feature_1", "feature_2"]
     assert dataset_builder._output_path == "file/to/path"
@@ -67,6 +69,7 @@ def test_create_dataset_with_dataframe(sagemaker_session_mock):
         output_path="file/to/path",
         kms_key_id="kms-key-id",
     )
+    assert dataset_builder._sagemaker_session == sagemaker_session_mock
     assert dataset_builder._base.equals(DATAFRAME)
     assert dataset_builder._record_identifier_feature_name == "feature_1"
     assert dataset_builder._event_time_identifier_feature_name == "feature_2"
