@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.115.0 (2022-10-27)
+
+### Features
+
+ * Add support for TF 2.10 training
+ * Disable profiler for Trainium instance type
+ * support the Hyperband strategy with the StrategyConfig
+ * support the GridSearch strategy for hyperparameter optimization
+
+### Bug Fixes and Other Changes
+
+ * Update Graviton supported instance families
+
 ## v2.114.0 (2022-10-26)
 
 ### Features
