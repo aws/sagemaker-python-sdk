@@ -3173,6 +3173,9 @@ def test_generic_to_deploy_kms(create_model, sagemaker_session):
         data_capture_config=None,
         async_inference_config=None,
         serverless_inference_config=None,
+        volume_size=None,
+        model_data_download_timeout=None,
+        container_startup_health_check_timeout=None,
     )
 
 
@@ -3311,6 +3314,54 @@ def test_deploy_with_no_model_name(sagemaker_session):
     sagemaker_session.create_model.assert_called_once()
     args, kwargs = sagemaker_session.create_model.call_args
     assert kwargs["name"].startswith(IMAGE_URI)
+
+
+@patch("sagemaker.estimator.Estimator.create_model")
+def test_deploy_with_customized_volume_size_timeout(create_model, sagemaker_session):
+    estimator = Estimator(
+        IMAGE_URI,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+    )
+    estimator.set_hyperparameters(**HYPERPARAMS)
+    estimator.fit({"train": "s3://bucket/training-prefix"})
+    endpoint_name = "endpoint-name"
+    volume_size_gb = 256
+    model_data_download_timeout_sec = 600
+    startup_health_check_timeout_sec = 600
+
+    model = MagicMock()
+    create_model.return_value = model
+
+    estimator.deploy(
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        endpoint_name=endpoint_name,
+        volume_size=volume_size_gb,
+        model_data_download_timeout=model_data_download_timeout_sec,
+        container_startup_health_check_timeout=startup_health_check_timeout_sec,
+    )
+
+    model.deploy.assert_called_with(
+        instance_type=INSTANCE_TYPE,
+        initial_instance_count=INSTANCE_COUNT,
+        serializer=None,
+        deserializer=None,
+        accelerator_type=None,
+        endpoint_name=endpoint_name,
+        tags=None,
+        wait=True,
+        kms_key=None,
+        data_capture_config=None,
+        async_inference_config=None,
+        serverless_inference_config=None,
+        volume_size=volume_size_gb,
+        model_data_download_timeout=model_data_download_timeout_sec,
+        container_startup_health_check_timeout=startup_health_check_timeout_sec,
+    )
 
 
 def test_register_default_image(sagemaker_session):
