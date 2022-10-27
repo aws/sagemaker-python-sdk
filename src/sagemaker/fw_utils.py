@@ -144,7 +144,16 @@ TRAINIUM_SUPPORTED_DISTRIBUTION_STRATEGIES = ["torch_distributed"]
 SMDISTRIBUTED_SUPPORTED_STRATEGIES = ["dataparallel", "modelparallel"]
 
 
-GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY = ["c6g", "t4g", "r6g", "m6g"]
+GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY = [
+    "m6g",
+    "m6gd",
+    "c6g",
+    "c6gd",
+    "c6gn",
+    "c7g",
+    "r6g",
+    "r6gd",
+]
 
 
 GRAVITON_ALLOWED_FRAMEWORKS = set(["tensorflow", "pytorch", "xgboost", "sklearn"])
