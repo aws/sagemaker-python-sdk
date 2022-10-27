@@ -71,6 +71,9 @@ def test_deploy(name_from_base, prepare_container_def, production_variant, sagem
         INSTANCE_COUNT,
         accelerator_type=None,
         serverless_inference_config=None,
+        volume_size=None,
+        model_data_download_timeout=None,
+        container_startup_health_check_timeout=None,
     )
 
     sagemaker_session.create_model.assert_called_with(
@@ -120,6 +123,9 @@ def test_deploy_accelerator_type(
         INSTANCE_COUNT,
         accelerator_type=ACCELERATOR_TYPE,
         serverless_inference_config=None,
+        volume_size=None,
+        model_data_download_timeout=None,
+        container_startup_health_check_timeout=None,
     )
 
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
@@ -363,6 +369,9 @@ def test_deploy_serverless_inference(production_variant, create_sagemaker_model,
         None,
         accelerator_type=None,
         serverless_inference_config=serverless_inference_config_dict,
+        volume_size=None,
+        model_data_download_timeout=None,
+        container_startup_health_check_timeout=None,
     )
 
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
@@ -474,3 +483,72 @@ def test_deploy_predictor_cls(production_variant, sagemaker_session):
     assert predictor_async.name == model.name
     assert predictor_async.endpoint_name == endpoint_name_async
     assert predictor_async.sagemaker_session == sagemaker_session
+
+
+@patch("sagemaker.production_variant")
+@patch("sagemaker.model.Model.prepare_container_def")
+@patch("sagemaker.utils.name_from_base", return_value=MODEL_NAME)
+def test_deploy_customized_volume_size_and_timeout(
+    name_from_base, prepare_container_def, production_variant, sagemaker_session
+):
+    volume_size_gb = 256
+    model_data_download_timeout_sec = 1800
+    startup_health_check_timeout_sec = 1800
+
+    production_variant_result = copy.deepcopy(BASE_PRODUCTION_VARIANT)
+    production_variant_result.update(
+        {
+            "VolumeSizeInGB": volume_size_gb,
+            "ModelDataDownloadTimeoutInSeconds": model_data_download_timeout_sec,
+            "ContainerStartupHealthCheckTimeoutInSeconds": startup_health_check_timeout_sec,
+        }
+    )
+    production_variant.return_value = production_variant_result
+
+    container_def = {"Image": MODEL_IMAGE, "Environment": {}, "ModelDataUrl": MODEL_DATA}
+    prepare_container_def.return_value = container_def
+
+    model = Model(MODEL_IMAGE, MODEL_DATA, role=ROLE, sagemaker_session=sagemaker_session)
+    model.deploy(
+        instance_type=INSTANCE_TYPE,
+        initial_instance_count=INSTANCE_COUNT,
+        volume_size=volume_size_gb,
+        model_data_download_timeout=model_data_download_timeout_sec,
+        container_startup_health_check_timeout=startup_health_check_timeout_sec,
+    )
+
+    name_from_base.assert_called_with(MODEL_IMAGE)
+    assert 2 == name_from_base.call_count
+
+    prepare_container_def.assert_called_with(
+        INSTANCE_TYPE, accelerator_type=None, serverless_inference_config=None
+    )
+    production_variant.assert_called_with(
+        MODEL_NAME,
+        INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        accelerator_type=None,
+        serverless_inference_config=None,
+        volume_size=volume_size_gb,
+        model_data_download_timeout=model_data_download_timeout_sec,
+        container_startup_health_check_timeout=startup_health_check_timeout_sec,
+    )
+
+    sagemaker_session.create_model.assert_called_with(
+        name=MODEL_NAME,
+        role=ROLE,
+        container_defs=container_def,
+        vpc_config=None,
+        enable_network_isolation=False,
+        tags=None,
+    )
+
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        name=MODEL_NAME,
+        production_variants=[production_variant_result],
+        tags=None,
+        kms_key=None,
+        wait=True,
+        data_capture_config_dict=None,
+        async_inference_config_dict=None,
+    )
