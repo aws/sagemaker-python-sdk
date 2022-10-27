@@ -42,6 +42,7 @@ from sagemaker.network import NetworkConfig
 from sagemaker.spark import defaults
 
 from sagemaker.workflow import is_pipeline_variable
+from sagemaker.workflow.pipeline_context import runnable_by_pipeline
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.functions import Join
 
@@ -211,6 +212,7 @@ class _SparkProcessorBase(ScriptProcessor):
             arguments=arguments,
         )
 
+    @runnable_by_pipeline
     def run(
         self,
         submit_app,
@@ -399,12 +401,22 @@ class _SparkProcessorBase(ScriptProcessor):
         Args:
             configuration (Dict): the configuration dict for the EMR application configuration.
         """
+        from sagemaker.workflow.utilities import _pipeline_config
 
         serialized_configuration = BytesIO(json.dumps(configuration).encode("utf-8"))
-        s3_uri = (
-            f"s3://{self.sagemaker_session.default_bucket()}/{self._current_job_name}/"
-            f"input/{self._conf_container_input_name}/{self._conf_file_name}"
-        )
+
+        if _pipeline_config and _pipeline_config.config_hash:
+            s3_uri = (
+                f"s3://{self.sagemaker_session.default_bucket()}/{_pipeline_config.pipeline_name}/"
+                f"{_pipeline_config.step_name}/input/"
+                f"{self._conf_container_input_name}/{_pipeline_config.config_hash}/"
+                f"{self._conf_file_name}"
+            )
+        else:
+            s3_uri = (
+                f"s3://{self.sagemaker_session.default_bucket()}/{self._current_job_name}/"
+                f"input/{self._conf_container_input_name}/{self._conf_file_name}"
+            )
 
         S3Uploader.upload_string_as_file_body(
             body=serialized_configuration,
@@ -443,11 +455,6 @@ class _SparkProcessorBase(ScriptProcessor):
         if not input_channel_name:
             raise ValueError("input_channel_name value may not be empty.")
 
-        input_channel_s3_uri = (
-            f"s3://{self.sagemaker_session.default_bucket()}"
-            f"/{self._current_job_name}/input/{input_channel_name}"
-        )
-
         use_input_channel = False
         spark_opt_s3_uris = []
         spark_opt_s3_uris_has_pipeline_var = False
@@ -481,6 +488,19 @@ class _SparkProcessorBase(ScriptProcessor):
 
             # If any local files were found and copied, upload the temp directory to S3
             if os.listdir(tmpdir):
+                from sagemaker.workflow.utilities import _pipeline_config
+
+                if _pipeline_config and _pipeline_config.code_hash:
+                    input_channel_s3_uri = (
+                        f"s3://{self.sagemaker_session.default_bucket()}"
+                        f"/{_pipeline_config.pipeline_name}/code/{_pipeline_config.code_hash}"
+                        f"/{input_channel_name}"
+                    )
+                else:
+                    input_channel_s3_uri = (
+                        f"s3://{self.sagemaker_session.default_bucket()}"
+                        f"/{self._current_job_name}/input/{input_channel_name}"
+                    )
                 logger.info(
                     "Uploading dependencies from tmpdir %s to S3 %s", tmpdir, input_channel_s3_uri
                 )
@@ -824,6 +844,7 @@ class PySparkProcessor(_SparkProcessorBase):
             arguments=arguments,
         )
 
+    @runnable_by_pipeline
     def run(
         self,
         submit_app: str,
@@ -1083,6 +1104,7 @@ class SparkJarProcessor(_SparkProcessorBase):
             arguments=arguments,
         )
 
+    @runnable_by_pipeline
     def run(
         self,
         submit_app: str,
