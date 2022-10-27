@@ -34,7 +34,7 @@
                         "us-west-2": "763104351884"
                     },
                     "container_version": {"trn": "ubuntu20.04"},
-                    "sdk_versions": ["sdk2.3.0"]
+                    "sdk_versions": ["sdk2.4.0"]
                 }
             }
         }
