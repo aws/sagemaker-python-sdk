@@ -66,7 +66,7 @@ class AutoMLStep(ConfigurableRetryStep):
             error_message="The step_args of AutoMLStep must be obtained " "from automl.fit().",
         )
 
-        self.step_args = step_args.args
+        self.step_args = step_args
         self.cache_config = cache_config
 
         root_property = Properties(step_name=name, shape_name="DescribeAutoMLJobResponse")
@@ -92,7 +92,16 @@ class AutoMLStep(ConfigurableRetryStep):
         The `AutoMLJobName`, `ModelDeployConfig` and `GenerateCandidateDefinitionsOnly`
             attribute cannot be included.
         """
-        request_dict = self.step_args
+        from sagemaker.workflow.utilities import execute_job_functions
+
+        # execute fit function in AutoML with saved parameters,
+        # and store args in PipelineSession's _context
+        execute_job_functions(self.step_args)
+
+        # populate request dict with args
+        auto_ml = self.step_args.func_args[0]
+        request_dict = auto_ml.sagemaker_session.context.args
+
         if "AutoMLJobConfig" not in request_dict:
             raise AutoMLStepInvalidModeError()
         if (
