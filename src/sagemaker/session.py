@@ -1646,6 +1646,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         job_objective=None,
         generate_candidate_definitions_only=False,
         tags=None,
+        model_deploy_config=None,
     ):
         """Create an Amazon SageMaker AutoML job.
 
@@ -1669,6 +1670,71 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 definitions. If True, AutoML.list_candidates() cannot be called. Default: False.
             tags ([dict[str,str]]): A list of dictionaries containing key-value
                 pairs.
+            model_deploy_config (dict): Specifies how to generate the endpoint name
+                for an automatic one-click Autopilot model deployment.
+                Contains "AutoGenerateEndpointName" and "EndpointName"
+        """
+        auto_ml_job_request = self._get_auto_ml_request(
+            input_config=input_config,
+            output_config=output_config,
+            auto_ml_job_config=auto_ml_job_config,
+            role=role,
+            job_name=job_name,
+            problem_type=problem_type,
+            job_objective=job_objective,
+            generate_candidate_definitions_only=generate_candidate_definitions_only,
+            tags=tags,
+            model_deploy_config=model_deploy_config,
+        )
+
+        def submit(request):
+            LOGGER.info("Creating auto-ml-job with name: %s", job_name)
+            LOGGER.debug("auto ml request: %s", json.dumps(request), indent=4)
+            self.sagemaker_client.create_auto_ml_job(**request)
+
+        self._intercept_create_request(auto_ml_job_request, submit, self.auto_ml.__name__)
+
+    def _get_auto_ml_request(
+        self,
+        input_config,
+        output_config,
+        auto_ml_job_config,
+        role,
+        job_name,
+        problem_type=None,
+        job_objective=None,
+        generate_candidate_definitions_only=False,
+        tags=None,
+        model_deploy_config=None,
+    ):
+        """Constructs a request compatible for creating an Amazon SageMaker AutoML job.
+
+        Args:
+            input_config (list[dict]): A list of Channel objects. Each channel contains "DataSource"
+                and "TargetAttributeName", "CompressionType" is an optional field.
+            output_config (dict): The S3 URI where you want to store the training results and
+                optional KMS key ID.
+            auto_ml_job_config (dict): A dict of AutoMLJob config, containing "StoppingCondition",
+                "SecurityConfig", optionally contains "VolumeKmsKeyId".
+            role (str): The Amazon Resource Name (ARN) of an IAM role that
+                Amazon SageMaker can assume to perform tasks on your behalf.
+            job_name (str): A string that can be used to identify an AutoMLJob. Each AutoMLJob
+                should have a unique job name.
+            problem_type (str): The type of problem of this AutoMLJob. Valid values are
+                "Regression", "BinaryClassification", "MultiClassClassification". If None,
+                SageMaker AutoMLJob will infer the problem type automatically.
+            job_objective (dict): AutoMLJob objective, contains "AutoMLJobObjectiveType" (optional),
+                "MetricName" and "Value".
+            generate_candidate_definitions_only (bool): Indicates whether to only generate candidate
+                definitions. If True, AutoML.list_candidates() cannot be called. Default: False.
+            tags ([dict[str,str]]): A list of dictionaries containing key-value
+                pairs.
+            model_deploy_config (dict): Specifies how to generate the endpoint name
+                for an automatic one-click Autopilot model deployment.
+                Contains "AutoGenerateEndpointName" and "EndpointName"
+
+        Returns:
+            Dict: a automl request dict
         """
         auto_ml_job_request = {
             "AutoMLJobName": job_name,
@@ -1678,6 +1744,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "RoleArn": role,
             "GenerateCandidateDefinitionsOnly": generate_candidate_definitions_only,
         }
+        if model_deploy_config is not None:
+            auto_ml_job_request["ModelDeployConfig"] = model_deploy_config
 
         if job_objective is not None:
             auto_ml_job_request["AutoMLJobObjective"] = job_objective
@@ -1688,9 +1756,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if tags is not None:
             auto_ml_job_request["Tags"] = tags
 
-        LOGGER.info("Creating auto-ml-job with name: %s", job_name)
-        LOGGER.debug("auto ml request: %s", json.dumps(auto_ml_job_request, indent=4))
-        self.sagemaker_client.create_auto_ml_job(**auto_ml_job_request)
+        return auto_ml_job_request
 
     def describe_auto_ml_job(self, job_name):
         """Calls the DescribeAutoMLJob API for the given job name and returns the response.

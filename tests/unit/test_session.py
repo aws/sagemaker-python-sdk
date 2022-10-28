@@ -661,6 +661,7 @@ def test_training_input_all_arguments():
 
 IMAGE = "myimage"
 S3_INPUT_URI = "s3://mybucket/data"
+DEFAULT_S3_VALIDATION_DATA = "s3://mybucket/invalidation_data"
 S3_OUTPUT = "s3://sagemaker-123/output/jobname"
 ROLE = "SageMakerRole"
 EXPANDED_ROLE = "arn:aws:iam::111111111111:role/ExpandedRole"
@@ -2180,15 +2181,34 @@ COMPLETE_EXPECTED_AUTO_ML_JOB_ARGS = {
     "AutoMLJobName": JOB_NAME,
     "InputDataConfig": [
         {
-            "DataSource": {"S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": S3_INPUT_URI}},
+            "ChannelType": "training",
             "CompressionType": "Gzip",
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": S3_INPUT_URI,
+                }
+            },
             "TargetAttributeName": "y",
-        }
+        },
+        {
+            "ChannelType": "validation",
+            "CompressionType": "Gzip",
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": DEFAULT_S3_VALIDATION_DATA,
+                }
+            },
+            "TargetAttributeName": "y",
+        },
     ],
     "OutputDataConfig": {"S3OutputPath": S3_OUTPUT},
     "ProblemType": "Regression",
     "AutoMLJobObjective": {"Type": "type", "MetricName": "metric-name"},
     "AutoMLJobConfig": {
+        "CandidateGenerationConfig": {"FeatureSpecificationS3Uri": "s3://mybucket/features.json"},
+        "Mode": "ENSEMBLING",
         "CompletionCriteria": {
             "MaxCandidates": 10,
             "MaxAutoMLJobRuntimeInSeconds": 36000,
@@ -2247,15 +2267,34 @@ def test_auto_ml_pack_to_request(sagemaker_session):
 def test_auto_ml_pack_to_request_with_optional_args(sagemaker_session):
     input_config = [
         {
-            "DataSource": {"S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": S3_INPUT_URI}},
+            "ChannelType": "training",
             "CompressionType": "Gzip",
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": S3_INPUT_URI,
+                }
+            },
             "TargetAttributeName": "y",
-        }
+        },
+        {
+            "ChannelType": "validation",
+            "CompressionType": "Gzip",
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": DEFAULT_S3_VALIDATION_DATA,
+                }
+            },
+            "TargetAttributeName": "y",
+        },
     ]
 
     output_config = {"S3OutputPath": S3_OUTPUT}
 
     auto_ml_job_config = {
+        "CandidateGenerationConfig": {"FeatureSpecificationS3Uri": "s3://mybucket/features.json"},
+        "Mode": "ENSEMBLING",
         "CompletionCriteria": {
             "MaxCandidates": 10,
             "MaxAutoMLJobRuntimeInSeconds": 36000,
