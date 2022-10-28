@@ -63,3 +63,17 @@ class UnexpectedClientError(AsyncInferenceError):
 
     def __init__(self, message):
         super().__init__(message=message)
+
+
+class AutoMLStepInvalidModeError(Exception):
+    """Raised when the automl mode passed into AutoMLStep in invalid"""
+
+    fmt = (
+        "Mode in AutoMLJobConfig must be defined for AutoMLStep. "
+        "AutoMLStep currently only supports ENSEMBLING mode"
+    )
+
+    def __init__(self, **kwargs):
+        msg = self.fmt.format(**kwargs)
+        Exception.__init__(self, msg)
+        self.kwargs = kwargs
