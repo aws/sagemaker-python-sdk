@@ -2759,6 +2759,59 @@ def test_download_athena_query_result(sagemaker_session):
     )
 
 
+def test_update_monitoring_alert(sagemaker_session):
+    sagemaker_session.update_monitoring_alert(
+        monitoring_schedule_name="schedule-name",
+        monitoring_alert_name="alert-name",
+        data_points_to_alert=1,
+        evaluation_period=1,
+    )
+    assert sagemaker_session.sagemaker_client.update_monitoring_alert.called_with(
+        MonitoringScheduleName="schedule-name",
+        MonitoringAlertName="alert-name",
+        DatapointsToAlert=1,
+        EvaluationPeriod=1,
+    )
+
+
+def test_list_monitoring_alerts(sagemaker_session):
+    sagemaker_session.list_monitoring_alerts(
+        monitoring_schedule_name="schedule-name",
+        next_token="next_token",
+        max_results=100,
+    )
+    assert sagemaker_session.sagemaker_client.list_monitoring_alerts.called_with(
+        MonitoringScheduleName="schedule-name",
+        NextToken="next_token",
+        MaxResults=100,
+    )
+
+
+def test_list_monitoring_alert_history(sagemaker_session):
+    sagemaker_session.list_monitoring_alert_history(
+        monitoring_schedule_name="schedule-name",
+        monitoring_alert_name="alert-name",
+        sort_by="CreationTime",
+        sort_order="Descending",
+        next_token="next_token",
+        max_results=100,
+        status_equals="InAlert",
+        creation_time_before="creation_time_before",
+        creation_time_after="creation_time_after",
+    )
+    assert sagemaker_session.sagemaker_client.list_monitoring_alerts.called_with(
+        MonitoringScheduleName="schedule-name",
+        MonitoringAlertName="alert-name",
+        SortBy="CreationTime",
+        SortOrder="Descending",
+        NextToken="next_token",
+        MaxResults=100,
+        CreationTimeBefore="creation_time_before",
+        CreationTimeAfter="creation_time_after",
+        StatusEquals="InAlert",
+    )
+
+
 @patch("sagemaker.session.Session.get_query_execution")
 def test_wait_for_athena_query(query_execution, sagemaker_session):
     query_execution.return_value = {"QueryExecution": {"Status": {"State": "SUCCEEDED"}}}
