@@ -787,3 +787,11 @@ def test_to_string():
             "Values": [{"Get": "Parameters.MyInt"}],
         },
     }
+
+
+def test_start_waiting(capfd):
+    waiting_time = 1
+    sagemaker.utils._start_waiting(waiting_time)
+    out, _ = capfd.readouterr()
+
+    assert "." * sagemaker.utils.WAITING_DOT_NUMBER in out
