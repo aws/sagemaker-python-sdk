@@ -289,6 +289,7 @@ def retrieve_caller_name(job_instance):
     from sagemaker.estimator import EstimatorBase
     from sagemaker.transformer import Transformer
     from sagemaker.tuner import HyperparameterTuner
+    from sagemaker.automl.automl import AutoML
 
     if isinstance(job_instance, Processor):
         return "process"
@@ -298,5 +299,7 @@ def retrieve_caller_name(job_instance):
         return "transform"
     if isinstance(job_instance, HyperparameterTuner):
         return "create_tuning_job"
+    if isinstance(job_instance, AutoML):
+        return "auto_ml"
 
     return None
