@@ -21,7 +21,7 @@ import sys
 import time
 import typing
 import warnings
-from typing import List, Dict, Any, Sequence
+from typing import List, Dict, Any, Sequence, Optional
 
 import boto3
 import botocore
@@ -1582,6 +1582,112 @@ class Session(object):  # pylint: disable=too-many-public-methods
             )
 
         return response
+
+    def update_monitoring_alert(
+        self,
+        monitoring_schedule_name: str,
+        monitoring_alert_name: str,
+        data_points_to_alert: int,
+        evaluation_period: int,
+    ):
+        """Update the monitoring alerts associated with the given schedule_name and alert_name
+
+        Args:
+            monitoring_schedule_name (str): The name of the monitoring schedule to update.
+            monitoring_alert_name (str): The name of the monitoring alert to update.
+            data_points_to_alert (int):  The data point to alert.
+            evaluation_period (int): The period to evaluate the alert status.
+
+        Returns:
+            dict: A dict represents the update alert response.
+        """
+        return self.sagemaker_client.update_monitoring_alert(
+            MonitoringScheduleName=monitoring_schedule_name,
+            MonitoringAlertName=monitoring_alert_name,
+            DatapointsToAlert=data_points_to_alert,
+            EvaluationPeriod=evaluation_period,
+        )
+
+    def list_monitoring_alerts(
+        self,
+        monitoring_schedule_name: str,
+        next_token: Optional[str] = None,
+        max_results: Optional[int] = 10,
+    ) -> Dict:
+        """Lists the monitoring alerts associated with the given monitoring_schedule_name.
+
+        Args:
+            monitoring_schedule_name (str): The name of the monitoring schedule to filter on.
+                If not provided, does not filter on it.
+            next_token (Optional[str]):  The pagination token. Default: None
+            max_results (Optional[int]): The maximum number of results to return.
+                Must be between 1 and 100. Default: 10
+
+        Returns:
+            dict: list of monitoring alerts.
+        """
+        params = {
+            "MonitoringScheduleName": monitoring_schedule_name,
+            "MaxResults": max_results,
+        }
+        if next_token:
+            params.update({"NextToken": next_token})
+
+        return self.sagemaker_client.list_monitoring_alerts(**params)
+
+    def list_monitoring_alert_history(
+        self,
+        monitoring_schedule_name: Optional[str] = None,
+        monitoring_alert_name: Optional[str] = None,
+        sort_by: Optional[str] = "CreationTime",
+        sort_order: Optional[str] = "Descending",
+        next_token: Optional[str] = None,
+        max_results: Optional[int] = 10,
+        creation_time_before: Optional[str] = None,
+        creation_time_after: Optional[str] = None,
+        status_equals: Optional[str] = None,
+    ) -> Dict:
+        """Lists the alert history associated with the given schedule_name and alert_name.
+
+        Args:
+            monitoring_schedule_name (Optional[str]): The name of the monitoring_schedule_name
+                to filter on. If not provided, does not filter on it. Default: None.
+            monitoring_alert_name (Optional[str]): The name of the monitoring_alert_name
+                to filter on. If not provided, does not filter on it. Default: None.
+            sort_by (Optional[str]): sort_by (str): The field to sort by.
+                Can be one of: "Name", "CreationTime" Default: "CreationTime".
+            sort_order (Optional[str]): The sort order. Can be one of: "Ascending", "Descending".
+                Default: "Descending".
+            next_token (Optional[str]):  The pagination token. Default: None
+            max_results (Optional[int]): The maximum number of results to return.
+                Must be between 1 and 100. Default: 10.
+            creation_time_before (Optional[str]): A filter to filter alert history before a time
+            creation_time_after (Optional[str]): A filter to filter alert history after a time
+                Default: None.
+            status_equals (Optional[str]): A filter to filter alert history by status
+                Default: None.
+
+        Returns:
+            dict: list of monitoring alert history.
+        """
+        params = {
+            "MonitoringScheduleName": monitoring_schedule_name,
+            "SortBy": sort_by,
+            "SortOrder": sort_order,
+            "MaxResults": max_results,
+        }
+        if monitoring_alert_name:
+            params.update({"MonitoringAlertName": monitoring_alert_name})
+        if creation_time_before:
+            params.update({"CreationTimeBefore": creation_time_before})
+        if creation_time_after:
+            params.update({"CreationTimeAfter": creation_time_after})
+        if status_equals:
+            params.update({"StatusEquals": status_equals})
+        if next_token:
+            params.update({"NextToken": next_token})
+
+        return self.sagemaker_client.list_monitoring_alert_history(**params)
 
     def was_processing_job_successful(self, job_name):
         """Calls the DescribeProcessingJob API for the given job name.
