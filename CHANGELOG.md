@@ -1,5 +1,14 @@
 # Changelog
 
+## v2.116.0 (2022-10-28)
+
+### Features
+
+ * support customized timeout for model data download and inference container startup health check for Hosting Endpoints
+ * Trainium Neuron support for PyTorch
+ * Pipelines cache keys update
+ * Caching Improvements for SM Pipeline Workflows
+
 ## v2.115.0 (2022-10-27)
 
 ### Features
