@@ -14,14 +14,16 @@
 from __future__ import absolute_import
 
 from typing import Union, Optional, List, Dict
-
 from botocore import exceptions
 
 from sagemaker.job import _Job
 from sagemaker.session import Session
+from sagemaker.inputs import BatchDataCaptureConfig
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.workflow.functions import Join
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
 from sagemaker.workflow import is_pipeline_variable
+from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.utils import base_name_from_image, name_from_base
 
 
@@ -127,6 +129,7 @@ class Transformer(object):
         join_source: Optional[Union[str, PipelineVariable]] = None,
         experiment_config: Optional[Dict[str, str]] = None,
         model_client_config: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        batch_data_capture_config: BatchDataCaptureConfig = None,
         wait: bool = True,
         logs: bool = True,
     ):
@@ -193,6 +196,12 @@ class Transformer(object):
                 configuration. Dictionary contains two optional keys,
                 'InvocationsTimeoutInSeconds', and 'InvocationsMaxRetries'.
                 (default: ``None``).
+            batch_data_capture_config (BatchDataCaptureConfig): Configuration object which
+                specifies the configurations related to the batch data capture for the transform job
+                (default: ``None``).
+            batch_data_capture_config (BatchDataCaptureConfig): Configuration object which
+                specifies the configurations related to the batch data capture for the transform job
+                (default: ``None``).
             wait (bool): Whether the call should wait until the job completes
                 (default: ``True``).
             logs (bool): Whether to show the logs produced by the job.
@@ -201,6 +210,8 @@ class Transformer(object):
             None or pipeline step arguments in case the Transformer instance is built with
             :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
         """
+        from sagemaker.workflow.utilities import _pipeline_config
+
         local_mode = self.sagemaker_session.local_mode
         if not local_mode and not is_pipeline_variable(data) and not data.startswith("s3://"):
             raise ValueError("Invalid S3 URI: {}".format(data))
@@ -220,9 +231,21 @@ class Transformer(object):
             self._current_job_name = name_from_base(base_name)
 
         if self.output_path is None or self._reset_output_path is True:
-            self.output_path = "s3://{}/{}".format(
-                self.sagemaker_session.default_bucket(), self._current_job_name
-            )
+            if _pipeline_config:
+                self.output_path = Join(
+                    on="/",
+                    values=[
+                        "s3:/",
+                        self.sagemaker_session.default_bucket(),
+                        _pipeline_config.pipeline_name,
+                        ExecutionVariables.PIPELINE_EXECUTION_ID,
+                        _pipeline_config.step_name,
+                    ],
+                )
+            else:
+                self.output_path = "s3://{}/{}".format(
+                    self.sagemaker_session.default_bucket(), self._current_job_name
+                )
             self._reset_output_path = True
 
         self.latest_transform_job = _TransformJob.start_new(
@@ -237,6 +260,7 @@ class Transformer(object):
             join_source,
             experiment_config,
             model_client_config,
+            batch_data_capture_config,
         )
 
         if wait:
@@ -372,6 +396,7 @@ class _TransformJob(_Job):
         join_source,
         experiment_config,
         model_client_config,
+        batch_data_capture_config,
     ):
         """Placeholder docstring"""
 
@@ -387,6 +412,7 @@ class _TransformJob(_Job):
             join_source,
             experiment_config,
             model_client_config,
+            batch_data_capture_config,
         )
 
         transformer.sagemaker_session.transform(**transform_args)
@@ -407,6 +433,7 @@ class _TransformJob(_Job):
         join_source,
         experiment_config,
         model_client_config,
+        batch_data_capture_config,
     ):
         """Placeholder docstring"""
 
@@ -430,6 +457,7 @@ class _TransformJob(_Job):
                 "model_client_config": model_client_config,
                 "tags": transformer.tags,
                 "data_processing": data_processing,
+                "batch_data_capture_config": batch_data_capture_config,
             }
         )
 

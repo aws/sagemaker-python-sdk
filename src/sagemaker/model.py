@@ -569,8 +569,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                     )
                     return
                 self.sagemaker_session.context.need_runtime_repack.add(id(self))
-                self.sagemaker_session.context.runtime_repack_output_prefix = "s3://{}/{}".format(
-                    bucket, key_prefix
+                self.sagemaker_session.context.runtime_repack_output_prefix = s3.s3_path_join(
+                    "s3://", bucket, key_prefix
                 )
                 # Add the uploaded_code and repacked_model_data to update the container env
                 self.repacked_model_data = self.model_data
@@ -1029,6 +1029,9 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         data_capture_config=None,
         async_inference_config=None,
         serverless_inference_config=None,
+        volume_size=None,
+        model_data_download_timeout=None,
+        container_startup_health_check_timeout=None,
         **kwargs,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
@@ -1092,6 +1095,16 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 empty object passed through, will use pre-defined values in
                 ``ServerlessInferenceConfig`` class to deploy serverless endpoint. Deploy an
                 instance based endpoint if it's None. (default: None)
+            volume_size (int): The size, in GB, of the ML storage volume attached to individual
+                inference instance associated with the production variant. Currenly only Amazon EBS
+                gp2 storage volumes are supported.
+            model_data_download_timeout (int): The timeout value, in seconds, to download and
+                extract model data from Amazon S3 to the individual inference instance associated
+                with this production variant.
+            container_startup_health_check_timeout (int): The timeout value, in seconds, for your
+                inference container to pass health check by SageMaker Hosting. For more information
+                about health check see:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html#your-algorithms-inference-algo-ping-requests
         Raises:
              ValueError: If arguments combination check failed in these circumstances:
                 - If no role is specified or
@@ -1155,6 +1168,9 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             initial_instance_count,
             accelerator_type=accelerator_type,
             serverless_inference_config=serverless_inference_config_dict,
+            volume_size=volume_size,
+            model_data_download_timeout=model_data_download_timeout,
+            container_startup_health_check_timeout=container_startup_health_check_timeout,
         )
         if endpoint_name:
             self.endpoint_name = endpoint_name

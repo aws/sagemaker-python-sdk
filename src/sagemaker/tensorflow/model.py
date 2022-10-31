@@ -320,6 +320,9 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         update_endpoint=None,
         async_inference_config=None,
         serverless_inference_config=None,
+        volume_size=None,
+        model_data_download_timeout=None,
+        container_startup_health_check_timeout=None,
     ):
         """Deploy a Tensorflow ``Model`` to a SageMaker ``Endpoint``."""
 
@@ -340,6 +343,9 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             data_capture_config=data_capture_config,
             async_inference_config=async_inference_config,
             serverless_inference_config=serverless_inference_config,
+            volume_size=volume_size,
+            model_data_download_timeout=model_data_download_timeout,
+            container_startup_health_check_timeout=container_startup_health_check_timeout,
             update_endpoint=update_endpoint,
         )
 
@@ -396,8 +402,8 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             # model is not yet there, defer repacking to later during pipeline execution
             if isinstance(self.sagemaker_session, PipelineSession):
                 self.sagemaker_session.context.need_runtime_repack.add(id(self))
-                self.sagemaker_session.context.runtime_repack_output_prefix = "s3://{}/{}".format(
-                    bucket, key_prefix
+                self.sagemaker_session.context.runtime_repack_output_prefix = s3.s3_path_join(
+                    "s3://", bucket, key_prefix
                 )
             else:
                 logging.warning(

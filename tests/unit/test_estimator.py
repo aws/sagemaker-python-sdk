@@ -54,7 +54,7 @@ from sagemaker.tensorflow.estimator import TensorFlow
 from sagemaker.predictor_async import AsyncPredictor
 from sagemaker.transformer import Transformer
 from sagemaker.workflow.parameters import ParameterString, ParameterBoolean
-from sagemaker.workflow.pipeline_context import PipelineSession
+from sagemaker.workflow.pipeline_context import PipelineSession, _PipelineConfig
 from sagemaker.xgboost.estimator import XGBoost
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
@@ -141,6 +141,10 @@ DISTRIBUTION_MPI_ENABLED = {
 DISTRIBUTION_SM_DDP_ENABLED = {
     "smdistributed": {"dataparallel": {"enabled": True, "custom_mpi_options": "options"}}
 }
+MOCKED_S3_URI = "s3://mocked_s3_uri_from_source_dir"
+MOCKED_PIPELINE_CONFIG = _PipelineConfig(
+    "test-pipeline", "test-training-step", "code-hash-0123456789", "config-hash-0123456789"
+)
 
 
 class DummyFramework(Framework):
@@ -3169,6 +3173,9 @@ def test_generic_to_deploy_kms(create_model, sagemaker_session):
         data_capture_config=None,
         async_inference_config=None,
         serverless_inference_config=None,
+        volume_size=None,
+        model_data_download_timeout=None,
+        container_startup_health_check_timeout=None,
     )
 
 
@@ -3307,6 +3314,54 @@ def test_deploy_with_no_model_name(sagemaker_session):
     sagemaker_session.create_model.assert_called_once()
     args, kwargs = sagemaker_session.create_model.call_args
     assert kwargs["name"].startswith(IMAGE_URI)
+
+
+@patch("sagemaker.estimator.Estimator.create_model")
+def test_deploy_with_customized_volume_size_timeout(create_model, sagemaker_session):
+    estimator = Estimator(
+        IMAGE_URI,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+    )
+    estimator.set_hyperparameters(**HYPERPARAMS)
+    estimator.fit({"train": "s3://bucket/training-prefix"})
+    endpoint_name = "endpoint-name"
+    volume_size_gb = 256
+    model_data_download_timeout_sec = 600
+    startup_health_check_timeout_sec = 600
+
+    model = MagicMock()
+    create_model.return_value = model
+
+    estimator.deploy(
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        endpoint_name=endpoint_name,
+        volume_size=volume_size_gb,
+        model_data_download_timeout=model_data_download_timeout_sec,
+        container_startup_health_check_timeout=startup_health_check_timeout_sec,
+    )
+
+    model.deploy.assert_called_with(
+        instance_type=INSTANCE_TYPE,
+        initial_instance_count=INSTANCE_COUNT,
+        serializer=None,
+        deserializer=None,
+        accelerator_type=None,
+        endpoint_name=endpoint_name,
+        tags=None,
+        wait=True,
+        kms_key=None,
+        data_capture_config=None,
+        async_inference_config=None,
+        serverless_inference_config=None,
+        volume_size=volume_size_gb,
+        model_data_download_timeout=model_data_download_timeout_sec,
+        container_startup_health_check_timeout=startup_health_check_timeout_sec,
+    )
 
 
 def test_register_default_image(sagemaker_session):
@@ -3676,6 +3731,27 @@ def test_prepare_for_training_with_name_based_on_algorithm(sagemaker_session):
 
     estimator._prepare_for_training()
     assert "scikit-decision-trees-1542410022" in estimator._current_job_name
+
+
+@patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
+def test_prepare_for_training_with_pipeline_name_in_s3_path_no_source_dir(pipeline_session):
+    # script_uri is NOT provided -> use new cache key behavior that builds path using pipeline name + code_hash
+    image_uri = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.9.0-gpu-py38"
+    model_uri = "s3://someprefix2/models/model.tar.gz"
+    estimator = Estimator(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=pipeline_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        image_uri=image_uri,
+        model_uri=model_uri,
+    )
+    step_args = estimator.fit()
+    # execute estimator.fit() and generate args, S3 paths
+    step_args.func(*step_args.func_args, **step_args.func_kwargs)
+    expected_path = "/".join(["test-pipeline", "code", "code-hash-0123456789"])
+    assert expected_path in estimator.uploaded_code.s3_prefix
 
 
 @patch(

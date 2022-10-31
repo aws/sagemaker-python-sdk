@@ -34,7 +34,7 @@ from sagemaker import vpc_utils
 
 from sagemaker._studio import _append_project_tags
 from sagemaker.deprecations import deprecated_class
-from sagemaker.inputs import ShuffleConfig, TrainingInput
+from sagemaker.inputs import ShuffleConfig, TrainingInput, BatchDataCaptureConfig
 from sagemaker.user_agent import prepend_user_agent
 from sagemaker.utils import (
     name_from_image,
@@ -2454,6 +2454,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         tags,
         data_processing,
         model_client_config=None,
+        batch_data_capture_config: BatchDataCaptureConfig = None,
     ):
         """Construct an dict can be used to create an Amazon SageMaker transform job.
 
@@ -2489,6 +2490,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             model_client_config (dict): A dictionary describing the model configuration for the
                 job. Dictionary contains two optional keys,
                 'InvocationsTimeoutInSeconds', and 'InvocationsMaxRetries'.
+            batch_data_capture_config (BatchDataCaptureConfig): Configuration object which
+                specifies the configurations related to the batch data capture for the transform job
+                (default: None)
 
         Returns:
             Dict: a create transform job request dict
@@ -2525,6 +2529,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if model_client_config and len(model_client_config) > 0:
             transform_request["ModelClientConfig"] = model_client_config
 
+        if batch_data_capture_config is not None:
+            transform_request["DataCaptureConfig"] = batch_data_capture_config._to_request_dict()
+
         return transform_request
 
     def transform(
@@ -2542,6 +2549,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         tags,
         data_processing,
         model_client_config=None,
+        batch_data_capture_config: BatchDataCaptureConfig = None,
     ):
         """Create an Amazon SageMaker transform job.
 
@@ -2577,6 +2585,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             model_client_config (dict): A dictionary describing the model configuration for the
                 job. Dictionary contains two optional keys,
                 'InvocationsTimeoutInSeconds', and 'InvocationsMaxRetries'.
+            batch_data_capture_config (BatchDataCaptureConfig): Configuration object which
+                specifies the configurations related to the batch data capture for the transform job
         """
         tags = _append_project_tags(tags)
         transform_request = self._get_transform_request(
@@ -2593,6 +2603,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             tags=tags,
             data_processing=data_processing,
             model_client_config=model_client_config,
+            batch_data_capture_config=batch_data_capture_config,
         )
 
         def submit(request):
@@ -2970,6 +2981,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         tags=None,
         kms_key=None,
         data_capture_config_dict=None,
+        volume_size=None,
+        model_data_download_timeout=None,
+        container_startup_health_check_timeout=None,
     ):
         """Create an Amazon SageMaker endpoint configuration.
 
@@ -2993,6 +3007,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 attached to the instance hosting the endpoint.
             data_capture_config_dict (dict): Specifies configuration related to Endpoint data
                 capture for use with Amazon SageMaker Model Monitoring. Default: None.
+            volume_size (int): The size, in GB, of the ML storage volume attached to individual
+                inference instance associated with the production variant. Currenly only Amazon EBS
+                gp2 storage volumes are supported.
+            model_data_download_timeout (int): The timeout value, in seconds, to download and
+                extract model data from Amazon S3 to the individual inference instance associated
+                with this production variant.
+            container_startup_health_check_timeout (int): The timeout value, in seconds, for your
+                inference container to pass health check by SageMaker Hosting. For more information
+                about health check see:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html#your-algorithms-inference-algo-ping-requests
 
         Example:
             >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]
@@ -3014,6 +3038,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     instance_type,
                     initial_instance_count,
                     accelerator_type=accelerator_type,
+                    volume_size=volume_size,
+                    model_data_download_timeout=model_data_download_timeout,
+                    container_startup_health_check_timeout=container_startup_health_check_timeout,
                 )
             ],
         }
@@ -4625,6 +4652,9 @@ def production_variant(
     initial_weight=1,
     accelerator_type=None,
     serverless_inference_config=None,
+    volume_size=None,
+    model_data_download_timeout=None,
+    container_startup_health_check_timeout=None,
 ):
     """Create a production variant description suitable for use in a ``ProductionVariant`` list.
 
@@ -4646,7 +4676,16 @@ def production_variant(
         serverless_inference_config (dict): Specifies configuration dict related to serverless
             endpoint. The dict is converted from sagemaker.model_monitor.ServerlessInferenceConfig
             object (default: None)
-
+        volume_size (int): The size, in GB, of the ML storage volume attached to individual
+            inference instance associated with the production variant. Currenly only Amazon EBS
+            gp2 storage volumes are supported.
+        model_data_download_timeout (int): The timeout value, in seconds, to download and extract
+            model data from Amazon S3 to the individual inference instance associated with this
+            production variant.
+        container_startup_health_check_timeout (int): The timeout value, in seconds, for your
+            inference container to pass health check by SageMaker Hosting. For more information
+            about health check see:
+            https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html#your-algorithms-inference-algo-ping-requests
     Returns:
         dict[str, str]: An SageMaker ``ProductionVariant`` description
     """
@@ -4665,6 +4704,12 @@ def production_variant(
         initial_instance_count = initial_instance_count or 1
         production_variant_configuration["InitialInstanceCount"] = initial_instance_count
         production_variant_configuration["InstanceType"] = instance_type
+        update_args(
+            production_variant_configuration,
+            VolumeSizeInGB=volume_size,
+            ModelDataDownloadTimeoutInSeconds=model_data_download_timeout,
+            ContainerStartupHealthCheckTimeoutInSeconds=container_startup_health_check_timeout,
+        )
 
     return production_variant_configuration
 

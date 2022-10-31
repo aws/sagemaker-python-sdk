@@ -44,6 +44,7 @@ from sagemaker.fw_utils import (
     UploadedCode,
     _region_supports_debugger,
     _region_supports_profiler,
+    _instance_type_supports_profiler,
     get_mp_parameters,
     tar_and_upload_dir,
     validate_source_dir,
@@ -592,7 +593,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         self.max_retry_attempts = max_retry_attempts
 
-        if not _region_supports_profiler(self.sagemaker_session.boto_region_name):
+        if not _region_supports_profiler(
+            self.sagemaker_session.boto_region_name
+        ) or _instance_type_supports_profiler(self.instance_type):
             self.disable_profiler = True
 
         self.profiler_rule_configs = None
@@ -775,13 +778,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         if is_pipeline_variable(self.output_path):
             if self.code_location is None:
                 code_bucket = self.sagemaker_session.default_bucket()
-                code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
+                code_s3_prefix = self._assign_s3_prefix()
                 kms_key = None
             else:
                 code_bucket, key_prefix = parse_s3_url(self.code_location)
-                code_s3_prefix = "/".join(
-                    filter(None, [key_prefix, self._current_job_name, "source"])
-                )
+                code_s3_prefix = self._assign_s3_prefix(key_prefix)
 
                 output_bucket = self.sagemaker_session.default_bucket()
                 kms_key = self.output_kms_key if code_bucket == output_bucket else None
@@ -790,24 +791,20 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             if local_mode:
                 if self.code_location is None:
                     code_bucket = self.sagemaker_session.default_bucket()
-                    code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
+                    code_s3_prefix = self._assign_s3_prefix()
                     kms_key = None
                 else:
                     code_bucket, key_prefix = parse_s3_url(self.code_location)
-                    code_s3_prefix = "/".join(
-                        filter(None, [key_prefix, self._current_job_name, "source"])
-                    )
+                    code_s3_prefix = self._assign_s3_prefix(key_prefix)
                     kms_key = None
             else:
                 if self.code_location is None:
                     code_bucket, _ = parse_s3_url(self.output_path)
-                    code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
+                    code_s3_prefix = self._assign_s3_prefix()
                     kms_key = self.output_kms_key
                 else:
                     code_bucket, key_prefix = parse_s3_url(self.code_location)
-                    code_s3_prefix = "/".join(
-                        filter(None, [key_prefix, self._current_job_name, "source"])
-                    )
+                    code_s3_prefix = self._assign_s3_prefix(key_prefix)
 
                     output_bucket, _ = parse_s3_url(self.output_path)
                     kms_key = self.output_kms_key if code_bucket == output_bucket else None
@@ -823,6 +820,36 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             s3_resource=self.sagemaker_session.s3_resource,
             settings=self.sagemaker_session.settings,
         )
+
+    def _assign_s3_prefix(self, key_prefix=""):
+        """Include pipeline name+step name instead of job name in s3 path
+
+        Assign new s3 path structure if within a pipeline workflow that has
+            set the _pipeline_config and respective name/hash variables
+
+        Args:
+            key_prefix (str): Prefix for the S3 key, often netloc of url:
+            https://docs.python.org/3.9/library/urllib.parse.html#urllib.parse.netloc
+
+        Returns:
+            str: S3 path prefix that occurs before filename
+        """
+        from sagemaker.workflow.utilities import _pipeline_config
+
+        code_s3_prefix = "/".join(filter(None, [key_prefix, self._current_job_name, "source"]))
+        if _pipeline_config and _pipeline_config.code_hash:
+            code_s3_prefix = "/".join(
+                filter(
+                    None,
+                    [
+                        key_prefix,
+                        _pipeline_config.pipeline_name,
+                        "code",
+                        _pipeline_config.code_hash,
+                    ],
+                )
+            )
+        return code_s3_prefix
 
     def _prepare_rules(self):
         """Rules list includes both debugger and profiler rules.
@@ -865,10 +892,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.debugger_rule_configs = self._prepare_debugger_rules()
         self._prepare_collection_configs()
         self._validate_and_set_debugger_configs()
-        if not self.debugger_hook_config:
-            if self.environment is None:
-                self.environment = {}
-            self.environment[DEBUGGER_FLAG] = "0"
 
     def _validate_and_set_debugger_configs(self):
         """Set defaults for debugging."""
@@ -1281,6 +1304,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         tags=None,
         serverless_inference_config=None,
         async_inference_config=None,
+        volume_size=None,
+        model_data_download_timeout=None,
+        container_startup_health_check_timeout=None,
         **kwargs,
     ):
         """Deploy the trained model to an Amazon SageMaker endpoint.
@@ -1348,6 +1374,16 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 For more information about tags, see
                 https://boto3.amazonaws.com/v1/documentation\
                 /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
+            volume_size (int): The size, in GB, of the ML storage volume attached to individual
+                inference instance associated with the production variant. Currenly only Amazon EBS
+                gp2 storage volumes are supported.
+            model_data_download_timeout (int): The timeout value, in seconds, to download and
+                extract model data from Amazon S3 to the individual inference instance associated
+                with this production variant.
+            container_startup_health_check_timeout (int): The timeout value, in seconds, for your
+                inference container to pass health check by SageMaker Hosting. For more information
+                about health check see:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html#your-algorithms-inference-algo-ping-requests
             **kwargs: Passed to invocation of ``create_model()``.
                 Implementations may customize ``create_model()`` to accept
                 ``**kwargs`` to customize model creation during deploy.
@@ -1406,6 +1442,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             data_capture_config=data_capture_config,
             serverless_inference_config=serverless_inference_config,
             async_inference_config=async_inference_config,
+            volume_size=volume_size,
+            model_data_download_timeout=model_data_download_timeout,
+            container_startup_health_check_timeout=container_startup_health_check_timeout,
         )
 
     def register(
@@ -1540,7 +1579,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             model_uri = os.path.join(
                 self.output_path, self._current_job_name, "output", "model.tar.gz"
             )
-
         return model_uri
 
     @abstractmethod

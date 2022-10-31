@@ -309,6 +309,36 @@ def huggingface_pytorch_latest_inference_py_version(huggingface_inference_pytorc
 
 
 @pytest.fixture(scope="module")
+def graviton_tensorflow_version():
+    return "2.9.1"
+
+
+@pytest.fixture(scope="module")
+def graviton_pytorch_version():
+    return "1.12.1"
+
+
+@pytest.fixture(scope="module")
+def graviton_xgboost_versions():
+    return ["1.5-1", "1.3-1"]
+
+
+@pytest.fixture(scope="module")
+def graviton_sklearn_versions():
+    return ["1.0-1"]
+
+
+@pytest.fixture(scope="module")
+def graviton_xgboost_unsupported_versions():
+    return ["1", "0.90-1", "0.90-2", "1.0-1", "1.2-1", "1.2-2"]
+
+
+@pytest.fixture(scope="module")
+def graviton_sklearn_unsupported_versions():
+    return ["0.20.0", "0.23-1"]
+
+
+@pytest.fixture(scope="module")
 def huggingface_tensorflow_latest_training_py_version():
     return "py38"
 
@@ -326,6 +356,11 @@ def huggingface_neuron_latest_inference_transformer_version():
 @pytest.fixture(scope="module")
 def huggingface_neuron_latest_inference_py_version():
     return "py37"
+
+
+@pytest.fixture(scope="module")
+def pytorch_neuron_version():
+    return "1.11"
 
 
 @pytest.fixture(scope="module")
@@ -447,6 +482,16 @@ def pytorch_ddp_framework_version(request):
     return request.param
 
 
+@pytest.fixture(scope="module")
+def torch_distributed_py_version():
+    return "py3"
+
+
+@pytest.fixture(scope="module", params=["1.11.0"])
+def torch_distributed_framework_version(request):
+    return request.param
+
+
 @pytest.fixture(scope="session")
 def cpu_instance_type(sagemaker_session, request):
     region = sagemaker_session.boto_session.region_name
@@ -535,6 +580,12 @@ def _generate_all_framework_version_fixtures(metafunc):
             _parametrize_framework_version_fixtures(metafunc, fw, config)
         else:
             for image_scope in config.keys():
+                if fw in ("xgboost", "sklearn"):
+                    _parametrize_framework_version_fixtures(metafunc, fw, config[image_scope])
+                    # XGB and SKLearn use the same configs for training,
+                    # inference, and graviton_inference. Break after first
+                    # iteration to avoid duplicate KeyError
+                    break
                 fixture_prefix = f"{fw}_{image_scope}" if image_scope not in fw else fw
                 _parametrize_framework_version_fixtures(
                     metafunc, fixture_prefix, config[image_scope]
