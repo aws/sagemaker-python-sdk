@@ -20,7 +20,6 @@ import unittest.mock
 
 import pytest
 
-from sagemaker import Session
 from sagemaker.experiments import _environment
 from sagemaker.utils import retry_with_backoff
 
@@ -30,29 +29,6 @@ def tempdir():
     dir = tempfile.mkdtemp()
     yield dir
     shutil.rmtree(dir)
-
-
-@pytest.fixture
-def client():
-    """Mock client.
-
-    Considerations when appropriate:
-
-        * utilize botocore.stub.Stubber
-        * separate runtime client from client
-    """
-    client_mock = unittest.mock.Mock()
-    client_mock._client_config.user_agent = (
-        "Boto3/1.14.24 Python/3.8.5 Linux/5.4.0-42-generic Botocore/1.17.24 Resource"
-    )
-    return client_mock
-
-
-@pytest.fixture
-def sagemaker_session(client):
-    return Session(
-        sagemaker_client=client,
-    )
 
 
 @pytest.fixture

@@ -34,6 +34,7 @@ import botocore
 from six.moves.urllib import parse
 
 from sagemaker import deprecations
+from sagemaker.experiments._run_context import _RunContext
 from sagemaker.session_settings import SessionSettings
 from sagemaker.workflow import is_pipeline_variable, is_pipeline_parameter_string
 
@@ -905,10 +906,36 @@ def get_module(module_name):
         module_name (str): name of the module to import.
 
     Returns:
-        [obj]: The imported module.
-        Raises exceptions when the module name is not found
+        object: The imported module.
+
+    Raises:
+        Exception: when the module name is not found
     """
     try:
         return import_module(module_name)
     except ImportError:
         raise Exception("Cannot import module {}, please try again.".format(module_name))
+
+
+def check_and_get_run_experiment_config(experiment_config: Optional[dict] = None) -> dict:
+    """Check user input experiment_config or get it from the current Run object if exists.
+
+    Args:
+        experiment_config (dict): The experiment_config supplied by the user.
+
+    Returns:
+        dict: Return the user supplied experiment_config if it is not None.
+            Otherwise fetch the experiment_config from the current Run object if exists.
+    """
+    run_obj = _RunContext.get_current_run()
+    if experiment_config:
+        if run_obj:
+            logger.warning(
+                "The function is invoked within an Experiment Run context "
+                "but another experiment_config (%s) was supplied, so "
+                "ignoring the experiment_config fetched from the Run object.",
+                experiment_config,
+            )
+        return experiment_config
+
+    return run_obj.experiment_config if run_obj else None

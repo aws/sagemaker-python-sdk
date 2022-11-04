@@ -95,36 +95,6 @@ def test_local_run(
 
         assert RUN_NAME_BASE in run1_name
 
-        # Run name is passed from the name of an existing TC.
-        # Meanwhile, the experiment_name is changed.
-        # Should load it from backend.
-        run2 = Run.init(
-            experiment_name=exp_name2,
-            run_name=run1_name,
-            sagemaker_session=sagemaker_session,
-        )
-
-        assert run1_exp_name != run2.experiment_name
-        assert run1_trial_name != run2._trial.trial_name
-        assert run1_name == run2.run_name
-
-        tc = run2._trial_component
-        assert tc.parameters == {"p1": 1.0, "p2": "p2-value", "p3": 2.0, "p4": "p4-value"}
-
-        s3_prefix = f"s3://{sagemaker_session.default_bucket()}/{_DEFAULT_ARTIFACT_PREFIX}"
-        assert s3_prefix in tc.output_artifacts[file_artifact_name].value
-        assert "text/plain" == tc.output_artifacts[file_artifact_name].media_type
-        assert s3_prefix in tc.input_artifacts["artifact_file1"].value
-        assert "text/plain" == tc.input_artifacts["artifact_file1"].media_type
-        assert s3_prefix in tc.input_artifacts["artifact_file2"].value
-        assert "text/plain" == tc.input_artifacts["artifact_file2"].media_type
-
-        assert len(tc.metrics) == 1
-        metric_summary = tc.metrics[0]
-        assert metric_summary.metric_name == metric_name
-        assert metric_summary.max == 9.0
-        assert metric_summary.min == 0.0
-
         def validate_tc_artifact_association(is_output, expected_artifact_name):
             if is_output:
                 # It's an output association from the tc
@@ -147,14 +117,43 @@ def test_local_run(
                 assert summary["DestinationArn"] == tc.trial_component_arn
                 assert summary["SourceName"] == expected_artifact_name
 
-        validate_tc_artifact_association(
-            is_output=True,
-            expected_artifact_name=lineage_artifact_name,
-        )
-        validate_tc_artifact_association(
-            is_output=False,
-            expected_artifact_name=table_artifact_name,
-        )
+        # Run name is passed from the name of an existing TC.
+        # Meanwhile, the experiment_name is changed.
+        # Should load TC from backend.
+        with Run.init(
+            experiment_name=exp_name2,
+            run_name=run1_name,
+            sagemaker_session=sagemaker_session,
+        ) as run2:
+            assert run1_exp_name != run2.experiment_name
+            assert run1_trial_name != run2._trial.trial_name
+            assert run1_name == run2.run_name
+
+            tc = run2._trial_component
+            assert tc.parameters == {"p1": 1.0, "p2": "p2-value", "p3": 2.0, "p4": "p4-value"}
+
+            s3_prefix = f"s3://{sagemaker_session.default_bucket()}/{_DEFAULT_ARTIFACT_PREFIX}"
+            assert s3_prefix in tc.output_artifacts[file_artifact_name].value
+            assert "text/plain" == tc.output_artifacts[file_artifact_name].media_type
+            assert s3_prefix in tc.input_artifacts["artifact_file1"].value
+            assert "text/plain" == tc.input_artifacts["artifact_file1"].media_type
+            assert s3_prefix in tc.input_artifacts["artifact_file2"].value
+            assert "text/plain" == tc.input_artifacts["artifact_file2"].media_type
+
+            assert len(tc.metrics) == 1
+            metric_summary = tc.metrics[0]
+            assert metric_summary.metric_name == metric_name
+            assert metric_summary.max == 9.0
+            assert metric_summary.min == 0.0
+
+            validate_tc_artifact_association(
+                is_output=True,
+                expected_artifact_name=lineage_artifact_name,
+            )
+            validate_tc_artifact_association(
+                is_output=False,
+                expected_artifact_name=table_artifact_name,
+            )
 
 
 # TODO: Need to update the rest of tests

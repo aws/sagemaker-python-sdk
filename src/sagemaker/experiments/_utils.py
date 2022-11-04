@@ -17,6 +17,8 @@ import os
 
 import mimetypes
 import urllib
+from functools import wraps
+
 from sagemaker.apiutils import _utils
 
 
@@ -68,3 +70,16 @@ def verify_length_of_true_and_predicted(true_labels, predicted_attrs, predicted_
             "Lengths mismatch between true labels and {}: "
             "({} vs {}).".format(predicted_attrs_name, len(true_labels), len(predicted_attrs))
         )
+
+
+def validate_invoked_inside_run_context(func):
+    """A Decorator to force the decorated method called under Run context."""
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        self_instance = args[0]
+        if not self_instance._inside_load_context and not self_instance._inside_init_context:
+            raise RuntimeError("This method should be called inside context of 'with' statement.")
+        return func(*args, **kwargs)
+
+    return wrapper

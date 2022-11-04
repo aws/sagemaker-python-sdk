@@ -79,6 +79,7 @@ from sagemaker.utils import (
     get_config_value,
     name_from_base,
     to_string,
+    check_and_get_run_experiment_config,
 )
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
@@ -1122,6 +1123,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         """
         self._prepare_for_training(job_name=job_name)
 
+        experiment_config = check_and_get_run_experiment_config(experiment_config)
         self.latest_training_job = _TrainingJob.start_new(self, inputs, experiment_config)
         self.jobs.append(self.latest_training_job)
         if wait:
