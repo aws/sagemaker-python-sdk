@@ -4792,9 +4792,9 @@ def container_def(image_uri, model_data_url=None, env=None, container_mode=None,
         dict[str, str]: A complete container definition object usable with the CreateModel API if
         passed via `PrimaryContainers` field.
     """
-    if env is None:
-        env = {}
-    c_def = {"Image": image_uri, "Environment": env}
+    c_def = {"Image": image_uri}
+    if env:
+        c_def["Environment"] = env
     if model_data_url:
         c_def["ModelDataUrl"] = model_data_url
     if container_mode:

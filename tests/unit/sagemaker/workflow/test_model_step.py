@@ -674,7 +674,7 @@ def test_conditional_model_create_and_regis(
             container = arguments["PrimaryContainer"]
             assert container["Image"] == _IMAGE_URI
             assert container["ModelDataUrl"] == {"Get": "Parameters.ModelData"}
-            assert not container.get("Environment", {})
+            assert container.get("Environment") is None
         else:
             raise Exception("A step exists in the collection of an invalid type.")
     adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
