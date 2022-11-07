@@ -74,7 +74,7 @@ ROLE = "DummyRole"
 IMAGE_URI = "fakeimage"
 MODEL_NAME = "gisele"
 DUMMY_S3_SCRIPT_PATH = "s3://dummy-s3/dummy_script.py"
-LOCAL_SCRIPT_PATH = os.path.join(DATA_DIR, "workflow/abalone/preprocessing.py")
+LOCAL_SCRIPT_PATH = "../../../data/workflow/abalone/preprocessing.py"
 SPARK_APP_JAR_PATH = os.path.join(
     DATA_DIR, "spark/code/java/hello-java-spark/HelloJavaSparkApp.jar"
 )
