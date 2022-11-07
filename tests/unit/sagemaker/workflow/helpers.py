@@ -14,8 +14,9 @@
 from __future__ import absolute_import
 
 from sagemaker.workflow.properties import Properties
-from sagemaker.workflow.steps import Step, StepTypeEnum
+from sagemaker.workflow.steps import ConfigurableRetryStep, StepTypeEnum
 from sagemaker.workflow.step_collections import StepCollection
+from sagemaker.workflow.utilities import execute_job_functions
 
 
 def ordered(obj):
@@ -37,11 +38,40 @@ def ordered(obj):
         return obj
 
 
-class CustomStep(Step):
-    def __init__(self, name, input_data=None, display_name=None, description=None, depends_on=None):
+def get_step_args_helper(step_args, step_type):
+    execute_job_functions(step_args)
+    request_args = step_args.func_args[0].sagemaker_session.context.args
+
+    if step_type == "Processing":
+        request_args.pop("ProcessingJobName", None)
+        request_args.pop("ExperimentConfig", None)
+    elif step_type == "Training":
+        if "HyperParameters" in request_args:
+            request_args["HyperParameters"].pop("sagemaker_job_name", None)
+        request_args.pop("TrainingJobName", None)
+        request_args.pop("ExperimentConfig", None)
+    elif step_type == "Transform":
+        request_args.pop("TransformJobName", None)
+        request_args.pop("ExperimentConfig", None)
+    elif step_type == "HyperParameterTuning":
+        request_args.pop("HyperParameterTuningJobName", None)
+
+    return request_args
+
+
+class CustomStep(ConfigurableRetryStep):
+    def __init__(
+        self,
+        name,
+        input_data=None,
+        display_name=None,
+        description=None,
+        depends_on=None,
+        retry_policies=None,
+    ):
         self.input_data = input_data
         super(CustomStep, self).__init__(
-            name, display_name, description, StepTypeEnum.TRAINING, depends_on
+            name, StepTypeEnum.TRAINING, display_name, description, depends_on, retry_policies
         )
         # for testing property reference, we just use DescribeTrainingJobResponse shape here.
         self._properties = Properties(name, shape_name="DescribeTrainingJobResponse")

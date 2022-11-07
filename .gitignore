@@ -31,3 +31,5 @@ env/
 **/tmp
 .python-version
 *.html
+**/_repack_model.py
+**/_repack_script_launcher.sh

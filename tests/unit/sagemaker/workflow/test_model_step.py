@@ -32,6 +32,7 @@ from sagemaker.sparkml import SparkMLModel
 from sagemaker.tensorflow import TensorFlowModel
 from sagemaker.transformer import Transformer
 from sagemaker.tuner import HyperparameterTuner
+from sagemaker.workflow._utils import REPACK_SCRIPT_LAUNCHER
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.conditions import ConditionGreaterThanOrEqualTo
 from sagemaker.workflow.model_step import (
@@ -67,6 +68,9 @@ _SCRIPT_NAME = "dummy_script.py"
 _DIR_NAME = "/opt/ml/model/code"
 _XGBOOST_PATH = os.path.join(DATA_DIR, "xgboost_abalone")
 _TENSORFLOW_PATH = os.path.join(DATA_DIR, "tfs/tfs-test-entrypoint-and-dependencies")
+_REPACK_OUTPUT_KEY_PREFIX = "code-output"
+_MODEL_CODE_LOCATION = f"s3://{_BUCKET}/{_REPACK_OUTPUT_KEY_PREFIX}"
+_MODEL_CODE_LOCATION_TRAILING_SLASH = _MODEL_CODE_LOCATION + "/"
 
 
 @pytest.fixture
@@ -186,7 +190,9 @@ def test_register_model_with_runtime_repack(pipeline_session, model_data_param, 
             }
             assert arguments["HyperParameters"]["inference_script"] == '"dummy_script.py"'
             assert arguments["HyperParameters"]["model_archive"] == {"Get": "Parameters.ModelData"}
-            assert arguments["HyperParameters"]["sagemaker_program"] == '"_repack_model.py"'
+            assert (
+                arguments["HyperParameters"]["sagemaker_program"] == f'"{REPACK_SCRIPT_LAUNCHER}"'
+            )
             assert "s3://" in arguments["HyperParameters"]["sagemaker_submit_directory"]
             assert arguments["HyperParameters"]["dependencies"] == "null"
             assert step["RetryPolicies"] == [
@@ -267,7 +273,9 @@ def test_create_model_with_runtime_repack(pipeline_session, model_data_param, mo
             }
             assert arguments["HyperParameters"]["inference_script"] == '"dummy_script.py"'
             assert arguments["HyperParameters"]["model_archive"] == {"Get": "Parameters.ModelData"}
-            assert arguments["HyperParameters"]["sagemaker_program"] == '"_repack_model.py"'
+            assert (
+                arguments["HyperParameters"]["sagemaker_program"] == f'"{REPACK_SCRIPT_LAUNCHER}"'
+            )
             assert "s3://" in arguments["HyperParameters"]["sagemaker_submit_directory"]
             assert arguments["HyperParameters"]["dependencies"] == "null"
             assert "repack a model with customer scripts" in step["Description"]
@@ -358,7 +366,9 @@ def test_create_pipeline_model_with_runtime_repack(pipeline_session, model_data_
             }
             assert arguments["HyperParameters"]["inference_script"] == '"dummy_script.py"'
             assert arguments["HyperParameters"]["model_archive"] == {"Get": "Parameters.ModelData"}
-            assert arguments["HyperParameters"]["sagemaker_program"] == '"_repack_model.py"'
+            assert (
+                arguments["HyperParameters"]["sagemaker_program"] == f'"{REPACK_SCRIPT_LAUNCHER}"'
+            )
             assert "s3://" in arguments["HyperParameters"]["sagemaker_submit_directory"]
             assert arguments["HyperParameters"]["dependencies"] == "null"
             assert step["RetryPolicies"] == [
@@ -458,7 +468,9 @@ def test_register_pipeline_model_with_runtime_repack(pipeline_session, model_dat
             }
             assert arguments["HyperParameters"]["inference_script"] == '"dummy_script.py"'
             assert arguments["HyperParameters"]["model_archive"] == {"Get": "Parameters.ModelData"}
-            assert arguments["HyperParameters"]["sagemaker_program"] == '"_repack_model.py"'
+            assert (
+                arguments["HyperParameters"]["sagemaker_program"] == f'"{REPACK_SCRIPT_LAUNCHER}"'
+            )
             assert "s3://" in arguments["HyperParameters"]["sagemaker_submit_directory"]
             assert arguments["HyperParameters"]["dependencies"] == "null"
         elif step["Type"] == "RegisterModel":
@@ -639,7 +651,9 @@ def test_conditional_model_create_and_regis(
             }
             assert arguments["HyperParameters"]["inference_script"] == '"dummy_script.py"'
             assert arguments["HyperParameters"]["model_archive"] == {"Get": "Parameters.ModelData"}
-            assert arguments["HyperParameters"]["sagemaker_program"] == '"_repack_model.py"'
+            assert (
+                arguments["HyperParameters"]["sagemaker_program"] == f'"{REPACK_SCRIPT_LAUNCHER}"'
+            )
             assert "s3://" in arguments["HyperParameters"]["sagemaker_submit_directory"]
             assert arguments["HyperParameters"]["dependencies"] == "null"
         elif step["Type"] == "RegisterModel":
@@ -688,6 +702,7 @@ def test_conditional_model_create_and_regis(
                 entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
                 role=_ROLE,
                 enable_network_isolation=True,
+                code_location=_MODEL_CODE_LOCATION_TRAILING_SLASH,
             ),
             2,
         ),
@@ -711,6 +726,7 @@ def test_conditional_model_create_and_regis(
                 entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
                 role=_ROLE,
                 framework_version="1.5.0",
+                code_location=_MODEL_CODE_LOCATION_TRAILING_SLASH,
             ),
             2,
         ),
@@ -742,6 +758,7 @@ def test_conditional_model_create_and_regis(
                 image_uri=_IMAGE_URI,
                 entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
                 role=_ROLE,
+                code_location=_MODEL_CODE_LOCATION_TRAILING_SLASH,
             ),
             2,
         ),
@@ -758,21 +775,47 @@ def test_conditional_model_create_and_regis(
     ],
 )
 def test_create_model_among_different_model_types(test_input, pipeline_session, model_data_param):
+    def assert_test_result(steps: list):
+        # If expected_step_num is 2, it means a runtime repack step is appended
+        # If expected_step_num is 1, it means no runtime repack is needed
+        assert len(steps) == expected_step_num
+        if expected_step_num == 2:
+            assert steps[0]["Type"] == "Training"
+            if model.key_prefix is not None and model.key_prefix.startswith(
+                _REPACK_OUTPUT_KEY_PREFIX
+            ):
+                assert steps[0]["Arguments"]["OutputDataConfig"]["S3OutputPath"] == (
+                    f"{_MODEL_CODE_LOCATION}/{model.name}"
+                )
+            else:
+                assert steps[0]["Arguments"]["OutputDataConfig"]["S3OutputPath"] == (
+                    f"s3://{_BUCKET}/{model.name}"
+                )
+
     model, expected_step_num = test_input
     model.sagemaker_session = pipeline_session
     model.model_data = model_data_param
-    step_args = model.create(
+    create_model_step_args = model.create(
         instance_type="c4.4xlarge",
     )
-    model_steps = ModelStep(
+    create_model_steps = ModelStep(
         name="MyModelStep",
-        step_args=step_args,
+        step_args=create_model_step_args,
     )
-    steps = model_steps.request_dicts()
+    assert_test_result(create_model_steps.request_dicts())
 
-    # If expected_step_num is 2, it means a runtime repack step is appended
-    # If expected_step_num is 1, it means no runtime repack is needed
-    assert len(steps) == expected_step_num
+    register_model_step_args = model.register(
+        content_types=["text/csv"],
+        response_types=["text/csv"],
+        inference_instances=["ml.t2.medium", "ml.m5.xlarge"],
+        transform_instances=["ml.m5.xlarge"],
+        model_package_group_name="MyModelPackageGroup",
+    )
+    register_model_steps = ModelStep(
+        name="MyModelStep",
+        step_args=register_model_step_args,
+    )
+    assert_test_result(register_model_steps.request_dicts())
 
 
 @pytest.mark.parametrize(

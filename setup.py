@@ -47,7 +47,7 @@ def read_requirements(filename):
 
 # Declare minimal set for installation
 required_packages = [
-    "attrs>=20.3.0,<22",
+    "attrs>=20.3.0,<23",
     "boto3>=1.20.21,<2.0",
     "google-pasta",
     "numpy>=1.9.0,<2.0",
@@ -58,6 +58,7 @@ required_packages = [
     "packaging>=20.0",
     "pandas",
     "pathos",
+    "schema",
 ]
 
 # Specific use case dependencies
@@ -94,6 +95,7 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
     ],
     install_requires=required_packages,
     extras_require=extras,

@@ -15,20 +15,17 @@ from __future__ import absolute_import
 
 from typing import List, Union, Optional
 
-import attr
 
 from sagemaker.deprecations import deprecated_class
 from sagemaker.workflow.conditions import Condition
 from sagemaker.workflow.step_collections import StepCollection
+from sagemaker.workflow.functions import JsonGet as NewJsonGet
 from sagemaker.workflow.steps import (
     Step,
     StepTypeEnum,
 )
 from sagemaker.workflow.utilities import list_to_request
-from sagemaker.workflow.entities import (
-    RequestType,
-    PipelineVariable,
-)
+from sagemaker.workflow.entities import RequestType
 from sagemaker.workflow.properties import (
     Properties,
     PropertyFile,
@@ -93,7 +90,7 @@ class ConditionStep(Step):
     @property
     def step_only_arguments(self):
         """Argument dict pertaining to the step only, and not the `if_steps` or `else_steps`."""
-        return self.conditions
+        return dict(Conditions=[condition.to_request() for condition in self.conditions])
 
     @property
     def properties(self):
@@ -101,8 +98,7 @@ class ConditionStep(Step):
         return self._properties
 
 
-@attr.s
-class JsonGet(PipelineVariable):  # pragma: no cover
+class JsonGet(NewJsonGet):  # pragma: no cover
     """Get JSON properties from PropertyFiles.
 
     Attributes:
@@ -112,28 +108,8 @@ class JsonGet(PipelineVariable):  # pragma: no cover
         json_path (str): The JSON path expression to the requested value.
     """
 
-    step: Step = attr.ib()
-    property_file: Union[PropertyFile, str] = attr.ib()
-    json_path: str = attr.ib()
-
-    @property
-    def expr(self):
-        """The expression dict for a `JsonGet` function."""
-        if isinstance(self.property_file, PropertyFile):
-            name = self.property_file.name
-        else:
-            name = self.property_file
-        return {
-            "Std:JsonGet": {
-                "PropertyFile": {"Get": f"Steps.{self.step.name}.PropertyFiles.{name}"},
-                "Path": self.json_path,
-            }
-        }
-
-    @property
-    def _referenced_steps(self) -> List[str]:
-        """List of step names that this function depends on."""
-        return [self.step.name]
+    def __init__(self, step: Step, property_file: Union[PropertyFile, str], json_path: str):
+        super().__init__(step_name=step.name, property_file=property_file, json_path=json_path)
 
 
 JsonGet = deprecated_class(JsonGet, "JsonGet")

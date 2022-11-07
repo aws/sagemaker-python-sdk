@@ -24,7 +24,7 @@ from packaging.version import Version
 
 from sagemaker import Session, image_uris, utils
 from sagemaker.local import LocalSession
-from sagemaker.workflow.pipeline_context import PipelineSession
+from sagemaker.workflow.pipeline_context import PipelineSession, LocalPipelineSession
 
 DEFAULT_REGION = "us-west-2"
 CUSTOM_BUCKET_NAME_PREFIX = "sagemaker-custom-bucket"
@@ -162,6 +162,11 @@ def pipeline_session(boto_session):
     return PipelineSession(boto_session=boto_session)
 
 
+@pytest.fixture(scope="session")
+def local_pipeline_session(boto_session):
+    return LocalPipelineSession(boto_session=boto_session)
+
+
 @pytest.fixture(scope="module")
 def custom_bucket_name(boto_session):
     region = boto_session.region_name
@@ -247,25 +252,44 @@ def huggingface_pytorch_training_py_version(huggingface_pytorch_training_version
 
 @pytest.fixture(scope="module")
 def huggingface_training_compiler_pytorch_version(huggingface_training_compiler_version):
-    return _huggingface_base_fm_version(
+    versions = _huggingface_base_fm_version(
         huggingface_training_compiler_version, "pytorch", "huggingface_training_compiler"
-    )[0]
+    )
+    if not versions:
+        pytest.skip(
+            f"Hugging Face Training Compiler version {huggingface_training_compiler_version} does "
+            f"not have a PyTorch release."
+        )
+    return versions[0]
 
 
 @pytest.fixture(scope="module")
 def huggingface_training_compiler_tensorflow_version(huggingface_training_compiler_version):
-    return _huggingface_base_fm_version(
+    versions = _huggingface_base_fm_version(
         huggingface_training_compiler_version, "tensorflow", "huggingface_training_compiler"
-    )[0]
+    )
+    if not versions:
+        pytest.skip(
+            f"Hugging Face Training Compiler version {huggingface_training_compiler_version} "
+            f"does not have a TensorFlow release."
+        )
+    return versions[0]
 
 
 @pytest.fixture(scope="module")
-def huggingface_training_compiler_py_version(huggingface_training_compiler_tensorflow_version):
+def huggingface_training_compiler_tensorflow_py_version(
+    huggingface_training_compiler_tensorflow_version,
+):
     return (
         "py37"
         if Version(huggingface_training_compiler_tensorflow_version) < Version("2.6")
         else "py38"
     )
+
+
+@pytest.fixture(scope="module")
+def huggingface_training_compiler_pytorch_py_version(huggingface_training_compiler_pytorch_version):
+    return "py38"
 
 
 @pytest.fixture(scope="module")
@@ -282,6 +306,36 @@ def huggingface_pytorch_latest_inference_py_version(huggingface_inference_pytorc
         if Version(huggingface_inference_pytorch_latest_version) >= Version("1.9")
         else "py36"
     )
+
+
+@pytest.fixture(scope="module")
+def graviton_tensorflow_version():
+    return "2.9.1"
+
+
+@pytest.fixture(scope="module")
+def graviton_pytorch_version():
+    return "1.12.1"
+
+
+@pytest.fixture(scope="module")
+def graviton_xgboost_versions():
+    return ["1.5-1", "1.3-1"]
+
+
+@pytest.fixture(scope="module")
+def graviton_sklearn_versions():
+    return ["1.0-1"]
+
+
+@pytest.fixture(scope="module")
+def graviton_xgboost_unsupported_versions():
+    return ["1", "0.90-1", "0.90-2", "1.0-1", "1.2-1", "1.2-2"]
+
+
+@pytest.fixture(scope="module")
+def graviton_sklearn_unsupported_versions():
+    return ["0.20.0", "0.23-1"]
 
 
 @pytest.fixture(scope="module")
@@ -302,6 +356,11 @@ def huggingface_neuron_latest_inference_transformer_version():
 @pytest.fixture(scope="module")
 def huggingface_neuron_latest_inference_py_version():
     return "py37"
+
+
+@pytest.fixture(scope="module")
+def pytorch_neuron_version():
+    return "1.11"
 
 
 @pytest.fixture(scope="module")
@@ -411,6 +470,28 @@ def tf_full_py_version(tf_full_version):
     return "py39"
 
 
+@pytest.fixture(scope="module")
+def pytorch_ddp_py_version():
+    return "py3"
+
+
+@pytest.fixture(
+    scope="module", params=["1.10", "1.10.0", "1.10.2", "1.11", "1.11.0", "1.12", "1.12.0"]
+)
+def pytorch_ddp_framework_version(request):
+    return request.param
+
+
+@pytest.fixture(scope="module")
+def torch_distributed_py_version():
+    return "py3"
+
+
+@pytest.fixture(scope="module", params=["1.11.0"])
+def torch_distributed_framework_version(request):
+    return request.param
+
+
 @pytest.fixture(scope="session")
 def cpu_instance_type(sagemaker_session, request):
     region = sagemaker_session.boto_session.region_name
@@ -499,6 +580,12 @@ def _generate_all_framework_version_fixtures(metafunc):
             _parametrize_framework_version_fixtures(metafunc, fw, config)
         else:
             for image_scope in config.keys():
+                if fw in ("xgboost", "sklearn"):
+                    _parametrize_framework_version_fixtures(metafunc, fw, config[image_scope])
+                    # XGB and SKLearn use the same configs for training,
+                    # inference, and graviton_inference. Break after first
+                    # iteration to avoid duplicate KeyError
+                    break
                 fixture_prefix = f"{fw}_{image_scope}" if image_scope not in fw else fw
                 _parametrize_framework_version_fixtures(
                     metafunc, fixture_prefix, config[image_scope]

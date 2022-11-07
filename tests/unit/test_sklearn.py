@@ -406,7 +406,7 @@ def test_fail_gpu_training(sagemaker_session, sklearn_version):
             py_version=PYTHON_VERSION,
             framework_version=sklearn_version,
         )
-    assert "GPU training in not supported for Scikit-Learn." in str(error)
+    assert "GPU training is not supported for Scikit-Learn." in str(error)
 
 
 def test_model(sagemaker_session, sklearn_version):

@@ -27,12 +27,14 @@ import json
 import abc
 import uuid
 from datetime import datetime
+from typing import Optional
 
 import botocore
 from six.moves.urllib import parse
 
 from sagemaker import deprecations
 from sagemaker.session_settings import SessionSettings
+from sagemaker.workflow import is_pipeline_variable, is_pipeline_parameter_string
 
 
 ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(.*)(/)(.*:.*)$"
@@ -90,18 +92,27 @@ def unique_name_from_base(base, max_length=63):
     return "{}-{}-{}".format(trimmed, ts, unique)
 
 
-def base_name_from_image(image):
+def base_name_from_image(image, default_base_name=None):
     """Extract the base name of the image to use as the 'algorithm name' for the job.
 
     Args:
         image (str): Image name.
+        default_base_name (str): The default base name
 
     Returns:
         str: Algorithm name, as extracted from the image name.
     """
-    m = re.match("^(.+/)?([^:/]+)(:[^:]+)?$", image)
-    algo_name = m.group(2) if m else image
-    return algo_name
+    if is_pipeline_variable(image):
+        if is_pipeline_parameter_string(image) and image.default_value:
+            image_str = image.default_value
+        else:
+            return default_base_name if default_base_name else "base_name"
+    else:
+        image_str = image
+
+    m = re.match("^(.+/)?([^:/]+)(:[^:]+)?$", image_str)
+    base_name = m.group(2) if m else image_str
+    return base_name
 
 
 def base_from_name(name):
@@ -729,7 +740,7 @@ def update_container_with_inference_params(
     framework_version=None,
     nearest_model_name=None,
     data_input_configuration=None,
-    container_obj=None,
+    container_def=None,
     container_list=None,
 ):
     """Function to check if inference recommender parameters exist and update container.
@@ -742,39 +753,106 @@ def update_container_with_inference_params(
         nearest_model_name (str): Name of a pre-trained machine learning benchmarked by
             Amazon SageMaker Inference Recommender (default: None).
         data_input_configuration (str): Input object for the model (default: None).
-        container_obj (dict): object to be updated.
+        container_def (dict): object to be updated.
         container_list (list): list to be updated.
 
     Returns:
         dict: dict with inference recommender params
     """
 
-    if (
-        framework is not None
-        and framework_version is not None
-        and nearest_model_name is not None
-        and data_input_configuration is not None
-    ):
-        if container_list is not None:
-            for obj in container_list:
-                obj.update(
-                    {
-                        "Framework": framework,
-                        "FrameworkVersion": framework_version,
-                        "NearestModelName": nearest_model_name,
-                        "ModelInput": {
-                            "DataInputConfig": data_input_configuration,
-                        },
-                    }
-                )
-        if container_obj is not None:
-            container_obj.update(
-                {
-                    "Framework": framework,
-                    "FrameworkVersion": framework_version,
-                    "NearestModelName": nearest_model_name,
-                    "ModelInput": {
-                        "DataInputConfig": data_input_configuration,
-                    },
-                }
+    if container_list is not None:
+        for obj in container_list:
+            construct_container_object(
+                obj, data_input_configuration, framework, framework_version, nearest_model_name
             )
+
+    if container_def is not None:
+        construct_container_object(
+            container_def,
+            data_input_configuration,
+            framework,
+            framework_version,
+            nearest_model_name,
+        )
+
+    return container_list or container_def
+
+
+def construct_container_object(
+    obj, data_input_configuration, framework, framework_version, nearest_model_name
+):
+    """Function to construct container object.
+
+    Args:
+        framework (str): Machine learning framework of the model package container image
+                (default: None).
+        framework_version (str): Framework version of the Model Package Container Image
+            (default: None).
+        nearest_model_name (str): Name of a pre-trained machine learning benchmarked by
+            Amazon SageMaker Inference Recommender (default: None).
+        data_input_configuration (str): Input object for the model (default: None).
+        obj (dict): object to be updated.
+
+    Returns:
+        dict: container object
+    """
+
+    if framework is not None:
+        obj.update(
+            {
+                "Framework": framework,
+            }
+        )
+
+    if framework_version is not None:
+        obj.update(
+            {
+                "FrameworkVersion": framework_version,
+            }
+        )
+
+    if nearest_model_name is not None:
+        obj.update(
+            {
+                "NearestModelName": nearest_model_name,
+            }
+        )
+
+    if data_input_configuration is not None:
+        obj.update(
+            {
+                "ModelInput": {
+                    "DataInputConfig": data_input_configuration,
+                },
+            }
+        )
+
+    return obj
+
+
+def pop_out_unused_kwarg(arg_name: str, kwargs: dict, override_val: Optional[str] = None):
+    """Pop out the unused key-word argument and give a warning.
+
+    Args:
+        arg_name (str): The name of the argument to be checked if it is unused.
+        kwargs (dict): The key-word argument dict.
+        override_val (str): The value used to override the unused argument (default: None).
+    """
+    if arg_name not in kwargs:
+        return
+    warn_msg = "{} supplied in kwargs will be ignored".format(arg_name)
+    if override_val:
+        warn_msg += " and further overridden with {}.".format(override_val)
+    logging.warning(warn_msg)
+    kwargs.pop(arg_name)
+
+
+def to_string(obj: object):
+    """Convert an object to string
+
+    This helper function handles converting PipelineVariable object to string as well
+
+    Args:
+        obj (object): The object to be converted
+    """
+    return obj.to_string() if is_pipeline_variable(obj) else str(obj)

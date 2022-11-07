@@ -20,19 +20,23 @@ from pathlib import Path
 from typing import List, Sequence, Union, Set, TYPE_CHECKING
 import hashlib
 from urllib.parse import unquote, urlparse
+from contextlib import contextmanager
 from _hashlib import HASH as Hash
 
 from sagemaker.workflow.parameters import Parameter
-from sagemaker.workflow.pipeline_context import _StepArguments
+from sagemaker.workflow.pipeline_context import _StepArguments, _PipelineConfig
 from sagemaker.workflow.entities import (
     Entity,
     RequestType,
 )
 
+logger = logging.getLogger(__name__)
+
 if TYPE_CHECKING:
     from sagemaker.workflow.step_collections import StepCollection
 
 BUF_SIZE = 65536  # 64KiB
+_pipeline_config: _PipelineConfig = None
 
 
 def list_to_request(entities: Sequence[Union[Entity, "StepCollection"]]) -> List[RequestType]:
@@ -52,6 +56,186 @@ def list_to_request(entities: Sequence[Union[Entity, "StepCollection"]]) -> List
         elif isinstance(entity, StepCollection):
             request_dicts.extend(entity.request_dicts())
     return request_dicts
+
+
+@contextmanager
+def _pipeline_config_manager(pipeline_name: str, step_name: str, code_hash: str, config_hash: str):
+    """Expose static _pipeline_config variable to other modules
+
+    Args:
+        pipeline_name (str): pipeline name
+        step_name (str): step name
+        code_hash (str): a hash of the code artifact for the particular step
+        config_hash (str): a hash of the config artifact for the particular step (Processing)
+    """
+
+    # pylint: disable=W0603
+    global _pipeline_config
+    _pipeline_config = _PipelineConfig(pipeline_name, step_name, code_hash, config_hash)
+    try:
+        yield
+    finally:
+        _pipeline_config = None
+
+
+def build_steps(steps: Sequence[Entity], pipeline_name: str):
+    """Get the request structure for list of steps, with _pipeline_config_manager
+
+    Args:
+        steps (Sequence[Entity]): A list of steps, (Entity type because Step causes circular import)
+        pipeline_name (str): The name of the pipeline, passed down from pipeline.to_request()
+    Returns:
+        list: A request structure object for a service call for the list of pipeline steps
+    """
+    from sagemaker.workflow.step_collections import StepCollection
+
+    request_dicts = []
+    for step in steps:
+        if isinstance(step, StepCollection):
+            request_dicts.extend(step.request_dicts())
+        else:
+            with _pipeline_config_manager(
+                pipeline_name, step.name, get_code_hash(step), get_config_hash(step)
+            ):
+                request_dicts.append(step.to_request())
+    return request_dicts
+
+
+def get_code_hash(step: Entity) -> str:
+    """Get the hash of the code artifact(s) for the given step
+
+    Args:
+        step (Entity): A pipeline step object (Entity type because Step causes circular import)
+    Returns:
+        str: A hash string representing the unique code artifact(s) for the step
+    """
+    from sagemaker.workflow.steps import ProcessingStep, TrainingStep
+
+    if isinstance(step, ProcessingStep) and step.step_args:
+        kwargs = step.step_args.func_kwargs
+        source_dir = kwargs.get("source_dir")
+        dependencies = get_processing_dependencies(
+            [
+                kwargs.get("dependencies"),
+                kwargs.get("submit_py_files"),
+                kwargs.get("submit_class"),
+                kwargs.get("submit_jars"),
+                kwargs.get("submit_files"),
+            ]
+        )
+        code = kwargs.get("submit_app") or kwargs.get("code")
+
+        return get_processing_code_hash(code, source_dir, dependencies)
+
+    if isinstance(step, TrainingStep) and step.step_args:
+        job_obj = step.step_args.func_args[0]
+        source_dir = job_obj.source_dir
+        dependencies = job_obj.dependencies
+        entry_point = job_obj.entry_point
+
+        return get_training_code_hash(entry_point, source_dir, dependencies)
+    return None
+
+
+def get_processing_dependencies(dependency_args: List[List[str]]) -> List[str]:
+    """Get the Processing job dependencies from the processor run kwargs
+
+    Args:
+        dependency_args: A list of dependency args from processor.run()
+    Returns:
+        List[str]: A list of code dependencies for the job
+    """
+
+    dependencies = []
+    for arg in dependency_args:
+        if arg:
+            dependencies += arg
+
+    return dependencies
+
+
+def get_processing_code_hash(code: str, source_dir: str, dependencies: List[str]) -> str:
+    """Get the hash of a processing step's code artifact(s).
+
+    Args:
+        code (str): Path to a file with the processing script to run
+        source_dir (str): Path to a directory with any other processing
+                source code dependencies aside from the entry point file
+        dependencies (str): A list of paths to directories (absolute
+                or relative) with any additional libraries that will be exported
+                to the container
+    Returns:
+        str: A hash string representing the unique code artifact(s) for the step
+    """
+
+    # FrameworkProcessor
+    if source_dir:
+        source_dir_url = urlparse(source_dir)
+        if source_dir_url.scheme == "" or source_dir_url.scheme == "file":
+            return hash_files_or_dirs([source_dir] + dependencies)
+    # Other Processors - Spark, Script, Base, etc.
+    if code:
+        code_url = urlparse(code)
+        if code_url.scheme == "" or code_url.scheme == "file":
+            return hash_files_or_dirs([code] + dependencies)
+    return None
+
+
+def get_training_code_hash(entry_point: str, source_dir: str, dependencies: List[str]) -> str:
+    """Get the hash of a training step's code artifact(s).
+
+    Args:
+        entry_point (str): The absolute or relative path to the local Python
+                source file that should be executed as the entry point to
+                training
+        source_dir (str): Path to a directory with any other training source
+                code dependencies aside from the entry point file
+        dependencies (str): A list of paths to directories (absolute
+                or relative) with any additional libraries that will be exported
+                to the container
+    Returns:
+        str: A hash string representing the unique code artifact(s) for the step
+    """
+    from sagemaker.workflow import is_pipeline_variable
+
+    if not is_pipeline_variable(source_dir) and not is_pipeline_variable(entry_point):
+        if source_dir:
+            source_dir_url = urlparse(source_dir)
+            if source_dir_url.scheme == "" or source_dir_url.scheme == "file":
+                return hash_files_or_dirs([source_dir] + dependencies)
+        elif entry_point:
+            entry_point_url = urlparse(entry_point)
+            if entry_point_url.scheme == "" or entry_point_url.scheme == "file":
+                return hash_files_or_dirs([entry_point] + dependencies)
+    return None
+
+
+def get_config_hash(step: Entity):
+    """Get the hash of the config artifact(s) for the given step
+
+    Args:
+        step (Entity): A pipeline step object (Entity type because Step causes circular import)
+    Returns:
+        str: A hash string representing the unique config artifact(s) for the step
+    """
+    from sagemaker.workflow.steps import ProcessingStep
+
+    if isinstance(step, ProcessingStep) and step.step_args:
+        config = step.step_args.func_kwargs.get("configuration")
+        if config:
+            return hash_object(config)
+    return None
+
+
+def hash_object(obj) -> str:
+    """Get the MD5 hash of an object.
+
+    Args:
+        obj (dict): The object
+    Returns:
+        str: The MD5 hash of the object
+    """
+    return hashlib.md5(str(obj).encode()).hexdigest()
 
 
 def hash_file(path: str) -> str:
@@ -173,27 +357,48 @@ def override_pipeline_parameter_var(func):
     We should remove this decorator after the grace period.
     """
     warning_msg_template = (
-        "%s should not be a pipeline variable (%s). "
+        "The input argument %s of function (%s) is a pipeline variable (%s), which is not allowed. "
         "The default_value of this Parameter object will be used to override it. "
-        "Please remove this pipeline variable and use python primitives instead."
+        "Please make sure the default_value is valid."
     )
 
     @wraps(func)
     def wrapper(*args, **kwargs):
+        func_name = "{}.{}".format(func.__module__, func.__name__)
         params = inspect.signature(func).parameters
         args = list(args)
         for i, (arg_name, _) in enumerate(params.items()):
             if i >= len(args):
                 break
             if isinstance(args[i], Parameter):
-                logging.warning(warning_msg_template, arg_name, type(args[i]))
+                logger.warning(warning_msg_template, arg_name, func_name, type(args[i]))
                 args[i] = args[i].default_value
         args = tuple(args)
 
         for arg_name, value in kwargs.items():
             if isinstance(value, Parameter):
-                logging.warning(warning_msg_template, arg_name, type(value))
+                logger.warning(warning_msg_template, arg_name, func_name, type(value))
                 kwargs[arg_name] = value.default_value
         return func(*args, **kwargs)
 
     return wrapper
+
+
+def execute_job_functions(step_args: _StepArguments):
+    """Execute the job class functions during pipeline definition construction
+
+    Executes the job functions such as run(), fit(), or transform() that have been
+    delayed until the pipeline gets built, for steps built with a PipelineSession.
+
+    Handles multiple functions in instances where job functions are chained
+    together from the inheritance of different job classes (e.g. PySparkProcessor,
+    ScriptProcessor, and Processor).
+
+    Args:
+        step_args (_StepArguments): A `_StepArguments` object to be used for composing
+            a pipeline step, contains the necessary function information
+    """
+
+    chained_args = step_args.func(*step_args.func_args, **step_args.func_kwargs)
+    if chained_args:
+        execute_job_functions(chained_args)

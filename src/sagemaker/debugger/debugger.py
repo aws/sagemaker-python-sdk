@@ -24,12 +24,15 @@ import time
 
 from abc import ABC
 
+from typing import Union, Optional, List, Dict
+
 import attr
 
 import smdebug_rulesconfig as rule_configs
 
 from sagemaker import image_uris
 from sagemaker.utils import build_dict
+from sagemaker.workflow.entities import PipelineVariable
 
 framework_name = "debugger"
 DEBUGGER_FLAG = "USE_SMDEBUG"
@@ -311,17 +314,17 @@ class Rule(RuleBase):
     @classmethod
     def custom(
         cls,
-        name,
-        image_uri,
-        instance_type,
-        volume_size_in_gb,
-        source=None,
-        rule_to_invoke=None,
-        container_local_output_path=None,
-        s3_output_path=None,
-        other_trials_s3_input_paths=None,
-        rule_parameters=None,
-        collections_to_save=None,
+        name: str,
+        image_uri: Union[str, PipelineVariable],
+        instance_type: Union[str, PipelineVariable],
+        volume_size_in_gb: Union[int, PipelineVariable],
+        source: Optional[str] = None,
+        rule_to_invoke: Optional[Union[str, PipelineVariable]] = None,
+        container_local_output_path: Optional[Union[str, PipelineVariable]] = None,
+        s3_output_path: Optional[Union[str, PipelineVariable]] = None,
+        other_trials_s3_input_paths: Optional[List[Union[str, PipelineVariable]]] = None,
+        rule_parameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        collections_to_save: Optional[List["CollectionConfig"]] = None,
         actions=None,
     ):
         """Initialize a ``Rule`` object for a *custom* debugging rule.
@@ -335,25 +338,29 @@ class Rule(RuleBase):
 
         Args:
             name (str): Required. The name of the debugger rule.
-            image_uri (str): Required. The URI of the image to be used by the debugger rule.
-            instance_type (str): Required. Type of EC2 instance to use, for example,
-                'ml.c4.xlarge'.
-            volume_size_in_gb (int): Required. Size in GB of the EBS volume
-                to use for storing data.
+            image_uri (str or PipelineVariable): Required. The URI of the image to
+                be used by the debugger rule.
+            instance_type (str or PipelineVariable): Required. Type of EC2 instance to use,
+                for example, 'ml.c4.xlarge'.
+            volume_size_in_gb (int or PipelineVariable): Required. Size in GB of the
+                EBS volume to use for storing data.
             source (str): Optional. A source file containing a rule to invoke. If provided,
                 you must also provide rule_to_invoke. This can either be an S3 uri or
                 a local path.
-            rule_to_invoke (str): Optional. The name of the rule to invoke within the source.
-                If provided, you must also provide source.
-            container_local_output_path (str): Optional. The local path in the container.
-            s3_output_path (str): Optional. The location in Amazon S3 to store the output tensors.
+            rule_to_invoke (str or PipelineVariable): Optional. The name of the rule to
+                invoke within the source. If provided, you must also provide source.
+            container_local_output_path (str or PipelineVariable): Optional. The local path
+                in the container.
+            s3_output_path (str or PipelineVariable): Optional. The location in Amazon S3
+                to store the output tensors.
                 The default Debugger output path for debugging data is created under the
                 default output path of the :class:`~sagemaker.estimator.Estimator` class.
                 For example,
                 s3://sagemaker-<region>-<12digit_account_id>/<training-job-name>/debug-output/.
-            other_trials_s3_input_paths ([str]): Optional. The Amazon S3 input paths
-                of other trials to use the SimilarAcrossRuns rule.
-            rule_parameters (dict): Optional. A dictionary of parameters for the rule.
+            other_trials_s3_input_paths (list[str] or list[PipelineVariable]: Optional.
+                The Amazon S3 input paths of other trials to use the SimilarAcrossRuns rule.
+            rule_parameters (dict[str, str] or dict[str, PipelineVariable]): Optional.
+                A dictionary of parameters for the rule.
             collections_to_save ([sagemaker.debugger.CollectionConfig]): Optional. A list
                 of :class:`~sagemaker.debugger.CollectionConfig` objects to be saved.
 
@@ -610,21 +617,23 @@ class DebuggerHookConfig(object):
 
     def __init__(
         self,
-        s3_output_path=None,
-        container_local_output_path=None,
-        hook_parameters=None,
-        collection_configs=None,
+        s3_output_path: Optional[Union[str, PipelineVariable]] = None,
+        container_local_output_path: Optional[Union[str, PipelineVariable]] = None,
+        hook_parameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        collection_configs: Optional[List["CollectionConfig"]] = None,
     ):
         """Initialize the DebuggerHookConfig instance.
 
         Args:
-            s3_output_path (str): Optional. The location in Amazon S3 to store the output tensors.
-                The default Debugger output path is created under the
+            s3_output_path (str or PipelineVariable): Optional. The location in Amazon S3 to
+                store the output tensors. The default Debugger output path is created under the
                 default output path of the :class:`~sagemaker.estimator.Estimator` class.
                 For example,
                 s3://sagemaker-<region>-<12digit_account_id>/<training-job-name>/debug-output/.
-            container_local_output_path (str): Optional. The local path in the container.
-            hook_parameters (dict): Optional. A dictionary of parameters.
+            container_local_output_path (str or PipelineVariable): Optional. The local path
+                in the container.
+            hook_parameters (dict[str, str] or dict[str, PipelineVariable]): Optional.
+                A dictionary of parameters.
             collection_configs ([sagemaker.debugger.CollectionConfig]): Required. A list
                 of :class:`~sagemaker.debugger.CollectionConfig` objects to be saved
                 at the **s3_output_path**.
@@ -679,12 +688,18 @@ class DebuggerHookConfig(object):
 class TensorBoardOutputConfig(object):
     """Create a tensor ouput configuration object for debugging visualizations on TensorBoard."""
 
-    def __init__(self, s3_output_path, container_local_output_path=None):
+    def __init__(
+        self,
+        s3_output_path: Union[str, PipelineVariable],
+        container_local_output_path: Optional[Union[str, PipelineVariable]] = None,
+    ):
         """Initialize the TensorBoardOutputConfig instance.
 
         Args:
-            s3_output_path (str): Optional. The location in Amazon S3 to store the output.
-            container_local_output_path (str): Optional. The local path in the container.
+            s3_output_path (str or PipelineVariable): Optional. The location in Amazon S3
+                to store the output.
+            container_local_output_path (str or PipelineVariable): Optional. The local path
+                in the container.
 
         """
         self.s3_output_path = s3_output_path
@@ -708,13 +723,17 @@ class TensorBoardOutputConfig(object):
 class CollectionConfig(object):
     """Creates tensor collections for SageMaker Debugger."""
 
-    def __init__(self, name, parameters=None):
+    def __init__(
+        self,
+        name: Union[str, PipelineVariable],
+        parameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+    ):
         """Constructor for collection configuration.
 
         Args:
-            name (str): Required. The name of the collection configuration.
-            parameters (dict): Optional. The parameters for the collection
-                configuration.
+            name (str or PipelineVariable): Required. The name of the collection configuration.
+            parameters (dict[str, str] or dict[str, PipelineVariable]): Optional. The parameters
+                for the collection configuration.
 
         **Example of creating a CollectionConfig object:**
 
