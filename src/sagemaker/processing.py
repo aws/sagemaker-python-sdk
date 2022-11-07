@@ -1827,14 +1827,19 @@ class FrameworkProcessor(ScriptProcessor):
         #   a7399455f5386d83ddc5cb15c0db00c04bd518ec/src/sagemaker/processing.py#L425-L426
         if inputs is None:
             inputs = []
-        inputs.append(
+
+        # make a shallow copy of user inputs
+        patched_inputs = []
+        for user_input in inputs:
+            patched_inputs.append(user_input)
+        patched_inputs.append(
             ProcessingInput(
                 input_name="code",
                 source=s3_payload,
                 destination="/opt/ml/processing/input/code/",
             )
         )
-        return inputs
+        return patched_inputs
 
     def _set_entrypoint(self, command, user_script_name):
         """Framework processor override for setting processing job entrypoint.

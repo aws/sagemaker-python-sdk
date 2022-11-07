@@ -940,9 +940,18 @@ class PySparkProcessor(_SparkProcessorBase):
             outputs: Processing outputs.
             kwargs: Additional keyword arguments passed to `super()`.
         """
+
+        if inputs is None:
+            inputs = []
+
+        # make a shallow copy of user inputs
+        extended_inputs = []
+        for user_input in inputs:
+            extended_inputs.append(user_input)
+
         self.command = [_SparkProcessorBase._default_command]
         extended_inputs = self._handle_script_dependencies(
-            inputs, kwargs.get("submit_py_files"), FileType.PYTHON
+            extended_inputs, kwargs.get("submit_py_files"), FileType.PYTHON
         )
         extended_inputs = self._handle_script_dependencies(
             extended_inputs, kwargs.get("submit_jars"), FileType.JAR
@@ -1199,8 +1208,16 @@ class SparkJarProcessor(_SparkProcessorBase):
         else:
             raise ValueError("submit_class is required")
 
+        if inputs is None:
+            inputs = []
+
+        # make a shallow copy of user inputs
+        extended_inputs = []
+        for user_input in inputs:
+            extended_inputs.append(user_input)
+
         extended_inputs = self._handle_script_dependencies(
-            inputs, kwargs.get("submit_jars"), FileType.JAR
+            extended_inputs, kwargs.get("submit_jars"), FileType.JAR
         )
         extended_inputs = self._handle_script_dependencies(
             extended_inputs, kwargs.get("submit_files"), FileType.FILE

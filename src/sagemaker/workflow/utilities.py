@@ -168,7 +168,7 @@ def get_processing_code_hash(code: str, source_dir: str, dependencies: List[str]
         str: A hash string representing the unique code artifact(s) for the step
     """
 
-    # FrameworkProcessor
+    # If FrameworkProcessor contains source_dir
     if source_dir:
         source_dir_url = urlparse(source_dir)
         if source_dir_url.scheme == "" or source_dir_url.scheme == "file":
@@ -400,5 +400,5 @@ def execute_job_functions(step_args: _StepArguments):
     """
 
     chained_args = step_args.func(*step_args.func_args, **step_args.func_kwargs)
-    if chained_args:
+    if isinstance(chained_args, _StepArguments):
         execute_job_functions(chained_args)
