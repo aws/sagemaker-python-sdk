@@ -350,6 +350,9 @@ class AutoML(object):
         model_kms_key=None,
         predictor_cls=None,
         inference_response_keys=None,
+        volume_size=None,
+        model_data_download_timeout=None,
+        container_startup_health_check_timeout=None,
     ):
         """Deploy a candidate to a SageMaker Inference Pipeline.
 
@@ -396,6 +399,16 @@ class AutoML(object):
                 function on the created endpoint name.
             inference_response_keys (list): List of keys for response content. The order of the
                 keys will dictate the content order in the response.
+            volume_size (int): The size, in GB, of the ML storage volume attached to individual
+                inference instance associated with the production variant. Currenly only Amazon EBS
+                gp2 storage volumes are supported.
+            model_data_download_timeout (int): The timeout value, in seconds, to download and
+                extract model data from Amazon S3 to the individual inference instance associated
+                with this production variant.
+            container_startup_health_check_timeout (int): The timeout value, in seconds, for your
+                inference container to pass health check by SageMaker Hosting. For more information
+                about health check see:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html#your-algorithms-inference-algo-ping-requests
 
         Returns:
             callable[string, sagemaker.session.Session] or ``None``:
@@ -423,6 +436,9 @@ class AutoML(object):
             kms_key=model_kms_key,
             tags=tags,
             wait=wait,
+            volume_size=volume_size,
+            model_data_download_timeout=model_data_download_timeout,
+            container_startup_health_check_timeout=container_startup_health_check_timeout,
         )
 
     def _check_problem_type_and_job_objective(self, problem_type, job_objective):

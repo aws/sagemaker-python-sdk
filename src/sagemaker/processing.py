@@ -35,7 +35,9 @@ from sagemaker.network import NetworkConfig
 from sagemaker.utils import base_name_from_image, get_config_value, name_from_base
 from sagemaker.session import Session
 from sagemaker.workflow import is_pipeline_variable
+from sagemaker.workflow.functions import Join
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
+from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.dataset_definition.inputs import S3Input, DatasetDefinition
 from sagemaker.apiutils._base_types import ApiObject
@@ -314,6 +316,8 @@ class Processor(object):
         Raises:
             TypeError: if the inputs are not ``ProcessingInput`` objects.
         """
+        from sagemaker.workflow.utilities import _pipeline_config
+
         # Initialize a list of normalized ProcessingInput objects.
         normalized_inputs = []
         if inputs is not None:
@@ -335,13 +339,23 @@ class Processor(object):
                 # and save the S3 uri in the ProcessingInput source.
                 parse_result = urlparse(file_input.s3_input.s3_uri)
                 if parse_result.scheme != "s3":
-                    desired_s3_uri = s3.s3_path_join(
-                        "s3://",
-                        self.sagemaker_session.default_bucket(),
-                        self._current_job_name,
-                        "input",
-                        file_input.input_name,
-                    )
+                    if _pipeline_config:
+                        desired_s3_uri = s3.s3_path_join(
+                            "s3://",
+                            self.sagemaker_session.default_bucket(),
+                            _pipeline_config.pipeline_name,
+                            _pipeline_config.step_name,
+                            "input",
+                            file_input.input_name,
+                        )
+                    else:
+                        desired_s3_uri = s3.s3_path_join(
+                            "s3://",
+                            self.sagemaker_session.default_bucket(),
+                            self._current_job_name,
+                            "input",
+                            file_input.input_name,
+                        )
                     s3_uri = s3.S3Uploader.upload(
                         local_path=file_input.s3_input.s3_uri,
                         desired_s3_uri=desired_s3_uri,
@@ -369,6 +383,8 @@ class Processor(object):
             TypeError: if the outputs are not ``ProcessingOutput`` objects.
         """
         # Initialize a list of normalized ProcessingOutput objects.
+        from sagemaker.workflow.utilities import _pipeline_config
+
         normalized_outputs = []
         if outputs is not None:
             # Iterate through the provided list of outputs.
@@ -384,13 +400,27 @@ class Processor(object):
                 # If the output's destination is not an s3_uri, create one.
                 parse_result = urlparse(output.destination)
                 if parse_result.scheme != "s3":
-                    s3_uri = s3.s3_path_join(
-                        "s3://",
-                        self.sagemaker_session.default_bucket(),
-                        self._current_job_name,
-                        "output",
-                        output.output_name,
-                    )
+                    if _pipeline_config:
+                        s3_uri = Join(
+                            on="/",
+                            values=[
+                                "s3:/",
+                                self.sagemaker_session.default_bucket(),
+                                _pipeline_config.pipeline_name,
+                                ExecutionVariables.PIPELINE_EXECUTION_ID,
+                                _pipeline_config.step_name,
+                                "output",
+                                output.output_name,
+                            ],
+                        )
+                    else:
+                        s3_uri = s3.s3_path_join(
+                            "s3://",
+                            self.sagemaker_session.default_bucket(),
+                            self._current_job_name,
+                            "output",
+                            output.output_name,
+                        )
                     output.destination = s3_uri
                 normalized_outputs.append(output)
         return normalized_outputs
@@ -507,6 +537,11 @@ class ScriptProcessor(Processor):
             arguments (list[str]): A list of string arguments to be passed to a
                 processing job (default: None).
         """
+        logger.warning(
+            "This function has been deprecated and could break pipeline step caching. "
+            "We recommend using the run() function directly with pipeline sessions"
+            "to access step arguments."
+        )
         return RunArgs(code=code, inputs=inputs, outputs=outputs, arguments=arguments)
 
     @runnable_by_pipeline
@@ -679,13 +714,24 @@ class ScriptProcessor(Processor):
             str: The S3 URI of the uploaded file or directory.
 
         """
-        desired_s3_uri = s3.s3_path_join(
-            "s3://",
-            self.sagemaker_session.default_bucket(),
-            self._current_job_name,
-            "input",
-            self._CODE_CONTAINER_INPUT_NAME,
-        )
+        from sagemaker.workflow.utilities import _pipeline_config
+
+        if _pipeline_config and _pipeline_config.code_hash:
+            desired_s3_uri = s3.s3_path_join(
+                "s3://",
+                self.sagemaker_session.default_bucket(),
+                _pipeline_config.pipeline_name,
+                self._CODE_CONTAINER_INPUT_NAME,
+                _pipeline_config.code_hash,
+            )
+        else:
+            desired_s3_uri = s3.s3_path_join(
+                "s3://",
+                self.sagemaker_session.default_bucket(),
+                self._current_job_name,
+                "input",
+                self._CODE_CONTAINER_INPUT_NAME,
+            )
         return s3.S3Uploader.upload(
             local_path=code,
             desired_s3_uri=desired_s3_uri,
@@ -1499,6 +1545,12 @@ class FrameworkProcessor(ScriptProcessor):
             job_name (str): Processing job name. If not specified, the processor generates
                 a default job name, based on the base job name and current timestamp.
         """
+        logger.warning(
+            "This function has been deprecated and could break pipeline step caching. "
+            "We recommend using the run() function directly with pipeline sessions"
+            "to access step arguments."
+        )
+
         # When job_name is None, the job_name to upload code (+payload) will
         # differ from job_name used by run().
         s3_runproc_sh, inputs, job_name = self._pack_and_upload_code(
@@ -1512,6 +1564,7 @@ class FrameworkProcessor(ScriptProcessor):
             arguments=arguments,
         )
 
+    @runnable_by_pipeline
     def run(  # type: ignore[override]
         self,
         code: str,

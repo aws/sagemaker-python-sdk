@@ -2981,6 +2981,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         tags=None,
         kms_key=None,
         data_capture_config_dict=None,
+        volume_size=None,
+        model_data_download_timeout=None,
+        container_startup_health_check_timeout=None,
     ):
         """Create an Amazon SageMaker endpoint configuration.
 
@@ -3004,6 +3007,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 attached to the instance hosting the endpoint.
             data_capture_config_dict (dict): Specifies configuration related to Endpoint data
                 capture for use with Amazon SageMaker Model Monitoring. Default: None.
+            volume_size (int): The size, in GB, of the ML storage volume attached to individual
+                inference instance associated with the production variant. Currenly only Amazon EBS
+                gp2 storage volumes are supported.
+            model_data_download_timeout (int): The timeout value, in seconds, to download and
+                extract model data from Amazon S3 to the individual inference instance associated
+                with this production variant.
+            container_startup_health_check_timeout (int): The timeout value, in seconds, for your
+                inference container to pass health check by SageMaker Hosting. For more information
+                about health check see:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html#your-algorithms-inference-algo-ping-requests
 
         Example:
             >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]
@@ -3025,6 +3038,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     instance_type,
                     initial_instance_count,
                     accelerator_type=accelerator_type,
+                    volume_size=volume_size,
+                    model_data_download_timeout=model_data_download_timeout,
+                    container_startup_health_check_timeout=container_startup_health_check_timeout,
                 )
             ],
         }
@@ -4636,6 +4652,9 @@ def production_variant(
     initial_weight=1,
     accelerator_type=None,
     serverless_inference_config=None,
+    volume_size=None,
+    model_data_download_timeout=None,
+    container_startup_health_check_timeout=None,
 ):
     """Create a production variant description suitable for use in a ``ProductionVariant`` list.
 
@@ -4657,7 +4676,16 @@ def production_variant(
         serverless_inference_config (dict): Specifies configuration dict related to serverless
             endpoint. The dict is converted from sagemaker.model_monitor.ServerlessInferenceConfig
             object (default: None)
-
+        volume_size (int): The size, in GB, of the ML storage volume attached to individual
+            inference instance associated with the production variant. Currenly only Amazon EBS
+            gp2 storage volumes are supported.
+        model_data_download_timeout (int): The timeout value, in seconds, to download and extract
+            model data from Amazon S3 to the individual inference instance associated with this
+            production variant.
+        container_startup_health_check_timeout (int): The timeout value, in seconds, for your
+            inference container to pass health check by SageMaker Hosting. For more information
+            about health check see:
+            https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html#your-algorithms-inference-algo-ping-requests
     Returns:
         dict[str, str]: An SageMaker ``ProductionVariant`` description
     """
@@ -4676,6 +4704,12 @@ def production_variant(
         initial_instance_count = initial_instance_count or 1
         production_variant_configuration["InitialInstanceCount"] = initial_instance_count
         production_variant_configuration["InstanceType"] = instance_type
+        update_args(
+            production_variant_configuration,
+            VolumeSizeInGB=volume_size,
+            ModelDataDownloadTimeoutInSeconds=model_data_download_timeout,
+            ContainerStartupHealthCheckTimeoutInSeconds=container_startup_health_check_timeout,
+        )
 
     return production_variant_configuration
 

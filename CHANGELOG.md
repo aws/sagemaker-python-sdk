@@ -1,5 +1,48 @@
 # Changelog
 
+## v2.116.0 (2022-10-28)
+
+### Features
+
+ * support customized timeout for model data download and inference container startup health check for Hosting Endpoints
+ * Trainium Neuron support for PyTorch
+ * Pipelines cache keys update
+ * Caching Improvements for SM Pipeline Workflows
+
+## v2.115.0 (2022-10-27)
+
+### Features
+
+ * Add support for TF 2.10 training
+ * Disable profiler for Trainium instance type
+ * support the Hyperband strategy with the StrategyConfig
+ * support the GridSearch strategy for hyperparameter optimization
+
+### Bug Fixes and Other Changes
+
+ * Update Graviton supported instance families
+
+## v2.114.0 (2022-10-26)
+
+### Features
+
+ * Graviton support for XGB and SKLearn frameworks
+ * Graviton support for PyTorch and Tensorflow frameworks
+ * do not expand estimator role when it is pipeline parameter
+ * added support for batch transform with model monitoring
+
+### Bug Fixes and Other Changes
+
+ * regex in tuning integs
+ * remove debugger environment var set up
+ * adjacent slash in s3 key
+ * Fix Repack step auto install behavior
+ * Add retry for airflow ParsingError
+
+### Documentation Changes
+
+ * doc fix
+
 ## v2.113.0 (2022-10-21)
 
 ### Features

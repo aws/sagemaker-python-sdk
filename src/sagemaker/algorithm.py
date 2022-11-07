@@ -27,6 +27,7 @@ from sagemaker.transformer import Transformer
 from sagemaker.predictor import Predictor
 from sagemaker.session import Session
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.workflow.pipeline_context import runnable_by_pipeline
 
 from sagemaker.workflow import is_pipeline_variable
 
@@ -429,6 +430,7 @@ class AlgorithmEstimator(EstimatorBase):
 
         super(AlgorithmEstimator, self)._prepare_for_training(job_name)
 
+    @runnable_by_pipeline
     def fit(
         self,
         inputs: Optional[Union[str, Dict, TrainingInput, FileSystemInput]] = None,
