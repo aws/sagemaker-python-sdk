@@ -17,12 +17,12 @@ A Dataset Builder is a builder class for generating a dataset by providing condi
 from __future__ import absolute_import
 
 import datetime
-from typing import Sequence, Union
+from typing import Any, Dict, Sequence, Union
 
 import attr
 import pandas as pd
 
-from sagemaker import Session
+from sagemaker import Session, s3, utils
 from sagemaker.feature_store.feature_group import FeatureGroup
 
 
@@ -166,6 +166,30 @@ class DatasetBuilder:
             The S3 path of the .csv file.
             The query string executed.
         """
+        if isinstance(self._base, pd.DataFrame):
+            temp_id = utils.unique_name_from_base("dataframe-base")
+            local_filename = f"{temp_id}.csv"
+            desired_s3_folder = f"{self._output_path}/{temp_id}"
+            self._base.to_csv(local_filename, index=False, header=False)
+            s3.S3Uploader.upload(
+                local_path=local_filename,
+                desired_s3_uri=desired_s3_folder,
+                sagemaker_session=self._sagemaker_session,
+                kms_key=self._kms_key_id,
+            )
+            temp_table_name = f"dataframe_{temp_id}"
+            self._create_temp_table(temp_table_name, desired_s3_folder)
+            base_features = list(self._base.columns)
+            query_string = self._construct_query_string(
+                temp_table_name,
+                "sagemaker_featurestore",
+                base_features,
+            )
+            query_result = self._run_query(query_string, "AwsDataCatalog", "sagemaker_featurestore")
+            # TODO: cleanup local file and temp table
+            return query_result.get("QueryExecution", None).get("ResultConfiguration", None).get(
+                "OutputLocation", None
+            ), query_result.get("QueryExecution", None).get("Query", None)
         if isinstance(self._base, FeatureGroup):
             # TODO: handle pagination and input feature validation
             base_feature_group = self._base.describe()
@@ -186,37 +210,19 @@ class DatasetBuilder:
                 for feature in base_feature_group.get("FeatureDefinitions", None)
             ]
 
-            query = self._sagemaker_session.start_query_execution(
-                catalog=data_catalog_config.get("Catalog", None)
-                if disable_glue
-                else "AwsDataCatalog",
-                database=data_catalog_config.get("Database", None),
-                query_string=self._construct_query_string(
-                    data_catalog_config.get("TableName", None),
-                    data_catalog_config.get("Database", None),
-                    base_features,
-                ),
-                output_location=self._output_path,
-                kms_key=self._kms_key_id,
+            query_string = self._construct_query_string(
+                data_catalog_config.get("TableName", None),
+                data_catalog_config.get("Database", None),
+                base_features,
             )
-            query_id = query.get("QueryExecutionId", None)
-            self._sagemaker_session.wait_for_athena_query(
-                query_execution_id=query_id,
+            query_result = self._run_query(
+                query_string,
+                data_catalog_config.get("Catalog", None) if disable_glue else "AwsDataCatalog",
+                data_catalog_config.get("Database", None),
             )
-            query_state = (
-                self._sagemaker_session.get_query_execution(
-                    query_execution_id=query_id,
-                )
-                .get("QueryExecution", None)
-                .get("Status", None)
-                .get("State", None)
-            )
-            if query_state != "SUCCEEDED":
-                raise RuntimeError(f"Failed to execute query {query_id}.")
-
-            return query_state.get("QueryExecution", None).get("ResultConfiguration", None).get(
+            return query_result.get("QueryExecution", None).get("ResultConfiguration", None).get(
                 "OutputLocation", None
-            ), query_state.get("QueryExecution", None).get("Query", None)
+            ), query_result.get("QueryExecution", None).get("Query", None)
         raise ValueError("Base must be either a FeatureGroup or a DataFrame.")
 
     def _construct_query_string(
@@ -259,3 +265,78 @@ class DatasetBuilder:
             if not self._include_deleted_records:
                 query_string += "AND NOT is_deleted\n"
         return query_string
+
+    def _create_temp_table(self, temp_table_name: str, desired_s3_folder: str):
+        """Internal method for creating a temp Athena table for the base pandas.Dataframe.
+
+        Args:
+            temp_table_name (str): The Athena table name of base pandas.DataFrame.
+            desired_s3_folder (str): The S3 URI of the folder of the data.
+        """
+        columns_string = ", ".join(
+            [self._construct_athena_table_column_string(column) for column in self._base.columns]
+        )
+        serde_properties = '"separatorChar" = ",", "quoteChar" = "`", "escapeChar" = "\\\\"'
+        query_string = (
+            f"CREATE EXTERNAL TABLE {temp_table_name} ({columns_string}) "
+            + "ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde' "
+            + f"WITH SERDEPROPERTIES ({serde_properties}) "
+            + f"LOCATION '{desired_s3_folder}';"
+        )
+        self._run_query(query_string, "AwsDataCatalog", "sagemaker_featurestore")
+
+    def _construct_athena_table_column_string(self, column: str) -> str:
+        """Internal method for constructing string of Athena column.
+
+        Args:
+            column (str): The column name from pandas.Dataframe.
+        Returns:
+            The Athena column string.
+
+        Raises:
+            RuntimeError: The type of pandas.Dataframe column is not support yet.
+        """
+        dataframe_type = self._base[column].dtypes
+        if dataframe_type == "object":
+            column_type = "STRING"
+        elif dataframe_type == "int64":
+            column_type = "INT"
+        elif dataframe_type == "float64":
+            column_type = "DOUBLE"
+        elif dataframe_type == "bool":
+            column_type = "BOOLEAN"
+        elif dataframe_type == "datetime64":
+            column_type = "TIMESTAMP"
+        else:
+            raise RuntimeError(f"The dataframe type {dataframe_type} is not supported yet.")
+        return f"{column} {column_type}"
+
+    def _run_query(self, query_string: str, catalog: str, database: str) -> Dict[str, Any]:
+        """Internal method for execute Athena query, wait for query finish and get query result.
+
+        Args:
+            query_string (str): The SQL query statements to be executed.
+            catalog (str): The name of the data catalog used in the query execution.
+            database (str): The name of the database used in the query execution.
+        Returns:
+            The query result.
+
+        Raises:
+            RuntimeError: Athena query failed.
+        """
+        query = self._sagemaker_session.start_query_execution(
+            catalog=catalog,
+            database=database,
+            query_string=query_string,
+            output_location=self._output_path,
+            kms_key=self._kms_key_id,
+        )
+        query_id = query.get("QueryExecutionId", None)
+        self._sagemaker_session.wait_for_athena_query(query_execution_id=query_id)
+        query_result = self._sagemaker_session.get_query_execution(query_execution_id=query_id)
+        query_state = (
+            query_result.get("QueryExecution", None).get("Status", None).get("State", None)
+        )
+        if query_state != "SUCCEEDED":
+            raise RuntimeError(f"Failed to execute query {query_id}.")
+        return query_result
