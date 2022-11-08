@@ -367,6 +367,44 @@ SEARCH_TRAINING_JOB_EXAMPLE = {
     },
 }
 
+SEARCH_TRAINING_JOB_AUTOPILOT_EXAMPLE = {
+    "Results": [
+        {
+            "TrainingJob": {
+                "TrainingJobName": TRAINING_JOB_NAME,
+                "TrainingJobArn": TRAINING_JOB_ARN,
+                "ModelArtifacts": {"S3ModelArtifacts": "s3://example"},
+                "TrainingJobOutput": {"S3TrainingJobOutput": "s3://example"},
+                "TrainingJobStatus": "Completed",
+                "SecondaryStatus": "Completed",
+                "HyperParameters": {
+                    "processor_module": "candidate_data_processors.dpp2",
+                    "sagemaker_program": "candidate_data_processors.trainer",
+                    "sagemaker_submit_directory": "/opt/ml/input/data/code",
+                },
+                "AlgorithmSpecification": {
+                    "TrainingImage": TRAINING_IMAGE,
+                    "TrainingInputMode": "File",
+                    "MetricDefinitions": [],
+                    "EnableSageMakerMetricsTimeSeries": False,
+                },
+                "CreatedBy": {},
+            }
+        }
+    ],
+    "ResponseMetadata": {
+        "RequestId": "b43aacee-c846-4ca6-b5c0-d9413cebda33",
+        "HTTPStatusCode": 200,
+        "HTTPHeaders": {
+            "x-amzn-requestid": "b43aacee-c846-4ca6-b5c0-d9413cebda33",
+            "content-type": "application/x-amz-json-1.1",
+            "content-length": "6199",
+            "date": "Tue, 20 Sep 2022 19:59:50 GMT",
+        },
+        "RetryAttempts": 0,
+    },
+}
+
 DESCRIBE_TRAINING_JOB_EXAMPLE = SEARCH_TRAINING_JOB_EXAMPLE["Results"][0]["TrainingJob"]
 MISSING_TRAINING_JOB_CLIENT_ERROR = ClientError(
     error_response={
@@ -993,6 +1031,22 @@ def test_training_details_autodiscovery_from_model_overview(
         "Please create one from scrach with TrainingJobDetails "
         "or use from_training_job_name() instead."
     ) in caplog.text
+
+
+@patch("sagemaker.Session")
+def test_training_details_autodiscovery_from_model_overview_autopilot(
+    session, model_overview_example, caplog
+):
+    session.sagemaker_client.search.side_effect = [
+        SEARCH_TRAINING_JOB_AUTOPILOT_EXAMPLE,
+    ]
+
+    model_overview_example.model_artifact = [MODEL_ARTIFACT[0]]
+    training_details = TrainingDetails.from_model_overview(
+        model_overview=model_overview_example, sagemaker_session=session
+    )
+
+    assert len(training_details.training_job_details.training_metrics) == 0
 
 
 @patch("sagemaker.Session")
