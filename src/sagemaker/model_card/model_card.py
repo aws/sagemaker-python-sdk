@@ -439,7 +439,9 @@ class TrainingDetails(_DefaultToRequestDict, _DefaultFromDict):
                 "training_metrics": [
                     TrainingMetric(i["MetricName"], i["Value"])
                     for i in training_job_data["FinalMetricDataList"]
-                ],
+                ]
+                if "FinalMetricDataList" in training_job_data
+                else [],
             }
             kwargs.update({"training_job_details": TrainingJobDetails(**job)})
             instance = cls(**kwargs)
