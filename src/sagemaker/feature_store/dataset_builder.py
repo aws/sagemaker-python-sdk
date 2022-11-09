@@ -17,13 +17,44 @@ A Dataset Builder is a builder class for generating a dataset by providing condi
 from __future__ import absolute_import
 
 import datetime
-from typing import Any, Dict, Sequence, Union
+from typing import Any, Dict, List, Sequence, Union
 
 import attr
 import pandas as pd
 
 from sagemaker import Session, s3, utils
 from sagemaker.feature_store.feature_group import FeatureGroup
+
+
+@attr.s
+class FeatureGroupToBeMerged:
+    """FeatureGroup metadata which will be used for SQL join.
+
+    This class instantiates a FeatureGroupToBeMerged object that comprises a list of feature names,
+    a list of feature names which will be included in SQL query, a database, an Athena table name,
+    a feature name of record identifier, a feature name of event time identifier and a feature name
+    of base which is the target join key.
+
+    Attributes:
+        features (List[str]): A list of strings representing feature names of this FeatureGroup.
+        included_feature_names (Sequence[str]): A list of strings representing features to be
+            included in the output.
+        database (str): A string representing the database.
+        table_name (str): A string representing the Athena table name of this FeatureGroup.
+        record_dentifier_feature_name (str): A string representing the record identifier feature.
+        event_time_identifier_feature_name (str): A string representing the event time identifier
+            feature.
+        target_feature_name_in_base (str): A string representing the feature name in base which will
+            be used as target join key (default: None).
+    """
+
+    features: List[str] = attr.ib()
+    included_feature_names: Sequence[str] = attr.ib()
+    database: str = attr.ib()
+    table_name: str = attr.ib()
+    record_identifier_feature_name: str = attr.ib()
+    event_time_identifier_feature_name: str = attr.ib()
+    target_feature_name_in_base: str = attr.ib(default=None)
 
 
 @attr.s
@@ -39,26 +70,30 @@ class DatasetBuilder:
             pandas.DataFrame and will be used to merge other FeatureGroups and generate a Dataset.
         _output_path (str): An S3 URI which stores the output .csv file.
         _record_identifier_feature_name (str): A string representing the record identifier feature
-            if base is a DataFrame.
+            if base is a DataFrame (default: None).
         _event_time_identifier_feature_name (str): A string representing the event time identifier
-            feature if base is a DataFrame.
-        _included_feature_names (List[str]): A list of features to be included in the output.
-        _kms_key_id (str): An KMS key id. If set, will be used to encrypt the result file.
+            feature if base is a DataFrame (default: None).
+        _included_feature_names (Sequence[str]): A list of strings representing features to be
+            included in the output (default: None).
+        _kms_key_id (str): An KMS key id. If set, will be used to encrypt the result file
+            (default: None).
         _point_in_time_accurate_join (bool): A boolean representing whether using point in time join
-            or not.
+            or not (default: False).
         _include_duplicated_records (bool): A boolean representing whether including duplicated
-            records or not.
+            records or not (default: False).
         _include_deleted_records (bool): A boolean representing whether including deleted records or
-            not.
+            not (default: False).
         _number_of_recent_records (int): An int that how many records will be returned for each
-            record identifier.
-        _number_of_records (int): An int that how many records will be returned.
+            record identifier (default: 1).
+        _number_of_records (int): An int that how many records will be returned (default: None).
         _write_time_ending_timestamp (datetime.datetime): A datetime that all records' write time in
-            dataset will be before it.
+            dataset will be before it (default: None).
         _event_time_starting_timestamp (datetime.datetime): A datetime that all records' event time
-            in dataset will be after it.
+            in dataset will be after it (default: None).
         _event_time_ending_timestamp (datetime.datetime): A datetime that all records' event time in
-            dataset will be before it.
+            dataset will be before it (default: None).
+        _feature_groups_to_be_merged (List[FeatureGroupToBeMerged]): A list of
+            FeatureGroupToBeMerged which will be joined to base (default: []).
     """
 
     _sagemaker_session: Session = attr.ib()
@@ -77,6 +112,58 @@ class DatasetBuilder:
     _write_time_ending_timestamp: datetime.datetime = attr.ib(init=False, default=None)
     _event_time_starting_timestamp: datetime.datetime = attr.ib(init=False, default=None)
     _event_time_ending_timestamp: datetime.datetime = attr.ib(init=False, default=None)
+    _feature_groups_to_be_merged: List[FeatureGroupToBeMerged] = attr.ib(init=False, default=[])
+
+    def with_feature_group(
+        self,
+        feature_group: FeatureGroup,
+        target_feature_name_in_base: str = None,
+        included_feature_names: Sequence[str] = None,
+    ):
+        """Join FeatureGroup with base.
+
+        Args:
+            feature_group (FeatureGroup): A FeatureGroup which will be joined to base.
+            target_feature_name_in_base (str): A string representing the feature name in base which
+                will be used as target join key (default: None).
+            included_feature_names (Sequence[str]): A list of strings representing features to be
+                included in the output (default: None).
+        Returns:
+            This DatasetBuilder object.
+        """
+        # TODO: handle pagination and input feature validation
+        # TODO: potential refactor with FeatureGroup base
+        feature_group_metadata = feature_group.describe()
+        data_catalog_config = feature_group_metadata.get("OfflineStoreConfig", None).get(
+            "DataCatalogConfig", None
+        )
+        if not data_catalog_config:
+            raise RuntimeError(
+                f"No metastore is configured with FeatureGroup {feature_group.name}."
+            )
+
+        record_identifier_feature_name = feature_group_metadata.get(
+            "RecordIdentifierFeatureName", None
+        )
+        event_time_identifier_feature_name = feature_group_metadata.get(
+            "EventTimeFeatureName", None
+        )
+        # TODO: back fill feature definitions due to UpdateFG
+        table_name = data_catalog_config.get("TableName", None)
+        database = data_catalog_config.get("Database", None)
+        features = [feature.feature_name for feature in feature_group.feature_definitions]
+        self._feature_groups_to_be_merged.append(
+            FeatureGroupToBeMerged(
+                features,
+                included_feature_names,
+                database,
+                table_name,
+                record_identifier_feature_name,
+                event_time_identifier_feature_name,
+                target_feature_name_in_base,
+            )
+        )
+        return self
 
     def point_in_time_accurate_join(self):
         """Set join type as point in time accurate join.
@@ -225,6 +312,49 @@ class DatasetBuilder:
             ), query_result.get("QueryExecution", None).get("Query", None)
         raise ValueError("Base must be either a FeatureGroup or a DataFrame.")
 
+    def _construct_table_query(self, feature_group: FeatureGroupToBeMerged, suffix: str):
+        """Internal method for constructing SQL query string by parameters.
+
+        Args:
+            feature_group (FeatureGroupToBeMerged): A FeatureGroupToBeMerged object which has the
+                FeatureGroup metadata.
+            suffix (str): A temp identifier of the FeatureGroup.
+        Returns:
+            The query string.
+        """
+        included_features = ", ".join(
+            [
+                f'table_{suffix}."{include_feature_name}"'
+                for include_feature_name in feature_group.included_feature_names
+            ]
+        )
+        query_string = f"SELECT {included_features}\n"
+        if self._include_duplicated_records:
+            query_string += (
+                f'FROM "{feature_group.database}"."{feature_group.table_name}" table_{suffix}\n'
+            )
+            if not self._include_deleted_records:
+                query_string += "WHERE NOT is_deleted\n"
+        else:
+            features = feature_group.features
+            features.remove(feature_group.event_time_identifier_feature_name)
+            dedup_features = ", ".join([f'dedup_{suffix}."{feature}"' for feature in features])
+            query_string += (
+                "FROM (\n"
+                + "SELECT *, row_number() OVER (\n"
+                + f"PARTITION BY {dedup_features}\n"
+                + f'ORDER BY dedup_{suffix}."{feature_group.event_time_identifier_feature_name}" '
+                + f'DESC, dedup_{suffix}."api_invocation_time" DESC, '
+                + f'dedup_{suffix}."write_time" DESC\n'
+                + f") AS row_{suffix}\n"
+                + f'FROM "{feature_group.database}"."{feature_group.table_name}" dedup_{suffix}\n'
+                + f") AS table_{suffix}\n"
+                + f"WHERE row_{suffix} = 1\n"
+            )
+            if not self._include_deleted_records:
+                query_string += "AND NOT is_deleted\n"
+        return query_string
+
     def _construct_query_string(
         self, base_table_name: str, database: str, base_features: list
     ) -> str:
@@ -237,34 +367,25 @@ class DatasetBuilder:
         Returns:
             The query string.
         """
-        included_features = ", ".join(
-            [
-                f'base."{include_feature_name}"'
-                for include_feature_name in self._included_feature_names
-            ]
-        )
-        query_string = f"SELECT {included_features}\n"
-        if self._include_duplicated_records:
-            query_string += f'FROM "{database}"."{base_table_name}" base\n'
-            if not self._include_deleted_records:
-                query_string += "WHERE NOT is_deleted\n"
-        else:
-            base_features.remove(self._event_time_identifier_feature_name)
-            dedup_features = ", ".join([f'dedup_base."{feature}"' for feature in base_features])
-            query_string += (
-                "FROM (\n"
-                + "SELECT *, row_number() OVER (\n"
-                + f"PARTITION BY {dedup_features}\n"
-                + f'ORDER BY dedup_base."{self._event_time_identifier_feature_name}" '
-                + 'DESC, dedup_base."api_invocation_time" DESC, dedup_base."write_time" DESC\n'
-                + ") AS row_base\n"
-                + f'FROM "{database}"."{base_table_name}" dedup_base\n'
-                + ") AS base\n"
-                + "WHERE row_base = 1\n"
+        query_string = ""
+        if len(self._feature_groups_to_be_merged) > 0:
+            with_subquery_string = ",\n".join(
+                [
+                    f"fg_{i} AS ({self._construct_table_query(feature_group, str(i))})"
+                    for i, feature_group in enumerate(self._feature_groups_to_be_merged)
+                ]
             )
-            if not self._include_deleted_records:
-                query_string += "AND NOT is_deleted\n"
-        return query_string
+            query_string = f"WITH {with_subquery_string}\n"
+
+        base = FeatureGroupToBeMerged(
+            base_features,
+            self._included_feature_names,
+            database,
+            base_table_name,
+            self._record_identifier_feature_name,
+            self._event_time_identifier_feature_name,
+        )
+        return query_string + self._construct_table_query(base, "base")
 
     def _create_temp_table(self, temp_table_name: str, desired_s3_folder: str):
         """Internal method for creating a temp Athena table for the base pandas.Dataframe.
