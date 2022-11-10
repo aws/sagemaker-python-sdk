@@ -39,4 +39,4 @@ def cleanup_exp_resources(exp_names, sagemaker_session):
     finally:
         for exp_name in exp_names:
             exp = _Experiment.load(experiment_name=exp_name, sagemaker_session=sagemaker_session)
-            exp.delete_all(action="--force")
+            exp._delete_all(action="--force")

@@ -938,4 +938,4 @@ def check_and_get_run_experiment_config(experiment_config: Optional[dict] = None
             )
         return experiment_config
 
-    return run_obj.experiment_config if run_obj else None
+    return run_obj._experiment_config if run_obj else None

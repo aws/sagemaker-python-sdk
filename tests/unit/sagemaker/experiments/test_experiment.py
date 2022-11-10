@@ -210,7 +210,7 @@ def test_list_trials_call_args(sagemaker_session):
 def test_delete_all_with_incorrect_action_name(sagemaker_session):
     obj = experiment._Experiment(sagemaker_session, experiment_name="foo", description="bar")
     with pytest.raises(ValueError) as err:
-        obj.delete_all(action="abc")
+        obj._delete_all(action="abc")
 
     assert "Must confirm with string '--force'" in str(err)
 
@@ -278,7 +278,7 @@ def test_delete_all(sagemaker_session):
     client.delete_trial.return_value = {}
     client.delete_experiment.return_value = {}
 
-    obj.delete_all(action="--force")
+    obj._delete_all(action="--force")
 
     client.delete_experiment.assert_called_with(ExperimentName="foo")
 
@@ -301,6 +301,6 @@ def test_delete_all_fail(sagemaker_session):
     obj = experiment._Experiment(sagemaker_session, experiment_name="foo", description="bar")
     sagemaker_session.sagemaker_client.list_trials.side_effect = Exception
     with pytest.raises(Exception) as e:
-        obj.delete_all(action="--force")
+        obj._delete_all(action="--force")
 
     assert str(e.value) == "Failed to delete, please try again."

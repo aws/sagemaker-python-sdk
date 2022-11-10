@@ -24,7 +24,6 @@ from tests.unit.sagemaker.experiments.helpers import (
     mock_tc_load_or_create_func,
     mock_trial_load_or_create_func,
     TEST_EXP_NAME,
-    TEST_RUN_GRP_NAME,
 )
 
 
@@ -74,7 +73,6 @@ def run_obj(sagemaker_session):
             ):
                 run = Run.init(
                     experiment_name=TEST_EXP_NAME,
-                    run_group_name=TEST_RUN_GRP_NAME,
                     sagemaker_session=sagemaker_session,
                 )
                 run._artifact_uploader = Mock()
@@ -82,6 +80,6 @@ def run_obj(sagemaker_session):
                 run._metrics_manager = Mock()
 
                 assert run.run_name.startswith(RUN_NAME_BASE)
-                assert run.run_group_name == TEST_RUN_GRP_NAME
+                assert run.run_group_name == Run._generate_trial_name(TEST_EXP_NAME)
 
                 return run

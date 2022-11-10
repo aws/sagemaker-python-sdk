@@ -23,33 +23,30 @@ import pytest
 
 from sagemaker.experiments import _environment
 from sagemaker.experiments._api_types import (
-    TrialComponentSource,
     TrialComponentArtifact,
     TrialComponentSummary,
     TrialComponentStatus,
-    TrialComponentSearchResult,
-    Parent,
 )
 from sagemaker.experiments.experiment import _Experiment
 from sagemaker.experiments.run import (
     Run,
     TRIAL_NAME_TEMPLATE,
     MAX_RUN_TC_ARTIFACTS_LEN,
-    MAX_TRIAL_NAME_LEN,
-    UNKNOWN_NAME,
+    MAX_NAME_LEN_IN_BACKEND,
     EXPERIMENT_NAME,
     RUN_NAME,
     TRIAL_NAME,
+    DELIMITER,
+    RUN_TC_TAG_KEY,
+    RUN_TC_TAG_VALUE,
 )
 from sagemaker.experiments.trial import _Trial
 from sagemaker.experiments.trial_component import _TrialComponent
-from sagemaker.utilities.search_expression import Filter, Operator, SearchExpression
 from tests.unit.sagemaker.experiments.helpers import (
     mock_trial_load_or_create_func,
     mock_tc_load_or_create_func,
     TEST_EXP_NAME,
     TEST_RUN_NAME,
-    TEST_RUN_GRP_NAME,
     mock_trial_component_load_func,
 )
 
@@ -77,47 +74,50 @@ def test_run_init(mock_tc_save, sagemaker_session):
         assert run_obj._inside_init_context
         assert not run_obj._trial_component.parameters
 
+        expected_tc_name = f"{TEST_EXP_NAME}{DELIMITER}{TEST_RUN_NAME}"
         assert run_obj.experiment_name == TEST_EXP_NAME
         assert run_obj.run_name == TEST_RUN_NAME
         assert run_obj.run_group_name == TRIAL_NAME_TEMPLATE.format(TEST_EXP_NAME)
-        assert run_obj._trial_component.trial_component_name == TEST_RUN_NAME
+        assert run_obj._trial_component.trial_component_name == expected_tc_name
         assert run_obj._trial.trial_name == TRIAL_NAME_TEMPLATE.format(TEST_EXP_NAME)
         assert run_obj._experiment.experiment_name == TEST_EXP_NAME
-        assert run_obj.experiment_config == {
+        assert run_obj._experiment_config == {
             EXPERIMENT_NAME: TEST_EXP_NAME,
             TRIAL_NAME: run_obj.run_group_name,
-            RUN_NAME: TEST_RUN_NAME,
+            RUN_NAME: expected_tc_name,
         }
 
     # trail_component.save is called when exiting the with block
     mock_tc_save.assert_called_once()
 
 
-@patch(
-    "sagemaker.experiments.run._Experiment._load_or_create",
-    MagicMock(return_value=_Experiment(experiment_name=TEST_EXP_NAME)),
-)
-@patch(
-    "sagemaker.experiments.run._Trial._load_or_create",
-    MagicMock(side_effect=mock_trial_load_or_create_func),
-)
-@patch(
-    "sagemaker.experiments.run._TrialComponent._load_or_create",
-    MagicMock(
-        return_value=_TrialComponent(
-            trial_component_name=TEST_RUN_NAME, source=TrialComponentSource("arn:")
-        )
-    ),
-)
-def test_run_init_with_job_tc_as_run_name(sagemaker_session):
+def test_run_init_name_length_exceed_limit(sagemaker_session):
+    invalid_name = "x" * MAX_NAME_LEN_IN_BACKEND
+
+    # experiment_name exceeds
     with pytest.raises(ValueError) as err:
         Run.init(
-            experiment_name=TEST_EXP_NAME,
+            experiment_name=invalid_name,
             run_name=TEST_RUN_NAME,
             sagemaker_session=sagemaker_session,
         )
 
-    assert f"Invalid run_name input {TEST_RUN_NAME}" in str(err)
+    assert (
+        f"The experiment_name (length: {MAX_NAME_LEN_IN_BACKEND}) must have length less than"
+        in str(err)
+    )
+
+    # run_name exceeds
+    with pytest.raises(ValueError) as err:
+        Run.init(
+            experiment_name=TEST_EXP_NAME,
+            run_name=invalid_name,
+            sagemaker_session=sagemaker_session,
+        )
+
+    assert f"The run_name (length: {MAX_NAME_LEN_IN_BACKEND}) must have length less than" in str(
+        err
+    )
 
 
 @patch("sagemaker.experiments.run._RunEnvironment")
@@ -152,10 +152,11 @@ def test_run_load_no_run_name_and_in_train_job(mock_run_env, sagemaker_session):
     rv.environment_type = _environment.EnvironmentType.SageMakerTrainingJob
     mock_run_env.load.return_value = rv
 
+    expected_tc_name = f"{TEST_EXP_NAME}{DELIMITER}{TEST_RUN_NAME}"
     exp_config = {
         EXPERIMENT_NAME: TEST_EXP_NAME,
-        TRIAL_NAME: TEST_RUN_GRP_NAME,
-        RUN_NAME: TEST_RUN_NAME,
+        TRIAL_NAME: Run._generate_trial_name(TEST_EXP_NAME),
+        RUN_NAME: expected_tc_name,
     }
     sagemaker_session.sagemaker_client.describe_training_job.return_value = {
         "TrainingJobName": "train-job-experiments",
@@ -167,12 +168,12 @@ def test_run_load_no_run_name_and_in_train_job(mock_run_env, sagemaker_session):
         assert not run_obj._inside_init_context
         assert run_obj._inside_load_context
         assert run_obj.run_name == TEST_RUN_NAME
-        assert run_obj._trial_component.trial_component_name == run_obj.run_name
-        assert run_obj.run_group_name == TEST_RUN_GRP_NAME
+        assert run_obj._trial_component.trial_component_name == expected_tc_name
+        assert run_obj.run_group_name == Run._generate_trial_name(TEST_EXP_NAME)
         assert not run_obj._trial
         assert run_obj.experiment_name == TEST_EXP_NAME
         assert not run_obj._experiment
-        assert run_obj.experiment_config == exp_config
+        assert run_obj._experiment_config == exp_config
 
 
 @patch("sagemaker.experiments.run._RunEnvironment")
@@ -222,132 +223,29 @@ def test_run_load_no_run_name_and_not_in_train_job_but_no_obj_in_context(sagemak
     "sagemaker.experiments.run._TrialComponent.load",
     MagicMock(side_effect=mock_trial_component_load_func),
 )
-@patch("sagemaker.experiments.run._TrialComponent.search")
-def test_run_load_with_run_name(mock_tc_search, sagemaker_session):
-    mock_tc_search.return_value = [
-        TrialComponentSearchResult(
-            trial_component_name=TEST_RUN_NAME,
-            parents=[
-                Parent(
-                    experiment_name=TEST_EXP_NAME,
-                    trial_name=TEST_RUN_GRP_NAME,
-                    run_name=TEST_RUN_NAME,
-                ),
-                Parent(
-                    experiment_name=f"{TEST_EXP_NAME}-2",
-                    trial_name=f"{TEST_RUN_GRP_NAME}-2",
-                    run_name=TEST_RUN_NAME,
-                ),
-            ],
-        )
-    ]
-    # No experiment_name or run_group_name is given.
-    # Will fetch the first parent from the TC search results
+def test_run_load_with_run_name_and_exp_name(sagemaker_session):
     with Run.load(
         run_name=TEST_RUN_NAME,
+        experiment_name=TEST_EXP_NAME,
         sagemaker_session=sagemaker_session,
     ) as run_obj:
-        assert run_obj._in_load
-        assert run_obj._inside_load_context
-        assert not run_obj._inside_init_context
-        assert run_obj.run_name == TEST_RUN_NAME
-        assert run_obj._trial_component.trial_component_name == run_obj.run_name
-        assert run_obj.run_group_name == TEST_RUN_GRP_NAME
-        assert not run_obj._trial
-        assert run_obj.experiment_name == TEST_EXP_NAME
-        assert not run_obj._experiment
-        assert run_obj.experiment_config == {
+        expected_tc_name = f"{TEST_EXP_NAME}{DELIMITER}{TEST_RUN_NAME}"
+        expected_exp_config = {
             EXPERIMENT_NAME: TEST_EXP_NAME,
-            TRIAL_NAME: TEST_RUN_GRP_NAME,
-            RUN_NAME: TEST_RUN_NAME,
+            TRIAL_NAME: Run._generate_trial_name(TEST_EXP_NAME),
+            RUN_NAME: expected_tc_name,
         }
 
-
-@patch.object(_TrialComponent, "save", MagicMock(return_value=None))
-@patch(
-    "sagemaker.experiments.run._TrialComponent.load",
-    MagicMock(side_effect=mock_trial_component_load_func),
-)
-@patch("sagemaker.experiments.run._TrialComponent.search")
-def test_run_load_with_run_name_and_exp_name(mock_tc_search, sagemaker_session):
-    mock_tc_search.return_value = [
-        TrialComponentSearchResult(
-            trial_component_name=TEST_RUN_NAME,
-            parents=[
-                Parent(
-                    experiment_name=TEST_EXP_NAME,
-                    trial_name=TEST_RUN_GRP_NAME,
-                    run_name=TEST_RUN_NAME,
-                ),
-                Parent(
-                    experiment_name=f"{TEST_EXP_NAME}-2",
-                    trial_name=f"{TEST_RUN_GRP_NAME}-2",
-                    run_name=TEST_RUN_NAME,
-                ),
-                Parent(
-                    experiment_name=f"{TEST_EXP_NAME}-2",
-                    trial_name=f"{TEST_RUN_GRP_NAME}-2-2",
-                    run_name=TEST_RUN_NAME,
-                ),
-            ],
-        )
-    ]
-    # Specify the run_name and experiment_name.
-    # Will fetch the first parent matching the given experiment_name
-    # from the TC search results.
-    with Run.load(
-        run_name=TEST_RUN_NAME,
-        experiment_name=f"{TEST_EXP_NAME}-2",
-        sagemaker_session=sagemaker_session,
-    ) as run_obj:
         assert run_obj.run_name == TEST_RUN_NAME
-        assert run_obj.run_group_name == f"{TEST_RUN_GRP_NAME}-2"
-        assert run_obj.experiment_name == f"{TEST_EXP_NAME}-2"
-
-    # Specify the run_name, experiment_name and run_group_name.
-    # Will fetch the parent matches all of them from TC search results.
-    with Run.load(
-        run_name=TEST_RUN_NAME,
-        experiment_name=f"{TEST_EXP_NAME}-2",
-        run_group_name=f"{TEST_RUN_GRP_NAME}-2-2",
-        sagemaker_session=sagemaker_session,
-    ) as run_obj:
-        assert run_obj.run_name == TEST_RUN_NAME
-        assert run_obj.run_group_name == f"{TEST_RUN_GRP_NAME}-2-2"
-        assert run_obj.experiment_name == f"{TEST_EXP_NAME}-2"
-
-    # Specify the run_name, experiment_name and run_group_name.
-    # But the run_group_name does not exist
-    name_not_exist = "NAME-NOT-EXIST"
-    with pytest.raises(ValueError) as err:
-        with Run.load(
-            run_name=TEST_RUN_NAME,
-            experiment_name=f"{TEST_EXP_NAME}-2",
-            run_group_name=name_not_exist,
-            sagemaker_session=sagemaker_session,
-        ):
-            pass
-
-    expected_err_msg = (
-        f"Not able to load the Run object given the supplied experiment_name ({TEST_EXP_NAME}-2), "
-        f"run_group_name ({name_not_exist}),  run_name ({TEST_RUN_NAME})."
-    )
-    assert expected_err_msg in str(err)
+        assert run_obj.run_group_name == Run._generate_trial_name(TEST_EXP_NAME)
+        assert run_obj.experiment_name == TEST_EXP_NAME
+        assert run_obj._trial_component.trial_component_name == expected_tc_name
+        assert not run_obj._trial
+        assert not run_obj._experiment
+        assert run_obj._experiment_config == expected_exp_config
 
 
-@patch(
-    "sagemaker.experiments.run._TrialComponent.load",
-    MagicMock(side_effect=mock_trial_component_load_func),
-)
-@patch("sagemaker.experiments.run._TrialComponent.search")
-def test_run_load_with_run_name_but_fail_to_retrieve_exp_name(mock_tc_search, sagemaker_session):
-    mock_tc_search.return_value = [
-        TrialComponentSearchResult(
-            trial_component_name=TEST_RUN_NAME,
-            parents=[],
-        )
-    ]
-    # No user supplied experiment_name
+def test_run_load_with_run_name_but_no_exp_name(sagemaker_session):
     with pytest.raises(ValueError) as err:
         with Run.load(
             run_name=TEST_RUN_NAME,
@@ -355,19 +253,7 @@ def test_run_load_with_run_name_but_fail_to_retrieve_exp_name(mock_tc_search, sa
         ):
             pass
 
-    assert f"Failed to load a Run object with name '{TEST_RUN_NAME}'" in str(err)
-
-    # With user supplied experiment_name
-    with pytest.raises(ValueError) as err:
-        with Run.load(
-            run_name=TEST_RUN_NAME,
-            experiment_name=TEST_EXP_NAME,
-            run_group_name=TEST_RUN_GRP_NAME,
-            sagemaker_session=sagemaker_session,
-        ):
-            pass
-
-    assert "Not able to load the Run object given the supplied" in str(err)
+    assert "Invalid input: experiment_name is missing" in str(err)
 
 
 @patch("sagemaker.experiments.run._RunEnvironment")
@@ -533,13 +419,13 @@ def test_log_lineage_output_artifact(run_obj):
         run_obj.log_lineage_artifact("foo.txt", "name", "whizz/bang")
         run_obj._artifact_uploader.upload_artifact.assert_called_with("foo.txt")
         run_obj._lineage_artifact_tracker.add_output_artifact.assert_called_with(
-            "name", "s3uri_value", "etag_value", "whizz/bang"
+            name="name", source_uri="s3uri_value", etag="etag_value", artifact_type="whizz/bang"
         )
 
         run_obj.log_lineage_artifact("foo.txt")
         run_obj._artifact_uploader.upload_artifact.assert_called_with("foo.txt")
         run_obj._lineage_artifact_tracker.add_output_artifact.assert_called_with(
-            "foo.txt", "s3uri_value", "etag_value", "text/plain"
+            name="foo.txt", source_uri="s3uri_value", etag="etag_value", artifact_type="text/plain"
         )
 
 
@@ -555,13 +441,13 @@ def test_log_lineage_input_artifact(run_obj):
         run_obj.log_lineage_artifact("foo.txt", "name", "whizz/bang", is_output=False)
         run_obj._artifact_uploader.upload_artifact.assert_called_with("foo.txt")
         run_obj._lineage_artifact_tracker.add_input_artifact.assert_called_with(
-            "name", "s3uri_value", "etag_value", "whizz/bang"
+            name="name", source_uri="s3uri_value", etag="etag_value", artifact_type="whizz/bang"
         )
 
         run_obj.log_lineage_artifact("foo.txt", is_output=False)
         run_obj._artifact_uploader.upload_artifact.assert_called_with("foo.txt")
         run_obj._lineage_artifact_tracker.add_input_artifact.assert_called_with(
-            "foo.txt", "s3uri_value", "etag_value", "text/plain"
+            name="foo.txt", source_uri="s3uri_value", etag="etag_value", artifact_type="text/plain"
         )
 
 
@@ -683,7 +569,10 @@ def test_log_precision_recall(run_obj):
         )
 
         run_obj._lineage_artifact_tracker.add_input_artifact.assert_called_with(
-            title, "s3uri_value", "etag_value", "PrecisionRecallCurve"
+            name=title,
+            source_uri="s3uri_value",
+            etag="etag_value",
+            artifact_type="PrecisionRecallCurve",
         )
 
 
@@ -732,7 +621,10 @@ def test_log_confusion_matrix(run_obj):
         )
 
         run_obj._lineage_artifact_tracker.add_output_artifact.assert_called_with(
-            "TestConfusionMatrix", "s3uri_value", "etag_value", "ConfusionMatrix"
+            name="TestConfusionMatrix",
+            source_uri="s3uri_value",
+            etag="etag_value",
+            artifact_type="ConfusionMatrix",
         )
 
 
@@ -801,7 +693,7 @@ def test_log_table(run_obj):
         )
 
         run_obj._lineage_artifact_tracker.add_input_artifact.assert_called_with(
-            "TestTable", "s3uri_value", "etag_value", "Table"
+            name="TestTable", source_uri="s3uri_value", etag="etag_value", artifact_type="Table"
         )
 
 
@@ -826,7 +718,7 @@ def test_log_table_dataframe(run_obj):
         )
 
         run_obj._lineage_artifact_tracker.add_output_artifact.assert_called_with(
-            "TestTable", "s3uri_value", "etag_value", "Table"
+            name="TestTable", source_uri="s3uri_value", etag="etag_value", artifact_type="Table"
         )
 
 
@@ -863,7 +755,10 @@ def test_log_roc_curve(run_obj):
         )
 
         run_obj._lineage_artifact_tracker.add_input_artifact.assert_called_with(
-            "TestROCCurve", "s3uri_value", "etag_value", "ROCCurve"
+            name="TestROCCurve",
+            source_uri="s3uri_value",
+            etag="etag_value",
+            artifact_type="ROCCurve",
         )
 
 
@@ -956,125 +851,6 @@ def test_list_empty(mock_tc_list, sagemaker_session):
     assert [] == Run.list(experiment_name=TEST_EXP_NAME, sagemaker_session=sagemaker_session)
 
 
-@patch("sagemaker.experiments.run._TrialComponent.load")
-@patch("sagemaker.experiments.run._TrialComponent.search")
-def test_search(mock_tc_search, mock_tc_load, run_obj, sagemaker_session):
-    run_list_len = 20
-    mock_tc_search.return_value = [
-        TrialComponentSearchResult(
-            trial_component_name=f"A{i}",
-            trial_component_arn=f"B{i}",
-            display_name=f"C{i}",
-            parents=[
-                Parent(experiment_name=f"Exp-{i}-0"),
-                Parent(experiment_name=f"Exp-{i}-1"),
-            ],
-        )
-        for i in range(run_list_len)
-    ]
-    mock_tc_load.side_effect = [
-        _TrialComponent(
-            trial_component_name=f"A{i}",
-            trial_component_arn=f"B{i}",
-            display_name=f"C{i}",
-        )
-        for i in range(run_list_len)
-    ]
-
-    run_list = Run.search(
-        sort_by="CreationTime",
-        sort_order="Ascending",
-        sagemaker_session=sagemaker_session,
-    )
-
-    mock_tc_search.assert_called_once_with(
-        sort_by="CreationTime",
-        sort_order="Ascending",
-        sagemaker_session=sagemaker_session,
-        search_expression=None,
-        max_results=50,
-    )
-    assert len(run_list) == run_list_len * 2
-    for i in range(run_list_len):
-        run = run_list[i]
-        assert run.experiment_name == f"Exp-{int(i / 2)}-{(i % 2)}"
-        assert run.run_name == f"A{int(i / 2)}"
-        assert run.run_group_name is None
-        assert run._experiment is None
-        assert run._trial is None
-        assert isinstance(run._trial_component, _TrialComponent)
-        assert run._trial_component.trial_component_name == f"A{int(i / 2)}"
-        assert run._in_load is False
-        assert run._inside_load_context is False
-        assert run._inside_init_context is False
-        assert run._artifact_uploader
-        assert run._lineage_artifact_tracker
-        assert run._metrics_manager
-
-
-@patch("sagemaker.experiments.run._TrialComponent.load")
-@patch("sagemaker.experiments.run._TrialComponent.search")
-def test_search_empty_parents(mock_tc_search, mock_tc_load, run_obj, sagemaker_session):
-    run_list_len = 20
-    mock_tc_search.return_value = [
-        TrialComponentSearchResult(
-            trial_component_name=f"A{i}",
-            trial_component_arn=f"B{i}",
-            display_name=f"C{i}",
-            parents=[],
-        )
-        for i in range(run_list_len)
-    ]
-    mock_tc_load.side_effect = [
-        _TrialComponent(
-            trial_component_name=f"A{i}",
-            trial_component_arn=f"B{i}",
-            display_name=f"C{i}",
-        )
-        for i in range(run_list_len)
-    ]
-
-    run_list = Run.search(
-        sort_by="CreationTime",
-        sort_order="Ascending",
-        sagemaker_session=sagemaker_session,
-    )
-
-    mock_tc_search.assert_called_once_with(
-        sort_by="CreationTime",
-        sort_order="Ascending",
-        sagemaker_session=sagemaker_session,
-        search_expression=None,
-        max_results=50,
-    )
-    assert len(run_list) == run_list_len
-    for i in range(run_list_len):
-        run = run_list[i]
-        assert run.experiment_name == UNKNOWN_NAME
-        assert run.run_group_name == UNKNOWN_NAME
-        assert run.run_name == f"A{i}"
-        assert run._experiment is None
-        assert run._trial is None
-        assert isinstance(run._trial_component, _TrialComponent)
-        assert run._trial_component.trial_component_name == f"A{i}"
-        assert run._in_load is False
-        assert run._inside_load_context is False
-        assert run._inside_init_context is False
-        assert run._artifact_uploader
-        assert run._lineage_artifact_tracker
-        assert run._metrics_manager
-
-
-@patch("sagemaker.experiments.run._TrialComponent.search")
-def test_search_empty(mock_tc_search, sagemaker_session):
-    mock_tc_search.return_value = []
-    search_filter = Filter(name=EXPERIMENT_NAME, operator=Operator.EQUALS, value="unknown")
-    search_expression = SearchExpression(filters=[search_filter])
-    assert [] == Run.search(
-        search_expression=search_expression, sagemaker_session=sagemaker_session
-    )
-
-
 def test_enter_exit_locally(sagemaker_session, run_obj):
     sagemaker_session.sagemaker_client.update_trial_component.return_value = {}
     _verify_tc_status_before_enter_init(run_obj._trial_component)
@@ -1126,8 +902,8 @@ def test_enter_exit_sagemaker_job_only(mock_run_env, run_obj, sagemaker_session)
 
     exp_config = {
         EXPERIMENT_NAME: TEST_EXP_NAME,
-        TRIAL_NAME: TEST_RUN_GRP_NAME,
-        RUN_NAME: TEST_RUN_NAME,
+        TRIAL_NAME: Run._generate_trial_name(TEST_EXP_NAME),
+        RUN_NAME: f"{TEST_EXP_NAME}{DELIMITER}{TEST_RUN_NAME}",
     }
     sagemaker_session.sagemaker_client.describe_training_job.return_value = {
         "TrainingJobName": "train-job-experiments",
@@ -1172,9 +948,28 @@ def test_is_input_valid_false(run_obj, metric_value):
 
 
 def test_generate_trial_name():
-    base_name = "x" * MAX_TRIAL_NAME_LEN
+    base_name = "x" * MAX_NAME_LEN_IN_BACKEND
     trial_name = Run._generate_trial_name(base_name=base_name)
-    assert len(trial_name) <= MAX_TRIAL_NAME_LEN
+    assert len(trial_name) <= MAX_NAME_LEN_IN_BACKEND
+
+
+def test_append_run_tc_label_to_tags():
+    expected_tc_tag = {"Key": RUN_TC_TAG_KEY, "Value": RUN_TC_TAG_VALUE}
+
+    tags = None
+    ret = Run._append_run_tc_label_to_tags(tags)
+    assert len(ret) == 1
+    assert expected_tc_tag in ret
+
+    tags = []
+    ret = Run._append_run_tc_label_to_tags(tags)
+    assert len(ret) == 1
+    assert expected_tc_tag in ret
+
+    tags = [{"Key": "foo", "Value": "bar"}]
+    ret = Run._append_run_tc_label_to_tags(tags)
+    assert len(ret) == 2
+    assert expected_tc_tag in ret
 
 
 def _verify_tc_status_before_enter_init(trial_component):

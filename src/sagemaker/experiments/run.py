@@ -37,7 +37,6 @@ from sagemaker.experiments.experiment import _Experiment
 from sagemaker.experiments.metrics import _MetricsManager
 from sagemaker.experiments.trial import _Trial
 from sagemaker.experiments.trial_component import _TrialComponent
-from sagemaker.utilities.search_expression import Filter, Operator, SearchExpression
 
 from sagemaker.utils import (
     get_module,
@@ -60,12 +59,16 @@ logger = logging.getLogger(__name__)
 RUN_NAME_BASE = "Sagemaker-Run"
 TRIAL_NAME_TEMPLATE = "Default-Run-Group-{}"
 MAX_RUN_TC_ARTIFACTS_LEN = 30
-MAX_TRIAL_NAME_LEN = 120
+MAX_NAME_LEN_IN_BACKEND = 120
 UNKNOWN_NAME = "unknown"
 EXP_NAME_BASE = "Sagemaker-Experiment"
 EXPERIMENT_NAME = "ExperimentName"
 TRIAL_NAME = "TrialName"
 RUN_NAME = "RunName"
+TRIAL_COMPONENT_NAME = "TrialComponentName"
+DELIMITER = "-"
+RUN_TC_TAG_KEY = "sagemaker:trial-component-source"
+RUN_TC_TAG_VALUE = "run"
 
 
 class Run(object):
@@ -110,10 +113,8 @@ class Run(object):
         cls,
         experiment_name: str,
         run_name: Optional[str] = None,
-        run_group_name: Optional[str] = None,
         experiment_display_name: Optional[str] = None,
         run_display_name: Optional[str] = None,
-        run_group_display_name: Optional[str] = None,
         tags: Optional[List[Dict[str, str]]] = None,
         sagemaker_session: Optional["Session"] = None,
     ):
@@ -123,13 +124,13 @@ class Run(object):
             experiment_name (str): The name of the experiment. The name must be unique
                 within an account.
             run_name (str): The name of the run. If it is not specified, one is auto generated.
-            run_group_name (str): The name of the run group. If it is not specified,
-                one is auto generated.
             experiment_display_name (str): Name of the experiment that will appear in UI,
-                such as SageMaker Studio. (default: None).
+                such as SageMaker Studio. (default: None). This display name is used in
+                a create experiment call. If an experiment with the specified name already exists,
+                this display name won't take effect.
             run_display_name (str): The display name of the run used in UI (default: None).
-            run_group_display_name (str): The display name of the run group used in UI
-                (default: None).
+                This display name is used in a create run call. If a run with the
+                specified name already exists, this display name won't take effect.
             tags (List[Dict[str, str]]): A list of tags to be used for all create calls,
                 e.g. to create an experiment, a run group, etc. (default: None).
             sagemaker_session (sagemaker.session.Session): Session object which
@@ -139,7 +140,10 @@ class Run(object):
         """
         sagemaker_session = sagemaker_session or _utils.default_session()
         run_name = run_name or unique_name_from_base(RUN_NAME_BASE)
-        run_group_name = run_group_name or Run._generate_trial_name(experiment_name)
+        trial_component_name = Run._generate_trial_component_name(
+            run_name=run_name, experiment_name=experiment_name
+        )
+        run_group_name = Run._generate_trial_name(experiment_name)
         environment = _RunEnvironment.load()
 
         # TODO: Remove this condition check if the metrics endpoint work
@@ -160,23 +164,17 @@ class Run(object):
         trial = _Trial._load_or_create(
             experiment_name=experiment_name,
             trial_name=run_group_name,
-            display_name=run_group_display_name,
             tags=tags,
             sagemaker_session=sagemaker_session,
         )
 
         run_tc = _TrialComponent._load_or_create(
-            trial_component_name=run_name,
+            trial_component_name=trial_component_name,
             display_name=run_display_name,
-            tags=tags,
+            tags=Run._append_run_tc_label_to_tags(tags),
             sagemaker_session=sagemaker_session,
         )
-        if run_tc.source:
-            raise ValueError(
-                "Invalid run_name input {}. It is not allowed to pass in the name ".format(run_name)
-                + "of an existing job trial component to the run_name. The job trial component "
-                + "is a trial component auto created by any Sagemaker job."
-            )
+
         trial.add_trial_component(run_tc)
 
         return cls(
@@ -194,7 +192,6 @@ class Run(object):
         cls,
         run_name: Optional[str] = None,
         experiment_name: Optional[str] = None,
-        run_group_name: Optional[str] = None,
         sagemaker_session: Optional["Session"] = None,
     ):
         """Load a Run Trial Component by the run name or from the job environment.
@@ -206,10 +203,6 @@ class Run(object):
             experiment_name (str): The name of the Experiment that the to be loaded Run
                 is associated with (default: None).
                 Note: the experiment_name must be supplied along with a valid run_name.
-                Otherwise, it will be ignored.
-            run_group_name (str): he name of the Run Group that the to be loaded Run
-                is associated with (default: None).
-                Note: the run_group_name must be supplied along with a valid run_name.
                 Otherwise, it will be ignored.
             sagemaker_session (sagemaker.session.Session): Session object which
                 manages interactions with Amazon SageMaker APIs and any other
@@ -226,12 +219,7 @@ class Run(object):
                 "in Sagemaker jobs other than the Training job."
             )
 
-        if not run_name and (experiment_name or run_group_name):
-            logger.warning(
-                "No run_name is supplied. Ignoring the provided experiment_name "
-                "and run_group_name (if any), since they only take effect along with run_name. "
-                "Will load the Run object from the job environment or current Run context."
-            )
+        Run._verify_load_input_names(run_name=run_name, experiment_name=experiment_name)
 
         if run_name or environment:
             if run_name:
@@ -245,16 +233,18 @@ class Run(object):
                     run_name=run_name,
                     sagemaker_session=sagemaker_session,
                     experiment_name=experiment_name,
-                    run_group_name=run_group_name,
                 )
             else:
                 run_tc, exp_config = Run._get_tc_and_exp_config_from_job_env(
                     environment=environment, sagemaker_session=sagemaker_session
                 )
+            run_name = exp_config[RUN_NAME].replace(
+                "{}{}".format(exp_config[EXPERIMENT_NAME], DELIMITER), "", 1
+            )
             run_instance = cls(
-                experiment_name=exp_config.get(EXPERIMENT_NAME, UNKNOWN_NAME),
-                run_name=exp_config.get(RUN_NAME, UNKNOWN_NAME),
-                run_group_name=exp_config.get(TRIAL_NAME, UNKNOWN_NAME),
+                experiment_name=exp_config[EXPERIMENT_NAME],
+                run_name=run_name,
+                run_group_name=exp_config[TRIAL_NAME],
                 trial_component=run_tc,
                 sagemaker_session=sagemaker_session,
             )
@@ -270,12 +260,12 @@ class Run(object):
         return run_instance
 
     @property
-    def experiment_config(self):
+    def _experiment_config(self):
         """Get experiment config from Run attributes."""
         return {
             EXPERIMENT_NAME: self.experiment_name,
             TRIAL_NAME: self.run_group_name,
-            RUN_NAME: self.run_name,
+            RUN_NAME: self._trial_component.trial_component_name,
         }
 
     @validate_invoked_inside_run_context
@@ -637,9 +627,13 @@ class Run(object):
         name = name or resolve_artifact_name(file_path)
         s3_uri, etag = self._artifact_uploader.upload_artifact(file_path)
         if is_output:
-            self._lineage_artifact_tracker.add_output_artifact(name, s3_uri, etag, media_type)
+            self._lineage_artifact_tracker.add_output_artifact(
+                name=name, source_uri=s3_uri, etag=etag, artifact_type=media_type
+            )
         else:
-            self._lineage_artifact_tracker.add_input_artifact(name, s3_uri, etag, media_type)
+            self._lineage_artifact_tracker.add_input_artifact(
+                name=name, source_uri=s3_uri, etag=etag, artifact_type=media_type
+            )
 
     @classmethod
     def list(
@@ -700,71 +694,6 @@ class Run(object):
             run_list.append(run_instance)
         return run_list
 
-    @classmethod
-    def search(
-        cls,
-        search_expression=None,
-        sort_by="CreationTime",
-        sort_order="Descending",
-        max_results=50,
-        sagemaker_session=None,
-    ):
-        """Return a list of `Run` objects matching the search criteria
-
-        Args:
-            search_expression (SearchExpression): A Boolean conditional statement (default: None).
-                Resource objects must satisfy this condition to be included in search results.
-                You must provide at least one subexpression, filter, or nested filter.
-            sort_by (str): The name of the resource property used to sort the SearchResults
-                (default: 'CreationTime').
-            sort_order (str): How SearchResults are ordered. Valid values are Ascending or
-                Descending (default: 'Descending').
-            max_results (int): The maximum number of results to return in a SearchResponse
-                (default: 50).
-            sagemaker_session (sagemaker.session.Session): Session object which
-                manages interactions with Amazon SageMaker APIs and any other
-                AWS services needed. If not specified, one is created using the
-                default AWS configuration chain.
-
-        Returns:
-            list: A list of `Run` objects.
-        """
-        tc_search_results = _TrialComponent.search(
-            search_expression=search_expression,
-            sort_by=sort_by,
-            sort_order=sort_order,
-            max_results=max_results,
-            sagemaker_session=sagemaker_session,
-        )
-        run_list = []
-        for tc_search_res in tc_search_results:
-            tc = _TrialComponent.load(
-                trial_component_name=tc_search_res.trial_component_name,
-                sagemaker_session=sagemaker_session,
-            )
-
-            if not tc_search_res.parents:
-                tc_parents = [{EXPERIMENT_NAME: UNKNOWN_NAME, TRIAL_NAME: UNKNOWN_NAME}]
-            else:
-                tc_parents = [
-                    {
-                        EXPERIMENT_NAME: p.experiment_name,
-                        TRIAL_NAME: p.trial_name,
-                    }
-                    for p in tc_search_res.parents
-                ]
-
-            for parent in tc_parents:
-                run_instance = cls(
-                    experiment_name=parent[EXPERIMENT_NAME],
-                    run_name=tc_search_res.trial_component_name,
-                    run_group_name=parent[TRIAL_NAME],
-                    trial_component=tc,
-                    sagemaker_session=sagemaker_session,
-                )
-                run_list.append(run_instance)
-        return run_list
-
     def close(self):
         """Persist any data saved locally."""
         try:
@@ -783,7 +712,7 @@ class Run(object):
         Args:
             base_name (str): The run_name of this `Run` object.
         """
-        available_length = MAX_TRIAL_NAME_LEN - len(TRIAL_NAME_TEMPLATE)
+        available_length = MAX_NAME_LEN_IN_BACKEND - len(TRIAL_NAME_TEMPLATE)
         return TRIAL_NAME_TEMPLATE.format(base_name[:available_length])
 
     @staticmethod
@@ -831,11 +760,11 @@ class Run(object):
         # create an artifact and association for the table
         if is_output:
             self._lineage_artifact_tracker.add_output_artifact(
-                artifact_name, s3_uri, etag, graph_type
+                name=artifact_name, source_uri=s3_uri, etag=etag, artifact_type=graph_type
             )
         else:
             self._lineage_artifact_tracker.add_input_artifact(
-                artifact_name, s3_uri, etag, graph_type
+                name=artifact_name, source_uri=s3_uri, etag=etag, artifact_type=graph_type
             )
 
     def _verify_trial_component_artifacts_length(self, is_output):
@@ -859,108 +788,34 @@ class Run(object):
     @staticmethod
     def _get_tc_and_exp_config_by_run_name(
         run_name: str,
+        experiment_name: str,
         sagemaker_session: "Session",
-        experiment_name: Optional[str] = None,
-        run_group_name: Optional[str] = None,
     ):
-        """Retrieve a trial component and experiment config by the run_name.
+        """Retrieve a trial component and experiment config by the run_name etc.
 
         Args:
             run_name (str): The name of a run object.
+            experiment_name (str): The name of the Experiment the run object is
+                associated with.
             sagemaker_session (sagemaker.session.Session): Session object which
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, one is created using the
                 default AWS configuration chain.
-            experiment_name (str): The name of the Experiment the run object is
-                associated with (default: None).
-            run_group_name (str): The name of the Run Group the run object is
-                associated with (default: None).
         """
+        trial_component_name = Run._generate_trial_component_name(
+            run_name=run_name, experiment_name=experiment_name
+        )
         run_tc = _TrialComponent.load(
-            trial_component_name=run_name,
+            trial_component_name=trial_component_name,
             sagemaker_session=sagemaker_session,
         )
-        search_filter = Filter(name="TrialComponentName", operator=Operator.EQUALS, value=run_name)
-        search_expression = SearchExpression(filters=[search_filter])
-        tcs = list(
-            _TrialComponent.search(
-                search_expression=search_expression,
-                max_results=1,
-                sagemaker_session=sagemaker_session,
-            )
-        )
-        if experiment_name or run_group_name:
-            exp_config = Run._locate_exp_config_from_search_results(
-                trial_components=tcs,
-                run_name=run_name,
-                experiment_name=experiment_name,
-                run_group_name=run_group_name,
-            )
-        else:
-            try:
-                # If a run_name is bound to multiple experiments,
-                # use the first exp_name in the list
-                exp_config = {
-                    EXPERIMENT_NAME: tcs[0].parents[0].experiment_name,
-                    TRIAL_NAME: tcs[0].parents[0].trial_name,
-                    RUN_NAME: run_name,
-                }
-            except Exception:
-                # Not able to retrieve experiment_name given the run_name,
-                # meaning that this is an unassigned job tc
-                raise ValueError(
-                    "Failed to load a Run object with name '{}'. ".format(run_name)
-                    + "Please make sure this run_name associates to an existing experiment."
-                )
+        exp_config = {
+            EXPERIMENT_NAME: experiment_name,
+            TRIAL_NAME: Run._generate_trial_name(experiment_name),
+            RUN_NAME: trial_component_name,
+        }
+
         return run_tc, exp_config
-
-    @staticmethod
-    def _locate_exp_config_from_search_results(
-        trial_components: list,
-        run_name: str,
-        experiment_name: Optional[str],
-        run_group_name: Optional[str],
-    ) -> dict:
-        """Locate the user supplied names within the trial component search results
-
-        Args:
-            trial_components (list): The list of search results of trail components.
-            run_name (str): The name of a run object.
-            experiment_name (str): The name of the Experiment the run object is
-                associated with.
-            run_group_name (str): The name of the Run Group the run object is
-                associated with.
-
-        Return:
-            dict: Return the dict of experiment config if the user supplied names exist in
-                the trial component search results.
-
-        Raises:
-            ValueError: if not able to locate the user supplied names in the
-                trial component search results.
-        """
-        for tc in trial_components:
-            for parent in tc.parents:
-                if experiment_name and parent.experiment_name != experiment_name:
-                    continue
-                if run_group_name and parent.trial_name != run_group_name:
-                    continue
-                return {
-                    EXPERIMENT_NAME: parent.experiment_name,
-                    TRIAL_NAME: parent.trial_name,
-                    RUN_NAME: run_name,
-                }
-
-        inserted_msg = ""
-        if experiment_name:
-            inserted_msg += "experiment_name ({}), ".format(experiment_name)
-        if run_group_name:
-            inserted_msg += "run_group_name ({}), ".format(run_group_name)
-        raise ValueError(
-            "Not able to load the Run object given the supplied "
-            + "{} run_name ({}). ".format(inserted_msg, run_name)
-            + "Please make sure the combination is correct."
-        )
 
     @staticmethod
     def _get_tc_and_exp_config_from_job_env(
@@ -996,6 +851,76 @@ class Run(object):
             "Not able to fetch RunName in ExperimentConfig of the sagemaker job. "
             "Please make sure the ExperimentConfig is correctly set."
         )
+
+    @staticmethod
+    def _generate_trial_component_name(run_name: str, experiment_name: str) -> str:
+        """Generate the TrialComponentName based on run_name and experiment_name
+
+        Args:
+            run_name (str): The run_name supplied by the user.
+            experiment_name (str): The experiment_name supplied by the user,
+                which is prepended to the run_name to generate the TrialComponentName.
+
+        Returns:
+            str: The TrialComponentName used to create a trial component
+                which is unique in an account.
+
+        Raises:
+            ValueError: If either the run_name or the experiment_name exceeds
+                the length limit.
+        """
+        buffer = 1  # leave length buffers for delimiters
+        max_len = int(MAX_NAME_LEN_IN_BACKEND / 2) - buffer
+        err_msg_template = "The {} (length: {}) must have length less than or equal to {}"
+        if len(run_name) > max_len:
+            raise ValueError(err_msg_template.format("run_name", len(run_name), max_len))
+        if len(experiment_name) > max_len:
+            raise ValueError(
+                err_msg_template.format("experiment_name", len(experiment_name), max_len)
+            )
+        return "{}{}{}".format(experiment_name, DELIMITER, run_name)
+
+    @staticmethod
+    def _verify_load_input_names(
+        run_name: Optional[str] = None,
+        experiment_name: Optional[str] = None,
+    ):
+        """Verify the run_name and the experiment_name inputs in Run.load.
+
+        Args:
+            run_name (str): The run_name supplied by the user (default: None).
+            experiment_name (str): The experiment_name supplied by the user
+                (default: None).
+
+        Raises:
+            ValueError: If run_name is supplied while experiment_name is not.
+        """
+        if not run_name and experiment_name:
+            logger.warning(
+                "No run_name is supplied. Ignoring the provided experiment_name "
+                "since it only takes effect along with run_name. "
+                "Will load the Run object from the job environment or current Run context."
+            )
+        if run_name and not experiment_name:
+            raise ValueError(
+                "Invalid input: experiment_name is missing when run_name is supplied. "
+                "Please supply valid experiment_name when the run_name is not None."
+            )
+
+    @staticmethod
+    def _append_run_tc_label_to_tags(tags: Optional[List[Dict[str, str]]] = None) -> list:
+        """Append the Run TrialComponent label to tags used to create a trial component.
+
+        Args:
+            tags (List[Dict[str, str]]): The tags supplied by users to initialize a Run object.
+
+        Returns:
+            list: The updated tags with the appended Run TrialComponent label.
+        """
+        if not tags:
+            tags = []
+        tags.append({"Key": RUN_TC_TAG_KEY, "Value": RUN_TC_TAG_VALUE})
+        return tags
 
     def __enter__(self):
         """Updates the start time of the tracked trial component.

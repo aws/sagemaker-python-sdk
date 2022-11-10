@@ -192,7 +192,7 @@ class _Experiment(_base_types.Record):
             sagemaker_session=self.sagemaker_session,
         )
 
-    def delete_all(self, action):
+    def _delete_all(self, action):
         """Force to delete the experiment and associated trials, trial components.
 
         Args:

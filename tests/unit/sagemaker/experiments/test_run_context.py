@@ -48,7 +48,7 @@ def test_auto_pass_in_exp_config_to_train_job(mock_start_job, run_obj, sagemaker
 
         assert _RunContext.get_current_run() == run_obj
 
-    expected_exp_config = run_obj.experiment_config
+    expected_exp_config = run_obj._experiment_config
     mock_start_job.assert_called_once_with(estimator, _train_input_path, expected_exp_config)
 
     # _RunContext is cleaned up after exiting the with statement

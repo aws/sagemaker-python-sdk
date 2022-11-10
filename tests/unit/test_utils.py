@@ -841,18 +841,19 @@ def test_check_and_get_run_experiment_config():
     assert exp_cfg2 == supplied_exp_cfg
 
     run = Mock()
-    type(run).experiment_config = PropertyMock(return_value=run_exp_cfg)
+    type(run)._experiment_config = PropertyMock(return_value=run_exp_cfg)
     _RunContext.add_run_object(run)
 
-    # No user supplied exp config and with current Run
-    assert _RunContext.get_current_run().experiment_config == run_exp_cfg
-    exp_cfg3 = check_and_get_run_experiment_config(None)
-    assert exp_cfg3 == run_exp_cfg
+    try:
+        # No user supplied exp config and with current Run
+        assert _RunContext.get_current_run()._experiment_config == run_exp_cfg
+        exp_cfg3 = check_and_get_run_experiment_config(None)
+        assert exp_cfg3 == run_exp_cfg
 
-    # With user supplied exp config and current Run
-    assert _RunContext.get_current_run().experiment_config == run_exp_cfg
-    exp_cfg4 = check_and_get_run_experiment_config(supplied_exp_cfg)
-    assert exp_cfg4 == supplied_exp_cfg
-
-    # Clean up the global static variable in case it affects other tests
-    _RunContext.drop_current_run()
+        # With user supplied exp config and current Run
+        assert _RunContext.get_current_run()._experiment_config == run_exp_cfg
+        exp_cfg4 = check_and_get_run_experiment_config(supplied_exp_cfg)
+        assert exp_cfg4 == supplied_exp_cfg
+    finally:
+        # Clean up the global static variable in case it affects other tests
+        _RunContext.drop_current_run()

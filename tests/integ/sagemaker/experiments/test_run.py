@@ -23,7 +23,13 @@ from sagemaker.experiments.trial_component import _TrialComponent
 from sagemaker.sklearn import SKLearn
 from sagemaker.utils import retry_with_backoff
 from tests.integ.sagemaker.experiments.helpers import name, cleanup_exp_resources
-from sagemaker.experiments.run import Run, RUN_NAME_BASE
+from sagemaker.experiments.run import (
+    Run,
+    RUN_NAME_BASE,
+    DELIMITER,
+    RUN_TC_TAG_KEY,
+    RUN_TC_TAG_VALUE,
+)
 from sagemaker.experiments._helper import _DEFAULT_ARTIFACT_PREFIX
 
 
@@ -60,24 +66,20 @@ def lineage_artifact_path(tempdir):
     return file_path
 
 
-def test_local_run(
+file_artifact_name = f"file-artifact-{name()}"
+lineage_artifact_name = f"lineage-file-artifact-{name()}"
+metric_name = "test-x-step"
+
+
+def test_local_run_with_load_specifying_names(
     sagemaker_session, artifact_file_path, artifact_directory, lineage_artifact_path
 ):
     exp_name = f"my-local-exp-{name()}"
-    exp_name2 = f"{exp_name}-2"
-    file_artifact_name = "file-artifact"
-    lineage_artifact_name = "lineage-file-artifact"
-    table_artifact_name = "TestTableTitle"
-    metric_name = "test-x-step"
-
-    with cleanup_exp_resources(
-        exp_names=[exp_name, exp_name2], sagemaker_session=sagemaker_session
-    ):
+    with cleanup_exp_resources(exp_names=[exp_name], sagemaker_session=sagemaker_session):
         # Run name is not provided, will create a new TC
         with Run.init(experiment_name=exp_name, sagemaker_session=sagemaker_session) as run1:
             run1_name = run1.run_name
-            run1_exp_name = run1.experiment_name
-            run1_trial_name = run1._trial.trial_name
+            assert RUN_NAME_BASE in run1_name
 
             run1.log_parameter("p1", 1.0)
             run1.log_parameter("p2", "p2-value")
@@ -86,73 +88,134 @@ def test_local_run(
             run1.log_artifact_file(file_path=artifact_file_path, name=file_artifact_name)
             run1.log_artifact_directory(directory=artifact_directory, is_output=False)
             run1.log_lineage_artifact(file_path=lineage_artifact_path, name=lineage_artifact_name)
-            run1.log_table(
-                title=table_artifact_name, values={"x": [1, 2, 3], "y": [4, 5, 6]}, is_output=False
-            )
 
             for i in range(_MetricsManager._BATCH_SIZE):
                 run1.log_metric(name=metric_name, value=i, step=i)
 
-        assert RUN_NAME_BASE in run1_name
-
-        def validate_tc_artifact_association(is_output, expected_artifact_name):
-            if is_output:
-                # It's an output association from the tc
-                response = sagemaker_session.sagemaker_client.list_associations(
-                    SourceArn=tc.trial_component_arn
-                )
-            else:
-                # It's an input association to the tc
-                response = sagemaker_session.sagemaker_client.list_associations(
-                    DestinationArn=tc.trial_component_arn
-                )
-            associations = response["AssociationSummaries"]
-
-            assert len(associations) == 1
-            summary = associations[0]
-            if is_output:
-                assert summary["SourceArn"] == tc.trial_component_arn
-                assert summary["DestinationName"] == expected_artifact_name
-            else:
-                assert summary["DestinationArn"] == tc.trial_component_arn
-                assert summary["SourceName"] == expected_artifact_name
-
-        # Run name is passed from the name of an existing TC.
-        # Meanwhile, the experiment_name is changed.
-        # Should load TC from backend.
-        with Run.init(
-            experiment_name=exp_name2,
+        with Run.load(
+            experiment_name=exp_name,
             run_name=run1_name,
             sagemaker_session=sagemaker_session,
         ) as run2:
-            assert run1_exp_name != run2.experiment_name
-            assert run1_trial_name != run2._trial.trial_name
-            assert run1_name == run2.run_name
-
-            tc = run2._trial_component
-            assert tc.parameters == {"p1": 1.0, "p2": "p2-value", "p3": 2.0, "p4": "p4-value"}
-
-            s3_prefix = f"s3://{sagemaker_session.default_bucket()}/{_DEFAULT_ARTIFACT_PREFIX}"
-            assert s3_prefix in tc.output_artifacts[file_artifact_name].value
-            assert "text/plain" == tc.output_artifacts[file_artifact_name].media_type
-            assert s3_prefix in tc.input_artifacts["artifact_file1"].value
-            assert "text/plain" == tc.input_artifacts["artifact_file1"].media_type
-            assert s3_prefix in tc.input_artifacts["artifact_file2"].value
-            assert "text/plain" == tc.input_artifacts["artifact_file2"].media_type
-
-            assert len(tc.metrics) == 1
-            metric_summary = tc.metrics[0]
-            assert metric_summary.metric_name == metric_name
-            assert metric_summary.max == 9.0
-            assert metric_summary.min == 0.0
-
-            validate_tc_artifact_association(
-                is_output=True,
-                expected_artifact_name=lineage_artifact_name,
+            assert run2.run_name == run1_name
+            assert run2._trial_component.trial_component_name == f"{exp_name}{DELIMITER}{run1_name}"
+            _check_run_from_local_end_result(
+                sagemaker_session=sagemaker_session, tc=run2._trial_component
             )
-            validate_tc_artifact_association(
-                is_output=False,
-                expected_artifact_name=table_artifact_name,
+
+
+def _check_run_from_local_end_result(sagemaker_session, tc):
+    def validate_tc_artifact_association(is_output, expected_artifact_name):
+        if is_output:
+            # It's an output association from the tc
+            response = sagemaker_session.sagemaker_client.list_associations(
+                SourceArn=tc.trial_component_arn
+            )
+        else:
+            # It's an input association to the tc
+            response = sagemaker_session.sagemaker_client.list_associations(
+                DestinationArn=tc.trial_component_arn
+            )
+        associations = response["AssociationSummaries"]
+
+        assert len(associations) == 1
+        summary = associations[0]
+        if is_output:
+            assert summary["SourceArn"] == tc.trial_component_arn
+            assert summary["DestinationName"] == expected_artifact_name
+        else:
+            assert summary["DestinationArn"] == tc.trial_component_arn
+            assert summary["SourceName"] == expected_artifact_name
+
+    assert tc.parameters == {"p1": 1.0, "p2": "p2-value", "p3": 2.0, "p4": "p4-value"}
+
+    s3_prefix = f"s3://{sagemaker_session.default_bucket()}/{_DEFAULT_ARTIFACT_PREFIX}"
+    assert s3_prefix in tc.output_artifacts[file_artifact_name].value
+    assert "text/plain" == tc.output_artifacts[file_artifact_name].media_type
+    assert s3_prefix in tc.input_artifacts["artifact_file1"].value
+    assert "text/plain" == tc.input_artifacts["artifact_file1"].media_type
+    assert s3_prefix in tc.input_artifacts["artifact_file2"].value
+    assert "text/plain" == tc.input_artifacts["artifact_file2"].media_type
+
+    assert len(tc.metrics) == 1
+    metric_summary = tc.metrics[0]
+    assert metric_summary.metric_name == metric_name
+    assert metric_summary.max == 9.0
+    assert metric_summary.min == 0.0
+
+    validate_tc_artifact_association(
+        is_output=True,
+        expected_artifact_name=lineage_artifact_name,
+    )
+
+
+def test_two_local_run_init_with_same_run_name_and_different_exp_names(sagemaker_session):
+    exp_name1 = f"my-two-local-exp1-{name()}"
+    exp_name2 = f"my-two-local-exp2-{name()}"
+    run_name = "test-run"
+    with cleanup_exp_resources(
+        exp_names=[exp_name1, exp_name2], sagemaker_session=sagemaker_session
+    ):
+        # Run name is not provided, will create a new TC
+        with Run.init(
+            experiment_name=exp_name1, run_name=run_name, sagemaker_session=sagemaker_session
+        ) as run1:
+            pass
+        with Run.init(
+            experiment_name=exp_name2, run_name=run_name, sagemaker_session=sagemaker_session
+        ) as run2:
+            pass
+
+        assert run1.experiment_name != run2.experiment_name
+        assert run1.run_name == run2.run_name
+        assert (
+            run1._trial_component.trial_component_name != run2._trial_component.trial_component_name
+        )
+        assert run1._trial_component.trial_component_name == f"{exp_name1}{DELIMITER}{run_name}"
+        assert run2._trial_component.trial_component_name == f"{exp_name2}{DELIMITER}{run_name}"
+
+
+@pytest.mark.parametrize(
+    "input_names",
+    [
+        (f"my-local-exp-{name()}", "test-run", None),  # both have delimiter -
+        ("my-test-1", "my-test-1", None),  # exp_name equals run_name
+        ("my-test-3", "my-test-3-run", None),  # <exp_name><delimiter> is subset of run_name
+        ("x" * 59, "test-run", None),  # long exp_name
+        ("test-exp", "y" * 59, None),  # long run_name
+        ("x" * 59, "y" * 59, None),  # long exp_name and run_name
+        ("my-test4", "test-run", "run-display-name-test"),  # with supplied display name
+    ],
+)
+def test_run_name_vs_trial_component_name_edge_cases(
+    sagemaker_session, artifact_file_path, artifact_directory, lineage_artifact_path, input_names
+):
+    exp_name, run_name, run_display_name = input_names
+    with cleanup_exp_resources(exp_names=[exp_name], sagemaker_session=sagemaker_session):
+        with Run.init(
+            experiment_name=exp_name,
+            sagemaker_session=sagemaker_session,
+            run_name=run_name,
+            run_display_name=run_display_name,
+        ) as run1:
+            assert not run1._experiment.tags
+            assert not run1._trial.tags
+            tags = run1._trial_component.tags
+            assert len(tags) == 1
+            assert tags[0]["Key"] == RUN_TC_TAG_KEY
+            assert tags[0]["Value"] == RUN_TC_TAG_VALUE
+
+        with Run.load(
+            experiment_name=exp_name,
+            run_name=run_name,
+            sagemaker_session=sagemaker_session,
+        ) as run2:
+            assert run2.experiment_name == exp_name
+            assert run2.run_name == run_name
+            assert run2._trial_component.trial_component_name == f"{exp_name}{DELIMITER}{run_name}"
+            assert run2._trial_component.display_name in (
+                run_display_name,
+                run2._trial_component.trial_component_name,
             )
 
 
@@ -201,7 +264,7 @@ def test_run_from_local_and_train_job_and_all_exp_cfg_match(sagemaker_session, j
                 )
                 estimator.fit(
                     job_name=f"train-job-{name()}",
-                    experiment_config=run.experiment_config,
+                    experiment_config=run._experiment_config,
                     wait=True,  # wait the training job to finish
                     logs="None",  # set to "All" to display logs fetched from the training job
                 )
@@ -248,7 +311,7 @@ def test_run_from_local_and_train_job_and_exp_cfg_not_match(sagemaker_session, j
                 )
                 estimator.fit(
                     job_name=f"train-job-{name()}",
-                    experiment_config=run.experiment_config,
+                    experiment_config=run._experiment_config,
                     wait=True,  # wait the training job to finish
                     logs="None",  # set to "All" to display logs fetched from the training job
                 )

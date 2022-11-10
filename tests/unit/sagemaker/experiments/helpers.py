@@ -17,7 +17,6 @@ from sagemaker.experiments.trial_component import _TrialComponent
 
 
 TEST_EXP_NAME = "my-experiment"
-TEST_RUN_GRP_NAME = "my-run-group"
 TEST_RUN_NAME = "my-run"
 
 
