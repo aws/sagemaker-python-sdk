@@ -122,7 +122,7 @@ SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
         "1.11",
         "1.11.0",
         "1.12",
-        "1.12.0",
+        "1.12.1",
     ],
 }
 
@@ -133,7 +133,7 @@ PYTORCHDDP_SUPPORTED_FRAMEWORK_VERSIONS = [
     "1.11",
     "1.11.0",
     "1.12",
-    "1.12.0",
+    "1.12.1",
 ]
 
 
