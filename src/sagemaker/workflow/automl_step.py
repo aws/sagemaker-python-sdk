@@ -71,15 +71,15 @@ class AutoMLStep(ConfigurableRetryStep):
 
         root_property = Properties(step_name=name, shape_name="DescribeAutoMLJobResponse")
 
-        best_candidate_properties = Properties(step_name=name, path="bestCandidateProperties")
-        best_candidate_properties.__dict__["modelInsightsJsonReportPath"] = Properties(
-            step_name=name, path="bestCandidateProperties.modelInsightsJsonReportPath"
+        best_candidate_properties = Properties(step_name=name, path="BestCandidateProperties")
+        best_candidate_properties.__dict__["ModelInsightsJsonReportPath"] = Properties(
+            step_name=name, path="BestCandidateProperties.ModelInsightsJsonReportPath"
         )
-        best_candidate_properties.__dict__["explainabilityJsonReportPath"] = Properties(
-            step_name=name, path="bestCandidateProperties.explainabilityJsonReportPath"
+        best_candidate_properties.__dict__["ExplainabilityJsonReportPath"] = Properties(
+            step_name=name, path="BestCandidateProperties.ExplainabilityJsonReportPath"
         )
 
-        root_property.__dict__["bestCandidateProperties"] = best_candidate_properties
+        root_property.__dict__["BestCandidateProperties"] = best_candidate_properties
         self._properties = root_property
 
     @property

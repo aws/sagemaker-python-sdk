@@ -231,11 +231,11 @@ def test_single_automl_step_with_parameter(pipeline_session):
         step_args=step_args,
     )
 
-    assert automl_step.properties.bestCandidateProperties.modelInsightsJsonReportPath.expr == {
-        "Get": "Steps.MyAutoMLStep.bestCandidateProperties.modelInsightsJsonReportPath"
+    assert automl_step.properties.BestCandidateProperties.ModelInsightsJsonReportPath.expr == {
+        "Get": "Steps.MyAutoMLStep.BestCandidateProperties.ModelInsightsJsonReportPath"
     }
-    assert automl_step.properties.bestCandidateProperties.explainabilityJsonReportPath.expr == {
-        "Get": "Steps.MyAutoMLStep.bestCandidateProperties.explainabilityJsonReportPath"
+    assert automl_step.properties.BestCandidateProperties.ExplainabilityJsonReportPath.expr == {
+        "Get": "Steps.MyAutoMLStep.BestCandidateProperties.ExplainabilityJsonReportPath"
     }
 
     pipeline = Pipeline(
