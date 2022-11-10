@@ -22,6 +22,7 @@ from sagemaker.automl.candidate_estimator import CandidateEstimator
 from sagemaker.job import _Job
 from sagemaker.session import Session
 from sagemaker.utils import name_from_base
+from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
 
 logger = logging.getLogger("sagemaker")
@@ -44,18 +45,20 @@ class AutoMLInput(object):
     ):
         """Convert an S3 Uri or a list of S3 Uri to an AutoMLInput object.
 
-        :param inputs (str, list[str]): a string or a list of string that points to (a)
-            S3 location(s) where input data is stored.
-        :param target_attribute_name (str): the target attribute name for regression
-            or classification.
-        :param compression (str): if training data is compressed, the compression type.
-            The default value is None.
-        :param channel_type (str): The channel type an enum to specify
-            whether the input resource is for training or validation.
-            Valid values: training or validation.
-        :param content_type (str): The content type of the data from the input source.
-        :param s3_data_type (str): The data type for S3 data source.
-            Valid values: ManifestFile or S3Prefix.
+        Args:
+            inputs (str, list[str], PipelineVariable):
+                a string or a list of string or a PipelineVariable that points to (a)
+                S3 location(s) where input data is stored.
+            target_attribute_name (str): the target attribute name for regression
+                or classification.
+            compression (str): if training data is compressed, the compression type.
+                The default value is None.
+            channel_type (str): The channel type an enum to specify
+                whether the input resource is for training or validation.
+                Valid values: training or validation.
+            content_type (str): The content type of the data from the input source.
+            s3_data_type (str): The data type for S3 data source.
+                Valid values: ManifestFile or S3Prefix.
         """
         self.inputs = inputs
         self.target_attribute_name = target_attribute_name
@@ -69,6 +72,8 @@ class AutoMLInput(object):
         # Create the request dictionary.
         auto_ml_input = []
         if isinstance(self.inputs, string_types):
+            self.inputs = [self.inputs]
+        if isinstance(self.inputs, PipelineVariable):
             self.inputs = [self.inputs]
         for entry in self.inputs:
             input_entry = {
@@ -106,7 +111,7 @@ class AutoML(object):
         max_candidates: Optional[int] = None,
         max_runtime_per_training_job_in_seconds: Optional[int] = None,
         total_job_runtime_in_seconds: Optional[int] = None,
-        job_objective: Optional[str] = None,
+        job_objective: Optional[Dict[str, str]] = None,
         generate_candidate_definitions_only: Optional[bool] = False,
         tags: Optional[List[Dict[str, str]]] = None,
         content_type: Optional[str] = None,
@@ -142,8 +147,9 @@ class AutoML(object):
                 that each training job executed inside hyperparameter tuning
                 is allowed to run as part of a hyperparameter tuning job.
             total_job_runtime_in_seconds (int): the total wait time of an AutoML job.
-            job_objective (str): Defines the objective metric
+            job_objective (dict[str, str]): Defines the objective metric
                 used to measure the predictive quality of an AutoML job.
+                In the format of: {"MetricName": str}
             generate_candidate_definitions_only (bool): Whether to generates
                 possible candidates without training the models.
             tags (List[dict[str, str]]): The list of tags to attach to this
@@ -969,8 +975,10 @@ class AutoMLJob(_Job):
 
         Returns (dict): an AutoML CompletionCriteria.
         """
-        stopping_condition = {"MaxCandidates": max_candidates}
+        stopping_condition = {}
 
+        if max_candidates is not None:
+            stopping_condition["MaxCandidates"] = max_candidates
         if max_runtime_per_training_job_in_seconds is not None:
             stopping_condition[
                 "MaxRuntimePerTrainingJobInSeconds"

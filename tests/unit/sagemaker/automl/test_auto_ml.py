@@ -18,6 +18,7 @@ import pytest
 from mock import Mock, patch
 from sagemaker import AutoML, AutoMLJob, AutoMLInput, CandidateEstimator, PipelineModel
 from sagemaker.predictor import Predictor
+from sagemaker.workflow.functions import Join
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -52,7 +53,7 @@ MAX_CANDIDATES = 10
 MAX_RUNTIME_PER_TRAINING_JOB = 3600
 TOTAL_JOB_RUNTIME = 36000
 TARGET_OBJECTIVE = "0.01"
-JOB_OBJECTIVE = {"fake job objective"}
+JOB_OBJECTIVE = {"MetricName": "F1"}
 TAGS = [{"Name": "some-tag", "Value": "value-for-tag"}]
 CONTENT_TYPE = "x-application/vnd.amazon+parquet"
 S3_DATA_TYPE = "ManifestFile"
@@ -503,7 +504,46 @@ def test_auto_ml_default_fit(strftime, sagemaker_session):
         ],
         "output_config": {"S3OutputPath": DEFAULT_OUTPUT_PATH},
         "auto_ml_job_config": {
-            "CompletionCriteria": {"MaxCandidates": DEFAULT_MAX_CANDIDATES},
+            "CompletionCriteria": {},
+            "SecurityConfig": {
+                "EnableInterContainerTrafficEncryption": ENCRYPT_INTER_CONTAINER_TRAFFIC
+            },
+        },
+        "role": ROLE,
+        "job_name": DEFAULT_JOB_NAME,
+        "problem_type": None,
+        "job_objective": None,
+        "generate_candidate_definitions_only": GENERATE_CANDIDATE_DEFINITIONS_ONLY,
+        "tags": None,
+    }
+
+
+@patch("time.strftime", return_value=TIMESTAMP)
+def test_auto_ml_default_fit_with_pipeline_variable(strftime, sagemaker_session):
+    auto_ml = AutoML(
+        role=ROLE,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
+    )
+    inputs = Join(on="/", values=[DEFAULT_S3_INPUT_DATA, "ProcessingJobName"])
+    auto_ml.fit(inputs=AutoMLInput(inputs=inputs, target_attribute_name=TARGET_ATTRIBUTE_NAME))
+    sagemaker_session.auto_ml.assert_called_once()
+    _, args = sagemaker_session.auto_ml.call_args
+    assert args == {
+        "input_config": [
+            {
+                "DataSource": {
+                    "S3DataSource": {
+                        "S3DataType": "S3Prefix",
+                        "S3Uri": Join(on="/", values=["s3://mybucket/data", "ProcessingJobName"]),
+                    }
+                },
+                "TargetAttributeName": TARGET_ATTRIBUTE_NAME,
+            }
+        ],
+        "output_config": {"S3OutputPath": DEFAULT_OUTPUT_PATH},
+        "auto_ml_job_config": {
+            "CompletionCriteria": {},
             "SecurityConfig": {
                 "EnableInterContainerTrafficEncryption": ENCRYPT_INTER_CONTAINER_TRAFFIC
             },

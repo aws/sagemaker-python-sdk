@@ -78,7 +78,6 @@ def test_auto_ml_fit_local_input(sagemaker_session):
         role=ROLE,
         target_attribute_name=TARGET_ATTRIBUTE_NAME,
         sagemaker_session=sagemaker_session,
-        max_candidates=1,
         generate_candidate_definitions_only=True,
     )
 

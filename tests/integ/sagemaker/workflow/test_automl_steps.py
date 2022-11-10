@@ -14,14 +14,15 @@ from __future__ import absolute_import
 
 import os
 
+import boto3
 import pytest
 from botocore.exceptions import WaiterError
 
+from sagemaker.workflow import ParameterString
 from sagemaker.workflow.automl_step import AutoMLStep
 from sagemaker.automl.automl import AutoML, AutoMLInput
 
-from sagemaker import utils, get_execution_role
-from sagemaker.utils import unique_name_from_base
+from sagemaker import utils, get_execution_role, ModelMetrics, MetricsSource
 from sagemaker.workflow.model_step import ModelStep
 from sagemaker.workflow.pipeline import Pipeline
 
@@ -50,10 +51,8 @@ def test_automl_step(pipeline_session, role, pipeline_name):
         role=role,
         target_attribute_name=TARGET_ATTRIBUTE_NAME,
         sagemaker_session=pipeline_session,
-        max_candidates=1,
         mode=MODE,
     )
-    job_name = unique_name_from_base("auto-ml", max_length=32)
     s3_input_training = pipeline_session.upload_data(
         path=TRAINING_DATA, key_prefix=PREFIX + "/input"
     )
@@ -72,7 +71,7 @@ def test_automl_step(pipeline_session, role, pipeline_name):
     )
     inputs = [input_training, input_validation]
 
-    step_args = auto_ml.fit(inputs=inputs, job_name=job_name)
+    step_args = auto_ml.fit(inputs=inputs)
 
     automl_step = AutoMLStep(
         name="MyAutoMLStep",
@@ -80,19 +79,48 @@ def test_automl_step(pipeline_session, role, pipeline_name):
     )
 
     automl_model = automl_step.get_best_auto_ml_model(sagemaker_session=pipeline_session, role=role)
-
     step_args_create_model = automl_model.create(
         instance_type="c4.4xlarge",
     )
-
     automl_model_step = ModelStep(
         name="MyAutoMLModelStep",
         step_args=step_args_create_model,
     )
 
+    model_package_group_name = ParameterString(
+        name="ModelPackageName", default_value="AutoMlModelPackageGroup"
+    )
+    model_approval_status = ParameterString(name="ModelApprovalStatus", default_value="Approved")
+    model_metrics = ModelMetrics(
+        model_statistics=MetricsSource(
+            s3_uri=automl_step.properties.BestCandidateProperties.ModelInsightsJsonReportPath,
+            content_type="application/json",
+        ),
+        explainability=MetricsSource(
+            s3_uri=automl_step.properties.BestCandidateProperties.ExplainabilityJsonReportPath,
+            content_type="application/json",
+        ),
+    )
+    step_args_register_model = automl_model.register(
+        content_types=["text/csv"],
+        response_types=["text/csv"],
+        inference_instances=["ml.m5.xlarge"],
+        transform_instances=["ml.m5.xlarge"],
+        model_package_group_name=model_package_group_name,
+        approval_status=model_approval_status,
+        model_metrics=model_metrics,
+    )
+    register_model_step = ModelStep(
+        name="ModelRegistrationStep", step_args=step_args_register_model
+    )
+
     pipeline = Pipeline(
         name=pipeline_name,
-        steps=[automl_step, automl_model_step],
+        parameters=[
+            model_approval_status,
+            model_package_group_name,
+        ],
+        steps=[automl_step, automl_model_step, register_model_step],
         sagemaker_session=pipeline_session,
     )
 
@@ -114,9 +142,20 @@ def test_automl_step(pipeline_session, role, pipeline_name):
                 assert step["Metadata"]["AutoMLJob"]["Arn"] is not None
 
         assert has_automl_job
-        assert len(execution_steps) == 2
+        assert len(execution_steps) == 3
     finally:
         try:
+            sagemaker_client = boto3.client("sagemaker")
+            for model_package in sagemaker_client.list_model_packages(
+                ModelPackageGroupName="AutoMlModelPackageGroup"
+            )["ModelPackageSummaryList"]:
+                sagemaker_client.delete_model_package(
+                    ModelPackageName=model_package["ModelPackageArn"]
+                )
+            sagemaker_client.delete_model_package_group(
+                ModelPackageGroupName="AutoMlModelPackageGroup"
+            )
+
             pipeline.delete()
         except Exception:
             pass
