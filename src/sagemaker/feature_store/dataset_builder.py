@@ -152,6 +152,8 @@ class DatasetBuilder:
         table_name = data_catalog_config.get("TableName", None)
         database = data_catalog_config.get("Database", None)
         features = [feature.feature_name for feature in feature_group.feature_definitions]
+        if not target_feature_name_in_base:
+            target_feature_name_in_base = self._record_identifier_feature_name
         self._feature_groups_to_be_merged.append(
             FeatureGroupToBeMerged(
                 features,
@@ -312,6 +314,37 @@ class DatasetBuilder:
             ), query_result.get("QueryExecution", None).get("Query", None)
         raise ValueError("Base must be either a FeatureGroup or a DataFrame.")
 
+    def _construct_where_query_string(self, suffix: str, event_time_identifier_feature_name: str):
+        """Internal method for constructing SQL WHERE query string by parameters.
+
+        Args:
+            suffix (str): A temp identifier of the FeatureGroup.
+            event_time_identifier_feature_name (str): A string representing the event time
+                identifier feature.
+        Returns:
+            The WHERE query string.
+        """
+        where_conditions = []
+        if not self._include_deleted_records:
+            where_conditions.append("NOT is_deleted")
+        if self._write_time_ending_timestamp:
+            where_conditions.append(
+                f'table_{suffix}."write_time" <= {self._write_time_ending_timestamp}'
+            )
+        if self._event_time_starting_timestamp:
+            where_conditions.append(
+                f'table_{suffix}."{event_time_identifier_feature_name}" >= '
+                + str(self._event_time_starting_timestamp)
+            )
+        if self._event_time_ending_timestamp:
+            where_conditions.append(
+                f'table_{suffix}."{event_time_identifier_feature_name}" <= '
+                + str(self._event_time_ending_timestamp)
+            )
+        if len(where_conditions) == 0:
+            return ""
+        return "WHERE " + "\nAND ".join(where_conditions)
+
     def _construct_table_query(self, feature_group: FeatureGroupToBeMerged, suffix: str):
         """Internal method for constructing SQL query string by parameters.
 
@@ -333,8 +366,6 @@ class DatasetBuilder:
             query_string += (
                 f'FROM "{feature_group.database}"."{feature_group.table_name}" table_{suffix}\n'
             )
-            if not self._include_deleted_records:
-                query_string += "WHERE NOT is_deleted\n"
         else:
             features = feature_group.features
             features.remove(feature_group.event_time_identifier_feature_name)
@@ -351,9 +382,9 @@ class DatasetBuilder:
                 + f") AS table_{suffix}\n"
                 + f"WHERE row_{suffix} = 1\n"
             )
-            if not self._include_deleted_records:
-                query_string += "AND NOT is_deleted\n"
-        return query_string
+        return query_string + self._construct_where_query_string(
+            suffix, feature_group.event_time_identifier_feature_name
+        )
 
     def _construct_query_string(
         self, base_table_name: str, database: str, base_features: list
@@ -367,16 +398,6 @@ class DatasetBuilder:
         Returns:
             The query string.
         """
-        query_string = ""
-        if len(self._feature_groups_to_be_merged) > 0:
-            with_subquery_string = ",\n".join(
-                [
-                    f"fg_{i} AS ({self._construct_table_query(feature_group, str(i))})"
-                    for i, feature_group in enumerate(self._feature_groups_to_be_merged)
-                ]
-            )
-            query_string = f"WITH {with_subquery_string}\n"
-
         base = FeatureGroupToBeMerged(
             base_features,
             self._included_feature_names,
@@ -385,7 +406,48 @@ class DatasetBuilder:
             self._record_identifier_feature_name,
             self._event_time_identifier_feature_name,
         )
-        return query_string + self._construct_table_query(base, "base")
+        base_table_query_string = self._construct_table_query(base, "base")
+        query_string = f"WITH fg_base AS ({base_table_query_string})"
+        if len(self._feature_groups_to_be_merged) > 0:
+            with_subquery_string = "".join(
+                [
+                    f",\nfg_{i} AS ({self._construct_table_query(feature_group, str(i))})"
+                    for i, feature_group in enumerate(self._feature_groups_to_be_merged)
+                ]
+            )
+            query_string += with_subquery_string
+        query_string += "SELECT *\nFROM fg_base"
+        if len(self._feature_groups_to_be_merged) > 0:
+            join_subquery_string = "".join(
+                [
+                    self._construct_join_condition(feature_group, str(i))
+                    for i, feature_group in enumerate(self._feature_groups_to_be_merged)
+                ]
+            )
+            query_string += join_subquery_string
+        return query_string
+
+    def _construct_join_condition(self, feature_group: FeatureGroupToBeMerged, suffix: str):
+        """Internal method for constructing SQL JOIN query string by parameters.
+
+        Args:
+            feature_group (FeatureGroupToBeMerged): A FeatureGroupToBeMerged object which has the
+                FeatureGroup metadata.
+            suffix (str): A temp identifier of the FeatureGroup.
+        Returns:
+            The JOIN query string.
+        """
+        join_condition_string = (
+            f"\nJOIN fg_{suffix}\n"
+            + f'ON fg_base."{feature_group.target_feature_name_in_base}" = '
+            + f'fg_{suffix}."{feature_group.record_identifier_feature_name}"'
+        )
+        if self._point_in_time_accurate_join:
+            join_condition_string += (
+                f'\nAND fg_base."{self._event_time_identifier_feature_name}" >= '
+                + f'fg_{suffix}."{feature_group.event_time_identifier_feature_name}"'
+            )
+        return join_condition_string
 
     def _create_temp_table(self, temp_table_name: str, desired_s3_folder: str):
         """Internal method for creating a temp Athena table for the base pandas.Dataframe.
