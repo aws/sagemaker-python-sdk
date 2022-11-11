@@ -3882,12 +3882,19 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 instance_name = metadata["ResourceName"]
                 domain_id = metadata.get("DomainId")
                 user_profile_name = metadata.get("UserProfileName")
+                space_name = metadata.get("SpaceName")
             try:
                 if domain_id is None:
                     instance_desc = self.sagemaker_client.describe_notebook_instance(
                         NotebookInstanceName=instance_name
                     )
                     return instance_desc["RoleArn"]
+
+                # In Space app, find execution role from DefaultSpaceSettings on domain level
+                if space_name is not None:
+                    domain_desc = self.sagemaker_client.describe_domain(DomainId=domain_id)
+                    return domain_desc["DefaultSpaceSettings"]["ExecutionRole"]
+
                 user_profile_desc = self.sagemaker_client.describe_user_profile(
                     DomainId=domain_id, UserProfileName=user_profile_name
                 )
