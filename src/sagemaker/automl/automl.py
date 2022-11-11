@@ -49,15 +49,16 @@ class AutoMLInput(object):
             inputs (str, list[str], PipelineVariable):
                 a string or a list of string or a PipelineVariable that points to (a)
                 S3 location(s) where input data is stored.
-            target_attribute_name (str): the target attribute name for regression
-                or classification.
-            compression (str): if training data is compressed, the compression type.
-                The default value is None.
-            channel_type (str): The channel type an enum to specify
+            target_attribute_name (str, PipelineVariable):
+                the target attribute name for regression or classification.
+            compression (str, PipelineVariable):
+                if training data is compressed, the compression type. The default value is None.
+            channel_type (str, PipelineVariable): The channel type an enum to specify
                 whether the input resource is for training or validation.
                 Valid values: training or validation.
-            content_type (str): The content type of the data from the input source.
-            s3_data_type (str): The data type for S3 data source.
+            content_type (str, PipelineVariable):
+                The content type of the data from the input source.
+            s3_data_type (str, PipelineVariable): The data type for S3 data source.
                 Valid values: ManifestFile or S3Prefix.
         """
         self.inputs = inputs

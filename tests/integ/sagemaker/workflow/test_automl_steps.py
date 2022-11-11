@@ -13,8 +13,8 @@
 from __future__ import absolute_import
 
 import os
+import re
 
-import boto3
 import pytest
 from botocore.exceptions import WaiterError
 
@@ -91,13 +91,19 @@ def test_automl_step(pipeline_session, role, pipeline_name):
         name="ModelPackageName", default_value="AutoMlModelPackageGroup"
     )
     model_approval_status = ParameterString(name="ModelApprovalStatus", default_value="Approved")
+    model_insights_json_report_path = (
+        automl_step.properties.BestCandidateProperties.ModelInsightsJsonReportPath
+    )
+    explainability_json_report_path = (
+        automl_step.properties.BestCandidateProperties.ExplainabilityJsonReportPath
+    )
     model_metrics = ModelMetrics(
         model_statistics=MetricsSource(
-            s3_uri=automl_step.properties.BestCandidateProperties.ModelInsightsJsonReportPath,
+            s3_uri=model_insights_json_report_path,
             content_type="application/json",
         ),
         explainability=MetricsSource(
-            s3_uri=automl_step.properties.BestCandidateProperties.ExplainabilityJsonReportPath,
+            s3_uri=explainability_json_report_path,
             content_type="application/json",
         ),
     )
@@ -139,19 +145,45 @@ def test_automl_step(pipeline_session, role, pipeline_name):
             assert step["StepStatus"] == "Succeeded"
             if "AutoMLJob" in step["Metadata"]:
                 has_automl_job = True
-                assert step["Metadata"]["AutoMLJob"]["Arn"] is not None
+                automl_job_arn = step["Metadata"]["AutoMLJob"]["Arn"]
+                assert automl_job_arn is not None
+                automl_job_name = re.findall(r"(?<=automl-job/).*", automl_job_arn)[0]
+                auto_ml_desc = auto_ml.describe_auto_ml_job(job_name=automl_job_name)
+                model_insights_json_from_automl = (
+                    auto_ml_desc["BestCandidate"]["CandidateProperties"][
+                        "CandidateArtifactLocations"
+                    ]["ModelInsights"]
+                    + "/statistics.json"
+                )
+                explainability_json_from_automl = (
+                    auto_ml_desc["BestCandidate"]["CandidateProperties"][
+                        "CandidateArtifactLocations"
+                    ]["Explainability"]
+                    + "/analysis.json"
+                )
 
         assert has_automl_job
         assert len(execution_steps) == 3
+        sagemaker_client = pipeline_session.boto_session.client("sagemaker")
+        model_package = sagemaker_client.list_model_packages(
+            ModelPackageGroupName="AutoMlModelPackageGroup"
+        )["ModelPackageSummaryList"][0]
+        response = sagemaker_client.describe_model_package(
+            ModelPackageName=model_package["ModelPackageArn"]
+        )
+        model_insights_json_report_path = response["ModelMetrics"]["ModelQuality"]["Statistics"][
+            "S3Uri"
+        ]
+        explainability_json_report_path = response["ModelMetrics"]["Explainability"]["Report"][
+            "S3Uri"
+        ]
+
+        assert model_insights_json_report_path == model_insights_json_from_automl
+        assert explainability_json_report_path == explainability_json_from_automl
+
     finally:
         try:
-            sagemaker_client = boto3.client("sagemaker")
-            for model_package in sagemaker_client.list_model_packages(
-                ModelPackageGroupName="AutoMlModelPackageGroup"
-            )["ModelPackageSummaryList"]:
-                sagemaker_client.delete_model_package(
-                    ModelPackageName=model_package["ModelPackageArn"]
-                )
+            sagemaker_client.delete_model_package(ModelPackageName=model_package["ModelPackageArn"])
             sagemaker_client.delete_model_package_group(
                 ModelPackageGroupName="AutoMlModelPackageGroup"
             )
