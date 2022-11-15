@@ -573,6 +573,8 @@ Here is an example:
         # When you are done using your endpoint
         model.sagemaker_session.delete_endpoint('my-endpoint')
 
+.. _built-in-algos:
+
 ***********************************************************************
 Use Built-in Algorithms with Pre-trained Models in SageMaker Python SDK
 ***********************************************************************
@@ -1370,9 +1372,10 @@ For more details about what can be specified here, see `API docs <https://sagema
 Local Mode
 **********
 
-The SageMaker Python SDK supports local mode, which allows you to create estimators and deploy them to your local environment.
-This is a great way to test your deep learning scripts before running them in SageMaker's managed training or hosting environments.
-Local Mode is supported for frameworks images (TensorFlow, MXNet, Chainer, PyTorch, and Scikit-Learn) and images you supply yourself.
+The SageMaker Python SDK supports local mode, which allows you to create estimators, processors, and pipelines, and deploy
+them to your local environment. This is a great way to test your deep learning scripts before running them in SageMaker's
+managed training or hosting environments. Local Mode is supported for frameworks images (TensorFlow, MXNet, Chainer, PyTorch,
+and Scikit-Learn) and images you supply yourself.
 
 You can install all necessary for this feature dependencies using pip:
 
@@ -1389,7 +1392,7 @@ If you want to keep everything local, and not use Amazon S3 either, you can enab
     local:
       local_code: true
 
-- Create a ``LocalSession`` and configure it directly:
+- Create a ``LocalSession`` or ``LocalPipelineSession`` (for local SageMaker pipelines) and configure it directly:
 
 .. code:: python
 
@@ -1487,12 +1490,83 @@ Here is an end-to-end example:
     transformer.delete_model()
 
 
+Local pipelines
+===============
+
+To put everything together, you can use local pipelines to execute various SageMaker jobs in succession. Pipelines can be executed locally by providing a ``LocalPipelineSession`` object to the pipeline’s and pipeline steps’ initializer. ``LocalPipelineSession`` inherits from ``LocalSession``. The difference is ``LocalPipelineSession`` captures the job input step arguments and passes it to the pipeline object instead of executing the job. This behavior is similar to that of `PipelineSession <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_model_building_pipeline.html#pipeline-session>`__.
+
+Here is an end-to-end example:
+
+.. code:: python
+
+    from sagemaker.workflow.pipeline import Pipeline
+    from sagemaker.workflow.steps import TrainingStep, TransformStep
+    from sagemaker.workflow.model_step import ModelStep
+    from sagemaker.workflow.pipeline_context import LocalPipelineSession
+    from sagemaker.mxnet import MXNet
+    from sagemaker.model import Model
+    from sagemaker.inputs import TranformerInput
+    from sagemaker.transformer import Transformer
+
+    session = LocalPipelineSession()
+    mxnet_estimator = MXNet('train.py',
+                            role='SageMakerRole',
+                            instance_type='local',
+                            instance_count=1,
+                            framework_version='1.2.1',
+                            sagemaker_session=session)
+
+    train_step_args = mxnet_estimator.fit('file:///tmp/my_training_data')
+
+    # Define training step
+    train_step = TrainingStep(name='local_mxnet_train', step_args=train_step_args)
+
+    model = Model(
+      image_uri=inference_image_uri,
+      model_data=train_step.properties.ModelArtifacts.S3ModelArtifacts,
+      sagemaker_session=session,
+      role='SageMakerRole'
+    )
+
+    # Define create model step
+    model_step_args = model.create(instance_type="local", accelerator_type="local")
+    model_step = ModelStep(
+      name='local_mxnet_model',
+      step_args=model_step_args
+    )
+
+    transformer =  Transformer(
+      model_name=model_step.properties.ModelName,
+      instance_type='local',
+      instance_count=1,
+      sagemaker_session=session
+    )
+    transform_args = transformer.transform('file:///tmp/my_transform_data')
+    # Define transform step
+    transform_step = TransformStep(name='local_mxnet_transform', step_args=transform_args)
+
+    # Define the pipeline
+    pipeline = Pipeline(name='local_pipeline',
+                        steps=[train_step, model_step, transform_step],
+                        sagemaker_session=session)
+
+    # Create the pipeline
+    pipeline.upsert(role_arn='SageMakerRole', description='local pipeline example')
+
+    # Start a pipeline execution
+    execution = pipeline.start()
+
+.. note::
+    Currently Pipelines Local Mode only supports the following step types: Training, Processing, Transform, Model (with Create Model arguments only), Condition, and Fail.
+
+
 For detailed examples of running Docker in local mode, see:
 
 - `TensorFlow local mode example notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/tensorflow_script_mode_using_shell_commands/tensorflow_script_mode_using_shell_commands.ipynb>`__.
-- `MXNet local mode CPU example notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/mxnet_gluon_mnist/mxnet_mnist_with_gluon_local_mode.ipynb>`__.
-- `MXNet local mode GPU example notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/mxnet_gluon_cifar10/mxnet_cifar10_local_mode.ipynb>`__.
+- `MXNet local mode example notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/mxnet_gluon_mnist/mxnet_mnist_with_gluon_local_mode.ipynb>`__.
 - `PyTorch local mode example notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/pytorch_cnn_cifar10/pytorch_local_mode_cifar10.ipynb>`__.
+- `Pipelines local mode example notebook <https://github.com/aws/amazon-sagemaker-examples/blob/main/sagemaker-pipelines/tabular/local-mode/sagemaker-pipelines-local-mode.ipynb>`__.
+
 
 You can also find these notebooks in the **SageMaker Python SDK** section of the **SageMaker Examples** section in a notebook instance.
 For information about using sample notebooks in a SageMaker notebook instance, see `Use Example Notebooks <https://docs.aws.amazon.com/sagemaker/latest/dg/howitworks-nbexamples.html>`__
@@ -1713,11 +1787,15 @@ in the AWS documentation.
 SageMaker Workflow
 ******************
 
-You can use Apache Airflow to author, schedule and monitor SageMaker workflow.
+You can use the following machine learning frameworks to author, schedule and monitor SageMaker workflow.
 
-For more information, see `SageMaker Workflow in Apache Airflow`_.
+.. toctree::
+    :maxdepth: 2
 
-.. _SageMaker Workflow in Apache Airflow: https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/workflow/README.rst
+    workflows/airflow/index
+    workflows/step_functions/index
+    workflows/pipelines/index
+    workflows/lineage/index
 
 ************************************
 SageMaker Model Building Pipeline

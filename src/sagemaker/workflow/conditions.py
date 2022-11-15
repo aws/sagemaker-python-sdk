@@ -88,8 +88,8 @@ class ConditionComparison(Condition):
         """Get the request structure for workflow service calls."""
         return {
             "Type": self.condition_type.value,
-            "LeftValue": primitive_or_expr(self.left),
-            "RightValue": primitive_or_expr(self.right),
+            "LeftValue": self.left,
+            "RightValue": self.right,
         }
 
     @property
@@ -227,8 +227,8 @@ class ConditionIn(Condition):
         """Get the request structure for workflow service calls."""
         return {
             "Type": self.condition_type.value,
-            "QueryValue": self.value.expr,
-            "Values": [primitive_or_expr(in_value) for in_value in self.in_values],
+            "QueryValue": self.value,
+            "Values": self.in_values,
         }
 
     @property
@@ -300,7 +300,6 @@ def primitive_or_expr(
 
     Args:
         value (Union[ConditionValueType, PrimitiveType]): The value to evaluate.
-
     Returns:
         Either the expression of the value or the primitive value.
     """

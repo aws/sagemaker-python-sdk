@@ -34,13 +34,14 @@ from sagemaker import vpc_utils
 
 from sagemaker._studio import _append_project_tags
 from sagemaker.deprecations import deprecated_class
-from sagemaker.inputs import ShuffleConfig, TrainingInput
+from sagemaker.inputs import ShuffleConfig, TrainingInput, BatchDataCaptureConfig
 from sagemaker.user_agent import prepend_user_agent
 from sagemaker.utils import (
     name_from_image,
     secondary_training_status_changed,
     secondary_training_status_message,
     sts_regional_endpoint,
+    retries,
 )
 from sagemaker import exceptions
 from sagemaker.session_settings import SessionSettings
@@ -820,6 +821,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         job_name,
         profiler_rule_configs=None,
         profiler_config=None,
+        resource_config=None,
     ):
         """Calls the UpdateTrainingJob API for the given job name and returns the response.
 
@@ -828,11 +830,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
             profiler_rule_configs (list): List of profiler rule configurations. (default: ``None``).
             profiler_config(dict): Configuration for how profiling information is emitted with
                 SageMaker Profiler. (default: ``None``).
+            resource_config (dict): Configuration of the resources for the training job. You can
+                update the keep-alive period if the warm pool status is `Available`. No other fields
+                can be updated. (default: ``None``).
         """
         update_training_job_request = self._get_update_training_job_request(
             job_name=job_name,
             profiler_rule_configs=profiler_rule_configs,
             profiler_config=profiler_config,
+            resource_config=resource_config,
         )
         LOGGER.info("Updating training job with name %s", job_name)
         LOGGER.debug("Update request: %s", json.dumps(update_training_job_request, indent=4))
@@ -843,14 +849,18 @@ class Session(object):  # pylint: disable=too-many-public-methods
         job_name,
         profiler_rule_configs=None,
         profiler_config=None,
+        resource_config=None,
     ):
-        """Constructs a request compatible for updateing an Amazon SageMaker training job.
+        """Constructs a request compatible for updating an Amazon SageMaker training job.
 
         Args:
             job_name (str): Name of the training job being updated.
             profiler_rule_configs (list): List of profiler rule configurations. (default: ``None``).
             profiler_config(dict): Configuration for how profiling information is emitted with
                 SageMaker Profiler. (default: ``None``).
+            resource_config (dict): Configuration of the resources for the training job. You can
+                update the keep-alive period if the warm pool status is `Available`. No other fields
+                can be updated. (default: ``None``).
 
         Returns:
             Dict: an update training request dict
@@ -864,6 +874,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if profiler_config is not None:
             update_training_job_request["ProfilerConfig"] = profiler_config
+
+        if resource_config is not None:
+            update_training_job_request["ResourceConfig"] = resource_config
 
         return update_training_job_request
 
@@ -2441,6 +2454,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         tags,
         data_processing,
         model_client_config=None,
+        batch_data_capture_config: BatchDataCaptureConfig = None,
     ):
         """Construct an dict can be used to create an Amazon SageMaker transform job.
 
@@ -2476,6 +2490,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             model_client_config (dict): A dictionary describing the model configuration for the
                 job. Dictionary contains two optional keys,
                 'InvocationsTimeoutInSeconds', and 'InvocationsMaxRetries'.
+            batch_data_capture_config (BatchDataCaptureConfig): Configuration object which
+                specifies the configurations related to the batch data capture for the transform job
+                (default: None)
 
         Returns:
             Dict: a create transform job request dict
@@ -2512,6 +2529,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if model_client_config and len(model_client_config) > 0:
             transform_request["ModelClientConfig"] = model_client_config
 
+        if batch_data_capture_config is not None:
+            transform_request["DataCaptureConfig"] = batch_data_capture_config._to_request_dict()
+
         return transform_request
 
     def transform(
@@ -2529,6 +2549,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         tags,
         data_processing,
         model_client_config=None,
+        batch_data_capture_config: BatchDataCaptureConfig = None,
     ):
         """Create an Amazon SageMaker transform job.
 
@@ -2564,6 +2585,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             model_client_config (dict): A dictionary describing the model configuration for the
                 job. Dictionary contains two optional keys,
                 'InvocationsTimeoutInSeconds', and 'InvocationsMaxRetries'.
+            batch_data_capture_config (BatchDataCaptureConfig): Configuration object which
+                specifies the configurations related to the batch data capture for the transform job
         """
         tags = _append_project_tags(tags)
         transform_request = self._get_transform_request(
@@ -2580,6 +2603,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             tags=tags,
             data_processing=data_processing,
             model_client_config=model_client_config,
+            batch_data_capture_config=batch_data_capture_config,
         )
 
         def submit(request):
@@ -2633,7 +2657,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             request["VpcConfig"] = vpc_config
 
         if enable_network_isolation:
-            request["EnableNetworkIsolation"] = True
+            # enable_network_isolation may be a pipeline variable which is
+            # parsed in execution time
+            request["EnableNetworkIsolation"] = enable_network_isolation
 
         return request
 
@@ -2955,6 +2981,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         tags=None,
         kms_key=None,
         data_capture_config_dict=None,
+        volume_size=None,
+        model_data_download_timeout=None,
+        container_startup_health_check_timeout=None,
     ):
         """Create an Amazon SageMaker endpoint configuration.
 
@@ -2978,6 +3007,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 attached to the instance hosting the endpoint.
             data_capture_config_dict (dict): Specifies configuration related to Endpoint data
                 capture for use with Amazon SageMaker Model Monitoring. Default: None.
+            volume_size (int): The size, in GB, of the ML storage volume attached to individual
+                inference instance associated with the production variant. Currenly only Amazon EBS
+                gp2 storage volumes are supported.
+            model_data_download_timeout (int): The timeout value, in seconds, to download and
+                extract model data from Amazon S3 to the individual inference instance associated
+                with this production variant.
+            container_startup_health_check_timeout (int): The timeout value, in seconds, for your
+                inference container to pass health check by SageMaker Hosting. For more information
+                about health check see:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html#your-algorithms-inference-algo-ping-requests
 
         Example:
             >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]
@@ -2999,6 +3038,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     instance_type,
                     initial_instance_count,
                     accelerator_type=accelerator_type,
+                    volume_size=volume_size,
+                    model_data_download_timeout=model_data_download_timeout,
+                    container_startup_health_check_timeout=container_startup_health_check_timeout,
                 )
             ],
         }
@@ -4185,6 +4227,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         query_string: str,
         output_location: str,
         kms_key: str = None,
+        workgroup: str = None,
     ) -> Dict[str, str]:
         """Start Athena query execution.
 
@@ -4194,6 +4237,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             query_string (str): SQL expression.
             output_location (str): S3 location of the output file.
             kms_key (str): KMS key id will be used to encrypt the result if given.
+            workgroup (str): The name of the workgroup in which the query is being started.
+            If the workgroup is not specified, the default workgroup is used.
 
         Returns:
             Response dict from the service.
@@ -4207,6 +4252,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 EncryptionConfiguration=dict(EncryptionOption="SSE_KMS", KmsKey=kms_key)
             )
         kwargs.update(ResultConfiguration=result_config)
+
+        if workgroup:
+            kwargs.update(WorkGroup=workgroup)
 
         athena_client = self.boto_session.client("athena", region_name=self.boto_region_name)
         return athena_client.start_query_execution(**kwargs)
@@ -4499,9 +4547,32 @@ def get_create_model_package_request(
             "Containers": containers,
             "SupportedContentTypes": content_types,
             "SupportedResponseMIMETypes": response_types,
-            "SupportedRealtimeInferenceInstanceTypes": inference_instances,
-            "SupportedTransformInstanceTypes": transform_instances,
         }
+        if model_package_group_name is not None:
+            if inference_instances is not None:
+                inference_specification.update(
+                    {
+                        "SupportedRealtimeInferenceInstanceTypes": inference_instances,
+                    }
+                )
+            if transform_instances is not None:
+                inference_specification.update(
+                    {
+                        "SupportedTransformInstanceTypes": transform_instances,
+                    }
+                )
+        else:
+            if not all([inference_instances, transform_instances]):
+                raise ValueError(
+                    "inference_instances and transform_instances "
+                    "must be provided if model_package_group_name is not present."
+                )
+            inference_specification.update(
+                {
+                    "SupportedRealtimeInferenceInstanceTypes": inference_instances,
+                    "SupportedTransformInstanceTypes": transform_instances,
+                }
+            )
         request_dict["InferenceSpecification"] = inference_specification
     request_dict["CertifyForMarketplace"] = marketplace_cert
     request_dict["ModelApprovalStatus"] = approval_status
@@ -4581,6 +4652,9 @@ def production_variant(
     initial_weight=1,
     accelerator_type=None,
     serverless_inference_config=None,
+    volume_size=None,
+    model_data_download_timeout=None,
+    container_startup_health_check_timeout=None,
 ):
     """Create a production variant description suitable for use in a ``ProductionVariant`` list.
 
@@ -4602,7 +4676,16 @@ def production_variant(
         serverless_inference_config (dict): Specifies configuration dict related to serverless
             endpoint. The dict is converted from sagemaker.model_monitor.ServerlessInferenceConfig
             object (default: None)
-
+        volume_size (int): The size, in GB, of the ML storage volume attached to individual
+            inference instance associated with the production variant. Currenly only Amazon EBS
+            gp2 storage volumes are supported.
+        model_data_download_timeout (int): The timeout value, in seconds, to download and extract
+            model data from Amazon S3 to the individual inference instance associated with this
+            production variant.
+        container_startup_health_check_timeout (int): The timeout value, in seconds, for your
+            inference container to pass health check by SageMaker Hosting. For more information
+            about health check see:
+            https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html#your-algorithms-inference-algo-ping-requests
     Returns:
         dict[str, str]: An SageMaker ``ProductionVariant`` description
     """
@@ -4621,6 +4704,12 @@ def production_variant(
         initial_instance_count = initial_instance_count or 1
         production_variant_configuration["InitialInstanceCount"] = initial_instance_count
         production_variant_configuration["InstanceType"] = instance_type
+        update_args(
+            production_variant_configuration,
+            VolumeSizeInGB=volume_size,
+            ModelDataDownloadTimeoutInSeconds=model_data_download_timeout,
+            ContainerStartupHealthCheckTimeoutInSeconds=container_startup_health_check_timeout,
+        )
 
     return production_variant_configuration
 
@@ -4668,21 +4757,30 @@ def _train_done(sagemaker_client, job_name, last_desc):
     """Placeholder docstring"""
     in_progress_statuses = ["InProgress", "Created"]
 
-    desc = sagemaker_client.describe_training_job(TrainingJobName=job_name)
-    status = desc["TrainingJobStatus"]
+    for _ in retries(
+        max_retry_count=10,  # 10*30 = 5min
+        exception_message_prefix="Waiting for schedule to leave 'Pending' status",
+        seconds_to_sleep=30,
+    ):
+        try:
+            desc = sagemaker_client.describe_training_job(TrainingJobName=job_name)
+            status = desc["TrainingJobStatus"]
 
-    if secondary_training_status_changed(desc, last_desc):
-        print()
-        print(secondary_training_status_message(desc, last_desc), end="")
-    else:
-        print(".", end="")
-    sys.stdout.flush()
+            if secondary_training_status_changed(desc, last_desc):
+                print()
+                print(secondary_training_status_message(desc, last_desc), end="")
+            else:
+                print(".", end="")
+            sys.stdout.flush()
 
-    if status in in_progress_statuses:
-        return desc, False
+            if status in in_progress_statuses:
+                return desc, False
 
-    print()
-    return desc, True
+            print()
+            return desc, True
+        except botocore.exceptions.ClientError as err:
+            if err.response["Error"]["Code"] == "AccessDeniedException":
+                pass
 
 
 def _processing_job_status(sagemaker_client, job_name):
@@ -4946,7 +5044,12 @@ def _rule_statuses_changed(current_statuses, last_statuses):
 def _logs_init(sagemaker_session, description, job):
     """Placeholder docstring"""
     if job == "Training":
-        instance_count = description["ResourceConfig"]["InstanceCount"]
+        if "InstanceGroups" in description["ResourceConfig"]:
+            instance_count = 0
+            for instanceGroup in description["ResourceConfig"]["InstanceGroups"]:
+                instance_count += instanceGroup["InstanceCount"]
+        else:
+            instance_count = description["ResourceConfig"]["InstanceCount"]
     elif job == "Transform":
         instance_count = description["TransformResources"]["InstanceCount"]
     elif job == "Processing":

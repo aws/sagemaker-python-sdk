@@ -27,7 +27,8 @@
                     "cn-northwest-1": "844356804704",
                     "eu-south-1": "753923664805",
                     "af-south-1": "309385258863",
-                    "us-gov-west-1": "271483468897"
+                    "us-gov-west-1": "271483468897",
+                    "ap-southeast-3": "732049463269"
                 },
                 "repository": "sagemaker-spark-processing"
             },
@@ -56,7 +57,8 @@
                         "cn-northwest-1": "844356804704",
                         "eu-south-1": "753923664805",
                         "af-south-1": "309385258863",
-                        "us-gov-west-1": "271483468897"
+                        "us-gov-west-1": "271483468897",
+                        "ap-southeast-3": "732049463269"
                     },
                     "repository": "sagemaker-spark-processing"
             },
@@ -85,7 +87,8 @@
                     "cn-northwest-1": "844356804704",
                     "eu-south-1": "753923664805",
                     "af-south-1": "309385258863",
-                    "us-gov-west-1": "271483468897"
+                    "us-gov-west-1": "271483468897",
+                    "ap-southeast-3": "732049463269"
                 },
                 "repository": "sagemaker-spark-processing"
             }

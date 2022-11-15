@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import logging
+from typing import Union, Optional, Dict
 
 from sagemaker.estimator import Framework, EstimatorBase
 from sagemaker.fw_utils import (
@@ -25,6 +26,7 @@ from sagemaker.fw_utils import (
 from sagemaker.chainer import defaults
 from sagemaker.chainer.model import ChainerModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
+from sagemaker.workflow.entities import PipelineVariable
 
 logger = logging.getLogger("sagemaker")
 
@@ -32,26 +34,26 @@ logger = logging.getLogger("sagemaker")
 class Chainer(Framework):
     """Handle end-to-end training and deployment of custom Chainer code."""
 
-    _framework_name = "chainer"
+    _framework_name: str = "chainer"
 
     # Hyperparameters
-    _use_mpi = "sagemaker_use_mpi"
-    _num_processes = "sagemaker_num_processes"
-    _process_slots_per_host = "sagemaker_process_slots_per_host"
-    _additional_mpi_options = "sagemaker_additional_mpi_options"
+    _use_mpi: str = "sagemaker_use_mpi"
+    _num_processes: str = "sagemaker_num_processes"
+    _process_slots_per_host: str = "sagemaker_process_slots_per_host"
+    _additional_mpi_options: str = "sagemaker_additional_mpi_options"
 
     def __init__(
         self,
-        entry_point,
-        use_mpi=None,
-        num_processes=None,
-        process_slots_per_host=None,
-        additional_mpi_options=None,
-        source_dir=None,
-        hyperparameters=None,
-        framework_version=None,
-        py_version=None,
-        image_uri=None,
+        entry_point: Union[str, PipelineVariable],
+        use_mpi: Optional[Union[bool, PipelineVariable]] = None,
+        num_processes: Optional[Union[int, PipelineVariable]] = None,
+        process_slots_per_host: Optional[Union[int, PipelineVariable]] = None,
+        additional_mpi_options: Optional[Union[str, PipelineVariable]] = None,
+        source_dir: Optional[Union[str, PipelineVariable]] = None,
+        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        framework_version: Optional[str] = None,
+        py_version: Optional[str] = None,
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
         **kwargs
     ):
         """This ``Estimator`` executes an Chainer script in a managed execution environment.
@@ -72,30 +74,30 @@ class Chainer(Framework):
         home-page: https://github.com/aws/sagemaker-python-sdk
 
         Args:
-            entry_point (str): Path (absolute or relative) to the Python source
+            entry_point (str or PipelineVariable): Path (absolute or relative) to the Python source
                 file which should be executed as the entry point to training.
                 If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
-            use_mpi (bool): If true, entry point is run as an MPI script. By
+            use_mpi (bool or PipelineVariable): If true, entry point is run as an MPI script. By
                 default, the Chainer Framework runs the entry point with
                 'mpirun' if more than one instance is used.
-            num_processes (int): Total number of processes to run the entry
+            num_processes (int or PipelineVariable): Total number of processes to run the entry
                 point with. By default, the Chainer Framework runs one process
                 per GPU (on GPU instances), or one process per host (on CPU
                 instances).
-            process_slots_per_host (int): The number of processes that can run
+            process_slots_per_host (int or PipelineVariable): The number of processes that can run
                 on each instance. By default, this is set to the number of GPUs
                 on the instance (on GPU instances), or one (on CPU instances).
-            additional_mpi_options (str): String of options to the 'mpirun'
+            additional_mpi_options (str or PipelineVariable): String of options to the 'mpirun'
                 command used to run the entry point. For example, '-X
                 NCCL_DEBUG=WARN' will pass that option string to the mpirun
                 command.
-            source_dir (str): Path (absolute or relative) to a directory with
+            source_dir (str or PipelineVariable): Path (absolute or relative) to a directory with
                 any other training source code dependencies aside from the entry
                 point file (default: None). Structure within this directory are
                 preserved when training on Amazon SageMaker.
-            hyperparameters (dict): Hyperparameters that will be used for
-                training (default: None). The hyperparameters are made
+            hyperparameters (dict[str, str] or dict[str, PipelineVariable]): Hyperparameters
+                that will be used for training (default: None). The hyperparameters are made
                 accessible as a dict[str, str] to the training code on
                 SageMaker. For convenience, this accepts other types for keys
                 and values, but ``str()`` will be called to convert them before

@@ -81,7 +81,9 @@ class AthenaQuery:
     _result_bucket: str = attr.ib(init=False, default=None)
     _result_file_prefix: str = attr.ib(init=False, default=None)
 
-    def run(self, query_string: str, output_location: str, kms_key: str = None) -> str:
+    def run(
+        self, query_string: str, output_location: str, kms_key: str = None, workgroup: str = None
+    ) -> str:
         """Execute a SQL query given a query string, output location and kms key.
 
         This method executes the SQL query using Athena and outputs the results to output_location
@@ -91,6 +93,7 @@ class AthenaQuery:
             query_string: SQL query string.
             output_location: S3 URI of the query result.
             kms_key: KMS key id. If set, will be used to encrypt the query result file.
+            workgroup (str): The name of the workgroup in which the query is being started.
 
         Returns:
             Execution id of the query.
@@ -101,6 +104,7 @@ class AthenaQuery:
             query_string=query_string,
             output_location=output_location,
             kms_key=kms_key,
+            workgroup=workgroup,
         )
         self._current_query_execution_id = response["QueryExecutionId"]
         parse_result = urlparse(output_location, allow_fragments=False)

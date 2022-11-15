@@ -31,6 +31,12 @@ class ExecutionVariable(PipelineVariable):
         """
         self.name = name
 
+    def __eq__(self, other):
+        """Override default equals method"""
+        if not isinstance(other, ExecutionVariable):
+            return NotImplemented
+        return self.name == other.name
+
     def to_string(self) -> PipelineVariable:
         """Prompt the pipeline to convert the pipeline variable to String in runtime
 
@@ -58,6 +64,8 @@ class ExecutionVariables:
     - ExecutionVariables.PIPELINE_ARN
     - ExecutionVariables.PIPELINE_EXECUTION_ID
     - ExecutionVariables.PIPELINE_EXECUTION_ARN
+    - ExecutionVariables.TRAINING_JOB_NAME
+    - ExecutionVariables.PROCESSING_JOB_NAME
     """
 
     START_DATETIME = ExecutionVariable("StartDateTime")
@@ -66,3 +74,5 @@ class ExecutionVariables:
     PIPELINE_ARN = ExecutionVariable("PipelineArn")
     PIPELINE_EXECUTION_ID = ExecutionVariable("PipelineExecutionId")
     PIPELINE_EXECUTION_ARN = ExecutionVariable("PipelineExecutionArn")
+    TRAINING_JOB_NAME = ExecutionVariable("TrainingJobName")
+    PROCESSING_JOB_NAME = ExecutionVariable("ProcessingJobName")

@@ -23,8 +23,6 @@ from sagemaker.workflow.retry import RetryPolicy, SageMakerJobStepRetryPolicy
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.steps import Step, CreateModelStep
 
-NEED_RUNTIME_REPACK = "need_runtime_repack"
-
 _CREATE_MODEL_RETRY_POLICIES = "create_model_retry_policies"
 _REGISTER_MODEL_RETRY_POLICIES = "register_model_retry_policies"
 _REPACK_MODEL_RETRY_POLICIES = "repack_model_retry_policies"
@@ -155,6 +153,7 @@ class ModelStep(StepCollection):
         self._create_model_args = self.step_args.create_model_request
         self._register_model_args = self.step_args.create_model_package_request
         self._need_runtime_repack = self.step_args.need_runtime_repack
+        self._runtime_repack_output_prefix = self.step_args.runtime_repack_output_prefix
         self._assign_and_validate_retry_policies(retry_policies)
 
         if self._need_runtime_repack:
@@ -268,6 +267,7 @@ class ModelStep(StepCollection):
                     ),
                     depends_on=self.depends_on,
                     retry_policies=self._repack_model_retry_policies,
+                    output_path=self._runtime_repack_output_prefix,
                 )
                 self.steps.append(repack_model_step)
 

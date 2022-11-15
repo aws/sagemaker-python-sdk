@@ -56,6 +56,8 @@ EXPERIMENT_CONFIG = {
     "TrialComponentDisplayName": "tc",
 }
 
+DISTRIBUTION_PYTORCH_DDP_ENABLED = {"pytorchddp": {"enabled": True}}
+
 
 @pytest.fixture(name="sagemaker_session")
 def fixture_sagemaker_session():
@@ -97,7 +99,7 @@ def _pytorch_estimator(
     py_version,
     instance_type=None,
     base_job_name=None,
-    **kwargs
+    **kwargs,
 ):
     return PyTorch(
         entry_point=SCRIPT_PATH,
@@ -108,7 +110,7 @@ def _pytorch_estimator(
         instance_count=INSTANCE_COUNT,
         instance_type=instance_type if instance_type else INSTANCE_TYPE,
         base_job_name=base_job_name,
-        **kwargs
+        **kwargs,
     )
 
 
@@ -709,3 +711,92 @@ def test_pt_heterogeneous_cluster_distribution_config(
         },
     )
     assert pytorch.distribution == expected_return
+
+
+@patch("sagemaker.utils.repack_model", MagicMock())
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+def test_register_pytorch_model_auto_infer_framework(
+    sagemaker_session, pytorch_inference_version, pytorch_inference_py_version
+):
+
+    model_package_group_name = "test-pytorch-register-model"
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarge"]
+    image_uri = "fakeimage"
+
+    pytorch_model = PyTorchModel(
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        framework_version=pytorch_inference_version,
+        py_version=pytorch_inference_py_version,
+        sagemaker_session=sagemaker_session,
+    )
+
+    pytorch_model.register(
+        content_types,
+        response_types,
+        inference_instances,
+        transform_instances,
+        model_package_group_name=model_package_group_name,
+        marketplace_cert=True,
+        image_uri=image_uri,
+    )
+
+    expected_create_model_package_request = {
+        "containers": [
+            {
+                "Image": image_uri,
+                "Environment": ANY,
+                "ModelDataUrl": ANY,
+                "Framework": "PYTORCH",
+                "FrameworkVersion": pytorch_inference_version,
+            },
+        ],
+        "content_types": content_types,
+        "response_types": response_types,
+        "inference_instances": inference_instances,
+        "transform_instances": transform_instances,
+        "model_package_group_name": model_package_group_name,
+        "marketplace_cert": True,
+    }
+    sagemaker_session.create_model_package_from_containers.assert_called_with(
+        **expected_create_model_package_request
+    )
+
+
+def test_pytorch_ddp_distribution_configuration(
+    sagemaker_session, pytorch_ddp_framework_version, pytorch_ddp_py_version
+):
+    test_instance_type = "ml.p4d.24xlarge"
+    pytorch = _pytorch_estimator(
+        sagemaker_session,
+        framework_version=pytorch_ddp_framework_version,
+        py_version=pytorch_ddp_py_version,
+        distribution=DISTRIBUTION_PYTORCH_DDP_ENABLED,
+        instance_type=test_instance_type,
+    )
+    actual_pytorch_ddp = pytorch._pytorch_distribution_configuration(
+        distribution=pytorch.distribution
+    )
+    expected_torch_ddp = {
+        "sagemaker_pytorch_ddp_enabled": True,
+        "sagemaker_instance_type": test_instance_type,
+    }
+    assert actual_pytorch_ddp == expected_torch_ddp
+
+
+def test_pytorch_ddp_distribution_configuration_unsupported(sagemaker_session):
+    unsupported_framework_version = "1.9.1"
+    unsupported_py_version = "py2"
+    with pytest.raises(ValueError) as error:
+        _pytorch_estimator(
+            sagemaker_session,
+            framework_version=unsupported_framework_version,
+            py_version=unsupported_py_version,
+            distribution=DISTRIBUTION_PYTORCH_DDP_ENABLED,
+        )
+    assert (f"framework_version {unsupported_framework_version} is not supported") in str(error)
+    assert (f"py_version {unsupported_py_version} is not supported") in str(error)

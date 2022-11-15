@@ -30,7 +30,7 @@ from sagemaker.jumpstart.types import (
     JumpStartModelSpecs,
     JumpStartVersionedModelId,
 )
-
+from sagemaker.workflow import is_pipeline_variable
 
 LOGGER = logging.getLogger(__name__)
 
@@ -271,26 +271,41 @@ def add_jumpstart_tags(
         training_script_uri (Optional[str]): S3 URI for training script tarball.
             (Default: None).
     """
-
+    warn_msg = (
+        "The URI (%s) is a pipeline variable which is only interpreted at execution time. "
+        "As a result, the JumpStart resources will not be tagged."
+    )
     if inference_model_uri:
-        tags = add_single_jumpstart_tag(
-            inference_model_uri, enums.JumpStartTag.INFERENCE_MODEL_URI, tags
-        )
+        if is_pipeline_variable(inference_model_uri):
+            logging.warning(warn_msg, "inference_model_uri")
+        else:
+            tags = add_single_jumpstart_tag(
+                inference_model_uri, enums.JumpStartTag.INFERENCE_MODEL_URI, tags
+            )
 
     if inference_script_uri:
-        tags = add_single_jumpstart_tag(
-            inference_script_uri, enums.JumpStartTag.INFERENCE_SCRIPT_URI, tags
-        )
+        if is_pipeline_variable(inference_script_uri):
+            logging.warning(warn_msg, "inference_script_uri")
+        else:
+            tags = add_single_jumpstart_tag(
+                inference_script_uri, enums.JumpStartTag.INFERENCE_SCRIPT_URI, tags
+            )
 
     if training_model_uri:
-        tags = add_single_jumpstart_tag(
-            training_model_uri, enums.JumpStartTag.TRAINING_MODEL_URI, tags
-        )
+        if is_pipeline_variable(training_model_uri):
+            logging.warning(warn_msg, "training_model_uri")
+        else:
+            tags = add_single_jumpstart_tag(
+                training_model_uri, enums.JumpStartTag.TRAINING_MODEL_URI, tags
+            )
 
     if training_script_uri:
-        tags = add_single_jumpstart_tag(
-            training_script_uri, enums.JumpStartTag.TRAINING_SCRIPT_URI, tags
-        )
+        if is_pipeline_variable(training_script_uri):
+            logging.warning(warn_msg, "training_script_uri")
+        else:
+            tags = add_single_jumpstart_tag(
+                training_script_uri, enums.JumpStartTag.TRAINING_SCRIPT_URI, tags
+            )
 
     return tags
 

@@ -17,8 +17,14 @@ data validation, and model evaluation and interpretation on SageMaker.
 """
 from __future__ import absolute_import
 
+from typing import Union, Optional, List, Dict
+
+from sagemaker.session import Session
+from sagemaker.network import NetworkConfig
 from sagemaker.processing import FrameworkProcessor
 from sagemaker.huggingface.estimator import HuggingFace
+
+from sagemaker.workflow.entities import PipelineVariable
 
 
 class HuggingFaceProcessor(FrameworkProcessor):
@@ -28,25 +34,25 @@ class HuggingFaceProcessor(FrameworkProcessor):
 
     def __init__(
         self,
-        role,
-        instance_count,
-        instance_type,
-        transformers_version=None,
-        tensorflow_version=None,
-        pytorch_version=None,
-        py_version="py36",
-        image_uri=None,
-        command=None,
-        volume_size_in_gb=30,
-        volume_kms_key=None,
-        output_kms_key=None,
-        code_location=None,
-        max_runtime_in_seconds=None,
-        base_job_name=None,
-        sagemaker_session=None,
-        env=None,
-        tags=None,
-        network_config=None,
+        role: str,
+        instance_count: Union[int, PipelineVariable],
+        instance_type: Union[str, PipelineVariable],
+        transformers_version: Optional[str] = None,
+        tensorflow_version: Optional[str] = None,
+        pytorch_version: Optional[str] = None,
+        py_version: str = "py36",
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
+        command: Optional[List[str]] = None,
+        volume_size_in_gb: Union[int, PipelineVariable] = 30,
+        volume_kms_key: Optional[Union[str, PipelineVariable]] = None,
+        output_kms_key: Optional[Union[str, PipelineVariable]] = None,
+        code_location: Optional[str] = None,
+        max_runtime_in_seconds: Optional[Union[int, PipelineVariable]] = None,
+        base_job_name: Optional[str] = None,
+        sagemaker_session: Optional[Session] = None,
+        env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+        network_config: Optional[NetworkConfig] = None,
     ):
         """This processor executes a Python script in a HuggingFace execution environment.
 
