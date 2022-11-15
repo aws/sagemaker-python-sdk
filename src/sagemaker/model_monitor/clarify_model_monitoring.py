@@ -227,6 +227,7 @@ class ClarifyModelMonitor(mm.ModelMonitor):
         env=None,
         tags=None,
         network_config=None,
+        batch_transform_input=None,
     ):
         """Build the request for job definition creation API
 
@@ -270,6 +271,8 @@ class ClarifyModelMonitor(mm.ModelMonitor):
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
+            batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to run
+                the monitoring schedule on the batch transform
 
         Returns:
             dict: request parameters to create job definition.
@@ -366,6 +369,27 @@ class ClarifyModelMonitor(mm.ModelMonitor):
                         latest_baselining_job_config.probability_threshold_attribute
                     )
             job_input = normalized_endpoint_input._to_request_dict()
+        elif batch_transform_input is not None:
+            # backfill attributes to batch transform input
+            if latest_baselining_job_config is not None:
+                if batch_transform_input.features_attribute is None:
+                    batch_transform_input.features_attribute = (
+                        latest_baselining_job_config.features_attribute
+                    )
+                if batch_transform_input.inference_attribute is None:
+                    batch_transform_input.inference_attribute = (
+                        latest_baselining_job_config.inference_attribute
+                    )
+                if batch_transform_input.probability_attribute is None:
+                    batch_transform_input.probability_attribute = (
+                        latest_baselining_job_config.probability_attribute
+                    )
+                if batch_transform_input.probability_threshold_attribute is None:
+                    batch_transform_input.probability_threshold_attribute = (
+                        latest_baselining_job_config.probability_threshold_attribute
+                    )
+            job_input = batch_transform_input._to_request_dict()
+
         if ground_truth_input is not None:
             job_input["GroundTruthS3Input"] = dict(S3Uri=ground_truth_input)
 
@@ -500,42 +524,60 @@ class ModelBiasMonitor(ClarifyModelMonitor):
     # noinspection PyMethodOverriding
     def create_monitoring_schedule(
         self,
-        endpoint_input,
-        ground_truth_input,
+        endpoint_input=None,
+        ground_truth_input=None,
         analysis_config=None,
         output_s3_uri=None,
         constraints=None,
         monitor_schedule_name=None,
         schedule_cron_expression=None,
         enable_cloudwatch_metrics=True,
+        batch_transform_input=None,
     ):
         """Creates a monitoring schedule.
 
         Args:
             endpoint_input (str or sagemaker.model_monitor.EndpointInput): The endpoint to monitor.
-                This can either be the endpoint name or an EndpointInput.
-            ground_truth_input (str): S3 URI to ground truth dataset.
+                This can either be the endpoint name or an EndpointInput. (default: None)
+            ground_truth_input (str): S3 URI to ground truth dataset. (default: None)
             analysis_config (str or BiasAnalysisConfig): URI to analysis_config for the bias job.
                 If it is None then configuration of the latest baselining job will be reused, but
-                if no baselining job then fail the call.
+                if no baselining job then fail the call. (default: None)
             output_s3_uri (str): S3 destination of the constraint_violations and analysis result.
-                Default: "s3://<default_session_bucket>/<job_name>/output"
+                Default: "s3://<default_session_bucket>/<job_name>/output" (default: None)
             constraints (sagemaker.model_monitor.Constraints or str): If provided it will be used
                 for monitoring the endpoint. It can be a Constraints object or an S3 uri pointing
-                to a constraints JSON file.
+                to a constraints JSON file. (default: None)
             monitor_schedule_name (str): Schedule name. If not specified, the processor generates
                 a default job name, based on the image name and current timestamp.
+                (default: None)
             schedule_cron_expression (str): The cron expression that dictates the frequency that
                 this job run. See sagemaker.model_monitor.CronExpressionGenerator for valid
-                expressions. Default: Daily.
+                expressions. Default: Daily. (default: None)
             enable_cloudwatch_metrics (bool): Whether to publish cloudwatch metrics as part of
-                the baselining or monitoring jobs.
+                the baselining or monitoring jobs. (default: True)
+            batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to run
+                the monitoring schedule on the batch transform (default: None)
         """
+        # we default ground_truth_input to None in the function signature
+        # but verify they are giving here for positional argument
+        # backward compatibility reason.
+        if not ground_truth_input:
+            raise ValueError("ground_truth_input can not be None.")
         if self.job_definition_name is not None or self.monitoring_schedule_name is not None:
             message = (
                 "It seems that this object was already used to create an Amazon Model "
                 "Monitoring Schedule. To create another, first delete the existing one "
                 "using my_monitor.delete_monitoring_schedule()."
+            )
+            _LOGGER.error(message)
+            raise ValueError(message)
+
+        if (batch_transform_input is not None) ^ (endpoint_input is None):
+            message = (
+                "Need to have either batch_transform_input or endpoint_input to create an "
+                "Amazon Model Monitoring Schedule. "
+                "Please provide only one of the above required inputs"
             )
             _LOGGER.error(message)
             raise ValueError(message)
@@ -569,6 +611,7 @@ class ModelBiasMonitor(ClarifyModelMonitor):
             env=self.env,
             tags=self.tags,
             network_config=self.network_config,
+            batch_transform_input=batch_transform_input,
         )
         self.sagemaker_session.sagemaker_client.create_model_bias_job_definition(**request_dict)
 
@@ -612,6 +655,7 @@ class ModelBiasMonitor(ClarifyModelMonitor):
         max_runtime_in_seconds=None,
         env=None,
         network_config=None,
+        batch_transform_input=None,
     ):
         """Updates the existing monitoring schedule.
 
@@ -651,6 +695,8 @@ class ModelBiasMonitor(ClarifyModelMonitor):
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
+            batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to run
+                the monitoring schedule on the batch transform
         """
         valid_args = {
             arg: value for arg, value in locals().items() if arg != "self" and value is not None
@@ -659,6 +705,15 @@ class ModelBiasMonitor(ClarifyModelMonitor):
         # Nothing to update
         if len(valid_args) <= 0:
             return
+
+        if batch_transform_input is not None and endpoint_input is not None:
+            message = (
+                "Need to have either batch_transform_input or endpoint_input to create an "
+                "Amazon Model Monitoring Schedule. "
+                "Please provide only one of the above required inputs"
+            )
+            _LOGGER.error(message)
+            raise ValueError(message)
 
         # Only need to update schedule expression
         if len(valid_args) == 1 and schedule_cron_expression is not None:
@@ -691,6 +746,7 @@ class ModelBiasMonitor(ClarifyModelMonitor):
             env=env,
             tags=self.tags,
             network_config=network_config,
+            batch_transform_input=batch_transform_input,
         )
         self.sagemaker_session.sagemaker_client.create_model_bias_job_definition(**request_dict)
         try:
@@ -895,19 +951,20 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
     # noinspection PyMethodOverriding
     def create_monitoring_schedule(
         self,
-        endpoint_input,
+        endpoint_input=None,
         analysis_config=None,
         output_s3_uri=None,
         constraints=None,
         monitor_schedule_name=None,
         schedule_cron_expression=None,
         enable_cloudwatch_metrics=True,
+        batch_transform_input=None,
     ):
         """Creates a monitoring schedule.
 
         Args:
             endpoint_input (str or sagemaker.model_monitor.EndpointInput): The endpoint to monitor.
-                This can either be the endpoint name or an EndpointInput.
+                This can either be the endpoint name or an EndpointInput. (default: None)
             analysis_config (str or ExplainabilityAnalysisConfig): URI to the analysis_config for
                 the explainability job. If it is None then configuration of the latest baselining
                 job will be reused, but if no baselining job then fail the call.
@@ -923,12 +980,23 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
                 expressions. Default: Daily.
             enable_cloudwatch_metrics (bool): Whether to publish cloudwatch metrics as part of
                 the baselining or monitoring jobs.
+            batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to
+            run the monitoring schedule on the batch transform
         """
         if self.job_definition_name is not None or self.monitoring_schedule_name is not None:
             message = (
                 "It seems that this object was already used to create an Amazon Model "
                 "Monitoring Schedule. To create another, first delete the existing one "
                 "using my_monitor.delete_monitoring_schedule()."
+            )
+            _LOGGER.error(message)
+            raise ValueError(message)
+
+        if (batch_transform_input is not None) ^ (endpoint_input is None):
+            message = (
+                "Need to have either batch_transform_input or endpoint_input to create an "
+                "Amazon Model Monitoring Schedule."
+                "Please provide only one of the above required inputs"
             )
             _LOGGER.error(message)
             raise ValueError(message)
@@ -961,6 +1029,7 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
             env=self.env,
             tags=self.tags,
             network_config=self.network_config,
+            batch_transform_input=batch_transform_input,
         )
         self.sagemaker_session.sagemaker_client.create_model_explainability_job_definition(
             **request_dict
@@ -1005,6 +1074,7 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
         max_runtime_in_seconds=None,
         env=None,
         network_config=None,
+        batch_transform_input=None,
     ):
         """Updates the existing monitoring schedule.
 
@@ -1043,6 +1113,8 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
+            batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to
+                run the monitoring schedule on the batch transform
         """
         valid_args = {
             arg: value for arg, value in locals().items() if arg != "self" and value is not None
@@ -1051,6 +1123,15 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
         # Nothing to update
         if len(valid_args) <= 0:
             raise ValueError("Nothing to update.")
+
+        if batch_transform_input is not None and endpoint_input is not None:
+            message = (
+                "Need to have either batch_transform_input or endpoint_input to create an "
+                "Amazon Model Monitoring Schedule. "
+                "Please provide only one of the above required inputs"
+            )
+            _LOGGER.error(message)
+            raise ValueError(message)
 
         # Only need to update schedule expression
         if len(valid_args) == 1 and schedule_cron_expression is not None:
@@ -1084,6 +1165,7 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
             env=env,
             tags=self.tags,
             network_config=network_config,
+            batch_transform_input=batch_transform_input,
         )
         self.sagemaker_session.sagemaker_client.create_model_explainability_job_definition(
             **request_dict

@@ -30,6 +30,24 @@ def framework_uri(repo, fw_version, account, py_version=None, processor="cpu", r
     return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
 
 
+def neuron_framework_uri(
+    repo,
+    fw_version,
+    account,
+    py_version=None,
+    inference_tool="neuron",
+    region=REGION,
+    sdk_version="sdk2.4.0",
+    container_version="ubuntu20.04",
+):
+    domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
+    tag = "-".join(
+        x for x in (fw_version, inference_tool, py_version, sdk_version, container_version) if x
+    )
+
+    return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
+
+
 def algo_uri(algo, account, region, version=1):
     domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
     return IMAGE_URI_FORMAT.format(account, region, domain, algo, version)
@@ -38,3 +56,18 @@ def algo_uri(algo, account, region, version=1):
 def monitor_uri(account, region=REGION):
     domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
     return MONITOR_URI_FORMAT.format(account, region, domain)
+
+
+def graviton_framework_uri(
+    repo,
+    fw_version,
+    account,
+    py_version="py38",
+    processor="cpu",
+    region=REGION,
+    container_version="ubuntu20.04-sagemaker",
+):
+    domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
+    tag = "-".join(x for x in (fw_version, processor, py_version, container_version) if x)
+
+    return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)

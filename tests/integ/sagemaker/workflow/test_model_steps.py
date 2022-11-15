@@ -836,6 +836,7 @@ def test_tensorflow_model_register_and_deploy_with_runtime_repack(
         sagemaker_session=pipeline_session,
         entry_point=os.path.join(_TENSORFLOW_PATH, "inference.py"),
         dependencies=[os.path.join(_TENSORFLOW_PATH, "dependency.py")],
+        code_location=f"s3://{pipeline_session.default_bucket()}/model-code",
     )
     step_args = tf_model.register(
         content_types=["application/json"],

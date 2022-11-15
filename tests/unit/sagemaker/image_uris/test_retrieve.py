@@ -754,7 +754,7 @@ def test_retrieve_with_pipeline_variable():
     kwargs["instance_type"] = Join(on="", values=["a", "b"])
     with pytest.raises(Exception) as error:
         image_uris.retrieve(**kwargs)
-    assert "instance_type should not be a pipeline variable" in str(error.value)
+    assert "the argument instance_type should not be a pipeline variable" in str(error.value)
 
     # instance_type (ParameterString) is given as args rather than kwargs
     # which should not break anything

@@ -153,6 +153,7 @@ class ClarifyCheckStep(Step):
         clarify_check_config: ClarifyCheckConfig,
         check_job_config: CheckJobConfig,
         skip_check: Union[bool, PipelineVariable] = False,
+        fail_on_violation: Union[bool, PipelineVariable] = True,
         register_new_baseline: Union[bool, PipelineVariable] = False,
         model_package_group_name: Union[str, PipelineVariable] = None,
         supplied_baseline_constraints: Union[str, PipelineVariable] = None,
@@ -169,6 +170,8 @@ class ClarifyCheckStep(Step):
             check_job_config (CheckJobConfig): A CheckJobConfig instance.
             skip_check (bool or PipelineVariable): Whether the check
                 should be skipped (default: False).
+            fail_on_violation (bool or PipelineVariable): Whether to fail the step
+                if violation detected (default: True).
             register_new_baseline (bool or PipelineVariable): Whether
                 the new baseline should be registered (default: False).
             model_package_group_name (str or PipelineVariable): The name of a
@@ -214,6 +217,7 @@ class ClarifyCheckStep(Step):
             name, display_name, description, StepTypeEnum.CLARIFY_CHECK, depends_on
         )
         self.skip_check = skip_check
+        self.fail_on_violation = fail_on_violation
         self.register_new_baseline = register_new_baseline
         self.clarify_check_config = clarify_check_config
         self.check_job_config = check_job_config
@@ -286,6 +290,7 @@ class ClarifyCheckStep(Step):
 
         request_dict["ModelPackageGroupName"] = self.model_package_group_name
         request_dict["SkipCheck"] = self.skip_check
+        request_dict["FailOnViolation"] = self.fail_on_violation
         request_dict["RegisterNewBaseline"] = self.register_new_baseline
         request_dict["SuppliedBaselineConstraints"] = self.supplied_baseline_constraints
         if isinstance(
