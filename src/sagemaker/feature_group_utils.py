@@ -35,7 +35,7 @@ def get_feature_group_as_dataframe(feature_group_name: str, athena_bucket: str,
                                                     + 'is_deleted=False'),
                                    role: str = None, region: str = None, session=None,
                                    event_time_feature_name: str = None, latest_ingestion: bool = True,
-                                   logger_level: int = logging.INFO,
+                                   verbose: bool = True,
                                    **pandas_read_csv_kwargs) -> DataFrame:
     """
     Description:
@@ -57,12 +57,15 @@ def get_feature_group_as_dataframe(feature_group_name: str, athena_bucket: str,
         latest_ingestion (bool): if True it will get the data only from the latest ingestion. If False it
                                  will take whatever is specified in the query, or if not specify it, it will
                                  get all the data that wasn't deleted.
-        logger_level (int): logger level used by lib logging.
+        verbose (bool): if True show messages, if False is silent.
 
     Returns:
         dataset (pandas.DataFrame): dataset with the data retrieved from feature group
     """
-    logger.setLevel(logger_level)
+
+    logger.setLevel(logging.WARNING)
+    if verbose:
+        logger.setLevel(logging.INFO)
 
     if latest_ingestion:
         if event_time_feature_name is not None:
