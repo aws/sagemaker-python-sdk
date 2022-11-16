@@ -14,10 +14,12 @@ from __future__ import absolute_import
 
 import datetime
 
+import pandas as pd
 import pytest
 from mock import Mock
 
 from sagemaker.feature_store.dataset_builder import DatasetBuilder
+from sagemaker.feature_store.feature_group import FeatureGroup
 
 
 @pytest.fixture
@@ -28,6 +30,58 @@ def sagemaker_session_mock():
 @pytest.fixture
 def feature_group_mock():
     return Mock()
+
+
+def test_with_feature_group_throw_runtime_error(sagemaker_session_mock):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    dataset_builder = DatasetBuilder(
+        sagemaker_session=sagemaker_session_mock,
+        base=feature_group,
+        output_path="file/to/path",
+    )
+    sagemaker_session_mock.describe_feature_group.return_value = {"OfflineStoreConfig": {}}
+    with pytest.raises(RuntimeError) as error:
+        dataset_builder.with_feature_group(
+            feature_group, "target-feature", ["feature-1", "feature-2"]
+        )
+    assert "No metastore is configured with FeatureGroup MyFeatureGroup." in str(error)
+
+
+def test_with_feature_group(sagemaker_session_mock):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    dataframe = pd.DataFrame({"feature-1": [420, 380, 390], "feature-2": [50, 40, 45]})
+    feature_group.load_feature_definitions(dataframe)
+    dataset_builder = DatasetBuilder(
+        sagemaker_session=sagemaker_session_mock,
+        base=feature_group,
+        output_path="file/to/path",
+    )
+    sagemaker_session_mock.describe_feature_group.return_value = {
+        "OfflineStoreConfig": {"DataCatalogConfig": {"TableName": "table", "Database": "database"}},
+        "RecordIdentifierFeatureName": "feature-1",
+        "EventTimeFeatureName": "feature-2",
+    }
+    dataset_builder.with_feature_group(feature_group, "target-feature", ["feature-1", "feature-2"])
+    assert len(dataset_builder._feature_groups_to_be_merged) == 1
+    assert dataset_builder._feature_groups_to_be_merged[0].features == ["feature-1", "feature-2"]
+    assert dataset_builder._feature_groups_to_be_merged[0].included_feature_names == [
+        "feature-1",
+        "feature-2",
+    ]
+    assert dataset_builder._feature_groups_to_be_merged[0].database == "database"
+    assert dataset_builder._feature_groups_to_be_merged[0].table_name == "table"
+    assert (
+        dataset_builder._feature_groups_to_be_merged[0].record_identifier_feature_name
+        == "feature-1"
+    )
+    assert (
+        dataset_builder._feature_groups_to_be_merged[0].event_time_identifier_feature_name
+        == "feature-2"
+    )
+    assert (
+        dataset_builder._feature_groups_to_be_merged[0].target_feature_name_in_base
+        == "target-feature"
+    )
 
 
 def test_point_in_time_accurate_join(sagemaker_session_mock, feature_group_mock):

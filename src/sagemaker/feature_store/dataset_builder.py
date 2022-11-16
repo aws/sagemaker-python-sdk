@@ -17,7 +17,7 @@ A Dataset Builder is a builder class for generating a dataset by providing condi
 from __future__ import absolute_import
 
 import datetime
-from typing import Any, Dict, List, Sequence, Union
+from typing import Any, Dict, List, Sequence, Tuple, Union
 
 import attr
 import pandas as pd
@@ -248,7 +248,7 @@ class DatasetBuilder:
         self._event_time_ending_timestamp = ending_timestamp
         return self
 
-    def to_csv(self):
+    def to_csv(self) -> Tuple[str, str]:
         """Get query string and result in .csv format
 
         Returns:
@@ -313,6 +313,23 @@ class DatasetBuilder:
                 "OutputLocation", None
             ), query_result.get("QueryExecution", None).get("Query", None)
         raise ValueError("Base must be either a FeatureGroup or a DataFrame.")
+
+    def to_dataframe(self) -> Tuple[str, pd.DataFrame]:
+        """Get query string and result in pandas.Dataframe
+
+        Returns:
+            The pandas.DataFrame object.
+            The query string executed.
+        """
+        query_string, csv_file = self.to_csv()
+        s3.S3Downloader.download(
+            s3_uri=csv_file,
+            local_path="./",
+            kms_key=self._kms_key_id,
+            sagemaker_session=self._sagemaker_session,
+        )
+        # TODO: do we need to clean up local file?
+        return query_string, pd.read_csv(csv_file.split("/")[-1])
 
     def _construct_where_query_string(self, suffix: str, event_time_identifier_feature_name: str):
         """Internal method for constructing SQL WHERE query string by parameters.
@@ -425,6 +442,8 @@ class DatasetBuilder:
                 ]
             )
             query_string += join_subquery_string
+        if self._number_of_records:
+            query_string += f"\nLIMIT {self._number_of_records}"
         return query_string
 
     def _construct_join_condition(self, feature_group: FeatureGroupToBeMerged, suffix: str):
