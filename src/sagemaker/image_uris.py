@@ -145,7 +145,7 @@ def retrieve(
             tolerate_deprecated_model,
         )
 
-    if training_compiler_config and (framework == HUGGING_FACE_FRAMEWORK):
+    if training_compiler_config and (framework in [HUGGING_FACE_FRAMEWORK, "pytorch"]):
         config = _config_for_framework_and_scope(
             framework + "-training-compiler", image_scope, accelerator_type
         )
