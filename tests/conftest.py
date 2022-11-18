@@ -22,7 +22,8 @@ import tests.integ
 from botocore.config import Config
 from packaging.version import Version
 
-from sagemaker import Session, image_uris, utils
+from sagemaker.session import Session
+from sagemaker import image_uris, utils
 from sagemaker.local import LocalSession
 from sagemaker.workflow.pipeline_context import PipelineSession, LocalPipelineSession
 

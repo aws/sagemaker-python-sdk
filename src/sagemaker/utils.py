@@ -33,7 +33,8 @@ import botocore
 import boto3
 from six.moves.urllib import parse
 
-from sagemaker import deprecations, Session
+from sagemaker import deprecations
+
 from sagemaker.session_settings import SessionSettings
 from sagemaker.workflow import is_pipeline_variable, is_pipeline_parameter_string
 
@@ -662,37 +663,6 @@ def _module_import_error(py_module, feature, extras):
         "to install all required dependencies."
     )
     return error_msg.format(py_module, feature, extras)
-
-
-def get_session_from_role(role: str, region: str):
-    boto_session = boto3.Session(region_name=region)
-
-    sts = boto_session.client('sts',
-                              region_name=region,
-                              endpoint_url='https://sts.eu-west-1.amazonaws.com')
-
-    metadata = sts.assume_role(RoleArn=role,
-                               RoleSessionName='SagemakerExecution')
-
-    access_key_id = metadata['Credentials']['AccessKeyId']
-    secret_access_key = metadata['Credentials']['SecretAccessKey']
-    session_token = metadata['Credentials']['SessionToken']
-
-    boto_session = boto3.session.Session(region_name=region,
-                                         aws_access_key_id=access_key_id,
-                                         aws_secret_access_key=secret_access_key,
-                                         aws_session_token=session_token)
-
-    # Sessions
-    sagemaker_client = boto_session.client('sagemaker')
-    sagemaker_runtime = boto_session.client('sagemaker-runtime')
-    sagemaker_featurestore_runtime_client = boto_session.client(service_name='sagemaker-featurestore-runtime')
-    sagemaker_session = Session(boto_session=boto_session,
-                                sagemaker_client=sagemaker_client,
-                                sagemaker_runtime_client=sagemaker_runtime,
-                                sagemaker_featurestore_runtime_client=sagemaker_featurestore_runtime_client)
-
-    return sagemaker_session
 
 
 class DataConfig(abc.ABC):
