@@ -59,7 +59,7 @@ def test_convert_unsupported_types_to_supported(sagemaker_session_mock):
 
 
 def test_prepare_fg_from_dataframe(sagemaker_session_mock):
-    very_long_name = 'long'*20
+    very_long_name = "long" * 20
     df = pd.DataFrame(
         {
             "space feature": pd.Series([2.0], dtype="float64"),
@@ -68,13 +68,20 @@ def test_prepare_fg_from_dataframe(sagemaker_session_mock):
         }
     )
 
-    feature_group = prepare_fg_from_dataframe_or_file(dataframe_or_path=df, session=sagemaker_session_mock,
-                                                      feature_group_name='testFG')
+    feature_group = prepare_fg_from_dataframe_or_file(
+        dataframe_or_path=df, session=sagemaker_session_mock, feature_group_name="testFG"
+    )
 
     names = [fd.feature_name for fd in feature_group.feature_definitions]
     types = [fd.feature_type for fd in feature_group.feature_definitions]
 
-    assert names == ["space_feature", "dotfeature", very_long_name[:62], "index", "data_as_of_date"]
+    assert names == [
+        "space_feature",
+        "dotfeature",
+        very_long_name[:62],
+        "record_id",
+        "data_as_of_date",
+    ]
     assert types == [
         FeatureTypeEnum.FRACTIONAL,
         FeatureTypeEnum.INTEGRAL,

@@ -46,7 +46,7 @@ class FeatureDefinition(Config):
     This instantiates a Feature Definition object where FeatureDefinition is a subclass of Config.
 
     Attributes:
-        feature_group_name (str): The name of the feature
+        feature_name (str): The name of the feature
         feature_type (FeatureTypeEnum): The type of the feature
     """
 

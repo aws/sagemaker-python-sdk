@@ -922,7 +922,7 @@ def test_default_monitor_monitoring_execution_interactions(
     )
 
     constraint_violations = my_attached_monitor.latest_monitoring_constraint_violations()
-    assert constraint_violations.body_dict["violations"][0]["feature_group_name"] == "store_and_fwd_flag"
+    assert constraint_violations.body_dict["violations"][0]["feature_name"] == "store_and_fwd_flag"
 
 
 @pytest.mark.skipif(
@@ -1486,7 +1486,7 @@ def test_byoc_monitor_monitoring_execution_interactions(
     )
 
     constraint_violations = my_attached_monitor.latest_monitoring_constraint_violations()
-    assert constraint_violations.body_dict["violations"][0]["feature_group_name"] == "store_and_fwd_flag"
+    assert constraint_violations.body_dict["violations"][0]["feature_name"] == "store_and_fwd_flag"
 
 
 def _wait_for_schedule_changes_to_apply(monitor):

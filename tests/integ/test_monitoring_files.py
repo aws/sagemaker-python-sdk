@@ -315,7 +315,7 @@ def test_constraint_violations_object_creation_from_file_path_with_customization
     assert constraint_violations.file_s3_uri.startswith("s3://")
     assert constraint_violations.file_s3_uri.endswith("constraint_violations.json")
 
-    assert constraint_violations.body_dict["violations"][0]["feature_group_name"] == "store_and_fwd_flag"
+    assert constraint_violations.body_dict["violations"][0]["feature_name"] == "store_and_fwd_flag"
 
 
 def test_constraint_violations_object_creation_from_file_path_without_customizations(
@@ -331,7 +331,7 @@ def test_constraint_violations_object_creation_from_file_path_without_customizat
     assert constraint_violations.file_s3_uri.startswith("s3://")
     assert constraint_violations.file_s3_uri.endswith("constraint_violations.json")
 
-    assert constraint_violations.body_dict["violations"][0]["feature_group_name"] == "store_and_fwd_flag"
+    assert constraint_violations.body_dict["violations"][0]["feature_name"] == "store_and_fwd_flag"
 
 
 def test_constraint_violations_object_creation_from_string_with_customizations(
@@ -350,7 +350,7 @@ def test_constraint_violations_object_creation_from_string_with_customizations(
     assert constraint_violations.file_s3_uri.startswith("s3://")
     assert constraint_violations.file_s3_uri.endswith("constraint_violations.json")
 
-    assert constraint_violations.body_dict["violations"][0]["feature_group_name"] == "store_and_fwd_flag"
+    assert constraint_violations.body_dict["violations"][0]["feature_name"] == "store_and_fwd_flag"
 
 
 def test_constraint_violations_object_creation_from_string_without_customizations(
@@ -366,7 +366,7 @@ def test_constraint_violations_object_creation_from_string_without_customization
     assert constraint_violations.file_s3_uri.startswith("s3://")
     assert constraint_violations.file_s3_uri.endswith("constraint_violations.json")
 
-    assert constraint_violations.body_dict["violations"][0]["feature_group_name"] == "store_and_fwd_flag"
+    assert constraint_violations.body_dict["violations"][0]["feature_name"] == "store_and_fwd_flag"
 
 
 def test_constraint_violations_object_creation_from_s3_uri_with_customizations(
@@ -400,7 +400,7 @@ def test_constraint_violations_object_creation_from_s3_uri_with_customizations(
     assert constraint_violations.file_s3_uri.startswith("s3://")
     assert constraint_violations.file_s3_uri.endswith("constraint_violations.json")
 
-    assert constraint_violations.body_dict["violations"][0]["feature_group_name"] == "store_and_fwd_flag"
+    assert constraint_violations.body_dict["violations"][0]["feature_name"] == "store_and_fwd_flag"
 
 
 def test_constraint_violations_object_creation_from_s3_uri_without_customizations(
@@ -429,4 +429,4 @@ def test_constraint_violations_object_creation_from_s3_uri_without_customization
     assert constraint_violations.file_s3_uri.startswith("s3://")
     assert constraint_violations.file_s3_uri.endswith("constraint_violations.json")
 
-    assert constraint_violations.body_dict["violations"][0]["feature_group_name"] == "store_and_fwd_flag"
+    assert constraint_violations.body_dict["violations"][0]["feature_name"] == "store_and_fwd_flag"
