@@ -60,6 +60,7 @@ def test_with_feature_group(sagemaker_session_mock):
         "OfflineStoreConfig": {"DataCatalogConfig": {"TableName": "table", "Database": "database"}},
         "RecordIdentifierFeatureName": "feature-1",
         "EventTimeFeatureName": "feature-2",
+        "FeatureDefinitions": [{"FeatureName": "feature-1"}, {"FeatureName": "feature-2"}],
     }
     dataset_builder.with_feature_group(feature_group, "target-feature", ["feature-1", "feature-2"])
     assert len(dataset_builder._feature_groups_to_be_merged) == 1

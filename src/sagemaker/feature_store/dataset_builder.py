@@ -17,6 +17,7 @@ A Dataset Builder is a builder class for generating a dataset by providing condi
 from __future__ import absolute_import
 
 import datetime
+import os
 from typing import Any, Dict, List, Sequence, Tuple, Union
 
 import attr
@@ -39,6 +40,7 @@ class FeatureGroupToBeMerged:
         features (List[str]): A list of strings representing feature names of this FeatureGroup.
         included_feature_names (Sequence[str]): A list of strings representing features to be
             included in the output.
+        catalog (str): A string representing the catalog.
         database (str): A string representing the database.
         table_name (str): A string representing the Athena table name of this FeatureGroup.
         record_dentifier_feature_name (str): A string representing the record identifier feature.
@@ -50,11 +52,57 @@ class FeatureGroupToBeMerged:
 
     features: List[str] = attr.ib()
     included_feature_names: Sequence[str] = attr.ib()
+    catalog: str = attr.ib()
     database: str = attr.ib()
     table_name: str = attr.ib()
     record_identifier_feature_name: str = attr.ib()
     event_time_identifier_feature_name: str = attr.ib()
     target_feature_name_in_base: str = attr.ib(default=None)
+
+
+def construct_feature_group_to_be_merged(
+    feature_group: FeatureGroup,
+    included_feature_names: Sequence[str],
+    target_feature_name_in_base: str = None,
+) -> FeatureGroupToBeMerged:
+    """Construct a FeatureGroupToBeMerged object by provided parameters.
+
+    Args:
+        feature_group (FeatureGroup): A FeatureGroup object.
+        included_feature_names (Sequence[str]): A list of strings representing features to be
+            included in the output.
+        target_feature_name_in_base (str): A string representing the feature name in base which
+            will be used as target join key (default: None).
+    Returns:
+        A FeatureGroupToBeMerged object.
+    """
+    feature_group_metadata = feature_group.describe()
+    data_catalog_config = feature_group_metadata.get("OfflineStoreConfig", {}).get(
+        "DataCatalogConfig", None
+    )
+    if not data_catalog_config:
+        raise RuntimeError(f"No metastore is configured with FeatureGroup {feature_group.name}.")
+
+    record_identifier_feature_name = feature_group_metadata.get("RecordIdentifierFeatureName", None)
+    event_time_identifier_feature_name = feature_group_metadata.get("EventTimeFeatureName", None)
+    table_name = data_catalog_config.get("TableName", None)
+    database = data_catalog_config.get("Database", None)
+    disable_glue = feature_group_metadata.get("DisableGlueTableCreation", False)
+    catalog = data_catalog_config.get("Catalog", None) if disable_glue else "AwsDataCatalog"
+    features = [
+        feature.get("FeatureName", None)
+        for feature in feature_group_metadata.get("FeatureDefinitions", None)
+    ]
+    return FeatureGroupToBeMerged(
+        features,
+        included_feature_names,
+        catalog,
+        database,
+        table_name,
+        record_identifier_feature_name,
+        event_time_identifier_feature_name,
+        target_feature_name_in_base,
+    )
 
 
 @attr.s
@@ -114,6 +162,14 @@ class DatasetBuilder:
     _event_time_ending_timestamp: datetime.datetime = attr.ib(init=False, default=None)
     _feature_groups_to_be_merged: List[FeatureGroupToBeMerged] = attr.ib(init=False, default=[])
 
+    _DATAFRAME_TYPE_TO_COLUMN_TYPE_MAP = {
+        "object": "STRING",
+        "int64": "INT",
+        "float64": "DOUBLE",
+        "bool": "BOOLEAN",
+        "datetime64": "TIMESTAMP",
+    }
+
     def with_feature_group(
         self,
         feature_group: FeatureGroup,
@@ -131,38 +187,11 @@ class DatasetBuilder:
         Returns:
             This DatasetBuilder object.
         """
-        # TODO: handle pagination and input feature validation
-        # TODO: potential refactor with FeatureGroup base
-        feature_group_metadata = feature_group.describe()
-        data_catalog_config = feature_group_metadata.get("OfflineStoreConfig", None).get(
-            "DataCatalogConfig", None
-        )
-        if not data_catalog_config:
-            raise RuntimeError(
-                f"No metastore is configured with FeatureGroup {feature_group.name}."
-            )
-
-        record_identifier_feature_name = feature_group_metadata.get(
-            "RecordIdentifierFeatureName", None
-        )
-        event_time_identifier_feature_name = feature_group_metadata.get(
-            "EventTimeFeatureName", None
-        )
-        # TODO: back fill feature definitions due to UpdateFG
-        table_name = data_catalog_config.get("TableName", None)
-        database = data_catalog_config.get("Database", None)
-        features = [feature.feature_name for feature in feature_group.feature_definitions]
         if not target_feature_name_in_base:
             target_feature_name_in_base = self._record_identifier_feature_name
         self._feature_groups_to_be_merged.append(
-            FeatureGroupToBeMerged(
-                features,
-                included_feature_names,
-                database,
-                table_name,
-                record_identifier_feature_name,
-                event_time_identifier_feature_name,
-                target_feature_name_in_base,
+            construct_feature_group_to_be_merged(
+                feature_group, included_feature_names, target_feature_name_in_base
             )
         )
         return self
@@ -257,61 +286,48 @@ class DatasetBuilder:
         """
         if isinstance(self._base, pd.DataFrame):
             temp_id = utils.unique_name_from_base("dataframe-base")
-            local_filename = f"{temp_id}.csv"
+            local_file_name = f"{temp_id}.csv"
             desired_s3_folder = f"{self._output_path}/{temp_id}"
-            self._base.to_csv(local_filename, index=False, header=False)
+            self._base.to_csv(local_file_name, index=False, header=False)
             s3.S3Uploader.upload(
-                local_path=local_filename,
+                local_path=local_file_name,
                 desired_s3_uri=desired_s3_folder,
                 sagemaker_session=self._sagemaker_session,
                 kms_key=self._kms_key_id,
             )
+            os.remove(local_file_name)
             temp_table_name = f"dataframe_{temp_id}"
             self._create_temp_table(temp_table_name, desired_s3_folder)
             base_features = list(self._base.columns)
             query_string = self._construct_query_string(
                 temp_table_name,
+                "AwsDataCatalog",
                 "sagemaker_featurestore",
                 base_features,
             )
             query_result = self._run_query(query_string, "AwsDataCatalog", "sagemaker_featurestore")
-            # TODO: cleanup local file and temp table
-            return query_result.get("QueryExecution", None).get("ResultConfiguration", None).get(
+            # TODO: cleanup temp table, need more clarification, keep it for now
+            return query_result.get("QueryExecution", {}).get("ResultConfiguration", {}).get(
                 "OutputLocation", None
-            ), query_result.get("QueryExecution", None).get("Query", None)
+            ), query_result.get("QueryExecution", {}).get("Query", None)
         if isinstance(self._base, FeatureGroup):
-            # TODO: handle pagination and input feature validation
-            base_feature_group = self._base.describe()
-            data_catalog_config = base_feature_group.get("OfflineStoreConfig", None).get(
-                "DataCatalogConfig", None
+            base_feature_group = construct_feature_group_to_be_merged(
+                self._base, self._included_feature_names
             )
-            if not data_catalog_config:
-                raise RuntimeError("No metastore is configured with the base FeatureGroup.")
-            disable_glue = base_feature_group.get("DisableGlueTableCreation", False)
-            self._record_identifier_feature_name = base_feature_group.get(
-                "RecordIdentifierFeatureName", None
-            )
-            self._event_time_identifier_feature_name = base_feature_group.get(
-                "EventTimeFeatureName", None
-            )
-            base_features = [
-                feature.get("FeatureName", None)
-                for feature in base_feature_group.get("FeatureDefinitions", None)
-            ]
-
             query_string = self._construct_query_string(
-                data_catalog_config.get("TableName", None),
-                data_catalog_config.get("Database", None),
-                base_features,
+                base_feature_group.table_name,
+                base_feature_group.catalog,
+                base_feature_group.database,
+                base_feature_group.features,
             )
             query_result = self._run_query(
                 query_string,
-                data_catalog_config.get("Catalog", None) if disable_glue else "AwsDataCatalog",
-                data_catalog_config.get("Database", None),
+                base_feature_group.catalog,
+                base_feature_group.database,
             )
-            return query_result.get("QueryExecution", None).get("ResultConfiguration", None).get(
+            return query_result.get("QueryExecution", {}).get("ResultConfiguration", {}).get(
                 "OutputLocation", None
-            ), query_result.get("QueryExecution", None).get("Query", None)
+            ), query_result.get("QueryExecution", {}).get("Query", None)
         raise ValueError("Base must be either a FeatureGroup or a DataFrame.")
 
     def to_dataframe(self) -> Tuple[str, pd.DataFrame]:
@@ -328,8 +344,10 @@ class DatasetBuilder:
             kms_key=self._kms_key_id,
             sagemaker_session=self._sagemaker_session,
         )
-        # TODO: do we need to clean up local file?
-        return query_string, pd.read_csv(csv_file.split("/")[-1])
+        local_file_name = csv_file.split("/")[-1]
+        df = pd.read_csv(local_file_name)
+        os.remove(local_file_name)
+        return query_string, df
 
     def _construct_where_query_string(self, suffix: str, event_time_identifier_feature_name: str):
         """Internal method for constructing SQL WHERE query string by parameters.
@@ -404,7 +422,7 @@ class DatasetBuilder:
         )
 
     def _construct_query_string(
-        self, base_table_name: str, database: str, base_features: list
+        self, base_table_name: str, catalog: str, database: str, base_features: list
     ) -> str:
         """Internal method for constructing SQL query string by parameters.
 
@@ -418,6 +436,7 @@ class DatasetBuilder:
         base = FeatureGroupToBeMerged(
             base_features,
             self._included_feature_names,
+            catalog,
             database,
             base_table_name,
             self._record_identifier_feature_name,
@@ -499,19 +518,9 @@ class DatasetBuilder:
             RuntimeError: The type of pandas.Dataframe column is not support yet.
         """
         dataframe_type = self._base[column].dtypes
-        if dataframe_type == "object":
-            column_type = "STRING"
-        elif dataframe_type == "int64":
-            column_type = "INT"
-        elif dataframe_type == "float64":
-            column_type = "DOUBLE"
-        elif dataframe_type == "bool":
-            column_type = "BOOLEAN"
-        elif dataframe_type == "datetime64":
-            column_type = "TIMESTAMP"
-        else:
+        if dataframe_type not in self._DATAFRAME_TYPE_TO_COLUMN_TYPE_MAP.keys():
             raise RuntimeError(f"The dataframe type {dataframe_type} is not supported yet.")
-        return f"{column} {column_type}"
+        return f"{column} {self._DATAFRAME_TYPE_TO_COLUMN_TYPE_MAP.get(dataframe_type, None)}"
 
     def _run_query(self, query_string: str, catalog: str, database: str) -> Dict[str, Any]:
         """Internal method for execute Athena query, wait for query finish and get query result.
@@ -536,9 +545,7 @@ class DatasetBuilder:
         query_id = query.get("QueryExecutionId", None)
         self._sagemaker_session.wait_for_athena_query(query_execution_id=query_id)
         query_result = self._sagemaker_session.get_query_execution(query_execution_id=query_id)
-        query_state = (
-            query_result.get("QueryExecution", None).get("Status", None).get("State", None)
-        )
+        query_state = query_result.get("QueryExecution", {}).get("Status", {}).get("State", None)
         if query_state != "SUCCEEDED":
             raise RuntimeError(f"Failed to execute query {query_id}.")
         return query_result
