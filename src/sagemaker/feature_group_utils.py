@@ -17,17 +17,61 @@ Utilities for working with FeatureGroups and FeatureStores.
 """
 import re
 import logging
-import json
+
 from typing import Union
 from pathlib import Path
 
 import pandas
+import boto3
 from pandas import DataFrame, Series, read_csv
 
 from sagemaker.feature_store.feature_group import FeatureGroup
-from sagemaker.utils import get_session_from_role
+from sagemaker.session import Session
 
 logger = logging.getLogger(__name__)
+
+
+def _get_session_from_role(role: str, region: str):
+    """
+    Method use to get the sagemaker session from a role and a region. Helpful in case it's
+    invoke from a session with a role without permission it can assume another role temporarily
+    to perform certain taks.
+
+    Args:
+        role: role name
+        region: region name
+
+    Returns:
+
+    """
+    boto_session = boto3.Session(region_name=region)
+
+    sts = boto_session.client('sts',
+                              region_name=region,
+                              endpoint_url='https://sts.eu-west-1.amazonaws.com')
+
+    metadata = sts.assume_role(RoleArn=role,
+                               RoleSessionName='SagemakerExecution')
+
+    access_key_id = metadata['Credentials']['AccessKeyId']
+    secret_access_key = metadata['Credentials']['SecretAccessKey']
+    session_token = metadata['Credentials']['SessionToken']
+
+    boto_session = boto3.session.Session(region_name=region,
+                                         aws_access_key_id=access_key_id,
+                                         aws_secret_access_key=secret_access_key,
+                                         aws_session_token=session_token)
+
+    # Sessions
+    sagemaker_client = boto_session.client('sagemaker')
+    sagemaker_runtime = boto_session.client('sagemaker-runtime')
+    sagemaker_featurestore_runtime_client = boto_session.client(service_name='sagemaker-featurestore-runtime')
+    sagemaker_session = Session(boto_session=boto_session,
+                                sagemaker_client=sagemaker_client,
+                                sagemaker_runtime_client=sagemaker_runtime,
+                                sagemaker_featurestore_runtime_client=sagemaker_featurestore_runtime_client)
+
+    return sagemaker_session
 
 
 def get_feature_group_as_dataframe(feature_group_name: str, athena_bucket: str,
@@ -76,7 +120,7 @@ def get_feature_group_as_dataframe(feature_group_name: str, athena_bucket: str,
     if session is not None:
         sagemaker_session = session
     elif role is not None and region is not None:
-        sagemaker_session = get_session_from_role(role=role, region=region)
+        sagemaker_session = _get_session_from_role(role=role, region=region)
     else:
         exc = Exception('Argument Session or role and region must be specified.')
         logger.exception(exc)
@@ -136,46 +180,39 @@ def _cast_object_to_string(data_frame: pandas.DataFrame) -> pandas.DataFrame:
     return data_frame
 
 
-def get_fg_schema(dataframe_or_path: Union[str, Path, pandas.DataFrame],
-                  role: str, region: str,
-                  mode: str = 'display', record_id: str = '@index',
-                  event_id: str = 'data_as_of_date',
-                  saving_file_path: str = '', verbose: bool = False,
-                  **pandas_read_csv_kwargs) -> None:
+def prepare_fg_from_dataframe_or_file(dataframe_or_path: Union[str, Path, pandas.DataFrame],
+                                      feature_group_name: str,
+                                      role: str = None, region: str = None, session=None,
+                                      record_id: str = 'record_id', event_id: str = 'data_as_of_date',
+                                      verbose: bool = False,
+                                      **pandas_read_csv_kwargs) -> FeatureGroup:
     """
-    Method to generate the schema of a Feature Group from a pandas.DataFrame. It has two modes (`mode`):
-        - display: the schema is printed on the display
-        - make_file: it generates a file with the schema inside. Recommended if it has a lot of features. Then
-                     argument `saving_file_path` must be specified.
+    Function to prepare a dataframe for creating a Feature Group from a pandas.DataFrame or a path to
+    a file with proper dtypes, feature names and mandatory features (record_id, event_id).
+    It needs the sagemaker.Session linked to a role or the role and region used to work Feature Stores.
+    If record_id or event_id are not specified it will create ones by default with the names
+    
 
     Args:
+        feature_group_name (str): feature group name
         dataframe_or_path (str, Path, pandas.DataFrame) : pandas.DataFrame or path to the data
-        mode (str)               : it changes how the output is displayed or stored, as explained before. By default,
-                                    mode='display', and the other mode is `make_file`.
         verbose (bool)           : True for displaying messages, False for silent method.
-        record_id (str, '@index'): (Optional) Feature identifier of the rows. If specified each value of that feature
-                                    has to be unique. If not specified or record_id='@index', then it will create
+        record_id (str, 'record_id'): (Optional) Feature identifier of the rows. If specified each value of that feature
+                                    has to be unique. If not specified or record_id='record_id', then it will create
                                     a new feature from the index of the pandas.DataFrame.
         event_id (str)           : (Optional) Feature with the time of the creation of data rows. If not specified it
                                     will create one with the current time called `data_as_of_date`
-        role (str)               : role used to get the session
-        region (str)             : region used to get the session
-        saving_file_path (str)   : required if mode='make_file', file path to save the output.
+        role (str)               : role used to get the session.
+        region (str)             : region used to get the session.
+        session (str): session of SageMaker used to work with the feature store
 
     Returns:
-        Save text into a file or displays the feature group schema by teh screen
+        FeatureGroup: FG prepared with all the methods and definitions properly defined
     """
-    MODE = ['display', 'make_file']
 
     logger.setLevel(logging.WARNING)
     if verbose:
         logger.setLevel(logging.INFO)
-
-    mode = mode.lower()
-    if mode not in MODE:
-        exc = Exception(f'Invalid value {mode} for parameter mode.\nMode must be in {MODE}')
-        logger.exception(exc)
-        raise exc
 
     from sagemaker.feature_store.feature_group import FeatureGroup
 
@@ -194,8 +231,7 @@ def get_fg_schema(dataframe_or_path: Union[str, Path, pandas.DataFrame],
     data = _format_column_names(data=data)
     data = _cast_object_to_string(data_frame=data)
 
-    if record_id == '@index':
-        record_id = 'index'
+    if record_id == 'record_id' and record_id not in data.columns:
         data[record_id] = data.index
 
     lg_uniq = len(data[record_id].unique())
@@ -207,40 +243,25 @@ def get_fg_schema(dataframe_or_path: Union[str, Path, pandas.DataFrame],
         logger.exception(exc)
         raise exc
 
-    session = get_session_from_role(role=role, region=region)
-    feature_group = FeatureGroup(
-        name='temporalFG', sagemaker_session=session
-    )
-
     if event_id not in data.columns:
         import time
         current_time_sec = int(round(time.time()))
 
         data[event_id] = Series([current_time_sec] * lg_id, dtype="float64")
 
-    definitions = feature_group.load_feature_definitions(data_frame=data)
+    if session is not None:
+        sagemaker_session = session
+    elif role is not None and region is not None:
+        sagemaker_session = _get_session_from_role(role=role, region=region)
+    else:
+        exc = Exception('Argument Session or role and region must be specified.')
+        logger.exception(exc)
+        raise exc
 
-    def_list = []
-    for ele in definitions:
-        def_list.append({'FeatureName': ele.feature_name, 'FeatureType': ele.feature_type.name})
+    feature_group = FeatureGroup(
+        name=feature_group_name, sagemaker_session=sagemaker_session
+    )
 
-    if mode == MODE[0]:  # display
-        logger.info('[')
-        for ele in def_list:
-            _to_print = json.dumps(ele)
-            if ele != def_list[-1]:
-                _to_print += ','
+    feature_group.load_feature_definitions(data_frame=data)
 
-            logger.info(f'{_to_print}')
-        logger.info(']')
-    elif mode == MODE[1]:  # make_file
-        if saving_file_path:
-            logger.info(f'Saving schema to {saving_file_path}')
-            with open(saving_file_path, 'w') as f:
-                f.write(json.dumps(def_list))
-                f.close()
-            logger.info('Finished!.')
-        else:
-            exc = Exception(str(f'Parameter saving_file_path mandatory if mode {MODE[1]} is specified.'))
-            logger.exception(exc)
-            raise exc
+    return feature_group

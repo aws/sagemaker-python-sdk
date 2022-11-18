@@ -241,11 +241,11 @@ def test_create_feature_store(
 
 
 def test_update_feature_group(
-    feature_store_session,
-    role,
-    feature_group_name,
-    offline_store_s3_uri,
-    pandas_data_frame,
+        feature_store_session,
+        role,
+        feature_group_name,
+        offline_store_s3_uri,
+        pandas_data_frame,
 ):
     feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
@@ -269,11 +269,11 @@ def test_update_feature_group(
 
 
 def test_feature_metadata(
-    feature_store_session,
-    role,
-    feature_group_name,
-    offline_store_s3_uri,
-    pandas_data_frame,
+        feature_store_session,
+        role,
+        feature_group_name,
+        offline_store_s3_uri,
+        pandas_data_frame,
 ):
     feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
@@ -427,6 +427,8 @@ def test_get_feature_group_with_role_region(
                                                  athena_bucket=f'{offline_store_s3_uri}/query')
 
     assert dataset.empty == False
+    assert isinstance(dataset, DataFrame)
+
 
 def test_get_feature_group_with_session(
         feature_store_session,
@@ -457,10 +459,11 @@ def test_get_feature_group_with_session(
                                                  event_time_feature_name="feature3",
                                                  latest_ingestion=True,
                                                  athena_bucket=f'{offline_store_s3_uri}/query',
-                                                 low_memory=False) # Using kwargs to pass a parameter to
-                                                                   # pandas.read_csv
+                                                 low_memory=False)  # Using kwargs to pass a parameter to
+        # pandas.read_csv
 
     assert dataset.empty == False
+    assert isinstance(dataset, DataFrame)
 
 
 @contextmanager
