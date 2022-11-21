@@ -157,7 +157,7 @@ class AthenaQuery:
         )
 
         # Assuring delimiter used by default
-        pandas_read_csv_kwargs.pop('delimiter', None)
+        pandas_read_csv_kwargs.pop("delimiter", None)
         return pd.read_csv(output_filename, delimiter=",", **pandas_read_csv_kwargs)
 
 

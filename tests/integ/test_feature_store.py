@@ -150,10 +150,10 @@ def create_table_ddl():
 
 
 def test_create_feature_store_online_only(
-        feature_store_session,
-        role,
-        feature_group_name,
-        pandas_data_frame,
+    feature_store_session,
+    role,
+    feature_group_name,
+    pandas_data_frame,
 ):
     feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
@@ -172,13 +172,13 @@ def test_create_feature_store_online_only(
 
 
 def test_create_feature_store(
-        feature_store_session,
-        role,
-        feature_group_name,
-        offline_store_s3_uri,
-        pandas_data_frame,
-        record,
-        create_table_ddl,
+    feature_store_session,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame,
+    record,
+    create_table_ddl,
 ):
     feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
@@ -229,23 +229,23 @@ def test_create_feature_store(
         for is_na in nans.items():
             assert is_na
         assert (
-                create_table_ddl.format(
-                    feature_group_name=feature_group_name,
-                    region=feature_store_session.boto_session.region_name,
-                    account=feature_store_session.account_id(),
-                    resolved_output_s3_uri=resolved_output_s3_uri,
-                )
-                == feature_group.as_hive_ddl()
+            create_table_ddl.format(
+                feature_group_name=feature_group_name,
+                region=feature_store_session.boto_session.region_name,
+                account=feature_store_session.account_id(),
+                resolved_output_s3_uri=resolved_output_s3_uri,
+            )
+            == feature_group.as_hive_ddl()
         )
     assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
 
 
 def test_update_feature_group(
-        feature_store_session,
-        role,
-        feature_group_name,
-        offline_store_s3_uri,
-        pandas_data_frame,
+    feature_store_session,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame,
 ):
     feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
@@ -269,11 +269,11 @@ def test_update_feature_group(
 
 
 def test_feature_metadata(
-        feature_store_session,
-        role,
-        feature_group_name,
-        offline_store_s3_uri,
-        pandas_data_frame,
+    feature_store_session,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame,
 ):
     feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
@@ -318,11 +318,11 @@ def test_feature_metadata(
 
 
 def test_ingest_without_string_feature(
-        feature_store_session,
-        role,
-        feature_group_name,
-        offline_store_s3_uri,
-        pandas_data_frame_without_string,
+    feature_store_session,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame_without_string,
 ):
     feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame_without_string)
@@ -346,11 +346,11 @@ def test_ingest_without_string_feature(
 
 
 def test_ingest_multi_process(
-        feature_store_session,
-        role,
-        feature_group_name,
-        offline_store_s3_uri,
-        pandas_data_frame,
+    feature_store_session,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame,
 ):
     feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
@@ -397,11 +397,11 @@ def _wait_for_feature_group_update(feature_group: FeatureGroup):
 
 
 def test_get_feature_group_with_role_region(
-        feature_store_session,
-        role,
-        feature_group_name,
-        offline_store_s3_uri,
-        pandas_data_frame,
+    feature_store_session,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame,
 ):
     feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
@@ -420,22 +420,25 @@ def test_get_feature_group_with_role_region(
             data_frame=pandas_data_frame, max_workers=3, max_processes=2, wait=True
         )
 
-        dataset = get_feature_group_as_dataframe(feature_group_name=feature_group_name,
-                                                 region=region_name, role=role,
-                                                 event_time_feature_name="feature3",
-                                                 latest_ingestion=True,
-                                                 athena_bucket=f'{offline_store_s3_uri}/query')
+        dataset = get_feature_group_as_dataframe(
+            feature_group_name=feature_group_name,
+            region=region_name,
+            role=role,
+            event_time_feature_name="feature3",
+            latest_ingestion=True,
+            athena_bucket=f"{offline_store_s3_uri}/query",
+        )
 
     assert dataset.empty == False
     assert isinstance(dataset, DataFrame)
 
 
 def test_get_feature_group_with_session(
-        feature_store_session,
-        role,
-        feature_group_name,
-        offline_store_s3_uri,
-        pandas_data_frame,
+    feature_store_session,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame,
 ):
     feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
@@ -454,12 +457,14 @@ def test_get_feature_group_with_session(
             data_frame=pandas_data_frame, max_workers=3, max_processes=2, wait=True
         )
 
-        dataset = get_feature_group_as_dataframe(feature_group_name=feature_group_name,
-                                                 session=feature_store_session,
-                                                 event_time_feature_name="feature3",
-                                                 latest_ingestion=True,
-                                                 athena_bucket=f'{offline_store_s3_uri}/query',
-                                                 low_memory=False)  # Using kwargs to pass a parameter to
+        dataset = get_feature_group_as_dataframe(
+            feature_group_name=feature_group_name,
+            session=feature_store_session,
+            event_time_feature_name="feature3",
+            latest_ingestion=True,
+            athena_bucket=f"{offline_store_s3_uri}/query",
+            low_memory=False,
+        )  # Using kwargs to pass a parameter to
         # pandas.read_csv
 
     assert dataset.empty == False
