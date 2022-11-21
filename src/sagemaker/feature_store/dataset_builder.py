@@ -27,6 +27,10 @@ from sagemaker import Session, s3, utils
 from sagemaker.feature_store.feature_group import FeatureGroup
 
 
+_DEFAULT_CATALOG = "AwsDataCatalog"
+_DEFAULT_DATABASE = "sagemaker_featurestore"
+
+
 @attr.s
 class FeatureGroupToBeMerged:
     """FeatureGroup metadata which will be used for SQL join.
@@ -88,11 +92,13 @@ def construct_feature_group_to_be_merged(
     table_name = data_catalog_config.get("TableName", None)
     database = data_catalog_config.get("Database", None)
     disable_glue = feature_group_metadata.get("DisableGlueTableCreation", False)
-    catalog = data_catalog_config.get("Catalog", None) if disable_glue else "AwsDataCatalog"
+    catalog = data_catalog_config.get("Catalog", None) if disable_glue else _DEFAULT_CATALOG
     features = [
         feature.get("FeatureName", None)
         for feature in feature_group_metadata.get("FeatureDefinitions", None)
     ]
+    if not included_feature_names:
+        included_feature_names = features
     return FeatureGroupToBeMerged(
         features,
         included_feature_names,
@@ -167,7 +173,7 @@ class DatasetBuilder:
         "int64": "INT",
         "float64": "DOUBLE",
         "bool": "BOOLEAN",
-        "datetime64": "TIMESTAMP",
+        "datetime64[ns]": "TIMESTAMP",
     }
 
     def with_feature_group(
@@ -300,12 +306,17 @@ class DatasetBuilder:
             self._create_temp_table(temp_table_name, desired_s3_folder)
             base_features = list(self._base.columns)
             query_string = self._construct_query_string(
-                temp_table_name,
-                "AwsDataCatalog",
-                "sagemaker_featurestore",
-                base_features,
+                FeatureGroupToBeMerged(
+                    base_features,
+                    self._included_feature_names if self._included_feature_names else base_features,
+                    _DEFAULT_CATALOG,
+                    _DEFAULT_DATABASE,
+                    temp_table_name,
+                    self._record_identifier_feature_name,
+                    self._event_time_identifier_feature_name,
+                )
             )
-            query_result = self._run_query(query_string, "AwsDataCatalog", "sagemaker_featurestore")
+            query_result = self._run_query(query_string, _DEFAULT_CATALOG, _DEFAULT_DATABASE)
             # TODO: cleanup temp table, need more clarification, keep it for now
             return query_result.get("QueryExecution", {}).get("ResultConfiguration", {}).get(
                 "OutputLocation", None
@@ -314,12 +325,7 @@ class DatasetBuilder:
             base_feature_group = construct_feature_group_to_be_merged(
                 self._base, self._included_feature_names
             )
-            query_string = self._construct_query_string(
-                base_feature_group.table_name,
-                base_feature_group.catalog,
-                base_feature_group.database,
-                base_feature_group.features,
-            )
+            query_string = self._construct_query_string(base_feature_group)
             query_result = self._run_query(
                 query_string,
                 base_feature_group.catalog,
@@ -330,14 +336,14 @@ class DatasetBuilder:
             ), query_result.get("QueryExecution", {}).get("Query", None)
         raise ValueError("Base must be either a FeatureGroup or a DataFrame.")
 
-    def to_dataframe(self) -> Tuple[str, pd.DataFrame]:
+    def to_dataframe(self) -> Tuple[pd.DataFrame, str]:
         """Get query string and result in pandas.Dataframe
 
         Returns:
             The pandas.DataFrame object.
             The query string executed.
         """
-        query_string, csv_file = self.to_csv()
+        csv_file, query_string = self.to_csv()
         s3.S3Downloader.download(
             s3_uri=csv_file,
             local_path="./",
@@ -347,9 +353,11 @@ class DatasetBuilder:
         local_file_name = csv_file.split("/")[-1]
         df = pd.read_csv(local_file_name)
         os.remove(local_file_name)
-        return query_string, df
+        return df, query_string
 
-    def _construct_where_query_string(self, suffix: str, event_time_identifier_feature_name: str):
+    def _construct_where_query_string(
+        self, suffix: str, event_time_identifier_feature_name: str
+    ) -> str:
         """Internal method for constructing SQL WHERE query string by parameters.
 
         Args:
@@ -380,7 +388,7 @@ class DatasetBuilder:
             return ""
         return "WHERE " + "\nAND ".join(where_conditions)
 
-    def _construct_table_query(self, feature_group: FeatureGroupToBeMerged, suffix: str):
+    def _construct_table_query(self, feature_group: FeatureGroupToBeMerged, suffix: str) -> str:
         """Internal method for constructing SQL query string by parameters.
 
         Args:
@@ -421,27 +429,14 @@ class DatasetBuilder:
             suffix, feature_group.event_time_identifier_feature_name
         )
 
-    def _construct_query_string(
-        self, base_table_name: str, catalog: str, database: str, base_features: list
-    ) -> str:
+    def _construct_query_string(self, base: FeatureGroupToBeMerged) -> str:
         """Internal method for constructing SQL query string by parameters.
 
         Args:
-            base_table_name (str): The Athena table name of base FeatureGroup or pandas.DataFrame.
-            database (str): The Athena database of the base table.
-            base_features (list): The list of features of the base table.
+            base (FeatureGroupToBeMerged): A FeatureGroupToBeMerged object which has the metadata.
         Returns:
             The query string.
         """
-        base = FeatureGroupToBeMerged(
-            base_features,
-            self._included_feature_names,
-            catalog,
-            database,
-            base_table_name,
-            self._record_identifier_feature_name,
-            self._event_time_identifier_feature_name,
-        )
         base_table_query_string = self._construct_table_query(base, "base")
         query_string = f"WITH fg_base AS ({base_table_query_string})"
         if len(self._feature_groups_to_be_merged) > 0:
@@ -451,7 +446,7 @@ class DatasetBuilder:
                     for i, feature_group in enumerate(self._feature_groups_to_be_merged)
                 ]
             )
-            query_string += with_subquery_string
+            query_string += f"{with_subquery_string}\n"
         query_string += "SELECT *\nFROM fg_base"
         if len(self._feature_groups_to_be_merged) > 0:
             join_subquery_string = "".join(
@@ -465,7 +460,7 @@ class DatasetBuilder:
             query_string += f"\nLIMIT {self._number_of_records}"
         return query_string
 
-    def _construct_join_condition(self, feature_group: FeatureGroupToBeMerged, suffix: str):
+    def _construct_join_condition(self, feature_group: FeatureGroupToBeMerged, suffix: str) -> str:
         """Internal method for constructing SQL JOIN query string by parameters.
 
         Args:
@@ -504,7 +499,7 @@ class DatasetBuilder:
             + f"WITH SERDEPROPERTIES ({serde_properties}) "
             + f"LOCATION '{desired_s3_folder}';"
         )
-        self._run_query(query_string, "AwsDataCatalog", "sagemaker_featurestore")
+        self._run_query(query_string, _DEFAULT_CATALOG, _DEFAULT_DATABASE)
 
     def _construct_athena_table_column_string(self, column: str) -> str:
         """Internal method for constructing string of Athena column.
@@ -518,9 +513,9 @@ class DatasetBuilder:
             RuntimeError: The type of pandas.Dataframe column is not support yet.
         """
         dataframe_type = self._base[column].dtypes
-        if dataframe_type not in self._DATAFRAME_TYPE_TO_COLUMN_TYPE_MAP.keys():
+        if str(dataframe_type) not in self._DATAFRAME_TYPE_TO_COLUMN_TYPE_MAP.keys():
             raise RuntimeError(f"The dataframe type {dataframe_type} is not supported yet.")
-        return f"{column} {self._DATAFRAME_TYPE_TO_COLUMN_TYPE_MAP.get(dataframe_type, None)}"
+        return f"{column} {self._DATAFRAME_TYPE_TO_COLUMN_TYPE_MAP.get(str(dataframe_type), None)}"
 
     def _run_query(self, query_string: str, catalog: str, database: str) -> Dict[str, Any]:
         """Internal method for execute Athena query, wait for query finish and get query result.

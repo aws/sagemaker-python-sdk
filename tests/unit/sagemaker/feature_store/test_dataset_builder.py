@@ -13,12 +13,13 @@
 from __future__ import absolute_import
 
 import datetime
+import os
 
 import pandas as pd
 import pytest
-from mock import Mock
+from mock import Mock, patch
 
-from sagemaker.feature_store.dataset_builder import DatasetBuilder
+from sagemaker.feature_store.dataset_builder import DatasetBuilder, FeatureGroupToBeMerged
 from sagemaker.feature_store.feature_group import FeatureGroup
 
 
@@ -30,6 +31,42 @@ def sagemaker_session_mock():
 @pytest.fixture
 def feature_group_mock():
     return Mock()
+
+
+@pytest.fixture
+def read_csv_mock():
+    return Mock()
+
+
+@pytest.fixture
+def to_csv_mock():
+    return Mock()
+
+
+@pytest.fixture
+def remove_mock():
+    return Mock()
+
+
+BASE = FeatureGroupToBeMerged(
+    ["target-feature", "other-feature"],
+    ["target-feature", "other-feature"],
+    "catalog",
+    "database",
+    "base-table",
+    "target-feature",
+    "other-feature",
+)
+FEATURE_GROUP = FeatureGroupToBeMerged(
+    ["feature-1", "feature-2"],
+    ["feature-1", "feature-2"],
+    "catalog",
+    "database",
+    "table-name",
+    "feature-1",
+    "feature-2",
+    "target-feature",
+)
 
 
 def test_with_feature_group_throw_runtime_error(sagemaker_session_mock):
@@ -55,6 +92,7 @@ def test_with_feature_group(sagemaker_session_mock):
         sagemaker_session=sagemaker_session_mock,
         base=feature_group,
         output_path="file/to/path",
+        record_identifier_feature_name="target-feature",
     )
     sagemaker_session_mock.describe_feature_group.return_value = {
         "OfflineStoreConfig": {"DataCatalogConfig": {"TableName": "table", "Database": "database"}},
@@ -62,7 +100,7 @@ def test_with_feature_group(sagemaker_session_mock):
         "EventTimeFeatureName": "feature-2",
         "FeatureDefinitions": [{"FeatureName": "feature-1"}, {"FeatureName": "feature-2"}],
     }
-    dataset_builder.with_feature_group(feature_group, "target-feature", ["feature-1", "feature-2"])
+    dataset_builder.with_feature_group(feature_group, None, ["feature-1", "feature-2"])
     assert len(dataset_builder._feature_groups_to_be_merged) == 1
     assert dataset_builder._feature_groups_to_be_merged[0].features == ["feature-1", "feature-2"]
     assert dataset_builder._feature_groups_to_be_merged[0].included_feature_names == [
@@ -159,3 +197,244 @@ def test_with_event_time_range(sagemaker_session_mock, feature_group_mock):
     dataset_builder.with_event_time_range(start, end)
     assert dataset_builder._event_time_starting_timestamp == start
     assert dataset_builder._event_time_ending_timestamp == end
+
+
+def test_to_csv_not_support_base_type(sagemaker_session_mock, feature_group_mock):
+    dataset_builder = DatasetBuilder(
+        sagemaker_session=sagemaker_session_mock,
+        base=feature_group_mock,
+        output_path="file/to/path",
+    )
+    with pytest.raises(ValueError) as error:
+        dataset_builder.to_csv()
+    assert "Base must be either a FeatureGroup or a DataFrame." in str(error)
+
+
+def test_to_csv_with_feature_group(sagemaker_session_mock):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    dataset_builder = DatasetBuilder(
+        sagemaker_session=sagemaker_session_mock,
+        base=feature_group,
+        output_path="file/to/path",
+    )
+    # TODO: remove this line after fix test independent
+    dataset_builder._feature_groups_to_be_merged = []
+    sagemaker_session_mock.describe_feature_group.return_value = {
+        "OfflineStoreConfig": {"DataCatalogConfig": {"TableName": "table", "Database": "database"}},
+        "RecordIdentifierFeatureName": "feature-1",
+        "EventTimeFeatureName": "feature-2",
+        "FeatureDefinitions": [{"FeatureName": "feature-1"}, {"FeatureName": "feature-2"}],
+    }
+    sagemaker_session_mock.start_query_execution.return_value = {"QueryExecutionId": "query-id"}
+    sagemaker_session_mock.get_query_execution.return_value = {
+        "QueryExecution": {
+            "Status": {"State": "SUCCEEDED"},
+            "ResultConfiguration": {"OutputLocation": "s3-file-path"},
+            "Query": "query-string",
+        }
+    }
+    file_path, query_string = dataset_builder.to_csv()
+    assert file_path == "s3-file-path"
+    assert query_string == "query-string"
+
+
+@patch("pandas.DataFrame.to_csv")
+@patch("pandas.read_csv")
+@patch("os.remove")
+def test_to_dataframe_with_dataframe(
+    remove_mock, read_csv_mock, to_csv_mock, sagemaker_session_mock
+):
+    dataframe = pd.DataFrame({"feature-1": [420, 380, 390], "feature-2": [50, 40, 45]})
+    dataset_builder = DatasetBuilder(
+        sagemaker_session=sagemaker_session_mock,
+        base=dataframe,
+        output_path="s3://file/to/path",
+        event_time_identifier_feature_name="feature-2",
+    )
+    # TODO: remove this line after fix test independent
+    dataset_builder._feature_groups_to_be_merged = []
+    sagemaker_session_mock.start_query_execution.return_value = {"QueryExecutionId": "query-id"}
+    sagemaker_session_mock.get_query_execution.return_value = {
+        "QueryExecution": {
+            "Status": {"State": "SUCCEEDED"},
+            "ResultConfiguration": {"OutputLocation": "s3://s3-file-path"},
+            "Query": "query-string",
+        }
+    }
+    to_csv_mock.return_value = None
+    read_csv_mock.return_value = dataframe
+    os.remove.return_value = None
+    df, query_string = dataset_builder.to_dataframe()
+    assert df.equals(dataframe)
+    assert query_string == "query-string"
+
+
+def test_construct_where_query_string(sagemaker_session_mock):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    dataset_builder = DatasetBuilder(
+        sagemaker_session=sagemaker_session_mock,
+        base=feature_group,
+        output_path="file/to/path",
+    )
+    time = datetime.datetime.now()
+    start = time + datetime.timedelta(minutes=1)
+    end = start + datetime.timedelta(minutes=1)
+    dataset_builder._write_time_ending_timestamp = time
+    dataset_builder._event_time_starting_timestamp = start
+    dataset_builder._event_time_ending_timestamp = end
+    query_string = dataset_builder._construct_where_query_string("suffix", "event-time")
+    assert (
+        query_string
+        == "WHERE NOT is_deleted\n"
+        + f'AND table_suffix."write_time" <= {time}\n'
+        + f'AND table_suffix."event-time" >= {start}\n'
+        + f'AND table_suffix."event-time" <= {end}'
+    )
+
+
+def test_construct_query_string_with_duplicated_records(sagemaker_session_mock, feature_group_mock):
+    dataset_builder = DatasetBuilder(
+        sagemaker_session=sagemaker_session_mock,
+        base=feature_group_mock,
+        output_path="file/to/path",
+    )
+    dataset_builder._include_duplicated_records = True
+
+    dataset_builder._feature_groups_to_be_merged = [FEATURE_GROUP]
+    query_string = dataset_builder._construct_query_string(BASE)
+    assert (
+        query_string
+        == 'WITH fg_base AS (SELECT table_base."target-feature", table_base."other-feature"\n'
+        + 'FROM "database"."base-table" table_base\n'
+        + "WHERE NOT is_deleted),\n"
+        + 'fg_0 AS (SELECT table_0."feature-1", table_0."feature-2"\n'
+        + 'FROM "database"."table-name" table_0\n'
+        + "WHERE NOT is_deleted)\n"
+        + "SELECT *\n"
+        + "FROM fg_base\n"
+        + "JOIN fg_0\n"
+        + 'ON fg_base."target-feature" = fg_0."feature-1"'
+    )
+
+
+def test_construct_query_string(sagemaker_session_mock, feature_group_mock):
+    dataset_builder = DatasetBuilder(
+        sagemaker_session=sagemaker_session_mock,
+        base=feature_group_mock,
+        output_path="file/to/path",
+    )
+    dataset_builder._point_in_time_accurate_join = True
+    dataset_builder._event_time_identifier_feature_name = "target-feature"
+    dataset_builder._feature_groups_to_be_merged = [FEATURE_GROUP]
+    query_string = dataset_builder._construct_query_string(BASE)
+    assert (
+        query_string
+        == 'WITH fg_base AS (SELECT table_base."target-feature", table_base."other-feature"\n'
+        + "FROM (\n"
+        + "SELECT *, row_number() OVER (\n"
+        + 'PARTITION BY dedup_base."target-feature"\n'
+        + 'ORDER BY dedup_base."other-feature" DESC, dedup_base."api_invocation_time" DESC, '
+        + 'dedup_base."write_time" DESC\n'
+        + ") AS row_base\n"
+        + 'FROM "database"."base-table" dedup_base\n'
+        + ") AS table_base\n"
+        + "WHERE row_base = 1\n"
+        + "WHERE NOT is_deleted),\n"
+        + 'fg_0 AS (SELECT table_0."feature-1", table_0."feature-2"\n'
+        + "FROM (\n"
+        + "SELECT *, row_number() OVER (\n"
+        + 'PARTITION BY dedup_0."feature-1"\n'
+        + 'ORDER BY dedup_0."feature-2" DESC, dedup_0."api_invocation_time" DESC, '
+        + 'dedup_0."write_time" DESC\n'
+        + ") AS row_0\n"
+        + 'FROM "database"."table-name" dedup_0\n'
+        + ") AS table_0\n"
+        + "WHERE row_0 = 1\n"
+        + "WHERE NOT is_deleted)\n"
+        + "SELECT *\n"
+        + "FROM fg_base\n"
+        + "JOIN fg_0\n"
+        + 'ON fg_base."target-feature" = fg_0."feature-1"\n'
+        + 'AND fg_base."target-feature" >= fg_0."feature-2"'
+    )
+
+
+def test_create_temp_table(sagemaker_session_mock):
+    dataframe = pd.DataFrame({"feature-1": [420, 380, 390], "feature-2": [50, 40, 45]})
+    dataset_builder = DatasetBuilder(
+        sagemaker_session=sagemaker_session_mock,
+        base=dataframe,
+        output_path="file/to/path",
+    )
+    sagemaker_session_mock.start_query_execution.return_value = {"QueryExecutionId": "query-id"}
+    sagemaker_session_mock.get_query_execution.return_value = {
+        "QueryExecution": {"Status": {"State": "SUCCEEDED"}}
+    }
+    dataset_builder._create_temp_table("table-name", "s3-folder")
+    assert sagemaker_session_mock.start_query_execution.call_count == 1
+    sagemaker_session_mock.start_query_execution.assert_called_once_with(
+        catalog="AwsDataCatalog",
+        database="sagemaker_featurestore",
+        query_string="CREATE EXTERNAL TABLE table-name (feature-1 INT, feature-2 INT) "
+        + "ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde' "
+        + 'WITH SERDEPROPERTIES ("separatorChar" = ",", "quoteChar" = "`", "escapeChar" = "\\\\") '
+        + "LOCATION 's3-folder';",
+        output_location="file/to/path",
+        kms_key=None,
+    )
+
+
+@pytest.mark.parametrize(
+    "column, expected",
+    [
+        ("feature-1", "feature-1 STRING"),
+        ("feature-2", "feature-2 INT"),
+        ("feature-3", "feature-3 DOUBLE"),
+        ("feature-4", "feature-4 BOOLEAN"),
+        ("feature-5", "feature-5 TIMESTAMP"),
+    ],
+)
+def test_construct_athena_table_column_string(column, expected, sagemaker_session_mock):
+    dataframe = pd.DataFrame(
+        {
+            "feature-1": ["420"],
+            "feature-2": [50],
+            "feature-3": [5.0],
+            "feature-4": [True],
+            "feature-5": [pd.Timestamp(1513393355)],
+        }
+    )
+    dataset_builder = DatasetBuilder(
+        sagemaker_session=sagemaker_session_mock,
+        base=dataframe,
+        output_path="file/to/path",
+    )
+    query_string = dataset_builder._construct_athena_table_column_string(column)
+    assert query_string == expected
+
+
+def test_construct_athena_table_column_string_not_support_column_type(sagemaker_session_mock):
+    dataframe = pd.DataFrame({"feature": pd.Series([1] * 3, dtype="int8")})
+    dataset_builder = DatasetBuilder(
+        sagemaker_session=sagemaker_session_mock,
+        base=dataframe,
+        output_path="file/to/path",
+    )
+    with pytest.raises(RuntimeError) as error:
+        dataset_builder._construct_athena_table_column_string("feature")
+    assert "The dataframe type int8 is not supported yet." in str(error)
+
+
+def test_run_query_throw_runtime_error(sagemaker_session_mock, feature_group_mock):
+    dataset_builder = DatasetBuilder(
+        sagemaker_session=sagemaker_session_mock,
+        base=feature_group_mock,
+        output_path="file/to/path",
+    )
+    sagemaker_session_mock.start_query_execution.return_value = {"QueryExecutionId": "query-id"}
+    sagemaker_session_mock.get_query_execution.return_value = {
+        "QueryExecution": {"Status": {"State": "FAILED"}}
+    }
+    with pytest.raises(RuntimeError) as error:
+        dataset_builder._run_query("query-string", "catalog", "database")
+    assert "Failed to execute query query-id." in str(error)
