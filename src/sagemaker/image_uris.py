@@ -158,7 +158,7 @@ def retrieve(
         final_image_scope = _get_final_image_scope(framework, instance_type, image_scope)
         _validate_for_suppported_frameworks_and_instance_type(framework, instance_type)
         config = _config_for_framework_and_scope(_framework, final_image_scope, accelerator_type)
-
+    print(config)
     original_version = version
     version = _validate_version_and_set_if_needed(version, config, framework)
     version_config = config["versions"][_version_for_config(version, config)]
