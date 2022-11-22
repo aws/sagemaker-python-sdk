@@ -79,6 +79,7 @@ SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES = (
     "ml.p3.16xlarge",
     "ml.p3dn.24xlarge",
     "ml.p4d.24xlarge",
+    "ml.p4de.24xlarge",
     "local_gpu",
 )
 SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
