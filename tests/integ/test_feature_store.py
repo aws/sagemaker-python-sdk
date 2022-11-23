@@ -83,6 +83,11 @@ def feature_group_name():
 
 
 @pytest.fixture
+def base_name():
+    return f"my-base-{int(time.time() * 10**7)}"
+
+
+@pytest.fixture
 def offline_store_s3_uri(feature_store_session, region_name):
     bucket = f"sagemaker-test-featurestore-{region_name}-{feature_store_session.account_id()}"
     feature_store_session._create_s3_bucket_if_it_does_not_exist(bucket, region_name)
@@ -107,6 +112,32 @@ def pandas_data_frame():
         }
     )
     return df
+
+
+@pytest.fixture
+def base_dataframe():
+    base_data = [
+        [1, 187512346.0, 123, 128],
+        [2, 187512347.0, 168, 258],
+        [3, 187512348.0, 125, 184],
+        [1, 187512349.0, 195, 206],
+    ]
+    return pd.DataFrame(
+        base_data, columns=["base_id", "base_time", "base_feature_1", "base_feature_2"]
+    )
+
+
+@pytest.fixture
+def feature_group_dataframe():
+    feature_group_data = [
+        [1, 187512246.0, 456, 325],
+        [2, 187512247.0, 729, 693],
+        [3, 187512348.0, 129, 901],
+        [1, 187512449.0, 289, 286],
+    ]
+    return pd.DataFrame(
+        feature_group_data, columns=["fg_id", "fg_time", "fg_feature_1", "fg_feature_2"]
+    )
 
 
 @pytest.fixture
@@ -527,6 +558,135 @@ def test_ingest_multi_process(
     assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
 
 
+def test_create_dataset_with_feature_group_base(
+    feature_store_session,
+    region_name,
+    role,
+    base_name,
+    feature_group_name,
+    offline_store_s3_uri,
+    base_dataframe,
+    feature_group_dataframe,
+):
+    base = FeatureGroup(name=base_name, sagemaker_session=feature_store_session)
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    with cleanup_feature_group(base) and cleanup_feature_group(feature_group):
+        _create_feature_group_and_ingest_data(
+            base, base_dataframe, offline_store_s3_uri, "base_id", "base_time", role
+        )
+        _create_feature_group_and_ingest_data(
+            feature_group, feature_group_dataframe, offline_store_s3_uri, "fg_id", "fg_time", role
+        )
+        base_table_name = _get_athena_table_name_after_data_replication(
+            feature_store_session, base, offline_store_s3_uri
+        )
+        feature_group_table_name = _get_athena_table_name_after_data_replication(
+            feature_store_session, feature_group, offline_store_s3_uri
+        )
+
+        with timeout(minutes=10) and cleanup_offline_store(
+            base_table_name, feature_store_session
+        ) and cleanup_offline_store(feature_group_table_name, feature_store_session):
+            feature_store = FeatureStore(sagemaker_session=feature_store_session)
+            df, query_string = (
+                feature_store.create_dataset(base=base, output_path=offline_store_s3_uri)
+                .with_feature_group(feature_group)
+                .to_dataframe()
+            )
+            sorted_df = df.sort_values(by=list(df.columns)).reset_index(drop=True)
+            merged_df = base_dataframe.merge(
+                feature_group_dataframe, left_on="base_id", right_on="fg_id"
+            )
+            expect_df = merged_df.sort_values(by=list(merged_df.columns)).reset_index(drop=True)
+            assert sorted_df.equals(expect_df)
+            assert (
+                query_string
+                == 'WITH fg_base AS (SELECT table_base."base_id", table_base."base_time", '
+                + 'table_base."base_feature_1", table_base."base_feature_2"\n'
+                + "FROM (\n"
+                + "SELECT *, row_number() OVER (\n"
+                + 'PARTITION BY dedup_base."base_id", dedup_base."base_feature_1", '
+                + 'dedup_base."base_feature_2"\n'
+                + 'ORDER BY dedup_base."base_time" DESC, dedup_base."api_invocation_time" DESC, '
+                + 'dedup_base."write_time" DESC\n'
+                + ") AS row_base\n"
+                + f'FROM "sagemaker_featurestore"."{base_table_name}" dedup_base\n'
+                + ") AS table_base\n"
+                + "WHERE row_base = 1\n"
+                + "AND NOT is_deleted),\n"
+                + 'fg_0 AS (SELECT table_0."fg_id", table_0."fg_time", table_0."fg_feature_1", '
+                + 'table_0."fg_feature_2"\n'
+                + "FROM (\n"
+                + "SELECT *, row_number() OVER (\n"
+                + 'PARTITION BY dedup_0."fg_id", dedup_0."fg_feature_1", dedup_0."fg_feature_2"\n'
+                + 'ORDER BY dedup_0."fg_time" DESC, dedup_0."api_invocation_time" DESC, '
+                + 'dedup_0."write_time" DESC\n'
+                + ") AS row_0\n"
+                + f'FROM "sagemaker_featurestore"."{feature_group_table_name}" dedup_0\n'
+                + ") AS table_0\n"
+                + "WHERE row_0 = 1\n"
+                + "AND NOT is_deleted)\n"
+                + "SELECT *\n"
+                + "FROM fg_base\n"
+                + "JOIN fg_0\n"
+                + 'ON fg_base."base_id" = fg_0."fg_id"'
+            )
+
+
+def _create_feature_group_and_ingest_data(
+    feature_group: FeatureGroup,
+    dataframe: DataFrame,
+    offline_store_s3_uri: str,
+    record_identifier_name: str,
+    event_time_name: str,
+    role: str,
+):
+    feature_group.load_feature_definitions(data_frame=dataframe)
+    feature_group.create(
+        s3_uri=offline_store_s3_uri,
+        record_identifier_name=record_identifier_name,
+        event_time_feature_name=event_time_name,
+        role_arn=role,
+        enable_online_store=True,
+    )
+    _wait_for_feature_group_create(feature_group)
+
+    ingestion_manager = feature_group.ingest(data_frame=dataframe, max_workers=3, wait=False)
+    ingestion_manager.wait()
+    assert 0 == len(ingestion_manager.failed_rows)
+
+
+def _get_athena_table_name_after_data_replication(
+    feature_store_session, feature_group: FeatureGroup, offline_store_s3_uri
+):
+    feature_group_metadata = feature_group.describe()
+    resolved_output_s3_uri = (
+        feature_group_metadata.get("OfflineStoreConfig", None)
+        .get("S3StorageConfig", None)
+        .get("ResolvedOutputS3Uri", None)
+    )
+    s3_prefix = resolved_output_s3_uri.replace(f"{offline_store_s3_uri}/", "")
+    region_name = feature_store_session.boto_session.region_name
+    s3_client = feature_store_session.boto_session.client(
+        service_name="s3", region_name=region_name
+    )
+    while True:
+        objects_in_bucket = s3_client.list_objects(
+            Bucket=offline_store_s3_uri.replace("s3://", ""), Prefix=s3_prefix
+        )
+        if "Contents" in objects_in_bucket and len(objects_in_bucket["Contents"]) > 1:
+            break
+        else:
+            print(f"Waiting for {feature_group.name} data in offline store...")
+            time.sleep(60)
+    print(f"{feature_group.name} data available.")
+    return (
+        feature_group_metadata.get("OfflineStoreConfig", None)
+        .get("DataCatalogConfig", None)
+        .get("TableName", None)
+    )
+
+
 def _wait_for_feature_group_create(feature_group: FeatureGroup):
     status = feature_group.describe().get("FeatureGroupStatus")
     while status == "Creating":
@@ -560,3 +720,28 @@ def cleanup_feature_group(feature_group: FeatureGroup):
             feature_group.delete()
         except Exception:
             raise RuntimeError(f"Failed to delete feature group with name {feature_group.name}")
+
+
+@contextmanager
+def cleanup_offline_store(table_name: str, feature_store_session: Session):
+    try:
+        yield
+    finally:
+        try:
+            region_name = feature_store_session.boto_session.region_name
+            s3_client = feature_store_session.boto_session.client(
+                service_name="s3", region_name=region_name
+            )
+            account_id = feature_store_session.account_id()
+            bucket_name = f"sagemaker-test-featurestore-{region_name}-{account_id}"
+            response = s3_client.list_objects_v2(
+                Bucket=bucket_name,
+                Prefix=f"{account_id}/sagemaker/{region_name}/offline-store/{table_name}/",
+            )
+            files_in_folder = response["Contents"]
+            files_to_delete = []
+            for f in files_in_folder:
+                files_to_delete.append({"Key": f["Key"]})
+            s3_client.delete_objects(Bucket=bucket_name, Delete={"Objects": files_to_delete})
+        except Exception:
+            raise RuntimeError(f"Failed to delete data under {table_name}")

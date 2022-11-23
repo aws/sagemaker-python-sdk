@@ -16,14 +16,14 @@ A Dataset Builder is a builder class for generating a dataset by providing condi
 """
 from __future__ import absolute_import
 
+import copy
 import datetime
-import os
 from typing import Any, Dict, List, Sequence, Tuple, Union
 
 import attr
 import pandas as pd
 
-from sagemaker import Session, s3, utils
+from sagemaker import Session, utils
 from sagemaker.feature_store.feature_group import FeatureGroup
 
 
@@ -166,7 +166,7 @@ class DatasetBuilder:
     _write_time_ending_timestamp: datetime.datetime = attr.ib(init=False, default=None)
     _event_time_starting_timestamp: datetime.datetime = attr.ib(init=False, default=None)
     _event_time_ending_timestamp: datetime.datetime = attr.ib(init=False, default=None)
-    _feature_groups_to_be_merged: List[FeatureGroupToBeMerged] = attr.ib(init=False, default=[])
+    _feature_groups_to_be_merged: List[FeatureGroupToBeMerged] = attr.ib(init=False, factory=list)
 
     _DATAFRAME_TYPE_TO_COLUMN_TYPE_MAP = {
         "object": "STRING",
@@ -193,8 +193,6 @@ class DatasetBuilder:
         Returns:
             This DatasetBuilder object.
         """
-        if not target_feature_name_in_base:
-            target_feature_name_in_base = self._record_identifier_feature_name
         self._feature_groups_to_be_merged.append(
             construct_feature_group_to_be_merged(
                 feature_group, included_feature_names, target_feature_name_in_base
@@ -292,18 +290,11 @@ class DatasetBuilder:
         """
         if isinstance(self._base, pd.DataFrame):
             temp_id = utils.unique_name_from_base("dataframe-base")
-            local_file_name = f"{temp_id}.csv"
-            desired_s3_folder = f"{self._output_path}/{temp_id}"
-            self._base.to_csv(local_file_name, index=False, header=False)
-            s3.S3Uploader.upload(
-                local_path=local_file_name,
-                desired_s3_uri=desired_s3_folder,
-                sagemaker_session=self._sagemaker_session,
-                kms_key=self._kms_key_id,
-            )
-            os.remove(local_file_name)
-            temp_table_name = f"dataframe_{temp_id}"
-            self._create_temp_table(temp_table_name, desired_s3_folder)
+            s3_file_name = f"{temp_id}.csv"
+            s3_folder = f"{self._output_path}/{temp_id}"
+            self._base.to_csv(f"{s3_folder}/{s3_file_name}", index=False, header=False)
+            temp_table_name = f'dataframe_{temp_id.replace("-", "_")}'
+            self._create_temp_table(temp_table_name, s3_folder)
             base_features = list(self._base.columns)
             query_string = self._construct_query_string(
                 FeatureGroupToBeMerged(
@@ -325,6 +316,10 @@ class DatasetBuilder:
             base_feature_group = construct_feature_group_to_be_merged(
                 self._base, self._included_feature_names
             )
+            self._record_identifier_feature_name = base_feature_group.record_identifier_feature_name
+            self._event_time_identifier_feature_name = (
+                base_feature_group.event_time_identifier_feature_name
+            )
             query_string = self._construct_query_string(base_feature_group)
             query_result = self._run_query(
                 query_string,
@@ -344,15 +339,7 @@ class DatasetBuilder:
             The query string executed.
         """
         csv_file, query_string = self.to_csv()
-        s3.S3Downloader.download(
-            s3_uri=csv_file,
-            local_path="./",
-            kms_key=self._kms_key_id,
-            sagemaker_session=self._sagemaker_session,
-        )
-        local_file_name = csv_file.split("/")[-1]
-        df = pd.read_csv(local_file_name)
-        os.remove(local_file_name)
+        df = pd.read_csv(csv_file)
         return df, query_string
 
     def _construct_where_query_string(
@@ -368,21 +355,25 @@ class DatasetBuilder:
             The WHERE query string.
         """
         where_conditions = []
-        if not self._include_deleted_records:
+        if not self._include_duplicated_records:
+            where_conditions.append(f"row_{suffix} = 1")
+        if not self._include_deleted_records and not isinstance(self._base, pd.DataFrame):
             where_conditions.append("NOT is_deleted")
         if self._write_time_ending_timestamp:
             where_conditions.append(
-                f'table_{suffix}."write_time" <= {self._write_time_ending_timestamp}'
+                f'table_{suffix}."write_time" <= '
+                f"to_timestamp('{self._write_time_ending_timestamp.replace(microsecond=0)}', "
+                f"'yyyy-mm-dd hh24:mi:ss')"
             )
         if self._event_time_starting_timestamp:
             where_conditions.append(
                 f'table_{suffix}."{event_time_identifier_feature_name}" >= '
-                + str(self._event_time_starting_timestamp)
+                + str(self._event_time_starting_timestamp.timestamp())
             )
         if self._event_time_ending_timestamp:
             where_conditions.append(
                 f'table_{suffix}."{event_time_identifier_feature_name}" <= '
-                + str(self._event_time_ending_timestamp)
+                + str(self._event_time_ending_timestamp.timestamp())
             )
         if len(where_conditions) == 0:
             return ""
@@ -410,20 +401,27 @@ class DatasetBuilder:
                 f'FROM "{feature_group.database}"."{feature_group.table_name}" table_{suffix}\n'
             )
         else:
-            features = feature_group.features
+            features = copy.deepcopy(feature_group.features)
             features.remove(feature_group.event_time_identifier_feature_name)
             dedup_features = ", ".join([f'dedup_{suffix}."{feature}"' for feature in features])
+            rank_query_string = (
+                f'ORDER BY dedup_{suffix}."{feature_group.event_time_identifier_feature_name}" '
+                + f'DESC, dedup_{suffix}."api_invocation_time" DESC, dedup_{suffix}."write_time" '
+                + "DESC\n"
+            )
+            if isinstance(self._base, pd.DataFrame):
+                rank_query_string = (
+                    f'ORDER BY dedup_{suffix}."{feature_group.event_time_identifier_feature_name}" '
+                    + "DESC\n"
+                )
             query_string += (
                 "FROM (\n"
                 + "SELECT *, row_number() OVER (\n"
                 + f"PARTITION BY {dedup_features}\n"
-                + f'ORDER BY dedup_{suffix}."{feature_group.event_time_identifier_feature_name}" '
-                + f'DESC, dedup_{suffix}."api_invocation_time" DESC, '
-                + f'dedup_{suffix}."write_time" DESC\n'
+                + rank_query_string
                 + f") AS row_{suffix}\n"
                 + f'FROM "{feature_group.database}"."{feature_group.table_name}" dedup_{suffix}\n'
                 + f") AS table_{suffix}\n"
-                + f"WHERE row_{suffix} = 1\n"
             )
         return query_string + self._construct_where_query_string(
             suffix, feature_group.event_time_identifier_feature_name
@@ -446,8 +444,8 @@ class DatasetBuilder:
                     for i, feature_group in enumerate(self._feature_groups_to_be_merged)
                 ]
             )
-            query_string += f"{with_subquery_string}\n"
-        query_string += "SELECT *\nFROM fg_base"
+            query_string += with_subquery_string
+        query_string += "\nSELECT *\nFROM fg_base"
         if len(self._feature_groups_to_be_merged) > 0:
             join_subquery_string = "".join(
                 [
@@ -470,6 +468,8 @@ class DatasetBuilder:
         Returns:
             The JOIN query string.
         """
+        if not feature_group.target_feature_name_in_base:
+            feature_group.target_feature_name_in_base = self._record_identifier_feature_name
         join_condition_string = (
             f"\nJOIN fg_{suffix}\n"
             + f'ON fg_base."{feature_group.target_feature_name_in_base}" = '

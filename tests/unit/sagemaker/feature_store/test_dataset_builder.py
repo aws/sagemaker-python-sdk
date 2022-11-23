@@ -100,7 +100,7 @@ def test_with_feature_group(sagemaker_session_mock):
         "EventTimeFeatureName": "feature-2",
         "FeatureDefinitions": [{"FeatureName": "feature-1"}, {"FeatureName": "feature-2"}],
     }
-    dataset_builder.with_feature_group(feature_group, None, ["feature-1", "feature-2"])
+    dataset_builder.with_feature_group(feature_group, "target-feature", ["feature-1", "feature-2"])
     assert len(dataset_builder._feature_groups_to_be_merged) == 1
     assert dataset_builder._feature_groups_to_be_merged[0].features == ["feature-1", "feature-2"]
     assert dataset_builder._feature_groups_to_be_merged[0].included_feature_names == [
@@ -217,8 +217,6 @@ def test_to_csv_with_feature_group(sagemaker_session_mock):
         base=feature_group,
         output_path="file/to/path",
     )
-    # TODO: remove this line after fix test independent
-    dataset_builder._feature_groups_to_be_merged = []
     sagemaker_session_mock.describe_feature_group.return_value = {
         "OfflineStoreConfig": {"DataCatalogConfig": {"TableName": "table", "Database": "database"}},
         "RecordIdentifierFeatureName": "feature-1",
@@ -251,8 +249,6 @@ def test_to_dataframe_with_dataframe(
         output_path="s3://file/to/path",
         event_time_identifier_feature_name="feature-2",
     )
-    # TODO: remove this line after fix test independent
-    dataset_builder._feature_groups_to_be_merged = []
     sagemaker_session_mock.start_query_execution.return_value = {"QueryExecutionId": "query-id"}
     sagemaker_session_mock.get_query_execution.return_value = {
         "QueryExecution": {
@@ -276,7 +272,7 @@ def test_construct_where_query_string(sagemaker_session_mock):
         base=feature_group,
         output_path="file/to/path",
     )
-    time = datetime.datetime.now()
+    time = datetime.datetime.now().replace(microsecond=0)
     start = time + datetime.timedelta(minutes=1)
     end = start + datetime.timedelta(minutes=1)
     dataset_builder._write_time_ending_timestamp = time
@@ -285,10 +281,12 @@ def test_construct_where_query_string(sagemaker_session_mock):
     query_string = dataset_builder._construct_where_query_string("suffix", "event-time")
     assert (
         query_string
-        == "WHERE NOT is_deleted\n"
-        + f'AND table_suffix."write_time" <= {time}\n'
-        + f'AND table_suffix."event-time" >= {start}\n'
-        + f'AND table_suffix."event-time" <= {end}'
+        == "WHERE row_suffix = 1\n"
+        + "AND NOT is_deleted\n"
+        + f"AND table_suffix.\"write_time\" <= to_timestamp('{time}', "
+        + "'yyyy-mm-dd hh24:mi:ss')\n"
+        + f'AND table_suffix."event-time" >= {start.timestamp()}\n'
+        + f'AND table_suffix."event-time" <= {end.timestamp()}'
     )
 
 
@@ -339,7 +337,7 @@ def test_construct_query_string(sagemaker_session_mock, feature_group_mock):
         + 'FROM "database"."base-table" dedup_base\n'
         + ") AS table_base\n"
         + "WHERE row_base = 1\n"
-        + "WHERE NOT is_deleted),\n"
+        + "AND NOT is_deleted),\n"
         + 'fg_0 AS (SELECT table_0."feature-1", table_0."feature-2"\n'
         + "FROM (\n"
         + "SELECT *, row_number() OVER (\n"
@@ -350,7 +348,7 @@ def test_construct_query_string(sagemaker_session_mock, feature_group_mock):
         + 'FROM "database"."table-name" dedup_0\n'
         + ") AS table_0\n"
         + "WHERE row_0 = 1\n"
-        + "WHERE NOT is_deleted)\n"
+        + "AND NOT is_deleted)\n"
         + "SELECT *\n"
         + "FROM fg_base\n"
         + "JOIN fg_0\n"
