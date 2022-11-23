@@ -15,6 +15,7 @@ from __future__ import absolute_import
 
 from typing import List, Union, Optional
 
+from sagemaker.workflow.cluster_config import ClusterConfig
 from sagemaker.workflow.entities import (
     RequestType,
 )
@@ -69,8 +70,9 @@ class EMRStep(Step):
         name: str,
         display_name: str,
         description: str,
-        cluster_id: str,
         step_config: EMRStepConfig,
+        cluster_id: str = None,
+        cluster_config: ClusterConfig = None,
         depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
         cache_config: CacheConfig = None,
     ):
@@ -82,6 +84,7 @@ class EMRStep(Step):
             description(str): The description of the EMR step.
             cluster_id(str): The ID of the running EMR cluster.
             step_config(EMRStepConfig): One StepConfig to be executed by the job flow.
+            cluster_config(ClusterConfig): ClusterConfig defining the required EMR Cluster.
             depends_on (List[Union[str, Step, StepCollection]]): A list of `Step`/`StepCollection`
                 names or `Step` instances or `StepCollection` instances that this `EMRStep`
                 depends on.
@@ -90,7 +93,19 @@ class EMRStep(Step):
         """
         super(EMRStep, self).__init__(name, display_name, description, StepTypeEnum.EMR, depends_on)
 
-        emr_step_args = {"ClusterId": cluster_id, "StepConfig": step_config.to_request()}
+        emr_step_args = {"StepConfig": step_config.to_request()}
+
+        if cluster_id is None and cluster_config is None:
+            raise Exception("EMRStep " + name + " must have either cluster_id or cluster_config")
+
+        if cluster_id is not None and cluster_config is not None:
+            raise Exception("EMRStep " + name + " can not have both cluster_id or cluster_config")
+
+        if cluster_id is not None:
+            emr_step_args["ClusterId"] = cluster_id
+        elif cluster_config is not None:
+            emr_step_args["ClusterConfig"] = cluster_config.to_request()
+
         self.args = emr_step_args
         self.cache_config = cache_config
 

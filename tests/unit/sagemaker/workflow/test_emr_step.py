@@ -18,6 +18,11 @@ import pytest
 
 from mock import Mock
 
+from sagemaker.workflow.cluster_config import (
+    ClusterConfig,
+    JobFlowInstancesConfig,
+    InstanceGroupConfig,
+)
 from sagemaker.workflow.emr_step import EMRStep, EMRStepConfig
 from sagemaker.workflow.steps import CacheConfig
 from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
@@ -184,3 +189,142 @@ def test_pipeline_interpolates_emr_outputs(sagemaker_session):
     assert ordered(adjacency_list) == ordered(
         {"emr_step_1": [], "emr_step_2": [], "TestStep": ["emr_step_1", "emr_step_2"]}
     )
+
+
+g_emr_step_config = EMRStepConfig(jar="s3:/script-runner/script-runner.jar")
+g_emr_step_name = "MyEMRStep"
+g_cluster_config: ClusterConfig = ClusterConfig(
+    instances=JobFlowInstancesConfig(
+        instance_groups=[
+            InstanceGroupConfig(
+                name="Master Instance Group",
+                instance_role="MASTER",
+                instance_count=1,
+                instance_type="m1.small",
+                market="ON_DEMAND",
+            )
+        ],
+        instance_count=1,
+        hadoop_version="MyHadoopVersion",
+    ),
+    ami_version="3.8.0",
+    additional_info="MyAdditionalInfo",
+)
+
+
+def test_emr_step_throws_exception_when_both_cluster_id_and_cluster_config_are_missing():
+    with pytest.raises(Exception) as exceptionInfo:
+        EMRStep(
+            name=g_emr_step_name,
+            display_name="MyEMRStep",
+            description="MyEMRStepDescription",
+            step_config=g_emr_step_config,
+            depends_on=["TestStep"],
+            cache_config=CacheConfig(enable_caching=True, expire_after="PT1H"),
+        )
+    expected_error_msg = (
+        "EMRStep " + g_emr_step_name + " must have either cluster_id or cluster_config"
+    )
+    actual_error_msg = exceptionInfo.value.args[0]
+
+    assert expected_error_msg == actual_error_msg
+
+
+def test_emr_step_throws_exception_when_both_cluster_id_and_cluster_config_are_present():
+    with pytest.raises(Exception) as exceptionInfo:
+        EMRStep(
+            name=g_emr_step_name,
+            display_name="MyEMRStep",
+            description="MyEMRStepDescription",
+            step_config=g_emr_step_config,
+            cluster_id="MyClusterID",
+            cluster_config=g_cluster_config,
+            depends_on=["TestStep"],
+            cache_config=CacheConfig(enable_caching=True, expire_after="PT1H"),
+        )
+    expected_error_msg = (
+        "EMRStep " + g_emr_step_name + " can not have both cluster_id or cluster_config"
+    )
+    actual_error_msg = exceptionInfo.value.args[0]
+
+    assert expected_error_msg == actual_error_msg
+
+
+def test_emr_step_with_cluster_config():
+    emr_step = EMRStep(
+        name=g_emr_step_name,
+        display_name="MyEMRStep",
+        description="MyEMRStepDescription",
+        cluster_config=g_cluster_config,
+        step_config=g_emr_step_config,
+        cache_config=CacheConfig(enable_caching=True, expire_after="PT1H"),
+    )
+
+    assert emr_step.to_request() == {
+        "Name": "MyEMRStep",
+        "Type": "EMR",
+        "Arguments": {
+            "StepConfig": {"HadoopJarStep": {"Jar": "s3:/script-runner/script-runner.jar"}},
+            "ClusterConfig": {
+                "AdditionalInfo": "MyAdditionalInfo",
+                "AmiVersion": "3.8.0",
+                "Instances": {
+                    "HadoopVersion": "MyHadoopVersion",
+                    "InstanceCount": 1,
+                    "InstanceGroups": [
+                        {
+                            "InstanceCount": 1,
+                            "InstanceRole": "MASTER",
+                            "InstanceType": "m1.small",
+                            "Market": "ON_DEMAND",
+                            "Name": "Master Instance Group",
+                        }
+                    ],
+                },
+            },
+        },
+        "DisplayName": "MyEMRStep",
+        "Description": "MyEMRStepDescription",
+        "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
+    }
+
+    pipeline = Pipeline(name="MyPipeline", steps=[emr_step])
+
+    assert json.loads(pipeline.definition()) == {
+        "Version": "2020-12-01",
+        "Metadata": {},
+        "Parameters": [],
+        "PipelineExperimentConfig": {
+            "ExperimentName": {"Get": "Execution.PipelineName"},
+            "TrialName": {"Get": "Execution.PipelineExecutionId"},
+        },
+        "Steps": [
+            {
+                "Name": "MyEMRStep",
+                "Type": "EMR",
+                "Arguments": {
+                    "StepConfig": {"HadoopJarStep": {"Jar": "s3:/script-runner/script-runner.jar"}},
+                    "ClusterConfig": {
+                        "AdditionalInfo": "MyAdditionalInfo",
+                        "AmiVersion": "3.8.0",
+                        "Instances": {
+                            "HadoopVersion": "MyHadoopVersion",
+                            "InstanceCount": 1,
+                            "InstanceGroups": [
+                                {
+                                    "InstanceCount": 1,
+                                    "InstanceRole": "MASTER",
+                                    "InstanceType": "m1.small",
+                                    "Market": "ON_DEMAND",
+                                    "Name": "Master Instance Group",
+                                }
+                            ],
+                        },
+                    },
+                },
+                "DisplayName": "MyEMRStep",
+                "Description": "MyEMRStepDescription",
+                "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
+            }
+        ],
+    }
