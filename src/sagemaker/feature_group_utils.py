@@ -115,6 +115,10 @@ def get_feature_group_as_dataframe(feature_group_name: str, athena_bucket: str,
         if event_time_feature_name is not None:
             query += str(f'AND {event_time_feature_name}=(SELECT MAX({event_time_feature_name}) FROM '
                          + f'"sagemaker_featurestore"."{feature_group_name}")')
+        else:
+            exc = Exception('Argument event_time_feature_name must be specified when using latest_ingestion=True.')
+            logger.exception(exc)
+            raise exc
     query += ';'
 
     if session is not None:
