@@ -4366,24 +4366,19 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
         list_feature_groups_args = {}
 
-        if name_contains:
-            list_feature_groups_args["NameContains"] = name_contains
-        if feature_group_status_equals:
-            list_feature_groups_args["FeatureGroupStatusEquals"] = feature_group_status_equals
-        if offline_store_status_equals:
-            list_feature_groups_args["OfflineStoreStatusEquals"] = offline_store_status_equals
-        if creation_time_after:
-            list_feature_groups_args["CreationTimeAfter"] = creation_time_after
-        if creation_time_before:
-            list_feature_groups_args["CreationTimeBefore"] = creation_time_before
-        if sort_order:
-            list_feature_groups_args["SortOrder"] = sort_order
-        if sort_by:
-            list_feature_groups_args["SortBy"] = sort_by
-        if max_results:
-            list_feature_groups_args["MaxResults"] = max_results
-        if next_token:
-            list_feature_groups_args["NextToken"] = next_token
+        def check_object(key, value):
+            if value is not None:
+                list_feature_groups_args[key] = value
+
+        check_object("NameContains", name_contains)
+        check_object("FeatureGroupStatusEquals", feature_group_status_equals)
+        check_object("OfflineStoreStatusEquals", offline_store_status_equals)
+        check_object("CreationTimeAfter", creation_time_after)
+        check_object("CreationTimeBefore", creation_time_before)
+        check_object("SortOrder", sort_order)
+        check_object("SortBy", sort_by)
+        check_object("MaxResults", max_results)
+        check_object("NextToken", next_token)
 
         return self.sagemaker_client.list_feature_groups(**list_feature_groups_args)
 
