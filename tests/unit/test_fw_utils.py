@@ -958,13 +958,7 @@ def test_validate_pytorchddp_not_raises():
     )
     # Case 3: Framework is PyTorch, Distribution is PyTorchDDP enabled, supported framework and py versions
     pytorchddp_enabled = {"pytorchddp": {"enabled": True}}
-    pytorchddp_supported_fw_versions = [
-        "1.11",
-        "1.11.0",
-        "1.12",
-        "1.12.0",
-        "1.12.1",
-    ]
+    pytorchddp_supported_fw_versions = fw_utils.PYTORCHDDP_SUPPORTED_FRAMEWORK_VERSIONS
     for framework_version in pytorchddp_supported_fw_versions:
         fw_utils.validate_pytorch_distribution(
             distribution=pytorchddp_enabled,
@@ -999,7 +993,6 @@ def test_validate_pytorchddp_raises():
 
 
 def test_validate_torch_distributed_not_raises():
-
     # Case 1: Framework is PyTorch, but distribution is not torch_distributed
     torch_distributed_disabled = {"torch_distributed": {"enabled": False}}
     fw_utils.validate_torch_distributed_distribution(
@@ -1098,16 +1091,12 @@ def test_instance_type_supports_profiler():
     assert fw_utils._instance_type_supports_profiler("local") is False
 
 
-def test_validate_accl_support_true():
+def test_validate_smddp_collectives_supported():
     #  Framework is PyTorch, Distribution is PyTorchDDP enabled, all supported parameters
-    accl_supported_fw_versions = [
-        "1.12",
-        "1.12.0",
-    ]
-    for framework_version in accl_supported_fw_versions:
+    smddp_coll_supported_fw_versions = fw_utils.SMDDP_COLLECTIVES_SUPPORTED_FRAMEWORK_VERSIONS
+    for framework_version in smddp_coll_supported_fw_versions:
         assert (
-            fw_utils.validate_accl_support(
-                use_accl=True,
+            fw_utils.validate_smddp_collectives_support(
                 framework_version=framework_version,
                 py_version="py3",
                 image_uri=None,
@@ -1118,62 +1107,51 @@ def test_validate_accl_support_true():
         )
 
 
-def test_validate_accl_support_false():
-    #  Framework is PyTorch, Distribution is PyTorchDDP enabled, all supported parameters
-    assert (
-        fw_utils.validate_accl_support(
-            use_accl=False,
-            framework_version="1.11",
-            py_version="py3",
-            image_uri=None,
-            instance_type="ml.p3dn.24xlarge",
-            instance_count=1,
-        )
-        is False
-    )
-
-
-def test_validate_accl_support_error():
+def test_validate_smddp_collectives_not_supported():
     # Case 1: Unsupported framework version
-    with pytest.raises(ValueError):
-        fw_utils.validate_accl_support(
-            use_accl=True,
+    assert (
+        fw_utils.validate_smddp_collectives_support(
             framework_version="1.10",
             py_version="py3",
             image_uri=None,
             instance_type="ml.p4d.24xlarge",
             instance_count=2,
         )
+        is False
+    )
 
     # Case 2: Unsupported Py version
-    with pytest.raises(ValueError):
-        fw_utils.validate_accl_support(
-            use_accl=True,
+    assert (
+        fw_utils.validate_smddp_collectives_support(
             framework_version="1.10",
             py_version="py2",
             image_uri=None,
             instance_type="ml.p4d.24xlarge",
             instance_count=2,
         )
+        is False
+    )
 
     # Case 3: Unsupported Instance Type
-    with pytest.raises(ValueError):
-        fw_utils.validate_accl_support(
-            use_accl=True,
+    assert (
+        fw_utils.validate_smddp_collectives_support(
             framework_version="1.10",
             py_version="py2",
             image_uri=None,
             instance_type="ml.p3.16xlarge",
             instance_count=2,
         )
+        is False
+    )
 
     # Case 4: Unsupported Instance Count
-    with pytest.raises(ValueError):
-        fw_utils.validate_accl_support(
-            use_accl=True,
+    assert (
+        fw_utils.validate_smddp_collectives_support(
             framework_version="1.10",
             py_version="py2",
             image_uri=None,
             instance_type="ml.p4d.24xlarge",
             instance_count=1,
         )
+        is False
+    )

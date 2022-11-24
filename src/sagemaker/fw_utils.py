@@ -147,11 +147,8 @@ TORCH_DISTRIBUTED_SUPPORTED_FRAMEWORK_VERSIONS = ["1.11", "1.11.0"]
 TRAINIUM_SUPPORTED_DISTRIBUTION_STRATEGIES = ["torch_distributed"]
 
 # TODO: Change to 1.12.1 before merging
-ACCL_SUPPORTED_FRAMEWORK_VERSIONS = (
-    "1.12",
-    "1.12.0",
-)
-ACCL_SUPPORTED_INSTANCE_TYPES = ("ml.p4d.24xlarge",)
+SMDDP_COLLECTIVES_SUPPORTED_FRAMEWORK_VERSIONS = ("1.12.1",)
+SMDDP_COLLECTIVES_SUPPORTED_INSTANCE_TYPES = ("ml.p4d.24xlarge",)
 
 SMDISTRIBUTED_SUPPORTED_STRATEGIES = ["dataparallel", "modelparallel"]
 
@@ -1100,10 +1097,11 @@ def validate_torch_distributed_distribution(
     if err_msg:
         raise ValueError(err_msg)
 
-def validate_accl_support(
-    use_accl, framework_version, py_version, image_uri, instance_type, instance_count
+
+def validate_smddp_collectives_support(
+    framework_version, py_version, image_uri, instance_type, instance_count
 ):
-    """Check if ACCL is supported for current invocation.
+    """Check if SMDDP collective backend is supported for current invocation.
 
     Args:
         framework_version (str): A string representing the framework version selected.
@@ -1112,46 +1110,42 @@ def validate_accl_support(
         instance_type (str): SageMaker instance type.
         instance_count (int): Number of training instances to use.
 
-    Raises:
-        ValueError: if `use_accl` is set to true and validation fails, i.e.
-            `instance_type` is not in ACCL_SUPPORTED_INSTANCE_TYPES or
-            `py_version` is not python3 or
-            `framework_version` is not in ACCL_SUPPORTED_FRAMEWORK_VERSIONS or
-            `instance_count` is not greater than 1
+    Returns false if:
+        `instance_type` is not in SMDDP_COLLECTIVES_SUPPORTED_INSTANCE_TYPES or
+        `py_version` is not python3 or
+        `framework_version` is not in SMDDP_COLLECTIVES_SUPPORTED_FRAMEWORK_VERSIONS or
+        `instance_count` is not greater than 1
     """
     err_msg = ""
     if not image_uri:
         # ignore framework_version and py_version if image_uri is set
         # in case image_uri is not set, then both are mandatory
-        if framework_version not in ACCL_SUPPORTED_FRAMEWORK_VERSIONS:
+        if framework_version not in SMDDP_COLLECTIVES_SUPPORTED_FRAMEWORK_VERSIONS:
             err_msg += (
-                f"Provided framework_version {framework_version} is not supported by"
-                " ACCL.\n"
+                f"Provided framework_version {framework_version} is not supported.\n"
                 "Please specify one of the supported framework versions:"
-                f" {ACCL_SUPPORTED_FRAMEWORK_VERSIONS}.\n"
+                f" {SMDDP_COLLECTIVES_SUPPORTED_FRAMEWORK_VERSIONS}.\n"
             )
         if "py3" not in py_version:
             err_msg += (
-                f"Provided py_version {py_version} is not supported by ACCL.\n"
+                f"Provided py_version {py_version} is not supported.\n"
                 "Please specify py_version>=py3.\n"
             )
-    if instance_type not in ACCL_SUPPORTED_INSTANCE_TYPES:
+    if instance_type not in SMDDP_COLLECTIVES_SUPPORTED_INSTANCE_TYPES:
         err_msg += (
-            f"Provided instance_type {instance_type} is not supported by ACCL.\n"
+            f"Provided instance_type {instance_type} is not supported.\n"
             "Please specify one of the supported instance types:"
-            f"{ACCL_SUPPORTED_INSTANCE_TYPES}.\n"
+            f"{SMDDP_COLLECTIVES_SUPPORTED_INSTANCE_TYPES}.\n"
         )
     if instance_count == 1:
         # ACCL is not supported for single-node jobs
         err_msg += (
-            "ACCL is not supported for single-node jobs.\n"
+            "SMDDP Collective backend is not supported for single-node jobs.\n"
             "Please increase instance_count to be greater than 1.\n"
         )
     if not err_msg:
         return True
-    if use_accl:
-        raise ValueError(f"Could not enable ACCL.\n {err_msg}")
-    logger.warning("Could not enable ACCL.\n %s", err_msg)
+    logger.warning("Could not enable SMDDP Collectives.\n %s", err_msg)
     return False
 
 

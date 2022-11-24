@@ -25,7 +25,7 @@ from sagemaker.fw_utils import (
     python_deprecation_warning,
     validate_version_or_image_args,
     validate_distribution,
-    validate_accl_support,
+    validate_smddp_collectives_support,
 )
 from sagemaker.pytorch import defaults
 from sagemaker.pytorch.model import PyTorchModel
@@ -43,7 +43,9 @@ class PyTorch(Framework):
     LAUNCH_PYTORCH_DDP_ENV_NAME = "sagemaker_pytorch_ddp_enabled"
     LAUNCH_TORCH_DISTRIBUTED_ENV_NAME = "sagemaker_torch_distributed_enabled"
     INSTANCE_TYPE_ENV_NAME = "sagemaker_instance_type"
-    ACCL_ENABLED_ENV_NAME = "sagemaker_accl_enabled"
+    COMMUNICATION_BACKEND_ENV_NAME = "sagemaker_communication_backend"
+    COMMUNICATION_BACKEND_AUTO = "auto"
+    COMMUNICATION_BACKEND_NCCL = "nccl"
 
     def __init__(
         self,
@@ -315,13 +317,13 @@ class PyTorch(Framework):
             pytorch_ddp_enabled = pytorch_ddp_dict.get("enabled", False)
         elif "torch_distributed" in distribution:
             torch_distributed_enabled = distribution.get("torch_distributed").get("enabled", False)
-        
+
         if pytorch_ddp_enabled:
             distribution_config[self.LAUNCH_PYTORCH_DDP_ENV_NAME] = pytorch_ddp_enabled
             if self.instance_type is not None:
                 distribution_config[self.INSTANCE_TYPE_ENV_NAME] = self.instance_type
-            is_accl_enabled = self._get_accl_enabled(pytorch_ddp_dict)
-            distribution_config[self.ACCL_ENABLED_ENV_NAME] = is_accl_enabled
+            comm_backend = self._get_communication_backend(pytorch_ddp_dict)
+            distribution_config[self.COMMUNICATION_BACKEND_ENV_NAME] = comm_backend
         elif torch_distributed_enabled:
             distribution_config[self.LAUNCH_TORCH_DISTRIBUTED_ENV_NAME] = torch_distributed_enabled
             if self.instance_type is not None:
@@ -331,40 +333,42 @@ class PyTorch(Framework):
 
         return distribution_config
 
-    def _get_accl_enabled(self, pytorch_ddp_dict):
-        """Evaluates if ACCL should be enabled for current training jobs.
+    def _get_communication_backend(self, pytorch_ddp_dict):
+        """Sets the collective communication backend to be used for the current training job.
 
-        Case 1: Customer explicitly disables ACCL by setting use_accl to False.
-        Return false.
+        Return `nccl` if:
+        * SMDDP collectives are not supported OR
+        * communication_options is specified and backend is set to `nccl`.
 
-        Case 2: Customer explicitly enables ACCL by setting use_accl to True.
-        Test if configuration is supported for ACCL.
-        If yes, return true. If not, throw an error.
-
-        Case 3: Customer does not specify use_accl. We try to enable by default.
-        Test if configuration is supported for ACCL.
-        If not, we return false.
+        Return `auto` if:
+        * communication_options is not specified OR
+        * communication_options is specified but backend is not set OR
+        * communication_options is specified and backend is set to `auto`.
 
         Args:
             pytorch_ddp_dict (dict): A dictionary with options for pytorchddp distribution.
         Returns:
             A boolean that indicates whether to enable ACCL
         """
-        use_accl = pytorch_ddp_dict.get("use_accl")
-        is_accl_supported = validate_accl_support(
-            use_accl,
+        is_smddp_coll_backend_supported = validate_smddp_collectives_support(
             self.framework_version,
             self.py_version,
             self.image_uri,
             self.instance_type,
             self.instance_count,
         )
+        if not is_smddp_coll_backend_supported:
+            return self.COMMUNICATION_BACKEND_NCCL
 
-        if use_accl is False or not is_accl_supported:
-            return False
-        if use_accl and is_accl_supported:
-            return True
-        return use_accl
+        comm_options = pytorch_ddp_dict.get("communication_options")
+        if not comm_options:
+            return self.COMMUNICATION_BACKEND_AUTO
+
+        comm_backend = comm_options.get("backend")
+        if not comm_backend or comm_backend == self.COMMUNICATION_BACKEND_AUTO:
+            return self.COMMUNICATION_BACKEND_AUTO
+
+        return self.COMMUNICATION_BACKEND_NCCL
 
     def hyperparameters(self):
         """Return hyperparameters used by your custom PyTorch code during model training."""
