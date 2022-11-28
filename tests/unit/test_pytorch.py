@@ -59,8 +59,12 @@ EXPERIMENT_CONFIG = {
 }
 
 DISTRIBUTION_PYTORCH_DDP_ENABLED = {"pytorchddp": {"enabled": True}}
-DISTRIBUTION_PYTORCH_ACCL_DISABLED = {"pytorchddp": {"enabled": True, "use_accl": False}}
-DISTRIBUTION_PYTORCH_ACCL_ENABLED = {"pytorchddp": {"enabled": True, "use_accl": True}}
+DISTRIBUTION_PYTORCH_SMDDP_COLL_DISABLED = {
+    "pytorchddp": {"enabled": True, "communication_options": {"backend": "nccl"}}
+}
+DISTRIBUTION_PYTORCH_SMDDP_COLL_ENABLED = {
+    "pytorchddp": {"enabled": True, "communication_options": {"backend": "auto"}}
+}
 
 
 @pytest.fixture(name="sagemaker_session")
@@ -784,7 +788,7 @@ def test_pytorch_ddp_distribution_configuration(
     expected_torch_ddp = {
         "sagemaker_pytorch_ddp_enabled": True,
         "sagemaker_instance_type": test_instance_type,
-        "sagemaker_accl_enabled": False,
+        "sagemaker_communication_backend": "nccl",
     }
     assert actual_pytorch_ddp == expected_torch_ddp
 
@@ -803,14 +807,14 @@ def test_pytorch_ddp_distribution_configuration_unsupported(sagemaker_session):
     assert (f"py_version {unsupported_py_version} is not supported") in str(error)
 
 
-def test_pytorch_ddp_accl_disabled(sagemaker_session):
-    valid_framework_version = "1.12"
+def test_pytorch_ddp_comm_back_nccl(sagemaker_session):
+    valid_framework_version = "1.12.1"
     valid_py_version = "py3"
     pytorch = _pytorch_estimator(
         sagemaker_session,
         framework_version=valid_framework_version,
         py_version=valid_py_version,
-        distribution=DISTRIBUTION_PYTORCH_ACCL_DISABLED,
+        distribution=DISTRIBUTION_PYTORCH_SMDDP_COLL_DISABLED,
     )
     actual_pytorch_ddp = pytorch._pytorch_distribution_configuration(
         distribution=pytorch.distribution
@@ -818,21 +822,21 @@ def test_pytorch_ddp_accl_disabled(sagemaker_session):
     expected_torch_ddp = {
         "sagemaker_pytorch_ddp_enabled": True,
         "sagemaker_instance_type": INSTANCE_TYPE,
-        "sagemaker_accl_enabled": False,
+        "sagemaker_communication_backend": "nccl",
     }
     assert actual_pytorch_ddp == expected_torch_ddp
 
 
-def test_pytorch_ddp_accl_explicit_enabled_and_supported(sagemaker_session):
+def test_pytorch_ddp_comm_backend_auto_smddp_supported(sagemaker_session):
     valid_instance_type = "ml.p4d.24xlarge"
     valid_instance_count = 2
-    valid_framework_version = "1.12"
+    valid_framework_version = "1.12.1"
     valid_py_version = "py3"
     pytorch = _pytorch_estimator(
         sagemaker_session,
         framework_version=valid_framework_version,
         py_version=valid_py_version,
-        distribution=DISTRIBUTION_PYTORCH_ACCL_ENABLED,
+        distribution=DISTRIBUTION_PYTORCH_SMDDP_COLL_ENABLED,
         instance_type=valid_instance_type,
         instance_count=valid_instance_count,
     )
@@ -842,31 +846,36 @@ def test_pytorch_ddp_accl_explicit_enabled_and_supported(sagemaker_session):
     expected_torch_ddp = {
         "sagemaker_pytorch_ddp_enabled": True,
         "sagemaker_instance_type": valid_instance_type,
-        "sagemaker_accl_enabled": True,
+        "sagemaker_communication_backend": "auto",
     }
     assert actual_pytorch_ddp == expected_torch_ddp
 
 
-def test_pytorch_ddp_accl_explicit_enabled_and_unsupported(sagemaker_session):
+def test_pytorch_ddp_comm_backend_auto_smddp_unsupported(sagemaker_session):
     unsupported_framework_version = "1.11"
     unsupported_instance_count = 1
     pytorch = _pytorch_estimator(
         sagemaker_session,
         framework_version=unsupported_framework_version,
         py_version="py3",
-        distribution=DISTRIBUTION_PYTORCH_ACCL_ENABLED,
+        distribution=DISTRIBUTION_PYTORCH_SMDDP_COLL_ENABLED,
         instance_count=unsupported_instance_count,
     )
-    with pytest.raises(ValueError) as error:
-        pytorch._pytorch_distribution_configuration(distribution=pytorch.distribution)
-    assert (f"framework_version {unsupported_framework_version} is not supported") in str(error)
-    assert ("ACCL is not supported for single-node jobs.") in str(error)
+    actual_pytorch_ddp = pytorch._pytorch_distribution_configuration(
+        distribution=pytorch.distribution
+    )
+    expected_torch_ddp = {
+        "sagemaker_pytorch_ddp_enabled": True,
+        "sagemaker_instance_type": INSTANCE_TYPE,
+        "sagemaker_communication_backend": "nccl",
+    }
+    assert actual_pytorch_ddp == expected_torch_ddp
 
 
-def test_pytorch_ddp_accl_default_on_and_supported(sagemaker_session):
+def test_pytorch_ddp_no_comm_options_smddp_supported(sagemaker_session):
     valid_instance_type = "ml.p4d.24xlarge"
     valid_instance_count = 2
-    valid_framework_version = "1.12"
+    valid_framework_version = "1.12.1"
     valid_py_version = "py3"
     pytorch = _pytorch_estimator(
         sagemaker_session,
@@ -882,29 +891,6 @@ def test_pytorch_ddp_accl_default_on_and_supported(sagemaker_session):
     expected_torch_ddp = {
         "sagemaker_pytorch_ddp_enabled": True,
         "sagemaker_instance_type": valid_instance_type,
-        "sagemaker_accl_enabled": None,
-    }
-    assert actual_pytorch_ddp == expected_torch_ddp
-
-
-def test_pytorch_ddp_accl_default_on_and_unsupported(sagemaker_session):
-    unsupported_framework_version = "1.11"
-    unsupported_instance_type = "ml.g5.24xlarge"
-    unsupported_instance_count = 1
-    pytorch = _pytorch_estimator(
-        sagemaker_session,
-        framework_version=unsupported_framework_version,
-        py_version="py3",
-        distribution=DISTRIBUTION_PYTORCH_DDP_ENABLED,
-        instance_type=unsupported_instance_type,
-        instance_count=unsupported_instance_count,
-    )
-    actual_pytorch_ddp = pytorch._pytorch_distribution_configuration(
-        distribution=pytorch.distribution
-    )
-    expected_torch_ddp = {
-        "sagemaker_pytorch_ddp_enabled": True,
-        "sagemaker_instance_type": unsupported_instance_type,
-        "sagemaker_accl_enabled": False,
+        "sagemaker_communication_backend": "auto",
     }
     assert actual_pytorch_ddp == expected_torch_ddp
