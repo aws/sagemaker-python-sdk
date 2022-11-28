@@ -1137,7 +1137,7 @@ def validate_smddp_collectives_support(
             f"{SMDDP_COLLECTIVES_SUPPORTED_INSTANCE_TYPES}.\n"
         )
     if instance_count == 1:
-        # ACCL is not supported for single-node jobs
+        # Communication backend auto is not supported for single-node jobs
         err_msg += (
             "SMDDP Collective backend is not supported for single-node jobs.\n"
             "Please increase instance_count to be greater than 1.\n"

@@ -348,7 +348,7 @@ class PyTorch(Framework):
         Args:
             pytorch_ddp_dict (dict): A dictionary with options for pytorchddp distribution.
         Returns:
-            A boolean that indicates whether to enable ACCL
+            A boolean that indicates whether to enable SMDDP via communication backend auto
         """
         is_smddp_coll_backend_supported = validate_smddp_collectives_support(
             self.framework_version,
