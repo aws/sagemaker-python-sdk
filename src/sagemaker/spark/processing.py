@@ -316,7 +316,10 @@ class _SparkProcessorBase(ScriptProcessor):
             self._validate_configuration(configuration)
             extended_inputs.append(self._stage_configuration(configuration))
 
-        return extended_inputs, extended_outputs
+        return (
+            extended_inputs if extended_inputs else None,
+            extended_outputs if extended_outputs else None,
+        )
 
     def start_history_server(self, spark_event_logs_s3_uri=None):
         """Starts a Spark history server.
