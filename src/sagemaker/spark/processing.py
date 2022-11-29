@@ -279,6 +279,12 @@ class _SparkProcessorBase(ScriptProcessor):
     def _extend_processing_args(self, inputs, outputs, **kwargs):
         """Extends processing job args such as inputs."""
 
+        # make a copy of user outputs
+        outputs = outputs or []
+        extended_outputs = []
+        for user_output in outputs:
+            extended_outputs.append(user_output)
+
         if kwargs.get("spark_event_logs_s3_uri"):
             spark_event_logs_s3_uri = kwargs.get("spark_event_logs_s3_uri")
             self._validate_s3_uri(spark_event_logs_s3_uri)
@@ -297,16 +303,20 @@ class _SparkProcessorBase(ScriptProcessor):
                 s3_upload_mode="Continuous",
             )
 
-            outputs = outputs or []
-            outputs.append(output)
+            extended_outputs.append(output)
+
+        # make a copy of user inputs
+        inputs = inputs or []
+        extended_inputs = []
+        for user_input in inputs:
+            extended_inputs.append(user_input)
 
         if kwargs.get("configuration"):
             configuration = kwargs.get("configuration")
             self._validate_configuration(configuration)
-            inputs = inputs or []
-            inputs.append(self._stage_configuration(configuration))
+            extended_inputs.append(self._stage_configuration(configuration))
 
-        return inputs, outputs
+        return extended_inputs, extended_outputs
 
     def start_history_server(self, spark_event_logs_s3_uri=None):
         """Starts a Spark history server.
