@@ -78,7 +78,7 @@ def test_pipeline_create_with_parallelism_config(sagemaker_session_mock, role_ar
     )
 
 
-@patch("sagemaker.spark.processing.S3Uploader.upload_string_as_file_body")
+@patch("sagemaker.s3.S3Uploader.upload_string_as_file_body")
 def test_large_pipeline_create(sagemaker_session_mock, role_arn):
     parameter = ParameterString("MyStr")
     pipeline = Pipeline(
@@ -149,7 +149,8 @@ def test_pipeline_update_with_parallelism_config(sagemaker_session_mock, role_ar
         ParallelismConfiguration={"MaxParallelExecutionSteps": 10},
     )
 
-@patch("sagemaker.spark.processing.S3Uploader.upload_string_as_file_body")
+
+@patch("sagemaker.s3.S3Uploader.upload_string_as_file_body")
 def test_large_pipeline_update(sagemaker_session_mock, role_arn):
     parameter = ParameterString("MyStr")
     pipeline = Pipeline(

@@ -992,6 +992,10 @@ def test_spark_processor(spark_processor, processing_input, pipeline_session):
                     SPARK_SUBMIT_FILE2,
                 ],
                 "spark_event_logs_s3_uri": ParameterString("MySparkEventLogS3Uri"),
+                "configuration": {
+                    "Classification": "core-site",
+                    "Properties": {"hadoop.security.groups.cache.secs": "250"},
+                },
             },
         ),
         (
@@ -1016,6 +1020,10 @@ def test_spark_processor(spark_processor, processing_input, pipeline_session):
                 "submit_jars": [SPARK_DEP_JAR],
                 "submit_files": [SPARK_SUBMIT_FILE1, SPARK_SUBMIT_FILE2],
                 "spark_event_logs_s3_uri": ParameterString("MySparkEventLogS3Uri"),
+                "configuration": {
+                    "Classification": "core-site",
+                    "Properties": {"hadoop.security.groups.cache.secs": "250"},
+                },
             },
         ),
     ],
