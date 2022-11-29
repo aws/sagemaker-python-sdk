@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.117.0 (2022-11-15)
+
+### Features
+
+ * add support for PT1.12.1
+
 ## v2.116.0 (2022-10-28)
 
 ### Features
