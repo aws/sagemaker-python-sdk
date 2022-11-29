@@ -114,11 +114,12 @@ def get_code_hash(step: Entity) -> str:
     if isinstance(step, ProcessingStep) and step.step_args:
         kwargs = step.step_args.func_kwargs
         source_dir = kwargs.get("source_dir")
+        submit_class = kwargs.get("submit_class")
         dependencies = get_processing_dependencies(
             [
                 kwargs.get("dependencies"),
                 kwargs.get("submit_py_files"),
-                kwargs.get("submit_class"),
+                [submit_class] if submit_class else None,
                 kwargs.get("submit_jars"),
                 kwargs.get("submit_files"),
             ]
