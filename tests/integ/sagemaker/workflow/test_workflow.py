@@ -50,7 +50,7 @@ from sagemaker.processing import (
     ScriptProcessor,
     FrameworkProcessor,
 )
-from sagemaker.s3 import S3Uploader
+from sagemaker.s3 import S3Uploader, S3Downloader
 from sagemaker.session import get_execution_role
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.transformer import Transformer
@@ -1487,6 +1487,22 @@ def test_multi_step_framework_processing_pipeline_uploads(
         assert expected_prepare_step_artifact in s3_code_objects
         assert expected_split_step_artifact in s3_code_objects
         assert expected_eval_step_artifact in s3_code_objects
+
+        # verify runprocs contain the correct commands
+        prepare_step_runproc = S3Downloader.read_file(
+            f"s3://{default_bucket}/{expected_prepare_step_artifact}"
+        )
+        assert 'python preprocess.py' in prepare_step_runproc
+
+        split_step_runproc = S3Downloader.read_file(
+            f"s3://{default_bucket}/{expected_split_step_artifact}"
+        )
+        assert 'python train_test_split.py' in split_step_runproc
+
+        eval_step_runproc = S3Downloader.read_file(
+            f"s3://{default_bucket}/{expected_eval_step_artifact}"
+        )
+        assert 'python evaluate.py' in eval_step_runproc
 
     finally:
         try:
