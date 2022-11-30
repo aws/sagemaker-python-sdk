@@ -23,7 +23,7 @@ import os
 import pathlib
 import logging
 import uuid
-from typing import Union
+from typing import Union, Optional, Dict, List
 import attr
 
 from six import string_types
@@ -33,6 +33,12 @@ from botocore.exceptions import ClientError
 from sagemaker import image_uris, s3
 from sagemaker.exceptions import UnexpectedStatusException
 from sagemaker.model_monitor.monitoring_files import Constraints, ConstraintViolations, Statistics
+from sagemaker.model_monitor.monitoring_alert import (
+    MonitoringAlertSummary,
+    MonitoringAlertHistorySummary,
+    MonitoringAlertActions,
+    ModelDashboardIndicatorAction,
+)
 from sagemaker.model_monitor.dataset_format import MonitoringDatasetFormat
 from sagemaker.network import NetworkConfig
 from sagemaker.processing import Processor, ProcessingInput, ProcessingJob, ProcessingOutput
@@ -670,6 +676,155 @@ class ModelMonitor(object):
         monitoring_executions.reverse()
 
         return monitoring_executions
+
+    def update_monitoring_alert(
+        self,
+        monitoring_alert_name: str,
+        data_points_to_alert: Optional[int],
+        evaluation_period: Optional[int],
+    ):
+        """Update the monitoring schedule alert.
+
+         Args:
+            monitoring_alert_name (str): The name of the monitoring alert to update.
+            data_points_to_alert (int):  The data point to alert.
+            evaluation_period (int): The period to evaluate the alert status.
+
+        Returns: None
+        """
+
+        if self.monitoring_schedule_name is None:
+            message = "Nothing to update, please create a schedule first."
+            _LOGGER.error(message)
+            raise ValueError(message)
+
+        if not data_points_to_alert and not evaluation_period:
+            raise ValueError("Got no alert property to update.")
+
+        self.sagemaker_session.update_monitoring_alert(
+            monitoring_schedule_name=self.monitoring_schedule_name,
+            monitoring_alert_name=monitoring_alert_name,
+            data_points_to_alert=data_points_to_alert,
+            evaluation_period=evaluation_period,
+        )
+
+    def list_monitoring_alerts(
+        self, next_token: Optional[str] = None, max_results: Optional[int] = 10
+    ):
+        """List the monitoring alerts.
+
+        Args:
+             next_token (Optional[str]):  The pagination token. Default: None
+             max_results (Optional[int]): The maximum number of results to return.
+             Must be between 1 and 100. Default: 10
+
+        Returns:
+             List[MonitoringAlertSummary]: list of monitoring alert history.
+             str: Next token.
+        """
+        if self.monitoring_schedule_name is None:
+            message = "No alert to list, please create a schedule first."
+            _LOGGER.warning(message)
+            return [], None
+
+        monitoring_alert_dict: Dict = self.sagemaker_session.list_monitoring_alerts(
+            monitoring_schedule_name=self.monitoring_schedule_name,
+            next_token=next_token,
+            max_results=max_results,
+        )
+        monitoring_alerts: List[MonitoringAlertSummary] = []
+        for monitoring_alert in monitoring_alert_dict["MonitoringAlertSummaries"]:
+            monitoring_alerts.append(
+                MonitoringAlertSummary(
+                    alert_name=monitoring_alert["MonitoringAlertName"],
+                    creation_time=monitoring_alert["CreationTime"],
+                    last_modified_time=monitoring_alert["LastModifiedTime"],
+                    alert_status=monitoring_alert["AlertStatus"],
+                    data_points_to_alert=monitoring_alert["DatapointsToAlert"],
+                    evaluation_period=monitoring_alert["EvaluationPeriod"],
+                    actions=MonitoringAlertActions(
+                        model_dashboard_indicator=ModelDashboardIndicatorAction(
+                            enabled=monitoring_alert["Actions"]["ModelDashboardIndicator"][
+                                "Enabled"
+                            ],
+                        )
+                    ),
+                )
+            )
+
+        next_token = (
+            monitoring_alert_dict["NextToken"] if "NextToken" in monitoring_alert_dict else None
+        )
+        return monitoring_alerts, next_token
+
+    def list_monitoring_alert_history(
+        self,
+        monitoring_alert_name: Optional[str] = None,
+        sort_by: Optional[str] = "CreationTime",
+        sort_order: Optional[str] = "Descending",
+        next_token: Optional[str] = None,
+        max_results: Optional[int] = 10,
+        creation_time_before: Optional[str] = None,
+        creation_time_after: Optional[str] = None,
+        status_equals: Optional[str] = None,
+    ):
+        """Lists the alert history associated with the given schedule_name and alert_name.
+
+        Args:
+            monitoring_alert_name (Optional[str]): The name of the alert_name to filter on.
+                If not provided, does not filter on it. Default: None.
+            sort_by (Optional[str]): sort_by (str): The field to sort by.
+                Can be one of: "Name", "CreationTime"
+                Default: "CreationTime".
+            sort_order (Optional[str]): The sort order. Can be one of: "Ascending", "Descending".
+                Default: "Descending".
+            next_token (Optional[str]):  The pagination token. Default: None.
+            max_results (Optional[int]): The maximum number of results to return.
+                Must be between 1 and 100. Default: 10.
+            creation_time_before (Optional[str]): A filter to filter alert history before a time
+                Default: None.
+            creation_time_after (Optional[str]): A filter to filter alert history after a time
+                Default: None.
+            status_equals (Optional[str]): A filter to filter alert history by status
+                Default: None.
+        Returns:
+            List[MonitoringAlertHistorySummary]: list of monitoring alert history.
+            str: Next token.
+        """
+        if self.monitoring_schedule_name is None:
+            message = "No alert history to list, please create a schedule first."
+            _LOGGER.warning(message)
+            return [], None
+
+        monitoring_alert_history_dict: Dict = self.sagemaker_session.list_monitoring_alert_history(
+            monitoring_schedule_name=self.monitoring_schedule_name,
+            monitoring_alert_name=monitoring_alert_name,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            next_token=next_token,
+            max_results=max_results,
+            status_equals=status_equals,
+            creation_time_before=creation_time_before,
+            creation_time_after=creation_time_after,
+        )
+        monitoring_alert_history: List[MonitoringAlertHistorySummary] = []
+        for monitoring_alert_history_summary in monitoring_alert_history_dict[
+            "MonitoringAlertHistory"
+        ]:
+            monitoring_alert_history.append(
+                MonitoringAlertHistorySummary(
+                    alert_name=monitoring_alert_history_summary["MonitoringAlertName"],
+                    creation_time=monitoring_alert_history_summary["CreationTime"],
+                    alert_status=monitoring_alert_history_summary["AlertStatus"],
+                )
+            )
+
+        next_token = (
+            monitoring_alert_history_dict["NextToken"]
+            if "NextToken" in monitoring_alert_history_dict
+            else None
+        )
+        return monitoring_alert_history, next_token
 
     @classmethod
     def attach(cls, monitor_schedule_name, sagemaker_session=None):
