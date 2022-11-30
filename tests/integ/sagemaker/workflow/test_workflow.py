@@ -1172,7 +1172,13 @@ def _verify_repack_output(repack_step_dict, sagemaker_session):
 
 
 def test_caching_behavior(
-    pipeline_session, role, cpu_instance_type, pipeline_name, script_dir, athena_dataset_definition
+    pipeline_session,
+    role,
+    cpu_instance_type,
+    pipeline_name,
+    script_dir,
+    athena_dataset_definition,
+    region_name,
 ):
     default_bucket = pipeline_session.default_bucket()
     data_path = os.path.join(DATA_DIR, "workflow")
@@ -1475,7 +1481,7 @@ def test_multi_step_framework_processing_pipeline_uploads(
             bucket=default_bucket, key_prefix=expected_prefix
         )
 
-        # verify
+        # verify all distinct artifacts were uploaded
         assert expected_source_dir_tar in s3_code_objects
         assert expected_query_step_artifact in s3_code_objects
         assert expected_prepare_step_artifact in s3_code_objects
