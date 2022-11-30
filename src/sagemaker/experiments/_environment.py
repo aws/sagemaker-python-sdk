@@ -28,7 +28,7 @@ MAX_RETRY_ATTEMPTS = 7
 logger = logging.getLogger(__name__)
 
 
-class EnvironmentType(enum.Enum):
+class _EnvironmentType(enum.Enum):
     """SageMaker jobs which data can be pulled from the environment."""
 
     SageMakerTrainingJob = 1
@@ -42,7 +42,7 @@ class _RunEnvironment(object):
         """Init for _RunEnvironment.
 
         Args:
-            environment_type (EnvironmentType): The environment type.
+            environment_type (_EnvironmentType): The environment type.
             source_arn (str): The ARN of the current job.
         """
         self.environment_type = environment_type
@@ -65,12 +65,13 @@ class _RunEnvironment(object):
         Returns:
             _RunEnvironment: Job data loaded from the environment. None if config does not exist.
         """
+        # TODO: enable to determine transform job env
         if training_job_arn_env in os.environ:
-            environment_type = EnvironmentType.SageMakerTrainingJob
+            environment_type = _EnvironmentType.SageMakerTrainingJob
             source_arn = os.environ.get(training_job_arn_env)
             return _RunEnvironment(environment_type, source_arn)
         if os.path.exists(processing_job_config_path):
-            environment_type = EnvironmentType.SageMakerProcessingJob
+            environment_type = _EnvironmentType.SageMakerProcessingJob
             source_arn = json.loads(open(processing_job_config_path).read())["ProcessingJobArn"]
             return _RunEnvironment(environment_type, source_arn)
         return None

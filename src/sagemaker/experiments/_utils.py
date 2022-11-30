@@ -83,3 +83,13 @@ def validate_invoked_inside_run_context(func):
         return func(*args, **kwargs)
 
     return wrapper
+
+
+def is_already_exist_error(error):
+    """Check if the error indicates resource already exists
+
+    Args:
+        error (dict): The "Error" field in the response of the
+            `botocore.exceptions.ClientError`
+    """
+    return error["Code"] == "ValidationException" and "already exists" in error["Message"]

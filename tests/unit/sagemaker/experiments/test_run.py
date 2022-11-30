@@ -18,7 +18,6 @@ from math import inf, nan
 from unittest.mock import patch, Mock, MagicMock
 
 import dateutil
-import pandas as pd
 import pytest
 
 from sagemaker.experiments import _environment
@@ -26,6 +25,7 @@ from sagemaker.experiments._api_types import (
     TrialComponentArtifact,
     TrialComponentSummary,
     TrialComponentStatus,
+    _TrialComponentStatusType,
 )
 from sagemaker.experiments.experiment import _Experiment
 from sagemaker.experiments.run import (
@@ -87,8 +87,8 @@ def test_run_init(mock_tc_save, sagemaker_session):
             RUN_NAME: expected_tc_name,
         }
 
-    # trail_component.save is called when exiting the with block
-    mock_tc_save.assert_called_once()
+    # trail_component.save is called when entering/ exiting the with block
+    mock_tc_save.assert_called()
 
 
 def test_run_init_name_length_exceed_limit(sagemaker_session):
@@ -120,26 +120,6 @@ def test_run_init_name_length_exceed_limit(sagemaker_session):
     )
 
 
-@patch("sagemaker.experiments.run._RunEnvironment")
-def test_run_init_in_sm_processing_job(mock_run_env, sagemaker_session):
-    rv = unittest.mock.Mock()
-    rv.source_arn = "arn:1234"
-    rv.environment_type = _environment.EnvironmentType.SageMakerProcessingJob
-    mock_run_env.load.return_value = rv
-
-    with pytest.raises(RuntimeError) as err:
-        Run.init(
-            experiment_name=TEST_EXP_NAME,
-            run_name=TEST_RUN_NAME,
-            sagemaker_session=sagemaker_session,
-        )
-
-    assert (
-        "Experiment Run init is not currently supported "
-        "in Sagemaker jobs other than the Training job"
-    ) in str(err)
-
-
 @patch.object(_TrialComponent, "save", MagicMock(return_value=None))
 @patch(
     "sagemaker.experiments.run._TrialComponent.load",
@@ -147,9 +127,11 @@ def test_run_init_in_sm_processing_job(mock_run_env, sagemaker_session):
 )
 @patch("sagemaker.experiments.run._RunEnvironment")
 def test_run_load_no_run_name_and_in_train_job(mock_run_env, sagemaker_session):
+    client = sagemaker_session.sagemaker_client
+    job_name = "my-train-job"
     rv = Mock()
-    rv.source_arn = "arn:1234/my-train-job"
-    rv.environment_type = _environment.EnvironmentType.SageMakerTrainingJob
+    rv.source_arn = f"arn:1234/{job_name}"
+    rv.environment_type = _environment._EnvironmentType.SageMakerTrainingJob
     mock_run_env.load.return_value = rv
 
     expected_tc_name = f"{TEST_EXP_NAME}{DELIMITER}{TEST_RUN_NAME}"
@@ -158,7 +140,7 @@ def test_run_load_no_run_name_and_in_train_job(mock_run_env, sagemaker_session):
         TRIAL_NAME: Run._generate_trial_name(TEST_EXP_NAME),
         RUN_NAME: expected_tc_name,
     }
-    sagemaker_session.sagemaker_client.describe_training_job.return_value = {
+    client.describe_training_job.return_value = {
         "TrainingJobName": "train-job-experiments",
         # The Run object has been created else where
         "ExperimentConfig": exp_config,
@@ -175,6 +157,8 @@ def test_run_load_no_run_name_and_in_train_job(mock_run_env, sagemaker_session):
         assert not run_obj._experiment
         assert run_obj._experiment_config == exp_config
 
+    client.describe_training_job.assert_called_once_with(TrainingJobName=job_name)
+
 
 @patch("sagemaker.experiments.run._RunEnvironment")
 def test_run_load_no_run_name_and_in_train_job_but_fail_to_get_exp_cfg(
@@ -182,7 +166,7 @@ def test_run_load_no_run_name_and_in_train_job_but_fail_to_get_exp_cfg(
 ):
     rv = Mock()
     rv.source_arn = "arn:1234/my-train-job"
-    rv.environment_type = _environment.EnvironmentType.SageMakerTrainingJob
+    rv.environment_type = _environment._EnvironmentType.SageMakerTrainingJob
     mock_run_env.load.return_value = rv
 
     # No Run object is created else where
@@ -256,21 +240,36 @@ def test_run_load_with_run_name_but_no_exp_name(sagemaker_session):
     assert "Invalid input: experiment_name is missing" in str(err)
 
 
+@patch.object(_TrialComponent, "save", MagicMock(return_value=None))
+@patch(
+    "sagemaker.experiments.run._TrialComponent.load",
+    MagicMock(side_effect=mock_trial_component_load_func),
+)
 @patch("sagemaker.experiments.run._RunEnvironment")
 def test_run_load_in_sm_processing_job(mock_run_env, sagemaker_session):
+    client = sagemaker_session.sagemaker_client
+    job_name = "my-train-job"
     rv = unittest.mock.Mock()
-    rv.source_arn = "arn:1234"
-    rv.environment_type = _environment.EnvironmentType.SageMakerProcessingJob
+    rv.source_arn = f"arn:1234/{job_name}"
+    rv.environment_type = _environment._EnvironmentType.SageMakerProcessingJob
     mock_run_env.load.return_value = rv
 
-    with pytest.raises(RuntimeError) as err:
-        with Run.load(sagemaker_session=sagemaker_session):
-            pass
+    expected_tc_name = f"{TEST_EXP_NAME}{DELIMITER}{TEST_RUN_NAME}"
+    exp_config = {
+        EXPERIMENT_NAME: TEST_EXP_NAME,
+        TRIAL_NAME: Run._generate_trial_name(TEST_EXP_NAME),
+        RUN_NAME: expected_tc_name,
+    }
+    client.describe_processing_job.return_value = {
+        "ProcessingJobName": "process-job-experiments",
+        # The Run object has been created else where
+        "ExperimentConfig": exp_config,
+    }
 
-    assert (
-        "Experiment Run load is not currently supported "
-        "in Sagemaker jobs other than the Training job"
-    ) in str(err)
+    with Run.load(sagemaker_session=sagemaker_session):
+        pass
+
+    client.describe_processing_job.assert_called_once_with(ProcessingJobName=job_name)
 
 
 def test_log_parameter_outside_run_context(run_obj):
@@ -638,90 +637,6 @@ def test_log_confusion_matrix_invalid_input(run_obj):
         assert "Lengths mismatch between true labels and predicted labels" in str(error)
 
 
-def test_log_table_outside_run_context(run_obj):
-    values = {"x": [1, 2, 3], "y": [4, 5, 6]}
-
-    with pytest.raises(RuntimeError) as err:
-        run_obj.log_table(title="TestTable", values=values, is_output=False)
-    assert "This method should be called inside context of 'with' statement" in str(err)
-
-
-def test_log_table_both_specified(run_obj):
-    with run_obj:
-        with pytest.raises(ValueError) as error:
-            run_obj.log_table(title="test", values={"foo": "bar"}, data_frame={"foo": "bar"})
-        assert "either values or data_frame should be provided" in str(error)
-
-
-def test_log_table_neither_specified(run_obj):
-    with run_obj:
-        with pytest.raises(ValueError) as error:
-            run_obj.log_table(title="test")
-        assert "either values or data_frame should be provided" in str(error)
-
-
-def test_log_table_invalid_values(run_obj):
-    values = {"x": "foo", "y": [4, 5, 6]}
-
-    with run_obj:
-        with pytest.raises(ValueError) as error:
-            run_obj.log_table(title="test", values=values)
-        assert "Table values should be list" in str(error)
-
-
-def test_log_table(run_obj):
-    values = {"x": [1, 2, 3], "y": [4, 5, 6]}
-
-    run_obj._artifact_uploader.upload_object_artifact.return_value = (
-        "s3uri_value",
-        "etag_value",
-    )
-    with run_obj:
-        run_obj.log_table(title="TestTable", values=values, is_output=False)
-        expected_data = {
-            "type": "Table",
-            "version": 0,
-            "title": "TestTable",
-            "fields": [
-                {"name": "x", "type": "string"},
-                {"name": "y", "type": "string"},
-            ],
-            "data": {"x": [1, 2, 3], "y": [4, 5, 6]},
-        }
-        run_obj._artifact_uploader.upload_object_artifact.assert_called_with(
-            "TestTable", expected_data, file_extension="json"
-        )
-
-        run_obj._lineage_artifact_tracker.add_input_artifact.assert_called_with(
-            name="TestTable", source_uri="s3uri_value", etag="etag_value", artifact_type="Table"
-        )
-
-
-def test_log_table_dataframe(run_obj):
-    dataframe = pd.DataFrame({"x": [1, 2, 3], "y": [4, 5, 6]})
-
-    run_obj._artifact_uploader.upload_object_artifact.return_value = (
-        "s3uri_value",
-        "etag_value",
-    )
-    with run_obj:
-        run_obj.log_table(title="TestTable", data_frame=dataframe)
-        expected_data = {
-            "type": "Table",
-            "version": 0,
-            "title": "TestTable",
-            "fields": [{"name": "x", "type": "number"}, {"name": "y", "type": "number"}],
-            "data": {"x": [1, 2, 3], "y": [4, 5, 6]},
-        }
-        run_obj._artifact_uploader.upload_object_artifact.assert_called_with(
-            "TestTable", expected_data, file_extension="json"
-        )
-
-        run_obj._lineage_artifact_tracker.add_output_artifact.assert_called_with(
-            name="TestTable", source_uri="s3uri_value", etag="etag_value", artifact_type="Table"
-        )
-
-
 def test_log_roc_curve_outside_run_context(run_obj):
     y_true = [0, 0, 1, 1]
     y_scores = [0.1, 0.4, 0.35, 0.8]
@@ -786,7 +701,9 @@ def test_list(mock_tc_list, mock_tc_load, run_obj, sagemaker_session):
             trial_component_arn="B" + str(i),
             display_name="C" + str(i),
             source_arn="D" + str(i),
-            status=TrialComponentStatus(primary_status="InProgress", message="E" + str(i)),
+            status=TrialComponentStatus(
+                primary_status=_TrialComponentStatusType.InProgress.value, message="E" + str(i)
+            ),
             start_time=start_time + datetime.timedelta(hours=i),
             end_time=end_time + datetime.timedelta(hours=i),
             creation_time=creation_time + datetime.timedelta(hours=i),
@@ -801,7 +718,9 @@ def test_list(mock_tc_list, mock_tc_load, run_obj, sagemaker_session):
             trial_component_arn="B" + str(i),
             display_name="C" + str(i),
             source_arn="D" + str(i),
-            status=TrialComponentStatus(primary_status="InProgress", message="E" + str(i)),
+            status=TrialComponentStatus(
+                primary_status=_TrialComponentStatusType.InProgress.value, message="E" + str(i)
+            ),
             start_time=start_time + datetime.timedelta(hours=i),
             end_time=end_time + datetime.timedelta(hours=i),
             creation_time=creation_time + datetime.timedelta(hours=i),
@@ -851,26 +770,50 @@ def test_list_empty(mock_tc_list, sagemaker_session):
     assert [] == Run.list(experiment_name=TEST_EXP_NAME, sagemaker_session=sagemaker_session)
 
 
-def test_enter_exit_locally(sagemaker_session, run_obj):
+@patch("sagemaker.experiments.run._TrialComponent.load")
+def test_enter_exit_locally(mock_load_tc, sagemaker_session, run_obj):
+    mock_load_tc.return_value = run_obj._trial_component
     sagemaker_session.sagemaker_client.update_trial_component.return_value = {}
     _verify_tc_status_before_enter_init(run_obj._trial_component)
 
     with run_obj:
-        _verify_tc_init_status(run_obj._trial_component)
+        _verify_tc_status_when_entering(run_obj._trial_component)
         init_start_time = run_obj._trial_component.start_time
 
         with Run.load(sagemaker_session=sagemaker_session):
-            _verify_load_does_not_change_tc_status(
+            _verify_tc_status_when_entering(
                 trial_component=run_obj._trial_component,
                 init_start_time=init_start_time,
             )
 
-        _verify_load_does_not_change_tc_status(
+        old_end_time = _verify_tc_status_when_successfully_exit(
             trial_component=run_obj._trial_component,
-            init_start_time=init_start_time,
         )
 
-    _verify_tc_status_when_successfully_exit_init(run_obj._trial_component)
+    old_end_time = _verify_tc_status_when_successfully_exit(
+        trial_component=run_obj._trial_component,
+        old_end_time=old_end_time,
+    )
+
+    # Re-load to verify:
+    # 1. if it works when Run.load and with are not in one line
+    # 2. if re-entering the load will change the "Completed" TC status
+    # to "InProgress"
+    # 3. when exiting the load, the end_time and status will be overridden again
+    run_load = Run.load(
+        experiment_name=run_obj.experiment_name,
+        run_name=run_obj.run_name,
+        sagemaker_session=sagemaker_session,
+    )
+    with run_load:
+        _verify_tc_status_when_entering(
+            trial_component=run_obj._trial_component,
+            init_start_time=init_start_time,
+            has_completed=True,
+        )
+    _verify_tc_status_when_successfully_exit(
+        trial_component=run_obj._trial_component, old_end_time=old_end_time
+    )
 
 
 def test_exit_fail(sagemaker_session, run_obj):
@@ -881,54 +824,9 @@ def test_exit_fail(sagemaker_session, run_obj):
     except ValueError:
         pass
 
-    assert run_obj._trial_component.status.primary_status == "Failed"
+    assert run_obj._trial_component.status.primary_status == _TrialComponentStatusType.Failed.value
     assert run_obj._trial_component.status.message
     assert isinstance(run_obj._trial_component.end_time, datetime.datetime)
-
-
-@patch(
-    "sagemaker.experiments.run._TrialComponent.load",
-    MagicMock(side_effect=mock_trial_component_load_func),
-)
-@patch("sagemaker.experiments.run._RunEnvironment")
-def test_enter_exit_sagemaker_job_only(mock_run_env, run_obj, sagemaker_session):
-    # The Run object is initialized and loaded in job env only
-    # Note this test also applies to Run object initialized locally
-    # and loaded in job env as the Run.init does not depend on environment
-    rv = Mock()
-    rv.source_arn = "arn:1234/my-train-job"
-    rv.environment_type = _environment.EnvironmentType.SageMakerTrainingJob
-    mock_run_env.load.return_value = rv
-
-    exp_config = {
-        EXPERIMENT_NAME: TEST_EXP_NAME,
-        TRIAL_NAME: Run._generate_trial_name(TEST_EXP_NAME),
-        RUN_NAME: f"{TEST_EXP_NAME}{DELIMITER}{TEST_RUN_NAME}",
-    }
-    sagemaker_session.sagemaker_client.describe_training_job.return_value = {
-        "TrainingJobName": "train-job-experiments",
-        "ExperimentConfig": exp_config,
-    }
-
-    sagemaker_session.sagemaker_client.update_trial_component.return_value = {}
-    _verify_tc_status_before_enter_init(run_obj._trial_component)
-
-    with run_obj:
-        _verify_tc_init_status(run_obj._trial_component)
-        init_start_time = run_obj._trial_component.start_time
-
-        with Run.load(sagemaker_session=sagemaker_session):
-            _verify_load_does_not_change_tc_status(
-                trial_component=run_obj._trial_component,
-                init_start_time=init_start_time,
-            )
-
-        _verify_load_does_not_change_tc_status(
-            trial_component=run_obj._trial_component,
-            init_start_time=init_start_time,
-        )
-
-    _verify_tc_status_when_successfully_exit_init(run_obj._trial_component)
 
 
 @pytest.mark.parametrize(
@@ -978,21 +876,23 @@ def _verify_tc_status_before_enter_init(trial_component):
     assert not trial_component.status
 
 
-def _verify_tc_init_status(trial_component):
-    assert isinstance(trial_component.start_time, datetime.datetime)
-    now = datetime.datetime.now(dateutil.tz.tzlocal())
-    assert (now.timestamp() - trial_component.start_time.timestamp()) < 1
-    assert not trial_component.end_time
-    assert trial_component.status.primary_status == "InProgress"
+def _verify_tc_status_when_entering(trial_component, init_start_time=None, has_completed=False):
+    if not init_start_time:
+        assert isinstance(trial_component.start_time, datetime.datetime)
+        now = datetime.datetime.now(dateutil.tz.tzlocal())
+        assert (now.timestamp() - trial_component.start_time.timestamp()) < 1
+    else:
+        assert trial_component.start_time == init_start_time
+
+    if not has_completed:
+        assert not trial_component.end_time
+    assert trial_component.status.primary_status == _TrialComponentStatusType.InProgress.value
 
 
-def _verify_load_does_not_change_tc_status(trial_component, init_start_time):
-    assert trial_component.start_time == init_start_time
-    assert not trial_component.end_time
-    assert trial_component.status.primary_status == "InProgress"
-
-
-def _verify_tc_status_when_successfully_exit_init(trial_component):
-    assert trial_component.status.primary_status == "Completed"
+def _verify_tc_status_when_successfully_exit(trial_component, old_end_time=None):
+    assert trial_component.status.primary_status == _TrialComponentStatusType.Completed.value
     assert isinstance(trial_component.start_time, datetime.datetime)
     assert isinstance(trial_component.end_time, datetime.datetime)
+    if old_end_time:
+        assert trial_component.end_time > old_end_time
+    return trial_component.end_time

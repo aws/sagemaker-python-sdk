@@ -23,23 +23,22 @@ import boto3
 from sagemaker import Session
 from sagemaker.experiments.run import Run
 
-for key, value in os.environ.items():
-    logging.info("OS env var - {}: {}".format(key, value))
-
 boto_session = boto3.Session(region_name=os.environ["AWS_REGION"])
 sagemaker_session = Session(boto_session=boto_session)
 
-with Run.init(
-    experiment_name="my-train-job-exp-in-script",
-    run_name="my-train-job-run-in-script",
-    sagemaker_session=sagemaker_session,
-) as run:
-    logging.info(f"Run name: {run.run_name}")
-    logging.info(f"Experiment name: {run.experiment_name}")
-    logging.info(f"Trial component name: {run._trial_component.trial_component_name}")
-    run.log_parameter("p1", 1.0)
-    run.log_parameter("p2", 2.0)
-    if "TRAINING_JOB_ARN" in os.environ:
+if os.environ["RUN_OPERATION"] == "init":
+    logging.info("Initializing a Run")
+    with Run.init(
+        experiment_name=os.environ["EXPERIMENT_NAME"],
+        run_name=os.environ["RUN_NAME"],
+        sagemaker_session=sagemaker_session,
+    ) as run:
+        logging.info(f"Run name: {run.run_name}")
+        logging.info(f"Experiment name: {run.experiment_name}")
+        logging.info(f"Trial component name: {run._trial_component.trial_component_name}")
+        run.log_parameter("p1", 1.0)
+        run.log_parameter("p2", 2.0)
+
         for i in range(2):
             run.log_metric("A", i)
         for i in range(2):
@@ -53,3 +52,19 @@ with Run.init(
             time.sleep(0.003)
             run.log_metric("E", i)
         time.sleep(15)
+
+else:
+    logging.info("Loading a Run")
+    logging.info("Invoking Run.load with name arguments")
+    with Run.load(
+        experiment_name=os.environ["EXPERIMENT_NAME"],
+        run_name=os.environ["RUN_NAME"],
+        sagemaker_session=sagemaker_session,
+    ) as run:
+        run.log_parameters({"p3": 3.0, "p4": 4.0})
+        run.log_metric("test-job-load-log-metric", 0.1)
+
+    if os.environ.get("CALL_RUN_LOAD_WITH_NO_NAME_ARGS", None) == "True":
+        logging.info("Invoking Run.load without name arguments")
+        with Run.load(sagemaker_session=sagemaker_session) as run:
+            run.log_parameters({"p5": 5.0, "p6": 6.0})

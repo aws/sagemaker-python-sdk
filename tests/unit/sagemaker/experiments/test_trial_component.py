@@ -19,7 +19,11 @@ from unittest.mock import patch
 
 from sagemaker import Session
 from sagemaker.experiments import _api_types
-from sagemaker.experiments._api_types import TrialComponentSearchResult, Parent
+from sagemaker.experiments._api_types import (
+    TrialComponentSearchResult,
+    Parent,
+    _TrialComponentStatusType,
+)
 from sagemaker.experiments.trial_component import _TrialComponent
 
 
@@ -61,7 +65,7 @@ def test_load(sagemaker_session):
         "TrialComponentArn": "A",
         "TrialComponentName": "B",
         "DisplayName": "C",
-        "Status": {"PrimaryStatus": "InProgress", "Message": "D"},
+        "Status": {"PrimaryStatus": _TrialComponentStatusType.InProgress.value, "Message": "D"},
         "Parameters": {"E": {"NumberValue": 1.0}, "F": {"StringValue": "G"}},
         "InputArtifacts": {"H": {"Value": "s3://foo/bar", "MediaType": "text/plain"}},
         "OutputArtifacts": {"I": {"Value": "s3://whizz/bang", "MediaType": "text/plain"}},
@@ -83,7 +87,12 @@ def test_load(sagemaker_session):
     assert "A" == obj.trial_component_arn
     assert "B" == obj.trial_component_name
     assert "C" == obj.display_name
-    assert _api_types.TrialComponentStatus(primary_status="InProgress", message="D") == obj.status
+    assert (
+        _api_types.TrialComponentStatus(
+            primary_status=_TrialComponentStatusType.InProgress.value, message="D"
+        )
+        == obj.status
+    )
     assert {"E": 1.0, "F": "G"} == obj.parameters
     assert {"H": _api_types.TrialComponentArtifact(value="s3://foo/bar", media_type="text/plain")}
     assert {
@@ -172,7 +181,10 @@ def test_list(sagemaker_session):
                     "TrialComponentArn": "B" + str(i),
                     "DisplayName": "C" + str(i),
                     "SourceArn": "D" + str(i),
-                    "Status": {"PrimaryStatus": "InProgress", "Message": "E" + str(i)},
+                    "Status": {
+                        "PrimaryStatus": _TrialComponentStatusType.InProgress.value,
+                        "Message": "E" + str(i),
+                    },
                     "StartTime": start_time + datetime.timedelta(hours=i),
                     "EndTime": end_time + datetime.timedelta(hours=i),
                     "CreationTime": creation_time + datetime.timedelta(hours=i),
@@ -190,7 +202,10 @@ def test_list(sagemaker_session):
                     "TrialComponentArn": "B" + str(i),
                     "DisplayName": "C" + str(i),
                     "SourceArn": "D" + str(i),
-                    "Status": {"PrimaryStatus": "InProgress", "Message": "E" + str(i)},
+                    "Status": {
+                        "PrimaryStatus": _TrialComponentStatusType.InProgress.value,
+                        "Message": "E" + str(i),
+                    },
                     "StartTime": start_time + datetime.timedelta(hours=i),
                     "EndTime": end_time + datetime.timedelta(hours=i),
                     "CreationTime": creation_time + datetime.timedelta(hours=i),
@@ -209,7 +224,7 @@ def test_list(sagemaker_session):
             display_name="C" + str(i),
             source_arn="D" + str(i),
             status=_api_types.TrialComponentStatus(
-                primary_status="InProgress", message="E" + str(i)
+                primary_status=_TrialComponentStatusType.InProgress.value, message="E" + str(i)
             ),
             start_time=start_time + datetime.timedelta(hours=i),
             end_time=end_time + datetime.timedelta(hours=i),

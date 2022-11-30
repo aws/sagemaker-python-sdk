@@ -120,6 +120,19 @@ def test_auto_fetch_created_run_obj_from_context(run_obj, sagemaker_session):
         assert run_obj._trial_component.parameters["a"] == "b"
         assert run_obj._trial_component.parameters["c"] == 2
 
+        # Verify separate Run.load and with statement in different lines still work
+        run_load2 = Run.load(sagemaker_session=sagemaker_session)
+        with run_load2:
+            assert run_load2 == run_obj
+            assert run_obj._inside_init_context
+            assert run_obj._inside_load_context
+            assert run_obj._in_load
+
+        assert run_obj._inside_init_context
+        assert not run_obj._inside_load_context
+        assert not run_obj._in_load
+        assert _RunContext.get_current_run()
+
     assert not run_obj._inside_init_context
     assert not run_obj._inside_load_context
     assert not run_obj._in_load
@@ -161,3 +174,17 @@ def test_nested_run_init_context_on_different_run_object(run_obj, sagemaker_sess
             with run_obj:
                 pass
     assert "It is not allowed to use nested 'with' statements on the Run.init" in str(err)
+
+
+def test_nested_run_load_context(run_obj, sagemaker_session):
+    assert not _RunContext.get_current_run()
+
+    with pytest.raises(RuntimeError) as err:
+        with run_obj:
+            assert _RunContext.get_current_run()
+
+            with Run.load():
+                run_load = Run.load()
+                with run_load:
+                    pass
+    assert "It is not allowed to use nested 'with' statements on the Run.load" in str(err)

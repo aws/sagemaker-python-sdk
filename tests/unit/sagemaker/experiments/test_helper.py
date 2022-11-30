@@ -18,13 +18,11 @@ import shutil
 import tempfile
 
 from mock import Mock, PropertyMock, call
-import pandas as pd
 import pytest
 
 from src.sagemaker.experiments._helper import (
     _LineageArtifactTracker,
     _ArtifactUploader,
-    _ArtifactConverter,
 )
 from src.sagemaker.experiments._utils import resolve_artifact_name
 from src.sagemaker.session import Session
@@ -67,61 +65,6 @@ def sagemaker_session(client, boto_session):
         sagemaker_client=client,
         boto_session=boto_session,
     )
-
-
-def test_convert_dict_to_fields():
-    values = {"x": [1, 2, 3], "y": [4, 5, 6]}
-    fields = _ArtifactConverter.convert_dict_to_fields(values)
-
-    expected_fields = [
-        {"name": "x", "type": "string"},
-        {"name": "y", "type": "string"},
-    ]
-
-    assert expected_fields == fields
-
-
-def test_convert_data_frame_to_values():
-    df = pd.DataFrame({"col1": [1, 2], "col2": [0.5, 0.75]})
-
-    values = _ArtifactConverter.convert_data_frame_to_values(df)
-
-    expected_values = {"col1": [1, 2], "col2": [0.5, 0.75]}
-
-    assert expected_values == values
-
-
-def test_convert_data_frame_to_fields():
-    df = pd.DataFrame({"col1": [1, 2], "col2": [0.5, 0.75]})
-
-    fields = _ArtifactConverter.convert_data_frame_to_fields(df)
-
-    expected_fields = [{"name": "col1", "type": "number"}, {"name": "col2", "type": "number"}]
-
-    assert expected_fields == fields
-
-
-def test_convert_df_type_to_simple_type():
-    actual = _ArtifactConverter.convert_df_type_to_simple_type("float64")
-    assert actual == "number"
-
-    actual = _ArtifactConverter.convert_df_type_to_simple_type("int32")
-    assert actual == "number"
-
-    actual = _ArtifactConverter.convert_df_type_to_simple_type("uint32")
-    assert actual == "number"
-
-    actual = _ArtifactConverter.convert_df_type_to_simple_type("datetime64")
-    assert actual == "datetime"
-
-    actual = _ArtifactConverter.convert_df_type_to_simple_type("boolean")
-    assert actual == "boolean"
-
-    actual = _ArtifactConverter.convert_df_type_to_simple_type("category")
-    assert actual == "string"
-
-    actual = _ArtifactConverter.convert_df_type_to_simple_type("sometype")
-    assert actual == "string"
 
 
 @pytest.fixture

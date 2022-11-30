@@ -19,6 +19,8 @@ import os
 
 import botocore
 
+from sagemaker.experiments._utils import is_already_exist_error
+
 logger = logging.getLogger(__name__)
 
 
@@ -171,12 +173,20 @@ class _LineageArtifactManager(object):
         if self.etag:
             source_ids.append({"SourceIdType": "S3ETag", "Value": self.etag})
 
-        response = sagemaker_session.sagemaker_client.create_artifact(
-            ArtifactName=self.name,
-            ArtifactType=self.artifact_type,
-            Source={"SourceUri": self.source_uri, "SourceTypes": source_ids},
-        )
-        self.artifact_arn = response["ArtifactArn"]
+        try:
+            response = sagemaker_session.sagemaker_client.create_artifact(
+                ArtifactName=self.name,
+                ArtifactType=self.artifact_type,
+                Source={"SourceUri": self.source_uri, "SourceTypes": source_ids},
+            )
+            self.artifact_arn = response["ArtifactArn"]
+        except botocore.exceptions.ClientError as err:
+            err_info = err.response["Error"]
+            if not is_already_exist_error(err_info):
+                raise
+            logger.warning(
+                "Skip creating the artifact since it already exists: %s", err_info["Message"]
+            )
 
     def add_association(self, sagemaker_session):
         """Associate the artifact with a source/destination ARN (e.g. trial component arn)
@@ -191,9 +201,17 @@ class _LineageArtifactManager(object):
         # if the trial component (job) is the source then it produced the artifact,
         # otherwise the artifact contributed to the trial component (job)
         association_edge_type = "Produced" if self.source_arn else "ContributedTo"
-        sagemaker_session.sagemaker_client.add_association(
-            SourceArn=source_arn, DestinationArn=dest_arn, AssociationType=association_edge_type
-        )
+        try:
+            sagemaker_session.sagemaker_client.add_association(
+                SourceArn=source_arn, DestinationArn=dest_arn, AssociationType=association_edge_type
+            )
+        except botocore.exceptions.ClientError as err:
+            err_info = err.response["Error"]
+            if not is_already_exist_error(err_info):
+                raise
+            logger.warning(
+                "Skip associating since the association already exists: %s", err_info["Message"]
+            )
 
 
 class _LineageArtifactTracker(object):
@@ -246,87 +264,3 @@ class _LineageArtifactTracker(object):
         for artifact in self.artifacts:
             artifact.create_artifact(self.sagemaker_session)
             artifact.add_association(self.sagemaker_session)
-
-
-class _ArtifactConverter(object):
-    """Converts data to easily consumed by Studio."""
-
-    @classmethod
-    def convert_dict_to_fields(cls, values):
-        """Converts a dictionary to list of field types.
-
-        Args:
-            values (dict): The values of the dictionary.
-
-        Returns:
-            dict: Dictionary of fields.
-        """
-        fields = []
-        for key in values:
-            fields.append({"name": key, "type": "string"})
-        return fields
-
-    @classmethod
-    def convert_data_frame_to_values(cls, data_frame):
-        """Converts a pandas data frame to a dictionary in the table artifact format.
-
-        Args:
-            data_frame (DataFrame): The pandas data frame to convert.
-
-        Returns:
-            dict: dictionary of values in the format needed to log the artifact.
-        """
-        df_dict = data_frame.to_dict()
-        new_df = {}
-        for key in df_dict:
-            col_value = df_dict[key]
-            values = []
-
-            for row_key in col_value:
-                values.append(col_value[row_key])
-
-            new_df[key] = values
-
-        return new_df
-
-    @classmethod
-    def convert_data_frame_to_fields(cls, data_frame):
-        """Converts a dataframe to a dictionary describing the type of fields.
-
-        Args:
-            data_frame(DataFrame): The data frame to convert.
-
-        Returns:
-            dict: Dictionary of fields.
-        """
-        fields = []
-
-        for key in data_frame:
-            col_type = data_frame.dtypes[key]
-            fields.append(
-                {"name": key, "type": _ArtifactConverter.convert_df_type_to_simple_type(col_type)}
-            )
-        return fields
-
-    @classmethod
-    def convert_df_type_to_simple_type(cls, data_frame_type):
-        """Converts a dataframe type to a type for rendering a table in Studio.
-
-        Args:
-            data_frame_type (str): The pandas type.
-
-        Returns:
-            str: The type of the table field.
-        """
-
-        type_pairs = [
-            ("datetime", "datetime"),
-            ("float", "number"),
-            ("int", "number"),
-            ("uint", "number"),
-            ("boolean", "boolean"),
-        ]
-        for pair in type_pairs:
-            if str(data_frame_type).lower().startswith(pair[0]):
-                return pair[1]
-        return "string"

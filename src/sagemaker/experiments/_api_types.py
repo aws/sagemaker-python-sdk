@@ -13,6 +13,7 @@
 """Contains API objects for SageMaker experiments."""
 from __future__ import absolute_import
 
+import enum
 import numbers
 
 from sagemaker.apiutils import _base_types
@@ -100,6 +101,14 @@ class TrialComponentArtifact(_base_types.ApiObject):
 
     def __init__(self, value=None, media_type=None, **kwargs):
         super(TrialComponentArtifact, self).__init__(value=value, media_type=media_type, **kwargs)
+
+
+class _TrialComponentStatusType(enum.Enum):
+    """The type of trial component status"""
+
+    InProgress = "InProgress"
+    Completed = "Completed"
+    Failed = "Failed"
 
 
 class TrialComponentStatus(_base_types.ApiObject):

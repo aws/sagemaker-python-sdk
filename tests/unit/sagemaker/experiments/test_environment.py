@@ -47,13 +47,13 @@ def test_processing_job_environment(tempdir):
         f.write(json.dumps({"ProcessingJobArn": "arn:1234"}))
     environment = _environment._RunEnvironment.load(processing_job_config_path=config_path)
 
-    assert _environment.EnvironmentType.SageMakerProcessingJob == environment.environment_type
+    assert _environment._EnvironmentType.SageMakerProcessingJob == environment.environment_type
     assert "arn:1234" == environment.source_arn
 
 
 def test_training_job_environment(training_job_env):
     environment = _environment._RunEnvironment.load()
-    assert _environment.EnvironmentType.SageMakerTrainingJob == environment.environment_type
+    assert _environment._EnvironmentType.SageMakerTrainingJob == environment.environment_type
     assert "arn:1234" == environment.source_arn
 
 

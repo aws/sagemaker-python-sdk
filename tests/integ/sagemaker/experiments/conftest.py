@@ -23,13 +23,33 @@ import uuid
 import boto3
 import pytest
 
+from sagemaker.experiments.run import Run
 from tests.integ import DATA_DIR
 
 from sagemaker.experiments import trial_component, trial, experiment
-from sagemaker.utils import retry_with_backoff
+from sagemaker.utils import retry_with_backoff, unique_name_from_base
 from tests.integ.sagemaker.experiments.helpers import name, names
 
 TAGS = [{"Key": "some-key", "Value": "some-value"}]
+EXP_NAME_BASE_IN_LOCAL = "train-job-exp-in-local"
+RUN_NAME_IN_LOCAL = "train-job-run-in-local"
+
+
+@pytest.fixture(scope="module")
+def run_obj(sagemaker_session):
+    run = Run.init(
+        experiment_name=unique_name_from_base(EXP_NAME_BASE_IN_LOCAL),
+        run_name=RUN_NAME_IN_LOCAL,
+        sagemaker_session=sagemaker_session,
+    )
+    try:
+        yield run
+        time.sleep(0.5)
+    finally:
+        exp = experiment._Experiment.load(
+            experiment_name=run.experiment_name, sagemaker_session=sagemaker_session
+        )
+        exp._delete_all(action="--force")
 
 
 @pytest.fixture(scope="module")

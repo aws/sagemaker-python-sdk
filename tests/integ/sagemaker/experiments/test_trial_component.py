@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import datetime
 import uuid
 
+from sagemaker.experiments._api_types import _TrialComponentStatusType
 from tests.integ.sagemaker.experiments.helpers import EXP_INTEG_TEST_NAME_PREFIX
 from sagemaker.experiments import _api_types, trial_component
 from sagemaker.utilities.search_expression import Filter, Operator, SearchExpression
@@ -53,7 +54,7 @@ def test_delete_with_force_disassociate(
 def test_save(trial_component_obj, sagemaker_session):
     trial_component_obj.display_name = str(uuid.uuid4())
     trial_component_obj.status = _api_types.TrialComponentStatus(
-        primary_status="InProgress", message="Message"
+        primary_status=_TrialComponentStatusType.InProgress.value, message="Message"
     )
     trial_component_obj.start_time = datetime.datetime.now(
         datetime.timezone.utc

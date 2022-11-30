@@ -25,13 +25,12 @@ import dateutil
 
 from sagemaker.apiutils import _utils
 from sagemaker.experiments import _api_types
-from sagemaker.experiments._api_types import TrialComponentArtifact
+from sagemaker.experiments._api_types import TrialComponentArtifact, _TrialComponentStatusType
 from sagemaker.experiments._helper import (
-    _ArtifactConverter,
     _ArtifactUploader,
     _LineageArtifactTracker,
 )
-from sagemaker.experiments._environment import _RunEnvironment, EnvironmentType
+from sagemaker.experiments._environment import _RunEnvironment, _EnvironmentType
 from sagemaker.experiments._run_context import _RunContext
 from sagemaker.experiments.experiment import _Experiment
 from sagemaker.experiments.metrics import _MetricsManager
@@ -144,15 +143,6 @@ class Run(object):
             run_name=run_name, experiment_name=experiment_name
         )
         run_group_name = Run._generate_trial_name(experiment_name)
-        environment = _RunEnvironment.load()
-
-        # TODO: Remove this condition check if the metrics endpoint work
-        # for processing job/transform job etc.
-        if environment and environment.environment_type != EnvironmentType.SageMakerTrainingJob:
-            raise RuntimeError(
-                "Experiment Run init is not currently supported "
-                "in Sagemaker jobs other than the Training job."
-            )
 
         experiment = _Experiment._load_or_create(
             experiment_name=experiment_name,
@@ -211,13 +201,6 @@ class Run(object):
         """
         sagemaker_session = sagemaker_session or _utils.default_session()
         environment = _RunEnvironment.load()
-        # TODO: Remove this condition check if the metrics endpoint work
-        # for processing job/transform job etc.
-        if environment and environment.environment_type != EnvironmentType.SageMakerTrainingJob:
-            raise RuntimeError(
-                "Experiment Run load is not currently supported "
-                "in Sagemaker jobs other than the Training job."
-            )
 
         Run._verify_load_input_names(run_name=run_name, experiment_name=experiment_name)
 
@@ -316,51 +299,6 @@ class Run(object):
             self._metrics_manager.log_metric(
                 metric_name=name, value=value, timestamp=timestamp, step=step
             )
-
-    @validate_invoked_inside_run_context
-    def log_table(self, title=None, values=None, data_frame=None, is_output=True):
-        """Create and log a json file encapsulating a table and its values
-
-        The encapsulated table is stored in S3 and represented as a lineage artifact
-        with an association with the run trial component.
-
-        It is used by Studio to display (but is not currently supported).
-
-        Args:
-            title (str): The title of the table (default: None).
-            values (dict): A dictionary where the keys are column names and values are arrays
-                which contain column values e.g. {"x": [1,2,3], "y": [1,2,3]} (default: None).
-            data_frame (DataFrame): Pandas dataframe alternative to values (default: None).
-            is_output (bool): Determines direction of association to the
-                trial component. Defaults to True (output artifact).
-                If set to False then represented as input association.
-
-        Raises:
-            ValueError: If values or data_frame are invalid.
-        """
-        if not (values is None) ^ (data_frame is None):
-            raise ValueError(
-                "Invalid input: either values or data_frame should be provided. "
-                "They are mutually exclusive."
-            )
-
-        if values is not None:
-            for key in values:
-                if "list" not in str(type(values[key])):
-                    raise ValueError(
-                        'Table values should be list. i.e. {"x": [1,2,3]}, '
-                        "instead the input type was " + str(type(values[key]))
-                    )
-            fields = _ArtifactConverter.convert_dict_to_fields(values)
-        else:  # data_frame is not None
-            values = _ArtifactConverter.convert_data_frame_to_values(data_frame)
-            fields = _ArtifactConverter.convert_data_frame_to_fields(data_frame)
-
-        data = {"type": "Table", "version": 0, "title": title, "fields": fields, "data": values}
-
-        self._log_graph_artifact(
-            artifact_name=title, data=data, graph_type="Table", is_output=is_output
-        )
 
     @validate_invoked_inside_run_context
     def log_precision_recall(
@@ -834,10 +772,16 @@ class Run(object):
                 default AWS configuration chain.
         """
         job_name = environment.source_arn.split("/")[-1]
-        job_response = retry_with_backoff(
-            callable_func=lambda: sagemaker_session.describe_training_job(job_name),
-            num_attempts=4,
-        )
+        if environment.environment_type == _EnvironmentType.SageMakerTrainingJob:
+            job_response = retry_with_backoff(
+                callable_func=lambda: sagemaker_session.describe_training_job(job_name),
+                num_attempts=4,
+            )
+        else:  # environment.environment_type == _EnvironmentType.SageMakerProcessingJob
+            job_response = retry_with_backoff(
+                callable_func=lambda: sagemaker_session.describe_processing_job(job_name),
+                num_attempts=4,
+            )
         job_exp_config = job_response.get("ExperimentConfig", dict())
         if job_exp_config.get(RUN_NAME, None):
             # The run with RunName has been created outside of the job env.
@@ -928,21 +872,28 @@ class Run(object):
         Returns:
             object: self.
         """
+        nested_with_err_msg_template = (
+            "It is not allowed to use nested 'with' statements on the {}."
+        )
         if self._in_load:
+            if self._inside_load_context:
+                raise RuntimeError(nested_with_err_msg_template.format("Run.load"))
             self._inside_load_context = True
         else:
             if _RunContext.get_current_run():
-                raise RuntimeError(
-                    "It is not allowed to use nested 'with' statements on the Run.init."
-                )
-            if not self._trial_component.start_time:
-                start_time = datetime.datetime.now(dateutil.tz.tzlocal())
-                self._trial_component.start_time = start_time
-                self._trial_component.status = _api_types.TrialComponentStatus(
-                    primary_status="InProgress"
-                )
+                raise RuntimeError(nested_with_err_msg_template.format("Run.init"))
             self._inside_init_context = True
             _RunContext.add_run_object(self)
+
+        if not self._trial_component.start_time:
+            start_time = datetime.datetime.now(dateutil.tz.tzlocal())
+            self._trial_component.start_time = start_time
+        self._trial_component.status = _api_types.TrialComponentStatus(
+            primary_status=_TrialComponentStatusType.InProgress.value,
+            message="Within a Run context",
+        )
+        # Save the start_time and status changes to backend
+        self._trial_component.save()
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
@@ -957,16 +908,18 @@ class Run(object):
             self._inside_load_context = False
             self._in_load = False
         else:
-            end_time = datetime.datetime.now(dateutil.tz.tzlocal())
-            self._trial_component.end_time = end_time
-            if exc_value:
-                self._trial_component.status = _api_types.TrialComponentStatus(
-                    primary_status="Failed", message=str(exc_value)
-                )
-            else:
-                self._trial_component.status = _api_types.TrialComponentStatus(
-                    primary_status="Completed"
-                )
             self._inside_init_context = False
             _RunContext.drop_current_run()
+
+        end_time = datetime.datetime.now(dateutil.tz.tzlocal())
+        self._trial_component.end_time = end_time
+        if exc_value:
+            self._trial_component.status = _api_types.TrialComponentStatus(
+                primary_status=_TrialComponentStatusType.Failed.value, message=str(exc_value)
+            )
+        else:
+            self._trial_component.status = _api_types.TrialComponentStatus(
+                primary_status=_TrialComponentStatusType.Completed.value
+            )
+
         self.close()
