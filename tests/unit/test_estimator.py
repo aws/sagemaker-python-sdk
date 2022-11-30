@@ -2731,7 +2731,6 @@ def test_fit_deploy_tags_in_estimator(name_from_base, sagemaker_session):
         role="DummyRole",
         container_defs={
             "ModelDataUrl": "s3://bucket/model.tar.gz",
-            "Environment": {},
             "Image": "fakeimage",
         },
         enable_network_isolation=False,
@@ -2781,7 +2780,6 @@ def test_fit_deploy_tags(name_from_base, sagemaker_session):
         role="DummyRole",
         container_defs={
             "ModelDataUrl": "s3://bucket/model.tar.gz",
-            "Environment": {},
             "Image": "fakeimage",
         },
         enable_network_isolation=False,

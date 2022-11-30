@@ -1173,7 +1173,6 @@ def test_estimator_transformer(estimator):
                 "Arguments": {
                     "ExecutionRoleArn": "DummyRole",
                     "PrimaryContainer": {
-                        "Environment": {},
                         "Image": "fakeimage",
                         "ModelDataUrl": "s3://my-bucket/model.tar.gz",
                     },
@@ -1288,7 +1287,6 @@ def test_estimator_transformer_with_model_repack_with_estimator(estimator):
             assert arguments == {
                 "ExecutionRoleArn": "DummyRole",
                 "PrimaryContainer": {
-                    "Environment": {},
                     "Image": "fakeimage",
                 },
             }

@@ -89,7 +89,7 @@ def test_tfs_model(retrieve_image_uri, sagemaker_session, tensorflow_inference_v
         serverless_inference_config=None,
     )
     assert IMAGE == cdef["Image"]
-    assert {} == cdef["Environment"]
+    assert cdef.get("Environment") is None
 
     predictor = model.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
     assert isinstance(predictor, TensorFlowPredictor)
@@ -485,7 +485,6 @@ def test_register_tfs_model_auto_infer_framework(sagemaker_session, tensorflow_i
         "containers": [
             {
                 "Image": image_uri,
-                "Environment": ANY,
                 "ModelDataUrl": ANY,
                 "Framework": "TENSORFLOW",
                 "FrameworkVersion": tensorflow_inference_version,

@@ -134,7 +134,7 @@ def test_prepare_container_def_with_model_data():
     model = Model(MODEL_IMAGE)
     container_def = model.prepare_container_def(INSTANCE_TYPE, "ml.eia.medium")
 
-    expected = {"Image": MODEL_IMAGE, "Environment": {}}
+    expected = {"Image": MODEL_IMAGE}
     assert expected == container_def
 
 
@@ -158,7 +158,6 @@ def test_prepare_container_def_with_image_config():
     expected = {
         "Image": MODEL_IMAGE,
         "ImageConfig": {"RepositoryAccessMode": "Vpc"},
-        "Environment": {},
     }
 
     container_def = model.prepare_container_def()

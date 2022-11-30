@@ -1014,7 +1014,6 @@ def test_amazon_alg_model_config(sagemaker_session):
         "ModelName": "pca-%s" % TIME_STAMP,
         "PrimaryContainer": {
             "Image": "174872318107.dkr.ecr.us-west-2.amazonaws.com/pca:1",
-            "Environment": {},
             "ModelDataUrl": "{{ model_data }}",
         },
         "ExecutionRoleArn": "{{ role }}",
@@ -1108,7 +1107,6 @@ def test_model_config_from_amazon_alg_estimator(sagemaker_session):
         "ModelName": "knn-%s" % TIME_STAMP,
         "PrimaryContainer": {
             "Image": "174872318107.dkr.ecr.us-west-2.amazonaws.com/knn:1",
-            "Environment": {},
             "ModelDataUrl": "s3://output/{{ ti.xcom_pull(task_ids='task_id')['Tuning']['BestTrainingJob']"
             "['TrainingJobName'] }}/output/model.tar.gz",
         },
@@ -1309,7 +1307,6 @@ def test_transform_config_from_amazon_alg_estimator(sagemaker_session):
             "ModelName": "knn-%s" % TIME_STAMP,
             "PrimaryContainer": {
                 "Image": "174872318107.dkr.ecr.us-west-2.amazonaws.com/knn:1",
-                "Environment": {},
                 "ModelDataUrl": "s3://output/{{ ti.xcom_pull(task_ids='task_id')['Training']['TrainingJobName'] }}"
                 "/output/model.tar.gz",
             },
@@ -1413,7 +1410,6 @@ def test_deploy_amazon_alg_model_config(sagemaker_session):
             "ModelName": "pca-%s" % TIME_STAMP,
             "PrimaryContainer": {
                 "Image": "174872318107.dkr.ecr.us-west-2.amazonaws.com/pca:1",
-                "Environment": {},
                 "ModelDataUrl": "{{ model_data }}",
             },
             "ExecutionRoleArn": "{{ role }}",
@@ -1549,7 +1545,6 @@ def test_deploy_config_from_amazon_alg_estimator(sagemaker_session):
             "ModelName": "knn-%s" % TIME_STAMP,
             "PrimaryContainer": {
                 "Image": "174872318107.dkr.ecr.us-west-2.amazonaws.com/knn:1",
-                "Environment": {},
                 "ModelDataUrl": "s3://output/{{ ti.xcom_pull(task_ids='task_id')['Tuning']['BestTrainingJob']"
                 "['TrainingJobName'] }}/output/model.tar.gz",
             },

@@ -390,7 +390,7 @@ class _LocalTransformJob(object):
             container
         """
         environment = {}
-        environment.update(self.primary_container["Environment"])
+        environment.update(self.primary_container.get("Environment", {}))
         environment["SAGEMAKER_BATCH"] = "True"
         if "MaxPayloadInMB" in kwargs:
             environment["SAGEMAKER_MAX_PAYLOAD_IN_MB"] = str(kwargs["MaxPayloadInMB"])
@@ -591,18 +591,15 @@ class _LocalEndpoint(object):
         instance_count = self.production_variant["InitialInstanceCount"]
 
         accelerator_type = self.production_variant.get("AcceleratorType")
+        environment = self.primary_container.get("Environment", {})
         if accelerator_type == "local_sagemaker_notebook":
-            self.primary_container["Environment"][
-                "SAGEMAKER_INFERENCE_ACCELERATOR_PRESENT"
-            ] = "true"
+            environment["SAGEMAKER_INFERENCE_ACCELERATOR_PRESENT"] = "true"
 
         self.create_time = datetime.datetime.now()
         self.container = _SageMakerContainer(
             instance_type, instance_count, image, self.local_session
         )
-        self.container.serve(
-            self.primary_container["ModelDataUrl"], self.primary_container["Environment"]
-        )
+        self.container.serve(self.primary_container["ModelDataUrl"], environment)
 
         serving_port = get_config_value("local.serving_port", self.local_session.config) or 8080
         _wait_for_serving_container(serving_port)

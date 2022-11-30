@@ -847,7 +847,7 @@ def test_create_model_step(sagemaker_session):
         "DependsOn": ["TestStep", "SecondTestStep"],
         "Arguments": {
             "ExecutionRoleArn": "DummyRole",
-            "PrimaryContainer": {"Environment": {}, "Image": "fakeimage"},
+            "PrimaryContainer": {"Image": "fakeimage"},
         },
     }
     assert step.properties.ModelName.expr == {"Get": "Steps.MyCreateModelStep.ModelName"}

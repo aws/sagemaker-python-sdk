@@ -1684,7 +1684,6 @@ def test_logs_for_transform_job_full_lifecycle(time, cw, sagemaker_session_full_
 
 MODEL_NAME = "some-model"
 PRIMARY_CONTAINER = {
-    "Environment": {},
     "Image": IMAGE,
     "ModelDataUrl": "s3://sagemaker-123/output/jobname/model/model.tar.gz",
 }

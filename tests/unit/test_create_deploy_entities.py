@@ -23,7 +23,7 @@ ENDPOINT_NAME = "myendpointname"
 ROLE = "myimrole"
 EXPANDED_ROLE = "arn:aws:iam::111111111111:role/ExpandedRole"
 IMAGE = "myimage"
-FULL_CONTAINER_DEF = {"Environment": {}, "Image": IMAGE, "ModelDataUrl": "s3://mybucket/mymodel"}
+FULL_CONTAINER_DEF = {"Image": IMAGE, "ModelDataUrl": "s3://mybucket/mymodel"}
 VPC_CONFIG = {"Subnets": ["subnet-foo"], "SecurityGroups": ["sg-foo"]}
 INITIAL_INSTANCE_COUNT = 1
 INSTANCE_TYPE = "ml.c4.xlarge"
@@ -57,7 +57,7 @@ def test_create_model_expand_primary_container(sagemaker_session):
     sagemaker_session.create_model(name=MODEL_NAME, role=ROLE, container_defs=IMAGE)
 
     _1, _2, create_model_kwargs = sagemaker_session.sagemaker_client.create_model.mock_calls[0]
-    assert create_model_kwargs["PrimaryContainer"] == {"Environment": {}, "Image": IMAGE}
+    assert create_model_kwargs["PrimaryContainer"] == {"Image": IMAGE}
 
 
 def test_create_endpoint_config(sagemaker_session):

@@ -339,7 +339,6 @@ def test_network_isolation(tfo, time, sagemaker_session):
             },
             {
                 "Image": "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-sparkml-serving:2.4",
-                "Environment": {},
                 "ModelDataUrl": "s3://bucket/model_2.tar.gz",
             },
         ],

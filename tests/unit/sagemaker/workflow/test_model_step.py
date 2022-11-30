@@ -968,7 +968,7 @@ def _verify_register_model_container_definition(
     containers = request["InferenceSpecification"]["Containers"]
     assert len(containers) == 1
     isinstance(containers[0].pop("ModelDataUrl"), expected_model_data_type)
-    container_env = containers[0]["Environment"]
+    container_env = containers[0].get("Environment", {})
     assert container_env.pop(_SAGEMAKER_PROGRAM, None) == expected_program
     submit_dir = container_env.pop(_SAGEMAKER_SUBMIT_DIRECTORY, None)
     if submit_dir and not submit_dir.startswith("s3://"):
