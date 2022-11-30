@@ -2,5 +2,4 @@
 Integ test file evaluate.py
 """
 
-def evaluate():
-    print("evaluate")
+print("test evaluate script")

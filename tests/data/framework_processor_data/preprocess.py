@@ -2,5 +2,4 @@
 Integ test file preprocess.py
 """
 
-def preprocess():
-    print("preprocess")
+print("test preprocess script")

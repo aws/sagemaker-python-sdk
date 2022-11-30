@@ -20,6 +20,7 @@ import time
 import shutil
 
 from contextlib import contextmanager
+from pathlib import Path
 import pytest
 
 from botocore.exceptions import WaiterError
@@ -46,13 +47,15 @@ from sagemaker.processing import (
     ProcessingInput,
     ProcessingOutput,
     FeatureStoreOutput,
-    ScriptProcessor
+    ScriptProcessor,
+    FrameworkProcessor
 )
 from sagemaker.s3 import S3Uploader
 from sagemaker.session import get_execution_role
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.transformer import Transformer
 from sagemaker.sklearn.processing import SKLearnProcessor
+from sagemaker.tensorflow import TensorFlow
 from sagemaker.workflow.conditions import (
     ConditionGreaterThanOrEqualTo,
     ConditionLessThanOrEqualTo,
@@ -1310,4 +1313,139 @@ def test_caching_behavior(
             pipeline.delete()
         except Exception:
             os.remove(script_dir + "/dummy_script.py")
+            pass
+
+
+def test_multi_step_framework_processing_pipeline_uploads(pipeline_session, role, pipeline_name, region_name):
+    default_bucket = pipeline_session.default_bucket()
+    cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
+    evaluation_report = PropertyFile(
+        name="EvaluationReport", output_name="evaluation", path="evaluation.json"
+    )
+
+    image_uri = image_uris.retrieve(
+        framework="xgboost",
+        region=region_name,
+        version="1.0-1",
+        py_version="py3",
+        instance_type="ml.m5.xlarge",
+    )
+
+    query_processor = ScriptProcessor(
+        command=["python3"],
+        image_uri=image_uri,
+        role=role,
+        instance_count=1,
+        instance_type="ml.m5.xlarge",
+        sagemaker_session=pipeline_session,
+    )
+
+    data_processor = FrameworkProcessor(
+        role=role,
+        instance_type="ml.m5.xlarge",
+        instance_count=1,
+        estimator_cls=TensorFlow,
+        framework_version="2.9",
+        py_version="py39",
+        sagemaker_session=pipeline_session,
+    )
+
+    query_step = ProcessingStep(
+        name="Query-Data",
+        step_args=query_processor.run(
+            code=os.path.join(DATA_DIR, "framework_processor_data/query_data.py"),
+            arguments=[
+                "--output-path",
+                "s3://out1",
+                "--region",
+                "s3://out2",
+            ],
+        ),
+        cache_config=cache_config,
+    )
+
+    input_path = "/opt/ml/processing/input"
+    output_path = "/opt/ml/processing/output"
+
+    prepare_step = ProcessingStep(
+        name="Prepare-Data",
+        step_args=data_processor.run(
+            code="preprocess.py",
+            source_dir=DATA_DIR + "/framework_processor_data",
+            arguments=[
+                "--input-path",
+                input_path,
+                "--output-path",
+                output_path,
+            ],
+        ),
+        cache_config=cache_config,
+    )
+
+    split_step = ProcessingStep(
+        name="Split-Data",
+        step_args=data_processor.run(
+            code="train_test_split.py",
+            source_dir=DATA_DIR + "/framework_processor_data",
+            arguments=["--input-path", input_path, "--output-path", output_path],
+        ),
+        cache_config=cache_config,
+    )
+
+    sk_processor = FrameworkProcessor(
+        framework_version="1.0-1",
+        instance_type="ml.m5.xlarge",
+        instance_count=1,
+        base_job_name="my-job",
+        role=role,
+        estimator_cls=SKLearn,
+        sagemaker_session=pipeline_session,
+    )
+
+    evaluate_step = ProcessingStep(
+        name="Evaluate-Model",
+        step_args=sk_processor.run(
+            code="evaluate.py",
+            source_dir=DATA_DIR + "/framework_processor_data",
+            outputs=[
+                ProcessingOutput(
+                    output_name="evaluation",
+                    source="/opt/ml/processing/evaluation",
+                ),
+            ],
+        ),
+        property_files=[evaluation_report],
+        cache_config=cache_config,
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        steps=[query_step, prepare_step, split_step, evaluate_step]
+    )
+    try:
+        pipeline.create(role)
+
+        definition = json.loads(pipeline.definition())
+
+        source_dir_tar_prefix = f"s3://{default_bucket}/{pipeline_name}" \
+            f"/code/{hash_files_or_dirs([DATA_DIR + '/framework_processor_data'])}"
+
+        run_procs = []
+
+        for step in definition["Steps"]:
+            for input_obj in step["Arguments"]["ProcessingInputs"]:
+                if input_obj["InputName"] == "entrypoint":
+                    s3_uri = input_obj["S3Input"]["S3Uri"]
+                    run_procs.append(s3_uri)
+
+                    # verify runproc.sh prefix is different from code artifact prefix
+                    assert Path(s3_uri).parent != source_dir_tar_prefix
+
+        # verify all the run_proc.sh artifact paths are distinct
+        assert len(run_procs) == len(set(run_procs))
+
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
             pass
