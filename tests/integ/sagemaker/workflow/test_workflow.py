@@ -1492,17 +1492,17 @@ def test_multi_step_framework_processing_pipeline_uploads(
         prepare_step_runproc = S3Downloader.read_file(
             f"s3://{default_bucket}/{expected_prepare_step_artifact}"
         )
-        assert 'python preprocess.py' in prepare_step_runproc
+        assert "python preprocess.py" in prepare_step_runproc
 
         split_step_runproc = S3Downloader.read_file(
             f"s3://{default_bucket}/{expected_split_step_artifact}"
         )
-        assert 'python train_test_split.py' in split_step_runproc
+        assert "python train_test_split.py" in split_step_runproc
 
         eval_step_runproc = S3Downloader.read_file(
             f"s3://{default_bucket}/{expected_eval_step_artifact}"
         )
-        assert 'python evaluate.py' in eval_step_runproc
+        assert "python evaluate.py" in eval_step_runproc
 
     finally:
         try:
