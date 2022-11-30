@@ -1730,16 +1730,14 @@ class FrameworkProcessor(ScriptProcessor):
                 "sagemaker_session unspecified when creating your Processor to have one set up "
                 "automatically."
             )
-        if ("/sourcedir.tar.gz" in estimator.uploaded_code.s3_prefix):
+        if "/sourcedir.tar.gz" in estimator.uploaded_code.s3_prefix:
             # Upload the bootstrapping code as s3://.../jobname/source/runproc.sh.
             entrypoint_s3_uri = estimator.uploaded_code.s3_prefix.replace(
                 "sourcedir.tar.gz",
                 "runproc.sh",
             )
         else:
-            raise RuntimeError(
-                "S3 source_dir file must be named `sourcedir.tar.gz.`"
-            )
+            raise RuntimeError("S3 source_dir file must be named `sourcedir.tar.gz.`")
 
         script = estimator.uploaded_code.script_name
         s3_runproc_sh = S3Uploader.upload_string_as_file_body(
