@@ -23,14 +23,20 @@ from sagemaker import utils
 from sagemaker.jumpstart.utils import is_jumpstart_model_input
 from sagemaker.spark import defaults
 from sagemaker.jumpstart import artifacts
-
+from sagemaker.workflow import is_pipeline_variable
+from sagemaker.workflow.utilities import override_pipeline_parameter_var
+from sagemaker.fw_utils import GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY, GRAVITON_ALLOWED_FRAMEWORKS
 
 logger = logging.getLogger(__name__)
 
 ECR_URI_TEMPLATE = "{registry}.dkr.{hostname}/{repository}"
 HUGGING_FACE_FRAMEWORK = "huggingface"
+XGBOOST_FRAMEWORK = "xgboost"
+SKLEARN_FRAMEWORK = "sklearn"
+TRAINIUM_ALLOWED_FRAMEWORKS = "pytorch"
 
 
+@override_pipeline_parameter_var
 def retrieve(
     framework,
     region,
@@ -47,6 +53,9 @@ def retrieve(
     model_version=None,
     tolerate_vulnerable_model=False,
     tolerate_deprecated_model=False,
+    sdk_version=None,
+    inference_tool=None,
+    serverless_inference_config=None,
 ) -> str:
     """Retrieves the ECR URI for the Docker image matching the given arguments.
 
@@ -88,19 +97,36 @@ def retrieve(
         tolerate_deprecated_model (bool): True if deprecated versions of model specifications
             should be tolerated without an exception raised. If False, raises an exception
             if the version of the model is deprecated. (Default: False).
+        sdk_version (str): the version of python-sdk that will be used in the image retrieval.
+            (default: None).
+        inference_tool (str): the tool that will be used to aid in the inference.
+            Valid values: "neuron, None"
+            (default: None).
+        serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
+            Specifies configuration related to serverless endpoint. Instance type is
+            not provided in serverless inference. So this is used to determine processor type.
 
     Returns:
         str: The ECR URI for the corresponding SageMaker Docker image.
 
     Raises:
         NotImplementedError: If the scope is not supported.
-        ValueError: If the combination of arguments specified is not supported.
+        ValueError: If the combination of arguments specified is not supported or
+            any PipelineVariable object is passed in.
         VulnerableJumpStartModelError: If any of the dependencies required by the script have
             known security vulnerabilities.
         DeprecatedJumpStartModelError: If the version of the model is deprecated.
     """
-    if is_jumpstart_model_input(model_id, model_version):
+    args = dict(locals())
+    for name, val in args.items():
+        if is_pipeline_variable(val):
+            raise ValueError(
+                "When retrieving the image_uri, the argument %s should not be a pipeline variable "
+                "(%s) since pipeline variables are only interpreted in the pipeline execution time."
+                % (name, type(val))
+            )
 
+    if is_jumpstart_model_input(model_id, model_version):
         return artifacts._retrieve_image_uri(
             model_id,
             model_version,
@@ -119,16 +145,20 @@ def retrieve(
             tolerate_deprecated_model,
         )
 
-    if training_compiler_config is None:
-        config = _config_for_framework_and_scope(framework, image_scope, accelerator_type)
-    elif framework == HUGGING_FACE_FRAMEWORK:
+    if training_compiler_config and (framework == HUGGING_FACE_FRAMEWORK):
         config = _config_for_framework_and_scope(
             framework + "-training-compiler", image_scope, accelerator_type
         )
     else:
-        raise ValueError(
-            "Unsupported Configuration: Training Compiler is only supported with HuggingFace"
-        )
+        _framework = framework
+        if framework == HUGGING_FACE_FRAMEWORK or framework in TRAINIUM_ALLOWED_FRAMEWORKS:
+            inference_tool = _get_inference_tool(inference_tool, instance_type)
+            if inference_tool == "neuron":
+                _framework = f"{framework}-{inference_tool}"
+        final_image_scope = _get_final_image_scope(framework, instance_type, image_scope)
+        _validate_for_suppported_frameworks_and_instance_type(framework, instance_type)
+        config = _config_for_framework_and_scope(_framework, final_image_scope, accelerator_type)
+
     original_version = version
     version = _validate_version_and_set_if_needed(version, config, framework)
     version_config = config["versions"][_version_for_config(version, config)]
@@ -138,7 +168,6 @@ def retrieve(
             full_base_framework_version = version_config["version_aliases"].get(
                 base_framework_version, base_framework_version
             )
-
         _validate_arg(full_base_framework_version, list(version_config.keys()), "base framework")
         version_config = version_config.get(full_base_framework_version)
 
@@ -150,60 +179,142 @@ def retrieve(
     repo = version_config["repository"]
 
     processor = _processor(
-        instance_type, config.get("processors") or version_config.get("processors")
+        instance_type,
+        config.get("processors") or version_config.get("processors"),
+        serverless_inference_config,
     )
 
     # if container version is available in .json file, utilize that
     if version_config.get("container_version"):
         container_version = version_config["container_version"][processor]
 
+    # Append sdk version in case of trainium instances
+    if repo in ["pytorch-training-neuron"]:
+        if not sdk_version:
+            sdk_version = _get_latest_versions(version_config["sdk_versions"])
+        container_version = sdk_version + "-" + container_version
+
     if framework == HUGGING_FACE_FRAMEWORK:
         pt_or_tf_version = (
             re.compile("^(pytorch|tensorflow)(.*)$").match(base_framework_version).group(2)
         )
-
         _version = original_version
+
         if repo in [
             "huggingface-pytorch-trcomp-training",
             "huggingface-tensorflow-trcomp-training",
         ]:
             _version = version
+        if repo in ["huggingface-pytorch-inference-neuron"]:
+            if not sdk_version:
+                sdk_version = _get_latest_versions(version_config["sdk_versions"])
+            container_version = sdk_version + "-" + container_version
+            if config.get("version_aliases").get(original_version):
+                _version = config.get("version_aliases")[original_version]
+            if (
+                config.get("versions", {})
+                .get(_version, {})
+                .get("version_aliases", {})
+                .get(base_framework_version, {})
+            ):
+                _base_framework_version = config.get("versions")[_version]["version_aliases"][
+                    base_framework_version
+                ]
+                pt_or_tf_version = (
+                    re.compile("^(pytorch|tensorflow)(.*)$").match(_base_framework_version).group(2)
+                )
 
         tag_prefix = f"{pt_or_tf_version}-transformers{_version}"
-
     else:
         tag_prefix = version_config.get("tag_prefix", version)
 
-    tag = _format_tag(
-        tag_prefix,
+    if repo == f"{framework}-inference-graviton":
+        container_version = f"{container_version}-sagemaker"
+
+    tag = _get_image_tag(
+        container_version,
+        distribution,
+        framework,
+        inference_tool,
+        instance_type,
         processor,
         py_version,
-        container_version,
+        tag_prefix,
+        version,
     )
-
-    if _should_auto_select_container_version(instance_type, distribution):
-        container_versions = {
-            "tensorflow-2.3-gpu-py37": "cu110-ubuntu18.04-v3",
-            "tensorflow-2.3.1-gpu-py37": "cu110-ubuntu18.04",
-            "tensorflow-2.3.2-gpu-py37": "cu110-ubuntu18.04",
-            "tensorflow-1.15-gpu-py37": "cu110-ubuntu18.04-v8",
-            "tensorflow-1.15.4-gpu-py37": "cu110-ubuntu18.04",
-            "tensorflow-1.15.5-gpu-py37": "cu110-ubuntu18.04",
-            "mxnet-1.8-gpu-py37": "cu110-ubuntu16.04-v1",
-            "mxnet-1.8.0-gpu-py37": "cu110-ubuntu16.04",
-            "pytorch-1.6-gpu-py36": "cu110-ubuntu18.04-v3",
-            "pytorch-1.6.0-gpu-py36": "cu110-ubuntu18.04",
-            "pytorch-1.6-gpu-py3": "cu110-ubuntu18.04-v3",
-            "pytorch-1.6.0-gpu-py3": "cu110-ubuntu18.04",
-        }
-        key = "-".join([framework, tag])
-        if key in container_versions:
-            tag = "-".join([tag, container_versions[key]])
 
     if tag:
         repo += ":{}".format(tag)
 
     return ECR_URI_TEMPLATE.format(registry=registry, hostname=hostname, repository=repo)
+
+
+def _get_instance_type_family(instance_type):
+    """Return the family of the instance type.
+
+    Regex matches either "ml.<family>.<size>" or "ml_<family>. If input is None
+    or there is no match, return an empty string.
+    """
+    instance_type_family = ""
+    if isinstance(instance_type, str):
+        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        if match is not None:
+            instance_type_family = match[1]
+    return instance_type_family
+
+
+def _get_image_tag(
+    container_version,
+    distribution,
+    framework,
+    inference_tool,
+    instance_type,
+    processor,
+    py_version,
+    tag_prefix,
+    version,
+):
+    """Return image tag based on framework, container, and compute configuration(s)."""
+    instance_type_family = _get_instance_type_family(instance_type)
+    if (
+        framework in (XGBOOST_FRAMEWORK, SKLEARN_FRAMEWORK)
+        and instance_type_family in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
+    ):
+        version_to_arm64_tag_mapping = {
+            "xgboost": {
+                "1.5-1": "1.5-1-arm64",
+                "1.3-1": "1.3-1-arm64",
+            },
+            "sklearn": {
+                "1.0-1": "1.0-1-arm64-cpu-py3",
+            },
+        }
+        tag = version_to_arm64_tag_mapping[framework][version]
+    else:
+        tag = _format_tag(tag_prefix, processor, py_version, container_version, inference_tool)
+
+        if instance_type is not None and _should_auto_select_container_version(
+            instance_type, distribution
+        ):
+            container_versions = {
+                "tensorflow-2.3-gpu-py37": "cu110-ubuntu18.04-v3",
+                "tensorflow-2.3.1-gpu-py37": "cu110-ubuntu18.04",
+                "tensorflow-2.3.2-gpu-py37": "cu110-ubuntu18.04",
+                "tensorflow-1.15-gpu-py37": "cu110-ubuntu18.04-v8",
+                "tensorflow-1.15.4-gpu-py37": "cu110-ubuntu18.04",
+                "tensorflow-1.15.5-gpu-py37": "cu110-ubuntu18.04",
+                "mxnet-1.8-gpu-py37": "cu110-ubuntu16.04-v1",
+                "mxnet-1.8.0-gpu-py37": "cu110-ubuntu16.04",
+                "pytorch-1.6-gpu-py36": "cu110-ubuntu18.04-v3",
+                "pytorch-1.6.0-gpu-py36": "cu110-ubuntu18.04",
+                "pytorch-1.6-gpu-py3": "cu110-ubuntu18.04-v3",
+                "pytorch-1.6.0-gpu-py3": "cu110-ubuntu18.04",
+            }
+            key = "-".join([framework, tag])
+            if key in container_versions:
+                tag = "-".join([tag, container_versions[key]])
+
+    return tag
 
 
 def _config_for_framework_and_scope(framework, image_scope, accelerator_type=None):
@@ -219,16 +330,16 @@ def _config_for_framework_and_scope(framework, image_scope, accelerator_type=Non
             )
         image_scope = "eia"
 
-    available_scopes = config.get("scope", config.keys())
+    available_scopes = config.get("scope", list(config.keys()))
 
     if len(available_scopes) == 1:
-        if image_scope and image_scope != list(available_scopes)[0]:
+        if image_scope and image_scope != available_scopes[0]:
             logger.warning(
                 "Defaulting to only supported image scope: %s. Ignoring image scope: %s.",
                 available_scopes[0],
                 image_scope,
             )
-        image_scope = list(available_scopes)[0]
+        image_scope = available_scopes[0]
 
     if not image_scope and "scope" in config and set(available_scopes) == {"training", "inference"}:
         logger.info(
@@ -241,11 +352,51 @@ def _config_for_framework_and_scope(framework, image_scope, accelerator_type=Non
     return config if "scope" in config else config[image_scope]
 
 
+def _validate_for_suppported_frameworks_and_instance_type(framework, instace_type):
+    """Validate if framework is supported for the instance_type"""
+    if (
+        instace_type is not None
+        and "trn" in instace_type
+        and framework not in TRAINIUM_ALLOWED_FRAMEWORKS
+    ):
+        _validate_framework(framework, TRAINIUM_ALLOWED_FRAMEWORKS, "framework")
+
+
 def config_for_framework(framework):
     """Loads the JSON config for the given framework."""
     fname = os.path.join(os.path.dirname(__file__), "image_uri_config", "{}.json".format(framework))
     with open(fname) as f:
         return json.load(f)
+
+
+def _get_final_image_scope(framework, instance_type, image_scope):
+    """Return final image scope based on provided framework and instance type."""
+    if (
+        framework in GRAVITON_ALLOWED_FRAMEWORKS
+        and _get_instance_type_family(instance_type) in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
+    ):
+        return "inference_graviton"
+    if image_scope is None and framework in (XGBOOST_FRAMEWORK, SKLEARN_FRAMEWORK):
+        # Preserves backwards compatibility with XGB/SKLearn configs which no
+        # longer define top-level "scope" keys after introducing support for
+        # Graviton inference. Training and inference configs for XGB/SKLearn are
+        # identical, so default to training.
+        return "training"
+    return image_scope
+
+
+def _get_inference_tool(inference_tool, instance_type):
+    """Extract the inference tool name from instance type."""
+    if not inference_tool:
+        instance_type_family = _get_instance_type_family(instance_type)
+        if instance_type_family.startswith("inf") or instance_type_family.startswith("trn"):
+            return "neuron"
+    return inference_tool
+
+
+def _get_latest_versions(list_of_versions):
+    """Extract the latest version from the input list of available versions."""
+    return sorted(list_of_versions, reverse=True)[0]
 
 
 def _validate_accelerator_type(accelerator_type):
@@ -292,7 +443,7 @@ def _registry_from_region(region, registry_dict):
     return registry_dict[region]
 
 
-def _processor(instance_type, available_processors):
+def _processor(instance_type, available_processors, serverless_inference_config=None):
     """Returns the processor type for the given instance type."""
     if not available_processors:
         logger.info("Ignoring unnecessary instance type: %s.", instance_type)
@@ -302,6 +453,10 @@ def _processor(instance_type, available_processors):
         logger.info("Defaulting to only supported image scope: %s.", available_processors[0])
         return available_processors[0]
 
+    if serverless_inference_config is not None:
+        logger.info("Defaulting to CPU type when using serverless inference")
+        return "cpu"
+
     if not instance_type:
         raise ValueError(
             "Empty SageMaker instance type. For options, see: "
@@ -310,12 +465,12 @@ def _processor(instance_type, available_processors):
 
     if instance_type.startswith("local"):
         processor = "cpu" if instance_type == "local" else "gpu"
+    elif instance_type.startswith("neuron"):
+        processor = "neuron"
     else:
         # looks for either "ml.<family>.<size>" or "ml_<family>"
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
-        if match:
-            family = match[1]
-
+        family = _get_instance_type_family(instance_type)
+        if family:
             # For some frameworks, we have optimized images for specific families, e.g c5 or p3.
             # In those cases, we use the family name in the image tag. In other cases, we use
             # 'cpu' or 'gpu'.
@@ -323,6 +478,8 @@ def _processor(instance_type, available_processors):
                 processor = family
             elif family.startswith("inf"):
                 processor = "inf"
+            elif family.startswith("trn"):
+                processor = "trn"
             elif family[0] in ("g", "p"):
                 processor = "gpu"
             else:
@@ -342,9 +499,8 @@ def _should_auto_select_container_version(instance_type, distribution):
     p4d = False
     if instance_type:
         # looks for either "ml.<family>.<size>" or "ml_<family>"
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
-        if match:
-            family = match[1]
+        family = _get_instance_type_family(instance_type)
+        if family:
             p4d = family == "p4d"
 
     smdistributed = False
@@ -387,8 +543,19 @@ def _validate_arg(arg, available_options, arg_name):
         )
 
 
-def _format_tag(tag_prefix, processor, py_version, container_version):
+def _validate_framework(framework, allowed_frameworks, arg_name):
+    """Checks if the framework is in the allowed frameworks, and raises a ``ValueError`` if not."""
+    if framework not in allowed_frameworks:
+        raise ValueError(
+            f"Unsupported {arg_name}: {framework}. "
+            f"Supported {arg_name}(s) for trainium instances: {allowed_frameworks}."
+        )
+
+
+def _format_tag(tag_prefix, processor, py_version, container_version, inference_tool=None):
     """Creates a tag for the image URI."""
+    if inference_tool:
+        return "-".join(x for x in (tag_prefix, inference_tool, py_version, container_version) if x)
     return "-".join(x for x in (tag_prefix, processor, py_version, container_version) if x)
 
 
@@ -429,6 +596,9 @@ def get_training_image_uri(
     if image_uri:
         return image_uri
 
+    logger.info(
+        "image_uri is not presented, retrieving image_uri based on instance_type, framework etc."
+    )
     base_framework_version: Optional[str] = None
 
     if tensorflow_version is not None or pytorch_version is not None:

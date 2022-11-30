@@ -188,6 +188,9 @@ def test_deploy_update_endpoint(tfo, time, sagemaker_session):
         tags=None,
         kms_key=None,
         data_capture_config_dict=None,
+        volume_size=None,
+        model_data_download_timeout=None,
+        container_startup_health_check_timeout=None,
     )
     config_name = sagemaker_session.create_endpoint_config(
         name=model.name,

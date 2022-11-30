@@ -68,6 +68,8 @@ MODEL_PKG_RESPONSE = {"ModelPackageArn": "arn:model-pkg-arn"}
 
 ENV_INPUT = {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_val3"}
 
+INFERENCE_IMAGE_URI = "inference-uri"
+
 
 @pytest.fixture()
 def sagemaker_session():
@@ -83,7 +85,10 @@ def sagemaker_session():
     )
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
-    describe_compilation = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/model_c5.tar.gz"}}
+    describe_compilation = {
+        "ModelArtifacts": {"S3ModelArtifacts": "s3://m/model_c5.tar.gz"},
+        "InferenceImage": INFERENCE_IMAGE_URI,
+    }
     session.sagemaker_client.create_model_package.side_effect = MODEL_PKG_RESPONSE
     session.sagemaker_client.describe_training_job = Mock(return_value=describe)
     session.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
@@ -193,12 +198,6 @@ def _create_compilation_job(input_shape, output_location):
         "stop_condition": {"MaxRuntimeInSeconds": 900},
         "tags": None,
     }
-
-
-def _neo_inference_image(mxnet_version):
-    return "301217895009.dkr.ecr.us-west-2.amazonaws.com/sagemaker-inference-{}:{}-cpu-py3".format(
-        FRAMEWORK.lower(), mxnet_version
-    )
 
 
 @patch("sagemaker.estimator.name_from_base")
@@ -422,7 +421,7 @@ def test_mxnet_neo(time, strftime, sagemaker_session, neo_mxnet_version):
     actual_compile_model_args = sagemaker_session.method_calls[3][2]
     assert expected_compile_model_args == actual_compile_model_args
 
-    assert compiled_model.image_uri == _neo_inference_image(neo_mxnet_version)
+    assert compiled_model.image_uri == INFERENCE_IMAGE_URI
 
     predictor = mx.deploy(1, CPU, use_compiled_model=True)
     assert isinstance(predictor, MXNetPredictor)
@@ -748,7 +747,7 @@ def test_model_prepare_container_def_no_instance_type_or_image(
 
 
 def test_attach(sagemaker_session, mxnet_training_version, mxnet_training_py_version):
-    if mxnet_training_py_version == "py37":
+    if mxnet_training_py_version in ["py37", "py38"]:
         training_image = "1.dkr.ecr.us-west-2.amazonaws.com/mxnet-training:{1}-cpu-{0}".format(
             mxnet_training_py_version, mxnet_training_version
         )
@@ -1102,3 +1101,56 @@ def test_custom_image_estimator_deploy(
     mx.fit(inputs="s3://mybucket/train", job_name="new_name")
     model = mx.create_model(image_uri=custom_image)
     assert model.image_uri == custom_image
+
+
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+def test_register_mxnet_model_auto_infer_framework(
+    sagemaker_session, mxnet_inference_version, mxnet_inference_py_version, skip_if_mms_version
+):
+
+    model_package_group_name = "test-mxnet-register-model"
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarge"]
+    image_uri = "fakeimage"
+
+    mxnet_model = MXNetModel(
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        framework_version=mxnet_inference_version,
+        py_version=mxnet_inference_py_version,
+        sagemaker_session=sagemaker_session,
+    )
+
+    mxnet_model.register(
+        content_types,
+        response_types,
+        inference_instances,
+        transform_instances,
+        model_package_group_name=model_package_group_name,
+        marketplace_cert=True,
+        image_uri=image_uri,
+    )
+
+    expected_create_model_package_request = {
+        "containers": [
+            {
+                "Image": image_uri,
+                "Environment": ANY,
+                "ModelDataUrl": MODEL_DATA,
+                "Framework": FRAMEWORK.upper(),
+                "FrameworkVersion": mxnet_inference_version,
+            },
+        ],
+        "content_types": content_types,
+        "response_types": response_types,
+        "inference_instances": inference_instances,
+        "transform_instances": transform_instances,
+        "model_package_group_name": model_package_group_name,
+        "marketplace_cert": True,
+    }
+    sagemaker_session.create_model_package_from_containers.assert_called_with(
+        **expected_create_model_package_request
+    )

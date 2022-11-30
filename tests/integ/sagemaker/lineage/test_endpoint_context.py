@@ -14,10 +14,13 @@
 from __future__ import absolute_import
 import time
 
+import pytest
+
 SLEEP_TIME_ONE_SECONDS = 1
 SLEEP_TIME_THREE_SECONDS = 3
 
 
+@pytest.mark.skip("recurring failures due to existing ARN V739948996")
 def test_model(endpoint_context_associate_with_model, model_obj, endpoint_action_obj):
     model_list = endpoint_context_associate_with_model.models()
     for model in model_list:
@@ -27,6 +30,7 @@ def test_model(endpoint_context_associate_with_model, model_obj, endpoint_action
         assert model.destination_type == "Model"
 
 
+@pytest.mark.skip("recurring failures due to existing ARN V739948996")
 def test_model_v2(endpoint_context_associate_with_model, model_obj, sagemaker_session):
     time.sleep(SLEEP_TIME_ONE_SECONDS)
     model_list = endpoint_context_associate_with_model.models_v2()
@@ -38,6 +42,7 @@ def test_model_v2(endpoint_context_associate_with_model, model_obj, sagemaker_se
         assert model.properties == model_obj.properties
 
 
+@pytest.mark.skip("data inconsistency P61661075")
 def test_dataset_artifacts(static_endpoint_context):
     artifacts_from_query = static_endpoint_context.dataset_artifacts()
 
@@ -46,6 +51,7 @@ def test_dataset_artifacts(static_endpoint_context):
         assert artifact.artifact_type == "DataSet"
 
 
+@pytest.mark.skip("data inconsistency P61661075")
 def test_training_job_arns(
     static_endpoint_context,
 ):
@@ -56,12 +62,14 @@ def test_training_job_arns(
         assert "training-job" in arn
 
 
+@pytest.mark.skip("data inconsistency P61661075")
 def test_pipeline_execution_arn(static_endpoint_context, static_pipeline_execution_arn):
     pipeline_execution_arn = static_endpoint_context.pipeline_execution_arn()
 
     assert pipeline_execution_arn == static_pipeline_execution_arn
 
 
+@pytest.mark.skip("data inconsistency P61661075")
 def test_transform_jobs(
     sagemaker_session, static_transform_job_trial_component, static_endpoint_context
 ):
@@ -84,6 +92,7 @@ def test_transform_jobs(
     )
 
 
+@pytest.mark.skip("data inconsistency P61661075")
 def test_processing_jobs(
     sagemaker_session, static_transform_job_trial_component, static_endpoint_context
 ):
@@ -94,6 +103,7 @@ def test_processing_jobs(
         assert "ProcessingJob" in processing_job.source.get("SourceType")
 
 
+@pytest.mark.skip("data inconsistency P61661075")
 def test_trial_components(
     sagemaker_session, static_transform_job_trial_component, static_endpoint_context
 ):

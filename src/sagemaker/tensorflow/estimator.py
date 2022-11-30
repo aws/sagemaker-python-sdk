@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import logging
+from typing import Optional, Union, Dict
 
 from packaging import version
 
@@ -25,6 +26,9 @@ from sagemaker.tensorflow import defaults
 from sagemaker.tensorflow.model import TensorFlowModel
 from sagemaker.transformer import Transformer
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
+from sagemaker.workflow import is_pipeline_variable
+from sagemaker.tensorflow.training_compiler.config import TrainingCompilerConfig
+from sagemaker.workflow.entities import PipelineVariable
 
 logger = logging.getLogger("sagemaker")
 
@@ -39,12 +43,13 @@ class TensorFlow(Framework):
 
     def __init__(
         self,
-        py_version=None,
-        framework_version=None,
-        model_dir=None,
-        image_uri=None,
-        distribution=None,
-        **kwargs
+        py_version: Optional[str] = None,
+        framework_version: Optional[str] = None,
+        model_dir: Optional[Union[str, PipelineVariable]] = None,
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
+        distribution: Optional[Dict[str, str]] = None,
+        compiler_config: Optional[TrainingCompilerConfig] = None,
+        **kwargs,
     ):
         """Initialize a ``TensorFlow`` estimator.
 
@@ -55,10 +60,10 @@ class TensorFlow(Framework):
                 training code. Defaults to ``None``. Required unless ``image_uri`` is provided.
                 List of supported versions:
                 https://github.com/aws/sagemaker-python-sdk#tensorflow-sagemaker-estimators.
-            model_dir (str): S3 location where the checkpoint data and models can be exported to
-                during training (default: None). It will be passed in the training script as one of
-                the command line arguments. If not specified, one is provided based on
-                your training configuration:
+            model_dir (str or PipelineVariable): S3 location where the checkpoint data and models
+                can be exported to during training (default: None). It will be passed in the
+                training script as one of the command line arguments. If not specified,
+                one is provided based on your training configuration:
 
                 * *distributed training with SMDistributed or MPI with Horovod* - ``/opt/ml/model``
                 * *single-machine training or distributed training without MPI* - \
@@ -68,9 +73,10 @@ class TensorFlow(Framework):
 
                 To disable having ``model_dir`` passed to your training script,
                 set ``model_dir=False``.
-            image_uri (str): If specified, the estimator will use this image for training and
-                hosting, instead of selecting the appropriate SageMaker official image based on
-                framework_version and py_version. It can be an ECR url or dockerhub image and tag.
+            image_uri (str or PipelineVariable): If specified, the estimator will use this image
+                for training and hosting, instead of selecting the appropriate SageMaker official
+                image based on framework_version and py_version.
+                It can be an ECR url or dockerhub image and tag.
 
                 Examples:
                     123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
@@ -83,41 +89,81 @@ class TensorFlow(Framework):
                 (default: None). Currently, the following are supported:
                 distributed training with parameter servers, SageMaker Distributed (SMD) Data
                 and Model Parallelism, and MPI. SMD Model Parallelism can only be used with MPI.
-                To enable parameter server use the following setup:
 
-                .. code:: python
+                **To enable the SageMaker distributed data parallelism:**
 
-                    {
-                        "parameter_server": {
-                            "enabled": True
-                        }
-                    }
+                    .. code:: python
 
-                To enable MPI:
+                        { "smdistributed": { "dataparallel": { "enabled": True } } }
 
-                .. code:: python
+                    .. seealso::
 
-                    {
-                        "mpi": {
-                            "enabled": True
-                        }
-                    }
+                        To learn more, see :ref:`sdp_api_docs_toc`.
 
-                To enable SMDistributed Data Parallel or Model Parallel:
+                **To enable the SageMaker distributed model parallelism:**
 
-                .. code:: python
+                    .. code:: python
 
-                    {
-                        "smdistributed": {
-                            "dataparallel": {
-                                "enabled": True
+                        {
+                            "smdistributed": {
+                                "modelparallel": {
+                                    "enabled":True,
+                                    "parameters": {
+                                        "partitions": 2,
+                                        "microbatches": 4,
+                                        "placement_strategy": "spread",
+                                        "pipeline": "interleaved",
+                                        "optimize": "speed",
+                                        "ddp": True,
+                                    }
                             },
-                            "modelparallel": {
-                                "enabled": True,
-                                "parameters": {}
+                            "mpi": {
+                                "enabled" : True,
+                                "processes_per_host" : 8,
                             }
                         }
-                    }
+
+                    .. note::
+
+                        The SageMaker distributed model parallel library internally uses MPI.
+                        In order to use model parallelism, MPI also must be enabled.
+
+                    .. seealso::
+
+                        To learn more, see :ref:`smp_api_docs_toc`.
+
+                    .. seealso::
+
+                        To find a complete list of parameters for SageMaker model parallelism,
+                        see :ref:`sm-sdk-modelparallel-general`.
+
+                **To enable MPI:**
+
+                    .. code:: python
+
+                        {
+                            "mpi": {
+                                "enabled": True
+                            }
+                        }
+
+                    To learn more, see `Training with Horovod
+                    <https://sagemaker.readthedocs.io/en/stable/frameworks/tensorflow/using_tf.html#training-with-horovod>`_.
+
+                **To enable parameter server:**
+
+                    .. code:: python
+
+                        {
+                            "parameter_server": {
+                                "enabled": True
+                            }
+                        }
+
+                    To learn more, see `Training with parameter servers
+                    <https://sagemaker.readthedocs.io/en/stable/frameworks/tensorflow/using_tf.html#training-with-parameter-servers>`_.
+            compiler_config (:class:`~sagemaker.tensorflow.TrainingCompilerConfig`):
+                Configures SageMaker Training Compiler to accelerate training.
 
             **kwargs: Additional kwargs passed to the Framework constructor.
 
@@ -140,29 +186,37 @@ class TensorFlow(Framework):
         self.py_version = py_version
         self.instance_type = instance_type
 
-        if distribution is not None:
-            fw.warn_if_parameter_server_with_multi_gpu(
-                training_instance_type=instance_type, distribution=distribution
-            )
-            fw.validate_smdistributed(
-                instance_type=instance_type,
-                framework_name=self._framework_name,
-                framework_version=framework_version,
-                py_version=py_version,
-                distribution=distribution,
-                image_uri=image_uri,
-            )
-
         if "enable_sagemaker_metrics" not in kwargs:
             # enable sagemaker metrics for TF v1.15 or greater:
             if framework_version and version.Version(framework_version) >= version.Version("1.15"):
                 kwargs["enable_sagemaker_metrics"] = True
 
         super(TensorFlow, self).__init__(image_uri=image_uri, **kwargs)
+        if distribution is not None:
+            distribution = fw.validate_distribution(
+                distribution,
+                self.instance_groups,
+                self._framework_name,
+                framework_version,
+                py_version,
+                image_uri,
+                kwargs,
+            )
         self.model_dir = model_dir
         self.distribution = distribution or {}
 
         self._validate_args(py_version=py_version)
+        if compiler_config is not None:
+            if not isinstance(compiler_config, TrainingCompilerConfig):
+                error_string = (
+                    f"Expected instance of type {TrainingCompilerConfig}"
+                    f"for argument compiler_config. "
+                    f"Instead got {type(compiler_config)}"
+                )
+                raise ValueError(error_string)
+            if compiler_config:
+                compiler_config.validate(self)
+        self.compiler_config = compiler_config
 
     def _validate_args(self, py_version):
         """Placeholder docstring"""
@@ -200,6 +254,8 @@ class TensorFlow(Framework):
 
     def _only_python_3_supported(self):
         """Placeholder docstring"""
+        if not self.framework_version:
+            return False
         return version.Version(self.framework_version) > self._HIGHEST_PYTHON_2_VERSION
 
     @classmethod
@@ -262,7 +318,7 @@ class TensorFlow(Framework):
         entry_point=None,
         source_dir=None,
         dependencies=None,
-        **kwargs
+        **kwargs,
     ):
         """Creates ``TensorFlowModel`` object to be used for creating SageMaker model entities.
 
@@ -313,7 +369,7 @@ class TensorFlow(Framework):
             entry_point=entry_point,
             source_dir=source_dir,
             dependencies=dependencies,
-            **kwargs
+            **kwargs,
         )
 
     def hyperparameters(self):
@@ -330,6 +386,13 @@ class TensorFlow(Framework):
         hyperparameters.update(
             EstimatorBase._json_encode_hyperparameters(additional_hyperparameters)
         )
+
+        if self.compiler_config:
+            training_compiler_hyperparameters = self.compiler_config._to_hyperparameter_dict()
+            hyperparameters.update(
+                EstimatorBase._json_encode_hyperparameters(training_compiler_hyperparameters)
+            )
+
         return hyperparameters
 
     def _default_s3_path(self, directory, mpi=False):
@@ -340,6 +403,9 @@ class TensorFlow(Framework):
         if mpi:
             return "/opt/ml/model"
         if self._current_job_name:
+            if is_pipeline_variable(self.output_path):
+                output_path = "s3://{}".format(self.sagemaker_session.default_bucket())
+                return s3.s3_path_join(output_path, self._current_job_name, directory)
             return s3.s3_path_join(self.output_path, self._current_job_name, directory)
         return None
 

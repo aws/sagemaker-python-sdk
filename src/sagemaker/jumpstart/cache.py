@@ -13,13 +13,17 @@
 """This module defines the JumpStartModelsCache class."""
 from __future__ import absolute_import
 import datetime
-from typing import List, Optional
+from difflib import get_close_matches
+import os
+from typing import List, Optional, Tuple, Union
 import json
 import boto3
 import botocore
 from packaging.version import Version
 from packaging.specifiers import SpecifierSet
 from sagemaker.jumpstart.constants import (
+    ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE,
+    ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE,
     JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY,
     JUMPSTART_DEFAULT_REGION_NAME,
 )
@@ -89,7 +93,7 @@ class JumpStartModelsCache:
         self._s3_cache = LRUCache[JumpStartCachedS3ContentKey, JumpStartCachedS3ContentValue](
             max_cache_items=max_s3_cache_items,
             expiration_horizon=s3_cache_expiration_horizon,
-            retrieval_function=self._get_file_from_s3,
+            retrieval_function=self._retrieval_function,
         )
         self._model_id_semantic_version_manifest_key_cache = LRUCache[
             JumpStartVersionedModelId, JumpStartVersionedModelId
@@ -145,16 +149,16 @@ class JumpStartModelsCache:
         key: JumpStartVersionedModelId,
         value: Optional[JumpStartVersionedModelId],  # pylint: disable=W0613
     ) -> JumpStartVersionedModelId:
-        """Return model id and version in manifest that matches semantic version/id.
+        """Return model ID and version in manifest that matches semantic version/id.
 
         Uses ``packaging.version`` to perform version comparison. The highest model version
         matching the semantic version is used, which is compatible with the SageMaker
         version.
 
         Args:
-            key (JumpStartVersionedModelId): Key for which to fetch versioned model id.
+            key (JumpStartVersionedModelId): Key for which to fetch versioned model ID.
             value (Optional[JumpStartVersionedModelId]): Unused variable for current value of
-                old cached model id/version.
+                old cached model ID/version.
 
         Raises:
             KeyError: If the semantic version is not found in the manifest, or is found but
@@ -204,17 +208,94 @@ class JumpStartModelsCache:
             sm_version_to_use = sm_version_to_use_list[0]
 
             error_msg = (
-                f"Unable to find model manifest for {model_id} with version {version} "
-                f"compatible with your SageMaker version ({sm_version}). "
+                f"Unable to find model manifest for '{model_id}' with version '{version}' "
+                f"compatible with your SageMaker version ('{sm_version}'). "
                 f"Consider upgrading your SageMaker library to at least version "
-                f"{sm_version_to_use} so you can use version "
-                f"{model_version_to_use_incompatible_with_sagemaker} of {model_id}."
+                f"'{sm_version_to_use}' so you can use version "
+                f"'{model_version_to_use_incompatible_with_sagemaker}' of '{model_id}'."
             )
             raise KeyError(error_msg)
-        error_msg = f"Unable to find model manifest for {model_id} with version {version}."
+
+        error_msg = f"Unable to find model manifest for '{model_id}' with version '{version}'. "
+        error_msg += (
+            "Visit https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html"
+            " for updated list of models. "
+        )
+
+        other_model_id_version = self._select_version(
+            "*", versions_incompatible_with_sagemaker
+        )  # all versions here are incompatible with sagemaker
+        if other_model_id_version is not None:
+            error_msg += (
+                f"Consider using model ID '{model_id}' with version "
+                f"'{other_model_id_version}'."
+            )
+
+        else:
+            possible_model_ids = [header.model_id for header in manifest.values()]  # type: ignore
+            closest_model_id = get_close_matches(model_id, possible_model_ids, n=1, cutoff=0)[0]
+            error_msg += f"Did you mean to use model ID '{closest_model_id}'?"
+
         raise KeyError(error_msg)
 
-    def _get_file_from_s3(
+    def _get_json_file_and_etag_from_s3(self, key: str) -> Tuple[Union[dict, list], str]:
+        """Returns json file from s3, along with its etag."""
+        response = self._s3_client.get_object(Bucket=self.s3_bucket_name, Key=key)
+        return json.loads(response["Body"].read().decode("utf-8")), response["ETag"]
+
+    def _is_local_metadata_mode(self) -> bool:
+        """Returns True if the cache should use local metadata mode, based off env variables."""
+        return (ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE in os.environ
+                and os.path.isdir(os.environ[ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE])
+                and ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE in os.environ
+                and os.path.isdir(os.environ[ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE]))
+
+    def _get_json_file(
+        self,
+        key: str,
+        filetype: JumpStartS3FileType
+    ) -> Tuple[Union[dict, list], Optional[str]]:
+        """Returns json file either from s3 or local file system.
+
+        Returns etag along with json object for s3, or just the json
+        object and None when reading from the local file system.
+        """
+        if self._is_local_metadata_mode():
+            file_content, etag = self._get_json_file_from_local_override(key, filetype), None
+        else:
+            file_content, etag = self._get_json_file_and_etag_from_s3(key)
+        return file_content, etag
+
+    def _get_json_md5_hash(self, key: str):
+        """Retrieves md5 object hash for s3 objects, using `s3.head_object`.
+
+        Raises:
+            ValueError: if the cache should use local metadata mode.
+        """
+        if self._is_local_metadata_mode():
+            raise ValueError("Cannot get md5 hash of local file.")
+        return self._s3_client.head_object(Bucket=self.s3_bucket_name, Key=key)["ETag"]
+
+    def _get_json_file_from_local_override(
+        self,
+        key: str,
+        filetype: JumpStartS3FileType
+    ) -> Union[dict, list]:
+        """Reads json file from local filesystem and returns data."""
+        if filetype == JumpStartS3FileType.MANIFEST:
+            metadata_local_root = (
+                os.environ[ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE]
+            )
+        elif filetype == JumpStartS3FileType.SPECS:
+            metadata_local_root = os.environ[ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE]
+        else:
+            raise ValueError(f"Unsupported file type for local override: {filetype}")
+        file_path = os.path.join(metadata_local_root, key)
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+        return data
+
+    def _retrieval_function(
         self,
         key: JumpStartCachedS3ContentKey,
         value: Optional[JumpStartCachedS3ContentValue],
@@ -235,20 +316,17 @@ class JumpStartModelsCache:
         file_type, s3_key = key.file_type, key.s3_key
 
         if file_type == JumpStartS3FileType.MANIFEST:
-            if value is not None:
-                etag = self._s3_client.head_object(Bucket=self.s3_bucket_name, Key=s3_key)["ETag"]
+            if value is not None and not self._is_local_metadata_mode():
+                etag = self._get_json_md5_hash(s3_key)
                 if etag == value.md5_hash:
                     return value
-            response = self._s3_client.get_object(Bucket=self.s3_bucket_name, Key=s3_key)
-            formatted_body = json.loads(response["Body"].read().decode("utf-8"))
-            etag = response["ETag"]
+            formatted_body, etag = self._get_json_file(s3_key, file_type)
             return JumpStartCachedS3ContentValue(
                 formatted_content=utils.get_formatted_manifest(formatted_body),
                 md5_hash=etag,
             )
         if file_type == JumpStartS3FileType.SPECS:
-            response = self._s3_client.get_object(Bucket=self.s3_bucket_name, Key=s3_key)
-            formatted_body = json.loads(response["Body"].read().decode("utf-8"))
+            formatted_body, _ = self._get_json_file(s3_key, file_type)
             return JumpStartCachedS3ContentValue(
                 formatted_content=JumpStartModelSpecs(formatted_body)
             )
@@ -266,10 +344,10 @@ class JumpStartModelsCache:
         return manifest
 
     def get_header(self, model_id: str, semantic_version_str: str) -> JumpStartModelHeader:
-        """Return header for a given JumpStart model id and semantic version.
+        """Return header for a given JumpStart model ID and semantic version.
 
         Args:
-            model_id (str): model id for which to get a header.
+            model_id (str): model ID for which to get a header.
             semantic_version_str (str): The semantic version for which to get a
                 header.
         """
@@ -310,7 +388,7 @@ class JumpStartModelsCache:
         Allows a single retry if the cache is old.
 
         Args:
-            model_id (str): model id for which to get a header.
+            model_id (str): model ID for which to get a header.
             semantic_version_str (str): The semantic version for which to get a
                 header.
             attempt (int): attempt number at retrieving a header.
@@ -332,10 +410,10 @@ class JumpStartModelsCache:
             return self._get_header_impl(model_id, semantic_version_str, attempt + 1)
 
     def get_specs(self, model_id: str, semantic_version_str: str) -> JumpStartModelSpecs:
-        """Return specs for a given JumpStart model id and semantic version.
+        """Return specs for a given JumpStart model ID and semantic version.
 
         Args:
-            model_id (str): model id for which to get specs.
+            model_id (str): model ID for which to get specs.
             semantic_version_str (str): The semantic version for which to get
                 specs.
         """
@@ -348,6 +426,6 @@ class JumpStartModelsCache:
         return specs  # type: ignore
 
     def clear(self) -> None:
-        """Clears the model id/version and s3 cache."""
+        """Clears the model ID/version and s3 cache."""
         self._s3_cache.clear()
         self._model_id_semantic_version_manifest_key_cache.clear()

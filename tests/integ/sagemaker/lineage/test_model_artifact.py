@@ -13,6 +13,8 @@
 """This module contains code to test SageMaker ``DatasetArtifact``"""
 from __future__ import absolute_import
 
+import pytest
+
 
 def test_endpoints(
     model_artifact_associated_endpoints,
@@ -28,6 +30,7 @@ def test_endpoints(
         assert model.destination_type == endpoint_context_obj.context_type
 
 
+@pytest.mark.skip("static test data inconsistency AML-166905")
 def test_endpoint_contexts(
     static_model_artifact,
 ):
@@ -38,6 +41,7 @@ def test_endpoint_contexts(
         assert context.context_type == "Endpoint"
 
 
+@pytest.mark.skip("data inconsistency P61661075")
 def test_dataset_artifacts(
     static_model_artifact,
 ):
@@ -48,6 +52,7 @@ def test_dataset_artifacts(
         assert artifact.artifact_type == "DataSet"
 
 
+@pytest.mark.skip("data inconsistency P61661075")
 def test_training_job_arns(
     static_model_artifact,
 ):
@@ -58,6 +63,7 @@ def test_training_job_arns(
         assert "training-job" in arn
 
 
+@pytest.mark.skip("data inconsistency P61661075")
 def test_pipeline_execution_arn(static_model_artifact, static_pipeline_execution_arn):
     pipeline_execution_arn = static_model_artifact.pipeline_execution_arn()
 

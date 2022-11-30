@@ -13,6 +13,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import json
+
 import pytest
 import sagemaker
 import os
@@ -24,7 +26,7 @@ from mock import (
     patch,
 )
 
-from sagemaker.debugger import DEBUGGER_FLAG, ProfilerConfig
+from sagemaker.debugger import ProfilerConfig
 from sagemaker.estimator import Estimator
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.inputs import TrainingInput, TransformInput, CreateModelInput
@@ -43,8 +45,10 @@ from sagemaker.tuner import (
 )
 from sagemaker.network import NetworkConfig
 from sagemaker.transformer import Transformer
-from sagemaker.workflow.properties import Properties
-from sagemaker.workflow.parameters import ParameterString, ParameterInteger
+from sagemaker.workflow.functions import Join, JsonGet
+from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
+from sagemaker.workflow.properties import Properties, PropertyFile
+from sagemaker.workflow.parameters import ParameterString, ParameterInteger, ParameterBoolean
 from sagemaker.workflow.retry import (
     StepRetryPolicy,
     StepExceptionTypeEnum,
@@ -53,8 +57,6 @@ from sagemaker.workflow.retry import (
 )
 from sagemaker.workflow.steps import (
     ProcessingStep,
-    ConfigurableRetryStep,
-    StepTypeEnum,
     TrainingStep,
     TuningStep,
     TransformStep,
@@ -66,6 +68,7 @@ from sagemaker.sparkml import SparkMLModel
 from sagemaker.predictor import Predictor
 from sagemaker.model import FrameworkModel
 from tests.unit import DATA_DIR
+from tests.unit.sagemaker.workflow.helpers import ordered, CustomStep
 
 DUMMY_SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
 
@@ -74,22 +77,6 @@ BUCKET = "my-bucket"
 IMAGE_URI = "fakeimage"
 ROLE = "DummyRole"
 MODEL_NAME = "gisele"
-
-
-class CustomStep(ConfigurableRetryStep):
-    def __init__(self, name, display_name=None, description=None, retry_policies=None):
-        super(CustomStep, self).__init__(
-            name, StepTypeEnum.TRAINING, display_name, description, None, retry_policies
-        )
-        self._properties = Properties(path=f"Steps.{name}")
-
-    @property
-    def arguments(self):
-        return dict()
-
-    @property
-    def properties(self):
-        return self._properties
 
 
 class DummyFrameworkModel(FrameworkModel):
@@ -285,6 +272,8 @@ def test_custom_step_with_retry_policy():
 
 
 def test_training_step_base_estimator(sagemaker_session):
+    custom_step1 = CustomStep("TestStep")
+    custom_step2 = CustomStep("AnotherTestStep")
     instance_type_parameter = ParameterString(name="InstanceType", default_value="c4.4xlarge")
     instance_count_parameter = ParameterInteger(name="InstanceCount", default_value=1)
     data_source_uri_parameter = ParameterString(
@@ -292,6 +281,8 @@ def test_training_step_base_estimator(sagemaker_session):
     )
     training_epochs_parameter = ParameterInteger(name="TrainingEpochs", default_value=5)
     training_batch_size_parameter = ParameterInteger(name="TrainingBatchSize", default_value=500)
+    use_spot_instances = ParameterBoolean(name="UseSpotInstances", default_value=False)
+    output_path = Join(on="/", values=["s3:/", "a", "b"])
     estimator = Estimator(
         image_uri=IMAGE_URI,
         role=ROLE,
@@ -304,6 +295,8 @@ def test_training_step_base_estimator(sagemaker_session):
         },
         rules=[],
         sagemaker_session=sagemaker_session,
+        output_path=output_path,
+        use_spot_instances=use_spot_instances,
     )
     inputs = TrainingInput(s3_data=data_source_uri_parameter)
     cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
@@ -317,7 +310,21 @@ def test_training_step_base_estimator(sagemaker_session):
         cache_config=cache_config,
     )
     step.add_depends_on(["AnotherTestStep"])
-    assert step.to_request() == {
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[
+            instance_type_parameter,
+            instance_count_parameter,
+            data_source_uri_parameter,
+            training_epochs_parameter,
+            training_batch_size_parameter,
+            use_spot_instances,
+        ],
+        steps=[step, custom_step1, custom_step2],
+        sagemaker_session=sagemaker_session,
+    )
+
+    assert json.loads(pipeline.definition())["Steps"][0] == {
         "Name": "MyTrainingStep",
         "Type": "Training",
         "Description": "TrainingStep description",
@@ -325,9 +332,20 @@ def test_training_step_base_estimator(sagemaker_session):
         "DependsOn": ["TestStep", "AnotherTestStep"],
         "Arguments": {
             "AlgorithmSpecification": {"TrainingImage": IMAGE_URI, "TrainingInputMode": "File"},
+            "EnableManagedSpotTraining": {"Get": "Parameters.UseSpotInstances"},
             "HyperParameters": {
-                "batch-size": training_batch_size_parameter,
-                "epochs": training_epochs_parameter,
+                "batch-size": {
+                    "Std:Join": {
+                        "On": "",
+                        "Values": [{"Get": "Parameters.TrainingBatchSize"}],
+                    },
+                },
+                "epochs": {
+                    "Std:Join": {
+                        "On": "",
+                        "Values": [{"Get": "Parameters.TrainingEpochs"}],
+                    },
+                },
             },
             "InputDataConfig": [
                 {
@@ -336,28 +354,42 @@ def test_training_step_base_estimator(sagemaker_session):
                         "S3DataSource": {
                             "S3DataDistributionType": "FullyReplicated",
                             "S3DataType": "S3Prefix",
-                            "S3Uri": data_source_uri_parameter,
+                            "S3Uri": {"Get": "Parameters.DataSourceS3Uri"},
                         }
                     },
                 }
             ],
-            "OutputDataConfig": {"S3OutputPath": f"s3://{BUCKET}/"},
+            "OutputDataConfig": {
+                "S3OutputPath": {"Std:Join": {"On": "/", "Values": ["s3:/", "a", "b"]}}
+            },
             "ResourceConfig": {
-                "InstanceCount": instance_count_parameter,
-                "InstanceType": instance_type_parameter,
+                "InstanceCount": {"Get": "Parameters.InstanceCount"},
+                "InstanceType": {"Get": "Parameters.InstanceType"},
                 "VolumeSizeInGB": 30,
             },
             "RoleArn": ROLE,
             "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
+            "DebugHookConfig": {
+                "S3OutputPath": {"Std:Join": {"On": "/", "Values": ["s3:/", "a", "b"]}},
+                "CollectionConfigurations": [],
+            },
             "ProfilerConfig": {
                 "ProfilingIntervalInMilliseconds": 500,
-                "S3OutputPath": f"s3://{BUCKET}/",
+                "S3OutputPath": {"Std:Join": {"On": "/", "Values": ["s3:/", "a", "b"]}},
             },
         },
         "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
     }
     assert step.properties.TrainingJobName.expr == {"Get": "Steps.MyTrainingStep.TrainingJobName"}
     assert step.properties.HyperParameters.expr == {"Get": "Steps.MyTrainingStep.HyperParameters"}
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert ordered(adjacency_list) == ordered(
+        {
+            "AnotherTestStep": ["MyTrainingStep"],
+            "MyTrainingStep": [],
+            "TestStep": ["MyTrainingStep"],
+        }
+    )
 
 
 def test_training_step_tensorflow(sagemaker_session):
@@ -379,12 +411,10 @@ def test_training_step_tensorflow(sagemaker_session):
         instance_count=instance_count_parameter,
         instance_type=instance_type_parameter,
         sagemaker_session=sagemaker_session,
-        # subnets=subnets,
         hyperparameters={
             "batch-size": training_batch_size_parameter,
             "epochs": training_epochs_parameter,
         },
-        # security_group_ids=security_group_ids,
         debugger_hook_config=False,
         # Training using SMDataParallel Distributed Training Framework
         distribution={"smdistributed": {"dataparallel": {"enabled": True}}},
@@ -395,11 +425,22 @@ def test_training_step_tensorflow(sagemaker_session):
     step = TrainingStep(
         name="MyTrainingStep", estimator=estimator, inputs=inputs, cache_config=cache_config
     )
-    step_request = step.to_request()
-    step_request["Arguments"]["HyperParameters"].pop("sagemaker_job_name", None)
-    step_request["Arguments"]["HyperParameters"].pop("sagemaker_program", None)
-    step_request["Arguments"].pop("ProfilerRuleConfigurations", None)
-    assert step_request == {
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[
+            instance_type_parameter,
+            instance_count_parameter,
+            data_source_uri_parameter,
+            training_epochs_parameter,
+            training_batch_size_parameter,
+        ],
+        steps=[step],
+        sagemaker_session=sagemaker_session,
+    )
+    dsl = json.loads(pipeline.definition())["Steps"][0]
+    dsl["Arguments"]["HyperParameters"].pop("sagemaker_program", None)
+    dsl["Arguments"].pop("ProfilerRuleConfigurations", None)
+    assert dsl == {
         "Name": "MyTrainingStep",
         "Type": "Training",
         "Arguments": {
@@ -411,8 +452,8 @@ def test_training_step_tensorflow(sagemaker_session):
             "OutputDataConfig": {"S3OutputPath": "s3://my-bucket/"},
             "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
             "ResourceConfig": {
-                "InstanceCount": instance_count_parameter,
-                "InstanceType": instance_type_parameter,
+                "InstanceCount": {"Get": "Parameters.InstanceCount"},
+                "InstanceType": {"Get": "Parameters.InstanceType"},
                 "VolumeSizeInGB": 30,
             },
             "RoleArn": "DummyRole",
@@ -421,7 +462,7 @@ def test_training_step_tensorflow(sagemaker_session):
                     "DataSource": {
                         "S3DataSource": {
                             "S3DataType": "S3Prefix",
-                            "S3Uri": data_source_uri_parameter,
+                            "S3Uri": {"Get": "Parameters.DataSourceS3Uri"},
                             "S3DataDistributionType": "FullyReplicated",
                         }
                     },
@@ -429,17 +470,20 @@ def test_training_step_tensorflow(sagemaker_session):
                 }
             ],
             "HyperParameters": {
-                "batch-size": training_batch_size_parameter,
-                "epochs": training_epochs_parameter,
+                "batch-size": {
+                    "Std:Join": {"On": "", "Values": [{"Get": "Parameters.TrainingBatchSize"}]}
+                },
+                "epochs": {
+                    "Std:Join": {"On": "", "Values": [{"Get": "Parameters.TrainingEpochs"}]}
+                },
                 "sagemaker_submit_directory": '"s3://mybucket/source"',
                 "sagemaker_container_log_level": "20",
                 "sagemaker_region": '"us-west-2"',
                 "sagemaker_distributed_dataparallel_enabled": "true",
-                "sagemaker_instance_type": instance_type_parameter,
+                "sagemaker_instance_type": {"Get": "Parameters.InstanceType"},
                 "sagemaker_distributed_dataparallel_custom_mpi_options": '""',
             },
             "ProfilerConfig": {"S3OutputPath": "s3://my-bucket/"},
-            "Environment": {DEBUGGER_FLAG: "0"},
         },
         "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
     }
@@ -473,9 +517,12 @@ def test_training_step_profiler_warning(sagemaker_session):
         TrainingStep(
             name="MyTrainingStep", estimator=estimator, inputs=inputs, cache_config=cache_config
         )
-        assert len(w) == 1
-        assert issubclass(w[-1].category, UserWarning)
-        assert "Profiling is enabled on the provided estimator" in str(w[-1].message)
+        assert len(w) == 2
+        assert issubclass(w[0].category, UserWarning)
+        assert "Profiling is enabled on the provided estimator" in str(w[0].message)
+
+        assert issubclass(w[1].category, DeprecationWarning)
+        assert "We are deprecating the instantiation" in str(w[1].message)
 
 
 def test_training_step_no_profiler_warning(sagemaker_session):
@@ -506,16 +553,23 @@ def test_training_step_no_profiler_warning(sagemaker_session):
         TrainingStep(
             name="MyTrainingStep", estimator=estimator, inputs=inputs, cache_config=cache_config
         )
-        assert len(w) == 0
+        assert len(w) == 1
+        assert issubclass(w[-1].category, DeprecationWarning)
+        assert "We are deprecating the instantiation" in str(w[-1].message)
 
     with warnings.catch_warnings(record=True) as w:
         # profiler enabled, cache config is None
         estimator.disable_profiler = False
         TrainingStep(name="MyTrainingStep", estimator=estimator, inputs=inputs, cache_config=None)
-        assert len(w) == 0
+        assert len(w) == 1
+        assert issubclass(w[-1].category, DeprecationWarning)
+        assert "We are deprecating the instantiation" in str(w[-1].message)
 
 
 def test_processing_step(sagemaker_session):
+    custom_step1 = CustomStep("TestStep")
+    custom_step2 = CustomStep("SecondTestStep")
+    custom_step3 = CustomStep("ThirdTestStep")
     processing_input_data_uri_parameter = ParameterString(
         name="ProcessingInputDataUri", default_value=f"s3://{BUCKET}/processing_manifest"
     )
@@ -535,18 +589,37 @@ def test_processing_step(sagemaker_session):
         )
     ]
     cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
-    step = ProcessingStep(
-        name="MyProcessingStep",
-        description="ProcessingStep description",
-        display_name="MyProcessingStep",
-        depends_on=["TestStep", "SecondTestStep"],
-        processor=processor,
-        inputs=inputs,
-        outputs=[],
-        cache_config=cache_config,
+    evaluation_report = PropertyFile(
+        name="EvaluationReport", output_name="evaluation", path="evaluation.json"
     )
+    with warnings.catch_warnings(record=True) as w:
+        step = ProcessingStep(
+            name="MyProcessingStep",
+            description="ProcessingStep description",
+            display_name="MyProcessingStep",
+            depends_on=["TestStep", "SecondTestStep"],
+            processor=processor,
+            inputs=inputs,
+            outputs=[],
+            cache_config=cache_config,
+            property_files=[evaluation_report],
+        )
+        assert len(w) == 1
+        assert issubclass(w[-1].category, DeprecationWarning)
+        assert "We are deprecating the instantiation" in str(w[-1].message)
+
     step.add_depends_on(["ThirdTestStep"])
-    assert step.to_request() == {
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[
+            processing_input_data_uri_parameter,
+            instance_type_parameter,
+            instance_count_parameter,
+        ],
+        steps=[step, custom_step1, custom_step2, custom_step3],
+        sagemaker_session=sagemaker_session,
+    )
+    assert json.loads(pipeline.definition())["Steps"][0] == {
         "Name": "MyProcessingStep",
         "Description": "ProcessingStep description",
         "DisplayName": "MyProcessingStep",
@@ -564,24 +637,40 @@ def test_processing_step(sagemaker_session):
                         "S3DataDistributionType": "FullyReplicated",
                         "S3DataType": "S3Prefix",
                         "S3InputMode": "File",
-                        "S3Uri": processing_input_data_uri_parameter,
+                        "S3Uri": {"Get": "Parameters.ProcessingInputDataUri"},
                     },
                 }
             ],
             "ProcessingResources": {
                 "ClusterConfig": {
-                    "InstanceCount": instance_count_parameter,
-                    "InstanceType": instance_type_parameter,
+                    "InstanceCount": {"Get": "Parameters.InstanceCount"},
+                    "InstanceType": {"Get": "Parameters.InstanceType"},
                     "VolumeSizeInGB": 30,
                 }
             },
             "RoleArn": "DummyRole",
         },
         "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
+        "PropertyFiles": [
+            {
+                "FilePath": "evaluation.json",
+                "OutputName": "evaluation",
+                "PropertyFileName": "EvaluationReport",
+            }
+        ],
     }
     assert step.properties.ProcessingJobName.expr == {
         "Get": "Steps.MyProcessingStep.ProcessingJobName"
     }
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert ordered(adjacency_list) == ordered(
+        {
+            "SecondTestStep": ["MyProcessingStep"],
+            "TestStep": ["MyProcessingStep"],
+            "ThirdTestStep": ["MyProcessingStep"],
+            "MyProcessingStep": [],
+        }
+    )
 
 
 @patch("sagemaker.processing.ScriptProcessor._normalize_args")
@@ -618,6 +707,44 @@ def test_processing_step_normalizes_args_with_local_code(mock_normalize_args, sc
         code=step.code,
         kms_key=None,
     )
+
+
+def test_processing_step_normalizes_args_with_param_str_local_code(
+    sagemaker_session, script_processor
+):
+    cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
+    code_param = ParameterString(name="Script", default_value="S3://my-bucket/file_name.py")
+    inputs = [
+        ProcessingInput(
+            source=f"s3://{BUCKET}/processing_manifest",
+            destination="processing_manifest",
+        )
+    ]
+    outputs = [
+        ProcessingOutput(
+            source=f"s3://{BUCKET}/processing_manifest",
+            destination="processing_manifest",
+        )
+    ]
+    with pytest.raises(ValueError) as error:
+        step = ProcessingStep(
+            name="MyProcessingStep",
+            processor=script_processor,
+            code=code_param,
+            inputs=inputs,
+            outputs=outputs,
+            job_arguments=["arg1", "arg2"],
+            cache_config=cache_config,
+        )
+        pipeline = Pipeline(
+            name="MyPipeline",
+            parameters=[code_param],
+            steps=[step],
+            sagemaker_session=sagemaker_session,
+        )
+        pipeline.definition()
+
+    assert "has to be a valid S3 URI or local file path" in str(error.value)
 
 
 @patch("sagemaker.processing.ScriptProcessor._normalize_args")
@@ -726,6 +853,24 @@ def test_create_model_step(sagemaker_session):
     assert step.properties.ModelName.expr == {"Get": "Steps.MyCreateModelStep.ModelName"}
 
 
+def test_create_model_step_with_invalid_input(sagemaker_session):
+    # without both step_args and any of the old required arguments
+    with pytest.raises(ValueError) as error:
+        CreateModelStep(
+            name="MyRegisterModelStep",
+        )
+    assert "Either of them should be provided" in str(error.value)
+
+    # with both step_args and the old required arguments
+    with pytest.raises(ValueError) as error:
+        CreateModelStep(
+            name="MyRegisterModelStep",
+            step_args=dict(),
+            model=Model(image_uri=IMAGE_URI),
+        )
+    assert "Either of them should be provided" in str(error.value)
+
+
 @patch("tarfile.open")
 @patch("time.strftime", return_value="2017-10-10-14-14-15")
 def test_create_model_step_with_model_pipeline(tfo, time, sagemaker_session):
@@ -792,15 +937,20 @@ def test_transform_step(sagemaker_session):
     )
     inputs = TransformInput(data=f"s3://{BUCKET}/transform_manifest")
     cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
-    step = TransformStep(
-        name="MyTransformStep",
-        depends_on=["TestStep"],
-        transformer=transformer,
-        display_name="TransformStep",
-        description="TestDescription",
-        inputs=inputs,
-        cache_config=cache_config,
-    )
+    with warnings.catch_warnings(record=True) as w:
+        step = TransformStep(
+            name="MyTransformStep",
+            depends_on=["TestStep"],
+            transformer=transformer,
+            display_name="TransformStep",
+            description="TestDescription",
+            inputs=inputs,
+            cache_config=cache_config,
+        )
+        assert len(w) == 1
+        assert issubclass(w[-1].category, DeprecationWarning)
+        assert "We are deprecating the instantiation" in str(w[-1].message)
+
     step.add_depends_on(["SecondTestStep"])
     assert step.to_request() == {
         "Name": "MyTransformStep",
@@ -832,7 +982,7 @@ def test_transform_step(sagemaker_session):
 
 
 def test_properties_describe_training_job_response():
-    prop = Properties("Steps.MyStep", "DescribeTrainingJobResponse")
+    prop = Properties(step_name="MyStep", shape_name="DescribeTrainingJobResponse")
     some_prop_names = ["TrainingJobName", "TrainingJobArn", "HyperParameters", "OutputDataConfig"]
     for name in some_prop_names:
         assert name in prop.__dict__.keys()
@@ -843,7 +993,7 @@ def test_properties_describe_training_job_response():
 
 
 def test_properties_describe_processing_job_response():
-    prop = Properties("Steps.MyStep", "DescribeProcessingJobResponse")
+    prop = Properties(step_name="MyStep", shape_name="DescribeProcessingJobResponse")
     some_prop_names = ["ProcessingInputs", "ProcessingOutputConfig", "ProcessingEndTime"]
     for name in some_prop_names:
         assert name in prop.__dict__.keys()
@@ -910,6 +1060,7 @@ def test_single_algo_tuning_step(sagemaker_session):
     data_source_uri_parameter = ParameterString(
         name="DataSourceS3Uri", default_value=f"s3://{BUCKET}/train_manifest"
     )
+    use_spot_instances = ParameterBoolean(name="UseSpotInstances", default_value=False)
     estimator = Estimator(
         image_uri=IMAGE_URI,
         role=ROLE,
@@ -918,6 +1069,7 @@ def test_single_algo_tuning_step(sagemaker_session):
         profiler_config=ProfilerConfig(system_monitor_interval_millis=500),
         rules=[],
         sagemaker_session=sagemaker_session,
+        use_spot_instances=use_spot_instances,
     )
     estimator.set_hyperparameters(
         num_layers=18,
@@ -955,13 +1107,25 @@ def test_single_algo_tuning_step(sagemaker_session):
 
     inputs = TrainingInput(s3_data=data_source_uri_parameter)
 
-    tuning_step = TuningStep(
-        name="MyTuningStep",
-        tuner=tuner,
-        inputs=inputs,
+    with warnings.catch_warnings(record=True) as w:
+        tuning_step = TuningStep(
+            name="MyTuningStep",
+            tuner=tuner,
+            inputs=inputs,
+        )
+        assert len(w) == 1
+        assert issubclass(w[-1].category, DeprecationWarning)
+        assert "We are deprecating the instantiation" in str(w[-1].message)
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[data_source_uri_parameter, use_spot_instances],
+        steps=[tuning_step],
+        sagemaker_session=sagemaker_session,
     )
 
-    assert tuning_step.to_request() == {
+    step_dsl_list = json.loads(pipeline.definition())["Steps"]
+    assert step_dsl_list[0] == {
         "Name": "MyTuningStep",
         "Type": "Tuning",
         "Arguments": {
@@ -1023,12 +1187,13 @@ def test_single_algo_tuning_step(sagemaker_session):
                     "TrainingInputMode": "File",
                     "TrainingImage": "fakeimage",
                 },
+                "EnableManagedSpotTraining": {"Get": "Parameters.UseSpotInstances"},
                 "InputDataConfig": [
                     {
                         "DataSource": {
                             "S3DataSource": {
                                 "S3DataType": "S3Prefix",
-                                "S3Uri": data_source_uri_parameter,
+                                "S3Uri": {"Get": "Parameters.DataSourceS3Uri"},
                                 "S3DataDistributionType": "FullyReplicated",
                             }
                         },
@@ -1130,7 +1295,16 @@ def test_multi_algo_tuning_step(sagemaker_session):
         },
     )
 
-    assert tuning_step.to_request() == {
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[data_source_uri_parameter, instance_count, initial_lr_param],
+        steps=[tuning_step],
+        sagemaker_session=sagemaker_session,
+    )
+
+    dsl = json.loads(pipeline.definition())
+
+    assert dsl["Steps"][0] == {
         "Name": "MyTuningStep",
         "Type": "Tuning",
         "Arguments": {
@@ -1156,7 +1330,7 @@ def test_multi_algo_tuning_step(sagemaker_session):
                     "RoleArn": "DummyRole",
                     "OutputDataConfig": {"S3OutputPath": "s3://my-bucket/"},
                     "ResourceConfig": {
-                        "InstanceCount": 1,
+                        "InstanceCount": {"Get": "Parameters.InstanceCount"},
                         "InstanceType": "ml.c5.4xlarge",
                         "VolumeSizeInGB": 30,
                     },
@@ -1170,7 +1344,7 @@ def test_multi_algo_tuning_step(sagemaker_session):
                             "DataSource": {
                                 "S3DataSource": {
                                     "S3DataType": "S3Prefix",
-                                    "S3Uri": data_source_uri_parameter,
+                                    "S3Uri": {"Get": "Parameters.DataSourceS3Uri"},
                                     "S3DataDistributionType": "FullyReplicated",
                                 }
                             },
@@ -1183,7 +1357,7 @@ def test_multi_algo_tuning_step(sagemaker_session):
                         "ContinuousParameterRanges": [
                             {
                                 "Name": "learning_rate",
-                                "MinValue": initial_lr_param,
+                                "MinValue": {"Get": "Parameters.InitialLR"},
                                 "MaxValue": "0.05",
                                 "ScalingType": "Auto",
                             },
@@ -1223,7 +1397,7 @@ def test_multi_algo_tuning_step(sagemaker_session):
                     "RoleArn": "DummyRole",
                     "OutputDataConfig": {"S3OutputPath": "s3://my-bucket/"},
                     "ResourceConfig": {
-                        "InstanceCount": 1,
+                        "InstanceCount": {"Get": "Parameters.InstanceCount"},
                         "InstanceType": "ml.c5.4xlarge",
                         "VolumeSizeInGB": 30,
                     },
@@ -1237,7 +1411,7 @@ def test_multi_algo_tuning_step(sagemaker_session):
                             "DataSource": {
                                 "S3DataSource": {
                                     "S3DataType": "S3Prefix",
-                                    "S3Uri": data_source_uri_parameter,
+                                    "S3Uri": {"Get": "Parameters.DataSourceS3Uri"},
                                     "S3DataDistributionType": "FullyReplicated",
                                 }
                             },
@@ -1250,7 +1424,7 @@ def test_multi_algo_tuning_step(sagemaker_session):
                         "ContinuousParameterRanges": [
                             {
                                 "Name": "learning_rate",
-                                "MinValue": initial_lr_param,
+                                "MinValue": {"Get": "Parameters.InitialLR"},
                                 "MaxValue": "0.05",
                                 "ScalingType": "Auto",
                             },
@@ -1277,3 +1451,95 @@ def test_multi_algo_tuning_step(sagemaker_session):
             ],
         },
     }
+
+
+def test_pipeline_dag_json_get_bad_step_type(sagemaker_session):
+    estimator = Estimator(
+        image_uri=IMAGE_URI,
+        role=ROLE,
+        instance_count=2,
+        instance_type="ml.m5.large",
+        sagemaker_session=sagemaker_session,
+    )
+    training_step = TrainingStep(name="inputTrainingStep", estimator=estimator)
+    json_get_function = JsonGet(
+        step_name=training_step.name, property_file="my-property-file", json_path="mse"
+    )
+    custom_step = CustomStep(name="TestStep", input_data=json_get_function)
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[],
+        steps=[training_step, custom_step],
+        sagemaker_session=sagemaker_session,
+    )
+    with pytest.raises(ValueError) as e:
+        PipelineGraph.from_pipeline(pipeline)
+    assert (
+        f"Invalid JsonGet function {json_get_function.expr} in step '{custom_step.name}'. "
+        f"JsonGet function can only be evaluated on processing step outputs." in str(e.value)
+    )
+
+
+def test_pipeline_dag_json_get_undefined_property_file(sagemaker_session):
+    processor = Processor(
+        image_uri=IMAGE_URI,
+        role=ROLE,
+        instance_count=1,
+        instance_type="c4.4xlarge",
+        sagemaker_session=sagemaker_session,
+    )
+    processing_step = ProcessingStep(name="inputProcessingStep", processor=processor)
+    json_get_function = JsonGet(
+        step_name=processing_step.name, property_file="undefined-property-file", json_path="mse"
+    )
+    custom_step = CustomStep(name="TestStep", input_data=json_get_function)
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[],
+        steps=[processing_step, custom_step],
+        sagemaker_session=sagemaker_session,
+    )
+    with pytest.raises(ValueError) as e:
+        PipelineGraph.from_pipeline(pipeline)
+    assert (
+        f"Invalid JsonGet function {json_get_function.expr} in step '{custom_step.name}'. Property "
+        f"file reference '{json_get_function.property_file}' is undefined in step "
+        f"'{processing_step.name}'." in str(e.value)
+    )
+
+
+def test_pipeline_dag_json_get_wrong_processing_output_name(sagemaker_session):
+    property_file = PropertyFile(
+        name="my-property-file", output_name="TestOutputName", path="processing_output.json"
+    )
+    processor = Processor(
+        image_uri=IMAGE_URI,
+        role=ROLE,
+        instance_count=1,
+        instance_type="c4.4xlarge",
+        sagemaker_session=sagemaker_session,
+    )
+    processing_step = ProcessingStep(
+        name="inputProcessingStep",
+        processor=processor,
+        outputs=[ProcessingOutput(output_name="SomeOtherTestOutputName")],
+        property_files=[property_file],
+    )
+
+    json_get_function = JsonGet(
+        step_name=processing_step.name, property_file=property_file.name, json_path="mse"
+    )
+    custom_step = CustomStep(name="TestStep", input_data=json_get_function)
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[],
+        steps=[processing_step, custom_step],
+        sagemaker_session=sagemaker_session,
+    )
+    with pytest.raises(ValueError) as e:
+        PipelineGraph.from_pipeline(pipeline)
+    assert (
+        f"Processing output name '{property_file.output_name}' defined in property file "
+        f"'{property_file.name}' not found in processing step '{processing_step.name}'."
+        in str(e.value)
+    )

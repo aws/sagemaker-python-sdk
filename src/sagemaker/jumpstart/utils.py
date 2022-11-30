@@ -13,6 +13,7 @@
 """This module contains utilities related to SageMaker JumpStart."""
 from __future__ import absolute_import
 import logging
+import os
 from typing import Dict, List, Optional
 from urllib.parse import urlparse
 from packaging.version import Version
@@ -29,7 +30,7 @@ from sagemaker.jumpstart.types import (
     JumpStartModelSpecs,
     JumpStartVersionedModelId,
 )
-
+from sagemaker.workflow import is_pipeline_variable
 
 LOGGER = logging.getLogger(__name__)
 
@@ -60,6 +61,14 @@ def get_jumpstart_content_bucket(region: str) -> str:
     Raises:
         RuntimeError: If JumpStart is not launched in ``region``.
     """
+
+    if (
+        constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE in os.environ
+        and len(os.environ[constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE]) > 0
+    ):
+        bucket_override = os.environ[constants.ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE]
+        LOGGER.info("Using JumpStart bucket override: '%s'", bucket_override)
+        return bucket_override
     try:
         return constants.JUMPSTART_REGION_NAME_TO_LAUNCHED_REGION_DICT[region].content_bucket
     except KeyError:
@@ -223,6 +232,22 @@ def add_single_jumpstart_tag(
     return curr_tags
 
 
+def get_jumpstart_base_name_if_jumpstart_model(
+    *uris: Optional[str],
+) -> Optional[str]:
+    """Return default JumpStart base name if a URI belongs to JumpStart.
+
+    If no URIs belong to JumpStart, return None.
+
+    Args:
+        *uris (Optional[str]): URI to test for association with JumpStart.
+    """
+    for uri in uris:
+        if is_jumpstart_model_uri(uri):
+            return constants.JUMPSTART_RESOURCE_BASE_NAME
+    return None
+
+
 def add_jumpstart_tags(
     tags: Optional[List[Dict[str, str]]] = None,
     inference_model_uri: Optional[str] = None,
@@ -246,26 +271,41 @@ def add_jumpstart_tags(
         training_script_uri (Optional[str]): S3 URI for training script tarball.
             (Default: None).
     """
-
+    warn_msg = (
+        "The URI (%s) is a pipeline variable which is only interpreted at execution time. "
+        "As a result, the JumpStart resources will not be tagged."
+    )
     if inference_model_uri:
-        tags = add_single_jumpstart_tag(
-            inference_model_uri, enums.JumpStartTag.INFERENCE_MODEL_URI, tags
-        )
+        if is_pipeline_variable(inference_model_uri):
+            logging.warning(warn_msg, "inference_model_uri")
+        else:
+            tags = add_single_jumpstart_tag(
+                inference_model_uri, enums.JumpStartTag.INFERENCE_MODEL_URI, tags
+            )
 
     if inference_script_uri:
-        tags = add_single_jumpstart_tag(
-            inference_script_uri, enums.JumpStartTag.INFERENCE_SCRIPT_URI, tags
-        )
+        if is_pipeline_variable(inference_script_uri):
+            logging.warning(warn_msg, "inference_script_uri")
+        else:
+            tags = add_single_jumpstart_tag(
+                inference_script_uri, enums.JumpStartTag.INFERENCE_SCRIPT_URI, tags
+            )
 
     if training_model_uri:
-        tags = add_single_jumpstart_tag(
-            training_model_uri, enums.JumpStartTag.TRAINING_MODEL_URI, tags
-        )
+        if is_pipeline_variable(training_model_uri):
+            logging.warning(warn_msg, "training_model_uri")
+        else:
+            tags = add_single_jumpstart_tag(
+                training_model_uri, enums.JumpStartTag.TRAINING_MODEL_URI, tags
+            )
 
     if training_script_uri:
-        tags = add_single_jumpstart_tag(
-            training_script_uri, enums.JumpStartTag.TRAINING_SCRIPT_URI, tags
-        )
+        if is_pipeline_variable(training_script_uri):
+            logging.warning(warn_msg, "training_script_uri")
+        else:
+            tags = add_single_jumpstart_tag(
+                training_script_uri, enums.JumpStartTag.TRAINING_SCRIPT_URI, tags
+            )
 
     return tags
 
@@ -302,7 +342,7 @@ def verify_model_region_and_return_specs(
     """Verifies that an acceptable model_id, version, scope, and region combination is provided.
 
     Args:
-        model_id (Optional[str]): model id of the JumpStart model to verify and
+        model_id (Optional[str]): model ID of the JumpStart model to verify and
             obtains specs.
         version (Optional[str]): version of the JumpStart model to verify and
             obtains specs.

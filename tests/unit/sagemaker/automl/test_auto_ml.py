@@ -596,6 +596,9 @@ def test_deploy_optional_args(candidate_estimator, sagemaker_session, candidate_
         deserializer=None,
         endpoint_name=JOB_NAME,
         kms_key=OUTPUT_KMS_KEY,
+        volume_size=None,
+        model_data_download_timeout=None,
+        container_startup_health_check_timeout=None,
         tags=TAGS,
         wait=False,
     )

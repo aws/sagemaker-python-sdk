@@ -49,7 +49,7 @@ class VulnerableJumpStartModelError(Exception):
         """Instantiates VulnerableJumpStartModelError exception.
 
         Args:
-            model_id (Optional[str]): model id of vulnerable JumpStart model.
+            model_id (Optional[str]): model ID of vulnerable JumpStart model.
                 (Default: None).
             version (Optional[str]): version of vulnerable JumpStart model.
                 (Default: None).

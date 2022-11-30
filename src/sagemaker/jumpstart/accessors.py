@@ -12,7 +12,9 @@
 # language governing permissions and limitations under the License.
 """This module contains accessors related to SageMaker JumpStart."""
 from __future__ import absolute_import
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
+
+from sagemaker.deprecations import deprecated
 from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartModelSpecs
 from sagemaker.jumpstart import cache
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
@@ -79,13 +81,29 @@ class JumpStartModelsAccessor(object):
             JumpStartModelsAccessor._curr_region = region
 
     @staticmethod
+    def _get_manifest(region: str = JUMPSTART_DEFAULT_REGION_NAME) -> List[JumpStartModelHeader]:
+        """Return entire JumpStart models manifest.
+
+        Raises:
+            ValueError: If region in `cache_kwargs` is inconsistent with `region` argument.
+
+        Args:
+            region (str): Optional. The region to use for the cache.
+        """
+        cache_kwargs = JumpStartModelsAccessor._validate_and_mutate_region_cache_kwargs(
+            JumpStartModelsAccessor._cache_kwargs, region
+        )
+        JumpStartModelsAccessor._set_cache_and_region(region, cache_kwargs)
+        return JumpStartModelsAccessor._cache.get_manifest()  # type: ignore
+
+    @staticmethod
     def get_model_header(region: str, model_id: str, version: str) -> JumpStartModelHeader:
         """Returns model header from JumpStart models cache.
 
         Args:
             region (str): region for which to retrieve header.
-            model_id (str): model id to retrieve.
-            version (str): semantic version to retrieve for the model id.
+            model_id (str): model ID to retrieve.
+            version (str): semantic version to retrieve for the model ID.
         """
         cache_kwargs = JumpStartModelsAccessor._validate_and_mutate_region_cache_kwargs(
             JumpStartModelsAccessor._cache_kwargs, region
@@ -101,8 +119,8 @@ class JumpStartModelsAccessor(object):
 
         Args:
             region (str): region for which to retrieve header.
-            model_id (str): model id to retrieve.
-            version (str): semantic version to retrieve for the model id.
+            model_id (str): model ID to retrieve.
+            version (str): semantic version to retrieve for the model ID.
         """
         cache_kwargs = JumpStartModelsAccessor._validate_and_mutate_region_cache_kwargs(
             JumpStartModelsAccessor._cache_kwargs, region
@@ -150,3 +168,23 @@ class JumpStartModelsAccessor(object):
         """
         cache_kwargs_dict = {} if cache_kwargs is None else cache_kwargs
         JumpStartModelsAccessor.set_cache_kwargs(cache_kwargs_dict, region)
+
+    @staticmethod
+    @deprecated()
+    def get_manifest(
+        cache_kwargs: Optional[Dict[str, Any]] = None, region: Optional[str] = None
+    ) -> List[JumpStartModelHeader]:
+        """Return entire JumpStart models manifest.
+
+        Raises:
+            ValueError: If region in `cache_kwargs` is inconsistent with `region` argument.
+
+        Args:
+            cache_kwargs (Dict[str, Any]): Optional. Cache kwargs to use.
+                (Default: None).
+            region (str): Optional. The region to use for the cache.
+                (Default: None).
+        """
+        cache_kwargs_dict: Dict[str, Any] = {} if cache_kwargs is None else cache_kwargs
+        JumpStartModelsAccessor.set_cache_kwargs(cache_kwargs_dict, region)
+        return JumpStartModelsAccessor._cache.get_manifest()  # type: ignore

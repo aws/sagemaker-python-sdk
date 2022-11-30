@@ -10,14 +10,15 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-# language governing permissions and limitations under the License.
 from __future__ import absolute_import
+
+import pytest
 
 from sagemaker.workflow.properties import Properties
 
 
 def test_properties_describe_training_job_response():
-    prop = Properties("Steps.MyStep", "DescribeTrainingJobResponse")
+    prop = Properties(step_name="MyStep", shape_name="DescribeTrainingJobResponse")
     some_prop_names = ["TrainingJobName", "TrainingJobArn", "HyperParameters", "OutputDataConfig"]
     for name in some_prop_names:
         assert name in prop.__dict__.keys()
@@ -29,7 +30,7 @@ def test_properties_describe_training_job_response():
 
 
 def test_properties_describe_processing_job_response():
-    prop = Properties("Steps.MyStep", "DescribeProcessingJobResponse")
+    prop = Properties(step_name="MyStep", shape_name="DescribeProcessingJobResponse")
     some_prop_names = ["ProcessingInputs", "ProcessingOutputConfig", "ProcessingEndTime"]
     for name in some_prop_names:
         assert name in prop.__dict__.keys()
@@ -41,7 +42,7 @@ def test_properties_describe_processing_job_response():
 
 def test_properties_tuning_job():
     prop = Properties(
-        "Steps.MyStep",
+        step_name="MyStep",
         shape_names=[
             "DescribeHyperParameterTuningJobResponse",
             "ListTrainingJobsForHyperParameterTuningJobResponse",
@@ -71,7 +72,7 @@ def test_properties_tuning_job():
 
 
 def test_properties_emr_step():
-    prop = Properties("Steps.MyStep", "Step", service_name="emr")
+    prop = Properties("MyStep", shape_name="Step", service_name="emr")
     some_prop_names = ["Id", "Name", "Config", "ActionOnFailure", "Status"]
     for name in some_prop_names:
         assert name in prop.__dict__.keys()
@@ -84,7 +85,7 @@ def test_properties_emr_step():
 
 
 def test_properties_describe_model_package_output():
-    prop = Properties("Steps.MyStep", "DescribeModelPackageOutput")
+    prop = Properties(step_name="MyStep", shape_name="DescribeModelPackageOutput")
     some_prop_names = ["ModelPackageName", "ModelPackageGroupName", "ModelPackageArn"]
     for name in some_prop_names:
         assert name in prop.__dict__.keys()
@@ -92,3 +93,40 @@ def test_properties_describe_model_package_output():
     assert prop.ValidationSpecification.ValidationRole.expr == {
         "Get": "Steps.MyStep.ValidationSpecification.ValidationRole"
     }
+
+
+def test_to_string():
+    prop = Properties("MyStep", shape_name="DescribeTrainingJobResponse")
+
+    assert prop.CreationTime.to_string().expr == {
+        "Std:Join": {
+            "On": "",
+            "Values": [{"Get": "Steps.MyStep.CreationTime"}],
+        },
+    }
+
+
+def test_implicit_value():
+    prop = Properties("MyStep", shape_name="DescribeTrainingJobResponse")
+
+    with pytest.raises(TypeError) as error:
+        str(prop.CreationTime)
+    assert "Pipeline variables do not support __str__ operation." in str(error.value)
+
+    with pytest.raises(TypeError) as error:
+        int(prop.CreationTime)
+    assert str(error.value) == "Pipeline variables do not support __int__ operation."
+
+    with pytest.raises(TypeError) as error:
+        float(prop.CreationTime)
+    assert str(error.value) == "Pipeline variables do not support __float__ operation."
+
+
+def test_add_func():
+    prop_train = Properties("MyStepTrain", shape_name="DescribeTrainingJobResponse")
+    prop_model = Properties("MyStepModel", shape_name="DescribeModelPackageOutput")
+
+    with pytest.raises(TypeError) as error:
+        prop_train + prop_model
+
+    assert str(error.value) == "Pipeline variables do not support concatenation."

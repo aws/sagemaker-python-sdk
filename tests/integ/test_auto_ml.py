@@ -170,6 +170,7 @@ def test_auto_ml_describe_auto_ml_job(sagemaker_session):
             },
             "TargetAttributeName": TARGET_ATTRIBUTE_NAME,
             "ContentType": "text/csv;header=present",
+            "ChannelType": "training",
         }
     ]
     expected_default_output_config = {
@@ -207,6 +208,7 @@ def test_auto_ml_attach(sagemaker_session):
             },
             "TargetAttributeName": TARGET_ATTRIBUTE_NAME,
             "ContentType": "text/csv;header=present",
+            "ChannelType": "training",
         }
     ]
     expected_default_output_config = {
@@ -290,6 +292,9 @@ def test_deploy_best_candidate(sagemaker_session, cpu_instance_type):
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
     reason="AutoML is not supported in the region yet.",
+)
+@pytest.mark.skip(
+    reason="",
 )
 def test_candidate_estimator_default_rerun_and_deploy(sagemaker_session, cpu_instance_type):
     auto_ml_utils.create_auto_ml_job_if_not_exist(sagemaker_session)

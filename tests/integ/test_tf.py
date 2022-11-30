@@ -18,13 +18,16 @@ import time
 
 import pytest
 
-from sagemaker.tensorflow import TensorFlow, TensorFlowProcessor
+from sagemaker.serverless import ServerlessInferenceConfig
+from sagemaker.tensorflow import TensorFlow, TensorFlowProcessor, TensorFlowModel
 from sagemaker.utils import unique_name_from_base, sagemaker_timestamp
 
 import tests.integ
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES, kms_utils, timeout
 from tests.integ.retry import retries
+from tests.integ.utils import gpu_list, retry_with_instance_list
 from tests.integ.s3_utils import assert_s3_file_patterns_exist
+
 
 ROLE = "SageMakerRole"
 
@@ -40,11 +43,17 @@ ENV_INPUT = {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_va
 
 
 @pytest.mark.release
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.TRAINING_NO_P2_REGIONS
+    and tests.integ.test_region() in tests.integ.TRAINING_NO_P3_REGIONS,
+    reason="no ml.p2 or ml.p3 instances in this region",
+)
+@retry_with_instance_list(gpu_list(tests.integ.test_region()))
 def test_framework_processing_job_with_deps(
     sagemaker_session,
-    instance_type,
     tensorflow_training_latest_version,
     tensorflow_training_latest_py_version,
+    **kwargs,
 ):
     with timeout.timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         code_path = os.path.join(DATA_DIR, "dummy_code_bundle_with_reqs")
@@ -55,11 +64,10 @@ def test_framework_processing_job_with_deps(
             py_version=tensorflow_training_latest_py_version,
             role=ROLE,
             instance_count=1,
-            instance_type=instance_type,
+            instance_type=kwargs["instance_type"],
             sagemaker_session=sagemaker_session,
             base_job_name="test-tensorflow",
         )
-
         processor.run(
             code=entry_point,
             source_dir=code_path,
@@ -174,12 +182,42 @@ def test_server_side_encryption(sagemaker_session, tf_full_version, tf_full_py_v
 
 
 @pytest.mark.release
-def test_mnist_distributed(
+def test_mnist_distributed_cpu(
     sagemaker_session,
-    instance_type,
+    cpu_instance_type,
     tensorflow_training_latest_version,
     tensorflow_training_latest_py_version,
 ):
+    _create_and_fit_estimator(
+        sagemaker_session,
+        tensorflow_training_latest_version,
+        tensorflow_training_latest_py_version,
+        cpu_instance_type,
+    )
+
+
+@pytest.mark.release
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.TRAINING_NO_P2_REGIONS
+    and tests.integ.test_region() in tests.integ.TRAINING_NO_P3_REGIONS,
+    reason="no ml.p2 or ml.p3 instances in this region",
+)
+@retry_with_instance_list(gpu_list(tests.integ.test_region()))
+def test_mnist_distributed_gpu(
+    sagemaker_session,
+    tensorflow_training_latest_version,
+    tensorflow_training_latest_py_version,
+    **kwargs,
+):
+    _create_and_fit_estimator(
+        sagemaker_session,
+        tensorflow_training_latest_version,
+        tensorflow_training_latest_py_version,
+        kwargs["instance_type"],
+    )
+
+
+def _create_and_fit_estimator(sagemaker_session, tf_version, py_version, instance_type):
     estimator = TensorFlow(
         entry_point=SCRIPT,
         source_dir=MNIST_RESOURCE_PATH,
@@ -187,8 +225,8 @@ def test_mnist_distributed(
         instance_count=2,
         instance_type=instance_type,
         sagemaker_session=sagemaker_session,
-        framework_version=tensorflow_training_latest_version,
-        py_version=tensorflow_training_latest_py_version,
+        framework_version=tf_version,
+        py_version=py_version,
         distribution=PARAMETER_SERVER_DISTRIBUTION,
         disable_profiler=True,
     )
@@ -207,6 +245,9 @@ def test_mnist_distributed(
 
 @pytest.mark.slow_test
 def test_mnist_async(sagemaker_session, cpu_instance_type, tf_full_version, tf_full_py_version):
+    if tf_full_version == "2.7.0":
+        tf_full_version = "2.7"
+
     estimator = TensorFlow(
         entry_point=SCRIPT,
         source_dir=MNIST_RESOURCE_PATH,
@@ -278,6 +319,39 @@ def test_deploy_with_input_handlers(
 
         input_data = {"instances": [1.0, 2.0, 5.0]}
         expected_result = {"predictions": [4.0, 4.5, 6.0]}
+
+        result = predictor.predict(input_data)
+        assert expected_result == result
+
+
+def test_model_deploy_with_serverless_inference_config(
+    sagemaker_session, tf_full_version, tf_full_py_version
+):
+    endpoint_name = unique_name_from_base("sagemaker-tensorflow-serverless")
+    model_data = sagemaker_session.upload_data(
+        path=os.path.join(tests.integ.DATA_DIR, "tensorflow-serving-test-model.tar.gz"),
+        key_prefix="tensorflow-serving/models",
+    )
+    with tests.integ.timeout.timeout_and_delete_endpoint_by_name(
+        endpoint_name=endpoint_name,
+        sagemaker_session=sagemaker_session,
+        hours=2,
+        sleep_between_cleanup_attempts=20,
+        exponential_sleep=True,
+    ):
+        model = TensorFlowModel(
+            model_data=model_data,
+            role=ROLE,
+            framework_version=tf_full_version,
+            sagemaker_session=sagemaker_session,
+        )
+        predictor = model.deploy(
+            serverless_inference_config=ServerlessInferenceConfig(),
+            endpoint_name=endpoint_name,
+        )
+
+        input_data = {"instances": [1.0, 2.0, 5.0]}
+        expected_result = {"predictions": [3.5, 4.0, 5.5]}
 
         result = predictor.predict(input_data)
         assert expected_result == result

@@ -13,14 +13,26 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import json
+
 import pytest
 
 from enum import Enum
 
+from mock.mock import Mock, PropertyMock
+
+import sagemaker
+from sagemaker.workflow.condition_step import ConditionStep
+from sagemaker.workflow.conditions import ConditionGreaterThan
 from sagemaker.workflow.entities import (
     DefaultEnumMeta,
     Entity,
 )
+from sagemaker.workflow.fail_step import FailStep
+from sagemaker.workflow.functions import Join, JsonGet
+from sagemaker.workflow.parameters import ParameterString, ParameterInteger
+from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.properties import PropertyFile, Properties
 
 
 class CustomEntity(Entity):
@@ -46,6 +58,46 @@ def custom_entity_list():
     return [CustomEntity(1), CustomEntity(2)]
 
 
+@pytest.fixture
+def boto_session():
+    role_mock = Mock()
+    type(role_mock).arn = PropertyMock(return_value="role")
+
+    resource_mock = Mock()
+    resource_mock.Role.return_value = role_mock
+
+    session_mock = Mock(region_name="us-west-2")
+    session_mock.resource.return_value = resource_mock
+
+    return session_mock
+
+
+@pytest.fixture
+def client():
+    """Mock client.
+
+    Considerations when appropriate:
+
+        * utilize botocore.stub.Stubber
+        * separate runtime client from client
+    """
+    client_mock = Mock()
+    client_mock._client_config.user_agent = (
+        "Boto3/1.14.24 Python/3.8.5 Linux/5.4.0-42-generic Botocore/1.17.24 Resource"
+    )
+    return client_mock
+
+
+@pytest.fixture
+def sagemaker_session(boto_session, client):
+    return sagemaker.session.Session(
+        boto_session=boto_session,
+        sagemaker_client=client,
+        sagemaker_runtime_client=client,
+        default_bucket="my-bucket",
+    )
+
+
 def test_entity(custom_entity):
     request_struct = {"foo": 1}
     assert custom_entity.to_request() == request_struct
@@ -53,3 +105,115 @@ def test_entity(custom_entity):
 
 def test_default_enum_meta():
     assert CustomEnum().value == 1
+
+
+def test_pipeline_variable_in_pipeline_definition(sagemaker_session):
+    param_str = ParameterString(name="MyString", default_value="1")
+    param_int = ParameterInteger(name="MyInteger", default_value=3)
+
+    property_file = PropertyFile(
+        name="name",
+        output_name="result",
+        path="output",
+    )
+    json_get_func2 = JsonGet(
+        step_name="my-step",
+        property_file=property_file,
+        json_path="my-json-path",
+    )
+    prop = Properties(step_name="MyStep", shape_name="DescribeProcessingJobResponse")
+
+    cond = ConditionGreaterThan(left=param_str, right=param_int.to_string())
+    step_fail = FailStep(
+        name="MyFailStep",
+        error_message=Join(
+            on=" ",
+            values=[
+                "Execution failed due to condition check fails, see:",
+                json_get_func2.to_string(),
+                prop.ProcessingOutputConfig.Outputs["MyOutputName"].S3Output.S3Uri.to_string(),
+                param_int,
+            ],
+        ),
+    )
+    step_cond = ConditionStep(
+        name="MyCondStep",
+        conditions=[cond],
+        if_steps=[],
+        else_steps=[step_fail],
+    )
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[param_str, param_int],
+        steps=[step_cond],
+        sagemaker_session=sagemaker_session,
+    )
+
+    dsl = json.loads(pipeline.definition())
+    assert dsl["Parameters"] == [
+        {"Name": "MyString", "Type": "String", "DefaultValue": "1"},
+        {"Name": "MyInteger", "Type": "Integer", "DefaultValue": 3},
+    ]
+    assert len(dsl["Steps"]) == 1
+    assert dsl["Steps"][0] == {
+        "Name": "MyCondStep",
+        "Type": "Condition",
+        "Arguments": {
+            "Conditions": [
+                {
+                    "Type": "GreaterThan",
+                    "LeftValue": {"Get": "Parameters.MyString"},
+                    "RightValue": {
+                        "Std:Join": {
+                            "On": "",
+                            "Values": [{"Get": "Parameters.MyInteger"}],
+                        },
+                    },
+                },
+            ],
+            "IfSteps": [],
+            "ElseSteps": [
+                {
+                    "Name": "MyFailStep",
+                    "Type": "Fail",
+                    "Arguments": {
+                        "ErrorMessage": {
+                            "Std:Join": {
+                                "On": " ",
+                                "Values": [
+                                    "Execution failed due to condition check fails, see:",
+                                    {
+                                        "Std:Join": {
+                                            "On": "",
+                                            "Values": [
+                                                {
+                                                    "Std:JsonGet": {
+                                                        "PropertyFile": {
+                                                            "Get": "Steps.my-step.PropertyFiles.name"
+                                                        },
+                                                        "Path": "my-json-path",
+                                                    }
+                                                },
+                                            ],
+                                        },
+                                    },
+                                    {
+                                        "Std:Join": {
+                                            "On": "",
+                                            "Values": [
+                                                {
+                                                    "Get": "Steps.MyStep.ProcessingOutputConfig."
+                                                    + "Outputs['MyOutputName'].S3Output.S3Uri"
+                                                },
+                                            ],
+                                        },
+                                    },
+                                    {"Get": "Parameters.MyInteger"},
+                                ],
+                            }
+                        }
+                    },
+                }
+            ],
+        },
+    }

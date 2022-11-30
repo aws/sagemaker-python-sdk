@@ -1,5 +1,5 @@
-The SageMaker Distributed Model Parallel Library
-------------------------------------------------
+The SageMaker Distributed Model Parallel Library Overview
+---------------------------------------------------------
 
 The Amazon SageMaker distributed model parallel library is a model parallelism library for training
 large deep learning models that were previously difficult to train due to GPU memory limitations.
@@ -9,21 +9,13 @@ allowing you to increase prediction accuracy by creating larger models with more
 You can use the library to automatically partition your existing TensorFlow and PyTorch workloads
 across multiple GPUs with minimal code changes. The library's API can be accessed through the Amazon SageMaker SDK.
 
-See the following sections to learn more about the SageMaker model parallel library APIs.
-
-.. toctree::
-   :maxdepth: 3
-
-   smp_versions/latest
-   smd_model_parallel_general
-
-
 .. tip::
 
-  We recommended using this API documentation with the conceptual guide at
+  We recommend that you use this API documentation along with the conceptual guide at
   `SageMaker's Distributed Model Parallel
   <http://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel.html>`_
-  in the *Amazon SageMaker developer guide*. This developer guide documentation includes:
+  in the *Amazon SageMaker developer guide*.
+  The conceptual guide includes the following topics:
 
   - An overview of model parallelism, and the library's
     `core features <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-core-features.html>`_,
@@ -41,21 +33,11 @@ See the following sections to learn more about the SageMaker model parallel libr
 
 
 .. important::
-   The model parallel library only supports training jobs using CUDA 11. When you define a PyTorch or TensorFlow
-   ``Estimator`` with ``modelparallel`` parameter ``enabled`` set to ``True``,
-   it uses CUDA 11. When you extend or customize your own training image
-   you must use a CUDA 11 base image. See
-   `Extend or Adapt A Docker Container that Contains the Model Parallel Library
-   <https://integ-docs-aws.amazon.com/sagemaker/latest/dg/model-parallel-use-api.html#model-parallel-customize-container>`__
-   for more information.
-
-Release Notes
-=============
-
-New features, bug fixes, and improvements are regularly made to the SageMaker
-distributed model parallel library.
-
-.. toctree::
-   :maxdepth: 1
-
-   smd_model_parallel_release_notes/smd_model_parallel_change_log
+   The model parallel library only supports SageMaker training jobs using CUDA 11.
+   Make sure you use the pre-built Deep Learning Containers.
+   If you want to extend or customize your own training image,
+   you must use a CUDA 11 base image. For more information, see `Extend a Prebuilt Docker
+   Container that Contains SageMaker's Distributed Model Parallel Library
+   <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-sm-sdk.html#model-parallel-customize-container>`_
+   and `Create Your Own Docker Container with the SageMaker Distributed Model Parallel Library
+   <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-sm-sdk.html#model-parallel-bring-your-own-container>`_.

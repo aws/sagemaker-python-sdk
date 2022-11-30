@@ -32,6 +32,7 @@ from sagemaker.session import (
     NOTEBOOK_METADATA_FILE,
 )
 from sagemaker.tuner import WarmStartConfig, WarmStartTypes
+from sagemaker.inputs import BatchDataCaptureConfig
 
 STATIC_HPs = {"feature_dim": "784"}
 
@@ -1373,6 +1374,7 @@ def test_transform_pack_to_request(sagemaker_session):
         model_client_config=None,
         tags=None,
         data_processing=data_processing,
+        batch_data_capture_config=None,
     )
 
     _, _, actual_args = sagemaker_session.sagemaker_client.method_calls[0]
@@ -1384,6 +1386,12 @@ def test_transform_pack_to_request_with_optional_params(sagemaker_session):
     max_concurrent_transforms = 1
     max_payload = 0
     env = {"FOO": "BAR"}
+
+    batch_data_capture_config = BatchDataCaptureConfig(
+        destination_s3_uri="test_uri",
+        kms_key_id="",
+        generate_inference_id=False,
+    )
 
     sagemaker_session.transform(
         job_name=JOB_NAME,
@@ -1399,6 +1407,7 @@ def test_transform_pack_to_request_with_optional_params(sagemaker_session):
         model_client_config=MODEL_CLIENT_CONFIG,
         tags=TAGS,
         data_processing=None,
+        batch_data_capture_config=batch_data_capture_config,
     )
 
     _, _, actual_args = sagemaker_session.sagemaker_client.method_calls[0]
@@ -1409,6 +1418,7 @@ def test_transform_pack_to_request_with_optional_params(sagemaker_session):
     assert actual_args["Tags"] == TAGS
     assert actual_args["ExperimentConfig"] == EXPERIMENT_CONFIG
     assert actual_args["ModelClientConfig"] == MODEL_CLIENT_CONFIG
+    assert actual_args["DataCaptureConfig"] == batch_data_capture_config._to_request_dict()
 
 
 @patch("sys.stdout", new_callable=io.BytesIO if six.PY2 else io.StringIO)
@@ -1705,6 +1715,12 @@ CONTAINERS = [
         "Environment": {"SAGEMAKER_DEFAULT_INVOCATIONS_ACCEPT": "application/json"},
         "Image": "mi-1",
         "ModelDataUrl": "s3://bucket/model_1.tar.gz",
+        "Framework": "TENSORFLOW",
+        "FrameworkVersion": "2.9",
+        "NearestModelName": "resnet50",
+        "ModelInput": {
+            "DataInputConfig": '{"input_1":[1,224,224,3]}',
+        },
     },
     {"Environment": {}, "Image": "mi-2", "ModelDataUrl": "s3://bucket/model_2.tar.gz"},
 ]
@@ -2349,8 +2365,26 @@ def test_create_model_package_from_containers_incomplete_args(sagemaker_session)
             containers=containers,
         )
         assert (
-            "content_types, response_types, inference_inferences and transform_instances "
+            "content_types and response_types "
             "must be provided if containers is present." == str(error)
+        )
+
+
+def test_create_model_package_from_containers_without_model_package_group_name(sagemaker_session):
+    model_package_name = "sagemaker-model-package"
+    containers = ["dummy-container"]
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    with pytest.raises(ValueError) as error:
+        sagemaker_session.create_model_package_from_containers(
+            model_package_name=model_package_name,
+            containers=containers,
+            content_types=content_types,
+            response_types=response_types,
+        )
+        assert (
+            "inference_inferences and transform_instances "
+            "must be provided if model_package_group_name is not present." == str(error)
         )
 
 
@@ -2385,6 +2419,10 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
     marketplace_cert = (True,)
     approval_status = ("Approved",)
     description = "description"
+    customer_metadata_properties = {"key1": "value1"}
+    domain = "COMPUTER_VISION"
+    task = "IMAGE_CLASSIFICATION"
+    sample_payload_url = "s3://test-bucket/model"
     sagemaker_session.create_model_package_from_containers(
         containers=containers,
         content_types=content_types,
@@ -2398,6 +2436,10 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
         approval_status=approval_status,
         description=description,
         drift_check_baselines=drift_check_baselines,
+        customer_metadata_properties=customer_metadata_properties,
+        domain=domain,
+        sample_payload_url=sample_payload_url,
+        task=task,
     )
     expected_args = {
         "ModelPackageName": model_package_name,
@@ -2414,6 +2456,135 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
         "CertifyForMarketplace": marketplace_cert,
         "ModelApprovalStatus": approval_status,
         "DriftCheckBaselines": drift_check_baselines,
+        "CustomerMetadataProperties": customer_metadata_properties,
+        "Domain": domain,
+        "SamplePayloadUrl": sample_payload_url,
+        "Task": task,
+    }
+    sagemaker_session.sagemaker_client.create_model_package.assert_called_with(**expected_args)
+
+
+def test_create_model_package_from_containers_without_instance_types(sagemaker_session):
+    model_package_group_name = "sagemaker-model-package-group-name-1.0"
+    containers = ["dummy-container"]
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    model_metrics = {
+        "Bias": {
+            "ContentType": "content-type",
+            "S3Uri": "s3://...",
+        }
+    }
+    drift_check_baselines = {
+        "Bias": {
+            "ConfigFile": {
+                "ContentType": "content-type",
+                "S3Uri": "s3://...",
+            }
+        }
+    }
+
+    metadata_properties = {
+        "CommitId": "test-commit-id",
+        "Repository": "test-repository",
+        "GeneratedBy": "sagemaker-python-sdk",
+        "ProjectId": "unit-test",
+    }
+    marketplace_cert = (True,)
+    approval_status = ("Approved",)
+    description = "description"
+    customer_metadata_properties = {"key1": "value1"}
+    sagemaker_session.create_model_package_from_containers(
+        containers=containers,
+        content_types=content_types,
+        response_types=response_types,
+        model_package_group_name=model_package_group_name,
+        model_metrics=model_metrics,
+        metadata_properties=metadata_properties,
+        marketplace_cert=marketplace_cert,
+        approval_status=approval_status,
+        description=description,
+        drift_check_baselines=drift_check_baselines,
+        customer_metadata_properties=customer_metadata_properties,
+    )
+    expected_args = {
+        "ModelPackageGroupName": model_package_group_name,
+        "InferenceSpecification": {
+            "Containers": containers,
+            "SupportedContentTypes": content_types,
+            "SupportedResponseMIMETypes": response_types,
+        },
+        "ModelPackageDescription": description,
+        "ModelMetrics": model_metrics,
+        "MetadataProperties": metadata_properties,
+        "CertifyForMarketplace": marketplace_cert,
+        "ModelApprovalStatus": approval_status,
+        "DriftCheckBaselines": drift_check_baselines,
+        "CustomerMetadataProperties": customer_metadata_properties,
+    }
+    sagemaker_session.sagemaker_client.create_model_package.assert_called_with(**expected_args)
+
+
+def test_create_model_package_from_containers_with_one_instance_types(sagemaker_session):
+    model_package_group_name = "sagemaker-model-package-group-name-1.0"
+    containers = ["dummy-container"]
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    transform_instances = ["ml.m5.xlarge"]
+    model_metrics = {
+        "Bias": {
+            "ContentType": "content-type",
+            "S3Uri": "s3://...",
+        }
+    }
+    drift_check_baselines = {
+        "Bias": {
+            "ConfigFile": {
+                "ContentType": "content-type",
+                "S3Uri": "s3://...",
+            }
+        }
+    }
+
+    metadata_properties = {
+        "CommitId": "test-commit-id",
+        "Repository": "test-repository",
+        "GeneratedBy": "sagemaker-python-sdk",
+        "ProjectId": "unit-test",
+    }
+    marketplace_cert = (True,)
+    approval_status = ("Approved",)
+    description = "description"
+    customer_metadata_properties = {"key1": "value1"}
+    sagemaker_session.create_model_package_from_containers(
+        containers=containers,
+        content_types=content_types,
+        response_types=response_types,
+        transform_instances=transform_instances,
+        model_package_group_name=model_package_group_name,
+        model_metrics=model_metrics,
+        metadata_properties=metadata_properties,
+        marketplace_cert=marketplace_cert,
+        approval_status=approval_status,
+        description=description,
+        drift_check_baselines=drift_check_baselines,
+        customer_metadata_properties=customer_metadata_properties,
+    )
+    expected_args = {
+        "ModelPackageGroupName": model_package_group_name,
+        "InferenceSpecification": {
+            "Containers": containers,
+            "SupportedContentTypes": content_types,
+            "SupportedResponseMIMETypes": response_types,
+            "SupportedTransformInstanceTypes": transform_instances,
+        },
+        "ModelPackageDescription": description,
+        "ModelMetrics": model_metrics,
+        "MetadataProperties": metadata_properties,
+        "CertifyForMarketplace": marketplace_cert,
+        "ModelApprovalStatus": approval_status,
+        "DriftCheckBaselines": drift_check_baselines,
+        "CustomerMetadataProperties": customer_metadata_properties,
     }
     sagemaker_session.sagemaker_client.create_model_package.assert_called_with(**expected_args)
 
@@ -2451,6 +2622,59 @@ def test_feature_group_describe(sagemaker_session):
     sagemaker_session.describe_feature_group(feature_group_name="MyFeatureGroup")
     assert sagemaker_session.sagemaker_client.describe_feature_group.called_with(
         FeatureGroupName="MyFeatureGroup",
+    )
+
+
+def test_feature_group_update(sagemaker_session, feature_group_dummy_definitions):
+    sagemaker_session.update_feature_group(
+        feature_group_name="MyFeatureGroup",
+        feature_additions=feature_group_dummy_definitions,
+    )
+    assert sagemaker_session.sagemaker_client.update_feature_group.called_with(
+        FeatureGroupName="MyFeatureGroup",
+        FeatureAdditions=feature_group_dummy_definitions,
+    )
+
+
+def test_feature_metadata_update(sagemaker_session):
+    parameter_additions = [
+        {
+            "key": "TestKey",
+            "value": "TestValue",
+        }
+    ]
+    parameter_removals = ["TestKey"]
+
+    sagemaker_session.update_feature_metadata(
+        feature_group_name="TestFeatureGroup",
+        feature_name="TestFeature",
+        description="TestDescription",
+        parameter_additions=parameter_additions,
+        parameter_removals=parameter_removals,
+    )
+    assert sagemaker_session.sagemaker_client.update_feature_group.called_with(
+        feature_group_name="TestFeatureGroup",
+        FeatureName="TestFeature",
+        Description="TestDescription",
+        ParameterAdditions=parameter_additions,
+        ParameterRemovals=parameter_removals,
+    )
+    sagemaker_session.update_feature_metadata(
+        feature_group_name="TestFeatureGroup",
+        feature_name="TestFeature",
+    )
+    assert sagemaker_session.sagemaker_client.update_feature_group.called_with(
+        feature_group_name="TestFeatureGroup",
+        FeatureName="TestFeature",
+    )
+
+
+def test_feature_metadata_describe(sagemaker_session):
+    sagemaker_session.describe_feature_metadata(
+        feature_group_name="MyFeatureGroup", feature_name="TestFeature"
+    )
+    assert sagemaker_session.sagemaker_client.describe_feature_metadata.called_with(
+        FeatureGroupName="MyFeatureGroup", FeatureName="TestFeature"
     )
 
 

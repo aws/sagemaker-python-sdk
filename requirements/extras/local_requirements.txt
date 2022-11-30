@@ -1,0 +1,4 @@
+urllib3==1.26.8
+docker-compose==1.29.2
+docker>=5.0.2,<7.0.0
+PyYAML==5.4.1

@@ -13,7 +13,10 @@
 """This module contains code to test SageMaker ``ModelPackageGroup``"""
 from __future__ import absolute_import
 
+import pytest
 
+
+@pytest.mark.skip("data inconsistency P61661075")
 def test_pipeline_execution_arn(static_model_package_group_context, static_pipeline_execution_arn):
     pipeline_execution_arn = static_model_package_group_context.pipeline_execution_arn()
 

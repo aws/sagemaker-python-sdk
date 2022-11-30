@@ -573,23 +573,61 @@ Here is an example:
         # When you are done using your endpoint
         model.sagemaker_session.delete_endpoint('my-endpoint')
 
-********************************************
-Use Prebuilt Models with SageMaker JumpStart
-********************************************
+.. _built-in-algos:
 
-`Amazon SageMaker JumpStart <https://aws.amazon.com/sagemaker/getting-started/>`__ is a
-SageMaker feature that helps users bring machine learning (ML)
-applications to market using prebuilt solutions for common use cases,
-example notebooks, open source models from model zoos, and built-in
-algorithms.
+***********************************************************************
+Use Built-in Algorithms with Pre-trained Models in SageMaker Python SDK
+***********************************************************************
 
-A JumpStart model enables you to quickly start a machine learning
-workflow. JumpStart takes models from popular open source model hubs,
-such as TensorFlow and HuggingFace, and pre-trains them on an open
-source dataset. Using the SageMaker Python SDK, you can select a
-prebuilt model from the model zoo to train on custom data or deploy
-to a SageMaker endpoint for inference without signing up for
-SageMaker Studio.
+SageMaker Python SDK provides built-in algorithms with pre-trained models from popular open source model
+hubs, such as TensorFlow Hub, Pytorch Hub, and HuggingFace. Customer can deploy these pre-trained models
+as-is or first fine-tune them on a custom dataset and then deploy to a SageMaker endpoint for inference.
+
+
+SageMaker SDK built-in algorithms allow customers access pre-trained models using model ids and model
+versions. The ‘pre-trained model’ table below provides list of models with information useful in
+selecting the correct model id and corresponding parameters. These models are also available through
+the `JumpStart UI in SageMaker Studio <https://docs.aws.amazon.com/sagemaker/latest/dg/studio-jumpstart.html>`__.
+
+
+.. toctree::
+    :maxdepth: 2
+
+    doc_utils/pretrainedmodels
+
+Example notebooks
+=================
+
+SageMaker built-in algorithms with pre-trained models support 15 different machine learning problem types.
+Below is a list of all the supported problem types with a link to a Jupyter notebook that provides example usage.
+
+Vision
+    - `Image Classification <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_image_classification/Amazon_JumpStart_Image_Classification.ipynb>`__
+    - `Object Detection <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_object_detection/Amazon_JumpStart_Object_Detection.ipynb>`__
+    - `Semantic Segmentation <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_semantic_segmentation/Amazon_JumpStart_Semantic_Segmentation.ipynb>`__
+    - `Instance Segmentation <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_instance_segmentation/Amazon_JumpStart_Instance_Segmentation.ipynb>`__
+    - `Image Embedding <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_image_embedding/Amazon_JumpStart_Image_Embedding.ipynb>`__
+
+Text
+    - `Text Classification <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_text_classification/Amazon_JumpStart_Text_Classification.ipynb>`__
+    - `Sentence Pair Classification <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_sentence_pair_classification/Amazon_JumpStart_Sentence_Pair_Classification.ipynb>`__
+    - `Question Answering <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_question_answering/Amazon_JumpStart_Question_Answering.ipynb>`__
+    - `Named Entity Recognition <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_named_entity_recognition/Amazon_JumpStart_Named_Entity_Recognition.ipynb>`__
+    - `Text Summarization <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_text_summarization/Amazon_JumpStart_Text_Summarization.ipynb>`__
+    - `Text Generation <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_text_generation/Amazon_JumpStart_Text_Generation.ipynb>`__
+    - `Machine Translation <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_machine_translation/Amazon_JumpStart_Machine_Translation.ipynb>`__
+    - `Text Embedding <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_text_embedding/Amazon_JumpStart_Text_Embedding.ipynb>`__
+
+Tabular
+    - `Tabular Classification (LightGBM & Catboost) <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/lightgbm_catboost_tabular/Amazon_Tabular_Classification_LightGBM_CatBoost.ipynb>`__
+    - `Tabular Classification (XGBoost & Scikit-learn Linear Learner) <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/xgboost_linear_learner_tabular/Amazon_Tabular_Classification_XGBoost_LinearLearner.ipynb>`__
+    - `Tabular Classification (AutoGluon) <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/autogluon_tabular/Amazon_Tabular_Classification_AutoGluon.ipynb>`__
+    - `Tabular Classification (TabTransformer) <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/tabtransformer_tabular/Amazon_Tabular_Classification_TabTransformer.ipynb>`__
+    - `Tabular Regression (LightGBM & Catboost) <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/lightgbm_catboost_tabular/Amazon_Tabular_Regression_LightGBM_CatBoost.ipynb>`__
+    - `Tabular Regression (XGBoost & Scikit-learn Linear Learner) <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/xgboost_linear_learner_tabular/Amazon_Tabular_Regression_XGBoost_LinearLearner.ipynb>`__
+    - `Tabular Regression (AutoGluon) <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/autogluon_tabular/Amazon_Tabular_Regression_AutoGluon.ipynb>`__
+    - `Tabular Regression (TabTransformer) <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/tabtransformer_tabular/Amazon_Tabular_Regression_TabTransformer.ipynb>`__
+
 
 The following topic give you information about JumpStart components,
 as well as how to use the SageMaker Python SDK for these workflows.
@@ -605,34 +643,32 @@ Prerequisites
       Amazon S3. For more information about IAM role permissions,
       see `Policies and permissions in IAM <https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html>`__.
 
-JumpStart Components
-====================
+Built-in Components
+===================
 
-The following sections give information about the main JumpStart
+The following sections give information about the main built-in
 components and their function.
 
-JumpStart models
-----------------
+Pre-trained models
+------------------
 
-JumpStart maintains a model zoo of over 300 models pre-trained on
-open source datasets. You can use the SageMaker Python SDK
-to fine-tune a model on your own dataset or deploy it directly to a
-SageMaker endpoint for inference.
+SageMaker maintains a model zoo of over 300 models from popular open source model hubs, such as
+TensorFlow Hub, Pytorch Hub, and HuggingFace. You can use the SageMaker Python SDK to fine-tune
+a model on your own dataset or deploy it directly to a SageMaker endpoint for inference.
 
-JumpStart model artifacts are stored as tarballs in the JumpStart S3
-bucket. Each model is versioned and contains a unique ID which can be
-used to retrieve the model URI. The following information describes
-the ``model_id`` and ``model_version`` needed to retrieve the URI.
+Model artifacts are stored as tarballs in a S3 bucket. Each model is versioned and contains a
+unique ID which can be used to retrieve the model URI. The following information describes the
+``model_id`` and ``model_version`` needed to retrieve the URI.
 
 .. container::
 
    -  ``model_id``: A unique identifier for the JumpStart model.
    -  ``model_version``: The version of the specifications for the
-      model. To use the latest version, enter ``*``. This is a
+      model. To use the latest version, enter ``"*"``. This is a
       required parameter.
 
-To retrieve a model, first select a ``model id`` and ``version`` from
-the Available Models.
+To retrieve a model, first select a ``model ID`` and ``version`` from
+the :doc:`available models <./doc_utils/pretrainedmodels>`.
 
 .. code:: python
 
@@ -649,15 +685,13 @@ Then use those values to retrieve the model as follows.
        model_id=model_id, model_version=model_version, model_scope=scope
    )
 
-JumpStart scripts
------------------
+Model scripts
+-------------
 
-To adapt JumpStart models for the SageMaker Python SDK, a custom
-script is needed to perform training or inference. JumpStart
-maintains a suite of scripts used for each of the models in the
-JumpStart S3 bucket, which can be accessed using the SageMaker Python
-SDK. Use the ``model_id`` and ``version`` of the corresponding model
-to retrieve the related script as follows.
+To adapt pre-trained models for SageMaker, a custom script is needed to perform training
+or inference. SageMaker maintains a suite of scripts used for each of the models in the
+S3 bucket, which can be accessed using the SageMaker Python SDK Use the ``model_id`` and
+``version`` of the corresponding model to retrieve the related script as follows.
 
 .. code:: python
 
@@ -667,11 +701,11 @@ to retrieve the related script as follows.
        model_id=model_id, model_version=model_version, script_scope=scope
    )
 
-JumpStart images
-----------------
+Model images
+-------------
 
 A Docker image is required to perform training or inference on all
-SageMaker models. JumpStart relies on Docker images from the
+SageMaker models. SageMaker relies on Docker images from the
 following repos https://github.com/aws/deep-learning-containers,
 https://github.com/aws/sagemaker-xgboost-container,
 and https://github.com/aws/sagemaker-scikit-learn-container. Use
@@ -694,16 +728,16 @@ retrieve the related image as follows.
 Deploy a  Pre-Trained Model Directly to a SageMaker Endpoint
 ============================================================
 
-In this section, you learn how to take a pre-trained JumpStart model
-and deploy it directly to a SageMaker Endpoint. This is the fastest
-way to start machine learning with a JumpStart model. The following
+In this section, you learn how to take a pre-trained model and deploy
+it directly to a SageMaker Endpoint. This is the fastest way to start
+machine learning with a pre-trained model. The following
 assumes familiarity with `SageMaker
 models <https://sagemaker.readthedocs.io/en/stable/api/inference/model.html>`__
 and their deploy functions.
 
-To begin, select a ``model_id`` and ``version`` from the JumpStart
+To begin, select a ``model_id`` and ``version`` from the pre-trained
 models table, as well as a model scope of either “inference” or
-“training”. For this example, you use a pre-trained JumpStart model,
+“training”. For this example, you use a pre-trained model,
 so select “inference”  for your model scope. Use the utility
 functions to retrieve the URI of each of the three components you
 need to continue.
@@ -733,7 +767,7 @@ need to continue.
 
 Next, pass the URIs and other key parameters as part of a new
 SageMaker Model class. The ``entry_point`` is a JumpStart script
-named ``inference.py``. JumpStart handles the implementation of this
+named ``inference.py``. SageMaker handles the implementation of this
 script. You must use this value for model inference to be successful.
 For more information about the Model class and its parameters,
 see `Model <https://sagemaker.readthedocs.io/en/stable/api/inference/model.html>`__.
@@ -741,6 +775,7 @@ see `Model <https://sagemaker.readthedocs.io/en/stable/api/inference/model.html
 .. code:: python
 
    from sagemaker.model import Model
+   from sagemaker.predictor import Predictor
    from sagemaker.session import Session
 
    # Create the SageMaker model instance
@@ -750,6 +785,8 @@ see `Model <https://sagemaker.readthedocs.io/en/stable/api/inference/model.html
        source_dir=script_uri,
        entry_point="inference.py",
        role=Session().get_caller_identity_arn(),
+       predictor_cls=Predictor,
+       enable_network_isolation=True,
    )
 
 Save the output from deploying the model to a variable named
@@ -761,26 +798,22 @@ Deployment may take about 5 minutes.
 
 .. code:: python
 
-   from sagemaker.predictor import Predictor
-
    predictor = model.deploy(
        initial_instance_count=instance_count,
        instance_type=instance_type,
-       predictor_cls=Predictor
    )
 
-Because ``catboost`` relies on the PyTorch Deep Learning Containers
-image, the corresponding Models and Endpoints display the “pytorch”
-prefix when viewed in the AWS console. To verify that these models
-were created successfully with your desired base model, refer to
-the ``Tags`` section.
+Because the model and script URIs are distributed by SageMaker JumpStart,
+the endpoint, endpoint config and model resources will be prefixed with
+``sagemaker-jumpstart``. Refer to the model ``Tags`` to inspect the
+model artifacts involved in the model creation.
 
 Perform Inference
 -----------------
 
 Finally, use the ``predictor`` instance to query your endpoint. For
 ``catboost-classification-model``, for example, the predictor accepts
-a string. For more information about how to use the predictor, see
+a csv. For more information about how to use the predictor, see
 the
 `Appendix <https://sagemaker.readthedocs.io/en/stable/overview.html#appendix>`__.
 
@@ -791,25 +824,23 @@ the
 Fine-tune a Model and Deploy to a SageMaker Endpoint
 ====================================================
 
-In this section, you initiate a training job to further train one of
-the pretrained JumpStart models for your use case, then deploy it to
-a SageMaker Endpoint for inference. This lets you fine tune the model
-for your use case with your custom dataset. The following assumes
+In this section, you initiate a training job to further train one of the pre-trained models
+for your use case, then deploy it to a SageMaker Endpoint for inference. This lets you fine
+tune the model for your use case with your custom dataset. The following assumes
 familiarity with `SageMaker training jobs and their
 architecture <https://docs.aws.amazon.com/sagemaker/latest/dg/how-it-works-training.html>`__.
 
-Fine-tune a JumpStart Model on a Custom Dataset
------------------------------------------------
+Fine-tune a Pre-trained Model on a Custom Dataset
+-------------------------------------------------
 
-To begin, select a ``model_id`` and ``version`` from the JumpStart
+To begin, select a ``model_id`` and ``version`` from the pre-trained
 models table, as well as a model scope. In this case, you begin by
 using “training” as the model scope. Use the utility functions to
 retrieve the URI of each of the three components you need to
 continue. The HuggingFace model in this example requires a GPU
 instance, so use the ``ml.p3.2xlarge`` instance type. For a complete
-list of available SageMaker instance types , see `Available SageMaker
-Studio Instance
-Types <https://docs.aws.amazon.com/sagemaker/latest/dg/notebooks-available-instance-types.html>`__.
+list of available SageMaker instance types, see the `SageMaker On-Demand Pricing
+Table <https://aws.amazon.com/sagemaker/pricing/#On-Demand_Pricing>`__ and select 'Training'.
 
 .. code:: python
 
@@ -838,10 +869,10 @@ Types <https://docs.aws.amazon.com/sagemaker/latest/dg/notebooks-available-insta
        instance_type=training_instance_type,
    )
 
-Next, use the JumpStart resource URIs to create an ``Estimator`` and
+Next, use the model resource URIs to create an ``Estimator`` and
 train it on a custom training dataset. You must specify the S3 path
 of your custom training dataset. The Estimator class requires
-an ``entry_point`` parameter. In this case, JumpStart uses
+an ``entry_point`` parameter. In this case, SageMaker uses
 “transfer_learning.py”. The training job fails to execute if this
 value is not set.
 
@@ -872,6 +903,7 @@ value is not set.
        hyperparameters=default_hyperparameters,
        instance_count=instance_count,
        instance_type=training_instance_type,
+       enable_network_isolation=True,
    )
 
    # Specify the S3 location of training data for the training channel
@@ -933,6 +965,7 @@ took your model to train.
        image_uri=deploy_image_uri,
        source_dir=deploy_script_uri,
        endpoint_name=endpoint_name,
+       enable_network_isolation=True,
    )
 
 Perform Inference on a SageMaker Endpoint
@@ -970,45 +1003,45 @@ ContentType of ``application/list-text``.
 
 .. container::
 
-   +-----------------------+-----------------------+-----------------------+
-   | Task                  | Identifier            | ContentType           |
-   +-----------------------+-----------------------+-----------------------+
-   | Image Classification  | ic                    | "application/x-image" |
-   +-----------------------+-----------------------+-----------------------+
-   | Object Detection      | od, od1               | "application/x-image" |
-   +-----------------------+-----------------------+-----------------------+
-   | Semantic Segmentation | semseg                | "application/x-image" |
-   +-----------------------+-----------------------+-----------------------+
-   | Instance Segmentation | is                    | "application/x-image" |
-   +-----------------------+-----------------------+-----------------------+
-   | Text Classification   | tc                    | "application/x-text"  |
-   +-----------------------+-----------------------+-----------------------+
-   | Sentence Pair         | spc                   | "a                    |
-   | Classification        |                       | pplication/list-text" |
-   +-----------------------+-----------------------+-----------------------+
-   | Extractive Question   | eqa                   | "a                    |
-   | Answering             |                       | pplication/list-text" |
-   +-----------------------+-----------------------+-----------------------+
-   | Text Generation       | textgeneration        | "application/x-text"  |
-   +-----------------------+-----------------------+-----------------------+
-   | Image Classification  | icembedding           | "application/x-image" |
-   | Embedding             |                       |                       |
-   +-----------------------+-----------------------+-----------------------+
-   | Text Classification   | tcembedding           | "application/x-text"  |
-   | Embedding             |                       |                       |
-   +-----------------------+-----------------------+-----------------------+
-   | Named-entity          | ner                   | "application/x-text"  |
-   | Recognition           |                       |                       |
-   +-----------------------+-----------------------+-----------------------+
-   | Text Summarization    | summarization         | "application/x-text"  |
-   +-----------------------+-----------------------+-----------------------+
-   | Text Translation      | translation           | "application/x-text"  |
-   +-----------------------+-----------------------+-----------------------+
-   | Tabular Regression    | regression            | "text/csv"            |
-   +-----------------------+-----------------------+-----------------------+
-   | Tabular               | classification        | "text/csv"            |
-   | Classification        |                       |                       |
-   +-----------------------+-----------------------+-----------------------+
+   +-----------------------+-----------------------+-------------------------+
+   | Task                  | Identifier            | ContentType             |
+   +-----------------------+-----------------------+-------------------------+
+   | Image Classification  | ic                    | "application/x-image"   |
+   +-----------------------+-----------------------+-------------------------+
+   | Object Detection      | od, od1               | "application/x-image"   |
+   +-----------------------+-----------------------+-------------------------+
+   | Semantic Segmentation | semseg                | "application/x-image"   |
+   +-----------------------+-----------------------+-------------------------+
+   | Instance Segmentation | is                    | "application/x-image"   |
+   +-----------------------+-----------------------+-------------------------+
+   | Text Classification   | tc                    | "application/x-text"    |
+   +-----------------------+-----------------------+-------------------------+
+   | Sentence Pair         | spc                   | "application/list-text" |
+   | Classification        |                       |                         |
+   +-----------------------+-----------------------+-------------------------+
+   | Extractive Question   | eqa                   | "application/list-text" |
+   | Answering             |                       |                         |
+   +-----------------------+-----------------------+-------------------------+
+   | Text Generation       | textgeneration        | "application/x-text"    |
+   +-----------------------+-----------------------+-------------------------+
+   | Image Classification  | icembedding           | "application/x-image"   |
+   | Embedding             |                       |                         |
+   +-----------------------+-----------------------+-------------------------+
+   | Text Classification   | tcembedding           | "application/x-text"    |
+   | Embedding             |                       |                         |
+   +-----------------------+-----------------------+-------------------------+
+   | Named-entity          | ner                   | "application/x-text"    |
+   | Recognition           |                       |                         |
+   +-----------------------+-----------------------+-------------------------+
+   | Text Summarization    | summarization         | "application/x-text"    |
+   +-----------------------+-----------------------+-------------------------+
+   | Text Translation      | translation           | "application/x-text"    |
+   +-----------------------+-----------------------+-------------------------+
+   | Tabular Regression    | regression            | "text/csv"              |
+   +-----------------------+-----------------------+-------------------------+
+   | Tabular               | classification        | "text/csv"              |
+   | Classification        |                       |                         |
+   +-----------------------+-----------------------+-------------------------+
 
 ********************************
 SageMaker Automatic Model Tuning
@@ -1221,6 +1254,28 @@ to configure or manage the underlying infrastructure. After you trained a model,
 Serverless endpoint and then invoke the endpoint with the model to get inference results back. More information about
 SageMaker Serverless Inference can be found in the `AWS documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/serverless-endpoints.html>`__.
 
+For using SageMaker Serverless Inference, you can either use SageMaker-provided container or Bring Your Own Container model.
+A step by step example for using Serverless Inference with MXNet image :
+
+Firstly, create MXNet model
+
+.. code:: python
+
+    from sagemaker.mxnet import MXNetModel
+    from sagemaker.serverless import ServerlessInferenceConfig
+    import sagemaker
+
+    role = sagemaker.get_execution_role()
+
+    # create MXNet Model Class
+    model = MXNetModel(
+        model_data="s3://my_bucket/pretrained_model/model.tar.gz", # path to your trained sagemaker model
+        role=role, # iam role with permissions to create an Endpoint
+        entry_point="inference.py",
+        py_version="py3", # Python version
+        framework_version="1.6.0", # MXNet framework version
+    )
+
 To deploy serverless endpoint, you will need to create a ``ServerlessInferenceConfig``.
 If you create ``ServerlessInferenceConfig`` without specifying its arguments, the default ``MemorySizeInMB`` will be **2048** and
 the default ``MaxConcurrency`` will be **5** :
@@ -1230,14 +1285,14 @@ the default ``MaxConcurrency`` will be **5** :
     from sagemaker.serverless import ServerlessInferenceConfig
 
     # Create an empty ServerlessInferenceConfig object to use default values
-    serverless_config = new ServerlessInferenceConfig()
+    serverless_config = ServerlessInferenceConfig()
 
 Or you can specify ``MemorySizeInMB`` and ``MaxConcurrency`` in ``ServerlessInferenceConfig`` (example shown below):
 
 .. code:: python
 
     # Specify MemorySizeInMB and MaxConcurrency in the serverless config object
-    serverless_config = new ServerlessInferenceConfig(
+    serverless_config = ServerlessInferenceConfig(
       memory_size_in_mb=4096,
       max_concurrency=10,
     )
@@ -1248,6 +1303,13 @@ Then use the ``ServerlessInferenceConfig`` in the estimator's ``deploy()`` metho
 
     # Deploys the model that was generated by fit() to a SageMaker serverless endpoint
     serverless_predictor = estimator.deploy(serverless_inference_config=serverless_config)
+
+Or directly using model's ``deploy()`` method to deploy a serverless endpoint:
+
+.. code:: python
+
+    # Deploys the model to a SageMaker serverless endpoint
+    serverless_predictor = model.deploy(serverless_inference_config=serverless_config)
 
 After deployment is complete, you can use predictor's ``predict()`` method to invoke the serverless endpoint just like
 real-time endpoints:
@@ -1310,9 +1372,10 @@ For more details about what can be specified here, see `API docs <https://sagema
 Local Mode
 **********
 
-The SageMaker Python SDK supports local mode, which allows you to create estimators and deploy them to your local environment.
-This is a great way to test your deep learning scripts before running them in SageMaker's managed training or hosting environments.
-Local Mode is supported for frameworks images (TensorFlow, MXNet, Chainer, PyTorch, and Scikit-Learn) and images you supply yourself.
+The SageMaker Python SDK supports local mode, which allows you to create estimators, processors, and pipelines, and deploy
+them to your local environment. This is a great way to test your deep learning scripts before running them in SageMaker's
+managed training or hosting environments. Local Mode is supported for frameworks images (TensorFlow, MXNet, Chainer, PyTorch,
+and Scikit-Learn) and images you supply yourself.
 
 You can install all necessary for this feature dependencies using pip:
 
@@ -1329,7 +1392,7 @@ If you want to keep everything local, and not use Amazon S3 either, you can enab
     local:
       local_code: true
 
-- Create a ``LocalSession`` and configure it directly:
+- Create a ``LocalSession`` or ``LocalPipelineSession`` (for local SageMaker pipelines) and configure it directly:
 
 .. code:: python
 
@@ -1427,12 +1490,83 @@ Here is an end-to-end example:
     transformer.delete_model()
 
 
+Local pipelines
+===============
+
+To put everything together, you can use local pipelines to execute various SageMaker jobs in succession. Pipelines can be executed locally by providing a ``LocalPipelineSession`` object to the pipeline’s and pipeline steps’ initializer. ``LocalPipelineSession`` inherits from ``LocalSession``. The difference is ``LocalPipelineSession`` captures the job input step arguments and passes it to the pipeline object instead of executing the job. This behavior is similar to that of `PipelineSession <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_model_building_pipeline.html#pipeline-session>`__.
+
+Here is an end-to-end example:
+
+.. code:: python
+
+    from sagemaker.workflow.pipeline import Pipeline
+    from sagemaker.workflow.steps import TrainingStep, TransformStep
+    from sagemaker.workflow.model_step import ModelStep
+    from sagemaker.workflow.pipeline_context import LocalPipelineSession
+    from sagemaker.mxnet import MXNet
+    from sagemaker.model import Model
+    from sagemaker.inputs import TranformerInput
+    from sagemaker.transformer import Transformer
+
+    session = LocalPipelineSession()
+    mxnet_estimator = MXNet('train.py',
+                            role='SageMakerRole',
+                            instance_type='local',
+                            instance_count=1,
+                            framework_version='1.2.1',
+                            sagemaker_session=session)
+
+    train_step_args = mxnet_estimator.fit('file:///tmp/my_training_data')
+
+    # Define training step
+    train_step = TrainingStep(name='local_mxnet_train', step_args=train_step_args)
+
+    model = Model(
+      image_uri=inference_image_uri,
+      model_data=train_step.properties.ModelArtifacts.S3ModelArtifacts,
+      sagemaker_session=session,
+      role='SageMakerRole'
+    )
+
+    # Define create model step
+    model_step_args = model.create(instance_type="local", accelerator_type="local")
+    model_step = ModelStep(
+      name='local_mxnet_model',
+      step_args=model_step_args
+    )
+
+    transformer =  Transformer(
+      model_name=model_step.properties.ModelName,
+      instance_type='local',
+      instance_count=1,
+      sagemaker_session=session
+    )
+    transform_args = transformer.transform('file:///tmp/my_transform_data')
+    # Define transform step
+    transform_step = TransformStep(name='local_mxnet_transform', step_args=transform_args)
+
+    # Define the pipeline
+    pipeline = Pipeline(name='local_pipeline',
+                        steps=[train_step, model_step, transform_step],
+                        sagemaker_session=session)
+
+    # Create the pipeline
+    pipeline.upsert(role_arn='SageMakerRole', description='local pipeline example')
+
+    # Start a pipeline execution
+    execution = pipeline.start()
+
+.. note::
+    Currently Pipelines Local Mode only supports the following step types: Training, Processing, Transform, Model (with Create Model arguments only), Condition, and Fail.
+
+
 For detailed examples of running Docker in local mode, see:
 
 - `TensorFlow local mode example notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/tensorflow_script_mode_using_shell_commands/tensorflow_script_mode_using_shell_commands.ipynb>`__.
-- `MXNet local mode CPU example notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/mxnet_gluon_mnist/mxnet_mnist_with_gluon_local_mode.ipynb>`__.
-- `MXNet local mode GPU example notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/mxnet_gluon_cifar10/mxnet_cifar10_local_mode.ipynb>`__.
+- `MXNet local mode example notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/mxnet_gluon_mnist/mxnet_mnist_with_gluon_local_mode.ipynb>`__.
 - `PyTorch local mode example notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/pytorch_cnn_cifar10/pytorch_local_mode_cifar10.ipynb>`__.
+- `Pipelines local mode example notebook <https://github.com/aws/amazon-sagemaker-examples/blob/main/sagemaker-pipelines/tabular/local-mode/sagemaker-pipelines-local-mode.ipynb>`__.
+
 
 You can also find these notebooks in the **SageMaker Python SDK** section of the **SageMaker Examples** section in a notebook instance.
 For information about using sample notebooks in a SageMaker notebook instance, see `Use Example Notebooks <https://docs.aws.amazon.com/sagemaker/latest/dg/howitworks-nbexamples.html>`__
@@ -1653,11 +1787,25 @@ in the AWS documentation.
 SageMaker Workflow
 ******************
 
-You can use Apache Airflow to author, schedule and monitor SageMaker workflow.
+You can use the following machine learning frameworks to author, schedule and monitor SageMaker workflow.
 
-For more information, see `SageMaker Workflow in Apache Airflow`_.
+.. toctree::
+    :maxdepth: 2
 
-.. _SageMaker Workflow in Apache Airflow: https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/workflow/README.rst
+    workflows/airflow/index
+    workflows/step_functions/index
+    workflows/pipelines/index
+    workflows/lineage/index
+
+************************************
+SageMaker Model Building Pipeline
+************************************
+
+You can use Amazon SageMaker Model Building Pipelines to orchestrate your machine learning workflow.
+
+For more information, see `SageMaker Model Building Pipeline`_.
+
+.. _SageMaker Model Building Pipeline: https://github.com/aws/sagemaker-python-sdk/blob/master/doc/amazon_sagemaker_model_building_pipeline.rst
 
 **************************
 SageMaker Model Monitoring

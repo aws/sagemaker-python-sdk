@@ -24,6 +24,7 @@ ALGO_REGISTRIES = {
     "ap-south-1": "991648021394",
     "ap-southeast-1": "475088953585",
     "ap-southeast-2": "544295431143",
+    "ap-southeast-3": "951798379941",
     "ca-central-1": "469771592824",
     "cn-north-1": "390948362332",
     "cn-northwest-1": "387376663083",
@@ -44,7 +45,7 @@ ALGO_REGISTRIES = {
 }
 ALGO_VERSIONS = ("1", "latest")
 XGBOOST_FRAMEWORK_CPU_ONLY_VERSIONS = ("0.90-2", "0.90-1", "1.0-1")
-XGBOOST_FRAMEWORK_CPU_GPU_VERSIONS = ("1.2-1", "1.2-2", "1.3-1")
+XGBOOST_FRAMEWORK_CPU_GPU_VERSIONS = ("1.2-1", "1.2-2", "1.3-1", "1.5-1")
 
 FRAMEWORK_REGISTRIES = {
     "af-south-1": "510948584623",
@@ -55,6 +56,7 @@ FRAMEWORK_REGISTRIES = {
     "ap-south-1": "720646828776",
     "ap-southeast-1": "121021644041",
     "ap-southeast-2": "783357654285",
+    "ap-southeast-3": "951798379941",
     "ca-central-1": "341280168497",
     "cn-north-1": "450853457545",
     "cn-northwest-1": "451049120500",

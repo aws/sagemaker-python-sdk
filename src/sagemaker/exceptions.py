@@ -23,6 +23,10 @@ class UnexpectedStatusException(ValueError):
         super(UnexpectedStatusException, self).__init__(message)
 
 
+class CapacityError(UnexpectedStatusException):
+    """Raised when resource status is not expected and fails with a reason of CapacityError"""
+
+
 class AsyncInferenceError(Exception):
     """The base exception class for Async Inference exceptions."""
 

@@ -20,8 +20,9 @@ from mock import Mock
 
 from sagemaker.workflow.emr_step import EMRStep, EMRStepConfig
 from sagemaker.workflow.steps import CacheConfig
-from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
 from sagemaker.workflow.parameters import ParameterString
+from tests.unit.sagemaker.workflow.helpers import CustomStep, ordered
 
 
 @pytest.fixture()
@@ -92,6 +93,7 @@ def test_emr_step_with_one_step_config(sagemaker_session):
 
 
 def test_pipeline_interpolates_emr_outputs(sagemaker_session):
+    custom_step = CustomStep("TestStep")
     parameter = ParameterString("MyStr")
 
     emr_step_config_1 = EMRStepConfig(
@@ -106,7 +108,7 @@ def test_pipeline_interpolates_emr_outputs(sagemaker_session):
         cluster_id="MyClusterID",
         display_name="emr_step_1",
         description="MyEMRStepDescription",
-        depends_on=["TestStep"],
+        depends_on=[custom_step],
         step_config=emr_step_config_1,
     )
 
@@ -117,14 +119,14 @@ def test_pipeline_interpolates_emr_outputs(sagemaker_session):
         cluster_id="MyClusterID",
         display_name="emr_step_2",
         description="MyEMRStepDescription",
-        depends_on=["TestStep"],
+        depends_on=[custom_step],
         step_config=emr_step_config_2,
     )
 
     pipeline = Pipeline(
         name="MyPipeline",
         parameters=[parameter],
-        steps=[step_emr_1, step_emr_2],
+        steps=[step_emr_1, step_emr_2, custom_step],
         sagemaker_session=sagemaker_session,
     )
 
@@ -171,5 +173,14 @@ def test_pipeline_interpolates_emr_outputs(sagemaker_session):
                 "DisplayName": "emr_step_2",
                 "DependsOn": ["TestStep"],
             },
+            {
+                "Name": "TestStep",
+                "Type": "Training",
+                "Arguments": {},
+            },
         ],
     }
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert ordered(adjacency_list) == ordered(
+        {"emr_step_1": [], "emr_step_2": [], "TestStep": ["emr_step_1", "emr_step_2"]}
+    )

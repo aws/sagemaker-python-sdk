@@ -13,7 +13,10 @@
 """This module contains code to test SageMaker ``Trial Component``"""
 from __future__ import absolute_import
 
+import pytest
 
+
+@pytest.mark.skip("data inconsistency P61661075")
 def test_dataset_artifacts(static_training_job_trial_component):
     artifacts_from_query = static_training_job_trial_component.dataset_artifacts()
     assert len(artifacts_from_query) > 0
@@ -21,6 +24,7 @@ def test_dataset_artifacts(static_training_job_trial_component):
         assert artifact.artifact_type == "DataSet"
 
 
+@pytest.mark.skip("data inconsistency P61661075")
 def test_models(static_processing_job_trial_component):
     artifacts_from_query = static_processing_job_trial_component.models()
     assert len(artifacts_from_query) > 0
@@ -28,6 +32,7 @@ def test_models(static_processing_job_trial_component):
         assert artifact.artifact_type == "Model"
 
 
+@pytest.mark.skip("data inconsistency P61661075")
 def test_pipeline_execution_arn(static_training_job_trial_component, static_pipeline_execution_arn):
     pipeline_execution_arn = static_training_job_trial_component.pipeline_execution_arn()
     assert pipeline_execution_arn == static_pipeline_execution_arn

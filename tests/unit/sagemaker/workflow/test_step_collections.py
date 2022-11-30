@@ -13,12 +13,25 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import json
 import os
 import tempfile
 import shutil
 import pytest
 
 from sagemaker.drift_check_baselines import DriftCheckBaselines
+from sagemaker.workflow._utils import REPACK_SCRIPT_LAUNCHER
+from sagemaker.workflow.condition_step import ConditionStep
+from sagemaker.workflow.conditions import ConditionEquals
+from sagemaker.workflow.model_step import (
+    ModelStep,
+    _CREATE_MODEL_NAME_BASE,
+    _REPACK_MODEL_NAME_BASE,
+)
+from sagemaker.workflow.parameters import ParameterString
+from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
+from sagemaker.workflow.pipeline_context import PipelineSession
+from sagemaker.workflow.utilities import list_to_request
 from tests.unit import DATA_DIR
 
 import sagemaker
@@ -38,17 +51,14 @@ from sagemaker.model_metrics import (
     ModelMetrics,
 )
 from sagemaker.workflow.properties import Properties
-from sagemaker.workflow.steps import (
-    Step,
-    StepTypeEnum,
-)
+from sagemaker.workflow.steps import CreateModelStep
 from sagemaker.workflow.step_collections import (
     EstimatorTransformer,
     StepCollection,
     RegisterModel,
 )
 from sagemaker.workflow.retry import StepRetryPolicy, StepExceptionTypeEnum
-from tests.unit.sagemaker.workflow.helpers import ordered
+from tests.unit.sagemaker.workflow.helpers import ordered, CustomStep
 
 REGION = "us-west-2"
 BUCKET = "my-bucket"
@@ -58,34 +68,6 @@ MODEL_NAME = "gisele"
 MODEL_REPACKING_IMAGE_URI = (
     "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3"
 )
-
-
-class CustomStep(Step):
-    def __init__(self, name, display_name=None, description=None):
-        super(CustomStep, self).__init__(name, display_name, description, StepTypeEnum.TRAINING)
-        self._properties = Properties(path=f"Steps.{name}")
-
-    @property
-    def arguments(self):
-        return dict()
-
-    @property
-    def properties(self):
-        return self._properties
-
-
-@pytest.fixture
-def boto_session():
-    role_mock = Mock()
-    type(role_mock).arn = PropertyMock(return_value=ROLE)
-
-    resource_mock = Mock()
-    resource_mock.Role.return_value = role_mock
-
-    session_mock = Mock(region_name=REGION)
-    session_mock.resource.return_value = resource_mock
-
-    return session_mock
 
 
 @pytest.fixture
@@ -105,11 +87,35 @@ def client():
 
 
 @pytest.fixture
+def boto_session(client):
+    role_mock = Mock()
+    type(role_mock).arn = PropertyMock(return_value=ROLE)
+
+    resource_mock = Mock()
+    resource_mock.Role.return_value = role_mock
+
+    session_mock = Mock(region_name=REGION)
+    session_mock.resource.return_value = resource_mock
+    session_mock.client.return_value = client
+
+    return session_mock
+
+
+@pytest.fixture
 def sagemaker_session(boto_session, client):
     return sagemaker.session.Session(
         boto_session=boto_session,
         sagemaker_client=client,
         sagemaker_runtime_client=client,
+        default_bucket=BUCKET,
+    )
+
+
+@pytest.fixture
+def pipeline_session(boto_session, client):
+    return PipelineSession(
+        boto_session=boto_session,
+        sagemaker_client=client,
         default_bucket=BUCKET,
     )
 
@@ -199,11 +205,310 @@ def source_dir(request):
 
 
 def test_step_collection():
-    step_collection = StepCollection(steps=[CustomStep("MyStep1"), CustomStep("MyStep2")])
+    step_collection = StepCollection(
+        name="MyStepCollection", steps=[CustomStep("MyStep1"), CustomStep("MyStep2")]
+    )
     assert step_collection.request_dicts() == [
         {"Name": "MyStep1", "Type": "Training", "Arguments": dict()},
         {"Name": "MyStep2", "Type": "Training", "Arguments": dict()},
     ]
+
+
+def test_step_collection_with_list_to_request():
+    step_collection = StepCollection(
+        name="MyStepCollection", steps=[CustomStep("MyStep1"), CustomStep("MyStep2")]
+    )
+    custom_step = CustomStep("MyStep3")
+    assert list_to_request([step_collection, custom_step]) == [
+        {"Name": "MyStep1", "Type": "Training", "Arguments": dict()},
+        {"Name": "MyStep2", "Type": "Training", "Arguments": dict()},
+        {"Name": "MyStep3", "Type": "Training", "Arguments": dict()},
+    ]
+
+
+def test_step_collection_properties(pipeline_session, sagemaker_session):
+    # ModelStep
+    model = Model(
+        name="MyModel",
+        image_uri=IMAGE_URI,
+        model_data=ParameterString(name="ModelData", default_value="s3://my-bucket/file"),
+        sagemaker_session=pipeline_session,
+        entry_point=f"{DATA_DIR}/dummy_script.py",
+        source_dir=f"{DATA_DIR}",
+        role=ROLE,
+    )
+    step_args = model.create(
+        instance_type="c4.4xlarge",
+        accelerator_type="ml.eia1.medium",
+    )
+    model_step_name = "MyModelStep"
+    model_step = ModelStep(
+        name=model_step_name,
+        step_args=step_args,
+    )
+    steps = model_step.steps
+    assert len(steps) == 2
+    assert isinstance(steps[1], CreateModelStep)
+    assert model_step.properties.ModelName.expr == {
+        "Get": f"Steps.{model_step_name}-{_CREATE_MODEL_NAME_BASE}.ModelName"
+    }
+
+    # RegisterModel
+    model.sagemaker_session = sagemaker_session
+    model.entry_point = None
+    model.source_dir = None
+    register_model_step_name = "RegisterModelStep"
+    register_model = RegisterModel(
+        name=register_model_step_name,
+        model=model,
+        model_data="s3://",
+        content_types=["content_type"],
+        response_types=["response_type"],
+        inference_instances=["inference_instance"],
+        transform_instances=["transform_instance"],
+        model_package_group_name="mpg",
+    )
+    steps = register_model.steps
+    assert len(steps) == 1
+    assert register_model.properties.ModelPackageName.expr == {
+        "Get": f"Steps.{register_model_step_name}-RegisterModel.ModelPackageName"
+    }
+
+    # Custom StepCollection
+    step_collection = StepCollection(name="MyStepCollection")
+    steps = step_collection.steps
+    assert len(steps) == 0
+    assert not step_collection.properties
+
+
+def test_step_collection_is_depended_on(pipeline_session, sagemaker_session):
+    custom_step1 = CustomStep(name="MyStep1")
+    model_name = "MyModel"
+    model = Model(
+        name=model_name,
+        image_uri=IMAGE_URI,
+        model_data=ParameterString(name="ModelData", default_value="s3://my-bucket/file"),
+        sagemaker_session=pipeline_session,
+        entry_point=f"{DATA_DIR}/dummy_script.py",
+        source_dir=f"{DATA_DIR}",
+        role=ROLE,
+    )
+    step_args = model.create(
+        instance_type="c4.4xlarge",
+        accelerator_type="ml.eia1.medium",
+    )
+    model_step_name = "MyModelStep"
+    model_step = ModelStep(
+        name=model_step_name,
+        step_args=step_args,
+    )
+
+    # StepCollection object is depended on by another StepCollection object
+    model.sagemaker_session = sagemaker_session
+    register_model_name = "RegisterModelStep"
+    register_model = RegisterModel(
+        name=register_model_name,
+        model=model,
+        model_data="s3://",
+        content_types=["content_type"],
+        response_types=["response_type"],
+        inference_instances=["inference_instance"],
+        transform_instances=["transform_instance"],
+        model_package_group_name="mpg",
+        depends_on=["MyStep1", model_step],
+    )
+
+    # StepCollection objects are depended on by a step
+    custom_step2 = CustomStep(
+        name="MyStep2", depends_on=["MyStep1", model_step, register_model_name]
+    )
+    custom_step3 = CustomStep(
+        name="MyStep3", depends_on=[custom_step1, model_step_name, register_model]
+    )
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[custom_step1, model_step, custom_step2, custom_step3, register_model],
+    )
+    step_list = json.loads(pipeline.definition())["Steps"]
+    assert len(step_list) == 7
+    for step in step_list:
+        if step["Name"] not in ["MyStep2", "MyStep3", f"{model_name}-RepackModel"]:
+            assert "DependsOn" not in step
+        elif step["Name"] == f"{model_name}-RepackModel":
+            assert set(step["DependsOn"]) == {
+                "MyStep1",
+                f"{model_step_name}-{_REPACK_MODEL_NAME_BASE}-{model_name}",
+                f"{model_step_name}-{_CREATE_MODEL_NAME_BASE}",
+            }
+        else:
+            assert set(step["DependsOn"]) == {
+                "MyStep1",
+                f"{model_step_name}-{_REPACK_MODEL_NAME_BASE}-{model_name}",
+                f"{model_step_name}-{_CREATE_MODEL_NAME_BASE}",
+                f"{model_name}-RepackModel",
+                f"{register_model_name}-RegisterModel",
+            }
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert ordered(adjacency_list) == ordered(
+        {
+            "MyStep1": ["MyStep2", "MyStep3", "MyModel-RepackModel"],
+            "MyStep2": [],
+            "MyStep3": [],
+            "MyModelStep-RepackModel-MyModel": ["MyModelStep-CreateModel"],
+            "MyModelStep-CreateModel": ["MyStep2", "MyStep3", "MyModel-RepackModel"],
+            "MyModel-RepackModel": [],
+            "RegisterModelStep-RegisterModel": ["MyStep2", "MyStep3"],
+        }
+    )
+
+
+def test_step_collection_in_condition_branch_is_depended_on(pipeline_session, sagemaker_session):
+    custom_step1 = CustomStep(name="MyStep1")
+
+    # Define a step collection which will be inserted into the ConditionStep
+    model_name = "MyModel"
+    model = Model(
+        name=model_name,
+        image_uri=IMAGE_URI,
+        model_data=ParameterString(name="ModelData", default_value="s3://my-bucket/file"),
+        sagemaker_session=pipeline_session,
+        entry_point=f"{DATA_DIR}/dummy_script.py",
+        source_dir=f"{DATA_DIR}",
+        role=ROLE,
+    )
+    step_args = model.create(
+        instance_type="c4.4xlarge",
+        accelerator_type="ml.eia1.medium",
+    )
+    model_step_name = "MyModelStep"
+    model_step = ModelStep(
+        name=model_step_name,
+        step_args=step_args,
+    )
+
+    # Define another step collection which will be inserted into the ConditionStep
+    # This StepCollection object depends on a StepCollection object in the ConditionStep
+    # And a normal step outside ConditionStep
+    model.sagemaker_session = sagemaker_session
+    register_model_name = "RegisterModelStep"
+    register_model = RegisterModel(
+        name=register_model_name,
+        model=model,
+        model_data="s3://",
+        content_types=["content_type"],
+        response_types=["response_type"],
+        inference_instances=["inference_instance"],
+        transform_instances=["transform_instance"],
+        model_package_group_name="mpg",
+        depends_on=["MyStep1", model_step],
+    )
+
+    # StepCollection objects are depended on by a normal step in the ConditionStep
+    custom_step2 = CustomStep(
+        name="MyStep2", depends_on=["MyStep1", model_step, register_model_name]
+    )
+    # StepCollection objects are depended on by a normal step outside the ConditionStep
+    custom_step3 = CustomStep(
+        name="MyStep3", depends_on=[custom_step1, model_step_name, register_model]
+    )
+
+    cond_step = ConditionStep(
+        name="CondStep",
+        conditions=[ConditionEquals(left=2, right=1)],
+        if_steps=[],
+        else_steps=[model_step, register_model, custom_step2],
+    )
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[cond_step, custom_step1, custom_step3],
+    )
+    step_list = json.loads(pipeline.definition())["Steps"]
+    assert len(step_list) == 3
+    for step in step_list:
+        if step["Name"] == "MyStep1":
+            assert "DependsOn" not in step
+        elif step["Name"] == "CondStep":
+            assert not step["Arguments"]["IfSteps"]
+            for sub_step in step["Arguments"]["ElseSteps"]:
+                if sub_step["Name"] == f"{model_name}-RepackModel":
+                    assert set(sub_step["DependsOn"]) == {
+                        "MyStep1",
+                        f"{model_step_name}-{_REPACK_MODEL_NAME_BASE}-{model_name}",
+                        f"{model_step_name}-{_CREATE_MODEL_NAME_BASE}",
+                    }
+                if sub_step["Name"] == "MyStep2":
+                    assert set(sub_step["DependsOn"]) == {
+                        "MyStep1",
+                        f"{model_step_name}-{_REPACK_MODEL_NAME_BASE}-{model_name}",
+                        f"{model_step_name}-{_CREATE_MODEL_NAME_BASE}",
+                        f"{model_name}-RepackModel",
+                        f"{register_model_name}-RegisterModel",
+                    }
+        else:
+            assert set(step["DependsOn"]) == {
+                "MyStep1",
+                f"{model_step_name}-{_REPACK_MODEL_NAME_BASE}-{model_name}",
+                f"{model_step_name}-{_CREATE_MODEL_NAME_BASE}",
+                f"{model_name}-RepackModel",
+                f"{register_model_name}-RegisterModel",
+            }
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert ordered(adjacency_list) == ordered(
+        {
+            "CondStep": ["MyModel-RepackModel", "MyModelStep-RepackModel-MyModel", "MyStep2"],
+            "MyStep1": ["MyStep2", "MyStep3", "MyModel-RepackModel"],
+            "MyStep2": [],
+            "MyStep3": [],
+            "MyModelStep-RepackModel-MyModel": ["MyModelStep-CreateModel"],
+            "MyModelStep-CreateModel": ["MyStep2", "MyStep3", "MyModel-RepackModel"],
+            "MyModel-RepackModel": [],
+            "RegisterModelStep-RegisterModel": ["MyStep2", "MyStep3"],
+        }
+    )
+
+
+def test_condition_step_depends_on_step_collection():
+    step1 = CustomStep(name="MyStep1")
+    step2 = CustomStep(name="MyStep2", input_data=step1.properties)
+    step_collection = StepCollection(name="MyStepCollection", steps=[step1, step2])
+    cond_step = ConditionStep(
+        name="MyConditionStep",
+        depends_on=[step_collection],
+        conditions=[ConditionEquals(left=2, right=1)],
+        if_steps=[],
+        else_steps=[],
+    )
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[step_collection, cond_step],
+    )
+    step_list = json.loads(pipeline.definition())["Steps"]
+    assert len(step_list) == 3
+    for step in step_list:
+        if step["Name"] != "MyConditionStep":
+            continue
+        assert step == {
+            "Name": "MyConditionStep",
+            "Type": "Condition",
+            "DependsOn": ["MyStep1", "MyStep2"],
+            "Arguments": {
+                "Conditions": [
+                    {
+                        "Type": "Equals",
+                        "LeftValue": 2,
+                        "RightValue": 1,
+                    },
+                ],
+                "IfSteps": [],
+                "ElseSteps": [],
+            },
+        }
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert ordered(adjacency_list) == ordered(
+        [("MyConditionStep", []), ("MyStep1", ["MyStep2"]), ("MyStep2", ["MyConditionStep"])]
+    )
 
 
 def test_register_model(estimator, model_metrics, drift_check_baselines):
@@ -216,6 +521,7 @@ def test_register_model(estimator, model_metrics, drift_check_baselines):
         response_types=["response_type"],
         inference_instances=["inference_instance"],
         transform_instances=["transform_instance"],
+        image_uri="012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri",
         model_package_group_name="mpg",
         model_metrics=model_metrics,
         drift_check_baselines=drift_check_baselines,
@@ -224,11 +530,17 @@ def test_register_model(estimator, model_metrics, drift_check_baselines):
         display_name="RegisterModelStep",
         depends_on=["TestStep"],
         tags=[{"Key": "myKey", "Value": "myValue"}],
+        sample_payload_url="s3://test-bucket/model",
+        task="IMAGE_CLASSIFICATION",
+        framework="TENSORFLOW",
+        framework_version="2.9",
+        nearest_model_name="resnet50",
+        data_input_configuration='{"input_1":[1,224,224,3]}',
     )
     assert ordered(register_model.request_dicts()) == ordered(
         [
             {
-                "Name": "RegisterModelStep",
+                "Name": "RegisterModelStep-RegisterModel",
                 "Type": "RegisterModel",
                 "DependsOn": ["TestStep"],
                 "DisplayName": "RegisterModelStep",
@@ -236,7 +548,10 @@ def test_register_model(estimator, model_metrics, drift_check_baselines):
                 "Arguments": {
                     "InferenceSpecification": {
                         "Containers": [
-                            {"Image": "fakeimage", "ModelDataUrl": f"s3://{BUCKET}/model.tar.gz"}
+                            {
+                                "Image": "012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri",
+                                "ModelDataUrl": f"s3://{BUCKET}/model.tar.gz",
+                            }
                         ],
                         "SupportedContentTypes": ["content_type"],
                         "SupportedRealtimeInferenceInstanceTypes": ["inference_instance"],
@@ -265,6 +580,8 @@ def test_register_model(estimator, model_metrics, drift_check_baselines):
                     "ModelPackageDescription": "description",
                     "ModelPackageGroupName": "mpg",
                     "Tags": [{"Key": "myKey", "Value": "myValue"}],
+                    "SamplePayloadUrl": "s3://test-bucket/model",
+                    "Task": "IMAGE_CLASSIFICATION",
                 },
             },
         ]
@@ -286,11 +603,16 @@ def test_register_model_tf(estimator_tf, model_metrics, drift_check_baselines):
         drift_check_baselines=drift_check_baselines,
         approval_status="Approved",
         description="description",
+        sample_payload_url="s3://test-bucket/model",
+        task="IMAGE_CLASSIFICATION",
+        framework="TENSORFLOW",
+        framework_version="2.9",
+        nearest_model_name="resnet50",
     )
     assert ordered(register_model.request_dicts()) == ordered(
         [
             {
-                "Name": "RegisterModelStep",
+                "Name": "RegisterModelStep-RegisterModel",
                 "Type": "RegisterModel",
                 "Description": "description",
                 "Arguments": {
@@ -327,6 +649,8 @@ def test_register_model_tf(estimator_tf, model_metrics, drift_check_baselines):
                     },
                     "ModelPackageDescription": "description",
                     "ModelPackageGroupName": "mpg",
+                    "SamplePayloadUrl": "s3://test-bucket/model",
+                    "Task": "IMAGE_CLASSIFICATION",
                 },
             },
         ]
@@ -355,11 +679,16 @@ def test_register_model_sip(estimator, model_metrics, drift_check_baselines):
         description="description",
         model=pipeline_model,
         depends_on=["TestStep"],
+        sample_payload_url="s3://test-bucket/model",
+        task="IMAGE_CLASSIFICATION",
+        framework="TENSORFLOW",
+        framework_version="2.9",
+        nearest_model_name="resnet50",
     )
     assert ordered(register_model.request_dicts()) == ordered(
         [
             {
-                "Name": "RegisterModelStep",
+                "Name": "RegisterModelStep-RegisterModel",
                 "Type": "RegisterModel",
                 "Description": "description",
                 "DependsOn": ["TestStep"],
@@ -370,11 +699,17 @@ def test_register_model_sip(estimator, model_metrics, drift_check_baselines):
                                 "Image": "fakeimage1",
                                 "ModelDataUrl": "Url1",
                                 "Environment": [{"k1": "v1"}, {"k2": "v2"}],
+                                "Framework": "TENSORFLOW",
+                                "FrameworkVersion": "2.9",
+                                "NearestModelName": "resnet50",
                             },
                             {
                                 "Image": "fakeimage2",
                                 "ModelDataUrl": "Url2",
                                 "Environment": [{"k3": "v3"}, {"k4": "v4"}],
+                                "Framework": "TENSORFLOW",
+                                "FrameworkVersion": "2.9",
+                                "NearestModelName": "resnet50",
                             },
                         ],
                         "SupportedContentTypes": ["content_type"],
@@ -403,6 +738,8 @@ def test_register_model_sip(estimator, model_metrics, drift_check_baselines):
                     },
                     "ModelPackageDescription": "description",
                     "ModelPackageGroupName": "mpg",
+                    "SamplePayloadUrl": "s3://test-bucket/model",
+                    "Task": "IMAGE_CLASSIFICATION",
                 },
             },
         ]
@@ -431,6 +768,11 @@ def test_register_model_with_model_repack_with_estimator(
         dependencies=[dummy_requirements],
         depends_on=["TestStep"],
         tags=[{"Key": "myKey", "Value": "myValue"}],
+        sample_payload_url="s3://test-bucket/model",
+        task="IMAGE_CLASSIFICATION",
+        framework="TENSORFLOW",
+        framework_version="2.9",
+        nearest_model_name="resnet50",
     )
 
     request_dicts = register_model.request_dicts()
@@ -438,11 +780,12 @@ def test_register_model_with_model_repack_with_estimator(
 
     for request_dict in request_dicts:
         if request_dict["Type"] == "Training":
-            assert request_dict["Name"] == "RegisterModelStepRepackModel"
+            assert request_dict["Name"] == "RegisterModelStep-RepackModel"
             assert len(request_dict["DependsOn"]) == 1
             assert request_dict["DependsOn"][0] == "TestStep"
             arguments = request_dict["Arguments"]
-            repacker_job_name = arguments["HyperParameters"]["sagemaker_job_name"]
+            assert BUCKET in arguments["HyperParameters"]["sagemaker_submit_directory"]
+            arguments["HyperParameters"].pop("sagemaker_submit_directory")
             assert ordered(arguments) == ordered(
                 {
                     "AlgorithmSpecification": {
@@ -456,13 +799,9 @@ def test_register_model_with_model_repack_with_estimator(
                     "HyperParameters": {
                         "inference_script": '"dummy_script.py"',
                         "dependencies": f'"{dummy_requirements}"',
-                        "model_archive": '"model.tar.gz"',
-                        "sagemaker_submit_directory": '"s3://{}/{}/source/sourcedir.tar.gz"'.format(
-                            BUCKET, repacker_job_name.replace('"', "")
-                        ),
-                        "sagemaker_program": '"_repack_model.py"',
+                        "model_archive": '"s3://my-bucket/model.tar.gz"',
+                        "sagemaker_program": f'"{REPACK_SCRIPT_LAUNCHER}"',
                         "sagemaker_container_log_level": "20",
-                        "sagemaker_job_name": repacker_job_name,
                         "sagemaker_region": f'"{REGION}"',
                         "source_dir": "null",
                     },
@@ -473,7 +812,7 @@ def test_register_model_with_model_repack_with_estimator(
                                 "S3DataSource": {
                                     "S3DataDistributionType": "FullyReplicated",
                                     "S3DataType": "S3Prefix",
-                                    "S3Uri": f"s3://{BUCKET}",
+                                    "S3Uri": f"s3://{BUCKET}/model.tar.gz",
                                 }
                             },
                         }
@@ -494,7 +833,7 @@ def test_register_model_with_model_repack_with_estimator(
                 }
             )
         elif request_dict["Type"] == "RegisterModel":
-            assert request_dict["Name"] == "RegisterModelStep"
+            assert request_dict["Name"] == "RegisterModelStep-RegisterModel"
             assert "DependsOn" not in request_dict
             arguments = request_dict["Arguments"]
             assert len(arguments["InferenceSpecification"]["Containers"]) == 1
@@ -536,6 +875,8 @@ def test_register_model_with_model_repack_with_estimator(
                     "ModelPackageDescription": "description",
                     "ModelPackageGroupName": "mpg",
                     "Tags": [{"Key": "myKey", "Value": "myValue"}],
+                    "SamplePayloadUrl": "s3://test-bucket/model",
+                    "Task": "IMAGE_CLASSIFICATION",
                 }
             )
         else:
@@ -566,11 +907,12 @@ def test_register_model_with_model_repack_with_model(model, model_metrics, drift
 
     for request_dict in request_dicts:
         if request_dict["Type"] == "Training":
-            assert request_dict["Name"] == "modelNameRepackModel"
+            assert request_dict["Name"] == "modelName-RepackModel"
             assert len(request_dict["DependsOn"]) == 1
             assert request_dict["DependsOn"][0] == "TestStep"
             arguments = request_dict["Arguments"]
-            repacker_job_name = arguments["HyperParameters"]["sagemaker_job_name"]
+            assert BUCKET in arguments["HyperParameters"]["sagemaker_submit_directory"]
+            arguments["HyperParameters"].pop("sagemaker_submit_directory")
             assert ordered(arguments) == ordered(
                 {
                     "AlgorithmSpecification": {
@@ -583,13 +925,9 @@ def test_register_model_with_model_repack_with_model(model, model_metrics, drift
                     },
                     "HyperParameters": {
                         "inference_script": '"dummy_script.py"',
-                        "model_archive": '"model.tar.gz"',
-                        "sagemaker_submit_directory": '"s3://{}/{}/source/sourcedir.tar.gz"'.format(
-                            BUCKET, repacker_job_name.replace('"', "")
-                        ),
-                        "sagemaker_program": '"_repack_model.py"',
+                        "model_archive": '"s3://my-bucket/model.tar.gz"',
+                        "sagemaker_program": f'"{REPACK_SCRIPT_LAUNCHER}"',
                         "sagemaker_container_log_level": "20",
-                        "sagemaker_job_name": repacker_job_name,
                         "sagemaker_region": f'"{REGION}"',
                         "dependencies": "null",
                         "source_dir": "null",
@@ -601,7 +939,7 @@ def test_register_model_with_model_repack_with_model(model, model_metrics, drift
                                 "S3DataSource": {
                                     "S3DataDistributionType": "FullyReplicated",
                                     "S3DataType": "S3Prefix",
-                                    "S3Uri": f"s3://{BUCKET}",
+                                    "S3Uri": f"s3://{BUCKET}/model.tar.gz",
                                 }
                             },
                         }
@@ -622,7 +960,7 @@ def test_register_model_with_model_repack_with_model(model, model_metrics, drift
                 }
             )
         elif request_dict["Type"] == "RegisterModel":
-            assert request_dict["Name"] == "RegisterModelStep"
+            assert request_dict["Name"] == "RegisterModelStep-RegisterModel"
             assert "DependsOn" not in request_dict
             arguments = request_dict["Arguments"]
             assert len(arguments["InferenceSpecification"]["Containers"]) == 1
@@ -698,11 +1036,12 @@ def test_register_model_with_model_repack_with_pipeline_model(
 
     for request_dict in request_dicts:
         if request_dict["Type"] == "Training":
-            assert request_dict["Name"] == "modelNameRepackModel"
+            assert request_dict["Name"] == "modelName-RepackModel"
             assert len(request_dict["DependsOn"]) == 1
             assert request_dict["DependsOn"][0] == "TestStep"
             arguments = request_dict["Arguments"]
-            repacker_job_name = arguments["HyperParameters"]["sagemaker_job_name"]
+            assert BUCKET in arguments["HyperParameters"]["sagemaker_submit_directory"]
+            arguments["HyperParameters"].pop("sagemaker_submit_directory")
             assert ordered(arguments) == ordered(
                 {
                     "AlgorithmSpecification": {
@@ -716,13 +1055,9 @@ def test_register_model_with_model_repack_with_pipeline_model(
                     "HyperParameters": {
                         "dependencies": "null",
                         "inference_script": '"dummy_script.py"',
-                        "model_archive": '"model.tar.gz"',
-                        "sagemaker_submit_directory": '"s3://{}/{}/source/sourcedir.tar.gz"'.format(
-                            BUCKET, repacker_job_name.replace('"', "")
-                        ),
-                        "sagemaker_program": '"_repack_model.py"',
+                        "model_archive": '"s3://my-bucket/model.tar.gz"',
+                        "sagemaker_program": f'"{REPACK_SCRIPT_LAUNCHER}"',
                         "sagemaker_container_log_level": "20",
-                        "sagemaker_job_name": repacker_job_name,
                         "sagemaker_region": f'"{REGION}"',
                         "source_dir": "null",
                     },
@@ -733,7 +1068,7 @@ def test_register_model_with_model_repack_with_pipeline_model(
                                 "S3DataSource": {
                                     "S3DataDistributionType": "FullyReplicated",
                                     "S3DataType": "S3Prefix",
-                                    "S3Uri": f"s3://{BUCKET}",
+                                    "S3Uri": f"s3://{BUCKET}/model.tar.gz",
                                 }
                             },
                         }
@@ -754,7 +1089,7 @@ def test_register_model_with_model_repack_with_pipeline_model(
                 }
             )
         elif request_dict["Type"] == "RegisterModel":
-            assert request_dict["Name"] == "RegisterModelStep"
+            assert request_dict["Name"] == "RegisterModelStep-RegisterModel"
             assert "DependsOn" not in request_dict
             arguments = request_dict["Arguments"]
             assert len(arguments["InferenceSpecification"]["Containers"]) == 1
@@ -842,6 +1177,119 @@ def test_estimator_transformer(estimator):
                         "Image": "fakeimage",
                         "ModelDataUrl": "s3://my-bucket/model.tar.gz",
                     },
+                },
+            }
+        elif request_dict["Type"] == "Transform":
+            assert request_dict["Name"] == "EstimatorTransformerStepTransformStep"
+            assert request_dict["RetryPolicies"] == [service_fault_retry_policy.to_request()]
+            arguments = request_dict["Arguments"]
+            assert isinstance(arguments["ModelName"], Properties)
+            arguments.pop("ModelName")
+            assert "DependsOn" not in request_dict
+            assert arguments == {
+                "TransformInput": {
+                    "DataSource": {
+                        "S3DataSource": {
+                            "S3DataType": "S3Prefix",
+                            "S3Uri": f"s3://{BUCKET}/transform_manifest",
+                        }
+                    }
+                },
+                "TransformOutput": {"S3OutputPath": None},
+                "TransformResources": {"InstanceCount": 1, "InstanceType": "ml.c4.4xlarge"},
+            }
+        else:
+            raise Exception("A step exists in the collection of an invalid type.")
+
+
+def test_estimator_transformer_with_model_repack_with_estimator(estimator):
+    model_data = f"s3://{BUCKET}/model.tar.gz"
+    model_inputs = CreateModelInput(
+        instance_type="c4.4xlarge",
+        accelerator_type="ml.eia1.medium",
+    )
+    service_fault_retry_policy = StepRetryPolicy(
+        exception_types=[StepExceptionTypeEnum.SERVICE_FAULT], max_attempts=10
+    )
+    transform_inputs = TransformInput(data=f"s3://{BUCKET}/transform_manifest")
+    estimator_transformer = EstimatorTransformer(
+        name="EstimatorTransformerStep",
+        estimator=estimator,
+        model_data=model_data,
+        model_inputs=model_inputs,
+        instance_count=1,
+        instance_type="ml.c4.4xlarge",
+        transform_inputs=transform_inputs,
+        depends_on=["TestStep"],
+        model_step_retry_policies=[service_fault_retry_policy],
+        transform_step_retry_policies=[service_fault_retry_policy],
+        repack_model_step_retry_policies=[service_fault_retry_policy],
+        entry_point=f"{DATA_DIR}/dummy_script.py",
+    )
+    request_dicts = estimator_transformer.request_dicts()
+    assert len(request_dicts) == 3
+
+    for request_dict in request_dicts:
+        if request_dict["Type"] == "Training":
+            assert request_dict["Name"] == "EstimatorTransformerStepRepackModel"
+            assert request_dict["DependsOn"] == ["TestStep"]
+            assert request_dict["RetryPolicies"] == [service_fault_retry_policy.to_request()]
+            arguments = request_dict["Arguments"]
+            # pop out the dynamic generated fields
+            arguments["HyperParameters"].pop("sagemaker_submit_directory")
+            assert arguments == {
+                "AlgorithmSpecification": {
+                    "TrainingInputMode": "File",
+                    "TrainingImage": "246618743249.dkr.ecr.us-west-2.amazonaws.com/"
+                    + "sagemaker-scikit-learn:0.23-1-cpu-py3",
+                },
+                "OutputDataConfig": {"S3OutputPath": "s3://my-bucket/"},
+                "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
+                "ResourceConfig": {
+                    "InstanceCount": 1,
+                    "InstanceType": "ml.m5.large",
+                    "VolumeSizeInGB": 30,
+                },
+                "RoleArn": "DummyRole",
+                "InputDataConfig": [
+                    {
+                        "DataSource": {
+                            "S3DataSource": {
+                                "S3DataType": "S3Prefix",
+                                "S3Uri": "s3://my-bucket/model.tar.gz",
+                                "S3DataDistributionType": "FullyReplicated",
+                            }
+                        },
+                        "ChannelName": "training",
+                    }
+                ],
+                "HyperParameters": {
+                    "inference_script": '"dummy_script.py"',
+                    "model_archive": '"s3://my-bucket/model.tar.gz"',
+                    "dependencies": "null",
+                    "source_dir": "null",
+                    "sagemaker_program": f'"{REPACK_SCRIPT_LAUNCHER}"',
+                    "sagemaker_container_log_level": "20",
+                    "sagemaker_region": '"us-west-2"',
+                },
+                "VpcConfig": {"Subnets": ["abc", "def"], "SecurityGroupIds": ["123", "456"]},
+                "DebugHookConfig": {
+                    "S3OutputPath": "s3://my-bucket/",
+                    "CollectionConfigurations": [],
+                },
+            }
+        elif request_dict["Type"] == "Model":
+            assert request_dict["Name"] == "EstimatorTransformerStepCreateModelStep"
+            assert request_dict["RetryPolicies"] == [service_fault_retry_policy.to_request()]
+            arguments = request_dict["Arguments"]
+            assert isinstance(arguments["PrimaryContainer"]["ModelDataUrl"], Properties)
+            arguments["PrimaryContainer"].pop("ModelDataUrl")
+            assert "DependsOn" not in request_dict
+            assert arguments == {
+                "ExecutionRoleArn": "DummyRole",
+                "PrimaryContainer": {
+                    "Environment": {},
+                    "Image": "fakeimage",
                 },
             }
         elif request_dict["Type"] == "Transform":

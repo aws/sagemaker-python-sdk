@@ -31,6 +31,7 @@ from sagemaker.feature_store.feature_group import (
     AthenaQuery,
     IngestionError,
 )
+from sagemaker.feature_store.inputs import FeatureParameter
 
 
 class PicklableMock(Mock):
@@ -151,6 +152,52 @@ def test_feature_store_describe(sagemaker_session_mock):
     feature_group.describe()
     sagemaker_session_mock.describe_feature_group.assert_called_with(
         feature_group_name="MyFeatureGroup", next_token=None
+    )
+
+
+def test_feature_store_update(sagemaker_session_mock, feature_group_dummy_definitions):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    feature_group.update(feature_group_dummy_definitions)
+    sagemaker_session_mock.update_feature_group.assert_called_with(
+        feature_group_name="MyFeatureGroup",
+        feature_additions=[fd.to_dict() for fd in feature_group_dummy_definitions],
+    )
+
+
+def test_feature_metadata_update(sagemaker_session_mock):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+
+    parameter_additions = [FeatureParameter(key="key1", value="value1")]
+    parameter_removals = ["key2"]
+
+    feature_group.update_feature_metadata(
+        feature_name="Feature1",
+        description="TestDescription",
+        parameter_additions=parameter_additions,
+        parameter_removals=parameter_removals,
+    )
+    sagemaker_session_mock.update_feature_metadata.assert_called_with(
+        feature_group_name="MyFeatureGroup",
+        feature_name="Feature1",
+        description="TestDescription",
+        parameter_additions=[pa.to_dict() for pa in parameter_additions],
+        parameter_removals=parameter_removals,
+    )
+    feature_group.update_feature_metadata(feature_name="Feature1", description="TestDescription")
+    sagemaker_session_mock.update_feature_metadata.assert_called_with(
+        feature_group_name="MyFeatureGroup",
+        feature_name="Feature1",
+        description="TestDescription",
+        parameter_additions=[],
+        parameter_removals=[],
+    )
+
+
+def test_feature_metadata_describe(sagemaker_session_mock):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    feature_group.describe_feature_metadata(feature_name="Feature1")
+    sagemaker_session_mock.describe_feature_metadata.assert_called_with(
+        feature_group_name="MyFeatureGroup", feature_name="Feature1"
     )
 
 
@@ -421,14 +468,18 @@ def query(sagemaker_session_mock):
 
 
 def test_athena_query_run(sagemaker_session_mock, query):
+    WORKGROUP = "workgroup"
     sagemaker_session_mock.start_query_execution.return_value = {"QueryExecutionId": "query_id"}
-    query.run(query_string="query", output_location="s3://some-bucket/some-path")
+    query.run(
+        query_string="query", output_location="s3://some-bucket/some-path", workgroup=WORKGROUP
+    )
     sagemaker_session_mock.start_query_execution.assert_called_with(
         catalog="catalog",
         database="database",
         query_string="query",
         output_location="s3://some-bucket/some-path",
         kms_key=None,
+        workgroup=WORKGROUP,
     )
     assert "some-bucket" == query._result_bucket
     assert "some-path" == query._result_file_prefix

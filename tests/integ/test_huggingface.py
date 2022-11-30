@@ -20,6 +20,7 @@ from sagemaker.huggingface import HuggingFace, HuggingFaceProcessor
 from sagemaker.huggingface.model import HuggingFaceModel, HuggingFacePredictor
 from sagemaker.utils import unique_name_from_base
 from tests import integ
+from tests.integ.utils import gpu_list, retry_with_instance_list
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
@@ -32,12 +33,13 @@ ROLE = "SageMakerRole"
     and integ.test_region() in integ.TRAINING_NO_P3_REGIONS,
     reason="no ml.p2 or ml.p3 instances in this region",
 )
+@retry_with_instance_list(gpu_list(integ.test_region()))
 def test_framework_processing_job_with_deps(
     sagemaker_session,
-    gpu_instance_type,
     huggingface_training_latest_version,
     huggingface_training_pytorch_latest_version,
     huggingface_pytorch_latest_training_py_version,
+    **kwargs,
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         code_path = os.path.join(DATA_DIR, "dummy_code_bundle_with_reqs")
@@ -49,11 +51,10 @@ def test_framework_processing_job_with_deps(
             py_version=huggingface_pytorch_latest_training_py_version,
             role=ROLE,
             instance_count=1,
-            instance_type=gpu_instance_type,
+            instance_type=kwargs["instance_type"],
             sagemaker_session=sagemaker_session,
             base_job_name="test-huggingface",
         )
-
         processor.run(
             code=entry_point,
             source_dir=code_path,
@@ -68,12 +69,13 @@ def test_framework_processing_job_with_deps(
     and integ.test_region() in integ.TRAINING_NO_P3_REGIONS,
     reason="no ml.p2 or ml.p3 instances in this region",
 )
+@retry_with_instance_list(gpu_list(integ.test_region()))
 def test_huggingface_training(
     sagemaker_session,
-    gpu_instance_type,
     huggingface_training_latest_version,
     huggingface_training_pytorch_latest_version,
     huggingface_pytorch_latest_training_py_version,
+    **kwargs,
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, "huggingface")
@@ -85,7 +87,7 @@ def test_huggingface_training(
             transformers_version=huggingface_training_latest_version,
             pytorch_version=huggingface_training_pytorch_latest_version,
             instance_count=1,
-            instance_type=gpu_instance_type,
+            instance_type=kwargs["instance_type"],
             hyperparameters={
                 "model_name_or_path": "distilbert-base-cased",
                 "task_name": "wnli",
@@ -113,6 +115,9 @@ def test_huggingface_training(
     integ.test_region() in integ.TRAINING_NO_P2_REGIONS
     and integ.test_region() in integ.TRAINING_NO_P3_REGIONS,
     reason="no ml.p2 or ml.p3 instances in this region",
+)
+@pytest.mark.skip(
+    reason="need to re enable it later t.corp:V609860141",
 )
 def test_huggingface_training_tf(
     sagemaker_session,

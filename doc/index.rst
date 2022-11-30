@@ -39,7 +39,7 @@ The SageMaker Python SDK supports managed training and inference for a variety o
 
 
 ********************************
-SageMaker First-Party Algorithms
+SageMaker Built-in Algorithms
 ********************************
 Amazon SageMaker provides implementations of some common machine learning algorithms optimized for GPU architecture and massive datasets.
 
@@ -102,3 +102,14 @@ You can use Amazon SageMaker Processing to perform data processing tasks such as
     :maxdepth: 2
 
     amazon_sagemaker_processing
+
+
+*****************************************
+Amazon SageMaker Model Building Pipeline
+*****************************************
+You can use Amazon SageMaker Model Building Pipelines to orchestrate your machine learning workflow.
+
+.. toctree::
+    :maxdepth: 2
+
+    amazon_sagemaker_model_building_pipeline

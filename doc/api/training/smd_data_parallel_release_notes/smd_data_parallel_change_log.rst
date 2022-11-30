@@ -1,7 +1,149 @@
-.. _sdp_1.2.2_release_note:
+.. _sdp_release_note:
+
+#############
+Release Notes
+#############
+
+New features, bug fixes, and improvements are regularly made to the SageMaker
+distributed data parallel library.
+
+SageMaker Distributed Data Parallel 1.5.0 Release Notes
+=======================================================
+
+*Date: Jul. 26. 2022*
+
+**Currency Updates**
+
+* Added support for PyTorch 1.12.0.
+
+**Bug Fixes**
+
+* Improved stability for long-running training jobs.
+
+
+**Migration to AWS Deep Learning Containers**
+
+This version passed benchmark testing and is migrated to the following AWS Deep Learning Containers (DLC):
+
+- PyTorch 1.12.0 DLC
+
+  .. code::
+
+    763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.12.0-gpu-py38-cu113-ubuntu20.04-sagemaker
+
+Binary file of this version of the library for `custom container
+<https://docs.aws.amazon.com/sagemaker/latest/dg/data-parallel-use-api.html#data-parallel-bring-your-own-container>`_ users:
+
+  .. code::
+
+    https://smdataparallel.s3.amazonaws.com/binary/pytorch/1.12.0/cu113/2022-07-01/smdistributed_dataparallel-1.5.0-cp38-cp38-linux_x86_64.whl
+
+
+----
+
+Release History
+===============
+
+SageMaker Distributed Data Parallel 1.4.1 Release Notes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+*Date: May. 3. 2022*
+
+**Currency Updates**
+
+* Added support for PyTorch 1.11.0
+
+**Known Issues**
+
+* The library currently does not support the PyTorch sub-process groups API
+  (`torch.distributed.new_group
+  <https://pytorch.org/docs/stable/distributed.html#torch.distributed.new_group>`_).
+
+
+**Migration to AWS Deep Learning Containers**
+
+This version passed benchmark testing and is migrated to the following AWS Deep Learning Containers (DLC):
+
+- PyTorch 1.11.0 DLC
+
+  .. code::
+
+    763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.11.0-gpu-py38-cu113-ubuntu20.04-sagemaker
+
+Binary file of this version of the library for custom container users:
+
+  .. code::
+
+    https://smdataparallel.s3.amazonaws.com/binary/pytorch/1.11.0/cu113/2022-04-14/smdistributed_dataparallel-1.4.1-cp38-cp38-linux_x86_64.whl
+
+
+SageMaker Distributed Data Parallel 1.4.0 Release Notes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+*Date: Feb. 24. 2022*
+
+**New Features**
+
+* Integrated to PyTorch DDP as a backend option
+* Added support for PyTorch 1.10.2
+
+**Breaking Changes**
+
+* As the library is migrated into the PyTorch distributed package as a backend,
+  the following smdistributed implementation APIs are deprecated in
+  the SageMaker data parallal library v1.4.0 and later.
+  Please use the `PyTorch distributed APIs <https://pytorch.org/docs/stable/distributed.html>`_ instead.
+
+  * ``smdistributed.dataparallel.torch.distributed``
+  * ``smdistributed.dataparallel.torch.parallel.DistributedDataParallel``
+  * Please note the slight differences between the deprecated
+    ``smdistributed.dataparallel.torch`` APIs and the
+    `PyTorch distributed APIs <https://pytorch.org/docs/stable/distributed.html>`_.
+
+    * `torch.distributed.barrier <https://pytorch.org/docs/master/distributed.html#torch.distributed.barrier)>`_
+      takes ``device_ids``, which the ``smddp`` backend does not support.
+    * The ``gradient_accumulation_steps`` option in
+      ``smdistributed.dataparallel.torch.parallel.DistributedDataParallel``
+      is no longer supported. Please use the PyTorch
+      `no_sync <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html?highlight=no_sync#torch.nn.parallel.DistributedDataParallel.no_sync>`_ API.
+
+
+* If you want to find documentation for the previous versions of the library
+  (v1.3.0 or before), see the `archived SageMaker distributed data parallel library documentation <https://sagemaker.readthedocs.io/en/stable/api/training/sdp_versions/latest.html#documentation-archive>`_.
+
+**Improvements**
+
+* Support for AllReduce Large Tensors
+* Support for the following new arguments in the `PyTorch DDP class
+  <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel>`_.
+
+  * ``broadcast_buffers``
+  * ``find_unused_parameters``
+  * ``gradient_as_bucket_view``
+
+**Bug Fixes**
+
+* Fixed stalling issues when training on ``ml.p3.16xlarge``.
+
+**Known Issues**
+
+* The library currently does not support the PyTorch sub-process groups API (`torch.distributed.new_group <https://pytorch.org/docs/stable/distributed.html#torch.distributed.new_group>`_).
+  This means that you cannot use the ``smddp`` backend concurrently with other
+  process group backends such as NCCL and Gloo.
+
+**Migration to AWS Deep Learning Containers**
+
+This version passed benchmark testing and is migrated to the following AWS Deep Learning Containers (DLC):
+
+- PyTorch 1.10.2 DLC
+
+  .. code::
+
+    763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.10.2-gpu-py38-cu113-ubuntu20.04-sagemaker
+
 
 SageMaker Distributed Data Parallel 1.2.2 Release Notes
-=======================================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 *Date: November. 24. 2021*
 
@@ -30,10 +172,6 @@ This version passed benchmark testing and is migrated to the following AWS Deep 
 
     763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.10.0-gpu-py38-cu113-ubuntu20.04-sagemaker
 
-----
-
-Release History
-===============
 
 SageMaker Distributed Data Parallel 1.2.1 Release Notes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

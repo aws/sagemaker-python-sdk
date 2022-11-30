@@ -23,13 +23,18 @@ import shutil
 import tarfile
 import tempfile
 import time
+import json
+import abc
+import uuid
 from datetime import datetime
+from typing import Optional
 
 import botocore
 from six.moves.urllib import parse
 
 from sagemaker import deprecations
 from sagemaker.session_settings import SessionSettings
+from sagemaker.workflow import is_pipeline_variable, is_pipeline_parameter_string
 
 
 ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(.*)(/)(.*:.*)$"
@@ -79,6 +84,7 @@ def name_from_base(base, max_length=63, short=False):
 
 def unique_name_from_base(base, max_length=63):
     """Placeholder Docstring"""
+    random.seed(int(uuid.uuid4()))  # using uuid to randomize, otherwise system timestamp is used.
     unique = "%04x" % random.randrange(16**4)  # 4-digit hex
     ts = str(int(time.time()))
     available_length = max_length - 2 - len(ts) - len(unique)
@@ -86,18 +92,27 @@ def unique_name_from_base(base, max_length=63):
     return "{}-{}-{}".format(trimmed, ts, unique)
 
 
-def base_name_from_image(image):
+def base_name_from_image(image, default_base_name=None):
     """Extract the base name of the image to use as the 'algorithm name' for the job.
 
     Args:
         image (str): Image name.
+        default_base_name (str): The default base name
 
     Returns:
         str: Algorithm name, as extracted from the image name.
     """
-    m = re.match("^(.+/)?([^:/]+)(:[^:]+)?$", image)
-    algo_name = m.group(2) if m else image
-    return algo_name
+    if is_pipeline_variable(image):
+        if is_pipeline_parameter_string(image) and image.default_value:
+            image_str = image.default_value
+        else:
+            return default_base_name if default_base_name else "base_name"
+    else:
+        image_str = image
+
+    m = re.match("^(.+/)?([^:/]+)(:[^:]+)?$", image_str)
+    base_name = m.group(2) if m else image_str
+    return base_name
 
 
 def base_from_name(name):
@@ -649,4 +664,195 @@ def _module_import_error(py_module, feature, extras):
     return error_msg.format(py_module, feature, extras)
 
 
+class DataConfig(abc.ABC):
+    """Abstract base class for accessing data config hosted in AWS resources.
+
+    Provides a skeleton for customization by overriding of method fetch_data_config.
+    """
+
+    @abc.abstractmethod
+    def fetch_data_config(self):
+        """Abstract method implementing retrieval of data config from a pre-configured data source.
+
+        Returns:
+            object: The data configuration object.
+        """
+
+
+class S3DataConfig(DataConfig):
+    """This class extends the DataConfig class to fetch a data config file hosted on S3"""
+
+    def __init__(
+        self,
+        sagemaker_session,
+        bucket_name,
+        prefix,
+    ):
+        """Initialize a ``S3DataConfig`` instance.
+
+        Args:
+            sagemaker_session (Session): SageMaker session instance to use for boto configuration.
+            bucket_name (str): Required. Bucket name from which data config needs to be fetched.
+            prefix (str): Required. The object prefix for the hosted data config.
+
+        """
+        if bucket_name is None or prefix is None:
+            raise ValueError(
+                "Bucket Name and S3 file Prefix are required arguments and must be provided."
+            )
+
+        super(S3DataConfig, self).__init__()
+
+        self.bucket_name = bucket_name
+        self.prefix = prefix
+        self.sagemaker_session = sagemaker_session
+
+    def fetch_data_config(self):
+        """Fetches data configuration from a S3 bucket.
+
+        Returns:
+            object: The JSON object containing data configuration.
+        """
+
+        json_string = self.sagemaker_session.read_s3_file(self.bucket_name, self.prefix)
+        return json.loads(json_string)
+
+    def get_data_bucket(self, region_requested=None):
+        """Provides the bucket containing the data for specified region.
+
+        Args:
+            region_requested (str): The region for which the data is beig requested.
+
+        Returns:
+            str: Name of the S3 bucket containing datasets in the requested region.
+        """
+
+        config = self.fetch_data_config()
+        region = region_requested if region_requested else self.sagemaker_session.boto_region_name
+        return config[region] if region in config.keys() else config["default"]
+
+
 get_ecr_image_uri_prefix = deprecations.removed_function("get_ecr_image_uri_prefix")
+
+
+def update_container_with_inference_params(
+    framework=None,
+    framework_version=None,
+    nearest_model_name=None,
+    data_input_configuration=None,
+    container_def=None,
+    container_list=None,
+):
+    """Function to check if inference recommender parameters exist and update container.
+
+    Args:
+        framework (str): Machine learning framework of the model package container image
+                (default: None).
+        framework_version (str): Framework version of the Model Package Container Image
+            (default: None).
+        nearest_model_name (str): Name of a pre-trained machine learning benchmarked by
+            Amazon SageMaker Inference Recommender (default: None).
+        data_input_configuration (str): Input object for the model (default: None).
+        container_def (dict): object to be updated.
+        container_list (list): list to be updated.
+
+    Returns:
+        dict: dict with inference recommender params
+    """
+
+    if container_list is not None:
+        for obj in container_list:
+            construct_container_object(
+                obj, data_input_configuration, framework, framework_version, nearest_model_name
+            )
+
+    if container_def is not None:
+        construct_container_object(
+            container_def,
+            data_input_configuration,
+            framework,
+            framework_version,
+            nearest_model_name,
+        )
+
+    return container_list or container_def
+
+
+def construct_container_object(
+    obj, data_input_configuration, framework, framework_version, nearest_model_name
+):
+    """Function to construct container object.
+
+    Args:
+        framework (str): Machine learning framework of the model package container image
+                (default: None).
+        framework_version (str): Framework version of the Model Package Container Image
+            (default: None).
+        nearest_model_name (str): Name of a pre-trained machine learning benchmarked by
+            Amazon SageMaker Inference Recommender (default: None).
+        data_input_configuration (str): Input object for the model (default: None).
+        obj (dict): object to be updated.
+
+    Returns:
+        dict: container object
+    """
+
+    if framework is not None:
+        obj.update(
+            {
+                "Framework": framework,
+            }
+        )
+
+    if framework_version is not None:
+        obj.update(
+            {
+                "FrameworkVersion": framework_version,
+            }
+        )
+
+    if nearest_model_name is not None:
+        obj.update(
+            {
+                "NearestModelName": nearest_model_name,
+            }
+        )
+
+    if data_input_configuration is not None:
+        obj.update(
+            {
+                "ModelInput": {
+                    "DataInputConfig": data_input_configuration,
+                },
+            }
+        )
+
+    return obj
+
+
+def pop_out_unused_kwarg(arg_name: str, kwargs: dict, override_val: Optional[str] = None):
+    """Pop out the unused key-word argument and give a warning.
+
+    Args:
+        arg_name (str): The name of the argument to be checked if it is unused.
+        kwargs (dict): The key-word argument dict.
+        override_val (str): The value used to override the unused argument (default: None).
+    """
+    if arg_name not in kwargs:
+        return
+    warn_msg = "{} supplied in kwargs will be ignored".format(arg_name)
+    if override_val:
+        warn_msg += " and further overridden with {}.".format(override_val)
+    logging.warning(warn_msg)
+    kwargs.pop(arg_name)
+
+
+def to_string(obj: object):
+    """Convert an object to string
+
+    This helper function handles converting PipelineVariable object to string as well
+
+    Args:
+        obj (object): The object to be converted
+    """
+    return obj.to_string() if is_pipeline_variable(obj) else str(obj)

@@ -112,7 +112,11 @@ class _SageMakerContainer(object):
         self.container = None
 
     def process(
-        self, processing_inputs, processing_output_config, environment, processing_job_name
+        self,
+        processing_inputs,
+        processing_output_config,
+        environment,
+        processing_job_name,
     ):
         """Run a processing job locally using docker-compose.
 
@@ -139,7 +143,11 @@ class _SageMakerContainer(object):
         for host in self.hosts:
             _create_processing_config_file_directories(self.container_root, host)
             self.write_processing_config_files(
-                host, environment, processing_inputs, processing_output_config, processing_job_name
+                host,
+                environment,
+                processing_inputs,
+                processing_output_config,
+                processing_job_name,
             )
 
         self._generate_compose_file(
@@ -176,7 +184,7 @@ class _SageMakerContainer(object):
         # you see this line at the end.
         print("===== Job Complete =====")
 
-    def train(self, input_data_config, output_data_config, hyperparameters, job_name):
+    def train(self, input_data_config, output_data_config, hyperparameters, environment, job_name):
         """Run a training job locally using docker-compose.
 
         Args:
@@ -184,6 +192,7 @@ class _SageMakerContainer(object):
                 channels to be used for training.
             output_data_config: The configuration of the output data.
             hyperparameters (dict): The HyperParameters for the training job.
+            environment (dict): The environment collection for the training job.
             job_name (str): Name of the local training job being run.
 
         Returns (str): Location of the trained model.
@@ -217,6 +226,7 @@ class _SageMakerContainer(object):
             REGION_ENV_NAME: self.sagemaker_session.boto_region_name,
             TRAINING_JOB_NAME_ENV_NAME: job_name,
         }
+        training_env_vars.update(environment)
         if self.sagemaker_session.s3_resource is not None:
             training_env_vars[
                 S3_ENDPOINT_URL_ENV_NAME
@@ -379,7 +389,12 @@ class _SageMakerContainer(object):
         return os.path.join(output_data, "model.tar.gz")
 
     def write_processing_config_files(
-        self, host, environment, processing_inputs, processing_output_config, processing_job_name
+        self,
+        host,
+        environment,
+        processing_inputs,
+        processing_output_config,
+        processing_job_name,
     ):
         """Write the config files for the processing containers.
 
@@ -744,7 +759,9 @@ class _SageMakerContainer(object):
         # for GPU support pass in nvidia as the runtime, this is equivalent
         # to setting --runtime=nvidia in the docker commandline.
         if self.instance_type == "local_gpu":
-            host_config["runtime"] = "nvidia"
+            host_config["deploy"] = {
+                "resources": {"reservations": {"devices": [{"capabilities": ["gpu"]}]}}
+            }
 
         if command == "serve":
             serving_port = (
@@ -1078,8 +1095,14 @@ def _ecr_login_if_needed(boto_session, image):
     token = raw_token.decode("utf-8").strip("AWS:")
     ecr_url = auth["authorizationData"][0]["proxyEndpoint"]
 
-    cmd = "docker login -u AWS -p %s %s" % (token, ecr_url)
-    subprocess.check_output(cmd.split())
+    # Log in to ecr, but use communicate to not print creds to the console
+    cmd = f"docker login {ecr_url} -u AWS --password-stdin".split()
+    proc = subprocess.Popen(
+        cmd,
+        stdin=subprocess.PIPE,
+    )
+
+    proc.communicate(input=token.encode())
 
     return True
 

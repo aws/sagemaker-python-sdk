@@ -15,6 +15,7 @@ from __future__ import print_function, absolute_import
 
 from io import BytesIO
 import zipfile
+import time
 from botocore.exceptions import ClientError
 from sagemaker.session import Session
 
@@ -134,32 +135,47 @@ class Lambda:
         Returns: boto3 response from Lambda's update_function method.
         """
         lambda_client = _get_lambda_client(self.session)
+        retry_attempts = 7
+        for i in range(retry_attempts):
+            try:
+                if self.script is not None:
+                    response = lambda_client.update_function_code(
+                        FunctionName=self.function_name, ZipFile=_zip_lambda_code(self.script)
+                    )
+                else:
+                    response = lambda_client.update_function_code(
+                        FunctionName=(self.function_name or self.function_arn),
+                        S3Bucket=self.s3_bucket,
+                        S3Key=_upload_to_s3(
+                            s3_client=_get_s3_client(self.session),
+                            function_name=self.function_name,
+                            zipped_code_dir=self.zipped_code_dir,
+                            s3_bucket=self.s3_bucket,
+                        ),
+                    )
+                return response
+            except ClientError as e:
+                error = e.response["Error"]
+                code = error["Code"]
+                if code == "ResourceConflictException":
+                    if i == retry_attempts - 1:
+                        raise ValueError(error)
+                    # max wait time = 2**0 + 2**1 + .. + 2**6 = 127 seconds
+                    time.sleep(2**i)
+                else:
+                    raise ValueError(error)
 
-        if self.script is not None:
-            try:
-                response = lambda_client.update_function_code(
-                    FunctionName=self.function_name, ZipFile=_zip_lambda_code(self.script)
-                )
-                return response
-            except ClientError as e:
-                error = e.response["Error"]
-                raise ValueError(error)
-        else:
-            try:
-                response = lambda_client.update_function_code(
-                    FunctionName=(self.function_name or self.function_arn),
-                    S3Bucket=self.s3_bucket,
-                    S3Key=_upload_to_s3(
-                        s3_client=_get_s3_client(self.session),
-                        function_name=self.function_name,
-                        zipped_code_dir=self.zipped_code_dir,
-                        s3_bucket=self.s3_bucket,
-                    ),
-                )
-                return response
-            except ClientError as e:
-                error = e.response["Error"]
-                raise ValueError(error)
+    def upsert(self):
+        """Method to create a lambda function or update it if it already exists
+
+        Returns: boto3 response from Lambda's methods.
+        """
+        try:
+            return self.create()
+        except ValueError as error:
+            if "ResourceConflictException" in str(error):
+                return self.update()
+            raise
 
     def invoke(self):
         """Method to invoke a lambda function.

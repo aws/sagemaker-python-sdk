@@ -26,7 +26,9 @@ from sagemaker.lineage import (
     artifact,
 )
 from sagemaker.model import ModelPackage
-from tests.integ.test_workflow import test_end_to_end_pipeline_successful_execution
+from tests.integ.sagemaker.workflow.test_workflow import (
+    test_end_to_end_pipeline_successful_execution,
+)
 from sagemaker.workflow.pipeline import _PipelineExecution
 from sagemaker.session import get_execution_role
 from smexperiments import trial_component, trial, experiment
@@ -41,13 +43,13 @@ from sagemaker.lineage.query import (
 )
 from sagemaker.lineage.lineage_trial_component import LineageTrialComponent
 
-from tests.integ.sagemaker.lineage.helpers import name, names
+from tests.integ.sagemaker.lineage.helpers import name, names, retry
 
 SLEEP_TIME_SECONDS = 1
 SLEEP_TIME_TWO_SECONDS = 2
-STATIC_PIPELINE_NAME = "SdkIntegTestStaticPipeline17"
-STATIC_ENDPOINT_NAME = "SdkIntegTestStaticEndpoint17"
-STATIC_MODEL_PACKAGE_GROUP_NAME = "SdkIntegTestStaticPipeline17ModelPackageGroup"
+STATIC_PIPELINE_NAME = "SdkIntegTestStaticPipeline20"
+STATIC_ENDPOINT_NAME = "SdkIntegTestStaticEndpoint20"
+STATIC_MODEL_PACKAGE_GROUP_NAME = "SdkIntegTestStaticPipeline20ModelPackageGroup"
 
 
 @pytest.fixture
@@ -139,7 +141,7 @@ def action_objs(sagemaker_session):
 @pytest.fixture
 def artifact_obj(sagemaker_session):
     obj = artifact.Artifact.create(
-        artifact_name="SDKIntegrationTest",
+        artifact_name=name(),
         artifact_type="SDKIntegrationTest",
         source_uri=name(),
         properties={"k1": "v1"},
@@ -233,7 +235,7 @@ def upstream_trial_associated_artifact(
         sagemaker_session=sagemaker_session,
     )
     trial_obj.add_trial_component(trial_component_obj)
-    time.sleep(3)
+    time.sleep(4)
     yield artifact_obj
     trial_obj.remove_trial_component(trial_component_obj)
     assntn.delete()
@@ -398,7 +400,7 @@ def model_obj(sagemaker_session):
 
     yield model
     time.sleep(SLEEP_TIME_SECONDS)
-    model.delete(disassociate=True)
+    retry(lambda: model.delete(disassociate=True), num_attempts=4)
 
 
 @pytest.fixture
@@ -537,7 +539,7 @@ def _get_static_pipeline_execution_arn(sagemaker_session):
         _deploy_static_endpoint(
             execution_arn=pipeline_execution_arn, sagemaker_session=sagemaker_session
         )
-
+    logging.info(f"Using static pipeline {pipeline_execution_arn}")
     return pipeline_execution_arn
 
 
@@ -561,14 +563,14 @@ def static_approval_action(
 
 
 @pytest.fixture
-def static_model_deployment_action(sagemaker_session, static_endpoint_context):
+def static_model_deployment_action(sagemaker_session, static_processing_job_trial_component):
     query_filter = LineageFilter(
         entities=[LineageEntityEnum.ACTION], sources=[LineageSourceEnum.MODEL_DEPLOYMENT]
     )
     query_result = LineageQuery(sagemaker_session).query(
-        start_arns=[static_endpoint_context.context_arn],
+        start_arns=[static_processing_job_trial_component.trial_component_arn],
         query_filter=query_filter,
-        direction=LineageQueryDirectionEnum.ASCENDANTS,
+        direction=LineageQueryDirectionEnum.DESCENDANTS,
         include_edges=False,
     )
     model_approval_actions = []
@@ -579,14 +581,14 @@ def static_model_deployment_action(sagemaker_session, static_endpoint_context):
 
 @pytest.fixture
 def static_processing_job_trial_component(
-    sagemaker_session, static_endpoint_context
+    sagemaker_session, static_dataset_artifact
 ) -> LineageTrialComponent:
     query_filter = LineageFilter(
         entities=[LineageEntityEnum.TRIAL_COMPONENT], sources=[LineageSourceEnum.PROCESSING_JOB]
     )
 
     query_result = LineageQuery(sagemaker_session).query(
-        start_arns=[static_endpoint_context.context_arn],
+        start_arns=[static_dataset_artifact.artifact_arn],
         query_filter=query_filter,
         direction=LineageQueryDirectionEnum.ASCENDANTS,
         include_edges=False,
@@ -600,21 +602,28 @@ def static_processing_job_trial_component(
 
 @pytest.fixture
 def static_training_job_trial_component(
-    sagemaker_session, static_endpoint_context
+    sagemaker_session, static_model_artifact
 ) -> LineageTrialComponent:
     query_filter = LineageFilter(
         entities=[LineageEntityEnum.TRIAL_COMPONENT], sources=[LineageSourceEnum.TRAINING_JOB]
     )
 
+    model_artifact_arn = static_model_artifact.artifact_arn
     query_result = LineageQuery(sagemaker_session).query(
-        start_arns=[static_endpoint_context.context_arn],
+        start_arns=[model_artifact_arn],
         query_filter=query_filter,
         direction=LineageQueryDirectionEnum.ASCENDANTS,
         include_edges=False,
     )
+    logging.info(
+        f"Found {len(query_result.vertices)} trial components from model artifact {model_artifact_arn}"
+    )
     training_jobs = []
     for vertex in query_result.vertices:
         training_jobs.append(vertex.to_lineage_object())
+
+    if not training_jobs:
+        raise Exception(f"No training job found for static model artifact {model_artifact_arn}")
 
     return training_jobs[0]
 
@@ -641,7 +650,9 @@ def static_transform_job_trial_component(
 @pytest.fixture
 def static_endpoint_context(sagemaker_session, static_pipeline_execution_arn):
     endpoint_arn = get_endpoint_arn_from_static_pipeline(sagemaker_session)
+    logging.info(f"Using endpoint {endpoint_arn} from static pipeline")
 
+    # if the endpoint doesn't exist deploy it
     if endpoint_arn is None:
         _deploy_static_endpoint(
             execution_arn=static_pipeline_execution_arn,
@@ -652,7 +663,12 @@ def static_endpoint_context(sagemaker_session, static_pipeline_execution_arn):
     contexts = sagemaker_session.sagemaker_client.list_contexts(SourceUri=endpoint_arn)[
         "ContextSummaries"
     ]
-    if len(contexts) != 1:
+
+    logging.info(f"Found {len(contexts)} contexts associated with {endpoint_arn}")
+    for ctx in contexts:
+        logging.info(f'Found context "{ctx["ContextArn"]}"')
+
+    if len(contexts) == 0:
         raise (
             Exception(
                 f"Got an unexpected number of Contexts for \
@@ -662,8 +678,11 @@ def static_endpoint_context(sagemaker_session, static_pipeline_execution_arn):
             )
         )
 
+    endpoint_context = contexts[0]
+    context_arn = endpoint_context["ContextArn"]
+    logging.info(f"Using context {context_arn} for static endpoint context")
     yield context.EndpointContext.load(
-        contexts[0]["ContextName"], sagemaker_session=sagemaker_session
+        endpoint_context["ContextName"], sagemaker_session=sagemaker_session
     )
 
 
@@ -675,7 +694,12 @@ def static_model_package_group_context(sagemaker_session, static_pipeline_execut
     contexts = sagemaker_session.sagemaker_client.list_contexts(SourceUri=model_package_group_arn)[
         "ContextSummaries"
     ]
-    if len(contexts) != 1:
+
+    logging.info(f"Found {len(contexts)} contexts associated with {model_package_group_arn}")
+    for ctx in context:
+        logging.info(f'Found context "{ctx["ContextArn"]}"')
+
+    if len(contexts) == 0:
         raise (
             Exception(
                 f"Got an unexpected number of Contexts for \
@@ -699,7 +723,12 @@ def static_model_artifact(sagemaker_session, static_pipeline_execution_arn):
     artifacts = sagemaker_session.sagemaker_client.list_artifacts(SourceUri=model_package_arn)[
         "ArtifactSummaries"
     ]
-    if len(artifacts) != 1:
+
+    logging.info(f"Found {len(artifacts)} artifacts associated with {model_package_arn}")
+    for art in artifacts:
+        logging.info(f'Found artifact {art["ArtifactArn"]}')
+
+    if len(artifacts) == 0:
         raise (
             Exception(
                 f"Got an unexpected number of Artifacts for \
@@ -707,27 +736,42 @@ def static_model_artifact(sagemaker_session, static_pipeline_execution_arn):
             )
         )
 
-    yield artifact.ModelArtifact.load(
-        artifacts[0]["ArtifactArn"], sagemaker_session=sagemaker_session
-    )
+    artifact_arn = artifacts[0]["ArtifactArn"]
+    logging.info(f"Using static model artifact {artifact_arn}")
+
+    yield artifact.ModelArtifact.load(artifact_arn, sagemaker_session=sagemaker_session)
 
 
 @pytest.fixture
 def static_dataset_artifact(static_model_artifact, sagemaker_session):
+    model_artifact_arn = static_model_artifact.artifact_arn
     dataset_associations = sagemaker_session.sagemaker_client.list_associations(
-        DestinationArn=static_model_artifact.artifact_arn, SourceType="DataSet"
+        DestinationArn=model_artifact_arn, SourceType="DataSet"
+    )
+    logging.info(
+        f"Found {len(dataset_associations)} associated with model artifact {model_artifact_arn}"
     )
     if len(dataset_associations["AssociationSummaries"]) == 0:
         # no directly associated dataset. work backwards from the model
         model_associations = sagemaker_session.sagemaker_client.list_associations(
-            DestinationArn=static_model_artifact.artifact_arn, SourceType="Model"
-        )
+            DestinationArn=model_artifact_arn, SourceType="Model"
+        )["AssociationSummaries"]
+
+        if len(model_associations) == 0:
+            raise Exception(f"No models associated with model artifact {model_artifact_arn}")
+
         training_job_associations = sagemaker_session.sagemaker_client.list_associations(
-            DestinationArn=model_associations["AssociationSummaries"][0]["SourceArn"],
+            DestinationArn=model_associations[0]["SourceArn"],
             SourceType="SageMakerTrainingJob",
-        )
+        )["AssociationSummaries"]
+
+        if len(training_job_associations) == 0:
+            raise Exception(
+                f"No training jobs associated with models for model artifact {model_artifact_arn}"
+            )
+
         dataset_associations = sagemaker_session.sagemaker_client.list_associations(
-            DestinationArn=training_job_associations["AssociationSummaries"][0]["SourceArn"],
+            DestinationArn=training_job_associations[0]["SourceArn"],
             SourceType="DataSet",
         )
 
@@ -738,12 +782,12 @@ def static_dataset_artifact(static_model_artifact, sagemaker_session):
 
 
 @pytest.fixture
-def static_image_artifact(static_model_artifact, sagemaker_session):
+def static_image_artifact(static_dataset_artifact, sagemaker_session):
     query_filter = LineageFilter(
         entities=[LineageEntityEnum.ARTIFACT], sources=[LineageSourceEnum.IMAGE]
     )
     query_result = LineageQuery(sagemaker_session).query(
-        start_arns=[static_model_artifact.artifact_arn],
+        start_arns=[static_dataset_artifact.artifact_arn],
         query_filter=query_filter,
         direction=LineageQueryDirectionEnum.ASCENDANTS,
         include_edges=False,

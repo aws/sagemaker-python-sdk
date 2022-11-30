@@ -16,6 +16,7 @@ from mock.mock import Mock, patch
 import pytest
 
 from sagemaker.jumpstart import accessors
+from tests.unit.sagemaker.jumpstart.constants import BASE_MANIFEST
 from tests.unit.sagemaker.jumpstart.utils import (
     get_header_from_base_header,
     get_spec_from_base_spec,
@@ -36,9 +37,12 @@ def test_jumpstart_sagemaker_settings():
     reload(accessors)
 
 
-@patch("sagemaker.jumpstart.cache.JumpStartModelsCache.get_header", get_header_from_base_header)
-@patch("sagemaker.jumpstart.cache.JumpStartModelsCache.get_specs", get_spec_from_base_spec)
-def test_jumpstart_models_cache_get_fxs():
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._cache")
+def test_jumpstart_models_cache_get_fxs(mock_cache):
+
+    mock_cache.get_manifest = Mock(return_value=BASE_MANIFEST)
+    mock_cache.get_header = Mock(side_effect=get_header_from_base_header)
+    mock_cache.get_specs = Mock(side_effect=get_spec_from_base_spec)
 
     assert get_header_from_base_header(
         region="us-west-2", model_id="pytorch-ic-mobilenet-v2", version="*"
@@ -50,6 +54,8 @@ def test_jumpstart_models_cache_get_fxs():
     ) == accessors.JumpStartModelsAccessor.get_model_specs(
         region="us-west-2", model_id="pytorch-ic-mobilenet-v2", version="*"
     )
+
+    assert len(accessors.JumpStartModelsAccessor._get_manifest()) > 0
 
     # necessary because accessors is a static module
     reload(accessors)

@@ -65,7 +65,7 @@ class JumpStartDataHolderType:
         {'content_bucket': 'bucket', 'region_name': 'us-west-2'}"
         """
 
-        att_dict = {att: getattr(self, att) for att in self.__slots__}
+        att_dict = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
         return f"{type(self).__name__}: {str(att_dict)}"
 
     def __repr__(self) -> str:
@@ -75,7 +75,7 @@ class JumpStartDataHolderType:
         {'content_bucket': 'bucket', 'region_name': 'us-west-2'}"
         """
 
-        att_dict = {att: getattr(self, att) for att in self.__slots__}
+        att_dict = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
         return f"{type(self).__name__} at {hex(id(self))}: {str(att_dict)}"
 
 
@@ -135,12 +135,12 @@ class JumpStartModelHeader(JumpStartDataHolderType):
 class JumpStartECRSpecs(JumpStartDataHolderType):
     """Data class for JumpStart ECR specs."""
 
-    __slots__ = {
+    __slots__ = [
         "framework",
         "framework_version",
         "py_version",
         "huggingface_transformers_version",
-    }
+    ]
 
     def __init__(self, spec: Dict[str, Any]):
         """Initializes a JumpStartECRSpecs object from its json representation.
@@ -173,7 +173,7 @@ class JumpStartECRSpecs(JumpStartDataHolderType):
 class JumpStartHyperparameter(JumpStartDataHolderType):
     """Data class for JumpStart hyperparameter definition in the training container."""
 
-    __slots__ = {
+    __slots__ = [
         "name",
         "type",
         "options",
@@ -183,7 +183,7 @@ class JumpStartHyperparameter(JumpStartDataHolderType):
         "max",
         "exclusive_min",
         "exclusive_max",
-    }
+    ]
 
     def __init__(self, spec: Dict[str, Any]):
         """Initializes a JumpStartHyperparameter object from its json representation.
@@ -234,12 +234,12 @@ class JumpStartHyperparameter(JumpStartDataHolderType):
 class JumpStartEnvironmentVariable(JumpStartDataHolderType):
     """Data class for JumpStart environment variable definitions in the hosting container."""
 
-    __slots__ = {
+    __slots__ = [
         "name",
         "type",
         "default",
         "scope",
-    }
+    ]
 
     def __init__(self, spec: Dict[str, Any]):
         """Initializes a JumpStartEnvironmentVariable object from its json representation.
@@ -272,6 +272,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
 
     __slots__ = [
         "model_id",
+        "url",
         "version",
         "min_sdk_version",
         "incremental_training_supported",
@@ -308,6 +309,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
             json_obj (Dict[str, Any]): Dictionary representation of spec.
         """
         self.model_id: str = json_obj["model_id"]
+        self.url: str = json_obj["url"]
         self.version: str = json_obj["version"]
         self.min_sdk_version: str = json_obj["min_sdk_version"]
         self.incremental_training_supported: bool = bool(json_obj["incremental_training_supported"])
@@ -360,7 +362,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
 
 
 class JumpStartVersionedModelId(JumpStartDataHolderType):
-    """Data class for versioned model ids."""
+    """Data class for versioned model IDs."""
 
     __slots__ = ["model_id", "version"]
 
@@ -372,7 +374,7 @@ class JumpStartVersionedModelId(JumpStartDataHolderType):
         """Instantiates JumpStartVersionedModelId object.
 
         Args:
-            model_id (str): JumpStart model id.
+            model_id (str): JumpStart model ID.
             version (str): JumpStart model version.
         """
         self.model_id = model_id
@@ -418,7 +420,7 @@ class JumpStartCachedS3ContentValue(JumpStartDataHolderType):
             formatted_content (Union[Dict[JumpStartVersionedModelId, JumpStartModelHeader],
             JumpStartModelSpecs]):
                 Formatted content for model specs and mappings from
-                versioned model ids to specs.
+                versioned model IDs to specs.
             md5_hash (str): md5_hash for stored file content from s3.
         """
         self.formatted_content = formatted_content

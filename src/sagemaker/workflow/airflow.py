@@ -20,6 +20,8 @@ import sagemaker
 from sagemaker import fw_utils, job, utils, s3, session, vpc_utils
 from sagemaker.amazon import amazon_estimator
 from sagemaker.tensorflow import TensorFlow
+from sagemaker.estimator import EstimatorBase
+from sagemaker.processing import Processor
 
 
 def prepare_framework(estimator, s3_operations):
@@ -151,7 +153,8 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
         estimator._current_job_name = job_name
     else:
         base_name = estimator.base_job_name or utils.base_name_from_image(
-            estimator.training_image_uri()
+            estimator.training_image_uri(),
+            default_base_name=EstimatorBase.JOB_CLASS_NAME,
         )
         estimator._current_job_name = utils.name_from_base(base_name)
 
@@ -184,7 +187,9 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
         train_config["VpcConfig"] = job_config["vpc_config"]
 
     if estimator.use_spot_instances:
-        train_config["EnableManagedSpotTraining"] = True
+        # estimator.use_spot_instances may be a Pipeline ParameterBoolean object
+        # which is parsed during the Pipeline execution runtime
+        train_config["EnableManagedSpotTraining"] = estimator.use_spot_instances
 
     if estimator.hyperparameters() is not None:
         hyperparameters = {str(k): str(v) for (k, v) in estimator.hyperparameters().items()}
@@ -1136,7 +1141,7 @@ def processing_config(
         processor._current_job_name = (
             utils.name_from_base(base_name)
             if base_name is not None
-            else utils.base_name_from_image(processor.image_uri)
+            else utils.base_name_from_image(processor.image_uri, Processor.JOB_CLASS_NAME)
         )
 
     config = {

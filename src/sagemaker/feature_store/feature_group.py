@@ -53,6 +53,7 @@ from sagemaker.feature_store.inputs import (
     OfflineStoreConfig,
     DataCatalogConfig,
     FeatureValue,
+    FeatureParameter,
 )
 
 logger = logging.getLogger(__name__)
@@ -80,7 +81,9 @@ class AthenaQuery:
     _result_bucket: str = attr.ib(init=False, default=None)
     _result_file_prefix: str = attr.ib(init=False, default=None)
 
-    def run(self, query_string: str, output_location: str, kms_key: str = None) -> str:
+    def run(
+        self, query_string: str, output_location: str, kms_key: str = None, workgroup: str = None
+    ) -> str:
         """Execute a SQL query given a query string, output location and kms key.
 
         This method executes the SQL query using Athena and outputs the results to output_location
@@ -90,6 +93,7 @@ class AthenaQuery:
             query_string: SQL query string.
             output_location: S3 URI of the query result.
             kms_key: KMS key id. If set, will be used to encrypt the query result file.
+            workgroup (str): The name of the workgroup in which the query is being started.
 
         Returns:
             Execution id of the query.
@@ -100,6 +104,7 @@ class AthenaQuery:
             query_string=query_string,
             output_location=output_location,
             kms_key=kms_key,
+            workgroup=workgroup,
         )
         self._current_query_execution_id = response["QueryExecutionId"]
         parse_result = urlparse(output_location, allow_fragments=False)
@@ -535,6 +540,64 @@ class FeatureGroup:
         """
         return self.sagemaker_session.describe_feature_group(
             feature_group_name=self.name, next_token=next_token
+        )
+
+    def update(self, feature_additions: Sequence[FeatureDefinition]) -> Dict[str, Any]:
+        """Update a FeatureGroup and add new features from the given feature definitions.
+
+        Args:
+            feature_additions (Sequence[Dict[str, str]): list of feature definitions to be updated.
+
+        Returns:
+            Response dict from service.
+        """
+
+        return self.sagemaker_session.update_feature_group(
+            feature_group_name=self.name,
+            feature_additions=[
+                feature_addition.to_dict() for feature_addition in feature_additions
+            ],
+        )
+
+    def update_feature_metadata(
+        self,
+        feature_name: str,
+        description: str = None,
+        parameter_additions: Sequence[FeatureParameter] = None,
+        parameter_removals: Sequence[str] = None,
+    ) -> Dict[str, Any]:
+        """Update a feature metadata and add/remove metadata.
+
+        Args:
+            feature_name (str): name of the feature to update.
+            description (str): description of the feature to update.
+            parameter_additions (Sequence[Dict[str, str]): list of feature parameter to be added.
+            parameter_removals (Sequence[str]): list of feature parameter key to be removed.
+
+        Returns:
+            Response dict from service.
+        """
+        return self.sagemaker_session.update_feature_metadata(
+            feature_group_name=self.name,
+            feature_name=feature_name,
+            description=description,
+            parameter_additions=[
+                parameter_addition.to_dict() for parameter_addition in (parameter_additions or [])
+            ],
+            parameter_removals=(parameter_removals or []),
+        )
+
+    def describe_feature_metadata(self, feature_name: str) -> Dict[str, Any]:
+        """Describe feature metadata by feature name.
+
+        Args:
+            feature_name (str): name of the feature.
+        Returns:
+            Response dict from service.
+        """
+
+        return self.sagemaker_session.describe_feature_metadata(
+            feature_group_name=self.name, feature_name=feature_name
         )
 
     def load_feature_definitions(

@@ -74,6 +74,7 @@ TRAINING_NO_P3_REGIONS = [
     "ca-central-1",  # it has p3, but not enough
     "eu-central-1",  # it has p3, but not enough
     "eu-north-1",
+    "eu-west-1",  # it has p3, but not enough
     "eu-west-2",  # it has p3, but not enough
     "eu-west-3",
     "eu-south-1",
@@ -148,12 +149,6 @@ DRIFT_CHECK_BASELINES_SUPPORTED_REGIONS = [
     "eu-west-2",
     "us-east-1",
 ]
-NO_SM_PIPELINE_MM_CLARIFY_CHECK_STEP_REGIONS = [
-    "ap-northeast-3",
-    "ap-south-1",
-    "eu-north-1",
-    "sa-east-1",
-]
 EDGE_PACKAGING_SUPPORTED_REGIONS = [
     "us-east-2",
     "us-west-2",
@@ -164,6 +159,26 @@ EDGE_PACKAGING_SUPPORTED_REGIONS = [
 ]
 # TODO: SM Training Compiler team to add all supported regions.
 TRAINING_COMPILER_SUPPORTED_REGIONS = [
+    "af-south-1",
+    "ap-east-1",
+    "ap-northeast-1",
+    "ap-northeast-2",
+    "ap-northeast-3",
+    "ap-south-1",
+    "ap-southeast-1",
+    "ap-southeast-2",
+    "ca-central-1",
+    "eu-central-1",
+    "eu-north-1",
+    "eu-south-1",
+    "eu-west-1",
+    "eu-west-2",
+    "eu-west-3",
+    "me-south-1",
+    "sa-east-1",
+    "us-east-1",
+    "us-east-2",
+    "us-west-1",
     "us-west-2",
 ]
 # Data parallelism need to be tested with p3.16xlarge.
