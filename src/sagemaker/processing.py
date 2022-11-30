@@ -1705,6 +1705,7 @@ class FrameworkProcessor(ScriptProcessor):
     ):
         """Pack local code bundle and upload to Amazon S3."""
         from sagemaker.workflow.utilities import _pipeline_config, hash_object
+
         if code.startswith("s3://"):
             return code, inputs, job_name
 

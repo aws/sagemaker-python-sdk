@@ -48,7 +48,7 @@ from sagemaker.processing import (
     ProcessingOutput,
     FeatureStoreOutput,
     ScriptProcessor,
-    FrameworkProcessor
+    FrameworkProcessor,
 )
 from sagemaker.s3 import S3Uploader
 from sagemaker.session import get_execution_role
@@ -86,7 +86,7 @@ from sagemaker.workflow.steps import (
     TransformInput,
     PropertyFile,
     TuningStep,
-    CacheConfig
+    CacheConfig,
 )
 from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.workflow.pipeline import Pipeline
@@ -1316,7 +1316,9 @@ def test_caching_behavior(
             pass
 
 
-def test_multi_step_framework_processing_pipeline_uploads(pipeline_session, role, pipeline_name, region_name):
+def test_multi_step_framework_processing_pipeline_uploads(
+    pipeline_session, role, pipeline_name, region_name
+):
     default_bucket = pipeline_session.default_bucket()
     cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
     evaluation_report = PropertyFile(
@@ -1419,16 +1421,17 @@ def test_multi_step_framework_processing_pipeline_uploads(pipeline_session, role
     )
 
     pipeline = Pipeline(
-        name=pipeline_name,
-        steps=[query_step, prepare_step, split_step, evaluate_step]
+        name=pipeline_name, steps=[query_step, prepare_step, split_step, evaluate_step]
     )
     try:
         pipeline.create(role)
 
         definition = json.loads(pipeline.definition())
 
-        source_dir_tar_prefix = f"s3://{default_bucket}/{pipeline_name}" \
+        source_dir_tar_prefix = (
+            f"s3://{default_bucket}/{pipeline_name}"
             f"/code/{hash_files_or_dirs([DATA_DIR + '/framework_processor_data'])}"
+        )
 
         run_procs = []
 
