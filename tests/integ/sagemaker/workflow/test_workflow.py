@@ -90,7 +90,7 @@ from sagemaker.workflow.steps import (
 )
 from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.workflow.pipeline import Pipeline
-from sagemaker.workflow.utilities import hash_files_or_dirs
+from sagemaker.workflow.utilities import hash_files_or_dirs, hash_object
 from sagemaker.feature_store.feature_group import (
     FeatureGroup,
     FeatureDefinition,
@@ -1425,7 +1425,6 @@ def test_multi_step_framework_processing_pipeline_uploads(
     )
     try:
         pipeline.create(role)
-
         definition = json.loads(pipeline.definition())
 
         source_dir_tar_prefix = (
@@ -1434,7 +1433,6 @@ def test_multi_step_framework_processing_pipeline_uploads(
         )
 
         run_procs = []
-
         for step in definition["Steps"]:
             for input_obj in step["Arguments"]["ProcessingInputs"]:
                 if input_obj["InputName"] == "entrypoint":
@@ -1446,6 +1444,43 @@ def test_multi_step_framework_processing_pipeline_uploads(
 
         # verify all the run_proc.sh artifact paths are distinct
         assert len(run_procs) == len(set(run_procs))
+
+        expected_source_dir_tar = (
+            f"{pipeline_name}"
+            f"/code/{hash_files_or_dirs([DATA_DIR + '/framework_processor_data'])}/sourcedir.tar.gz"
+        )
+        expected_query_step_artifact = (
+            f"{pipeline_name}/"
+            f"code/{hash_files_or_dirs([DATA_DIR + '/framework_processor_data/query_data.py'])}/"
+            f"query_data.py"
+        )
+
+        prepare_step_script = data_processor._generate_framework_script("preprocess.py")
+        expected_prepare_step_artifact = (
+            f"{pipeline_name}/" f"code/{hash_object(prepare_step_script)}/runproc.sh"
+        )
+
+        split_step_script = data_processor._generate_framework_script("train_test_split.py")
+        expected_split_step_artifact = (
+            f"{pipeline_name}/" f"code/{hash_object(split_step_script)}/runproc.sh"
+        )
+
+        eval_step_script = sk_processor._generate_framework_script("evaluate.py")
+        expected_eval_step_artifact = (
+            f"{pipeline_name}/" f"code/{hash_object(eval_step_script)}/runproc.sh"
+        )
+
+        expected_prefix = f"{pipeline_name}/code"
+        s3_code_objects = pipeline_session.list_s3_files(
+            bucket=default_bucket, key_prefix=expected_prefix
+        )
+
+        # verify
+        assert expected_source_dir_tar in s3_code_objects
+        assert expected_query_step_artifact in s3_code_objects
+        assert expected_prepare_step_artifact in s3_code_objects
+        assert expected_split_step_artifact in s3_code_objects
+        assert expected_eval_step_artifact in s3_code_objects
 
     finally:
         try:
