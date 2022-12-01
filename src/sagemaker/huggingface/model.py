@@ -121,8 +121,8 @@ class HuggingFaceModel(FrameworkModel):
         """Initialize a HuggingFaceModel.
 
         Args:
-            model_data (str): The Amazon S3 location of a SageMaker model data
-                ``.tar.gz`` file.
+            model_data (str or PipelineVariable): The Amazon S3 location of a SageMaker
+                model data ``.tar.gz`` file.
             role (str): An AWS IAM role specified with either the name or full ARN. The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker
                 endpoints use this role to access training data and model
@@ -147,16 +147,16 @@ class HuggingFaceModel(FrameworkModel):
             py_version (str): Python version you want to use for executing your
                 model training code. Defaults to ``None``. Required unless
                 ``image_uri`` is provided.
-            image_uri (str): A Docker image URI. Defaults to None. If not specified, a
-                default image for PyTorch will be used. If ``framework_version``
+            image_uri (str or PipelineVariable): A Docker image URI. Defaults to None.
+                If not specified, a default image for PyTorch will be used. If ``framework_version``
                 or ``py_version`` are ``None``, then ``image_uri`` is required. If
                 also ``None``, then a ``ValueError`` will be raised.
             predictor_cls (callable[str, sagemaker.session.Session]): A function
                 to call to create a predictor with an endpoint name and
                 SageMaker ``Session``. If specified, ``deploy()`` returns the
                 result of invoking this function on the created endpoint name.
-            model_server_workers (int): Optional. The number of worker processes
-                used by the inference server. If None, server will use one
+            model_server_workers (int or PipelineVariable): Optional. The number of
+                worker processes used by the inference server. If None, server will use one
                 worker per vCPU.
             **kwargs: Keyword arguments passed to the superclass
                 :class:`~sagemaker.model.FrameworkModel` and, subsequently, its
@@ -206,6 +206,9 @@ class HuggingFaceModel(FrameworkModel):
         data_capture_config=None,
         async_inference_config=None,
         serverless_inference_config=None,
+        volume_size=None,
+        model_data_download_timeout=None,
+        container_startup_health_check_timeout=None,
         **kwargs,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
@@ -269,6 +272,16 @@ class HuggingFaceModel(FrameworkModel):
                 empty object passed through, will use pre-defined values in
                 ``ServerlessInferenceConfig`` class to deploy serverless endpoint. Deploy an
                 instance based endpoint if it's None. (default: None)
+            volume_size (int): The size, in GB, of the ML storage volume attached to individual
+                inference instance associated with the production variant. Currenly only Amazon EBS
+                gp2 storage volumes are supported.
+            model_data_download_timeout (int): The timeout value, in seconds, to download and
+                extract model data from Amazon S3 to the individual inference instance associated
+                with this production variant.
+            container_startup_health_check_timeout (int): The timeout value, in seconds, for your
+                inference container to pass health check by SageMaker Hosting. For more information
+                about health check see:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html#your-algorithms-inference-algo-ping-requests
         Raises:
              ValueError: If arguments combination check failed in these circumstances:
                 - If no role is specified or
@@ -301,6 +314,9 @@ class HuggingFaceModel(FrameworkModel):
             data_capture_config,
             async_inference_config,
             serverless_inference_config,
+            volume_size=volume_size,
+            model_data_download_timeout=model_data_download_timeout,
+            container_startup_health_check_timeout=container_startup_health_check_timeout,
         )
 
     def register(
@@ -330,45 +346,50 @@ class HuggingFaceModel(FrameworkModel):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
         Args:
-            content_types (list): The supported MIME types for the input data.
-            response_types (list): The supported MIME types for the output data.
-            inference_instances (list): A list of the instance types that are used to
-                generate inferences in real-time (default: None).
-            transform_instances (list): A list of the instance types on which a transformation
-                job can be run or on which an endpoint can be deployed (default: None).
-            model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
-                using `model_package_name` makes the Model Package un-versioned.
-                Defaults to ``None``.
-            model_package_group_name (str): Model Package Group name, exclusive to
-                `model_package_name`, using `model_package_group_name` makes the Model Package
-                versioned. Defaults to ``None``.
-            image_uri (str): Inference image URI for the container. Model class' self.image will
-                be used if it is None. Defaults to ``None``.
+            content_types (list[str] or list[PipelineVariable]): The supported MIME types
+                for the input data.
+            response_types (list[str] or list[PipelineVariable]): The supported MIME types
+                for the output data.
+            inference_instances (list[str] or list[PipelineVariable]): A list of the instance
+                types that are used to generate inferences in real-time (default: None).
+            transform_instances (list[str] or list[PipelineVariable]): A list of the instance types
+                on which a transformation job can be run or on which an endpoint can be deployed
+                (default: None).
+            model_package_name (str or PipelineVariable): Model Package name, exclusive to
+                `model_package_group_name`, using `model_package_name` makes the Model Package
+                un-versioned. Defaults to ``None``.
+            model_package_group_name (str or PipelineVariable): Model Package Group name,
+                exclusive to `model_package_name`, using `model_package_group_name` makes the
+                Model Package versioned. Defaults to ``None``.
+            image_uri (str or PipelineVariable): Inference image URI for the container. Model class'
+                self.image will be used if it is None. Defaults to ``None``.
             model_metrics (ModelMetrics): ModelMetrics object. Defaults to ``None``.
             metadata_properties (MetadataProperties): MetadataProperties object.
                 Defaults to ``None``.
             marketplace_cert (bool): A boolean value indicating if the Model Package is certified
                 for AWS Marketplace. Defaults to ``False``.
-            approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
-                or "PendingManualApproval". Defaults to ``PendingManualApproval``.
+            approval_status (str or PipelineVariable): Model Approval Status, values can be
+                "Approved", "Rejected", or "PendingManualApproval". Defaults to
+                ``PendingManualApproval``.
             description (str): Model Package description. Defaults to ``None``.
             drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
-            customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
-                metadata properties (default: None).
-            domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
-                "MACHINE_LEARNING" (default: None).
-            sample_payload_url (str): The S3 path where the sample payload is stored
+            customer_metadata_properties (dict[str, str] or dict[str, PipelineVariable]):
+                A dictionary of key-value paired metadata properties (default: None).
+            domain (str or PipelineVariable): Domain values can be "COMPUTER_VISION",
+                "NATURAL_LANGUAGE_PROCESSING", "MACHINE_LEARNING" (default: None).
+            sample_payload_url (str or PipelineVariable): The S3 path where the sample payload
+                is stored (default: None).
+            task (str or PipelineVariable): Task values which are supported by Inference Recommender
+                are "FILL_MASK", "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION",
+                "IMAGE_SEGMENTATION", "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
+            framework (str or PipelineVariable): Machine learning framework of the model package
+                container image (default: None).
+            framework_version (str or PipelineVariable): Framework version of the Model Package
+                Container Image (default: None).
+            nearest_model_name (str or PipelineVariable): Name of a pre-trained machine learning
+                benchmarked by Amazon SageMaker Inference Recommender (default: None).
+            data_input_configuration (str or PipelineVariable): Input object for the model
                 (default: None).
-            task (str): Task values which are supported by Inference Recommender are "FILL_MASK",
-                "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION", "IMAGE_SEGMENTATION",
-                "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
-            framework (str): Machine learning framework of the model package container image
-                (default: None).
-            framework_version (str): Framework version of the Model Package Container Image
-                (default: None).
-            nearest_model_name (str): Name of a pre-trained machine learning benchmarked by
-                Amazon SageMaker Inference Recommender (default: None).
-            data_input_configuration (str): Input object for the model (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.

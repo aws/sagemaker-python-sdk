@@ -68,7 +68,7 @@ class _Job(object):
         input_config = _Job._format_inputs_to_input_config(inputs, validate_uri)
         role = (
             estimator.sagemaker_session.expand_role(estimator.role)
-            if expand_role
+            if (expand_role and not is_pipeline_variable(estimator.role))
             else estimator.role
         )
         output_config = _Job._prepare_output_config(estimator.output_path, estimator.output_kms_key)
@@ -78,6 +78,7 @@ class _Job(object):
             estimator.instance_groups,
             estimator.volume_size,
             estimator.volume_kms_key,
+            estimator.keep_alive_period_in_seconds,
         )
         stop_condition = _Job._prepare_stop_condition(estimator.max_run, estimator.max_wait)
         vpc_config = estimator.get_vpc_config()
@@ -281,7 +282,12 @@ class _Job(object):
 
     @staticmethod
     def _prepare_resource_config(
-        instance_count, instance_type, instance_groups, volume_size, volume_kms_key
+        instance_count,
+        instance_type,
+        instance_groups,
+        volume_size,
+        volume_kms_key,
+        keep_alive_period_in_seconds,
     ):
         """Placeholder docstring"""
         resource_config = {
@@ -289,6 +295,8 @@ class _Job(object):
         }
         if volume_kms_key is not None:
             resource_config["VolumeKmsKeyId"] = volume_kms_key
+        if keep_alive_period_in_seconds is not None:
+            resource_config["KeepAlivePeriodInSeconds"] = keep_alive_period_in_seconds
         if instance_groups is not None:
             if instance_count is not None or instance_type is not None:
                 raise ValueError(

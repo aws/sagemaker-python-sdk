@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import logging
-from typing import Union, Optional
+from typing import Union, Optional, Dict
 
 from sagemaker import image_uris
 from sagemaker.deprecations import renamed_kwargs
@@ -28,6 +28,7 @@ from sagemaker.sklearn import defaults
 from sagemaker.sklearn.model import SKLearnModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.workflow import is_pipeline_variable
 
 logger = logging.getLogger("sagemaker")
 
@@ -40,12 +41,12 @@ class SKLearn(Framework):
     def __init__(
         self,
         entry_point: Union[str, PipelineVariable],
-        framework_version=None,
-        py_version="py3",
+        framework_version: Optional[str] = None,
+        py_version: str = "py3",
         source_dir: Optional[Union[str, PipelineVariable]] = None,
-        hyperparameters=None,
-        image_uri=None,
-        image_uri_region=None,
+        hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
+        image_uri_region: Optional[str] = None,
         **kwargs
     ):
         """Creates a SKLearn Estimator for Scikit-learn environment.
@@ -67,7 +68,7 @@ class SKLearn(Framework):
         the project home-page: https://github.com/aws/sagemaker-python-sdk
 
         Args:
-            entry_point (str): Path (absolute or relative) to the Python source
+            entry_point (str or PipelineVariable): Path (absolute or relative) to the Python source
                 file which should be executed as the entry point to training.
                 If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
@@ -79,18 +80,18 @@ class SKLearn(Framework):
                 model training code (default: 'py3'). Currently, 'py3' is the only
                 supported version. If ``None`` is passed in, ``image_uri`` must be
                 provided.
-            source_dir (str): Path (absolute, relative or an S3 URI) to a directory
-                with any other training source code dependencies aside from the entry
+            source_dir (str or PipelineVariable): Path (absolute, relative or an S3 URI) to
+                a directory with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
                 point to a tar.gz file. Structure within this directory are preserved
                 when training on Amazon SageMaker.
-            hyperparameters (dict): Hyperparameters that will be used for
-                training (default: None). The hyperparameters are made
+            hyperparameters (dict[str, str] or dict[str, PipelineVariable]): Hyperparameters
+                that will be used for training (default: None). The hyperparameters are made
                 accessible as a dict[str, str] to the training code on
                 SageMaker. For convenience, this accepts other types for keys
                 and values, but ``str()`` will be called to convert them before
                 training.
-            image_uri (str): If specified, the estimator will use this image
+            image_uri (str or PipelineVariable)): If specified, the estimator will use this image
                 for training and hosting, instead of selecting the appropriate
                 SageMaker official image based on framework_version and
                 py_version. It can be an ECR url or dockerhub image and tag.
@@ -133,11 +134,20 @@ class SKLearn(Framework):
         _validate_not_gpu_instance_type(instance_type)
 
         if instance_count:
-            if instance_count != 1:
-                raise AttributeError(
-                    "Scikit-Learn does not support distributed training. Please remove the "
-                    "'instance_count' argument or set 'instance_count=1' when initializing SKLearn."
+            instance_cnt_err_msg = (
+                "Scikit-Learn does not support distributed training. Please remove the "
+                "'instance_count' argument or set 'instance_count=1' when initializing SKLearn."
+            )
+            if is_pipeline_variable(instance_count):
+                raise TypeError(
+                    "Invalid type of instance_count (PipelineVariable - {}). ".format(
+                        type(instance_count)
+                    )
+                    + instance_cnt_err_msg
                 )
+
+            if instance_count != 1:
+                raise AttributeError(instance_cnt_err_msg)
 
         super(SKLearn, self).__init__(
             entry_point,
@@ -275,9 +285,18 @@ def _validate_not_gpu_instance_type(training_instance_type):
         "ml.p3.16xlarge",
     ]
 
+    if is_pipeline_variable(training_instance_type):
+        warn_msg = (
+            "instance_type is a PipelineVariable (%s). "
+            "Its interpreted value in execution time should not be of GPU types "
+            "since GPU training is not supported for Scikit-Learn."
+        )
+        logger.warning(warn_msg, type(training_instance_type))
+        return
+
     if training_instance_type in gpu_instance_types:
         raise ValueError(
-            "GPU training in not supported for Scikit-Learn. "
+            "GPU training is not supported for Scikit-Learn. "
             "Please pick a different instance type from here: "
             "https://aws.amazon.com/ec2/instance-types/"
         )

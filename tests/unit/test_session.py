@@ -32,6 +32,7 @@ from sagemaker.session import (
     NOTEBOOK_METADATA_FILE,
 )
 from sagemaker.tuner import WarmStartConfig, WarmStartTypes
+from sagemaker.inputs import BatchDataCaptureConfig
 
 STATIC_HPs = {"feature_dim": "784"}
 
@@ -396,6 +397,28 @@ def test_fallback_to_domain_if_role_unavailable_in_user_settings(boto_session):
     sess.sagemaker_client.describe_domain.assert_called_once_with(DomainId="d-kbnw5yk6tg8j")
 
 
+@patch(
+    "six.moves.builtins.open",
+    mock_open(
+        read_data='{"ResourceName": "SageMakerInstance", '
+        '"DomainId": "d-kbnw5yk6tg8j", '
+        '"SpaceName": "space_name"}'
+    ),
+)
+@patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
+def test_get_caller_identity_arn_from_describe_domain_for_space(boto_session):
+    sess = Session(boto_session)
+    expected_role = "arn:aws:iam::369233609183:role/service-role/SageMakerRole-20171129T072388"
+    sess.sagemaker_client.describe_domain.return_value = {
+        "DefaultSpaceSettings": {"ExecutionRole": expected_role}
+    }
+
+    actual = sess.get_caller_identity_arn()
+
+    assert actual == expected_role
+    sess.sagemaker_client.describe_domain.assert_called_once_with(DomainId="d-kbnw5yk6tg8j")
+
+
 @patch("six.moves.builtins.open", mock_open(read_data='{"ResourceName": "SageMakerInstance"}'))
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
 @patch("sagemaker.session.sts_regional_endpoint", return_value=STS_ENDPOINT)
@@ -660,6 +683,7 @@ def test_training_input_all_arguments():
 
 IMAGE = "myimage"
 S3_INPUT_URI = "s3://mybucket/data"
+DEFAULT_S3_VALIDATION_DATA = "s3://mybucket/invalidation_data"
 S3_OUTPUT = "s3://sagemaker-123/output/jobname"
 ROLE = "SageMakerRole"
 EXPANDED_ROLE = "arn:aws:iam::111111111111:role/ExpandedRole"
@@ -1373,6 +1397,7 @@ def test_transform_pack_to_request(sagemaker_session):
         model_client_config=None,
         tags=None,
         data_processing=data_processing,
+        batch_data_capture_config=None,
     )
 
     _, _, actual_args = sagemaker_session.sagemaker_client.method_calls[0]
@@ -1384,6 +1409,12 @@ def test_transform_pack_to_request_with_optional_params(sagemaker_session):
     max_concurrent_transforms = 1
     max_payload = 0
     env = {"FOO": "BAR"}
+
+    batch_data_capture_config = BatchDataCaptureConfig(
+        destination_s3_uri="test_uri",
+        kms_key_id="",
+        generate_inference_id=False,
+    )
 
     sagemaker_session.transform(
         job_name=JOB_NAME,
@@ -1399,6 +1430,7 @@ def test_transform_pack_to_request_with_optional_params(sagemaker_session):
         model_client_config=MODEL_CLIENT_CONFIG,
         tags=TAGS,
         data_processing=None,
+        batch_data_capture_config=batch_data_capture_config,
     )
 
     _, _, actual_args = sagemaker_session.sagemaker_client.method_calls[0]
@@ -1409,6 +1441,7 @@ def test_transform_pack_to_request_with_optional_params(sagemaker_session):
     assert actual_args["Tags"] == TAGS
     assert actual_args["ExperimentConfig"] == EXPERIMENT_CONFIG
     assert actual_args["ModelClientConfig"] == MODEL_CLIENT_CONFIG
+    assert actual_args["DataCaptureConfig"] == batch_data_capture_config._to_request_dict()
 
 
 @patch("sys.stdout", new_callable=io.BytesIO if six.PY2 else io.StringIO)
@@ -2170,15 +2203,34 @@ COMPLETE_EXPECTED_AUTO_ML_JOB_ARGS = {
     "AutoMLJobName": JOB_NAME,
     "InputDataConfig": [
         {
-            "DataSource": {"S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": S3_INPUT_URI}},
+            "ChannelType": "training",
             "CompressionType": "Gzip",
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": S3_INPUT_URI,
+                }
+            },
             "TargetAttributeName": "y",
-        }
+        },
+        {
+            "ChannelType": "validation",
+            "CompressionType": "Gzip",
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": DEFAULT_S3_VALIDATION_DATA,
+                }
+            },
+            "TargetAttributeName": "y",
+        },
     ],
     "OutputDataConfig": {"S3OutputPath": S3_OUTPUT},
     "ProblemType": "Regression",
     "AutoMLJobObjective": {"Type": "type", "MetricName": "metric-name"},
     "AutoMLJobConfig": {
+        "CandidateGenerationConfig": {"FeatureSpecificationS3Uri": "s3://mybucket/features.json"},
+        "Mode": "ENSEMBLING",
         "CompletionCriteria": {
             "MaxCandidates": 10,
             "MaxAutoMLJobRuntimeInSeconds": 36000,
@@ -2237,15 +2289,34 @@ def test_auto_ml_pack_to_request(sagemaker_session):
 def test_auto_ml_pack_to_request_with_optional_args(sagemaker_session):
     input_config = [
         {
-            "DataSource": {"S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": S3_INPUT_URI}},
+            "ChannelType": "training",
             "CompressionType": "Gzip",
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": S3_INPUT_URI,
+                }
+            },
             "TargetAttributeName": "y",
-        }
+        },
+        {
+            "ChannelType": "validation",
+            "CompressionType": "Gzip",
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": DEFAULT_S3_VALIDATION_DATA,
+                }
+            },
+            "TargetAttributeName": "y",
+        },
     ]
 
     output_config = {"S3OutputPath": S3_OUTPUT}
 
     auto_ml_job_config = {
+        "CandidateGenerationConfig": {"FeatureSpecificationS3Uri": "s3://mybucket/features.json"},
+        "Mode": "ENSEMBLING",
         "CompletionCriteria": {
             "MaxCandidates": 10,
             "MaxAutoMLJobRuntimeInSeconds": 36000,
@@ -2707,6 +2778,59 @@ def test_download_athena_query_result(sagemaker_session):
         Bucket="bucket",
         Key="prefix/query_id.csv",
         Filename="filename",
+    )
+
+
+def test_update_monitoring_alert(sagemaker_session):
+    sagemaker_session.update_monitoring_alert(
+        monitoring_schedule_name="schedule-name",
+        monitoring_alert_name="alert-name",
+        data_points_to_alert=1,
+        evaluation_period=1,
+    )
+    assert sagemaker_session.sagemaker_client.update_monitoring_alert.called_with(
+        MonitoringScheduleName="schedule-name",
+        MonitoringAlertName="alert-name",
+        DatapointsToAlert=1,
+        EvaluationPeriod=1,
+    )
+
+
+def test_list_monitoring_alerts(sagemaker_session):
+    sagemaker_session.list_monitoring_alerts(
+        monitoring_schedule_name="schedule-name",
+        next_token="next_token",
+        max_results=100,
+    )
+    assert sagemaker_session.sagemaker_client.list_monitoring_alerts.called_with(
+        MonitoringScheduleName="schedule-name",
+        NextToken="next_token",
+        MaxResults=100,
+    )
+
+
+def test_list_monitoring_alert_history(sagemaker_session):
+    sagemaker_session.list_monitoring_alert_history(
+        monitoring_schedule_name="schedule-name",
+        monitoring_alert_name="alert-name",
+        sort_by="CreationTime",
+        sort_order="Descending",
+        next_token="next_token",
+        max_results=100,
+        status_equals="InAlert",
+        creation_time_before="creation_time_before",
+        creation_time_after="creation_time_after",
+    )
+    assert sagemaker_session.sagemaker_client.list_monitoring_alerts.called_with(
+        MonitoringScheduleName="schedule-name",
+        MonitoringAlertName="alert-name",
+        SortBy="CreationTime",
+        SortOrder="Descending",
+        NextToken="next_token",
+        MaxResults=100,
+        CreationTimeBefore="creation_time_before",
+        CreationTimeAfter="creation_time_after",
+        StatusEquals="InAlert",
     )
 
 

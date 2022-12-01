@@ -13,7 +13,7 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-from typing import Optional, Union
+from typing import Optional, Union, List
 
 from sagemaker import image_uris
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase
@@ -36,30 +36,30 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
     or unclassifiable data points.
     """
 
-    repo_name = "randomcutforest"
-    repo_version = 1
-    MINI_BATCH_SIZE = 1000
+    repo_name: str = "randomcutforest"
+    repo_version: str = "1"
+    MINI_BATCH_SIZE: int = 1000
 
-    eval_metrics = hp(
+    eval_metrics: hp = hp(
         name="eval_metrics",
         validation_message='A comma separated list of "accuracy" or "precision_recall_fscore"',
         data_type=list,
     )
 
-    num_trees = hp("num_trees", (ge(50), le(1000)), "An integer in [50, 1000]", int)
-    num_samples_per_tree = hp(
+    num_trees: hp = hp("num_trees", (ge(50), le(1000)), "An integer in [50, 1000]", int)
+    num_samples_per_tree: hp = hp(
         "num_samples_per_tree", (ge(1), le(2048)), "An integer in [1, 2048]", int
     )
-    feature_dim = hp("feature_dim", (ge(1), le(10000)), "An integer in [1, 10000]", int)
+    feature_dim: hp = hp("feature_dim", (ge(1), le(10000)), "An integer in [1, 10000]", int)
 
     def __init__(
         self,
-        role,
-        instance_count=None,
-        instance_type=None,
-        num_samples_per_tree=None,
-        num_trees=None,
-        eval_metrics=None,
+        role: str,
+        instance_count: Optional[Union[int, PipelineVariable]] = None,
+        instance_type: Optional[Union[str, PipelineVariable]] = None,
+        num_samples_per_tree: Optional[int] = None,
+        num_trees: Optional[int] = None,
+        eval_metrics: Optional[List] = None,
         **kwargs
     ):
         """An `Estimator` class implementing a Random Cut Forest.
@@ -100,9 +100,9 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if accessing AWS resource.
-            instance_count (int): Number of Amazon EC2 instances to use
+            instance_count (int or PipelineVariable): Number of Amazon EC2 instances to use
                 for training.
-            instance_type (str): Type of EC2 instance to use for training,
+            instance_type (str or PipelineVariable): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'.
             num_samples_per_tree (int): Optional. The number of samples used to
                 build each tree in the forest. The total number of samples drawn
@@ -223,7 +223,7 @@ class RandomCutForestModel(Model):
         """Initialization for RandomCutForestModel class.
 
         Args:
-            model_data (str): The S3 location of a SageMaker model data
+            model_data (str or PipelineVariable): The S3 location of a SageMaker model data
                 ``.tar.gz`` file.
             role (str): An AWS IAM role (either name or full ARN). The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker

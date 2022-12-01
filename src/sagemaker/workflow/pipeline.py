@@ -41,7 +41,7 @@ from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.steps import Step, StepTypeEnum
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.condition_step import ConditionStep
-from sagemaker.workflow.utilities import list_to_request
+from sagemaker.workflow.utilities import list_to_request, build_steps
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +102,7 @@ class Pipeline(Entity):
             "PipelineExperimentConfig": self.pipeline_experiment_config.to_request()
             if self.pipeline_experiment_config is not None
             else None,
-            "Steps": list_to_request(self.steps),
+            "Steps": build_steps(self.steps, self.name),
         }
 
     def create(
@@ -486,7 +486,10 @@ def _generate_step_map(
     """Helper method to create a mapping from Step/Step Collection name to itself."""
     for step in steps:
         if step.name in step_map:
-            raise ValueError("Pipeline steps cannot have duplicate names.")
+            raise ValueError(
+                "Pipeline steps cannot have duplicate names. In addition, steps added in "
+                "the ConditionStep cannot be added in the Pipeline steps list."
+            )
         step_map[step.name] = step
         if isinstance(step, ConditionStep):
             _generate_step_map(step.if_steps + step.else_steps, step_map)

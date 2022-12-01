@@ -18,7 +18,6 @@ import uuid
 import pytest
 
 from sagemaker.debugger.debugger import (
-    DEBUGGER_FLAG,
     DebuggerHookConfig,
     Rule,
     rule_configs,
@@ -749,7 +748,6 @@ def test_mxnet_with_debugger_hook_config_disabled(
         job_description = mx.latest_training_job.describe()
 
         assert job_description.get("DebugHookConfig") is None
-        assert job_description.get("Environment", {}).get(DEBUGGER_FLAG) == "0"
 
 
 def _get_rule_evaluation_statuses(job_description):

@@ -1,5 +1,233 @@
 # Changelog
 
+## v2.118.0 (2022-12-01)
+
+### Features
+
+ * Update boto3 version to 1.26.20
+ * support table format option for create feature group.
+ * Support Amazon SageMaker Model Cards
+ * support monitoring alerts api
+ * Support Amazon SageMaker AutoMLStep
+
+### Bug Fixes and Other Changes
+
+ * integration test in anticipate of ProfilerConfig API changes
+ * Add more integ test logic for AutoMLStep
+ * update get_execution_role_arn to use role from DefaultSpaceSettings
+ * bug on AutoMLInput to allow PipelineVariable
+ * FinalMetricDataList is missing from the training job search resu…
+ * add integration tests for Model Card
+ * update AutoMLStep with cache improvement
+
+### Documentation Changes
+
+ * automlstep doc update
+
+## v2.117.0 (2022-11-15)
+
+### Features
+
+ * add support for PT1.12.1
+
+## v2.116.0 (2022-10-28)
+
+### Features
+
+ * support customized timeout for model data download and inference container startup health check for Hosting Endpoints
+ * Trainium Neuron support for PyTorch
+ * Pipelines cache keys update
+ * Caching Improvements for SM Pipeline Workflows
+
+## v2.115.0 (2022-10-27)
+
+### Features
+
+ * Add support for TF 2.10 training
+ * Disable profiler for Trainium instance type
+ * support the Hyperband strategy with the StrategyConfig
+ * support the GridSearch strategy for hyperparameter optimization
+
+### Bug Fixes and Other Changes
+
+ * Update Graviton supported instance families
+
+## v2.114.0 (2022-10-26)
+
+### Features
+
+ * Graviton support for XGB and SKLearn frameworks
+ * Graviton support for PyTorch and Tensorflow frameworks
+ * do not expand estimator role when it is pipeline parameter
+ * added support for batch transform with model monitoring
+
+### Bug Fixes and Other Changes
+
+ * regex in tuning integs
+ * remove debugger environment var set up
+ * adjacent slash in s3 key
+ * Fix Repack step auto install behavior
+ * Add retry for airflow ParsingError
+
+### Documentation Changes
+
+ * doc fix
+
+## v2.113.0 (2022-10-21)
+
+### Features
+
+ * support torch_distributed distribution for Trainium instances
+
+### Bug Fixes and Other Changes
+
+ * bump apache-airflow from 2.4.0 to 2.4.1 in /requirements/extras
+
+### Documentation Changes
+
+ * fix kwargs and descriptions of the smdmp checkpoint function
+ * add the doc for the MonitorBatchTransformStep
+
+## v2.112.2 (2022-10-11)
+
+### Bug Fixes and Other Changes
+
+ * Update Neo-TF2.x versions to TF2.9(.2)
+
+### Documentation Changes
+
+ * fix typo in PR template
+
+## v2.112.1 (2022-10-10)
+
+### Bug Fixes and Other Changes
+
+ * fix(local-mode): loosen docker requirement to allow 6.0.0
+ * CreateModelPackage API error for Scikit-learn and XGBoost frameworkss
+
+## v2.112.0 (2022-10-09)
+
+### Features
+
+ * added monitor batch transform step (pipeline)
+
+### Bug Fixes and Other Changes
+
+ * Add PipelineVariable annotation to framework estimators
+
+## v2.111.0 (2022-10-05)
+
+### Features
+
+ * Edit test file for supporting TF 2.10 training
+
+### Bug Fixes and Other Changes
+
+ * support kms key in processor pack local code
+ * security issue by bumping apache-airflow from 2.3.4 to 2.4.0
+ * instance count retrieval logic
+ * Add regex for short-form sagemaker-xgboost tags
+ * Upgrade attrs>=20.3.0,<23
+ * Add PipelineVariable annotation to Amazon estimators
+
+### Documentation Changes
+
+ * add context for pytorch
+
+## v2.110.0 (2022-09-27)
+
+### Features
+
+ * Support KeepAlivePeriodInSeconds for Training APIs
+ * added ANALYSIS_CONFIG_SCHEMA_V1_0 in clarify
+ * add model monitor image accounts for ap-southeast-3
+
+### Bug Fixes and Other Changes
+
+ * huggingface release test
+ * Fixing the logic to return instanceCount for heterogeneousClusters
+ * Disable type hints in doc signature and add PipelineVariable annotations in docstring
+ * estimator hyperparameters in script mode
+
+### Documentation Changes
+
+ * Added link to example notebook for Pipelines local mode
+
+## v2.109.0 (2022-09-09)
+
+### Features
+
+ * add search filters
+
+### Bug Fixes and Other Changes
+
+ * local pipeline step argument parsing bug
+ * support fail_on_violation flag for check steps
+ * fix links per app security scan
+ * Add PipelineVariable annotation for all processor subclasses
+
+### Documentation Changes
+
+ * the SageMaker model parallel library 1.11.0 release
+
+## v2.108.0 (2022-09-02)
+
+### Features
+
+ * Adding support in HuggingFace estimator for Training Compiler enhanced PyTorch 1.11
+
+### Bug Fixes and Other Changes
+
+ * add sagemaker clarify image account for cgk region
+ * set PYTHONHASHSEED env variable to fixed value to fix intermittent failures in release pipeline
+ * trcomp fixtures to override default fixtures for integ tests
+
+### Documentation Changes
+
+ * add more info about volume_size
+
+## v2.107.0 (2022-08-29)
+
+### Features
+
+ * support python 3.10, update airflow dependency
+
+### Bug Fixes and Other Changes
+
+ * Add retry in session.py to check if training is finished
+
+### Documentation Changes
+
+ * remove Other tab in Built-in algorithms section and mi…
+
+## v2.106.0 (2022-08-24)
+
+### Features
+
+ * Implement Kendra Search in RTD website
+
+### Bug Fixes and Other Changes
+
+ * Add primitive_or_expr() back to conditions
+ * remove specifying env-vars when creating model from model package
+ * Add CGK in config for Spark Image
+
+## v2.105.0 (2022-08-19)
+
+### Features
+
+ * Added endpoint_name to clarify.ModelConfig
+ * adding workgroup functionality to athena query
+
+### Bug Fixes and Other Changes
+
+ * disable debugger/profiler in cgk region
+ * using unique name for lineage test to unblock PR checks
+
+### Documentation Changes
+
+ * update first-party algorithms and structural updates
+
 ## v2.104.0 (2022-08-17)
 
 ### Features

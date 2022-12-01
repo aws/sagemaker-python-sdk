@@ -37,54 +37,54 @@ class KNN(AmazonAlgorithmEstimatorBase):
     the average of their feature values as the predicted value.
     """
 
-    repo_name = "knn"
-    repo_version = 1
+    repo_name: str = "knn"
+    repo_version: str = "1"
 
-    k = hp("k", (ge(1)), "An integer greater than 0", int)
-    sample_size = hp("sample_size", (ge(1)), "An integer greater than 0", int)
-    predictor_type = hp(
+    k: hp = hp("k", (ge(1)), "An integer greater than 0", int)
+    sample_size: hp = hp("sample_size", (ge(1)), "An integer greater than 0", int)
+    predictor_type: hp = hp(
         "predictor_type", isin("classifier", "regressor"), 'One of "classifier" or "regressor"', str
     )
-    dimension_reduction_target = hp(
+    dimension_reduction_target: hp = hp(
         "dimension_reduction_target",
         (ge(1)),
         "An integer greater than 0 and less than feature_dim",
         int,
     )
-    dimension_reduction_type = hp(
+    dimension_reduction_type: hp = hp(
         "dimension_reduction_type", isin("sign", "fjlt"), 'One of "sign" or "fjlt"', str
     )
-    index_metric = hp(
+    index_metric: hp = hp(
         "index_metric",
         isin("COSINE", "INNER_PRODUCT", "L2"),
         'One of "COSINE", "INNER_PRODUCT", "L2"',
         str,
     )
-    index_type = hp(
+    index_type: hp = hp(
         "index_type",
         isin("faiss.Flat", "faiss.IVFFlat", "faiss.IVFPQ"),
         'One of "faiss.Flat", "faiss.IVFFlat", "faiss.IVFPQ"',
         str,
     )
-    faiss_index_ivf_nlists = hp(
+    faiss_index_ivf_nlists: hp = hp(
         "faiss_index_ivf_nlists", (), '"auto" or an integer greater than 0', str
     )
-    faiss_index_pq_m = hp("faiss_index_pq_m", (ge(1)), "An integer greater than 0", int)
+    faiss_index_pq_m: hp = hp("faiss_index_pq_m", (ge(1)), "An integer greater than 0", int)
 
     def __init__(
         self,
-        role,
-        instance_count=None,
-        instance_type=None,
-        k=None,
-        sample_size=None,
-        predictor_type=None,
-        dimension_reduction_type=None,
-        dimension_reduction_target=None,
-        index_type=None,
-        index_metric=None,
-        faiss_index_ivf_nlists=None,
-        faiss_index_pq_m=None,
+        role: str,
+        instance_count: Optional[Union[int, PipelineVariable]] = None,
+        instance_type: Optional[Union[str, PipelineVariable]] = None,
+        k: Optional[int] = None,
+        sample_size: Optional[int] = None,
+        predictor_type: Optional[str] = None,
+        dimension_reduction_type: Optional[str] = None,
+        dimension_reduction_target: Optional[int] = None,
+        index_type: Optional[str] = None,
+        index_metric: Optional[str] = None,
+        faiss_index_ivf_nlists: Optional[str] = None,
+        faiss_index_pq_m: Optional[int] = None,
         **kwargs
     ):
         """k-nearest neighbors (KNN) is :class:`Estimator` used for classification and regression.
@@ -117,8 +117,9 @@ class KNN(AmazonAlgorithmEstimatorBase):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if accessing AWS resource.
-            instance_count:
-            instance_type (str): Type of EC2 instance to use for training,
+            instance_count: (int or PipelineVariable): Number of Amazon EC2 instances to use
+                for training.
+            instance_type (str or PipelineVariable): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'.
             k (int): Required. Number of nearest neighbors.
             sample_size (int): Required. Number of data points to be sampled
@@ -252,7 +253,7 @@ class KNNModel(Model):
         """Function to initialize KNNModel.
 
         Args:
-            model_data (str): The S3 location of a SageMaker model data
+            model_data (str or PipelineVariable): The S3 location of a SageMaker model data
                 ``.tar.gz`` file.
             role (str): An AWS IAM role (either name or full ARN). The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker

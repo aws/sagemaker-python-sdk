@@ -23,12 +23,20 @@ from sagemaker import Predictor, TrainingInput, utils
 from sagemaker.amazon.amazon_estimator import RecordSet
 from sagemaker.estimator import Framework
 from sagemaker.fw_utils import UploadedCode
-from sagemaker.jumpstart.constants import JUMPSTART_BUCKET_NAME_SET, JUMPSTART_RESOURCE_BASE_NAME
+from sagemaker.jumpstart.constants import (
+    JUMPSTART_BUCKET_NAME_SET,
+    JUMPSTART_RESOURCE_BASE_NAME,
+)
 from sagemaker.jumpstart.enums import JumpStartTag
 from sagemaker.mxnet import MXNet
 from sagemaker.parameter import ParameterRange
 from sagemaker.tuner import (
+    HYPERBAND_MAX_RESOURCE,
+    HYPERBAND_MIN_RESOURCE,
+    HYPERBAND_STRATEGY_CONFIG,
     _TuningJob,
+    HyperbandStrategyConfig,
+    StrategyConfig,
     create_identical_dataset_and_algorithm_tuner,
     create_transfer_learning_tuner,
     HyperparameterTuner,
@@ -42,7 +50,12 @@ from .tuner_test_utils import *  # noqa: F403
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name=REGION)
-    sms = Mock(name="sagemaker_session", boto_session=boto_mock, s3_client=None, s3_resource=None)
+    sms = Mock(
+        name="sagemaker_session",
+        boto_session=boto_mock,
+        s3_client=None,
+        s3_resource=None,
+    )
     sms.boto_region_name = REGION
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     sms.config = None
@@ -588,7 +601,9 @@ def test_attach_tuning_job_with_estimator_from_kwarg(sagemaker_session):
         name="describe_tuning_job", return_value=job_details
     )
     tuner = HyperparameterTuner.attach(
-        JOB_NAME, sagemaker_session=sagemaker_session, estimator_cls="sagemaker.estimator.Estimator"
+        JOB_NAME,
+        sagemaker_session=sagemaker_session,
+        estimator_cls="sagemaker.estimator.Estimator",
     )
     assert isinstance(tuner.estimator, Estimator)
 
@@ -718,7 +733,10 @@ def test_serialize_categorical_ranges_for_frameworks(sagemaker_session, tuner):
     hyperparameter_ranges = tuner.hyperparameter_ranges()
 
     assert hyperparameter_ranges["CategoricalParameterRanges"][0]["Name"] == "blank"
-    assert hyperparameter_ranges["CategoricalParameterRanges"][0]["Values"] == ['"0"', '"5"']
+    assert hyperparameter_ranges["CategoricalParameterRanges"][0]["Values"] == [
+        '"0"',
+        '"5"',
+    ]
 
 
 def test_serialize_nonexistent_parameter_ranges(tuner):
@@ -973,7 +991,11 @@ def test_identical_dataset_and_algorithm_tuner(sagemaker_session):
     tuner = HyperparameterTuner.attach(JOB_NAME, sagemaker_session=sagemaker_session)
     parent_tuner = tuner.identical_dataset_and_algorithm_tuner(additional_parents={"p1", "p2"})
     assert parent_tuner.warm_start_config.type == WarmStartTypes.IDENTICAL_DATA_AND_ALGORITHM
-    assert parent_tuner.warm_start_config.parents == {tuner.latest_tuning_job.name, "p1", "p2"}
+    assert parent_tuner.warm_start_config.parents == {
+        tuner.latest_tuning_job.name,
+        "p1",
+        "p2",
+    }
 
 
 def test_transfer_learning_tuner_with_estimator(sagemaker_session, estimator):
@@ -988,7 +1010,11 @@ def test_transfer_learning_tuner_with_estimator(sagemaker_session, estimator):
     )
 
     assert parent_tuner.warm_start_config.type == WarmStartTypes.TRANSFER_LEARNING
-    assert parent_tuner.warm_start_config.parents == {tuner.latest_tuning_job.name, "p1", "p2"}
+    assert parent_tuner.warm_start_config.parents == {
+        tuner.latest_tuning_job.name,
+        "p1",
+        "p2",
+    }
     assert parent_tuner.estimator == estimator and parent_tuner.estimator != tuner.estimator
 
 
@@ -1002,7 +1028,11 @@ def test_transfer_learning_tuner(sagemaker_session):
     parent_tuner = tuner.transfer_learning_tuner(additional_parents={"p1", "p2"})
 
     assert parent_tuner.warm_start_config.type == WarmStartTypes.TRANSFER_LEARNING
-    assert parent_tuner.warm_start_config.parents == {tuner.latest_tuning_job.name, "p1", "p2"}
+    assert parent_tuner.warm_start_config.parents == {
+        tuner.latest_tuning_job.name,
+        "p1",
+        "p2",
+    }
     assert parent_tuner.estimator == tuner.estimator
 
 
@@ -1017,7 +1047,10 @@ def test_transfer_learning_tuner(sagemaker_session):
         ),
         (
             {ESTIMATOR_NAME: ESTIMATOR, ESTIMATOR_NAME_TWO: ESTIMATOR_TWO},
-            {ESTIMATOR_NAME: OBJECTIVE_METRIC_NAME, ESTIMATOR_NAME_TWO: OBJECTIVE_METRIC_NAME_TWO},
+            {
+                ESTIMATOR_NAME: OBJECTIVE_METRIC_NAME,
+                ESTIMATOR_NAME_TWO: OBJECTIVE_METRIC_NAME_TWO,
+            },
             {
                 ESTIMATOR_NAME: HYPERPARAMETER_RANGES,
                 ESTIMATOR_NAME_TWO: {"gamma": ContinuousParameter(0, 1.5)},
@@ -1124,7 +1157,11 @@ def test_create_tuner(estimator_dict, obj_metric_name_dict, param_ranges_dict, m
     ],
 )
 def test_create_tuner_negative(
-    estimator_dict, obj_metric_name_dict, param_ranges_dict, metric_def_dict, error_message
+    estimator_dict,
+    obj_metric_name_dict,
+    param_ranges_dict,
+    metric_def_dict,
+    error_message,
 ):
     with pytest.raises(ValueError, match=error_message):
         HyperparameterTuner.create(
@@ -1378,7 +1415,9 @@ def test_create_identical_dataset_and_algorithm_tuner(sagemaker_session, additio
     )
 
     tuner = create_identical_dataset_and_algorithm_tuner(
-        parent=JOB_NAME, additional_parents=additional_parents, sagemaker_session=sagemaker_session
+        parent=JOB_NAME,
+        additional_parents=additional_parents,
+        sagemaker_session=sagemaker_session,
     )
 
     assert tuner.warm_start_config.type == WarmStartTypes.IDENTICAL_DATA_AND_ALGORITHM
@@ -1774,3 +1813,42 @@ def test_no_tags_prefixes_non_jumpstart_models(
     assert sagemaker_session.create_model.call_args_list[0][1]["tags"] == []
 
     assert sagemaker_session.endpoint_from_production_variants.call_args_list[0][1]["tags"] == []
+
+
+#################################################################################
+# HyperbandStrategyConfig Tests
+
+
+@pytest.mark.parametrize(
+    "min_resource, max_resource",
+    [
+        (1, 10),
+    ],
+)
+def test_hyperband_strategy_config_init(min_resource, max_resource):
+    strategy_config = StrategyConfig(
+        HyperbandStrategyConfig(min_resource=min_resource, max_resource=max_resource)
+    )
+
+    strategy_config = strategy_config.to_input_req()
+    assert strategy_config[HYPERBAND_STRATEGY_CONFIG][HYPERBAND_MIN_RESOURCE] == min_resource
+    assert strategy_config[HYPERBAND_STRATEGY_CONFIG][HYPERBAND_MAX_RESOURCE] == max_resource
+
+
+def test_create_tuner_with_grid_search_strategy():
+    tuner = HyperparameterTuner.create(
+        base_tuning_job_name=BASE_JOB_NAME,
+        estimator_dict={ESTIMATOR_NAME: ESTIMATOR},
+        objective_metric_name_dict={ESTIMATOR_NAME: OBJECTIVE_METRIC_NAME},
+        hyperparameter_ranges_dict={ESTIMATOR_NAME: HYPERPARAMETER_RANGES},
+        metric_definitions_dict={ESTIMATOR_NAME: METRIC_DEFINITIONS},
+        strategy="GridSearch",
+        objective_type="Minimize",
+        max_parallel_jobs=1,
+        tags=TAGS,
+        warm_start_config=WARM_START_CONFIG,
+        early_stopping_type="Auto",
+    )
+
+    assert tuner is not None
+    assert tuner.max_jobs is None

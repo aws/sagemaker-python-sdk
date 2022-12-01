@@ -26,7 +26,7 @@ from mock import (
     patch,
 )
 
-from sagemaker.debugger import DEBUGGER_FLAG, ProfilerConfig
+from sagemaker.debugger import ProfilerConfig
 from sagemaker.estimator import Estimator
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.inputs import TrainingInput, TransformInput, CreateModelInput
@@ -63,7 +63,6 @@ from sagemaker.workflow.steps import (
     CreateModelStep,
     CacheConfig,
 )
-from sagemaker.workflow.pipeline_context import _JobStepArguments
 from sagemaker.pipeline import PipelineModel
 from sagemaker.sparkml import SparkMLModel
 from sagemaker.predictor import Predictor
@@ -485,7 +484,6 @@ def test_training_step_tensorflow(sagemaker_session):
                 "sagemaker_distributed_dataparallel_custom_mpi_options": '""',
             },
             "ProfilerConfig": {"S3OutputPath": "s3://my-bucket/"},
-            "Environment": {DEBUGGER_FLAG: "0"},
         },
         "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
     }
@@ -1456,10 +1454,14 @@ def test_multi_algo_tuning_step(sagemaker_session):
 
 
 def test_pipeline_dag_json_get_bad_step_type(sagemaker_session):
-    training_step = TrainingStep(
-        name="inputTrainingStep",
-        step_args=_JobStepArguments(sagemaker_session.train.__name__, {"arg1": "value"}),
+    estimator = Estimator(
+        image_uri=IMAGE_URI,
+        role=ROLE,
+        instance_count=2,
+        instance_type="ml.m5.large",
+        sagemaker_session=sagemaker_session,
     )
+    training_step = TrainingStep(name="inputTrainingStep", estimator=estimator)
     json_get_function = JsonGet(
         step_name=training_step.name, property_file="my-property-file", json_path="mse"
     )
@@ -1479,11 +1481,14 @@ def test_pipeline_dag_json_get_bad_step_type(sagemaker_session):
 
 
 def test_pipeline_dag_json_get_undefined_property_file(sagemaker_session):
-    processing_step = ProcessingStep(
-        name="inputProcessingStep",
-        step_args=_JobStepArguments(sagemaker_session.process.__name__, {"arg1": "value"}),
+    processor = Processor(
+        image_uri=IMAGE_URI,
+        role=ROLE,
+        instance_count=1,
+        instance_type="c4.4xlarge",
+        sagemaker_session=sagemaker_session,
     )
-
+    processing_step = ProcessingStep(name="inputProcessingStep", processor=processor)
     json_get_function = JsonGet(
         step_name=processing_step.name, property_file="undefined-property-file", json_path="mse"
     )
@@ -1497,7 +1502,8 @@ def test_pipeline_dag_json_get_undefined_property_file(sagemaker_session):
     with pytest.raises(ValueError) as e:
         PipelineGraph.from_pipeline(pipeline)
     assert (
-        f"Invalid JsonGet function {json_get_function.expr} in step '{custom_step.name}'. Property "
+        f"Invalid JsonGet function {json_get_function.expr} "
+        f"in step '{custom_step.name}'. Property "
         f"file reference '{json_get_function.property_file}' is undefined in step "
         f"'{processing_step.name}'." in str(e.value)
     )

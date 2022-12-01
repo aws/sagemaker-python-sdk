@@ -511,6 +511,33 @@ def test_framework_version_from_tag_other():
     assert version is None
 
 
+def test_xgboost_version_from_tag():
+    tags = (
+        "1.5-1-cpu-py3",
+        "1.5-1",
+    )
+
+    for tag in tags:
+        version = fw_utils.framework_version_from_tag(tag)
+        assert "1.5-1" == version
+
+
+def test_framework_name_from_xgboost_image_short_tag():
+    ecr_uri = "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost"
+    image_tag = "1.5-1"
+    image_uri = f"{ecr_uri}:{image_tag}"
+    expected_result = ("xgboost", "py3", "1.5-1", None)
+    assert expected_result == fw_utils.framework_name_from_image(image_uri)
+
+
+def test_framework_name_from_xgboost_image_long_tag():
+    ecr_uri = "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost"
+    image_tag = "1.5-1-cpu-py3"
+    image_uri = f"{ecr_uri}:{image_tag}"
+    expected_result = ("xgboost", "py3", "1.5-1-cpu-py3", None)
+    assert expected_result == fw_utils.framework_name_from_image(image_uri)
+
+
 def test_model_code_key_prefix_with_all_values_present():
     key_prefix = fw_utils.model_code_key_prefix("prefix", "model_name", "image_uri")
     assert key_prefix == "prefix/model_name"
@@ -628,7 +655,7 @@ def test_validate_distribution_not_raises():
                 None,  # framework_version
                 None,  # py_version
                 "custom-container",
-                {"instance_type": instance_type},  # kwargs
+                {"instance_type": instance_type, "entry_point": "train.py"},  # kwargs
             )
 
     for framework in frameworks:
@@ -656,7 +683,7 @@ def test_validate_distribution_not_raises():
                 None,  # framework_version
                 None,  # py_version
                 "custom-container",
-                {},  # kwargs
+                {"entry_point": "train.py"},  # kwargs
             )
 
 
@@ -696,7 +723,7 @@ def test_validate_distribution_raises():
                     None,  # framework_version
                     None,  # py_version
                     "custom-container",
-                    {"instance_type": instance_type},  # kwargs
+                    {"instance_type": instance_type, "entry_point": "train.py"},  # kwargs
                 )
 
     for framework in frameworks:
@@ -820,6 +847,8 @@ def test_validate_smdataparallel_args_not_raises():
         ("ml.p3.16xlarge", "tensorflow", "2.8", "py39", smdataparallel_enabled),
         ("ml.p3.16xlarge", "tensorflow", "2.9.1", "py39", smdataparallel_enabled),
         ("ml.p3.16xlarge", "tensorflow", "2.9", "py39", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "tensorflow", "2.10.0", "py39", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "tensorflow", "2.10", "py39", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.6.0", "py3", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.6", "py3", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.7.1", "py3", smdataparallel_enabled),
@@ -835,6 +864,7 @@ def test_validate_smdataparallel_args_not_raises():
         ("ml.p3.16xlarge", "pytorch", "1.11.0", "py38", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.11", "py38", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.12.0", "py38", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "pytorch", "1.12.1", "py38", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.12", "py38", smdataparallel_enabled),
         ("ml.p3.16xlarge", "tensorflow", "2.4.1", "py3", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "tensorflow", "2.4.1", "py37", smdataparallel_enabled_custom_mpi),
@@ -847,11 +877,13 @@ def test_validate_smdataparallel_args_not_raises():
         ("ml.p3.16xlarge", "tensorflow", "2.7.1", "py38", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "tensorflow", "2.8.0", "py39", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "tensorflow", "2.9.1", "py39", smdataparallel_enabled_custom_mpi),
+        ("ml.p3.16xlarge", "tensorflow", "2.10.0", "py39", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "pytorch", "1.8.0", "py3", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "pytorch", "1.9.1", "py38", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "pytorch", "1.10.2", "py38", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "pytorch", "1.11.0", "py38", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "pytorch", "1.12.0", "py38", smdataparallel_enabled_custom_mpi),
+        ("ml.p3.16xlarge", "pytorch", "1.12.1", "py38", smdataparallel_enabled_custom_mpi),
     ]
     for instance_type, framework_name, framework_version, py_version, distribution in good_args:
         fw_utils._validate_smdataparallel_args(
@@ -887,6 +919,7 @@ def test_validate_pytorchddp_not_raises():
         "1.11.0",
         "1.12",
         "1.12.0",
+        "1.12.1",
     ]
     for framework_version in pytorchddp_supported_fw_versions:
         fw_utils.validate_pytorch_distribution(
@@ -919,3 +952,103 @@ def test_validate_pytorchddp_raises():
             py_version="py2",
             image_uri=None,
         )
+
+
+def test_validate_torch_distributed_not_raises():
+
+    # Case 1: Framework is PyTorch, but distribution is not torch_distributed
+    torch_distributed_disabled = {"torch_distributed": {"enabled": False}}
+    fw_utils.validate_torch_distributed_distribution(
+        instance_type="ml.trn1.2xlarge",
+        distribution=torch_distributed_disabled,
+        framework_version="1.11.0",
+        py_version="py3",
+        image_uri="custom-container",
+        entry_point="train.py",
+    )
+    # Case 2: Distribution is torch_distributed enabled, supported framework and py versions
+    torch_distributed_enabled = {"torch_distributed": {"enabled": True}}
+    torch_distributed_supported_fw_versions = [
+        "1.11.0",
+    ]
+    for framework_version in torch_distributed_supported_fw_versions:
+        fw_utils.validate_torch_distributed_distribution(
+            instance_type="ml.trn1.2xlarge",
+            distribution=torch_distributed_enabled,
+            framework_version=framework_version,
+            py_version="py3",
+            image_uri="custom-container",
+            entry_point="train.py",
+        )
+
+
+def test_validate_torch_distributed_raises():
+    torch_distributed_enabled = {"torch_distributed": {"enabled": True}}
+    # Case 1: Unsupported framework version
+    with pytest.raises(ValueError):
+        fw_utils.validate_torch_distributed_distribution(
+            instance_type="ml.trn1.2xlarge",
+            distribution=torch_distributed_enabled,
+            framework_version="1.10.0",
+            py_version="py3",
+            image_uri=None,
+            entry_point="train.py",
+        )
+
+    # Case 2: Unsupported Py version
+    with pytest.raises(ValueError):
+        fw_utils.validate_torch_distributed_distribution(
+            instance_type="ml.trn1.2xlarge",
+            distribution=torch_distributed_enabled,
+            framework_version="1.11.0",
+            py_version="py2",
+            image_uri=None,
+            entry_point="train.py",
+        )
+
+    # Case 3: Unsupported Entry point type
+    with pytest.raises(ValueError):
+        fw_utils.validate_torch_distributed_distribution(
+            instance_type="ml.trn1.2xlarge",
+            distribution=torch_distributed_enabled,
+            framework_version="1.11.0",
+            py_version="py3",
+            image_uri=None,
+            entry_point="train.sh",
+        )
+
+
+def test_validate_unsupported_distributions_trainium_raises():
+    with pytest.raises(ValueError):
+        mpi_enabled = {"mpi": {"enabled": True}}
+        fw_utils.validate_distribution_for_instance_type(
+            distribution=mpi_enabled,
+            instance_type="ml.trn1.2xlarge",
+        )
+
+    with pytest.raises(ValueError):
+        mpi_enabled = {"mpi": {"enabled": True}}
+        fw_utils.validate_distribution_for_instance_type(
+            distribution=mpi_enabled,
+            instance_type="ml.trn1.32xlarge",
+        )
+
+    with pytest.raises(ValueError):
+        pytorch_ddp_enabled = {"pytorch_ddp": {"enabled": True}}
+        fw_utils.validate_distribution_for_instance_type(
+            distribution=pytorch_ddp_enabled,
+            instance_type="ml.trn1.32xlarge",
+        )
+
+    with pytest.raises(ValueError):
+        smdataparallel_enabled = {"smdataparallel": {"enabled": True}}
+        fw_utils.validate_distribution_for_instance_type(
+            distribution=smdataparallel_enabled,
+            instance_type="ml.trn1.32xlarge",
+        )
+
+
+def test_instance_type_supports_profiler():
+    assert fw_utils._instance_type_supports_profiler("ml.trn1.xlarge") is True
+    assert fw_utils._instance_type_supports_profiler("ml.m4.xlarge") is False
+    assert fw_utils._instance_type_supports_profiler("local") is False

@@ -26,14 +26,17 @@ from datetime import datetime, timedelta
 
 from tests.integ import DATA_DIR
 from sagemaker.model_monitor import DatasetFormat
+from sagemaker.model_monitor import MonitoringDatasetFormat
 from sagemaker.model_monitor import NetworkConfig, Statistics, Constraints
 from sagemaker.model_monitor import ModelMonitor
 from sagemaker.model_monitor import DefaultModelMonitor
 from sagemaker.model_monitor import MonitoringOutput
 from sagemaker.model_monitor import DataCaptureConfig
+from sagemaker.model_monitor import BatchTransformInput
 from sagemaker.model_monitor.data_capture_config import _MODEL_MONITOR_S3_PATH
 from sagemaker.model_monitor.data_capture_config import _DATA_CAPTURE_S3_PATH
 from sagemaker.model_monitor import CronExpressionGenerator
+from sagemaker.model_monitor.monitoring_alert import MonitoringAlertSummary
 from sagemaker.processing import ProcessingInput
 from sagemaker.processing import ProcessingOutput
 from sagemaker.tensorflow.model import TensorFlowModel
@@ -272,6 +275,84 @@ def updated_output_kms_key(sagemaker_session):
             sagemaker_session.boto_session.region_name
         ),
     )
+
+
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
+@pytest.mark.release
+def test_default_monitoring_batch_transform_schedule_name(
+    sagemaker_session, output_kms_key, volume_kms_key
+):
+    my_default_monitor = DefaultModelMonitor(
+        role=ROLE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        volume_size_in_gb=VOLUME_SIZE_IN_GB,
+        volume_kms_key=volume_kms_key,
+        output_kms_key=output_kms_key,
+        max_runtime_in_seconds=MAX_RUNTIME_IN_SECONDS,
+        sagemaker_session=sagemaker_session,
+        env=ENVIRONMENT,
+        tags=TAGS,
+        network_config=NETWORK_CONFIG,
+    )
+
+    output_s3_uri = os.path.join(
+        "s3://",
+        sagemaker_session.default_bucket(),
+        "integ-test-monitoring-output-bucket",
+        str(uuid.uuid4()),
+    )
+
+    data_captured_destination_s3_uri = os.path.join(
+        "s3://",
+        sagemaker_session.default_bucket(),
+        "sagemaker-tensorflow-serving-batch-transform",
+        str(uuid.uuid4()),
+    )
+
+    batch_transform_input = BatchTransformInput(
+        data_captured_destination_s3_uri=data_captured_destination_s3_uri,
+        destination="/opt/ml/processing/output",
+        dataset_format=MonitoringDatasetFormat.csv(header=False),
+    )
+
+    statistics = Statistics.from_file_path(
+        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json"),
+        sagemaker_session=sagemaker_session,
+    )
+
+    constraints = Constraints.from_file_path(
+        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json"),
+        sagemaker_session=sagemaker_session,
+    )
+
+    my_default_monitor.create_monitoring_schedule(
+        batch_transform_input=batch_transform_input,
+        output_s3_uri=output_s3_uri,
+        statistics=statistics,
+        constraints=constraints,
+        schedule_cron_expression=HOURLY_CRON_EXPRESSION,
+        enable_cloudwatch_metrics=ENABLE_CLOUDWATCH_METRICS,
+    )
+
+    _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
+
+    schedule_description = my_default_monitor.describe_schedule()
+    _verify_default_monitoring_schedule_with_batch_transform(
+        sagemaker_session=sagemaker_session,
+        schedule_description=schedule_description,
+        cron_expression=HOURLY_CRON_EXPRESSION,
+        statistics=statistics,
+        constraints=constraints,
+        output_kms_key=output_kms_key,
+        volume_kms_key=volume_kms_key,
+        network_config=NETWORK_CONFIG,
+    )
+
+    my_default_monitor.stop_monitoring_schedule()
 
 
 @pytest.mark.skipif(
@@ -1409,6 +1490,63 @@ def test_byoc_monitor_monitoring_execution_interactions(
     assert constraint_violations.body_dict["violations"][0]["feature_name"] == "store_and_fwd_flag"
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
+def test_default_monitor_monitoring_alerts(sagemaker_session, predictor):
+    my_default_monitor = DefaultModelMonitor(
+        role=ROLE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        volume_size_in_gb=VOLUME_SIZE_IN_GB,
+        max_runtime_in_seconds=MAX_RUNTIME_IN_SECONDS,
+        sagemaker_session=sagemaker_session,
+    )
+
+    output_s3_uri = os.path.join(
+        "s3://",
+        sagemaker_session.default_bucket(),
+        "integ-test-monitoring-output-bucket",
+        str(uuid.uuid4()),
+    )
+
+    my_default_monitor.create_monitoring_schedule(
+        endpoint_input=predictor.endpoint_name,
+        output_s3_uri=output_s3_uri,
+        schedule_cron_expression=HOURLY_CRON_EXPRESSION,
+        enable_cloudwatch_metrics=ENABLE_CLOUDWATCH_METRICS,
+    )
+    # No need to wait for execution
+    description = my_default_monitor.describe_schedule()
+    assert description["MonitoringScheduleName"] == my_default_monitor.monitoring_schedule_name
+    # list alerts
+    alerts, _ = my_default_monitor.list_monitoring_alerts(max_results=10)
+    # we know each monitoring schedule will have a default alert
+    assert len(alerts) > 0
+    alert: MonitoringAlertSummary = alerts[0]
+    alert_name = alert.alert_name
+    alert_status = alert.alert_status
+
+    my_default_monitor.update_monitoring_alert(
+        alert_name, data_points_to_alert=3, evaluation_period=5
+    )
+    alerts, _ = my_default_monitor.list_monitoring_alerts(max_results=10)
+    alert: MonitoringAlertSummary = alerts[0]
+    assert len(alerts) > 0
+    assert alert.alert_name == alert_name
+    assert alert.alert_status == alert_status
+    assert alert.data_points_to_alert == 3
+    assert alert.evaluation_period == 5
+
+    my_default_monitor.list_monitoring_alert_history(monitoring_alert_name=alert.alert_name)
+
+    _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
+
+    my_default_monitor.stop_monitoring_schedule()
+    my_default_monitor.delete_monitoring_schedule()
+
+
 def _wait_for_schedule_changes_to_apply(monitor):
     """Waits for the monitor to no longer be in the 'Pending' state. Updates take under a minute
     to apply.
@@ -1552,6 +1690,102 @@ def _verify_default_monitoring_schedule(
         assert constraints is None
     # job input
     assert "sagemaker-tensorflow-serving" in job_input["EndpointInput"]["EndpointName"]
+    # job output config
+    assert len(job_output_config["MonitoringOutputs"]) == 1
+    assert job_output_config.get("KmsKeyId") == output_kms_key
+    # job resources
+    assert client_config["InstanceCount"] == instant_count
+    assert client_config["InstanceType"] == instant_type
+    assert client_config["VolumeSizeInGB"] == volume_size_in_gb
+    assert client_config.get("VolumeKmsKeyId") == volume_kms_key
+    # role
+    assert role in job_desc["RoleArn"]
+    # stop condition
+    assert job_desc["StoppingCondition"]["MaxRuntimeInSeconds"] == max_runtime_in_seconds
+    # network config
+    if job_desc.get("NetworkConfig"):
+        assert (
+            job_desc["NetworkConfig"].get("EnableNetworkIsolation")
+            == network_config.enable_network_isolation
+        )
+    else:
+        assert network_config is None
+
+
+def _verify_default_monitoring_schedule_with_batch_transform(
+    sagemaker_session,
+    schedule_description,
+    cron_expression=CronExpressionGenerator.daily(),
+    statistics=None,
+    constraints=None,
+    output_kms_key=None,
+    volume_kms_key=None,
+    instant_count=INSTANCE_COUNT,
+    instant_type=INSTANCE_TYPE,
+    volume_size_in_gb=VOLUME_SIZE_IN_GB,
+    network_config=None,
+    max_runtime_in_seconds=MAX_RUNTIME_IN_SECONDS,
+    publish_cloudwatch_metrics="Enabled",
+    env_key=ENV_KEY_1,
+    env_value=ENV_VALUE_1,
+    preprocessor=None,
+    postprocessor=None,
+    role=ROLE,
+):
+    assert (
+        schedule_description["MonitoringScheduleConfig"]["ScheduleConfig"]["ScheduleExpression"]
+        == cron_expression
+    )
+    assert schedule_description["MonitoringScheduleConfig"]["MonitoringType"] == "DataQuality"
+
+    job_definition_name = schedule_description["MonitoringScheduleConfig"].get(
+        "MonitoringJobDefinitionName"
+    )
+    if job_definition_name:
+        job_desc = sagemaker_session.sagemaker_client.describe_data_quality_job_definition(
+            JobDefinitionName=job_definition_name,
+        )
+        # app specification
+        app_specification = job_desc["DataQualityAppSpecification"]
+        env = app_specification["Environment"]
+        baseline_config = job_desc.get("DataQualityBaselineConfig")
+        job_input = job_desc["DataQualityJobInput"]
+        job_output_config = job_desc["DataQualityJobOutputConfig"]
+        client_config = job_desc["JobResources"]["ClusterConfig"]
+    else:
+        job_desc = schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]
+        app_specification = job_desc["MonitoringAppSpecification"]
+        env = job_desc["Environment"]
+        baseline_config = job_desc.get("BaselineConfig")
+        job_input = job_desc["MonitoringInputs"][0]
+        job_output_config = job_desc["MonitoringOutputConfig"]
+        client_config = job_desc["MonitoringResources"]["ClusterConfig"]
+
+    assert DEFAULT_IMAGE_SUFFIX in app_specification["ImageUri"]
+    if env.get(env_key):
+        assert env[env_key] == env_value
+    assert env["publish_cloudwatch_metrics"] == publish_cloudwatch_metrics
+    assert app_specification.get("RecordPreprocessorSourceUri") == preprocessor
+    assert app_specification.get("PostAnalyticsProcessorSourceUri") == postprocessor
+
+    # baseline
+    if baseline_config:
+        if baseline_config["StatisticsResource"]:
+            assert baseline_config["StatisticsResource"]["S3Uri"] == statistics.file_s3_uri
+        else:
+            assert statistics is None
+        if baseline_config["ConstraintsResource"]:
+            assert baseline_config["ConstraintsResource"]["S3Uri"] == constraints.file_s3_uri
+        else:
+            assert constraints is None
+    else:
+        assert statistics is None
+        assert constraints is None
+    # job input
+    assert (
+        "sagemaker-tensorflow-serving"
+        in job_input["BatchTransformInput"]["DataCapturedDestinationS3Uri"]
+    )
     # job output config
     assert len(job_output_config["MonitoringOutputs"]) == 1
     assert job_output_config.get("KmsKeyId") == output_kms_key

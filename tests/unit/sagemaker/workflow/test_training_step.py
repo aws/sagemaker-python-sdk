@@ -57,7 +57,9 @@ from sagemaker.amazon.object2vec import Object2Vec
 from tests.unit import DATA_DIR
 
 from sagemaker.inputs import TrainingInput
-from tests.unit.sagemaker.workflow.helpers import CustomStep, ordered
+from tests.unit.sagemaker.workflow.helpers import CustomStep, ordered, get_step_args_helper
+from sagemaker.workflow.condition_step import ConditionStep
+from sagemaker.workflow.conditions import ConditionGreaterThanOrEqualTo
 
 REGION = "us-west-2"
 BUCKET = "my-bucket"
@@ -162,9 +164,7 @@ INPUT_PARAM_LISTS = [
 @pytest.fixture
 def client():
     """Mock client.
-
     Considerations when appropriate:
-
         * utilize botocore.stub.Stubber
         * separate runtime client from client
     """
@@ -263,23 +263,33 @@ def test_training_step_with_estimator(
         assert "Running within a PipelineSession" in str(w[-1].message)
 
     with warnings.catch_warnings(record=True) as w:
-        step = TrainingStep(
+        step_train = TrainingStep(
             name="MyTrainingStep",
             step_args=step_args,
             description="TrainingStep description",
             display_name="MyTrainingStep",
-            depends_on=["TestStep", "SecondTestStep"],
+            depends_on=["TestStep"],
         )
         assert len(w) == 0
 
+    step_condition = ConditionStep(
+        name="MyConditionStep",
+        conditions=[
+            ConditionGreaterThanOrEqualTo(
+                left=step_train.properties.FinalMetricDataList["val:acc"].Value, right=0.95
+            )
+        ],
+        if_steps=[custom_step2],
+    )
+
     pipeline = Pipeline(
         name="MyPipeline",
-        steps=[step, custom_step1, custom_step2],
+        steps=[step_train, step_condition, custom_step1],
         parameters=[enable_network_isolation, encrypt_container_traffic],
         sagemaker_session=pipeline_session,
     )
-
-    expected_step_arguments = deepcopy(step_args.args)
+    step_args = get_step_args_helper(step_args, "Training")
+    expected_step_arguments = deepcopy(step_args)
 
     expected_step_arguments["EnableInterContainerTrafficEncryption"] = {
         "Get": "Parameters.encrypt_container_traffic"
@@ -291,20 +301,35 @@ def test_training_step_with_estimator(
         expected_step_arguments.pop("ExperimentConfig", None)
     else:
         expected_step_arguments["ExperimentConfig"] = expected_experiment_config
-    del expected_step_arguments["TrainingJobName"]
 
-    assert json.loads(pipeline.definition())["Steps"][0] == {
+    assert step_condition.conditions[0].left.expr == {
+        "Get": "Steps.MyTrainingStep.FinalMetricDataList['val:acc'].Value"
+    }
+    step_definition = json.loads(pipeline.definition())["Steps"][0]
+
+    # delete profiler rule configurations because of timestamp collision
+    del step_definition["Arguments"]["ProfilerRuleConfigurations"]
+    del expected_step_arguments["ProfilerRuleConfigurations"]
+
+    assert step_definition == {
         "Name": "MyTrainingStep",
         "Description": "TrainingStep description",
         "DisplayName": "MyTrainingStep",
         "Type": "Training",
-        "DependsOn": ["TestStep", "SecondTestStep"],
+        "DependsOn": ["TestStep"],
         "Arguments": expected_step_arguments,
     }
-    assert step.properties.TrainingJobName.expr == {"Get": "Steps.MyTrainingStep.TrainingJobName"}
+    assert step_train.properties.TrainingJobName.expr == {
+        "Get": "Steps.MyTrainingStep.TrainingJobName"
+    }
     adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
     assert ordered(adjacency_list) == ordered(
-        {"MyTrainingStep": [], "SecondTestStep": ["MyTrainingStep"], "TestStep": ["MyTrainingStep"]}
+        {
+            "MyConditionStep": ["SecondTestStep"],
+            "MyTrainingStep": ["MyConditionStep"],
+            "SecondTestStep": [],
+            "TestStep": ["MyTrainingStep"],
+        }
     )
 
 
@@ -346,16 +371,15 @@ def test_training_step_estimator_with_param_code_input(
         steps=[step],
         sagemaker_session=pipeline_session,
     )
-    step_args.args["HyperParameters"]["sagemaker_program"] = {"Get": "Parameters.EntryPoint"}
-    step_args.args["HyperParameters"]["sagemaker_submit_directory"] = {
-        "Get": "Parameters.SourceDir"
-    }
+    step_args = get_step_args_helper(step_args, "Training")
+    step_args["HyperParameters"]["sagemaker_program"] = {"Get": "Parameters.EntryPoint"}
+    step_args["HyperParameters"]["sagemaker_submit_directory"] = {"Get": "Parameters.SourceDir"}
     assert json.loads(pipeline.definition())["Steps"][0] == {
         "Name": "MyTrainingStep",
         "Description": "TrainingStep description",
         "DisplayName": "MyTrainingStep",
         "Type": "Training",
-        "Arguments": step_args.args,
+        "Arguments": step_args,
     }
 
 
@@ -389,7 +413,7 @@ def test_training_step_with_framework_estimator(
         sagemaker_session=pipeline_session,
     )
 
-    step_args = step_args.args
+    step_args = get_step_args_helper(step_args, "Training")
     step_def = json.loads(pipeline.definition())["Steps"][0]
 
     assert step_args["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"] == training_input
@@ -402,6 +426,18 @@ def test_training_step_with_framework_estimator(
 
     del step_args["OutputDataConfig"]["S3OutputPath"]
     del step_def["Arguments"]["OutputDataConfig"]["S3OutputPath"]
+
+    # trim timestamp so RuleConfigurationName will match
+    rule_config_name_step_args = step_args["ProfilerRuleConfigurations"][0]["RuleConfigurationName"]
+    step_args["ProfilerRuleConfigurations"][0][
+        "RuleConfigurationName"
+    ] = rule_config_name_step_args[:-11]
+    rule_config_name_step_def = step_def["Arguments"]["ProfilerRuleConfigurations"][0][
+        "RuleConfigurationName"
+    ]
+    step_def["Arguments"]["ProfilerRuleConfigurations"][0][
+        "RuleConfigurationName"
+    ] = rule_config_name_step_def[:-11]
 
     if "sagemaker_s3_output" in step_args["HyperParameters"]:
         del step_args["HyperParameters"]["sagemaker_s3_output"]
@@ -474,7 +510,7 @@ def test_training_step_with_algorithm_base(algo_estimator, training_input, pipel
         sagemaker_session=pipeline_session,
     )
 
-    step_args = step_args.args
+    step_args = get_step_args_helper(step_args, "Training")
 
     step_def = json.loads(pipeline.definition())["Steps"][0]
     assert step_args["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"] == training_input
@@ -482,6 +518,18 @@ def test_training_step_with_algorithm_base(algo_estimator, training_input, pipel
     step_args["HyperParameters"]["sagemaker_submit_directory"] = {"Get": "Parameters.SourceDir"}
     del step_args["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"]
     del step_def["Arguments"]["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"]
+
+    # trim timestamp so RuleConfigurationName will match
+    rule_config_name_step_args = step_args["ProfilerRuleConfigurations"][0]["RuleConfigurationName"]
+    step_args["ProfilerRuleConfigurations"][0][
+        "RuleConfigurationName"
+    ] = rule_config_name_step_args[:-11]
+    rule_config_name_step_def = step_def["Arguments"]["ProfilerRuleConfigurations"][0][
+        "RuleConfigurationName"
+    ]
+    step_def["Arguments"]["ProfilerRuleConfigurations"][0][
+        "RuleConfigurationName"
+    ] = rule_config_name_step_def[:-11]
 
     assert step_def == {
         "Name": "MyTrainingStep",

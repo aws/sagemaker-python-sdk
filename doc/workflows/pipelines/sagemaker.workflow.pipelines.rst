@@ -46,6 +46,8 @@ Entities
 
 .. autoclass:: sagemaker.workflow.entities.Expression
 
+.. autoclass:: sagemaker.workflow.entities.PipelineVariable
+
 Execution Variables
 -------------------
 
@@ -130,6 +132,8 @@ Step Collections
 
 .. autoclass:: sagemaker.workflow.model_step.ModelStep
 
+.. autoclass:: sagemaker.workflow.monitor_batch_transform_step.MonitorBatchTransformStep
+
 Steps
 -----
 
@@ -164,3 +168,5 @@ Steps
 .. autoclass:: sagemaker.workflow.clarify_check_step.ClarifyCheckStep
 
 .. autoclass:: sagemaker.workflow.fail_step.FailStep
+
+.. autoclass:: sagemaker.workflow.automl_step.AutoMLStep

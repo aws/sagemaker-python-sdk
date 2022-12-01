@@ -215,11 +215,13 @@ def test_one_step_data_quality_pipeline_happycase(
             pass
 
 
+@pytest.mark.parametrize("fail_on_violation", [None, True, False])
 def test_one_step_data_quality_pipeline_constraint_violation(
     sagemaker_session,
     role,
     pipeline_name,
     check_job_config,
+    fail_on_violation,
     supplied_baseline_statistics_uri_param,
     supplied_baseline_constraints_uri_param,
     data_quality_check_config,
@@ -234,6 +236,7 @@ def test_one_step_data_quality_pipeline_constraint_violation(
     data_quality_check_step = QualityCheckStep(
         name="DataQualityCheckStep",
         skip_check=False,
+        fail_on_violation=fail_on_violation,
         register_new_baseline=False,
         quality_check_config=data_quality_check_config,
         check_job_config=check_job_config,
@@ -274,14 +277,21 @@ def test_one_step_data_quality_pipeline_constraint_violation(
             except WaiterError:
                 pass
             execution_steps = execution.list_steps()
-
             assert len(execution_steps) == 1
-            failure_reason = execution_steps[0].get("FailureReason", "")
-            if _CHECK_FAIL_ERROR_MSG not in failure_reason:
-                logging.error(f"Pipeline execution failed with error: {failure_reason}. Retrying..")
-                continue
             assert execution_steps[0]["StepName"] == "DataQualityCheckStep"
-            assert execution_steps[0]["StepStatus"] == "Failed"
+
+            failure_reason = execution_steps[0].get("FailureReason", "")
+            if fail_on_violation is None or fail_on_violation:
+                if _CHECK_FAIL_ERROR_MSG not in failure_reason:
+                    logging.error(
+                        f"Pipeline execution failed with error: {failure_reason}. Retrying.."
+                    )
+                    continue
+                assert execution_steps[0]["StepStatus"] == "Failed"
+            else:
+                # fail on violation == false
+                assert _CHECK_FAIL_ERROR_MSG not in failure_reason
+                assert execution_steps[0]["StepStatus"] == "Succeeded"
             break
     finally:
         try:

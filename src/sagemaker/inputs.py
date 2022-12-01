@@ -50,17 +50,17 @@ class TrainingInput(object):
         on the parameters.
 
         Args:
-            s3_data (str): Defines the location of S3 data to train on.
-            distribution (str): Valid values: ``'FullyReplicated'``,
-            ``'ShardedByS3Key'``
-                (default: ``'FullyReplicated'``).
-            compression (str): Valid values: ``'Gzip'``, ``None`` (default: None).
-            This is used only in
-                Pipe input mode.
-            content_type (str): MIME type of the input data (default: None).
-            record_wrapping (str): Valid values: 'RecordIO' (default: None).
-            s3_data_type (str): Valid values: ``'S3Prefix'``, ``'ManifestFile'``,
-            ``'AugmentedManifestFile'``.
+            s3_data (str or PipelineVariable): Defines the location of S3 data to train on.
+            distribution (str or PipelineVariable): Valid values: ``'FullyReplicated'``,
+                ``'ShardedByS3Key'`` (default: ``'FullyReplicated'``).
+            compression (str or PipelineVariable): Valid values: ``'Gzip'``, ``None``
+                (default: None). This is used only in Pipe input mode.
+            content_type (str or PipelineVariable): MIME type of the input data
+                (default: None).
+            record_wrapping (str or PipelineVariable): Valid values: 'RecordIO'
+                (default: None).
+            s3_data_type (str or PipelineVariable): Valid values: ``'S3Prefix'``,
+                ``'ManifestFile'``, ``'AugmentedManifestFile'``.
                 If ``'S3Prefix'``, ``s3_data`` defines a prefix of s3 objects to train on.
                 All objects with s3 keys beginning with ``s3_data`` will be used to train.
                 If ``'ManifestFile'`` or ``'AugmentedManifestFile'``,
@@ -70,9 +70,9 @@ class TrainingInput(object):
                 AugmentedManifestFile formats are described at `S3DataSource
                 <https://docs.aws.amazon.com/sagemaker/latest/dg/API_S3DataSource.html>`_
                 in the `Amazon SageMaker API reference`.
-            instance_groups (list[str]): Optional. A list of instance group names in string format
-                that you specified while configuring a heterogeneous cluster using the
-                :class:`sagemaker.instance_group.InstanceGroup`.
+            instance_groups (list[str] or list[PipelineVariable]): Optional. A list of
+                instance group names in string format that you specified while configuring
+                a heterogeneous cluster using the :class:`sagemaker.instance_group.InstanceGroup`.
                 S3 data will be sent to all instance groups in the specified list.
                 For instructions on how to use InstanceGroup objects
                 to configure a heterogeneous cluster
@@ -81,8 +81,8 @@ class TrainingInput(object):
                 <https://docs.aws.amazon.com/sagemaker/latest/dg/train-heterogeneous-cluster.html>`_
                 in the *Amazon SageMaker developer guide*.
                 (default: None)
-            input_mode (str): Optional override for this channel's input mode (default: None).
-                By default, channels will use the input mode defined on
+            input_mode (str or PipelineVariable): Optional override for this channel's input mode
+                (default: None). By default, channels will use the input mode defined on
                 ``sagemaker.estimator.EstimatorBase.input_mode``, but they will ignore
                 that setting if this parameter is set.
 
@@ -94,10 +94,11 @@ class TrainingInput(object):
                     * 'FastFile' - Amazon SageMaker streams data from S3 on demand instead of
                         downloading the entire dataset before training begins.
 
-            attribute_names (list[str]): A list of one or more attribute names to use that are
-                found in a specified AugmentedManifestFile.
-            target_attribute_name (str): The name of the attribute will be predicted (classified)
-                in a SageMaker AutoML job. It is required if the input is for SageMaker AutoML job.
+            attribute_names (list[str] or list[PipelineVariable]): A list of one or more attribute
+                names to use that are found in a specified AugmentedManifestFile.
+            target_attribute_name (str or PipelineVariable): The name of the attribute will be
+                predicted (classified) in a SageMaker AutoML job. It is required if the input is
+                for SageMaker AutoML job.
             shuffle_config (sagemaker.inputs.ShuffleConfig): If specified this configuration enables
                 shuffling on this channel. See the SageMaker API documentation for more info:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_ShuffleConfig.html
@@ -175,6 +176,7 @@ class TransformInput(object):
     output_filter: str = attr.ib(default=None)
     join_source: str = attr.ib(default=None)
     model_client_config: dict = attr.ib(default=None)
+    batch_data_capture_config: dict = attr.ib(default=None)
 
 
 class FileSystemInput(object):
@@ -231,3 +233,45 @@ class FileSystemInput(object):
 
         if content_type:
             self.config["ContentType"] = content_type
+
+
+class BatchDataCaptureConfig(object):
+    """Configuration object passed in when create a batch transform job.
+
+    Specifies configuration related to batch transform job data capture for use with
+    Amazon SageMaker Model Monitoring
+    """
+
+    def __init__(
+        self,
+        destination_s3_uri: str,
+        kms_key_id: str = None,
+        generate_inference_id: bool = None,
+    ):
+        """Create new BatchDataCaptureConfig
+
+        Args:
+            destination_s3_uri (str): S3 Location to store the captured data
+            kms_key_id (str): The KMS key to use when writing to S3.
+                KmsKeyId can be an ID of a KMS key, ARN of a KMS key, alias of a KMS key,
+                or alias of a KMS key. The KmsKeyId is applied to all outputs.
+                (default: None)
+            generate_inference_id (bool): Flag to generate an inference id
+                (default: None)
+        """
+        self.destination_s3_uri = destination_s3_uri
+        self.kms_key_id = kms_key_id
+        self.generate_inference_id = generate_inference_id
+
+    def _to_request_dict(self):
+        """Generates a request dictionary using the parameters provided to the class."""
+        batch_data_capture_config = {
+            "DestinationS3Uri": self.destination_s3_uri,
+        }
+
+        if self.kms_key_id is not None:
+            batch_data_capture_config["KmsKeyId"] = self.kms_key_id
+        if self.generate_inference_id is not None:
+            batch_data_capture_config["GenerateInferenceId"] = self.generate_inference_id
+
+        return batch_data_capture_config

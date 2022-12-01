@@ -62,7 +62,7 @@ from sagemaker.clarify import (
     ModelPredictedLabelConfig,
     SHAPConfig,
 )
-from tests.unit.sagemaker.workflow.helpers import CustomStep, ordered
+from tests.unit.sagemaker.workflow.helpers import CustomStep, ordered, get_step_args_helper
 
 REGION = "us-west-2"
 BUCKET = "my-bucket"
@@ -189,9 +189,7 @@ PROCESSING_OUTPUT = [
 @pytest.fixture
 def client():
     """Mock client.
-
     Considerations when appropriate:
-
         * utilize botocore.stub.Stubber
         * separate runtime client from client
     """
@@ -312,13 +310,13 @@ def test_processing_step_with_processor(
         steps=[step, custom_step1, custom_step2],
         sagemaker_session=pipeline_session,
     )
+    step_args = get_step_args_helper(step_args, "Processing")
 
-    expected_step_arguments = deepcopy(step_args.args)
+    expected_step_arguments = deepcopy(step_args)
     if expected_experiment_config is None:
         expected_step_arguments.pop("ExperimentConfig", None)
     else:
         expected_step_arguments["ExperimentConfig"] = expected_experiment_config
-    del expected_step_arguments["ProcessingJobName"]
 
     assert json.loads(pipeline.definition())["Steps"][0] == {
         "Name": "MyProcessingStep",
@@ -425,7 +423,7 @@ def test_processing_step_with_script_processor(pipeline_session, processing_inpu
     assert json.loads(pipeline.definition())["Steps"][0] == {
         "Name": "MyProcessingStep",
         "Type": "Processing",
-        "Arguments": step_args.args,
+        "Arguments": get_step_args_helper(step_args, "Processing"),
     }
 
 
@@ -458,7 +456,7 @@ def test_processing_step_with_framework_processor(
         sagemaker_session=pipeline_session,
     )
 
-    step_args = step_args.args
+    step_args = get_step_args_helper(step_args, "Processing")
     step_def = json.loads(pipeline.definition())["Steps"][0]
 
     assert step_args["ProcessingInputs"][0]["S3Input"]["S3Uri"] == processing_input.source
@@ -535,7 +533,7 @@ def test_processing_step_with_clarify_processor(pipeline_session):
         assert json.loads(pipeline.definition())["Steps"][0] == {
             "Name": "MyProcessingStep",
             "Type": "Processing",
-            "Arguments": step_args.args,
+            "Arguments": get_step_args_helper(step_args, "Processing"),
         }
 
     test_run = utils.unique_name_from_base("test_run")
@@ -742,7 +740,7 @@ def test_spark_processor(spark_processor, processing_input, pipeline_session):
         step_args=step_args,
     )
 
-    step_args = step_args.args
+    step_args = get_step_args_helper(step_args, "Processing")
 
     assert step_args["AppSpecification"]["ContainerArguments"] == run_inputs["arguments"]
 

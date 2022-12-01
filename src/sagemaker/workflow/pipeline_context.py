@@ -16,7 +16,7 @@ from __future__ import absolute_import
 import warnings
 import inspect
 from functools import wraps
-from typing import Dict, Optional
+from typing import Dict, Optional, Callable
 
 from sagemaker.session import Session, SessionSettings
 from sagemaker.local import LocalSession
@@ -25,14 +25,22 @@ from sagemaker.local import LocalSession
 class _StepArguments:
     """Step arguments entity for `Step`"""
 
-    def __init__(self, caller_name: str = None):
+    # pylint: disable=keyword-arg-before-vararg
+    def __init__(self, caller_name: str = None, func: Callable = None, *func_args, **func_kwargs):
         """Create a `_StepArguments`
 
         Args:
             caller_name (str): The name of the caller function which is intercepted by the
                 PipelineSession to get the step arguments.
+            func (Callable): The job class function that generates the step arguments used
+                when creating the job ( fit() for a training job )
+            *func_args: The args for func
+            **func_kwargs: The kwargs for func
         """
         self.caller_name = caller_name
+        self.func = func
+        self.func_args = func_args
+        self.func_kwargs = func_kwargs
 
 
 class _JobStepArguments(_StepArguments):
@@ -69,6 +77,23 @@ class _ModelStepArguments(_StepArguments):
         self.create_model_request = None
         self.need_runtime_repack = set()
         self.runtime_repack_output_prefix = None
+
+
+class _PipelineConfig:
+    """Config object that associates a step with its containing pipeline
+
+    Args:
+        pipeline_name (str): pipeline name
+        step_name (str): step name
+        code_hash (str): a hash of the code artifact for the particular step
+        config_hash (str): a hash of the config artifact for the particular step (Processing)
+    """
+
+    def __init__(self, pipeline_name, step_name, code_hash, config_hash):
+        self.pipeline_name = pipeline_name
+        self.step_name = step_name
+        self.code_hash = code_hash
+        self.config_hash = config_hash
 
 
 class PipelineSession(Session):
@@ -242,9 +267,39 @@ def runnable_by_pipeline(run_func):
                 self_instance.sagemaker_session.context = None
                 return context
 
-            run_func(*args, **kwargs)
-            return self_instance.sagemaker_session.context
+            return _StepArguments(retrieve_caller_name(self_instance), run_func, *args, **kwargs)
 
         return run_func(*args, **kwargs)
 
     return wrapper
+
+
+def retrieve_caller_name(job_instance):
+    """Convenience method for runnable_by_pipeline decorator
+
+    This function takes an instance of a job class and maps it
+    to the pipeline session function that creates the job request.
+
+    Args:
+        job_instance: A job class instance, one of the following
+            imported types
+    """
+
+    from sagemaker.processing import Processor
+    from sagemaker.estimator import EstimatorBase
+    from sagemaker.transformer import Transformer
+    from sagemaker.tuner import HyperparameterTuner
+    from sagemaker.automl.automl import AutoML
+
+    if isinstance(job_instance, Processor):
+        return "process"
+    if isinstance(job_instance, EstimatorBase):
+        return "train"
+    if isinstance(job_instance, Transformer):
+        return "transform"
+    if isinstance(job_instance, HyperparameterTuner):
+        return "create_tuning_job"
+    if isinstance(job_instance, AutoML):
+        return "auto_ml"
+
+    return None

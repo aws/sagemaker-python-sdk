@@ -33,6 +33,7 @@ from sagemaker.tuner import HyperparameterTuner, IntegerParameter
 from sagemaker.pytorch.estimator import PyTorch
 
 from tests.unit import DATA_DIR
+from tests.unit.sagemaker.workflow.helpers import get_step_args_helper
 
 REGION = "us-west-2"
 BUCKET = "my-bucket"
@@ -44,9 +45,7 @@ INSTANCE_TYPE = "ml.m4.xlarge"
 @pytest.fixture
 def client():
     """Mock client.
-
     Considerations when appropriate:
-
         * utilize botocore.stub.Stubber
         * separate runtime client from client
     """
@@ -144,7 +143,7 @@ def test_tuning_step_with_single_algo_tuner(pipeline_session, training_input, en
         sagemaker_session=pipeline_session,
     )
 
-    step_args = step_args.args
+    step_args = get_step_args_helper(step_args, "HyperParameterTuning")
     step_def = json.loads(pipeline.definition())["Steps"][0]
 
     assert (
@@ -159,6 +158,27 @@ def test_tuning_step_with_single_algo_tuner(pipeline_session, training_input, en
     del step_def["Arguments"]["TrainingJobDefinition"]["InputDataConfig"][0]["DataSource"][
         "S3DataSource"
     ]["S3Uri"]
+
+    # trim timestamp so sagemaker_job_name will still match
+    step_args_sm_job_name = step_args["TrainingJobDefinition"]["StaticHyperParameters"][
+        "sagemaker_job_name"
+    ]
+    step_args["TrainingJobDefinition"]["StaticHyperParameters"][
+        "sagemaker_job_name"
+    ] = step_args_sm_job_name[:-24]
+    step_def_sm_job_name = step_def["Arguments"]["TrainingJobDefinition"]["StaticHyperParameters"][
+        "sagemaker_job_name"
+    ]
+    step_def["Arguments"]["TrainingJobDefinition"]["StaticHyperParameters"][
+        "sagemaker_job_name"
+    ] = step_def_sm_job_name[:-24]
+
+    # delete S3 path assertions for now because job name is included with timestamp. These will be re-enabled once
+    # next PRs are submitted with s3 path updates, removing the job name.
+    del step_args["TrainingJobDefinition"]["StaticHyperParameters"]["sagemaker_submit_directory"]
+    del step_def["Arguments"]["TrainingJobDefinition"]["StaticHyperParameters"][
+        "sagemaker_submit_directory"
+    ]
 
     assert step_def == {
         "Name": "MyTuningStep",
@@ -225,10 +245,35 @@ def test_tuning_step_with_multi_algo_tuner(pipeline_session, entry_point):
         sagemaker_session=pipeline_session,
     )
 
-    assert json.loads(pipeline.definition())["Steps"][0] == {
+    step_args = get_step_args_helper(step_args, "HyperParameterTuning")
+    step_def = json.loads(pipeline.definition())["Steps"][0]
+
+    for i, step in enumerate(step_args["TrainingJobDefinitions"]):
+        # trim timestamp so sagemaker_job_name will still match
+        step_args_sm_job_name = step["StaticHyperParameters"]["sagemaker_job_name"]
+        step_args["TrainingJobDefinitions"][i]["StaticHyperParameters"][
+            "sagemaker_job_name"
+        ] = step_args_sm_job_name[:-24]
+        step_def_sm_job_name = step_def["Arguments"]["TrainingJobDefinitions"][i][
+            "StaticHyperParameters"
+        ]["sagemaker_job_name"]
+        step_def["Arguments"]["TrainingJobDefinitions"][i]["StaticHyperParameters"][
+            "sagemaker_job_name"
+        ] = step_def_sm_job_name[:-24]
+
+        # delete S3 path assertions for now because job name is included with timestamp. These will be re-enabled once
+        # next PRs are submitted with s3 path updates, removing the job name.
+        del step_args["TrainingJobDefinitions"][i]["StaticHyperParameters"][
+            "sagemaker_submit_directory"
+        ]
+        del step_def["Arguments"]["TrainingJobDefinitions"][i]["StaticHyperParameters"][
+            "sagemaker_submit_directory"
+        ]
+
+    assert step_def == {
         "Name": "MyTuningStep",
         "Type": "Tuning",
-        "Arguments": step_args.args,
+        "Arguments": step_args,
     }
     adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
     assert adjacency_list == {"MyTuningStep": []}

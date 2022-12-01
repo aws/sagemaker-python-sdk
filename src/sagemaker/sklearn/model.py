@@ -90,7 +90,7 @@ class SKLearnModel(FrameworkModel):
         """Initialize an SKLearnModel.
 
         Args:
-            model_data (str): The S3 location of a SageMaker model data
+            model_data (str or PipelineVariable): The S3 location of a SageMaker model data
                 ``.tar.gz`` file.
             role (str): An AWS IAM role (either name or full ARN). The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker
@@ -108,8 +108,8 @@ class SKLearnModel(FrameworkModel):
                 model training code (default: 'py3'). Currently, 'py3' is the only
                 supported version. If ``None`` is passed in, ``image_uri`` must be
                 provided.
-            image_uri (str): A Docker image URI (default: None). If not specified,
-                a default image for Scikit-learn will be used.
+            image_uri (str or PipelineVariable): A Docker image URI (default: None).
+                If not specified, a default image for Scikit-learn will be used.
                 If ``framework_version`` or ``py_version`` are ``None``, then
                 ``image_uri`` is required. If ``image_uri`` is also ``None``, then a ``ValueError``
                 will be raised.
@@ -117,7 +117,7 @@ class SKLearnModel(FrameworkModel):
                 to call to create a predictor with an endpoint name and
                 SageMaker ``Session``. If specified, ``deploy()`` returns the
                 result of invoking this function on the created endpoint name.
-            model_server_workers (int): Optional. The number of worker processes
+            model_server_workers (int or PipelineVariable): Optional. The number of worker processes
                 used by the inference server. If None, server will use one
                 worker per vCPU.
             **kwargs: Keyword arguments passed to the ``FrameworkModel``
@@ -170,43 +170,49 @@ class SKLearnModel(FrameworkModel):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
         Args:
-            content_types (list): The supported MIME types for the input data.
-            response_types (list): The supported MIME types for the output data.
-            inference_instances (list): A list of the instance types that are used to
-                generate inferences in real-time (default: None).
-            transform_instances (list): A list of the instance types on which a transformation
-                job can be run or on which an endpoint can be deployed (default: None).
-            model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
-                using `model_package_name` makes the Model Package un-versioned (default: None).
-            model_package_group_name (str): Model Package Group name, exclusive to
-                `model_package_name`, using `model_package_group_name` makes the Model Package
-                versioned (default: None).
-            image_uri (str): Inference image uri for the container. Model class' self.image will
-                be used if it is None (default: None).
+            content_types (list[str] or list[PipelineVariable]): The supported MIME types
+                for the input data.
+            response_types (list[str] or list[PipelineVariable]): The supported MIME types
+                for the output data.
+            inference_instances (list[str] or list[PipelineVariable]): A list of the instance
+                types that are used to generate inferences in real-time (default: None).
+            transform_instances (list[str] or list[PipelineVariable]): A list of the instance types
+                on which a transformation job can be run or on which an endpoint can be deployed
+                (default: None).
+            model_package_name (str or PipelineVariable): Model Package name, exclusive to
+                `model_package_group_name`, using `model_package_name` makes the Model Package
+                un-versioned (default: None).
+            model_package_group_name (str or PipelineVariable): Model Package Group name,
+                exclusive to `model_package_name`, using `model_package_group_name` makes the
+                Model Package versioned (default: None).
+            image_uri (str or PipelineVariable): Inference image uri for the container. Model class'
+                self.image will be used if it is None (default: None).
             model_metrics (ModelMetrics): ModelMetrics object (default: None).
             metadata_properties (MetadataProperties): MetadataProperties object (default: None).
             marketplace_cert (bool): A boolean value indicating if the Model Package is certified
                 for AWS Marketplace (default: False).
-            approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
-                or "PendingManualApproval" (default: "PendingManualApproval").
+            approval_status (str or PipelineVariable): Model Approval Status, values can be
+                "Approved", "Rejected", or "PendingManualApproval"
+                (default: "PendingManualApproval").
             description (str): Model Package description (default: None).
             drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
-            customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
-                metadata properties (default: None).
-            domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
-                "MACHINE_LEARNING" (default: None).
-            sample_payload_url (str): The S3 path where the sample payload is stored
+            customer_metadata_properties (dict[str, str] or dict[str, PipelineVariable]):
+                A dictionary of key-value paired metadata properties (default: None).
+            domain (str or PipelineVariable): Domain values can be "COMPUTER_VISION",
+                "NATURAL_LANGUAGE_PROCESSING", "MACHINE_LEARNING" (default: None).
+            sample_payload_url (str or PipelineVariable): The S3 path where the sample payload
+                is stored (default: None).
+            task (str or PipelineVariable): Task values which are supported by Inference Recommender
+                are "FILL_MASK", "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION",
+                "IMAGE_SEGMENTATION", "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
+            framework (str or PipelineVariable): Machine learning framework of the model package
+                container image (default: None).
+            framework_version (str or PipelineVariable): Framework version of the Model Package
+                Container Image (default: None).
+            nearest_model_name (str or PipelineVariable): Name of a pre-trained machine learning
+                benchmarked by Amazon SageMaker Inference Recommender (default: None).
+            data_input_configuration (str or PipelineVariable): Input object for the model
                 (default: None).
-            task (str): Task values which are supported by Inference Recommender are "FILL_MASK",
-                "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION", "IMAGE_SEGMENTATION",
-                "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
-            framework (str): Machine learning framework of the model package container image
-                (default: None).
-            framework_version (str): Framework version of the Model Package Container Image
-                (default: None).
-            nearest_model_name (str): Name of a pre-trained machine learning benchmarked by
-                Amazon SageMaker Inference Recommender (default: None).
-            data_input_configuration (str): Input object for the model (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -242,7 +248,7 @@ class SKLearnModel(FrameworkModel):
             sample_payload_url=sample_payload_url,
             task=task,
             framework=framework,
-            framework_version=framework_version or self.framework_version,
+            framework_version=framework_version,
             nearest_model_name=nearest_model_name,
             data_input_configuration=data_input_configuration,
         )

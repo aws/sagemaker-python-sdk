@@ -12,4 +12,4 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-EC2_GPU_INSTANCE_CLASSES = {"p2", "g4dn", "g4ad", "p3", "p3dn", "p4dn"}
+EC2_GPU_INSTANCE_CLASSES = {"p2", "g4dn", "g4ad", "p3", "p3dn", "p4d", "g5"}
