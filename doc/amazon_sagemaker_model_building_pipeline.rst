@@ -362,6 +362,52 @@ Example:
         prefix=model_prefix
     )
 
+AutoMLStep
+`````````````
+Referable Property List:
+
+- `DescribeAutoMLJob`_
+- `BestCandidateProperties.ModelInsightsJsonReportPath`_
+- `BestCandidateProperties.ExplainabilityJsonReportPath`_
+
+.. _DescribeAutoMLJob: https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_DescribeAutoMLJob
+.. _BestCandidateProperties.ModelInsightsJsonReportPath: https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CandidateArtifactLocations.html#sagemaker-Type-CandidateArtifactLocations-ModelInsights
+.. _BestCandidateProperties.ExplainabilityJsonReportPath: https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CandidateArtifactLocations.html#sagemaker-Type-CandidateArtifactLocations-Explainability
+
+Example:
+
+.. code-block:: python
+
+    step_automl = AutoMLStep(...)
+
+    auto_ml_model = step_automl.get_best_model(<role>)
+
+    model_metrics = ModelMetrics(
+        model_statistics=MetricsSource(
+            s3_uri=auto_ml_step.properties.BestCandidateProperties.ModelInsightsJsonReportPath,
+            content_type="application/json",
+        ),
+        explainability=MetricsSource(
+            s3_uri=auto_ml_step.properties.BestCandidateProperties.ExplainabilityJsonReportPath,
+            content_type="application/json",
+        )
+    )
+
+    step_args_register_model = auto_ml_model.register(
+    content_types=["text/csv"],
+    response_types=["text/csv"],
+    inference_instances=["ml.t2.medium", "ml.m5.large"],
+    transform_instances=["ml.m5.large"],
+    model_package_group_name="My model package group name",
+    approval_status="PendingManualApproval",
+    model_metrics=model_metrics,
+    )
+
+    step_register_model = ModelStep(
+        name="auto-ml-model-register",
+        step_args=step_args_register_model,
+    )
+
 CreateModelStep
 ````````````````
 Referable Property List:
