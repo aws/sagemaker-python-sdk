@@ -195,7 +195,7 @@ def test_server_side_encryption(sagemaker_session, tf_full_version, tf_full_py_v
     reason="no ml.p2 or ml.p3 instances in this region",
 )
 @retry_with_instance_list(gpu_list(tests.integ.test_region()))
-def test_mwms_gpu(
+def test_mwms_gpu_tf_models(
     sagemaker_session,
     tensorflow_training_latest_version,
     tensorflow_training_latest_py_version,
@@ -260,6 +260,68 @@ def test_mwms_gpu(
     logs = captured.out + captured.err
     assert "Running distributed training job with multi_worker_mirrored_strategy setup" in logs
     assert f"num_devices = 1, group_size = {instance_count}" in logs
+
+
+@pytest.mark.slow_test
+@pytest.mark.release
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.TRAINING_NO_P2_REGIONS
+    and tests.integ.test_region() in tests.integ.TRAINING_NO_P3_REGIONS,
+    reason="no ml.p2 or ml.p3 instances in this region",
+)
+@retry_with_instance_list(gpu_list(tests.integ.test_region()))
+def test_mwms_gpu_hf_transformers(
+    sagemaker_session,
+    tensorflow_training_latest_version,
+    tensorflow_training_latest_py_version,
+    capsys,
+    imagenet_train_set,
+    **kwargs,
+):
+    instance_count = 2
+    estimator = TensorFlow(
+        source_dir=os.path.join(RESOURCE_PATH, "huggingface", "run_clm"),
+        entry_point="run_clm.py",
+        model_dir=False,
+        instance_type=kwargs["instance_type"],
+        instance_count=instance_count,
+        framework_version=tensorflow_training_latest_version,
+        py_version=tensorflow_training_latest_py_version,
+        distribution=MWMS_DISTRIBUTION,
+        hyperparameters={
+            "model_type": "gpt2",
+            "tokenizer_name": "gpt2",
+            "output_dir": "/opt/ml/model",
+            "dataset_name": "glue",
+            "dataset_config_name": "sst2",
+            "do_train": True,
+            "do_eval": False,
+            "block_size": 128,
+            "num_train_epochs": 1,
+            "max_steps": 16,
+            "overwrite_output_dir": True,
+            "save_strategy": "no",
+            "evaluation_strategy": "no",
+            "logging_strategy": "epoch",
+            "per_device_train_batch_size": 16,
+        },
+        environment={
+            "NCCL_DEBUG": "INFO",
+        },
+        max_run=60 * 60 * 1,  # 1 hour
+        role=ROLE,
+        volume_size=400,
+        sagemaker_session=sagemaker_session,
+        disable_profiler=True,
+    )
+
+    with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        estimator.fit(inputs=imagenet_train_set, job_name=unique_name_from_base("test-tf-mwms"))
+
+    captured = capsys.readouterr()
+    logs = captured.out + captured.err
+    assert "Running distributed training job with multi_worker_mirrored_strategy setup" in logs
+    assert f"nranks {instance_count}" in logs
 
 
 @pytest.mark.release
