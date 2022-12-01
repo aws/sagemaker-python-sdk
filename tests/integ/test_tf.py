@@ -187,7 +187,6 @@ def test_server_side_encryption(sagemaker_session, tf_full_version, tf_full_py_v
             )
 
 
-@pytest.mark.slow_test
 @pytest.mark.release
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.TRAINING_NO_P2_REGIONS
@@ -195,87 +194,11 @@ def test_server_side_encryption(sagemaker_session, tf_full_version, tf_full_py_v
     reason="no ml.p2 or ml.p3 instances in this region",
 )
 @retry_with_instance_list(gpu_list(tests.integ.test_region()))
-def test_mwms_gpu_tf_models(
+def test_mwms_gpu(
     sagemaker_session,
     tensorflow_training_latest_version,
     tensorflow_training_latest_py_version,
     capsys,
-    imagenet_train_set,
-    **kwargs,
-):
-    instance_count = 2
-    epochs = 1
-    global_batch_size = 64
-    train_steps = int(10**5 * epochs / global_batch_size)
-    steps_per_loop = train_steps // 10
-    overrides = (
-        f"runtime.enable_xla=False,"
-        f"runtime.num_gpus=1,"
-        f"runtime.distribution_strategy=multi_worker_mirrored,"
-        f"runtime.mixed_precision_dtype=float16,"
-        f"task.train_data.global_batch_size={global_batch_size},"
-        f"task.train_data.input_path=/opt/ml/input/data/training/train-000*,"
-        f"task.train_data.cache=True,"
-        f"trainer.train_steps={train_steps},"
-        f"trainer.steps_per_loop={steps_per_loop},"
-        f"trainer.summary_interval={steps_per_loop},"
-        f"trainer.checkpoint_interval={train_steps},"
-        f"task.model.backbone.type=resnet,"
-        f"task.model.backbone.resnet.model_id=50"
-    )
-    estimator = TensorFlow(
-        git_config={
-            "repo": "https://github.com/tensorflow/models.git",
-            "branch": "v2.9.2",
-        },
-        source_dir=".",
-        entry_point="official/vision/train.py",
-        model_dir=False,
-        instance_type=kwargs["instance_type"],
-        instance_count=instance_count,
-        framework_version=tensorflow_training_latest_version,
-        py_version=tensorflow_training_latest_py_version,
-        distribution=MWMS_DISTRIBUTION,
-        hyperparameters={
-            "experiment": "resnet_imagenet",
-            "config_file": "official/vision/configs/experiments/image_classification/imagenet_resnet50_gpu.yaml",
-            "mode": "train",
-            "model_dir": "/tmp/",
-            "params_override": overrides,
-        },
-        environment={
-            "NCCL_DEBUG": "INFO",
-        },
-        max_run=60 * 60 * 1,  # 1 hour
-        role=ROLE,
-        volume_size=400,
-        sagemaker_session=sagemaker_session,
-        disable_profiler=True,
-    )
-
-    with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        estimator.fit(inputs=imagenet_train_set, job_name=unique_name_from_base("test-tf-mwms"))
-
-    captured = capsys.readouterr()
-    logs = captured.out + captured.err
-    assert "Running distributed training job with multi_worker_mirrored_strategy setup" in logs
-    assert f"num_devices = 1, group_size = {instance_count}" in logs
-
-
-@pytest.mark.slow_test
-@pytest.mark.release
-@pytest.mark.skipif(
-    tests.integ.test_region() in tests.integ.TRAINING_NO_P2_REGIONS
-    and tests.integ.test_region() in tests.integ.TRAINING_NO_P3_REGIONS,
-    reason="no ml.p2 or ml.p3 instances in this region",
-)
-@retry_with_instance_list(gpu_list(tests.integ.test_region()))
-def test_mwms_gpu_hf_transformers(
-    sagemaker_session,
-    tensorflow_training_latest_version,
-    tensorflow_training_latest_py_version,
-    capsys,
-    imagenet_train_set,
     **kwargs,
 ):
     instance_count = 2
