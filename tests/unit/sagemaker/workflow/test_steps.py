@@ -1502,7 +1502,8 @@ def test_pipeline_dag_json_get_undefined_property_file(sagemaker_session):
     with pytest.raises(ValueError) as e:
         PipelineGraph.from_pipeline(pipeline)
     assert (
-        f"Invalid JsonGet function {json_get_function.expr} in step '{custom_step.name}'. Property "
+        f"Invalid JsonGet function {json_get_function.expr} "
+        f"in step '{custom_step.name}'. Property "
         f"file reference '{json_get_function.property_file}' is undefined in step "
         f"'{processing_step.name}'." in str(e.value)
     )
