@@ -34,27 +34,44 @@ def tempdir():
 @pytest.fixture
 def training_job_env():
     old_value = os.environ.get("TRAINING_JOB_ARN")
-    os.environ["TRAINING_JOB_ARN"] = "arn:1234"
+    os.environ["TRAINING_JOB_ARN"] = "arn:1234aBcDe"
     yield os.environ
     del os.environ["TRAINING_JOB_ARN"]
     if old_value:
         os.environ["TRAINING_JOB_ARN"] = old_value
 
 
+@pytest.fixture
+def transform_job_env():
+    old_value = os.environ.get("SAGEMAKER_BATCH")
+    os.environ["SAGEMAKER_BATCH"] = "true"
+    yield os.environ
+    del os.environ["SAGEMAKER_BATCH"]
+    if old_value:
+        os.environ["SAGEMAKER_BATCH"] = old_value
+
+
 def test_processing_job_environment(tempdir):
     config_path = os.path.join(tempdir, "config.json")
     with open(config_path, "w") as f:
-        f.write(json.dumps({"ProcessingJobArn": "arn:1234"}))
+        f.write(json.dumps({"ProcessingJobArn": "arn:1234aBcDe"}))
     environment = _environment._RunEnvironment.load(processing_job_config_path=config_path)
 
     assert _environment._EnvironmentType.SageMakerProcessingJob == environment.environment_type
-    assert "arn:1234" == environment.source_arn
+    assert "arn:1234aBcDe" == environment.source_arn
 
 
 def test_training_job_environment(training_job_env):
     environment = _environment._RunEnvironment.load()
     assert _environment._EnvironmentType.SageMakerTrainingJob == environment.environment_type
-    assert "arn:1234" == environment.source_arn
+    assert "arn:1234aBcDe" == environment.source_arn
+
+
+def test_transform_job_environment(transform_job_env):
+    environment = _environment._RunEnvironment.load()
+    assert _environment._EnvironmentType.SageMakerTransformJob == environment.environment_type
+    # TODO: update if we figure out how to get source_arn from the transform job
+    assert not environment.source_arn
 
 
 def test_no_environment():
@@ -73,6 +90,7 @@ def test_resolve_trial_component(training_job_env, sagemaker_session):
 
     assert trial_component_name == tc.trial_component_name
     client.describe_trial_component.assert_called_with(TrialComponentName=trial_component_name)
+    client.list_trial_components.assert_called_with(SourceArn="arn:1234abcde")
 
 
 @unittest.mock.patch("sagemaker.experiments._environment.retry_with_backoff")

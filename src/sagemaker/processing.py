@@ -33,7 +33,12 @@ from sagemaker import s3
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
 from sagemaker.network import NetworkConfig
-from sagemaker.utils import base_name_from_image, get_config_value, name_from_base
+from sagemaker.utils import (
+    base_name_from_image,
+    get_config_value,
+    name_from_base,
+    check_and_get_run_experiment_config,
+)
 from sagemaker.session import Session
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.functions import Join
@@ -203,6 +208,7 @@ class Processor(object):
             outputs=outputs,
         )
 
+        experiment_config = check_and_get_run_experiment_config(experiment_config)
         self.latest_job = ProcessingJob.start_new(
             processor=self,
             inputs=normalized_inputs,
@@ -605,6 +611,7 @@ class ScriptProcessor(Processor):
             kms_key=kms_key,
         )
 
+        experiment_config = check_and_get_run_experiment_config(experiment_config)
         self.latest_job = ProcessingJob.start_new(
             processor=self,
             inputs=normalized_inputs,

@@ -324,10 +324,13 @@ class _TrialComponent(_base_types.Record):
 
         Returns:
             experiments.trial_component._TrialComponent: A SageMaker `_TrialComponent` object.
+            bool: A boolean variable indicating whether the trail component already exists
         """
         sagemaker_client = sagemaker_session.sagemaker_client
+        is_existed = False
         try:
             run_tc = _TrialComponent.load(trial_component_name, sagemaker_session)
+            is_existed = True
         except sagemaker_client.exceptions.ResourceNotFound:
             run_tc = _TrialComponent.create(
                 trial_component_name=trial_component_name,
@@ -335,4 +338,4 @@ class _TrialComponent(_base_types.Record):
                 tags=tags,
                 sagemaker_session=sagemaker_session,
             )
-        return run_tc
+        return run_tc, is_existed

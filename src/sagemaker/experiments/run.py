@@ -158,12 +158,18 @@ class Run(object):
             sagemaker_session=sagemaker_session,
         )
 
-        run_tc = _TrialComponent._load_or_create(
+        run_tc, is_existed = _TrialComponent._load_or_create(
             trial_component_name=trial_component_name,
             display_name=run_display_name,
             tags=Run._append_run_tc_label_to_tags(tags),
             sagemaker_session=sagemaker_session,
         )
+        if is_existed:
+            logger.warning(
+                "The Run (%s) under experiment (%s) already exists. Loading it.",
+                run_name,
+                experiment_name,
+            )
 
         trial.add_trial_component(run_tc)
 
@@ -184,12 +190,12 @@ class Run(object):
         experiment_name: Optional[str] = None,
         sagemaker_session: Optional["Session"] = None,
     ):
-        """Load a Run Trial Component by the run name or from the job environment.
+        """Load a Run by the run name or from the job environment.
 
         Args:
             run_name (str): The name of the Run to be loaded (default: None).
                 If it is None, the `RunName` in the `ExperimentConfig` of the job will be
-                fetched to load the Run Trial Component.
+                fetched to load the Run.
             experiment_name (str): The name of the Experiment that the to be loaded Run
                 is associated with (default: None).
                 Note: the experiment_name must be supplied along with a valid run_name.
@@ -253,7 +259,7 @@ class Run(object):
 
     @validate_invoked_inside_run_context
     def log_parameter(self, name, value):
-        """Record a single parameter value for this run trial component.
+        """Record a single parameter value for this run.
 
         Overwrites any previous value recorded for the specified parameter name.
 
@@ -266,7 +272,7 @@ class Run(object):
 
     @validate_invoked_inside_run_context
     def log_parameters(self, parameters):
-        """Record a collection of parameter values for this run trial component.
+        """Record a collection of parameter values for this run.
 
         Args:
             parameters (dict[str, str or numbers.Number]): The parameters to record.
@@ -280,7 +286,7 @@ class Run(object):
 
     @validate_invoked_inside_run_context
     def log_metric(self, name, value, timestamp=None, step=None):
-        """Record a custom scalar metric value for this run trial component.
+        """Record a custom scalar metric value for this run.
 
         Note:
              1. This method is for manual custom metrics, for automatic metrics see the
@@ -313,9 +319,9 @@ class Run(object):
         """Create and log a precision recall graph artifact for Studio UI to render.
 
         The artifact is stored in S3 and represented as a lineage artifact
-        with an association with the run trial component.
+        with an association with the run.
 
-        You can view the artifact in the charts tab of the Trial Component UI.
+        You can view the artifact in the UI.
         If your job is created by a pipeline execution you can view the artifact
         by selecting the corresponding step in the pipelines UI.
         See also `SageMaker Pipelines <https://aws.amazon.com/sagemaker/pipelines/>`_
@@ -329,7 +335,7 @@ class Run(object):
             positive_label (str or int): Label of the positive class (default: None).
             title (str): Title of the graph (default: None).
             is_output (bool): Determines direction of association to the
-                trial component. Defaults to True (output artifact).
+                run. Defaults to True (output artifact).
                 If set to False then represented as input association.
             no_skill (int): The precision threshold under which the classifier cannot discriminate
                 between the classes and would predict a random class or a constant class in
@@ -378,9 +384,9 @@ class Run(object):
         """Create and log a receiver operating characteristic (ROC curve) artifact.
 
         The artifact is stored in S3 and represented as a lineage artifact
-        with an association with the run trial component.
+        with an association with the run.
 
-        You can view the artifact in the charts tab of the Trial Component UI.
+        You can view the artifact in the UI.
         If your job is created by a pipeline execution you can view the artifact
         by selecting the corresponding step in the pipelines UI.
         See also `SageMaker Pipelines <https://aws.amazon.com/sagemaker/pipelines/>`_
@@ -393,7 +399,7 @@ class Run(object):
             y_score (list or array): Estimated/predicted probabilities.
             title (str): Title of the graph (default: None).
             is_output (bool): Determines direction of association to the
-                trial component. Defaults to True (output artifact).
+                run. Defaults to True (output artifact).
                 If set to False then represented as input association.
         """
         verify_length_of_true_and_predicted(
@@ -430,9 +436,9 @@ class Run(object):
         """Create and log a confusion matrix artifact.
 
         The artifact is stored in S3 and represented as a lineage artifact
-        with an association with the run trial component.
+        with an association with the run.
 
-        You can view the artifact in the charts tab of the Trial Component UI.
+        You can view the artifact in the UI.
         If your job is created by a pipeline execution you can view the
         artifact by selecting the corresponding step in the pipelines UI.
         See also `SageMaker Pipelines <https://aws.amazon.com/sagemaker/pipelines/>`_
@@ -444,7 +450,7 @@ class Run(object):
             y_pred (list or array): Predicted labels.
             title (str): Title of the graph (default: None).
             is_output (bool): Determines direction of association to the
-                trial component. Defaults to True (output artifact).
+                run. Defaults to True (output artifact).
                 If set to False then represented as input association.
         """
         verify_length_of_true_and_predicted(
@@ -468,7 +474,7 @@ class Run(object):
 
     @validate_invoked_inside_run_context
     def log_output(self, name, value, media_type=None):
-        """Record a single output artifact for this run trial component.
+        """Record a single output artifact for this run.
 
         Overwrites any previous value recorded for the specified output name.
 
@@ -484,7 +490,7 @@ class Run(object):
 
     @validate_invoked_inside_run_context
     def log_input(self, name, value, media_type=None):
-        """Record a single input artifact for this run trial component.
+        """Record a single input artifact for this run.
 
         Overwrites any previous value recorded for the specified input name.
 
@@ -500,7 +506,7 @@ class Run(object):
 
     @validate_invoked_inside_run_context
     def log_artifact_file(self, file_path, name=None, media_type=None, is_output=True):
-        """Upload a file to s3 and store it as an input/output artifact in this trial component.
+        """Upload a file to s3 and store it as an input/output artifact in this run.
 
         Args:
             file_path (str): The path of the local file to upload.
@@ -509,7 +515,7 @@ class Run(object):
                 If not specified, this library will attempt to infer the media type
                 from the file extension of `file_path`.
             is_output (bool): Determines direction of association to the
-                trial component. Defaults to True (output artifact).
+                run. Defaults to True (output artifact).
                 If set to False then represented as input association.
         """
         self._verify_trial_component_artifacts_length(is_output)
@@ -527,7 +533,7 @@ class Run(object):
 
     @validate_invoked_inside_run_context
     def log_artifact_directory(self, directory, media_type=None, is_output=True):
-        """Upload files under directory to s3 and log as artifacts in this trial component.
+        """Upload files under directory to s3 and log as artifacts in this run.
 
         The file name is used as the artifact name
 
@@ -537,7 +543,7 @@ class Run(object):
                 If not specified, this library will attempt to infer the media type
                 from the file extension of `file_path`.
             is_output (bool): Determines direction of association to the
-                trial component. Defaults to True (output artifact).
+                run. Defaults to True (output artifact).
                 If set to False then represented as input association.
         """
         for dir_file in os.listdir(directory):
@@ -549,7 +555,7 @@ class Run(object):
 
     @validate_invoked_inside_run_context
     def log_lineage_artifact(self, file_path, name=None, media_type=None, is_output=True):
-        """Upload a file to S3 and creates a lineage Artifact associated with this trial component.
+        """Upload a file to S3 and creates a lineage Artifact associated with this run.
 
         Args:
             file_path (str): The path of the local file to upload.
@@ -558,7 +564,7 @@ class Run(object):
                 If not specified, this library will attempt to infer the media type
                 from the file extension of `file_path`.
             is_output (bool): Determines direction of association to the
-                trial component. Defaults to True (output artifact).
+                run. Defaults to True (output artifact).
                 If set to False then represented as input association.
         """
         media_type = media_type or guess_media_type(file_path)
@@ -588,11 +594,11 @@ class Run(object):
         """Return a list of `Run` objects matching the given criteria.
 
         Args:
-            experiment_name (str): Only trial components related to the specified experiment
+            experiment_name (str): Only Run objects related to the specified experiment
                 are returned.
-            created_before (datetime.datetime): Return trial components created before this instant
+            created_before (datetime.datetime): Return Run objects created before this instant
                 (default: None).
-            created_after (datetime.datetime): Return trial components created after this instant
+            created_after (datetime.datetime): Return Run objects created after this instant
                 (default: None).
             sort_by (str): Which property to sort results by. One of 'Name', 'CreationTime'
                 (default: 'CreationTime').
@@ -601,7 +607,7 @@ class Run(object):
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, one is created using the
                 default AWS configuration chain.
-            max_results (int): maximum number of trial components to retrieve (default: None).
+            max_results (int): maximum number of Run objects to retrieve (default: None).
             next_token (str): token for next page of results (default: None).
 
         Returns:
@@ -715,7 +721,7 @@ class Run(object):
         Raises:
             ValueError: If the length of trial component artifacts exceeds the limit.
         """
-        err_msg_template = "Cannot add more than {} {}_artifacts under run trial_component"
+        err_msg_template = "Cannot add more than {} {}_artifacts under run"
         if is_output:
             if len(self._trial_component.output_artifacts) >= MAX_RUN_TC_ARTIFACTS_LEN:
                 raise ValueError(err_msg_template.format(MAX_RUN_TC_ARTIFACTS_LEN, "output"))
@@ -777,11 +783,19 @@ class Run(object):
                 callable_func=lambda: sagemaker_session.describe_training_job(job_name),
                 num_attempts=4,
             )
-        else:  # environment.environment_type == _EnvironmentType.SageMakerProcessingJob
+        elif environment.environment_type == _EnvironmentType.SageMakerProcessingJob:
             job_response = retry_with_backoff(
                 callable_func=lambda: sagemaker_session.describe_processing_job(job_name),
                 num_attempts=4,
             )
+        else:  # environment.environment_type == _EnvironmentType.SageMakerTransformJob
+            raise RuntimeError(
+                "Failed to load the Run as loading experiment config "
+                "from transform job environment is not currently supported. "
+                "As a workaround, please explicitly pass in "
+                "the experiment_name and run_name in Run.load."
+            )
+
         job_exp_config = job_response.get("ExperimentConfig", dict())
         if job_exp_config.get(RUN_NAME, None):
             # The run with RunName has been created outside of the job env.
@@ -867,7 +881,7 @@ class Run(object):
         return tags
 
     def __enter__(self):
-        """Updates the start time of the tracked trial component.
+        """Updates the start time of the run.
 
         Returns:
             object: self.
@@ -897,7 +911,7 @@ class Run(object):
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
-        """Updates the end time of the tracked trial component.
+        """Updates the end time of the run.
 
         Args:
             exc_type (str): The exception type.

@@ -29,12 +29,13 @@ def mock_trial_component_load_func(trial_component_name, sagemaker_session=None)
 def mock_tc_load_or_create_func(
     trial_component_name, display_name=None, tags=None, sagemaker_session=None
 ):
-    return _TrialComponent(
+    tc = _TrialComponent(
         trial_component_name=trial_component_name,
         display_name=display_name,
         tags=tags,
         sagemaker_session=sagemaker_session,
     )
+    return tc, True
 
 
 def mock_trial_load_or_create_func(

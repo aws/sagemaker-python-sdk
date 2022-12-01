@@ -248,7 +248,7 @@ def test_run_load_with_run_name_but_no_exp_name(sagemaker_session):
 @patch("sagemaker.experiments.run._RunEnvironment")
 def test_run_load_in_sm_processing_job(mock_run_env, sagemaker_session):
     client = sagemaker_session.sagemaker_client
-    job_name = "my-train-job"
+    job_name = "my-process-job"
     rv = unittest.mock.Mock()
     rv.source_arn = f"arn:1234/{job_name}"
     rv.environment_type = _environment._EnvironmentType.SageMakerProcessingJob
@@ -270,6 +270,23 @@ def test_run_load_in_sm_processing_job(mock_run_env, sagemaker_session):
         pass
 
     client.describe_processing_job.assert_called_once_with(ProcessingJobName=job_name)
+
+
+@patch("sagemaker.experiments.run._RunEnvironment")
+def test_run_load_in_sm_transform_job(mock_run_env, sagemaker_session):
+    # TODO: update this test once figure out how to get source_arn from transform job
+    rv = unittest.mock.Mock()
+    rv.environment_type = _environment._EnvironmentType.SageMakerTransformJob
+    rv.source_arn = ""
+    mock_run_env.load.return_value = rv
+
+    with pytest.raises(RuntimeError) as err:
+        with Run.load(sagemaker_session=sagemaker_session):
+            pass
+
+    assert (
+        "loading experiment config from transform job environment is not currently supported"
+    ) in str(err)
 
 
 def test_log_parameter_outside_run_context(run_obj):

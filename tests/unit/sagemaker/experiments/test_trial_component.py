@@ -302,9 +302,10 @@ def test_list_trial_components_call_args(sagemaker_session):
 @patch("sagemaker.experiments.trial_component._TrialComponent.load")
 def test_load_or_create_when_exist(mock_load, sagemaker_session):
     tc_name = "tc_name"
-    _TrialComponent._load_or_create(
+    _, is_existed = _TrialComponent._load_or_create(
         trial_component_name=tc_name, sagemaker_session=sagemaker_session
     )
+    assert is_existed
     mock_load.assert_called_once_with(
         tc_name,
         sagemaker_session,
@@ -323,10 +324,11 @@ def test_load_or_create_when_not_exist(mock_create, mock_load):
     )
     mock_load.side_effect = not_found_err
 
-    _TrialComponent._load_or_create(
+    _, is_existed = _TrialComponent._load_or_create(
         trial_component_name=tc_name, sagemaker_session=sagemaker_session
     )
 
+    assert not is_existed
     mock_create.assert_called_once_with(
         trial_component_name=tc_name,
         display_name=None,

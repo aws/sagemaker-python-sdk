@@ -21,6 +21,8 @@ from sagemaker.experiments._api_types import _TrialComponentStatusType
 from sagemaker.processing import FrameworkProcessor
 from sagemaker.pytorch import PyTorch
 from sagemaker.utilities.search_expression import Filter, Operator, SearchExpression
+from sagemaker.s3 import S3Uploader
+from sagemaker.xgboost import XGBoostModel
 from tests.integ import DATA_DIR
 from sagemaker.experiments.metrics import _MetricsManager
 from sagemaker.experiments.trial_component import _TrialComponent
@@ -172,13 +174,16 @@ def test_run_name_vs_trial_component_name_edge_cases(
             )
 
 
-_EXP_NAME_BASE_IN_SCRIPT = "train-job-exp-in-script"
-_RUN_NAME_IN_SCRIPT = "train-job-run-in-script"
+_EXP_NAME_BASE_IN_SCRIPT = "job-exp-in-script"
+_RUN_NAME_IN_SCRIPT = "job-run-in-script"
 
 _EXP_DIR = os.path.join(DATA_DIR, "experiment")
-_ENTRY_POINT_PATH = os.path.join(_EXP_DIR, "scripts/launcher.sh")
-_PYTHON_TRAIN_SCRIPT_PATH = os.path.join(_EXP_DIR, "scripts/train_job_script_for_run_clz.py")
+_ENTRY_POINT_PATH = os.path.join(_EXP_DIR, "train_job_scripts/launcher.sh")
+_PYTHON_TRAIN_SCRIPT_PATH = os.path.join(
+    _EXP_DIR, "train_job_scripts/train_job_script_for_run_clz.py"
+)
 _PYTHON_PROCESS_SCRIPT = "process_job_script_for_run_clz.py"
+_TRANSFORM_MATERIALS = os.path.join(_EXP_DIR, "transform_job_materials")
 
 _RUN_INIT = "init"
 _RUN_LOAD = "load"
@@ -381,7 +386,8 @@ def test_run_from_train_job_only(sagemaker_session, job_resource_dir):
         )
 
 
-def test_run_from_processing_job_and_override_default_exp_confg(
+# job_resource_dir is required to trigger generating the dev SDK tar
+def test_run_from_processing_job_and_override_default_exp_config(
     sagemaker_session, job_resource_dir, run_obj
 ):
     # Notes:
@@ -395,8 +401,8 @@ def test_run_from_processing_job_and_override_default_exp_confg(
     exp_name = unique_name_from_base(_EXP_NAME_BASE_IN_SCRIPT)
     processor = FrameworkProcessor(
         estimator_cls=PyTorch,
-        framework_version="1.8",
-        py_version="py3",
+        framework_version="1.10",
+        py_version="py38",
         instance_count=1,
         instance_type="ml.m5.xlarge",
         role=EXECUTION_ROLE,
@@ -436,6 +442,87 @@ def test_run_from_processing_job_and_override_default_exp_confg(
         _check_run_from_job_result(
             tc_name=tc_name, sagemaker_session=sagemaker_session, is_init=False
         )
+
+        with run_obj:
+            # Not to override the exp config and use the default one in the context
+            processor.run(
+                code=_PYTHON_PROCESS_SCRIPT,
+                source_dir=_EXP_DIR,
+                job_name=f"process-job-{name()}",
+                wait=True,  # wait the job to finish
+                logs=False,
+            )
+
+        tc_name = Run._generate_trial_component_name(
+            experiment_name=run_obj.experiment_name, run_name=run_obj.run_name
+        )
+        _check_run_from_job_result(
+            tc_name=tc_name, sagemaker_session=sagemaker_session, is_init=False
+        )
+
+
+# job_resource_dir is required to trigger generating the dev SDK tar
+def test_run_from_transform_job(
+    sagemaker_session, job_resource_dir, run_obj, xgboost_latest_version
+):
+    # Notes:
+    # 1. The 1st Run TC (run) created locally
+    # 2. In the inference script running in a transform job, load the 1st Run TC
+    # via explicitly passing the experiment_name and run_name of the 1st Run TC
+    # TODO: once we're able to retrieve exp config from the transform job env,
+    # we should expand this test and add the Run.load() without explicitly supplying the names
+    # 3. All data are logged in the Run TC either locally or in the transform job
+    xgb_model_data_s3 = sagemaker_session.upload_data(
+        path=os.path.join(_TRANSFORM_MATERIALS, "xgb_model.tar.gz"),
+        key_prefix="integ-test-data/xgboost/model",
+    )
+    xgboost_model = XGBoostModel(
+        sagemaker_session=sagemaker_session,
+        model_data=xgb_model_data_s3,
+        role=EXECUTION_ROLE,
+        entry_point="inference.py",
+        source_dir=_EXP_DIR,
+        framework_version=xgboost_latest_version,
+        env={
+            "EXPERIMENT_NAME": run_obj.experiment_name,
+            "RUN_NAME": run_obj.run_name,
+        },
+    )
+    transformer = xgboost_model.transformer(
+        instance_count=1,
+        instance_type="ml.m5.4xlarge",
+        max_concurrent_transforms=5,
+        max_payload=1,
+        strategy="MultiRecord",
+    )
+    uri = "s3://{}/{}/input/data/{}".format(
+        sagemaker_session.default_bucket(),
+        "transform-test",
+        unique_name_from_base("json-data"),
+    )
+    input_data = S3Uploader.upload(
+        os.path.join(_TRANSFORM_MATERIALS, "data.csv"), uri, sagemaker_session=sagemaker_session
+    )
+
+    with run_obj:
+        _local_run_log_behaviors(is_complete_log=False, sagemaker_session=sagemaker_session)
+        transformer.transform(
+            data=input_data,
+            content_type="text/libsvm",
+            split_type="Line",
+            wait=True,
+            job_name=f"transform-job-{name()}",
+        )
+
+    _check_run_from_local_end_result(
+        tc=run_obj._trial_component,
+        sagemaker_session=sagemaker_session,
+        is_complete_log=False,
+    )
+    tc_name = Run._generate_trial_component_name(
+        experiment_name=run_obj.experiment_name, run_name=run_obj.run_name
+    )
+    _check_run_from_job_result(tc_name=tc_name, sagemaker_session=sagemaker_session, is_init=False)
 
 
 def _generate_estimator(exp_name, job_resource_dir, sagemaker_session):
