@@ -1,0 +1,186 @@
+{
+    "metric_groups": [
+        {
+            "metric_data": [
+                {
+                    "name": "accuracy",
+                    "type": "number",
+                    "value": 0.5
+                },
+                {
+                    "name": "accuracy_best_constant_classifier",
+                    "type": "number",
+                    "value": 0.25
+                },
+                {
+                    "name": "accuracy_best_constant_classifier - standard_deviation",
+                    "type": "number",
+                    "value": 0.2
+                },
+                {
+                    "name": "auc",
+                    "type": "number",
+                    "value": 1
+                },
+                {
+                    "name": "auc - standard_deviation",
+                    "type": "number",
+                    "value": 0.1
+                },
+                {
+                    "name": "confusion_matrix",
+                    "type": "matrix",
+                    "value": [
+                        [
+                            1,
+                            2
+                        ],
+                        [
+                            0,
+                            1
+                        ]
+                    ],
+                    "x_axis_name": [
+                        "0",
+                        "1"
+                    ],
+                    "y_axis_name": [
+                        "0",
+                        "1"
+                    ]
+                },
+                {
+                    "name": "f0_5",
+                    "type": "number",
+                    "value": 0.38461538461538
+                },
+                {
+                    "name": "f0_5_best_constant_classifier",
+                    "type": "number",
+                    "value": 0.29411764705882
+                },
+                {
+                    "name": "f1",
+                    "type": "number",
+                    "value": 0.5
+                },
+                {
+                    "name": "f1_best_constant_classifier",
+                    "type": "number",
+                    "value": 0.4
+                },
+                {
+                    "name": "f2",
+                    "type": "number",
+                    "value": 0.71428571428571
+                },
+                {
+                    "name": "f2_best_constant_classifier",
+                    "type": "number",
+                    "value": 0.625
+                },
+                {
+                    "name": "false_negative_rate",
+                    "type": "number",
+                    "value": 0
+                },
+                {
+                    "name": "false_positive_rate",
+                    "type": "number",
+                    "value": 0.66666666666667
+                },
+                {
+                    "name": "precision",
+                    "type": "number",
+                    "value": 0.33333333333333
+                },
+                {
+                    "name": "precision_best_constant_classifier",
+                    "type": "number",
+                    "value": 0.25
+                },
+                {
+                    "name": "precision_recall_curve",
+                    "type": "linear_graph",
+                    "value": [
+                        [
+                            0,
+                            1
+                        ],
+                        [
+                            0.25,
+                            1
+                        ],
+                        [
+                            0.5,
+                            1
+                        ],
+                        [
+                            0.75,
+                            1
+                        ],
+                        [
+                            1,
+                            1
+                        ]
+                    ],
+                    "x_axis_name": "recalls",
+                    "y_axis_name": "precisions"
+                },
+                {
+                    "name": "recall",
+                    "type": "number",
+                    "value": 1
+                },
+                {
+                    "name": "recall_best_constant_classifier",
+                    "type": "number",
+                    "value": 1
+                },
+                {
+                    "name": "receiver_operating_characteristic_curve",
+                    "type": "linear_graph",
+                    "value": [
+                        [
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            0.25
+                        ],
+                        [
+                            0,
+                            0.5
+                        ],
+                        [
+                            0,
+                            0.75
+                        ],
+                        [
+                            0,
+                            1
+                        ],
+                        [
+                            1,
+                            1
+                        ]
+                    ],
+                    "x_axis_name": "false_positive_rates",
+                    "y_axis_name": "true_positive_rates"
+                },
+                {
+                    "name": "true_negative_rate",
+                    "type": "number",
+                    "value": 0.33333333333333
+                },
+                {
+                    "name": "true_positive_rate",
+                    "type": "number",
+                    "value": 1
+                }
+            ],
+            "name": "binary_classification_metrics"
+        }
+    ]
+}

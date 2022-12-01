@@ -44,6 +44,8 @@ S3_PREFIX = "s3://"
 HTTP_PREFIX = "http://"
 HTTPS_PREFIX = "https://"
 DEFAULT_SLEEP_TIME_SECONDS = 10
+WAITING_DOT_NUMBER = 10
+
 
 logger = logging.getLogger(__name__)
 
@@ -857,3 +859,19 @@ def to_string(obj: object):
         obj (object): The object to be converted
     """
     return obj.to_string() if is_pipeline_variable(obj) else str(obj)
+
+
+def _start_waiting(waiting_time: int):
+    """Waiting and print the in progress animation to stdout.
+
+    Args:
+        waiting_time (int): The total waiting time.
+    """
+    interval = float(waiting_time) / WAITING_DOT_NUMBER
+
+    progress = ""
+    for _ in range(WAITING_DOT_NUMBER):
+        progress += "."
+        print(progress, end="\r")
+        time.sleep(interval)
+    print(len(progress) * " ", end="\r")

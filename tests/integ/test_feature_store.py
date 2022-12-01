@@ -24,7 +24,7 @@ from pandas import DataFrame
 
 from sagemaker.feature_store.feature_definition import FractionalFeatureDefinition
 from sagemaker.feature_store.feature_group import FeatureGroup
-from sagemaker.feature_store.inputs import FeatureValue, FeatureParameter
+from sagemaker.feature_store.inputs import FeatureValue, FeatureParameter, TableFormatEnum
 from sagemaker.session import get_execution_role, Session
 from tests.integ.timeout import timeout
 from sagemaker.feature_group_utils import get_feature_group_as_dataframe
@@ -238,6 +238,56 @@ def test_create_feature_store(
                 == feature_group.as_hive_ddl()
         )
     assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
+
+
+def test_create_feature_group_iceberg_table_format(
+    feature_store_session,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+
+    with cleanup_feature_group(feature_group):
+        feature_group.create(
+            s3_uri=offline_store_s3_uri,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+            table_format=TableFormatEnum.ICEBERG,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        table_format = feature_group.describe().get("OfflineStoreConfig").get("TableFormat")
+        assert table_format == "Iceberg"
+
+
+def test_create_feature_group_glue_table_format(
+    feature_store_session,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+
+    with cleanup_feature_group(feature_group):
+        feature_group.create(
+            s3_uri=offline_store_s3_uri,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+            table_format=TableFormatEnum.GLUE,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        table_format = feature_group.describe().get("OfflineStoreConfig").get("TableFormat")
+        assert table_format == "Glue"
 
 
 def test_update_feature_group(
