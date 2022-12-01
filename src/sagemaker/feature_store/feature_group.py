@@ -54,6 +54,7 @@ from sagemaker.feature_store.inputs import (
     DataCatalogConfig,
     FeatureValue,
     FeatureParameter,
+    TableFormatEnum,
 )
 
 logger = logging.getLogger(__name__)
@@ -461,6 +462,7 @@ class FeatureGroup:
         data_catalog_config: DataCatalogConfig = None,
         description: str = None,
         tags: List[Dict[str, str]] = None,
+        table_format: TableFormatEnum = None,
     ) -> Dict[str, Any]:
         """Create a SageMaker FeatureStore FeatureGroup.
 
@@ -470,9 +472,9 @@ class FeatureGroup:
             record_identifier_name (str): name of the record identifier feature.
             event_time_feature_name (str): name of the event time feature.
             role_arn (str): ARN of the role used to call CreateFeatureGroup.
-            online_store_kms_key_id (str): KMS key id for online store.
-            enable_online_store (bool): whether to enable online store or not.
-            offline_store_kms_key_id (str): KMS key id for offline store.
+            online_store_kms_key_id (str): KMS key id for online store (default: None).
+            enable_online_store (bool): whether to enable online store or not (default: False).
+            offline_store_kms_key_id (str): KMS key id for offline store (default: None).
                 If a KMS encryption key is not specified, SageMaker encrypts all data at
                 rest using the default AWS KMS key. By defining your bucket-level key for
                 SSE, you can reduce the cost of AWS KMS requests.
@@ -480,10 +482,13 @@ class FeatureGroup:
                 `Bucket Key
                 <https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-key.html>`_
                 in the Amazon S3 User Guide.
-            disable_glue_table_creation (bool): whether to turn off Glue table creation no not.
-            data_catalog_config (DataCatalogConfig): configuration for Metadata store.
-            description (str): description of the FeatureGroup.
-            tags (List[Dict[str, str]]): list of tags for labeling a FeatureGroup.
+            disable_glue_table_creation (bool): whether to turn off Glue table creation
+                or not (default: False).
+            data_catalog_config (DataCatalogConfig): configuration for
+                Metadata store (default: None).
+            description (str): description of the FeatureGroup (default: None).
+            tags (List[Dict[str, str]]): list of tags for labeling a FeatureGroup (default: None).
+            table_format (TableFormatEnum): format of the offline store table (default: None).
 
         Returns:
             Response dict from service.
@@ -518,6 +523,7 @@ class FeatureGroup:
                 s3_storage_config=s3_storage_config,
                 disable_glue_table_creation=disable_glue_table_creation,
                 data_catalog_config=data_catalog_config,
+                table_format=table_format,
             )
             create_feature_store_args.update(
                 {"offline_store_config": offline_store_config.to_dict()}
