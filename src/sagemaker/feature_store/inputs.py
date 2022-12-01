@@ -30,6 +30,7 @@ from __future__ import absolute_import
 
 import abc
 from typing import Dict, Any
+from enum import Enum
 
 import attr
 
@@ -158,6 +159,16 @@ class DataCatalogConfig(Config):
         )
 
 
+class TableFormatEnum(Enum):
+    """Enum of table formats.
+
+    The offline store table formats can be Glue or Iceberg.
+    """
+
+    GLUE = "Glue"
+    ICEBERG = "Iceberg"
+
+
 @attr.s
 class OfflineStoreConfig(Config):
     """OfflineStoreConfig for FeatureStore.
@@ -166,11 +177,13 @@ class OfflineStoreConfig(Config):
         s3_storage_config (S3StorageConfig): configuration of S3 storage.
         disable_glue_table_creation (bool): whether to disable the Glue table creation.
         data_catalog_config (DataCatalogConfig): configuration of the data catalog.
+        table_format (TableFormatEnum): format of the offline store table.
     """
 
     s3_storage_config: S3StorageConfig = attr.ib()
     disable_glue_table_creation: bool = attr.ib(default=False)
     data_catalog_config: DataCatalogConfig = attr.ib(default=None)
+    table_format: TableFormatEnum = attr.ib(default=None)
 
     def to_dict(self) -> Dict[str, Any]:
         """Construct a dictionary based on the attributes.
@@ -182,6 +195,7 @@ class OfflineStoreConfig(Config):
             DisableGlueTableCreation=self.disable_glue_table_creation,
             S3StorageConfig=self.s3_storage_config,
             DataCatalogConfig=self.data_catalog_config,
+            TableFormat=self.table_format.value if self.table_format else None,
         )
 
 
