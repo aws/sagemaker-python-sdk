@@ -588,10 +588,15 @@ def test_user_agent_injected(boto_session):
 
     assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_client._client_config.user_agent
     assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_runtime_client._client_config.user_agent
+    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_metrics_client._client_config.user_agent
     assert "AWS-SageMaker-Notebook-Instance" not in sess.sagemaker_client._client_config.user_agent
     assert (
         "AWS-SageMaker-Notebook-Instance"
         not in sess.sagemaker_runtime_client._client_config.user_agent
+    )
+    assert (
+        "AWS-SageMaker-Notebook-Instance"
+        not in sess.sagemaker_metrics_client._client_config.user_agent
     )
 
 
@@ -607,9 +612,13 @@ def test_user_agent_injected_with_nbi(boto_session):
 
     assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_client._client_config.user_agent
     assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_runtime_client._client_config.user_agent
+    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_metrics_client._client_config.user_agent
     assert "AWS-SageMaker-Notebook-Instance" in sess.sagemaker_client._client_config.user_agent
     assert (
         "AWS-SageMaker-Notebook-Instance" in sess.sagemaker_runtime_client._client_config.user_agent
+    )
+    assert (
+        "AWS-SageMaker-Notebook-Instance" in sess.sagemaker_metrics_client._client_config.user_agent
     )
 
 
@@ -625,10 +634,15 @@ def test_user_agent_injected_with_nbi_ioerror(boto_session):
 
     assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_client._client_config.user_agent
     assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_runtime_client._client_config.user_agent
+    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_metrics_client._client_config.user_agent
     assert "AWS-SageMaker-Notebook-Instance" not in sess.sagemaker_client._client_config.user_agent
     assert (
         "AWS-SageMaker-Notebook-Instance"
         not in sess.sagemaker_runtime_client._client_config.user_agent
+    )
+    assert (
+        "AWS-SageMaker-Notebook-Instance"
+        not in sess.sagemaker_metrics_client._client_config.user_agent
     )
 
 
