@@ -239,7 +239,7 @@ def test_mwms_gpu(
     )
 
     with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        estimator.fit(inputs=imagenet_train_set, job_name=unique_name_from_base("test-tf-mwms"))
+        estimator.fit(job_name=unique_name_from_base("test-tf-mwms"))
 
     captured = capsys.readouterr()
     logs = captured.out + captured.err
