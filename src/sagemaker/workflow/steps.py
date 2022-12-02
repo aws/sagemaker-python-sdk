@@ -71,6 +71,7 @@ class StepTypeEnum(Enum, metaclass=DefaultEnumMeta):
     CLARIFY_CHECK = "ClarifyCheck"
     EMR = "EMR"
     FAIL = "Fail"
+    AUTOML = "AutoML"
 
 
 @attr.s
