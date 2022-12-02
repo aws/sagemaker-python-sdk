@@ -13,6 +13,7 @@
 """Utility methods used by framework classes"""
 from __future__ import absolute_import
 
+import json
 import logging
 import os
 import re
@@ -234,6 +235,41 @@ def validate_source_code_input_against_pipeline_variables(
         )
 
 
+def parse_mp_parameters(params):
+    """Parse the model parallelism parameters provided by the user.
+
+    Args:
+        params: a string representing path to an existing config, or
+                a config dict.
+
+    Returns:
+        parsed: a dict of parsed config.
+
+    Raises:
+        ValueError: if params is not a string or a dict, or
+                    the config file cannot be parsed as json.
+    """
+    parsed = None
+    if isinstance(params, dict):
+        parsed = params
+    elif os.path.exists(params):
+        try:
+            with open(params, "r") as fp:
+                parsed = json.load(fp)
+        except json.decoder.JSONDecodeError:
+            pass
+    else:
+        raise ValueError(
+            f"Expected a string path to an existing modelparallel config, or a dictionary. "
+            f"Received: {params}."
+        )
+
+    if parsed is None:
+        raise ValueError(f"Cannot parse {params} as a json file.")
+
+    return parsed
+
+
 def get_mp_parameters(distribution):
     """Get the model parallelism parameters provided by the user.
 
@@ -250,6 +286,7 @@ def get_mp_parameters(distribution):
         mp_dict = {}
     if mp_dict.get("enabled", False) is True:
         params = mp_dict.get("parameters", {})
+        params = parse_mp_parameters(params)
         validate_mp_config(params)
         return params
     return None
