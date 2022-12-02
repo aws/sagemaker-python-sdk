@@ -195,7 +195,6 @@ def prepare_fg_from_dataframe_or_file(dataframe_or_path: Union[str, Path, pandas
     a file with proper dtypes, feature names and mandatory features (record_id, event_id).
     It needs the sagemaker.Session linked to a role or the role and region used to work Feature Stores.
     If record_id or event_id are not specified it will create ones by default with the names
-    
 
     Args:
         feature_group_name (str): feature group name
@@ -226,8 +225,8 @@ def prepare_fg_from_dataframe_or_file(dataframe_or_path: Union[str, Path, pandas
         pandas_read_csv_kwargs.pop('filepath_or_buffer', None)
         data = read_csv(filepath_or_buffer=dataframe_or_path, **pandas_read_csv_kwargs)
     else:
-        exc = Exception(str(f'Invalid type {type(dataframe_or_path)} for argument dataframe_or_path.' +
-                            f'\nParameter must be of type pandas.DataFrame or string'))
+        exc = Exception(str(f'Invalid type {type(dataframe_or_path)} for argument dataframe_or_path.'
+                            '\nParameter must be of type pandas.DataFrame or string'))
         logger.exception(exc)
         raise exc
 
@@ -242,8 +241,8 @@ def prepare_fg_from_dataframe_or_file(dataframe_or_path: Union[str, Path, pandas
     lg_id = len(data[record_id])
 
     if lg_id != lg_uniq:
-        exc = Exception(str(f'Record identifier {record_id} have {abs(lg_id - lg_uniq)} duplicated rows.' +
-                            f'\nRecord identifier must be unique in each row.'))
+        exc = Exception(str(f'Record identifier {record_id} have {abs(lg_id - lg_uniq)} duplicated rows.'
+                            '\nRecord identifier must be unique in each row.'))
         logger.exception(exc)
         raise exc
 

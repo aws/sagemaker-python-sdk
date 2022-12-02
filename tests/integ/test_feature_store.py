@@ -28,7 +28,6 @@ from sagemaker.feature_store.inputs import FeatureValue, FeatureParameter, Table
 from sagemaker.session import get_execution_role, Session
 from tests.integ.timeout import timeout
 from sagemaker.feature_group_utils import get_feature_group_as_dataframe
-from sagemaker.utils import get_session_from_role
 
 BUCKET_POLICY = {
     "Version": "2012-10-17",
@@ -479,7 +478,8 @@ def test_get_feature_group_with_role_region(
             athena_bucket=f"{offline_store_s3_uri}/query",
         )
 
-    assert dataset.empty == False
+    assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
+    assert not dataset.empty
     assert isinstance(dataset, DataFrame)
 
 
@@ -517,7 +517,8 @@ def test_get_feature_group_with_session(
         )  # Using kwargs to pass a parameter to
         # pandas.read_csv
 
-    assert dataset.empty == False
+    assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
+    assert not dataset.empty
     assert isinstance(dataset, DataFrame)
 
 

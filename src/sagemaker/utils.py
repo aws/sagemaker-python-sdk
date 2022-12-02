@@ -30,7 +30,7 @@ from datetime import datetime
 from typing import Optional
 
 import botocore
-import boto3
+
 from six.moves.urllib import parse
 
 from sagemaker import deprecations
