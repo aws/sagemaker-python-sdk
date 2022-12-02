@@ -22,8 +22,6 @@ import threading
 import queue
 
 import dateutil.tz
-from botocore.config import Config
-
 
 METRICS_DIR = os.environ.get("SAGEMAKER_METRICS_DIRECTORY", ".")
 METRIC_TS_LOWER_BOUND_TO_NOW = 1209600  # on seconds
@@ -216,8 +214,7 @@ class _MetricsManager(object):
                 AWS services needed. If not specified, one is created using the
                 default AWS configuration chain.
         """
-        self._get_metrics_client(sagemaker_session)
-        self.sink = _SyncMetricsSink(resource_arn, self.metrics_client)
+        self.sink = _SyncMetricsSink(resource_arn, sagemaker_session.sagemaker_metrics_client)
 
     def log_metric(self, metric_name, value, timestamp=None, step=None):
         """Sends a metric to metrics service."""
@@ -236,18 +233,6 @@ class _MetricsManager(object):
     def close(self):
         """Close the metrics object."""
         self.sink.close()
-
-    def _get_metrics_client(self, sagemaker_session):
-        """Return self"""
-
-        # TODO move this client instantiation into Session
-        config = Config(retries={"max_attempts": 10, "mode": "adaptive"})
-        stage = "prod"
-        region = sagemaker_session.boto_session.region_name
-        endpoint = f"https://training-metrics.{stage}.{region}.ml-platform.aws.a2z.com"
-        self.metrics_client = sagemaker_session.boto_session.client(
-            "sagemaker-metrics", config=config, endpoint_url=endpoint
-        )
 
 
 class _SyncMetricsSink(object):
