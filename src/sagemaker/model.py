@@ -789,7 +789,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 }
                 if target_instance_type in NEO_IOC_TARGET_DEVICES:
                     return framework in multi_version_frameworks_support_mapping["neo_ioc_targets"]
-                if target_instance_type == "ml_inf":
+                if target_instance_type == "ml_inf1":
                     return framework in multi_version_frameworks_support_mapping["inferentia"]
             return False
 
