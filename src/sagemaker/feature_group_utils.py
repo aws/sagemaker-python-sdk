@@ -15,6 +15,8 @@
 Utilities for working with FeatureGroups and FeatureStores.
 
 """
+from __future__ import absolute_import
+
 import re
 import logging
 
