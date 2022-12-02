@@ -33,7 +33,7 @@ from sagemaker.experiments._helper import (
 from sagemaker.experiments._environment import _RunEnvironment, _EnvironmentType
 from sagemaker.experiments._run_context import _RunContext
 from sagemaker.experiments.experiment import _Experiment
-from sagemaker.experiments.metrics import _MetricsManager
+from sagemaker.experiments._metrics import _MetricsManager
 from sagemaker.experiments.trial import _Trial
 from sagemaker.experiments.trial_component import _TrialComponent
 

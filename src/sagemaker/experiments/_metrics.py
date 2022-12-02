@@ -18,10 +18,11 @@ import json
 import logging
 import os
 import time
+import threading
+import queue
 
 import dateutil.tz
 from botocore.config import Config
-from sagemaker.apiutils import _utils
 
 
 METRICS_DIR = os.environ.get("SAGEMAKER_METRICS_DIRECTORY", ".")
@@ -164,6 +165,17 @@ class _RawMetricData(object):
         """Convert the `_RawMetricData` object to dict"""
         return self.__dict__
 
+    def to_raw_metric_data(self):
+        """Converts the metric data to a BatchPutMetrics RawMetricData item"""
+        raw_metric_data = {
+            "MetricName": self.MetricName,
+            "Value": self.Value,
+            "Timestamp": int(self.Timestamp),
+        }
+        if self.Step is not None:
+            raw_metric_data["IterationNumber"] = int(self.Step)
+        return raw_metric_data
+
     def __str__(self):
         """String representation of the `_RawMetricData` object."""
         return repr(self)
@@ -175,66 +187,96 @@ class _RawMetricData(object):
             ",".join(["{}={}".format(k, repr(v)) for k, v in vars(self).items()]),
         )
 
+    def to_request_item(self):
+        """Transform a RawMetricData item to a list item for BatchPutMetrics request."""
+        item = {
+            "MetricName": self.MetricName,
+            "Timestamp": int(self.Timestamp),
+            "Value": self.Value,
+        }
+
+        if self.Step is not None:
+            item["IterationNumber"] = self.Step
+
+        return item
+
 
 class _MetricsManager(object):
-    """Collects metrics and sends them directly to metrics service.
-
-    Note this is a draft implementation for beta and will change significantly prior to launch.
-    """
+    """Collects metrics and sends them directly to SageMaker Metrics data plane APIs."""
 
     _BATCH_SIZE = 10
 
-    def __init__(self, resource_arn, sagemaker_session=None) -> None:
+    def __init__(self, resource_arn, sagemaker_session) -> None:
         """Initiate a `_MetricsManager` instance
 
         Args:
-            resource_arn (str): The ARN of a Trial Component to log metrics.
+            resource_arn (str): The ARN of the resource to log metrics to
             sagemaker_session (sagemaker.session.Session): Session object which
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, one is created using the
                 default AWS configuration chain.
         """
-        self._resource_arn = resource_arn
-        self.sagemaker_session = sagemaker_session or _utils.default_session()
-        self._buffer = []
-        # this client instantiation will need to go into Session
+        self._get_metrics_client(sagemaker_session)
+        self.sink = _SyncMetricsSink(resource_arn, self.metrics_client)
+
+    def log_metric(self, metric_name, value, timestamp=None, step=None):
+        """Sends a metric to metrics service."""
+
+        metric_data = _RawMetricData(metric_name, value, timestamp, step)
+        self.sink.log_metric(metric_data)
+
+    def __enter__(self):
+        """Return self"""
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        """Execute self.close()"""
+        self.sink.close()
+
+    def close(self):
+        """Close the metrics object."""
+        self.sink.close()
+
+    def _get_metrics_client(self, sagemaker_session):
+        """Return self"""
+
+        # TODO move this client instantiation into Session
         config = Config(retries={"max_attempts": 10, "mode": "adaptive"})
         stage = "prod"
-        region = self.sagemaker_session.boto_session.region_name
+        region = sagemaker_session.boto_session.region_name
         endpoint = f"https://training-metrics.{stage}.{region}.ml-platform.aws.a2z.com"
-        self.metrics_service_client = self.sagemaker_session.boto_session.client(
+        self.metrics_client = sagemaker_session.boto_session.client(
             "sagemaker-metrics", config=config, endpoint_url=endpoint
         )
 
-    def log_metric(self, metric_name, value, timestamp=None, step=None):
-        """Sends a metric to metrics service.
+
+class _SyncMetricsSink(object):
+    """Collects metrics and sends them directly to metrics service."""
+
+    _BATCH_SIZE = 10
+
+    def __init__(self, resource_arn, metrics_client) -> None:
+        """Initiate a `_MetricsManager` instance
 
         Args:
-            metric_name (str): The name of the metric.
-            value (float): The value of the metric.
-            timestamp (datetime.datetime): Timestamp of the metric.
-                If not specified, the current UTC time will be used.
-            step (int):  Iteration number of the metric (default: None).
+            resource_arn (str): The ARN of a Trial Component to log metrics.
+            metrics_client (boto3.client): boto client for metrics service
         """
-        metric_data = _RawMetricData(
-            metric_name=metric_name, value=value, timestamp=timestamp, step=step
-        )
+        self._resource_arn = resource_arn
+        self._metrics_client = metrics_client
+        self._buffer = []
+
+    def log_metric(self, metric_data):
+        """Sends a metric to metrics service."""
+
         # this is a simplistic solution which calls BatchPutMetrics
         # on the same thread as the client code
         self._buffer.append(metric_data)
         self._drain()
 
     def _drain(self, close=False):
-        """Pops off all metrics in the buffer and starts sending them to metrics service.
+        """Pops off all metrics in the buffer and starts sending them to metrics service."""
 
-        Args:
-            close (bool): Indicates if this method is invoked within the `close` function
-                (default: False). If invoked in the `close` function, the remaining logged
-                metrics in the buffer will be all sent out to the Metrics Service.
-                Otherwise, the metrics will only be sent out if the number of them reaches the
-                batch size.
-        """
-        # no metrics to send
         if not self._buffer:
             return
 
@@ -247,60 +289,146 @@ class _MetricsManager(object):
         self._send_metrics(available_metrics)
 
     def _send_metrics(self, metrics):
-        """Calls BatchPutMetrics directly on the metrics service.
-
-        Args:
-            metrics (list[_RawMetricData]): A list of `_RawMetricData` objects.
-        """
+        """Calls BatchPutMetrics directly on the metrics service."""
         while metrics:
             batch, metrics = metrics[: self._BATCH_SIZE], metrics[self._BATCH_SIZE :]
             request = self._construct_batch_put_metrics_request(batch)
-            self.metrics_service_client.batch_put_metrics(**request)
+            response = self._metrics_client.batch_put_metrics(**request)
+            errors = response["Errors"] if "Errors" in response else None
+            if errors:
+                message = errors[0]["Message"]
+                raise Exception(f'{len(errors)} errors with message "{message}"')
 
     def _construct_batch_put_metrics_request(self, batch):
-        """Creates dictionary object used as request to metrics service.
-
-        Args:
-            batch (list[_RawMetricData]): A list of `_RawMetricData` objects,
-                whose length is within the batch size limitation.
-        """
+        """Creates dictionary object used as request to metrics service."""
         return {
             "ResourceArn": self._resource_arn,
-            "MetricData": list(map(self._to_raw_metric_data, batch)),
+            "MetricData": list(map(lambda x: x.to_raw_metric_data(), batch)),
         }
-
-    @staticmethod
-    def _to_raw_metric_data(metric_data):
-        """Transform a RawMetricData item to a list item for BatchPutMetrics request.
-
-        Args:
-            metric_data (_RawMetricData): The `_RawMetricData` object to be transformed.
-        """
-        item = {
-            "MetricName": metric_data.MetricName,
-            "Timestamp": int(metric_data.Timestamp),
-            "Value": metric_data.Value,
-        }
-
-        if metric_data.Step is not None:
-            item["IterationNumber"] = metric_data.Step
-
-        return item
 
     def close(self):
-        """Drain the metrics buffer and send metrics to Metrics Service."""
+        """Drains any remaining metrics."""
         self._drain(close=True)
 
-    def __enter__(self):
-        """Return self"""
-        return self
 
-    def __exit__(self, exc_type, exc_value, exc_traceback):
-        """Execute self.close() to send out metrics in the buffer.
+class _MetricQueue(object):
+    """A thread safe queue for sending metrics to SageMaker.
+
+    Args:
+        resource_arn (str): the ARN of the resource
+        metric_name (str): the name of the metric
+        metrics_client (boto_client): the boto client for SageMaker Metrics service
+    """
+
+    _BATCH_SIZE = 10
+
+    _CONSUMER_SLEEP_SECONDS = 5
+
+    def __init__(self, resource_arn, metric_name, metrics_client):
+        # infinite queue size
+        self._queue = queue.Queue()
+        self._buffer = []
+        self._thread = threading.Thread(target=self._run)
+        self._started = False
+        self._finished = False
+        self._resource_arn = resource_arn
+        self._metrics_client = metrics_client
+        self._metric_name = metric_name
+        self._logged_metrics = 0
+
+    def log_metric(self, metric_data):
+        """Adds a metric data point to the queue"""
+        self._buffer.append(metric_data)
+
+        if len(self._buffer) < self._BATCH_SIZE:
+            return
+
+        self._enqueue_all()
+
+        if not self._started:
+            self._thread.start()
+            self._started = True
+
+    def _run(self):
+        """Starts the metric thread which sends metrics to SageMaker in batches"""
+
+        while not self._queue.empty() or not self._finished:
+            if self._queue.empty():
+                time.sleep(self._CONSUMER_SLEEP_SECONDS)
+            else:
+                batch = self._queue.get()
+                self._send_metrics(batch)
+
+    def _send_metrics(self, metrics_batch):
+        """Calls BatchPutMetrics directly on the metrics service."""
+        request = self._construct_batch_put_metrics_request(metrics_batch)
+        self._logged_metrics += len(metrics_batch)
+        self._metrics_client.batch_put_metrics(**request)
+
+    def _construct_batch_put_metrics_request(self, batch):
+        """Creates dictionary object used as request to metrics service."""
+
+        return {
+            "ResourceArn": self._resource_arn,
+            "MetricData": list(map(lambda x: x.to_raw_metric_data(), batch)),
+        }
+
+    def _enqueue_all(self):
+        """Enqueue all buffered metrics to be sent to SageMaker"""
+
+        available_metrics, self._buffer = self._buffer, []
+        if available_metrics:
+            self._queue.put(available_metrics)
+
+    def close(self):
+        """Flushes any buffered metrics"""
+
+        self._enqueue_all()
+        self._finished = True
+
+    def is_active(self):
+        """Is the thread active (still draining metrics to SageMaker)"""
+
+        return self._thread.is_alive()
+
+
+class _AsyncMetricsSink(object):
+    """Collects metrics and sends them directly to metrics service."""
+
+    _COMPLETE_SLEEP_SECONDS = 1.0
+
+    def __init__(self, resource_arn, metrics_client) -> None:
+        """Initiate a `_MetricsManager` instance
 
         Args:
-            exc_type (str): The exception type.
-            exc_value (str): The exception value.
-            exc_traceback (str): The stack trace of the exception.
+            resource_arn (str): The ARN of a Trial Component to log metrics.
+            metrics_client (boto3.client): boto client for metrics service
         """
-        self.close()
+        self._resource_arn = resource_arn
+        self._metrics_client = metrics_client
+        self._buffer = []
+        self._is_draining = False
+        self._metric_queues = {}
+
+    def log_metric(self, metric_data):
+        """Sends a metric to metrics service."""
+
+        if metric_data.MetricName in self._metric_queues:
+            self._metric_queues[metric_data.MetricName].log_metric(metric_data)
+        else:
+            cur_metric_queue = _MetricQueue(
+                self._resource_arn, metric_data.MetricName, self._metrics_client
+            )
+            self._metric_queues[metric_data.MetricName] = cur_metric_queue
+            cur_metric_queue.log_metric(metric_data)
+
+    def close(self):
+        """Closes the metric file."""
+        logging.debug("Closing")
+        for q in self._metric_queues.values():
+            q.close()
+
+        # TODO should probably use join
+        while any(map(lambda x: x.is_active(), self._metric_queues.values())):
+            time.sleep(self._COMPLETE_SLEEP_SECONDS)
+        logging.debug("Closed")

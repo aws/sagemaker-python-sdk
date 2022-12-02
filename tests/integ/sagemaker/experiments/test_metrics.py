@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import random
-from sagemaker.experiments.metrics import _MetricsManager
+from sagemaker.experiments._metrics import _MetricsManager
 from sagemaker.experiments.trial_component import _TrialComponent
 
 
@@ -31,7 +31,7 @@ def test_epoch(trial_component_obj, sagemaker_session):
     assert updated_tc.metrics[0].metric_name == metric_name
 
 
-def test_no_epoch(trial_component_obj, sagemaker_session):
+def test_timestamp(trial_component_obj, sagemaker_session):
     # The fixture creates deletes, just ensure fixture is used at least once
     metric_name = "test-x-timestamp"
     with _MetricsManager(trial_component_obj.trial_component_arn, sagemaker_session) as mm:
@@ -42,5 +42,7 @@ def test_no_epoch(trial_component_obj, sagemaker_session):
         trial_component_name=trial_component_obj.trial_component_name,
         sagemaker_session=sagemaker_session,
     )
-    assert len(updated_tc.metrics) == 1
-    assert updated_tc.metrics[0].metric_name == metric_name
+    # the test-x-step data is added in the previous test_epoch test
+    assert len(updated_tc.metrics) == 2
+    assert updated_tc.metrics[0].metric_name == "test-x-step"
+    assert updated_tc.metrics[1].metric_name == "test-x-timestamp"

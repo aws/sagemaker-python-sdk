@@ -21,7 +21,7 @@ import dateutil
 import json
 import time
 
-from sagemaker.experiments.metrics import (
+from sagemaker.experiments._metrics import (
     _RawMetricData,
     _SageMakerFileMetricsWriter,
     SageMakerMetricsWriterException,
@@ -52,6 +52,13 @@ def test_raw_metric_data_utc_timestamp():
     assert utcnow.timestamp() * 1000 == metric.Timestamp
 
 
+def test_raw_metric_data_utc_():
+    utcnow = datetime.datetime.now(datetime.timezone.utc)
+    assert utcnow.tzinfo
+    metric = _RawMetricData(metric_name="foo", value=1.0, timestamp=utcnow)
+    assert utcnow.timestamp() * 1000 == metric.Timestamp
+
+
 def test_raw_metric_data_aware_timestamp():
     aware_datetime = datetime.datetime.now(dateutil.tz.gettz("America/Chicago"))
     assert aware_datetime.tzinfo
@@ -75,6 +82,18 @@ def test_raw_metric_data_number_timestamp():
     time_now = time.time()
     metric = _RawMetricData(metric_name="foo", value=1.0, timestamp=time_now)
     assert time_now * 1000 == metric.Timestamp
+
+
+def test_raw_metric_data_request_item():
+    time_now = time.time()
+    metric = _RawMetricData(metric_name="foo", value=1.0, timestamp=time_now, step=10)
+    expected = {
+        "MetricName": "foo",
+        "Value": 1.0,
+        "Timestamp": int(time_now * 1000),
+        "IterationNumber": 10,
+    }
+    assert expected == metric.to_request_item()
 
 
 def test_raw_metric_data_invalid_timestamp():

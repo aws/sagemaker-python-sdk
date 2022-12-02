@@ -24,7 +24,7 @@ from sagemaker.utilities.search_expression import Filter, Operator, SearchExpres
 from sagemaker.s3 import S3Uploader
 from sagemaker.xgboost import XGBoostModel
 from tests.integ import DATA_DIR
-from sagemaker.experiments.metrics import _MetricsManager
+from sagemaker.experiments._metrics import _MetricsManager
 from sagemaker.experiments.trial_component import _TrialComponent
 from sagemaker.sklearn import SKLearn
 from sagemaker.utils import retry_with_backoff, unique_name_from_base
