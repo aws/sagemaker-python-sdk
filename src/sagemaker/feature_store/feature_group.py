@@ -435,13 +435,14 @@ class FeatureGroup:
         "uint64",
     ]
     _FLOAT_TYPES = ["float_", "float16", "float32", "float64"]
-    _DTYPE_TO_FEATURE_DEFINITION_CLS_MAP: Dict[str, FeatureTypeEnum] = {
+    DTYPE_TO_FEATURE_DEFINITION_CLS_MAP: Dict[str, FeatureTypeEnum] = {
         type: FeatureTypeEnum.INTEGRAL for type in _INTEGER_TYPES
     }
-    _DTYPE_TO_FEATURE_DEFINITION_CLS_MAP.update(
+    DTYPE_TO_FEATURE_DEFINITION_CLS_MAP.update(
         {type: FeatureTypeEnum.FRACTIONAL for type in _FLOAT_TYPES}
     )
-    _DTYPE_TO_FEATURE_DEFINITION_CLS_MAP["string"] = FeatureTypeEnum.STRING
+    DTYPE_TO_FEATURE_DEFINITION_CLS_MAP["string"] = FeatureTypeEnum.STRING
+    DTYPE_TO_FEATURE_DEFINITION_CLS_MAP["object"] = FeatureTypeEnum.STRING
 
     _FEATURE_TYPE_TO_DDL_DATA_TYPE_MAP = {
         FeatureTypeEnum.INTEGRAL.value: "INT",
@@ -629,7 +630,7 @@ class FeatureGroup:
         """
         feature_definitions = []
         for column in data_frame:
-            feature_type = self._DTYPE_TO_FEATURE_DEFINITION_CLS_MAP.get(
+            feature_type = self.DTYPE_TO_FEATURE_DEFINITION_CLS_MAP.get(
                 str(data_frame[column].dtype), None
             )
             if feature_type:
@@ -644,6 +645,23 @@ class FeatureGroup:
         self.feature_definitions = feature_definitions
         return self.feature_definitions
 
+    def get_record(
+        self, record_identifier_value_as_string: str, feature_names: Sequence[str] = None
+    ) -> Sequence[Dict[str, str]]:
+        """Get a single record in a FeatureGroup
+
+        Args:
+            record_identifier_value_as_string (String):
+                a String representing the value of the record identifier.
+            feature_names (Sequence[String]):
+                a list of Strings representing feature names.
+        """
+        return self.sagemaker_session.get_record(
+            record_identifier_value_as_string=record_identifier_value_as_string,
+            feature_group_name=self.name,
+            feature_names=feature_names,
+        ).get("Record")
+
     def put_record(self, record: Sequence[FeatureValue]):
         """Put a single record in the FeatureGroup.
 
@@ -652,6 +670,25 @@ class FeatureGroup:
         """
         return self.sagemaker_session.put_record(
             feature_group_name=self.name, record=[value.to_dict() for value in record]
+        )
+
+    def delete_record(
+        self,
+        record_identifier_value_as_string: str,
+        event_time: str,
+    ):
+        """Delete a single record from a FeatureGroup.
+
+        Args:
+            record_identifier_value_as_string (String):
+                a String representing the value of the record identifier.
+            event_time (String):
+                a timestamp format String indicating when the deletion event occurred.
+        """
+        return self.sagemaker_session.delete_record(
+            feature_group_name=self.name,
+            record_identifier_value_as_string=record_identifier_value_as_string,
+            event_time=event_time,
         )
 
     def ingest(

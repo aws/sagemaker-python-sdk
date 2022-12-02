@@ -312,7 +312,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         # For each object key, create the directory on the local machine if needed, and then
         # download the file.
         for key in keys:
-            tail_s3_uri_path = os.path.basename(key_prefix)
+            tail_s3_uri_path = os.path.basename(key)
             if not os.path.splitext(key_prefix)[1]:
                 tail_s3_uri_path = os.path.relpath(key, key_prefix)
             destination_path = os.path.join(path, tail_s3_uri_path)
@@ -4332,6 +4332,75 @@ class Session(object):  # pylint: disable=too-many-public-methods
             FeatureGroupName=feature_group_name, FeatureAdditions=feature_additions
         )
 
+    def list_feature_groups(
+        self,
+        name_contains,
+        feature_group_status_equals,
+        offline_store_status_equals,
+        creation_time_after,
+        creation_time_before,
+        sort_order,
+        sort_by,
+        max_results,
+        next_token,
+    ) -> Dict[str, Any]:
+        """List all FeatureGroups satisfying given filters.
+
+        Args:
+            name_contains (str): A string that partially matches one or more FeatureGroups' names.
+                Filters FeatureGroups by name.
+            feature_group_status_equals (str): A FeatureGroup status.
+                Filters FeatureGroups by FeatureGroup status.
+            offline_store_status_equals (str): An OfflineStore status.
+                Filters FeatureGroups by OfflineStore status.
+            creation_time_after (datetime.datetime): Use this parameter to search for FeatureGroups
+                created after a specific date and time.
+            creation_time_before (datetime.datetime): Use this parameter to search for FeatureGroups
+                created before a specific date and time.
+            sort_order (str): The order in which FeatureGroups are listed.
+            sort_by (str): The value on which the FeatureGroup list is sorted.
+            max_results (int): The maximum number of results returned by ListFeatureGroups.
+            next_token (str): A token to resume pagination of ListFeatureGroups results.
+        Returns:
+            Response dict from service.
+        """
+        list_feature_groups_args = {}
+
+        def check_object(key, value):
+            if value is not None:
+                list_feature_groups_args[key] = value
+
+        check_object("NameContains", name_contains)
+        check_object("FeatureGroupStatusEquals", feature_group_status_equals)
+        check_object("OfflineStoreStatusEquals", offline_store_status_equals)
+        check_object("CreationTimeAfter", creation_time_after)
+        check_object("CreationTimeBefore", creation_time_before)
+        check_object("SortOrder", sort_order)
+        check_object("SortBy", sort_by)
+        check_object("MaxResults", max_results)
+        check_object("NextToken", next_token)
+
+        if name_contains:
+            list_feature_groups_args["NameContains"] = name_contains
+        if feature_group_status_equals:
+            list_feature_groups_args["FeatureGroupStatusEquals"] = feature_group_status_equals
+        if offline_store_status_equals:
+            list_feature_groups_args["OfflineStoreStatusEquals"] = offline_store_status_equals
+        if creation_time_after:
+            list_feature_groups_args["CreationTimeAfter"] = creation_time_after
+        if creation_time_before:
+            list_feature_groups_args["CreationTimeBefore"] = creation_time_before
+        if sort_order:
+            list_feature_groups_args["SortOrder"] = sort_order
+        if sort_by:
+            list_feature_groups_args["SortBy"] = sort_by
+        if max_results:
+            list_feature_groups_args["MaxResults"] = max_results
+        if next_token:
+            list_feature_groups_args["NextToken"] = next_token
+
+        return self.sagemaker_client.list_feature_groups(**list_feature_groups_args)
+
     def update_feature_metadata(
         self,
         feature_group_name: str,
@@ -4398,6 +4467,48 @@ class Session(object):  # pylint: disable=too-many-public-methods
             FeatureGroupName=feature_group_name,
             Record=record,
         )
+
+    def delete_record(
+        self,
+        feature_group_name: str,
+        record_identifier_value_as_string: str,
+        event_time: str,
+    ):
+        """Deletes a single record from the FeatureGroup.
+
+        Args:
+            feature_group_name (str): name of the FeatureGroup.
+            record_identifier_value_as_string (str): name of the record identifier.
+            event_time (str): a timestamp indicating when the deletion event occurred.
+        """
+        return self.sagemaker_featurestore_runtime_client.delete_record(
+            FeatureGroupName=feature_group_name,
+            RecordIdentifierValueAsString=record_identifier_value_as_string,
+            EventTime=event_time,
+        )
+
+    def get_record(
+        self,
+        record_identifier_value_as_string: str,
+        feature_group_name: str,
+        feature_names: Sequence[str],
+    ) -> Dict[str, Sequence[Dict[str, str]]]:
+        """Gets a single record in the FeatureGroup.
+
+        Args:
+            record_identifier_value_as_string (str): name of the record identifier.
+            feature_group_name (str): name of the FeatureGroup.
+            feature_names (Sequence[str]): list of feature names.
+        """
+        get_record_args = {
+            "FeatureGroupName": feature_group_name,
+            "RecordIdentifierValueAsString": record_identifier_value_as_string,
+        }
+
+        if feature_names:
+            get_record_args["FeatureNames"] = feature_names
+
+        return self.sagemaker_featurestore_runtime_client.get_record(**get_record_args)
 
     def start_query_execution(
         self,
