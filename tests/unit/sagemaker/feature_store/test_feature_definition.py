@@ -26,12 +26,13 @@ def ordered(obj):
         return sorted((k, ordered(v)) for k, v in obj.items())
     if isinstance(obj, list):
         return sorted(ordered(x) for x in obj)
-    else:
-        return obj
+    return obj
 
 
 def test_feature_definition():
-    definition = FeatureDefinition(feature_name="MyFeature", feature_type=FeatureTypeEnum.INTEGRAL)
+    definition = FeatureDefinition(
+        feature_name="MyFeature", feature_type=FeatureTypeEnum.INTEGRAL
+    )
     assert ordered(definition.to_dict()) == ordered(
         {
             "FeatureName": "MyFeature",

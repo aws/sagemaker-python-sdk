@@ -82,17 +82,19 @@ def name_from_base(base, max_length=63, short=False):
     """
     timestamp = sagemaker_short_timestamp() if short else sagemaker_timestamp()
     trimmed_base = base[: max_length - len(timestamp) - 1]
-    return "{}-{}".format(trimmed_base, timestamp)
+    return f"{trimmed_base}-{timestamp}"
 
 
 def unique_name_from_base(base, max_length=63):
     """Placeholder Docstring"""
-    random.seed(int(uuid.uuid4()))  # using uuid to randomize, otherwise system timestamp is used.
+    random.seed(
+        int(uuid.uuid4())
+    )  # using uuid to randomize, otherwise system timestamp is used.
     unique = "%04x" % random.randrange(16**4)  # 4-digit hex
     ts = str(int(time.time()))
     available_length = max_length - 2 - len(ts) - len(unique)
     trimmed = base[:available_length]
-    return "{}-{}-{}".format(trimmed, ts, unique)
+    return f"{trimmed}-{ts}-{unique}"
 
 
 def base_name_from_image(image, default_base_name=None):
@@ -199,7 +201,9 @@ def secondary_training_status_changed(current_job_description, prev_job_descript
         boolean: Whether the secondary status message of a training job changed
         or not.
     """
-    current_secondary_status_transitions = current_job_description.get("SecondaryStatusTransitions")
+    current_secondary_status_transitions = current_job_description.get(
+        "SecondaryStatusTransitions"
+    )
     if (
         current_secondary_status_transitions is None
         or len(current_secondary_status_transitions) == 0
@@ -243,7 +247,9 @@ def secondary_training_status_message(job_description, prev_description):
         return ""
 
     prev_description_secondary_transitions = (
-        prev_description.get("SecondaryStatusTransitions") if prev_description is not None else None
+        prev_description.get("SecondaryStatusTransitions")
+        if prev_description is not None
+        else None
     )
     prev_transitions_num = (
         len(prev_description["SecondaryStatusTransitions"])
@@ -443,7 +449,9 @@ def repack_model(
         with tarfile.open(tmp_model_path, mode="w:gz") as t:
             t.add(model_dir, arcname=os.path.sep)
 
-        _save_model(repacked_model_uri, tmp_model_path, sagemaker_session, kms_key=kms_key)
+        _save_model(
+            repacked_model_uri, tmp_model_path, sagemaker_session, kms_key=kms_key
+        )
 
 
 def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session, kms_key):
@@ -451,10 +459,14 @@ def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session, kms_key):
     if repacked_model_uri.lower().startswith("s3://"):
         url = parse.urlparse(repacked_model_uri)
         bucket, key = url.netloc, url.path.lstrip("/")
-        new_key = key.replace(os.path.basename(key), os.path.basename(repacked_model_uri))
+        new_key = key.replace(
+            os.path.basename(key), os.path.basename(repacked_model_uri)
+        )
 
         settings = (
-            sagemaker_session.settings if sagemaker_session is not None else SessionSettings()
+            sagemaker_session.settings
+            if sagemaker_session is not None
+            else SessionSettings()
         )
         encrypt_artifact = settings.encrypt_repacked_artifacts
 
@@ -501,7 +513,9 @@ def _create_or_update_code_dir(
     for dependency in dependencies:
         lib_dir = os.path.join(code_dir, "lib")
         if os.path.isdir(dependency):
-            shutil.copytree(dependency, os.path.join(lib_dir, os.path.basename(dependency)))
+            shutil.copytree(
+                dependency, os.path.join(lib_dir, os.path.basename(dependency))
+            )
         else:
             if not os.path.exists(lib_dir):
                 os.mkdir(lib_dir)
@@ -731,7 +745,11 @@ class S3DataConfig(DataConfig):
         """
 
         config = self.fetch_data_config()
-        region = region_requested if region_requested else self.sagemaker_session.boto_region_name
+        region = (
+            region_requested
+            if region_requested
+            else self.sagemaker_session.boto_region_name
+        )
         return config[region] if region in config.keys() else config["default"]
 
 
@@ -766,7 +784,11 @@ def update_container_with_inference_params(
     if container_list is not None:
         for obj in container_list:
             construct_container_object(
-                obj, data_input_configuration, framework, framework_version, nearest_model_name
+                obj,
+                data_input_configuration,
+                framework,
+                framework_version,
+                nearest_model_name,
             )
 
     if container_def is not None:
@@ -833,7 +855,9 @@ def construct_container_object(
     return obj
 
 
-def pop_out_unused_kwarg(arg_name: str, kwargs: dict, override_val: Optional[str] = None):
+def pop_out_unused_kwarg(
+    arg_name: str, kwargs: dict, override_val: Optional[str] = None
+):
     """Pop out the unused key-word argument and give a warning.
 
     Args:
