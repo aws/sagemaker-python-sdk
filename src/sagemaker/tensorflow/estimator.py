@@ -151,7 +151,7 @@ class TensorFlow(Framework):
                     the SageMaker Python SDK v2.xx.yy and later.
                     To learn more about the mirrored strategy for TensorFlow, 
                     see `TensorFlow Distributed Training
-                    <https://www.tensorflow.org/guide/distributed_training>`_.
+                    <https://www.tensorflow.org/guide/distributed_training>`_ in the *TensorFlow documentation*.
 
                 **To enable MPI:**
 
