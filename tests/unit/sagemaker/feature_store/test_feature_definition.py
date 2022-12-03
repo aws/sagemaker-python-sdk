@@ -30,9 +30,7 @@ def ordered(obj):
 
 
 def test_feature_definition():
-    definition = FeatureDefinition(
-        feature_name="MyFeature", feature_type=FeatureTypeEnum.INTEGRAL
-    )
+    definition = FeatureDefinition(feature_name="MyFeature", feature_type=FeatureTypeEnum.INTEGRAL)
     assert ordered(definition.to_dict()) == ordered(
         {
             "FeatureName": "MyFeature",

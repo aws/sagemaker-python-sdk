@@ -96,9 +96,7 @@ def create_table_ddl():
 def test_feature_store_create(
     sagemaker_session_mock, role_arn, feature_group_dummy_definitions, s3_uri
 ):
-    feature_group = FeatureGroup(
-        name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock
-    )
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
     feature_group.feature_definitions = feature_group_dummy_definitions
     feature_group.create(
         s3_uri=s3_uri,
@@ -126,9 +124,7 @@ def test_feature_store_create(
 def test_feature_store_create_iceberg_table_format(
     sagemaker_session_mock, role_arn, feature_group_dummy_definitions, s3_uri
 ):
-    feature_group = FeatureGroup(
-        name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock
-    )
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
     feature_group.feature_definitions = feature_group_dummy_definitions
     feature_group.create(
         s3_uri=s3_uri,
@@ -159,9 +155,7 @@ def test_feature_store_create_iceberg_table_format(
 def test_feature_store_create_glue_table_format(
     sagemaker_session_mock, role_arn, feature_group_dummy_definitions, s3_uri
 ):
-    feature_group = FeatureGroup(
-        name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock
-    )
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
     feature_group.feature_definitions = feature_group_dummy_definitions
     feature_group.create(
         s3_uri=s3_uri,
@@ -192,9 +186,7 @@ def test_feature_store_create_glue_table_format(
 def test_feature_store_create_online_only(
     sagemaker_session_mock, role_arn, feature_group_dummy_definitions
 ):
-    feature_group = FeatureGroup(
-        name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock
-    )
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
     feature_group.feature_definitions = feature_group_dummy_definitions
     feature_group.create(
         s3_uri=False,
@@ -216,9 +208,7 @@ def test_feature_store_create_online_only(
 
 
 def test_feature_store_delete(sagemaker_session_mock):
-    feature_group = FeatureGroup(
-        name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock
-    )
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
     feature_group.delete()
     sagemaker_session_mock.delete_feature_group.assert_called_with(
         feature_group_name="MyFeatureGroup"
@@ -226,9 +216,7 @@ def test_feature_store_delete(sagemaker_session_mock):
 
 
 def test_feature_store_describe(sagemaker_session_mock):
-    feature_group = FeatureGroup(
-        name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock
-    )
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
     feature_group.describe()
     sagemaker_session_mock.describe_feature_group.assert_called_with(
         feature_group_name="MyFeatureGroup", next_token=None
@@ -236,9 +224,7 @@ def test_feature_store_describe(sagemaker_session_mock):
 
 
 def test_feature_store_update(sagemaker_session_mock, feature_group_dummy_definitions):
-    feature_group = FeatureGroup(
-        name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock
-    )
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
     feature_group.update(feature_group_dummy_definitions)
     sagemaker_session_mock.update_feature_group.assert_called_with(
         feature_group_name="MyFeatureGroup",
@@ -247,9 +233,7 @@ def test_feature_store_update(sagemaker_session_mock, feature_group_dummy_defini
 
 
 def test_feature_metadata_update(sagemaker_session_mock):
-    feature_group = FeatureGroup(
-        name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock
-    )
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
 
     parameter_additions = [FeatureParameter(key="key1", value="value1")]
     parameter_removals = ["key2"]
@@ -267,9 +251,7 @@ def test_feature_metadata_update(sagemaker_session_mock):
         parameter_additions=[pa.to_dict() for pa in parameter_additions],
         parameter_removals=parameter_removals,
     )
-    feature_group.update_feature_metadata(
-        feature_name="Feature1", description="TestDescription"
-    )
+    feature_group.update_feature_metadata(feature_name="Feature1", description="TestDescription")
     sagemaker_session_mock.update_feature_metadata.assert_called_with(
         feature_group_name="MyFeatureGroup",
         feature_name="Feature1",
@@ -280,9 +262,7 @@ def test_feature_metadata_update(sagemaker_session_mock):
 
 
 def test_feature_metadata_describe(sagemaker_session_mock):
-    feature_group = FeatureGroup(
-        name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock
-    )
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
     feature_group.describe_feature_metadata(feature_name="Feature1")
     sagemaker_session_mock.describe_feature_metadata.assert_called_with(
         feature_group_name="MyFeatureGroup", feature_name="Feature1"
@@ -290,9 +270,7 @@ def test_feature_metadata_describe(sagemaker_session_mock):
 
 
 def test_put_record(sagemaker_session_mock):
-    feature_group = FeatureGroup(
-        name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock
-    )
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
     feature_group.put_record(record=[])
     sagemaker_session_mock.put_record.assert_called_with(
         feature_group_name="MyFeatureGroup", record=[]
@@ -300,9 +278,7 @@ def test_put_record(sagemaker_session_mock):
 
 
 def test_load_feature_definition(sagemaker_session_mock):
-    feature_group = FeatureGroup(
-        name="SomeGroup", sagemaker_session=sagemaker_session_mock
-    )
+    feature_group = FeatureGroup(name="SomeGroup", sagemaker_session=sagemaker_session_mock)
     df = pd.DataFrame(
         {
             "float": pd.Series([2.0], dtype="float64"),
@@ -322,9 +298,7 @@ def test_load_feature_definition(sagemaker_session_mock):
 
 
 def test_load_feature_definition_unsupported_types(sagemaker_session_mock):
-    feature_group = FeatureGroup(
-        name="FailedGroup", sagemaker_session=sagemaker_session_mock
-    )
+    feature_group = FeatureGroup(name="FailedGroup", sagemaker_session=sagemaker_session_mock)
     df = pd.DataFrame(
         {
             "float": pd.Series([2.0], dtype="float64"),
@@ -334,16 +308,11 @@ def test_load_feature_definition_unsupported_types(sagemaker_session_mock):
     )
     with pytest.raises(ValueError) as error:
         feature_group.load_feature_definitions(data_frame=df)
-    assert (
-        "Failed to infer Feature type based on dtype object for column object."
-        in str(error)
-    )
+    assert "Failed to infer Feature type based on dtype object for column object." in str(error)
 
 
 def test_ingest_zero_processes():
-    feature_group = FeatureGroup(
-        name="MyGroup", sagemaker_session=sagemaker_session_mock
-    )
+    feature_group = FeatureGroup(name="MyGroup", sagemaker_session=sagemaker_session_mock)
     df = Mock()
     with pytest.raises(RuntimeError) as error:
         feature_group.ingest(data_frame=df, max_workers=1, max_processes=0)
@@ -352,9 +321,7 @@ def test_ingest_zero_processes():
 
 
 def test_ingest_zero_workers():
-    feature_group = FeatureGroup(
-        name="MyGroup", sagemaker_session=sagemaker_session_mock
-    )
+    feature_group = FeatureGroup(name="MyGroup", sagemaker_session=sagemaker_session_mock)
     df = Mock()
     with pytest.raises(RuntimeError) as error:
         feature_group.ingest(data_frame=df, max_workers=0, max_processes=1)
@@ -363,19 +330,13 @@ def test_ingest_zero_workers():
 
 
 @patch("sagemaker.feature_store.feature_group.IngestionManagerPandas")
-def test_ingest(
-    ingestion_manager_init, sagemaker_session_mock, fs_runtime_client_config_mock
-):
+def test_ingest(ingestion_manager_init, sagemaker_session_mock, fs_runtime_client_config_mock):
     sagemaker_session_mock.sagemaker_featurestore_runtime_client.meta.config = (
         fs_runtime_client_config_mock
     )
 
-    feature_group = FeatureGroup(
-        name="MyGroup", sagemaker_session=sagemaker_session_mock
-    )
-    df = pd.DataFrame(
-        dict((f"float{i}", pd.Series([2.0], dtype="float64")) for i in range(300))
-    )
+    feature_group = FeatureGroup(name="MyGroup", sagemaker_session=sagemaker_session_mock)
+    df = pd.DataFrame(dict((f"float{i}", pd.Series([2.0], dtype="float64")) for i in range(300)))
 
     mock_ingestion_manager_instance = Mock()
     ingestion_manager_init.return_value = mock_ingestion_manager_instance
@@ -401,12 +362,8 @@ def test_ingest_with_profile_name(
         fs_runtime_client_config_mock
     )
 
-    feature_group = FeatureGroup(
-        name="MyGroup", sagemaker_session=sagemaker_session_mock
-    )
-    df = pd.DataFrame(
-        dict((f"float{i}", pd.Series([2.0], dtype="float64")) for i in range(300))
-    )
+    feature_group = FeatureGroup(name="MyGroup", sagemaker_session=sagemaker_session_mock)
+    df = pd.DataFrame(dict((f"float{i}", pd.Series([2.0], dtype="float64")) for i in range(300)))
 
     mock_ingestion_manager_instance = Mock()
     ingestion_manager_init.return_value = mock_ingestion_manager_instance
@@ -438,9 +395,7 @@ def test_as_hive_ddl_with_default_values(
     sagemaker_session_mock.account_id.return_value = "1234"
     sagemaker_session_mock.boto_session.region_name = "us-west-2"
 
-    feature_group = FeatureGroup(
-        name="MyGroup", sagemaker_session=sagemaker_session_mock
-    )
+    feature_group = FeatureGroup(name="MyGroup", sagemaker_session=sagemaker_session_mock)
     feature_group.feature_definitions = feature_group_dummy_definitions
     assert (
         create_table_ddl.format(
@@ -454,9 +409,7 @@ def test_as_hive_ddl_with_default_values(
     )
 
 
-def test_as_hive_ddl(
-    create_table_ddl, feature_group_dummy_definitions, sagemaker_session_mock
-):
+def test_as_hive_ddl(create_table_ddl, feature_group_dummy_definitions, sagemaker_session_mock):
     sagemaker_session_mock.describe_feature_group.return_value = {
         "OfflineStoreConfig": {
             "S3StorageConfig": {
@@ -468,9 +421,7 @@ def test_as_hive_ddl(
     sagemaker_session_mock.account_id.return_value = "1234"
     sagemaker_session_mock.boto_session.region_name = "us-west-2"
 
-    feature_group = FeatureGroup(
-        name="MyGroup", sagemaker_session=sagemaker_session_mock
-    )
+    feature_group = FeatureGroup(name="MyGroup", sagemaker_session=sagemaker_session_mock)
     feature_group.feature_definitions = feature_group_dummy_definitions
     assert create_table_ddl.format(
         database="MyDatabase",
@@ -494,9 +445,7 @@ def test_ingestion_manager_run_success():
     )
     manager.run(df)
 
-    manager._run_multi_process.assert_called_once_with(
-        data_frame=df, wait=True, timeout=None
-    )
+    manager._run_multi_process.assert_called_once_with(data_frame=df, wait=True, timeout=None)
 
 
 @patch(
@@ -588,9 +537,7 @@ def query(sagemaker_session_mock):
 
 def test_athena_query_run(sagemaker_session_mock, query):
     WORKGROUP = "workgroup"
-    sagemaker_session_mock.start_query_execution.return_value = {
-        "QueryExecutionId": "query_id"
-    }
+    sagemaker_session_mock.start_query_execution.return_value = {"QueryExecutionId": "query_id"}
     query.run(
         query_string="query",
         output_location="s3://some-bucket/some-path",
@@ -612,17 +559,13 @@ def test_athena_query_run(sagemaker_session_mock, query):
 def test_athena_query_wait(sagemaker_session_mock, query):
     query._current_query_execution_id = "query_id"
     query.wait()
-    sagemaker_session_mock.wait_for_athena_query.assert_called_with(
-        query_execution_id="query_id"
-    )
+    sagemaker_session_mock.wait_for_athena_query.assert_called_with(query_execution_id="query_id")
 
 
 def test_athena_query_get_query_execution(sagemaker_session_mock, query):
     query._current_query_execution_id = "query_id"
     query.get_query_execution()
-    sagemaker_session_mock.get_query_execution.assert_called_with(
-        query_execution_id="query_id"
-    )
+    sagemaker_session_mock.get_query_execution.assert_called_with(query_execution_id="query_id")
 
 
 @patch("tempfile.gettempdir", Mock(return_value="tmp"))
