@@ -25,6 +25,7 @@ from sagemaker.tensorflow import TensorFlow
 from sagemaker.transformer import Transformer
 from sagemaker.estimator import Estimator
 from sagemaker.inputs import BatchDataCaptureConfig
+from sagemaker.xgboost import XGBoostModel
 from sagemaker.utils import unique_name_from_base
 from tests.integ import (
     datasets,
@@ -36,7 +37,7 @@ from tests.integ.kms_utils import bucket_with_encryption, get_or_create_kms_key
 from tests.integ.timeout import timeout, timeout_and_delete_model_with_transformer
 from tests.integ.vpc_test_utils import get_or_create_vpc_resources
 
-from sagemaker.model_monitor import DatasetFormat, Statistics
+from sagemaker.model_monitor import DatasetFormat, Statistics, Constraints
 
 from sagemaker.workflow.check_job_config import CheckJobConfig
 from sagemaker.workflow.quality_check_step import (
@@ -645,3 +646,66 @@ def _create_transformer_and_transform_job(
         job_name=unique_name_from_base("test-transform"),
     )
     return transformer
+
+
+def test_transformer_and_monitoring_job(
+    pipeline_session,
+    sagemaker_session,
+    role,
+    pipeline_name,
+    check_job_config,
+    data_bias_check_config,
+):
+    xgb_model_data_s3 = pipeline_session.upload_data(
+        path=os.path.join(os.path.join(DATA_DIR, "xgboost_abalone"), "xgb_model.tar.gz"),
+        key_prefix="integ-test-data/xgboost/model",
+    )
+    data_bias_supplied_baseline_constraints = Constraints.from_file_path(
+        constraints_file_path=os.path.join(
+            DATA_DIR, "pipeline/clarify_check_step/data_bias/good_cases/analysis.json"
+        ),
+        sagemaker_session=sagemaker_session,
+    ).file_s3_uri
+
+    xgb_model = XGBoostModel(
+        model_data=xgb_model_data_s3,
+        framework_version="1.3-1",
+        role=role,
+        sagemaker_session=sagemaker_session,
+        entry_point=os.path.join(os.path.join(DATA_DIR, "xgboost_abalone"), "inference.py"),
+        enable_network_isolation=True,
+    )
+
+    xgb_model.deploy(_INSTANCE_COUNT, _INSTANCE_TYPE)
+
+    transform_output = f"s3://{sagemaker_session.default_bucket()}/{pipeline_name}Transform"
+    transformer = Transformer(
+        model_name=xgb_model.name,
+        strategy="SingleRecord",
+        instance_type="ml.m5.xlarge",
+        instance_count=1,
+        output_path=transform_output,
+        sagemaker_session=pipeline_session,
+    )
+
+    transform_input = pipeline_session.upload_data(
+        path=os.path.join(DATA_DIR, "xgboost_abalone", "abalone"),
+        key_prefix="integ-test-data/xgboost_abalone/abalone",
+    )
+
+    execution = transformer.transform_with_monitoring(
+        monitoring_config=data_bias_check_config,
+        monitoring_resource_config=check_job_config,
+        data=transform_input,
+        content_type="text/libsvm",
+        supplied_baseline_constraints=data_bias_supplied_baseline_constraints,
+        role=role,
+    )
+
+    execution_steps = execution.list_steps()
+    assert len(execution_steps) == 2
+
+    for execution_step in execution_steps:
+        assert execution_step["StepStatus"] == "Succeeded"
+
+    xgb_model.delete_model()
