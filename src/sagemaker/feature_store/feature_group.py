@@ -133,9 +133,10 @@ class AthenaQuery:
         """Download the result of the current query and load it into a DataFrame.
 
         Args:
-            pandas_read_csv_kwargs: key arguments used for the method pandas.read_csv to be able to have a better
-                           tuning on data. For more info about this methods visit:
-                           https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_csv.html
+            pandas_read_csv_kwargs: key arguments used for the method pandas.read_csv
+                            to be able to have a better tuning on data. For more info
+                            about this methods visit:
+                    https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_csv.html
         Returns:
             A pandas DataFrame contains the query result.
         """
