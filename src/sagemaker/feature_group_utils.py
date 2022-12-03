@@ -44,44 +44,51 @@ def _get_session_from_role(role: str, region: str):
     """
     boto_session = boto3.Session(region_name=region)
 
-    sts = boto_session.client('sts',
-                              region_name=region,
-                              endpoint_url='https://sts.eu-west-1.amazonaws.com')
+    sts = boto_session.client(
+        "sts", region_name=region, endpoint_url="https://sts.eu-west-1.amazonaws.com"
+    )
 
-    metadata = sts.assume_role(RoleArn=role,
-                               RoleSessionName='SagemakerExecution')
+    metadata = sts.assume_role(RoleArn=role, RoleSessionName="SagemakerExecution")
 
-    access_key_id = metadata['Credentials']['AccessKeyId']
-    secret_access_key = metadata['Credentials']['SecretAccessKey']
-    session_token = metadata['Credentials']['SessionToken']
+    access_key_id = metadata["Credentials"]["AccessKeyId"]
+    secret_access_key = metadata["Credentials"]["SecretAccessKey"]
+    session_token = metadata["Credentials"]["SessionToken"]
 
-    boto_session = boto3.session.Session(region_name=region,
-                                         aws_access_key_id=access_key_id,
-                                         aws_secret_access_key=secret_access_key,
-                                         aws_session_token=session_token)
+    boto_session = boto3.session.Session(
+        region_name=region,
+        aws_access_key_id=access_key_id,
+        aws_secret_access_key=secret_access_key,
+        aws_session_token=session_token,
+    )
 
     # Sessions
-    sagemaker_client = boto_session.client('sagemaker')
-    sagemaker_runtime = boto_session.client('sagemaker-runtime')
-    runtime_client = boto_session.client(service_name='sagemaker-featurestore-runtime')
-    sagemaker_session = Session(boto_session=boto_session,
-                                sagemaker_client=sagemaker_client,
-                                sagemaker_runtime_client=sagemaker_runtime,
-                                sagemaker_featurestore_runtime_client=runtime_client)
+    sagemaker_client = boto_session.client("sagemaker")
+    sagemaker_runtime = boto_session.client("sagemaker-runtime")
+    runtime_client = boto_session.client(service_name="sagemaker-featurestore-runtime")
+    sagemaker_session = Session(
+        boto_session=boto_session,
+        sagemaker_client=sagemaker_client,
+        sagemaker_runtime_client=sagemaker_runtime,
+        sagemaker_featurestore_runtime_client=runtime_client,
+    )
 
     return sagemaker_session
 
 
-def get_feature_group_as_dataframe(feature_group_name: str, athena_bucket: str,
-                                   query: str = str('SELECT * FROM '
-                                                    '"sagemaker_featurestore"."#{table}" '
-                                                    'WHERE is_deleted=False'),
-                                   role: str = None, region: str = None,
-                                   session=None,
-                                   event_time_feature_name: str = None,
-                                   latest_ingestion: bool = True,
-                                   verbose: bool = True,
-                                   **pandas_read_csv_kwargs) -> DataFrame:
+def get_feature_group_as_dataframe(
+    feature_group_name: str,
+    athena_bucket: str,
+    query: str = str(
+        "SELECT * FROM " '"sagemaker_featurestore"."#{table}" ' "WHERE is_deleted=False"
+    ),
+    role: str = None,
+    region: str = None,
+    session=None,
+    event_time_feature_name: str = None,
+    latest_ingestion: bool = True,
+    verbose: bool = True,
+    **pandas_read_csv_kwargs,
+) -> DataFrame:
     """Get a feature group as a pandas.DataFrame
 
     Description:
@@ -118,46 +125,48 @@ def get_feature_group_as_dataframe(feature_group_name: str, athena_bucket: str,
 
     if latest_ingestion:
         if event_time_feature_name is not None:
-            query += str(f'AND {event_time_feature_name}=(SELECT '
-                         f'MAX({event_time_feature_name}) FROM '
-                         + f'"sagemaker_featurestore"."{feature_group_name}")')
+            query += str(
+                f"AND {event_time_feature_name}=(SELECT "
+                f"MAX({event_time_feature_name}) FROM "
+                + f'"sagemaker_featurestore"."{feature_group_name}")'
+            )
         else:
-            exc = Exception('Argument event_time_feature_name must be specified '
-                            'when using latest_ingestion=True.')
+            exc = Exception(
+                "Argument event_time_feature_name must be specified "
+                "when using latest_ingestion=True."
+            )
             logger.exception(exc)
             raise exc
-    query += ';'
+    query += ";"
 
     if session is not None:
         sagemaker_session = session
     elif role is not None and region is not None:
         sagemaker_session = _get_session_from_role(role=role, region=region)
     else:
-        exc = Exception('Argument Session or role and region must be specified.')
+        exc = Exception("Argument Session or role and region must be specified.")
         logger.exception(exc)
         raise exc
 
-    msg = f'Feature Group used: {feature_group_name}'
+    msg = f"Feature Group used: {feature_group_name}"
     logger.info(msg)
 
-    fg = FeatureGroup(name=feature_group_name,
-                      sagemaker_session=sagemaker_session)
+    fg = FeatureGroup(name=feature_group_name, sagemaker_session=sagemaker_session)
 
     sample_query = fg.athena_query()
-    query_string = re.sub(r'#\{(table)\}', sample_query.table_name, query)
+    query_string = re.sub(r"#\{(table)\}", sample_query.table_name, query)
 
     msg = f"Running query:\n\t{sample_query} \n\n\t-> Save on bucket {athena_bucket}\n"
     logger.info(msg)
 
-    sample_query.run(query_string=query_string,
-                     output_location=athena_bucket)
+    sample_query.run(query_string=query_string, output_location=athena_bucket)
 
     sample_query.wait()
 
     # run Athena query. The output is loaded to a Pandas dataframe.
     dataset = sample_query.as_dataframe(**pandas_read_csv_kwargs)
 
-    msg = f'Data shape retrieve from {feature_group_name}: {dataset.shape}'
+    msg = f"Data shape retrieve from {feature_group_name}: {dataset.shape}"
     logger.info(msg)
 
     return dataset
@@ -175,7 +184,7 @@ def _format_column_names(data: pandas.DataFrame) -> pandas.DataFrame:
     Returns:
         pandas.DataFrame
     """
-    data.rename(columns=lambda x: x.replace(' ', '_').replace('.', '').lower()[:62], inplace=True)
+    data.rename(columns=lambda x: x.replace(" ", "_").replace(".", "").lower()[:62], inplace=True)
     return data
 
 
@@ -191,18 +200,22 @@ def _cast_object_to_string(data_frame: pandas.DataFrame) -> pandas.DataFrame:
     Returns:
         pandas.DataFrame
     """
-    for label in data_frame.select_dtypes(['object', 'O']).columns.tolist():
+    for label in data_frame.select_dtypes(["object", "O"]).columns.tolist():
         data_frame[label] = data_frame[label].astype("str").astype("string")
     return data_frame
 
 
-def prepare_fg_from_dataframe_or_file(dataframe_or_path: Union[str, Path, pandas.DataFrame],
-                                      feature_group_name: str,
-                                      role: str = None, region: str = None, session=None,
-                                      record_id: str = 'record_id',
-                                      event_id: str = 'data_as_of_date',
-                                      verbose: bool = False,
-                                      **pandas_read_csv_kwargs) -> FeatureGroup:
+def prepare_fg_from_dataframe_or_file(
+    dataframe_or_path: Union[str, Path, pandas.DataFrame],
+    feature_group_name: str,
+    role: str = None,
+    region: str = None,
+    session=None,
+    record_id: str = "record_id",
+    event_id: str = "data_as_of_date",
+    verbose: bool = False,
+    **pandas_read_csv_kwargs,
+) -> FeatureGroup:
     """Module to prepare a dataframe before creating  Feature
 
     Function to prepare a dataframe for creating a Feature Group from a pandas.DataFrame
@@ -237,12 +250,16 @@ def prepare_fg_from_dataframe_or_file(dataframe_or_path: Union[str, Path, pandas
     if isinstance(dataframe_or_path, DataFrame):
         data = dataframe_or_path
     elif isinstance(dataframe_or_path, str):
-        pandas_read_csv_kwargs.pop('filepath_or_buffer', None)
+        pandas_read_csv_kwargs.pop("filepath_or_buffer", None)
         data = read_csv(filepath_or_buffer=dataframe_or_path, **pandas_read_csv_kwargs)
     else:
-        exc = Exception(str(f'Invalid type {type(dataframe_or_path)} for '
-                            'argument dataframe_or_path. \nParameter must be'
-                            ' of type pandas.DataFrame or string'))
+        exc = Exception(
+            str(
+                f"Invalid type {type(dataframe_or_path)} for "
+                "argument dataframe_or_path. \nParameter must be"
+                " of type pandas.DataFrame or string"
+            )
+        )
         logger.exception(exc)
         raise exc
 
@@ -250,21 +267,26 @@ def prepare_fg_from_dataframe_or_file(dataframe_or_path: Union[str, Path, pandas
     data = _format_column_names(data=data)
     data = _cast_object_to_string(data_frame=data)
 
-    if record_id == 'record_id' and record_id not in data.columns:
+    if record_id == "record_id" and record_id not in data.columns:
         data[record_id] = data.index
 
     lg_uniq = len(data[record_id].unique())
     lg_id = len(data[record_id])
 
     if lg_id != lg_uniq:
-        exc = Exception(str(f'Record identifier {record_id} have {abs(lg_id - lg_uniq)} '
-                            'duplicated rows. \nRecord identifier must be unique'
-                            ' in each row.'))
+        exc = Exception(
+            str(
+                f"Record identifier {record_id} have {abs(lg_id - lg_uniq)} "
+                "duplicated rows. \nRecord identifier must be unique"
+                " in each row."
+            )
+        )
         logger.exception(exc)
         raise exc
 
     if event_id not in data.columns:
         import time
+
         current_time_sec = int(round(time.time()))
 
         data[event_id] = Series([current_time_sec] * lg_id, dtype="float64")
@@ -274,13 +296,11 @@ def prepare_fg_from_dataframe_or_file(dataframe_or_path: Union[str, Path, pandas
     elif role is not None and region is not None:
         sagemaker_session = _get_session_from_role(role=role, region=region)
     else:
-        exc = Exception('Argument Session or role and region must be specified.')
+        exc = Exception("Argument Session or role and region must be specified.")
         logger.exception(exc)
         raise exc
 
-    feature_group = FeatureGroup(
-        name=feature_group_name, sagemaker_session=sagemaker_session
-    )
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=sagemaker_session)
 
     feature_group.load_feature_definitions(data_frame=data)
 

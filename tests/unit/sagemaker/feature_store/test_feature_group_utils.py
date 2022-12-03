@@ -45,9 +45,7 @@ def sagemaker_session_mock():
 
 
 def test_convert_unsupported_types_to_supported(sagemaker_session_mock):
-    feature_group = FeatureGroup(
-        name="FailedGroup", sagemaker_session=sagemaker_session_mock
-    )
+    feature_group = FeatureGroup(name="FailedGroup", sagemaker_session=sagemaker_session_mock)
     df = pd.DataFrame(
         {
             "float": pd.Series([2.0], dtype="float64"),

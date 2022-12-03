@@ -42,9 +42,7 @@ BUCKET_POLICY = {
             "Principal": {"Service": "sagemaker.amazonaws.com"},
             "Action": ["s3:PutObject", "s3:PutObjectAcl"],
             "Resource": "arn:aws:s3:::{bucket_name}-{region_name}/*",
-            "Condition": {
-                "StringEquals": {"s3:x-amz-acl": "bucket-owner-full-control"}
-            },
+            "Condition": {"StringEquals": {"s3:x-amz-acl": "bucket-owner-full-control"}},
         },
         {
             "Sid": "FeatureStoreOfflineStoreS3BucketPolicy",
@@ -160,9 +158,7 @@ def test_create_feature_store_online_only(
     feature_group_name,
     pandas_data_frame,
 ):
-    feature_group = FeatureGroup(
-        name=feature_group_name, sagemaker_session=feature_store_session
-    )
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
 
     with cleanup_feature_group(feature_group):
@@ -187,9 +183,7 @@ def test_create_feature_store(
     record,
     create_table_ddl,
 ):
-    feature_group = FeatureGroup(
-        name=feature_group_name, sagemaker_session=feature_store_session
-    )
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
 
     with cleanup_feature_group(feature_group):
@@ -226,9 +220,9 @@ def test_create_feature_store(
                     output_location=f"{offline_store_s3_uri}/query_results",
                 )
                 athena_query.wait()
-                assert "SUCCEEDED" == athena_query.get_query_execution().get(
-                    "QueryExecution"
-                ).get("Status").get("State")
+                assert "SUCCEEDED" == athena_query.get_query_execution().get("QueryExecution").get(
+                    "Status"
+                ).get("State")
                 df = athena_query.as_dataframe()
                 print(f"Found {df.shape[0]} records.")
                 time.sleep(60)
@@ -256,9 +250,7 @@ def test_create_feature_group_iceberg_table_format(
     offline_store_s3_uri,
     pandas_data_frame,
 ):
-    feature_group = FeatureGroup(
-        name=feature_group_name, sagemaker_session=feature_store_session
-    )
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
 
     with cleanup_feature_group(feature_group):
@@ -272,9 +264,7 @@ def test_create_feature_group_iceberg_table_format(
         )
         _wait_for_feature_group_create(feature_group)
 
-        table_format = (
-            feature_group.describe().get("OfflineStoreConfig").get("TableFormat")
-        )
+        table_format = feature_group.describe().get("OfflineStoreConfig").get("TableFormat")
         assert table_format == "Iceberg"
 
 
@@ -285,9 +275,7 @@ def test_create_feature_group_glue_table_format(
     offline_store_s3_uri,
     pandas_data_frame,
 ):
-    feature_group = FeatureGroup(
-        name=feature_group_name, sagemaker_session=feature_store_session
-    )
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
 
     with cleanup_feature_group(feature_group):
@@ -301,9 +289,7 @@ def test_create_feature_group_glue_table_format(
         )
         _wait_for_feature_group_create(feature_group)
 
-        table_format = (
-            feature_group.describe().get("OfflineStoreConfig").get("TableFormat")
-        )
+        table_format = feature_group.describe().get("OfflineStoreConfig").get("TableFormat")
         assert table_format == "Glue"
 
 
@@ -314,9 +300,7 @@ def test_update_feature_group(
     offline_store_s3_uri,
     pandas_data_frame,
 ):
-    feature_group = FeatureGroup(
-        name=feature_group_name, sagemaker_session=feature_store_session
-    )
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
 
     with cleanup_feature_group(feature_group):
@@ -334,9 +318,7 @@ def test_update_feature_group(
         feature_group.update(new_features)
         _wait_for_feature_group_update(feature_group)
         feature_definitions = feature_group.describe().get("FeatureDefinitions")
-        assert any(
-            [True for elem in feature_definitions if new_feature_name in elem.values()]
-        )
+        assert any([True for elem in feature_definitions if new_feature_name in elem.values()])
 
 
 def test_feature_metadata(
@@ -346,9 +328,7 @@ def test_feature_metadata(
     offline_store_s3_uri,
     pandas_data_frame,
 ):
-    feature_group = FeatureGroup(
-        name=feature_group_name, sagemaker_session=feature_store_session
-    )
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
 
     with cleanup_feature_group(feature_group):
@@ -397,9 +377,7 @@ def test_ingest_without_string_feature(
     offline_store_s3_uri,
     pandas_data_frame_without_string,
 ):
-    feature_group = FeatureGroup(
-        name=feature_group_name, sagemaker_session=feature_store_session
-    )
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame_without_string)
 
     with cleanup_feature_group(feature_group):
@@ -427,9 +405,7 @@ def test_ingest_multi_process(
     offline_store_s3_uri,
     pandas_data_frame,
 ):
-    feature_group = FeatureGroup(
-        name=feature_group_name, sagemaker_session=feature_store_session
-    )
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
 
     with cleanup_feature_group(feature_group):
@@ -480,9 +456,7 @@ def test_get_feature_group_with_role_region(
     offline_store_s3_uri,
     pandas_data_frame,
 ):
-    feature_group = FeatureGroup(
-        name=feature_group_name, sagemaker_session=feature_store_session
-    )
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
 
     with cleanup_feature_group(feature_group):
@@ -520,9 +494,7 @@ def test_get_feature_group_with_session(
     offline_store_s3_uri,
     pandas_data_frame,
 ):
-    feature_group = FeatureGroup(
-        name=feature_group_name, sagemaker_session=feature_store_session
-    )
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
 
     with cleanup_feature_group(feature_group):
@@ -562,6 +534,4 @@ def cleanup_feature_group(feature_group: FeatureGroup):
         try:
             feature_group.delete()
         except Exception:
-            raise RuntimeError(
-                f"Failed to delete feature group with name {feature_group.name}"
-            )
+            raise RuntimeError(f"Failed to delete feature group with name {feature_group.name}")
