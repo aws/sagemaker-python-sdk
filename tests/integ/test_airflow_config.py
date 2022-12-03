@@ -62,7 +62,10 @@ for _ in retries(
         )
 
         break
-    except ParsingError:
+    except ParsingError as e:
+        print("\ninside airflow parsing error")
+        print(e)
+        print("-----------------\n\n")
         pass
 
 PYTORCH_MNIST_DIR = os.path.join(DATA_DIR, "pytorch_mnist")
