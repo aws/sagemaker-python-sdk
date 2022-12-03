@@ -47,7 +47,7 @@ def test_compile_model_for_inferentia(sagemaker_session):
     )
     model = _create_model(sagemaker_session)
     model.compile(
-        target_instance_family="ml_inf",
+        target_instance_family="ml_inf1",
         input_shape={"data": [1, 3, 1024, 1024]},
         output_path="s3://output",
         role="role",
@@ -313,7 +313,7 @@ def test_compile_with_pytorch_neo_in_ml_inf(session):
 
     model = _create_model()
     model.compile(
-        target_instance_family="ml_inf",
+        target_instance_family="ml_inf1",
         input_shape={"data": [1, 3, 1024, 1024]},
         output_path="s3://output",
         role="role",
@@ -336,7 +336,7 @@ def test_compile_with_tensorflow_neo_in_ml_inf(session):
 
     model = _create_model()
     model.compile(
-        target_instance_family="ml_inf",
+        target_instance_family="ml_inf1",
         input_shape={"data": [1, 3, 1024, 1024]},
         output_path="s3://output",
         role="role",
