@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 # language governing permissions and limitations under the License.
+"""Test for Feature Inputs"""
 from __future__ import absolute_import
 
 from sagemaker.feature_store.inputs import (
@@ -30,8 +31,7 @@ def ordered(obj):
         return sorted((k, ordered(v)) for k, v in obj.items())
     if isinstance(obj, list):
         return sorted(ordered(x) for x in obj)
-    else:
-        return obj
+    return obj
 
 
 def test_online_store_security_config():
@@ -89,7 +89,8 @@ def test_offline_data_store_config():
 
 def test_offline_data_store_config_with_glue_table_format():
     config = OfflineStoreConfig(
-        s3_storage_config=S3StorageConfig(s3_uri="uri"), table_format=TableFormatEnum.GLUE
+        s3_storage_config=S3StorageConfig(s3_uri="uri"),
+        table_format=TableFormatEnum.GLUE,
     )
     assert ordered(config.to_dict()) == ordered(
         {
@@ -102,7 +103,8 @@ def test_offline_data_store_config_with_glue_table_format():
 
 def test_offline_data_store_config_with_iceberg_table_format():
     config = OfflineStoreConfig(
-        s3_storage_config=S3StorageConfig(s3_uri="uri"), table_format=TableFormatEnum.ICEBERG
+        s3_storage_config=S3StorageConfig(s3_uri="uri"),
+        table_format=TableFormatEnum.ICEBERG,
     )
     assert ordered(config.to_dict()) == ordered(
         {
