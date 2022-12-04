@@ -435,13 +435,14 @@ class FeatureGroup:
         "uint64",
     ]
     _FLOAT_TYPES = ["float_", "float16", "float32", "float64"]
-    _DTYPE_TO_FEATURE_DEFINITION_CLS_MAP: Dict[str, FeatureTypeEnum] = {
+    DTYPE_TO_FEATURE_DEFINITION_CLS_MAP: Dict[str, FeatureTypeEnum] = {
         type: FeatureTypeEnum.INTEGRAL for type in _INTEGER_TYPES
     }
-    _DTYPE_TO_FEATURE_DEFINITION_CLS_MAP.update(
+    DTYPE_TO_FEATURE_DEFINITION_CLS_MAP.update(
         {type: FeatureTypeEnum.FRACTIONAL for type in _FLOAT_TYPES}
     )
-    _DTYPE_TO_FEATURE_DEFINITION_CLS_MAP["string"] = FeatureTypeEnum.STRING
+    DTYPE_TO_FEATURE_DEFINITION_CLS_MAP["string"] = FeatureTypeEnum.STRING
+    DTYPE_TO_FEATURE_DEFINITION_CLS_MAP["object"] = FeatureTypeEnum.STRING
 
     _FEATURE_TYPE_TO_DDL_DATA_TYPE_MAP = {
         FeatureTypeEnum.INTEGRAL.value: "INT",
@@ -629,7 +630,7 @@ class FeatureGroup:
         """
         feature_definitions = []
         for column in data_frame:
-            feature_type = self._DTYPE_TO_FEATURE_DEFINITION_CLS_MAP.get(
+            feature_type = self.DTYPE_TO_FEATURE_DEFINITION_CLS_MAP.get(
                 str(data_frame[column].dtype), None
             )
             if feature_type:

@@ -266,12 +266,12 @@ def test_load_feature_definition_unsupported_types(sagemaker_session_mock):
         {
             "float": pd.Series([2.0], dtype="float64"),
             "int": pd.Series([2], dtype="int64"),
-            "object": pd.Series(["f1"], dtype="object"),
+            "bool": pd.Series([True], dtype="bool"),
         }
     )
     with pytest.raises(ValueError) as error:
         feature_group.load_feature_definitions(data_frame=df)
-    assert "Failed to infer Feature type based on dtype object for column object." in str(error)
+    assert "Failed to infer Feature type based on dtype bool for column bool." in str(error)
 
 
 def test_ingest_zero_processes():

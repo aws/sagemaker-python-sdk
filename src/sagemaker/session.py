@@ -312,7 +312,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         # For each object key, create the directory on the local machine if needed, and then
         # download the file.
         for key in keys:
-            tail_s3_uri_path = os.path.basename(key_prefix)
+            tail_s3_uri_path = os.path.basename(key)
             if not os.path.splitext(key_prefix)[1]:
                 tail_s3_uri_path = os.path.relpath(key, key_prefix)
             destination_path = os.path.join(path, tail_s3_uri_path)

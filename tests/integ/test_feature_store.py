@@ -303,8 +303,7 @@ def test_create_feature_group_glue_table_format(
     offline_store_s3_uri,
     pandas_data_frame,
 ):
-    feature_group = FeatureGroup(name=feature_group_name,
-                                 sagemaker_session=feature_store_session)
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
 
     with cleanup_feature_group(feature_group):
@@ -320,6 +319,7 @@ def test_create_feature_group_glue_table_format(
 
         table_format = feature_group.describe().get("OfflineStoreConfig").get("TableFormat")
         assert table_format == "Glue"
+
 
 def test_get_record(
     feature_store_session,
@@ -590,6 +590,7 @@ def test_create_dataset_with_feature_group_base(
             feature_store = FeatureStore(sagemaker_session=feature_store_session)
             df, query_string = (
                 feature_store.create_dataset(base=base, output_path=offline_store_s3_uri)
+                .with_number_of_recent_records_by_record_identifier(4)
                 .with_feature_group(feature_group)
                 .to_dataframe()
             )
@@ -598,38 +599,121 @@ def test_create_dataset_with_feature_group_base(
                 feature_group_dataframe, left_on="base_id", right_on="fg_id"
             )
             expect_df = merged_df.sort_values(by=list(merged_df.columns)).reset_index(drop=True)
+
             assert sorted_df.equals(expect_df)
             assert (
                 query_string
-                == 'WITH fg_base AS (SELECT table_base."base_id", table_base."base_time", '
+                == "WITH fg_base AS (WITH table_base AS (\n"
+                + "SELECT *\n"
+                + "FROM (\n"
+                + "SELECT *, row_number() OVER (\n"
+                + 'PARTITION BY origin_base."base_id", origin_base."base_time"\n'
+                + 'ORDER BY origin_base."api_invocation_time" DESC, origin_base."write_time" DESC\n'
+                + ") AS dedup_row_base\n"
+                + f'FROM "sagemaker_featurestore"."{base_table_name}" origin_base\n'
+                + ")\n"
+                + "WHERE dedup_row_base = 1\n"
+                + "),\n"
+                + "deleted_base AS (\n"
+                + "SELECT *\n"
+                + "FROM (\n"
+                + "SELECT *, row_number() OVER (\n"
+                + 'PARTITION BY origin_base."base_id"\n'
+                + 'ORDER BY origin_base."base_time" DESC, origin_base."api_invocation_time" '
+                + 'DESC, origin_base."write_time" DESC\n'
+                + ") AS deleted_row_base\n"
+                + f'FROM "sagemaker_featurestore"."{base_table_name}" origin_base\n'
+                + "WHERE is_deleted\n"
+                + ")\n"
+                + "WHERE deleted_row_base = 1\n"
+                + ")\n"
+                + 'SELECT table_base."base_id", table_base."base_time", '
                 + 'table_base."base_feature_1", table_base."base_feature_2"\n'
                 + "FROM (\n"
-                + "SELECT *, row_number() OVER (\n"
-                + 'PARTITION BY dedup_base."base_id", dedup_base."base_feature_1", '
-                + 'dedup_base."base_feature_2"\n'
-                + 'ORDER BY dedup_base."base_time" DESC, dedup_base."api_invocation_time" DESC, '
-                + 'dedup_base."write_time" DESC\n'
-                + ") AS row_base\n"
-                + f'FROM "sagemaker_featurestore"."{base_table_name}" dedup_base\n'
+                + 'SELECT table_base."base_id", table_base."base_time", '
+                + 'table_base."base_feature_1", table_base."base_feature_2", '
+                + 'table_base."write_time"\n'
+                + "FROM table_base\n"
+                + "LEFT JOIN deleted_base\n"
+                + 'ON table_base."base_id" = deleted_base."base_id"\n'
+                + 'WHERE deleted_base."base_id" IS NULL\n'
+                + "UNION ALL\n"
+                + 'SELECT table_base."base_id", table_base."base_time", '
+                + 'table_base."base_feature_1", table_base."base_feature_2", '
+                + 'table_base."write_time"\n'
+                + "FROM deleted_base\n"
+                + "JOIN table_base\n"
+                + 'ON table_base."base_id" = deleted_base."base_id"\n'
+                + "AND (\n"
+                + 'table_base."base_time" > deleted_base."base_time"\n'
+                + 'OR (table_base."base_time" = deleted_base."base_time" AND '
+                + 'table_base."api_invocation_time" > deleted_base."api_invocation_time")\n'
+                + 'OR (table_base."base_time" = deleted_base."base_time" AND '
+                + 'table_base."api_invocation_time" = deleted_base."api_invocation_time" AND '
+                + 'table_base."write_time" > deleted_base."write_time")\n'
+                + ")\n"
                 + ") AS table_base\n"
-                + "WHERE row_base = 1\n"
-                + "AND NOT is_deleted),\n"
-                + 'fg_0 AS (SELECT table_0."fg_id", table_0."fg_time", table_0."fg_feature_1", '
-                + 'table_0."fg_feature_2"\n'
+                + "),\n"
+                + "fg_0 AS (WITH table_0 AS (\n"
+                + "SELECT *\n"
                 + "FROM (\n"
                 + "SELECT *, row_number() OVER (\n"
-                + 'PARTITION BY dedup_0."fg_id", dedup_0."fg_feature_1", dedup_0."fg_feature_2"\n'
-                + 'ORDER BY dedup_0."fg_time" DESC, dedup_0."api_invocation_time" DESC, '
-                + 'dedup_0."write_time" DESC\n'
-                + ") AS row_0\n"
-                + f'FROM "sagemaker_featurestore"."{feature_group_table_name}" dedup_0\n'
-                + ") AS table_0\n"
-                + "WHERE row_0 = 1\n"
-                + "AND NOT is_deleted)\n"
+                + 'PARTITION BY origin_0."fg_id", origin_0."fg_time"\n'
+                + 'ORDER BY origin_0."api_invocation_time" DESC, origin_0."write_time" DESC\n'
+                + ") AS dedup_row_0\n"
+                + f'FROM "sagemaker_featurestore"."{feature_group_table_name}" origin_0\n'
+                + ")\n"
+                + "WHERE dedup_row_0 = 1\n"
+                + "),\n"
+                + "deleted_0 AS (\n"
                 + "SELECT *\n"
+                + "FROM (\n"
+                + "SELECT *, row_number() OVER (\n"
+                + 'PARTITION BY origin_0."fg_id"\n'
+                + 'ORDER BY origin_0."fg_time" DESC, origin_0."api_invocation_time" DESC, '
+                + 'origin_0."write_time" DESC\n'
+                + ") AS deleted_row_0\n"
+                + f'FROM "sagemaker_featurestore"."{feature_group_table_name}" origin_0\n'
+                + "WHERE is_deleted\n"
+                + ")\n"
+                + "WHERE deleted_row_0 = 1\n"
+                + ")\n"
+                + 'SELECT table_0."fg_id", table_0."fg_time", table_0."fg_feature_1", '
+                + 'table_0."fg_feature_2"\n'
+                + "FROM (\n"
+                + 'SELECT table_0."fg_id", table_0."fg_time", table_0."fg_feature_1", '
+                + 'table_0."fg_feature_2", table_0."write_time"\n'
+                + "FROM table_0\n"
+                + "LEFT JOIN deleted_0\n"
+                + 'ON table_0."fg_id" = deleted_0."fg_id"\n'
+                + 'WHERE deleted_0."fg_id" IS NULL\n'
+                + "UNION ALL\n"
+                + 'SELECT table_0."fg_id", table_0."fg_time", table_0."fg_feature_1", '
+                + 'table_0."fg_feature_2", table_0."write_time"\n'
+                + "FROM deleted_0\n"
+                + "JOIN table_0\n"
+                + 'ON table_0."fg_id" = deleted_0."fg_id"\n'
+                + "AND (\n"
+                + 'table_0."fg_time" > deleted_0."fg_time"\n'
+                + 'OR (table_0."fg_time" = deleted_0."fg_time" AND '
+                + 'table_0."api_invocation_time" > deleted_0."api_invocation_time")\n'
+                + 'OR (table_0."fg_time" = deleted_0."fg_time" AND '
+                + 'table_0."api_invocation_time" = deleted_0."api_invocation_time" AND '
+                + 'table_0."write_time" > deleted_0."write_time")\n'
+                + ")\n"
+                + ") AS table_0\n"
+                + ")\n"
+                + "SELECT *\n"
+                + "FROM (\n"
+                + "SELECT *, row_number() OVER (\n"
+                + 'PARTITION BY fg_base."base_id"\n'
+                + 'ORDER BY fg_base."base_time" DESC, fg_0."fg_time" DESC\n'
+                + ") AS row_recent\n"
                 + "FROM fg_base\n"
                 + "JOIN fg_0\n"
-                + 'ON fg_base."base_id" = fg_0."fg_id"'
+                + 'ON fg_base."base_id" = fg_0."fg_id"\n'
+                + ")\n"
+                + "WHERE row_recent <= 4"
             )
 
 
