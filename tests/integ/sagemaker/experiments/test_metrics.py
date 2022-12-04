@@ -14,35 +14,24 @@ from __future__ import absolute_import
 import random
 from sagemaker.experiments._metrics import _MetricsManager
 from sagemaker.experiments.trial_component import _TrialComponent
+import time
 
 
-def test_epoch(trial_component_obj, sagemaker_session):
+def test_end_to_end(trial_component_obj, sagemaker_session):
     # The fixture creates deletes, just ensure fixture is used at least once
-    metric_name = "test-x-step"
     with _MetricsManager(trial_component_obj.trial_component_arn, sagemaker_session) as mm:
         for i in range(100):
-            mm.log_metric(metric_name, random.random(), step=i)
+            mm.log_metric("test-x-step", random.random(), step=i)
+            mm.log_metric("test-x-timestamp", random.random())
+
+    # metrics -> eureka propagation
+    time.sleep(3)
 
     updated_tc = _TrialComponent.load(
         trial_component_name=trial_component_obj.trial_component_name,
         sagemaker_session=sagemaker_session,
     )
-    assert len(updated_tc.metrics) == 1
-    assert updated_tc.metrics[0].metric_name == metric_name
-
-
-def test_timestamp(trial_component_obj, sagemaker_session):
-    # The fixture creates deletes, just ensure fixture is used at least once
-    metric_name = "test-x-timestamp"
-    with _MetricsManager(trial_component_obj.trial_component_arn, sagemaker_session) as mm:
-        for i in range(100):
-            mm.log_metric(metric_name, random.random())
-
-    updated_tc = _TrialComponent.load(
-        trial_component_name=trial_component_obj.trial_component_name,
-        sagemaker_session=sagemaker_session,
-    )
-    # the test-x-step data is added in the previous test_epoch test
-    assert len(updated_tc.metrics) == 2
-    assert updated_tc.metrics[0].metric_name == "test-x-step"
-    assert updated_tc.metrics[1].metric_name == "test-x-timestamp"
+    metrics = updated_tc.metrics
+    assert len(metrics) == 2
+    assert list(filter(lambda x: x.metric_name == "test-x-step", metrics))
+    assert list(filter(lambda x: x.metric_name == "test-x-timestamp", metrics))
