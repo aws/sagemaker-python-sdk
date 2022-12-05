@@ -148,7 +148,9 @@ def _create_train_job(version, instance_type, training_compiler_config, instance
     }
 
 
-def test_unsupported_BYOC(pytorch_training_compiler_version,):
+def test_unsupported_BYOC(
+    pytorch_training_compiler_version,
+):
     byoc = (
         "1.dkr.ecr.us-east-1.amazonaws.com/pytorch-trcomp-training:"
         "1.12.0-"
@@ -214,7 +216,9 @@ def test_unsupported_framework_version():
         ).fit()
 
 
-def test_unsupported_python_2(pytorch_training_compiler_version,):
+def test_unsupported_python_2(
+    pytorch_training_compiler_version,
+):
     with pytest.raises(ValueError):
         PyTorch(
             py_version="py27",
@@ -228,7 +232,9 @@ def test_unsupported_python_2(pytorch_training_compiler_version,):
         ).fit()
 
 
-def test_unsupported_instance_group(pytorch_training_compiler_version,):
+def test_unsupported_instance_group(
+    pytorch_training_compiler_version,
+):
     if Version(pytorch_training_compiler_version) < Version("1.12"):
         pytest.skip("This test is intended for PyTorch 1.12 and above")
     with pytest.raises(ValueError):
@@ -246,7 +252,9 @@ def test_unsupported_instance_group(pytorch_training_compiler_version,):
         ).fit()
 
 
-def test_unsupported_distribution(pytorch_training_compiler_version,):
+def test_unsupported_distribution(
+    pytorch_training_compiler_version,
+):
     if Version(pytorch_training_compiler_version) < Version("1.12"):
         pytest.skip("This test is intended for PyTorch 1.12 and above")
     with pytest.raises(ValueError):
