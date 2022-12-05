@@ -22,6 +22,8 @@ import pytest
 
 from sagemaker.estimator import _TrainingJob
 from sagemaker.tensorflow import TensorFlow
+from sagemaker.instance_group import InstanceGroup
+from sagemaker.workflow.parameters import ParameterString, ParameterBoolean
 from tests.unit import DATA_DIR
 
 SCRIPT_FILE = "dummy_script.py"
@@ -538,3 +540,95 @@ def test_custom_image(sagemaker_session):
     custom_image = "tensorflow:latest"
     tf = _build_tf(sagemaker_session, image_uri=custom_image)
     assert custom_image == tf.training_image_uri()
+
+
+def test_tf_heterogeneous_cluster_distribution_config(
+    sagemaker_session, tensorflow_training_version, tensorflow_training_py_version
+):
+    if version.Version(tensorflow_training_version) < version.Version("2.0"):
+        pytest.skip("This test is for TF 2.0 and higher.")
+
+    training_group = InstanceGroup("train_group", "ml.c4.xlarge", 1)
+    expected_return = {"mpi": {"enabled": True}, "instance_groups": ["train_group"]}
+    tf = _build_tf(
+        sagemaker_session,
+        framework_version=tensorflow_training_version,
+        py_version=tensorflow_training_py_version,
+        instance_groups=[training_group],
+        distribution={
+            "mpi": {"enabled": True},
+            "instance_groups": [training_group],
+        },
+    )
+    assert tf.distribution == expected_return
+
+
+def test_insert_invalid_source_code_args():
+    with pytest.raises(TypeError) as err:
+        TensorFlow(
+            image_uri="IMAGE_URI",
+            role=ROLE,
+            entry_point=ParameterString(name="EntryPoint"),
+            instance_type="ml.m5.xlarge",
+            instance_count=1,
+            enable_network_isolation=True,
+        )
+    assert (
+        "entry_point, source_dir should not be pipeline variables "
+        "when enable_network_isolation is a pipeline variable or it is set to True."
+    ) in str(err.value)
+
+    with pytest.raises(TypeError) as err:
+        TensorFlow(
+            image_uri="IMAGE_URI",
+            role=ROLE,
+            entry_point="dummy.py",
+            source_dir=ParameterString(name="SourceDir"),
+            instance_type="ml.m5.xlarge",
+            instance_count=1,
+            enable_network_isolation=ParameterBoolean(name="EnableNetworkIsolation"),
+        )
+    assert (
+        "entry_point, source_dir should not be pipeline variables "
+        "when enable_network_isolation is a pipeline variable or it is set to True."
+    ) in str(err.value)
+
+    with pytest.raises(TypeError) as err:
+        TensorFlow(
+            image_uri="IMAGE_URI",
+            role=ROLE,
+            git_config={"repo": "REPO", "branch": "BRANCH", "commit": "COMMIT"},
+            source_dir=ParameterString(name="SourceDir"),
+            entry_point=ParameterString(name="EntryPoint"),
+            instance_type="ml.m5.xlarge",
+            instance_count=1,
+        )
+    assert (
+        "entry_point, source_dir should not be pipeline variables when git_config is given"
+        in str(err.value)
+    )
+
+    with pytest.raises(TypeError) as err:
+        TensorFlow(
+            image_uri="IMAGE_URI",
+            role=ROLE,
+            entry_point=ParameterString(name="EntryPoint"),
+            instance_type="ml.m5.xlarge",
+            instance_count=1,
+        )
+    assert (
+        "The entry_point should not be a pipeline variable " "when source_dir is missing"
+    ) in str(err.value)
+
+    with pytest.raises(TypeError) as err:
+        TensorFlow(
+            image_uri="IMAGE_URI",
+            role=ROLE,
+            entry_point=ParameterString(name="EntryPoint"),
+            source_dir="file://my-file/",
+            instance_type="ml.m5.xlarge",
+            instance_count=1,
+        )
+    assert (
+        "The entry_point should not be a pipeline variable " "when source_dir is a local path"
+    ) in str(err.value)

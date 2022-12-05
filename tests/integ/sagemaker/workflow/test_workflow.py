@@ -15,7 +15,9 @@ from __future__ import absolute_import
 import json
 import os
 import re
+import tempfile
 import time
+import shutil
 
 from contextlib import contextmanager
 import pytest
@@ -23,7 +25,12 @@ import pytest
 from botocore.exceptions import WaiterError
 import pandas as pd
 
-from sagemaker.workflow.model_step import ModelStep, _REGISTER_MODEL_NAME_BASE
+from tests.integ.s3_utils import extract_files_from_s3
+from sagemaker.workflow.model_step import (
+    ModelStep,
+    _REGISTER_MODEL_NAME_BASE,
+    _REPACK_MODEL_NAME_BASE,
+)
 from sagemaker.parameter import IntegerParameter
 from sagemaker.pytorch import PyTorch, PyTorchModel
 from sagemaker.tuner import HyperparameterTuner
@@ -79,6 +86,7 @@ from sagemaker.workflow.steps import (
 )
 from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.utilities import hash_files_or_dirs
 from sagemaker.feature_store.feature_group import (
     FeatureGroup,
     FeatureDefinition,
@@ -1021,8 +1029,8 @@ def test_model_registration_with_tuning_model(
     pipeline_name,
     region_name,
 ):
-    base_dir = os.path.join(DATA_DIR, "pytorch_mnist")
-    entry_point = os.path.join(base_dir, "mnist.py")
+    base_dir = os.path.join(DATA_DIR, "pipeline/model_step/pytorch_mnist")
+    entry_point = "mnist.py"
     input_path = pipeline_session.upload_data(
         path=os.path.join(base_dir, "training"),
         key_prefix="integ-test-data/pytorch_mnist/training",
@@ -1036,9 +1044,10 @@ def test_model_registration_with_tuning_model(
     # since instance_type is used to retrieve image_uri in compile time (PySDK)
     pytorch_estimator = PyTorch(
         entry_point=entry_point,
+        source_dir=base_dir,
         role=role,
-        framework_version="1.5.0",
-        py_version="py3",
+        framework_version="1.10",
+        py_version="py38",
         instance_count=instance_count,
         instance_type=instance_type,
         sagemaker_session=pipeline_session,
@@ -1073,7 +1082,9 @@ def test_model_registration_with_tuning_model(
             s3_bucket=pipeline_session.default_bucket(),
         ),
         entry_point=entry_point,
-        framework_version="1.5.0",
+        source_dir=base_dir,
+        framework_version="1.10",
+        py_version="py38",
         sagemaker_session=pipeline_session,
     )
     step_model_regis_args = model.register(
@@ -1119,9 +1130,183 @@ def test_model_registration_with_tuning_model(
             assert step["StepStatus"] == "Succeeded"
             if _REGISTER_MODEL_NAME_BASE in step["StepName"]:
                 assert step["Metadata"]["RegisterModel"]
+            if _REPACK_MODEL_NAME_BASE in step["StepName"]:
+                _verify_repack_output(step, pipeline_session)
         assert len(execution_steps) == 3
     finally:
         try:
             pipeline.delete()
         except Exception:
+            pass
+
+
+def _verify_repack_output(repack_step_dict, sagemaker_session):
+    # This is to verify if the `requirements.txt` provided in ModelStep
+    # is not auto installed in the Repack step but is successfully repacked
+    # in the new model.tar.gz
+    # The repack step is using an old version of SKLearn framework "0.23-1"
+    # so if the `requirements.txt` is auto installed, it should raise an exception
+    # caused by the unsupported library version listed in the `requirements.txt`
+    training_job_arn = repack_step_dict["Metadata"]["TrainingJob"]["Arn"]
+    job_description = sagemaker_session.sagemaker_client.describe_training_job(
+        TrainingJobName=training_job_arn.split("/")[1]
+    )
+    model_uri = job_description["ModelArtifacts"]["S3ModelArtifacts"]
+    with tempfile.TemporaryDirectory() as tmp:
+        extract_files_from_s3(s3_url=model_uri, tmpdir=tmp, sagemaker_session=sagemaker_session)
+
+        def walk():
+            results = set()
+            for root, dirs, files in os.walk(tmp):
+                relative_path = root.replace(tmp, "")
+                for f in files:
+                    results.add(f"{relative_path}/{f}")
+            return results
+
+        tar_files = walk()
+        assert {"/code/mnist.py", "/code/requirements.txt", "/model.pth"}.issubset(tar_files)
+
+
+def test_caching_behavior(
+    pipeline_session, role, cpu_instance_type, pipeline_name, script_dir, athena_dataset_definition
+):
+    default_bucket = pipeline_session.default_bucket()
+    data_path = os.path.join(DATA_DIR, "workflow")
+
+    framework_version = "0.20.0"
+    instance_type = "ml.m5.xlarge"
+    instance_count = ParameterInteger(name="InstanceCount", default_value=1)
+    output_prefix = ParameterString(name="OutputPrefix", default_value="output")
+
+    input_data = f"s3://sagemaker-sample-data-{region_name}/processing/census/census-income.csv"
+
+    # additionally add abalone input, so we can test input s3 file from local upload
+    abalone_input = ProcessingInput(
+        input_name="abalone_data",
+        source=os.path.join(data_path, "abalone-dataset.csv"),
+        destination="/opt/ml/processing/input",
+    )
+
+    # define processing step
+    sklearn_processor = SKLearnProcessor(
+        framework_version=framework_version,
+        instance_type=instance_type,
+        instance_count=instance_count,
+        base_job_name="test-sklearn",
+        sagemaker_session=pipeline_session,
+        role=role,
+    )
+    processor_args = sklearn_processor.run(
+        inputs=[
+            ProcessingInput(source=input_data, destination="/opt/ml/processing/input"),
+            ProcessingInput(dataset_definition=athena_dataset_definition),
+            abalone_input,
+        ],
+        outputs=[
+            ProcessingOutput(output_name="train_data", source="/opt/ml/processing/train"),
+            ProcessingOutput(
+                output_name="test_data",
+                source="/opt/ml/processing/test",
+                destination=Join(
+                    on="/",
+                    values=[
+                        "s3:/",
+                        pipeline_session.default_bucket(),
+                        "test-sklearn",
+                        output_prefix,
+                        ExecutionVariables.PIPELINE_EXECUTION_ID,
+                    ],
+                ),
+            ),
+        ],
+        code=os.path.join(script_dir, "preprocessing.py"),
+    )
+    step_process = ProcessingStep(
+        name="my-process",
+        display_name="ProcessingStep",
+        description="description for Processing step",
+        step_args=processor_args,
+    )
+
+    # define training step
+    sklearn_train = SKLearn(
+        framework_version=framework_version,
+        source_dir=script_dir,
+        entry_point=os.path.join(script_dir, "train.py"),
+        instance_type=instance_type,
+        sagemaker_session=pipeline_session,
+        role=role,
+    )
+    train_args = sklearn_train.fit(
+        inputs=TrainingInput(
+            s3_data=step_process.properties.ProcessingOutputConfig.Outputs[
+                "train_data"
+            ].S3Output.S3Uri
+        ),
+    )
+    step_train = TrainingStep(
+        name="my-train",
+        display_name="TrainingStep",
+        description="description for Training step",
+        step_args=train_args,
+    )
+
+    # define pipeline
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[instance_count, output_prefix],
+        steps=[step_process, step_train],
+        sagemaker_session=pipeline_session,
+    )
+
+    try:
+        # create pipeline
+        pipeline.create(role)
+        definition = json.loads(pipeline.definition())
+        # delete profiler config for assertions as it will contain a timestamp
+        del definition["Steps"][1]["Arguments"]["ProfilerRuleConfigurations"]
+
+        # verify input path
+        expected_abalone_input_path = f"{pipeline_name}/{step_process.name}" f"/input/abalone_data"
+        expected_abalone_input_file = f"{expected_abalone_input_path}/abalone-dataset.csv"
+
+        s3_input_objects = pipeline_session.list_s3_files(
+            bucket=default_bucket, key_prefix=expected_abalone_input_path
+        )
+        assert expected_abalone_input_file in s3_input_objects
+
+        # verify code path
+        expected_code_path = f"{pipeline_name}/code/" f"{hash_files_or_dirs([script_dir])}"
+        expected_training_file = f"{expected_code_path}/sourcedir.tar.gz"
+
+        s3_code_objects = pipeline_session.list_s3_files(
+            bucket=default_bucket, key_prefix=expected_code_path
+        )
+        assert expected_training_file in s3_code_objects
+
+        # update pipeline
+        pipeline.update(role)
+
+        # verify no changes
+        definition2 = json.loads(pipeline.definition())
+        del definition2["Steps"][1]["Arguments"]["ProfilerRuleConfigurations"]
+        assert definition == definition2
+
+        # add dummy file to source_dir
+        shutil.copyfile(DATA_DIR + "/dummy_script.py", script_dir + "/dummy_script.py")
+
+        # update pipeline again
+        pipeline.update(role)
+
+        # verify changes
+        definition3 = json.loads(pipeline.definition())
+        del definition3["Steps"][1]["Arguments"]["ProfilerRuleConfigurations"]
+        assert definition != definition3
+
+    finally:
+        try:
+            os.remove(script_dir + "/dummy_script.py")
+            pipeline.delete()
+        except Exception:
+            os.remove(script_dir + "/dummy_script.py")
             pass

@@ -54,7 +54,7 @@ def output_fn(predictions, content_type):
     """
     After invoking predict_fn, the model server invokes `output_fn`.
     """
-    if content_type == "text/csv":
+    if content_type == "text/csv" or content_type == "application/json":
         return ",".join(str(x) for x in predictions[0])
     else:
         raise ValueError("Content type {} is not supported.".format(content_type))

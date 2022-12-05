@@ -53,6 +53,8 @@ from sagemaker.feature_store.inputs import (
     OfflineStoreConfig,
     DataCatalogConfig,
     FeatureValue,
+    FeatureParameter,
+    TableFormatEnum,
 )
 
 logger = logging.getLogger(__name__)
@@ -80,7 +82,9 @@ class AthenaQuery:
     _result_bucket: str = attr.ib(init=False, default=None)
     _result_file_prefix: str = attr.ib(init=False, default=None)
 
-    def run(self, query_string: str, output_location: str, kms_key: str = None) -> str:
+    def run(
+        self, query_string: str, output_location: str, kms_key: str = None, workgroup: str = None
+    ) -> str:
         """Execute a SQL query given a query string, output location and kms key.
 
         This method executes the SQL query using Athena and outputs the results to output_location
@@ -90,6 +94,7 @@ class AthenaQuery:
             query_string: SQL query string.
             output_location: S3 URI of the query result.
             kms_key: KMS key id. If set, will be used to encrypt the query result file.
+            workgroup (str): The name of the workgroup in which the query is being started.
 
         Returns:
             Execution id of the query.
@@ -100,6 +105,7 @@ class AthenaQuery:
             query_string=query_string,
             output_location=output_location,
             kms_key=kms_key,
+            workgroup=workgroup,
         )
         self._current_query_execution_id = response["QueryExecutionId"]
         parse_result = urlparse(output_location, allow_fragments=False)
@@ -456,6 +462,7 @@ class FeatureGroup:
         data_catalog_config: DataCatalogConfig = None,
         description: str = None,
         tags: List[Dict[str, str]] = None,
+        table_format: TableFormatEnum = None,
     ) -> Dict[str, Any]:
         """Create a SageMaker FeatureStore FeatureGroup.
 
@@ -465,9 +472,9 @@ class FeatureGroup:
             record_identifier_name (str): name of the record identifier feature.
             event_time_feature_name (str): name of the event time feature.
             role_arn (str): ARN of the role used to call CreateFeatureGroup.
-            online_store_kms_key_id (str): KMS key id for online store.
-            enable_online_store (bool): whether to enable online store or not.
-            offline_store_kms_key_id (str): KMS key id for offline store.
+            online_store_kms_key_id (str): KMS key id for online store (default: None).
+            enable_online_store (bool): whether to enable online store or not (default: False).
+            offline_store_kms_key_id (str): KMS key id for offline store (default: None).
                 If a KMS encryption key is not specified, SageMaker encrypts all data at
                 rest using the default AWS KMS key. By defining your bucket-level key for
                 SSE, you can reduce the cost of AWS KMS requests.
@@ -475,10 +482,13 @@ class FeatureGroup:
                 `Bucket Key
                 <https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-key.html>`_
                 in the Amazon S3 User Guide.
-            disable_glue_table_creation (bool): whether to turn off Glue table creation no not.
-            data_catalog_config (DataCatalogConfig): configuration for Metadata store.
-            description (str): description of the FeatureGroup.
-            tags (List[Dict[str, str]]): list of tags for labeling a FeatureGroup.
+            disable_glue_table_creation (bool): whether to turn off Glue table creation
+                or not (default: False).
+            data_catalog_config (DataCatalogConfig): configuration for
+                Metadata store (default: None).
+            description (str): description of the FeatureGroup (default: None).
+            tags (List[Dict[str, str]]): list of tags for labeling a FeatureGroup (default: None).
+            table_format (TableFormatEnum): format of the offline store table (default: None).
 
         Returns:
             Response dict from service.
@@ -513,6 +523,7 @@ class FeatureGroup:
                 s3_storage_config=s3_storage_config,
                 disable_glue_table_creation=disable_glue_table_creation,
                 data_catalog_config=data_catalog_config,
+                table_format=table_format,
             )
             create_feature_store_args.update(
                 {"offline_store_config": offline_store_config.to_dict()}
@@ -535,6 +546,64 @@ class FeatureGroup:
         """
         return self.sagemaker_session.describe_feature_group(
             feature_group_name=self.name, next_token=next_token
+        )
+
+    def update(self, feature_additions: Sequence[FeatureDefinition]) -> Dict[str, Any]:
+        """Update a FeatureGroup and add new features from the given feature definitions.
+
+        Args:
+            feature_additions (Sequence[Dict[str, str]): list of feature definitions to be updated.
+
+        Returns:
+            Response dict from service.
+        """
+
+        return self.sagemaker_session.update_feature_group(
+            feature_group_name=self.name,
+            feature_additions=[
+                feature_addition.to_dict() for feature_addition in feature_additions
+            ],
+        )
+
+    def update_feature_metadata(
+        self,
+        feature_name: str,
+        description: str = None,
+        parameter_additions: Sequence[FeatureParameter] = None,
+        parameter_removals: Sequence[str] = None,
+    ) -> Dict[str, Any]:
+        """Update a feature metadata and add/remove metadata.
+
+        Args:
+            feature_name (str): name of the feature to update.
+            description (str): description of the feature to update.
+            parameter_additions (Sequence[Dict[str, str]): list of feature parameter to be added.
+            parameter_removals (Sequence[str]): list of feature parameter key to be removed.
+
+        Returns:
+            Response dict from service.
+        """
+        return self.sagemaker_session.update_feature_metadata(
+            feature_group_name=self.name,
+            feature_name=feature_name,
+            description=description,
+            parameter_additions=[
+                parameter_addition.to_dict() for parameter_addition in (parameter_additions or [])
+            ],
+            parameter_removals=(parameter_removals or []),
+        )
+
+    def describe_feature_metadata(self, feature_name: str) -> Dict[str, Any]:
+        """Describe feature metadata by feature name.
+
+        Args:
+            feature_name (str): name of the feature.
+        Returns:
+            Response dict from service.
+        """
+
+        return self.sagemaker_session.describe_feature_metadata(
+            feature_group_name=self.name, feature_name=feature_name
         )
 
     def load_feature_definitions(

@@ -19,12 +19,14 @@ from mock import Mock, PropertyMock
 import pytest
 import warnings
 
+from copy import deepcopy
+
 from sagemaker import Processor, Model
 from sagemaker.parameter import IntegerParameter
 from sagemaker.transformer import Transformer
 from sagemaker.tuner import HyperparameterTuner
 from sagemaker.workflow.pipeline_context import PipelineSession
-from sagemaker.workflow.parameters import ParameterString
+from sagemaker.workflow.parameters import ParameterString, ParameterBoolean
 
 from sagemaker.workflow.steps import TrainingStep
 from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
@@ -55,7 +57,9 @@ from sagemaker.amazon.object2vec import Object2Vec
 from tests.unit import DATA_DIR
 
 from sagemaker.inputs import TrainingInput
-from tests.unit.sagemaker.workflow.helpers import CustomStep, ordered
+from tests.unit.sagemaker.workflow.helpers import CustomStep, ordered, get_step_args_helper
+from sagemaker.workflow.condition_step import ConditionStep
+from sagemaker.workflow.conditions import ConditionGreaterThanOrEqualTo
 
 REGION = "us-west-2"
 BUCKET = "my-bucket"
@@ -64,7 +68,6 @@ IMAGE_URI = "fakeimage"
 MODEL_NAME = "gisele"
 DUMMY_LOCAL_SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
 DUMMY_S3_SCRIPT_PATH = "s3://dummy-s3/dummy_script.py"
-DUMMY_S3_SOURCE_DIR = "s3://dummy-s3-source-dir/"
 INSTANCE_TYPE = "ml.m4.xlarge"
 
 ESTIMATOR_LISTS = [
@@ -74,7 +77,8 @@ ESTIMATOR_LISTS = [
         instance_type=INSTANCE_TYPE,
         instance_count=1,
         role=ROLE,
-        entry_point=DUMMY_LOCAL_SCRIPT_PATH,
+        entry_point=ParameterString(name="EntryPoint"),
+        source_dir=ParameterString(name="SourceDir"),
     ),
     PyTorch(
         role=ROLE,
@@ -82,11 +86,13 @@ ESTIMATOR_LISTS = [
         instance_count=1,
         framework_version="1.8.0",
         py_version="py36",
-        entry_point=DUMMY_LOCAL_SCRIPT_PATH,
+        entry_point=ParameterString(name="EntryPoint"),
+        source_dir=ParameterString(name="SourceDir"),
     ),
     TensorFlow(
         role=ROLE,
-        entry_point=DUMMY_LOCAL_SCRIPT_PATH,
+        entry_point=ParameterString(name="EntryPoint"),
+        source_dir=ParameterString(name="SourceDir"),
         instance_type=INSTANCE_TYPE,
         instance_count=1,
         framework_version="2.0",
@@ -99,7 +105,8 @@ ESTIMATOR_LISTS = [
         instance_type="ml.p3.2xlarge",
         instance_count=1,
         py_version="py36",
-        entry_point=DUMMY_LOCAL_SCRIPT_PATH,
+        entry_point=ParameterString(name="EntryPoint"),
+        source_dir=ParameterString(name="SourceDir"),
     ),
     XGBoost(
         framework_version="1.3-1",
@@ -107,7 +114,8 @@ ESTIMATOR_LISTS = [
         role=ROLE,
         instance_type=INSTANCE_TYPE,
         instance_count=1,
-        entry_point=DUMMY_LOCAL_SCRIPT_PATH,
+        entry_point=ParameterString(name="EntryPoint"),
+        source_dir=ParameterString(name="SourceDir"),
     ),
     MXNet(
         framework_version="1.4.1",
@@ -115,13 +123,15 @@ ESTIMATOR_LISTS = [
         role=ROLE,
         instance_type=INSTANCE_TYPE,
         instance_count=1,
-        entry_point=DUMMY_LOCAL_SCRIPT_PATH,
+        entry_point=ParameterString(name="EntryPoint"),
+        source_dir=ParameterString(name="SourceDir"),
         toolkit=RLToolkit.RAY,
         framework=RLFramework.TENSORFLOW,
         toolkit_version="0.8.5",
     ),
     RLEstimator(
-        entry_point="cartpole.py",
+        entry_point=ParameterString(name="EntryPoint"),
+        source_dir=ParameterString(name="SourceDir"),
         toolkit=RLToolkit.RAY,
         framework=RLFramework.TENSORFLOW,
         toolkit_version="0.8.5",
@@ -131,7 +141,8 @@ ESTIMATOR_LISTS = [
     ),
     Chainer(
         role=ROLE,
-        entry_point=DUMMY_LOCAL_SCRIPT_PATH,
+        entry_point=ParameterString(name="EntryPoint"),
+        source_dir=ParameterString(name="SourceDir"),
         use_mpi=True,
         num_processes=4,
         framework_version="5.0.0",
@@ -153,9 +164,7 @@ INPUT_PARAM_LISTS = [
 @pytest.fixture
 def client():
     """Mock client.
-
     Considerations when appropriate:
-
         * utilize botocore.stub.Stubber
         * separate runtime client from client
     """
@@ -200,9 +209,38 @@ def hyperparameters():
     return {"test-key": "test-val"}
 
 
-def test_training_step_with_estimator(pipeline_session, training_input, hyperparameters):
+@pytest.mark.parametrize(
+    "experiment_config, expected_experiment_config",
+    [
+        (
+            {
+                "ExperimentName": "experiment-name",
+                "TrialName": "trial-name",
+                "TrialComponentDisplayName": "display-name",
+            },
+            {"TrialComponentDisplayName": "display-name"},
+        ),
+        (
+            {"TrialComponentDisplayName": "display-name"},
+            {"TrialComponentDisplayName": "display-name"},
+        ),
+        (
+            {
+                "ExperimentName": "experiment-name",
+                "TrialName": "trial-name",
+            },
+            None,
+        ),
+        (None, None),
+    ],
+)
+def test_training_step_with_estimator(
+    pipeline_session, training_input, hyperparameters, experiment_config, expected_experiment_config
+):
     custom_step1 = CustomStep("TestStep")
     custom_step2 = CustomStep("SecondTestStep")
+    enable_network_isolation = ParameterBoolean(name="enable_network_isolation")
+    encrypt_container_traffic = ParameterBoolean(name="encrypt_container_traffic")
     estimator = Estimator(
         role=ROLE,
         instance_count=1,
@@ -210,10 +248,111 @@ def test_training_step_with_estimator(pipeline_session, training_input, hyperpar
         sagemaker_session=pipeline_session,
         image_uri=IMAGE_URI,
         hyperparameters=hyperparameters,
+        enable_network_isolation=enable_network_isolation,
+        encrypt_inter_container_traffic=encrypt_container_traffic,
     )
 
     with warnings.catch_warnings(record=True) as w:
-        step_args = estimator.fit(inputs=training_input)
+        # TODO: remove job_name once we merge
+        # https://github.com/aws/sagemaker-python-sdk/pull/3158/files
+        step_args = estimator.fit(
+            inputs=training_input, job_name="TestJob", experiment_config=experiment_config
+        )
+        assert len(w) == 1
+        assert issubclass(w[-1].category, UserWarning)
+        assert "Running within a PipelineSession" in str(w[-1].message)
+
+    with warnings.catch_warnings(record=True) as w:
+        step_train = TrainingStep(
+            name="MyTrainingStep",
+            step_args=step_args,
+            description="TrainingStep description",
+            display_name="MyTrainingStep",
+            depends_on=["TestStep"],
+        )
+        assert len(w) == 0
+
+    step_condition = ConditionStep(
+        name="MyConditionStep",
+        conditions=[
+            ConditionGreaterThanOrEqualTo(
+                left=step_train.properties.FinalMetricDataList["val:acc"].Value, right=0.95
+            )
+        ],
+        if_steps=[custom_step2],
+    )
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[step_train, step_condition, custom_step1],
+        parameters=[enable_network_isolation, encrypt_container_traffic],
+        sagemaker_session=pipeline_session,
+    )
+    step_args = get_step_args_helper(step_args, "Training")
+    expected_step_arguments = deepcopy(step_args)
+
+    expected_step_arguments["EnableInterContainerTrafficEncryption"] = {
+        "Get": "Parameters.encrypt_container_traffic"
+    }
+    expected_step_arguments["EnableNetworkIsolation"] = {
+        "Get": "Parameters.enable_network_isolation"
+    }
+    if expected_experiment_config is None:
+        expected_step_arguments.pop("ExperimentConfig", None)
+    else:
+        expected_step_arguments["ExperimentConfig"] = expected_experiment_config
+
+    assert step_condition.conditions[0].left.expr == {
+        "Get": "Steps.MyTrainingStep.FinalMetricDataList['val:acc'].Value"
+    }
+    step_definition = json.loads(pipeline.definition())["Steps"][0]
+
+    # delete profiler rule configurations because of timestamp collision
+    del step_definition["Arguments"]["ProfilerRuleConfigurations"]
+    del expected_step_arguments["ProfilerRuleConfigurations"]
+
+    assert step_definition == {
+        "Name": "MyTrainingStep",
+        "Description": "TrainingStep description",
+        "DisplayName": "MyTrainingStep",
+        "Type": "Training",
+        "DependsOn": ["TestStep"],
+        "Arguments": expected_step_arguments,
+    }
+    assert step_train.properties.TrainingJobName.expr == {
+        "Get": "Steps.MyTrainingStep.TrainingJobName"
+    }
+    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
+    assert ordered(adjacency_list) == ordered(
+        {
+            "MyConditionStep": ["SecondTestStep"],
+            "MyTrainingStep": ["MyConditionStep"],
+            "SecondTestStep": [],
+            "TestStep": ["MyTrainingStep"],
+        }
+    )
+
+
+def test_training_step_estimator_with_param_code_input(
+    pipeline_session, training_input, hyperparameters
+):
+    entry_point = ParameterString(name="EntryPoint")
+    source_dir = ParameterString(name="SourceDir")
+    estimator = Estimator(
+        role=ROLE,
+        instance_count=1,
+        instance_type=INSTANCE_TYPE,
+        sagemaker_session=pipeline_session,
+        image_uri=IMAGE_URI,
+        hyperparameters=hyperparameters,
+        entry_point=entry_point,
+        source_dir=source_dir,
+    )
+
+    with warnings.catch_warnings(record=True) as w:
+        # TODO: remove job_name once we merge
+        # https://github.com/aws/sagemaker-python-sdk/pull/3158/files
+        step_args = estimator.fit(inputs=training_input, job_name="TestJob")
         assert len(w) == 1
         assert issubclass(w[-1].category, UserWarning)
         assert "Running within a PipelineSession" in str(w[-1].message)
@@ -224,28 +363,24 @@ def test_training_step_with_estimator(pipeline_session, training_input, hyperpar
             step_args=step_args,
             description="TrainingStep description",
             display_name="MyTrainingStep",
-            depends_on=["TestStep", "SecondTestStep"],
         )
         assert len(w) == 0
 
     pipeline = Pipeline(
         name="MyPipeline",
-        steps=[step, custom_step1, custom_step2],
+        steps=[step],
         sagemaker_session=pipeline_session,
     )
+    step_args = get_step_args_helper(step_args, "Training")
+    step_args["HyperParameters"]["sagemaker_program"] = {"Get": "Parameters.EntryPoint"}
+    step_args["HyperParameters"]["sagemaker_submit_directory"] = {"Get": "Parameters.SourceDir"}
     assert json.loads(pipeline.definition())["Steps"][0] == {
         "Name": "MyTrainingStep",
         "Description": "TrainingStep description",
         "DisplayName": "MyTrainingStep",
         "Type": "Training",
-        "DependsOn": ["TestStep", "SecondTestStep"],
-        "Arguments": step_args.args,
+        "Arguments": step_args,
     }
-    assert step.properties.TrainingJobName.expr == {"Get": "Steps.MyTrainingStep.TrainingJobName"}
-    adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
-    assert ordered(adjacency_list) == ordered(
-        {"MyTrainingStep": [], "SecondTestStep": ["MyTrainingStep"], "TestStep": ["MyTrainingStep"]}
-    )
 
 
 @pytest.mark.parametrize("estimator", ESTIMATOR_LISTS)
@@ -256,12 +391,14 @@ def test_training_step_with_estimator(pipeline_session, training_input, hyperpar
 def test_training_step_with_framework_estimator(
     estimator, pipeline_session, training_input, output_path, hyperparameters
 ):
-    estimator.source_dir = DUMMY_S3_SOURCE_DIR
     estimator.set_hyperparameters(**hyperparameters)
     estimator.volume_kms_key = "volume-kms-key"
     estimator.output_kms_key = "output-kms-key"
     estimator.dependencies = ["dep-1", "dep-2"]
     estimator.output_path = output_path
+    # TODO: remove job_name once we merge
+    # https://github.com/aws/sagemaker-python-sdk/pull/3158/files
+    estimator.base_job_name = "TestJob"
 
     estimator.sagemaker_session = pipeline_session
     step_args = estimator.fit(inputs=TrainingInput(s3_data=training_input))
@@ -276,17 +413,31 @@ def test_training_step_with_framework_estimator(
         sagemaker_session=pipeline_session,
     )
 
-    step_args = step_args.args
+    step_args = get_step_args_helper(step_args, "Training")
     step_def = json.loads(pipeline.definition())["Steps"][0]
 
     assert step_args["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"] == training_input
     assert step_args["OutputDataConfig"]["S3OutputPath"] == output_path
+    step_args["HyperParameters"]["sagemaker_program"] = {"Get": "Parameters.EntryPoint"}
+    step_args["HyperParameters"]["sagemaker_submit_directory"] = {"Get": "Parameters.SourceDir"}
 
     del step_args["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"]
     del step_def["Arguments"]["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"]
 
     del step_args["OutputDataConfig"]["S3OutputPath"]
     del step_def["Arguments"]["OutputDataConfig"]["S3OutputPath"]
+
+    # trim timestamp so RuleConfigurationName will match
+    rule_config_name_step_args = step_args["ProfilerRuleConfigurations"][0]["RuleConfigurationName"]
+    step_args["ProfilerRuleConfigurations"][0][
+        "RuleConfigurationName"
+    ] = rule_config_name_step_args[:-11]
+    rule_config_name_step_def = step_def["Arguments"]["ProfilerRuleConfigurations"][0][
+        "RuleConfigurationName"
+    ]
+    step_def["Arguments"]["ProfilerRuleConfigurations"][0][
+        "RuleConfigurationName"
+    ] = rule_config_name_step_def[:-11]
 
     if "sagemaker_s3_output" in step_args["HyperParameters"]:
         del step_args["HyperParameters"]["sagemaker_s3_output"]
@@ -324,6 +475,11 @@ def test_training_step_with_algorithm_base(algo_estimator, training_input, pipel
         instance_type=INSTANCE_TYPE,
         instance_count=1,
         sagemaker_session=pipeline_session,
+        entry_point=ParameterString(name="EntryPoint"),
+        source_dir=ParameterString(name="SourceDir"),
+        # TODO: remove job_name once we merge
+        # https://github.com/aws/sagemaker-python-sdk/pull/3158/files
+        base_job_name="TestJob",
     )
     data = RecordSet(
         s3_data=training_input,
@@ -354,12 +510,26 @@ def test_training_step_with_algorithm_base(algo_estimator, training_input, pipel
         sagemaker_session=pipeline_session,
     )
 
-    step_args = step_args.args
+    step_args = get_step_args_helper(step_args, "Training")
 
     step_def = json.loads(pipeline.definition())["Steps"][0]
     assert step_args["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"] == training_input
+    step_args["HyperParameters"]["sagemaker_program"] = {"Get": "Parameters.EntryPoint"}
+    step_args["HyperParameters"]["sagemaker_submit_directory"] = {"Get": "Parameters.SourceDir"}
     del step_args["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"]
     del step_def["Arguments"]["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"]
+
+    # trim timestamp so RuleConfigurationName will match
+    rule_config_name_step_args = step_args["ProfilerRuleConfigurations"][0]["RuleConfigurationName"]
+    step_args["ProfilerRuleConfigurations"][0][
+        "RuleConfigurationName"
+    ] = rule_config_name_step_args[:-11]
+    rule_config_name_step_def = step_def["Arguments"]["ProfilerRuleConfigurations"][0][
+        "RuleConfigurationName"
+    ]
+    step_def["Arguments"]["ProfilerRuleConfigurations"][0][
+        "RuleConfigurationName"
+    ] = rule_config_name_step_def[:-11]
 
     assert step_def == {
         "Name": "MyTrainingStep",

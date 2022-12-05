@@ -40,6 +40,21 @@ if TYPE_CHECKING:
 FRAMEWORK_VERSION = "0.23-1"
 INSTANCE_TYPE = "ml.m5.large"
 REPACK_SCRIPT = "_repack_model.py"
+REPACK_SCRIPT_LAUNCHER = "_repack_script_launcher.sh"
+LAUNCH_REPACK_SCRIPT_CMD = """
+#!/bin/bash
+
+var_dependencies="${SM_HP_DEPENDENCIES}"
+var_inference_script="${SM_HP_INFERENCE_SCRIPT}"
+var_model_archive="${SM_HP_MODEL_ARCHIVE}"
+var_source_dir="${SM_HP_SOURCE_DIR}"
+
+python _repack_model.py \
+--dependencies "${var_dependencies}" \
+--inference_script "${var_inference_script}" \
+--model_archive "${var_model_archive}" \
+--source_dir "${var_source_dir}"
+"""
 
 
 class _RepackModelStep(TrainingStep):
@@ -155,7 +170,7 @@ class _RepackModelStep(TrainingStep):
         repacker = SKLearn(
             framework_version=FRAMEWORK_VERSION,
             instance_type=INSTANCE_TYPE,
-            entry_point=REPACK_SCRIPT,
+            entry_point=REPACK_SCRIPT_LAUNCHER,
             source_dir=self._source_dir,
             dependencies=self._dependencies,
             sagemaker_session=self.sagemaker_session,
@@ -189,7 +204,7 @@ class _RepackModelStep(TrainingStep):
         if self._source_dir is None:
             self._establish_source_dir()
 
-        self._inject_repack_script()
+        self._inject_repack_script_and_launcher()
 
     def _establish_source_dir(self):
         """If the source_dir is None, creates it for the repacking job.
@@ -206,18 +221,28 @@ class _RepackModelStep(TrainingStep):
         shutil.copy2(self._entry_point, os.path.join(self._source_dir, self._entry_point_basename))
         self._entry_point = self._entry_point_basename
 
-    def _inject_repack_script(self):
-        """Injects the _repack_model.py script into S3 or local source directory.
+    def _inject_repack_script_and_launcher(self):
+        """Injects the _repack_model.py script and _repack_script_launcher.sh
+
+        into S3 or local source directory.
+
+        Note: The bash file is needed because if not supplied, the SKLearn
+        training job will auto install all dependencies listed in requirements.txt.
+        However, this auto install behavior is not expected in _RepackModelStep,
+        since it should just simply repack the model along with other supplied files,
+        e.g. the requirements.txt.
 
         If the source_dir is an S3 path:
             1) downloads the source_dir tar.gz
             2) extracts it
             3) copies the _repack_model.py script into the extracted directory
-            4) rezips the directory
-            5) overwrites the S3 source_dir with the new tar.gz
+            4) creates the _repack_script_launcher.sh in the extracted dir
+            5) rezips the directory
+            6) overwrites the S3 source_dir with the new tar.gz
 
         If the source_dir is a local path:
             1) copies the _repack_model.py script into the source dir
+            2) creates the _repack_script_launcher.sh in the source dir
         """
         fname = os.path.join(os.path.dirname(__file__), REPACK_SCRIPT)
         if self._source_dir.lower().startswith("s3://"):
@@ -231,6 +256,10 @@ class _RepackModelStep(TrainingStep):
                     t.extractall(path=targz_contents_dir)
 
                 shutil.copy2(fname, os.path.join(targz_contents_dir, REPACK_SCRIPT))
+                with open(
+                    os.path.join(targz_contents_dir, REPACK_SCRIPT_LAUNCHER), "w"
+                ) as launcher_file:
+                    launcher_file.write(LAUNCH_REPACK_SCRIPT_CMD)
 
                 new_targz_path = os.path.join(tmp, "new.tar.gz")
                 with tarfile.open(new_targz_path, mode="w:gz") as t:
@@ -239,6 +268,8 @@ class _RepackModelStep(TrainingStep):
                 _save_model(self._source_dir, new_targz_path, self.sagemaker_session, kms_key=None)
         else:
             shutil.copy2(fname, os.path.join(self._source_dir, REPACK_SCRIPT))
+            with open(os.path.join(self._source_dir, REPACK_SCRIPT_LAUNCHER), "w") as launcher_file:
+                launcher_file.write(LAUNCH_REPACK_SCRIPT_CMD)
 
     @property
     def arguments(self) -> RequestType:
@@ -285,6 +316,8 @@ class _RegisterModelStep(ConfigurableRetryStep):
         drift_check_baselines=None,
         customer_metadata_properties=None,
         domain=None,
+        sample_payload_url=None,
+        task=None,
         **kwargs,
     ):
         """Constructor of a register model step.
@@ -329,21 +362,21 @@ class _RegisterModelStep(ConfigurableRetryStep):
                 metadata properties (default: None).
             domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
                 "MACHINE_LEARNING" (default: None).
+            sample_payload_url (str): The S3 path where the sample payload is stored
+                (default: None).
+            task (str): Task values which are supported by Inference Recommender are "FILL_MASK",
+                "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION", "IMAGE_SEGMENTATION",
+                "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
             **kwargs: additional arguments to `create_model`.
         """
         super(_RegisterModelStep, self).__init__(
             name, StepTypeEnum.REGISTER_MODEL, display_name, description, depends_on, retry_policies
         )
-        deprecated_args_missing = (
-            content_types is None
-            or response_types is None
-            or inference_instances is None
-            or transform_instances is None
-        )
+        deprecated_args_missing = content_types is None or response_types is None
         if not (step_args is None) ^ deprecated_args_missing:
             raise ValueError(
                 "step_args and the set of (content_types, response_types, "
-                "inference_instances, transform_instances) are mutually exclusive. "
+                ") are mutually exclusive. "
                 "Either of them should be provided."
             )
 
@@ -360,6 +393,8 @@ class _RegisterModelStep(ConfigurableRetryStep):
         self.drift_check_baselines = drift_check_baselines
         self.customer_metadata_properties = customer_metadata_properties
         self.domain = domain
+        self.sample_payload_url = sample_payload_url
+        self.task = task
         self.metadata_properties = metadata_properties
         self.approval_status = approval_status
         self.image_uri = image_uri
@@ -438,6 +473,8 @@ class _RegisterModelStep(ConfigurableRetryStep):
                 container_def_list=self.container_def_list,
                 customer_metadata_properties=self.customer_metadata_properties,
                 domain=self.domain,
+                sample_payload_url=self.sample_payload_url,
+                task=self.task,
             )
 
             request_dict = get_create_model_package_request(**model_package_args)

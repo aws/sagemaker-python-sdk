@@ -19,6 +19,35 @@ The SageMaker model parallel library internally uses MPI.
 To use model parallelism, both ``smdistributed`` and MPI must be enabled
 through the ``distribution`` parameter.
 
+The following code example is a template of setting up model parallelism for a PyTorch estimator.
+
+.. code:: python
+
+  import sagemaker
+  from sagemaker.pytorch import PyTorch
+
+  smp_options = {
+      "enabled":True,
+      "parameters": {
+          ...
+      }
+  }
+
+  mpi_options = {
+      "enabled" : True,
+      ...
+  }
+
+  smdmp_estimator = PyTorch(
+      ...
+      distribution={
+          "smdistributed": {"modelparallel": smp_options},
+          "mpi": mpi_options
+      }
+  )
+
+  smdmp_estimator.fit()
+
 .. tip::
 
   This page provides you a complete list of parameters you can use
@@ -178,6 +207,16 @@ PyTorch-specific Parameters
     - 1
     - The number of devices over which the tensor parallel modules will be distributed.
       If ``tensor_parallel_degree`` is greater than 1, then ``ddp`` must be set to ``True``.
+  * - ``fp16`` (**smdistributed-modelparallel**>=v1.10)
+    - bool
+    - ``False``
+    - To run FP16 training, add ``"fp16"'": True`` to the smp configuration.
+      Other APIs remain the same between FP16 and FP32.
+      If ``fp16`` is enabled and when user calls ``smp.DistributedModel``,
+      the model will be wrapped with ``FP16_Module``, which converts the model
+      to FP16 dtype and deals with forward pass in FP16.
+      If ``fp16`` is enabled and when user calls ``smp.DistributedOptimizer``,
+      the optimizer will be wrapped with ``FP16_Optimizer``.
   * - ``fp16_params`` (**smdistributed-modelparallel**>=v1.6)
     - bool
     - ``False``
@@ -204,6 +243,34 @@ PyTorch-specific Parameters
     - False
     - Skips the initial tracing step. This can be useful in very large models
       where even model tracing at the CPU is not possible due to memory constraints.
+  * - ``sharded_data_parallel_degree`` (**smdistributed-modelparallel**>=v1.11)
+    - int
+    - 1
+    - To run a training job using sharded data parallelism, add this parameter and specify a number greater than 1.
+      Sharded data parallelism is a memory-saving distributed training technique that splits the training state of a model (model parameters, gradients, and optimizer states) across GPUs in a data parallel group.
+      For more information, see `Sharded Data Parallelism
+      <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-sharded-data-parallelism.html>`_.
+  * - ``sdp_reduce_bucket_size`` (**smdistributed-modelparallel**>=v1.11)
+    - int
+    - 5e8
+    - Configuration parameter for sharded data parallelism (for ``sharded_data_parallel_degree > 2``).
+      Specifies the size of PyTorch DDP gradient buckets in number of elements of the default dtype.
+  * - ``sdp_param_persistence_threshold`` (**smdistributed-modelparallel**>=v1.11)
+    - int
+    - 1e6
+    -  Specifies the size of a parameter tensor in number of elements that can persist at each GPU. Sharded data parallelism splits each parameter tensor across GPUs of a data parallel group. If the number of elements in the parameter tensor is smaller than this threshold, the parameter tensor is not split; this helps reduce communication overhead because the parameter tensor is replicated across data-parallel GPUs.
+  * - ``sdp_max_live_parameters`` (**smdistributed-modelparallel**>=v1.11)
+    - int
+    - 1e9
+    - Specifies the maximum number of parameters that can simultaneously be in a recombined training state during the forward and backward pass. Parameter fetching with the AllGather operation pauses when the number of active parameters reaches the given threshold. Note that increasing this parameter increases the memory footprint.
+  * - ``sdp_hierarchical_allgather`` (**smdistributed-modelparallel**>=v1.11)
+    - bool
+    - True
+    - If set to True, the AllGather operation runs hierarchically: it runs within each node first, and then runs across nodes. For multi-node distributed training jobs, the hierarchical AllGather operation is automatically activated.
+  * - ``sdp_gradient_clipping`` (**smdistributed-modelparallel**>=v1.11)
+    - float
+    - 1.0
+    - Specifies a threshold for gradient clipping the L2 norm of the gradients before propagating them backward through the model parameters. When sharded data parallelism is activated, gradient clipping is also activated. The default threshold is 1.0. Adjust this parameter if you have the exploding gradients problem.
 
 
 Parameters for ``mpi``

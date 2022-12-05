@@ -26,7 +26,7 @@ from mock import (
     patch,
 )
 
-from sagemaker.debugger import DEBUGGER_FLAG, ProfilerConfig
+from sagemaker.debugger import ProfilerConfig
 from sagemaker.estimator import Estimator
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.inputs import TrainingInput, TransformInput, CreateModelInput
@@ -45,7 +45,7 @@ from sagemaker.tuner import (
 )
 from sagemaker.network import NetworkConfig
 from sagemaker.transformer import Transformer
-from sagemaker.workflow.functions import Join
+from sagemaker.workflow.functions import Join, JsonGet
 from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
 from sagemaker.workflow.properties import Properties, PropertyFile
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger, ParameterBoolean
@@ -57,8 +57,6 @@ from sagemaker.workflow.retry import (
 )
 from sagemaker.workflow.steps import (
     ProcessingStep,
-    ConfigurableRetryStep,
-    StepTypeEnum,
     TrainingStep,
     TuningStep,
     TransformStep,
@@ -70,7 +68,7 @@ from sagemaker.sparkml import SparkMLModel
 from sagemaker.predictor import Predictor
 from sagemaker.model import FrameworkModel
 from tests.unit import DATA_DIR
-from tests.unit.sagemaker.workflow.helpers import ordered
+from tests.unit.sagemaker.workflow.helpers import ordered, CustomStep
 
 DUMMY_SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
 
@@ -79,22 +77,6 @@ BUCKET = "my-bucket"
 IMAGE_URI = "fakeimage"
 ROLE = "DummyRole"
 MODEL_NAME = "gisele"
-
-
-class CustomStep(ConfigurableRetryStep):
-    def __init__(self, name, display_name=None, description=None, retry_policies=None):
-        super(CustomStep, self).__init__(
-            name, StepTypeEnum.TRAINING, display_name, description, None, retry_policies
-        )
-        self._properties = Properties(name)
-
-    @property
-    def arguments(self):
-        return dict()
-
-    @property
-    def properties(self):
-        return self._properties
 
 
 class DummyFrameworkModel(FrameworkModel):
@@ -387,6 +369,10 @@ def test_training_step_base_estimator(sagemaker_session):
             },
             "RoleArn": ROLE,
             "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
+            "DebugHookConfig": {
+                "S3OutputPath": {"Std:Join": {"On": "/", "Values": ["s3:/", "a", "b"]}},
+                "CollectionConfigurations": [],
+            },
             "ProfilerConfig": {
                 "ProfilingIntervalInMilliseconds": 500,
                 "S3OutputPath": {"Std:Join": {"On": "/", "Values": ["s3:/", "a", "b"]}},
@@ -498,7 +484,6 @@ def test_training_step_tensorflow(sagemaker_session):
                 "sagemaker_distributed_dataparallel_custom_mpi_options": '""',
             },
             "ProfilerConfig": {"S3OutputPath": "s3://my-bucket/"},
-            "Environment": {DEBUGGER_FLAG: "0"},
         },
         "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
     }
@@ -1466,3 +1451,96 @@ def test_multi_algo_tuning_step(sagemaker_session):
             ],
         },
     }
+
+
+def test_pipeline_dag_json_get_bad_step_type(sagemaker_session):
+    estimator = Estimator(
+        image_uri=IMAGE_URI,
+        role=ROLE,
+        instance_count=2,
+        instance_type="ml.m5.large",
+        sagemaker_session=sagemaker_session,
+    )
+    training_step = TrainingStep(name="inputTrainingStep", estimator=estimator)
+    json_get_function = JsonGet(
+        step_name=training_step.name, property_file="my-property-file", json_path="mse"
+    )
+    custom_step = CustomStep(name="TestStep", input_data=json_get_function)
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[],
+        steps=[training_step, custom_step],
+        sagemaker_session=sagemaker_session,
+    )
+    with pytest.raises(ValueError) as e:
+        PipelineGraph.from_pipeline(pipeline)
+    assert (
+        f"Invalid JsonGet function {json_get_function.expr} in step '{custom_step.name}'. "
+        f"JsonGet function can only be evaluated on processing step outputs." in str(e.value)
+    )
+
+
+def test_pipeline_dag_json_get_undefined_property_file(sagemaker_session):
+    processor = Processor(
+        image_uri=IMAGE_URI,
+        role=ROLE,
+        instance_count=1,
+        instance_type="c4.4xlarge",
+        sagemaker_session=sagemaker_session,
+    )
+    processing_step = ProcessingStep(name="inputProcessingStep", processor=processor)
+    json_get_function = JsonGet(
+        step_name=processing_step.name, property_file="undefined-property-file", json_path="mse"
+    )
+    custom_step = CustomStep(name="TestStep", input_data=json_get_function)
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[],
+        steps=[processing_step, custom_step],
+        sagemaker_session=sagemaker_session,
+    )
+    with pytest.raises(ValueError) as e:
+        PipelineGraph.from_pipeline(pipeline)
+    assert (
+        f"Invalid JsonGet function {json_get_function.expr} "
+        f"in step '{custom_step.name}'. Property "
+        f"file reference '{json_get_function.property_file}' is undefined in step "
+        f"'{processing_step.name}'." in str(e.value)
+    )
+
+
+def test_pipeline_dag_json_get_wrong_processing_output_name(sagemaker_session):
+    property_file = PropertyFile(
+        name="my-property-file", output_name="TestOutputName", path="processing_output.json"
+    )
+    processor = Processor(
+        image_uri=IMAGE_URI,
+        role=ROLE,
+        instance_count=1,
+        instance_type="c4.4xlarge",
+        sagemaker_session=sagemaker_session,
+    )
+    processing_step = ProcessingStep(
+        name="inputProcessingStep",
+        processor=processor,
+        outputs=[ProcessingOutput(output_name="SomeOtherTestOutputName")],
+        property_files=[property_file],
+    )
+
+    json_get_function = JsonGet(
+        step_name=processing_step.name, property_file=property_file.name, json_path="mse"
+    )
+    custom_step = CustomStep(name="TestStep", input_data=json_get_function)
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[],
+        steps=[processing_step, custom_step],
+        sagemaker_session=sagemaker_session,
+    )
+    with pytest.raises(ValueError) as e:
+        PipelineGraph.from_pipeline(pipeline)
+    assert (
+        f"Processing output name '{property_file.output_name}' defined in property file "
+        f"'{property_file.name}' not found in processing step '{processing_step.name}'."
+        in str(e.value)
+    )

@@ -19,6 +19,8 @@ from sagemaker.feature_store.inputs import (
     S3StorageConfig,
     DataCatalogConfig,
     OfflineStoreConfig,
+    FeatureParameter,
+    TableFormatEnum,
 )
 
 
@@ -83,3 +85,34 @@ def test_offline_data_store_config():
             "DisableGlueTableCreation": False,
         }
     )
+
+
+def test_offline_data_store_config_with_glue_table_format():
+    config = OfflineStoreConfig(
+        s3_storage_config=S3StorageConfig(s3_uri="uri"), table_format=TableFormatEnum.GLUE
+    )
+    assert ordered(config.to_dict()) == ordered(
+        {
+            "S3StorageConfig": {"S3Uri": "uri"},
+            "DisableGlueTableCreation": False,
+            "TableFormat": "Glue",
+        }
+    )
+
+
+def test_offline_data_store_config_with_iceberg_table_format():
+    config = OfflineStoreConfig(
+        s3_storage_config=S3StorageConfig(s3_uri="uri"), table_format=TableFormatEnum.ICEBERG
+    )
+    assert ordered(config.to_dict()) == ordered(
+        {
+            "S3StorageConfig": {"S3Uri": "uri"},
+            "DisableGlueTableCreation": False,
+            "TableFormat": "Iceberg",
+        }
+    )
+
+
+def test_feature_metadata():
+    config = FeatureParameter(key="key", value="value")
+    assert ordered(config.to_dict()) == ordered({"Key": "key", "Value": "value"})

@@ -14,15 +14,21 @@
 from __future__ import absolute_import
 
 import logging
+from typing import Union, Optional, List, Dict
 
 import sagemaker
-from sagemaker import image_uris, s3
+from sagemaker import image_uris, s3, ModelMetrics
 from sagemaker.deserializers import JSONDeserializer
 from sagemaker.deprecations import removed_kwargs
+from sagemaker.drift_check_baselines import DriftCheckBaselines
+from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import JSONSerializer
 from sagemaker.workflow import is_pipeline_variable
+from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.pipeline_context import PipelineSession
+
+logger = logging.getLogger(__name__)
 
 
 class TensorFlowPredictor(Predictor):
@@ -124,19 +130,19 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
 
     def __init__(
         self,
-        model_data,
-        role,
-        entry_point=None,
-        image_uri=None,
-        framework_version=None,
-        container_log_level=None,
-        predictor_cls=TensorFlowPredictor,
+        model_data: Union[str, PipelineVariable],
+        role: str,
+        entry_point: Optional[str] = None,
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
+        framework_version: Optional[str] = None,
+        container_log_level: Optional[int] = None,
+        predictor_cls: callable = TensorFlowPredictor,
         **kwargs,
     ):
         """Initialize a Model.
 
         Args:
-            model_data (str): The S3 location of a SageMaker model data
+            model_data (str or PipelineVariable): The S3 location of a SageMaker model data
                 ``.tar.gz`` file.
             role (str): An AWS IAM role (either name or full ARN). The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker
@@ -147,8 +153,8 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
                 file which should be executed as the entry point to model
                 hosting. If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
-            image_uri (str): A Docker image URI (default: None). If not specified,
-                a default image for TensorFlow Serving will be used.
+            image_uri (str or PipelineVariable): A Docker image URI (default: None).
+                If not specified, a default image for TensorFlow Serving will be used.
                 If ``framework_version`` is ``None``, then ``image_uri`` is required.
                 If ``image_uri`` is also ``None``, then a ``ValueError``
                 will be raised.
@@ -191,50 +197,74 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
 
     def register(
         self,
-        content_types,
-        response_types,
-        inference_instances=None,
-        transform_instances=None,
-        model_package_name=None,
-        model_package_group_name=None,
-        image_uri=None,
-        model_metrics=None,
-        metadata_properties=None,
-        marketplace_cert=False,
-        approval_status=None,
-        description=None,
-        drift_check_baselines=None,
-        customer_metadata_properties=None,
-        domain=None,
+        content_types: List[Union[str, PipelineVariable]],
+        response_types: List[Union[str, PipelineVariable]],
+        inference_instances: Optional[List[Union[str, PipelineVariable]]] = None,
+        transform_instances: Optional[List[Union[str, PipelineVariable]]] = None,
+        model_package_name: Optional[Union[str, PipelineVariable]] = None,
+        model_package_group_name: Optional[Union[str, PipelineVariable]] = None,
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
+        model_metrics: Optional[ModelMetrics] = None,
+        metadata_properties: Optional[MetadataProperties] = None,
+        marketplace_cert: bool = False,
+        approval_status: Optional[Union[str, PipelineVariable]] = None,
+        description: Optional[str] = None,
+        drift_check_baselines: Optional[DriftCheckBaselines] = None,
+        customer_metadata_properties: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        domain: Optional[Union[str, PipelineVariable]] = None,
+        sample_payload_url: Optional[Union[str, PipelineVariable]] = None,
+        task: Optional[Union[str, PipelineVariable]] = None,
+        framework: Optional[Union[str, PipelineVariable]] = None,
+        framework_version: Optional[Union[str, PipelineVariable]] = None,
+        nearest_model_name: Optional[Union[str, PipelineVariable]] = None,
+        data_input_configuration: Optional[Union[str, PipelineVariable]] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
         Args:
-            content_types (list): The supported MIME types for the input data.
-            response_types (list): The supported MIME types for the output data.
-            inference_instances (list): A list of the instance types that are used to
-                generate inferences in real-time (default: None).
-            transform_instances (list): A list of the instance types on which a transformation
-                job can be run or on which an endpoint can be deployed (default: None).
-            model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
-                using `model_package_name` makes the Model Package un-versioned (default: None).
-            model_package_group_name (str): Model Package Group name, exclusive to
-                `model_package_name`, using `model_package_group_name` makes the Model Package
-                versioned (default: None).
-            image_uri (str): Inference image uri for the container. Model class' self.image will
-                be used if it is None (default: None).
+            content_types (list[str] or list[PipelineVariable]): The supported MIME types
+                for the input data.
+            response_types (list[str] or list[PipelineVariable]): The supported MIME types
+                for the output data.
+            inference_instances (list[str] or list[PipelineVariable]): A list of the instance
+                types that are used to generate inferences in real-time (default: None).
+            transform_instances (list[str] or list[PipelineVariable]): A list of the instance
+                types on which a transformation job can be run or on which an endpoint can
+                be deployed (default: None).
+            model_package_name (str or PipelineVariable): Model Package name, exclusive to
+                `model_package_group_name`, using `model_package_name` makes the Model Package
+                un-versioned (default: None).
+            model_package_group_name (str or PipelineVariable): Model Package Group name,
+                exclusive to `model_package_name`, using `model_package_group_name` makes the
+                Model Package versioned (default: None).
+            image_uri (str or PipelineVariable): Inference image uri for the container. Model class'
+                self.image will be used if it is None (default: None).
             model_metrics (ModelMetrics): ModelMetrics object (default: None).
             metadata_properties (MetadataProperties): MetadataProperties object (default: None).
             marketplace_cert (bool): A boolean value indicating if the Model Package is certified
                 for AWS Marketplace (default: False).
-            approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
-                or "PendingManualApproval" (default: "PendingManualApproval").
+            approval_status (str or PipelineVariable): Model Approval Status, values can be
+                "Approved", "Rejected", or "PendingManualApproval"
+                (default: "PendingManualApproval").
             description (str): Model Package description (default: None).
             drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
-            customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
-                metadata properties (default: None).
-            domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
-                "MACHINE_LEARNING" (default: None).
+            customer_metadata_properties (dict[str, str] or dict[str, PipelineVariable]):
+                A dictionary of key-value paired metadata properties (default: None).
+            domain (str or PipelineVariable): Domain values can be "COMPUTER_VISION",
+                "NATURAL_LANGUAGE_PROCESSING", "MACHINE_LEARNING" (default: None).
+            sample_payload_url (str or PipelineVariable): The S3 path where the sample payload
+                is stored (default: None).
+            task (str or PipelineVariable): Task values which are supported by Inference Recommender
+                are "FILL_MASK", "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION",
+                "IMAGE_SEGMENTATION", "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
+            framework (str or PipelineVariable): Machine learning framework of the model package
+                container image (default: None).
+            framework_version (str or PipelineVariable): Framework version of the Model Package
+                Container Image (default: None).
+            nearest_model_name (str or PipelineVariable): Name of a pre-trained machine learning
+                benchmarked by Amazon SageMaker Inference Recommender (default: None).
+            data_input_configuration (str or PipelineVariable): Input object for the model
+                (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -249,6 +279,8 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
                 region_name=self.sagemaker_session.boto_session.region_name,
                 instance_type=instance_type,
             )
+        if not is_pipeline_variable(framework):
+            framework = (framework or self._framework_name).upper()
         return super(TensorFlowModel, self).register(
             content_types,
             response_types,
@@ -265,6 +297,12 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             drift_check_baselines=drift_check_baselines,
             customer_metadata_properties=customer_metadata_properties,
             domain=domain,
+            sample_payload_url=sample_payload_url,
+            task=task,
+            framework=framework,
+            framework_version=framework_version or self.framework_version,
+            nearest_model_name=nearest_model_name,
+            data_input_configuration=data_input_configuration,
         )
 
     def deploy(
@@ -282,6 +320,9 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         update_endpoint=None,
         async_inference_config=None,
         serverless_inference_config=None,
+        volume_size=None,
+        model_data_download_timeout=None,
+        container_startup_health_check_timeout=None,
     ):
         """Deploy a Tensorflow ``Model`` to a SageMaker ``Endpoint``."""
 
@@ -302,6 +343,9 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             data_capture_config=data_capture_config,
             async_inference_config=async_inference_config,
             serverless_inference_config=serverless_inference_config,
+            volume_size=volume_size,
+            model_data_download_timeout=model_data_download_timeout,
+            container_startup_health_check_timeout=container_startup_health_check_timeout,
             update_endpoint=update_endpoint,
         )
 
@@ -339,13 +383,10 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             instance_type, accelerator_type, serverless_inference_config=serverless_inference_config
         )
         env = self._get_container_env()
+        key_prefix = sagemaker.fw_utils.model_code_key_prefix(self.key_prefix, self.name, image_uri)
+        bucket = self.bucket or self.sagemaker_session.default_bucket()
 
         if self.entry_point and not is_pipeline_variable(self.model_data):
-            key_prefix = sagemaker.fw_utils.model_code_key_prefix(
-                self.key_prefix, self.name, image_uri
-            )
-
-            bucket = self.bucket or self.sagemaker_session.default_bucket()
             model_data = s3.s3_path_join("s3://", bucket, key_prefix, "model.tar.gz")
 
             sagemaker.utils.repack_model(
@@ -361,6 +402,9 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             # model is not yet there, defer repacking to later during pipeline execution
             if isinstance(self.sagemaker_session, PipelineSession):
                 self.sagemaker_session.context.need_runtime_repack.add(id(self))
+                self.sagemaker_session.context.runtime_repack_output_prefix = s3.s3_path_join(
+                    "s3://", bucket, key_prefix
+                )
             else:
                 logging.warning(
                     "The model_data is a Pipeline variable of type %s, "
@@ -402,6 +446,10 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         if self.image_uri:
             return self.image_uri
 
+        logger.info(
+            "image_uri is not presented, retrieving image_uri based on instance_type, "
+            "framework etc."
+        )
         return image_uris.retrieve(
             self._framework_name,
             region_name or self.sagemaker_session.boto_region_name,

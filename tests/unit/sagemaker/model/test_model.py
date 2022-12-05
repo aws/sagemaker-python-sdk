@@ -287,7 +287,7 @@ def test_create_sagemaker_model_generates_model_name(
     )
     model._create_sagemaker_model(INSTANCE_TYPE)
 
-    base_name_from_image.assert_called_with(MODEL_IMAGE)
+    base_name_from_image.assert_called_with(MODEL_IMAGE, default_base_name="Model")
     name_from_base.assert_called_with(base_name_from_image.return_value)
 
     sagemaker_session.create_model.assert_called_with(
@@ -317,7 +317,7 @@ def test_create_sagemaker_model_generates_model_name_each_time(
     model._create_sagemaker_model(INSTANCE_TYPE)
     model._create_sagemaker_model(INSTANCE_TYPE)
 
-    base_name_from_image.assert_called_once_with(MODEL_IMAGE)
+    base_name_from_image.assert_called_once_with(MODEL_IMAGE, default_base_name="Model")
     name_from_base.assert_called_with(base_name_from_image.return_value)
     assert 2 == name_from_base.call_count
 
@@ -742,6 +742,7 @@ def test_script_mode_model_uses_proper_sagemaker_submit_dir(repack_model, sagema
 
 @patch("sagemaker.get_model_package_args")
 def test_register_calls_model_package_args(get_model_package_args, sagemaker_session):
+    """model.register() should pass the ValidationSpecification to get_model_package_args()"""
 
     source_dir = "s3://blah/blah/blah"
     t = Model(

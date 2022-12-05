@@ -29,6 +29,9 @@ from mock import call, patch, Mock, MagicMock
 
 import sagemaker
 from sagemaker.session_settings import SessionSettings
+from tests.unit.sagemaker.workflow.helpers import CustomStep
+from sagemaker.workflow.parameters import ParameterString, ParameterInteger
+
 
 BUCKET_WITHOUT_WRITING_PERMISSION = "s3://bucket-without-writing-permission"
 
@@ -80,6 +83,46 @@ def test_name_from_image(base_name_from_image, name_from_base):
     sagemaker.utils.name_from_image(image, max_length=max_length)
     base_name_from_image.assert_called_with(image)
     name_from_base.assert_called_with(base_name_from_image.return_value, max_length=max_length)
+
+
+@pytest.mark.parametrize(
+    "inputs",
+    [
+        (
+            CustomStep(name="test-custom-step").properties.OutputDataConfig.S3OutputPath,
+            None,
+            "base_name",
+        ),
+        (
+            CustomStep(name="test-custom-step").properties.OutputDataConfig.S3OutputPath,
+            "whatever",
+            "whatever",
+        ),
+        (ParameterString(name="image_uri"), None, "base_name"),
+        (ParameterString(name="image_uri"), "whatever", "whatever"),
+        (
+            ParameterString(
+                name="image_uri",
+                default_value="922956235488.dkr.ecr.us-west-2.amazonaws.com/analyzer",
+            ),
+            None,
+            "analyzer",
+        ),
+        (
+            ParameterString(
+                name="image_uri",
+                default_value="922956235488.dkr.ecr.us-west-2.amazonaws.com/analyzer",
+            ),
+            "whatever",
+            "analyzer",
+        ),
+    ],
+)
+def test_base_name_from_image_with_pipeline_param(inputs):
+    image, default_base_name, expected = inputs
+    assert expected == sagemaker.utils.base_name_from_image(
+        image=image, default_base_name=default_base_name
+    )
 
 
 @patch("sagemaker.utils.sagemaker_timestamp")
@@ -719,3 +762,36 @@ def test_partition_by_region():
     assert sagemaker.utils._aws_partition("us-gov-east-1") == "aws-us-gov"
     assert sagemaker.utils._aws_partition("us-iso-east-1") == "aws-iso"
     assert sagemaker.utils._aws_partition("us-isob-east-1") == "aws-iso-b"
+
+
+def test_pop_out_unused_kwarg():
+    # The given arg_name is in kwargs
+    kwargs = dict(arg1=1, arg2=2)
+    sagemaker.utils.pop_out_unused_kwarg("arg1", kwargs)
+    assert "arg1" not in kwargs
+
+    # The given arg_name is not in kwargs
+    kwargs = dict(arg1=1, arg2=2)
+    sagemaker.utils.pop_out_unused_kwarg("arg3", kwargs)
+    assert len(kwargs) == 2
+
+
+def test_to_string():
+    var = 1
+    assert sagemaker.utils.to_string(var) == "1"
+
+    var = ParameterInteger(name="MyInt")
+    assert sagemaker.utils.to_string(var).expr == {
+        "Std:Join": {
+            "On": "",
+            "Values": [{"Get": "Parameters.MyInt"}],
+        },
+    }
+
+
+def test_start_waiting(capfd):
+    waiting_time = 1
+    sagemaker.utils._start_waiting(waiting_time)
+    out, _ = capfd.readouterr()
+
+    assert "." * sagemaker.utils.WAITING_DOT_NUMBER in out

@@ -14,14 +14,12 @@ from __future__ import absolute_import
 
 import json
 import os
-import tarfile
 
-import boto3
 import pytest
-from six.moves.urllib.parse import urlparse
 
 import sagemaker.utils
 import tests.integ as integ
+from tests.integ.s3_utils import extract_files_from_s3
 from tests.integ.utils import gpu_list, retry_with_instance_list
 from sagemaker.tensorflow import TensorFlow
 from tests.integ import timeout
@@ -72,17 +70,6 @@ def test_hvd_gpu(
 def read_json(file, tmp):
     with open(os.path.join(tmp, file)) as f:
         return json.load(f)
-
-
-def extract_files_from_s3(s3_url, tmpdir, sagemaker_session):
-    parsed_url = urlparse(s3_url)
-    s3 = boto3.resource("s3", region_name=sagemaker_session.boto_region_name)
-
-    model = os.path.join(tmpdir, "model")
-    s3.Bucket(parsed_url.netloc).download_file(parsed_url.path.lstrip("/"), model)
-
-    with tarfile.open(model, "r") as tar_file:
-        tar_file.extractall(tmpdir)
 
 
 def _create_and_fit_estimator(sagemaker_session, tf_version, py_version, instance_type, tmpdir):

@@ -17,8 +17,16 @@ import pytest
 from mock import Mock, PropertyMock
 
 from sagemaker import Model
-from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline_context import PipelineSession
+from sagemaker.workflow import is_pipeline_variable, is_pipeline_parameter_string
+from sagemaker.workflow.parameters import (
+    ParameterString,
+    ParameterInteger,
+    ParameterBoolean,
+    ParameterFloat,
+)
+from sagemaker.workflow.functions import Join, JsonGet
+from tests.unit.sagemaker.workflow.helpers import CustomStep
 
 from botocore.config import Config
 
@@ -42,7 +50,7 @@ def test_pipeline_session_init(sagemaker_client_config, boto_session):
         sagemaker_client=sagemaker_client,
     )
     assert sess.sagemaker_client is not None
-    assert sess.default_bucket() is not None
+    assert sess.default_bucket is not None
     assert sess.context is None
 
 
@@ -116,12 +124,58 @@ def test_pipeline_session_context_for_model_step(pipeline_session_mock):
         inference_instances=["ml.t2.medium", "ml.m5.xlarge"],
         transform_instances=["ml.m5.xlarge"],
         model_package_group_name="MyModelPackageGroup",
+        task="IMAGE_CLASSIFICATION",
+        sample_payload_url="s3://test-bucket/model",
+        framework="TENSORFLOW",
+        framework_version="2.9",
+        nearest_model_name="resnet50",
+        data_input_configuration='{"input_1":[1,224,224,3]}',
     )
     # The context should be cleaned up before return
     assert not pipeline_session_mock.context
     assert not register_step_args.create_model_request
     assert register_step_args.create_model_package_request
     assert len(register_step_args.need_runtime_repack) == 0
+
+
+@pytest.mark.parametrize(
+    "item",
+    [
+        (ParameterString(name="my-str"), True),
+        (ParameterBoolean(name="my-bool"), True),
+        (ParameterFloat(name="my-float"), True),
+        (ParameterInteger(name="my-int"), True),
+        (Join(on="/", values=["my", "value"]), True),
+        (JsonGet(step_name="my-step", property_file="pf", json_path="path"), True),
+        (CustomStep(name="my-step").properties.OutputDataConfig.S3OutputPath, True),
+        ("my-str", False),
+        (1, False),
+        (CustomStep(name="my-ste"), False),
+    ],
+)
+def test_is_pipeline_variable(item):
+    var, assertion = item
+    assert is_pipeline_variable(var) == assertion
+
+
+@pytest.mark.parametrize(
+    "item",
+    [
+        (ParameterString(name="my-str"), True),
+        (ParameterBoolean(name="my-bool"), False),
+        (ParameterFloat(name="my-float"), False),
+        (ParameterInteger(name="my-int"), False),
+        (Join(on="/", values=["my", "value"]), False),
+        (JsonGet(step_name="my-step", property_file="pf", json_path="path"), False),
+        (CustomStep(name="my-step").properties.OutputDataConfig.S3OutputPath, False),
+        ("my-str", False),
+        (1, False),
+        (CustomStep(name="my-ste"), False),
+    ],
+)
+def test_is_pipeline_parameter_string(item):
+    var, assertion = item
+    assert is_pipeline_parameter_string(var) == assertion
 
 
 def test_pipeline_session_context_for_model_step_without_instance_types(
@@ -136,11 +190,15 @@ def test_pipeline_session_context_for_model_step_without_instance_types(
         source_dir=f"{DATA_DIR}",
         role=_ROLE,
     )
-
     register_step_args = model.register(
         content_types=["text/csv"],
         response_types=["text/csv"],
         model_package_group_name="MyModelPackageGroup",
+        task="IMAGE_CLASSIFICATION",
+        sample_payload_url="s3://test-bucket/model",
+        framework="TENSORFLOW",
+        framework_version="2.9",
+        nearest_model_name="resnet50",
     )
 
     expected_output = {
@@ -159,15 +217,111 @@ def test_pipeline_session_context_for_model_step_without_instance_types(
                         name="ModelData",
                         default_value="s3://my-bucket/file",
                     ),
+                    "Framework": "TENSORFLOW",
+                    "FrameworkVersion": "2.9",
+                    "NearestModelName": "resnet50",
                 }
             ],
             "SupportedContentTypes": ["text/csv"],
             "SupportedResponseMIMETypes": ["text/csv"],
-            "SupportedRealtimeInferenceInstanceTypes": None,
-            "SupportedTransformInstanceTypes": None,
         },
         "CertifyForMarketplace": False,
         "ModelApprovalStatus": "PendingManualApproval",
+        "SamplePayloadUrl": "s3://test-bucket/model",
+        "Task": "IMAGE_CLASSIFICATION",
     }
 
     assert register_step_args.create_model_package_request == expected_output
+
+
+def test_pipeline_session_context_for_model_step_with_one_instance_types(
+    pipeline_session_mock,
+):
+    model = Model(
+        name="MyModel",
+        image_uri="fakeimage",
+        model_data=ParameterString(name="ModelData", default_value="s3://my-bucket/file"),
+        sagemaker_session=pipeline_session_mock,
+        entry_point=f"{DATA_DIR}/dummy_script.py",
+        source_dir=f"{DATA_DIR}",
+        role=_ROLE,
+    )
+    register_step_args = model.register(
+        content_types=["text/csv"],
+        response_types=["text/csv"],
+        inference_instances=["ml.t2.medium", "ml.m5.xlarge"],
+        model_package_group_name="MyModelPackageGroup",
+        task="IMAGE_CLASSIFICATION",
+        sample_payload_url="s3://test-bucket/model",
+        framework="TENSORFLOW",
+        framework_version="2.9",
+        nearest_model_name="resnet50",
+        data_input_configuration='{"input_1":[1,224,224,3]}',
+    )
+
+    expected_output = {
+        "ModelPackageGroupName": "MyModelPackageGroup",
+        "InferenceSpecification": {
+            "Containers": [
+                {
+                    "Image": "fakeimage",
+                    "Environment": {
+                        "SAGEMAKER_PROGRAM": "dummy_script.py",
+                        "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
+                        "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
+                        "SAGEMAKER_REGION": "us-west-2",
+                    },
+                    "ModelDataUrl": ParameterString(
+                        name="ModelData",
+                        default_value="s3://my-bucket/file",
+                    ),
+                    "Framework": "TENSORFLOW",
+                    "FrameworkVersion": "2.9",
+                    "NearestModelName": "resnet50",
+                    "ModelInput": {
+                        "DataInputConfig": '{"input_1":[1,224,224,3]}',
+                    },
+                }
+            ],
+            "SupportedContentTypes": ["text/csv"],
+            "SupportedResponseMIMETypes": ["text/csv"],
+            "SupportedRealtimeInferenceInstanceTypes": ["ml.t2.medium", "ml.m5.xlarge"],
+        },
+        "CertifyForMarketplace": False,
+        "ModelApprovalStatus": "PendingManualApproval",
+        "SamplePayloadUrl": "s3://test-bucket/model",
+        "Task": "IMAGE_CLASSIFICATION",
+    }
+
+    assert register_step_args.create_model_package_request == expected_output
+
+
+def test_pipeline_session_context_for_model_step_without_model_package_group_name(
+    pipeline_session_mock,
+):
+    model = Model(
+        name="MyModel",
+        image_uri="fakeimage",
+        model_data=ParameterString(name="ModelData", default_value="s3://my-bucket/file"),
+        sagemaker_session=pipeline_session_mock,
+        entry_point=f"{DATA_DIR}/dummy_script.py",
+        source_dir=f"{DATA_DIR}",
+        role=_ROLE,
+    )
+    with pytest.raises(ValueError) as error:
+        model.register(
+            content_types=["text/csv"],
+            response_types=["text/csv"],
+            inference_instances=["ml.t2.medium", "ml.m5.xlarge"],
+            model_package_name="MyModelPackageName",
+            task="IMAGE_CLASSIFICATION",
+            sample_payload_url="s3://test-bucket/model",
+            framework="TENSORFLOW",
+            framework_version="2.9",
+            nearest_model_name="resnet50",
+            data_input_configuration='{"input_1":[1,224,224,3]}',
+        )
+        assert (
+            "inference_inferences and transform_instances "
+            "must be provided if model_package_group_name is not present." == str(error)
+        )

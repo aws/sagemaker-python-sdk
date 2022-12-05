@@ -97,6 +97,54 @@ When you use :class:`sagemaker.workflow.pipeline_context.PipelineSession` rather
 .. warning::
    A :class:`sagemaker.workflow.pipeline_context.PipelineSession` must be given in order to start the job during pipeline execution time. Otherwise, a training job will get started immediately.
 
+Local Pipeline Session
+======================
+
+Like Pipeline Session, Local Pipeline Session provides a convenient way to capture input job arguments without starting the job. These input arguments can be provided in the :code:`step_args` parameter to their corresponding `Pipelines step type <https://sagemaker.readthedocs.io/en/stable/workflows/pipelines/sagemaker.workflow.pipelines.html#sagemaker.workflow.steps.Step>`__. The difference between :class:`sagemaker.workflow.pipeline_context.PipelineSession` and :class:`sagemaker.workflow.pipeline_context.LocalPipelineSession` is that :class:`sagemaker.workflow.pipeline_context.LocalPipelineSession` is used to run SageMaker pipelines locally (in local mode) whereas using :class:`sagemaker.workflow.pipeline_context.PipelineSession` runs the job on the managed service.
+
+.. code-block:: python
+
+    from sagemaker.workflow.pipeline_context import LocalPipelineSession
+
+    local_pipeline_session = LocalPipelineSession()
+
+    pytorch_estimator = PyTorch(
+        sagemaker_session=local_pipeline_session,
+        role=sagemaker.get_execution_role(),
+        instance_type="ml.c5.xlarge",
+        instance_count=1,
+        framework_version="1.8.0",
+        py_version="py36",
+        entry_point="./entry_point.py",
+    )
+
+    step = TrainingStep(
+        name="MyTrainingStep",
+        step_args=pytorch_estimator.fit(
+            inputs=TrainingInput(s3_data="s3://my-bucket/my-data/train"),
+        )
+    )
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[step],
+        sagemaker_session=local_pipeline_session
+    )
+
+    pipeline.create(
+        role_arn=sagemaker.get_execution_role(),
+        description="local pipeline example"
+    )
+
+    // pipeline will execute locally
+    pipeline.start()
+
+    steps = pipeline.list_steps()
+
+    training_job_name = steps['PipelineExecutionSteps'][0]['Metadata']['TrainingJob']['Arn']
+
+    step_outputs = pipeline_session.sagemaker_client.describe_training_job(TrainingJobName = training_job_name)
+
 
 Pipeline Parameters
 ======================
@@ -274,6 +322,9 @@ Example:
 
 .. code-block:: python
 
+    bucket = "my-bucket"
+    model_prefix = "my-model"
+
     step_tune = TuningStep(...)
     # tuning step can launch multiple training jobs, thus producing multiple model artifacts
     # we can create a model with the best performance
@@ -281,22 +332,24 @@ Example:
         model_data=Join(
             on="/",
             values=[
-                "s3://my-bucket",
+                f"s3://{bucket}/{model_prefix}",
                 # from DescribeHyperParameterTuningJob
                 step_tune.properties.BestTrainingJob.TrainingJobName,
                 "output/model.tar.gz",
             ],
+        )
     )
     # we can also access any top-k best as we wish
     second_best_model = Model(
         model_data=Join(
             on="/",
             values=[
-                "s3://my-bucket",
+                f"s3://{bucket}/{model_prefix}",
                 # from ListTrainingJobsForHyperParameterTuningJob
                 step_tune.properties.TrainingJobSummaries[1].TrainingJobName,
                 "output/model.tar.gz",
             ],
+        )
     )
 
 :class:`sagemaker.workflow.steps.TuningStep` also has a helper function to generate any :code:`top-k` model data URI easily:
@@ -305,7 +358,54 @@ Example:
 
     model_data = step_tune.get_top_model_s3_uri(
         top_k=0, # best model
-        s3_bucket="s3://my-bucekt",
+        s3_bucket=bucket,
+        prefix=model_prefix
+    )
+
+AutoMLStep
+`````````````
+Referable Property List:
+
+- `DescribeAutoMLJob`_
+- `BestCandidateProperties.ModelInsightsJsonReportPath`_
+- `BestCandidateProperties.ExplainabilityJsonReportPath`_
+
+.. _DescribeAutoMLJob: https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_DescribeAutoMLJob
+.. _BestCandidateProperties.ModelInsightsJsonReportPath: https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CandidateArtifactLocations.html#sagemaker-Type-CandidateArtifactLocations-ModelInsights
+.. _BestCandidateProperties.ExplainabilityJsonReportPath: https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CandidateArtifactLocations.html#sagemaker-Type-CandidateArtifactLocations-Explainability
+
+Example:
+
+.. code-block:: python
+
+    step_automl = AutoMLStep(...)
+
+    auto_ml_model = step_automl.get_best_model(<role>)
+
+    model_metrics = ModelMetrics(
+        model_statistics=MetricsSource(
+            s3_uri=auto_ml_step.properties.BestCandidateProperties.ModelInsightsJsonReportPath,
+            content_type="application/json",
+        ),
+        explainability=MetricsSource(
+            s3_uri=auto_ml_step.properties.BestCandidateProperties.ExplainabilityJsonReportPath,
+            content_type="application/json",
+        )
+    )
+
+    step_args_register_model = auto_ml_model.register(
+    content_types=["text/csv"],
+    response_types=["text/csv"],
+    inference_instances=["ml.t2.medium", "ml.m5.large"],
+    transform_instances=["ml.m5.large"],
+    model_package_group_name="My model package group name",
+    approval_status="PendingManualApproval",
+    model_metrics=model_metrics,
+    )
+
+    step_register_model = ModelStep(
+        name="auto-ml-model-register",
+        step_args=step_args_register_model,
     )
 
 CreateModelStep
@@ -741,6 +841,8 @@ There are a number of properties for a pipeline execution that can only be resol
 - :class:`sagemaker.workflow.execution_variables.ExecutionVariables.PIPELINE_EXECUTION_ARN`: The execution ARN for an execution.
 - :class:`sagemaker.workflow.execution_variables.ExecutionVariables.PIPELINE_NAME`: The name of the pipeline.
 - :class:`sagemaker.workflow.execution_variables.ExecutionVariables.PIPELINE_ARN`: The ARN of the pipeline.
+- :class:`sagemaker.workflow.execution_variables.ExecutionVariables.TRAINING_JOB_NAME`: The name of the training job launched by the training step.
+- :class:`sagemaker.workflow.execution_variables.ExecutionVariables.PROCESSING_JOB_NAME`: The name of the processing job launched by the processing step.
 
 You can use these execution variables as you see fit. The following example uses the :code:`START_DATETIME` execution variable to construct a processing output path:
 
@@ -783,9 +885,9 @@ The following example uses :class:`sagemaker.workflow.parallelism_config.Paralle
 
 Caching Configuration
 ==============================
-Executing the step without changing its configurations, inputs, or outputs can be a waste. Thus, we can enable caching for pipeline steps. When caching is enabled, an expiration time (in `ISO8601 duration string format`_) needs to be supplied. The expiration time indicates how old a previous execution can be to be considered for reuse.
+Executing the step without changing its configurations, inputs, or outputs can be a waste. Thus, we can enable caching for pipeline steps. When you use step signature caching, SageMaker Pipelines tries to use a previous run of your current pipeline step instead of running the step again. When previous runs are considered for reuse, certain arguments from the step are evaluated to see if any have changed. If any of these arguments have been updated, the step will execute again with the new configuration.
 
-.. _ISO8601 duration string format: https://en.wikipedia.org/wiki/ISO_8601#Durations
+When you turn on caching, you supply an expiration time (in `ISO8601 duration string format <https://en.wikipedia.org/wiki/ISO_8601#Durations>`__). The expiration time indicates how old a previous execution can be to be considered for reuse.
 
 .. code-block:: python
 
@@ -794,13 +896,13 @@ Executing the step without changing its configurations, inputs, or outputs can b
         expire_after="P30d" # 30-day
     )
 
-Here are few sample ISO8601 duration strings:
+You can format your ISO8601 duration strings like the following examples:
 
 - :code:`p30d`: 30 days
 - :code:`P4DT12H`: 4 days and 12 hours
 - :code:`T12H`: 12 hours
 
-Caching is supported for the following step type:
+Caching is supported for the following step types:
 
 - :class:`sagemaker.workflow.steps.TrainingStep`
 - :class:`sagemaker.workflow.steps.ProcessingStep`
@@ -809,6 +911,156 @@ Caching is supported for the following step type:
 - :class:`sagemaker.workflow.quality_check_step.QualityCheckStep`
 - :class:`sagemaker.workflow.clarify_check_step.ClarifyCheckStep`
 - :class:`sagemaker.workflow.emr_step.EMRStep`
+
+In order to create pipeline steps and eventually construct a SageMaker pipeline, you provide parameters within a Python script or notebook. The SageMaker Python SDK creates a pipeline definition by translating these parameters into SageMaker job attributes. Some of these attributes, when changed, cause the step to re-run (See `Caching Pipeline Steps <https://docs.aws.amazon.com/sagemaker/latest/dg/pipelines-caching.html>`__ for a detailed list). Therefore, if you update a SDK parameter that is used to create such an attribute, the step will rerun. See the following discussion for examples of this in processing and training steps, which are commonly used steps in Pipelines.
+
+The following example creates a processing step:
+
+.. code-block:: python
+
+    from sagemaker.workflow.pipeline_context import PipelineSession
+    from sagemaker.sklearn.processing import SKLearnProcessor
+    from sagemaker.workflow.steps import ProcessingStep
+    from sagemaker.dataset_definition.inputs import S3Input
+    from sagemaker.processing import ProcessingInput, ProcessingOutput
+
+    pipeline_session = PipelineSession()
+
+    framework_version = "0.23-1"
+
+    sklearn_processor = SKLearnProcessor(
+        framework_version=framework_version,
+        instance_type="ml.m5.xlarge",
+        instance_count=processing_instance_count,
+        role=role,
+        sagemaker_session=pipeline_session
+    )
+
+    processor_args = sklearn_processor.run(
+        inputs=[
+            ProcessingInput(
+                source="artifacts/data/abalone-dataset.csv",
+                input_name="abalone-dataset",
+                s3_input=S3Input(
+                    local_path="/opt/ml/processing/input",
+                    s3_uri="artifacts/data/abalone-dataset.csv",
+                    s3_data_type="S3Prefix",
+                    s3_input_mode="File",
+                    s3_data_distribution_type="FullyReplicated",
+                    s3_compression_type="None",
+                )
+            )
+        ],
+        outputs=[
+            ProcessingOutput(output_name="train", source="/opt/ml/processing/train"),
+            ProcessingOutput(output_name="validation", source="/opt/ml/processing/validation"),
+            ProcessingOutput(output_name="test", source="/opt/ml/processing/test"),
+        ],
+        code="artifacts/code/process/preprocessing.py",
+    )
+
+    processing_step = ProcessingStep(
+        name="Process",
+        step_args=processor_args,
+        cache_config=cache_config
+    )
+
+The following parameters from the example cause additional processing step iterations when you change them:
+
+- :code:`framework_version`: This parameter is used to construct the :code:`image_uri` for the `AppSpecification <https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_AppSpecification.html>`__ attribute of the processing job.
+- :code:`inputs`: Any :class:`ProcessingInputs` are passed through directly as job `ProcessingInputs <https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_ProcessingInput.html>`__. Input :code:`source` files that exist in the container’s local file system are uploaded to S3 and given a new :code:`S3_Uri`. If the S3 path changes, a new processing job is initiated. For examples of S3 paths, see the **S3 Artifact Folder Structure** section.
+- :code:`code`: The code parameter is also packaged as a `ProcessingInput <https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_ProcessingInput.html>`__ job. For local files, a unique hash is created from the file. The file is then uploaded to S3 with the hash included in the path. When a different local file is used, a new hash is created and the S3 path for that `ProcessingInput <https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_ProcessingInput.html>`__ changes, initiating a new step run. For examples S3 paths, see the **S3 Artifact Folder Structure** section.
+
+The following example creates a training step:
+
+.. code-block:: python
+
+    from sagemaker.sklearn.estimator import SKLearn
+    from sagemaker.workflow.steps import TrainingStep
+
+    pipeline_session = PipelineSession()
+
+    image_uri = sagemaker.image_uris.retrieve(
+        framework="xgboost",
+        region=region,
+        version="1.0-1",
+        py_version="py3",
+        instance_type="ml.m5.xlarge",
+    )
+
+    hyperparameters = {
+        "dataset_frequency": "H",
+        "timestamp_format": "yyyy-MM-dd hh:mm:ss",
+        "number_of_backtest_windows": "1",
+        "role_arn": role_arn,
+        "region": region,
+    }
+
+    sklearn_estimator = SKLearn(
+        entry_point="train.py",
+        role=role_arn,
+        image_uri=container_image_uri,
+        instance_type=training_instance_type,
+        sagemaker_session=pipeline_session,
+        base_job_name="training_job",
+        hyperparameters=hyperparameters,
+        enable_sagemaker_metrics=True,
+    )
+
+    train_args = xgb_train.fit(
+        inputs={
+            "train": TrainingInput(
+                s3_data=step_process.properties.ProcessingOutputConfig.Outputs[
+                    "train"
+                ].S3Output.S3Uri,
+                content_type="text/csv",
+            ),
+            "validation": TrainingInput(
+                s3_data=step_process.properties.ProcessingOutputConfig.Outputs[
+                    "validation"
+                ].S3Output.S3Uri,
+                content_type="text/csv",
+            ),
+        }
+    )
+
+    training_step = TrainingStep(
+        name="Train",
+        estimator=sklearn_estimator,
+        cache_config=cache_config
+    )
+
+The following parameters from the example cause additional training step iterations when you change them:
+
+- :code:`image_uri`: The :code:`image_uri` parameter defines the image used for training, and is used directly in the `AlgorithmSpecification <https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_AlgorithmSpecification.html>`__ attribute of the training job.
+- :code:`hyperparameters`: All of the hyperparameters are used directly in the `HyperParameters <https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_DescribeTrainingJob.html#API_DescribeTrainingJob_ResponseSyntax>`__ attribute for the training job.
+- :code:`entry_point`: The entry point file is included in the training job’s `InputDataConfig Channel <https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_Channel.html>`__ array. A unique hash is created from the file (and any other dependencies), and then the file is uploaded to S3 with the hash included in the path. When a different entry point file is used, a new hash is created and the S3 path for that `InputDataConfig Channel <https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_Channel.html>`__ object changes, initiating a new step run. For examples of what the S3 paths look like, see the **S3 Artifact Folder Structure** section.
+- :code:`inputs`: The inputs are also included in the training job’s `InputDataConfig <https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_Channel.html>`__. Local inputs are uploaded to S3. If the S3 path changes, a new training job is initiated. For examples of S3 paths, see the **S3 Artifact Folder Structure** section.
+
+S3 Artifact Folder Structure
+----------------------------
+
+You use the following S3 paths when uploading local input and code artifacts, and when saving output artifacts.
+
+*Processing*
+
+- Code: :code:`s3://bucket_name/pipeline_name/code/<code_hash>/file.py`. The file could also be a tar.gz of source_dir and dependencies.
+- Input Data: :code:`s3://bucket_name/pipeline_name/step_name/input/input_name/file.csv`
+- Configuration: :code:`s3://bucket_name/pipeline_name/step_name/input/conf/<configuration_hash>/configuration.json`
+- Output: :code:`s3://bucket_name/pipeline_name/<execution_id>/step_name/output/output_name`
+
+*Training*
+
+- Code: :code:`s3://bucket_name/code_location/pipeline_name/code/<code_hash>/code.tar.gz`
+- Output: The output paths for Training jobs can vary - the default output path is the root of the s3 bucket: :code:`s3://bucket_name`. For Training jobs created from a Tuning job, the default path includes the Training job name created by the Training platform, formatted as :code:`s3://bucket_name/<training_job_name>/output/model.tar.gz`.
+
+*Transform*
+
+- Output: :code:`s3://bucket_name/pipeline_name/<execution_id>/step_name`
+
+.. warning::
+    For input artifacts such as data or code files, the actual content of the artifacts is not tracked, only the S3 path. This means that if a file in S3 is updated and re-uploaded directly with an identical name and path, then the step does NOT run again.
+
 
 Retry Policy
 ===============
@@ -903,6 +1155,132 @@ Follow the example below to create a SageMaker Model and register it to SageMake
 When model repacking is needed, :class:`sagemaker.workflow.model_step.ModelStep`. is a collection of steps. Model repacking unpacks model data, creates a new model tarball file that includes any custom inference scripts, and uploads this tarball file to Amazon S3. Once a model is repacked, it is ready to deploy to an endpoint or be registered as a model package.
 
 :class:`sagemaker.workflow.model_step.ModelStep` uses the provided inputs to automatically detect if a repack is needed. If a repack is needed, :class:`sagemaker.workflow.steps.TrainingStep` is added to the step collection for that repack. Then, either :class:`sagemaker.workflow.steps.CreateModelStep` or :class:`sagemaker.workflow.step_collections.RegisterModelStep` will be chained after it.
+
+MonitorBatchTransform Step
+===========================
+
+MonitorBatchTransformStep is a new step type that allows customers to use SageMaker Model Monitor with batch transform jobs that are a part of their pipeline. Using this step, customers can set up the following monitors for their batch transform job: data quality, model quality, model bias, and feature attribution.
+
+
+When configuring this step, customers have the flexibility to run the monitoring job before or after the transform job executes. There is an additional flag called :code:`fail_on_violation` which will fail the step if set to true and there is a monitoring violation, or will continue to execute the step if set to false.
+
+Here is an example showing you how to configure a :class:`sagemaker.workflow.monitor_batch_transform_step.MonitorBatchTransformStep` with a Data Quality monitor.
+
+.. code-block:: python
+
+    from sagemaker.workflow.pipeline_context import PipelineSession
+
+    from sagemaker.transformer import Transformer
+    from sagemaker.model_monitor import DefaultModelMonitor
+    from sagemaker.model_monitor.dataset_format import DatasetFormat
+    from sagemaker.workflow.check_job_config import CheckJobConfig
+    from sagemaker.workflow.quality_check_step import DataQualityCheckConfig
+
+    from sagemaker.workflow.parameters import ParameterString
+
+    pipeline_session = PipelineSession()
+
+    transform_input_param = ParameterString(
+        name="transform_input",
+        default_value=f"s3://my-bucket/my-prefix/my-transform-input",
+    )
+
+    # the resource configuration for the monitoring job
+    job_config = CheckJobConfig(
+        role=role,
+        instance_count=1,
+        instance_type="ml.m5.xlarge",
+        ...
+    )
+
+The following code sample demonstrates how to set up an on-demand batch transform *data quality* monitor:
+
+.. code-block:: python
+
+    # configure your transformer
+    transformer = Transformer(..., sagemaker_session=pipeline_session)
+    transform_arg = transformer.transform(
+        transform_input_param,
+        content_type="text/csv",
+        split_type="Line",
+        ...
+    )
+
+    data_quality_config = DataQualityCheckConfig(
+        baseline_dataset=transform_input_param,
+        dataset_format=DatasetFormat.csv(header=False),
+        output_s3_uri="s3://my-report-path",
+    )
+
+    from sagemaker.workflow.monitor_batch_transform_step import MonitorBatchTransformStep
+
+    transform_and_monitor_step = MonitorBatchTransformStep(
+        name="MyMonitorBatchTransformStep",
+        transform_step_args=transform_arg,
+        monitor_configuration=data_quality_config,
+        check_job_configuration=job_config,
+        # since data quality only looks at the inputs,
+        # so there is no need to wait for the transform output.
+        monitor_before_transform=True,
+        # if violation is detected in the monitoring, and you want to skip it
+        # and continue running batch transform, you can set fail_on_violation
+        # to false.
+        fail_on_violation=False,
+        supplied_baseline_statistics="s3://my-baseline-statistics.json",
+        supplied_baseline_constraints="s3://my-baseline-constraints.json",
+    )
+    ...
+
+The same example can be extended for model quality, bias, and feature attribute monitoring.
+
+.. warning::
+    Note that to run on-demand model quality, you will need to have the ground truth data ready. When running the transform job, include the ground truth inside your transform input, and join the transform inference input and output. Then you can indicate which attribute or column name/index points to the ground truth when run the monitoring job.
+
+.. code-block:: python
+
+    transformer = Transformer(..., sagemaker_session=pipeline_session)
+
+    transform_arg = transformer.transform(
+        transform_input_param,
+        content_type="text/csv",
+        split_type="Line",
+        # Note that we need to join both the inference input and output
+        # into transform outputs. The inference input needs to have the ground truth.
+        # details can be found here
+        # https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform-data-processing.html
+        join_source="Input",
+        # We need to exclude the ground truth inside the inference input
+        # before passing it to the prediction model.
+        # Assume the first column of our csv file is the ground truth
+        input_filter="$[1:]",
+        ...
+    )
+
+    model_quality_config = ModelQualityCheckConfig(
+        baseline_dataset=transformer.output_path,
+        problem_type="BinaryClassification",
+        dataset_format=DatasetFormat.csv(header=False),
+        output_s3_uri="s3://my-output",
+        # assume the model output is at column idx 10
+        inference_attribute="_c10",
+        # As pointed out previously, the first column is the ground truth.
+        ground_truth_attribute="_c0",
+    )
+    from sagemaker.workflow.monitor_batch_transform_step import MonitorBatchTransformStep
+
+    transform_and_monitor_step = MonitorBatchTransformStep(
+        name="MyMonitorBatchTransformStep",
+        transform_step_args=transform_arg,
+        monitor_configuration=data_quality_config,
+        check_job_configuration=job_config,
+        # model quality job needs the transform outputs, therefore
+        # monitor_before_transform can not be true for model quality
+        monitor_before_transform=False,
+        fail_on_violation=True,
+        supplied_baseline_statistics="s3://my-baseline-statistics.json",
+        supplied_baseline_constraints="s3://my-baseline-constraints.json",
+    )
+    ...
 
 =================
 Example Notebooks

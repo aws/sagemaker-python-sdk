@@ -123,6 +123,50 @@ def timeout_and_delete_model_with_transformer(
                 sleep(sleep_between_cleanup_attempts)
 
 
+@contextmanager
+def timeout_and_delete_model_by_name(
+    model_name,
+    sagemaker_session,
+    seconds=0,
+    minutes=45,
+    hours=0,
+    sleep_between_cleanup_attempts=10,
+    exponential_sleep=False,
+):
+    limit = seconds + 60 * minutes + 3600 * hours
+
+    with stopit.ThreadingTimeout(limit, swallow_exc=False) as t:
+        no_errors = False
+        try:
+            yield [t]
+            no_errors = True
+        finally:
+            attempts = 3
+
+            while attempts > 0:
+                attempts -= 1
+                try:
+                    sagemaker_session.delete_model(model_name)
+                    LOGGER.info("deleted model {}".format(model_name))
+
+                    _show_logs(model_name, "Models", sagemaker_session)
+                    if no_errors:
+                        _cleanup_logs(model_name, "Models", sagemaker_session)
+                    break
+                except ClientError as ce:
+                    if ce.response["Error"]["Code"] == "ValidationException":
+                        # avoids the inner exception to be overwritten
+                        pass
+                # trying to delete the resource again in 10 seconds
+                if exponential_sleep:
+                    _sleep_between_cleanup_attempts = sleep_between_cleanup_attempts * (
+                        3 - attempts
+                    )
+                else:
+                    _sleep_between_cleanup_attempts = sleep_between_cleanup_attempts
+                sleep(_sleep_between_cleanup_attempts)
+
+
 def _delete_schedules_associated_with_endpoint(sagemaker_session, endpoint_name):
     """Deletes schedules associated with a given endpoint. Per latest validation, ensures the
     schedule is stopped and no executions are running, before deleting (otherwise latest

@@ -16,22 +16,31 @@ from __future__ import absolute_import
 import warnings
 import inspect
 from functools import wraps
-from typing import Dict, Optional
+from typing import Dict, Optional, Callable
 
 from sagemaker.session import Session, SessionSettings
+from sagemaker.local import LocalSession
 
 
 class _StepArguments:
     """Step arguments entity for `Step`"""
 
-    def __init__(self, caller_name: str = None):
+    # pylint: disable=keyword-arg-before-vararg
+    def __init__(self, caller_name: str = None, func: Callable = None, *func_args, **func_kwargs):
         """Create a `_StepArguments`
 
         Args:
             caller_name (str): The name of the caller function which is intercepted by the
                 PipelineSession to get the step arguments.
+            func (Callable): The job class function that generates the step arguments used
+                when creating the job ( fit() for a training job )
+            *func_args: The args for func
+            **func_kwargs: The kwargs for func
         """
         self.caller_name = caller_name
+        self.func = func
+        self.func_args = func_args
+        self.func_kwargs = func_kwargs
 
 
 class _JobStepArguments(_StepArguments):
@@ -67,6 +76,24 @@ class _ModelStepArguments(_StepArguments):
         self.create_model_package_request = None
         self.create_model_request = None
         self.need_runtime_repack = set()
+        self.runtime_repack_output_prefix = None
+
+
+class _PipelineConfig:
+    """Config object that associates a step with its containing pipeline
+
+    Args:
+        pipeline_name (str): pipeline name
+        step_name (str): step name
+        code_hash (str): a hash of the code artifact for the particular step
+        config_hash (str): a hash of the config artifact for the particular step (Processing)
+    """
+
+    def __init__(self, pipeline_name, step_name, code_hash, config_hash):
+        self.pipeline_name = pipeline_name
+        self.step_name = step_name
+        self.code_hash = code_hash
+        self.config_hash = config_hash
 
 
 class PipelineSession(Session):
@@ -139,15 +166,52 @@ class PipelineSession(Session):
         else:
             self.context = _JobStepArguments(func_name, request)
 
-    def init_step_arguments(self, model):
+    def init_model_step_arguments(self, model):
         """Create a `_ModelStepArguments` (if not exist) as pipeline context
 
         Args:
             model (Model or PipelineModel): A `sagemaker.model.Model`
                 or `sagemaker.pipeline.PipelineModel` instance
         """
-        if not self._context or not isinstance(self._context, _ModelStepArguments):
+        if not isinstance(self._context, _ModelStepArguments):
             self._context = _ModelStepArguments(model)
+
+
+class LocalPipelineSession(LocalSession, PipelineSession):
+    """Managing a session that executes Sagemaker pipelines and jobs locally in a pipeline context.
+
+    This class inherits from the LocalSession and PipelineSession classes.
+    When running Sagemaker pipelines locally, this class is preferred over LocalSession.
+    """
+
+    def __init__(
+        self, boto_session=None, default_bucket=None, s3_endpoint_url=None, disable_local_code=False
+    ):
+        """Initialize a ``LocalPipelineSession``.
+
+        Args:
+            boto_session (boto3.session.Session): The underlying Boto3 session which AWS service
+                calls are delegated to (default: None). If not provided, one is created with
+                default AWS configuration chain.
+            default_bucket (str): The default Amazon S3 bucket to be used by this session.
+                This will be created the next time an Amazon S3 bucket is needed (by calling
+                :func:`default_bucket`).
+                If not provided, a default bucket will be created based on the following format:
+                "sagemaker-{region}-{aws-account-id}".
+                Example: "sagemaker-my-custom-bucket".
+            s3_endpoint_url (str): Override the default endpoint URL for Amazon S3,
+                if set (default: None).
+            disable_local_code (bool): Set to True to override the default AWS configuration chain
+                to disable the `local.local_code` setting, which may not be supported for some SDK
+                features (default: False).
+        """
+
+        super().__init__(
+            boto_session=boto_session,
+            default_bucket=default_bucket,
+            s3_endpoint_url=s3_endpoint_url,
+            disable_local_code=disable_local_code,
+        )
 
 
 def runnable_by_pipeline(run_func):
@@ -197,15 +261,45 @@ def runnable_by_pipeline(run_func):
                 UserWarning,
             )
             if run_func.__name__ in ["register", "create"]:
-                self_instance.sagemaker_session.init_step_arguments(self_instance)
+                self_instance.sagemaker_session.init_model_step_arguments(self_instance)
                 run_func(*args, **kwargs)
                 context = self_instance.sagemaker_session.context
                 self_instance.sagemaker_session.context = None
                 return context
 
-            run_func(*args, **kwargs)
-            return self_instance.sagemaker_session.context
+            return _StepArguments(retrieve_caller_name(self_instance), run_func, *args, **kwargs)
 
         return run_func(*args, **kwargs)
 
     return wrapper
+
+
+def retrieve_caller_name(job_instance):
+    """Convenience method for runnable_by_pipeline decorator
+
+    This function takes an instance of a job class and maps it
+    to the pipeline session function that creates the job request.
+
+    Args:
+        job_instance: A job class instance, one of the following
+            imported types
+    """
+
+    from sagemaker.processing import Processor
+    from sagemaker.estimator import EstimatorBase
+    from sagemaker.transformer import Transformer
+    from sagemaker.tuner import HyperparameterTuner
+    from sagemaker.automl.automl import AutoML
+
+    if isinstance(job_instance, Processor):
+        return "process"
+    if isinstance(job_instance, EstimatorBase):
+        return "train"
+    if isinstance(job_instance, Transformer):
+        return "transform"
+    if isinstance(job_instance, HyperparameterTuner):
+        return "create_tuning_job"
+    if isinstance(job_instance, AutoML):
+        return "auto_ml"
+
+    return None

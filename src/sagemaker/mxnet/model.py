@@ -14,21 +14,27 @@
 from __future__ import absolute_import
 
 import logging
+from typing import Union, Optional, List, Dict
 
 import packaging.version
 
 import sagemaker
-from sagemaker import image_uris
+from sagemaker import image_uris, ModelMetrics
 from sagemaker.deserializers import JSONDeserializer
+from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.fw_utils import (
     model_code_key_prefix,
     python_deprecation_warning,
     validate_version_or_image_args,
 )
+from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.mxnet import defaults
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import JSONSerializer
+from sagemaker.utils import to_string
+from sagemaker.workflow import is_pipeline_variable
+from sagemaker.workflow.entities import PipelineVariable
 
 logger = logging.getLogger("sagemaker")
 
@@ -77,20 +83,20 @@ class MXNetModel(FrameworkModel):
 
     def __init__(
         self,
-        model_data,
-        role,
-        entry_point,
-        framework_version=None,
-        py_version=None,
-        image_uri=None,
-        predictor_cls=MXNetPredictor,
-        model_server_workers=None,
+        model_data: Union[str, PipelineVariable],
+        role: str,
+        entry_point: str,
+        framework_version: str = _LOWEST_MMS_VERSION,
+        py_version: Optional[str] = None,
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
+        predictor_cls: callable = MXNetPredictor,
+        model_server_workers: Optional[Union[int, PipelineVariable]] = None,
         **kwargs
     ):
         """Initialize an MXNetModel.
 
         Args:
-            model_data (str): The S3 location of a SageMaker model data
+            model_data (str or PipelineVariable): The S3 location of a SageMaker model data
                 ``.tar.gz`` file.
             role (str): An AWS IAM role (either name or full ARN). The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker
@@ -102,13 +108,13 @@ class MXNetModel(FrameworkModel):
                 hosting. If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
             framework_version (str): MXNet version you want to use for executing
-                your model training code. Defaults to ``None``. Required unless
+                your model training code. Defaults to ``1.4.0``. Required unless
                 ``image_uri`` is provided.
             py_version (str): Python version you want to use for executing your
                 model training code. Defaults to ``None``. Required unless
                 ``image_uri`` is provided.
-            image_uri (str): A Docker image URI (default: None). If not specified,
-                a default image for MXNet will be used.
+            image_uri (str or PipelineVariable): A Docker image URI (default: None).
+                If not specified, a default image for MXNet will be used.
                 If ``framework_version`` or ``py_version`` are ``None``, then
                 ``image_uri`` is required. If ``image_uri`` is also ``None``, then a ``ValueError``
                 will be raised.
@@ -116,7 +122,7 @@ class MXNetModel(FrameworkModel):
                 to call to create a predictor with an endpoint name and
                 SageMaker ``Session``. If specified, ``deploy()`` returns the
                 result of invoking this function on the created endpoint name.
-            model_server_workers (int): Optional. The number of worker processes
+            model_server_workers (int or PipelineVariable): Optional. The number of worker processes
                 used by the inference server. If None, server will use one
                 worker per vCPU.
             **kwargs: Keyword arguments passed to the superclass
@@ -144,50 +150,74 @@ class MXNetModel(FrameworkModel):
 
     def register(
         self,
-        content_types,
-        response_types,
-        inference_instances=None,
-        transform_instances=None,
-        model_package_name=None,
-        model_package_group_name=None,
-        image_uri=None,
-        model_metrics=None,
-        metadata_properties=None,
-        marketplace_cert=False,
-        approval_status=None,
-        description=None,
-        drift_check_baselines=None,
-        customer_metadata_properties=None,
-        domain=None,
+        content_types: List[Union[str, PipelineVariable]],
+        response_types: List[Union[str, PipelineVariable]],
+        inference_instances: Optional[List[Union[str, PipelineVariable]]] = None,
+        transform_instances: Optional[List[Union[str, PipelineVariable]]] = None,
+        model_package_name: Optional[Union[str, PipelineVariable]] = None,
+        model_package_group_name: Optional[Union[str, PipelineVariable]] = None,
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
+        model_metrics: Optional[ModelMetrics] = None,
+        metadata_properties: Optional[MetadataProperties] = None,
+        marketplace_cert: bool = False,
+        approval_status: Optional[Union[str, PipelineVariable]] = None,
+        description: Optional[str] = None,
+        drift_check_baselines: Optional[DriftCheckBaselines] = None,
+        customer_metadata_properties: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        domain: Optional[Union[str, PipelineVariable]] = None,
+        sample_payload_url: Optional[Union[str, PipelineVariable]] = None,
+        task: Optional[Union[str, PipelineVariable]] = None,
+        framework: Optional[Union[str, PipelineVariable]] = None,
+        framework_version: Optional[Union[str, PipelineVariable]] = None,
+        nearest_model_name: Optional[Union[str, PipelineVariable]] = None,
+        data_input_configuration: Optional[Union[str, PipelineVariable]] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
         Args:
-            content_types (list): The supported MIME types for the input data.
-            response_types (list): The supported MIME types for the output data.
-            inference_instances (list): A list of the instance types that are used to
-                generate inferences in real-time (default: None).
-            transform_instances (list): A list of the instance types on which a transformation
-                job can be run or on which an endpoint can be deployed (default: None).
-            model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
-                using `model_package_name` makes the Model Package un-versioned (default: None).
-            model_package_group_name (str): Model Package Group name, exclusive to
-                `model_package_name`, using `model_package_group_name` makes the Model Package
+            content_types (list[str] or list[PipelineVariable]): The supported MIME types for
+                the input data.
+            response_types (list[str] or list[PipelineVariable]): The supported MIME types for
+                the output data.
+            inference_instances (list[str] or list[PipelineVariable]): A list of the instance types
+                that are used to generate inferences in real-time (default: None).
+            transform_instances (list[str] or list[PipelineVariable]): A list of the instance types
+                on which a transformation job can be run or on which an endpoint can be deployed
+                (default: None).
+            model_package_name (str or PipelineVariable): Model Package name, exclusive to
+                `model_package_group_name`, using `model_package_name` makes the Model Package
+                un-versioned (default: None).
+            model_package_group_name (str or PipelineVariable): Model Package Group name, exclusive
+                to `model_package_name`, using `model_package_group_name` makes the Model Package
                 versioned (default: None).
-            image_uri (str): Inference image uri for the container. Model class' self.image will
-                be used if it is None (default: None).
+            image_uri (str or PipelineVariable): Inference image uri for the container. Model class'
+                self.image will be used if it is None (default: None).
             model_metrics (ModelMetrics): ModelMetrics object (default: None).
             metadata_properties (MetadataProperties): MetadataProperties (default: None).
             marketplace_cert (bool): A boolean value indicating if the Model Package is certified
                 for AWS Marketplace (default: False).
-            approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
-                or "PendingManualApproval" (default: "PendingManualApproval").
+            approval_status (str or PipelineVariable): Model Approval Status, values can be
+                "Approved", "Rejected", or "PendingManualApproval"
+                (default: "PendingManualApproval").
             description (str): Model Package description (default: None).
             drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
-            customer_metadata_properties (dict[str, str]): A dictionary of key-value paired
-                metadata properties (default: None).
-            domain (str): Domain values can be "COMPUTER_VISION", "NATURAL_LANGUAGE_PROCESSING",
-                "MACHINE_LEARNING" (default: None).
+            customer_metadata_properties (dict[str, str] or dict[str, PipelineVariable]):
+                A dictionary of key-value paired metadata properties (default: None).
+            domain (str or PipelineVariable): Domain values can be "COMPUTER_VISION",
+                "NATURAL_LANGUAGE_PROCESSING", "MACHINE_LEARNING" (default: None).
+            sample_payload_url (str or PipelineVariable): The S3 path where the sample payload
+                is stored (default: None).
+            task (str or PipelineVariable): Task values which are supported by Inference Recommender
+                are "FILL_MASK", "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION",
+                "IMAGE_SEGMENTATION", "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
+            framework (str or PipelineVariable): Machine learning framework of the model package
+                container image (default: None).
+            framework_version (str or PipelineVariable): Framework version of the Model Package
+                Container Image (default: None).
+            nearest_model_name (str or PipelineVariable): Name of a pre-trained machine learning
+                benchmarked by Amazon SageMaker Inference Recommender (default: None).
+            data_input_configuration (str or PipelineVariable): Input object for the model
+                (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -202,6 +232,8 @@ class MXNetModel(FrameworkModel):
                 region_name=self.sagemaker_session.boto_session.region_name,
                 instance_type=instance_type,
             )
+        if not is_pipeline_variable(framework):
+            framework = (framework or self._framework_name).upper()
         return super(MXNetModel, self).register(
             content_types,
             response_types,
@@ -218,6 +250,12 @@ class MXNetModel(FrameworkModel):
             drift_check_baselines=drift_check_baselines,
             customer_metadata_properties=customer_metadata_properties,
             domain=domain,
+            sample_payload_url=sample_payload_url,
+            task=task,
+            framework=framework,
+            framework_version=framework_version or self.framework_version,
+            nearest_model_name=nearest_model_name,
+            data_input_configuration=data_input_configuration,
         )
 
     def prepare_container_def(
@@ -262,7 +300,9 @@ class MXNetModel(FrameworkModel):
         deploy_env.update(self._script_mode_env_vars())
 
         if self.model_server_workers:
-            deploy_env[MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = str(self.model_server_workers)
+            deploy_env[MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = to_string(
+                self.model_server_workers
+            )
         return sagemaker.container_def(
             deploy_image, self.repacked_model_data or self.model_data, deploy_env
         )

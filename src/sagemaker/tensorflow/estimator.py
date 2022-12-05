@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import logging
+from typing import Optional, Union, Dict
 
 from packaging import version
 
@@ -27,6 +28,7 @@ from sagemaker.transformer import Transformer
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.tensorflow.training_compiler.config import TrainingCompilerConfig
+from sagemaker.workflow.entities import PipelineVariable
 
 logger = logging.getLogger("sagemaker")
 
@@ -41,12 +43,12 @@ class TensorFlow(Framework):
 
     def __init__(
         self,
-        py_version=None,
-        framework_version=None,
-        model_dir=None,
-        image_uri=None,
-        distribution=None,
-        compiler_config=None,
+        py_version: Optional[str] = None,
+        framework_version: Optional[str] = None,
+        model_dir: Optional[Union[str, PipelineVariable]] = None,
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
+        distribution: Optional[Dict[str, str]] = None,
+        compiler_config: Optional[TrainingCompilerConfig] = None,
         **kwargs,
     ):
         """Initialize a ``TensorFlow`` estimator.
@@ -58,10 +60,10 @@ class TensorFlow(Framework):
                 training code. Defaults to ``None``. Required unless ``image_uri`` is provided.
                 List of supported versions:
                 https://github.com/aws/sagemaker-python-sdk#tensorflow-sagemaker-estimators.
-            model_dir (str): S3 location where the checkpoint data and models can be exported to
-                during training (default: None). It will be passed in the training script as one of
-                the command line arguments. If not specified, one is provided based on
-                your training configuration:
+            model_dir (str or PipelineVariable): S3 location where the checkpoint data and models
+                can be exported to during training (default: None). It will be passed in the
+                training script as one of the command line arguments. If not specified,
+                one is provided based on your training configuration:
 
                 * *distributed training with SMDistributed or MPI with Horovod* - ``/opt/ml/model``
                 * *single-machine training or distributed training without MPI* - \
@@ -71,9 +73,10 @@ class TensorFlow(Framework):
 
                 To disable having ``model_dir`` passed to your training script,
                 set ``model_dir=False``.
-            image_uri (str): If specified, the estimator will use this image for training and
-                hosting, instead of selecting the appropriate SageMaker official image based on
-                framework_version and py_version. It can be an ECR url or dockerhub image and tag.
+            image_uri (str or PipelineVariable): If specified, the estimator will use this image
+                for training and hosting, instead of selecting the appropriate SageMaker official
+                image based on framework_version and py_version.
+                It can be an ECR url or dockerhub image and tag.
 
                 Examples:
                     123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
@@ -183,25 +186,22 @@ class TensorFlow(Framework):
         self.py_version = py_version
         self.instance_type = instance_type
 
-        if distribution is not None:
-            fw.warn_if_parameter_server_with_multi_gpu(
-                training_instance_type=instance_type, distribution=distribution
-            )
-            fw.validate_smdistributed(
-                instance_type=instance_type,
-                framework_name=self._framework_name,
-                framework_version=framework_version,
-                py_version=py_version,
-                distribution=distribution,
-                image_uri=image_uri,
-            )
-
         if "enable_sagemaker_metrics" not in kwargs:
             # enable sagemaker metrics for TF v1.15 or greater:
             if framework_version and version.Version(framework_version) >= version.Version("1.15"):
                 kwargs["enable_sagemaker_metrics"] = True
 
         super(TensorFlow, self).__init__(image_uri=image_uri, **kwargs)
+        if distribution is not None:
+            distribution = fw.validate_distribution(
+                distribution,
+                self.instance_groups,
+                self._framework_name,
+                framework_version,
+                py_version,
+                image_uri,
+                kwargs,
+            )
         self.model_dir = model_dir
         self.distribution = distribution or {}
 
@@ -254,6 +254,8 @@ class TensorFlow(Framework):
 
     def _only_python_3_supported(self):
         """Placeholder docstring"""
+        if not self.framework_version:
+            return False
         return version.Version(self.framework_version) > self._HIGHEST_PYTHON_2_VERSION
 
     @classmethod

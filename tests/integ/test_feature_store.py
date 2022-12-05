@@ -22,8 +22,9 @@ import pandas as pd
 import pytest
 from pandas import DataFrame
 
+from sagemaker.feature_store.feature_definition import FractionalFeatureDefinition
 from sagemaker.feature_store.feature_group import FeatureGroup
-from sagemaker.feature_store.inputs import FeatureValue
+from sagemaker.feature_store.inputs import FeatureValue, FeatureParameter, TableFormatEnum
 from sagemaker.session import get_execution_role, Session
 from tests.integ.timeout import timeout
 
@@ -237,6 +238,133 @@ def test_create_feature_store(
     assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
 
 
+def test_create_feature_group_iceberg_table_format(
+    feature_store_session,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+
+    with cleanup_feature_group(feature_group):
+        feature_group.create(
+            s3_uri=offline_store_s3_uri,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+            table_format=TableFormatEnum.ICEBERG,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        table_format = feature_group.describe().get("OfflineStoreConfig").get("TableFormat")
+        assert table_format == "Iceberg"
+
+
+def test_create_feature_group_glue_table_format(
+    feature_store_session,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+
+    with cleanup_feature_group(feature_group):
+        feature_group.create(
+            s3_uri=offline_store_s3_uri,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+            table_format=TableFormatEnum.GLUE,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        table_format = feature_group.describe().get("OfflineStoreConfig").get("TableFormat")
+        assert table_format == "Glue"
+
+
+def test_update_feature_group(
+    feature_store_session,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+
+    with cleanup_feature_group(feature_group):
+        feature_group.create(
+            s3_uri=offline_store_s3_uri,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        new_feature_name = "new_feature"
+        new_features = [FractionalFeatureDefinition(feature_name=new_feature_name)]
+        feature_group.update(new_features)
+        _wait_for_feature_group_update(feature_group)
+        feature_definitions = feature_group.describe().get("FeatureDefinitions")
+        assert any([True for elem in feature_definitions if new_feature_name in elem.values()])
+
+
+def test_feature_metadata(
+    feature_store_session,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+
+    with cleanup_feature_group(feature_group):
+        feature_group.create(
+            s3_uri=offline_store_s3_uri,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        parameter_additions = [
+            FeatureParameter(key="key1", value="value1"),
+            FeatureParameter(key="key2", value="value2"),
+        ]
+        description = "test description"
+        feature_name = "feature1"
+        feature_group.update_feature_metadata(
+            feature_name=feature_name,
+            description=description,
+            parameter_additions=parameter_additions,
+        )
+        describe_feature_metadata = feature_group.describe_feature_metadata(
+            feature_name=feature_name
+        )
+        print(describe_feature_metadata)
+        assert description == describe_feature_metadata.get("Description")
+        assert 2 == len(describe_feature_metadata.get("Parameters"))
+
+        parameter_removals = ["key1"]
+        feature_group.update_feature_metadata(
+            feature_name=feature_name, parameter_removals=parameter_removals
+        )
+        describe_feature_metadata = feature_group.describe_feature_metadata(
+            feature_name=feature_name
+        )
+        assert description == describe_feature_metadata.get("Description")
+        assert 1 == len(describe_feature_metadata.get("Parameters"))
+
+
 def test_ingest_without_string_feature(
     feature_store_session,
     role,
@@ -302,6 +430,18 @@ def _wait_for_feature_group_create(feature_group: FeatureGroup):
         print(feature_group.describe())
         raise RuntimeError(f"Failed to create feature group {feature_group.name}")
     print(f"FeatureGroup {feature_group.name} successfully created.")
+
+
+def _wait_for_feature_group_update(feature_group: FeatureGroup):
+    status = feature_group.describe().get("LastUpdateStatus").get("Status")
+    while status == "InProgress":
+        print("Waiting for Feature Group Update")
+        time.sleep(5)
+        status = feature_group.describe().get("LastUpdateStatus").get("Status")
+    if status != "Successful":
+        print(feature_group.describe())
+        raise RuntimeError(f"Failed to update feature group {feature_group.name}")
+    print(f"FeatureGroup {feature_group.name} successfully updated.")
 
 
 @contextmanager

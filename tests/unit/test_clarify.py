@@ -29,6 +29,7 @@ from sagemaker.clarify import (
     SHAPConfig,
     TextConfig,
     ImageConfig,
+    _AnalysisConfigGenerator,
 )
 
 JOB_NAME_PREFIX = "my-prefix"
@@ -42,6 +43,7 @@ def test_uri():
 
 
 def test_data_config():
+    # facets in input dataset
     s3_data_input_path = "s3://path/to/input.csv"
     s3_output_path = "s3://path/to/output"
     label_name = "Label"
@@ -66,19 +68,124 @@ def test_data_config():
         "headers": headers,
         "label": "Label",
     }
+
     assert expected_config == data_config.get_config()
     assert s3_data_input_path == data_config.s3_data_input_path
     assert s3_output_path == data_config.s3_output_path
     assert "None" == data_config.s3_compression_type
     assert "FullyReplicated" == data_config.s3_data_distribution_type
 
+    # facets NOT in input dataset
+    joinsource = 5
+    facet_dataset_uri = "s3://path/to/facet.csv"
+    facet_headers = ["Age"]
+    predicted_label_dataset_uri = "s3://path/to/pred.csv"
+    predicted_label_headers = ["Label", "F1", "F2", "F3", "F4", "Age"]
+    predicted_label = "predicted_label"
+    excluded_columns = "F4"
+
+    data_config_no_facet = DataConfig(
+        s3_data_input_path=s3_data_input_path,
+        s3_output_path=s3_output_path,
+        label=label_name,
+        headers=headers,
+        dataset_type=dataset_type,
+        joinsource=joinsource,
+        facet_dataset_uri=facet_dataset_uri,
+        facet_headers=facet_headers,
+        predicted_label_dataset_uri=predicted_label_dataset_uri,
+        predicted_label_headers=predicted_label_headers,
+        predicted_label=predicted_label,
+        excluded_columns=excluded_columns,
+    )
+
+    expected_config_no_facet = {
+        "dataset_type": "text/csv",
+        "headers": headers,
+        "label": label_name,
+        "joinsource_name_or_index": joinsource,
+        "facet_dataset_uri": facet_dataset_uri,
+        "facet_headers": facet_headers,
+        "predicted_label_dataset_uri": predicted_label_dataset_uri,
+        "predicted_label_headers": predicted_label_headers,
+        "predicted_label": predicted_label,
+        "excluded_columns": excluded_columns,
+    }
+
+    assert expected_config_no_facet == data_config_no_facet.get_config()
+    assert joinsource == data_config_no_facet.analysis_config["joinsource_name_or_index"]
+    assert facet_dataset_uri == data_config_no_facet.facet_dataset_uri
+    assert facet_headers == data_config_no_facet.facet_headers
+    assert predicted_label_dataset_uri == data_config_no_facet.predicted_label_dataset_uri
+    assert predicted_label_headers == data_config_no_facet.predicted_label_headers
+    assert predicted_label == data_config_no_facet.predicted_label
+
+    excluded_columns = "F4"
+    data_config_excluded_cols = DataConfig(
+        s3_data_input_path=s3_data_input_path,
+        s3_output_path=s3_output_path,
+        label=label_name,
+        headers=headers,
+        dataset_type=dataset_type,
+        joinsource=joinsource,
+        excluded_columns=excluded_columns,
+    )
+
+    expected_config_excluded_cols = {
+        "dataset_type": "text/csv",
+        "headers": headers,
+        "label": label_name,
+        "joinsource_name_or_index": joinsource,
+        "excluded_columns": excluded_columns,
+    }
+
+    assert expected_config_excluded_cols == data_config_excluded_cols.get_config()
+    assert joinsource == data_config_excluded_cols.analysis_config["joinsource_name_or_index"]
+    assert excluded_columns == data_config_excluded_cols.excluded_columns
+
 
 def test_invalid_data_config():
+    # facets included in input dataset
     with pytest.raises(ValueError, match=r"^Invalid dataset_type"):
         DataConfig(
             s3_data_input_path="s3://bucket/inputpath",
             s3_output_path="s3://bucket/outputpath",
             dataset_type="whatnot_type",
+        )
+    # facets NOT included in input dataset
+    error_msg = r"^The parameter 'predicted_label' is not supported for dataset_type"
+    with pytest.raises(ValueError, match=error_msg):
+        DataConfig(
+            s3_data_input_path="s3://bucket/inputpath",
+            s3_output_path="s3://bucket/outputpath",
+            dataset_type="application/x-parquet",
+            predicted_label="label",
+        )
+    error_msg = r"^The parameter 'excluded_columns' is not supported for dataset_type"
+    with pytest.raises(ValueError, match=error_msg):
+        DataConfig(
+            s3_data_input_path="s3://bucket/inputpath",
+            s3_output_path="s3://bucket/outputpath",
+            dataset_type="application/x-image",
+            excluded_columns="excluded",
+        )
+    error_msg = r"^The parameters 'facet_dataset_uri' and 'facet_headers' are not supported for dataset_type"  # noqa E501  # pylint: disable=c0301
+    with pytest.raises(ValueError, match=error_msg):
+        DataConfig(
+            s3_data_input_path="s3://bucket/inputpath",
+            s3_output_path="s3://bucket/outputpath",
+            dataset_type="application/x-image",
+            facet_dataset_uri="facet_dataset/URI",
+            facet_headers="facet",
+        )
+    error_msg = r"^The parameters 'predicted_label_dataset_uri' and 'predicted_label_headers' are not supported for dataset_type"  # noqa E501  # pylint: disable=c0301
+    with pytest.raises(ValueError, match=error_msg):
+        DataConfig(
+            s3_data_input_path="s3://bucket/inputpath",
+            s3_output_path="s3://bucket/outputpath",
+            dataset_type="application/jsonlines",
+            predicted_label_dataset_uri="pred_dataset/URI",
+            predicted_label_headers="prediction",
         )
 
 
@@ -125,7 +232,8 @@ def test_invalid_bias_config():
 
     # Two facets but only one value
     with pytest.raises(
-        ValueError, match="The number of facet names doesn't match the number of facet values"
+        ValueError,
+        match="The number of facet names doesn't match the number of facet values",
     ):
         BiasConfig(
             label_values_or_threshold=[1],
@@ -188,7 +296,10 @@ def test_invalid_bias_config():
             {
                 "facet": [
                     {"name_or_index": "Feature1", "value_or_threshold": [1]},
-                    {"name_or_index": 1, "value_or_threshold": ["category1, category2"]},
+                    {
+                        "name_or_index": 1,
+                        "value_or_threshold": ["category1, category2"],
+                    },
                     {"name_or_index": "Feature3", "value_or_threshold": [0.5]},
                 ],
             },
@@ -240,6 +351,7 @@ def test_model_config():
     accept_type = "text/csv"
     content_type = "application/jsonlines"
     custom_attributes = "c000b4f9-df62-4c85-a0bf-7c525f9104a4"
+    target_model = "target_model_name"
     accelerator_type = "ml.eia1.medium"
     model_config = ModelConfig(
         model_name=model_name,
@@ -249,6 +361,7 @@ def test_model_config():
         content_type=content_type,
         custom_attributes=custom_attributes,
         accelerator_type=accelerator_type,
+        target_model=target_model,
     )
     expected_config = {
         "model_name": model_name,
@@ -258,6 +371,7 @@ def test_model_config():
         "content_type": content_type,
         "custom_attributes": custom_attributes,
         "accelerator_type": accelerator_type,
+        "target_model": target_model,
     }
     assert expected_config == model_config.get_predictor_config()
 
@@ -625,6 +739,41 @@ def pdp_config():
     return PDPConfig(features=["F1", "F2"], grid_resolution=20)
 
 
+def test_model_config_validations():
+    new_model_endpoint_definition = {
+        "model_name": "xgboost-model",
+        "instance_type": "ml.c5.xlarge",
+        "instance_count": 1,
+    }
+    existing_endpoint_definition = {"endpoint_name": "existing_endpoint"}
+
+    with pytest.raises(AssertionError):
+        # should be one of them
+        ModelConfig(
+            **new_model_endpoint_definition,
+            **existing_endpoint_definition,
+        )
+
+    with pytest.raises(AssertionError):
+        # should be one of them
+        ModelConfig(
+            endpoint_name_prefix="prefix",
+            **existing_endpoint_definition,
+        )
+
+    # success path for new model
+    assert ModelConfig(**new_model_endpoint_definition).predictor_config == {
+        "initial_instance_count": 1,
+        "instance_type": "ml.c5.xlarge",
+        "model_name": "xgboost-model",
+    }
+
+    # success path for existing endpoint
+    assert (
+        ModelConfig(**existing_endpoint_definition).predictor_config == existing_endpoint_definition
+    )
+
+
 @patch("sagemaker.utils.name_from_base", return_value=JOB_NAME)
 def test_pre_training_bias(
     name_from_base,
@@ -655,7 +804,10 @@ def test_pre_training_bias(
             "label_values_or_threshold": [1],
             "facet": [{"name_or_index": "F1"}],
             "group_variable": "F2",
-            "methods": {"pre_training_bias": {"methods": "all"}},
+            "methods": {
+                "report": {"name": "report", "title": "Analysis Report"},
+                "pre_training_bias": {"methods": "all"},
+            },
         }
         mock_method.assert_called_with(
             data_config,
@@ -718,7 +870,10 @@ def test_post_training_bias(
             "joinsource_name_or_index": "F4",
             "facet": [{"name_or_index": "F1"}],
             "group_variable": "F2",
-            "methods": {"post_training_bias": {"methods": "all"}},
+            "methods": {
+                "report": {"name": "report", "title": "Analysis Report"},
+                "post_training_bias": {"methods": "all"},
+            },
             "predictor": {
                 "model_name": "xgboost-model",
                 "instance_type": "ml.c5.xlarge",
@@ -759,6 +914,7 @@ def test_run_on_s3_analysis_config_file(
     processor_run, sagemaker_session, clarify_processor, data_config
 ):
     analysis_config = {
+        "dataset_type": "text/csv",
         "methods": {"post_training_bias": {"methods": "all"}},
     }
     with patch("sagemaker.clarify._upload_analysis_config", return_value=None) as mock_method:
@@ -876,7 +1032,10 @@ def _run_test_explain(
                 "grid_resolution": 20,
                 "top_k_features": 10,
             }
-        expected_analysis_config["methods"] = expected_explanation_configs
+        expected_analysis_config["methods"] = {
+            "report": {"name": "report", "title": "Analysis Report"},
+            **expected_explanation_configs,
+        }
         mock_method.assert_called_with(
             data_config,
             expected_analysis_config,
@@ -975,7 +1134,9 @@ def test_explainability_with_invalid_config(
         "initial_instance_count": 1,
     }
     with pytest.raises(
-        AttributeError, match="'NoneType' object has no attribute 'get_explainability_config'"
+        AttributeError,
+        match="analysis_config must have at least one working method: "
+        "One of the `pre_training_methods`, `post_training_methods`, `explainability_config`.",
     ):
         _run_test_explain(
             name_from_base,
@@ -1168,3 +1329,249 @@ def test_shap_with_image_config(
         expected_predictor_config,
         expected_image_config=expected_image_config,
     )
+
+
+def test_analysis_config_generator_for_explainability(data_config, model_config):
+    model_scores = ModelPredictedLabelConfig(
+        probability="pr",
+        label_headers=["success"],
+    )
+    actual = _AnalysisConfigGenerator.explainability(
+        data_config,
+        model_config,
+        model_scores,
+        SHAPConfig(),
+    )
+    expected = {
+        "dataset_type": "text/csv",
+        "headers": ["Label", "F1", "F2", "F3", "F4"],
+        "joinsource_name_or_index": "F4",
+        "label": "Label",
+        "methods": {
+            "report": {"name": "report", "title": "Analysis Report"},
+            "shap": {"save_local_shap_values": True, "use_logit": False},
+        },
+        "predictor": {
+            "initial_instance_count": 1,
+            "instance_type": "ml.c5.xlarge",
+            "label_headers": ["success"],
+            "model_name": "xgboost-model",
+            "probability": "pr",
+        },
+    }
+    assert actual == expected
+
+
+def test_analysis_config_generator_for_explainability_failing(data_config, model_config):
+    model_scores = ModelPredictedLabelConfig(
+        probability="pr",
+        label_headers=["success"],
+    )
+    with pytest.raises(
+        ValueError,
+        match="PDP features must be provided when ShapConfig is not provided",
+    ):
+        _AnalysisConfigGenerator.explainability(
+            data_config,
+            model_config,
+            model_scores,
+            PDPConfig(),
+        )
+
+    with pytest.raises(ValueError, match="Duplicate explainability configs are provided"):
+        _AnalysisConfigGenerator.explainability(
+            data_config,
+            model_config,
+            model_scores,
+            [SHAPConfig(), SHAPConfig()],
+        )
+
+    with pytest.raises(
+        AttributeError,
+        match="analysis_config must have at least one working method: "
+        "One of the "
+        "`pre_training_methods`, `post_training_methods`, `explainability_config`.",
+    ):
+        _AnalysisConfigGenerator.explainability(
+            data_config,
+            model_config,
+            model_scores,
+            [],
+        )
+
+
+def test_analysis_config_generator_for_bias_explainability(
+    data_config, data_bias_config, model_config
+):
+    model_predicted_label_config = ModelPredictedLabelConfig(
+        probability="pr",
+        label_headers=["success"],
+    )
+    actual = _AnalysisConfigGenerator.bias_and_explainability(
+        data_config,
+        model_config,
+        model_predicted_label_config,
+        [SHAPConfig(), PDPConfig()],
+        data_bias_config,
+        pre_training_methods="all",
+        post_training_methods="all",
+    )
+    expected = {
+        "dataset_type": "text/csv",
+        "facet": [{"name_or_index": "F1"}],
+        "group_variable": "F2",
+        "headers": ["Label", "F1", "F2", "F3", "F4"],
+        "joinsource_name_or_index": "F4",
+        "label": "Label",
+        "label_values_or_threshold": [1],
+        "methods": {
+            "pdp": {"grid_resolution": 15, "top_k_features": 10},
+            "post_training_bias": {"methods": "all"},
+            "pre_training_bias": {"methods": "all"},
+            "report": {"name": "report", "title": "Analysis Report"},
+            "shap": {"save_local_shap_values": True, "use_logit": False},
+        },
+        "predictor": {
+            "initial_instance_count": 1,
+            "instance_type": "ml.c5.xlarge",
+            "label_headers": ["success"],
+            "model_name": "xgboost-model",
+            "probability": "pr",
+        },
+    }
+    assert actual == expected
+
+
+def test_analysis_config_generator_for_bias_explainability_with_existing_endpoint(
+    data_config, data_bias_config
+):
+    model_config = ModelConfig(endpoint_name="existing_endpoint_name")
+    model_predicted_label_config = ModelPredictedLabelConfig(
+        probability="pr",
+        label_headers=["success"],
+    )
+    actual = _AnalysisConfigGenerator.bias_and_explainability(
+        data_config,
+        model_config,
+        model_predicted_label_config,
+        [SHAPConfig(), PDPConfig()],
+        data_bias_config,
+        pre_training_methods="all",
+        post_training_methods="all",
+    )
+    expected = {
+        "dataset_type": "text/csv",
+        "facet": [{"name_or_index": "F1"}],
+        "group_variable": "F2",
+        "headers": ["Label", "F1", "F2", "F3", "F4"],
+        "joinsource_name_or_index": "F4",
+        "label": "Label",
+        "label_values_or_threshold": [1],
+        "methods": {
+            "pdp": {"grid_resolution": 15, "top_k_features": 10},
+            "post_training_bias": {"methods": "all"},
+            "pre_training_bias": {"methods": "all"},
+            "report": {"name": "report", "title": "Analysis Report"},
+            "shap": {"save_local_shap_values": True, "use_logit": False},
+        },
+        "predictor": {
+            "label_headers": ["success"],
+            "endpoint_name": "existing_endpoint_name",
+            "probability": "pr",
+        },
+    }
+    assert actual == expected
+
+
+def test_analysis_config_generator_for_bias_pre_training(data_config, data_bias_config):
+    actual = _AnalysisConfigGenerator.bias_pre_training(
+        data_config, data_bias_config, methods="all"
+    )
+    expected = {
+        "dataset_type": "text/csv",
+        "facet": [{"name_or_index": "F1"}],
+        "group_variable": "F2",
+        "headers": ["Label", "F1", "F2", "F3", "F4"],
+        "joinsource_name_or_index": "F4",
+        "label": "Label",
+        "label_values_or_threshold": [1],
+        "methods": {
+            "report": {"name": "report", "title": "Analysis Report"},
+            "pre_training_bias": {"methods": "all"},
+        },
+    }
+    assert actual == expected
+
+
+def test_analysis_config_generator_for_bias_post_training(
+    data_config, data_bias_config, model_config
+):
+    model_predicted_label_config = ModelPredictedLabelConfig(
+        probability="pr",
+        label_headers=["success"],
+    )
+    actual = _AnalysisConfigGenerator.bias_post_training(
+        data_config,
+        data_bias_config,
+        model_predicted_label_config,
+        methods="all",
+        model_config=model_config,
+    )
+    expected = {
+        "dataset_type": "text/csv",
+        "facet": [{"name_or_index": "F1"}],
+        "group_variable": "F2",
+        "headers": ["Label", "F1", "F2", "F3", "F4"],
+        "joinsource_name_or_index": "F4",
+        "label": "Label",
+        "label_values_or_threshold": [1],
+        "methods": {
+            "report": {"name": "report", "title": "Analysis Report"},
+            "post_training_bias": {"methods": "all"},
+        },
+        "predictor": {
+            "initial_instance_count": 1,
+            "instance_type": "ml.c5.xlarge",
+            "label_headers": ["success"],
+            "model_name": "xgboost-model",
+            "probability": "pr",
+        },
+    }
+    assert actual == expected
+
+
+def test_analysis_config_generator_for_bias(data_config, data_bias_config, model_config):
+    model_predicted_label_config = ModelPredictedLabelConfig(
+        probability="pr",
+        label_headers=["success"],
+    )
+    actual = _AnalysisConfigGenerator.bias(
+        data_config,
+        data_bias_config,
+        model_config,
+        model_predicted_label_config,
+        pre_training_methods="all",
+        post_training_methods="all",
+    )
+    expected = {
+        "dataset_type": "text/csv",
+        "facet": [{"name_or_index": "F1"}],
+        "group_variable": "F2",
+        "headers": ["Label", "F1", "F2", "F3", "F4"],
+        "joinsource_name_or_index": "F4",
+        "label": "Label",
+        "label_values_or_threshold": [1],
+        "methods": {
+            "report": {"name": "report", "title": "Analysis Report"},
+            "post_training_bias": {"methods": "all"},
+            "pre_training_bias": {"methods": "all"},
+        },
+        "predictor": {
+            "initial_instance_count": 1,
+            "instance_type": "ml.c5.xlarge",
+            "label_headers": ["success"],
+            "model_name": "xgboost-model",
+            "probability": "pr",
+        },
+    }
+    assert actual == expected
