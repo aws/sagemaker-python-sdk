@@ -149,9 +149,10 @@ class TensorFlow(Framework):
 
                     This distribution strategy option is available for TensorFlow 2.9 and later in
                     the SageMaker Python SDK v2.xx.yy and later.
-                    To learn more about the mirrored strategy for TensorFlow, 
+                    To learn more about the mirrored strategy for TensorFlow,
                     see `TensorFlow Distributed Training
-                    <https://www.tensorflow.org/guide/distributed_training>`_ in the *TensorFlow documentation*.
+                    <https://www.tensorflow.org/guide/distributed_training>`_
+                    in the *TensorFlow documentation*.
 
                 **To enable MPI:**
 
