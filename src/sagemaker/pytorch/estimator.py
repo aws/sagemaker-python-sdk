@@ -210,7 +210,6 @@ class PyTorch(Framework):
                     To learn more, see `Training with parameter servers
                     <https://sagemaker.readthedocs.io/en/stable/frameworks/tensorflow/using_tf.html#training-with-parameter-servers>`_.
 
-
                 **To enable distributed training with
                 `SageMaker Training Compiler <https://docs.aws.amazon.com/sagemaker/latest/dg/training-compiler.html>`_
                 for PyTorch:**
