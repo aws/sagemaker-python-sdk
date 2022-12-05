@@ -34,6 +34,7 @@ HUGGING_FACE_FRAMEWORK = "huggingface"
 XGBOOST_FRAMEWORK = "xgboost"
 SKLEARN_FRAMEWORK = "sklearn"
 TRAINIUM_ALLOWED_FRAMEWORKS = "pytorch"
+INFERENCE_GRAVITON = "inference_graviton"
 
 
 @override_pipeline_parameter_var
@@ -75,8 +76,8 @@ def retrieve(
         accelerator_type (str): Elastic Inference accelerator type. For more, see
             https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html.
         image_scope (str): The image type, i.e. what it is used for.
-            Valid values: "training", "inference", "eia". If ``accelerator_type`` is set,
-            ``image_scope`` is ignored.
+            Valid values: "training", "inference", "inference_graviton", "eia".
+            If ``accelerator_type`` is set, ``image_scope`` is ignored.
         container_version (str): the version of docker image.
             Ideally the value of parameter should be created inside the framework.
             For custom use, see the list of supported container versions:
@@ -146,8 +147,9 @@ def retrieve(
         )
 
     if training_compiler_config and (framework == HUGGING_FACE_FRAMEWORK):
+        final_image_scope = image_scope
         config = _config_for_framework_and_scope(
-            framework + "-training-compiler", image_scope, accelerator_type
+            framework + "-training-compiler", final_image_scope, accelerator_type
         )
     else:
         _framework = framework
@@ -234,6 +236,7 @@ def retrieve(
     tag = _get_image_tag(
         container_version,
         distribution,
+        final_image_scope,
         framework,
         inference_tool,
         instance_type,
@@ -266,6 +269,7 @@ def _get_instance_type_family(instance_type):
 def _get_image_tag(
     container_version,
     distribution,
+    final_image_scope,
     framework,
     inference_tool,
     instance_type,
@@ -276,20 +280,29 @@ def _get_image_tag(
 ):
     """Return image tag based on framework, container, and compute configuration(s)."""
     instance_type_family = _get_instance_type_family(instance_type)
-    if (
-        framework in (XGBOOST_FRAMEWORK, SKLEARN_FRAMEWORK)
-        and instance_type_family in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
-    ):
-        version_to_arm64_tag_mapping = {
-            "xgboost": {
-                "1.5-1": "1.5-1-arm64",
-                "1.3-1": "1.3-1-arm64",
-            },
-            "sklearn": {
-                "1.0-1": "1.0-1-arm64-cpu-py3",
-            },
-        }
-        tag = version_to_arm64_tag_mapping[framework][version]
+    if framework in (XGBOOST_FRAMEWORK, SKLEARN_FRAMEWORK):
+        if instance_type_family and final_image_scope == INFERENCE_GRAVITON:
+            _validate_arg(
+                instance_type_family,
+                GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY,
+                "instance type",
+            )
+        if (
+            instance_type_family in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
+            or final_image_scope == INFERENCE_GRAVITON
+        ):
+            version_to_arm64_tag_mapping = {
+                "xgboost": {
+                    "1.5-1": "1.5-1-arm64",
+                    "1.3-1": "1.3-1-arm64",
+                },
+                "sklearn": {
+                    "1.0-1": "1.0-1-arm64-cpu-py3",
+                },
+            }
+            tag = version_to_arm64_tag_mapping[framework][version]
+        else:
+            tag = _format_tag(tag_prefix, processor, py_version, container_version, inference_tool)
     else:
         tag = _format_tag(tag_prefix, processor, py_version, container_version, inference_tool)
 
@@ -375,7 +388,7 @@ def _get_final_image_scope(framework, instance_type, image_scope):
         framework in GRAVITON_ALLOWED_FRAMEWORKS
         and _get_instance_type_family(instance_type) in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
     ):
-        return "inference_graviton"
+        return INFERENCE_GRAVITON
     if image_scope is None and framework in (XGBOOST_FRAMEWORK, SKLEARN_FRAMEWORK):
         # Preserves backwards compatibility with XGB/SKLearn configs which no
         # longer define top-level "scope" keys after introducing support for

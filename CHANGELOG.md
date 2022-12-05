@@ -1,5 +1,57 @@
 # Changelog
 
+## v2.119.0 (2022-12-03)
+
+### Features
+
+ * Add Code Owners file
+ * Added transform with monitoring pipeline step in transformer
+ * Update TF 2.9 and TF 2.10 inference DLCs
+ * make estimator accept json file as modelparallel config
+ * SageMaker Training Compiler does not support p4de instances
+ * Add support for SparkML v3.3
+
+### Bug Fixes and Other Changes
+
+ * Fix bug forcing uploaded tar to be named sourcedir
+ * Update local_requirements.txt PyYAML version
+ * refactoring : using with statement
+ * Allow Py 3.7 for MMS Test Docker env
+ * fix PySparkProcessor __init__ params type
+ * type hint of PySparkProcessor __init__
+ * Return ARM XGB/SKLearn tags if `image_scope` is `inference_graviton`
+ * Update scipy to 1.7.3 to support M1 development envs
+ * Fixing type hints for Spark processor that has instance type/count params in reverse order
+ * Add DeepAR ap-northeast-3 repository.
+ * Fix AsyncInferenceConfig documentation typo
+ * fix ml_inf to ml_inf1 in Neo multi-version support
+ * Fix type annotations
+ * add neo mvp region accounts
+
+## v2.118.0 (2022-12-01)
+
+### Features
+
+ * Update boto3 version to 1.26.20
+ * support table format option for create feature group.
+ * Support Amazon SageMaker Model Cards
+ * support monitoring alerts api
+ * Support Amazon SageMaker AutoMLStep
+
+### Bug Fixes and Other Changes
+
+ * integration test in anticipate of ProfilerConfig API changes
+ * Add more integ test logic for AutoMLStep
+ * update get_execution_role_arn to use role from DefaultSpaceSettings
+ * bug on AutoMLInput to allow PipelineVariable
+ * FinalMetricDataList is missing from the training job search resu…
+ * add integration tests for Model Card
+ * update AutoMLStep with cache improvement
+
+### Documentation Changes
+
+ * automlstep doc update
+
 ## v2.117.0 (2022-11-15)
 
 ### Features

@@ -36,6 +36,7 @@ from sagemaker.model_monitor import BatchTransformInput
 from sagemaker.model_monitor.data_capture_config import _MODEL_MONITOR_S3_PATH
 from sagemaker.model_monitor.data_capture_config import _DATA_CAPTURE_S3_PATH
 from sagemaker.model_monitor import CronExpressionGenerator
+from sagemaker.model_monitor.monitoring_alert import MonitoringAlertSummary
 from sagemaker.processing import ProcessingInput
 from sagemaker.processing import ProcessingOutput
 from sagemaker.tensorflow.model import TensorFlowModel
@@ -1487,6 +1488,63 @@ def test_byoc_monitor_monitoring_execution_interactions(
 
     constraint_violations = my_attached_monitor.latest_monitoring_constraint_violations()
     assert constraint_violations.body_dict["violations"][0]["feature_name"] == "store_and_fwd_flag"
+
+
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
+def test_default_monitor_monitoring_alerts(sagemaker_session, predictor):
+    my_default_monitor = DefaultModelMonitor(
+        role=ROLE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        volume_size_in_gb=VOLUME_SIZE_IN_GB,
+        max_runtime_in_seconds=MAX_RUNTIME_IN_SECONDS,
+        sagemaker_session=sagemaker_session,
+    )
+
+    output_s3_uri = os.path.join(
+        "s3://",
+        sagemaker_session.default_bucket(),
+        "integ-test-monitoring-output-bucket",
+        str(uuid.uuid4()),
+    )
+
+    my_default_monitor.create_monitoring_schedule(
+        endpoint_input=predictor.endpoint_name,
+        output_s3_uri=output_s3_uri,
+        schedule_cron_expression=HOURLY_CRON_EXPRESSION,
+        enable_cloudwatch_metrics=ENABLE_CLOUDWATCH_METRICS,
+    )
+    # No need to wait for execution
+    description = my_default_monitor.describe_schedule()
+    assert description["MonitoringScheduleName"] == my_default_monitor.monitoring_schedule_name
+    # list alerts
+    alerts, _ = my_default_monitor.list_monitoring_alerts(max_results=10)
+    # we know each monitoring schedule will have a default alert
+    assert len(alerts) > 0
+    alert: MonitoringAlertSummary = alerts[0]
+    alert_name = alert.alert_name
+    alert_status = alert.alert_status
+
+    my_default_monitor.update_monitoring_alert(
+        alert_name, data_points_to_alert=3, evaluation_period=5
+    )
+    alerts, _ = my_default_monitor.list_monitoring_alerts(max_results=10)
+    alert: MonitoringAlertSummary = alerts[0]
+    assert len(alerts) > 0
+    assert alert.alert_name == alert_name
+    assert alert.alert_status == alert_status
+    assert alert.data_points_to_alert == 3
+    assert alert.evaluation_period == 5
+
+    my_default_monitor.list_monitoring_alert_history(monitoring_alert_name=alert.alert_name)
+
+    _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
+
+    my_default_monitor.stop_monitoring_schedule()
+    my_default_monitor.delete_monitoring_schedule()
 
 
 def _wait_for_schedule_changes_to_apply(monitor):
