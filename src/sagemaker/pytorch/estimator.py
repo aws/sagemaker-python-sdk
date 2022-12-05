@@ -231,7 +231,7 @@ class PyTorch(Framework):
                         When you use this PyTorch XLA option for distributed training strategy,
                         you must add the ``compiler_config`` parameter and activate SageMaker
                         Training Compiler.
-                        
+
                 compiler_config (:class:`~sagemaker.pytorch.TrainingCompilerConfig`):
                 Configures SageMaker Training Compiler to accelerate training.
 
