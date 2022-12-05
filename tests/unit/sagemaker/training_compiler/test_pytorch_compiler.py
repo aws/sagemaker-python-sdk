@@ -81,9 +81,7 @@ def fixture_sagemaker_session():
     return session
 
 
-def _get_full_gpu_image_uri(
-    version, instance_type, training_compiler_config
-):
+def _get_full_gpu_image_uri(version, instance_type, training_compiler_config):
     return image_uris.retrieve(
         "pytorch-training-compiler",
         REGION,
@@ -96,13 +94,9 @@ def _get_full_gpu_image_uri(
     )
 
 
-def _create_train_job(
-    version, instance_type, training_compiler_config, instance_count=1
-):
+def _create_train_job(version, instance_type, training_compiler_config, instance_count=1):
     return {
-        "image_uri": _get_full_gpu_image_uri(
-            version, instance_type, training_compiler_config
-        ),
+        "image_uri": _get_full_gpu_image_uri(version, instance_type, training_compiler_config),
         "input_mode": "File",
         "input_config": [
             {
@@ -150,15 +144,11 @@ def _create_train_job(
                 "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
             }
         ],
-        "profiler_config": {
-            "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
-        },
+        "profiler_config": {"S3OutputPath": "s3://{}/".format(BUCKET_NAME)},
     }
 
 
-def test_unsupported_BYOC(
-    pytorch_training_compiler_version,
-):
+def test_unsupported_BYOC(pytorch_training_compiler_version,):
     byoc = (
         "1.dkr.ecr.us-east-1.amazonaws.com/pytorch-trcomp-training:"
         "1.12.0-"
@@ -179,10 +169,7 @@ def test_unsupported_BYOC(
         ).fit()
 
 
-def test_unsupported_cpu_instance(
-    cpu_instance_type,
-    pytorch_training_compiler_version,
-):
+def test_unsupported_cpu_instance(cpu_instance_type, pytorch_training_compiler_version):
     with pytest.raises(ValueError):
         PyTorch(
             py_version="py38",
@@ -198,8 +185,7 @@ def test_unsupported_cpu_instance(
 
 @pytest.mark.parametrize("unsupported_gpu_instance_class", UNSUPPORTED_GPU_INSTANCE_CLASSES)
 def test_unsupported_gpu_instance(
-    unsupported_gpu_instance_class,
-    pytorch_training_compiler_version,
+    unsupported_gpu_instance_class, pytorch_training_compiler_version
 ):
     with pytest.raises(ValueError):
         PyTorch(
@@ -228,9 +214,7 @@ def test_unsupported_framework_version():
         ).fit()
 
 
-def test_unsupported_python_2(
-    pytorch_training_compiler_version,
-):
+def test_unsupported_python_2(pytorch_training_compiler_version,):
     with pytest.raises(ValueError):
         PyTorch(
             py_version="py27",
@@ -244,9 +228,7 @@ def test_unsupported_python_2(
         ).fit()
 
 
-def test_unsupported_instance_group(
-    pytorch_training_compiler_version,
-):
+def test_unsupported_instance_group(pytorch_training_compiler_version,):
     if Version(pytorch_training_compiler_version) < Version("1.12"):
         pytest.skip("This test is intended for PyTorch 1.12 and above")
     with pytest.raises(ValueError):
@@ -264,9 +246,7 @@ def test_unsupported_instance_group(
         ).fit()
 
 
-def test_unsupported_distribution(
-    pytorch_training_compiler_version,
-):
+def test_unsupported_distribution(pytorch_training_compiler_version,):
     if Version(pytorch_training_compiler_version) < Version("1.12"):
         pytest.skip("This test is intended for PyTorch 1.12 and above")
     with pytest.raises(ValueError):
@@ -316,11 +296,7 @@ def test_unsupported_distribution(
 @patch("time.time", return_value=TIME)
 @pytest.mark.parametrize("instance_class", SUPPORTED_GPU_INSTANCE_CLASSES)
 def test_pytorchxla_distribution(
-    time,
-    name_from_base,
-    sagemaker_session,
-    pytorch_training_compiler_version,
-    instance_class,
+    time, name_from_base, sagemaker_session, pytorch_training_compiler_version, instance_class
 ):
     if Version(pytorch_training_compiler_version) < Version("1.12"):
         pytest.skip("This test is intended for PyTorch 1.12 and above")
@@ -350,10 +326,7 @@ def test_pytorchxla_distribution(
     assert boto_call_names == ["resource"]
 
     expected_train_args = _create_train_job(
-        pytorch_training_compiler_version,
-        instance_type,
-        compiler_config,
-        instance_count=2,
+        pytorch_training_compiler_version, instance_type, compiler_config, instance_count=2
     )
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
     expected_train_args["enable_sagemaker_metrics"] = False
@@ -377,11 +350,7 @@ def test_pytorchxla_distribution(
 @patch("time.time", return_value=TIME)
 @pytest.mark.parametrize("instance_class", SUPPORTED_GPU_INSTANCE_CLASSES)
 def test_default_compiler_config(
-    time,
-    name_from_base,
-    sagemaker_session,
-    pytorch_training_compiler_version,
-    instance_class,
+    time, name_from_base, sagemaker_session, pytorch_training_compiler_version, instance_class
 ):
     compiler_config = TrainingCompilerConfig()
     instance_type = f"ml.{instance_class}.xlarge"
@@ -408,9 +377,7 @@ def test_default_compiler_config(
     assert boto_call_names == ["resource"]
 
     expected_train_args = _create_train_job(
-        pytorch_training_compiler_version,
-        instance_type,
-        compiler_config,
+        pytorch_training_compiler_version, instance_type, compiler_config
     )
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
     expected_train_args["enable_sagemaker_metrics"] = False
@@ -432,10 +399,7 @@ def test_default_compiler_config(
 @patch("sagemaker.estimator.name_from_base", return_value=JOB_NAME)
 @patch("time.time", return_value=TIME)
 def test_debug_compiler_config(
-    time,
-    name_from_base,
-    sagemaker_session,
-    pytorch_training_compiler_version,
+    time, name_from_base, sagemaker_session, pytorch_training_compiler_version
 ):
     compiler_config = TrainingCompilerConfig(debug=True)
 
@@ -461,9 +425,7 @@ def test_debug_compiler_config(
     assert boto_call_names == ["resource"]
 
     expected_train_args = _create_train_job(
-        pytorch_training_compiler_version,
-        INSTANCE_TYPE,
-        compiler_config,
+        pytorch_training_compiler_version, INSTANCE_TYPE, compiler_config
     )
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
     expected_train_args["enable_sagemaker_metrics"] = False
@@ -485,10 +447,7 @@ def test_debug_compiler_config(
 @patch("sagemaker.estimator.name_from_base", return_value=JOB_NAME)
 @patch("time.time", return_value=TIME)
 def test_disable_compiler_config(
-    time,
-    name_from_base,
-    sagemaker_session,
-    pytorch_training_compiler_version,
+    time, name_from_base, sagemaker_session, pytorch_training_compiler_version
 ):
     compiler_config = TrainingCompilerConfig(enabled=False)
 
@@ -514,9 +473,7 @@ def test_disable_compiler_config(
     assert boto_call_names == ["resource"]
 
     expected_train_args = _create_train_job(
-        pytorch_training_compiler_version,
-        INSTANCE_TYPE,
-        compiler_config,
+        pytorch_training_compiler_version, INSTANCE_TYPE, compiler_config
     )
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
     expected_train_args["enable_sagemaker_metrics"] = False
@@ -536,11 +493,7 @@ def test_disable_compiler_config(
 @pytest.mark.parametrize(
     ["compiler_enabled", "debug_enabled"], [(True, False), (True, True), (False, False)]
 )
-def test_attach(
-    sagemaker_session,
-    compiler_enabled,
-    debug_enabled,
-):
+def test_attach(sagemaker_session, compiler_enabled, debug_enabled):
     training_image = (
         "1.dkr.ecr.us-east-1.amazonaws.com/pytorch-trcomp-training:"
         "1.12.0-"
@@ -600,8 +553,7 @@ def test_attach(
 
 
 def test_register_hf_pytorch_model_auto_infer_framework(
-    sagemaker_session,
-    pytorch_training_compiler_version,
+    sagemaker_session, pytorch_training_compiler_version
 ):
 
     model_package_group_name = "test-pt-register-model"
@@ -637,7 +589,7 @@ def test_register_hf_pytorch_model_auto_infer_framework(
                 "ModelDataUrl": ANY,
                 "Framework": "PYTORCH",
                 "FrameworkVersion": pytorch_training_compiler_version,
-            },
+            }
         ],
         "content_types": content_types,
         "response_types": response_types,
