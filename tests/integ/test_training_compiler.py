@@ -50,8 +50,7 @@ def imagenet_val_set(request, sagemaker_session, tmpdir_factory):
         key_prefix="Imagenet/TFRecords/validation",
     )
     train_input = sagemaker_session.upload_data(
-        path=local_path,
-        key_prefix="integ-test-data/trcomp/tensorflow/imagenet/val",
+        path=local_path, key_prefix="integ-test-data/trcomp/tensorflow/imagenet/val"
     )
     return train_input
 
@@ -149,11 +148,11 @@ def test_pytorch(
     Test the PyTorch estimator
     """
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        data_path = os.path.join(DATA_DIR, "huggingface_byoc")
 
         hf = PyTorch(
             py_version="py38",
-            entry_point=os.path.join(data_path, "run_glue.py"),
+            source_dir=os.path.join(DATA_DIR, "huggingface_byoc"),
+            entry_point="run_glue.py",
             role="SageMakerRole",
             framework_version=pytorch_training_compiler_latest_version,
             instance_count=instance_count,
@@ -217,10 +216,7 @@ def test_huggingface_tensorflow(
 
 @pytest.mark.release
 def test_tensorflow(
-    sagemaker_session,
-    gpu_instance_type,
-    tensorflow_training_latest_version,
-    imagenet_val_set,
+    sagemaker_session, gpu_instance_type, tensorflow_training_latest_version, imagenet_val_set
 ):
     """
     Test the TensorFlow estimator
@@ -272,8 +268,4 @@ def test_tensorflow(
             compiler_config=TFTrainingCompilerConfig(),
         )
 
-        tf.fit(
-            inputs=imagenet_val_set,
-            logs=True,
-            wait=True,
-        )
+        tf.fit(inputs=imagenet_val_set, logs=True, wait=True)
