@@ -23,6 +23,7 @@ import pathlib
 import logging
 from textwrap import dedent
 from typing import Dict, List, Optional, Union
+from copy import copy
 
 import attr
 
@@ -1829,9 +1830,7 @@ class FrameworkProcessor(ScriptProcessor):
             inputs = []
 
         # make a shallow copy of user inputs
-        patched_inputs = []
-        for user_input in inputs:
-            patched_inputs.append(user_input)
+        patched_inputs = copy(inputs)
         patched_inputs.append(
             ProcessingInput(
                 input_name="code",
