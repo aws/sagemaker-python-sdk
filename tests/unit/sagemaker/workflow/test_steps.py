@@ -918,7 +918,7 @@ def test_create_model_step_with_model_pipeline(tfo, time, sagemaker_session):
                 },
                 {
                     "Environment": {"SAGEMAKER_DEFAULT_INVOCATIONS_ACCEPT": "text/csv"},
-                    "Image": "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-sparkml-serving:2.4",
+                    "Image": "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-sparkml-serving:3.3",
                     "ModelDataUrl": "s3://bucket/model_2.tar.gz",
                 },
             ],
