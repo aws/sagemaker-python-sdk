@@ -582,12 +582,31 @@ def test_fit_mwms_unsupported(time, strftime, sagemaker_session):
             source_dir=DATA_DIR,
             distribution=DISTRIBUTION_MWMS_ENABLED,
         )
-
         inputs = "s3://mybucket/train"
         tf.fit(inputs=inputs)
 
-    assert 'only supported from' in str(error)
-    assert 'but received' in str(error)
+    assert "only supported from" in str(error)
+    assert "but received" in str(error)
+
+    with pytest.raises(ValueError) as error:
+        tf = TensorFlow(
+            entry_point=SCRIPT_FILE,
+            framework_version="2.11",
+            py_version="py39",
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            instance_type=INSTANCE_TYPE,
+            instance_count=1,
+            source_dir=DATA_DIR,
+            distribution={
+                **DISTRIBUTION_MWMS_ENABLED,
+                **{"smdistributed": {"dataparallel": {"enabled": True}}},
+            },
+        )
+        inputs = "s3://mybucket/train"
+        tf.fit(inputs=inputs)
+    assert "is currently not supported" in str(error)
+    assert "following distribution strategies" in str(error)
 
 
 def test_hyperparameters_no_model_dir(
@@ -623,10 +642,7 @@ def test_tf_heterogeneous_cluster_distribution_config(
         framework_version=tensorflow_training_version,
         py_version=tensorflow_training_py_version,
         instance_groups=[training_group],
-        distribution={
-            "mpi": {"enabled": True},
-            "instance_groups": [training_group],
-        },
+        distribution={"mpi": {"enabled": True}, "instance_groups": [training_group]},
     )
     assert tf.distribution == expected_return
 

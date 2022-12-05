@@ -3168,7 +3168,7 @@ class Framework(EstimatorBase):
                     )
                     self.debugger_hook_config = False
 
-    def _validate_mwms_config(self):
+    def _validate_mwms_config(self, distribution):
         """Validate Multi Worker Mirrored Strategy configuration."""
         minimum_supported_framework_version = {
                                                 'tensorflow': {'framework_version': '2.9'},
@@ -3188,6 +3188,12 @@ class Framework(EstimatorBase):
                 "with {} frameworks but received {}".format(
                     minimum_supported_framework_version.keys(), self._framework_name
                 )
+            )
+        unsupported_distributions = ["smdistributed", "parameter_server"]
+        if any(i in distribution for i in unsupported_distributions):
+            raise ValueError(
+                "Multi Worker Mirrored Strategy is currently not supported with the"
+                " following distribution strategies: {}".format(unsupported_distributions)
             )
 
     def _model_source_dir(self):
@@ -3552,6 +3558,12 @@ class Framework(EstimatorBase):
                 distribution_config[self.SM_DDP_CUSTOM_MPI_OPTIONS] = smdistributed[
                     "dataparallel"
                 ].get("custom_mpi_options", "")
+
+        if "multi_worker_mirrored_strategy" in distribution:
+            mwms_enabled = distribution.get("multi_worker_mirrored_strategy").get("enabled", False)
+            if mwms_enabled:
+                self._validate_mwms_config(distribution)
+            distribution_config[self.LAUNCH_MWMS_ENV_NAME] = mwms_enabled
 
         if not (mpi_enabled or smdataparallel_enabled) and distribution_config.get(
             "sagemaker_distribution_instance_groups"
