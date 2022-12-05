@@ -114,11 +114,12 @@ def get_code_hash(step: Entity) -> str:
     if isinstance(step, ProcessingStep) and step.step_args:
         kwargs = step.step_args.func_kwargs
         source_dir = kwargs.get("source_dir")
+        submit_class = kwargs.get("submit_class")
         dependencies = get_processing_dependencies(
             [
                 kwargs.get("dependencies"),
                 kwargs.get("submit_py_files"),
-                kwargs.get("submit_class"),
+                [submit_class] if submit_class else None,
                 kwargs.get("submit_jars"),
                 kwargs.get("submit_files"),
             ]
@@ -168,7 +169,7 @@ def get_processing_code_hash(code: str, source_dir: str, dependencies: List[str]
         str: A hash string representing the unique code artifact(s) for the step
     """
 
-    # FrameworkProcessor
+    # If FrameworkProcessor contains source_dir
     if source_dir:
         source_dir_url = urlparse(source_dir)
         if source_dir_url.scheme == "" or source_dir_url.scheme == "file":
@@ -400,5 +401,5 @@ def execute_job_functions(step_args: _StepArguments):
     """
 
     chained_args = step_args.func(*step_args.func_args, **step_args.func_kwargs)
-    if chained_args:
+    if isinstance(chained_args, _StepArguments):
         execute_job_functions(chained_args)
