@@ -89,7 +89,7 @@ def test_graviton_pytorch(graviton_pytorch_version):
     _test_graviton_framework_uris("pytorch", graviton_pytorch_version)
 
 
-def test_graviton_xgboost(graviton_xgboost_versions):
+def test_graviton_xgboost_instance_type_specified(graviton_xgboost_versions):
     for xgboost_version in graviton_xgboost_versions:
         for instance_type in GRAVITON_INSTANCE_TYPES:
             uri = image_uris.retrieve(
@@ -102,6 +102,33 @@ def test_graviton_xgboost(graviton_xgboost_versions):
             assert expected == uri
 
 
+def test_graviton_xgboost_image_scope_specified(graviton_xgboost_versions):
+    for xgboost_version in graviton_xgboost_versions:
+        for instance_type in GRAVITON_INSTANCE_TYPES:
+            uri = image_uris.retrieve(
+                "xgboost", "us-west-2", version=xgboost_version, image_scope="inference_graviton"
+            )
+            expected = (
+                "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:"
+                f"{xgboost_version}-arm64"
+            )
+            assert expected == uri
+
+
+def test_graviton_xgboost_image_scope_specified_x86_instance(graviton_xgboost_versions):
+    for xgboost_version in graviton_xgboost_versions:
+        for instance_type in GRAVITON_INSTANCE_TYPES:
+            with pytest.raises(ValueError) as error:
+                image_uris.retrieve(
+                    "xgboost",
+                    "us-west-2",
+                    version=xgboost_version,
+                    image_scope="inference_graviton",
+                    instance_type="ml.m5.xlarge",
+                )
+            assert "Unsupported instance type: m5." in str(error)
+
+
 def test_graviton_xgboost_unsupported_version(graviton_xgboost_unsupported_versions):
     for xgboost_version in graviton_xgboost_unsupported_versions:
         for instance_type in GRAVITON_INSTANCE_TYPES:
@@ -112,11 +139,24 @@ def test_graviton_xgboost_unsupported_version(graviton_xgboost_unsupported_versi
             assert f"Unsupported xgboost version: {xgboost_version}." in str(error)
 
 
-def test_graviton_sklearn(graviton_sklearn_versions):
+def test_graviton_sklearn_instance_type_specified(graviton_sklearn_versions):
     for sklearn_version in graviton_sklearn_versions:
         for instance_type in GRAVITON_INSTANCE_TYPES:
             uri = image_uris.retrieve(
                 "sklearn", "us-west-2", version=sklearn_version, instance_type=instance_type
+            )
+            expected = (
+                "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:"
+                f"{sklearn_version}-arm64-cpu-py3"
+            )
+            assert expected == uri
+
+
+def test_graviton_sklearn_image_scope_specified(graviton_sklearn_versions):
+    for sklearn_version in graviton_sklearn_versions:
+        for instance_type in GRAVITON_INSTANCE_TYPES:
+            uri = image_uris.retrieve(
+                "sklearn", "us-west-2", version=sklearn_version, image_scope="inference_graviton"
             )
             expected = (
                 "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:"
@@ -136,6 +176,20 @@ def test_graviton_sklearn_unsupported_version(graviton_sklearn_unsupported_versi
             # the default. See: image_uris._validate_version_and_set_if_needed
             expected = "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.0-1-arm64-cpu-py3"
             assert expected == uri
+
+
+def test_graviton_sklearn_image_scope_specified_x86_instance(graviton_sklearn_unsupported_versions):
+    for sklearn_version in graviton_sklearn_unsupported_versions:
+        for instance_type in GRAVITON_INSTANCE_TYPES:
+            with pytest.raises(ValueError) as error:
+                image_uris.retrieve(
+                    "sklearn",
+                    "us-west-2",
+                    version=sklearn_version,
+                    image_scope="inference_graviton",
+                    instance_type="ml.m5.xlarge",
+                )
+            assert "Unsupported instance type: m5." in str(error)
 
 
 def _expected_graviton_framework_uri(framework, version, region):

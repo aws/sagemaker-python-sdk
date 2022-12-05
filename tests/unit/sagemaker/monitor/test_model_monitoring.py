@@ -14,11 +14,14 @@ from __future__ import absolute_import
 
 import copy
 import time
+from typing import Union
 
+import sagemaker
 import pytest
 from mock import Mock, MagicMock
 
 from sagemaker.model_monitor import (
+    ModelMonitor,
     Constraints,
     CronExpressionGenerator,
     DefaultModelMonitor,
@@ -26,6 +29,12 @@ from sagemaker.model_monitor import (
     BatchTransformInput,
     ModelQualityMonitor,
     Statistics,
+)
+from sagemaker.model_monitor.monitoring_alert import (
+    MonitoringAlertSummary,
+    MonitoringAlertHistorySummary,
+    MonitoringAlertActions,
+    ModelDashboardIndicatorAction,
 )
 
 from sagemaker.network import NetworkConfig
@@ -374,6 +383,28 @@ NEW_MODEL_QUALITY_JOB_DEFINITION = {
     "StoppingCondition": NEW_STOP_CONDITION,
 }
 
+# For alert API
+MONITORING_ALERT_SUMMARY = {
+    "MonitoringAlertName": "alert-name",
+    "CreationTime": "2022-10-04T13:00:00Z",
+    "LastModifiedTime": "2022-10-04T13:00:00Z",
+    "AlertStatus": "InAlert",
+    "DatapointsToAlert": 1,
+    "EvaluationPeriod": 1,
+    "Actions": {
+        "ModelDashboardIndicator": {
+            "Enabled": True,
+        }
+    },
+}
+
+MONITORING_ALERT_HISTORY_SUMMARY = {
+    "MonitoringScheduleName": "schedule-name",
+    "MonitoringAlertName": "alert-name",
+    "CreationTime": "2022-10-04T13:00:00Z",
+    "AlertStatus": "Ok",
+}
+
 
 # TODO-reinvent-2019: Continue to flesh these out.
 @pytest.fixture()
@@ -393,6 +424,24 @@ def sagemaker_session():
     session_mock.download_data = Mock(name="download_data")
     session_mock.describe_monitoring_schedule = Mock(
         name="describe_monitoring_schedule", return_value=MONITORING_SCHEDULE_DESC
+    )
+    session_mock.list_monitoring_alerts = Mock(
+        name="list_monitoring_alerts",
+        return_value={
+            "MonitoringAlertSummaries": [
+                MONITORING_ALERT_SUMMARY,
+            ],
+            "NextToken": "next-token",
+        },
+    )
+    session_mock.list_monitoring_alert_history = Mock(
+        nam="list_monitoring_alert_history",
+        return_value={
+            "MonitoringAlertHistory": [
+                MONITORING_ALERT_HISTORY_SUMMARY,
+            ],
+            "NextToken": "next-token",
+        },
     )
     session_mock.expand_role.return_value = ROLE
     return session_mock
@@ -523,6 +572,37 @@ def test_data_quality_monitor(data_quality_monitor, sagemaker_session):
     _test_data_quality_monitor_update_schedule(
         data_quality_monitor=data_quality_monitor,
         sagemaker_session=sagemaker_session,
+    )
+
+    # update monitoring alert
+    _test_monitor_update_alert(
+        quality_monitor=data_quality_monitor,
+        sagemaker_session=sagemaker_session,
+        alert_name="my-alert",
+        data_points_to_alert=3,
+        eval_period=10,
+    )
+
+    # list monitoring alerts
+    _test_list_monitoring_alerts(
+        quality_monitor=data_quality_monitor,
+        sagemaker_session=sagemaker_session,
+        next_token="next-token",
+        max_results=100,
+    )
+
+    # list monitoring alert history
+    _test_list_monitoring_alert_history(
+        quality_monitor=data_quality_monitor,
+        sagemaker_session=sagemaker_session,
+        monitoring_alert_name="my-alert",
+        sort_by="CreationTime",
+        sort_order="Descending",
+        status_equals="Ok",
+        creation_time_before="before",
+        creation_time_after="after",
+        next_token="next-token",
+        max_results=100,
     )
 
     # delete schedule
@@ -942,6 +1022,105 @@ def _test_data_quality_monitor_delete_schedule(data_quality_monitor, sagemaker_s
     )
 
 
+def _test_monitor_update_alert(
+    quality_monitor: ModelMonitor,
+    sagemaker_session: sagemaker.session.Session,
+    alert_name: str,
+    data_points_to_alert: int,
+    eval_period: int,
+):
+    quality_monitor.update_monitoring_alert(
+        monitoring_alert_name=alert_name,
+        data_points_to_alert=data_points_to_alert,
+        evaluation_period=eval_period,
+    )
+
+    sagemaker_session.update_monitoring_alert.assert_called_with(
+        monitoring_schedule_name=quality_monitor.monitoring_schedule_name,
+        monitoring_alert_name=alert_name,
+        data_points_to_alert=data_points_to_alert,
+        evaluation_period=eval_period,
+    )
+
+
+def _test_list_monitoring_alerts(
+    quality_monitor: Union[DefaultModelMonitor, ModelQualityMonitor],
+    sagemaker_session: sagemaker.session.Session,
+    next_token: str,
+    max_results: int,
+):
+    alerts, next_token = quality_monitor.list_monitoring_alerts(
+        next_token=next_token,
+        max_results=max_results,
+    )
+
+    sagemaker_session.list_monitoring_alerts.assert_called_with(
+        monitoring_schedule_name=quality_monitor.monitoring_schedule_name,
+        next_token=next_token,
+        max_results=max_results,
+    )
+
+    assert len(alerts) == 1
+    assert next_token == "next-token"
+    assert alerts[0] == MonitoringAlertSummary(
+        alert_name=MONITORING_ALERT_SUMMARY["MonitoringAlertName"],
+        creation_time=MONITORING_ALERT_SUMMARY["CreationTime"],
+        last_modified_time=MONITORING_ALERT_SUMMARY["LastModifiedTime"],
+        alert_status=MONITORING_ALERT_SUMMARY["AlertStatus"],
+        data_points_to_alert=MONITORING_ALERT_SUMMARY["DatapointsToAlert"],
+        evaluation_period=MONITORING_ALERT_SUMMARY["EvaluationPeriod"],
+        actions=MonitoringAlertActions(
+            model_dashboard_indicator=ModelDashboardIndicatorAction(
+                enabled=MONITORING_ALERT_SUMMARY["Actions"]["ModelDashboardIndicator"]["Enabled"]
+            )
+        ),
+    )
+
+
+def _test_list_monitoring_alert_history(
+    quality_monitor: Union[DefaultModelMonitor, ModelQualityMonitor],
+    sagemaker_session: sagemaker.session.Session,
+    monitoring_alert_name: str,
+    sort_by: str,
+    sort_order: str,
+    next_token: str,
+    max_results: int,
+    creation_time_before: str,
+    creation_time_after: str,
+    status_equals: str,
+):
+    alert_history, next_token = quality_monitor.list_monitoring_alert_history(
+        monitoring_alert_name=monitoring_alert_name,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        creation_time_before=creation_time_before,
+        creation_time_after=creation_time_after,
+        status_equals=status_equals,
+        next_token=next_token,
+        max_results=max_results,
+    )
+
+    sagemaker_session.list_monitoring_alert_history.assert_called_with(
+        monitoring_schedule_name=quality_monitor.monitoring_schedule_name,
+        monitoring_alert_name=monitoring_alert_name,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        next_token=next_token,
+        max_results=max_results,
+        status_equals=status_equals,
+        creation_time_before=creation_time_before,
+        creation_time_after=creation_time_after,
+    )
+
+    assert len(alert_history) == 1
+    assert next_token == "next-token"
+    assert alert_history[0] == MonitoringAlertHistorySummary(
+        alert_name=MONITORING_ALERT_HISTORY_SUMMARY["MonitoringAlertName"],
+        creation_time=MONITORING_ALERT_HISTORY_SUMMARY["CreationTime"],
+        alert_status=MONITORING_ALERT_HISTORY_SUMMARY["AlertStatus"],
+    )
+
+
 def test_model_quality_monitor_suggest_baseline(sagemaker_session, model_quality_monitor):
     model_quality_monitor.suggest_baseline(
         baseline_dataset=BASELINE_DATASET_PATH,
@@ -986,6 +1165,37 @@ def test_model_quality_monitor(model_quality_monitor, sagemaker_session):
     _test_model_quality_monitor_update_schedule(
         model_quality_monitor=model_quality_monitor,
         sagemaker_session=sagemaker_session,
+    )
+
+    # update monitoring alert
+    _test_monitor_update_alert(
+        quality_monitor=model_quality_monitor,
+        sagemaker_session=sagemaker_session,
+        alert_name="my-alert",
+        data_points_to_alert=3,
+        eval_period=10,
+    )
+
+    # list monitoring alerts
+    _test_list_monitoring_alerts(
+        quality_monitor=model_quality_monitor,
+        sagemaker_session=sagemaker_session,
+        next_token="next-token",
+        max_results=100,
+    )
+
+    # list monitoring alert history
+    _test_list_monitoring_alert_history(
+        quality_monitor=model_quality_monitor,
+        sagemaker_session=sagemaker_session,
+        monitoring_alert_name="my-alert",
+        sort_by="CreationTime",
+        sort_order="Descending",
+        status_equals="Ok",
+        creation_time_before="before",
+        creation_time_after="after",
+        next_token="next-token",
+        max_results=100,
     )
 
     # delete schedule
