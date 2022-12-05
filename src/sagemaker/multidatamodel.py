@@ -139,7 +139,7 @@ class MultiDataModel(Model):
         if self.model:
             container_definition = self.model.prepare_container_def(instance_type, accelerator_type)
             image_uri = container_definition["Image"]
-            environment = container_definition["Environment"]
+            environment = container_definition.get("Environment", {})
         else:
             image_uri = self.image_uri
             environment = self.env
