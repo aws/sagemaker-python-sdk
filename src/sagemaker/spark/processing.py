@@ -30,6 +30,7 @@ import urllib.request
 from enum import Enum
 from io import BytesIO
 from urllib.parse import urlparse
+from copy import copy
 
 from typing import Union, List, Dict, Optional
 
@@ -279,6 +280,10 @@ class _SparkProcessorBase(ScriptProcessor):
     def _extend_processing_args(self, inputs, outputs, **kwargs):
         """Extends processing job args such as inputs."""
 
+        # make a shallow copy of user outputs
+        outputs = outputs or []
+        extended_outputs = copy(outputs)
+
         if kwargs.get("spark_event_logs_s3_uri"):
             spark_event_logs_s3_uri = kwargs.get("spark_event_logs_s3_uri")
             self._validate_s3_uri(spark_event_logs_s3_uri)
@@ -297,16 +302,21 @@ class _SparkProcessorBase(ScriptProcessor):
                 s3_upload_mode="Continuous",
             )
 
-            outputs = outputs or []
-            outputs.append(output)
+            extended_outputs.append(output)
+
+        # make a shallow copy of user inputs
+        inputs = inputs or []
+        extended_inputs = copy(inputs)
 
         if kwargs.get("configuration"):
             configuration = kwargs.get("configuration")
             self._validate_configuration(configuration)
-            inputs = inputs or []
-            inputs.append(self._stage_configuration(configuration))
+            extended_inputs.append(self._stage_configuration(configuration))
 
-        return inputs, outputs
+        return (
+            extended_inputs if extended_inputs else None,
+            extended_outputs if extended_outputs else None,
+        )
 
     def start_history_server(self, spark_event_logs_s3_uri=None):
         """Starts a Spark history server.
@@ -940,9 +950,16 @@ class PySparkProcessor(_SparkProcessorBase):
             outputs: Processing outputs.
             kwargs: Additional keyword arguments passed to `super()`.
         """
+
+        if inputs is None:
+            inputs = []
+
+        # make a shallow copy of user inputs
+        extended_inputs = copy(inputs)
+
         self.command = [_SparkProcessorBase._default_command]
         extended_inputs = self._handle_script_dependencies(
-            inputs, kwargs.get("submit_py_files"), FileType.PYTHON
+            extended_inputs, kwargs.get("submit_py_files"), FileType.PYTHON
         )
         extended_inputs = self._handle_script_dependencies(
             extended_inputs, kwargs.get("submit_jars"), FileType.JAR
@@ -1199,8 +1216,14 @@ class SparkJarProcessor(_SparkProcessorBase):
         else:
             raise ValueError("submit_class is required")
 
+        if inputs is None:
+            inputs = []
+
+        # make a shallow copy of user inputs
+        extended_inputs = copy(inputs)
+
         extended_inputs = self._handle_script_dependencies(
-            inputs, kwargs.get("submit_jars"), FileType.JAR
+            extended_inputs, kwargs.get("submit_jars"), FileType.JAR
         )
         extended_inputs = self._handle_script_dependencies(
             extended_inputs, kwargs.get("submit_files"), FileType.FILE
