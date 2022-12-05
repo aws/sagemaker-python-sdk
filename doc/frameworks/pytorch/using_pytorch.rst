@@ -238,7 +238,6 @@ but you can also overwrite them.
 
 **Supported backends:**
 
--  ``gloo`` and ``tcp`` for CPU instances
 -  ``gloo`` and ``nccl`` for GPU instances
 
 Launching a Distributed Training Job

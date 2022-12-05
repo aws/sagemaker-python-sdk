@@ -1121,31 +1121,35 @@ def validate_smddp_collectives_support(
         # in case image_uri is not set, then both are mandatory
         if framework_version not in SMDDP_COLLECTIVES_SUPPORTED_FRAMEWORK_VERSIONS:
             err_msg += (
-                f"Provided framework_version {framework_version} is not supported."
+                f"Provided framework_version {framework_version} is not supported. "
                 "Please specify one of the supported framework versions:"
                 f" {SMDDP_COLLECTIVES_SUPPORTED_FRAMEWORK_VERSIONS}.\n"
             )
         if "py3" not in py_version:
             err_msg += (
-                f"Provided py_version {py_version} is not supported."
+                f"Provided py_version {py_version} is not supported. "
                 "Please specify py_version>=py3.\n"
             )
     if instance_type not in SMDDP_COLLECTIVES_SUPPORTED_INSTANCE_TYPES:
         err_msg += (
-            f"Provided instance_type {instance_type} is not supported."
+            f"Provided instance_type {instance_type} is not supported. "
             "Please specify one of the supported instance types:"
             f"{SMDDP_COLLECTIVES_SUPPORTED_INSTANCE_TYPES}.\n"
         )
     if instance_count == 1:
         # Communication backend auto is not supported for single-node jobs
         err_msg += (
-            "SMDDP Collective backend is not supported for single-node jobs."
+            "SMDDP Collective backend is not supported for single-node jobs. "
             "Please increase instance_count to be greater than 1.\n"
         )
     if not err_msg:
         return True
-    logger.warning("Could not enable SMDDP Collectives for the training job.\n%s", err_msg)
-    logger.warning("Continuing training with NCCL collective backend.\n")
+    logger.warning(
+        "The system is not compatible or not configured to run SMDDP collectives optimized"
+        " for AWS infrastructure.\n%s",
+        err_msg,
+    )
+    logger.warning("Continuing model training with default NCCL communication backend.\n")
     return False
 
 
