@@ -591,12 +591,12 @@ def test_fit_mwms_unsupported(time, strftime, sagemaker_session):
     with pytest.raises(ValueError) as error:
         tf = TensorFlow(
             entry_point=SCRIPT_FILE,
-            framework_version="2.11",
+            framework_version="2.10",
             py_version="py39",
             role=ROLE,
             sagemaker_session=sagemaker_session,
-            instance_type=INSTANCE_TYPE,
-            instance_count=1,
+            instance_type="ml.p4d.24xlarge",
+            instance_count=4,
             source_dir=DATA_DIR,
             distribution={
                 **DISTRIBUTION_MWMS_ENABLED,
