@@ -20,7 +20,6 @@ import time
 import shutil
 
 from contextlib import contextmanager
-from pathlib import Path
 import pytest
 
 from botocore.exceptions import WaiterError
@@ -48,14 +47,12 @@ from sagemaker.processing import (
     ProcessingOutput,
     FeatureStoreOutput,
     ScriptProcessor,
-    FrameworkProcessor,
 )
-from sagemaker.s3 import S3Uploader, S3Downloader
+from sagemaker.s3 import S3Uploader
 from sagemaker.session import get_execution_role
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.transformer import Transformer
 from sagemaker.sklearn.processing import SKLearnProcessor
-from sagemaker.tensorflow import TensorFlow
 from sagemaker.workflow.conditions import (
     ConditionGreaterThanOrEqualTo,
     ConditionLessThanOrEqualTo,
@@ -86,11 +83,10 @@ from sagemaker.workflow.steps import (
     TransformInput,
     PropertyFile,
     TuningStep,
-    CacheConfig,
 )
 from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.workflow.pipeline import Pipeline
-from sagemaker.workflow.utilities import hash_files_or_dirs, hash_object
+from sagemaker.workflow.utilities import hash_files_or_dirs
 from sagemaker.feature_store.feature_group import (
     FeatureGroup,
     FeatureDefinition,
