@@ -1853,7 +1853,7 @@ class FrameworkProcessor(ScriptProcessor):
         self.entrypoint = self.framework_entrypoint_command + [user_script_location]
 
     def _create_and_upload_runproc(self, user_script, kms_key, entrypoint_s3_uri):
-        """Create runproc shell script and upload to S3.
+        """Create runproc shell script and upload to S3 bucket.
 
         If leveraging a pipeline session with optimized S3 artifact paths,
         the runproc.sh file is hashed and uploaded to a separate S3 location.
