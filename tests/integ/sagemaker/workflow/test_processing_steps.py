@@ -383,7 +383,7 @@ def test_one_step_framework_processing_pipeline(
 
 
 def test_multi_step_framework_processing_pipeline_same_source_dir(
-    pipeline_session, role, pipeline_name, region_name
+    pipeline_session, role, pipeline_name
 ):
     default_bucket = pipeline_session.default_bucket()
     cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
@@ -483,7 +483,7 @@ def test_multi_step_framework_processing_pipeline_same_source_dir(
 
 
 def test_multi_step_framework_processing_pipeline_different_source_dir(
-    pipeline_session, role, pipeline_name, region_name
+    pipeline_session, role, pipeline_name
 ):
     default_bucket = pipeline_session.default_bucket()
     cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
