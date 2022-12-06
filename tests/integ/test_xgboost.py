@@ -40,6 +40,26 @@ def xgboost_training_job(
     )
 
 
+def test_sourcedir_naming(
+    sagemaker_session,
+    xgboost_latest_version,
+    xgboost_latest_py_version,
+    cpu_instance_type,
+):
+    with pytest.raises(RuntimeError):
+        processor = XGBoostProcessor(
+            framework_version=xgboost_latest_version,
+            role=ROLE,
+            instance_count=1,
+            instance_type=cpu_instance_type,
+            sagemaker_session=sagemaker_session,
+        )
+        processor.run(
+            source_dir="s3://bucket/deps.tar.gz",
+            code="main_script.py",
+        )
+
+
 @pytest.mark.release
 def test_framework_processing_job_with_deps(
     sagemaker_session,

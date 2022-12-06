@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import inspect
+import json
 import os
 import tarfile
 from contextlib import contextmanager
@@ -190,6 +191,43 @@ def test_validate_source_dir_file_not_in_dir():
     directory = "."
     with pytest.raises(ValueError):
         fw_utils.validate_source_dir(script, directory)
+
+
+def test_parse_mp_parameters_input_dict():
+    mp_parameters = {
+        "partitions": 1,
+        "tensor_parallel_degree": 2,
+        "microbatches": 1,
+        "optimize": "speed",
+        "pipeline": "interleaved",
+        "ddp": 1,
+        "auto_partition": False,
+        "default_partition": 0,
+    }
+    assert mp_parameters == fw_utils.parse_mp_parameters(mp_parameters)
+
+
+def test_parse_mp_parameters_input_str_json():
+    mp_parameters = {
+        "partitions": 1,
+        "tensor_parallel_degree": 2,
+        "microbatches": 1,
+        "optimize": "speed",
+        "pipeline": "interleaved",
+        "ddp": 1,
+        "auto_partition": False,
+        "default_partition": 0,
+    }
+    json_file_path = "./params.json"
+    with open(json_file_path, "x") as fp:
+        json.dump(mp_parameters, fp)
+    assert mp_parameters == fw_utils.parse_mp_parameters(json_file_path)
+    os.remove(json_file_path)
+
+
+def test_parse_mp_parameters_input_not_exit():
+    with pytest.raises(ValueError):
+        fw_utils.parse_mp_parameters(" !@#$%^&*()path probably in not there.!@#$%^&*()")
 
 
 def test_tar_and_upload_dir_not_s3(sagemaker_session):
