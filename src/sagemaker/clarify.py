@@ -331,11 +331,11 @@ class DataConfig:
             s3_analysis_config_output_path (str): S3 prefix to store the analysis config output.
                 If this field is None, then the ``s3_output_path`` will be used
                 to store the ``analysis_config`` output.
-            label (str): Target attribute of the model required by bias metrics.
-                Specified as column name or index for CSV dataset or as JSONPath for JSONLines.
+            label (str): Target attribute of the model required by bias metrics. Specified as
+                column name or index for CSV dataset or as JMESPath expression for JSONLines.
                 *Required parameter* except for when the input dataset does not contain the label.
-            features (List[str]): JSONPath for locating the feature columns for bias metrics if the
-                dataset format is JSONLines.
+            features (List[str]): JMESPath expression to locate the feature columns for
+                bias metrics if the dataset format is JSONLines.
             dataset_type (str): Format of the dataset. Valid values are ``"text/csv"`` for CSV,
                 ``"application/jsonlines"`` for JSONLines, and
                 ``"application/x-parquet"`` for Parquet.
@@ -717,11 +717,11 @@ class ModelPredictedLabelConfig:
             ``label_headers=['cat','dog','fish']`` and infer the predicted label to be ``'fish'``.
 
         Args:
-            label (str or int): Index or JSONPath location in the model output for the prediction.
-                In case, this is a predicted label of the same type as the label in the dataset,
-                no further arguments need to be specified.
-            probability (str or int): Index or JSONPath location in the model output
-                for the predicted score(s).
+            label (str or int): Index or JMESPath expression to locate the prediction
+                in the model output. In case, this is a predicted label of the same type
+                as the label in the dataset, no further arguments need to be specified.
+            probability (str or int): Index or JMESPath expression to locate the predicted score(s)
+                in the model output.
             probability_threshold (float): An optional value for binary prediction tasks in which
                 the model returns a probability, to indicate the threshold to convert the
                 prediction to a boolean value. Default is ``0.5``.
@@ -1646,9 +1646,9 @@ class SageMakerClarifyProcessor(Processor):
                 You can request multiple methods at once by passing in a list of
                 `~sagemaker.clarify.ExplainabilityConfig`.
             model_scores (int or str or :class:`~sagemaker.clarify.ModelPredictedLabelConfig`):
-                Index or JSONPath to locate the predicted scores in the model output. This is not
-                required if the model output is a single score. Alternatively, it can be an instance
-                of :class:`~sagemaker.clarify.SageMakerClarifyProcessor`
+                Index or JMESPath expression to locate the predicted scores in the model output.
+                This is not required if the model output is a single score. Alternatively,
+                it can be an instance of :class:`~sagemaker.clarify.SageMakerClarifyProcessor`
                 to provide more parameters like ``label_headers``.
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
@@ -1775,9 +1775,9 @@ class SageMakerClarifyProcessor(Processor):
                 str or
                 :class:`~sagemaker.clarify.ModelPredictedLabelConfig`
             ):
-                Index or JSONPath to locate the predicted scores in the model output. This is not
-                required if the model output is a single score. Alternatively, it can be an instance
-                of :class:`~sagemaker.clarify.SageMakerClarifyProcessor`
+                Index or JMESPath expression to locate the predicted scores in the model output.
+                This is not required if the model output is a single score. Alternatively,
+                it can be an instance of :class:`~sagemaker.clarify.SageMakerClarifyProcessor`
                 to provide more parameters like ``label_headers``.
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
