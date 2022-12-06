@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import inspect
+import json
 import os
 import tarfile
 from contextlib import contextmanager
@@ -190,6 +191,43 @@ def test_validate_source_dir_file_not_in_dir():
     directory = "."
     with pytest.raises(ValueError):
         fw_utils.validate_source_dir(script, directory)
+
+
+def test_parse_mp_parameters_input_dict():
+    mp_parameters = {
+        "partitions": 1,
+        "tensor_parallel_degree": 2,
+        "microbatches": 1,
+        "optimize": "speed",
+        "pipeline": "interleaved",
+        "ddp": 1,
+        "auto_partition": False,
+        "default_partition": 0,
+    }
+    assert mp_parameters == fw_utils.parse_mp_parameters(mp_parameters)
+
+
+def test_parse_mp_parameters_input_str_json():
+    mp_parameters = {
+        "partitions": 1,
+        "tensor_parallel_degree": 2,
+        "microbatches": 1,
+        "optimize": "speed",
+        "pipeline": "interleaved",
+        "ddp": 1,
+        "auto_partition": False,
+        "default_partition": 0,
+    }
+    json_file_path = "./params.json"
+    with open(json_file_path, "x") as fp:
+        json.dump(mp_parameters, fp)
+    assert mp_parameters == fw_utils.parse_mp_parameters(json_file_path)
+    os.remove(json_file_path)
+
+
+def test_parse_mp_parameters_input_not_exit():
+    with pytest.raises(ValueError):
+        fw_utils.parse_mp_parameters(" !@#$%^&*()path probably in not there.!@#$%^&*()")
 
 
 def test_tar_and_upload_dir_not_s3(sagemaker_session):
@@ -864,6 +902,7 @@ def test_validate_smdataparallel_args_not_raises():
         ("ml.p3.16xlarge", "pytorch", "1.11.0", "py38", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.11", "py38", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.12.0", "py38", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "pytorch", "1.12.1", "py38", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.12", "py38", smdataparallel_enabled),
         ("ml.p3.16xlarge", "tensorflow", "2.4.1", "py3", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "tensorflow", "2.4.1", "py37", smdataparallel_enabled_custom_mpi),
@@ -882,6 +921,7 @@ def test_validate_smdataparallel_args_not_raises():
         ("ml.p3.16xlarge", "pytorch", "1.10.2", "py38", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "pytorch", "1.11.0", "py38", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "pytorch", "1.12.0", "py38", smdataparallel_enabled_custom_mpi),
+        ("ml.p3.16xlarge", "pytorch", "1.12.1", "py38", smdataparallel_enabled_custom_mpi),
     ]
     for instance_type, framework_name, framework_version, py_version, distribution in good_args:
         fw_utils._validate_smdataparallel_args(
@@ -917,6 +957,7 @@ def test_validate_pytorchddp_not_raises():
         "1.11.0",
         "1.12",
         "1.12.0",
+        "1.12.1",
     ]
     for framework_version in pytorchddp_supported_fw_versions:
         fw_utils.validate_pytorch_distribution(

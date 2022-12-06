@@ -1,0 +1,226 @@
+{
+    "metric_groups": [
+        {
+            "metric_data": [
+                {
+                    "name": "Marital Status",
+                    "type": "number",
+                    "value": 0.028630413807559794
+                },
+                {
+                    "name": "Occupation",
+                    "type": "number",
+                    "value": 0.02663187314914846
+                },
+                {
+                    "name": "Relationship",
+                    "type": "number",
+                    "value": 0.036107264188470226
+                },
+                {
+                    "name": "Ethnic group",
+                    "type": "number",
+                    "value": 0.01974161417121363
+                },
+                {
+                    "name": "Capital Gain",
+                    "type": "number",
+                    "value": 0.033577342651290996
+                },
+                {
+                    "name": "Capital Loss",
+                    "type": "number",
+                    "value": 0.019363293576206416
+                },
+                {
+                    "name": "Hours per week",
+                    "type": "number",
+                    "value": 0.021494553921674837
+                },
+                {
+                    "name": "Country",
+                    "type": "number",
+                    "value": 0.04632862084382646
+                }
+            ],
+            "name": "explanations - global_shap_values, label=label0"
+        },
+        {
+            "metric_data": [
+                {
+                    "name": "charming",
+                    "type": "number",
+                    "value": 0.04089221769072609
+                },
+                {
+                    "name": "magnificent",
+                    "type": "number",
+                    "value": 0.03013490694249078
+                }
+            ],
+            "name": "explanations - global_top_shap_text, label=label0, feature=[feature_name_1]"
+        },
+        {
+            "metric_data": [
+                {
+                    "name": "charming",
+                    "type": "number",
+                    "value": 0.04089221769072609
+                },
+                {
+                    "name": "magnificent",
+                    "type": "number",
+                    "value": 0.03013490694249078
+                }
+            ],
+            "name": "explanations - global_top_shap_text, label=label0, feature=[feature_name_2]"
+        },
+        {
+            "metric_data": [
+                {
+                    "name": "Age",
+                    "type": "number",
+                    "value": 0.036556198315954205
+                },
+                {
+                    "name": "Workclass",
+                    "type": "number",
+                    "value": 0.01819397618827644
+                },
+                {
+                    "name": "fnlwgt",
+                    "type": "number",
+                    "value": 0.02137033320407158
+                },
+                {
+                    "name": "Education",
+                    "type": "number",
+                    "value": 0.018644355523796074
+                },
+                {
+                    "name": "Education-Num",
+                    "type": "number",
+                    "value": 0.037243930827630646
+                }
+            ],
+            "name": "explanations - global_shap_values, label=label1"
+        },
+        {
+            "metric_data": [
+                {
+                    "name": "charming",
+                    "type": "number",
+                    "value": 0.04089221769072609
+                },
+                {
+                    "name": "magnificent",
+                    "type": "number",
+                    "value": 0.03013490694249078
+                }
+            ],
+            "name": "explanations - global_top_shap_text, label=label1, feature=[feature_name_1]"
+        },
+        {
+            "metric_data": [
+                {
+                    "name": "charming",
+                    "type": "number",
+                    "value": 0.04089221769072609
+                },
+                {
+                    "name": "magnificent",
+                    "type": "number",
+                    "value": 0.03013490694249078
+                }
+            ],
+            "name": "explanations - global_top_shap_text, label=label1, feature=[feature_name_2]"
+        },
+        {
+            "metric_data": [
+                {
+                    "name": "data_distribution - feature=Age",
+                    "type": "linear_graph",
+                    "value": [
+                        [
+                            20.866666666666667,
+                            0.05
+                        ],
+                        [
+                            24.6,
+                            0.165
+                        ],
+                        [
+                            28.333366666666667,
+                            0.15
+                        ],
+                        [
+                            32.06666666666666,
+                            0.095
+                        ]
+                    ],
+                    "x_axis_name": "Age",
+                    "y_axis_name": "Data distribution"
+                },
+                {
+                    "name": "model_predictions - feature=Age, label=label0",
+                    "type": "linear_graph",
+                    "value": [
+                        [
+                            20.866666666666667,
+                            0.7029578701406717
+                        ],
+                        [
+                            24.6,
+                            0.6787781745567918
+                        ],
+                        [
+                            28.333366666666667,
+                            0.7008252082392573
+                        ],
+                        [
+                            32.06666666666666,
+                            0.733054383918643
+                        ]
+                    ],
+                    "x_axis_name": "Age",
+                    "y_axis_name": "label0"
+                },
+                {
+                    "name": "data_distribution - feature=Animal",
+                    "type": "bar_chart",
+                    "value": [
+                        0.1,
+                        0.11,
+                        0.245,
+                        0.06
+                    ],
+                    "x_axis_name": [
+                        "Cat",
+                        "Dog",
+                        "Horse",
+                        "Bird"
+                    ],
+                    "y_axis_name": "Data distribution"
+                },
+                {
+                    "name": "model_predictions - feature=Animal, label=label0",
+                    "type": "bar_chart",
+                    "value": [
+                        0.8154899527132511,
+                        0.787026209384203,
+                        0.7409455917775631,
+                        0.7098744075372815
+                    ],
+                    "x_axis_name": [
+                        "Cat",
+                        "Dog",
+                        "Horse",
+                        "Bird"
+                    ],
+                    "y_axis_name": "label0"
+                }
+            ],
+            "name": "explanations - pdp"
+        }
+    ]
+}

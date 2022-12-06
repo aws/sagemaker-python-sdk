@@ -31,7 +31,10 @@ from sagemaker.feature_store.feature_group import (
     AthenaQuery,
     IngestionError,
 )
-from sagemaker.feature_store.inputs import FeatureParameter
+from sagemaker.feature_store.inputs import (
+    FeatureParameter,
+    TableFormatEnum,
+)
 
 
 class PicklableMock(Mock):
@@ -110,6 +113,68 @@ def test_feature_store_create(
         online_store_config={"EnableOnlineStore": True},
         offline_store_config={
             "DisableGlueTableCreation": False,
+            "S3StorageConfig": {"S3Uri": s3_uri},
+        },
+    )
+
+
+def test_feature_store_create_iceberg_table_format(
+    sagemaker_session_mock, role_arn, feature_group_dummy_definitions, s3_uri
+):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    feature_group.feature_definitions = feature_group_dummy_definitions
+    feature_group.create(
+        s3_uri=s3_uri,
+        record_identifier_name="feature1",
+        event_time_feature_name="feature2",
+        role_arn=role_arn,
+        enable_online_store=True,
+        disable_glue_table_creation=False,
+        table_format=TableFormatEnum.ICEBERG,
+    )
+    sagemaker_session_mock.create_feature_group.assert_called_with(
+        feature_group_name="MyFeatureGroup",
+        record_identifier_name="feature1",
+        event_time_feature_name="feature2",
+        feature_definitions=[fd.to_dict() for fd in feature_group_dummy_definitions],
+        role_arn=role_arn,
+        description=None,
+        tags=None,
+        online_store_config={"EnableOnlineStore": True},
+        offline_store_config={
+            "DisableGlueTableCreation": False,
+            "TableFormat": "Iceberg",
+            "S3StorageConfig": {"S3Uri": s3_uri},
+        },
+    )
+
+
+def test_feature_store_create_glue_table_format(
+    sagemaker_session_mock, role_arn, feature_group_dummy_definitions, s3_uri
+):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    feature_group.feature_definitions = feature_group_dummy_definitions
+    feature_group.create(
+        s3_uri=s3_uri,
+        record_identifier_name="feature1",
+        event_time_feature_name="feature2",
+        role_arn=role_arn,
+        enable_online_store=True,
+        disable_glue_table_creation=False,
+        table_format=TableFormatEnum.GLUE,
+    )
+    sagemaker_session_mock.create_feature_group.assert_called_with(
+        feature_group_name="MyFeatureGroup",
+        record_identifier_name="feature1",
+        event_time_feature_name="feature2",
+        feature_definitions=[fd.to_dict() for fd in feature_group_dummy_definitions],
+        role_arn=role_arn,
+        description=None,
+        tags=None,
+        online_store_config={"EnableOnlineStore": True},
+        offline_store_config={
+            "DisableGlueTableCreation": False,
+            "TableFormat": "Glue",
             "S3StorageConfig": {"S3Uri": s3_uri},
         },
     )

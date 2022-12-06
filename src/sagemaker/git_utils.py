@@ -279,9 +279,8 @@ def _run_clone_command(repo_url, dest_dir):
         subprocess.check_call(["git", "clone", repo_url, dest_dir], env=my_env)
     elif repo_url.startswith("git@"):
         with tempfile.NamedTemporaryFile() as sshnoprompt:
-            write_pipe = open(sshnoprompt.name, "w")
-            write_pipe.write("ssh -oBatchMode=yes $@")
-            write_pipe.close()
+            with open(sshnoprompt.name, "w") as write_pipe:
+                write_pipe.write("ssh -oBatchMode=yes $@")
             os.chmod(sshnoprompt.name, 0o511)
             my_env["GIT_SSH"] = sshnoprompt.name
             subprocess.check_call(["git", "clone", repo_url, dest_dir], env=my_env)
