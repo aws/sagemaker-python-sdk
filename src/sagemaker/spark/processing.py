@@ -30,6 +30,7 @@ import urllib.request
 from enum import Enum
 from io import BytesIO
 from urllib.parse import urlparse
+from copy import copy
 
 from typing import Union, List, Dict, Optional
 
@@ -279,11 +280,9 @@ class _SparkProcessorBase(ScriptProcessor):
     def _extend_processing_args(self, inputs, outputs, **kwargs):
         """Extends processing job args such as inputs."""
 
-        # make a copy of user outputs
+        # make a shallow copy of user outputs
         outputs = outputs or []
-        extended_outputs = []
-        for user_output in outputs:
-            extended_outputs.append(user_output)
+        extended_outputs = copy(outputs)
 
         if kwargs.get("spark_event_logs_s3_uri"):
             spark_event_logs_s3_uri = kwargs.get("spark_event_logs_s3_uri")
@@ -305,11 +304,9 @@ class _SparkProcessorBase(ScriptProcessor):
 
             extended_outputs.append(output)
 
-        # make a copy of user inputs
+        # make a shallow copy of user inputs
         inputs = inputs or []
-        extended_inputs = []
-        for user_input in inputs:
-            extended_inputs.append(user_input)
+        extended_inputs = copy(inputs)
 
         if kwargs.get("configuration"):
             configuration = kwargs.get("configuration")
@@ -713,8 +710,8 @@ class PySparkProcessor(_SparkProcessorBase):
     def __init__(
         self,
         role: str,
-        instance_type: Union[int, PipelineVariable],
-        instance_count: Union[str, PipelineVariable],
+        instance_type: Union[str, PipelineVariable],
+        instance_count: Union[int, PipelineVariable],
         framework_version: Optional[str] = None,
         py_version: Optional[str] = None,
         container_version: Optional[str] = None,
@@ -958,9 +955,7 @@ class PySparkProcessor(_SparkProcessorBase):
             inputs = []
 
         # make a shallow copy of user inputs
-        extended_inputs = []
-        for user_input in inputs:
-            extended_inputs.append(user_input)
+        extended_inputs = copy(inputs)
 
         self.command = [_SparkProcessorBase._default_command]
         extended_inputs = self._handle_script_dependencies(
@@ -982,8 +977,8 @@ class SparkJarProcessor(_SparkProcessorBase):
     def __init__(
         self,
         role: str,
-        instance_type: Union[int, PipelineVariable],
-        instance_count: Union[str, PipelineVariable],
+        instance_type: Union[str, PipelineVariable],
+        instance_count: Union[int, PipelineVariable],
         framework_version: Optional[str] = None,
         py_version: Optional[str] = None,
         container_version: Optional[str] = None,
@@ -1225,9 +1220,7 @@ class SparkJarProcessor(_SparkProcessorBase):
             inputs = []
 
         # make a shallow copy of user inputs
-        extended_inputs = []
-        for user_input in inputs:
-            extended_inputs.append(user_input)
+        extended_inputs = copy(inputs)
 
         extended_inputs = self._handle_script_dependencies(
             extended_inputs, kwargs.get("submit_jars"), FileType.JAR

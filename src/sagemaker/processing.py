@@ -23,6 +23,7 @@ import pathlib
 import logging
 from textwrap import dedent
 from typing import Dict, List, Optional, Union
+from copy import copy
 
 import attr
 
@@ -1587,13 +1588,13 @@ class FrameworkProcessor(ScriptProcessor):
                 framework script to run.Path (absolute or relative) to the local
                 Python source file which should be executed as the entry point
                 to training. When `code` is an S3 URI, ignore `source_dir`,
-                `dependencies, and `git_config`. If ``source_dir`` is specified,
+                `dependencies`, and `git_config`. If ``source_dir`` is specified,
                 then ``code`` must point to a file located at the root of ``source_dir``.
             source_dir (str): Path (absolute, relative or an S3 URI) to a directory
                 with any other processing source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
-                point to a tar.gz file. Structure within this directory are preserved
-                when processing on Amazon SageMaker (default: None).
+                point to a file named `sourcedir.tar.gz`. Structure within this directory
+                are preserved when processing on Amazon SageMaker (default: None).
             dependencies (list[str]): A list of paths to directories (absolute
                 or relative) with any additional libraries that will be exported
                 to the container (default: []). The library folders will be
@@ -1704,7 +1705,6 @@ class FrameworkProcessor(ScriptProcessor):
         self, code, source_dir, dependencies, git_config, job_name, inputs, kms_key=None
     ):
         """Pack local code bundle and upload to Amazon S3."""
-
         if code.startswith("s3://"):
             return code, inputs, job_name
 
@@ -1731,12 +1731,15 @@ class FrameworkProcessor(ScriptProcessor):
                 "sagemaker_session unspecified when creating your Processor to have one set up "
                 "automatically."
             )
+        if "/sourcedir.tar.gz" in estimator.uploaded_code.s3_prefix:
+            # Upload the bootstrapping code as s3://.../jobname/source/runproc.sh.
+            entrypoint_s3_uri = estimator.uploaded_code.s3_prefix.replace(
+                "sourcedir.tar.gz",
+                "runproc.sh",
+            )
+        else:
+            raise RuntimeError("S3 source_dir file must be named `sourcedir.tar.gz.`")
 
-        # Upload the bootstrapping code as s3://.../jobname/source/runproc.sh.
-        entrypoint_s3_uri = estimator.uploaded_code.s3_prefix.replace(
-            "sourcedir.tar.gz",
-            "runproc.sh",
-        )
         script = estimator.uploaded_code.script_name
         s3_runproc_sh = self._create_and_upload_runproc(script, kms_key, entrypoint_s3_uri)
 
@@ -1824,9 +1827,7 @@ class FrameworkProcessor(ScriptProcessor):
             inputs = []
 
         # make a shallow copy of user inputs
-        patched_inputs = []
-        for user_input in inputs:
-            patched_inputs.append(user_input)
+        patched_inputs = copy(inputs)
         patched_inputs.append(
             ProcessingInput(
                 input_name="code",
