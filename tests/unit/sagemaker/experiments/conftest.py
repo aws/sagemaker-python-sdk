@@ -19,7 +19,8 @@ import pytest
 
 from sagemaker import Session
 from sagemaker.experiments.experiment import _Experiment
-from sagemaker.experiments.run import Run, RUN_NAME_BASE
+from sagemaker.experiments.run import RUN_NAME_BASE
+from sagemaker.experiments import Run
 from tests.unit.sagemaker.experiments.helpers import (
     mock_tc_load_or_create_func,
     mock_trial_load_or_create_func,
@@ -71,7 +72,7 @@ def run_obj(sagemaker_session):
                 "sagemaker.experiments.run._Trial._load_or_create",
                 MagicMock(side_effect=mock_trial_load_or_create_func),
             ):
-                run = Run.init(
+                run = Run(
                     experiment_name=TEST_EXP_NAME,
                     sagemaker_session=sagemaker_session,
                 )

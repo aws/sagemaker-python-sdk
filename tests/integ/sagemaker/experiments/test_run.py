@@ -17,10 +17,11 @@ import os
 
 import pytest
 
+from tests.integ.sagemaker.experiments.conftest import TAGS
 from sagemaker.experiments._api_types import _TrialComponentStatusType
+from sagemaker.experiments._utils import is_run_trial_component
 from sagemaker.processing import FrameworkProcessor
 from sagemaker.pytorch import PyTorch
-from sagemaker.utilities.search_expression import Filter, Operator, SearchExpression
 from sagemaker.s3 import S3Uploader
 from sagemaker.xgboost import XGBoostModel
 from tests.integ import DATA_DIR
@@ -30,12 +31,10 @@ from sagemaker.sklearn import SKLearn
 from sagemaker.utils import retry_with_backoff, unique_name_from_base
 from tests.integ.sagemaker.experiments.helpers import name, cleanup_exp_resources
 from sagemaker.experiments.run import (
-    Run,
     RUN_NAME_BASE,
     DELIMITER,
-    RUN_TC_TAG_KEY,
-    RUN_TC_TAG_VALUE,
 )
+from sagemaker.experiments import Run, load_run, list_runs
 from sagemaker.experiments._helper import _DEFAULT_ARTIFACT_PREFIX
 
 
@@ -51,49 +50,23 @@ def artifact_file_path(tempdir):
     return file_path
 
 
-@pytest.fixture
-def artifact_directory(tempdir):
-    file_contents = "test artifact file"
-    file_path1 = os.path.join(tempdir, "artifact_file1.txt")
-    file_path2 = os.path.join(tempdir, "artifact_file2.txt")
-    with open(file_path1, "w") as f1:
-        f1.write(file_contents)
-    with open(file_path2, "w") as f2:
-        f2.write(file_contents)
-    return tempdir
-
-
-@pytest.fixture
-def lineage_artifact_path(tempdir):
-    file_contents = "test lineage artifact"
-    file_path = os.path.join(tempdir, "lineage_file.txt")
-    with open(file_path, "w") as foo_file:
-        foo_file.write(file_contents)
-    return file_path
-
-
 file_artifact_name = f"file-artifact-{name()}"
-lineage_artifact_name = f"lineage-file-artifact-{name()}"
 metric_name = "test-local-init-log-metric"
 
 
-def test_local_run_with_load(
-    sagemaker_session, artifact_file_path, artifact_directory, lineage_artifact_path
-):
+def test_local_run_with_load(sagemaker_session, artifact_file_path):
     exp_name = f"my-local-exp-{name()}"
     with cleanup_exp_resources(exp_names=[exp_name], sagemaker_session=sagemaker_session):
         # Run name is not provided, will create a new TC
-        with Run.init(experiment_name=exp_name, sagemaker_session=sagemaker_session) as run1:
+        with Run(experiment_name=exp_name, sagemaker_session=sagemaker_session) as run1:
             run1_name = run1.run_name
             assert RUN_NAME_BASE in run1_name
             _local_run_log_behaviors(
                 artifact_file_path=artifact_file_path,
-                artifact_directory=artifact_directory,
-                lineage_artifact_path=lineage_artifact_path,
                 sagemaker_session=sagemaker_session,
             )
 
-        with Run.load(
+        with load_run(
             experiment_name=exp_name,
             run_name=run1_name,
             sagemaker_session=sagemaker_session,
@@ -113,11 +86,11 @@ def test_two_local_run_init_with_same_run_name_and_different_exp_names(sagemaker
         exp_names=[exp_name1, exp_name2], sagemaker_session=sagemaker_session
     ):
         # Run name is not provided, will create a new TC
-        with Run.init(
+        with Run(
             experiment_name=exp_name1, run_name=run_name, sagemaker_session=sagemaker_session
         ) as run1:
             pass
-        with Run.init(
+        with Run(
             experiment_name=exp_name2, run_name=run_name, sagemaker_session=sagemaker_session
         ) as run2:
             pass
@@ -143,12 +116,10 @@ def test_two_local_run_init_with_same_run_name_and_different_exp_names(sagemaker
         ("my-test4", "test-run", "run-display-name-test"),  # with supplied display name
     ],
 )
-def test_run_name_vs_trial_component_name_edge_cases(
-    sagemaker_session, artifact_file_path, artifact_directory, lineage_artifact_path, input_names
-):
+def test_run_name_vs_trial_component_name_edge_cases(sagemaker_session, input_names):
     exp_name, run_name, run_display_name = input_names
     with cleanup_exp_resources(exp_names=[exp_name], sagemaker_session=sagemaker_session):
-        with Run.init(
+        with Run(
             experiment_name=exp_name,
             sagemaker_session=sagemaker_session,
             run_name=run_name,
@@ -156,11 +127,13 @@ def test_run_name_vs_trial_component_name_edge_cases(
         ) as run1:
             assert not run1._experiment.tags
             assert not run1._trial.tags
-            _check_run_trial_component_tags(
-                trial_component=run1._trial_component, sagemaker_session=sagemaker_session
+            is_run_tc = is_run_trial_component(
+                trial_component_name=run1._trial_component.trial_component_name,
+                sagemaker_session=sagemaker_session,
             )
+            assert is_run_tc
 
-        with Run.load(
+        with load_run(
             experiment_name=exp_name,
             run_name=run_name,
             sagemaker_session=sagemaker_session,
@@ -192,7 +165,7 @@ _RUN_LOAD = "load"
 def test_run_from_local_and_train_job_and_all_exp_cfg_match(sagemaker_session, job_resource_dir):
     # Notes:
     # 1. The 1st Run TC created locally and its exp config was auto passed to the job
-    # 2. In training job, the same exp and run names are given in Run.init
+    # 2. In training job, the same exp and run names are given in the Run constructor
     # which will load the 1st Run TC in training job and log parameters
     # and metrics there
     # 3. In a different training job, load the same Run TC and log more parameters there.
@@ -205,7 +178,7 @@ def test_run_from_local_and_train_job_and_all_exp_cfg_match(sagemaker_session, j
     )
 
     with cleanup_exp_resources(exp_names=[exp_name], sagemaker_session=sagemaker_session):
-        with Run.init(
+        with Run(
             experiment_name=exp_name,
             run_name=_RUN_NAME_IN_SCRIPT,
             sagemaker_session=sagemaker_session,
@@ -276,7 +249,7 @@ def test_run_from_local_and_train_job_and_exp_cfg_not_match(sagemaker_session, j
     # Notes:
     # 1. The 1st Run TC created locally and its exp config was auto passed to the job
     # 2. In training job, different exp and run names (i.e. 2nd Run TC) are given
-    # in Run.init which will create a Run TC according to the run_name
+    # in the Run constructor which will create a Run TC according to the run_name
     # passed in there and ignore the exp config in the job
     # 3. Both metrics and parameters are logged in the Run TC created in job
     # 4. In a different training job, load the 2nd Run TC and log more parameters there.
@@ -292,7 +265,7 @@ def test_run_from_local_and_train_job_and_exp_cfg_not_match(sagemaker_session, j
     with cleanup_exp_resources(
         exp_names=[exp_name, exp_name2], sagemaker_session=sagemaker_session
     ):
-        with Run.init(
+        with Run(
             experiment_name=exp_name2,
             run_name=f"{_RUN_NAME_IN_SCRIPT}2",
             sagemaker_session=sagemaker_session,
@@ -350,7 +323,7 @@ def test_run_from_local_and_train_job_and_exp_cfg_not_match(sagemaker_session, j
 def test_run_from_train_job_only(sagemaker_session, job_resource_dir):
     # Notes:
     # 1. No Run TC created locally or specified in experiment config
-    # 2. In training job, Run.init is invoked
+    # 2. In training job, Run is initialized
     # which will create a Run TC according to the run_name passed in there
     # 3. Both metrics and parameters are logged in the Run TC created in job
     # 4. In a different training job, load the same Run TC and log more parameters there.
@@ -410,7 +383,7 @@ def test_run_from_processing_job_and_override_default_exp_config(
     )
 
     with cleanup_exp_resources(exp_names=[exp_name], sagemaker_session=sagemaker_session):
-        with Run.init(
+        with Run(
             experiment_name=exp_name,
             run_name=_RUN_NAME_IN_SCRIPT,
             sagemaker_session=sagemaker_session,
@@ -426,7 +399,7 @@ def test_run_from_processing_job_and_override_default_exp_config(
                 job_name=f"process-job-{name()}",
                 wait=True,  # wait the job to finish
                 logs=False,
-                experiment_config=run._experiment_config,
+                experiment_config=run.experiment_config,
             )
 
         assert run_obj.experiment_name != run.experiment_name
@@ -470,7 +443,7 @@ def test_run_from_transform_job(
     # 2. In the inference script running in a transform job, load the 1st Run TC
     # via explicitly passing the experiment_name and run_name of the 1st Run TC
     # TODO: once we're able to retrieve exp config from the transform job env,
-    # we should expand this test and add the Run.load() without explicitly supplying the names
+    # we should expand this test and add the load_run() without explicitly supplying the names
     # 3. All data are logged in the Run TC either locally or in the transform job
     xgb_model_data_s3 = sagemaker_session.upload_data(
         path=os.path.join(_TRANSFORM_MATERIALS, "xgb_model.tar.gz"),
@@ -525,6 +498,28 @@ def test_run_from_transform_job(
     _check_run_from_job_result(tc_name=tc_name, sagemaker_session=sagemaker_session, is_init=False)
 
 
+def test_list(run_obj, sagemaker_session):
+    tc1 = _TrialComponent.create(
+        trial_component_name=f"non-run-tc1-{name()}",
+        sagemaker_session=sagemaker_session,
+    )
+    tc2 = _TrialComponent.create(
+        trial_component_name=f"non-run-tc2-{name()}",
+        sagemaker_session=sagemaker_session,
+        tags=TAGS,
+    )
+    run_obj._trial.add_trial_component(tc1)
+    run_obj._trial.add_trial_component(tc2)
+
+    run_tcs = list_runs(
+        experiment_name=run_obj.experiment_name, sagemaker_session=sagemaker_session
+    )
+    assert len(run_tcs) == 1
+    assert run_tcs[0].run_name == run_obj.run_name
+    assert run_tcs[0].experiment_name == run_obj.experiment_name
+    assert run_tcs[0].experiment_config == run_obj.experiment_config
+
+
 def _generate_estimator(exp_name, job_resource_dir, sagemaker_session):
     return SKLearn(
         framework_version="0.23-1",
@@ -548,47 +543,21 @@ def _generate_estimator(exp_name, job_resource_dir, sagemaker_session):
 def _local_run_log_behaviors(
     sagemaker_session,
     artifact_file_path=None,
-    artifact_directory=None,
-    lineage_artifact_path=None,
     is_complete_log=True,
 ):
-    with Run.load(sagemaker_session=sagemaker_session) as run:
+    with load_run(sagemaker_session=sagemaker_session) as run:
         run.log_parameter("pa", 1.0)
         run.log_parameter("pb", "p2-value")
         run.log_parameters({"pc": 2.0, "pd": "p4-value"})
 
         if is_complete_log:
-            run.log_artifact_file(file_path=artifact_file_path, name=file_artifact_name)
-            run.log_artifact_directory(directory=artifact_directory, is_output=False)
-            run.log_lineage_artifact(file_path=lineage_artifact_path, name=lineage_artifact_name)
+            run.log_file(file_path=artifact_file_path, name=file_artifact_name)
 
             for i in range(_MetricsManager._BATCH_SIZE):
                 run.log_metric(name=metric_name, value=i, step=i)
 
 
 def _check_run_from_local_end_result(sagemaker_session, tc, is_complete_log=True):
-    def validate_tc_artifact_association(is_output, expected_artifact_name):
-        if is_output:
-            # It's an output association from the tc
-            response = sagemaker_session.sagemaker_client.list_associations(
-                SourceArn=tc.trial_component_arn
-            )
-        else:
-            # It's an input association to the tc
-            response = sagemaker_session.sagemaker_client.list_associations(
-                DestinationArn=tc.trial_component_arn
-            )
-        associations = response["AssociationSummaries"]
-
-        assert len(associations) == 1
-        summary = associations[0]
-        if is_output:
-            assert summary["SourceArn"] == tc.trial_component_arn
-            assert summary["DestinationName"] == expected_artifact_name
-        else:
-            assert summary["DestinationArn"] == tc.trial_component_arn
-            assert summary["SourceName"] == expected_artifact_name
-
     assert tc.parameters == {"pa": 1.0, "pb": "p2-value", "pc": 2.0, "pd": "p4-value"}
 
     if not is_complete_log:
@@ -597,21 +566,12 @@ def _check_run_from_local_end_result(sagemaker_session, tc, is_complete_log=True
     s3_prefix = f"s3://{sagemaker_session.default_bucket()}/{_DEFAULT_ARTIFACT_PREFIX}"
     assert s3_prefix in tc.output_artifacts[file_artifact_name].value
     assert "text/plain" == tc.output_artifacts[file_artifact_name].media_type
-    assert s3_prefix in tc.input_artifacts["artifact_file1"].value
-    assert "text/plain" == tc.input_artifacts["artifact_file1"].media_type
-    assert s3_prefix in tc.input_artifacts["artifact_file2"].value
-    assert "text/plain" == tc.input_artifacts["artifact_file2"].media_type
 
     assert len(tc.metrics) == 1
     metric_summary = tc.metrics[0]
     assert metric_summary.metric_name == metric_name
     assert metric_summary.max == 9.0
     assert metric_summary.min == 0.0
-
-    validate_tc_artifact_association(
-        is_output=True,
-        expected_artifact_name=lineage_artifact_name,
-    )
 
 
 def _check_run_from_job_result(sagemaker_session, tc_name=None, is_init=True, has_extra_load=False):
@@ -687,27 +647,3 @@ def _check_tc_status_intermediate(
         return
     assert isinstance(tc_load.end_time, datetime.datetime)
     assert tc_load.end_time == old_end_time
-
-
-def _check_run_trial_component_tags(trial_component, sagemaker_session):
-    search_filter = Filter(
-        name="TrialComponentName",
-        operator=Operator.CONTAINS,
-        value=trial_component.trial_component_name,
-    )
-    search_expression = SearchExpression(filters=[search_filter])
-
-    def validate():
-        tc_search_res = list(
-            _TrialComponent.search(
-                search_expression=search_expression,
-                max_results=1,
-                sagemaker_session=sagemaker_session,
-            )
-        )
-        assert len(tc_search_res) == 1
-        assert len(tc_search_res[0].tags) > 0
-        expected_tc_tag = {"Key": RUN_TC_TAG_KEY, "Value": RUN_TC_TAG_VALUE}
-        assert expected_tc_tag in tc_search_res[0].tags
-
-    retry_with_backoff(validate, 4)

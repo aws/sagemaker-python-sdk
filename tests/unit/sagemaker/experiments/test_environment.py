@@ -100,3 +100,8 @@ def test_resolve_trial_component_fails(mock_retry, sagemaker_session, training_j
     client.list_trial_components.side_effect = Exception("Failed test")
     environment = _environment._RunEnvironment.load()
     assert environment.get_trial_component(sagemaker_session) is None
+
+
+def test_resolve_transform_job_trial_component_fail(transform_job_env, sagemaker_session):
+    environment = _environment._RunEnvironment.load()
+    assert environment.get_trial_component(sagemaker_session) is None

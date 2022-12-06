@@ -38,8 +38,7 @@ sdk_file = f"{resource_dir}/{beta_sdk}"
 os.system(f"pip install {sdk_file}")
 
 from sagemaker.session import Session
-from sagemaker.experiments.run import Run
-
+from sagemaker.experiments import load_run
 
 boto_session = boto3.Session(region_name=os.environ["AWS_REGION"])
 sagemaker_session = Session(boto_session=boto_session)
@@ -49,7 +48,7 @@ def model_fn(model_dir):
     """
     Deserialize and return fitted model.
     """
-    with Run.load(
+    with load_run(
         experiment_name=os.environ["EXPERIMENT_NAME"],
         run_name=os.environ["RUN_NAME"],
         sagemaker_session=sagemaker_session,

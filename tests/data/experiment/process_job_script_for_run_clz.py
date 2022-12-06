@@ -18,7 +18,6 @@ import logging
 import os
 import boto3
 
-
 sm_json = "sagemaker-2017-07-24.normal.json"
 metrics_json = "sagemaker-metrics-2022-09-30.normal.json"
 beta_sdk = "sagemaker-beta-1.0.tar.gz"
@@ -37,14 +36,14 @@ os.system(f"pip install {sdk_file}")
 
 
 from sagemaker import Session
-from sagemaker.experiments.run import Run
+from sagemaker.experiments import load_run
 
 
 boto_session = boto3.Session(region_name=os.environ["AWS_REGION"])
 sagemaker_session = Session(boto_session=boto_session)
 
 
-with Run.load(sagemaker_session=sagemaker_session) as run:
+with load_run(sagemaker_session=sagemaker_session) as run:
     logging.info(f"Run name: {run.run_name}")
     logging.info(f"Experiment name: {run.experiment_name}")
     logging.info(f"Trial component name: {run._trial_component.trial_component_name}")

@@ -20,16 +20,16 @@ from unittest.mock import patch, Mock, MagicMock
 import dateutil
 import pytest
 
-from sagemaker.experiments import _environment
+from sagemaker.experiments import _environment, SortOrderType
 from sagemaker.experiments._api_types import (
     TrialComponentArtifact,
     TrialComponentSummary,
     TrialComponentStatus,
     _TrialComponentStatusType,
+    TrialComponentSearchResult,
 )
 from sagemaker.experiments.experiment import _Experiment
 from sagemaker.experiments.run import (
-    Run,
     TRIAL_NAME_TEMPLATE,
     MAX_RUN_TC_ARTIFACTS_LEN,
     MAX_NAME_LEN_IN_BACKEND,
@@ -37,9 +37,10 @@ from sagemaker.experiments.run import (
     RUN_NAME,
     TRIAL_NAME,
     DELIMITER,
-    RUN_TC_TAG_KEY,
-    RUN_TC_TAG_VALUE,
+    RUN_TC_TAG,
+    SortByType,
 )
+from sagemaker.experiments import Run, load_run, list_runs
 from sagemaker.experiments.trial import _Trial
 from sagemaker.experiments.trial_component import _TrialComponent
 from tests.unit.sagemaker.experiments.helpers import (
@@ -47,7 +48,6 @@ from tests.unit.sagemaker.experiments.helpers import (
     mock_tc_load_or_create_func,
     TEST_EXP_NAME,
     TEST_RUN_NAME,
-    mock_trial_component_load_func,
 )
 
 
@@ -66,7 +66,7 @@ from tests.unit.sagemaker.experiments.helpers import (
 )
 @patch.object(_TrialComponent, "save")
 def test_run_init(mock_tc_save, sagemaker_session):
-    with Run.init(
+    with Run(
         experiment_name=TEST_EXP_NAME, run_name=TEST_RUN_NAME, sagemaker_session=sagemaker_session
     ) as run_obj:
         assert not run_obj._in_load
@@ -81,7 +81,7 @@ def test_run_init(mock_tc_save, sagemaker_session):
         assert run_obj._trial_component.trial_component_name == expected_tc_name
         assert run_obj._trial.trial_name == TRIAL_NAME_TEMPLATE.format(TEST_EXP_NAME)
         assert run_obj._experiment.experiment_name == TEST_EXP_NAME
-        assert run_obj._experiment_config == {
+        assert run_obj.experiment_config == {
             EXPERIMENT_NAME: TEST_EXP_NAME,
             TRIAL_NAME: run_obj.run_group_name,
             RUN_NAME: expected_tc_name,
@@ -96,7 +96,7 @@ def test_run_init_name_length_exceed_limit(sagemaker_session):
 
     # experiment_name exceeds
     with pytest.raises(ValueError) as err:
-        Run.init(
+        Run(
             experiment_name=invalid_name,
             run_name=TEST_RUN_NAME,
             sagemaker_session=sagemaker_session,
@@ -109,7 +109,7 @@ def test_run_init_name_length_exceed_limit(sagemaker_session):
 
     # run_name exceeds
     with pytest.raises(ValueError) as err:
-        Run.init(
+        Run(
             experiment_name=TEST_EXP_NAME,
             run_name=invalid_name,
             sagemaker_session=sagemaker_session,
@@ -122,8 +122,17 @@ def test_run_init_name_length_exceed_limit(sagemaker_session):
 
 @patch.object(_TrialComponent, "save", MagicMock(return_value=None))
 @patch(
-    "sagemaker.experiments.run._TrialComponent.load",
-    MagicMock(side_effect=mock_trial_component_load_func),
+    "sagemaker.experiments.run._Experiment._load_or_create",
+    MagicMock(return_value=_Experiment(experiment_name=TEST_EXP_NAME)),
+)
+@patch(
+    "sagemaker.experiments.run._Trial._load_or_create",
+    MagicMock(side_effect=mock_trial_load_or_create_func),
+)
+@patch.object(_Trial, "add_trial_component", MagicMock(return_value=None))
+@patch(
+    "sagemaker.experiments.run._TrialComponent._load_or_create",
+    MagicMock(side_effect=mock_tc_load_or_create_func),
 )
 @patch("sagemaker.experiments.run._RunEnvironment")
 def test_run_load_no_run_name_and_in_train_job(mock_run_env, sagemaker_session):
@@ -145,17 +154,17 @@ def test_run_load_no_run_name_and_in_train_job(mock_run_env, sagemaker_session):
         # The Run object has been created else where
         "ExperimentConfig": exp_config,
     }
-    with Run.load(sagemaker_session=sagemaker_session) as run_obj:
+    with load_run(sagemaker_session=sagemaker_session) as run_obj:
         assert run_obj._in_load
         assert not run_obj._inside_init_context
         assert run_obj._inside_load_context
         assert run_obj.run_name == TEST_RUN_NAME
         assert run_obj._trial_component.trial_component_name == expected_tc_name
         assert run_obj.run_group_name == Run._generate_trial_name(TEST_EXP_NAME)
-        assert not run_obj._trial
+        assert run_obj._trial
         assert run_obj.experiment_name == TEST_EXP_NAME
-        assert not run_obj._experiment
-        assert run_obj._experiment_config == exp_config
+        assert run_obj._experiment
+        assert run_obj.experiment_config == exp_config
 
     client.describe_training_job.assert_called_once_with(TrainingJobName=job_name)
 
@@ -175,7 +184,7 @@ def test_run_load_no_run_name_and_in_train_job_but_fail_to_get_exp_cfg(
     }
 
     with pytest.raises(RuntimeError) as err:
-        with Run.load(sagemaker_session=sagemaker_session):
+        with load_run(sagemaker_session=sagemaker_session):
             pass
 
     assert "Not able to fetch RunName in ExperimentConfig of the sagemaker job" in str(err)
@@ -183,20 +192,20 @@ def test_run_load_no_run_name_and_in_train_job_but_fail_to_get_exp_cfg(
 
 def test_run_load_no_run_name_and_not_in_train_job(run_obj, sagemaker_session):
     with run_obj:
-        with Run.load(sagemaker_session=sagemaker_session) as run:
+        with load_run(sagemaker_session=sagemaker_session) as run:
             assert run_obj == run
 
 
 def test_run_load_no_run_name_and_not_in_train_job_but_no_obj_in_context(sagemaker_session):
     with pytest.raises(RuntimeError) as err:
-        with Run.load(sagemaker_session=sagemaker_session):
+        with load_run(sagemaker_session=sagemaker_session):
             pass
 
     assert "Failed to load a Run object" in str(err)
 
     # experiment_name is given but is not supplied along with the run_name so it's ignored.
     with pytest.raises(RuntimeError) as err:
-        with Run.load(experiment_name=TEST_EXP_NAME, sagemaker_session=sagemaker_session):
+        with load_run(experiment_name=TEST_EXP_NAME, sagemaker_session=sagemaker_session):
             pass
 
     assert "Failed to load a Run object" in str(err)
@@ -204,11 +213,20 @@ def test_run_load_no_run_name_and_not_in_train_job_but_no_obj_in_context(sagemak
 
 @patch.object(_TrialComponent, "save", MagicMock(return_value=None))
 @patch(
-    "sagemaker.experiments.run._TrialComponent.load",
-    MagicMock(side_effect=mock_trial_component_load_func),
+    "sagemaker.experiments.run._Experiment._load_or_create",
+    MagicMock(return_value=_Experiment(experiment_name=TEST_EXP_NAME)),
+)
+@patch(
+    "sagemaker.experiments.run._Trial._load_or_create",
+    MagicMock(side_effect=mock_trial_load_or_create_func),
+)
+@patch.object(_Trial, "add_trial_component", MagicMock(return_value=None))
+@patch(
+    "sagemaker.experiments.run._TrialComponent._load_or_create",
+    MagicMock(side_effect=mock_tc_load_or_create_func),
 )
 def test_run_load_with_run_name_and_exp_name(sagemaker_session):
-    with Run.load(
+    with load_run(
         run_name=TEST_RUN_NAME,
         experiment_name=TEST_EXP_NAME,
         sagemaker_session=sagemaker_session,
@@ -224,14 +242,14 @@ def test_run_load_with_run_name_and_exp_name(sagemaker_session):
         assert run_obj.run_group_name == Run._generate_trial_name(TEST_EXP_NAME)
         assert run_obj.experiment_name == TEST_EXP_NAME
         assert run_obj._trial_component.trial_component_name == expected_tc_name
-        assert not run_obj._trial
-        assert not run_obj._experiment
-        assert run_obj._experiment_config == expected_exp_config
+        assert run_obj._trial
+        assert run_obj._experiment
+        assert run_obj.experiment_config == expected_exp_config
 
 
 def test_run_load_with_run_name_but_no_exp_name(sagemaker_session):
     with pytest.raises(ValueError) as err:
-        with Run.load(
+        with load_run(
             run_name=TEST_RUN_NAME,
             sagemaker_session=sagemaker_session,
         ):
@@ -240,11 +258,20 @@ def test_run_load_with_run_name_but_no_exp_name(sagemaker_session):
     assert "Invalid input: experiment_name is missing" in str(err)
 
 
-@patch.object(_TrialComponent, "save", MagicMock(return_value=None))
 @patch(
-    "sagemaker.experiments.run._TrialComponent.load",
-    MagicMock(side_effect=mock_trial_component_load_func),
+    "sagemaker.experiments.run._Experiment._load_or_create",
+    MagicMock(return_value=_Experiment(experiment_name=TEST_EXP_NAME)),
 )
+@patch(
+    "sagemaker.experiments.run._Trial._load_or_create",
+    MagicMock(side_effect=mock_trial_load_or_create_func),
+)
+@patch.object(_Trial, "add_trial_component", MagicMock(return_value=None))
+@patch(
+    "sagemaker.experiments.run._TrialComponent._load_or_create",
+    MagicMock(side_effect=mock_tc_load_or_create_func),
+)
+@patch.object(_TrialComponent, "save", MagicMock(return_value=None))
 @patch("sagemaker.experiments.run._RunEnvironment")
 def test_run_load_in_sm_processing_job(mock_run_env, sagemaker_session):
     client = sagemaker_session.sagemaker_client
@@ -266,7 +293,7 @@ def test_run_load_in_sm_processing_job(mock_run_env, sagemaker_session):
         "ExperimentConfig": exp_config,
     }
 
-    with Run.load(sagemaker_session=sagemaker_session):
+    with load_run(sagemaker_session=sagemaker_session):
         pass
 
     client.describe_processing_job.assert_called_once_with(ProcessingJobName=job_name)
@@ -281,7 +308,7 @@ def test_run_load_in_sm_transform_job(mock_run_env, sagemaker_session):
     mock_run_env.load.return_value = rv
 
     with pytest.raises(RuntimeError) as err:
-        with Run.load(sagemaker_session=sagemaker_session):
+        with load_run(sagemaker_session=sagemaker_session):
             pass
 
     assert (
@@ -329,13 +356,13 @@ def test_log_parameters_skip_invalid_values(run_obj):
 
 def test_log_input_outside_run_context(run_obj):
     with pytest.raises(RuntimeError) as err:
-        run_obj.log_input("foo", "baz", "text/text")
+        run_obj.log_artifact("foo", "baz", "text/text", False)
     assert "This method should be called inside context of 'with' statement" in str(err)
 
 
 def test_log_input(run_obj):
     with run_obj:
-        run_obj.log_input("foo", "baz", "text/text")
+        run_obj.log_artifact("foo", "baz", "text/text", False)
         assert run_obj._trial_component.input_artifacts == {
             "foo": TrialComponentArtifact(value="baz", media_type="text/text")
         }
@@ -343,13 +370,13 @@ def test_log_input(run_obj):
 
 def test_log_output_outside_run_context(run_obj):
     with pytest.raises(RuntimeError) as err:
-        run_obj.log_output("foo", "baz", "text/text")
+        run_obj.log_artifact("foo", "baz", "text/text")
     assert "This method should be called inside context of 'with' statement" in str(err)
 
 
 def test_log_output(run_obj):
     with run_obj:
-        run_obj.log_output("foo", "baz", "text/text")
+        run_obj.log_artifact("foo", "baz", "text/text")
         assert run_obj._trial_component.output_artifacts == {
             "foo": TrialComponentArtifact(value="baz", media_type="text/text")
         }
@@ -387,18 +414,18 @@ def test_log_metric_attribute_error(run_obj):
 
 def test_log_output_artifact_outside_run_context(run_obj):
     with pytest.raises(RuntimeError) as err:
-        run_obj.log_artifact_file("foo.txt", "name", "whizz/bang")
+        run_obj.log_file("foo.txt", "name", "whizz/bang")
     assert "This method should be called inside context of 'with' statement" in str(err)
 
 
 def test_log_output_artifact(run_obj):
     run_obj._artifact_uploader.upload_artifact.return_value = ("s3uri_value", "etag_value")
     with run_obj:
-        run_obj.log_artifact_file("foo.txt", "name", "whizz/bang")
+        run_obj.log_file("foo.txt", "name", "whizz/bang")
         run_obj._artifact_uploader.upload_artifact.assert_called_with("foo.txt")
         assert "whizz/bang" == run_obj._trial_component.output_artifacts["name"].media_type
 
-        run_obj.log_artifact_file("foo.txt")
+        run_obj.log_file("foo.txt")
         run_obj._artifact_uploader.upload_artifact.assert_called_with("foo.txt")
         assert "foo.txt" in run_obj._trial_component.output_artifacts
         assert "text/plain" == run_obj._trial_component.output_artifacts["foo.txt"].media_type
@@ -406,65 +433,21 @@ def test_log_output_artifact(run_obj):
 
 def test_log_input_artifact_outside_run_context(run_obj):
     with pytest.raises(RuntimeError) as err:
-        run_obj.log_artifact_file("foo.txt", "name", "whizz/bang", is_output=False)
+        run_obj.log_file("foo.txt", "name", "whizz/bang", is_output=False)
     assert "This method should be called inside context of 'with' statement" in str(err)
 
 
 def test_log_input_artifact(run_obj):
     run_obj._artifact_uploader.upload_artifact.return_value = ("s3uri_value", "etag_value")
     with run_obj:
-        run_obj.log_artifact_file("foo.txt", "name", "whizz/bang", is_output=False)
+        run_obj.log_file("foo.txt", "name", "whizz/bang", is_output=False)
         run_obj._artifact_uploader.upload_artifact.assert_called_with("foo.txt")
         assert "whizz/bang" == run_obj._trial_component.input_artifacts["name"].media_type
 
-        run_obj.log_artifact_file("foo.txt", is_output=False)
+        run_obj.log_file("foo.txt", is_output=False)
         run_obj._artifact_uploader.upload_artifact.assert_called_with("foo.txt")
         assert "foo.txt" in run_obj._trial_component.input_artifacts
         assert "text/plain" == run_obj._trial_component.input_artifacts["foo.txt"].media_type
-
-
-def test_log_lineage_output_artifact_outside_run_context(run_obj):
-    with pytest.raises(RuntimeError) as err:
-        run_obj.log_lineage_artifact("foo.txt", "name", "whizz/bang")
-    assert "This method should be called inside context of 'with' statement" in str(err)
-
-
-def test_log_lineage_output_artifact(run_obj):
-    run_obj._artifact_uploader.upload_artifact.return_value = ("s3uri_value", "etag_value")
-    with run_obj:
-        run_obj.log_lineage_artifact("foo.txt", "name", "whizz/bang")
-        run_obj._artifact_uploader.upload_artifact.assert_called_with("foo.txt")
-        run_obj._lineage_artifact_tracker.add_output_artifact.assert_called_with(
-            name="name", source_uri="s3uri_value", etag="etag_value", artifact_type="whizz/bang"
-        )
-
-        run_obj.log_lineage_artifact("foo.txt")
-        run_obj._artifact_uploader.upload_artifact.assert_called_with("foo.txt")
-        run_obj._lineage_artifact_tracker.add_output_artifact.assert_called_with(
-            name="foo.txt", source_uri="s3uri_value", etag="etag_value", artifact_type="text/plain"
-        )
-
-
-def test_log_lineage_input_artifact_outside_run_context(run_obj):
-    with pytest.raises(RuntimeError) as err:
-        run_obj.log_lineage_artifact("foo.txt", "name", "whizz/bang", is_output=False)
-    assert "This method should be called inside context of 'with' statement" in str(err)
-
-
-def test_log_lineage_input_artifact(run_obj):
-    run_obj._artifact_uploader.upload_artifact.return_value = ("s3uri_value", "etag_value")
-    with run_obj:
-        run_obj.log_lineage_artifact("foo.txt", "name", "whizz/bang", is_output=False)
-        run_obj._artifact_uploader.upload_artifact.assert_called_with("foo.txt")
-        run_obj._lineage_artifact_tracker.add_input_artifact.assert_called_with(
-            name="name", source_uri="s3uri_value", etag="etag_value", artifact_type="whizz/bang"
-        )
-
-        run_obj.log_lineage_artifact("foo.txt", is_output=False)
-        run_obj._artifact_uploader.upload_artifact.assert_called_with("foo.txt")
-        run_obj._lineage_artifact_tracker.add_input_artifact.assert_called_with(
-            name="foo.txt", source_uri="s3uri_value", etag="etag_value", artifact_type="text/plain"
-        )
 
 
 def test_log_multiple_inputs(run_obj):
@@ -475,7 +458,7 @@ def test_log_multiple_inputs(run_obj):
                 "foo": TrialComponentArtifact(value="baz" + str(index), media_type="text/text")
             }
         with pytest.raises(ValueError) as error:
-            run_obj.log_input("foo.txt", "name", "whizz/bang")
+            run_obj.log_artifact("foo.txt", "name", "whizz/bang", False)
         assert f"Cannot add more than {MAX_RUN_TC_ARTIFACTS_LEN} input_artifacts" in str(error)
 
 
@@ -487,7 +470,7 @@ def test_log_multiple_outputs(run_obj):
                 "foo": TrialComponentArtifact(value="baz" + str(index), media_type="text/text")
             }
         with pytest.raises(ValueError) as error:
-            run_obj.log_output("foo.txt", "name", "whizz/bang")
+            run_obj.log_artifact("foo.txt", "name", "whizz/bang")
         assert f"Cannot add more than {MAX_RUN_TC_ARTIFACTS_LEN} output_artifacts" in str(error)
 
 
@@ -499,7 +482,7 @@ def test_log_multiple_input_artifacts(run_obj):
                 "s3uri_value" + str(index),
                 "etag_value" + str(index),
             )
-            run_obj.log_artifact_file(
+            run_obj.log_file(
                 file_path, "name" + str(index), "whizz/bang" + str(index), is_output=False
             )
             run_obj._artifact_uploader.upload_artifact.assert_called_with(file_path)
@@ -510,11 +493,11 @@ def test_log_multiple_input_artifacts(run_obj):
         )
 
         # log an output artifact, should be fine
-        run_obj.log_artifact_file("foo.txt", "name", "whizz/bang", is_output=True)
+        run_obj.log_file("foo.txt", "name", "whizz/bang", is_output=True)
 
         # log an extra input artifact, should raise exception
         with pytest.raises(ValueError) as error:
-            run_obj.log_artifact_file("foo.txt", "name", "whizz/bang", is_output=False)
+            run_obj.log_file("foo.txt", "name", "whizz/bang", is_output=False)
         assert f"Cannot add more than {MAX_RUN_TC_ARTIFACTS_LEN} input_artifacts" in str(error)
 
 
@@ -526,7 +509,7 @@ def test_log_multiple_output_artifacts(run_obj):
                 "s3uri_value" + str(index),
                 "etag_value" + str(index),
             )
-            run_obj.log_artifact_file(file_path, "name" + str(index), "whizz/bang" + str(index))
+            run_obj.log_file(file_path, "name" + str(index), "whizz/bang" + str(index))
             run_obj._artifact_uploader.upload_artifact.assert_called_with(file_path)
 
         run_obj._artifact_uploader.upload_artifact.return_value = (
@@ -535,11 +518,11 @@ def test_log_multiple_output_artifacts(run_obj):
         )
 
         # log an input artifact, should be fine
-        run_obj.log_artifact_file("foo.txt", "name", "whizz/bang", is_output=False)
+        run_obj.log_file("foo.txt", "name", "whizz/bang", is_output=False)
 
         # log an extra output artifact, should raise exception
         with pytest.raises(ValueError) as error:
-            run_obj.log_artifact_file("foo.txt", "name", "whizz/bang")
+            run_obj.log_file("foo.txt", "name", "whizz/bang")
         assert f"Cannot add more than {MAX_RUN_TC_ARTIFACTS_LEN} output_artifacts" in str(error)
 
 
@@ -704,17 +687,44 @@ def test_log_roc_curve_invalid_input(run_obj):
         assert "Lengths mismatch between true labels and predicted scores" in str(error)
 
 
-@patch("sagemaker.experiments.run._TrialComponent.load")
+@patch(
+    "sagemaker.experiments.run._Experiment._load_or_create",
+    MagicMock(return_value=_Experiment(experiment_name=TEST_EXP_NAME)),
+)
+@patch(
+    "sagemaker.experiments.run._Trial._load_or_create",
+    MagicMock(side_effect=mock_trial_load_or_create_func),
+)
+@patch.object(_Trial, "add_trial_component", MagicMock(return_value=None))
+@patch("sagemaker.experiments.run._TrialComponent._load_or_create")
 @patch("sagemaker.experiments.run._TrialComponent.list")
-def test_list(mock_tc_list, mock_tc_load, run_obj, sagemaker_session):
+@patch("sagemaker.experiments.run._TrialComponent.search")
+def test_list(mock_tc_search, mock_tc_list, mock_tc_load, run_obj, sagemaker_session):
     start_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1)
     end_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=2)
     creation_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=3)
     last_modified_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=4)
-    run_list_len = 20
+    tc_list_len = 20
+    tc_list_len_half = int(tc_list_len / 2)
+    mock_tc_search.side_effect = [
+        [
+            TrialComponentSearchResult(
+                trial_component_name=Run._generate_trial_component_name(
+                    "A" + str(i), TEST_EXP_NAME
+                ),
+                trial_component_arn="B" + str(i),
+                display_name="C" + str(i),
+                creation_time=creation_time + datetime.timedelta(hours=i),
+                last_modified_time=last_modified_time + datetime.timedelta(hours=i),
+                last_modified_by={},
+                tags=[RUN_TC_TAG] if i < tc_list_len_half else None,
+            )
+        ]
+        for i in range(tc_list_len)
+    ]
     mock_tc_list.return_value = [
         TrialComponentSummary(
-            trial_component_name="A" + str(i),
+            trial_component_name=Run._generate_trial_component_name("A" + str(i), TEST_EXP_NAME),
             trial_component_arn="B" + str(i),
             display_name="C" + str(i),
             source_arn="D" + str(i),
@@ -727,30 +737,35 @@ def test_list(mock_tc_list, mock_tc_load, run_obj, sagemaker_session):
             last_modified_time=last_modified_time + datetime.timedelta(hours=i),
             last_modified_by={},
         )
-        for i in range(run_list_len)
+        for i in range(tc_list_len)
     ]
     mock_tc_load.side_effect = [
-        _TrialComponent(
-            trial_component_name="A" + str(i),
-            trial_component_arn="B" + str(i),
-            display_name="C" + str(i),
-            source_arn="D" + str(i),
-            status=TrialComponentStatus(
-                primary_status=_TrialComponentStatusType.InProgress.value, message="E" + str(i)
+        (
+            _TrialComponent(
+                trial_component_name=Run._generate_trial_component_name(
+                    "A" + str(i), TEST_EXP_NAME
+                ),
+                trial_component_arn="B" + str(i),
+                display_name="C" + str(i),
+                source_arn="D" + str(i),
+                status=TrialComponentStatus(
+                    primary_status=_TrialComponentStatusType.InProgress.value, message="E" + str(i)
+                ),
+                start_time=start_time + datetime.timedelta(hours=i),
+                end_time=end_time + datetime.timedelta(hours=i),
+                creation_time=creation_time + datetime.timedelta(hours=i),
+                last_modified_time=last_modified_time + datetime.timedelta(hours=i),
+                last_modified_by={},
             ),
-            start_time=start_time + datetime.timedelta(hours=i),
-            end_time=end_time + datetime.timedelta(hours=i),
-            creation_time=creation_time + datetime.timedelta(hours=i),
-            last_modified_time=last_modified_time + datetime.timedelta(hours=i),
-            last_modified_by={},
+            True,
         )
-        for i in range(run_list_len)
+        for i in range(tc_list_len_half)
     ]
 
-    run_list = Run.list(
+    run_list = list_runs(
         experiment_name=TEST_EXP_NAME,
-        sort_by="CreationTime",
-        sort_order="Ascending",
+        sort_by=SortByType.CreationTime,
+        sort_order=SortOrderType.Ascending,
         sagemaker_session=sagemaker_session,
     )
 
@@ -764,15 +779,17 @@ def test_list(mock_tc_list, mock_tc_load, run_obj, sagemaker_session):
         max_results=None,
         next_token=None,
     )
-    assert len(run_list) == run_list_len
-    for i in range(run_list_len):
+    assert len(run_list) == tc_list_len_half
+    for i in range(tc_list_len_half):
         run = run_list[i]
         assert run.experiment_name == TEST_EXP_NAME
         assert run.run_name == "A" + str(i)
-        assert run._experiment is None
-        assert run._trial is None
+        assert run._experiment
+        assert run._trial
         assert isinstance(run._trial_component, _TrialComponent)
-        assert run._trial_component.trial_component_name == "A" + str(i)
+        assert run._trial_component.trial_component_name == Run._generate_trial_component_name(
+            "A" + str(i), TEST_EXP_NAME
+        )
         assert run._in_load is False
         assert run._inside_load_context is False
         assert run._inside_init_context is False
@@ -784,12 +801,21 @@ def test_list(mock_tc_list, mock_tc_load, run_obj, sagemaker_session):
 @patch("sagemaker.experiments.run._TrialComponent.list")
 def test_list_empty(mock_tc_list, sagemaker_session):
     mock_tc_list.return_value = []
-    assert [] == Run.list(experiment_name=TEST_EXP_NAME, sagemaker_session=sagemaker_session)
+    assert [] == list_runs(experiment_name=TEST_EXP_NAME, sagemaker_session=sagemaker_session)
 
 
-@patch("sagemaker.experiments.run._TrialComponent.load")
+@patch(
+    "sagemaker.experiments.run._Experiment._load_or_create",
+    MagicMock(return_value=_Experiment(experiment_name=TEST_EXP_NAME)),
+)
+@patch(
+    "sagemaker.experiments.run._Trial._load_or_create",
+    MagicMock(side_effect=mock_trial_load_or_create_func),
+)
+@patch.object(_Trial, "add_trial_component", MagicMock(return_value=None))
+@patch("sagemaker.experiments.run._TrialComponent._load_or_create")
 def test_enter_exit_locally(mock_load_tc, sagemaker_session, run_obj):
-    mock_load_tc.return_value = run_obj._trial_component
+    mock_load_tc.return_value = run_obj._trial_component, False
     sagemaker_session.sagemaker_client.update_trial_component.return_value = {}
     _verify_tc_status_before_enter_init(run_obj._trial_component)
 
@@ -797,7 +823,7 @@ def test_enter_exit_locally(mock_load_tc, sagemaker_session, run_obj):
         _verify_tc_status_when_entering(run_obj._trial_component)
         init_start_time = run_obj._trial_component.start_time
 
-        with Run.load(sagemaker_session=sagemaker_session):
+        with load_run(sagemaker_session=sagemaker_session):
             _verify_tc_status_when_entering(
                 trial_component=run_obj._trial_component,
                 init_start_time=init_start_time,
@@ -813,11 +839,11 @@ def test_enter_exit_locally(mock_load_tc, sagemaker_session, run_obj):
     )
 
     # Re-load to verify:
-    # 1. if it works when Run.load and with are not in one line
+    # 1. if it works when load_run and with are not in one line
     # 2. if re-entering the load will change the "Completed" TC status
     # to "InProgress"
     # 3. when exiting the load, the end_time and status will be overridden again
-    run_load = Run.load(
+    run_load = load_run(
         experiment_name=run_obj.experiment_name,
         run_name=run_obj.run_name,
         sagemaker_session=sagemaker_session,
@@ -869,7 +895,7 @@ def test_generate_trial_name():
 
 
 def test_append_run_tc_label_to_tags():
-    expected_tc_tag = {"Key": RUN_TC_TAG_KEY, "Value": RUN_TC_TAG_VALUE}
+    expected_tc_tag = RUN_TC_TAG
 
     tags = None
     ret = Run._append_run_tc_label_to_tags(tags)

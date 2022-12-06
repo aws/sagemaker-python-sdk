@@ -15,13 +15,13 @@ from __future__ import absolute_import
 
 import datetime
 import logging
-import os
+from enum import Enum
 from math import isnan, isinf
 from numbers import Number
-from os.path import join
-from typing import Optional, List, Dict, TYPE_CHECKING
+from typing import Optional, List, Dict, TYPE_CHECKING, Union
 
 import dateutil
+from numpy import array
 
 from sagemaker.apiutils import _utils
 from sagemaker.experiments import _api_types
@@ -30,7 +30,7 @@ from sagemaker.experiments._helper import (
     _ArtifactUploader,
     _LineageArtifactTracker,
 )
-from sagemaker.experiments._environment import _RunEnvironment, _EnvironmentType
+from sagemaker.experiments._environment import _RunEnvironment
 from sagemaker.experiments._run_context import _RunContext
 from sagemaker.experiments.experiment import _Experiment
 from sagemaker.experiments._metrics import _MetricsManager
@@ -39,7 +39,6 @@ from sagemaker.experiments.trial_component import _TrialComponent
 
 from sagemaker.utils import (
     get_module,
-    retry_with_backoff,
     unique_name_from_base,
 )
 
@@ -48,6 +47,9 @@ from sagemaker.experiments._utils import (
     resolve_artifact_name,
     verify_length_of_true_and_predicted,
     validate_invoked_inside_run_context,
+    get_tc_and_exp_config_from_job_env,
+    verify_load_input_names,
+    is_run_trial_component,
 )
 
 if TYPE_CHECKING:
@@ -68,6 +70,21 @@ TRIAL_COMPONENT_NAME = "TrialComponentName"
 DELIMITER = "-"
 RUN_TC_TAG_KEY = "sagemaker:trial-component-source"
 RUN_TC_TAG_VALUE = "run"
+RUN_TC_TAG = {"Key": RUN_TC_TAG_KEY, "Value": RUN_TC_TAG_VALUE}
+
+
+class SortByType(Enum):
+    """The type of property by which to sort the `list_runs` results."""
+
+    CreationTime = "CreationTime"
+    Name = "Name"
+
+
+class SortOrderType(Enum):
+    """The type of order to sort the list or search results."""
+
+    Ascending = "Ascending"
+    Descending = "Descending"
 
 
 class Run(object):
@@ -75,41 +92,6 @@ class Run(object):
 
     def __init__(
         self,
-        experiment_name,
-        run_name,
-        trial_component,
-        sagemaker_session,
-        run_group_name=None,
-        experiment=None,
-        trial=None,
-    ):
-        """Construct a `Run` instance"""
-        self.experiment_name = experiment_name
-        self.run_name = run_name
-        self.run_group_name = run_group_name
-        self._experiment = experiment
-        self._trial = trial
-        self._trial_component = trial_component
-
-        self._artifact_uploader = _ArtifactUploader(
-            trial_component_name=self._trial_component.trial_component_name,
-            sagemaker_session=sagemaker_session,
-        )
-        self._lineage_artifact_tracker = _LineageArtifactTracker(
-            trial_component_arn=self._trial_component.trial_component_arn,
-            sagemaker_session=sagemaker_session,
-        )
-        self._metrics_manager = _MetricsManager(
-            resource_arn=self._trial_component.trial_component_arn,
-            sagemaker_session=sagemaker_session,
-        )
-        self._inside_init_context = False
-        self._inside_load_context = False
-        self._in_load = False
-
-    @classmethod
-    def init(
-        cls,
         experiment_name: str,
         run_name: Optional[str] = None,
         experiment_display_name: Optional[str] = None,
@@ -117,7 +99,28 @@ class Run(object):
         tags: Optional[List[Dict[str, str]]] = None,
         sagemaker_session: Optional["Session"] = None,
     ):
-        """The primary method used to init a run class and setup experiment tracking.
+        """Construct a `Run` instance.
+
+        NOTE: It is not recommended to initialize a Run object (using the constructor)
+        in a Sagemaker job (e.g. training job, etc.) script.
+        Instead please follow the example below to 1). initialize a Run object in a notebook,
+        2). create a SageMaker job inside the Run object's context (i.e. the `with` statement),
+        and 3). load the same Run object in a job script via `load_run()`.
+
+        .. code:: python
+
+            # In a notebook
+            with Run(experiment_name="my-exp", run_name="my-run", ...) as run:
+                run.log_parameter(...)
+                ...
+                estimator.fit(job_name="my-job")  # Create a training job
+
+        .. code:: python
+
+            # In a job script
+            with load_run() as run:
+                run.log_parameters(...)
+                ...
 
         Args:
             experiment_name (str): The name of the experiment. The name must be unique
@@ -137,28 +140,29 @@ class Run(object):
                 AWS services needed. If not specified, one is created using the
                 default AWS configuration chain.
         """
+        self.experiment_name = experiment_name
         sagemaker_session = sagemaker_session or _utils.default_session()
-        run_name = run_name or unique_name_from_base(RUN_NAME_BASE)
+        self.run_name = run_name or unique_name_from_base(RUN_NAME_BASE)
         trial_component_name = Run._generate_trial_component_name(
-            run_name=run_name, experiment_name=experiment_name
+            run_name=self.run_name, experiment_name=self.experiment_name
         )
-        run_group_name = Run._generate_trial_name(experiment_name)
+        self.run_group_name = Run._generate_trial_name(self.experiment_name)
 
-        experiment = _Experiment._load_or_create(
-            experiment_name=experiment_name,
+        self._experiment = _Experiment._load_or_create(
+            experiment_name=self.experiment_name,
             display_name=experiment_display_name,
             tags=tags,
             sagemaker_session=sagemaker_session,
         )
 
-        trial = _Trial._load_or_create(
-            experiment_name=experiment_name,
-            trial_name=run_group_name,
+        self._trial = _Trial._load_or_create(
+            experiment_name=self.experiment_name,
+            trial_name=self.run_group_name,
             tags=tags,
             sagemaker_session=sagemaker_session,
         )
 
-        run_tc, is_existed = _TrialComponent._load_or_create(
+        self._trial_component, is_existed = _TrialComponent._load_or_create(
             trial_component_name=trial_component_name,
             display_name=run_display_name,
             tags=Run._append_run_tc_label_to_tags(tags),
@@ -166,90 +170,32 @@ class Run(object):
         )
         if is_existed:
             logger.warning(
-                "The Run (%s) under experiment (%s) already exists. Loading it.",
-                run_name,
-                experiment_name,
+                "The Run (%s) under experiment (%s) already exists. Loading it. "
+                "Note, sagemaker.experiments.load_run is recommended to use when "
+                "the desired Run already exists.",
+                self.run_name,
+                self.experiment_name,
             )
+        self._trial.add_trial_component(self._trial_component)
 
-        trial.add_trial_component(run_tc)
-
-        return cls(
-            experiment_name=experiment_name,
-            run_group_name=run_group_name,
-            run_name=run_name,
-            experiment=experiment,
-            trial=trial,
-            trial_component=run_tc,
+        self._artifact_uploader = _ArtifactUploader(
+            trial_component_name=self._trial_component.trial_component_name,
             sagemaker_session=sagemaker_session,
         )
-
-    @classmethod
-    def load(
-        cls,
-        run_name: Optional[str] = None,
-        experiment_name: Optional[str] = None,
-        sagemaker_session: Optional["Session"] = None,
-    ):
-        """Load a Run by the run name or from the job environment.
-
-        Args:
-            run_name (str): The name of the Run to be loaded (default: None).
-                If it is None, the `RunName` in the `ExperimentConfig` of the job will be
-                fetched to load the Run.
-            experiment_name (str): The name of the Experiment that the to be loaded Run
-                is associated with (default: None).
-                Note: the experiment_name must be supplied along with a valid run_name.
-                Otherwise, it will be ignored.
-            sagemaker_session (sagemaker.session.Session): Session object which
-                manages interactions with Amazon SageMaker APIs and any other
-                AWS services needed. If not specified, one is created using the
-                default AWS configuration chain.
-        """
-        sagemaker_session = sagemaker_session or _utils.default_session()
-        environment = _RunEnvironment.load()
-
-        Run._verify_load_input_names(run_name=run_name, experiment_name=experiment_name)
-
-        if run_name or environment:
-            if run_name:
-                logger.warning(
-                    "run_name is explicitly supplied in Run.load, "
-                    "which will be prioritized to load the Run object. "
-                    "In other words, the run name in the experiment config, fetched from the "
-                    "job environment or the current Run context, will be ignored."
-                )
-                run_tc, exp_config = Run._get_tc_and_exp_config_by_run_name(
-                    run_name=run_name,
-                    sagemaker_session=sagemaker_session,
-                    experiment_name=experiment_name,
-                )
-            else:
-                run_tc, exp_config = Run._get_tc_and_exp_config_from_job_env(
-                    environment=environment, sagemaker_session=sagemaker_session
-                )
-            run_name = exp_config[RUN_NAME].replace(
-                "{}{}".format(exp_config[EXPERIMENT_NAME], DELIMITER), "", 1
-            )
-            run_instance = cls(
-                experiment_name=exp_config[EXPERIMENT_NAME],
-                run_name=run_name,
-                run_group_name=exp_config[TRIAL_NAME],
-                trial_component=run_tc,
-                sagemaker_session=sagemaker_session,
-            )
-        elif _RunContext.get_current_run():
-            run_instance = _RunContext.get_current_run()
-        else:
-            raise RuntimeError(
-                "Failed to load a Run object. "
-                "Please make sure a Run object has been initialized already."
-            )
-
-        run_instance._in_load = True
-        return run_instance
+        self._lineage_artifact_tracker = _LineageArtifactTracker(
+            trial_component_arn=self._trial_component.trial_component_arn,
+            sagemaker_session=sagemaker_session,
+        )
+        self._metrics_manager = _MetricsManager(
+            resource_arn=self._trial_component.trial_component_arn,
+            sagemaker_session=sagemaker_session,
+        )
+        self._inside_init_context = False
+        self._inside_load_context = False
+        self._in_load = False
 
     @property
-    def _experiment_config(self):
+    def experiment_config(self) -> dict:
         """Get experiment config from Run attributes."""
         return {
             EXPERIMENT_NAME: self.experiment_name,
@@ -258,24 +204,24 @@ class Run(object):
         }
 
     @validate_invoked_inside_run_context
-    def log_parameter(self, name, value):
+    def log_parameter(self, name: str, value: Union[str, int, float]):
         """Record a single parameter value for this run.
 
         Overwrites any previous value recorded for the specified parameter name.
 
         Args:
             name (str): The name of the parameter.
-            value (str or numbers.Number): The value of the parameter.
+            value (str or int or float): The value of the parameter.
         """
         if self._is_input_valid("parameter", name, value):
             self._trial_component.parameters[name] = value
 
     @validate_invoked_inside_run_context
-    def log_parameters(self, parameters):
+    def log_parameters(self, parameters: Dict[str, Union[str, int, float]]):
         """Record a collection of parameter values for this run.
 
         Args:
-            parameters (dict[str, str or numbers.Number]): The parameters to record.
+            parameters (dict[str, str or int or float]): The parameters to record.
         """
         filtered_parameters = {
             key: value
@@ -285,7 +231,13 @@ class Run(object):
         self._trial_component.parameters.update(filtered_parameters)
 
     @validate_invoked_inside_run_context
-    def log_metric(self, name, value, timestamp=None, step=None):
+    def log_metric(
+        self,
+        name: str,
+        value: float,
+        timestamp: Optional[datetime.datetime] = None,
+        step: Optional[int] = None,
+    ):
         """Record a custom scalar metric value for this run.
 
         Note:
@@ -309,12 +261,12 @@ class Run(object):
     @validate_invoked_inside_run_context
     def log_precision_recall(
         self,
-        y_true,
-        predicted_probabilities,
-        positive_label=None,
-        title=None,
-        is_output=True,
-        no_skill=None,
+        y_true: Union[list, array],
+        predicted_probabilities: Union[list, array],
+        positive_label: Optional[Union[str, int]] = None,
+        title: Optional[str] = None,
+        is_output: bool = True,
+        no_skill: Optional[int] = None,
     ):
         """Create and log a precision recall graph artifact for Studio UI to render.
 
@@ -376,10 +328,10 @@ class Run(object):
     @validate_invoked_inside_run_context
     def log_roc_curve(
         self,
-        y_true,
-        y_score,
-        title=None,
-        is_output=True,
+        y_true: Union[list, array],
+        y_score: Union[list, array],
+        title: Optional[str] = None,
+        is_output: bool = True,
     ):
         """Create and log a receiver operating characteristic (ROC curve) artifact.
 
@@ -428,10 +380,10 @@ class Run(object):
     @validate_invoked_inside_run_context
     def log_confusion_matrix(
         self,
-        y_true,
-        y_pred,
-        title=None,
-        is_output=True,
+        y_true: Union[list, array],
+        y_pred: Union[list, array],
+        title: Optional[str] = None,
+        is_output: bool = True,
     ):
         """Create and log a confusion matrix artifact.
 
@@ -473,39 +425,39 @@ class Run(object):
         )
 
     @validate_invoked_inside_run_context
-    def log_output(self, name, value, media_type=None):
-        """Record a single output artifact for this run.
+    def log_artifact(
+        self, name: str, value: str, media_type: Optional[str] = None, is_output: bool = True
+    ):
+        """Record a single artifact for this run.
 
-        Overwrites any previous value recorded for the specified output name.
-
-        Args:
-            name (str): The name of the output value.
-            value (str): The value.
-            media_type (str): The MediaType (MIME type) of the value (default: None).
-        """
-        self._verify_trial_component_artifacts_length(is_output=True)
-        self._trial_component.output_artifacts[name] = TrialComponentArtifact(
-            value, media_type=media_type
-        )
-
-    @validate_invoked_inside_run_context
-    def log_input(self, name, value, media_type=None):
-        """Record a single input artifact for this run.
-
-        Overwrites any previous value recorded for the specified input name.
+        Overwrites any previous value recorded for the specified name.
 
         Args:
-            name (str): The name of the input value.
+            name (str): The name of the artifact.
             value (str): The value.
             media_type (str): The MediaType (MIME type) of the value (default: None).
+            is_output (bool): Determines direction of association to the
+                run. Defaults to True (output artifact).
+                If set to False then represented as input association.
         """
-        self._verify_trial_component_artifacts_length(is_output=False)
-        self._trial_component.input_artifacts[name] = TrialComponentArtifact(
-            value, media_type=media_type
-        )
+        self._verify_trial_component_artifacts_length(is_output=is_output)
+        if is_output:
+            self._trial_component.output_artifacts[name] = TrialComponentArtifact(
+                value, media_type=media_type
+            )
+        else:
+            self._trial_component.input_artifacts[name] = TrialComponentArtifact(
+                value, media_type=media_type
+            )
 
     @validate_invoked_inside_run_context
-    def log_artifact_file(self, file_path, name=None, media_type=None, is_output=True):
+    def log_file(
+        self,
+        file_path: str,
+        name: Optional[str] = None,
+        media_type: Optional[str] = None,
+        is_output: bool = True,
+    ):
         """Upload a file to s3 and store it as an input/output artifact in this run.
 
         Args:
@@ -531,113 +483,6 @@ class Run(object):
                 value=s3_uri, media_type=media_type
             )
 
-    @validate_invoked_inside_run_context
-    def log_artifact_directory(self, directory, media_type=None, is_output=True):
-        """Upload files under directory to s3 and log as artifacts in this run.
-
-        The file name is used as the artifact name
-
-        Args:
-            directory (str): The directory of the local files to upload.
-            media_type (str): The MediaType (MIME type) of the file.
-                If not specified, this library will attempt to infer the media type
-                from the file extension of `file_path`.
-            is_output (bool): Determines direction of association to the
-                run. Defaults to True (output artifact).
-                If set to False then represented as input association.
-        """
-        for dir_file in os.listdir(directory):
-            file_path = join(directory, dir_file)
-            artifact_name = os.path.splitext(dir_file)[0]
-            self.log_artifact_file(
-                file_path=file_path, name=artifact_name, media_type=media_type, is_output=is_output
-            )
-
-    @validate_invoked_inside_run_context
-    def log_lineage_artifact(self, file_path, name=None, media_type=None, is_output=True):
-        """Upload a file to S3 and creates a lineage Artifact associated with this run.
-
-        Args:
-            file_path (str): The path of the local file to upload.
-            name (str): The name of the artifact (default: None).
-            media_type (str): The MediaType (MIME type) of the file.
-                If not specified, this library will attempt to infer the media type
-                from the file extension of `file_path`.
-            is_output (bool): Determines direction of association to the
-                run. Defaults to True (output artifact).
-                If set to False then represented as input association.
-        """
-        media_type = media_type or guess_media_type(file_path)
-        name = name or resolve_artifact_name(file_path)
-        s3_uri, etag = self._artifact_uploader.upload_artifact(file_path)
-        if is_output:
-            self._lineage_artifact_tracker.add_output_artifact(
-                name=name, source_uri=s3_uri, etag=etag, artifact_type=media_type
-            )
-        else:
-            self._lineage_artifact_tracker.add_input_artifact(
-                name=name, source_uri=s3_uri, etag=etag, artifact_type=media_type
-            )
-
-    @classmethod
-    def list(
-        cls,
-        experiment_name,
-        created_before=None,
-        created_after=None,
-        sort_by="CreationTime",
-        sort_order="Descending",
-        sagemaker_session=None,
-        max_results=None,
-        next_token=None,
-    ):
-        """Return a list of `Run` objects matching the given criteria.
-
-        Args:
-            experiment_name (str): Only Run objects related to the specified experiment
-                are returned.
-            created_before (datetime.datetime): Return Run objects created before this instant
-                (default: None).
-            created_after (datetime.datetime): Return Run objects created after this instant
-                (default: None).
-            sort_by (str): Which property to sort results by. One of 'Name', 'CreationTime'
-                (default: 'CreationTime').
-            sort_order (str): One of 'Ascending', or 'Descending' (default: 'Descending').
-            sagemaker_session (sagemaker.session.Session): Session object which
-                manages interactions with Amazon SageMaker APIs and any other
-                AWS services needed. If not specified, one is created using the
-                default AWS configuration chain.
-            max_results (int): maximum number of Run objects to retrieve (default: None).
-            next_token (str): token for next page of results (default: None).
-
-        Returns:
-            list: A list of `Run` objects.
-        """
-        tc_summaries = _TrialComponent.list(
-            experiment_name=experiment_name,
-            created_before=created_before,
-            created_after=created_after,
-            sort_by=sort_by,
-            sort_order=sort_order,
-            sagemaker_session=sagemaker_session,
-            max_results=max_results,
-            next_token=next_token,
-        )
-        run_list = []
-        for tc_summary in tc_summaries:
-            tc = _TrialComponent.load(
-                trial_component_name=tc_summary.trial_component_name,
-                sagemaker_session=sagemaker_session,
-            )
-            run_instance = cls(
-                experiment_name=experiment_name,
-                run_name=tc_summary.trial_component_name,
-                trial_component=tc,
-                sagemaker_session=sagemaker_session,
-            )
-            run_list.append(run_instance)
-        return run_list
-
     def close(self):
         """Persist any data saved locally."""
         try:
@@ -650,7 +495,7 @@ class Run(object):
                 self._metrics_manager.close()
 
     @staticmethod
-    def _generate_trial_name(base_name):
+    def _generate_trial_name(base_name) -> str:
         """Generate the reserved trial name based on run name
 
         Args:
@@ -660,13 +505,13 @@ class Run(object):
         return TRIAL_NAME_TEMPLATE.format(base_name[:available_length])
 
     @staticmethod
-    def _is_input_valid(input_type, field_name, field_value):
+    def _is_input_valid(input_type, field_name, field_value) -> bool:
         """Check if the input is valid or not
 
         Args:
             input_type (str): The type of the input, one of `parameter`, `metric`.
             field_name (str): The name of the field to be checked.
-            field_value (str or numbers.Number): The value of the field to be checked.
+            field_value (str or int or float): The value of the field to be checked.
         """
         if isinstance(field_value, Number) and (isnan(field_value) or isinf(field_value)):
             logger.warning(
@@ -730,87 +575,6 @@ class Run(object):
                 raise ValueError(err_msg_template.format(MAX_RUN_TC_ARTIFACTS_LEN, "input"))
 
     @staticmethod
-    def _get_tc_and_exp_config_by_run_name(
-        run_name: str,
-        experiment_name: str,
-        sagemaker_session: "Session",
-    ):
-        """Retrieve a trial component and experiment config by the run_name etc.
-
-        Args:
-            run_name (str): The name of a run object.
-            experiment_name (str): The name of the Experiment the run object is
-                associated with.
-            sagemaker_session (sagemaker.session.Session): Session object which
-                manages interactions with Amazon SageMaker APIs and any other
-                AWS services needed. If not specified, one is created using the
-                default AWS configuration chain.
-        """
-        trial_component_name = Run._generate_trial_component_name(
-            run_name=run_name, experiment_name=experiment_name
-        )
-        run_tc = _TrialComponent.load(
-            trial_component_name=trial_component_name,
-            sagemaker_session=sagemaker_session,
-        )
-        exp_config = {
-            EXPERIMENT_NAME: experiment_name,
-            TRIAL_NAME: Run._generate_trial_name(experiment_name),
-            RUN_NAME: trial_component_name,
-        }
-
-        return run_tc, exp_config
-
-    @staticmethod
-    def _get_tc_and_exp_config_from_job_env(
-        environment: _RunEnvironment,
-        sagemaker_session: "Session",
-    ):
-        """Retrieve a trial component and experiment config from the job environment.
-
-        Note: Only Training Job is supported at this point.
-
-        Args:
-            environment (_RunEnvironment): The run environment object with job specific data.
-            sagemaker_session (sagemaker.session.Session): Session object which
-                manages interactions with Amazon SageMaker APIs and any other
-                AWS services needed. If not specified, one is created using the
-                default AWS configuration chain.
-        """
-        job_name = environment.source_arn.split("/")[-1]
-        if environment.environment_type == _EnvironmentType.SageMakerTrainingJob:
-            job_response = retry_with_backoff(
-                callable_func=lambda: sagemaker_session.describe_training_job(job_name),
-                num_attempts=4,
-            )
-        elif environment.environment_type == _EnvironmentType.SageMakerProcessingJob:
-            job_response = retry_with_backoff(
-                callable_func=lambda: sagemaker_session.describe_processing_job(job_name),
-                num_attempts=4,
-            )
-        else:  # environment.environment_type == _EnvironmentType.SageMakerTransformJob
-            raise RuntimeError(
-                "Failed to load the Run as loading experiment config "
-                "from transform job environment is not currently supported. "
-                "As a workaround, please explicitly pass in "
-                "the experiment_name and run_name in Run.load."
-            )
-
-        job_exp_config = job_response.get("ExperimentConfig", dict())
-        if job_exp_config.get(RUN_NAME, None):
-            # The run with RunName has been created outside of the job env.
-            # The job env already ensures the trial_component/run given in experiment config exists
-            # otherwise it fails to create the job.
-            tc = _TrialComponent.load(
-                trial_component_name=job_exp_config[RUN_NAME], sagemaker_session=sagemaker_session
-            )
-            return tc, job_exp_config
-        raise RuntimeError(
-            "Not able to fetch RunName in ExperimentConfig of the sagemaker job. "
-            "Please make sure the ExperimentConfig is correctly set."
-        )
-
-    @staticmethod
     def _generate_trial_component_name(run_name: str, experiment_name: str) -> str:
         """Generate the TrialComponentName based on run_name and experiment_name
 
@@ -839,31 +603,18 @@ class Run(object):
         return "{}{}{}".format(experiment_name, DELIMITER, run_name)
 
     @staticmethod
-    def _verify_load_input_names(
-        run_name: Optional[str] = None,
-        experiment_name: Optional[str] = None,
-    ):
-        """Verify the run_name and the experiment_name inputs in Run.load.
+    def _extract_run_name_from_tc_name(trial_component_name: str, experiment_name: str) -> str:
+        """Extract the user supplied run name from a trial component name.
 
         Args:
-            run_name (str): The run_name supplied by the user (default: None).
-            experiment_name (str): The experiment_name supplied by the user
-                (default: None).
+            trial_component_name (str): The name of a Run trial component.
+            experiment_name (str): The experiment_name supplied by the user,
+                which was prepended to the run_name to generate the trial_component_name.
 
-        Raises:
-            ValueError: If run_name is supplied while experiment_name is not.
+        Returns:
+            str: The name of the Run object supplied by a user.
         """
-        if not run_name and experiment_name:
-            logger.warning(
-                "No run_name is supplied. Ignoring the provided experiment_name "
-                "since it only takes effect along with run_name. "
-                "Will load the Run object from the job environment or current Run context."
-            )
-        if run_name and not experiment_name:
-            raise ValueError(
-                "Invalid input: experiment_name is missing when run_name is supplied. "
-                "Please supply valid experiment_name when the run_name is not None."
-            )
+        return trial_component_name.replace("{}{}".format(experiment_name, DELIMITER), "", 1)
 
     @staticmethod
     def _append_run_tc_label_to_tags(tags: Optional[List[Dict[str, str]]] = None) -> list:
@@ -877,7 +628,7 @@ class Run(object):
         """
         if not tags:
             tags = []
-        tags.append({"Key": RUN_TC_TAG_KEY, "Value": RUN_TC_TAG_VALUE})
+        tags.append(RUN_TC_TAG)
         return tags
 
     def __enter__(self):
@@ -891,11 +642,11 @@ class Run(object):
         )
         if self._in_load:
             if self._inside_load_context:
-                raise RuntimeError(nested_with_err_msg_template.format("Run.load"))
+                raise RuntimeError(nested_with_err_msg_template.format("load_run"))
             self._inside_load_context = True
         else:
             if _RunContext.get_current_run():
-                raise RuntimeError(nested_with_err_msg_template.format("Run.init"))
+                raise RuntimeError(nested_with_err_msg_template.format("Run"))
             self._inside_init_context = True
             _RunContext.add_run_object(self)
 
@@ -937,3 +688,127 @@ class Run(object):
             )
 
         self.close()
+
+
+def load_run(
+    run_name: Optional[str] = None,
+    experiment_name: Optional[str] = None,
+    sagemaker_session: Optional["Session"] = None,
+) -> Run:
+    """Load a Run by the run name or from the job environment.
+
+    Args:
+        run_name (str): The name of the Run to be loaded (default: None).
+            If it is None, the `RunName` in the `ExperimentConfig` of the job will be
+            fetched to load the Run.
+        experiment_name (str): The name of the Experiment that the to be loaded Run
+            is associated with (default: None).
+            Note: the experiment_name must be supplied along with a valid run_name.
+            Otherwise, it will be ignored.
+        sagemaker_session (sagemaker.session.Session): Session object which
+            manages interactions with Amazon SageMaker APIs and any other
+            AWS services needed. If not specified, one is created using the
+            default AWS configuration chain.
+
+    Returns:
+        Run: The loaded Run object.
+    """
+    sagemaker_session = sagemaker_session or _utils.default_session()
+    environment = _RunEnvironment.load()
+
+    verify_load_input_names(run_name=run_name, experiment_name=experiment_name)
+
+    if run_name or environment:
+        if run_name:
+            logger.warning(
+                "run_name is explicitly supplied in load_run, "
+                "which will be prioritized to load the Run object. "
+                "In other words, the run name in the experiment config, fetched from the "
+                "job environment or the current Run context, will be ignored."
+            )
+        else:
+            exp_config = get_tc_and_exp_config_from_job_env(
+                environment=environment, sagemaker_session=sagemaker_session
+            )
+            run_name = Run._extract_run_name_from_tc_name(
+                trial_component_name=exp_config[RUN_NAME],
+                experiment_name=exp_config[EXPERIMENT_NAME],
+            )
+            experiment_name = exp_config[EXPERIMENT_NAME]
+
+        run_instance = Run(
+            experiment_name=experiment_name,
+            run_name=run_name,
+            sagemaker_session=sagemaker_session,
+        )
+    elif _RunContext.get_current_run():
+        run_instance = _RunContext.get_current_run()
+    else:
+        raise RuntimeError(
+            "Failed to load a Run object. "
+            "Please make sure a Run object has been initialized already."
+        )
+
+    run_instance._in_load = True
+    return run_instance
+
+
+def list_runs(
+    experiment_name: str,
+    created_before: Optional[datetime.datetime] = None,
+    created_after: Optional[datetime.datetime] = None,
+    sagemaker_session: Optional["Session"] = None,
+    max_results: Optional[int] = None,
+    next_token: Optional[str] = None,
+    sort_by: SortByType = SortByType.CreationTime,
+    sort_order: SortOrderType = SortOrderType.Descending,
+) -> list:
+    """Return a list of `Run` objects matching the given criteria.
+
+    Args:
+        experiment_name (str): Only Run objects related to the specified experiment
+            are returned.
+        created_before (datetime.datetime): Return Run objects created before this instant
+            (default: None).
+        created_after (datetime.datetime): Return Run objects created after this instant
+            (default: None).
+        sagemaker_session (sagemaker.session.Session): Session object which
+            manages interactions with Amazon SageMaker APIs and any other
+            AWS services needed. If not specified, one is created using the
+            default AWS configuration chain.
+        max_results (int): maximum number of Run objects to retrieve (default: None).
+        next_token (str): token for next page of results (default: None).
+        sort_by (SortByType): Which property to sort results by. One of Name, CreationTime
+            (default: CreationTime).
+        sort_order (SortOrderType): One of Ascending, or Descending (default: Descending).
+
+    Returns:
+        list: A list of `Run` objects.
+    """
+    tc_summaries = _TrialComponent.list(
+        experiment_name=experiment_name,
+        created_before=created_before,
+        created_after=created_after,
+        sort_by=sort_by.value,
+        sort_order=sort_order.value,
+        sagemaker_session=sagemaker_session,
+        max_results=max_results,
+        next_token=next_token,
+    )
+    run_list = []
+    for tc_summary in tc_summaries:
+        if not is_run_trial_component(
+            trial_component_name=tc_summary.trial_component_name,
+            sagemaker_session=sagemaker_session,
+        ):
+            continue
+        run_instance = Run(
+            experiment_name=experiment_name,
+            run_name=Run._extract_run_name_from_tc_name(
+                trial_component_name=tc_summary.trial_component_name,
+                experiment_name=experiment_name,
+            ),
+            sagemaker_session=sagemaker_session,
+        )
+        run_list.append(run_instance)
+    return run_list

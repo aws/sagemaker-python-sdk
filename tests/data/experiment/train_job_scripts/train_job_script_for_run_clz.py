@@ -21,14 +21,14 @@ import os
 import boto3
 
 from sagemaker import Session
-from sagemaker.experiments.run import Run
+from sagemaker.experiments import load_run, Run
 
 boto_session = boto3.Session(region_name=os.environ["AWS_REGION"])
 sagemaker_session = Session(boto_session=boto_session)
 
 if os.environ["RUN_OPERATION"] == "init":
     logging.info("Initializing a Run")
-    with Run.init(
+    with Run(
         experiment_name=os.environ["EXPERIMENT_NAME"],
         run_name=os.environ["RUN_NAME"],
         sagemaker_session=sagemaker_session,
@@ -37,7 +37,7 @@ if os.environ["RUN_OPERATION"] == "init":
         logging.info(f"Experiment name: {run.experiment_name}")
         logging.info(f"Trial component name: {run._trial_component.trial_component_name}")
         run.log_parameter("p1", 1.0)
-        run.log_parameter("p2", 2.0)
+        run.log_parameter("p2", 2)
 
         for i in range(2):
             run.log_metric("A", i)
@@ -55,16 +55,16 @@ if os.environ["RUN_OPERATION"] == "init":
 
 else:
     logging.info("Loading a Run")
-    logging.info("Invoking Run.load with name arguments")
-    with Run.load(
+    logging.info("Invoking load_run with name arguments")
+    with load_run(
         experiment_name=os.environ["EXPERIMENT_NAME"],
         run_name=os.environ["RUN_NAME"],
         sagemaker_session=sagemaker_session,
     ) as run:
-        run.log_parameters({"p3": 3.0, "p4": 4.0})
+        run.log_parameters({"p3": 3.0, "p4": 4})
         run.log_metric("test-job-load-log-metric", 0.1)
 
     if os.environ.get("CALL_RUN_LOAD_WITH_NO_NAME_ARGS", None) == "True":
-        logging.info("Invoking Run.load without name arguments")
-        with Run.load(sagemaker_session=sagemaker_session) as run:
-            run.log_parameters({"p5": 5.0, "p6": 6.0})
+        logging.info("Invoking load_run without name arguments")
+        with load_run(sagemaker_session=sagemaker_session) as run:
+            run.log_parameters({"p5": 5.0, "p6": 6})

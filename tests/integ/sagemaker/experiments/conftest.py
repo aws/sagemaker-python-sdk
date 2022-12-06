@@ -23,7 +23,7 @@ import uuid
 import boto3
 import pytest
 
-from sagemaker.experiments.run import Run
+from sagemaker.experiments import Run
 from tests.integ import DATA_DIR
 
 from sagemaker.experiments import trial_component, trial, experiment
@@ -37,7 +37,7 @@ RUN_NAME_IN_LOCAL = "job-run-in-local"
 
 @pytest.fixture(scope="module")
 def run_obj(sagemaker_session):
-    run = Run.init(
+    run = Run(
         experiment_name=unique_name_from_base(EXP_NAME_BASE_IN_LOCAL),
         run_name=RUN_NAME_IN_LOCAL,
         sagemaker_session=sagemaker_session,

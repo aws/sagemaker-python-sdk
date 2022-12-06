@@ -34,7 +34,6 @@ import botocore
 from six.moves.urllib import parse
 
 from sagemaker import deprecations
-from sagemaker.experiments._run_context import _RunContext
 from sagemaker.session_settings import SessionSettings
 from sagemaker.workflow import is_pipeline_variable, is_pipeline_parameter_string
 
@@ -927,6 +926,8 @@ def check_and_get_run_experiment_config(experiment_config: Optional[dict] = None
         dict: Return the user supplied experiment_config if it is not None.
             Otherwise fetch the experiment_config from the current Run object if exists.
     """
+    from sagemaker.experiments._run_context import _RunContext
+
     run_obj = _RunContext.get_current_run()
     if experiment_config:
         if run_obj:
@@ -938,4 +939,4 @@ def check_and_get_run_experiment_config(experiment_config: Optional[dict] = None
             )
         return experiment_config
 
-    return run_obj._experiment_config if run_obj else None
+    return run_obj.experiment_config if run_obj else None

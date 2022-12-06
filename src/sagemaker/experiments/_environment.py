@@ -99,6 +99,14 @@ class _RunEnvironment(object):
         Returns:
             _TrialComponent: The trial component created from the job. None if not found.
         """
+        # TODO: Remove this condition check once we have a way to retrieve source ARN
+        # from transform job env
+        if self.environment_type == _EnvironmentType.SageMakerTransformJob:
+            logger.error(
+                "Currently getting the job trial component from the transform job environment "
+                "is not supported. Returning None."
+            )
+            return None
 
         def _get_trial_component():
             summaries = list(

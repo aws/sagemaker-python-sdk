@@ -18,7 +18,8 @@ import pytest
 
 from sagemaker.estimator import Estimator, _TrainingJob
 from sagemaker.experiments.experiment import _Experiment
-from sagemaker.experiments.run import _RunContext, Run
+from sagemaker.experiments.run import _RunContext
+from sagemaker.experiments import load_run, Run
 from sagemaker.experiments.trial import _Trial
 from tests.unit.sagemaker.experiments.helpers import (
     TEST_EXP_NAME,
@@ -48,7 +49,7 @@ def test_auto_pass_in_exp_config_to_train_job(mock_start_job, run_obj, sagemaker
 
         assert _RunContext.get_current_run() == run_obj
 
-    expected_exp_config = run_obj._experiment_config
+    expected_exp_config = run_obj.experiment_config
     mock_start_job.assert_called_once_with(estimator, _train_input_path, expected_exp_config)
 
     # _RunContext is cleaned up after exiting the with statement
@@ -91,7 +92,7 @@ def test_auto_fetch_created_run_obj_from_context(run_obj, sagemaker_session):
     assert not _RunContext.get_current_run()
 
     def train():
-        with Run.load(sagemaker_session=sagemaker_session) as run_load:
+        with load_run(sagemaker_session=sagemaker_session) as run_load:
             assert run_load == run_obj
             assert run_obj._inside_init_context
             assert run_obj._inside_load_context
@@ -120,8 +121,8 @@ def test_auto_fetch_created_run_obj_from_context(run_obj, sagemaker_session):
         assert run_obj._trial_component.parameters["a"] == "b"
         assert run_obj._trial_component.parameters["c"] == 2
 
-        # Verify separate Run.load and with statement in different lines still work
-        run_load2 = Run.load(sagemaker_session=sagemaker_session)
+        # Verify separating load_run and with statement in different lines still work
+        run_load2 = load_run(sagemaker_session=sagemaker_session)
         with run_load2:
             assert run_load2 == run_obj
             assert run_obj._inside_init_context
@@ -148,7 +149,7 @@ def test_nested_run_init_context_on_same_run_object(run_obj, sagemaker_session):
 
             with run_obj:
                 pass
-    assert "It is not allowed to use nested 'with' statements on the Run.init" in str(err)
+    assert "It is not allowed to use nested 'with' statements on the Run" in str(err)
 
 
 @patch(
@@ -168,12 +169,12 @@ def test_nested_run_init_context_on_different_run_object(run_obj, sagemaker_sess
     assert not _RunContext.get_current_run()
 
     with pytest.raises(RuntimeError) as err:
-        with Run.init(experiment_name=TEST_EXP_NAME, sagemaker_session=sagemaker_session):
+        with Run(experiment_name=TEST_EXP_NAME, sagemaker_session=sagemaker_session):
             assert _RunContext.get_current_run()
 
             with run_obj:
                 pass
-    assert "It is not allowed to use nested 'with' statements on the Run.init" in str(err)
+    assert "It is not allowed to use nested 'with' statements on the Run" in str(err)
 
 
 def test_nested_run_load_context(run_obj, sagemaker_session):
@@ -183,8 +184,8 @@ def test_nested_run_load_context(run_obj, sagemaker_session):
         with run_obj:
             assert _RunContext.get_current_run()
 
-            with Run.load():
-                run_load = Run.load()
+            with load_run():
+                run_load = load_run()
                 with run_load:
                     pass
-    assert "It is not allowed to use nested 'with' statements on the Run.load" in str(err)
+    assert "It is not allowed to use nested 'with' statements on the load_run" in str(err)

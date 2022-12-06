@@ -16,7 +16,7 @@ from __future__ import absolute_import
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from sagemaker.experiments.run import Run
+    from sagemaker.experiments import Run
 
 
 class _RunContext:

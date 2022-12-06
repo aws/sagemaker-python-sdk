@@ -20,12 +20,6 @@ TEST_EXP_NAME = "my-experiment"
 TEST_RUN_NAME = "my-run"
 
 
-def mock_trial_component_load_func(trial_component_name, sagemaker_session=None):
-    return _TrialComponent(
-        trial_component_name=trial_component_name, sagemaker_session=sagemaker_session
-    )
-
-
 def mock_tc_load_or_create_func(
     trial_component_name, display_name=None, tags=None, sagemaker_session=None
 ):
