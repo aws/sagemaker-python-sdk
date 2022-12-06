@@ -202,6 +202,7 @@ def test_unsupported_gpu_instance(
         ).fit()
 
 
+@pytest.mark.xfail(reason="With only 1 supported version, user input is ignored.")
 def test_unsupported_framework_version():
     with pytest.raises(ValueError):
         PyTorch(
@@ -560,7 +561,9 @@ def test_attach(sagemaker_session, compiler_enabled, debug_enabled):
     assert estimator.entry_point == "iris-dnn-classifier.py"
 
 
-def test_register_hf_pytorch_model_auto_infer_framework(
+@patch("sagemaker.utils.repack_model", MagicMock())
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+def test_register_pytorch_model_auto_infer_framework(
     sagemaker_session, pytorch_training_compiler_version
 ):
 
@@ -574,6 +577,7 @@ def test_register_hf_pytorch_model_auto_infer_framework(
     pt_model = PyTorchModel(
         model_data="s3://some/data.tar.gz",
         role=ROLE,
+        entry_point=SCRIPT_PATH,
         framework_version=pytorch_training_compiler_version,
         py_version="py38",
         sagemaker_session=sagemaker_session,
