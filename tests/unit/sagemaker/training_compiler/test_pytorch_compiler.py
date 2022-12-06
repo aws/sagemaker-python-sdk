@@ -28,7 +28,7 @@ from sagemaker.instance_group import InstanceGroup
 from tests.unit.sagemaker.training_compiler import EC2_GPU_INSTANCE_CLASSES
 
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
+DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "data")
 SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
 SERVING_SCRIPT_FILE = "another_dummy_script.py"
 MODEL_DATA = "s3://some/data.tar.gz"

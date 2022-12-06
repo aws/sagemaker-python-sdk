@@ -423,6 +423,7 @@ class PyTorch(Framework):
         )
         image_uri = init_params.pop("image_uri")
         framework, py_version, tag, _ = framework_name_from_image(image_uri)
+        framework = framework.split("-")[0]
 
         if tag is None:
             framework_version = None

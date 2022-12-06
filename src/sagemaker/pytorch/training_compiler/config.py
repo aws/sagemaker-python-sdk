@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 class TrainingCompilerConfig(BaseConfig):
     """The SageMaker Training Compiler configuration class."""
 
-    SUPPORTED_INSTANCE_CLASS_PREFIXES = ["p3", "g4dn", "p4d", "g5"]
+    SUPPORTED_INSTANCE_CLASS_PREFIXES = ["p3", "p3dn", "g4dn", "p4d", "g5"]
     SUPPORTED_INSTANCE_TYPES_WITH_EFA = [
         "ml.g4dn.8xlarge",
         "ml.g4dn.12xlarge",
