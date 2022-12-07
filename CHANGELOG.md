@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.120.0 (2022-12-07)
+
+### Features
+
+ * Add Neo image uri config for Pytorch 1.12
+ * Adding support for SageMaker Training Compiler in PyTorch estimator starting 1.12
+ * Update registries with new region account number mappings.
+ * Add DXB region to frameworks by DLC
+
+### Bug Fixes and Other Changes
+
+ * support idempotency for framework and spark processors
+
 ## v2.119.0 (2022-12-03)
 
 ### Features
