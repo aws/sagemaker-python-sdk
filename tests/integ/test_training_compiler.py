@@ -20,6 +20,8 @@ from sagemaker.huggingface import HuggingFace
 from sagemaker.huggingface import TrainingCompilerConfig as HFTrainingCompilerConfig
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.tensorflow import TrainingCompilerConfig as TFTrainingCompilerConfig
+from sagemaker.pytorch import PyTorch
+from sagemaker.pytorch import TrainingCompilerConfig as PTTrainingCompilerConfig
 
 from tests import integ
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
@@ -48,8 +50,7 @@ def imagenet_val_set(request, sagemaker_session, tmpdir_factory):
         key_prefix="Imagenet/TFRecords/validation",
     )
     train_input = sagemaker_session.upload_data(
-        path=local_path,
-        key_prefix="integ-test-data/trcomp/tensorflow/imagenet/val",
+        path=local_path, key_prefix="integ-test-data/trcomp/tensorflow/imagenet/val"
     )
     return train_input
 
@@ -84,8 +85,8 @@ def skip_if_incompatible(gpu_instance_type, request):
 @pytest.mark.parametrize(
     "gpu_instance_type,instance_count",
     [
-        ("ml.p3.2xlarge", 1),
-        ("ml.p3.16xlarge", 2),
+        pytest.param("ml.p3.2xlarge", 1, marks=pytest.mark.release),
+        pytest.param("ml.p3.16xlarge", 2),
     ],
 )
 def test_huggingface_pytorch(
@@ -129,27 +130,32 @@ def test_huggingface_pytorch(
         hf.fit(huggingface_dummy_dataset)
 
 
-@pytest.mark.release
-def test_huggingface_pytorch_release(
+@pytest.mark.parametrize(
+    "gpu_instance_type,instance_count",
+    [
+        pytest.param("ml.p3.2xlarge", 1, marks=pytest.mark.release),
+        pytest.param("ml.p3.16xlarge", 2),
+    ],
+)
+def test_pytorch(
     sagemaker_session,
     gpu_instance_type,
-    huggingface_training_compiler_latest_version,
-    huggingface_training_compiler_pytorch_latest_version,
+    instance_count,
+    pytorch_training_compiler_latest_version,
     huggingface_dummy_dataset,
 ):
     """
-    Test the HuggingFace estimator with PyTorch
+    Test the PyTorch estimator
     """
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        data_path = os.path.join(DATA_DIR, "huggingface")
 
-        hf = HuggingFace(
+        hf = PyTorch(
             py_version="py38",
-            entry_point=os.path.join(data_path, "run_glue.py"),
+            source_dir=os.path.join(DATA_DIR, "huggingface_byoc"),
+            entry_point="run_glue.py",
             role="SageMakerRole",
-            transformers_version=huggingface_training_compiler_latest_version,
-            pytorch_version=huggingface_training_compiler_pytorch_latest_version,
-            instance_count=1,
+            framework_version=pytorch_training_compiler_latest_version,
+            instance_count=instance_count,
             instance_type=gpu_instance_type,
             hyperparameters={
                 "model_name_or_path": "distilbert-base-cased",
@@ -163,7 +169,8 @@ def test_huggingface_pytorch_release(
             },
             sagemaker_session=sagemaker_session,
             disable_profiler=True,
-            compiler_config=HFTrainingCompilerConfig(),
+            compiler_config=PTTrainingCompilerConfig(),
+            distribution={"pytorchxla": {"enabled": True}} if instance_count > 1 else None,
         )
 
         hf.fit(huggingface_dummy_dataset)
@@ -209,10 +216,7 @@ def test_huggingface_tensorflow(
 
 @pytest.mark.release
 def test_tensorflow(
-    sagemaker_session,
-    gpu_instance_type,
-    tensorflow_training_latest_version,
-    imagenet_val_set,
+    sagemaker_session, gpu_instance_type, tensorflow_training_latest_version, imagenet_val_set
 ):
     """
     Test the TensorFlow estimator
@@ -264,8 +268,4 @@ def test_tensorflow(
             compiler_config=TFTrainingCompilerConfig(),
         )
 
-        tf.fit(
-            inputs=imagenet_val_set,
-            logs=True,
-            wait=True,
-        )
+        tf.fit(inputs=imagenet_val_set, logs=True, wait=True)
