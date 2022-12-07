@@ -435,7 +435,9 @@ def test_multi_step_framework_processing_pipeline_same_source_dir(
         cache_config=cache_config,
     )
 
-    pipeline = Pipeline(name=pipeline_name, steps=[step_1, step_2])
+    pipeline = Pipeline(
+        name=pipeline_name, steps=[step_1, step_2], sagemaker_session=pipeline_session
+    )
     try:
         pipeline.create(role)
         definition = json.loads(pipeline.definition())
@@ -526,7 +528,9 @@ def test_multi_step_framework_processing_pipeline_different_source_dir(
         cache_config=cache_config,
     )
 
-    pipeline = Pipeline(name=pipeline_name, steps=[step_1, step_2])
+    pipeline = Pipeline(
+        name=pipeline_name, steps=[step_1, step_2], sagemaker_session=pipeline_session
+    )
     try:
         pipeline.create(role)
         definition = json.loads(pipeline.definition())
