@@ -472,6 +472,7 @@ def test_multi_step_framework_processing_pipeline_same_source_dir(
             execution.wait(delay=540, max_attempts=3)
         except WaiterError:
             pass
+
         execution_steps = execution.list_steps()
         assert len(execution_steps) == 2
         for step in execution_steps:
@@ -565,6 +566,7 @@ def test_multi_step_framework_processing_pipeline_different_source_dir(
             execution.wait(delay=540, max_attempts=3)
         except WaiterError:
             pass
+        
         execution_steps = execution.list_steps()
         assert len(execution_steps) == 2
         for step in execution_steps:
