@@ -566,7 +566,7 @@ def test_multi_step_framework_processing_pipeline_different_source_dir(
             execution.wait(delay=540, max_attempts=3)
         except WaiterError:
             pass
-        
+
         execution_steps = execution.list_steps()
         assert len(execution_steps) == 2
         for step in execution_steps:
@@ -1034,6 +1034,8 @@ def _verify_code_artifacts_of_framework_processing_step(
     assert expected_step_artifact in s3_code_objects
 
     # verify runprocs contain the correct commands
-    step_runproc = S3Downloader.read_file(f"s3://{bucket}/{expected_step_artifact}")
+    step_runproc = S3Downloader.read_file(
+        f"s3://{bucket}/{expected_step_artifact}", pipeline_session
+    )
     assert f"python {entry_point}" in step_runproc
     return source_dir, expected_step_artifact
