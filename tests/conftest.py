@@ -73,6 +73,7 @@ FRAMEWORKS_FOR_GENERATED_VERSION_FIXTURES = (
     "neo_pytorch",
     "neo_tensorflow",
     "pytorch",
+    "pytorch_training_compiler",
     "ray_pytorch",
     "ray_tensorflow",
     "sklearn",
