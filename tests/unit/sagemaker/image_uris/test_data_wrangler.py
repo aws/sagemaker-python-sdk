@@ -20,6 +20,7 @@ DATA_WRANGLER_ACCOUNTS = {
     "ap-east-1": "707077482487",
     "ap-northeast-1": "649008135260",
     "ap-northeast-2": "131546521161",
+    "ap-northeast-3": "913387583493",
     "ap-south-1": "089933028263",
     "ap-southeast-1": "119527597002",
     "ap-southeast-2": "422173101802",
@@ -41,13 +42,25 @@ DATA_WRANGLER_ACCOUNTS = {
 }
 
 
-def test_data_wrangler_ecr_uri():
+def test_data_wrangler_ecr_uri_v1():
     for region in DATA_WRANGLER_ACCOUNTS.keys():
-        actual_uri = image_uris.retrieve("data-wrangler", region=region)
+        actual_uri = image_uris.retrieve("data-wrangler", region=region, version="1.x")
         expected_uri = expected_uris.algo_uri(
             "sagemaker-data-wrangler-container",
             DATA_WRANGLER_ACCOUNTS[region],
             region,
             version="1.x",
+        )
+        assert expected_uri == actual_uri
+
+
+def test_data_wrangler_ecr_uri_v2():
+    for region in DATA_WRANGLER_ACCOUNTS.keys():
+        actual_uri = image_uris.retrieve("data-wrangler", region=region, version="2.x")
+        expected_uri = expected_uris.algo_uri(
+            "sagemaker-data-wrangler-container",
+            DATA_WRANGLER_ACCOUNTS[region],
+            region,
+            version="2.x",
         )
         assert expected_uri == actual_uri

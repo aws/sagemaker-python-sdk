@@ -89,7 +89,7 @@ class DataWranglerProcessor(Processor):
         self.data_wrangler_flow_source = data_wrangler_flow_source
         self.sagemaker_session = sagemaker_session or Session()
         image_uri = image_uris.retrieve(
-            "data-wrangler", region=self.sagemaker_session.boto_region_name
+            "data-wrangler", region=self.sagemaker_session.boto_region_name, version="2.x"
         )
         super().__init__(
             role,
