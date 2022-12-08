@@ -34,7 +34,7 @@
                     "us-west-1": "763104351884",
                     "us-west-2": "763104351884"
                 },
-                "repository": "pytorch-training"
+                "repository": "pytorch-trcomp-training"
             }
         }
     }
