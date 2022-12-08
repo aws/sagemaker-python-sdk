@@ -20,7 +20,7 @@ import json
 import boto3
 import botocore
 from packaging.version import Version
-from packaging.specifiers import SpecifierSet
+from packaging.specifiers import SpecifierSet, InvalidSpecifier
 from sagemaker.jumpstart.constants import (
     ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE,
     ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE,
@@ -371,7 +371,10 @@ class JumpStartModelsCache:
                 return None
             return str(max(available_versions))
 
-        spec = SpecifierSet(f"=={semantic_version_str}")
+        try:
+            spec = SpecifierSet(f"=={semantic_version_str}")
+        except InvalidSpecifier:
+            raise KeyError(f"Bad semantic version: {semantic_version_str}")
         available_versions_filtered = list(spec.filter(available_versions))
         return (
             str(max(available_versions_filtered)) if available_versions_filtered != [] else None
