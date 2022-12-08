@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.121.0 (2022-12-08)
+
+### Features
+
+ * Algorithms Region Expansion OSU/DXB
+
+### Bug Fixes and Other Changes
+
+ * FrameworkProcessor S3 uploads
+ * Add constraints file for apache-airflow
+
 ## v2.120.0 (2022-12-07)
 
 ### Features
