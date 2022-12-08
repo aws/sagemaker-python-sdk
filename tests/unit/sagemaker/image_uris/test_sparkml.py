@@ -43,7 +43,7 @@ ACCOUNTS = {
     "us-west-1": "746614075791",
     "us-west-2": "246618743249",
 }
-VERSIONS = ["2.2", "2.4"]
+VERSIONS = ["2.2", "2.4", "3.3"]
 
 
 @pytest.mark.parametrize("version", VERSIONS)

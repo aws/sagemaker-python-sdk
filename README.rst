@@ -214,7 +214,7 @@ In order to host a SparkML model in SageMaker, it should be serialized with ``ML
 
 For more information on MLeap, see https://github.com/combust/mleap .
 
-Supported major version of Spark: 2.4 (MLeap version - 0.9.6)
+Supported major version of Spark: 3.3 (MLeap version - 0.20.0)
 
 Here is an example on how to create an instance of  ``SparkMLModel`` class and use ``deploy()`` method to create an
 endpoint which can be used to perform prediction against your trained SparkML Model.
