@@ -144,7 +144,10 @@ def _create_train_job(version, instance_type, training_compiler_config, instance
                 "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
             }
         ],
-        "profiler_config": {"S3OutputPath": "s3://{}/".format(BUCKET_NAME)},
+        "profiler_config": {
+            "DisableProfiler": False,
+            "S3OutputPath": "s3://{}/".format(BUCKET_NAME)
+        },
     }
 
 
