@@ -91,8 +91,6 @@ def test_mxnet_with_default_profiler_config_and_profiler_rule(
         )
 
         job_description = mx.latest_training_job.describe()
-        if "DisableProfiler" in job_description["ProfilerConfig"]:
-            job_description["ProfilerConfig"].pop("DisableProfiler")
         assert (
             job_description["ProfilerConfig"]
             == ProfilerConfig(
@@ -146,8 +144,6 @@ def test_mxnet_with_custom_profiler_config_then_update_rule_and_config(
         )
 
         job_description = mx.latest_training_job.describe()
-        if "DisableProfiler" in job_description["ProfilerConfig"]:
-            job_description["ProfilerConfig"].pop("DisableProfiler")
         assert job_description.get("ProfilerConfig") == profiler_config._to_request_dict()
         assert job_description.get("ProfilingStatus") == "Enabled"
 
@@ -202,8 +198,6 @@ def test_mxnet_with_built_in_profiler_rule_with_custom_parameters(
         )
 
         job_description = mx.latest_training_job.describe()
-        if "DisableProfiler" in job_description["ProfilerConfig"]:
-            job_description["ProfilerConfig"].pop("DisableProfiler")
         assert job_description.get("ProfilingStatus") == "Enabled"
         assert (
             job_description.get("ProfilerConfig")
@@ -275,8 +269,6 @@ def test_mxnet_with_profiler_and_debugger_then_disable_framework_metrics(
         )
 
         job_description = mx.latest_training_job.describe()
-        if "DisableProfiler" in job_description["ProfilerConfig"]:
-            job_description["ProfilerConfig"].pop("DisableProfiler")
         assert job_description["ProfilerConfig"] == profiler_config._to_request_dict()
         assert job_description["DebugHookConfig"] == debugger_hook_config._to_request_dict()
         assert job_description.get("ProfilingStatus") == "Enabled"
