@@ -401,10 +401,6 @@ def test_training_step_with_estimator(
     }
     step_definition = json.loads(pipeline.definition())["Steps"][0]
 
-    # delete profiler rule configurations because of timestamp collision
-    del step_definition["Arguments"]["ProfilerRuleConfigurations"]
-    del step_args["ProfilerRuleConfigurations"]
-
     assert step_definition == {
         "Name": "MyTrainingStep",
         "Description": "TrainingStep description",
