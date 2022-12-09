@@ -146,7 +146,7 @@ def _create_train_job(version, instance_type, training_compiler_config, instance
         ],
         "profiler_config": {
             "DisableProfiler": False,
-            "S3OutputPath": "s3://{}/".format(BUCKET_NAME)
+            "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
     }
 
