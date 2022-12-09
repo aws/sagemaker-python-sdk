@@ -98,25 +98,42 @@ class Run(object):
     ):
         """Construct a `Run` instance.
 
-        NOTE: It is not recommended to initialize a Run object (using the constructor)
-        in a Sagemaker job (e.g. training job, etc.) script.
-        Instead please follow the example below to 1). initialize a Run object in a notebook,
-        2). create a SageMaker job inside the Run object's context (i.e. the `with` statement),
-        and 3). load the same Run object in a job script via `load_run()`.
+        SageMaker Experiments automatically tracks the inputs, parameters, configurations,
+        and results of your iterations as runs.
+        You can assign, group, and organize these runs into experiments.
+        You can also create, compare, and evaluate runs.
+
+        The code sample below shows how to initialize a run, log parameters to the Run object
+        and invoke a training job under the context of this Run object, which automatically
+        passes the run's ``experiment_config`` (including the experiment name, run name etc.)
+        to the training job.
+
+        Note:
+            All log methods (e.g. ``log_parameter``, ``log_metric``, etc.) have to be called within
+            the run context (i.e. the ``with`` statement). Otherwise, a ``RuntimeError`` is thrown.
 
         .. code:: python
 
-            # In a notebook
             with Run(experiment_name="my-exp", run_name="my-run", ...) as run:
                 run.log_parameter(...)
                 ...
                 estimator.fit(job_name="my-job")  # Create a training job
 
+        In order to reuse an existing run to log extra data, ``load_run`` is recommended.
+        The code snippet below displays how to load the run initialized above
+        in a custom training job script, where no ``run_name`` or ``experiment_name``
+        is presented as they are automatically retrieved from the experiment config
+        in the job environment.
+
+        Note:
+            Instead of the ``Run`` constructor, the ``load_run`` is recommended to use
+            in a job script to load the existing run created before the job launch.
+            Otherwise, a new run may be created each time you launch a job.
+
         .. code:: python
 
-            # In a job script
             with load_run() as run:
-                run.log_parameters(...)
+                run.log_metric(...)
                 ...
 
         Args:
@@ -171,9 +188,9 @@ class Run(object):
         )
         if is_existed:
             logger.info(
-                "The Run (%s) under experiment (%s) already exists. Loading it. "
+                "The run (%s) under experiment (%s) already exists. Loading it. "
                 "Note: sagemaker.experiments.load_run is recommended to use when "
-                "the desired Run already exists.",
+                "the desired run already exists.",
                 self.run_name,
                 self.experiment_name,
             )
@@ -197,7 +214,7 @@ class Run(object):
 
     @property
     def experiment_config(self) -> dict:
-        """Get experiment config from Run attributes."""
+        """Get experiment config from run attributes."""
         return {
             EXPERIMENT_NAME: self.experiment_name,
             TRIAL_NAME: self.run_group_name,
@@ -242,10 +259,8 @@ class Run(object):
         """Record a custom scalar metric value for this run.
 
         Note:
-             1. This method is for manual custom metrics, for automatic metrics see the
-             `enable_sagemaker_metrics` parameter on the `estimator` class.
-             2. Metrics logged with this method will only appear in SageMaker when this method
-             is called from a training job host.
+             This method is for manual custom metrics, for automatic metrics see the
+             ``enable_sagemaker_metrics`` parameter on the ``estimator`` class.
 
         Args:
             name (str): The name of the metric.
@@ -466,7 +481,7 @@ class Run(object):
             name (str): The name of the artifact (default: None).
             media_type (str): The MediaType (MIME type) of the file.
                 If not specified, this library will attempt to infer the media type
-                from the file extension of `file_path`.
+                from the file extension of ``file_path``.
             is_output (bool): Determines direction of association to the
                 run. Defaults to True (output artifact).
                 If set to False then represented as input association.
@@ -510,7 +525,7 @@ class Run(object):
         """Check if the input is valid or not
 
         Args:
-            input_type (str): The type of the input, one of `parameter`, `metric`.
+            input_type (str): The type of the input, one of ``parameter``, ``metric``.
             field_name (str): The name of the field to be checked.
             field_value (str or int or float): The value of the field to be checked.
         """
@@ -611,7 +626,7 @@ class Run(object):
         """Extract the user supplied run name from a trial component name.
 
         Args:
-            trial_component_name (str): The name of a Run trial component.
+            trial_component_name (str): The name of a run trial component.
             experiment_name (str): The experiment_name supplied by the user,
                 which was prepended to the run_name to generate the trial_component_name.
 
@@ -622,13 +637,13 @@ class Run(object):
 
     @staticmethod
     def _append_run_tc_label_to_tags(tags: Optional[List[Dict[str, str]]] = None) -> list:
-        """Append the Run TrialComponent label to tags used to create a trial component.
+        """Append the run trial component label to tags used to create a trial component.
 
         Args:
             tags (List[Dict[str, str]]): The tags supplied by users to initialize a Run object.
 
         Returns:
-            list: The updated tags with the appended Run TrialComponent label.
+            list: The updated tags with the appended run trial component label.
         """
         if not tags:
             tags = []
@@ -659,7 +674,7 @@ class Run(object):
             self._trial_component.start_time = start_time
         self._trial_component.status = _api_types.TrialComponentStatus(
             primary_status=_TrialComponentStatusType.InProgress.value,
-            message="Within a Run context",
+            message="Within a run context",
         )
         # Save the start_time and status changes to backend
         self._trial_component.save()
@@ -699,13 +714,61 @@ def load_run(
     experiment_name: Optional[str] = None,
     sagemaker_session: Optional["Session"] = None,
 ) -> Run:
-    """Load a Run by the run name or from the job environment.
+    """Load an existing run.
+
+    In order to reuse an existing run to log extra data, ``load_run`` is recommended.
+    It can be used in several ways:
+
+    1. Use ``load_run`` by explicitly passing in ``run_name`` and ``experiment_name``.
+
+    If ``run_name`` and ``experiment_name`` are passed in, they are honored over
+    the default experiment config in the job environment or the run context
+    (i.e. within the ``with`` block).
+
+    Note:
+        Both ``run_name`` and ``experiment_name`` should be supplied to make this usage work.
+        Otherwise, you may get a ``ValueError``.
+
+    .. code:: python
+
+        with load_run(experiment_name="my-exp", run_name="my-run") as run:
+            run.log_metric(...)
+            ...
+
+    2. Use the ``load_run`` in a job script without supplying ``run_name`` and ``experiment_name``.
+
+    In this case, the default experiment config (specified when creating the job) is fetched
+    from the job environment to load the run.
+
+    .. code:: python
+
+        # In a job script
+        with load_run() as run:
+            run.log_metric(...)
+            ...
+
+    3. Use the ``load_run`` in a notebook within a run context (i.e. the ``with`` block)
+    but without supplying ``run_name`` and ``experiment_name``.
+
+    Every time we call ``with Run(...) as run1:``, the initialized ``run1`` is tracked
+    in the run context. Then when we call ``load_run()`` under this with statement, the ``run1``
+    in the context is loaded by default.
+
+    .. code:: python
+
+        # In a notebook
+        with Run(experiment_name="my-exp", run_name="my-run", ...) as run1:
+            run1.log_parameter(...)
+
+            with load_run() as run2: # run2 is the same object as run1
+                run2.log_metric(...)
+                ...
 
     Args:
-        run_name (str): The name of the Run to be loaded (default: None).
-            If it is None, the `RunName` in the `ExperimentConfig` of the job will be
-            fetched to load the Run.
-        experiment_name (str): The name of the Experiment that the to be loaded Run
+        run_name (str): The name of the run to be loaded (default: None).
+            If it is None, the ``RunName`` in the ``ExperimentConfig`` of the job will be
+            fetched to load the run.
+        experiment_name (str): The name of the Experiment that the to be loaded run
             is associated with (default: None).
             Note: the experiment_name must be supplied along with a valid run_name.
             Otherwise, it will be ignored.
@@ -728,7 +791,7 @@ def load_run(
                 "run_name is explicitly supplied in load_run, "
                 "which will be prioritized to load the Run object. "
                 "In other words, the run name in the experiment config, fetched from the "
-                "job environment or the current Run context, will be ignored."
+                "job environment or the current run context, will be ignored."
             )
         else:
             exp_config = get_tc_and_exp_config_from_job_env(
@@ -767,7 +830,7 @@ def list_runs(
     sort_by: SortByType = SortByType.CREATION_TIME,
     sort_order: SortOrderType = SortOrderType.DESCENDING,
 ) -> list:
-    """Return a list of `Run` objects matching the given criteria.
+    """Return a list of ``Run`` objects matching the given criteria.
 
     Args:
         experiment_name (str): Only Run objects related to the specified experiment
@@ -787,7 +850,7 @@ def list_runs(
         sort_order (SortOrderType): One of ASCENDING, or DESCENDING (default: DESCENDING).
 
     Returns:
-        list: A list of `Run` objects.
+        list: A list of ``Run`` objects.
     """
     tc_summaries = _TrialComponent.list(
         experiment_name=experiment_name,

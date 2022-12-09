@@ -13,4 +13,8 @@
 """Sagemaker Experiment Module"""
 from __future__ import absolute_import
 
-from sagemaker.experiments.run import Run, load_run, list_runs, SortOrderType  # noqa: F401
+from sagemaker.experiments.run import Run  # noqa: F401
+from sagemaker.experiments.run import load_run  # noqa: F401
+from sagemaker.experiments.run import list_runs  # noqa: F401
+from sagemaker.experiments.run import SortOrderType  # noqa: F401
+from sagemaker.experiments.run import SortByType  # noqa: F401
