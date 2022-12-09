@@ -158,7 +158,7 @@ EDGE_PACKAGING_SUPPORTED_REGIONS = [
     "ap-northeast-1",
     "eu-central-1",
 ]
-# TODO: SM Training Compiler team to add all supported regions.
+
 TRAINING_COMPILER_SUPPORTED_REGIONS = [
     "af-south-1",
     "ap-east-1",

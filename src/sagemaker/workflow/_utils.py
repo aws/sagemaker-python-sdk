@@ -13,6 +13,7 @@
 """Scrapper utilities to support repacking of models."""
 from __future__ import absolute_import
 
+import logging
 import os
 import shutil
 import tarfile
@@ -36,6 +37,8 @@ from sagemaker.workflow.retry import RetryPolicy
 
 if TYPE_CHECKING:
     from sagemaker.workflow.step_collections import StepCollection
+
+logger = logging.getLogger(__name__)
 
 FRAMEWORK_VERSION = "0.23-1"
 INSTANCE_TYPE = "ml.m5.large"
@@ -479,10 +482,19 @@ class _RegisterModelStep(ConfigurableRetryStep):
 
             request_dict = get_create_model_package_request(**model_package_args)
         # these are not available in the workflow service and will cause rejection
+        warn_msg_template = (
+            "Popping out '%s' from the pipeline definition "
+            "since it will be overridden in pipeline execution time."
+        )
         if "CertifyForMarketplace" in request_dict:
             request_dict.pop("CertifyForMarketplace")
+            logger.warning(warn_msg_template, "CertifyForMarketplace")
         if "Description" in request_dict:
             request_dict.pop("Description")
+            logger.warning(warn_msg_template, "Description")
+        if "ModelPackageName" in request_dict:
+            request_dict.pop("ModelPackageName")
+            logger.warning(warn_msg_template, "ModelPackageName")
 
         return request_dict
 
