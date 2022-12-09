@@ -882,6 +882,7 @@ SAMPLE_TUNING_JOB_REQUEST = {
         "ResourceLimits": {"MaxNumberOfTrainingJobs": 100, "MaxParallelTrainingJobs": 5},
         "ParameterRanges": SAMPLE_PARAM_RANGES,
         "TrainingJobEarlyStoppingType": "Off",
+        "RandomSeed": 0,
     },
     "TrainingJobDefinition": {
         "StaticHyperParameters": STATIC_HPs,
@@ -967,6 +968,7 @@ def test_tune_warm_start(sagemaker_session, warm_start_type, parents):
     sagemaker_session.tune(
         job_name="dummy-tuning-1",
         strategy="Bayesian",
+        random_seed=0,
         objective_type="Maximize",
         objective_metric_name="val-score",
         max_jobs=100,
@@ -1058,6 +1060,7 @@ def test_create_tuning_job(sagemaker_session):
             "max_jobs": 100,
             "max_parallel_jobs": 5,
             "parameter_ranges": SAMPLE_PARAM_RANGES,
+            "random_seed": 0,
         },
         training_config={
             "static_hyperparameters": STATIC_HPs,
@@ -1148,6 +1151,7 @@ def test_tune(sagemaker_session):
     sagemaker_session.tune(
         job_name="dummy-tuning-1",
         strategy="Bayesian",
+        random_seed=0,
         objective_type="Maximize",
         objective_metric_name="val-score",
         max_jobs=100,
@@ -1183,6 +1187,7 @@ def test_tune_with_encryption_flag(sagemaker_session):
     sagemaker_session.tune(
         job_name="dummy-tuning-1",
         strategy="Bayesian",
+        random_seed=0,
         objective_type="Maximize",
         objective_metric_name="val-score",
         max_jobs=100,
@@ -1226,6 +1231,7 @@ def test_tune_with_spot_and_checkpoints(sagemaker_session):
     sagemaker_session.tune(
         job_name="dummy-tuning-1",
         strategy="Bayesian",
+        random_seed=0,
         objective_type="Maximize",
         objective_metric_name="val-score",
         max_jobs=100,
