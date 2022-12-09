@@ -23,9 +23,13 @@ import queue
 
 import dateutil.tz
 
+from sagemaker.session import Session
+
 METRICS_DIR = os.environ.get("SAGEMAKER_METRICS_DIRECTORY", ".")
 METRIC_TS_LOWER_BOUND_TO_NOW = 1209600  # on seconds
 METRIC_TS_UPPER_BOUND_FROM_NOW = 7200  # on seconds
+
+BATCH_SIZE = 10
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -171,7 +175,7 @@ class _RawMetricData(object):
             "Timestamp": int(self.Timestamp),
         }
         if self.Step is not None:
-            raw_metric_data["IterationNumber"] = int(self.Step)
+            raw_metric_data["Step"] = int(self.Step)
         return raw_metric_data
 
     def __str__(self):
@@ -185,36 +189,27 @@ class _RawMetricData(object):
             ",".join(["{}={}".format(k, repr(v)) for k, v in vars(self).items()]),
         )
 
-    def to_request_item(self):
-        """Transform a RawMetricData item to a list item for BatchPutMetrics request."""
-        item = {
-            "MetricName": self.MetricName,
-            "Timestamp": int(self.Timestamp),
-            "Value": self.Value,
-        }
-
-        if self.Step is not None:
-            item["IterationNumber"] = self.Step
-
-        return item
-
 
 class _MetricsManager(object):
     """Collects metrics and sends them directly to SageMaker Metrics data plane APIs."""
 
-    _BATCH_SIZE = 10
-
-    def __init__(self, resource_arn, sagemaker_session) -> None:
-        """Initiate a `_MetricsManager` instance
+    def __init__(self, trial_component_name: str, sagemaker_session: Session, sink=None) -> None:
+        """Initialize a `_MetricsManager` instance
 
         Args:
-            resource_arn (str): The ARN of the resource to log metrics to
+            trial_component_name (str): The Name of the Trial Component to log metrics to
             sagemaker_session (sagemaker.session.Session): Session object which
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, one is created using the
                 default AWS configuration chain.
+            sink (object): The metrics sink to use.
         """
-        self.sink = _SyncMetricsSink(resource_arn, sagemaker_session.sagemaker_metrics_client)
+        if sink is None:
+            self.sink = _SyncMetricsSink(
+                trial_component_name, sagemaker_session.sagemaker_metrics_client
+            )
+        else:
+            self.sink = sink
 
     def log_metric(self, metric_name, value, timestamp=None, step=None):
         """Sends a metric to metrics service."""
@@ -238,16 +233,14 @@ class _MetricsManager(object):
 class _SyncMetricsSink(object):
     """Collects metrics and sends them directly to metrics service."""
 
-    _BATCH_SIZE = 10
-
-    def __init__(self, resource_arn, metrics_client) -> None:
-        """Initiate a `_MetricsManager` instance
+    def __init__(self, trial_component_name, metrics_client) -> None:
+        """Initialize a `_SyncMetricsSink` instance
 
         Args:
-            resource_arn (str): The ARN of a Trial Component to log metrics.
+            trial_component_name (str): The Name of the Trial Component to log metrics.
             metrics_client (boto3.client): boto client for metrics service
         """
-        self._resource_arn = resource_arn
+        self._trial_component_name = trial_component_name
         self._metrics_client = metrics_client
         self._buffer = []
 
@@ -265,7 +258,7 @@ class _SyncMetricsSink(object):
         if not self._buffer:
             return
 
-        if len(self._buffer) < self._BATCH_SIZE and not close:
+        if len(self._buffer) < BATCH_SIZE and not close:
             return
 
         # pop all the available metrics
@@ -276,7 +269,10 @@ class _SyncMetricsSink(object):
     def _send_metrics(self, metrics):
         """Calls BatchPutMetrics directly on the metrics service."""
         while metrics:
-            batch, metrics = metrics[: self._BATCH_SIZE], metrics[self._BATCH_SIZE :]
+            batch, metrics = (
+                metrics[:BATCH_SIZE],
+                metrics[BATCH_SIZE:],
+            )
             request = self._construct_batch_put_metrics_request(batch)
             response = self._metrics_client.batch_put_metrics(**request)
             errors = response["Errors"] if "Errors" in response else None
@@ -287,7 +283,7 @@ class _SyncMetricsSink(object):
     def _construct_batch_put_metrics_request(self, batch):
         """Creates dictionary object used as request to metrics service."""
         return {
-            "ResourceArn": self._resource_arn,
+            "TrialComponentName": self._trial_component_name,
             "MetricData": list(map(lambda x: x.to_raw_metric_data(), batch)),
         }
 
@@ -300,23 +296,21 @@ class _MetricQueue(object):
     """A thread safe queue for sending metrics to SageMaker.
 
     Args:
-        resource_arn (str): the ARN of the resource
+        trial_component_name (str): the ARN of the resource
         metric_name (str): the name of the metric
         metrics_client (boto_client): the boto client for SageMaker Metrics service
     """
 
-    _BATCH_SIZE = 10
-
     _CONSUMER_SLEEP_SECONDS = 5
 
-    def __init__(self, resource_arn, metric_name, metrics_client):
+    def __init__(self, trial_component_name, metric_name, metrics_client):
         # infinite queue size
         self._queue = queue.Queue()
         self._buffer = []
         self._thread = threading.Thread(target=self._run)
         self._started = False
         self._finished = False
-        self._resource_arn = resource_arn
+        self._trial_component_name = trial_component_name
         self._metrics_client = metrics_client
         self._metric_name = metric_name
         self._logged_metrics = 0
@@ -325,7 +319,7 @@ class _MetricQueue(object):
         """Adds a metric data point to the queue"""
         self._buffer.append(metric_data)
 
-        if len(self._buffer) < self._BATCH_SIZE:
+        if len(self._buffer) < BATCH_SIZE:
             return
 
         self._enqueue_all()
@@ -354,7 +348,7 @@ class _MetricQueue(object):
         """Creates dictionary object used as request to metrics service."""
 
         return {
-            "ResourceArn": self._resource_arn,
+            "TrialComponentName": self._trial_component_name,
             "MetricData": list(map(lambda x: x.to_raw_metric_data(), batch)),
         }
 
@@ -382,14 +376,14 @@ class _AsyncMetricsSink(object):
 
     _COMPLETE_SLEEP_SECONDS = 1.0
 
-    def __init__(self, resource_arn, metrics_client) -> None:
-        """Initiate a `_MetricsManager` instance
+    def __init__(self, trial_component_name, metrics_client) -> None:
+        """Initialize a `_AsyncMetricsSink` instance
 
         Args:
-            resource_arn (str): The ARN of a Trial Component to log metrics.
+            trial_component_name (str): The Name of the Trial Component to log metrics to.
             metrics_client (boto3.client): boto client for metrics service
         """
-        self._resource_arn = resource_arn
+        self._trial_component_name = trial_component_name
         self._metrics_client = metrics_client
         self._buffer = []
         self._is_draining = False
@@ -402,7 +396,7 @@ class _AsyncMetricsSink(object):
             self._metric_queues[metric_data.MetricName].log_metric(metric_data)
         else:
             cur_metric_queue = _MetricQueue(
-                self._resource_arn, metric_data.MetricName, self._metrics_client
+                self._trial_component_name, metric_data.MetricName, self._metrics_client
             )
             self._metric_queues[metric_data.MetricName] = cur_metric_queue
             cur_metric_queue.log_metric(metric_data)

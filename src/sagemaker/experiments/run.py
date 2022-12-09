@@ -187,7 +187,7 @@ class Run(object):
             sagemaker_session=sagemaker_session,
         )
         self._metrics_manager = _MetricsManager(
-            resource_arn=self._trial_component.trial_component_arn,
+            trial_component_name=self._trial_component.trial_component_name,
             sagemaker_session=sagemaker_session,
         )
         self._inside_init_context = False

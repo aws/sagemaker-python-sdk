@@ -91,9 +91,9 @@ def test_raw_metric_data_request_item():
         "MetricName": "foo",
         "Value": 1.0,
         "Timestamp": int(time_now * 1000),
-        "IterationNumber": 10,
+        "Step": 10,
     }
-    assert expected == metric.to_request_item()
+    assert expected == metric.to_raw_metric_data()
 
 
 def test_raw_metric_data_invalid_timestamp():

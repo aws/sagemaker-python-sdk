@@ -21,9 +21,9 @@ import os
 normal_json = "file://./tests/data/experiment/resources/sagemaker-2017-07-24.normal.json"
 os.system(f"aws configure add-model --service-model {normal_json} --service-name sagemaker")
 
-metrics_model_json = (
+public_metrics_model_json = (
     "file://./tests/data/experiment/resources/sagemaker-metrics-2022-09-30.normal.json"
 )
 os.system(
-    f"aws configure add-model --service-model {metrics_model_json} --service-name sagemaker-metrics"
+    f"aws configure add-model --service-model {public_metrics_model_json} --service-name sagemaker-metrics"
 )

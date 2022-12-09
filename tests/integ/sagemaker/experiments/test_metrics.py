@@ -19,7 +19,7 @@ import time
 
 def test_end_to_end(trial_component_obj, sagemaker_session):
     # The fixture creates deletes, just ensure fixture is used at least once
-    with _MetricsManager(trial_component_obj.trial_component_arn, sagemaker_session) as mm:
+    with _MetricsManager(trial_component_obj.trial_component_name, sagemaker_session) as mm:
         for i in range(100):
             mm.log_metric("test-x-step", random.random(), step=i)
             mm.log_metric("test-x-timestamp", random.random())
