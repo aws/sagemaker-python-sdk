@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.121.1 (2022-12-09)
+
+### Bug Fixes and Other Changes
+
+ * Pop out ModelPackageName from pipeline definition
+ * Fix failing jumpstart cache unit tests
+
 ## v2.121.0 (2022-12-08)
 
 ### Features
