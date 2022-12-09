@@ -713,6 +713,7 @@ def test_framework_with_profiler_config_without_s3_output_path(time, sagemaker_s
         "ProfilingIntervalInMilliseconds": 1000,
     }
 
+
 @pytest.mark.parametrize("region", PROFILER_UNSUPPORTED_REGIONS)
 def test_framework_with_no_default_profiler_in_unsupported_region(region):
     boto_mock = Mock(name="boto_session", region_name=region)
