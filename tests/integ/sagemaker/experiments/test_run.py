@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 import datetime
 import os
+import time
 
 import pytest
 
@@ -569,12 +570,13 @@ def _check_run_from_local_end_result(sagemaker_session, tc, is_complete_log=True
     assert s3_prefix in tc.output_artifacts[file_artifact_name].value
     assert "text/plain" == tc.output_artifacts[file_artifact_name].media_type
 
-    # https://t.corp.amazon.com/P77144351
-    # assert len(tc.metrics) == 1
-    # metric_summary = tc.metrics[0]
-    # assert metric_summary.metric_name == metric_name
-    # assert metric_summary.max == 9.0
-    # assert metric_summary.min == 0.0
+    # wait for metrics -> eureka propagation for test consistency
+    time.sleep(3)
+    assert len(tc.metrics) == 1
+    metric_summary = tc.metrics[0]
+    assert metric_summary.metric_name == metric_name
+    assert metric_summary.max == 9.0
+    assert metric_summary.min == 0.0
 
 
 def _check_run_from_job_result(sagemaker_session, tc_name=None, is_init=True, has_extra_load=False):

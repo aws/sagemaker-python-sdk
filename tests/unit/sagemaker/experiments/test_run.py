@@ -710,10 +710,10 @@ def test_list(mock_tc_search, mock_tc_list, mock_tc_load, run_obj, sagemaker_ses
         [
             TrialComponentSearchResult(
                 trial_component_name=Run._generate_trial_component_name(
-                    "a" + str(i), TEST_EXP_NAME
+                    "A" + str(i), TEST_EXP_NAME
                 ),
-                trial_component_arn="b" + str(i),
-                display_name="c" + str(i),
+                trial_component_arn="B" + str(i),
+                display_name="C" + str(i),
                 creation_time=creation_time + datetime.timedelta(hours=i),
                 last_modified_time=last_modified_time + datetime.timedelta(hours=i),
                 last_modified_by={},
@@ -724,12 +724,12 @@ def test_list(mock_tc_search, mock_tc_list, mock_tc_load, run_obj, sagemaker_ses
     ]
     mock_tc_list.return_value = [
         TrialComponentSummary(
-            trial_component_name=Run._generate_trial_component_name("a" + str(i), TEST_EXP_NAME),
-            trial_component_arn="b" + str(i),
-            display_name="c" + str(i),
-            source_arn="d" + str(i),
+            trial_component_name=Run._generate_trial_component_name("A" + str(i), TEST_EXP_NAME),
+            trial_component_arn="B" + str(i),
+            display_name="C" + str(i),
+            source_arn="D" + str(i),
             status=TrialComponentStatus(
-                primary_status=_TrialComponentStatusType.InProgress.value, message="e" + str(i)
+                primary_status=_TrialComponentStatusType.InProgress.value, message="E" + str(i)
             ),
             start_time=start_time + datetime.timedelta(hours=i),
             end_time=end_time + datetime.timedelta(hours=i),
@@ -743,13 +743,13 @@ def test_list(mock_tc_search, mock_tc_list, mock_tc_load, run_obj, sagemaker_ses
         (
             _TrialComponent(
                 trial_component_name=Run._generate_trial_component_name(
-                    "a" + str(i), TEST_EXP_NAME
+                    "A" + str(i), TEST_EXP_NAME
                 ),
-                trial_component_arn="b" + str(i),
-                display_name="c" + str(i),
-                source_arn="d" + str(i),
+                trial_component_arn="B" + str(i),
+                display_name="C" + str(i),
+                source_arn="D" + str(i),
                 status=TrialComponentStatus(
-                    primary_status=_TrialComponentStatusType.InProgress.value, message="e" + str(i)
+                    primary_status=_TrialComponentStatusType.InProgress.value, message="E" + str(i)
                 ),
                 start_time=start_time + datetime.timedelta(hours=i),
                 end_time=end_time + datetime.timedelta(hours=i),
@@ -783,12 +783,12 @@ def test_list(mock_tc_search, mock_tc_list, mock_tc_load, run_obj, sagemaker_ses
     for i in range(tc_list_len_half):
         run = run_list[i]
         assert run.experiment_name == TEST_EXP_NAME
-        assert run.run_name == "a" + str(i)
+        assert run.run_name == "A" + str(i)
         assert run._experiment
         assert run._trial
         assert isinstance(run._trial_component, _TrialComponent)
         assert run._trial_component.trial_component_name == Run._generate_trial_component_name(
-            "a" + str(i), TEST_EXP_NAME
+            "A" + str(i), TEST_EXP_NAME
         )
         assert run._in_load is False
         assert run._inside_load_context is False

@@ -600,10 +600,7 @@ class Run(object):
             raise ValueError(
                 err_msg_template.format("experiment_name", len(experiment_name), max_len)
             )
-        experiment_scoped_tc_name = "{}{}{}".format(experiment_name, DELIMITER, run_name)
-        # https://t.corp.amazon.com/P77144351
-        lower_cased_tc_name = experiment_scoped_tc_name.lower()
-        return lower_cased_tc_name
+        return "{}{}{}".format(experiment_name, DELIMITER, run_name)
 
     @staticmethod
     def _extract_run_name_from_tc_name(trial_component_name: str, experiment_name: str) -> str:

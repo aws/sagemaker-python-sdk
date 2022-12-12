@@ -283,7 +283,7 @@ class _SyncMetricsSink(object):
     def _construct_batch_put_metrics_request(self, batch):
         """Creates dictionary object used as request to metrics service."""
         return {
-            "TrialComponentName": self._trial_component_name,
+            "TrialComponentName": self._trial_component_name.lower(),
             "MetricData": list(map(lambda x: x.to_raw_metric_data(), batch)),
         }
 
