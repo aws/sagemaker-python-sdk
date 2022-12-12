@@ -885,8 +885,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
     def _prepare_debugger_for_training(self):
         """Prepare debugger rules and debugger configs for training."""
-        if self.debugger_rules and self.debugger_hook_config is None:
-            self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
         # If debugger_hook_config was provided without an S3 URI, default it for the customer.
         if self.debugger_hook_config and not self.debugger_hook_config.s3_output_path:
             self.debugger_hook_config.s3_output_path = self.output_path
@@ -900,10 +898,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             self.sagemaker_session.boto_region_name
         )
 
-        if region_supports_debugger:
-            if self.debugger_hook_config in [None, {}]:
-                self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
-        else:
+        if not region_supports_debugger:
             if self.debugger_hook_config is not False and self.debugger_hook_config:
                 # when user set debugger config in a unsupported region
                 raise ValueError(
