@@ -50,6 +50,7 @@ SCHEMA = json.dumps(
 )
 
 
+@pytest.mark.skip(reason="Test has likely been failing for a while. Suspected bad XGB model.")
 def test_inference_pipeline_batch_transform(sagemaker_session, cpu_instance_type):
     sparkml_model_data = sagemaker_session.upload_data(
         path=os.path.join(SPARKML_DATA_PATH, "mleap_model.tar.gz"),

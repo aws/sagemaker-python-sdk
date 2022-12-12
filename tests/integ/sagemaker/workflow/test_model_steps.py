@@ -112,6 +112,7 @@ def test_pytorch_training_model_registration_and_creation_without_custom_inferen
         inference_instances=["ml.m5.xlarge"],
         transform_instances=["ml.m5.xlarge"],
         description="test-description",
+        model_package_name="model-pkg-name-will-be-popped-out",
     )
     step_model_regis = ModelStep(
         name="pytorch-register-model",

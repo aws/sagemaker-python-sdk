@@ -493,7 +493,7 @@ def framework_name_from_image(image_uri):
     # We must support both the legacy and current image name format.
     name_pattern = re.compile(
         r"""^(?:sagemaker(?:-rl)?-)?
-        (tensorflow|mxnet|chainer|pytorch|scikit-learn|xgboost
+        (tensorflow|mxnet|chainer|pytorch|pytorch-trcomp|scikit-learn|xgboost
         |huggingface-tensorflow|huggingface-pytorch
         |huggingface-tensorflow-trcomp|huggingface-pytorch-trcomp)(?:-)?
         (scriptmode|training)?
