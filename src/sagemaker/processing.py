@@ -23,6 +23,7 @@ import pathlib
 import logging
 from textwrap import dedent
 from typing import Dict, List, Optional, Union
+from copy import copy
 
 import attr
 
@@ -1740,13 +1741,7 @@ class FrameworkProcessor(ScriptProcessor):
             raise RuntimeError("S3 source_dir file must be named `sourcedir.tar.gz.`")
 
         script = estimator.uploaded_code.script_name
-        s3_runproc_sh = S3Uploader.upload_string_as_file_body(
-            self._generate_framework_script(script),
-            desired_s3_uri=entrypoint_s3_uri,
-            kms_key=kms_key,
-            sagemaker_session=self.sagemaker_session,
-        )
-        logger.info("runproc.sh uploaded to %s", s3_runproc_sh)
+        s3_runproc_sh = self._create_and_upload_runproc(script, kms_key, entrypoint_s3_uri)
 
         return s3_runproc_sh, inputs, job_name
 
@@ -1830,14 +1825,17 @@ class FrameworkProcessor(ScriptProcessor):
         #   a7399455f5386d83ddc5cb15c0db00c04bd518ec/src/sagemaker/processing.py#L425-L426
         if inputs is None:
             inputs = []
-        inputs.append(
+
+        # make a shallow copy of user inputs
+        patched_inputs = copy(inputs)
+        patched_inputs.append(
             ProcessingInput(
                 input_name="code",
                 source=s3_payload,
                 destination="/opt/ml/processing/input/code/",
             )
         )
-        return inputs
+        return patched_inputs
 
     def _set_entrypoint(self, command, user_script_name):
         """Framework processor override for setting processing job entrypoint.
@@ -1853,3 +1851,42 @@ class FrameworkProcessor(ScriptProcessor):
             )
         )
         self.entrypoint = self.framework_entrypoint_command + [user_script_location]
+
+    def _create_and_upload_runproc(self, user_script, kms_key, entrypoint_s3_uri):
+        """Create runproc shell script and upload to S3 bucket.
+
+        If leveraging a pipeline session with optimized S3 artifact paths,
+        the runproc.sh file is hashed and uploaded to a separate S3 location.
+
+
+        Args:
+            user_script (str): Relative path to ```code``` in the source bundle
+                - e.g. 'process.py'.
+            kms_key (str): THe kms key used for encryption.
+            entrypoint_s3_uri (str): The S3 upload path for the runproc script.
+        """
+        from sagemaker.workflow.utilities import _pipeline_config, hash_object
+
+        if _pipeline_config and _pipeline_config.pipeline_name:
+            runproc_file_str = self._generate_framework_script(user_script)
+            runproc_file_hash = hash_object(runproc_file_str)
+            s3_uri = (
+                f"s3://{self.sagemaker_session.default_bucket()}/{_pipeline_config.pipeline_name}/"
+                f"code/{runproc_file_hash}/runproc.sh"
+            )
+            s3_runproc_sh = S3Uploader.upload_string_as_file_body(
+                runproc_file_str,
+                desired_s3_uri=s3_uri,
+                kms_key=kms_key,
+                sagemaker_session=self.sagemaker_session,
+            )
+        else:
+            s3_runproc_sh = S3Uploader.upload_string_as_file_body(
+                self._generate_framework_script(user_script),
+                desired_s3_uri=entrypoint_s3_uri,
+                kms_key=kms_key,
+                sagemaker_session=self.sagemaker_session,
+            )
+        logger.info("runproc.sh uploaded to %s", s3_runproc_sh)
+
+        return s3_runproc_sh
