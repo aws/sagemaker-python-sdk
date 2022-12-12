@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.121.2 (2022-12-12)
+
+### Bug Fixes and Other Changes
+
+ * Update for Tensorflow Serving 2.11 inference DLCs
+ * Revert "fix: type hint of PySparkProcessor __init__"
+ * Skip Bad Transform Test
+
 ## v2.121.1 (2022-12-09)
 
 ### Bug Fixes and Other Changes
