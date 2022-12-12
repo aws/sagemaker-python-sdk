@@ -1293,7 +1293,6 @@ def test_caching_behavior(
 
         # verify no changes
         definition2 = json.loads(pipeline.definition())
-        del definition2["Steps"][1]["Arguments"]["ProfilerRuleConfigurations"]
         assert definition == definition2
 
         # add dummy file to source_dir
@@ -1304,7 +1303,6 @@ def test_caching_behavior(
 
         # verify changes
         definition3 = json.loads(pipeline.definition())
-        del definition3["Steps"][1]["Arguments"]["ProfilerRuleConfigurations"]
         assert definition != definition3
 
     finally:
