@@ -1269,8 +1269,6 @@ def test_caching_behavior(
         # create pipeline
         pipeline.create(role)
         definition = json.loads(pipeline.definition())
-        # delete profiler config for assertions as it will contain a timestamp
-        del definition["Steps"][1]["Arguments"]["ProfilerRuleConfigurations"]
 
         # verify input path
         expected_abalone_input_path = f"{pipeline_name}/{step_process.name}" f"/input/abalone_data"
