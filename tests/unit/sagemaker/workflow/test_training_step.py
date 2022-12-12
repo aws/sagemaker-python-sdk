@@ -546,7 +546,6 @@ def test_training_step_with_framework_estimator(
     step_def2 = json.loads(pipeline.definition())["Steps"][0]
     del step_def2["Arguments"]["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"]
     del step_def2["Arguments"]["OutputDataConfig"]["S3OutputPath"]
-    del step_def2["Arguments"]["ProfilerRuleConfigurations"]
     if "sagemaker_s3_output" in step_def2["Arguments"]["HyperParameters"]:
         del step_def2["Arguments"]["HyperParameters"]["sagemaker_s3_output"]
     assert step_def == step_def2
@@ -613,7 +612,6 @@ def test_training_step_with_framework_estimator_local_code(
     step_def2 = json.loads(pipeline.definition())["Steps"][0]
     del step_def2["Arguments"]["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"]
     del step_def2["Arguments"]["OutputDataConfig"]["S3OutputPath"]
-    del step_def2["Arguments"]["ProfilerRuleConfigurations"]
     if "sagemaker_s3_output" in step_def2["Arguments"]["HyperParameters"]:
         del step_def2["Arguments"]["HyperParameters"]["sagemaker_s3_output"]
     assert step_def == step_def2
@@ -697,7 +695,6 @@ def test_training_step_with_algorithm_base(algo_estimator, training_input, pipel
     # test idempotency
     step_def2 = json.loads(pipeline.definition())["Steps"][0]
     del step_def2["Arguments"]["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"]
-    del step_def2["Arguments"]["ProfilerRuleConfigurations"]
     assert step_def == step_def2
 
 
@@ -781,7 +778,6 @@ def test_training_step_with_algorithm_base_local_code(
     # test idempotency
     step_def2 = json.loads(pipeline.definition())["Steps"][0]
     del step_def2["Arguments"]["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"]
-    del step_def2["Arguments"]["ProfilerRuleConfigurations"]
     assert step_def == step_def2
 
 
