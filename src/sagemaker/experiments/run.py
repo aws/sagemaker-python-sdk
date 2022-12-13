@@ -57,7 +57,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-RUN_NAME_BASE = "Sagemaker-Run"
+RUN_NAME_BASE = "Sagemaker-Run".lower()
 TRIAL_NAME_TEMPLATE = "Default-Run-Group-{}"
 MAX_RUN_TC_ARTIFACTS_LEN = 30
 MAX_NAME_LEN_IN_BACKEND = 120
@@ -140,6 +140,10 @@ class Run(object):
         self.experiment_name = experiment_name
         sagemaker_session = sagemaker_session or _utils.default_session()
         self.run_name = run_name or unique_name_from_base(RUN_NAME_BASE)
+
+        # avoid confusion due to mis-match in casing between run name and TC name
+        self.run_name = self.run_name.lower()
+
         trial_component_name = Run._generate_trial_component_name(
             run_name=self.run_name, experiment_name=self.experiment_name
         )
@@ -597,7 +601,10 @@ class Run(object):
             raise ValueError(
                 err_msg_template.format("experiment_name", len(experiment_name), max_len)
             )
-        return "{}{}{}".format(experiment_name, DELIMITER, run_name)
+        trial_component_name = "{}{}{}".format(experiment_name, DELIMITER, run_name)
+        # due to mixed-case concerns on the backend
+        trial_component_name = trial_component_name.lower()
+        return trial_component_name
 
     @staticmethod
     def _extract_run_name_from_tc_name(trial_component_name: str, experiment_name: str) -> str:
