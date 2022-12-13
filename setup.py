@@ -55,7 +55,7 @@ required_packages = [
     "protobuf3-to-dict>=0.1.5,<1.0",
     "smdebug_rulesconfig==1.0.1",
     "importlib-metadata>=1.4.0,<5.0",
-    "packaging==20.9",
+    "packaging>=20.0",
     "pandas",
     "pathos",
     "schema",
