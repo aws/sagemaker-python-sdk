@@ -19,8 +19,16 @@ import pytest
 import os
 from mock import Mock, patch
 
-from sagemaker.feature_store.dataset_builder import DatasetBuilder, FeatureGroupToBeMerged
-from sagemaker.feature_store.feature_group import FeatureDefinition, FeatureGroup, FeatureTypeEnum
+from sagemaker.feature_store.dataset_builder import (
+    DatasetBuilder,
+    FeatureGroupToBeMerged,
+    TableType,
+)
+from sagemaker.feature_store.feature_group import (
+    FeatureDefinition,
+    FeatureGroup,
+    FeatureTypeEnum,
+)
 
 
 @pytest.fixture
@@ -39,7 +47,7 @@ def read_csv_mock():
 
 
 @pytest.fixture
-def to_csv_mock():
+def to_csv_file_mock():
     return Mock()
 
 
@@ -51,13 +59,17 @@ def remove_mock():
 BASE = FeatureGroupToBeMerged(
     ["target-feature", "other-feature"],
     ["target-feature", "other-feature"],
+    ["target-feature", "other-feature"],
     "catalog",
     "database",
     "base-table",
     "target-feature",
     FeatureDefinition("other-feature", FeatureTypeEnum.STRING),
+    None,
+    TableType.FEATURE_GROUP,
 )
 FEATURE_GROUP = FeatureGroupToBeMerged(
+    ["feature-1", "feature-2"],
     ["feature-1", "feature-2"],
     ["feature-1", "feature-2"],
     "catalog",
@@ -66,6 +78,7 @@ FEATURE_GROUP = FeatureGroupToBeMerged(
     "feature-1",
     FeatureDefinition("feature-2", FeatureTypeEnum.FRACTIONAL),
     "target-feature",
+    TableType.FEATURE_GROUP,
 )
 
 
@@ -105,7 +118,10 @@ def test_with_feature_group(sagemaker_session_mock):
     }
     dataset_builder.with_feature_group(feature_group, "target-feature", ["feature-1", "feature-2"])
     assert len(dataset_builder._feature_groups_to_be_merged) == 1
-    assert dataset_builder._feature_groups_to_be_merged[0].features == ["feature-1", "feature-2"]
+    assert dataset_builder._feature_groups_to_be_merged[0].features == [
+        "feature-1",
+        "feature-2",
+    ]
     assert dataset_builder._feature_groups_to_be_merged[0].included_feature_names == [
         "feature-1",
         "feature-2",
@@ -195,18 +211,18 @@ def test_with_event_time_range(sagemaker_session_mock, feature_group_mock):
     assert dataset_builder._event_time_ending_timestamp == end
 
 
-def test_to_csv_not_support_base_type(sagemaker_session_mock, feature_group_mock):
+def test_to_csv_file_not_support_base_type(sagemaker_session_mock, feature_group_mock):
     dataset_builder = DatasetBuilder(
         sagemaker_session=sagemaker_session_mock,
         base=feature_group_mock,
         output_path="file/to/path",
     )
     with pytest.raises(ValueError) as error:
-        dataset_builder.to_csv()
+        dataset_builder.to_csv_file()
     assert "Base must be either a FeatureGroup or a DataFrame." in str(error)
 
 
-def test_to_csv_with_feature_group(sagemaker_session_mock):
+def test_to_csv_file_with_feature_group(sagemaker_session_mock):
     feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
     dataset_builder = DatasetBuilder(
         sagemaker_session=sagemaker_session_mock,
@@ -230,7 +246,7 @@ def test_to_csv_with_feature_group(sagemaker_session_mock):
             "Query": "query-string",
         }
     }
-    file_path, query_string = dataset_builder.to_csv()
+    file_path, query_string = dataset_builder.to_csv_file()
     assert file_path == "s3-file-path"
     assert query_string == "query-string"
 
@@ -239,7 +255,7 @@ def test_to_csv_with_feature_group(sagemaker_session_mock):
 @patch("pandas.read_csv")
 @patch("os.remove")
 def test_to_dataframe_with_dataframe(
-    remove_mock, read_csv_mock, to_csv_mock, sagemaker_session_mock
+    remove_mock, read_csv_mock, to_csv_file_mock, sagemaker_session_mock
 ):
     dataframe = pd.DataFrame({"feature-1": [420, 380.0, 390], "feature-2": [50, 40.0, 45]})
     dataset_builder = DatasetBuilder(
@@ -256,7 +272,7 @@ def test_to_dataframe_with_dataframe(
             "Query": "query-string",
         }
     }
-    to_csv_mock.return_value = None
+    to_csv_file_mock.return_value = None
     read_csv_mock.return_value = dataframe
     os.remove.return_value = None
     df, query_string = dataset_builder.to_dataframe()
@@ -278,7 +294,9 @@ def test_construct_where_query_string(sagemaker_session_mock):
     dataset_builder._event_time_starting_timestamp = start
     dataset_builder._event_time_ending_timestamp = end
     query_string = dataset_builder._construct_where_query_string(
-        "suffix", FeatureDefinition("event-time", FeatureTypeEnum.STRING), ["NOT is_deleted"]
+        "suffix",
+        FeatureDefinition("event-time", FeatureTypeEnum.STRING),
+        ["NOT is_deleted"],
     )
     assert (
         query_string
@@ -309,7 +327,9 @@ def test_construct_query_string_with_duplicated_records(sagemaker_session_mock, 
         + "FROM (\n"
         + "SELECT *, row_number() OVER (\n"
         + 'PARTITION BY origin_base."target-feature"\n'
-        + 'ORDER BY origin_base."other-feature" DESC) AS deleted_row_base\n'
+        + 'ORDER BY origin_base."other-feature" DESC, origin_base."api_invocation_time" DESC, '
+        + 'origin_base."write_time" DESC\n'
+        + ") AS deleted_row_base\n"
         + 'FROM "database"."base-table" origin_base\n'
         + "WHERE is_deleted\n"
         + ")\n"
@@ -317,18 +337,25 @@ def test_construct_query_string_with_duplicated_records(sagemaker_session_mock, 
         + ")\n"
         + 'SELECT table_base."target-feature", table_base."other-feature"\n'
         + "FROM (\n"
-        + 'SELECT table_base."target-feature", table_base."other-feature"\n'
+        + 'SELECT table_base."target-feature", table_base."other-feature", '
+        + 'table_base."write_time"\n'
         + 'FROM "database"."base-table" table_base\n'
         + "LEFT JOIN deleted_base\n"
         + 'ON table_base."target-feature" = deleted_base."target-feature"\n'
         + 'WHERE deleted_base."target-feature" IS NULL\n'
         + "UNION ALL\n"
-        + 'SELECT table_base."target-feature", table_base."other-feature"\n'
+        + 'SELECT table_base."target-feature", table_base."other-feature", '
+        + 'table_base."write_time"\n'
         + "FROM deleted_base\n"
         + 'JOIN "database"."base-table" table_base\n'
         + 'ON table_base."target-feature" = deleted_base."target-feature"\n'
         + "AND (\n"
         + 'table_base."other-feature" > deleted_base."other-feature"\n'
+        + 'OR (table_base."other-feature" = deleted_base."other-feature" AND '
+        + 'table_base."api_invocation_time" > deleted_base."api_invocation_time")\n'
+        + 'OR (table_base."other-feature" = deleted_base."other-feature" AND '
+        + 'table_base."api_invocation_time" = deleted_base."api_invocation_time" AND '
+        + 'table_base."write_time" > deleted_base."write_time")\n'
         + ")\n"
         + ") AS table_base\n"
         + "),\n"
@@ -337,7 +364,9 @@ def test_construct_query_string_with_duplicated_records(sagemaker_session_mock, 
         + "FROM (\n"
         + "SELECT *, row_number() OVER (\n"
         + 'PARTITION BY origin_0."feature-1"\n'
-        + 'ORDER BY origin_0."feature-2" DESC) AS deleted_row_0\n'
+        + 'ORDER BY origin_0."feature-2" DESC, origin_0."api_invocation_time" DESC, '
+        + 'origin_0."write_time" DESC\n'
+        + ") AS deleted_row_0\n"
         + 'FROM "database"."table-name" origin_0\n'
         + "WHERE is_deleted\n"
         + ")\n"
@@ -345,24 +374,29 @@ def test_construct_query_string_with_duplicated_records(sagemaker_session_mock, 
         + ")\n"
         + 'SELECT table_0."feature-1", table_0."feature-2"\n'
         + "FROM (\n"
-        + 'SELECT table_0."feature-1", table_0."feature-2"\n'
+        + 'SELECT table_0."feature-1", table_0."feature-2", table_0."write_time"\n'
         + 'FROM "database"."table-name" table_0\n'
         + "LEFT JOIN deleted_0\n"
         + 'ON table_0."feature-1" = deleted_0."feature-1"\n'
         + 'WHERE deleted_0."feature-1" IS NULL\n'
         + "UNION ALL\n"
-        + 'SELECT table_0."feature-1", table_0."feature-2"\n'
+        + 'SELECT table_0."feature-1", table_0."feature-2", table_0."write_time"\n'
         + "FROM deleted_0\n"
         + 'JOIN "database"."table-name" table_0\n'
         + 'ON table_0."feature-1" = deleted_0."feature-1"\n'
         + "AND (\n"
         + 'table_0."feature-2" > deleted_0."feature-2"\n'
+        + 'OR (table_0."feature-2" = deleted_0."feature-2" AND table_0."api_invocation_time" > '
+        + 'deleted_0."api_invocation_time")\n'
+        + 'OR (table_0."feature-2" = deleted_0."feature-2" AND table_0."api_invocation_time" = '
+        + 'deleted_0."api_invocation_time" AND table_0."write_time" > deleted_0."write_time")\n'
         + ")\n"
         + ") AS table_0\n"
         + ")\n"
-        + "SELECT *\n"
+        + 'SELECT target-feature, other-feature, "feature-1.1", "feature-2.1"\n'
         + "FROM (\n"
-        + "SELECT *, row_number() OVER (\n"
+        + 'SELECT fg_base.target-feature, fg_base.other-feature, fg_0."feature-1" as '
+        + '"feature-1.1", fg_0."feature-2" as "feature-2.1", row_number() OVER (\n'
         + 'PARTITION BY fg_base."target-feature"\n'
         + 'ORDER BY fg_base."other-feature" DESC, fg_0."feature-2" DESC\n'
         + ") AS row_recent\n"
@@ -370,7 +404,6 @@ def test_construct_query_string_with_duplicated_records(sagemaker_session_mock, 
         + "JOIN fg_0\n"
         + 'ON fg_base."target-feature" = fg_0."feature-1"\n'
         + ")\n"
-        + "WHERE row_recent <= 1"
     )
 
 
@@ -481,9 +514,10 @@ def test_construct_query_string(sagemaker_session_mock):
         + ")\n"
         + ") AS table_0\n"
         + ")\n"
-        + "SELECT *\n"
+        + 'SELECT target-feature, other-feature, "feature-1.1", "feature-2.1"\n'
         + "FROM (\n"
-        + "SELECT *, row_number() OVER (\n"
+        + 'SELECT fg_base.target-feature, fg_base.other-feature, fg_0."feature-1" as '
+        + '"feature-1.1", fg_0."feature-2" as "feature-2.1", row_number() OVER (\n'
         + 'PARTITION BY fg_base."target-feature"\n'
         + 'ORDER BY fg_base."other-feature" DESC, fg_0."feature-2" DESC\n'
         + ") AS row_recent\n"
@@ -492,7 +526,6 @@ def test_construct_query_string(sagemaker_session_mock):
         + 'ON fg_base."target-feature" = fg_0."feature-1"\n'
         + 'AND from_unixtime(fg_base."target-feature") >= from_unixtime(fg_0."feature-2")\n'
         + ")\n"
-        + "WHERE row_recent <= 1"
     )
 
 
@@ -550,7 +583,9 @@ def test_construct_athena_table_column_string(column, expected, sagemaker_sessio
     assert query_string == expected
 
 
-def test_construct_athena_table_column_string_not_support_column_type(sagemaker_session_mock):
+def test_construct_athena_table_column_string_not_support_column_type(
+    sagemaker_session_mock,
+):
     dataframe = pd.DataFrame({"feature": pd.Series([1] * 3, dtype="int8")})
     dataset_builder = DatasetBuilder(
         sagemaker_session=sagemaker_session_mock,

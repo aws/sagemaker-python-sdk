@@ -570,7 +570,7 @@ def test_create_dataset_with_feature_group_base(
 ):
     base = FeatureGroup(name=base_name, sagemaker_session=feature_store_session)
     feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
-    with cleanup_feature_group(base) and cleanup_feature_group(feature_group):
+    with cleanup_feature_group(base), cleanup_feature_group(feature_group):
         _create_feature_group_and_ingest_data(
             base, base_dataframe, offline_store_s3_uri, "base_id", "base_time", role
         )
@@ -598,7 +598,18 @@ def test_create_dataset_with_feature_group_base(
             merged_df = base_dataframe.merge(
                 feature_group_dataframe, left_on="base_id", right_on="fg_id"
             )
+
             expect_df = merged_df.sort_values(by=list(merged_df.columns)).reset_index(drop=True)
+
+            expect_df.rename(
+                columns={
+                    "fg_id": "fg_id.1",
+                    "fg_time": "fg_time.1",
+                    "fg_feature_1": "fg_feature_1.1",
+                    "fg_feature_2": "fg_feature_2.1",
+                },
+                inplace=True,
+            )
 
             assert sorted_df.equals(expect_df)
             assert (
@@ -619,38 +630,41 @@ def test_create_dataset_with_feature_group_base(
                 + "FROM (\n"
                 + "SELECT *, row_number() OVER (\n"
                 + 'PARTITION BY origin_base."base_id"\n'
-                + 'ORDER BY origin_base."base_time" DESC, origin_base."api_invocation_time" '
-                + 'DESC, origin_base."write_time" DESC\n'
+                + 'ORDER BY origin_base."base_time" DESC,'
+                ' origin_base."api_invocation_time" DESC,'
+                ' origin_base."write_time" DESC\n'
                 + ") AS deleted_row_base\n"
                 + f'FROM "sagemaker_featurestore"."{base_table_name}" origin_base\n'
                 + "WHERE is_deleted\n"
                 + ")\n"
                 + "WHERE deleted_row_base = 1\n"
                 + ")\n"
-                + 'SELECT table_base."base_id", table_base."base_time", '
-                + 'table_base."base_feature_1", table_base."base_feature_2"\n'
+                + 'SELECT table_base."base_id", table_base."base_time",'
+                ' table_base."base_feature_1", table_base."base_feature_2"\n'
                 + "FROM (\n"
-                + 'SELECT table_base."base_id", table_base."base_time", '
-                + 'table_base."base_feature_1", table_base."base_feature_2", '
-                + 'table_base."write_time"\n'
+                + 'SELECT table_base."base_id", table_base."base_time",'
+                ' table_base."base_feature_1", table_base."base_feature_2",'
+                ' table_base."write_time"\n'
                 + "FROM table_base\n"
                 + "LEFT JOIN deleted_base\n"
                 + 'ON table_base."base_id" = deleted_base."base_id"\n'
                 + 'WHERE deleted_base."base_id" IS NULL\n'
                 + "UNION ALL\n"
-                + 'SELECT table_base."base_id", table_base."base_time", '
-                + 'table_base."base_feature_1", table_base."base_feature_2", '
-                + 'table_base."write_time"\n'
+                + 'SELECT table_base."base_id", table_base."base_time",'
+                ' table_base."base_feature_1", table_base."base_feature_2",'
+                ' table_base."write_time"\n'
                 + "FROM deleted_base\n"
                 + "JOIN table_base\n"
                 + 'ON table_base."base_id" = deleted_base."base_id"\n'
                 + "AND (\n"
                 + 'table_base."base_time" > deleted_base."base_time"\n'
-                + 'OR (table_base."base_time" = deleted_base."base_time" AND '
-                + 'table_base."api_invocation_time" > deleted_base."api_invocation_time")\n'
-                + 'OR (table_base."base_time" = deleted_base."base_time" AND '
-                + 'table_base."api_invocation_time" = deleted_base."api_invocation_time" AND '
-                + 'table_base."write_time" > deleted_base."write_time")\n'
+                + 'OR (table_base."base_time" = deleted_base."base_time" AND'
+                ' table_base."api_invocation_time" >'
+                ' deleted_base."api_invocation_time")\n'
+                + 'OR (table_base."base_time" = deleted_base."base_time" AND'
+                ' table_base."api_invocation_time" ='
+                ' deleted_base."api_invocation_time" AND'
+                ' table_base."write_time" > deleted_base."write_time")\n'
                 + ")\n"
                 + ") AS table_base\n"
                 + "),\n"
@@ -670,42 +684,51 @@ def test_create_dataset_with_feature_group_base(
                 + "FROM (\n"
                 + "SELECT *, row_number() OVER (\n"
                 + 'PARTITION BY origin_0."fg_id"\n'
-                + 'ORDER BY origin_0."fg_time" DESC, origin_0."api_invocation_time" DESC, '
-                + 'origin_0."write_time" DESC\n'
+                + 'ORDER BY origin_0."fg_time" DESC, origin_0."api_invocation_time" DESC,'
+                ' origin_0."write_time" DESC\n'
                 + ") AS deleted_row_0\n"
                 + f'FROM "sagemaker_featurestore"."{feature_group_table_name}" origin_0\n'
                 + "WHERE is_deleted\n"
                 + ")\n"
                 + "WHERE deleted_row_0 = 1\n"
                 + ")\n"
-                + 'SELECT table_0."fg_id", table_0."fg_time", table_0."fg_feature_1", '
-                + 'table_0."fg_feature_2"\n'
+                + 'SELECT table_0."fg_id", table_0."fg_time", table_0."fg_feature_1",'
+                ' table_0."fg_feature_2"\n'
                 + "FROM (\n"
-                + 'SELECT table_0."fg_id", table_0."fg_time", table_0."fg_feature_1", '
-                + 'table_0."fg_feature_2", table_0."write_time"\n'
+                + 'SELECT table_0."fg_id", table_0."fg_time",'
+                ' table_0."fg_feature_1", table_0."fg_feature_2",'
+                ' table_0."write_time"\n'
                 + "FROM table_0\n"
                 + "LEFT JOIN deleted_0\n"
                 + 'ON table_0."fg_id" = deleted_0."fg_id"\n'
                 + 'WHERE deleted_0."fg_id" IS NULL\n'
                 + "UNION ALL\n"
-                + 'SELECT table_0."fg_id", table_0."fg_time", table_0."fg_feature_1", '
-                + 'table_0."fg_feature_2", table_0."write_time"\n'
+                + 'SELECT table_0."fg_id", table_0."fg_time",'
+                ' table_0."fg_feature_1", table_0."fg_feature_2",'
+                ' table_0."write_time"\n'
                 + "FROM deleted_0\n"
                 + "JOIN table_0\n"
                 + 'ON table_0."fg_id" = deleted_0."fg_id"\n'
                 + "AND (\n"
                 + 'table_0."fg_time" > deleted_0."fg_time"\n'
-                + 'OR (table_0."fg_time" = deleted_0."fg_time" AND '
-                + 'table_0."api_invocation_time" > deleted_0."api_invocation_time")\n'
-                + 'OR (table_0."fg_time" = deleted_0."fg_time" AND '
-                + 'table_0."api_invocation_time" = deleted_0."api_invocation_time" AND '
-                + 'table_0."write_time" > deleted_0."write_time")\n'
+                + 'OR (table_0."fg_time" = deleted_0."fg_time" AND'
+                ' table_0."api_invocation_time" >'
+                ' deleted_0."api_invocation_time")\n'
+                + 'OR (table_0."fg_time" = deleted_0."fg_time" AND'
+                ' table_0."api_invocation_time" ='
+                ' deleted_0."api_invocation_time" AND table_0."write_time" >'
+                ' deleted_0."write_time")\n'
                 + ")\n"
                 + ") AS table_0\n"
                 + ")\n"
-                + "SELECT *\n"
-                + "FROM (\n"
-                + "SELECT *, row_number() OVER (\n"
+                + "SELECT base_id, base_time, base_feature_1, base_feature_2,"
+                ' "fg_id.1", "fg_time.1", "fg_feature_1.1",'
+                ' "fg_feature_2.1"\n' + "FROM (\n" + "SELECT fg_base.base_id, fg_base.base_time,"
+                " fg_base.base_feature_1, fg_base.base_feature_2,"
+                ' fg_0."fg_id" as "fg_id.1", fg_0."fg_time" as "fg_time.1",'
+                ' fg_0."fg_feature_1" as "fg_feature_1.1",'
+                ' fg_0."fg_feature_2" as "fg_feature_2.1", row_number()'
+                " OVER (\n"
                 + 'PARTITION BY fg_base."base_id"\n'
                 + 'ORDER BY fg_base."base_time" DESC, fg_0."fg_time" DESC\n'
                 + ") AS row_recent\n"
@@ -802,6 +825,7 @@ def cleanup_feature_group(feature_group: FeatureGroup):
     finally:
         try:
             feature_group.delete()
+            print(f"{feature_group.name} is deleted")
         except Exception:
             raise RuntimeError(f"Failed to delete feature group with name {feature_group.name}")
 
