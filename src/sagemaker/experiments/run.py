@@ -61,12 +61,9 @@ RUN_NAME_BASE = "Sagemaker-Run"
 TRIAL_NAME_TEMPLATE = "Default-Run-Group-{}"
 MAX_RUN_TC_ARTIFACTS_LEN = 30
 MAX_NAME_LEN_IN_BACKEND = 120
-UNKNOWN_NAME = "unknown"
-EXP_NAME_BASE = "Sagemaker-Experiment"
 EXPERIMENT_NAME = "ExperimentName"
 TRIAL_NAME = "TrialName"
 RUN_NAME = "RunName"
-TRIAL_COMPONENT_NAME = "TrialComponentName"
 DELIMITER = "-"
 RUN_TC_TAG_KEY = "sagemaker:trial-component-source"
 RUN_TC_TAG_VALUE = "run"
@@ -76,15 +73,15 @@ RUN_TC_TAG = {"Key": RUN_TC_TAG_KEY, "Value": RUN_TC_TAG_VALUE}
 class SortByType(Enum):
     """The type of property by which to sort the `list_runs` results."""
 
-    CreationTime = "CreationTime"
-    Name = "Name"
+    CREATION_TIME = "CreationTime"
+    NAME = "Name"
 
 
 class SortOrderType(Enum):
     """The type of order to sort the list or search results."""
 
-    Ascending = "Ascending"
-    Descending = "Descending"
+    ASCENDING = "Ascending"
+    DESCENDING = "Descending"
 
 
 class Run(object):
@@ -169,9 +166,9 @@ class Run(object):
             sagemaker_session=sagemaker_session,
         )
         if is_existed:
-            logger.warning(
+            logger.info(
                 "The Run (%s) under experiment (%s) already exists. Loading it. "
-                "Note, sagemaker.experiments.load_run is recommended to use when "
+                "Note: sagemaker.experiments.load_run is recommended to use when "
                 "the desired Run already exists.",
                 self.run_name,
                 self.experiment_name,
@@ -496,10 +493,10 @@ class Run(object):
 
     @staticmethod
     def _generate_trial_name(base_name) -> str:
-        """Generate the reserved trial name based on run name
+        """Generate the reserved trial name based on experiment name
 
         Args:
-            base_name (str): The run_name of this `Run` object.
+            base_name (str): The ``experiment_name`` of this ``Run`` object.
         """
         available_length = MAX_NAME_LEN_IN_BACKEND - len(TRIAL_NAME_TEMPLATE)
         return TRIAL_NAME_TEMPLATE.format(base_name[:available_length])
@@ -760,8 +757,8 @@ def list_runs(
     sagemaker_session: Optional["Session"] = None,
     max_results: Optional[int] = None,
     next_token: Optional[str] = None,
-    sort_by: SortByType = SortByType.CreationTime,
-    sort_order: SortOrderType = SortOrderType.Descending,
+    sort_by: SortByType = SortByType.CREATION_TIME,
+    sort_order: SortOrderType = SortOrderType.DESCENDING,
 ) -> list:
     """Return a list of `Run` objects matching the given criteria.
 
@@ -776,11 +773,11 @@ def list_runs(
             manages interactions with Amazon SageMaker APIs and any other
             AWS services needed. If not specified, one is created using the
             default AWS configuration chain.
-        max_results (int): maximum number of Run objects to retrieve (default: None).
-        next_token (str): token for next page of results (default: None).
-        sort_by (SortByType): Which property to sort results by. One of Name, CreationTime
-            (default: CreationTime).
-        sort_order (SortOrderType): One of Ascending, or Descending (default: Descending).
+        max_results (int): Maximum number of Run objects to retrieve (default: None).
+        next_token (str): Token for next page of results (default: None).
+        sort_by (SortByType): The property to sort results by. One of NAME, CREATION_TIME
+            (default: CREATION_TIME).
+        sort_order (SortOrderType): One of ASCENDING, or DESCENDING (default: DESCENDING).
 
     Returns:
         list: A list of `Run` objects.

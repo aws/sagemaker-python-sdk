@@ -764,8 +764,8 @@ def test_list(mock_tc_search, mock_tc_list, mock_tc_load, run_obj, sagemaker_ses
 
     run_list = list_runs(
         experiment_name=TEST_EXP_NAME,
-        sort_by=SortByType.CreationTime,
-        sort_order=SortOrderType.Ascending,
+        sort_by=SortByType.CREATION_TIME,
+        sort_order=SortOrderType.ASCENDING,
         sagemaker_session=sagemaker_session,
     )
 

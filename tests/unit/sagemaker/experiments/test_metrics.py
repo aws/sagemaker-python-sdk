@@ -49,14 +49,14 @@ def test_raw_metric_data_utc_timestamp():
     utcnow = datetime.datetime.now(datetime.timezone.utc)
     assert utcnow.tzinfo
     metric = _RawMetricData(metric_name="foo", value=1.0, timestamp=utcnow)
-    assert utcnow.timestamp() * 1000 == metric.Timestamp
+    assert utcnow.timestamp() == metric.Timestamp
 
 
 def test_raw_metric_data_utc_():
     utcnow = datetime.datetime.now(datetime.timezone.utc)
     assert utcnow.tzinfo
     metric = _RawMetricData(metric_name="foo", value=1.0, timestamp=utcnow)
-    assert utcnow.timestamp() * 1000 == metric.Timestamp
+    assert utcnow.timestamp() == metric.Timestamp
 
 
 def test_raw_metric_data_aware_timestamp():
@@ -65,7 +65,7 @@ def test_raw_metric_data_aware_timestamp():
     metric = _RawMetricData(metric_name="foo", value=1.0, timestamp=aware_datetime)
     assert (aware_datetime - aware_datetime.utcoffset()).replace(
         tzinfo=datetime.timezone.utc
-    ).timestamp() * 1000 == metric.Timestamp
+    ).timestamp() == metric.Timestamp
 
 
 def test_raw_metric_data_naive_timestamp():
@@ -75,13 +75,13 @@ def test_raw_metric_data_naive_timestamp():
     local_datetime = naive_datetime.replace(tzinfo=dateutil.tz.tzlocal())
     assert (local_datetime - local_datetime.utcoffset()).replace(
         tzinfo=datetime.timezone.utc
-    ).timestamp() * 1000 == metric.Timestamp
+    ).timestamp() == metric.Timestamp
 
 
 def test_raw_metric_data_number_timestamp():
     time_now = time.time()
     metric = _RawMetricData(metric_name="foo", value=1.0, timestamp=time_now)
-    assert time_now * 1000 == metric.Timestamp
+    assert time_now == metric.Timestamp
 
 
 def test_raw_metric_data_request_item():
@@ -90,7 +90,7 @@ def test_raw_metric_data_request_item():
     expected = {
         "MetricName": "foo",
         "Value": 1.0,
-        "Timestamp": int(time_now * 1000),
+        "Timestamp": str(int(time_now)),
         "Step": 10,
     }
     assert expected == metric.to_raw_metric_data()
@@ -120,11 +120,11 @@ def test_file_metrics_writer_log_metric(timestamp, filepath):
 
     assert "foo" == entry_one["MetricName"]
     assert 1.0 == entry_one["Value"]
-    assert (now.timestamp() * 1000 - entry_one["Timestamp"]) < 1
+    assert (now.timestamp() - entry_one["Timestamp"]) < 1
     assert "Step" not in entry_one
 
     assert 1 == entry_two["Step"]
-    assert timestamp.timestamp() * 1000 == entry_three["Timestamp"]
+    assert timestamp.timestamp() == entry_three["Timestamp"]
     assert 2 == entry_four["Step"]
 
 
@@ -160,7 +160,7 @@ def test_file_metrics_writer_context_manager(timestamp, filepath):
     assert {
         "MetricName": "foo",
         "Value": 1.0,
-        "Timestamp": timestamp.timestamp() * 1000,
+        "Timestamp": timestamp.timestamp(),
     }.items() <= entry.items()
 
 

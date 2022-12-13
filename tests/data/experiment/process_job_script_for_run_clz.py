@@ -13,25 +13,11 @@
 """This script file runs on SageMaker processing job"""
 from __future__ import absolute_import
 
-import importlib
 import logging
 import os
 import boto3
 
-sm_json = "sagemaker-2017-07-24.normal.json"
-metrics_json = "sagemaker-metrics-2022-09-30.normal.json"
-beta_sdk = "sagemaker-beta-1.0.tar.gz"
-resource_dir = "resources"
-
-os.system(
-    f"aws configure add-model --service-model file://{resource_dir}/{sm_json} --service-name sagemaker"
-)
-os.system(
-    f"aws configure add-model --service-model file://{resource_dir}/{metrics_json} --service-name sagemaker-metrics"
-)
-importlib.reload(boto3)  # Reload boto3 to let the added API models take effect
-
-sdk_file = f"{resource_dir}/{beta_sdk}"
+sdk_file = "sagemaker-dev-1.0.tar.gz"
 os.system(f"pip install {sdk_file}")
 
 

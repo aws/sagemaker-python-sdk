@@ -155,9 +155,7 @@ class _RawMetricData(object):
 
         self.MetricName = metric_name
         self.Value = float(value)
-        # Update timestamp to milliseconds
-        # to be compatible with the metrics service
-        self.Timestamp = timestamp * 1000
+        self.Timestamp = timestamp
         if step is not None:
             if not isinstance(step, int):
                 raise ValueError("step must be int.")
@@ -169,10 +167,12 @@ class _RawMetricData(object):
 
     def to_raw_metric_data(self):
         """Converts the metric data to a BatchPutMetrics RawMetricData item"""
+        # Convert timestamp from float to timestamp str.
+        # Otherwise will get ParamValidationError
         raw_metric_data = {
             "MetricName": self.MetricName,
             "Value": self.Value,
-            "Timestamp": int(self.Timestamp),
+            "Timestamp": str(int(self.Timestamp)),
         }
         if self.Step is not None:
             raw_metric_data["Step"] = int(self.Step)

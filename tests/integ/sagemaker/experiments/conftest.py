@@ -149,16 +149,17 @@ def tempdir():
     shutil.rmtree(temp_dir)
 
 
-_EXP_PLUS_SDK_TAR = "sagemaker-beta-1.0.tar.gz"
+_EXP_PLUS_SDK_TAR = "sagemaker-dev-1.0.tar.gz"
 
 
 @pytest.fixture(scope="module")
-def job_resource_dir():
-    resource_dir = os.path.join(DATA_DIR, "experiment/resources")
+def dev_sdk_tar():
+    resource_dir = os.path.join(DATA_DIR, "experiment")
     os.system("python setup.py sdist")
     sdist_path = max(glob.glob("dist/sagemaker-*"), key=os.path.getctime)
-    shutil.copy(sdist_path, os.path.join(resource_dir, _EXP_PLUS_SDK_TAR))
-    return resource_dir
+    sdk_file = os.path.join(resource_dir, _EXP_PLUS_SDK_TAR)
+    shutil.copy(sdist_path, sdk_file)
+    return sdk_file
 
 
 def _delete_associations(arn, sagemaker_session):

@@ -15,10 +15,11 @@ from __future__ import absolute_import
 
 import logging
 import time
-
 import os
-
 import boto3
+
+sdk_file = "sagemaker-dev-1.0.tar.gz"
+os.system(f"pip install {sdk_file}")
 
 from sagemaker import Session
 from sagemaker.experiments import load_run, Run
