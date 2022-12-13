@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 import json
 import os
+from time import sleep
 
 import pytest
 from tests.integ import DATA_DIR, TRANSFORM_DEFAULT_TIMEOUT_MINUTES
@@ -189,6 +190,8 @@ def test_inference_pipeline_model_deploy_and_update_endpoint(
             EndpointName=endpoint_name
         )
         old_config_name = endpoint_desc["EndpointConfigName"]
+
+        sleep(1)
 
         predictor.update_endpoint(initial_instance_count=1, instance_type=cpu_instance_type)
 
