@@ -2121,6 +2121,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         stop_condition,
         tags,
         warm_start_config,
+        strategy_config=None,
         enable_network_isolation=False,
         image_uri=None,
         algorithm_arn=None,
@@ -2136,6 +2137,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Args:
             job_name (str): Name of the tuning job being created.
             strategy (str): Strategy to be used for hyperparameter estimations.
+            strategy_config (dict): A configuration for the hyperparameter tuning
+                job optimisation strategy.
             objective_type (str): The type of the objective metric for evaluating training jobs.
                 This value can be either 'Minimize' or 'Maximize'.
             objective_metric_name (str): Name of the metric for evaluating training jobs.
@@ -2220,6 +2223,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 objective_metric_name=objective_metric_name,
                 parameter_ranges=parameter_ranges,
                 early_stopping_type=early_stopping_type,
+                strategy_config=strategy_config,
             ),
             "TrainingJobDefinition": self._map_training_config(
                 static_hyperparameters=static_hyperparameters,
@@ -2375,6 +2379,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         objective_type=None,
         objective_metric_name=None,
         parameter_ranges=None,
+        strategy_config=None,
     ):
         """Construct tuning job configuration dictionary.
 
@@ -2392,6 +2397,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             objective_metric_name (str): Name of the metric for evaluating training jobs.
             parameter_ranges (dict): Dictionary of parameter ranges. These parameter ranges can
                 be one of three types: Continuous, Integer, or Categorical.
+            strategy_config (dict): A configuration for the hyperparameter tuning job optimisation
+                strategy.
 
         Returns:
             A dictionary of tuning job configuration. For format details, please refer to
@@ -2415,6 +2422,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if parameter_ranges is not None:
             tuning_config["ParameterRanges"] = parameter_ranges
 
+        if strategy_config is not None:
+            tuning_config["StrategyConfig"] = strategy_config
         return tuning_config
 
     @classmethod
