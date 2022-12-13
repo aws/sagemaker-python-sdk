@@ -32,8 +32,8 @@ class ProfilerConfig(object):
         s3_output_path: Optional[Union[str, PipelineVariable]] = None,
         system_monitor_interval_millis: Optional[Union[int, PipelineVariable]] = None,
         framework_profile_params: Optional[FrameworkProfile] = None,
-        disable_profiler: Optional[FrameworkProfile] = False,
-    ):
+        disable_profiler: Optional[Union[str, PipelineVariable]] = False,
+    )
         """Initialize a ``ProfilerConfig`` instance.
 
         Pass the output of this class
