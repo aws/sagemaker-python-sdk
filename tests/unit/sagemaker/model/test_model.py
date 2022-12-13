@@ -783,6 +783,9 @@ def test_model_local_download_dir(repack_model, sagemaker_session):
 
     source_dir = "s3://blah/blah/blah"
     local_download_dir = "local download dir"
+
+    sagemaker_session.settings.local_download_dir = local_download_dir
+
     t = Model(
         entry_point=ENTRY_POINT_INFERENCE,
         role=ROLE,
@@ -790,8 +793,10 @@ def test_model_local_download_dir(repack_model, sagemaker_session):
         source_dir=source_dir,
         image_uri=IMAGE_URI,
         model_data=MODEL_DATA,
-        local_download_dir=local_download_dir,
     )
     t.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT)
 
-    assert repack_model.call_args_list[0][1].get("local_download_dir") == local_download_dir
+    assert (
+        repack_model.call_args_list[0][1]["sagemaker_session"].settings.local_download_dir
+        == local_download_dir
+    )

@@ -13,6 +13,8 @@
 from __future__ import absolute_import
 
 from sagemaker import image_uris
+from sagemaker.session_settings import SessionSettings
+
 
 REGION = "us-east-1"
 GPU_INSTANCE_TYPE = "ml.p2.xlarge"

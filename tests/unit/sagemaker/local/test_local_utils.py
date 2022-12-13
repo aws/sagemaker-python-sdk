@@ -17,6 +17,7 @@ import pytest
 from mock import patch, Mock
 
 import sagemaker.local.utils
+from sagemaker.session_settings import SessionSettings
 
 
 @patch("sagemaker.local.utils.os.path")
@@ -42,7 +43,9 @@ def test_move_to_destination_local(recursive_copy):
 @patch("shutil.rmtree", Mock())
 @patch("sagemaker.local.utils.recursive_copy")
 def test_move_to_destination_s3(recursive_copy):
-    sms = Mock()
+    sms = Mock(
+        settings=SessionSettings(),
+    )
 
     # without trailing slash in prefix
     sagemaker.local.utils.move_to_destination("/tmp/data", "s3://bucket/path", "job", sms)

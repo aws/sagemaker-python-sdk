@@ -23,6 +23,7 @@ from packaging.version import Version
 
 
 from sagemaker.fw_utils import UploadedCode
+from sagemaker.session_settings import SessionSettings
 from sagemaker.xgboost import XGBoost, XGBoostModel, XGBoostPredictor
 
 
@@ -68,6 +69,7 @@ def sagemaker_session():
         local_mode=False,
         s3_resource=None,
         s3_client=None,
+        settings=SessionSettings(),
     )
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}

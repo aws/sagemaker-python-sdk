@@ -49,6 +49,7 @@ from sagemaker.model import FrameworkModel
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.predictor import Predictor
 from sagemaker.pytorch.estimator import PyTorch
+from sagemaker.session_settings import SessionSettings
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.tensorflow.estimator import TensorFlow
 from sagemaker.predictor_async import AsyncPredictor
@@ -221,6 +222,7 @@ def sagemaker_session():
         local_mode=False,
         s3_client=None,
         s3_resource=None,
+        settings=SessionSettings(),
     )
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     sms.sagemaker_client.describe_training_job = Mock(
@@ -243,7 +245,7 @@ def pipeline_session():
     type(role_mock).arn = PropertyMock(return_value=ROLE)
     resource_mock = Mock()
     resource_mock.Role.return_value = role_mock
-    session_mock = Mock(region_name=REGION)
+    session_mock = Mock(region_name=REGION, settings=SessionSettings())
     session_mock.resource.return_value = resource_mock
     session_mock.client.return_value = client_mock
     return PipelineSession(
@@ -734,6 +736,7 @@ def test_framework_with_no_default_profiler_in_unsupported_region(region):
         local_mode=False,
         s3_client=None,
         s3_resource=None,
+        settings=SessionSettings(),
     )
     f = DummyFramework(
         entry_point=SCRIPT_PATH,
@@ -761,6 +764,7 @@ def test_framework_with_debugger_config_set_up_in_unsupported_region(region):
             local_mode=False,
             s3_client=None,
             s3_resource=None,
+            settings=SessionSettings(),
         )
         f = DummyFramework(
             entry_point=SCRIPT_PATH,
@@ -787,6 +791,7 @@ def test_framework_enable_profiling_in_unsupported_region(region):
             local_mode=False,
             s3_client=None,
             s3_resource=None,
+            settings=SessionSettings(),
         )
         f = DummyFramework(
             entry_point=SCRIPT_PATH,
@@ -813,6 +818,7 @@ def test_framework_update_profiling_in_unsupported_region(region):
             local_mode=False,
             s3_client=None,
             s3_resource=None,
+            settings=SessionSettings(),
         )
         f = DummyFramework(
             entry_point=SCRIPT_PATH,
@@ -839,6 +845,7 @@ def test_framework_disable_profiling_in_unsupported_region(region):
             local_mode=False,
             s3_client=None,
             s3_resource=None,
+            settings=SessionSettings(),
         )
         f = DummyFramework(
             entry_point=SCRIPT_PATH,
@@ -4558,6 +4565,10 @@ def test_estimator_local_download_dir(
     )
     sagemaker_session.boto_region_name = REGION
 
+    local_download_dir = "some/download/dir"
+
+    sagemaker_session.settings.local_download_dir = local_download_dir
+
     instance_type = "ml.p2.xlarge"
     instance_count = 1
 
@@ -4565,7 +4576,6 @@ def test_estimator_local_download_dir(
 
     jumpstart_source_dir = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[0]}/source_dirs/source.tar.gz"
 
-    local_download_dir = "some/download/dir"
     generic_estimator = Estimator(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -4576,11 +4586,10 @@ def test_estimator_local_download_dir(
         source_dir=jumpstart_source_dir,
         image_uri=IMAGE_URI,
         model_uri=MODEL_DATA,
-        local_download_dir=local_download_dir,
     )
     generic_estimator.fit(training_data_uri)
 
     assert (
-        patched_tar_and_upload_dir.call_args_list[0][1].get("local_download_dir")
+        patched_tar_and_upload_dir.call_args_list[0][1]["settings"].local_download_dir
         == local_download_dir
     )

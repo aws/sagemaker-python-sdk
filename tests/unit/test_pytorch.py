@@ -23,6 +23,7 @@ from sagemaker import image_uris
 from sagemaker.pytorch import defaults
 from sagemaker.pytorch import PyTorch, PyTorchPredictor, PyTorchModel
 from sagemaker.instance_group import InstanceGroup
+from sagemaker.session_settings import SessionSettings
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
@@ -70,6 +71,7 @@ def fixture_sagemaker_session():
         local_mode=False,
         s3_resource=None,
         s3_client=None,
+        settings=SessionSettings(),
     )
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
@@ -392,7 +394,6 @@ def test_mms_model(repack_model, sagemaker_session):
         repacked_model_uri=ANY,
         sagemaker_session=sagemaker_session,
         source_directory=None,
-        local_download_dir=None,
     )
 
 

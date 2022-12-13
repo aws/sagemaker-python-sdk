@@ -391,7 +391,6 @@ def repack_model(
     repacked_model_uri,
     sagemaker_session,
     kms_key=None,
-    local_download_dir=None,
 ):
     """Unpack model tarball and creates a new model tarball with the provided code script.
 
@@ -427,13 +426,17 @@ def repack_model(
         sagemaker_session (sagemaker.session.Session): a sagemaker session to
             interact with S3.
         kms_key (str): KMS key ARN for encrypting the repacked model file
-        local_download_dir (str): Optional. A path specifying the local directory
-            for downloading artifacts. (Default: None).
     Returns:
         str: path to the new packed model
     """
     dependencies = dependencies or []
 
+    local_download_dir = (
+        None
+        if sagemaker_session.settings == None
+        or sagemaker_session.settings.local_download_dir == None
+        else sagemaker_session.settings.local_download_dir
+    )
     with _tmpdir(dir=local_download_dir) as tmp:
         model_dir = _extract_model(model_uri, sagemaker_session, tmp)
 

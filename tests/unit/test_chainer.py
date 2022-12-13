@@ -24,6 +24,7 @@ from mock import patch
 from sagemaker.chainer import defaults
 from sagemaker.chainer import Chainer
 from sagemaker.chainer import ChainerPredictor, ChainerModel
+from sagemaker.session_settings import SessionSettings
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
@@ -62,6 +63,7 @@ def sagemaker_session():
         local_mode=False,
         s3_resource=None,
         s3_client=None,
+        settings=SessionSettings(),
     )
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}

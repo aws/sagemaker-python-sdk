@@ -556,7 +556,7 @@ def test_repack_model_from_file_to_file(tmp):
     model_tar_path = os.path.join(tmp, "model.tar.gz")
     sagemaker.utils.create_tar_file([os.path.join(tmp, "model")], model_tar_path)
 
-    sagemaker_session = MagicMock()
+    sagemaker_session = MagicMock(settings=SessionSettings())
 
     file_mode_path = "file://%s" % model_tar_path
     destination_path = "file://%s" % os.path.join(tmp, "repacked-model.tar.gz")
@@ -606,7 +606,7 @@ def test_repack_model_from_file_to_folder(tmp):
         [],
         file_mode_path,
         "file://%s/repacked-model.tar.gz" % tmp,
-        MagicMock(),
+        MagicMock(settings=SessionSettings()),
     )
 
     assert list_tar_files("file://%s/repacked-model.tar.gz" % tmp, tmp) == {
@@ -677,7 +677,7 @@ def test_repack_model_with_same_inference_file_name(tmp, fake_s3):
 class FakeS3(object):
     def __init__(self, tmp):
         self.tmp = tmp
-        self.sagemaker_session = MagicMock()
+        self.sagemaker_session = MagicMock(settings=SessionSettings())
         self.location_map = {}
         self.current_bucket = None
         self.object_mock = MagicMock()

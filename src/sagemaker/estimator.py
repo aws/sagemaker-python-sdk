@@ -154,7 +154,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         entry_point: Optional[Union[str, PipelineVariable]] = None,
         dependencies: Optional[List[Union[str]]] = None,
         instance_groups: Optional[List[InstanceGroup]] = None,
-        local_download_dir: Optional[str] = None,
         **kwargs,
     ):
         """Initialize an ``EstimatorBase`` instance.
@@ -489,8 +488,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 `Train Using a Heterogeneous Cluster
                 <https://docs.aws.amazon.com/sagemaker/latest/dg/train-heterogeneous-cluster.html>`_
                 in the *Amazon SageMaker developer guide*.
-            local_download_dir (str): Optional. A path specifying the local directory
-                for artifacts downloaded. (Default: None).
         """
         instance_count = renamed_kwargs(
             "train_instance_count", "instance_count", instance_count, kwargs
@@ -595,7 +592,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.environment = environment
 
         self.max_retry_attempts = max_retry_attempts
-        self.local_download_dir = local_download_dir
 
         if not _region_supports_profiler(
             self.sagemaker_session.boto_region_name
@@ -823,7 +819,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             kms_key=kms_key,
             s3_resource=self.sagemaker_session.s3_resource,
             settings=self.sagemaker_session.settings,
-            local_download_dir=self.local_download_dir,
         )
 
     def _assign_s3_prefix(self, key_prefix=""):
