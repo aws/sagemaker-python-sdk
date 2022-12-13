@@ -378,6 +378,7 @@ def tar_and_upload_dir(
     kms_key=None,
     s3_resource=None,
     settings: Optional[SessionSettings] = None,
+    local_download_dir: Optional[str] = None,
 ):
     """Package source files and upload a compress tar file to S3.
 
@@ -408,6 +409,8 @@ def tar_and_upload_dir(
         settings (sagemaker.session_settings.SessionSettings): Optional. The settings
             of the SageMaker ``Session``, can be used to override the default encryption
             behavior (default: None).
+        local_download_dir (str): Optional. A path specifying the local directory
+            for artifacts downloaded. (Default: None).
     Returns:
         sagemaker.fw_utils.UserCode: An object with the S3 bucket and key (S3 prefix) and
             script name.
@@ -418,7 +421,13 @@ def tar_and_upload_dir(
     script_name = script if directory else os.path.basename(script)
     dependencies = dependencies or []
     key = "%s/sourcedir.tar.gz" % s3_key_prefix
-    tmp = tempfile.mkdtemp()
+    if local_download_dir is not None and not (
+        os.path.exists(local_download_dir) and os.path.isdir(local_download_dir)
+    ):
+        raise ValueError(
+            f"Inputted directory for storing newly generated temporary directory does not exist: '{local_download_dir}'"
+        )
+    tmp = tempfile.mkdtemp(dir=local_download_dir)
     encrypt_artifact = True if settings is None else settings.encrypt_repacked_artifacts
 
     try:

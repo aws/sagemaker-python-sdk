@@ -693,6 +693,7 @@ def test_model_mms_version(
         repacked_model_uri="s3://mybucket/test-mxnet-model/model.tar.gz",
         sagemaker_session=sagemaker_session,
         kms_key=model_kms_key,
+        local_download_dir=None,
     )
 
     assert model.model_data == MODEL_DATA

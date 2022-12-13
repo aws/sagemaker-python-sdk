@@ -105,6 +105,7 @@ class Model(ModelBase):
         container_log_level: Union[int, PipelineVariable] = logging.INFO,
         dependencies: Optional[List[str]] = None,
         git_config: Optional[Dict[str, str]] = None,
+        local_download_dir: Optional[str] = None,
     ):
         """Initialize an SageMaker ``Model``.
 
@@ -264,7 +265,8 @@ class Model(ModelBase):
                 authentication if they are provided. If they are not provided,
                 the SageMaker Python SDK attempts to use either the CodeCommit
                 credential helper or local credential storage for authentication.
-
+            local_download_dir (str): Optional. A path specifying the local directory
+                for downloading artifacts. (Default: None).
         """
         self.model_data = model_data
         self.image_uri = image_uri
@@ -287,6 +289,7 @@ class Model(ModelBase):
         self.dependencies = dependencies or []
         self.git_config = git_config
         self.container_log_level = container_log_level
+        self.local_download_dir = local_download_dir
         if code_location:
             self.bucket, self.key_prefix = s3.parse_s3_url(code_location)
         else:
@@ -551,6 +554,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 directory=self.source_dir,
                 dependencies=self.dependencies,
                 settings=self.sagemaker_session.settings,
+                local_download_dir=self.local_download_dir,
             )
 
         if repack and self.model_data is not None and self.entry_point is not None:
@@ -595,6 +599,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 repacked_model_uri=repacked_model_data,
                 sagemaker_session=self.sagemaker_session,
                 kms_key=self.model_kms_key,
+                local_download_dir=self.local_download_dir,
             )
 
             self.repacked_model_data = repacked_model_data

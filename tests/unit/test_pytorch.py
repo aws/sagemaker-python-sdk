@@ -392,6 +392,7 @@ def test_mms_model(repack_model, sagemaker_session):
         repacked_model_uri=ANY,
         sagemaker_session=sagemaker_session,
         source_directory=None,
+        local_download_dir=None,
     )
 
 

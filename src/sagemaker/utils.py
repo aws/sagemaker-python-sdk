@@ -357,7 +357,7 @@ def create_tar_file(source_files, target=None):
 
 
 @contextlib.contextmanager
-def _tmpdir(suffix="", prefix="tmp"):
+def _tmpdir(suffix="", prefix="tmp", dir=None):
     """Create a temporary directory with a context manager.
 
     The file is deleted when the context exits.
@@ -368,11 +368,17 @@ def _tmpdir(suffix="", prefix="tmp"):
             suffix, otherwise there will be no suffix.
         prefix (str): If prefix is specified, the file name will begin with that
             prefix; otherwise, a default prefix is used.
+        dir (str): If a directory is specified, the file will be downloaded in
+            this directory; otherwise, a default directory is used.
 
     Returns:
         str: path to the directory
     """
-    tmp = tempfile.mkdtemp(suffix=suffix, prefix=prefix, dir=None)
+    if dir is not None and not (os.path.exists(dir) and os.path.isdir(dir)):
+        raise ValueError(
+            f"Inputted directory for storing newly generated temporary directory does not exist: '{dir}'"
+        )
+    tmp = tempfile.mkdtemp(suffix=suffix, prefix=prefix, dir=dir)
     yield tmp
     shutil.rmtree(tmp)
 
@@ -385,6 +391,7 @@ def repack_model(
     repacked_model_uri,
     sagemaker_session,
     kms_key=None,
+    local_download_dir=None,
 ):
     """Unpack model tarball and creates a new model tarball with the provided code script.
 
@@ -420,13 +427,14 @@ def repack_model(
         sagemaker_session (sagemaker.session.Session): a sagemaker session to
             interact with S3.
         kms_key (str): KMS key ARN for encrypting the repacked model file
-
+        local_download_dir (str): Optional. A path specifying the local directory
+            for downloading artifacts. (Default: None).
     Returns:
         str: path to the new packed model
     """
     dependencies = dependencies or []
 
-    with _tmpdir() as tmp:
+    with _tmpdir(dir=local_download_dir) as tmp:
         model_dir = _extract_model(model_uri, sagemaker_session, tmp)
 
         _create_or_update_code_dir(

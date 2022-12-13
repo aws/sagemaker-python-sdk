@@ -4545,3 +4545,42 @@ def test_script_mode_estimator_escapes_hyperparameters_as_json(
         - set(sagemaker_session.train.call_args_list[0][1]["hyperparameters"].items())
         == set()
     )
+
+
+@patch("time.time", return_value=TIME)
+@patch("sagemaker.estimator.tar_and_upload_dir")
+@patch("sagemaker.model.Model._upload_code")
+def test_estimator_local_download_dir(
+    patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+):
+    patched_tar_and_upload_dir.return_value = UploadedCode(
+        s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
+    )
+    sagemaker_session.boto_region_name = REGION
+
+    instance_type = "ml.p2.xlarge"
+    instance_count = 1
+
+    training_data_uri = "s3://bucket/mydata"
+
+    jumpstart_source_dir = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[0]}/source_dirs/source.tar.gz"
+
+    local_download_dir = "some/download/dir"
+    generic_estimator = Estimator(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        region=REGION,
+        sagemaker_session=sagemaker_session,
+        instance_count=instance_count,
+        instance_type=instance_type,
+        source_dir=jumpstart_source_dir,
+        image_uri=IMAGE_URI,
+        model_uri=MODEL_DATA,
+        local_download_dir=local_download_dir,
+    )
+    generic_estimator.fit(training_data_uri)
+
+    assert (
+        patched_tar_and_upload_dir.call_args_list[0][1].get("local_download_dir")
+        == local_download_dir
+    )
