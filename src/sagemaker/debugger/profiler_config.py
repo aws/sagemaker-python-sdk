@@ -33,7 +33,7 @@ class ProfilerConfig(object):
         system_monitor_interval_millis: Optional[Union[int, PipelineVariable]] = None,
         framework_profile_params: Optional[FrameworkProfile] = None,
         disable_profiler: Optional[Union[str, PipelineVariable]] = False,
-        ):
+    ):
         """Initialize a ``ProfilerConfig`` instance.
 
         Pass the output of this class
