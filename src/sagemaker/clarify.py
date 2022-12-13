@@ -282,7 +282,6 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
                     "text/csv",
                     "application/jsonlines",
                     "image/jpeg",
-                    "image/jpg",
                     "image/png",
                     "application/x-npy",
                 ),
