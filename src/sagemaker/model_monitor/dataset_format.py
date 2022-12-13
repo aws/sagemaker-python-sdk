@@ -71,8 +71,6 @@ class MonitoringDatasetFormat(object):
         Args:
             header (bool): Whether the csv dataset to baseline and monitor has a header.
                 Default: True.
-            output_columns_position (str): The position of the output columns.
-                Must be one of ("START", "END"). Default: "START".
 
         Returns:
             dict: JSON string containing DatasetFormat to be used by DefaultModelMonitor.
