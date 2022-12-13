@@ -282,8 +282,8 @@ class HyperbandStrategyConfig(object):
 
         Returns:
             sagemaker.tuner.HyperbandStrategyConfig: De-serialized instance of
-            HyperbandStrategyConfig containing the max_resource and min_resource provided as part of
-            ``hyperband_strategy_config``.
+                ``HyperbandStrategyConfig`` containing the max_resource
+                and min_resource provided as part of ``hyperband_strategy_config``.
         """
         return cls(
             min_resource=hyperband_strategy_config[HYPERBAND_MIN_RESOURCE],
@@ -306,7 +306,7 @@ class HyperbandStrategyConfig(object):
 
         Returns:
             dict: Containing the "MaxResource" and
-            "MinResource" as the first class fields.
+                "MinResource" as the first class fields.
         """
         return {
             HYPERBAND_MIN_RESOURCE: self.min_resource,
@@ -330,7 +330,7 @@ class StrategyConfig(object):
 
         Args:
             hyperband_strategy_config (sagemaker.tuner.HyperbandStrategyConfig): The configuration
-            for the object that specifies the Hyperband strategy.
+                for the object that specifies the Hyperband strategy.
                 This parameter is only supported for the Hyperband selection for Strategy within
                 the HyperParameterTuningJobConfig.
         """
@@ -461,7 +461,7 @@ class HyperparameterTuner(object):
                 ``WarmStartConfig`` object that has been initialized with the
                 configuration defining the nature of warm start tuning job.
             strategy_config (sagemaker.tuner.StrategyConfig): A configuration for "Hyperparameter"
-            tuning job optimisation strategy.
+                tuning job optimisation strategy.
             early_stopping_type (str or PipelineVariable): Specifies whether early stopping is
                 enabled for the job. Can be either 'Auto' or 'Off' (default:
                 'Off'). If set to 'Off', early stopping will not be attempted.
@@ -1569,7 +1569,7 @@ class HyperparameterTuner(object):
             strategy (str): Strategy to be used for hyperparameter estimations
                 (default: 'Bayesian').
             strategy_config (dict): The configuration for a training job launched by a
-            hyperparameter tuning job.
+                hyperparameter tuning job.
             objective_type (str): The type of the objective metric for evaluating training jobs.
                 This value can be either 'Minimize' or 'Maximize' (default: 'Maximize').
             max_jobs (int): Maximum total number of training jobs to start for the hyperparameter
@@ -1776,7 +1776,7 @@ class _TuningJob(_Job):
         }
 
         if tuner.strategy_config is not None:
-            tuning_config["strategy_config"] = tuner.strategy_config
+            tuning_config["strategy_config"] = tuner.strategy_config.to_input_req()
 
         if tuner.objective_metric_name is not None:
             tuning_config["objective_type"] = tuner.objective_type

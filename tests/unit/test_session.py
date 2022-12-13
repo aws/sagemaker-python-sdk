@@ -941,6 +941,13 @@ SAMPLE_MULTI_ALGO_TUNING_JOB_REQUEST = {
     ],
 }
 
+SAMPLE_HYPERBAND_STRATEGY_CONFIG = {
+    "HyperbandStrategyConfig": {
+        "MinResource": 1,
+        "MaxResource": 10,
+    }
+}
+
 
 @pytest.mark.parametrize(
     "warm_start_type, parents",
@@ -1164,6 +1171,47 @@ def test_tune(sagemaker_session):
         stop_condition=SAMPLE_STOPPING_CONDITION,
         tags=None,
         warm_start_config=None,
+    )
+
+
+def test_tune_with_strategy_config(sagemaker_session):
+    def assert_create_tuning_job_request(**kwrags):
+        assert (
+            kwrags["HyperParameterTuningJobConfig"]["StrategyConfig"]["HyperbandStrategyConfig"][
+                "MinResource"
+            ]
+            == SAMPLE_HYPERBAND_STRATEGY_CONFIG["HyperbandStrategyConfig"]["MinResource"]
+        )
+        assert (
+            kwrags["HyperParameterTuningJobConfig"]["StrategyConfig"]["HyperbandStrategyConfig"][
+                "MaxResource"
+            ]
+            == SAMPLE_HYPERBAND_STRATEGY_CONFIG["HyperbandStrategyConfig"]["MaxResource"]
+        )
+
+    sagemaker_session.sagemaker_client.create_hyper_parameter_tuning_job.side_effect = (
+        assert_create_tuning_job_request
+    )
+    sagemaker_session.tune(
+        job_name="dummy-tuning-1",
+        strategy="Bayesian",
+        objective_type="Maximize",
+        objective_metric_name="val-score",
+        max_jobs=100,
+        max_parallel_jobs=5,
+        parameter_ranges=SAMPLE_PARAM_RANGES,
+        static_hyperparameters=STATIC_HPs,
+        image_uri="dummy-image-1",
+        input_mode="File",
+        metric_definitions=SAMPLE_METRIC_DEF,
+        role=EXPANDED_ROLE,
+        input_config=SAMPLE_INPUT,
+        output_config=SAMPLE_OUTPUT,
+        resource_config=RESOURCE_CONFIG,
+        stop_condition=SAMPLE_STOPPING_CONDITION,
+        tags=None,
+        warm_start_config=None,
+        strategy_config=SAMPLE_HYPERBAND_STRATEGY_CONFIG,
     )
 
 
