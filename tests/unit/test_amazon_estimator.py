@@ -225,6 +225,9 @@ def test_fit_ndarray(time, sagemaker_session):
 
     assert mock_object.put.call_count == 4
 
+    called_args = sagemaker_session.train.call_args
+    assert not called_args[1]["experiment_config"]
+
 
 def test_fit_pass_experiment_config(sagemaker_session):
     kwargs = dict(COMMON_ARGS)
@@ -239,12 +242,18 @@ def test_fit_pass_experiment_config(sagemaker_session):
     labels = [99, 85, 87, 2]
     pca.fit(
         pca.record_set(np.array(train), np.array(labels)),
-        experiment_config={"ExperimentName": "exp"},
+        experiment_config={
+            "ExperimentName": "exp",
+            "RunName": "rn",
+        },
     )
 
     called_args = sagemaker_session.train.call_args
 
-    assert called_args[1]["experiment_config"] == {"ExperimentName": "exp"}
+    assert called_args[1]["experiment_config"] == {
+        "ExperimentName": "exp",
+        "RunName": "rn",
+    }
 
 
 def test_build_shards():
