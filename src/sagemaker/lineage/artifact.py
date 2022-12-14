@@ -212,8 +212,6 @@ class Artifact(_base_types.Record):
             # no outgoing associations for this artifact
             return []
 
-        # TODO: remove all imports from smexperiment sdk in a separate change.
-        # Instead, import trial_component and search_expression defined in this main sdk
         get_module("smexperiments")
         from smexperiments import trial_component, search_expression
 

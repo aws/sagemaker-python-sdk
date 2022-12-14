@@ -31,7 +31,7 @@ from sagemaker.utils import retry_with_backoff, unique_name_from_base
 from tests.integ.sagemaker.experiments.helpers import name, names
 
 TAGS = [{"Key": "some-key", "Value": "some-value"}]
-EXP_NAME_BASE_IN_LOCAL = "job-exp-in-local"
+EXP_NAME_BASE_IN_LOCAL = "Job-Exp-in-Local"
 RUN_NAME_IN_LOCAL = "job-run-in-local"
 
 

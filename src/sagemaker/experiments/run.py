@@ -154,7 +154,8 @@ class Run(object):
                 AWS services needed. If not specified, one is created using the
                 default AWS configuration chain.
         """
-        self.experiment_name = experiment_name
+        # TODO: we should revert the lower casting once backend fix reaches prod
+        self.experiment_name = experiment_name.lower()
         sagemaker_session = sagemaker_session or _utils.default_session()
         self.run_name = run_name or unique_name_from_base(RUN_NAME_BASE)
 
