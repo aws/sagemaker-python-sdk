@@ -19,9 +19,6 @@ import pytest
 
 from enum import Enum
 
-from mock.mock import Mock, PropertyMock
-
-import sagemaker
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.conditions import ConditionGreaterThan
 from sagemaker.workflow.entities import (
@@ -56,46 +53,6 @@ def custom_entity():
 @pytest.fixture
 def custom_entity_list():
     return [CustomEntity(1), CustomEntity(2)]
-
-
-@pytest.fixture
-def boto_session():
-    role_mock = Mock()
-    type(role_mock).arn = PropertyMock(return_value="role")
-
-    resource_mock = Mock()
-    resource_mock.Role.return_value = role_mock
-
-    session_mock = Mock(region_name="us-west-2")
-    session_mock.resource.return_value = resource_mock
-
-    return session_mock
-
-
-@pytest.fixture
-def client():
-    """Mock client.
-
-    Considerations when appropriate:
-
-        * utilize botocore.stub.Stubber
-        * separate runtime client from client
-    """
-    client_mock = Mock()
-    client_mock._client_config.user_agent = (
-        "Boto3/1.14.24 Python/3.8.5 Linux/5.4.0-42-generic Botocore/1.17.24 Resource"
-    )
-    return client_mock
-
-
-@pytest.fixture
-def sagemaker_session(boto_session, client):
-    return sagemaker.session.Session(
-        boto_session=boto_session,
-        sagemaker_client=client,
-        sagemaker_runtime_client=client,
-        default_bucket="my-bucket",
-    )
 
 
 def test_entity(custom_entity):

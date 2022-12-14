@@ -62,6 +62,7 @@ EXPERIMENT_CONFIG = {
     "ExperimentName": "exp",
     "TrialName": "trial",
     "TrialComponentDisplayName": "tc",
+    "RunName": "rn",
 }
 
 MODEL_PKG_RESPONSE = {"ModelPackageArn": "arn:model-pkg-arn"}
