@@ -427,9 +427,10 @@ def tar_and_upload_dir(
         )
     ):
         raise ValueError(
-            f"Inputted directory for storing newly generated temporary directory does not exist: '{settings.local_download_dir}'"
+            "Inputted directory for storing newly generated temporary directory does "
+            f"not exist: '{settings.local_download_dir}'"
         )
-    local_download_dir = None if settings == None else settings.local_download_dir
+    local_download_dir = None if settings is None else settings.local_download_dir
     tmp = tempfile.mkdtemp(dir=local_download_dir)
     encrypt_artifact = True if settings is None else settings.encrypt_repacked_artifacts
 

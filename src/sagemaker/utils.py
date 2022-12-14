@@ -357,7 +357,7 @@ def create_tar_file(source_files, target=None):
 
 
 @contextlib.contextmanager
-def _tmpdir(suffix="", prefix="tmp", dir=None):
+def _tmpdir(suffix="", prefix="tmp", directory=None):
     """Create a temporary directory with a context manager.
 
     The file is deleted when the context exits.
@@ -368,17 +368,18 @@ def _tmpdir(suffix="", prefix="tmp", dir=None):
             suffix, otherwise there will be no suffix.
         prefix (str): If prefix is specified, the file name will begin with that
             prefix; otherwise, a default prefix is used.
-        dir (str): If a directory is specified, the file will be downloaded in
-            this directory; otherwise, a default directory is used.
+        directory (str): If a directory is specified, the file will be downloaded
+            in this directory; otherwise, a default directory is used.
 
     Returns:
         str: path to the directory
     """
-    if dir is not None and not (os.path.exists(dir) and os.path.isdir(dir)):
+    if directory is not None and not (os.path.exists(directory) and os.path.isdir(directory)):
         raise ValueError(
-            f"Inputted directory for storing newly generated temporary directory does not exist: '{dir}'"
+            "Inputted directory for storing newly generated temporary "
+            f"directory does not exist: '{directory}'"
         )
-    tmp = tempfile.mkdtemp(suffix=suffix, prefix=prefix, dir=dir)
+    tmp = tempfile.mkdtemp(suffix=suffix, prefix=prefix, dir=directory)
     yield tmp
     shutil.rmtree(tmp)
 
@@ -426,6 +427,7 @@ def repack_model(
         sagemaker_session (sagemaker.session.Session): a sagemaker session to
             interact with S3.
         kms_key (str): KMS key ARN for encrypting the repacked model file
+
     Returns:
         str: path to the new packed model
     """
@@ -433,11 +435,11 @@ def repack_model(
 
     local_download_dir = (
         None
-        if sagemaker_session.settings == None
-        or sagemaker_session.settings.local_download_dir == None
+        if sagemaker_session.settings is None
+        or sagemaker_session.settings.local_download_dir is None
         else sagemaker_session.settings.local_download_dir
     )
-    with _tmpdir(dir=local_download_dir) as tmp:
+    with _tmpdir(directory=local_download_dir) as tmp:
         model_dir = _extract_model(model_uri, sagemaker_session, tmp)
 
         _create_or_update_code_dir(
