@@ -19,8 +19,8 @@ import requests
 import docker
 import numpy
 import pytest
-from botocore.exceptions import ClientError
 
+from tests.integ.utils import create_repository
 from sagemaker import utils
 from sagemaker.amazon.randomcutforest import RandomCutForest
 from sagemaker.deserializers import StringDeserializer
@@ -59,7 +59,7 @@ def container_image(sagemaker_session):
     image.tag(ecr_image, tag="latest")
 
     # Create AWS ECR and push the local docker image to it
-    _create_repository(ecr_client, algorithm_name)
+    create_repository(ecr_client, algorithm_name)
 
     # Retry docker image push
     for _ in retries(3, "Upload docker image to ECR repo", seconds_to_sleep=10):
@@ -88,23 +88,6 @@ def _ecr_image_uri(sagemaker_session, algorithm_name):
 
     endpoint_data = utils._botocore_resolver().construct_endpoint("ecr", region)
     return "{}.dkr.{}/{}:latest".format(account_id, endpoint_data["hostname"], algorithm_name)
-
-
-def _create_repository(ecr_client, repository_name):
-    """
-    Creates an ECS Repository (ECR). When a new transform is being registered,
-    we'll need a repository to push the image (and composed model images) to
-    """
-    try:
-        response = ecr_client.create_repository(repositoryName=repository_name)
-        return response["repository"]["repositoryUri"]
-    except ClientError as e:
-        # Handle when the repository already exists
-        if "RepositoryAlreadyExistsException" == e.response.get("Error", {}).get("Code"):
-            response = ecr_client.describe_repositories(repositoryNames=[repository_name])
-            return response["repositories"][0]["repositoryUri"]
-        else:
-            raise
 
 
 def _delete_repository(ecr_client, repository_name):

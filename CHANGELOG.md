@@ -1,5 +1,57 @@
 # Changelog
 
+## v2.122.0 (2022-12-14)
+
+### Features
+
+ * Feature Store dataset builder, delete_record, get_record, list_feature_group
+ * Add OSU region to frameworks for DLC
+
+### Bug Fixes and Other Changes
+
+ * the Hyperband support fix for the HPO
+ * unpin packaging version
+ * Remove content type image/jpg from analysis configuration schema
+
+## v2.121.2 (2022-12-12)
+
+### Bug Fixes and Other Changes
+
+ * Update for Tensorflow Serving 2.11 inference DLCs
+ * Revert "fix: type hint of PySparkProcessor __init__"
+ * Skip Bad Transform Test
+
+## v2.121.1 (2022-12-09)
+
+### Bug Fixes and Other Changes
+
+ * Pop out ModelPackageName from pipeline definition
+ * Fix failing jumpstart cache unit tests
+
+## v2.121.0 (2022-12-08)
+
+### Features
+
+ * Algorithms Region Expansion OSU/DXB
+
+### Bug Fixes and Other Changes
+
+ * FrameworkProcessor S3 uploads
+ * Add constraints file for apache-airflow
+
+## v2.120.0 (2022-12-07)
+
+### Features
+
+ * Add Neo image uri config for Pytorch 1.12
+ * Adding support for SageMaker Training Compiler in PyTorch estimator starting 1.12
+ * Update registries with new region account number mappings.
+ * Add DXB region to frameworks by DLC
+
+### Bug Fixes and Other Changes
+
+ * support idempotency for framework and spark processors
+
 ## v2.119.0 (2022-12-03)
 
 ### Features

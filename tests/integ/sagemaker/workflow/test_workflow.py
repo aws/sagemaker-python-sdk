@@ -1168,7 +1168,13 @@ def _verify_repack_output(repack_step_dict, sagemaker_session):
 
 
 def test_caching_behavior(
-    pipeline_session, role, cpu_instance_type, pipeline_name, script_dir, athena_dataset_definition
+    pipeline_session,
+    role,
+    cpu_instance_type,
+    pipeline_name,
+    script_dir,
+    athena_dataset_definition,
+    region_name,
 ):
     default_bucket = pipeline_session.default_bucket()
     data_path = os.path.join(DATA_DIR, "workflow")

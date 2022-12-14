@@ -17,7 +17,7 @@ import json
 
 import pytest
 
-from mock import Mock
+from mock import Mock, patch
 
 from sagemaker import s3
 from sagemaker.workflow.condition_step import ConditionStep
@@ -78,6 +78,7 @@ def test_pipeline_create_with_parallelism_config(sagemaker_session_mock, role_ar
     )
 
 
+@patch("sagemaker.s3.S3Uploader.upload_string_as_file_body")
 def test_large_pipeline_create(sagemaker_session_mock, role_arn):
     parameter = ParameterString("MyStr")
     pipeline = Pipeline(
@@ -86,8 +87,6 @@ def test_large_pipeline_create(sagemaker_session_mock, role_arn):
         steps=_generate_large_pipeline_steps(parameter),
         sagemaker_session=sagemaker_session_mock,
     )
-
-    s3.S3Uploader.upload_string_as_file_body = Mock()
 
     pipeline.create(role_arn=role_arn)
 
@@ -151,6 +150,7 @@ def test_pipeline_update_with_parallelism_config(sagemaker_session_mock, role_ar
     )
 
 
+@patch("sagemaker.s3.S3Uploader.upload_string_as_file_body")
 def test_large_pipeline_update(sagemaker_session_mock, role_arn):
     parameter = ParameterString("MyStr")
     pipeline = Pipeline(
@@ -159,8 +159,6 @@ def test_large_pipeline_update(sagemaker_session_mock, role_arn):
         steps=_generate_large_pipeline_steps(parameter),
         sagemaker_session=sagemaker_session_mock,
     )
-
-    s3.S3Uploader.upload_string_as_file_body = Mock()
 
     pipeline.create(role_arn=role_arn)
 
