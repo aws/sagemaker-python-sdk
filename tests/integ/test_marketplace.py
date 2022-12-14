@@ -23,6 +23,7 @@ import docker
 
 import sagemaker
 import tests.integ
+from tests.integ.utils import create_repository
 from sagemaker import AlgorithmEstimator, ModelPackage, Model
 from sagemaker.serializers import CSVSerializer
 from sagemaker.tuner import IntegerParameter, HyperparameterTuner
@@ -33,7 +34,6 @@ from tests.integ.marketplace_utils import REGION_ACCOUNT_MAP
 from tests.integ.test_multidatamodel import (
     _ecr_image_uri,
     _ecr_login,
-    _create_repository,
     _delete_repository,
 )
 from tests.integ.retry import retries
@@ -214,7 +214,7 @@ def iris_image(sagemaker_session):
         rm=True,
     )
     image.tag(ecr_image, tag="latest")
-    _create_repository(ecr_client, algorithm_name)
+    create_repository(ecr_client, algorithm_name)
 
     # Retry docker image push
     for _ in retries(3, "Upload docker image to ECR repo", seconds_to_sleep=10):

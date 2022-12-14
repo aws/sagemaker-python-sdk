@@ -54,6 +54,7 @@ EXPERIMENT_CONFIG = {
     "ExperimentName": "exp",
     "TrialName": "trial",
     "TrialComponentDisplayName": "tc",
+    "RunName": "rn",
 }
 
 DISTRIBUTION_PYTORCH_DDP_ENABLED = {"pytorchddp": {"enabled": True}}
