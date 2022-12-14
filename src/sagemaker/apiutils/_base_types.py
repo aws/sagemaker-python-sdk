@@ -173,8 +173,10 @@ class Record(ApiObject):
                 search_items = search_method_response.get("Results", [])
                 next_token = search_method_response.get(boto_next_token_name)
                 for item in search_items:
-                    if cls.__name__ in item:
-                        yield search_item_factory(item[cls.__name__])
+                    # _TrialComponent class in experiments module is not public currently
+                    class_name = cls.__name__.lstrip("_")
+                    if class_name in item:
+                        yield search_item_factory(item[class_name])
                 if not next_token:
                     break
         except StopIteration:

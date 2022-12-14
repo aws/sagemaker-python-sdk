@@ -89,6 +89,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         sagemaker_featurestore_runtime_client=None,
         default_bucket=None,
         settings=SessionSettings(),
+        sagemaker_metrics_client=None,
     ):
         """Initialize a SageMaker ``Session``.
 
@@ -116,6 +117,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 Example: "sagemaker-my-custom-bucket".
             settings (sagemaker.session_settings.SessionSettings): Optional. Set of optional
                 parameters to apply to the session.
+            sagemaker_metrics_client (boto3.SageMakerMetrics.Client):
+                Client which makes SageMaker Metrics related calls to Amazon SageMaker
+                (default: None). If not provided, one will be created using
+                this instance's ``boto_session``.
         """
         self._default_bucket = None
         self._default_bucket_name_override = default_bucket
@@ -130,6 +135,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             sagemaker_client=sagemaker_client,
             sagemaker_runtime_client=sagemaker_runtime_client,
             sagemaker_featurestore_runtime_client=sagemaker_featurestore_runtime_client,
+            sagemaker_metrics_client=sagemaker_metrics_client,
         )
 
     def _initialize(
@@ -138,6 +144,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         sagemaker_client,
         sagemaker_runtime_client,
         sagemaker_featurestore_runtime_client,
+        sagemaker_metrics_client,
     ):
         """Initialize this SageMaker Session.
 
@@ -171,6 +178,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
             self.sagemaker_featurestore_runtime_client = self.boto_session.client(
                 "sagemaker-featurestore-runtime"
             )
+
+        if sagemaker_metrics_client:
+            self.sagemaker_metrics_client = sagemaker_metrics_client
+        else:
+            self.sagemaker_metrics_client = self.boto_session.client("sagemaker-metrics")
+        prepend_user_agent(self.sagemaker_metrics_client)
 
         self.local_mode = False
 
@@ -548,8 +561,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 checkpoints will be provided under `/opt/ml/checkpoints/`.
                 (default: ``None``).
             experiment_config (dict[str, str]): Experiment management configuration.
-                Optionally, the dict can contain three keys:
-                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                Optionally, the dict can contain four keys:
+                'ExperimentName', 'TrialName',  'TrialComponentDisplayName' and 'RunName'.
                 The behavior of setting these keys is as follows:
                 * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
                 automatically created and the job's Trial Component associated with the Trial.
@@ -558,6 +571,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 * If both `ExperimentName` and `TrialName` are not supplied the trial component
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
+                * `RunName` is used to record an experiment run.
             enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
                 Series. For more information see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
@@ -703,8 +717,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 checkpoints will be provided under `/opt/ml/checkpoints/`.
                 (default: ``None``).
             experiment_config (dict[str, str]): Experiment management configuration.
-                Optionally, the dict can contain three keys:
-                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                Optionally, the dict can contain four keys:
+                'ExperimentName', 'TrialName', 'TrialComponentDisplayName' and 'RunName'.
                 The behavior of setting these keys is as follows:
                 * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
                 automatically created and the job's Trial Component associated with the Trial.
@@ -713,6 +727,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 * If both `ExperimentName` and `TrialName` are not supplied the trial component
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
+                * `RunName` is used to record an experiment run.
             enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
                 Series. For more information see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
