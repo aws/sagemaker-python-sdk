@@ -41,6 +41,7 @@ class AlgorithmEstimator(EstimatorBase):
     """
 
     # These Hyperparameter Types have a range definition.
+    # Random comment
     _hyperpameters_with_range = ("Integer", "Continuous", "Categorical")
 
     def __init__(
