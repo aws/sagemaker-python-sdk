@@ -2787,6 +2787,35 @@ def test_feature_metadata_describe(sagemaker_session):
     )
 
 
+def test_list_feature_groups(sagemaker_session):
+    expected_list_feature_groups_args = {
+        "NameContains": "MyFeatureGroup",
+        "FeatureGroupStatusEquals": "Created",
+        "OfflineStoreStatusEquals": "Active",
+        "CreationTimeAfter": datetime.datetime(2020, 12, 1),
+        "CreationTimeBefore": datetime.datetime(2022, 7, 1),
+        "SortOrder": "Ascending",
+        "SortBy": "Name",
+        "MaxResults": 50,
+        "NextToken": "token",
+    }
+    sagemaker_session.list_feature_groups(
+        name_contains="MyFeatureGroup",
+        feature_group_status_equals="Created",
+        offline_store_status_equals="Active",
+        creation_time_after=datetime.datetime(2020, 12, 1),
+        creation_time_before=datetime.datetime(2022, 7, 1),
+        sort_order="Ascending",
+        sort_by="Name",
+        max_results=50,
+        next_token="token",
+    )
+    assert sagemaker_session.sagemaker_client.list_feature_groups.called_once()
+    assert sagemaker_session.sagemaker_client.list_feature_groups.called_with(
+        **expected_list_feature_groups_args
+    )
+
+
 def test_start_query_execution(sagemaker_session):
     athena_mock = Mock()
     sagemaker_session.boto_session.client(
