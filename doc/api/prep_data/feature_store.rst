@@ -75,7 +75,7 @@ Inputs
 
 
 Dataset Builder
-******
+***************
 
 .. autoclass:: sagemaker.feature_store.dataset_builder.DatasetBuilder
     :members:
