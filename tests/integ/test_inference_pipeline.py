@@ -191,7 +191,7 @@ def test_inference_pipeline_model_deploy_and_update_endpoint(
         )
         old_config_name = endpoint_desc["EndpointConfigName"]
 
-        sleep(1)
+        sleep(5)
 
         predictor.update_endpoint(initial_instance_count=1, instance_type=cpu_instance_type)
 
