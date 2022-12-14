@@ -79,6 +79,7 @@ from sagemaker.utils import (
     get_config_value,
     name_from_base,
     to_string,
+    check_and_get_run_experiment_config,
 )
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
@@ -1103,8 +1104,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             job_name (str): Training job name. If not specified, the estimator generates
                 a default job name based on the training image name and current timestamp.
             experiment_config (dict[str, str]): Experiment management configuration.
-                Optionally, the dict can contain three keys:
-                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                Optionally, the dict can contain four keys:
+                'ExperimentName', 'TrialName', 'TrialComponentDisplayName' and 'RunName'..
                 The behavior of setting these keys is as follows:
                 * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
                 automatically created and the job's Trial Component associated with the Trial.
@@ -1122,6 +1123,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         """
         self._prepare_for_training(job_name=job_name)
 
+        experiment_config = check_and_get_run_experiment_config(experiment_config)
         self.latest_training_job = _TrainingJob.start_new(self, inputs, experiment_config)
         self.jobs.append(self.latest_training_job)
         if wait:
@@ -2023,8 +2025,8 @@ class _TrainingJob(_Job):
             inputs (str): Parameters used when called
                 :meth:`~sagemaker.estimator.EstimatorBase.fit`.
             experiment_config (dict[str, str]): Experiment management configuration.
-                Optionally, the dict can contain three keys:
-                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                Optionally, the dict can contain four keys:
+                'ExperimentName', 'TrialName', 'TrialComponentDisplayName' and 'RunName'.
                 The behavior of setting these keys is as follows:
                 * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
                 automatically created and the job's Trial Component associated with the Trial.
@@ -2033,6 +2035,7 @@ class _TrainingJob(_Job):
                 * If both `ExperimentName` and `TrialName` are not supplied the trial component
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
+                * `RunName` is used to record an experiment run.
         Returns:
             sagemaker.estimator._TrainingJob: Constructed object that captures
             all information about the started training job.
@@ -2053,8 +2056,8 @@ class _TrainingJob(_Job):
             inputs (str): Parameters used when called
                 :meth:`~sagemaker.estimator.EstimatorBase.fit`.
             experiment_config (dict[str, str]): Experiment management configuration.
-                Optionally, the dict can contain three keys:
-                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                Optionally, the dict can contain four keys:
+                'ExperimentName', 'TrialName', 'TrialComponentDisplayName' and 'RunName'.
                 The behavior of setting these keys is as follows:
                 * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
                 automatically created and the job's Trial Component associated with the Trial.
@@ -2063,6 +2066,7 @@ class _TrainingJob(_Job):
                 * If both `ExperimentName` and `TrialName` are not supplied the trial component
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
+                * `RunName` is used to record an experiment run.
 
         Returns:
             Dict: dict for `sagemaker.session.Session.train` method
