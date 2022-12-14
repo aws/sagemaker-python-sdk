@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.122.0 (2022-12-14)
+
+### Features
+
+ * Feature Store dataset builder, delete_record, get_record, list_feature_group
+ * Add OSU region to frameworks for DLC
+
+### Bug Fixes and Other Changes
+
+ * the Hyperband support fix for the HPO
+ * unpin packaging version
+ * Remove content type image/jpg from analysis configuration schema
+
 ## v2.121.2 (2022-12-12)
 
 ### Bug Fixes and Other Changes
