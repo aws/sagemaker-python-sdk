@@ -938,26 +938,29 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
     def _prepare_profiler_for_training(self):
         """Set necessary values and do basic validations in profiler config and profiler rules.
 
-        When user explicitly set rules to an empty list, default profiler rule won't be enabled.
-        Default profiler rule will be enabled in supported regions when either:
-        1. user doesn't specify any rules, i.e., rules=None; or
-        2. user only specify debugger rules, i.e., rules=[Rule.sagemaker(...)]
+        No default profiler rule will be used. The user needs to specify rules explicitly
         """
         if self.disable_profiler:
-            if self.profiler_config:
-                raise RuntimeError("profiler_config cannot be set when disable_profiler is True.")
+            if self.profiler_config and not self.profiler_config.disable_profiler:
+                raise RuntimeError(
+                    "profiler_config.disable_profiler cannot be False"
+                    + " when disable_profiler is True."
+                )
             if self.profiler_rules:
                 raise RuntimeError("ProfilerRule cannot be set when disable_profiler is True.")
         elif _region_supports_profiler(self.sagemaker_session.boto_region_name):
             if self.profiler_config is None:
                 self.profiler_config = ProfilerConfig(s3_output_path=self.output_path)
             if self.rules is None or (self.rules and not self.profiler_rules):
-                self.profiler_rules = [get_default_profiler_rule()]
+                self.profiler_rules = []
 
         if self.profiler_config and not self.profiler_config.s3_output_path:
             self.profiler_config.s3_output_path = self.output_path
 
         self.profiler_rule_configs = self._prepare_profiler_rules()
+        # if profiler_config is still None, it means the job has profiler disabled
+        if self.profiler_config is None:
+            self.profiler_config = ProfilerConfig(disable_profiler=True)
 
     def _prepare_profiler_rules(self):
         """Set any necessary values in profiler rules, if they are provided."""
@@ -1048,7 +1051,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             error_message="""Cannot get the profiling output artifacts path.
         The Estimator is not associated with a training job."""
         )
-        if self.profiler_config is not None:
+        if self.profiler_config is not None and not self.profiler_config.disable_profiler:
             return os.path.join(
                 self.profiler_config.s3_output_path,
                 self.latest_training_job.name,
@@ -1895,8 +1898,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         else:
             self.profiler_config = ProfilerConfig(s3_output_path=self.output_path)
 
-        self.profiler_rules = [get_default_profiler_rule()]
-        self.profiler_rule_configs = self._prepare_profiler_rules()
+        self.profiler_rules = []
+        self.profiler_rule_configs = []
 
         _TrainingJob.update(
             self, self.profiler_rule_configs, self.profiler_config._to_request_dict()

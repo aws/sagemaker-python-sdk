@@ -401,10 +401,6 @@ def test_training_step_with_estimator(
     }
     step_definition = json.loads(pipeline.definition())["Steps"][0]
 
-    # delete profiler rule configurations because of timestamp collision
-    del step_definition["Arguments"]["ProfilerRuleConfigurations"]
-    del step_args["ProfilerRuleConfigurations"]
-
     assert step_definition == {
         "Name": "MyTrainingStep",
         "Description": "TrainingStep description",
@@ -428,7 +424,6 @@ def test_training_step_with_estimator(
 
     # test idempotency
     step_def2 = json.loads(pipeline.definition())["Steps"][0]
-    del step_def2["Arguments"]["ProfilerRuleConfigurations"]
     assert step_definition == step_def2
 
 
@@ -537,10 +532,6 @@ def test_training_step_with_framework_estimator(
     del expected_step_args["OutputDataConfig"]["S3OutputPath"]
     del step_def["Arguments"]["OutputDataConfig"]["S3OutputPath"]
 
-    # delete profiler rule configurations because of timestamp collision
-    del step_def["Arguments"]["ProfilerRuleConfigurations"]
-    del expected_step_args["ProfilerRuleConfigurations"]
-
     if "sagemaker_s3_output" in step_args["HyperParameters"]:
         del expected_step_args["HyperParameters"]["sagemaker_s3_output"]
         del step_def["Arguments"]["HyperParameters"]["sagemaker_s3_output"]
@@ -555,7 +546,6 @@ def test_training_step_with_framework_estimator(
     step_def2 = json.loads(pipeline.definition())["Steps"][0]
     del step_def2["Arguments"]["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"]
     del step_def2["Arguments"]["OutputDataConfig"]["S3OutputPath"]
-    del step_def2["Arguments"]["ProfilerRuleConfigurations"]
     if "sagemaker_s3_output" in step_def2["Arguments"]["HyperParameters"]:
         del step_def2["Arguments"]["HyperParameters"]["sagemaker_s3_output"]
     assert step_def == step_def2
@@ -608,10 +598,6 @@ def test_training_step_with_framework_estimator_local_code(
     del expected_step_args["OutputDataConfig"]["S3OutputPath"]
     del step_def["Arguments"]["OutputDataConfig"]["S3OutputPath"]
 
-    # delete profiler rule configurations because of timestamp collision
-    del step_def["Arguments"]["ProfilerRuleConfigurations"]
-    del expected_step_args["ProfilerRuleConfigurations"]
-
     if "sagemaker_s3_output" in step_args["HyperParameters"]:
         del expected_step_args["HyperParameters"]["sagemaker_s3_output"]
         del step_def["Arguments"]["HyperParameters"]["sagemaker_s3_output"]
@@ -626,7 +612,6 @@ def test_training_step_with_framework_estimator_local_code(
     step_def2 = json.loads(pipeline.definition())["Steps"][0]
     del step_def2["Arguments"]["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"]
     del step_def2["Arguments"]["OutputDataConfig"]["S3OutputPath"]
-    del step_def2["Arguments"]["ProfilerRuleConfigurations"]
     if "sagemaker_s3_output" in step_def2["Arguments"]["HyperParameters"]:
         del step_def2["Arguments"]["HyperParameters"]["sagemaker_s3_output"]
     assert step_def == step_def2
@@ -701,10 +686,6 @@ def test_training_step_with_algorithm_base(algo_estimator, training_input, pipel
     del step_args["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"]
     del step_def["Arguments"]["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"]
 
-    # delete profiler rule configurations because of timestamp collision
-    del step_def["Arguments"]["ProfilerRuleConfigurations"]
-    del step_args["ProfilerRuleConfigurations"]
-
     assert step_def == {
         "Name": "MyTrainingStep",
         "Type": "Training",
@@ -714,7 +695,6 @@ def test_training_step_with_algorithm_base(algo_estimator, training_input, pipel
     # test idempotency
     step_def2 = json.loads(pipeline.definition())["Steps"][0]
     del step_def2["Arguments"]["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"]
-    del step_def2["Arguments"]["ProfilerRuleConfigurations"]
     assert step_def == step_def2
 
 
@@ -789,10 +769,6 @@ def test_training_step_with_algorithm_base_local_code(
     del step_args["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"]
     del step_def["Arguments"]["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"]
 
-    # delete profiler rule configurations because of timestamp collision
-    del step_def["Arguments"]["ProfilerRuleConfigurations"]
-    del step_args["ProfilerRuleConfigurations"]
-
     assert step_def == {
         "Name": "MyTrainingStep",
         "Type": "Training",
@@ -802,7 +778,6 @@ def test_training_step_with_algorithm_base_local_code(
     # test idempotency
     step_def2 = json.loads(pipeline.definition())["Steps"][0]
     del step_def2["Arguments"]["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"]
-    del step_def2["Arguments"]["ProfilerRuleConfigurations"]
     assert step_def == step_def2
 
 
