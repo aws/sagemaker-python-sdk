@@ -73,6 +73,10 @@ Inputs
     :members:
     :show-inheritance:
 
+.. autoclass:: sagemaker.feature_store.inputs.TableFormatEnum
+    :members:
+    :show-inheritance:
+
 
 Dataset Builder
 ***************
