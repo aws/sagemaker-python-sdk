@@ -3324,6 +3324,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if request_data_capture_config_dict is not None:
             request["DataCaptureConfig"] = request_data_capture_config_dict
 
+        if existing_endpoint_config_desc.get("AsyncInferenceConfig") is not None:
+            request["AsyncInferenceConfig"] = existing_endpoint_config_desc.get(
+                "AsyncInferenceConfig", None
+            )
+
         self.sagemaker_client.create_endpoint_config(**request)
 
     def create_endpoint(self, endpoint_name, config_name, tags=None, wait=True):
