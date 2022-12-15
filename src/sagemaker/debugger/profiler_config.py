@@ -32,6 +32,7 @@ class ProfilerConfig(object):
         s3_output_path: Optional[Union[str, PipelineVariable]] = None,
         system_monitor_interval_millis: Optional[Union[int, PipelineVariable]] = None,
         framework_profile_params: Optional[FrameworkProfile] = None,
+        disable_profiler: Optional[Union[str, PipelineVariable]] = False,
     ):
         """Initialize a ``ProfilerConfig`` instance.
 
@@ -78,6 +79,7 @@ class ProfilerConfig(object):
         self.s3_output_path = s3_output_path
         self.system_monitor_interval_millis = system_monitor_interval_millis
         self.framework_profile_params = framework_profile_params
+        self.disable_profiler = disable_profiler
 
     def _to_request_dict(self):
         """Generate a request dictionary using the parameters provided when initializing the object.
@@ -90,6 +92,8 @@ class ProfilerConfig(object):
 
         if self.s3_output_path is not None:
             profiler_config_request["S3OutputPath"] = self.s3_output_path
+
+        profiler_config_request["DisableProfiler"] = self.disable_profiler
 
         if self.system_monitor_interval_millis is not None:
             profiler_config_request[
