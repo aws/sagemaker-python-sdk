@@ -7,8 +7,43 @@ Release Notes
 New features, bug fixes, and improvements are regularly made to the SageMaker
 distributed data parallel library.
 
-SageMaker Distributed Data Parallel 1.5.0 Release Notes
+SageMaker Distributed Data Parallel 1.6.0 Release Notes
 =======================================================
+
+*Date: Dec. 15. 2022*
+
+**New Features**
+
+* New SMDDP Collectives support for the SageMaker model parallelism library’s sharded data parallelism operating AllGather. For more information, see `Sharded data parallelism with SMDDP Collectives <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-sharded-data-parallelism.html#model-parallel-extended-features-pytorch-sharded-data-parallelism-smddp-collectives>`_ in the Amazon SageMaker Developer Guide.
+* Added support for Amazon EC2 ml.p4de.24xlarge instances
+
+
+**Migration to AWS Deep Learning Containers**
+
+This version passed benchmark testing and is migrated to the following AWS Deep Learning Containers (DLC):
+
+- SageMaker training container for PyTorch v1.12.1
+
+  .. code::
+
+    763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.12.1-gpu-py38-cu113-ubuntu20.04-sagemaker
+
+
+Binary file of this version of the library for `custom container
+<https://docs.aws.amazon.com/sagemaker/latest/dg/data-parallel-use-api.html#data-parallel-bring-your-own-container>`_ users:
+
+  .. code::
+
+    https://smdataparallel.s3.amazonaws.com/binary/pytorch/1.12.1/cu113/2022-12-05/smdistributed_dataparallel-1.6.0-cp38-cp38-linux_x86_64.whl
+
+
+----
+
+Release History
+===============
+
+SageMaker Distributed Data Parallel 1.5.0 Release Notes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 *Date: Jul. 26. 2022*
 
@@ -37,12 +72,6 @@ Binary file of this version of the library for `custom container
   .. code::
 
     https://smdataparallel.s3.amazonaws.com/binary/pytorch/1.12.0/cu113/2022-07-01/smdistributed_dataparallel-1.5.0-cp38-cp38-linux_x86_64.whl
-
-
-----
-
-Release History
-===============
 
 SageMaker Distributed Data Parallel 1.4.1 Release Notes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

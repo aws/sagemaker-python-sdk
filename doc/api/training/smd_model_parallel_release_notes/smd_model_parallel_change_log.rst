@@ -6,8 +6,60 @@ New features, bug fixes, and improvements are regularly made to the SageMaker
 distributed model parallel library.
 
 
-SageMaker Distributed Model Parallel 1.11.0 Release Notes
+SageMaker Distributed Model Parallel 1.13.0 Release Notes
 =========================================================
+
+*Date: Dec. 15. 2022*
+
+**New Features**
+
+* Sharded data parallelism now supports a new backend for collectives, SMDDP. For supported scenarios
+  this is used by default for AllGather. For more information, see
+  `Sharded data parallelism with SMDDP Collectives
+  <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-sharded-data-parallelism.html#model-parallel-extended-features-pytorch-sharded-data-parallelism-smddp-collectives>`_
+  in the Amazon SageMaker Developer Guide.
+* Introduced FlashAttention for DistributedTransformer to improve memory usage and computational
+  performance of models such as GPT2, GPTNeo, GPTJ, GPTNeoX, BERT, and RoBERTa.
+
+**Bug Fixes**
+
+* Fixed initialization of lm_head in DistributedTransformer to use a provided range
+  for initialization, when weights are not tied with the embeddings.
+
+**Improvements**
+
+* When a module has no parameters, we have introduced an optimization to execute
+  such a module on the same rank as its parent during pipeline parallelism.
+
+
+
+**Migration to AWS Deep Learning Containers**
+
+This version passed benchmark testing and is migrated to the following AWS Deep Learning Containers (DLC):
+
+- SageMaker training container for PyTorch v1.12.1
+
+  .. code::
+
+    763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.12.1-gpu-py38-cu113-ubuntu20.04-sagemaker
+
+
+Binary file of this version of the library for `custom container
+<https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-sm-sdk.html#model-parallel-bring-your-own-container>`_ users:
+
+- For PyTorch 1.12.0
+
+  .. code::
+
+    https://sagemaker-distributed-model-parallel.s3.us-west-2.amazonaws.com/pytorch-1.12.1/build-artifacts/2022-12-08-21-34/smdistributed_modelparallel-1.13.0-cp38-cp38-linux_x86_64.whl
+
+----
+
+Release History
+===============
+
+SageMaker Distributed Model Parallel 1.11.0 Release Notes
+---------------------------------------------------------
 
 *Date: August. 17. 2022*
 
@@ -41,12 +93,7 @@ Binary file of this version of the library for `custom container
 
   .. code::
 
-    https://sagemaker-distributed-model-parallel.s3.us-west-2.amazonaws.com/pytorch-1.12.0/build-artifacts/2022-08-12-16-58/smdistributed_modelparallel-1.11.0-cp38-cp38-linux_x86_64.whl
-
-----
-
-Release History
-===============
+    https://sagemaker-distribu
 
 SageMaker Distributed Model Parallel 1.10.1 Release Notes
 ---------------------------------------------------------
