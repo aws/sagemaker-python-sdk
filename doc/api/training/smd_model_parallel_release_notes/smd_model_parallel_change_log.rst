@@ -13,25 +13,24 @@ SageMaker Distributed Model Parallel 1.13.0 Release Notes
 
 **New Features**
 
-* Sharded data parallelism now supports a new backend for collectives, SMDDP. For supported scenarios
-  this is used by default for AllGather. For more information, see
+* Sharded data parallelism now supports a new backend for collectives called *SMDDP Collectives*.
+  For supported scenarios, SMDDP Collectives are on by default for the AllGather operation.
+  For more information, see
   `Sharded data parallelism with SMDDP Collectives
   <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-sharded-data-parallelism.html#model-parallel-extended-features-pytorch-sharded-data-parallelism-smddp-collectives>`_
-  in the Amazon SageMaker Developer Guide.
+  in the *Amazon SageMaker Developer Guide*.
 * Introduced FlashAttention for DistributedTransformer to improve memory usage and computational
   performance of models such as GPT2, GPTNeo, GPTJ, GPTNeoX, BERT, and RoBERTa.
 
 **Bug Fixes**
 
-* Fixed initialization of lm_head in DistributedTransformer to use a provided range
+* Fixed initialization of ``lm_head`` in DistributedTransformer to use a provided range
   for initialization, when weights are not tied with the embeddings.
 
 **Improvements**
 
 * When a module has no parameters, we have introduced an optimization to execute
   such a module on the same rank as its parent during pipeline parallelism.
-
-
 
 **Migration to AWS Deep Learning Containers**
 
