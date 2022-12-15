@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.123.0 (2022-12-15)
+
+### Features
+
+ * Add support for TF2.9.2 training images
+ * Add SageMaker Experiment
+
 ## v2.122.0 (2022-12-14)
 
 ### Features
