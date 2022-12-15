@@ -12,7 +12,6 @@
 # language governing permissions and limitations under the License.
 """SageMaker lineage utility methods."""
 from __future__ import absolute_import
-from importlib import import_module
 from sagemaker.lineage import association
 
 
@@ -36,22 +35,6 @@ def _disassociate(source_arn=None, destination_arn=None, sagemaker_session=None)
             destination_arn=association_summary.destination_arn,
         )
         curr_association.delete()
-
-
-def get_module(module_name):
-    """Import a module.
-
-    Args:
-        module_name (str): name of the module to import.
-
-    Returns:
-        [obj]: The imported module.
-        Raises exceptions when the module name is not found
-    """
-    try:
-        return import_module(module_name)
-    except ImportError:
-        raise Exception("Cannot import module {}, please try again.".format(module_name))
 
 
 def get_resource_name_from_arn(arn):

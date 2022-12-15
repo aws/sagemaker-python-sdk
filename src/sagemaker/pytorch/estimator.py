@@ -28,6 +28,7 @@ from sagemaker.fw_utils import (
 )
 from sagemaker.pytorch import defaults
 from sagemaker.pytorch.model import PyTorchModel
+from sagemaker.pytorch.training_compiler.config import TrainingCompilerConfig
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 from sagemaker.workflow.entities import PipelineVariable
 
@@ -51,7 +52,8 @@ class PyTorch(Framework):
         hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         distribution: Optional[Dict] = None,
-        **kwargs
+        compiler_config: Optional[TrainingCompilerConfig] = None,
+        **kwargs,
     ):
         """This ``Estimator`` executes a PyTorch script in a managed PyTorch execution environment.
 
@@ -208,6 +210,31 @@ class PyTorch(Framework):
                     To learn more, see `Training with parameter servers
                     <https://sagemaker.readthedocs.io/en/stable/frameworks/tensorflow/using_tf.html#training-with-parameter-servers>`_.
 
+                **To enable distributed training with
+                `SageMaker Training Compiler <https://docs.aws.amazon.com/sagemaker/latest/dg/training-compiler.html>`_
+                for PyTorch:**
+
+                    .. code:: python
+
+                        {
+                            "pytorchxla": {
+                                "enabled": True
+                            }
+                        }
+
+                    To learn more, see `SageMaker Training Compiler
+                    <https://docs.aws.amazon.com/sagemaker/latest/dg/training-compiler.html>`_
+                    in the *Amazon SageMaker Developer Guide*.
+
+                    .. note::
+
+                        When you use this PyTorch XLA option for distributed training strategy,
+                        you must add the ``compiler_config`` parameter and activate SageMaker
+                        Training Compiler.
+
+                compiler_config (:class:`~sagemaker.pytorch.TrainingCompilerConfig`):
+                Configures SageMaker Training Compiler to accelerate training.
+
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework`
                 constructor.
 
@@ -250,6 +277,25 @@ class PyTorch(Framework):
 
         self.distribution = distribution or {}
 
+        if compiler_config is not None:
+            if not isinstance(compiler_config, TrainingCompilerConfig):
+                error_string = (
+                    f"Expected instance of type {TrainingCompilerConfig}"
+                    f"for argument compiler_config. "
+                    f"Instead got {type(compiler_config)}"
+                )
+                raise ValueError(error_string)
+            if compiler_config:
+                compiler_config.validate(self)
+        elif distribution is not None and "pytorchxla" in distribution:
+            raise ValueError(
+                "Distributed training through PyTorch XLA is currently only supported "
+                "when SageMaker Training Compiler is enabled. To learn more, "
+                "see Enable SageMaker Training Compiler at "
+                "https://docs.aws.amazon.com/sagemaker/latest/dg/training-compiler-enable.html."
+            )
+        self.compiler_config = compiler_config
+
     def _pytorch_distribution_configuration(self, distribution):
         """Returns a dict of distribution config for PyTorch training
 
@@ -289,6 +335,12 @@ class PyTorch(Framework):
         hyperparameters.update(
             EstimatorBase._json_encode_hyperparameters(additional_hyperparameters)
         )
+        if self.compiler_config:
+            training_compiler_hyperparameters = self.compiler_config._to_hyperparameter_dict()
+            hyperparameters.update(
+                EstimatorBase._json_encode_hyperparameters(training_compiler_hyperparameters)
+            )
+
         return hyperparameters
 
     def create_model(
@@ -299,7 +351,7 @@ class PyTorch(Framework):
         entry_point=None,
         source_dir=None,
         dependencies=None,
-        **kwargs
+        **kwargs,
     ):
         """Create a SageMaker ``PyTorchModel`` object that can be deployed to an ``Endpoint``.
 
@@ -350,7 +402,7 @@ class PyTorch(Framework):
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             dependencies=(dependencies or self.dependencies),
-            **kwargs
+            **kwargs,
         )
 
     @classmethod
@@ -371,6 +423,8 @@ class PyTorch(Framework):
         )
         image_uri = init_params.pop("image_uri")
         framework, py_version, tag, _ = framework_name_from_image(image_uri)
+        if framework:
+            framework = framework.split("-")[0]
 
         if tag is None:
             framework_version = None
