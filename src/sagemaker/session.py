@@ -2422,7 +2422,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 Setting a random seed will make the hyperparameter tuning search strategies to
                 produce more consistent configurations for the same tuning job.
             strategy_config (dict): A configuration for the hyperparameter tuning job optimisation
-                strategy. 
+                strategy.
 
         Returns:
             A dictionary of tuning job configuration. For format details, please refer to
