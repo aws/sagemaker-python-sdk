@@ -72,3 +72,11 @@ Inputs
 .. autoclass:: sagemaker.feature_store.inputs.FeatureValue
     :members:
     :show-inheritance:
+
+
+Dataset Builder
+***************
+
+.. autoclass:: sagemaker.feature_store.dataset_builder.DatasetBuilder
+    :members:
+    :show-inheritance:
