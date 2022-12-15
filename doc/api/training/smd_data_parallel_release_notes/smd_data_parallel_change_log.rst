@@ -17,7 +17,7 @@ SageMaker Distributed Data Parallel 1.6.0 Release Notes
 * New SMDDP Collectives support for the SageMaker model parallelism library’s sharded data parallelism operating AllGather. For more information, see `Sharded data parallelism with SMDDP Collectives <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-sharded-data-parallelism.html#model-parallel-extended-features-pytorch-sharded-data-parallelism-smddp-collectives>`_ in the Amazon SageMaker Developer Guide.
 * Added support for Amazon EC2 ml.p4de.24xlarge instances.
 
-**Improvements*
+**Improvements**
 
 * Improved general performance of the SMDDP AllReduce collective communication operation.
 
