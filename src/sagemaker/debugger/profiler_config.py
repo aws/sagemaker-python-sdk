@@ -93,7 +93,7 @@ class ProfilerConfig(object):
         if (
             self.s3_output_path is not None
             and self.disable_profiler is not None
-            and self.disable_profiler is True
+            and self.disable_profiler is False
         ):
             profiler_config_request["S3OutputPath"] = self.s3_output_path
 
