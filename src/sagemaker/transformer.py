@@ -27,7 +27,11 @@ from sagemaker.workflow.functions import Join
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline, PipelineSession
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.execution_variables import ExecutionVariables
-from sagemaker.utils import base_name_from_image, name_from_base
+from sagemaker.utils import (
+    base_name_from_image,
+    name_from_base,
+    check_and_get_run_experiment_config,
+)
 
 
 class Transformer(object):
@@ -251,6 +255,7 @@ class Transformer(object):
                 )
             self._reset_output_path = True
 
+        experiment_config = check_and_get_run_experiment_config(experiment_config)
         self.latest_transform_job = _TransformJob.start_new(
             self,
             data,

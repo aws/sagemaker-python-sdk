@@ -25,10 +25,12 @@ import json
 from boto3 import exceptions
 import botocore
 import pytest
-from mock import call, patch, Mock, MagicMock
+from mock import call, patch, Mock, MagicMock, PropertyMock
 
 import sagemaker
+from sagemaker.experiments._run_context import _RunContext
 from sagemaker.session_settings import SessionSettings
+from sagemaker.utils import retry_with_backoff, check_and_get_run_experiment_config
 from tests.unit.sagemaker.workflow.helpers import CustomStep
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
 
@@ -795,3 +797,63 @@ def test_start_waiting(capfd):
     out, _ = capfd.readouterr()
 
     assert "." * sagemaker.utils.WAITING_DOT_NUMBER in out
+
+
+def test_retry_with_backoff():
+    callable_func = Mock()
+
+    # Invalid input
+    with pytest.raises(ValueError) as value_err:
+        retry_with_backoff(callable_func, 0)
+    assert "The num_attempts must be >= 1" in str(value_err)
+    callable_func.assert_not_called()
+
+    # All retries fail
+    run_err_msg = "Test Retry Error"
+    callable_func.side_effect = RuntimeError(run_err_msg)
+    with pytest.raises(RuntimeError) as run_err:
+        retry_with_backoff(callable_func, 2)
+    assert run_err_msg in str(run_err)
+
+    # One retry passes
+    func_return_val = "Test Return"
+    callable_func.side_effect = [RuntimeError(run_err_msg), func_return_val]
+    assert retry_with_backoff(callable_func, 2) == func_return_val
+
+    # No retry
+    callable_func.side_effect = None
+    callable_func.return_value = func_return_val
+    assert retry_with_backoff(callable_func, 2) == func_return_val
+
+
+def test_check_and_get_run_experiment_config():
+    supplied_exp_cfg = {"ExperimentName": "my-supplied-exp-name", "RunName": "my-supplied-run-name"}
+    run_exp_cfg = {"ExperimentName": "my-run-exp-name", "RunName": "my-run-run-name"}
+
+    # No user supplied exp config and no current Run
+    assert not _RunContext.get_current_run()
+    exp_cfg1 = check_and_get_run_experiment_config(None)
+    assert exp_cfg1 is None
+
+    # With user supplied exp config and no current Run
+    assert not _RunContext.get_current_run()
+    exp_cfg2 = check_and_get_run_experiment_config(supplied_exp_cfg)
+    assert exp_cfg2 == supplied_exp_cfg
+
+    run = Mock()
+    type(run).experiment_config = PropertyMock(return_value=run_exp_cfg)
+    _RunContext.add_run_object(run)
+
+    try:
+        # No user supplied exp config and with current Run
+        assert _RunContext.get_current_run().experiment_config == run_exp_cfg
+        exp_cfg3 = check_and_get_run_experiment_config(None)
+        assert exp_cfg3 == run_exp_cfg
+
+        # With user supplied exp config and current Run
+        assert _RunContext.get_current_run().experiment_config == run_exp_cfg
+        exp_cfg4 = check_and_get_run_experiment_config(supplied_exp_cfg)
+        assert exp_cfg4 == supplied_exp_cfg
+    finally:
+        # Clean up the global static variable in case it affects other tests
+        _RunContext.drop_current_run()

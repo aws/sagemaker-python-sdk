@@ -62,6 +62,7 @@ EXPERIMENT_CONFIG = {
     "ExperimentName": "exp",
     "TrialName": "trial",
     "TrialComponentDisplayName": "tc",
+    "RunName": "rn",
 }
 
 MODEL_PKG_RESPONSE = {"ModelPackageArn": "arn:model-pkg-arn"}
@@ -159,14 +160,8 @@ def _get_train_args(job_name):
             "CollectionConfigurations": [],
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
-        "profiler_rule_configs": [
-            {
-                "RuleConfigurationName": "ProfilerReport-1510006209",
-                "RuleEvaluatorImage": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.4.0-cpu-py3",
-                "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
-            }
-        ],
         "profiler_config": {
+            "DisableProfiler": False,
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
     }

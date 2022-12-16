@@ -14,29 +14,15 @@
 """Test for Feature Store"""
 from __future__ import absolute_import
 
+import datetime
 
 import pandas as pd
 import pytest
-from mock import Mock, patch, MagicMock
-from botocore.exceptions import ProfileNotFound
+from mock import Mock
 
-from sagemaker.feature_store.feature_definition import (
-    FractionalFeatureDefinition,
-    IntegralFeatureDefinition,
-    StringFeatureDefinition,
-    FeatureTypeEnum,
-)
-from sagemaker.feature_store.feature_group import (
-    FeatureGroup,
-    IngestionManagerPandas,
-    AthenaQuery,
-    IngestionError,
-)
-from sagemaker.feature_store.inputs import (
-    FeatureParameter,
-    TableFormatEnum,
-)
+from sagemaker.feature_store.feature_store import FeatureStore
 
+DATAFRAME = pd.DataFrame({"feature_1": [420, 380, 390], "feature_2": [50, 40, 45]})
 
 class PicklableMock(Mock):
     """Mock class use for tests"""
@@ -61,441 +47,110 @@ def sagemaker_session_mock():
 
 
 @pytest.fixture
-def fs_runtime_client_config_mock():
-    return PicklableMock()
+def feature_group_mock():
+    return Mock()
 
 
-@pytest.fixture
-def feature_group_dummy_definitions():
-    return [
-        FractionalFeatureDefinition(feature_name="feature1"),
-        IntegralFeatureDefinition(feature_name="feature2"),
-        StringFeatureDefinition(feature_name="feature3"),
-    ]
-
-
-@pytest.fixture
-def create_table_ddl():
-    return (
-        "CREATE EXTERNAL TABLE IF NOT EXISTS {database}.{table_name} (\n"
-        "  feature1 FLOAT\n"
-        "  feature2 INT\n"
-        "  feature3 STRING\n"
-        "  write_time TIMESTAMP\n"
-        "  event_time TIMESTAMP\n"
-        "  is_deleted BOOLEAN\n"
-        ")\n"
-        "ROW FORMAT SERDE 'org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe'\n"
-        "  STORED AS\n"
-        "  INPUTFORMAT 'parquet.hive.DeprecatedParquetInputFormat'\n"
-        "  OUTPUTFORMAT 'parquet.hive.DeprecatedParquetOutputFormat'\n"
-        "LOCATION 's3://resolved_output_s3_uri'"
+def test_minimal_create_dataset(sagemaker_session_mock, feature_group_mock):
+    feature_store = FeatureStore(sagemaker_session=sagemaker_session_mock)
+    dataset_builder = feature_store.create_dataset(
+        base=feature_group_mock,
+        output_path="file/to/path",
     )
+    assert dataset_builder._sagemaker_session == sagemaker_session_mock
+    assert dataset_builder._base == feature_group_mock
+    assert dataset_builder._output_path == "file/to/path"
 
 
-def test_feature_store_create(
-    sagemaker_session_mock, role_arn, feature_group_dummy_definitions, s3_uri
-):
-    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
-    feature_group.feature_definitions = feature_group_dummy_definitions
-    feature_group.create(
-        s3_uri=s3_uri,
-        record_identifier_name="feature1",
-        event_time_feature_name="feature2",
-        role_arn=role_arn,
-        enable_online_store=True,
+def test_complete_create_dataset(sagemaker_session_mock, feature_group_mock):
+    feature_store = FeatureStore(sagemaker_session=sagemaker_session_mock)
+    dataset_builder = feature_store.create_dataset(
+        base=feature_group_mock,
+        included_feature_names=["feature_1", "feature_2"],
+        output_path="file/to/path",
+        kms_key_id="kms-key-id",
     )
-    sagemaker_session_mock.create_feature_group.assert_called_with(
-        feature_group_name="MyFeatureGroup",
-        record_identifier_name="feature1",
-        event_time_feature_name="feature2",
-        feature_definitions=[fd.to_dict() for fd in feature_group_dummy_definitions],
-        role_arn=role_arn,
-        description=None,
-        tags=None,
-        online_store_config={"EnableOnlineStore": True},
-        offline_store_config={
-            "DisableGlueTableCreation": False,
-            "S3StorageConfig": {"S3Uri": s3_uri},
-        },
+    assert dataset_builder._sagemaker_session == sagemaker_session_mock
+    assert dataset_builder._base == feature_group_mock
+    assert dataset_builder._included_feature_names == ["feature_1", "feature_2"]
+    assert dataset_builder._output_path == "file/to/path"
+    assert dataset_builder._kms_key_id == "kms-key-id"
+
+
+def test_create_dataset_with_dataframe(sagemaker_session_mock):
+    feature_store = FeatureStore(sagemaker_session=sagemaker_session_mock)
+    dataset_builder = feature_store.create_dataset(
+        base=DATAFRAME,
+        record_identifier_feature_name="feature_1",
+        event_time_identifier_feature_name="feature_2",
+        included_feature_names=["feature_1", "feature_2"],
+        output_path="file/to/path",
+        kms_key_id="kms-key-id",
     )
+    assert dataset_builder._sagemaker_session == sagemaker_session_mock
+    assert dataset_builder._base.equals(DATAFRAME)
+    assert dataset_builder._record_identifier_feature_name == "feature_1"
+    assert dataset_builder._event_time_identifier_feature_name == "feature_2"
+    assert dataset_builder._included_feature_names == ["feature_1", "feature_2"]
+    assert dataset_builder._output_path == "file/to/path"
+    assert dataset_builder._kms_key_id == "kms-key-id"
 
 
-def test_feature_store_create_iceberg_table_format(
-    sagemaker_session_mock, role_arn, feature_group_dummy_definitions, s3_uri
-):
-    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
-    feature_group.feature_definitions = feature_group_dummy_definitions
-    feature_group.create(
-        s3_uri=s3_uri,
-        record_identifier_name="feature1",
-        event_time_feature_name="feature2",
-        role_arn=role_arn,
-        enable_online_store=True,
-        disable_glue_table_creation=False,
-        table_format=TableFormatEnum.ICEBERG,
-    )
-    sagemaker_session_mock.create_feature_group.assert_called_with(
-        feature_group_name="MyFeatureGroup",
-        record_identifier_name="feature1",
-        event_time_feature_name="feature2",
-        feature_definitions=[fd.to_dict() for fd in feature_group_dummy_definitions],
-        role_arn=role_arn,
-        description=None,
-        tags=None,
-        online_store_config={"EnableOnlineStore": True},
-        offline_store_config={
-            "DisableGlueTableCreation": False,
-            "TableFormat": "Iceberg",
-            "S3StorageConfig": {"S3Uri": s3_uri},
-        },
-    )
-
-
-def test_feature_store_create_glue_table_format(
-    sagemaker_session_mock, role_arn, feature_group_dummy_definitions, s3_uri
-):
-    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
-    feature_group.feature_definitions = feature_group_dummy_definitions
-    feature_group.create(
-        s3_uri=s3_uri,
-        record_identifier_name="feature1",
-        event_time_feature_name="feature2",
-        role_arn=role_arn,
-        enable_online_store=True,
-        disable_glue_table_creation=False,
-        table_format=TableFormatEnum.GLUE,
-    )
-    sagemaker_session_mock.create_feature_group.assert_called_with(
-        feature_group_name="MyFeatureGroup",
-        record_identifier_name="feature1",
-        event_time_feature_name="feature2",
-        feature_definitions=[fd.to_dict() for fd in feature_group_dummy_definitions],
-        role_arn=role_arn,
-        description=None,
-        tags=None,
-        online_store_config={"EnableOnlineStore": True},
-        offline_store_config={
-            "DisableGlueTableCreation": False,
-            "TableFormat": "Glue",
-            "S3StorageConfig": {"S3Uri": s3_uri},
-        },
-    )
-
-
-def test_feature_store_create_online_only(
-    sagemaker_session_mock, role_arn, feature_group_dummy_definitions
-):
-    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
-    feature_group.feature_definitions = feature_group_dummy_definitions
-    feature_group.create(
-        s3_uri=False,
-        record_identifier_name="feature1",
-        event_time_feature_name="feature2",
-        role_arn=role_arn,
-        enable_online_store=True,
-    )
-    sagemaker_session_mock.create_feature_group.assert_called_with(
-        feature_group_name="MyFeatureGroup",
-        record_identifier_name="feature1",
-        event_time_feature_name="feature2",
-        feature_definitions=[fd.to_dict() for fd in feature_group_dummy_definitions],
-        role_arn=role_arn,
-        description=None,
-        tags=None,
-        online_store_config={"EnableOnlineStore": True},
-    )
-
-
-def test_feature_store_delete(sagemaker_session_mock):
-    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
-    feature_group.delete()
-    sagemaker_session_mock.delete_feature_group.assert_called_with(
-        feature_group_name="MyFeatureGroup"
-    )
-
-
-def test_feature_store_describe(sagemaker_session_mock):
-    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
-    feature_group.describe()
-    sagemaker_session_mock.describe_feature_group.assert_called_with(
-        feature_group_name="MyFeatureGroup", next_token=None
-    )
-
-
-def test_feature_store_update(sagemaker_session_mock, feature_group_dummy_definitions):
-    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
-    feature_group.update(feature_group_dummy_definitions)
-    sagemaker_session_mock.update_feature_group.assert_called_with(
-        feature_group_name="MyFeatureGroup",
-        feature_additions=[fd.to_dict() for fd in feature_group_dummy_definitions],
-    )
-
-
-def test_feature_metadata_update(sagemaker_session_mock):
-    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
-
-    parameter_additions = [FeatureParameter(key="key1", value="value1")]
-    parameter_removals = ["key2"]
-
-    feature_group.update_feature_metadata(
-        feature_name="Feature1",
-        description="TestDescription",
-        parameter_additions=parameter_additions,
-        parameter_removals=parameter_removals,
-    )
-    sagemaker_session_mock.update_feature_metadata.assert_called_with(
-        feature_group_name="MyFeatureGroup",
-        feature_name="Feature1",
-        description="TestDescription",
-        parameter_additions=[pa.to_dict() for pa in parameter_additions],
-        parameter_removals=parameter_removals,
-    )
-    feature_group.update_feature_metadata(feature_name="Feature1", description="TestDescription")
-    sagemaker_session_mock.update_feature_metadata.assert_called_with(
-        feature_group_name="MyFeatureGroup",
-        feature_name="Feature1",
-        description="TestDescription",
-        parameter_additions=[],
-        parameter_removals=[],
-    )
-
-
-def test_feature_metadata_describe(sagemaker_session_mock):
-    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
-    feature_group.describe_feature_metadata(feature_name="Feature1")
-    sagemaker_session_mock.describe_feature_metadata.assert_called_with(
-        feature_group_name="MyFeatureGroup", feature_name="Feature1"
-    )
-
-
-def test_put_record(sagemaker_session_mock):
-    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
-    feature_group.put_record(record=[])
-    sagemaker_session_mock.put_record.assert_called_with(
-        feature_group_name="MyFeatureGroup", record=[]
-    )
-
-
-def test_load_feature_definition(sagemaker_session_mock):
-    feature_group = FeatureGroup(name="SomeGroup", sagemaker_session=sagemaker_session_mock)
-    df = pd.DataFrame(
-        {
-            "float": pd.Series([2.0], dtype="float64"),
-            "int": pd.Series([2], dtype="int64"),
-            "string": pd.Series(["f1"], dtype="string"),
-        }
-    )
-    feature_definitions = feature_group.load_feature_definitions(data_frame=df)
-    names = [fd.feature_name for fd in feature_definitions]
-    types = [fd.feature_type for fd in feature_definitions]
-    assert names == ["float", "int", "string"]
-    assert types == [
-        FeatureTypeEnum.FRACTIONAL,
-        FeatureTypeEnum.INTEGRAL,
-        FeatureTypeEnum.STRING,
-    ]
-
-
-def test_load_feature_definition_unsupported_types(sagemaker_session_mock):
-    feature_group = FeatureGroup(name="FailedGroup", sagemaker_session=sagemaker_session_mock)
-    df = pd.DataFrame(
-        {
-            "float": pd.Series([2.0], dtype="float64"),
-            "int": pd.Series([2], dtype="int64"),
-            "object": pd.Series(["f1"], dtype="object"),
-        }
-    )
+def test_create_dataset_with_dataframe_value_error(sagemaker_session_mock):
+    feature_store = FeatureStore(sagemaker_session=sagemaker_session_mock)
     with pytest.raises(ValueError) as error:
-        feature_group.load_feature_definitions(data_frame=df)
-    assert "Failed to infer Feature type based on dtype object for column object." in str(error)
-
-
-def test_ingest_zero_processes():
-    feature_group = FeatureGroup(name="MyGroup", sagemaker_session=sagemaker_session_mock)
-    df = Mock()
-    with pytest.raises(RuntimeError) as error:
-        feature_group.ingest(data_frame=df, max_workers=1, max_processes=0)
-
-    assert "max_processes must be greater than 0." in str(error)
-
-
-def test_ingest_zero_workers():
-    feature_group = FeatureGroup(name="MyGroup", sagemaker_session=sagemaker_session_mock)
-    df = Mock()
-    with pytest.raises(RuntimeError) as error:
-        feature_group.ingest(data_frame=df, max_workers=0, max_processes=1)
-
-    assert "max_workers must be greater than 0." in str(error)
-
-
-@patch("sagemaker.feature_store.feature_group.IngestionManagerPandas")
-def test_ingest(ingestion_manager_init, sagemaker_session_mock, fs_runtime_client_config_mock):
-    sagemaker_session_mock.sagemaker_featurestore_runtime_client.meta.config = (
-        fs_runtime_client_config_mock
-    )
-
-    feature_group = FeatureGroup(name="MyGroup", sagemaker_session=sagemaker_session_mock)
-    df = pd.DataFrame(dict((f"float{i}", pd.Series([2.0], dtype="float64")) for i in range(300)))
-
-    mock_ingestion_manager_instance = Mock()
-    ingestion_manager_init.return_value = mock_ingestion_manager_instance
-    feature_group.ingest(data_frame=df, max_workers=10)
-
-    ingestion_manager_init.assert_called_once_with(
-        feature_group_name="MyGroup",
-        sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
-        max_workers=10,
-        max_processes=1,
-        profile_name=None,
-    )
-    mock_ingestion_manager_instance.run.assert_called_once_with(
-        data_frame=df, wait=True, timeout=None
-    )
-
-
-@patch("sagemaker.feature_store.feature_group.IngestionManagerPandas")
-def test_ingest_with_profile_name(
-    ingestion_manager_init, sagemaker_session_mock, fs_runtime_client_config_mock
-):
-    sagemaker_session_mock.sagemaker_featurestore_runtime_client.meta.config = (
-        fs_runtime_client_config_mock
-    )
-
-    feature_group = FeatureGroup(name="MyGroup", sagemaker_session=sagemaker_session_mock)
-    df = pd.DataFrame(dict((f"float{i}", pd.Series([2.0], dtype="float64")) for i in range(300)))
-
-    mock_ingestion_manager_instance = Mock()
-    ingestion_manager_init.return_value = mock_ingestion_manager_instance
-    feature_group.ingest(data_frame=df, max_workers=10, profile_name="profile_name")
-
-    ingestion_manager_init.assert_called_once_with(
-        feature_group_name="MyGroup",
-        sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
-        max_workers=10,
-        max_processes=1,
-        profile_name="profile_name",
-    )
-    mock_ingestion_manager_instance.run.assert_called_once_with(
-        data_frame=df, wait=True, timeout=None
-    )
-
-
-def test_as_hive_ddl_with_default_values(
-    create_table_ddl, feature_group_dummy_definitions, sagemaker_session_mock
-):
-    sagemaker_session_mock.describe_feature_group.return_value = {
-        "OfflineStoreConfig": {
-            "S3StorageConfig": {
-                "S3Uri": "s3://some-bucket",
-                "ResolvedOutputS3Uri": "s3://resolved_output_s3_uri",
-            }
-        }
-    }
-    sagemaker_session_mock.account_id.return_value = "1234"
-    sagemaker_session_mock.boto_session.region_name = "us-west-2"
-
-    feature_group = FeatureGroup(name="MyGroup", sagemaker_session=sagemaker_session_mock)
-    feature_group.feature_definitions = feature_group_dummy_definitions
-    assert (
-        create_table_ddl.format(
-            database="sagemaker_featurestore",
-            table_name="MyGroup",
-            account="1234",
-            region="us-west-2",
-            feature_group_name="MyGroup",
+        feature_store.create_dataset(
+            base=DATAFRAME,
+            included_feature_names=["feature_1", "feature_2"],
+            output_path="file/to/path",
+            kms_key_id="kms-key-id",
         )
-        == feature_group.as_hive_ddl()
+    assert (
+        "You must provide a record identifier feature name and an event time identifier feature "
+        + "name if specify DataFrame as base."
+        in str(error)
     )
 
 
-def test_as_hive_ddl(create_table_ddl, feature_group_dummy_definitions, sagemaker_session_mock):
-    sagemaker_session_mock.describe_feature_group.return_value = {
-        "OfflineStoreConfig": {
-            "S3StorageConfig": {
-                "S3Uri": "s3://some-bucket",
-                "ResolvedOutputS3Uri": "s3://resolved_output_s3_uri",
-            }
-        }
-    }
-    sagemaker_session_mock.account_id.return_value = "1234"
-    sagemaker_session_mock.boto_session.region_name = "us-west-2"
-
-    feature_group = FeatureGroup(name="MyGroup", sagemaker_session=sagemaker_session_mock)
-    feature_group.feature_definitions = feature_group_dummy_definitions
-    assert create_table_ddl.format(
-        database="MyDatabase",
-        table_name="MyTable",
-        account="1234",
-        region="us-west-2",
-        feature_group_name="MyGroup",
-    ) == feature_group.as_hive_ddl(database="MyDatabase", table_name="MyTable")
-
-
-@patch(
-    "sagemaker.feature_store.feature_group.IngestionManagerPandas._run_multi_process",
-    MagicMock(),
-)
-def test_ingestion_manager_run_success():
-    df = pd.DataFrame({"float": pd.Series([2.0], dtype="float64")})
-    manager = IngestionManagerPandas(
-        feature_group_name="MyGroup",
-        sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
-        max_workers=10,
-    )
-    manager.run(df)
-
-    manager._run_multi_process.assert_called_once_with(data_frame=df, wait=True, timeout=None)
-
-
-@patch(
-    "sagemaker.feature_store.feature_group.IngestionManagerPandas._run_multi_threaded",
-    PicklableMock(return_value=[]),
-)
-def test_ingestion_manager_run_multi_process_with_multi_thread_success(
-    fs_runtime_client_config_mock,
-):
-    df = pd.DataFrame({"float": pd.Series([2.0], dtype="float64")})
-    manager = IngestionManagerPandas(
-        feature_group_name="MyGroup",
-        sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
-        max_workers=2,
-        max_processes=2,
-    )
-    manager.run(df)
-
-
-@patch(
-    "sagemaker.feature_store.feature_group.IngestionManagerPandas._ingest_single_batch",
-    MagicMock(return_value=[1]),
-)
-def test_ingestion_manager_run_failure():
-    df = pd.DataFrame({"float": pd.Series([2.0], dtype="float64")})
-    manager = IngestionManagerPandas(
-        feature_group_name="MyGroup",
-        sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
-        max_workers=1,
+def test_list_feature_groups_with_no_filter(sagemaker_session_mock):
+    feature_store = FeatureStore(sagemaker_session=sagemaker_session_mock)
+    feature_store.list_feature_groups()
+    sagemaker_session_mock.list_feature_groups.assert_called_with(
+        name_contains=None,
+        feature_group_status_equals=None,
+        offline_store_status_equals=None,
+        creation_time_after=None,
+        creation_time_before=None,
+        sort_order=None,
+        sort_by=None,
+        max_results=None,
+        next_token=None,
     )
 
-    with pytest.raises(IngestionError) as error:
-        manager.run(df)
 
-    assert "Failed to ingest some data into FeatureGroup MyGroup" in str(error)
-    assert error.value.failed_rows == [1]
-    assert manager.failed_rows == [1]
-
-
-@patch(
-    "sagemaker.feature_store.feature_group.IngestionManagerPandas._ingest_single_batch",
-    MagicMock(side_effect=ProfileNotFound(profile="non_exist")),
-)
-def test_ingestion_manager_with_profile_name_run_failure():
-    df = pd.DataFrame({"float": pd.Series([2.0], dtype="float64")})
-    manager = IngestionManagerPandas(
-        feature_group_name="MyGroup",
-        sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
-        max_workers=1,
-        profile_name="non_exist",
+def test_list_feature_groups_with_all_filters(sagemaker_session_mock):
+    feature_store = FeatureStore(sagemaker_session=sagemaker_session_mock)
+    feature_store.list_feature_groups(
+        name_contains="MyFeatureGroup",
+        feature_group_status_equals="Created",
+        offline_store_status_equals="Active",
+        creation_time_after=datetime.datetime(2020, 12, 1),
+        creation_time_before=datetime.datetime(2022, 7, 1),
+        sort_order="Ascending",
+        sort_by="Name",
+        max_results=50,
+        next_token="token",
+    )
+    sagemaker_session_mock.list_feature_groups.assert_called_with(
+        name_contains="MyFeatureGroup",
+        feature_group_status_equals="Created",
+        offline_store_status_equals="Active",
+        creation_time_after=datetime.datetime(2020, 12, 1),
+        creation_time_before=datetime.datetime(2022, 7, 1),
+        sort_order="Ascending",
+        sort_by="Name",
+        max_results=50,
+        next_token="token",
     )
 
     try:
