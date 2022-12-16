@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.124.0 (2022-12-16)
+
+### Features
+
+ * Doc update for TableFormatEnum
+ * Add p4de to smddp supported instance types
+ * Add disable_profiler field in config and propagate changes
+ * Added doc update for dataset builder
+
+### Bug Fixes and Other Changes
+
+ * Use Async Inference Config when available for endpoint update
+
+### Documentation Changes
+
+ * smdistributed libraries release notes
+
 ## v2.123.0 (2022-12-15)
 
 ### Features
