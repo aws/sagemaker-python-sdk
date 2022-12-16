@@ -79,6 +79,7 @@ from sagemaker.utils import (
     get_config_value,
     name_from_base,
     to_string,
+    check_and_get_run_experiment_config,
 )
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
@@ -937,26 +938,29 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
     def _prepare_profiler_for_training(self):
         """Set necessary values and do basic validations in profiler config and profiler rules.
 
-        When user explicitly set rules to an empty list, default profiler rule won't be enabled.
-        Default profiler rule will be enabled in supported regions when either:
-        1. user doesn't specify any rules, i.e., rules=None; or
-        2. user only specify debugger rules, i.e., rules=[Rule.sagemaker(...)]
+        No default profiler rule will be used. The user needs to specify rules explicitly
         """
         if self.disable_profiler:
-            if self.profiler_config:
-                raise RuntimeError("profiler_config cannot be set when disable_profiler is True.")
+            if self.profiler_config and not self.profiler_config.disable_profiler:
+                raise RuntimeError(
+                    "profiler_config.disable_profiler cannot be False"
+                    + " when disable_profiler is True."
+                )
             if self.profiler_rules:
                 raise RuntimeError("ProfilerRule cannot be set when disable_profiler is True.")
         elif _region_supports_profiler(self.sagemaker_session.boto_region_name):
             if self.profiler_config is None:
                 self.profiler_config = ProfilerConfig(s3_output_path=self.output_path)
             if self.rules is None or (self.rules and not self.profiler_rules):
-                self.profiler_rules = [get_default_profiler_rule()]
+                self.profiler_rules = []
 
         if self.profiler_config and not self.profiler_config.s3_output_path:
             self.profiler_config.s3_output_path = self.output_path
 
         self.profiler_rule_configs = self._prepare_profiler_rules()
+        # if profiler_config is still None, it means the job has profiler disabled
+        if self.profiler_config is None:
+            self.profiler_config = ProfilerConfig(disable_profiler=True)
 
     def _prepare_profiler_rules(self):
         """Set any necessary values in profiler rules, if they are provided."""
@@ -1047,7 +1051,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             error_message="""Cannot get the profiling output artifacts path.
         The Estimator is not associated with a training job."""
         )
-        if self.profiler_config is not None:
+        if self.profiler_config is not None and not self.profiler_config.disable_profiler:
             return os.path.join(
                 self.profiler_config.s3_output_path,
                 self.latest_training_job.name,
@@ -1103,8 +1107,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             job_name (str): Training job name. If not specified, the estimator generates
                 a default job name based on the training image name and current timestamp.
             experiment_config (dict[str, str]): Experiment management configuration.
-                Optionally, the dict can contain three keys:
-                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                Optionally, the dict can contain four keys:
+                'ExperimentName', 'TrialName', 'TrialComponentDisplayName' and 'RunName'..
                 The behavior of setting these keys is as follows:
                 * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
                 automatically created and the job's Trial Component associated with the Trial.
@@ -1122,6 +1126,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         """
         self._prepare_for_training(job_name=job_name)
 
+        experiment_config = check_and_get_run_experiment_config(experiment_config)
         self.latest_training_job = _TrainingJob.start_new(self, inputs, experiment_config)
         self.jobs.append(self.latest_training_job)
         if wait:
@@ -1893,8 +1898,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         else:
             self.profiler_config = ProfilerConfig(s3_output_path=self.output_path)
 
-        self.profiler_rules = [get_default_profiler_rule()]
-        self.profiler_rule_configs = self._prepare_profiler_rules()
+        self.profiler_rules = []
+        self.profiler_rule_configs = []
 
         _TrainingJob.update(
             self, self.profiler_rule_configs, self.profiler_config._to_request_dict()
@@ -2023,8 +2028,8 @@ class _TrainingJob(_Job):
             inputs (str): Parameters used when called
                 :meth:`~sagemaker.estimator.EstimatorBase.fit`.
             experiment_config (dict[str, str]): Experiment management configuration.
-                Optionally, the dict can contain three keys:
-                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                Optionally, the dict can contain four keys:
+                'ExperimentName', 'TrialName', 'TrialComponentDisplayName' and 'RunName'.
                 The behavior of setting these keys is as follows:
                 * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
                 automatically created and the job's Trial Component associated with the Trial.
@@ -2033,6 +2038,7 @@ class _TrainingJob(_Job):
                 * If both `ExperimentName` and `TrialName` are not supplied the trial component
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
+                * `RunName` is used to record an experiment run.
         Returns:
             sagemaker.estimator._TrainingJob: Constructed object that captures
             all information about the started training job.
@@ -2053,8 +2059,8 @@ class _TrainingJob(_Job):
             inputs (str): Parameters used when called
                 :meth:`~sagemaker.estimator.EstimatorBase.fit`.
             experiment_config (dict[str, str]): Experiment management configuration.
-                Optionally, the dict can contain three keys:
-                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                Optionally, the dict can contain four keys:
+                'ExperimentName', 'TrialName', 'TrialComponentDisplayName' and 'RunName'.
                 The behavior of setting these keys is as follows:
                 * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
                 automatically created and the job's Trial Component associated with the Trial.
@@ -2063,6 +2069,7 @@ class _TrainingJob(_Job):
                 * If both `ExperimentName` and `TrialName` are not supplied the trial component
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
+                * `RunName` is used to record an experiment run.
 
         Returns:
             Dict: dict for `sagemaker.session.Session.train` method
