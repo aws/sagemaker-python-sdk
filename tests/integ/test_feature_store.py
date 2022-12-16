@@ -12,9 +12,9 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import datetime
 import json
 import time
-import datetime
 from contextlib import contextmanager
 
 import boto3
@@ -23,18 +23,13 @@ import pandas as pd
 import pytest
 from pandas import DataFrame
 
+from sagemaker.feature_group_utils import get_feature_group_as_dataframe
 from sagemaker.feature_store.feature_definition import FractionalFeatureDefinition
 from sagemaker.feature_store.feature_group import FeatureGroup
-from sagemaker.feature_store.inputs import (
-    FeatureValue,
-    FeatureParameter,
-    TableFormatEnum,
-)
 from sagemaker.feature_store.feature_store import FeatureStore
 from sagemaker.feature_store.inputs import FeatureValue, FeatureParameter, TableFormatEnum
 from sagemaker.session import get_execution_role, Session
 from tests.integ.timeout import timeout
-from sagemaker.feature_group_utils import get_feature_group_as_dataframe
 
 BUCKET_POLICY = {
     "Version": "2012-10-17",
