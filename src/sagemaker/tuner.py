@@ -413,6 +413,7 @@ class HyperparameterTuner(object):
         strategy_config: Optional[StrategyConfig] = None,
         early_stopping_type: Union[str, PipelineVariable] = "Off",
         estimator_name: Optional[str] = None,
+        random_seed: Optional[int] = None,
     ):
         """Creates a ``HyperparameterTuner`` instance.
 
@@ -470,6 +471,9 @@ class HyperparameterTuner(object):
             estimator_name (str): A unique name to identify an estimator within the
                 hyperparameter tuning job, when more than one estimator is used with
                 the same tuning job (default: None).
+            random_seed (int): An initial value used to initialize a pseudo-random number generator.
+                Setting a random seed will make the hyperparameter tuning search strategies to
+                produce more consistent configurations for the same tuning job.
         """
         if hyperparameter_ranges is None or len(hyperparameter_ranges) == 0:
             raise ValueError("Need to specify hyperparameter ranges")
@@ -516,6 +520,7 @@ class HyperparameterTuner(object):
         self.latest_tuning_job = None
         self.warm_start_config = warm_start_config
         self.early_stopping_type = early_stopping_type
+        self.random_seed = random_seed
 
     def _prepare_for_tuning(self, job_name=None, include_cls_metadata=False):
         """Prepare the tuner instance for tuning (fit)."""
@@ -1222,6 +1227,9 @@ class HyperparameterTuner(object):
             "base_tuning_job_name": base_from_name(job_details["HyperParameterTuningJobName"]),
         }
 
+        if "RandomSeed" in tuning_config:
+            params["random_seed"] = tuning_config["RandomSeed"]
+
         if "HyperParameterTuningJobObjective" in tuning_config:
             params["objective_metric_name"] = tuning_config["HyperParameterTuningJobObjective"][
                 "MetricName"
@@ -1483,6 +1491,7 @@ class HyperparameterTuner(object):
                     warm_start_type=warm_start_type, parents=all_parents
                 ),
                 early_stopping_type=self.early_stopping_type,
+                random_seed=self.random_seed,
             )
 
         if len(self.estimator_dict) > 1:
@@ -1508,6 +1517,7 @@ class HyperparameterTuner(object):
             max_parallel_jobs=self.max_parallel_jobs,
             warm_start_config=WarmStartConfig(warm_start_type=warm_start_type, parents=all_parents),
             early_stopping_type=self.early_stopping_type,
+            random_seed=self.random_seed,
         )
 
     @classmethod
@@ -1526,6 +1536,7 @@ class HyperparameterTuner(object):
         tags=None,
         warm_start_config=None,
         early_stopping_type="Off",
+        random_seed=None,
     ):
         """Factory method to create a ``HyperparameterTuner`` instance.
 
@@ -1586,6 +1597,9 @@ class HyperparameterTuner(object):
                 Can be either 'Auto' or 'Off' (default: 'Off'). If set to 'Off', early stopping
                 will not be attempted. If set to 'Auto', early stopping of some training jobs may
                 happen, but is not guaranteed to.
+            random_seed (int): An initial value used to initialize a pseudo-random number generator.
+                Setting a random seed will make the hyperparameter tuning search strategies to
+                produce more consistent configurations for the same tuning job.
 
         Returns:
             sagemaker.tuner.HyperparameterTuner: a new ``HyperparameterTuner`` object that can
@@ -1624,6 +1638,7 @@ class HyperparameterTuner(object):
             tags=tags,
             warm_start_config=warm_start_config,
             early_stopping_type=early_stopping_type,
+            random_seed=random_seed,
         )
 
         for estimator_name in estimator_names[1:]:
@@ -1774,6 +1789,9 @@ class _TuningJob(_Job):
             "max_parallel_jobs": tuner.max_parallel_jobs,
             "early_stopping_type": tuner.early_stopping_type,
         }
+
+        if tuner.random_seed is not None:
+            tuning_config["random_seed"] = tuner.random_seed
 
         if tuner.strategy_config is not None:
             tuning_config["strategy_config"] = tuner.strategy_config.to_input_req()
