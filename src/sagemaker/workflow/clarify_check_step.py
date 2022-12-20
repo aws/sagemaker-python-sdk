@@ -132,8 +132,8 @@ class ModelExplainabilityCheckConfig(ClarifyCheckConfig):
         model_config (ModelConfig): Config of the model and its endpoint to be created.
         explainability_config (SHAPConfig): Config of the specific explainability method.
             Currently, only SHAP is supported.
-        model_scores (str or int or ModelPredictedLabelConfig): Index or JSONPath location
-            in the model output for the predicted scores to be explained (default: None).
+        model_scores (str or int or ModelPredictedLabelConfig): Index or JMESPath expression
+            to locate the predicted scores in the model output (default: None).
             This is not required if the model output is a single score. Alternatively,
             an instance of ModelPredictedLabelConfig can be provided
             but this field CANNOT be any type of the `PipelineVariable`.

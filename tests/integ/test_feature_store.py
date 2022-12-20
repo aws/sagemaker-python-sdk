@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import datetime
 import json
 import time
+import datetime
 from contextlib import contextmanager
 
 import boto3
@@ -81,6 +82,11 @@ def feature_store_session():
 @pytest.fixture
 def feature_group_name():
     return f"my-feature-group-{int(time.time() * 10 ** 7)}"
+
+
+@pytest.fixture
+def base_name():
+    return f"my-base-{int(time.time() * 10**7)}"
 
 
 @pytest.fixture
