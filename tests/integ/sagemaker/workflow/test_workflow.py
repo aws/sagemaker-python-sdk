@@ -1168,7 +1168,13 @@ def _verify_repack_output(repack_step_dict, sagemaker_session):
 
 
 def test_caching_behavior(
-    pipeline_session, role, cpu_instance_type, pipeline_name, script_dir, athena_dataset_definition
+    pipeline_session,
+    role,
+    cpu_instance_type,
+    pipeline_name,
+    script_dir,
+    athena_dataset_definition,
+    region_name,
 ):
     default_bucket = pipeline_session.default_bucket()
     data_path = os.path.join(DATA_DIR, "workflow")
@@ -1263,8 +1269,6 @@ def test_caching_behavior(
         # create pipeline
         pipeline.create(role)
         definition = json.loads(pipeline.definition())
-        # delete profiler config for assertions as it will contain a timestamp
-        del definition["Steps"][1]["Arguments"]["ProfilerRuleConfigurations"]
 
         # verify input path
         expected_abalone_input_path = f"{pipeline_name}/{step_process.name}" f"/input/abalone_data"
@@ -1289,7 +1293,6 @@ def test_caching_behavior(
 
         # verify no changes
         definition2 = json.loads(pipeline.definition())
-        del definition2["Steps"][1]["Arguments"]["ProfilerRuleConfigurations"]
         assert definition == definition2
 
         # add dummy file to source_dir
@@ -1300,7 +1303,6 @@ def test_caching_behavior(
 
         # verify changes
         definition3 = json.loads(pipeline.definition())
-        del definition3["Steps"][1]["Arguments"]["ProfilerRuleConfigurations"]
         assert definition != definition3
 
     finally:

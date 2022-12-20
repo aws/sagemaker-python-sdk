@@ -282,8 +282,8 @@ class HyperbandStrategyConfig(object):
 
         Returns:
             sagemaker.tuner.HyperbandStrategyConfig: De-serialized instance of
-            HyperbandStrategyConfig containing the max_resource and min_resource provided as part of
-            ``hyperband_strategy_config``.
+                ``HyperbandStrategyConfig`` containing the max_resource
+                and min_resource provided as part of ``hyperband_strategy_config``.
         """
         return cls(
             min_resource=hyperband_strategy_config[HYPERBAND_MIN_RESOURCE],
@@ -306,7 +306,7 @@ class HyperbandStrategyConfig(object):
 
         Returns:
             dict: Containing the "MaxResource" and
-            "MinResource" as the first class fields.
+                "MinResource" as the first class fields.
         """
         return {
             HYPERBAND_MIN_RESOURCE: self.min_resource,
@@ -330,7 +330,7 @@ class StrategyConfig(object):
 
         Args:
             hyperband_strategy_config (sagemaker.tuner.HyperbandStrategyConfig): The configuration
-            for the object that specifies the Hyperband strategy.
+                for the object that specifies the Hyperband strategy.
                 This parameter is only supported for the Hyperband selection for Strategy within
                 the HyperParameterTuningJobConfig.
         """
@@ -413,6 +413,7 @@ class HyperparameterTuner(object):
         strategy_config: Optional[StrategyConfig] = None,
         early_stopping_type: Union[str, PipelineVariable] = "Off",
         estimator_name: Optional[str] = None,
+        random_seed: Optional[int] = None,
     ):
         """Creates a ``HyperparameterTuner`` instance.
 
@@ -461,7 +462,7 @@ class HyperparameterTuner(object):
                 ``WarmStartConfig`` object that has been initialized with the
                 configuration defining the nature of warm start tuning job.
             strategy_config (sagemaker.tuner.StrategyConfig): A configuration for "Hyperparameter"
-            tuning job optimisation strategy.
+                tuning job optimisation strategy.
             early_stopping_type (str or PipelineVariable): Specifies whether early stopping is
                 enabled for the job. Can be either 'Auto' or 'Off' (default:
                 'Off'). If set to 'Off', early stopping will not be attempted.
@@ -470,6 +471,9 @@ class HyperparameterTuner(object):
             estimator_name (str): A unique name to identify an estimator within the
                 hyperparameter tuning job, when more than one estimator is used with
                 the same tuning job (default: None).
+            random_seed (int): An initial value used to initialize a pseudo-random number generator.
+                Setting a random seed will make the hyperparameter tuning search strategies to
+                produce more consistent configurations for the same tuning job.
         """
         if hyperparameter_ranges is None or len(hyperparameter_ranges) == 0:
             raise ValueError("Need to specify hyperparameter ranges")
@@ -516,6 +520,7 @@ class HyperparameterTuner(object):
         self.latest_tuning_job = None
         self.warm_start_config = warm_start_config
         self.early_stopping_type = early_stopping_type
+        self.random_seed = random_seed
 
     def _prepare_for_tuning(self, job_name=None, include_cls_metadata=False):
         """Prepare the tuner instance for tuning (fit)."""
@@ -1222,6 +1227,9 @@ class HyperparameterTuner(object):
             "base_tuning_job_name": base_from_name(job_details["HyperParameterTuningJobName"]),
         }
 
+        if "RandomSeed" in tuning_config:
+            params["random_seed"] = tuning_config["RandomSeed"]
+
         if "HyperParameterTuningJobObjective" in tuning_config:
             params["objective_metric_name"] = tuning_config["HyperParameterTuningJobObjective"][
                 "MetricName"
@@ -1483,6 +1491,7 @@ class HyperparameterTuner(object):
                     warm_start_type=warm_start_type, parents=all_parents
                 ),
                 early_stopping_type=self.early_stopping_type,
+                random_seed=self.random_seed,
             )
 
         if len(self.estimator_dict) > 1:
@@ -1508,6 +1517,7 @@ class HyperparameterTuner(object):
             max_parallel_jobs=self.max_parallel_jobs,
             warm_start_config=WarmStartConfig(warm_start_type=warm_start_type, parents=all_parents),
             early_stopping_type=self.early_stopping_type,
+            random_seed=self.random_seed,
         )
 
     @classmethod
@@ -1526,6 +1536,7 @@ class HyperparameterTuner(object):
         tags=None,
         warm_start_config=None,
         early_stopping_type="Off",
+        random_seed=None,
     ):
         """Factory method to create a ``HyperparameterTuner`` instance.
 
@@ -1569,7 +1580,7 @@ class HyperparameterTuner(object):
             strategy (str): Strategy to be used for hyperparameter estimations
                 (default: 'Bayesian').
             strategy_config (dict): The configuration for a training job launched by a
-            hyperparameter tuning job.
+                hyperparameter tuning job.
             objective_type (str): The type of the objective metric for evaluating training jobs.
                 This value can be either 'Minimize' or 'Maximize' (default: 'Maximize').
             max_jobs (int): Maximum total number of training jobs to start for the hyperparameter
@@ -1586,6 +1597,9 @@ class HyperparameterTuner(object):
                 Can be either 'Auto' or 'Off' (default: 'Off'). If set to 'Off', early stopping
                 will not be attempted. If set to 'Auto', early stopping of some training jobs may
                 happen, but is not guaranteed to.
+            random_seed (int): An initial value used to initialize a pseudo-random number generator.
+                Setting a random seed will make the hyperparameter tuning search strategies to
+                produce more consistent configurations for the same tuning job.
 
         Returns:
             sagemaker.tuner.HyperparameterTuner: a new ``HyperparameterTuner`` object that can
@@ -1624,6 +1638,7 @@ class HyperparameterTuner(object):
             tags=tags,
             warm_start_config=warm_start_config,
             early_stopping_type=early_stopping_type,
+            random_seed=random_seed,
         )
 
         for estimator_name in estimator_names[1:]:
@@ -1775,8 +1790,11 @@ class _TuningJob(_Job):
             "early_stopping_type": tuner.early_stopping_type,
         }
 
+        if tuner.random_seed is not None:
+            tuning_config["random_seed"] = tuner.random_seed
+
         if tuner.strategy_config is not None:
-            tuning_config["strategy_config"] = tuner.strategy_config
+            tuning_config["strategy_config"] = tuner.strategy_config.to_input_req()
 
         if tuner.objective_metric_name is not None:
             tuning_config["objective_type"] = tuner.objective_type

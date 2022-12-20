@@ -545,6 +545,7 @@ def test_attach_tuning_job_with_estimator_from_hyperparameters(sagemaker_session
     assert tuner.strategy == "Bayesian"
     assert tuner.objective_type == "Minimize"
     assert tuner.early_stopping_type == "Off"
+    assert tuner.random_seed == 0
 
     assert isinstance(tuner.estimator, PCA)
     assert tuner.estimator.role == ROLE

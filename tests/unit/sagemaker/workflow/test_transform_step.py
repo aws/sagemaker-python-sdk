@@ -176,6 +176,10 @@ def test_transform_step_with_transformer(model_name, data, output_path, pipeline
         "Arguments": expected_step_arguments,
     }
 
+    # test idempotency
+    step_def2 = json.loads(pipeline.definition())["Steps"][0]
+    assert step_def == step_def2
+
 
 @pytest.mark.parametrize(
     "experiment_config, expected_experiment_config",
@@ -260,6 +264,10 @@ def test_transform_step_with_transformer_experiment_config(
 
     adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
     assert adjacency_list == {"MyTransformStep": []}
+
+    # test idempotency
+    step_def2 = json.loads(pipeline.definition())["Steps"][0]
+    assert step_def == step_def2
 
 
 @pytest.mark.parametrize(

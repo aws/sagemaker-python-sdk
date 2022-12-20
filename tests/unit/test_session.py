@@ -588,10 +588,15 @@ def test_user_agent_injected(boto_session):
 
     assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_client._client_config.user_agent
     assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_runtime_client._client_config.user_agent
+    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_metrics_client._client_config.user_agent
     assert "AWS-SageMaker-Notebook-Instance" not in sess.sagemaker_client._client_config.user_agent
     assert (
         "AWS-SageMaker-Notebook-Instance"
         not in sess.sagemaker_runtime_client._client_config.user_agent
+    )
+    assert (
+        "AWS-SageMaker-Notebook-Instance"
+        not in sess.sagemaker_metrics_client._client_config.user_agent
     )
 
 
@@ -607,9 +612,13 @@ def test_user_agent_injected_with_nbi(boto_session):
 
     assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_client._client_config.user_agent
     assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_runtime_client._client_config.user_agent
+    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_metrics_client._client_config.user_agent
     assert "AWS-SageMaker-Notebook-Instance" in sess.sagemaker_client._client_config.user_agent
     assert (
         "AWS-SageMaker-Notebook-Instance" in sess.sagemaker_runtime_client._client_config.user_agent
+    )
+    assert (
+        "AWS-SageMaker-Notebook-Instance" in sess.sagemaker_metrics_client._client_config.user_agent
     )
 
 
@@ -625,10 +634,15 @@ def test_user_agent_injected_with_nbi_ioerror(boto_session):
 
     assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_client._client_config.user_agent
     assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_runtime_client._client_config.user_agent
+    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_metrics_client._client_config.user_agent
     assert "AWS-SageMaker-Notebook-Instance" not in sess.sagemaker_client._client_config.user_agent
     assert (
         "AWS-SageMaker-Notebook-Instance"
         not in sess.sagemaker_runtime_client._client_config.user_agent
+    )
+    assert (
+        "AWS-SageMaker-Notebook-Instance"
+        not in sess.sagemaker_metrics_client._client_config.user_agent
     )
 
 
@@ -700,6 +714,7 @@ EXPERIMENT_CONFIG = {
     "ExperimentName": "dummyExp",
     "TrialName": "dummyT",
     "TrialComponentDisplayName": "dummyTC",
+    "RunName": "dummyRN",
 }
 MODEL_CLIENT_CONFIG = {"InvocationsMaxRetries": 2, "InvocationsTimeoutInSeconds": 60}
 
@@ -882,6 +897,7 @@ SAMPLE_TUNING_JOB_REQUEST = {
         "ResourceLimits": {"MaxNumberOfTrainingJobs": 100, "MaxParallelTrainingJobs": 5},
         "ParameterRanges": SAMPLE_PARAM_RANGES,
         "TrainingJobEarlyStoppingType": "Off",
+        "RandomSeed": 0,
     },
     "TrainingJobDefinition": {
         "StaticHyperParameters": STATIC_HPs,
@@ -941,6 +957,13 @@ SAMPLE_MULTI_ALGO_TUNING_JOB_REQUEST = {
     ],
 }
 
+SAMPLE_HYPERBAND_STRATEGY_CONFIG = {
+    "HyperbandStrategyConfig": {
+        "MinResource": 1,
+        "MaxResource": 10,
+    }
+}
+
 
 @pytest.mark.parametrize(
     "warm_start_type, parents",
@@ -967,6 +990,7 @@ def test_tune_warm_start(sagemaker_session, warm_start_type, parents):
     sagemaker_session.tune(
         job_name="dummy-tuning-1",
         strategy="Bayesian",
+        random_seed=0,
         objective_type="Maximize",
         objective_metric_name="val-score",
         max_jobs=100,
@@ -1058,6 +1082,7 @@ def test_create_tuning_job(sagemaker_session):
             "max_jobs": 100,
             "max_parallel_jobs": 5,
             "parameter_ranges": SAMPLE_PARAM_RANGES,
+            "random_seed": 0,
         },
         training_config={
             "static_hyperparameters": STATIC_HPs,
@@ -1148,6 +1173,7 @@ def test_tune(sagemaker_session):
     sagemaker_session.tune(
         job_name="dummy-tuning-1",
         strategy="Bayesian",
+        random_seed=0,
         objective_type="Maximize",
         objective_metric_name="val-score",
         max_jobs=100,
@@ -1167,6 +1193,47 @@ def test_tune(sagemaker_session):
     )
 
 
+def test_tune_with_strategy_config(sagemaker_session):
+    def assert_create_tuning_job_request(**kwrags):
+        assert (
+            kwrags["HyperParameterTuningJobConfig"]["StrategyConfig"]["HyperbandStrategyConfig"][
+                "MinResource"
+            ]
+            == SAMPLE_HYPERBAND_STRATEGY_CONFIG["HyperbandStrategyConfig"]["MinResource"]
+        )
+        assert (
+            kwrags["HyperParameterTuningJobConfig"]["StrategyConfig"]["HyperbandStrategyConfig"][
+                "MaxResource"
+            ]
+            == SAMPLE_HYPERBAND_STRATEGY_CONFIG["HyperbandStrategyConfig"]["MaxResource"]
+        )
+
+    sagemaker_session.sagemaker_client.create_hyper_parameter_tuning_job.side_effect = (
+        assert_create_tuning_job_request
+    )
+    sagemaker_session.tune(
+        job_name="dummy-tuning-1",
+        strategy="Bayesian",
+        objective_type="Maximize",
+        objective_metric_name="val-score",
+        max_jobs=100,
+        max_parallel_jobs=5,
+        parameter_ranges=SAMPLE_PARAM_RANGES,
+        static_hyperparameters=STATIC_HPs,
+        image_uri="dummy-image-1",
+        input_mode="File",
+        metric_definitions=SAMPLE_METRIC_DEF,
+        role=EXPANDED_ROLE,
+        input_config=SAMPLE_INPUT,
+        output_config=SAMPLE_OUTPUT,
+        resource_config=RESOURCE_CONFIG,
+        stop_condition=SAMPLE_STOPPING_CONDITION,
+        tags=None,
+        warm_start_config=None,
+        strategy_config=SAMPLE_HYPERBAND_STRATEGY_CONFIG,
+    )
+
+
 def test_tune_with_encryption_flag(sagemaker_session):
     def assert_create_tuning_job_request(**kwrags):
         assert (
@@ -1183,6 +1250,7 @@ def test_tune_with_encryption_flag(sagemaker_session):
     sagemaker_session.tune(
         job_name="dummy-tuning-1",
         strategy="Bayesian",
+        random_seed=0,
         objective_type="Maximize",
         objective_metric_name="val-score",
         max_jobs=100,
@@ -1226,6 +1294,7 @@ def test_tune_with_spot_and_checkpoints(sagemaker_session):
     sagemaker_session.tune(
         job_name="dummy-tuning-1",
         strategy="Bayesian",
+        random_seed=0,
         objective_type="Maximize",
         objective_metric_name="val-score",
         max_jobs=100,
@@ -2736,6 +2805,35 @@ def test_feature_metadata_describe(sagemaker_session):
     )
     assert sagemaker_session.sagemaker_client.describe_feature_metadata.called_with(
         FeatureGroupName="MyFeatureGroup", FeatureName="TestFeature"
+    )
+
+
+def test_list_feature_groups(sagemaker_session):
+    expected_list_feature_groups_args = {
+        "NameContains": "MyFeatureGroup",
+        "FeatureGroupStatusEquals": "Created",
+        "OfflineStoreStatusEquals": "Active",
+        "CreationTimeAfter": datetime.datetime(2020, 12, 1),
+        "CreationTimeBefore": datetime.datetime(2022, 7, 1),
+        "SortOrder": "Ascending",
+        "SortBy": "Name",
+        "MaxResults": 50,
+        "NextToken": "token",
+    }
+    sagemaker_session.list_feature_groups(
+        name_contains="MyFeatureGroup",
+        feature_group_status_equals="Created",
+        offline_store_status_equals="Active",
+        creation_time_after=datetime.datetime(2020, 12, 1),
+        creation_time_before=datetime.datetime(2022, 7, 1),
+        sort_order="Ascending",
+        sort_by="Name",
+        max_results=50,
+        next_token="token",
+    )
+    assert sagemaker_session.sagemaker_client.list_feature_groups.called_once()
+    assert sagemaker_session.sagemaker_client.list_feature_groups.called_with(
+        **expected_list_feature_groups_args
     )
 
 
