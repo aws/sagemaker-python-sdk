@@ -1061,13 +1061,12 @@ class ModelMonitor(object):
             dataset_format (dict): The format of the baseline_dataset.
             dataset_source_container_path (str): The path to the dataset source.
             inference_attribute (str): Index or JSONpath to locate predicted label(s).
-                Only used for ModelQualityMonitor.
+                Only used for ModelQualityMonitor, ModelBiasMonitor, and ModelExplainabilityMonitor
             probability_attribute (str or int): Index or JSONpath to locate probabilities.
-                Only used for ModelQualityMonitor.
-            ground_truth_attribute (str): Index to locate actual label(s).
-                Only used for ModelQualityMonitor.
+                Only used for ModelQualityMonitor, ModelBiasMonitor and ModelExplainabilityMonitor
+            ground_truth_attribute (str): Index or JSONpath to locate actual label(s).
             probability_threshold_attribute (float): threshold to convert probabilities to binaries
-                Only used for ModelQualityMonitor.
+                Only used for ModelQualityMonitor, ModelBiasMonitor and ModelExplainabilityMonitor
 
         Returns:
             dict: Dictionary of environment keys and values.
@@ -2601,13 +2600,10 @@ class ModelQualityMonitor(ModelMonitor):
             problem_type (str): The type of problem of this model quality monitoring. Valid
                 values are "Regression", "BinaryClassification", "MulticlassClassification".
             inference_attribute (str): Index or JSONpath to locate predicted label(s).
-                Only used for ModelQualityMonitor.
             probability_attribute (str or int): Index or JSONpath to locate probabilities.
-                Only used for ModelQualityMonitor.
-            ground_truth_attribute (str): Index to locate actual label(s).
-                Only used for ModelQualityMonitor.
+            ground_truth_attribute (str): Index or JSONpath to locate actual label(s).
             probability_threshold_attribute (float): threshold to convert probabilities to binaries
-                Only used for ModelQualityMonitor.
+                Only used for ModelQualityMonitor, ModelBiasMonitor and ModelExplainabilityMonitor
             post_analytics_processor_script (str): The path to the record post-analytics processor
                 script. This can be a local path or an S3 uri.
             output_s3_uri (str): Desired S3 destination Destination of the constraint_violations
