@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.125.0 (2022-12-19)
+
+### Features
+
+ * add RandomSeed to support reproducible HPO
+
+### Bug Fixes and Other Changes
+
+ * Correct SageMaker Clarify API docstrings by changing JSONPath to JMESPath
+
 ## v2.124.0 (2022-12-16)
 
 ### Features
