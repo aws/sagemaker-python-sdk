@@ -453,7 +453,7 @@ Example:
             str_outputParam, int_outputParam, bool_outputParam, float_outputParam
        ],
     )
-    output_ref = step_lambda.properties.Outputs["output1"]
+    output_ref = step_lambda.OutputParameters["output1"]
 
 Where the lambda function with :code:`arn arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda`
 should output like this:
@@ -479,7 +479,7 @@ Note that the output parameters can not be nested. Otherwise, the value will be 
         }
     }
 
-This will be resolved as :code:`{"output1": "{\"nested_output1\":\"my-output\"}"}` by which if you refer :code:`step_lambda.properties.Outputs["output1"]["nested_output1"]` later, a non-retryable client error will be thrown.
+This will be resolved as :code:`{"output1": "{\"nested_output1\":\"my-output\"}"}` by which if you refer :code:`step_lambda.OutputParameters["output1"]["nested_output1"]` later, a non-retryable client error will be thrown.
 
 CallbackStep
 `````````````
@@ -503,7 +503,7 @@ Example:
         inputs={"arg1": "foo", "arg2": 5, "arg3": param},
         outputs=[outputParam],
     )
-    output_ref = step_callback.properties.Outputs["output1]
+    output_ref = step_callback.OutputParameters["output1]
 
 The output parameters cannot be nested. If the values are nested, they will be treated as a single string value. For example, a nested output value of
 
@@ -515,7 +515,7 @@ The output parameters cannot be nested. If the values are nested, they will be t
         }
     }
 
-is resolved as :code:`{"output1": "{\"nested_output1\":\"my-output\"}"}`. If you try to refer to :code:`step_callback.properties.Outputs["output1"]["nested_output1"]` this will throw a non-retryable client error.
+is resolved as :code:`{"output1": "{\"nested_output1\":\"my-output\"}"}`. If you try to refer to :code:`step_callback.OutputParameters["output1"]["nested_output1"]` this will throw a non-retryable client error.
 
 
 QualityCheckStep

@@ -2146,7 +2146,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
         use_spot_instances=False,
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
-        random_seed=None,
     ):
         """Create an Amazon SageMaker hyperparameter tuning job.
 
@@ -2227,9 +2226,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 started. If the path is unset then SageMaker assumes the
                 checkpoints will be provided under `/opt/ml/checkpoints/`.
                 (default: ``None``).
-            random_seed (int): An initial value used to initialize a pseudo-random number generator.
-                Setting a random seed will make the hyperparameter tuning search strategies to
-                produce more consistent configurations for the same tuning job. (default: ``None``).
         """
 
         tune_request = {
@@ -2242,7 +2238,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 objective_metric_name=objective_metric_name,
                 parameter_ranges=parameter_ranges,
                 early_stopping_type=early_stopping_type,
-                random_seed=random_seed,
                 strategy_config=strategy_config,
             ),
             "TrainingJobDefinition": self._map_training_config(
@@ -2399,7 +2394,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
         objective_type=None,
         objective_metric_name=None,
         parameter_ranges=None,
-        random_seed=None,
         strategy_config=None,
     ):
         """Construct tuning job configuration dictionary.
@@ -2418,9 +2412,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
             objective_metric_name (str): Name of the metric for evaluating training jobs.
             parameter_ranges (dict): Dictionary of parameter ranges. These parameter ranges can
                 be one of three types: Continuous, Integer, or Categorical.
-            random_seed (int): An initial value used to initialize a pseudo-random number generator.
-                Setting a random seed will make the hyperparameter tuning search strategies to
-                produce more consistent configurations for the same tuning job.
             strategy_config (dict): A configuration for the hyperparameter tuning job optimisation
                 strategy.
 
@@ -2438,9 +2429,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
             },
             "TrainingJobEarlyStoppingType": early_stopping_type,
         }
-
-        if random_seed is not None:
-            tuning_config["RandomSeed"] = random_seed
 
         tuning_objective = cls._map_tuning_objective(objective_type, objective_metric_name)
         if tuning_objective is not None:
