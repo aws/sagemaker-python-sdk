@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.126.0 (2022-12-22)
+
+### Features
+
+ * AutoGluon 0.6.1 image_uris
+
+### Bug Fixes and Other Changes
+
+ * Fix broken link in doc
+ * Do not specify S3 path for disabled profiler
+
+### Documentation Changes
+
+ * fix the incorrect property reference
+
 ## v2.125.0 (2022-12-19)
 
 ### Features
