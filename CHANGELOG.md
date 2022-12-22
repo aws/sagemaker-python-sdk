@@ -1,5 +1,74 @@
 # Changelog
 
+## v2.119.0 (2022-12-21)
+
+### Features
+
+ * add RandomSeed to support reproducible HPO
+ * Doc update for TableFormatEnum
+ * Add p4de to smddp supported instance types
+ * Add disable_profiler field in config and propagate changes
+ * Added doc update for dataset builder
+ * Add support for TF2.9.2 training images
+ * Add SageMaker Experiment
+ * Feature Store dataset builder, delete_record, get_record, list_feature_group
+ * Add OSU region to frameworks for DLC
+ * Algorithms Region Expansion OSU/DXB
+ * Add Neo image uri config for Pytorch 1.12
+ * Adding support for SageMaker Training Compiler in PyTorch estimator starting 1.12
+ * Update registries with new region account number mappings.
+ * Add DXB region to frameworks by DLC
+ * Add Code Owners file
+ * Added transform with monitoring pipeline step in transformer
+ * Update TF 2.9 and TF 2.10 inference DLCs
+ * make estimator accept json file as modelparallel config
+ * SageMaker Training Compiler does not support p4de instances
+ * Add support for SparkML v3.3
+
+### Bug Fixes and Other Changes
+
+ * Do not specify S3 path for disabled profiler
+ * Correct SageMaker Clarify API docstrings by changing JSONPath to JMESPath
+ * Use Async Inference Config when available for endpoint update
+ * the Hyperband support fix for the HPO
+ * unpin packaging version
+ * Remove content type image/jpg from analysis configuration schema
+ * Update for Tensorflow Serving 2.11 inference DLCs
+ * Skip Bad Transform Test
+ * Pop out ModelPackageName from pipeline definition
+ * Fix failing jumpstart cache unit tests
+ * FrameworkProcessor S3 uploads
+ * Add constraints file for apache-airflow
+ * support idempotency for framework and spark processors
+ * Fix bug forcing uploaded tar to be named sourcedir
+ * Update local_requirements.txt PyYAML version
+ * refactoring : using with statement
+ * Allow Py 3.7 for MMS Test Docker env
+ * Return ARM XGB/SKLearn tags if `image_scope` is `inference_graviton`
+ * Update scipy to 1.7.3 to support M1 development envs
+ * Fixing type hints for Spark processor that has instance type/count params in reverse order
+ * Add DeepAR ap-northeast-3 repository.
+ * Fix AsyncInferenceConfig documentation typo
+ * fix ml_inf to ml_inf1 in Neo multi-version support
+ * Fix type annotations
+ * add neo mvp region accounts
+
+### Documentation Changes
+
+ * fix the incorrect property reference
+ * smdistributed libraries release notes
+
+## v2.125.0 (2022-12-19)
+
+### Features
+
+ * add RandomSeed to support reproducible HPO
+
+### Bug Fixes and Other Changes
+
+ * Correct SageMaker Clarify API docstrings by changing JSONPath to JMESPath
+
+
 ## v2.124.0 (2022-12-16)
 
 ### Features
