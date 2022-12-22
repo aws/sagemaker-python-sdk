@@ -60,6 +60,16 @@ Orchestrate your SageMaker training and inference workflows with Airflow and Kub
     workflows/index
 
 
+****************************
+Amazon SageMaker Experiments
+****************************
+You can use Amazon SageMaker Experiments to track machine learning experiments.
+
+.. toctree::
+    :maxdepth: 2
+
+    experiments/index
+
 *************************
 Amazon SageMaker Debugger
 *************************

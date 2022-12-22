@@ -89,6 +89,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         sagemaker_featurestore_runtime_client=None,
         default_bucket=None,
         settings=SessionSettings(),
+        sagemaker_metrics_client=None,
     ):
         """Initialize a SageMaker ``Session``.
 
@@ -116,6 +117,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 Example: "sagemaker-my-custom-bucket".
             settings (sagemaker.session_settings.SessionSettings): Optional. Set of optional
                 parameters to apply to the session.
+            sagemaker_metrics_client (boto3.SageMakerMetrics.Client):
+                Client which makes SageMaker Metrics related calls to Amazon SageMaker
+                (default: None). If not provided, one will be created using
+                this instance's ``boto_session``.
         """
         self._default_bucket = None
         self._default_bucket_name_override = default_bucket
@@ -130,6 +135,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             sagemaker_client=sagemaker_client,
             sagemaker_runtime_client=sagemaker_runtime_client,
             sagemaker_featurestore_runtime_client=sagemaker_featurestore_runtime_client,
+            sagemaker_metrics_client=sagemaker_metrics_client,
         )
 
     def _initialize(
@@ -138,6 +144,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         sagemaker_client,
         sagemaker_runtime_client,
         sagemaker_featurestore_runtime_client,
+        sagemaker_metrics_client,
     ):
         """Initialize this SageMaker Session.
 
@@ -171,6 +178,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
             self.sagemaker_featurestore_runtime_client = self.boto_session.client(
                 "sagemaker-featurestore-runtime"
             )
+
+        if sagemaker_metrics_client:
+            self.sagemaker_metrics_client = sagemaker_metrics_client
+        else:
+            self.sagemaker_metrics_client = self.boto_session.client("sagemaker-metrics")
+        prepend_user_agent(self.sagemaker_metrics_client)
 
         self.local_mode = False
 
@@ -548,8 +561,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 checkpoints will be provided under `/opt/ml/checkpoints/`.
                 (default: ``None``).
             experiment_config (dict[str, str]): Experiment management configuration.
-                Optionally, the dict can contain three keys:
-                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                Optionally, the dict can contain four keys:
+                'ExperimentName', 'TrialName',  'TrialComponentDisplayName' and 'RunName'.
                 The behavior of setting these keys is as follows:
                 * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
                 automatically created and the job's Trial Component associated with the Trial.
@@ -558,6 +571,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 * If both `ExperimentName` and `TrialName` are not supplied the trial component
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
+                * `RunName` is used to record an experiment run.
             enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
                 Series. For more information see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
@@ -703,8 +717,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 checkpoints will be provided under `/opt/ml/checkpoints/`.
                 (default: ``None``).
             experiment_config (dict[str, str]): Experiment management configuration.
-                Optionally, the dict can contain three keys:
-                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                Optionally, the dict can contain four keys:
+                'ExperimentName', 'TrialName', 'TrialComponentDisplayName' and 'RunName'.
                 The behavior of setting these keys is as follows:
                 * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
                 automatically created and the job's Trial Component associated with the Trial.
@@ -713,6 +727,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 * If both `ExperimentName` and `TrialName` are not supplied the trial component
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
+                * `RunName` is used to record an experiment run.
             enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
                 Series. For more information see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
@@ -2131,6 +2146,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         use_spot_instances=False,
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
+        random_seed=None,
     ):
         """Create an Amazon SageMaker hyperparameter tuning job.
 
@@ -2211,6 +2227,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 started. If the path is unset then SageMaker assumes the
                 checkpoints will be provided under `/opt/ml/checkpoints/`.
                 (default: ``None``).
+            random_seed (int): An initial value used to initialize a pseudo-random number generator.
+                Setting a random seed will make the hyperparameter tuning search strategies to
+                produce more consistent configurations for the same tuning job. (default: ``None``).
         """
 
         tune_request = {
@@ -2223,6 +2242,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 objective_metric_name=objective_metric_name,
                 parameter_ranges=parameter_ranges,
                 early_stopping_type=early_stopping_type,
+                random_seed=random_seed,
                 strategy_config=strategy_config,
             ),
             "TrainingJobDefinition": self._map_training_config(
@@ -2379,6 +2399,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         objective_type=None,
         objective_metric_name=None,
         parameter_ranges=None,
+        random_seed=None,
         strategy_config=None,
     ):
         """Construct tuning job configuration dictionary.
@@ -2397,6 +2418,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             objective_metric_name (str): Name of the metric for evaluating training jobs.
             parameter_ranges (dict): Dictionary of parameter ranges. These parameter ranges can
                 be one of three types: Continuous, Integer, or Categorical.
+            random_seed (int): An initial value used to initialize a pseudo-random number generator.
+                Setting a random seed will make the hyperparameter tuning search strategies to
+                produce more consistent configurations for the same tuning job.
             strategy_config (dict): A configuration for the hyperparameter tuning job optimisation
                 strategy.
 
@@ -2414,6 +2438,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             },
             "TrainingJobEarlyStoppingType": early_stopping_type,
         }
+
+        if random_seed is not None:
+            tuning_config["RandomSeed"] = random_seed
 
         tuning_objective = cls._map_tuning_objective(objective_type, objective_metric_name)
         if tuning_objective is not None:
@@ -3308,6 +3335,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if request_data_capture_config_dict is not None:
             request["DataCaptureConfig"] = request_data_capture_config_dict
+
+        if existing_endpoint_config_desc.get("AsyncInferenceConfig") is not None:
+            request["AsyncInferenceConfig"] = existing_endpoint_config_desc.get(
+                "AsyncInferenceConfig", None
+            )
 
         self.sagemaker_client.create_endpoint_config(**request)
 

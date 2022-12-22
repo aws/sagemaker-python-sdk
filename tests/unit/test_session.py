@@ -588,10 +588,15 @@ def test_user_agent_injected(boto_session):
 
     assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_client._client_config.user_agent
     assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_runtime_client._client_config.user_agent
+    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_metrics_client._client_config.user_agent
     assert "AWS-SageMaker-Notebook-Instance" not in sess.sagemaker_client._client_config.user_agent
     assert (
         "AWS-SageMaker-Notebook-Instance"
         not in sess.sagemaker_runtime_client._client_config.user_agent
+    )
+    assert (
+        "AWS-SageMaker-Notebook-Instance"
+        not in sess.sagemaker_metrics_client._client_config.user_agent
     )
 
 
@@ -607,9 +612,13 @@ def test_user_agent_injected_with_nbi(boto_session):
 
     assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_client._client_config.user_agent
     assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_runtime_client._client_config.user_agent
+    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_metrics_client._client_config.user_agent
     assert "AWS-SageMaker-Notebook-Instance" in sess.sagemaker_client._client_config.user_agent
     assert (
         "AWS-SageMaker-Notebook-Instance" in sess.sagemaker_runtime_client._client_config.user_agent
+    )
+    assert (
+        "AWS-SageMaker-Notebook-Instance" in sess.sagemaker_metrics_client._client_config.user_agent
     )
 
 
@@ -625,10 +634,15 @@ def test_user_agent_injected_with_nbi_ioerror(boto_session):
 
     assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_client._client_config.user_agent
     assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_runtime_client._client_config.user_agent
+    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_metrics_client._client_config.user_agent
     assert "AWS-SageMaker-Notebook-Instance" not in sess.sagemaker_client._client_config.user_agent
     assert (
         "AWS-SageMaker-Notebook-Instance"
         not in sess.sagemaker_runtime_client._client_config.user_agent
+    )
+    assert (
+        "AWS-SageMaker-Notebook-Instance"
+        not in sess.sagemaker_metrics_client._client_config.user_agent
     )
 
 
@@ -700,6 +714,7 @@ EXPERIMENT_CONFIG = {
     "ExperimentName": "dummyExp",
     "TrialName": "dummyT",
     "TrialComponentDisplayName": "dummyTC",
+    "RunName": "dummyRN",
 }
 MODEL_CLIENT_CONFIG = {"InvocationsMaxRetries": 2, "InvocationsTimeoutInSeconds": 60}
 
@@ -882,6 +897,7 @@ SAMPLE_TUNING_JOB_REQUEST = {
         "ResourceLimits": {"MaxNumberOfTrainingJobs": 100, "MaxParallelTrainingJobs": 5},
         "ParameterRanges": SAMPLE_PARAM_RANGES,
         "TrainingJobEarlyStoppingType": "Off",
+        "RandomSeed": 0,
     },
     "TrainingJobDefinition": {
         "StaticHyperParameters": STATIC_HPs,
@@ -974,6 +990,7 @@ def test_tune_warm_start(sagemaker_session, warm_start_type, parents):
     sagemaker_session.tune(
         job_name="dummy-tuning-1",
         strategy="Bayesian",
+        random_seed=0,
         objective_type="Maximize",
         objective_metric_name="val-score",
         max_jobs=100,
@@ -1065,6 +1082,7 @@ def test_create_tuning_job(sagemaker_session):
             "max_jobs": 100,
             "max_parallel_jobs": 5,
             "parameter_ranges": SAMPLE_PARAM_RANGES,
+            "random_seed": 0,
         },
         training_config={
             "static_hyperparameters": STATIC_HPs,
@@ -1155,6 +1173,7 @@ def test_tune(sagemaker_session):
     sagemaker_session.tune(
         job_name="dummy-tuning-1",
         strategy="Bayesian",
+        random_seed=0,
         objective_type="Maximize",
         objective_metric_name="val-score",
         max_jobs=100,
@@ -1231,6 +1250,7 @@ def test_tune_with_encryption_flag(sagemaker_session):
     sagemaker_session.tune(
         job_name="dummy-tuning-1",
         strategy="Bayesian",
+        random_seed=0,
         objective_type="Maximize",
         objective_metric_name="val-score",
         max_jobs=100,
@@ -1274,6 +1294,7 @@ def test_tune_with_spot_and_checkpoints(sagemaker_session):
     sagemaker_session.tune(
         job_name="dummy-tuning-1",
         strategy="Bayesian",
+        random_seed=0,
         objective_type="Maximize",
         objective_metric_name="val-score",
         max_jobs=100,
