@@ -26,7 +26,14 @@ from pandas import DataFrame
 from sagemaker.feature_store.feature_definition import FractionalFeatureDefinition
 from sagemaker.feature_store.feature_group import FeatureGroup
 from sagemaker.feature_store.feature_store import FeatureStore
-from sagemaker.feature_store.inputs import FeatureValue, FeatureParameter, TableFormatEnum
+from sagemaker.feature_store.inputs import (
+    FeatureValue,
+    FeatureParameter,
+    TableFormatEnum,
+    Filter,
+    ResourceEnum,
+    Identifier,
+)
 from sagemaker.session import get_execution_role, Session
 from tests.integ.timeout import timeout
 
@@ -321,7 +328,7 @@ def test_create_feature_group_glue_table_format(
         assert table_format == "Glue"
 
 
-def test_get_record(
+def test_get_and_batch_get_record(
     feature_store_session,
     role,
     feature_group_name,
@@ -366,6 +373,24 @@ def test_get_record(
             record_identifier_value_as_string="1.0",
         )
         assert retrieved_record is None
+
+        # Retrieve data using batch_get_record
+        feature_store = FeatureStore(sagemaker_session=feature_store_session)
+        records = feature_store.batch_get_record(
+            identifiers=[
+                Identifier(
+                    feature_group_name=feature_group_name,
+                    record_identifiers_value_as_string=[record_identifier_value_as_string],
+                    feature_names=record_names,
+                )
+            ]
+        )["Records"]
+        assert records[0]["FeatureGroupName"] == feature_group_name
+        assert records[0]["RecordIdentifierValueAsString"] == record_identifier_value_as_string
+        assert len(records[0]["Record"]) == len(record_names)
+        for feature in records[0]["Record"]:
+            assert feature["FeatureName"] in record_names
+            assert feature["FeatureName"] is not removed_feature_name
 
 
 def test_delete_record(
@@ -501,6 +526,28 @@ def test_feature_metadata(
         )
         assert description == describe_feature_metadata.get("Description")
         assert 1 == len(describe_feature_metadata.get("Parameters"))
+
+
+def test_search(feature_store_session, role, feature_group_name, pandas_data_frame):
+    feature_store = FeatureStore(sagemaker_session=feature_store_session)
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+
+    with cleanup_feature_group(feature_group):
+        feature_group.create(
+            s3_uri=False,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+        )
+        _wait_for_feature_group_create(feature_group)
+        output = feature_store.search(
+            resource=ResourceEnum.FEATURE_GROUP,
+            filters=[Filter(name="FeatureGroupName", value=feature_group_name)],
+        )
+    print(output)
+    assert output["Results"][0]["FeatureGroup"]["FeatureGroupName"] == feature_group_name
 
 
 def test_ingest_without_string_feature(

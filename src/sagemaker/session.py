@@ -4473,6 +4473,48 @@ class Session(object):  # pylint: disable=too-many-public-methods
             FeatureGroupName=feature_group_name, FeatureName=feature_name
         )
 
+    def search(
+        self,
+        resource: str,
+        search_expression: Dict[str, any] = None,
+        sort_by: str = None,
+        sort_order: str = None,
+        next_token: str = None,
+        max_results: int = None,
+    ) -> Dict[str, Any]:
+        """Search for SageMaker resources satisfying given filters.
+
+        Args:
+            resource (str): The name of the Amazon SageMaker resource to search for.
+            search_expression (Dict[str, any]): A Boolean conditional statement. Resources must
+                satisfy this condition to be included in search results.
+            sort_by (str): The name of the resource property used to sort the ``SearchResults``.
+                The default is ``LastModifiedTime``.
+            sort_order (str): How ``SearchResults`` are ordered.
+                Valid values are ``Ascending`` or ``Descending``. The default is ``Descending``.
+                next_token (str): If more than ``MaxResults`` resources match the specified
+                ``SearchExpression``, the response includes a ``NextToken``. The ``NextToken`` can
+                be passed to the next ``SearchRequest`` to continue retrieving results.
+            max_results (int): The maximum number of results to return.
+
+        Returns:
+            Response dict from service.
+        """
+        search_args = {"Resource": resource}
+
+        if search_expression:
+            search_args["SearchExpression"] = search_expression
+        if sort_by:
+            search_args["SortBy"] = sort_by
+        if sort_order:
+            search_args["SortOrder"] = sort_order
+        if next_token:
+            search_args["NextToken"] = next_token
+        if max_results:
+            search_args["MaxResults"] = max_results
+
+        return self.sagemaker_client.search(**search_args)
+
     def put_record(
         self,
         feature_group_name: str,
@@ -4531,6 +4573,20 @@ class Session(object):  # pylint: disable=too-many-public-methods
             get_record_args["FeatureNames"] = feature_names
 
         return self.sagemaker_featurestore_runtime_client.get_record(**get_record_args)
+
+    def batch_get_record(self, identifiers: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
+        """Gets a batch of record from FeatureStore.
+
+        Args:
+            identifiers (Sequence[Dict[str, Any]]): list of identifiers to uniquely identify records
+                in FeatureStore.
+
+        Returns:
+            Response dict from service.
+        """
+        batch_get_record_args = {"Identifiers": identifiers}
+
+        return self.sagemaker_featurestore_runtime_client.batch_get_record(**batch_get_record_args)
 
     def start_query_execution(
         self,
