@@ -27,20 +27,6 @@ from tests.unit.sagemaker.workflow.helpers import CustomStep, ordered
 
 
 @pytest.fixture()
-def sagemaker_session():
-    boto_mock = Mock(name="boto_session", region_name="us-west-2")
-    session_mock = MagicMock(
-        name="sagemaker_session",
-        boto_session=boto_mock,
-        boto_region_name="us-west-2",
-        config=None,
-        local_mode=False,
-        account_id=Mock(),
-    )
-    return session_mock
-
-
-@pytest.fixture()
 def sagemaker_session_cn():
     boto_mock = Mock(name="boto_session", region_name="cn-north-1")
     session_mock = MagicMock(
