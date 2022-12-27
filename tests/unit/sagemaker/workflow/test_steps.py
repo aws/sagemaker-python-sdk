@@ -16,15 +16,10 @@ from __future__ import absolute_import
 import json
 
 import pytest
-import sagemaker
 import os
 import warnings
 
-from mock import (
-    Mock,
-    PropertyMock,
-    patch,
-)
+from mock import patch
 
 from sagemaker.debugger import ProfilerConfig
 from sagemaker.estimator import Estimator
@@ -92,46 +87,6 @@ class DummyFrameworkModel(FrameworkModel):
 
     def create_predictor(self, endpoint_name):
         return Predictor(endpoint_name, self.sagemaker_session)
-
-
-@pytest.fixture
-def boto_session():
-    role_mock = Mock()
-    type(role_mock).arn = PropertyMock(return_value=ROLE)
-
-    resource_mock = Mock()
-    resource_mock.Role.return_value = role_mock
-
-    session_mock = Mock(region_name=REGION)
-    session_mock.resource.return_value = resource_mock
-
-    return session_mock
-
-
-@pytest.fixture
-def client():
-    """Mock client.
-
-    Considerations when appropriate:
-
-        * utilize botocore.stub.Stubber
-        * separate runtime client from client
-    """
-    client_mock = Mock()
-    client_mock._client_config.user_agent = (
-        "Boto3/1.14.24 Python/3.8.5 Linux/5.4.0-42-generic Botocore/1.17.24 Resource"
-    )
-    return client_mock
-
-
-@pytest.fixture
-def sagemaker_session(boto_session, client):
-    return sagemaker.session.Session(
-        boto_session=boto_session,
-        sagemaker_client=client,
-        sagemaker_runtime_client=client,
-        default_bucket=BUCKET,
-    )
 
 
 @pytest.fixture
@@ -374,6 +329,7 @@ def test_training_step_base_estimator(sagemaker_session):
                 "CollectionConfigurations": [],
             },
             "ProfilerConfig": {
+                "DisableProfiler": False,
                 "ProfilingIntervalInMilliseconds": 500,
                 "S3OutputPath": {"Std:Join": {"On": "/", "Values": ["s3:/", "a", "b"]}},
             },
@@ -483,7 +439,7 @@ def test_training_step_tensorflow(sagemaker_session):
                 "sagemaker_instance_type": {"Get": "Parameters.InstanceType"},
                 "sagemaker_distributed_dataparallel_custom_mpi_options": '""',
             },
-            "ProfilerConfig": {"S3OutputPath": "s3://my-bucket/"},
+            "ProfilerConfig": {"DisableProfiler": False, "S3OutputPath": "s3://my-bucket/"},
         },
         "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
     }
@@ -918,7 +874,7 @@ def test_create_model_step_with_model_pipeline(tfo, time, sagemaker_session):
                 },
                 {
                     "Environment": {"SAGEMAKER_DEFAULT_INVOCATIONS_ACCEPT": "text/csv"},
-                    "Image": "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-sparkml-serving:2.4",
+                    "Image": "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-sparkml-serving:3.3",
                     "ModelDataUrl": "s3://bucket/model_2.tar.gz",
                 },
             ],
@@ -1502,7 +1458,8 @@ def test_pipeline_dag_json_get_undefined_property_file(sagemaker_session):
     with pytest.raises(ValueError) as e:
         PipelineGraph.from_pipeline(pipeline)
     assert (
-        f"Invalid JsonGet function {json_get_function.expr} in step '{custom_step.name}'. Property "
+        f"Invalid JsonGet function {json_get_function.expr} "
+        f"in step '{custom_step.name}'. Property "
         f"file reference '{json_get_function.property_file}' is undefined in step "
         f"'{processing_step.name}'." in str(e.value)
     )

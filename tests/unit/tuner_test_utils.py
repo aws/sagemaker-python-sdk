@@ -112,6 +112,7 @@ TUNING_JOB_DETAILS = {
             ],
         },
         "TrainingJobEarlyStoppingType": "Off",
+        "RandomSeed": 0,
     },
     "HyperParameterTuningJobName": JOB_NAME,
     "TrainingJobDefinition": {

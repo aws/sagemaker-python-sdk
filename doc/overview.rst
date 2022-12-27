@@ -1171,7 +1171,7 @@ be ``s3://sagemaker-{REGION}-{ACCOUNTID}/async-endpoint-outputs/{UNIQUE-JOB-NAME
     from sagemaker.async_inference import AsyncInferenceConfig
 
     # Create an empty AsyncInferenceConfig object to use default values
-    async_config = new AsyncInferenceConfig()
+    async_config = AsyncInferenceConfig()
 
 Or you can specify configurations in ``AsyncInferenceConfig`` as you like. All of those configuration parameters
 are optional but if you don’t specify the ``output_path``, Amazon SageMaker will use the default ``S3OutputPath``
@@ -1180,7 +1180,7 @@ mentioned above (example shown below):
 .. code:: python
 
     # Specify S3OutputPath, MaxConcurrentInvocationsPerInstance and NotificationConfig in the async config object
-    async_config = new AsyncInferenceConfig(
+    async_config = AsyncInferenceConfig(
         output_path="s3://{s3_bucket}/{bucket_prefix}/output",
         max_concurrent_invocations_per_instance=10,
         notification_config = {
@@ -1601,7 +1601,7 @@ see the following documentation:
 - `Protect Data in Batch Transform Jobs by Using an Amazon Virtual Private Cloud <https://docs.aws.amazon.com/sagemaker/latest/dg/batch-vpc.html>`__
 - `Working with VPCs and Subnets <https://docs.aws.amazon.com/vpc/latest/userguide/working-with-vpcs.html>`__
 
-You can also reference or reuse the example VPC created for integration tests: `tests/integ/vpc_test_utils.py <tests/integ/vpc_test_utils.py>`__
+You can also reference or reuse the example VPC created for integration tests: `tests/integ/vpc_test_utils.py <../tests/integ/vpc_test_utils.py>`__
 
 To train a model using your own VPC, set the optional parameters ``subnets`` and ``security_group_ids`` on an ``Estimator``:
 

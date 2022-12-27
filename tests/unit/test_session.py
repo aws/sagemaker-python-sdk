@@ -397,6 +397,28 @@ def test_fallback_to_domain_if_role_unavailable_in_user_settings(boto_session):
     sess.sagemaker_client.describe_domain.assert_called_once_with(DomainId="d-kbnw5yk6tg8j")
 
 
+@patch(
+    "six.moves.builtins.open",
+    mock_open(
+        read_data='{"ResourceName": "SageMakerInstance", '
+        '"DomainId": "d-kbnw5yk6tg8j", '
+        '"SpaceName": "space_name"}'
+    ),
+)
+@patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
+def test_get_caller_identity_arn_from_describe_domain_for_space(boto_session):
+    sess = Session(boto_session)
+    expected_role = "arn:aws:iam::369233609183:role/service-role/SageMakerRole-20171129T072388"
+    sess.sagemaker_client.describe_domain.return_value = {
+        "DefaultSpaceSettings": {"ExecutionRole": expected_role}
+    }
+
+    actual = sess.get_caller_identity_arn()
+
+    assert actual == expected_role
+    sess.sagemaker_client.describe_domain.assert_called_once_with(DomainId="d-kbnw5yk6tg8j")
+
+
 @patch("six.moves.builtins.open", mock_open(read_data='{"ResourceName": "SageMakerInstance"}'))
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
 @patch("sagemaker.session.sts_regional_endpoint", return_value=STS_ENDPOINT)
@@ -566,10 +588,15 @@ def test_user_agent_injected(boto_session):
 
     assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_client._client_config.user_agent
     assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_runtime_client._client_config.user_agent
+    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_metrics_client._client_config.user_agent
     assert "AWS-SageMaker-Notebook-Instance" not in sess.sagemaker_client._client_config.user_agent
     assert (
         "AWS-SageMaker-Notebook-Instance"
         not in sess.sagemaker_runtime_client._client_config.user_agent
+    )
+    assert (
+        "AWS-SageMaker-Notebook-Instance"
+        not in sess.sagemaker_metrics_client._client_config.user_agent
     )
 
 
@@ -585,9 +612,13 @@ def test_user_agent_injected_with_nbi(boto_session):
 
     assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_client._client_config.user_agent
     assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_runtime_client._client_config.user_agent
+    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_metrics_client._client_config.user_agent
     assert "AWS-SageMaker-Notebook-Instance" in sess.sagemaker_client._client_config.user_agent
     assert (
         "AWS-SageMaker-Notebook-Instance" in sess.sagemaker_runtime_client._client_config.user_agent
+    )
+    assert (
+        "AWS-SageMaker-Notebook-Instance" in sess.sagemaker_metrics_client._client_config.user_agent
     )
 
 
@@ -603,10 +634,15 @@ def test_user_agent_injected_with_nbi_ioerror(boto_session):
 
     assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_client._client_config.user_agent
     assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_runtime_client._client_config.user_agent
+    assert "AWS-SageMaker-Python-SDK" in sess.sagemaker_metrics_client._client_config.user_agent
     assert "AWS-SageMaker-Notebook-Instance" not in sess.sagemaker_client._client_config.user_agent
     assert (
         "AWS-SageMaker-Notebook-Instance"
         not in sess.sagemaker_runtime_client._client_config.user_agent
+    )
+    assert (
+        "AWS-SageMaker-Notebook-Instance"
+        not in sess.sagemaker_metrics_client._client_config.user_agent
     )
 
 
@@ -661,6 +697,7 @@ def test_training_input_all_arguments():
 
 IMAGE = "myimage"
 S3_INPUT_URI = "s3://mybucket/data"
+DEFAULT_S3_VALIDATION_DATA = "s3://mybucket/invalidation_data"
 S3_OUTPUT = "s3://sagemaker-123/output/jobname"
 ROLE = "SageMakerRole"
 EXPANDED_ROLE = "arn:aws:iam::111111111111:role/ExpandedRole"
@@ -677,6 +714,7 @@ EXPERIMENT_CONFIG = {
     "ExperimentName": "dummyExp",
     "TrialName": "dummyT",
     "TrialComponentDisplayName": "dummyTC",
+    "RunName": "dummyRN",
 }
 MODEL_CLIENT_CONFIG = {"InvocationsMaxRetries": 2, "InvocationsTimeoutInSeconds": 60}
 
@@ -859,6 +897,7 @@ SAMPLE_TUNING_JOB_REQUEST = {
         "ResourceLimits": {"MaxNumberOfTrainingJobs": 100, "MaxParallelTrainingJobs": 5},
         "ParameterRanges": SAMPLE_PARAM_RANGES,
         "TrainingJobEarlyStoppingType": "Off",
+        "RandomSeed": 0,
     },
     "TrainingJobDefinition": {
         "StaticHyperParameters": STATIC_HPs,
@@ -918,6 +957,13 @@ SAMPLE_MULTI_ALGO_TUNING_JOB_REQUEST = {
     ],
 }
 
+SAMPLE_HYPERBAND_STRATEGY_CONFIG = {
+    "HyperbandStrategyConfig": {
+        "MinResource": 1,
+        "MaxResource": 10,
+    }
+}
+
 
 @pytest.mark.parametrize(
     "warm_start_type, parents",
@@ -944,6 +990,7 @@ def test_tune_warm_start(sagemaker_session, warm_start_type, parents):
     sagemaker_session.tune(
         job_name="dummy-tuning-1",
         strategy="Bayesian",
+        random_seed=0,
         objective_type="Maximize",
         objective_metric_name="val-score",
         max_jobs=100,
@@ -1035,6 +1082,7 @@ def test_create_tuning_job(sagemaker_session):
             "max_jobs": 100,
             "max_parallel_jobs": 5,
             "parameter_ranges": SAMPLE_PARAM_RANGES,
+            "random_seed": 0,
         },
         training_config={
             "static_hyperparameters": STATIC_HPs,
@@ -1125,6 +1173,7 @@ def test_tune(sagemaker_session):
     sagemaker_session.tune(
         job_name="dummy-tuning-1",
         strategy="Bayesian",
+        random_seed=0,
         objective_type="Maximize",
         objective_metric_name="val-score",
         max_jobs=100,
@@ -1144,6 +1193,47 @@ def test_tune(sagemaker_session):
     )
 
 
+def test_tune_with_strategy_config(sagemaker_session):
+    def assert_create_tuning_job_request(**kwrags):
+        assert (
+            kwrags["HyperParameterTuningJobConfig"]["StrategyConfig"]["HyperbandStrategyConfig"][
+                "MinResource"
+            ]
+            == SAMPLE_HYPERBAND_STRATEGY_CONFIG["HyperbandStrategyConfig"]["MinResource"]
+        )
+        assert (
+            kwrags["HyperParameterTuningJobConfig"]["StrategyConfig"]["HyperbandStrategyConfig"][
+                "MaxResource"
+            ]
+            == SAMPLE_HYPERBAND_STRATEGY_CONFIG["HyperbandStrategyConfig"]["MaxResource"]
+        )
+
+    sagemaker_session.sagemaker_client.create_hyper_parameter_tuning_job.side_effect = (
+        assert_create_tuning_job_request
+    )
+    sagemaker_session.tune(
+        job_name="dummy-tuning-1",
+        strategy="Bayesian",
+        objective_type="Maximize",
+        objective_metric_name="val-score",
+        max_jobs=100,
+        max_parallel_jobs=5,
+        parameter_ranges=SAMPLE_PARAM_RANGES,
+        static_hyperparameters=STATIC_HPs,
+        image_uri="dummy-image-1",
+        input_mode="File",
+        metric_definitions=SAMPLE_METRIC_DEF,
+        role=EXPANDED_ROLE,
+        input_config=SAMPLE_INPUT,
+        output_config=SAMPLE_OUTPUT,
+        resource_config=RESOURCE_CONFIG,
+        stop_condition=SAMPLE_STOPPING_CONDITION,
+        tags=None,
+        warm_start_config=None,
+        strategy_config=SAMPLE_HYPERBAND_STRATEGY_CONFIG,
+    )
+
+
 def test_tune_with_encryption_flag(sagemaker_session):
     def assert_create_tuning_job_request(**kwrags):
         assert (
@@ -1160,6 +1250,7 @@ def test_tune_with_encryption_flag(sagemaker_session):
     sagemaker_session.tune(
         job_name="dummy-tuning-1",
         strategy="Bayesian",
+        random_seed=0,
         objective_type="Maximize",
         objective_metric_name="val-score",
         max_jobs=100,
@@ -1203,6 +1294,7 @@ def test_tune_with_spot_and_checkpoints(sagemaker_session):
     sagemaker_session.tune(
         job_name="dummy-tuning-1",
         strategy="Bayesian",
+        random_seed=0,
         objective_type="Maximize",
         objective_metric_name="val-score",
         max_jobs=100,
@@ -2180,15 +2272,34 @@ COMPLETE_EXPECTED_AUTO_ML_JOB_ARGS = {
     "AutoMLJobName": JOB_NAME,
     "InputDataConfig": [
         {
-            "DataSource": {"S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": S3_INPUT_URI}},
+            "ChannelType": "training",
             "CompressionType": "Gzip",
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": S3_INPUT_URI,
+                }
+            },
             "TargetAttributeName": "y",
-        }
+        },
+        {
+            "ChannelType": "validation",
+            "CompressionType": "Gzip",
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": DEFAULT_S3_VALIDATION_DATA,
+                }
+            },
+            "TargetAttributeName": "y",
+        },
     ],
     "OutputDataConfig": {"S3OutputPath": S3_OUTPUT},
     "ProblemType": "Regression",
     "AutoMLJobObjective": {"Type": "type", "MetricName": "metric-name"},
     "AutoMLJobConfig": {
+        "CandidateGenerationConfig": {"FeatureSpecificationS3Uri": "s3://mybucket/features.json"},
+        "Mode": "ENSEMBLING",
         "CompletionCriteria": {
             "MaxCandidates": 10,
             "MaxAutoMLJobRuntimeInSeconds": 36000,
@@ -2247,15 +2358,34 @@ def test_auto_ml_pack_to_request(sagemaker_session):
 def test_auto_ml_pack_to_request_with_optional_args(sagemaker_session):
     input_config = [
         {
-            "DataSource": {"S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": S3_INPUT_URI}},
+            "ChannelType": "training",
             "CompressionType": "Gzip",
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": S3_INPUT_URI,
+                }
+            },
             "TargetAttributeName": "y",
-        }
+        },
+        {
+            "ChannelType": "validation",
+            "CompressionType": "Gzip",
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": DEFAULT_S3_VALIDATION_DATA,
+                }
+            },
+            "TargetAttributeName": "y",
+        },
     ]
 
     output_config = {"S3OutputPath": S3_OUTPUT}
 
     auto_ml_job_config = {
+        "CandidateGenerationConfig": {"FeatureSpecificationS3Uri": "s3://mybucket/features.json"},
+        "Mode": "ENSEMBLING",
         "CompletionCriteria": {
             "MaxCandidates": 10,
             "MaxAutoMLJobRuntimeInSeconds": 36000,
@@ -2678,6 +2808,35 @@ def test_feature_metadata_describe(sagemaker_session):
     )
 
 
+def test_list_feature_groups(sagemaker_session):
+    expected_list_feature_groups_args = {
+        "NameContains": "MyFeatureGroup",
+        "FeatureGroupStatusEquals": "Created",
+        "OfflineStoreStatusEquals": "Active",
+        "CreationTimeAfter": datetime.datetime(2020, 12, 1),
+        "CreationTimeBefore": datetime.datetime(2022, 7, 1),
+        "SortOrder": "Ascending",
+        "SortBy": "Name",
+        "MaxResults": 50,
+        "NextToken": "token",
+    }
+    sagemaker_session.list_feature_groups(
+        name_contains="MyFeatureGroup",
+        feature_group_status_equals="Created",
+        offline_store_status_equals="Active",
+        creation_time_after=datetime.datetime(2020, 12, 1),
+        creation_time_before=datetime.datetime(2022, 7, 1),
+        sort_order="Ascending",
+        sort_by="Name",
+        max_results=50,
+        next_token="token",
+    )
+    assert sagemaker_session.sagemaker_client.list_feature_groups.called_once()
+    assert sagemaker_session.sagemaker_client.list_feature_groups.called_with(
+        **expected_list_feature_groups_args
+    )
+
+
 def test_start_query_execution(sagemaker_session):
     athena_mock = Mock()
     sagemaker_session.boto_session.client(
@@ -2717,6 +2876,59 @@ def test_download_athena_query_result(sagemaker_session):
         Bucket="bucket",
         Key="prefix/query_id.csv",
         Filename="filename",
+    )
+
+
+def test_update_monitoring_alert(sagemaker_session):
+    sagemaker_session.update_monitoring_alert(
+        monitoring_schedule_name="schedule-name",
+        monitoring_alert_name="alert-name",
+        data_points_to_alert=1,
+        evaluation_period=1,
+    )
+    assert sagemaker_session.sagemaker_client.update_monitoring_alert.called_with(
+        MonitoringScheduleName="schedule-name",
+        MonitoringAlertName="alert-name",
+        DatapointsToAlert=1,
+        EvaluationPeriod=1,
+    )
+
+
+def test_list_monitoring_alerts(sagemaker_session):
+    sagemaker_session.list_monitoring_alerts(
+        monitoring_schedule_name="schedule-name",
+        next_token="next_token",
+        max_results=100,
+    )
+    assert sagemaker_session.sagemaker_client.list_monitoring_alerts.called_with(
+        MonitoringScheduleName="schedule-name",
+        NextToken="next_token",
+        MaxResults=100,
+    )
+
+
+def test_list_monitoring_alert_history(sagemaker_session):
+    sagemaker_session.list_monitoring_alert_history(
+        monitoring_schedule_name="schedule-name",
+        monitoring_alert_name="alert-name",
+        sort_by="CreationTime",
+        sort_order="Descending",
+        next_token="next_token",
+        max_results=100,
+        status_equals="InAlert",
+        creation_time_before="creation_time_before",
+        creation_time_after="creation_time_after",
+    )
+    assert sagemaker_session.sagemaker_client.list_monitoring_alerts.called_with(
+        MonitoringScheduleName="schedule-name",
+        MonitoringAlertName="alert-name",
+        SortBy="CreationTime",
+        SortOrder="Descending",
+        NextToken="next_token",
+        MaxResults=100,
+        CreationTimeBefore="creation_time_before",
+        CreationTimeAfter="creation_time_after",
+        StatusEquals="InAlert",
     )
 
 

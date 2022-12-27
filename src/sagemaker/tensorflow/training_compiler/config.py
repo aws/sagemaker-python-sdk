@@ -24,14 +24,10 @@ logger = logging.getLogger(__name__)
 class TrainingCompilerConfig(BaseConfig):
     """The SageMaker Training Compiler configuration class."""
 
-    SUPPORTED_INSTANCE_CLASS_PREFIXES = ["p3", "g4dn", "p4", "g5"]
+    SUPPORTED_INSTANCE_CLASS_PREFIXES = ["p3", "p3dn", "g4dn", "p4d", "g5"]
     MIN_SUPPORTED_VERSION = "2.9"
 
-    def __init__(
-        self,
-        enabled=True,
-        debug=False,
-    ):
+    def __init__(self, enabled=True, debug=False):
         """This class initializes a ``TrainingCompilerConfig`` instance.
 
         `Amazon SageMaker Training Compiler
@@ -79,10 +75,7 @@ class TrainingCompilerConfig(BaseConfig):
         super(TrainingCompilerConfig, self).__init__(enabled=enabled, debug=debug)
 
     @classmethod
-    def validate(
-        cls,
-        estimator,
-    ):
+    def validate(cls, estimator):
         """Checks if SageMaker Training Compiler is configured correctly.
 
         Args:

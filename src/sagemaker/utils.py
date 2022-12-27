@@ -29,6 +29,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
+from importlib import import_module
 import botocore
 from six.moves.urllib import parse
 
@@ -43,6 +44,8 @@ S3_PREFIX = "s3://"
 HTTP_PREFIX = "http://"
 HTTPS_PREFIX = "https://"
 DEFAULT_SLEEP_TIME_SECONDS = 10
+WAITING_DOT_NUMBER = 10
+
 
 logger = logging.getLogger(__name__)
 
@@ -588,6 +591,27 @@ def retries(
     )
 
 
+def retry_with_backoff(callable_func, num_attempts=8):
+    """Retry with backoff until maximum attempts are reached
+
+    Args:
+        callable_func (callable): The callable function to retry.
+        num_attempts (int): The maximum number of attempts to retry.
+    """
+    if num_attempts < 1:
+        raise ValueError(
+            "The num_attempts must be >= 1, but the given value is {}.".format(num_attempts)
+        )
+    for i in range(num_attempts):
+        try:
+            return callable_func()
+        except Exception as ex:  # pylint: disable=broad-except
+            if i == num_attempts - 1:
+                raise ex
+            logger.error("Retrying in attempt %s, due to %s", (i + 1), str(ex))
+            time.sleep(2**i)
+
+
 def _botocore_resolver():
     """Get the DNS suffix for the given region.
 
@@ -856,3 +880,63 @@ def to_string(obj: object):
         obj (object): The object to be converted
     """
     return obj.to_string() if is_pipeline_variable(obj) else str(obj)
+
+
+def _start_waiting(waiting_time: int):
+    """Waiting and print the in progress animation to stdout.
+
+    Args:
+        waiting_time (int): The total waiting time.
+    """
+    interval = float(waiting_time) / WAITING_DOT_NUMBER
+
+    progress = ""
+    for _ in range(WAITING_DOT_NUMBER):
+        progress += "."
+        print(progress, end="\r")
+        time.sleep(interval)
+    print(len(progress) * " ", end="\r")
+
+
+def get_module(module_name):
+    """Import a module.
+
+    Args:
+        module_name (str): name of the module to import.
+
+    Returns:
+        object: The imported module.
+
+    Raises:
+        Exception: when the module name is not found
+    """
+    try:
+        return import_module(module_name)
+    except ImportError:
+        raise Exception("Cannot import module {}, please try again.".format(module_name))
+
+
+def check_and_get_run_experiment_config(experiment_config: Optional[dict] = None) -> dict:
+    """Check user input experiment_config or get it from the current Run object if exists.
+
+    Args:
+        experiment_config (dict): The experiment_config supplied by the user.
+
+    Returns:
+        dict: Return the user supplied experiment_config if it is not None.
+            Otherwise fetch the experiment_config from the current Run object if exists.
+    """
+    from sagemaker.experiments._run_context import _RunContext
+
+    run_obj = _RunContext.get_current_run()
+    if experiment_config:
+        if run_obj:
+            logger.warning(
+                "The function is invoked within an Experiment Run context "
+                "but another experiment_config (%s) was supplied, so "
+                "ignoring the experiment_config fetched from the Run object.",
+                experiment_config,
+            )
+        return experiment_config
+
+    return run_obj.experiment_config if run_obj else None

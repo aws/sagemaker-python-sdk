@@ -362,6 +362,52 @@ Example:
         prefix=model_prefix
     )
 
+AutoMLStep
+`````````````
+Referable Property List:
+
+- `DescribeAutoMLJob`_
+- `BestCandidateProperties.ModelInsightsJsonReportPath`_
+- `BestCandidateProperties.ExplainabilityJsonReportPath`_
+
+.. _DescribeAutoMLJob: https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_DescribeAutoMLJob
+.. _BestCandidateProperties.ModelInsightsJsonReportPath: https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CandidateArtifactLocations.html#sagemaker-Type-CandidateArtifactLocations-ModelInsights
+.. _BestCandidateProperties.ExplainabilityJsonReportPath: https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CandidateArtifactLocations.html#sagemaker-Type-CandidateArtifactLocations-Explainability
+
+Example:
+
+.. code-block:: python
+
+    step_automl = AutoMLStep(...)
+
+    auto_ml_model = step_automl.get_best_model(<role>)
+
+    model_metrics = ModelMetrics(
+        model_statistics=MetricsSource(
+            s3_uri=auto_ml_step.properties.BestCandidateProperties.ModelInsightsJsonReportPath,
+            content_type="application/json",
+        ),
+        explainability=MetricsSource(
+            s3_uri=auto_ml_step.properties.BestCandidateProperties.ExplainabilityJsonReportPath,
+            content_type="application/json",
+        )
+    )
+
+    step_args_register_model = auto_ml_model.register(
+    content_types=["text/csv"],
+    response_types=["text/csv"],
+    inference_instances=["ml.t2.medium", "ml.m5.large"],
+    transform_instances=["ml.m5.large"],
+    model_package_group_name="My model package group name",
+    approval_status="PendingManualApproval",
+    model_metrics=model_metrics,
+    )
+
+    step_register_model = ModelStep(
+        name="auto-ml-model-register",
+        step_args=step_args_register_model,
+    )
+
 CreateModelStep
 ````````````````
 Referable Property List:
@@ -407,7 +453,7 @@ Example:
             str_outputParam, int_outputParam, bool_outputParam, float_outputParam
        ],
     )
-    output_ref = step_lambda.OutputParameters["output1"]
+    output_ref = step_lambda.properties.Outputs["output1"]
 
 Where the lambda function with :code:`arn arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda`
 should output like this:
@@ -433,7 +479,7 @@ Note that the output parameters can not be nested. Otherwise, the value will be 
         }
     }
 
-This will be resolved as :code:`{"output1": "{\"nested_output1\":\"my-output\"}"}` by which if you refer :code:`step_lambda.OutputParameters["output1"]["nested_output1"]` later, a non-retryable client error will be thrown.
+This will be resolved as :code:`{"output1": "{\"nested_output1\":\"my-output\"}"}` by which if you refer :code:`step_lambda.properties.Outputs["output1"]["nested_output1"]` later, a non-retryable client error will be thrown.
 
 CallbackStep
 `````````````
@@ -457,7 +503,7 @@ Example:
         inputs={"arg1": "foo", "arg2": 5, "arg3": param},
         outputs=[outputParam],
     )
-    output_ref = step_callback.OutputParameters["output1]
+    output_ref = step_callback.properties.Outputs["output1]
 
 The output parameters cannot be nested. If the values are nested, they will be treated as a single string value. For example, a nested output value of
 
@@ -469,7 +515,7 @@ The output parameters cannot be nested. If the values are nested, they will be t
         }
     }
 
-is resolved as :code:`{"output1": "{\"nested_output1\":\"my-output\"}"}`. If you try to refer to :code:`step_callback.OutputParameters["output1"]["nested_output1"]` this will throw a non-retryable client error.
+is resolved as :code:`{"output1": "{\"nested_output1\":\"my-output\"}"}`. If you try to refer to :code:`step_callback.properties.Outputs["output1"]["nested_output1"]` this will throw a non-retryable client error.
 
 
 QualityCheckStep

@@ -18,12 +18,6 @@ import shutil
 import tempfile
 
 import pytest
-import sagemaker
-
-from mock import (
-    Mock,
-    PropertyMock,
-)
 
 from sagemaker.estimator import Estimator
 from sagemaker.workflow._utils import (
@@ -35,51 +29,7 @@ from sagemaker.workflow._utils import (
 from sagemaker.workflow.properties import Properties
 from tests.unit.test_utils import FakeS3, list_tar_files
 from tests.unit import DATA_DIR
-
-REGION = "us-west-2"
-BUCKET = "my-bucket"
-IMAGE_URI = "fakeimage"
-ROLE = "DummyRole"
-
-
-@pytest.fixture
-def boto_session():
-    role_mock = Mock()
-    type(role_mock).arn = PropertyMock(return_value=ROLE)
-
-    resource_mock = Mock()
-    resource_mock.Role.return_value = role_mock
-
-    session_mock = Mock(region_name=REGION)
-    session_mock.resource.return_value = resource_mock
-
-    return session_mock
-
-
-@pytest.fixture
-def client():
-    """Mock client.
-
-    Considerations when appropriate:
-
-        * utilize botocore.stub.Stubber
-        * separate runtime client from client
-    """
-    client_mock = Mock()
-    client_mock._client_config.user_agent = (
-        "Boto3/1.14.24 Python/3.8.5 Linux/5.4.0-42-generic Botocore/1.17.24 Resource"
-    )
-    return client_mock
-
-
-@pytest.fixture
-def sagemaker_session(boto_session, client):
-    return sagemaker.session.Session(
-        boto_session=boto_session,
-        sagemaker_client=client,
-        sagemaker_runtime_client=client,
-        default_bucket=BUCKET,
-    )
+from tests.unit.sagemaker.workflow.conftest import ROLE, IMAGE_URI, BUCKET
 
 
 @pytest.fixture
@@ -157,6 +107,7 @@ def test_repack_model_step(estimator):
                 }
             ],
             "OutputDataConfig": {"S3OutputPath": f"s3://{BUCKET}/"},
+            "ProfilerConfig": {"DisableProfiler": True},
             "ResourceConfig": {
                 "InstanceCount": 1,
                 "InstanceType": "ml.m5.large",
@@ -171,7 +122,7 @@ def test_repack_model_step(estimator):
     }
 
 
-def test_repack_model_step_with_invalid_input():
+def test_register_model_step_with_invalid_input():
     # without both step_args and any of the old required arguments
     with pytest.raises(ValueError) as error:
         _RegisterModelStep(
@@ -238,6 +189,7 @@ def test_repack_model_step_with_source_dir(estimator, source_dir):
                 }
             ],
             "OutputDataConfig": {"S3OutputPath": f"s3://{BUCKET}/"},
+            "ProfilerConfig": {"DisableProfiler": True},
             "ResourceConfig": {
                 "InstanceCount": 1,
                 "InstanceType": "ml.m5.large",
