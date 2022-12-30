@@ -27,7 +27,7 @@ from sagemaker.amazon.common import write_numpy_to_dense_tensor
 from sagemaker.deprecations import renamed_warning
 from sagemaker.estimator import EstimatorBase, _TrainingJob
 from sagemaker.inputs import FileSystemInput, TrainingInput
-from sagemaker.utils import sagemaker_timestamp
+from sagemaker.utils import sagemaker_timestamp, check_and_get_run_experiment_config
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
 from sagemaker.workflow import is_pipeline_variable
@@ -242,8 +242,8 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
                 generates a default job name, based on the training image name
                 and current timestamp.
             experiment_config (dict[str, str]): Experiment management configuration.
-                Optionally, the dict can contain three keys:
-                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                Optionally, the dict can contain four keys:
+                'ExperimentName', 'TrialName', 'TrialComponentDisplayName' and 'RunName'.
                 The behavior of setting these keys is as follows:
                 * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
                 automatically created and the job's Trial Component associated with the Trial.
@@ -255,6 +255,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         """
         self._prepare_for_training(records, job_name=job_name, mini_batch_size=mini_batch_size)
 
+        experiment_config = check_and_get_run_experiment_config(experiment_config)
         self.latest_training_job = _TrainingJob.start_new(
             self, records, experiment_config=experiment_config
         )

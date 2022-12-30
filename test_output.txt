@@ -1,0 +1,570 @@
+GLOB sdist-make: /local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/setup.py
+py37 create: /local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37
+py37 installdeps: .[test]
+py37 inst: /local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/.tmp/package/1/sagemaker-2.121.3.dev0.zip
+py37 installed: alembic==1.8.1,anyio==3.6.2,apache-airflow==2.4.1,apache-airflow-providers-amazon==4.0.0,apache-airflow-providers-common-sql==1.3.1,apache-airflow-providers-ftp==3.2.0,apache-airflow-providers-http==4.1.0,apache-airflow-providers-imap==3.1.0,apache-airflow-providers-sqlite==3.3.1,apispec==3.3.2,argcomplete==2.0.0,asn1crypto==1.5.1,attrs==22.1.0,awslogs==0.14.0,Babel==2.11.0,bcrypt==4.0.1,beautifulsoup4==4.11.1,black==22.3.0,blinker==1.5,boto3==1.26.29,botocore==1.29.29,cached-property==1.5.2,cachelib==0.9.0,cattrs==22.2.0,certifi==2022.12.7,cffi==1.15.1,charset-normalizer==2.0.12,click==8.1.3,clickclick==20.10.2,colorama==0.4.6,colorlog==4.8.0,commonmark==0.9.1,ConfigUpdater==3.1.1,connexion==2.14.1,contextlib2==21.6.0,coverage==6.1.2,cron-descriptor==1.2.32,croniter==1.3.8,cryptography==38.0.4,decorator==5.1.1,Deprecated==1.2.13,dill==0.3.6,distlib==0.3.6,distro==1.8.0,dnspython==2.2.1,docker==6.0.1,docker-compose==1.29.2,dockerpty==0.4.1,docopt==0.6.2,docutils==0.19,email-validator==1.3.0,exceptiongroup==1.0.4,execnet==1.9.0,fabric==2.6.0,filelock==3.8.2,flake8==4.0.1,Flask==2.2.2,Flask-AppBuilder==4.1.3,Flask-Babel==2.0.0,Flask-Caching==2.0.1,Flask-JWT-Extended==4.4.4,Flask-Login==0.6.2,Flask-Session==0.4.0,Flask-SQLAlchemy==2.5.1,Flask-WTF==0.15.1,google-pasta==0.2.0,graphviz==0.20.1,greenlet==2.0.1,gunicorn==20.1.0,h11==0.14.0,httpcore==0.16.2,httpx==0.23.1,idna==3.4,importlib-metadata==4.2.0,importlib-resources==5.10.1,inflection==0.5.1,iniconfig==1.1.1,invoke==1.7.3,itsdangerous==2.1.2,Jinja2==3.0.3,jmespath==0.10.0,jsonpath-ng==1.5.3,jsonschema==3.2.0,lazy-object-proxy==1.8.0,linkify-it-py==2.0.0,lockfile==0.12.2,lxml==4.9.2,Mako==1.2.4,Markdown==3.3.5,markdown-it-py==2.1.0,MarkupSafe==2.1.1,marshmallow==3.19.0,marshmallow-enum==1.5.1,marshmallow-oneofschema==3.0.1,marshmallow-sqlalchemy==0.26.1,mccabe==0.6.1,mdit-py-plugins==0.3.3,mdurl==0.1.2,mock==4.0.3,multiprocess==0.70.14,mypy-boto3-rds==1.26.29,mypy-boto3-redshift-data==1.26.0.post1,mypy-extensions==0.4.3,numpy==1.21.6,packaging==22.0,pandas==1.3.5,paramiko==2.12.0,pathlib2==2.3.7.post1,pathos==0.3.0,pathspec==0.9.0,pendulum==2.1.2,platformdirs==2.6.0,pluggy==1.0.0,ply==3.11,pox==0.3.2,ppft==1.7.6.6,prison==0.2.1,protobuf==3.20.3,protobuf3-to-dict==0.1.5,psutil==5.9.4,py==1.11.0,pycodestyle==2.8.0,pycparser==2.21,pyflakes==2.4.0,Pygments==2.13.0,PyJWT==2.6.0,PyNaCl==1.5.0,pyrsistent==0.19.2,pytest==6.2.5,pytest-cov==3.0.0,pytest-forked==1.4.0,pytest-rerunfailures==10.2,pytest-timeout==2.1.0,pytest-xdist==2.4.0,python-daemon==2.3.2,python-dateutil==2.8.2,python-dotenv==0.21.0,python-nvd3==0.15.0,python-slugify==7.0.0,pytz==2022.6,pytzdata==2020.1,PyYAML==5.4.1,redshift-connector==2.0.909,requests==2.27.1,requests-toolbelt==0.10.1,rfc3986==1.5.0,rich==12.6.0,s3transfer==0.6.0,sagemaker @ file:///local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/.tmp/package/1/sagemaker-2.121.3.dev0.zip,sagemaker-experiments==0.1.35,schema==0.7.5,scipy==1.7.3,scramp==1.4.4,setproctitle==1.3.2,six==1.16.0,smdebug-rulesconfig==1.0.1,sniffio==1.3.0,soupsieve==2.3.2.post1,SQLAlchemy==1.4.45,SQLAlchemy-JSONField==1.0.0,sqlalchemy-redshift==0.8.12,SQLAlchemy-Utils==0.38.3,sqlparse==0.4.3,stopit==1.1.2,swagger-ui-bundle==0.0.9,tabulate==0.9.0,tenacity==8.1.0,termcolor==2.1.1,text-unidecode==1.3,texttable==1.6.7,toml==0.10.2,tomli==2.0.1,tox==3.24.5,typed-ast==1.5.4,typing_extensions==4.4.0,uc-micro-py==1.0.1,unicodecsv==0.14.1,urllib3==1.26.8,virtualenv==20.16.2,watchtower==2.0.1,websocket-client==0.59.0,Werkzeug==2.2.2,wrapt==1.14.1,WTForms==2.3.3,zipp==3.11.0
+py37 run-test-pre: PYTHONHASHSEED='42'
+py37 run-test: commands[0] | python -c 'import os; os.system('"'"'install-custom-pkgs --install-boto-wheels'"'"')'
+sh: install-custom-pkgs: command not found
+py37 run-test: commands[1] | pip install apache-airflow==2.4.1 --constraint https://raw.githubusercontent.com/apache/airflow/constraints-2.4.1/constraints-3.10.txt
+Looking in indexes: https://aws:****@amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/
+Requirement already satisfied: apache-airflow==2.4.1 in ./.tox/py37/lib/python3.7/site-packages (2.4.1)
+Collecting apache-airflow-providers-imap
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/apache-airflow-providers-imap/3.0.0/apache_airflow_providers_imap-3.0.0-py3-none-any.whl (16 kB)
+Collecting jinja2>=2.10.1
+  Downloading https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/jinja2/3.1.2/Jinja2-3.1.2-py3-none-any.whl (133 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 133.1/133.1 kB 628.6 kB/s eta 0:00:00
+Requirement already satisfied: itsdangerous>=2.0 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (2.1.2)
+Collecting dill>=0.2.2
+  Downloading https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/dill/0.3.1.1/dill-0.3.1.1.tar.gz (151 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 152.0/152.0 kB 709.8 kB/s eta 0:00:00
+  Preparing metadata (setup.py): started
+  Preparing metadata (setup.py): finished with status 'done'
+Requirement already satisfied: python-nvd3>=0.15.0 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (0.15.0)
+Requirement already satisfied: deprecated>=1.2.13 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (1.2.13)
+Requirement already satisfied: flask-login>=0.6.2 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (0.6.2)
+Collecting lazy-object-proxy
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/lazy-object-proxy/1.7.1/lazy_object_proxy-1.7.1-cp37-cp37m-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl (57 kB)
+Requirement already satisfied: markdown-it-py>=2.1.0 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (2.1.0)
+Requirement already satisfied: connexion[flask,swagger-ui]>=2.10.0 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (2.14.1)
+Collecting apache-airflow-providers-http
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/apache-airflow-providers-http/4.0.0/apache_airflow_providers_http-4.0.0-py3-none-any.whl (21 kB)
+Requirement already satisfied: blinker in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (1.5)
+Collecting httpx
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/httpx/0.23.0/httpx-0.23.0-py3-none-any.whl (84 kB)
+Requirement already satisfied: pendulum>=2.0 in ./.tox/py37/lib64/python3.7/site-packages (from apache-airflow==2.4.1) (2.1.2)
+Requirement already satisfied: configupdater>=3.1.1 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (3.1.1)
+Requirement already satisfied: marshmallow-oneofschema>=2.0.1 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (3.0.1)
+Collecting mdit-py-plugins>=0.3.0
+  Downloading https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/mdit-py-plugins/0.3.1/mdit_py_plugins-0.3.1-py3-none-any.whl (46 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 46.5/46.5 kB 7.1 MB/s eta 0:00:00
+Requirement already satisfied: gunicorn>=20.1.0 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (20.1.0)
+Requirement already satisfied: unicodecsv>=0.14.1 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (0.14.1)
+Collecting apache-airflow-providers-sqlite
+  Downloading https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/apache-airflow-providers-sqlite/3.2.1/apache_airflow_providers_sqlite-3.2.1-py3-none-any.whl (14 kB)
+Requirement already satisfied: alembic<2.0,>=1.5.1 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (1.8.1)
+Collecting python-daemon>=2.2.4
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/python-daemon/2.3.1/python_daemon-2.3.1-py2.py3-none-any.whl (34 kB)
+Requirement already satisfied: flask-appbuilder==4.1.3 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (4.1.3)
+Requirement already satisfied: linkify-it-py>=2.0.0 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (2.0.0)
+Requirement already satisfied: attrs>=22.1.0 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (22.1.0)
+Requirement already satisfied: tenacity>=6.2.0 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (8.1.0)
+Requirement already satisfied: colorlog<5.0,>=4.0.2 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (4.8.0)
+Requirement already satisfied: flask<2.3,>=2.2 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (2.2.2)
+Collecting cron-descriptor>=1.2.24
+  Using cached cron_descriptor-1.2.31-py3-none-any.whl
+Collecting rich>=12.4.4
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/rich/12.5.1/rich-12.5.1-py3-none-any.whl (235 kB)
+Collecting python-slugify>=5.0
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/python-slugify/6.1.2/python_slugify-6.1.2-py2.py3-none-any.whl (9.4 kB)
+Requirement already satisfied: lockfile>=0.12.2 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (0.12.2)
+Collecting pyjwt>=2.0.0
+  Downloading https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/pyjwt/2.5.0/PyJWT-2.5.0-py3-none-any.whl (20 kB)
+Collecting termcolor>=1.1.0
+  Downloading https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/termcolor/2.0.1/termcolor-2.0.1-py3-none-any.whl (5.4 kB)
+Requirement already satisfied: werkzeug>=2.0 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (2.2.2)
+Collecting apache-airflow-providers-ftp
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/apache-airflow-providers-ftp/3.1.0/apache_airflow_providers_ftp-3.1.0-py3-none-any.whl (16 kB)
+Collecting cattrs>=22.1.0
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/cattrs/22.1.0/cattrs-22.1.0-py3-none-any.whl (33 kB)
+Collecting sqlalchemy>=1.4
+  Downloading https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/sqlalchemy/1.4.27/SQLAlchemy-1.4.27-cp37-cp37m-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl (1.6 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.6/1.6 MB 1.3 MB/s eta 0:00:00
+Requirement already satisfied: importlib-resources>=5.2 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (5.10.1)
+Requirement already satisfied: pygments>=2.0.1 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (2.13.0)
+Requirement already satisfied: flask-session>=0.4.0 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (0.4.0)
+Requirement already satisfied: flask-caching>=1.5.0 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (2.0.1)
+Requirement already satisfied: setproctitle>=1.1.8 in ./.tox/py37/lib64/python3.7/site-packages (from apache-airflow==2.4.1) (1.3.2)
+Requirement already satisfied: graphviz>=0.12 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (0.20.1)
+Requirement already satisfied: argcomplete>=1.10 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (2.0.0)
+Collecting jsonschema>=3.2.0
+  Downloading https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/jsonschema/4.16.0/jsonschema-4.16.0-py3-none-any.whl (83 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 83.1/83.1 kB 15.1 MB/s eta 0:00:00
+Collecting importlib-metadata>=1.7
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/importlib-metadata/4.12.0/importlib_metadata-4.12.0-py3-none-any.whl (21 kB)
+Collecting cryptography>=0.9.3
+  Downloading https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/cryptography/36.0.2/cryptography-36.0.2-cp36-abi3-manylinux_2_24_x86_64.whl (3.6 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.6/3.6 MB 3.2 MB/s eta 0:00:00
+Requirement already satisfied: sqlalchemy-jsonfield>=1.0 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (1.0.0)
+Requirement already satisfied: cached-property>=1.5.0 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (1.5.2)
+Requirement already satisfied: flask-wtf>=0.15 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (0.15.1)
+Requirement already satisfied: pathspec~=0.9.0 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (0.9.0)
+Collecting typing-extensions>=4.0.0
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/typing-extensions/4.3.0/typing_extensions-4.3.0-py3-none-any.whl (25 kB)
+Collecting psutil>=4.2.0
+  Downloading https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/psutil/5.9.2/psutil-5.9.2-cp37-cp37m-manylinux_2_12_x86_64.manylinux2010_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl (281 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 281.3/281.3 kB 24.8 MB/s eta 0:00:00
+Collecting packaging>=14.0
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/packaging/21.3/packaging-21.3-py3-none-any.whl (40 kB)
+Collecting tabulate>=0.7.5
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/tabulate/0.8.10/tabulate-0.8.10-py3-none-any.whl (29 kB)
+Collecting apache-airflow-providers-common-sql
+  Downloading https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/apache-airflow-providers-common-sql/1.2.0/apache_airflow_providers_common_sql-1.2.0-py3-none-any.whl (28 kB)
+Requirement already satisfied: pluggy>=1.0 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (1.0.0)
+Collecting croniter>=0.3.17
+  Downloading https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/croniter/1.3.7/croniter-1.3.7-py2.py3-none-any.whl (17 kB)
+Collecting markdown>=3.0
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/markdown/3.4.1/Markdown-3.4.1-py3-none-any.whl (93 kB)
+Requirement already satisfied: python-dateutil>=2.3 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow==2.4.1) (2.8.2)
+Requirement already satisfied: markupsafe>=1.1.1 in ./.tox/py37/lib64/python3.7/site-packages (from apache-airflow==2.4.1) (2.1.1)
+Requirement already satisfied: sqlalchemy-utils<1,>=0.32.21 in ./.tox/py37/lib/python3.7/site-packages (from flask-appbuilder==4.1.3->apache-airflow==2.4.1) (0.38.3)
+Requirement already satisfied: prison<1.0.0,>=0.2.1 in ./.tox/py37/lib/python3.7/site-packages (from flask-appbuilder==4.1.3->apache-airflow==2.4.1) (0.2.1)
+Collecting marshmallow<4,>=3
+  Downloading https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/marshmallow/3.18.0/marshmallow-3.18.0-py3-none-any.whl (48 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 48.8/48.8 kB 8.8 MB/s eta 0:00:00
+Collecting colorama<1,>=0.3.9
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/colorama/0.4.5/colorama-0.4.5-py2.py3-none-any.whl (16 kB)
+Requirement already satisfied: apispec[yaml]<4,>=3.3 in ./.tox/py37/lib/python3.7/site-packages (from flask-appbuilder==4.1.3->apache-airflow==2.4.1) (3.3.2)
+Requirement already satisfied: marshmallow-sqlalchemy<0.27.0,>=0.22.0 in ./.tox/py37/lib/python3.7/site-packages (from flask-appbuilder==4.1.3->apache-airflow==2.4.1) (0.26.1)
+Requirement already satisfied: click<9,>=8 in ./.tox/py37/lib/python3.7/site-packages (from flask-appbuilder==4.1.3->apache-airflow==2.4.1) (8.1.3)
+Requirement already satisfied: Flask-JWT-Extended<5.0.0,>=4.0.0 in ./.tox/py37/lib/python3.7/site-packages (from flask-appbuilder==4.1.3->apache-airflow==2.4.1) (4.4.4)
+Requirement already satisfied: Flask-Babel<3,>=1 in ./.tox/py37/lib/python3.7/site-packages (from flask-appbuilder==4.1.3->apache-airflow==2.4.1) (2.0.0)
+Requirement already satisfied: Flask-SQLAlchemy<3,>=2.4 in ./.tox/py37/lib/python3.7/site-packages (from flask-appbuilder==4.1.3->apache-airflow==2.4.1) (2.5.1)
+Requirement already satisfied: marshmallow-enum<2,>=1.5.1 in ./.tox/py37/lib/python3.7/site-packages (from flask-appbuilder==4.1.3->apache-airflow==2.4.1) (1.5.1)
+Requirement already satisfied: email-validator<2,>=1.0.5 in ./.tox/py37/lib/python3.7/site-packages (from flask-appbuilder==4.1.3->apache-airflow==2.4.1) (1.3.0)
+Requirement already satisfied: WTForms<3.0.0 in ./.tox/py37/lib/python3.7/site-packages (from flask-appbuilder==4.1.3->apache-airflow==2.4.1) (2.3.3)
+Collecting Mako
+  Downloading https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/mako/1.2.3/Mako-1.2.3-py3-none-any.whl (78 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 78.7/78.7 kB 13.6 MB/s eta 0:00:00
+Collecting exceptiongroup
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/exceptiongroup/1.0.0rc9/exceptiongroup-1.0.0rc9-py3-none-any.whl (12 kB)
+Requirement already satisfied: inflection<0.6,>=0.3.1 in ./.tox/py37/lib/python3.7/site-packages (from connexion[flask,swagger-ui]>=2.10.0->apache-airflow==2.4.1) (0.5.1)
+Collecting PyYAML<7,>=5.1
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/pyyaml/6.0/PyYAML-6.0-cp37-cp37m-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_12_x86_64.manylinux2010_x86_64.whl (596 kB)
+Collecting requests<3,>=2.9.1
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/requests/2.28.1/requests-2.28.1-py3-none-any.whl (62 kB)
+Requirement already satisfied: clickclick<21,>=1.2 in ./.tox/py37/lib/python3.7/site-packages (from connexion[flask,swagger-ui]>=2.10.0->apache-airflow==2.4.1) (20.10.2)
+Requirement already satisfied: swagger-ui-bundle<0.1,>=0.0.2 in ./.tox/py37/lib/python3.7/site-packages (from connexion[flask,swagger-ui]>=2.10.0->apache-airflow==2.4.1) (0.0.9)
+Requirement already satisfied: cffi>=1.12 in ./.tox/py37/lib64/python3.7/site-packages (from cryptography>=0.9.3->apache-airflow==2.4.1) (1.15.1)
+Requirement already satisfied: wrapt<2,>=1.10 in ./.tox/py37/lib64/python3.7/site-packages (from deprecated>=1.2.13->apache-airflow==2.4.1) (1.14.1)
+Requirement already satisfied: cachelib>=0.9.0 in ./.tox/py37/lib/python3.7/site-packages (from flask-caching>=1.5.0->apache-airflow==2.4.1) (0.9.0)
+Requirement already satisfied: setuptools>=3.0 in ./.tox/py37/lib/python3.7/site-packages (from gunicorn>=20.1.0->apache-airflow==2.4.1) (65.5.1)
+Collecting zipp>=0.5
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/zipp/3.8.1/zipp-3.8.1-py3-none-any.whl (5.6 kB)
+Collecting pyrsistent!=0.17.0,!=0.17.1,!=0.17.2,>=0.14.0
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/pyrsistent/0.18.1/pyrsistent-0.18.1-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (117 kB)
+Collecting pkgutil-resolve-name>=1.3.10
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/pkgutil-resolve-name/1.3.10/pkgutil_resolve_name-1.3.10-py3-none-any.whl (4.7 kB)
+Requirement already satisfied: uc-micro-py in ./.tox/py37/lib/python3.7/site-packages (from linkify-it-py>=2.0.0->apache-airflow==2.4.1) (1.0.1)
+Requirement already satisfied: mdurl~=0.1 in ./.tox/py37/lib/python3.7/site-packages (from markdown-it-py>=2.1.0->apache-airflow==2.4.1) (0.1.2)
+Collecting pyparsing!=3.0.5,>=2.0.2
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/pyparsing/3.0.9/pyparsing-3.0.9-py3-none-any.whl (98 kB)
+Requirement already satisfied: pytzdata>=2020.1 in ./.tox/py37/lib/python3.7/site-packages (from pendulum>=2.0->apache-airflow==2.4.1) (2020.1)
+Requirement already satisfied: docutils in ./.tox/py37/lib/python3.7/site-packages (from python-daemon>=2.2.4->apache-airflow==2.4.1) (0.19)
+Requirement already satisfied: six>=1.5 in ./.tox/py37/lib/python3.7/site-packages (from python-dateutil>=2.3->apache-airflow==2.4.1) (1.16.0)
+Requirement already satisfied: text-unidecode>=1.3 in ./.tox/py37/lib/python3.7/site-packages (from python-slugify>=5.0->apache-airflow==2.4.1) (1.3)
+Requirement already satisfied: commonmark<0.10.0,>=0.9.0 in ./.tox/py37/lib/python3.7/site-packages (from rich>=12.4.4->apache-airflow==2.4.1) (0.9.1)
+Collecting greenlet!=0.4.17
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/greenlet/1.1.3/greenlet-1.1.3-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (150 kB)
+Requirement already satisfied: sqlparse>=0.4.2 in ./.tox/py37/lib/python3.7/site-packages (from apache-airflow-providers-common-sql->apache-airflow==2.4.1) (0.4.3)
+Collecting requests-toolbelt
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/requests-toolbelt/0.9.1/requests_toolbelt-0.9.1-py2.py3-none-any.whl (54 kB)
+Collecting certifi
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/certifi/2022.9.24/certifi-2022.9.24-py3-none-any.whl (161 kB)
+Requirement already satisfied: rfc3986[idna2008]<2,>=1.3 in ./.tox/py37/lib/python3.7/site-packages (from httpx->apache-airflow==2.4.1) (1.5.0)
+Requirement already satisfied: sniffio in ./.tox/py37/lib/python3.7/site-packages (from httpx->apache-airflow==2.4.1) (1.3.0)
+Collecting httpcore<0.16.0,>=0.15.0
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/httpcore/0.15.0/httpcore-0.15.0-py3-none-any.whl (68 kB)
+Requirement already satisfied: pycparser in ./.tox/py37/lib/python3.7/site-packages (from cffi>=1.12->cryptography>=0.9.3->apache-airflow==2.4.1) (2.21)
+Requirement already satisfied: dnspython>=1.15.0 in ./.tox/py37/lib/python3.7/site-packages (from email-validator<2,>=1.0.5->flask-appbuilder==4.1.3->apache-airflow==2.4.1) (2.2.1)
+Requirement already satisfied: idna>=2.0.0 in ./.tox/py37/lib/python3.7/site-packages (from email-validator<2,>=1.0.5->flask-appbuilder==4.1.3->apache-airflow==2.4.1) (3.4)
+Collecting pytz
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/pytz/2022.2.1/pytz-2022.2.1-py2.py3-none-any.whl (500 kB)
+Collecting Babel>=2.3
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/babel/2.10.3/Babel-2.10.3-py3-none-any.whl (9.5 MB)
+Collecting anyio==3.*
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/anyio/3.6.1/anyio-3.6.1-py3-none-any.whl (80 kB)
+Collecting h11<0.13,>=0.11
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/h11/0.12.0/h11-0.12.0-py3-none-any.whl (54 kB)
+Collecting urllib3<1.27,>=1.21.1
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/urllib3/1.26.12/urllib3-1.26.12-py2.py3-none-any.whl (140 kB)
+Collecting charset-normalizer<3,>=2
+  Using cached https://amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/sagemaker-studio-shared/simple/charset-normalizer/2.1.1/charset_normalizer-2.1.1-py3-none-any.whl (39 kB)
+Building wheels for collected packages: dill
+  Building wheel for dill (setup.py): started
+  Building wheel for dill (setup.py): finished with status 'done'
+  Created wheel for dill: filename=dill-0.3.1.1-py3-none-any.whl size=78545 sha256=e4f30321ce7b6b5666824cb84c48dcb8ab016bac305918c0c8acf13665390e27
+  Stored in directory: /local/home/evakravi/.cache/pip/wheels/76/94/4d/51536c198534e76da2d01d34417a5ed135b4d353bdfacdb1ce
+Successfully built dill
+Installing collected packages: pytz, cron-descriptor, zipp, urllib3, typing-extensions, termcolor, tabulate, PyYAML, python-slugify, python-daemon, pyrsistent, pyparsing, pyjwt, psutil, pkgutil-resolve-name, lazy-object-proxy, jinja2, h11, greenlet, exceptiongroup, dill, colorama, charset-normalizer, certifi, Babel, apache-airflow-providers-imap, apache-airflow-providers-ftp, apache-airflow-providers-common-sql, rich, requests, packaging, importlib-metadata, cryptography, croniter, cattrs, apache-airflow-providers-sqlite, anyio, sqlalchemy, requests-toolbelt, mdit-py-plugins, marshmallow, markdown, Mako, jsonschema, httpcore, httpx, apache-airflow-providers-http
+  Attempting uninstall: pytz
+    Found existing installation: pytz 2022.6
+    Uninstalling pytz-2022.6:
+      Successfully uninstalled pytz-2022.6
+  Attempting uninstall: cron-descriptor
+    Found existing installation: cron-descriptor 1.2.32
+    Uninstalling cron-descriptor-1.2.32:
+      Successfully uninstalled cron-descriptor-1.2.32
+  Attempting uninstall: zipp
+    Found existing installation: zipp 3.11.0
+    Uninstalling zipp-3.11.0:
+      Successfully uninstalled zipp-3.11.0
+  Attempting uninstall: urllib3
+    Found existing installation: urllib3 1.26.8
+    Uninstalling urllib3-1.26.8:
+      Successfully uninstalled urllib3-1.26.8
+  Attempting uninstall: typing-extensions
+    Found existing installation: typing_extensions 4.4.0
+    Uninstalling typing_extensions-4.4.0:
+      Successfully uninstalled typing_extensions-4.4.0
+  Attempting uninstall: termcolor
+    Found existing installation: termcolor 2.1.1
+    Uninstalling termcolor-2.1.1:
+      Successfully uninstalled termcolor-2.1.1
+  Attempting uninstall: tabulate
+    Found existing installation: tabulate 0.9.0
+    Uninstalling tabulate-0.9.0:
+      Successfully uninstalled tabulate-0.9.0
+  Attempting uninstall: PyYAML
+    Found existing installation: PyYAML 5.4.1
+    Uninstalling PyYAML-5.4.1:
+      Successfully uninstalled PyYAML-5.4.1
+  Attempting uninstall: python-slugify
+    Found existing installation: python-slugify 7.0.0
+    Uninstalling python-slugify-7.0.0:
+      Successfully uninstalled python-slugify-7.0.0
+  Attempting uninstall: python-daemon
+    Found existing installation: python-daemon 2.3.2
+    Uninstalling python-daemon-2.3.2:
+      Successfully uninstalled python-daemon-2.3.2
+  Attempting uninstall: pyrsistent
+    Found existing installation: pyrsistent 0.19.2
+    Uninstalling pyrsistent-0.19.2:
+      Successfully uninstalled pyrsistent-0.19.2
+  Attempting uninstall: pyjwt
+    Found existing installation: PyJWT 2.6.0
+    Uninstalling PyJWT-2.6.0:
+      Successfully uninstalled PyJWT-2.6.0
+  Attempting uninstall: psutil
+    Found existing installation: psutil 5.9.4
+    Uninstalling psutil-5.9.4:
+      Successfully uninstalled psutil-5.9.4
+  Attempting uninstall: lazy-object-proxy
+    Found existing installation: lazy-object-proxy 1.8.0
+    Uninstalling lazy-object-proxy-1.8.0:
+      Successfully uninstalled lazy-object-proxy-1.8.0
+  Attempting uninstall: jinja2
+    Found existing installation: Jinja2 3.0.3
+    Uninstalling Jinja2-3.0.3:
+      Successfully uninstalled Jinja2-3.0.3
+  Attempting uninstall: h11
+    Found existing installation: h11 0.14.0
+    Uninstalling h11-0.14.0:
+      Successfully uninstalled h11-0.14.0
+  Attempting uninstall: greenlet
+    Found existing installation: greenlet 2.0.1
+    Uninstalling greenlet-2.0.1:
+      Successfully uninstalled greenlet-2.0.1
+  Attempting uninstall: exceptiongroup
+    Found existing installation: exceptiongroup 1.0.4
+    Uninstalling exceptiongroup-1.0.4:
+      Successfully uninstalled exceptiongroup-1.0.4
+  Attempting uninstall: dill
+    Found existing installation: dill 0.3.6
+    Uninstalling dill-0.3.6:
+      Successfully uninstalled dill-0.3.6
+  Attempting uninstall: colorama
+    Found existing installation: colorama 0.4.6
+    Uninstalling colorama-0.4.6:
+      Successfully uninstalled colorama-0.4.6
+  Attempting uninstall: charset-normalizer
+    Found existing installation: charset-normalizer 2.0.12
+    Uninstalling charset-normalizer-2.0.12:
+      Successfully uninstalled charset-normalizer-2.0.12
+  Attempting uninstall: certifi
+    Found existing installation: certifi 2022.12.7
+    Uninstalling certifi-2022.12.7:
+      Successfully uninstalled certifi-2022.12.7
+  Attempting uninstall: Babel
+    Found existing installation: Babel 2.11.0
+    Uninstalling Babel-2.11.0:
+      Successfully uninstalled Babel-2.11.0
+  Attempting uninstall: apache-airflow-providers-imap
+    Found existing installation: apache-airflow-providers-imap 3.1.0
+    Uninstalling apache-airflow-providers-imap-3.1.0:
+      Successfully uninstalled apache-airflow-providers-imap-3.1.0
+  Attempting uninstall: apache-airflow-providers-ftp
+    Found existing installation: apache-airflow-providers-ftp 3.2.0
+    Uninstalling apache-airflow-providers-ftp-3.2.0:
+      Successfully uninstalled apache-airflow-providers-ftp-3.2.0
+  Attempting uninstall: apache-airflow-providers-common-sql
+    Found existing installation: apache-airflow-providers-common-sql 1.3.1
+    Uninstalling apache-airflow-providers-common-sql-1.3.1:
+      Successfully uninstalled apache-airflow-providers-common-sql-1.3.1
+  Attempting uninstall: rich
+    Found existing installation: rich 12.6.0
+    Uninstalling rich-12.6.0:
+      Successfully uninstalled rich-12.6.0
+  Attempting uninstall: requests
+    Found existing installation: requests 2.27.1
+    Uninstalling requests-2.27.1:
+      Successfully uninstalled requests-2.27.1
+  Attempting uninstall: packaging
+    Found existing installation: packaging 22.0
+    Uninstalling packaging-22.0:
+      Successfully uninstalled packaging-22.0
+  Attempting uninstall: importlib-metadata
+    Found existing installation: importlib-metadata 4.2.0
+    Uninstalling importlib-metadata-4.2.0:
+      Successfully uninstalled importlib-metadata-4.2.0
+  Attempting uninstall: cryptography
+    Found existing installation: cryptography 38.0.4
+    Uninstalling cryptography-38.0.4:
+      Successfully uninstalled cryptography-38.0.4
+  Attempting uninstall: croniter
+    Found existing installation: croniter 1.3.8
+    Uninstalling croniter-1.3.8:
+      Successfully uninstalled croniter-1.3.8
+  Attempting uninstall: cattrs
+    Found existing installation: cattrs 22.2.0
+    Uninstalling cattrs-22.2.0:
+      Successfully uninstalled cattrs-22.2.0
+  Attempting uninstall: apache-airflow-providers-sqlite
+    Found existing installation: apache-airflow-providers-sqlite 3.3.1
+    Uninstalling apache-airflow-providers-sqlite-3.3.1:
+      Successfully uninstalled apache-airflow-providers-sqlite-3.3.1
+  Attempting uninstall: anyio
+    Found existing installation: anyio 3.6.2
+    Uninstalling anyio-3.6.2:
+      Successfully uninstalled anyio-3.6.2
+  Attempting uninstall: sqlalchemy
+    Found existing installation: SQLAlchemy 1.4.45
+    Uninstalling SQLAlchemy-1.4.45:
+      Successfully uninstalled SQLAlchemy-1.4.45
+  Attempting uninstall: requests-toolbelt
+    Found existing installation: requests-toolbelt 0.10.1
+    Uninstalling requests-toolbelt-0.10.1:
+      Successfully uninstalled requests-toolbelt-0.10.1
+  Attempting uninstall: mdit-py-plugins
+    Found existing installation: mdit-py-plugins 0.3.3
+    Uninstalling mdit-py-plugins-0.3.3:
+      Successfully uninstalled mdit-py-plugins-0.3.3
+  Attempting uninstall: marshmallow
+    Found existing installation: marshmallow 3.19.0
+    Uninstalling marshmallow-3.19.0:
+      Successfully uninstalled marshmallow-3.19.0
+  Attempting uninstall: markdown
+    Found existing installation: Markdown 3.3.5
+    Uninstalling Markdown-3.3.5:
+      Successfully uninstalled Markdown-3.3.5
+  Attempting uninstall: Mako
+    Found existing installation: Mako 1.2.4
+    Uninstalling Mako-1.2.4:
+      Successfully uninstalled Mako-1.2.4
+  Attempting uninstall: jsonschema
+    Found existing installation: jsonschema 3.2.0
+    Uninstalling jsonschema-3.2.0:
+      Successfully uninstalled jsonschema-3.2.0
+  Attempting uninstall: httpcore
+    Found existing installation: httpcore 0.16.2
+    Uninstalling httpcore-0.16.2:
+      Successfully uninstalled httpcore-0.16.2
+  Attempting uninstall: httpx
+    Found existing installation: httpx 0.23.1
+    Uninstalling httpx-0.23.1:
+      Successfully uninstalled httpx-0.23.1
+  Attempting uninstall: apache-airflow-providers-http
+    Found existing installation: apache-airflow-providers-http 4.1.0
+    Uninstalling apache-airflow-providers-http-4.1.0:
+      Successfully uninstalled apache-airflow-providers-http-4.1.0
+ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+pathos 0.3.0 requires dill>=0.3.6, but you have dill 0.3.1.1 which is incompatible.
+multiprocess 0.70.14 requires dill>=0.3.6, but you have dill 0.3.1.1 which is incompatible.
+flake8 4.0.1 requires importlib-metadata<4.3; python_version < "3.8", but you have importlib-metadata 4.12.0 which is incompatible.
+docker-compose 1.29.2 requires jsonschema<4,>=2.5.1, but you have jsonschema 4.16.0 which is incompatible.
+docker-compose 1.29.2 requires PyYAML<6,>=3.10, but you have pyyaml 6.0 which is incompatible.
+Successfully installed Babel-2.10.3 Mako-1.2.3 PyYAML-6.0 anyio-3.6.1 apache-airflow-providers-common-sql-1.2.0 apache-airflow-providers-ftp-3.1.0 apache-airflow-providers-http-4.0.0 apache-airflow-providers-imap-3.0.0 apache-airflow-providers-sqlite-3.2.1 cattrs-22.1.0 certifi-2022.9.24 charset-normalizer-2.1.1 colorama-0.4.5 cron-descriptor-1.2.31 croniter-1.3.7 cryptography-36.0.2 dill-0.3.1.1 exceptiongroup-1.0.0rc9 greenlet-1.1.3 h11-0.12.0 httpcore-0.15.0 httpx-0.23.0 importlib-metadata-4.12.0 jinja2-3.1.2 jsonschema-4.16.0 lazy-object-proxy-1.7.1 markdown-3.4.1 marshmallow-3.18.0 mdit-py-plugins-0.3.1 packaging-21.3 pkgutil-resolve-name-1.3.10 psutil-5.9.2 pyjwt-2.5.0 pyparsing-3.0.9 pyrsistent-0.18.1 python-daemon-2.3.1 python-slugify-6.1.2 pytz-2022.2.1 requests-2.28.1 requests-toolbelt-0.9.1 rich-12.5.1 sqlalchemy-1.4.27 tabulate-0.8.10 termcolor-2.0.1 typing-extensions-4.3.0 urllib3-1.26.12 zipp-3.8.1
+py37 run-test: commands[2] | pytest --cov=sagemaker --cov-append tests/unit --cov-report xml
+============================= test session starts ==============================
+platform linux -- Python 3.7.15, pytest-6.2.5, py-1.11.0, pluggy-1.0.0
+cachedir: .tox/py37/.pytest_cache
+rootdir: /local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk, configfile: tox.ini
+plugins: rerunfailures-10.2, cov-3.0.0, xdist-2.4.0, timeout-2.1.0, anyio-3.6.1, forked-1.4.0
+collected 10903 items
+
+tests/unit/test_algorithm.py ........................                    [  0%]
+tests/unit/test_amazon_estimator.py ...................                  [  0%]
+tests/unit/test_analytics.py .........                                   [  0%]
+tests/unit/test_artifact_analytics.py .                                  [  0%]
+tests/unit/test_chainer.py ..............                                [  0%]
+tests/unit/sagemaker/image_uris/test_dlc_frameworks.py .                 [  0%]
+tests/unit/test_chainer.py ..............                                [  0%]
+tests/unit/sagemaker/image_uris/test_dlc_frameworks.py .                 [  0%]
+tests/unit/test_chainer.py ..............                                [  0%]
+tests/unit/sagemaker/image_uris/test_dlc_frameworks.py .                 [  0%]
+tests/unit/test_chainer.py ..............                                [  1%]
+tests/unit/sagemaker/image_uris/test_dlc_frameworks.py .                 [  1%]
+tests/unit/test_chainer.py ..............                                [  1%]
+tests/unit/sagemaker/image_uris/test_dlc_frameworks.py .                 [  1%]
+tests/unit/test_chainer.py ..............                                [  1%]
+tests/unit/sagemaker/image_uris/test_dlc_frameworks.py .                 [  1%]
+tests/unit/test_chainer.py ............                                  [  1%]
+tests/unit/sagemaker/image_uris/test_dlc_frameworks.py .                 [  1%]
+tests/unit/test_chainer.py ............                                  [  1%]
+tests/unit/sagemaker/image_uris/test_dlc_frameworks.py .                 [  1%]
+tests/unit/test_chainer.py ............                                  [  1%]
+tests/unit/sagemaker/image_uris/test_dlc_frameworks.py .                 [  1%]
+tests/unit/test_chainer.py ............                                  [  1%]
+tests/unit/sagemaker/image_uris/test_dlc_frameworks.py .                 [  1%]
+tests/unit/test_chainer.py ............                                  [  1%]
+tests/unit/sagemaker/image_uris/test_dlc_frameworks.py .                 [  1%]
+tests/unit/test_chainer.py ............                                  [  2%]
+tests/unit/sagemaker/image_uris/test_dlc_frameworks.py .                 [  2%]
+tests/unit/test_chainer.py ...                                           [  2%]
+tests/unit/test_clarify.py ............................................. [  2%]
+.                                                                        [  2%]
+tests/unit/test_common.py ......................                         [  2%]
+tests/unit/test_create_deploy_entities.py ......                         [  2%]
+tests/unit/test_default_bucket.py .......                                [  2%]
+tests/unit/test_deprecations.py ................                         [  2%]
+tests/unit/test_endpoint_from_job.py ..                                  [  2%]
+tests/unit/test_endpoint_from_model_data.py ......                       [  3%]
+tests/unit/test_estimator.py ........................................... [  3%]
+........................................................................ [  4%]
+........................................................................ [  4%]
+........                                                                 [  4%]
+tests/unit/test_exception_on_bad_status.py .......                       [  4%]
+tests/unit/test_experiments_analytics.py ........                        [  4%]
+tests/unit/test_fm.py .................................................. [  5%]
+...                                                                      [  5%]
+tests/unit/test_fw_utils.py ............................................ [  5%]
+......................                                                   [  6%]
+tests/unit/test_git_utils.py .....................                       [  6%]
+tests/unit/test_hyperparameter.py .......                                [  6%]
+tests/unit/test_image.py ..........................                      [  6%]
+tests/unit/test_init.py .                                                [  6%]
+tests/unit/test_inputs.py ........                                       [  6%]
+tests/unit/test_ipinsights.py .....................................      [  6%]
+tests/unit/test_job.py ...............................................   [  7%]
+tests/unit/test_kmeans.py ...............................                [  7%]
+tests/unit/test_knn.py ..........................                        [  7%]
+tests/unit/test_lambda_helper.py .................ERROR: got KeyboardInterrupt signal
+
+
+=============================== warnings summary ===============================
+tests/unit/test_estimator.py::test_prepare_for_training_with_pipeline_name_in_s3_path_no_source_dir
+  /local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/sagemaker/workflow/pipeline_context.py:261: UserWarning: Running within a PipelineSession, there will be No Wait, No Logs, and No Job being started.
+    UserWarning,
+
+tests/unit/test_estimator.py::test_image_name_map
+  /local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/sagemaker/deprecations.py:53: DeprecationWarning: image_name has been renamed in sagemaker>=2.
+  See: https://sagemaker.readthedocs.io/en/stable/v2.html for details.
+    _warn(f"{phrase} has been renamed")
+
+tests/unit/test_estimator.py::test_all_framework_estimators_add_jumpstart_tags
+tests/unit/test_estimator.py::test_all_framework_estimators_add_jumpstart_base_name
+  /local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/sagemaker/deprecations.py:44: DeprecationWarning: update_endpoint is a no-op in sagemaker>=2.
+  See: https://sagemaker.readthedocs.io/en/stable/v2.html for details.
+    _warn(f"{phrase} is a no-op", sdk_version)
+
+tests/unit/test_git_utils.py::test_git_clone_repo_with_token_2fa
+  /local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/sagemaker/git_utils.py:216: UserWarning: Using token for authentication, other credentials will be ignored.
+    warnings.warn("Using token for authentication, " "other credentials will be ignored.")
+
+-- Docs: https://docs.pytest.org/en/stable/warnings.html
+================= 879 passed, 5 warnings in 198.37s (0:03:18) ==================
+Traceback (most recent call last):
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/_pytest/main.py", line 269, in wrap_session
+    session.exitstatus = doit(config, session) or 0
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/_pytest/main.py", line 323, in _main
+    config.hook.pytest_runtestloop(session=session)
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/pluggy/_hooks.py", line 265, in __call__
+    return self._hookexec(self.name, self.get_hookimpls(), kwargs, firstresult)
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/pluggy/_manager.py", line 80, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/pluggy/_callers.py", line 55, in _multicall
+    gen.send(outcome)
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/pytest_cov/plugin.py", line 294, in pytest_runtestloop
+    self.cov_controller.finish()
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/pytest_cov/engine.py", line 44, in ensure_topdir_wrapper
+    return meth(self, *args, **kwargs)
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/pytest_cov/engine.py", line 196, in summary
+    total = self.cov.xml_report(ignore_errors=True, outfile=output)
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib64/python3.7/site-packages/coverage/control.py", line 1017, in xml_report
+    return render_report(self.config.xml_output, XmlReporter(self), morfs, self._message)
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib64/python3.7/site-packages/coverage/report.py", line 35, in render_report
+    return reporter.report(morfs, outfile=outfile)
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib64/python3.7/site-packages/coverage/xmlreport.py", line 75, in report
+    for fr, analysis in get_analysis_to_report(self.coverage, morfs):
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib64/python3.7/site-packages/coverage/report.py", line 72, in get_analysis_to_report
+    analysis = coverage._analyze(fr)
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib64/python3.7/site-packages/coverage/control.py", line 822, in _analyze
+    return Analysis(data, self.config.precision, it, self._file_mapper)
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib64/python3.7/site-packages/coverage/results.py", line 20, in __init__
+    self.statements = self.file_reporter.lines()
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib64/python3.7/site-packages/coverage/python.py", line 189, in lines
+    return self.parser.statements
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib64/python3.7/site-packages/coverage/python.py", line 184, in parser
+    self._parser.parse_source()
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib64/python3.7/site-packages/coverage/parser.py", line 234, in parse_source
+    self._raw_parse()
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib64/python3.7/site-packages/coverage/parser.py", line 124, in _raw_parse
+    tokgen = generate_tokens(self.text)
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib64/python3.7/site-packages/coverage/phystokens.py", line 176, in generate_tokens
+    self.last_tokens = list(tokenize.generate_tokens(readline))
+  File "/usr/lib64/python3.7/tokenize.py", line 647, in _tokenize
+    elif initial.isidentifier():               # ordinary name
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/bin/pytest", line 8, in <module>
+    sys.exit(console_main())
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/_pytest/config/__init__.py", line 185, in console_main
+    code = main()
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/_pytest/config/__init__.py", line 163, in main
+    config=config
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/pluggy/_hooks.py", line 265, in __call__
+    return self._hookexec(self.name, self.get_hookimpls(), kwargs, firstresult)
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/pluggy/_manager.py", line 80, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/pluggy/_callers.py", line 39, in _multicall
+    res = hook_impl.function(*args)
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/pluggy/_result.py", line 60, in get_result
+    raise ex[1].with_traceback(ex[2])
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/pluggy/_callers.py", line 39, in _multicall
+    res = hook_impl.function(*args)
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/_pytest/main.py", line 316, in pytest_cmdline_main
+    return wrap_session(config, _main)
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/_pytest/main.py", line 269, in wrap_session
+    session.exitstatus = doit(config, session) or 0
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/pluggy/_hooks.py", line 265, in __call__
+    return self._hookexec(self.name, self.get_hookimpls(), kwargs, firstresult)
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/pluggy/_manager.py", line 80, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/pluggy/_callers.py", line 60, in _multicall
+    return outcome.get_result()
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/pluggy/_result.py", line 60, in get_result
+    raise ex[1].with_traceback(ex[2])
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/pluggy/_callers.py", line 39, in _multicall
+    res = hook_impl.function(*args)
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/_pytest/terminal.py", line 837, in pytest_keyboard_interrupt
+    self._keyboardinterrupt_memo = excinfo.getrepr(funcargs=True)
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/_pytest/_code/code.py", line 648, in getrepr
+    return fmt.repr_excinfo(self)
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/_pytest/_code/code.py", line 905, in repr_excinfo
+    reprtraceback = self.repr_traceback(excinfo_)
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/_pytest/_code/code.py", line 846, in repr_traceback
+    reprentry = self.repr_traceback_entry(entry, einfo)
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/_pytest/_code/code.py", line 790, in repr_traceback_entry
+    source = self._getentrysource(entry)
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/_pytest/_code/code.py", line 698, in _getentrysource
+    source = entry.getsource(self.astcache)
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/_pytest/_code/code.py", line 242, in getsource
+    source = self.frame.code.fullsource
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/_pytest/_code/code.py", line 100, in fullsource
+    full, _ = findsource(self.raw)
+  File "/local/home/evakravi/workspace/github/sdk_change_download_directory/sagemaker-python-sdk/.tox/py37/lib/python3.7/site-packages/_pytest/_code/source.py", line 121, in findsource
+    sourcelines, lineno = inspect.findsource(obj)
+  File "/usr/lib64/python3.7/inspect.py", line 782, in findsource
+    lines = linecache.getlines(file, module.__dict__)
+  File "/usr/lib64/python3.7/linecache.py", line 47, in getlines
+    return updatecache(filename, module_globals)
+  File "/usr/lib64/python3.7/linecache.py", line 137, in updatecache
+    lines = fp.readlines()
+  File "/usr/lib64/python3.7/codecs.py", line 319, in decode
+    def decode(self, input, final=False):
+KeyboardInterrupt
+___________________________________ summary ____________________________________
+ERROR:   py37: keyboardinterrupt
