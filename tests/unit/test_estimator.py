@@ -25,7 +25,10 @@ import pytest
 from botocore.exceptions import ClientError
 from mock import ANY, MagicMock, Mock, patch, PropertyMock
 from sagemaker.huggingface.estimator import HuggingFace
-from sagemaker.jumpstart.constants import JUMPSTART_BUCKET_NAME_SET, JUMPSTART_RESOURCE_BASE_NAME
+from sagemaker.jumpstart.constants import (
+    JUMPSTART_BUCKET_NAME_SET,
+    JUMPSTART_RESOURCE_BASE_NAME,
+)
 from sagemaker.jumpstart.enums import JumpStartTag
 
 import sagemaker.local
@@ -106,7 +109,11 @@ RETURNED_JOB_DESCRIPTION = {
         "training_steps": "100",
     },
     "RoleArn": "arn:aws:iam::366:role/SageMakerRole",
-    "ResourceConfig": {"VolumeSizeInGB": 30, "InstanceCount": 1, "InstanceType": "ml.c4.xlarge"},
+    "ResourceConfig": {
+        "VolumeSizeInGB": 30,
+        "InstanceCount": 1,
+        "InstanceType": "ml.c4.xlarge",
+    },
     "EnableNetworkIsolation": False,
     "StoppingCondition": {"MaxRuntimeInSeconds": 24 * 60 * 60},
     "TrainingJobName": "neo",
@@ -143,7 +150,10 @@ DISTRIBUTION_SM_DDP_ENABLED = {
 }
 MOCKED_S3_URI = "s3://mocked_s3_uri_from_source_dir"
 MOCKED_PIPELINE_CONFIG = _PipelineConfig(
-    "test-pipeline", "test-training-step", "code-hash-0123456789", "config-hash-0123456789"
+    "test-pipeline",
+    "test-training-step",
+    "code-hash-0123456789",
+    "config-hash-0123456789",
 )
 
 
@@ -247,7 +257,9 @@ def pipeline_session():
     session_mock.resource.return_value = resource_mock
     session_mock.client.return_value = client_mock
     return PipelineSession(
-        boto_session=session_mock, sagemaker_client=client_mock, default_bucket=BUCKET_NAME
+        boto_session=session_mock,
+        sagemaker_client=client_mock,
+        default_bucket=BUCKET_NAME,
     )
 
 
@@ -322,7 +334,11 @@ def test_framework_all_init_args(sagemaker_session):
         },
         "metric_definitions": [{"Name": "validation-rmse", "Regex": "validation-rmse=(\\d+)"}],
         "encrypt_inter_container_traffic": True,
-        "environment": {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_val3"},
+        "environment": {
+            "env_key1": "env_val1",
+            "env_key2": "env_val2",
+            "env_key3": "env_val3",
+        },
         "experiment_config": None,
         "checkpoint_s3_uri": "s3://bucket/checkpoint",
         "checkpoint_local_path": "file://local/checkpoint",
@@ -379,7 +395,8 @@ def test_framework_with_debugger_and_built_in_rule(sagemaker_session):
         rule_parameters={"threshold": "120", "stop_training_on_fire": "True"},
         collections_to_save=[
             CollectionConfig(
-                name="losses", parameters={"train.save_interval": "50", "eval.save_interval": "10"}
+                name="losses",
+                parameters={"train.save_interval": "50", "eval.save_interval": "10"},
             )
         ],
     )
@@ -405,18 +422,23 @@ def test_framework_with_debugger_and_built_in_rule(sagemaker_session):
         "CollectionConfigurations": [
             {
                 "CollectionName": "losses",
-                "CollectionParameters": {"train.save_interval": "50", "eval.save_interval": "10"},
+                "CollectionParameters": {
+                    "train.save_interval": "50",
+                    "eval.save_interval": "10",
+                },
             }
         ],
     }
     assert args["profiler_config"] == {
+        "DisableProfiler": False,
         "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
     }
 
 
 def test_framework_with_debugger_and_custom_rule(sagemaker_session):
     hook_config = DebuggerHookConfig(
-        s3_output_path="s3://output", collection_configs=[CollectionConfig(name="weights")]
+        s3_output_path="s3://output",
+        collection_configs=[CollectionConfig(name="weights")],
     )
     debugger_custom_rule = Rule.custom(
         name="CustomRule",
@@ -536,7 +558,8 @@ def test_framework_with_debugger_rule_and_multiple_actions(sagemaker_session):
 
 def test_framework_with_only_debugger_hook_config(sagemaker_session):
     hook_config = DebuggerHookConfig(
-        s3_output_path="s3://output", collection_configs=[CollectionConfig(name="weights")]
+        s3_output_path="s3://output",
+        collection_configs=[CollectionConfig(name="weights")],
     )
     f = DummyFramework(
         entry_point=SCRIPT_PATH,
@@ -574,15 +597,9 @@ def test_framework_without_debugger_and_profiler(time, sagemaker_session):
     }
     assert "debugger_rule_configs" not in args
     assert args["profiler_config"] == {
+        "DisableProfiler": False,
         "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
     }
-    assert args["profiler_rule_configs"] == [
-        {
-            "RuleConfigurationName": "ProfilerReport-1510006209",
-            "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
-            "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
-        }
-    ]
 
 
 def test_framework_with_debugger_and_profiler_rules(sagemaker_session):
@@ -591,7 +608,8 @@ def test_framework_with_debugger_and_profiler_rules(sagemaker_session):
         rule_parameters={"threshold": "120", "stop_training_on_fire": "True"},
         collections_to_save=[
             CollectionConfig(
-                name="losses", parameters={"train.save_interval": "50", "eval.save_interval": "10"}
+                name="losses",
+                parameters={"train.save_interval": "50", "eval.save_interval": "10"},
             )
         ],
     )
@@ -639,18 +657,25 @@ def test_framework_with_debugger_and_profiler_rules(sagemaker_session):
         "CollectionConfigurations": [
             {
                 "CollectionName": "losses",
-                "CollectionParameters": {"train.save_interval": "50", "eval.save_interval": "10"},
+                "CollectionParameters": {
+                    "train.save_interval": "50",
+                    "eval.save_interval": "10",
+                },
             }
         ],
     }
     assert args["profiler_config"] == {
+        "DisableProfiler": False,
         "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
     }
     assert args["profiler_rule_configs"] == [
         {
             "RuleConfigurationName": "CustomProfilerReportRule",
             "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
-            "RuleParameters": {"rule_to_invoke": "ProfilerReport", "CPUBottleneck_threshold": "90"},
+            "RuleParameters": {
+                "rule_to_invoke": "ProfilerReport",
+                "CPUBottleneck_threshold": "90",
+            },
         },
         {
             "InstanceType": "c4.4xlarge",
@@ -679,6 +704,7 @@ def test_framework_with_only_profiler_rule_specified(sagemaker_session):
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
     assert args["profiler_config"] == {
+        "DisableProfiler": False,
         "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
     }
     assert args["profiler_rule_configs"] == [
@@ -711,16 +737,10 @@ def test_framework_with_profiler_config_without_s3_output_path(time, sagemaker_s
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
     assert args["profiler_config"] == {
+        "DisableProfiler": False,
         "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         "ProfilingIntervalInMilliseconds": 1000,
     }
-    assert args["profiler_rule_configs"] == [
-        {
-            "RuleConfigurationName": "ProfilerReport-1510006209",
-            "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
-            "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
-        }
-    ]
 
 
 @pytest.mark.parametrize("region", PROFILER_UNSUPPORTED_REGIONS)
@@ -745,7 +765,9 @@ def test_framework_with_no_default_profiler_in_unsupported_region(region):
     f.fit("s3://mydata")
     sms.train.assert_called_once()
     _, args = sms.train.call_args
-    assert args.get("profiler_config") is None
+    # assert args.get("profiler_config") == {"DisableProfiler": True}
+    # temporarily check if "DisableProfiler" flag is true until s3_output is changed to optional in service
+    assert args.get("profiler_config")["DisableProfiler"] is True
     assert args.get("profiler_rule_configs") is None
 
 
@@ -865,7 +887,10 @@ def test_framework_with_profiler_config_and_profiler_disabled(sagemaker_session)
             disable_profiler=True,
         )
         f.fit("s3://mydata")
-    assert "profiler_config cannot be set when disable_profiler is True." in str(error)
+    # assert "profiler_config cannot be set when disable_profiler is True." in str(error)
+    assert "profiler_config.disable_profiler cannot be False when disable_profiler is True." in str(
+        error
+    )
 
 
 def test_framework_with_profiler_rule_and_profiler_disabled(sagemaker_session):
@@ -927,15 +952,9 @@ def test_framework_with_enabling_default_profiling(
     sagemaker_session.update_training_job.assert_called_once()
     _, args = sagemaker_session.update_training_job.call_args
     assert args["profiler_config"] == {
+        "DisableProfiler": False,
         "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
     }
-    assert args["profiler_rule_configs"] == [
-        {
-            "RuleConfigurationName": "ProfilerReport-1510006209",
-            "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
-            "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
-        }
-    ]
 
 
 @patch("time.time", return_value=TIME)
@@ -960,15 +979,9 @@ def test_framework_with_enabling_default_profiling_with_existed_s3_output_path(
     sagemaker_session.update_training_job.assert_called_once()
     _, args = sagemaker_session.update_training_job.call_args
     assert args["profiler_config"] == {
+        "DisableProfiler": False,
         "S3OutputPath": "s3://custom/",
     }
-    assert args["profiler_rule_configs"] == [
-        {
-            "RuleConfigurationName": "ProfilerReport-1510006209",
-            "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
-            "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
-        }
-    ]
 
 
 def test_framework_with_disabling_profiling_when_profiler_is_already_disabled(
@@ -1001,7 +1014,9 @@ def test_framework_with_disabling_profiling(sagemaker_session, training_job_desc
     f.disable_profiling()
     sagemaker_session.update_training_job.assert_called_once()
     _, args = sagemaker_session.update_training_job.call_args
-    assert args["profiler_config"] == {"DisableProfiler": True}
+    # assert args["profiler_config"] == {"DisableProfiler": True}
+    # temporarily check if "DisableProfiler" flag is true until s3_output is changed to optional in service
+    assert args.get("profiler_config")["DisableProfiler"] is True
 
 
 def test_framework_with_update_profiler_when_no_training_job(sagemaker_session):
@@ -1058,6 +1073,7 @@ def test_framework_with_update_profiler_config(sagemaker_session):
     sagemaker_session.update_training_job.assert_called_once()
     _, args = sagemaker_session.update_training_job.call_args
     assert args["profiler_config"] == {
+        "DisableProfiler": False,
         "ProfilingIntervalInMilliseconds": 1000,
     }
     assert "profiler_rule_configs" not in args
@@ -1086,7 +1102,7 @@ def test_framework_with_update_profiler_report_rule(sagemaker_session):
             "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
         }
     ]
-    assert "profiler_config" not in args
+    assert args["profiler_config"]["DisableProfiler"] is False
 
 
 def test_framework_with_disable_framework_metrics(sagemaker_session):
@@ -1101,11 +1117,16 @@ def test_framework_with_disable_framework_metrics(sagemaker_session):
     f.update_profiler(disable_framework_metrics=True)
     sagemaker_session.update_training_job.assert_called_once()
     _, args = sagemaker_session.update_training_job.call_args
-    assert args["profiler_config"] == {"ProfilingParameters": {}}
+    assert args["profiler_config"] == {
+        "DisableProfiler": False,
+        "ProfilingParameters": {},
+    }
     assert "profiler_rule_configs" not in args
 
 
-def test_framework_with_disable_framework_metrics_and_update_system_metrics(sagemaker_session):
+def test_framework_with_disable_framework_metrics_and_update_system_metrics(
+    sagemaker_session,
+):
     f = DummyFramework(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -1118,13 +1139,16 @@ def test_framework_with_disable_framework_metrics_and_update_system_metrics(sage
     sagemaker_session.update_training_job.assert_called_once()
     _, args = sagemaker_session.update_training_job.call_args
     assert args["profiler_config"] == {
+        "DisableProfiler": False,
         "ProfilingIntervalInMilliseconds": 1000,
         "ProfilingParameters": {},
     }
     assert "profiler_rule_configs" not in args
 
 
-def test_framework_with_disable_framework_metrics_and_update_framework_params(sagemaker_session):
+def test_framework_with_disable_framework_metrics_and_update_framework_params(
+    sagemaker_session,
+):
     with pytest.raises(ValueError) as error:
         f = DummyFramework(
             entry_point=SCRIPT_PATH,
@@ -1160,7 +1184,10 @@ def test_framework_with_update_profiler_config_and_profiler_rule(sagemaker_sessi
     f.update_profiler(rules=[profiler_custom_rule], system_monitor_interval_millis=1000)
     sagemaker_session.update_training_job.assert_called_once()
     _, args = sagemaker_session.update_training_job.call_args
-    assert args["profiler_config"] == {"ProfilingIntervalInMilliseconds": 1000}
+    assert args["profiler_config"] == {
+        "DisableProfiler": False,
+        "ProfilingIntervalInMilliseconds": 1000,
+    }
     assert args["profiler_rule_configs"] == [
         {
             "InstanceType": "c4.4xlarge",
@@ -1659,7 +1686,10 @@ def test_start_new_wait_called(strftime, sagemaker_session):
 
 
 def test_attach_framework(sagemaker_session, training_job_description):
-    training_job_description["VpcConfig"] = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
+    training_job_description["VpcConfig"] = {
+        "Subnets": ["foo"],
+        "SecurityGroupIds": ["bar"],
+    }
     training_job_description["EnableNetworkIsolation"] = True
 
     framework_estimator = DummyFramework.attach(
@@ -1753,7 +1783,8 @@ def test_attach_framework_with_inter_container_traffic_encryption_flag(
 def test_attach_framework_base_from_generated_name(sagemaker_session, training_job_description):
     base_job_name = "neo"
     framework_estimator = DummyFramework.attach(
-        training_job_name=utils.name_from_base("neo"), sagemaker_session=sagemaker_session
+        training_job_name=utils.name_from_base("neo"),
+        sagemaker_session=sagemaker_session,
     )
 
     assert framework_estimator.base_job_name == base_job_name
@@ -1948,7 +1979,8 @@ def test_git_support_bad_repo_url_format(sagemaker_session):
 @patch(
     "sagemaker.git_utils.git_clone_repo",
     side_effect=subprocess.CalledProcessError(
-        returncode=1, cmd="git clone https://github.com/aws/no-such-repo.git /tmp/repo_dir"
+        returncode=1,
+        cmd="git clone https://github.com/aws/no-such-repo.git /tmp/repo_dir",
     ),
 )
 def test_git_support_git_clone_fail(git_clone_repo, sagemaker_session):
@@ -1973,7 +2005,11 @@ def test_git_support_git_clone_fail(git_clone_repo, sagemaker_session):
     ),
 )
 def test_git_support_branch_not_exist(git_clone_repo, sagemaker_session):
-    git_config = {"repo": GIT_REPO, "branch": "branch-that-does-not-exist", "commit": COMMIT}
+    git_config = {
+        "repo": GIT_REPO,
+        "branch": "branch-that-does-not-exist",
+        "commit": COMMIT,
+    }
     fw = DummyFramework(
         entry_point="entry_point",
         git_config=git_config,
@@ -1994,7 +2030,11 @@ def test_git_support_branch_not_exist(git_clone_repo, sagemaker_session):
     ),
 )
 def test_git_support_commit_not_exist(git_clone_repo, sagemaker_session):
-    git_config = {"repo": GIT_REPO, "branch": BRANCH, "commit": "commit-sha-that-does-not-exist"}
+    git_config = {
+        "repo": GIT_REPO,
+        "branch": BRANCH,
+        "commit": "commit-sha-that-does-not-exist",
+    }
     fw = DummyFramework(
         entry_point="entry_point",
         git_config=git_config,
@@ -2137,7 +2177,11 @@ def test_git_support_with_token_2fa(git_clone_repo, sagemaker_session):
     },
 )
 def test_git_support_ssh_no_passphrase_needed(git_clone_repo, sagemaker_session):
-    git_config = {"repo": PRIVATE_GIT_REPO_SSH, "branch": PRIVATE_BRANCH, "commit": PRIVATE_COMMIT}
+    git_config = {
+        "repo": PRIVATE_GIT_REPO_SSH,
+        "branch": PRIVATE_BRANCH,
+        "commit": PRIVATE_COMMIT,
+    }
     entry_point = "entry_point"
     fw = DummyFramework(
         entry_point=entry_point,
@@ -2159,7 +2203,11 @@ def test_git_support_ssh_no_passphrase_needed(git_clone_repo, sagemaker_session)
     ),
 )
 def test_git_support_ssh_passphrase_required(git_clone_repo, sagemaker_session):
-    git_config = {"repo": PRIVATE_GIT_REPO_SSH, "branch": PRIVATE_BRANCH, "commit": PRIVATE_COMMIT}
+    git_config = {
+        "repo": PRIVATE_GIT_REPO_SSH,
+        "branch": PRIVATE_BRANCH,
+        "commit": PRIVATE_COMMIT,
+    }
     entry_point = "entry_point"
     fw = DummyFramework(
         entry_point=entry_point,
@@ -2457,7 +2505,9 @@ def test_estimator_transformer_creation_with_optional_params(create_model, sagem
     )
 
     create_model.assert_called_with(
-        vpc_config_override=new_vpc_config, model_kms_key=kms_key, enable_network_isolation=True
+        vpc_config_override=new_vpc_config,
+        model_kms_key=kms_key,
+        enable_network_isolation=True,
     )
 
     assert transformer.strategy == strategy
@@ -2635,14 +2685,7 @@ NO_INPUT_TRAIN_CALL = {
     "input_config": None,
     "input_mode": "File",
     "output_config": {"S3OutputPath": OUTPUT_PATH},
-    "profiler_config": {"S3OutputPath": OUTPUT_PATH},
-    "profiler_rule_configs": [
-        {
-            "RuleConfigurationName": "ProfilerReport-1510006209",
-            "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
-            "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
-        }
-    ],
+    "profiler_config": {"DisableProfiler": False, "S3OutputPath": OUTPUT_PATH},
     "resource_config": {
         "InstanceCount": INSTANCE_COUNT,
         "InstanceType": INSTANCE_TYPE,
@@ -2749,7 +2792,11 @@ def test_fit_deploy_tags_in_estimator(name_from_base, sagemaker_session):
 @patch("sagemaker.estimator.name_from_base")
 def test_fit_deploy_tags(name_from_base, sagemaker_session):
     estimator = Estimator(
-        IMAGE_URI, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, sagemaker_session=sagemaker_session
+        IMAGE_URI,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        sagemaker_session=sagemaker_session,
     )
 
     estimator.fit()
@@ -3197,7 +3244,10 @@ def test_generic_training_job_analytics(sagemaker_session):
                 "TrainingInputMode": "File",
                 "MetricDefinitions": [
                     {"Name": "train:loss", "Regex": "train_loss=([0-9]+\\.[0-9]+)"},
-                    {"Name": "validation:loss", "Regex": "valid_loss=([0-9]+\\.[0-9]+)"},
+                    {
+                        "Name": "validation:loss",
+                        "Regex": "valid_loss=([0-9]+\\.[0-9]+)",
+                    },
                 ],
             },
         },
@@ -3228,7 +3278,11 @@ def test_generic_create_model_vpc_config_override(sagemaker_session):
     vpc_config_b = {"Subnets": ["foo", "bar"], "SecurityGroupIds": ["baz"]}
 
     e = Estimator(
-        IMAGE_URI, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, sagemaker_session=sagemaker_session
+        IMAGE_URI,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        sagemaker_session=sagemaker_session,
     )
     e.fit({"train": "s3://bucket/training-prefix"})
     assert e.get_vpc_config() is None
@@ -3254,7 +3308,11 @@ def test_generic_deploy_vpc_config_override(sagemaker_session):
     vpc_config_b = {"Subnets": ["foo", "bar"], "SecurityGroupIds": ["baz"]}
 
     e = Estimator(
-        IMAGE_URI, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, sagemaker_session=sagemaker_session
+        IMAGE_URI,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        sagemaker_session=sagemaker_session,
     )
     e.fit({"train": "s3://bucket/training-prefix"})
     e.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
@@ -3274,7 +3332,11 @@ def test_generic_deploy_vpc_config_override(sagemaker_session):
 
 def test_generic_deploy_accelerator_type(sagemaker_session):
     e = Estimator(
-        IMAGE_URI, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, sagemaker_session=sagemaker_session
+        IMAGE_URI,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        sagemaker_session=sagemaker_session,
     )
     e.fit({"train": "s3://bucket/training-prefix"})
     e.deploy(INSTANCE_COUNT, INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
@@ -3617,7 +3679,13 @@ def test_file_output_path_not_supported_outside_local_mode(session_class):
     session_class.return_value = session
 
     with pytest.raises(RuntimeError):
-        Estimator(IMAGE_URI, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, output_path="file:///tmp/model")
+        Estimator(
+            IMAGE_URI,
+            ROLE,
+            INSTANCE_COUNT,
+            INSTANCE_TYPE,
+            output_path="file:///tmp/model",
+        )
 
 
 def test_prepare_init_params_from_job_description_with_image_training_job():
@@ -3726,7 +3794,10 @@ def test_prepare_for_training_with_name_based_on_image(sagemaker_session):
 
 
 @patch("sagemaker.algorithm.AlgorithmEstimator.validate_train_spec", Mock())
-@patch("sagemaker.algorithm.AlgorithmEstimator._parse_hyperparameters", Mock(return_value={}))
+@patch(
+    "sagemaker.algorithm.AlgorithmEstimator._parse_hyperparameters",
+    Mock(return_value={}),
+)
 def test_prepare_for_training_with_name_based_on_algorithm(sagemaker_session):
     estimator = AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-west-2:1234:algorithm/scikit-decision-trees-1542410022",
@@ -3741,7 +3812,9 @@ def test_prepare_for_training_with_name_based_on_algorithm(sagemaker_session):
 
 
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
-def test_prepare_for_training_with_pipeline_name_in_s3_path_no_source_dir(pipeline_session):
+def test_prepare_for_training_with_pipeline_name_in_s3_path_no_source_dir(
+    pipeline_session,
+):
     # script_uri is NOT provided -> use new cache key behavior that builds path using pipeline name + code_hash
     image_uri = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.9.0-gpu-py38"
     model_uri = "s3://someprefix2/models/model.tar.gz"
@@ -4211,7 +4284,10 @@ def test_script_mode_estimator_tags_jumpstart_models_with_no_estimator_js_tags(
 @patch("sagemaker.model.Model._upload_code")
 @patch("sagemaker.utils.repack_model")
 def test_all_framework_estimators_add_jumpstart_tags(
-    patched_repack_model, patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+    patched_repack_model,
+    patched_upload_code,
+    patched_tar_and_upload_dir,
+    sagemaker_session,
 ):
 
     sagemaker_session.boto_region_name = REGION
@@ -4240,13 +4316,20 @@ def test_all_framework_estimators_add_jumpstart_tags(
             "transformers_version": "4.6.1",
             "instance_type": "ml.p2.xlarge",
         },
-        MXNet: {"framework_version": "1.7.0", "py_version": "py3", "instance_type": "ml.p2.xlarge"},
+        MXNet: {
+            "framework_version": "1.7.0",
+            "py_version": "py3",
+            "instance_type": "ml.p2.xlarge",
+        },
         SKLearn: {"framework_version": "0.23-1", "instance_type": "ml.m2.xlarge"},
         XGBoost: {"framework_version": "1.3-1", "instance_type": "ml.m2.xlarge"},
     }
     jumpstart_model_uri = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[0]}/model_dirs/model.tar.gz"
     jumpstart_model_uri_2 = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[1]}/model_dirs/model.tar.gz"
-    for framework_estimator_class, kwargs in framework_estimator_classes_to_kwargs.items():
+    for (
+        framework_estimator_class,
+        kwargs,
+    ) in framework_estimator_classes_to_kwargs.items():
         estimator = framework_estimator_class(
             entry_point=ENTRY_POINT,
             role=ROLE,
@@ -4362,7 +4445,10 @@ def test_script_mode_estimator_uses_jumpstart_base_name_with_js_models(
 @patch("sagemaker.model.Model._upload_code")
 @patch("sagemaker.utils.repack_model")
 def test_all_framework_estimators_add_jumpstart_base_name(
-    patched_repack_model, patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+    patched_repack_model,
+    patched_upload_code,
+    patched_tar_and_upload_dir,
+    sagemaker_session,
 ):
 
     sagemaker_session.boto_region_name = REGION
@@ -4391,13 +4477,20 @@ def test_all_framework_estimators_add_jumpstart_base_name(
             "transformers_version": "4.6.1",
             "instance_type": "ml.p2.xlarge",
         },
-        MXNet: {"framework_version": "1.7.0", "py_version": "py3", "instance_type": "ml.p2.xlarge"},
+        MXNet: {
+            "framework_version": "1.7.0",
+            "py_version": "py3",
+            "instance_type": "ml.p2.xlarge",
+        },
         SKLearn: {"framework_version": "0.23-1", "instance_type": "ml.m2.xlarge"},
         XGBoost: {"framework_version": "1.3-1", "instance_type": "ml.m2.xlarge"},
     }
     jumpstart_model_uri = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[0]}/model_dirs/model.tar.gz"
     jumpstart_model_uri_2 = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[1]}/model_dirs/model.tar.gz"
-    for framework_estimator_class, kwargs in framework_estimator_classes_to_kwargs.items():
+    for (
+        framework_estimator_class,
+        kwargs,
+    ) in framework_estimator_classes_to_kwargs.items():
         estimator = framework_estimator_class(
             entry_point=ENTRY_POINT,
             role=ROLE,

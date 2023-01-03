@@ -1,5 +1,54 @@
 # Changelog
 
+## v2.126.0 (2022-12-22)
+
+### Features
+
+ * AutoGluon 0.6.1 image_uris
+
+### Bug Fixes and Other Changes
+
+ * Fix broken link in doc
+ * Do not specify S3 path for disabled profiler
+
+### Documentation Changes
+
+ * fix the incorrect property reference
+
+## v2.125.0 (2022-12-19)
+
+### Features
+
+ * add RandomSeed to support reproducible HPO
+
+### Bug Fixes and Other Changes
+
+ * Correct SageMaker Clarify API docstrings by changing JSONPath to JMESPath
+
+## v2.124.0 (2022-12-16)
+
+### Features
+
+ * Doc update for TableFormatEnum
+ * Add p4de to smddp supported instance types
+ * Add disable_profiler field in config and propagate changes
+ * Added doc update for dataset builder
+
+### Bug Fixes and Other Changes
+
+ * Use Async Inference Config when available for endpoint update
+
+### Documentation Changes
+
+ * smdistributed libraries release notes
+
+## v2.123.0 (2022-12-15)
+
+### Features
+
+ * Add support for TF2.9.2 training images
+ * Add SageMaker Experiment
+
 ## v2.122.0 (2022-12-14)
 
 ### Features

@@ -136,14 +136,8 @@ def _create_train_job(tf_version, horovod=False, ps=False, py_version="py2", smd
         "metric_definitions": None,
         "environment": None,
         "experiment_config": None,
-        "profiler_rule_configs": [
-            {
-                "RuleConfigurationName": "ProfilerReport-1510006209",
-                "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
-                "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
-            }
-        ],
         "profiler_config": {
+            "DisableProfiler": False,
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
     }
