@@ -23,7 +23,7 @@ from botocore.exceptions import ClientError
 from mock import ANY, MagicMock, Mock, patch, call, mock_open
 
 import sagemaker
-from sagemaker import TrainingInput, Session, get_execution_role
+from sagemaker import TrainingInput, Session, get_execution_role, exceptions
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.session import (
     _tuning_job_status,
@@ -2267,7 +2267,6 @@ DEFAULT_EXPECTED_AUTO_ML_JOB_ARGS = {
     "GenerateCandidateDefinitionsOnly": False,
 }
 
-
 COMPLETE_EXPECTED_AUTO_ML_JOB_ARGS = {
     "AutoMLJobName": JOB_NAME,
     "InputDataConfig": [
@@ -3112,3 +3111,160 @@ def test_create_inference_recommendations_job_propogate_other_exception(sagemake
         )
 
     assert "AccessDeniedException" in str(error)
+
+
+DEFAULT_LOG_EVENTS_INFERENCE_RECOMMENDER = [
+    MockBotoException("ResourceNotFoundException"),
+    {"nextForwardToken": None, "events": [{"timestamp": 1, "message": "hi there #1"}]},
+    {"nextForwardToken": None, "events": [{"timestamp": 2, "message": "hi there #2"}]},
+    {"nextForwardToken": None, "events": [{"timestamp": 3, "message": "hi there #3"}]},
+    {"nextForwardToken": None, "events": [{"timestamp": 4, "message": "hi there #4"}]},
+]
+
+FLUSH_LOG_EVENTS_INFERENCE_RECOMMENDER = [
+    MockBotoException("ResourceNotFoundException"),
+    {"nextForwardToken": None, "events": [{"timestamp": 1, "message": "hi there #1"}]},
+    {"nextForwardToken": None, "events": [{"timestamp": 2, "message": "hi there #2"}]},
+    {"nextForwardToken": None, "events": []},
+    {"nextForwardToken": None, "events": [{"timestamp": 3, "message": "hi there #3"}]},
+    {"nextForwardToken": None, "events": []},
+    {"nextForwardToken": None, "events": [{"timestamp": 4, "message": "hi there #4"}]},
+]
+
+INFERENCE_RECOMMENDATIONS_DESC_STATUS_PENDING = {"Status": "PENDING"}
+INFERENCE_RECOMMENDATIONS_DESC_STATUS_IN_PROGRESS = {"Status": "IN_PROGRESS"}
+INFERENCE_RECOMMENDATIONS_DESC_STATUS_COMPLETED = {"Status": "COMPLETED"}
+
+
+@pytest.fixture()
+def sm_session_inference_recommender():
+    boto_mock = MagicMock(name="boto_session")
+    boto_mock.client("logs").get_log_events.side_effect = DEFAULT_LOG_EVENTS_INFERENCE_RECOMMENDER
+
+    ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=MagicMock())
+
+    ims.sagemaker_client.describe_inference_recommendations_job.side_effect = [
+        INFERENCE_RECOMMENDATIONS_DESC_STATUS_PENDING,
+        INFERENCE_RECOMMENDATIONS_DESC_STATUS_IN_PROGRESS,
+        INFERENCE_RECOMMENDATIONS_DESC_STATUS_COMPLETED,
+        INFERENCE_RECOMMENDATIONS_DESC_STATUS_COMPLETED,
+    ]
+
+    return ims
+
+
+@pytest.fixture()
+def sm_session_inference_recommender_flush():
+    boto_mock = MagicMock(name="boto_session")
+    boto_mock.client("logs").get_log_events.side_effect = FLUSH_LOG_EVENTS_INFERENCE_RECOMMENDER
+
+    ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=MagicMock())
+
+    ims.sagemaker_client.describe_inference_recommendations_job.side_effect = [
+        INFERENCE_RECOMMENDATIONS_DESC_STATUS_PENDING,
+        INFERENCE_RECOMMENDATIONS_DESC_STATUS_IN_PROGRESS,
+        INFERENCE_RECOMMENDATIONS_DESC_STATUS_IN_PROGRESS,
+        INFERENCE_RECOMMENDATIONS_DESC_STATUS_COMPLETED,
+        INFERENCE_RECOMMENDATIONS_DESC_STATUS_COMPLETED,
+        INFERENCE_RECOMMENDATIONS_DESC_STATUS_COMPLETED,
+    ]
+
+    return ims
+
+
+@patch("time.sleep")
+def test_wait_for_inference_recommendations_job_completed(sleep, sm_session_inference_recommender):
+    assert (
+        sm_session_inference_recommender.wait_for_inference_recommendations_job(
+            JOB_NAME, log_level="Quiet"
+        )["Status"]
+        == "COMPLETED"
+    )
+
+    assert (
+        4
+        == sm_session_inference_recommender.sagemaker_client.describe_inference_recommendations_job.call_count
+    )
+    assert 2 == sleep.call_count
+    sleep.assert_has_calls([call(120), call(120)])
+
+
+def test_wait_for_inference_recommendations_job_failed(sagemaker_session):
+    inference_recommendations_desc_status_failed = {
+        "Status": "FAILED",
+        "FailureReason": "Mock Failure Reason",
+    }
+
+    sagemaker_session.sagemaker_client.describe_inference_recommendations_job = Mock(
+        name="describe_inference_recommendations_job",
+        return_value=inference_recommendations_desc_status_failed,
+    )
+
+    with pytest.raises(exceptions.UnexpectedStatusException) as error:
+        sagemaker_session.wait_for_inference_recommendations_job(JOB_NAME)
+
+    assert "Mock Failure Reason" in str(error)
+
+
+@patch("builtins.print")
+@patch("time.sleep")
+def test_wait_for_inference_recommendations_job_completed_verbose(
+    sleep, mock_print, sm_session_inference_recommender
+):
+    assert (
+        sm_session_inference_recommender.wait_for_inference_recommendations_job(
+            JOB_NAME, log_level="Verbose"
+        )["Status"]
+        == "COMPLETED"
+    )
+    assert (
+        4
+        == sm_session_inference_recommender.sagemaker_client.describe_inference_recommendations_job.call_count
+    )
+
+    assert (
+        5 == sm_session_inference_recommender.boto_session.client("logs").get_log_events.call_count
+    )
+
+    assert 3 == sleep.call_count
+    sleep.assert_has_calls([call(10), call(60), call(60)])
+
+    assert 8 == mock_print.call_count
+
+
+@patch("builtins.print")
+@patch("time.sleep")
+def test_wait_for_inference_recommendations_job_flush_completed(
+    sleep, mock_print, sm_session_inference_recommender_flush
+):
+    assert (
+        sm_session_inference_recommender_flush.wait_for_inference_recommendations_job(
+            JOB_NAME, log_level="Verbose"
+        )["Status"]
+        == "COMPLETED"
+    )
+    assert (
+        6
+        == sm_session_inference_recommender_flush.sagemaker_client.describe_inference_recommendations_job.call_count
+    )
+
+    assert (
+        7
+        == sm_session_inference_recommender_flush.boto_session.client(
+            "logs"
+        ).get_log_events.call_count
+    )
+
+    assert 5 == sleep.call_count
+    sleep.assert_has_calls([call(10), call(60), call(60), call(60), call(60)])
+
+    assert 8 == mock_print.call_count
+
+
+def test_wait_for_inference_recommendations_job_invalid_log_level(sagemaker_session):
+    with pytest.raises(ValueError) as error:
+        sagemaker_session.wait_for_inference_recommendations_job(
+            JOB_NAME, log_level="invalid_log_level"
+        )
+
+    assert "log_level must be either Quiet or Verbose" in str(error)

@@ -53,10 +53,12 @@ NOTEBOOK_METADATA_FILE = "/opt/ml/metadata/resource-metadata.json"
 _STATUS_CODE_TABLE = {
     "COMPLETED": "Completed",
     "INPROGRESS": "InProgress",
+    "IN_PROGRESS": "InProgress",
     "FAILED": "Failed",
     "STOPPED": "Stopped",
     "STOPPING": "Stopping",
     "STARTING": "Starting",
+    "PENDING": "Pending",
 }
 
 
@@ -4844,6 +4846,41 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
         return job_name
 
+    def wait_for_inference_recommendations_job(
+        self, job_name: str, poll: int = 120, log_level: str = "Verbose"
+    ) -> Dict[str, Any]:
+        """Wait for an Amazon SageMaker Inference Recommender job to complete.
+
+        Args:
+            job_name (str): Name of the Inference Recommender job to wait for.
+            poll (int): Polling interval in seconds (default: 120).
+            log_level (str): The level of verbosity for the logs.
+            Can be "Quiet" or "Verbose" (default: "Quiet").
+
+        Returns:
+            (dict): Return value from the ``DescribeInferenceRecommendationsJob`` API.
+
+        Raises:
+            exceptions.CapacityError: If the Inference Recommender job fails with CapacityError.
+            exceptions.UnexpectedStatusException: If the Inference Recommender job fails.
+        """
+        if log_level == "Quiet":
+            _wait_until(
+                lambda: _describe_inference_recommendations_job_status(
+                    self.sagemaker_client, job_name
+                ),
+                poll,
+            )
+        elif log_level == "Verbose":
+            _display_inference_recommendations_job_steps_status(
+                self, self.sagemaker_client, job_name
+            )
+        else:
+            raise ValueError("log_level must be either Quiet or Verbose")
+        desc = _describe_inference_recommendations_job_status(self.sagemaker_client, job_name)
+        self._check_job_status(job_name, desc, "Status")
+        return desc
+
 
 def get_model_package_args(
     content_types,
@@ -5463,6 +5500,118 @@ def _create_model_package_status(sagemaker_client, model_package_name):
 
     print("")
     return desc
+
+
+def _describe_inference_recommendations_job_status(sagemaker_client, job_name: str):
+    """Describes the status of a job and returns the job description.
+
+    Args:
+        sagemaker_client (boto3.client.sagemaker): A SageMaker client.
+        job_name (str): The name of the job.
+
+    Returns:
+        dict: The job description, or None if the job is still in progress.
+    """
+    inference_recommendations_job_status_codes = {
+        "PENDING": ".",
+        "IN_PROGRESS": ".",
+        "COMPLETED": "!",
+        "FAILED": "*",
+        "STOPPING": "_",
+        "STOPPED": "s",
+    }
+    in_progress_statuses = {"PENDING", "IN_PROGRESS", "STOPPING"}
+
+    desc = sagemaker_client.describe_inference_recommendations_job(JobName=job_name)
+    status = desc["Status"]
+
+    print(inference_recommendations_job_status_codes.get(status, "?"), end="", flush=True)
+
+    if status in in_progress_statuses:
+        return None
+
+    print("")
+    return desc
+
+
+def _display_inference_recommendations_job_steps_status(
+    sagemaker_session, sagemaker_client, job_name: str, poll: int = 60
+):
+    """Placeholder docstring"""
+    cloudwatch_client = sagemaker_session.boto_session.client("logs")
+    in_progress_statuses = {"PENDING", "IN_PROGRESS", "STOPPING"}
+    log_group_name = "/aws/sagemaker/InferenceRecommendationsJobs"
+    log_stream_name = job_name + "/execution"
+
+    initial_logs_batch = get_log_events_for_inference_recommender(
+        cloudwatch_client, log_group_name, log_stream_name
+    )
+    print(f"Retrieved logStream: {log_stream_name} from logGroup: {log_group_name}", flush=True)
+    events = initial_logs_batch["events"]
+    print(*[event["message"] for event in events], sep="\n", flush=True)
+
+    next_forward_token = initial_logs_batch["nextForwardToken"] if events else None
+    flush_remaining = True
+    while True:
+        logs_batch = (
+            cloudwatch_client.get_log_events(
+                logGroupName=log_group_name,
+                logStreamName=log_stream_name,
+                nextToken=next_forward_token,
+            )
+            if next_forward_token
+            else cloudwatch_client.get_log_events(
+                logGroupName=log_group_name, logStreamName=log_stream_name
+            )
+        )
+
+        events = logs_batch["events"]
+
+        desc = sagemaker_client.describe_inference_recommendations_job(JobName=job_name)
+        status = desc["Status"]
+
+        if not events:
+            if status in in_progress_statuses:
+                time.sleep(poll)
+                continue
+            if flush_remaining:
+                flush_remaining = False
+                time.sleep(poll)
+                continue
+
+        next_forward_token = logs_batch["nextForwardToken"]
+        print(*[event["message"] for event in events], sep="\n", flush=True)
+
+        if status not in in_progress_statuses:
+            break
+
+        time.sleep(poll)
+
+
+def get_log_events_for_inference_recommender(cw_client, log_group_name, log_stream_name):
+    """Retrieves log events from the specified CloudWatch log group and log stream.
+
+    Args:
+        cw_client (boto3.client): A boto3 CloudWatch client.
+        log_group_name (str): The name of the CloudWatch log group.
+        log_stream_name (str): The name of the CloudWatch log stream.
+
+    Returns:
+        (dict): A dictionary containing log events from CloudWatch log group and log stream.
+    """
+    print("Fetching logs from CloudWatch...", flush=True)
+    for _ in retries(
+        max_retry_count=30,  # 30*10 = 5min
+        exception_message_prefix="Waiting for cloudwatch stream to appear. ",
+        seconds_to_sleep=10,
+    ):
+        try:
+            return cw_client.get_log_events(
+                logGroupName=log_group_name, logStreamName=log_stream_name
+            )
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "ResourceNotFoundException":
+                pass
 
 
 def _deploy_done(sagemaker_client, endpoint_name):
