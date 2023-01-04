@@ -4655,6 +4655,195 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
         return create(request)
 
+    def _create_inference_recommendations_job_request(
+        self,
+        role: str,
+        job_name: str,
+        job_description: str,
+        framework: str,
+        sample_payload_url: str,
+        supported_content_types: List[str],
+        model_package_version_arn: str = None,
+        job_duration_in_seconds: int = None,
+        job_type: str = "Default",
+        framework_version: str = None,
+        nearest_model_name: str = None,
+        supported_instance_types: List[str] = None,
+        endpoint_configurations: List[Dict[str, Any]] = None,
+        traffic_pattern: Dict[str, Any] = None,
+        stopping_conditions: Dict[str, Any] = None,
+        resource_limit: Dict[str, Any] = None,
+    ) -> Dict[str, Any]:
+        """Get request dictionary for CreateInferenceRecommendationsJob API.
+
+        Args:
+            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training
+                jobs and APIs that create Amazon SageMaker endpoints use this role to access
+                training data and model artifacts.
+                You must grant sufficient permissions to this role.
+            job_name (str): The name of the Inference Recommendations Job.
+            job_description (str): A description of the Inference Recommendations Job.
+            framework (str): The machine learning framework of the Image URI.
+            sample_payload_url (str): The S3 path where the sample payload is stored.
+            supported_content_types (List[str]): The supported MIME types for the input data.
+            model_package_version_arn (str): The Amazon Resource Name (ARN) of a
+                versioned model package.
+            job_duration_in_seconds (int): The maximum job duration that a job
+                can run for. Will be used for `Advanced` jobs.
+            job_type (str): The type of job being run. Must either be `Default` or `Advanced`.
+            framework_version (str): The framework version of the Image URI.
+            nearest_model_name (str): The name of a pre-trained machine learning model
+                benchmarked by Amazon SageMaker Inference Recommender that matches your model.
+            supported_instance_types (List[str]): A list of the instance types that are used
+                to generate inferences in real-time.
+            endpoint_configurations (List[Dict[str, any]]): Specifies the endpoint configurations
+                to use for a job. Will be used for `Advanced` jobs.
+            traffic_pattern (Dict[str, any]): Specifies the traffic pattern for the job.
+                Will be used for `Advanced` jobs.
+            stopping_conditions (Dict[str, any]): A set of conditions for stopping a
+                recommendation job.
+                If any of the conditions are met, the job is automatically stopped.
+                Will be used for `Advanced` jobs.
+            resource_limit (Dict[str, any]): Defines the resource limit for the job.
+                Will be used for `Advanced` jobs.
+        Returns:
+            Dict[str, Any]: request dictionary for the CreateInferenceRecommendationsJob API
+        """
+
+        containerConfig = {
+            "Domain": "MACHINE_LEARNING",
+            "Task": "OTHER",
+            "Framework": framework,
+            "PayloadConfig": {
+                "SamplePayloadUrl": sample_payload_url,
+                "SupportedContentTypes": supported_content_types,
+            },
+        }
+
+        if framework_version:
+            containerConfig["FrameworkVersion"] = framework_version
+        if nearest_model_name:
+            containerConfig["NearestModelName"] = nearest_model_name
+        if supported_instance_types:
+            containerConfig["SupportedInstanceTypes"] = supported_instance_types
+
+        request = {
+            "JobName": job_name,
+            "JobType": job_type,
+            "RoleArn": role,
+            "InputConfig": {
+                "ContainerConfig": containerConfig,
+                "ModelPackageVersionArn": model_package_version_arn,
+            },
+        }
+
+        if job_description:
+            request["JobDescription"] = job_description
+        if job_duration_in_seconds:
+            request["InputConfig"]["JobDurationInSeconds"] = job_duration_in_seconds
+
+        if job_type == "Advanced":
+            if stopping_conditions:
+                request["StoppingConditions"] = stopping_conditions
+            if resource_limit:
+                request["InputConfig"]["ResourceLimit"] = resource_limit
+            if traffic_pattern:
+                request["InputConfig"]["TrafficPattern"] = traffic_pattern
+            if endpoint_configurations:
+                request["InputConfig"]["EndpointConfigurations"] = endpoint_configurations
+
+        return request
+
+    def create_inference_recommendations_job(
+        self,
+        role: str,
+        sample_payload_url: str,
+        supported_content_types: List[str],
+        job_name: str = None,
+        job_type: str = "Default",
+        model_package_version_arn: str = None,
+        job_duration_in_seconds: int = None,
+        nearest_model_name: str = None,
+        supported_instance_types: List[str] = None,
+        framework: str = None,
+        framework_version: str = None,
+        endpoint_configurations: List[Dict[str, any]] = None,
+        traffic_pattern: Dict[str, any] = None,
+        stopping_conditions: Dict[str, any] = None,
+        resource_limit: Dict[str, any] = None,
+    ):
+        """Creates an Inference Recommendations Job
+
+        Args:
+            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training
+                jobs and APIs that create Amazon SageMaker endpoints use this role to access
+                training data and model artifacts.
+                You must grant sufficient permissions to this role.
+            sample_payload_url (str): The S3 path where the sample payload is stored.
+            supported_content_types (List[str]): The supported MIME types for the input data.
+            model_package_version_arn (str): The Amazon Resource Name (ARN) of a
+                versioned model package.
+            job_name (str): The name of the job being run.
+            job_type (str): The type of job being run. Must either be `Default` or `Advanced`.
+            job_duration_in_seconds (int): The maximum job duration that a job
+                can run for. Will be used for `Advanced` jobs.
+            nearest_model_name (str): The name of a pre-trained machine learning model
+                benchmarked by Amazon SageMaker Inference Recommender that matches your model.
+            supported_instance_types (List[str]): A list of the instance types that are used
+                to generate inferences in real-time.
+            framework (str): The machine learning framework of the Image URI.
+            framework_version (str): The framework version of the Image URI.
+            endpoint_configurations (List[Dict[str, any]]): Specifies the endpoint configurations
+                to use for a job. Will be used for `Advanced` jobs.
+            traffic_pattern (Dict[str, any]): Specifies the traffic pattern for the job.
+                Will be used for `Advanced` jobs.
+            stopping_conditions (Dict[str, any]): A set of conditions for stopping a
+                recommendation job.
+                If any of the conditions are met, the job is automatically stopped.
+                Will be used for `Advanced` jobs.
+            resource_limit (Dict[str, any]): Defines the resource limit for the job.
+                Will be used for `Advanced` jobs.
+        Returns:
+            str: The name of the job created. In the form of `SMPYTHONSDK-<timestamp>`
+        """
+
+        if not job_name:
+            job_name = "SMPYTHONSDK-" + str(round(time.time()))
+        job_description = "#python-sdk-create"
+
+        create_inference_recommendations_job_request = (
+            self._create_inference_recommendations_job_request(
+                role=role,
+                model_package_version_arn=model_package_version_arn,
+                job_name=job_name,
+                job_type=job_type,
+                job_duration_in_seconds=job_duration_in_seconds,
+                job_description=job_description,
+                framework=framework,
+                framework_version=framework_version,
+                nearest_model_name=nearest_model_name,
+                sample_payload_url=sample_payload_url,
+                supported_content_types=supported_content_types,
+                supported_instance_types=supported_instance_types,
+                endpoint_configurations=endpoint_configurations,
+                traffic_pattern=traffic_pattern,
+                stopping_conditions=stopping_conditions,
+                resource_limit=resource_limit,
+            )
+        )
+
+        def submit(request):
+            LOGGER.info("Creating Inference Recommendations job with name: %s", job_name)
+            LOGGER.debug("process request: %s", json.dumps(request, indent=4))
+            self.sagemaker_client.create_inference_recommendations_job(**request)
+
+        self._intercept_create_request(
+            create_inference_recommendations_job_request,
+            submit,
+            self.create_inference_recommendations_job.__name__,
+        )
+        return job_name
+
 
 def get_model_package_args(
     content_types,

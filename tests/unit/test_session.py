@@ -2937,3 +2937,178 @@ def test_wait_for_athena_query(query_execution, sagemaker_session):
     query_execution.return_value = {"QueryExecution": {"Status": {"State": "SUCCEEDED"}}}
     sagemaker_session.wait_for_athena_query(query_execution_id="query_id")
     assert query_execution.called_with(query_execution_id="query_id")
+
+
+IR_USER_JOB_NAME = "custom-job-name"
+IR_JOB_NAME = "SMPYTHONSDK-1234567891"
+IR_ADVANCED_JOB = "Advanced"
+IR_ROLE_ARN = "arn:aws:iam::123456789123:role/service-role/AmazonSageMaker-ExecutionRole-UnitTest"
+IR_SAMPLE_PAYLOAD_URL = "s3://sagemaker-us-west-2-123456789123/payload/payload.tar.gz"
+IR_SUPPORTED_CONTENT_TYPES = ["text/csv"]
+IR_MODEL_PACKAGE_VERSION_ARN = (
+    "arn:aws:sagemaker:us-west-2:123456789123:model-package/unit-test-package-version/1"
+)
+IR_NEAREST_MODEL_NAME = "xgboost"
+IR_SUPPORTED_INSTANCE_TYPES = ["ml.c5.xlarge", "ml.c5.2xlarge"]
+IR_FRAMEWORK = "XGBOOST"
+IR_FRAMEWORK_VERSION = "1.2.0"
+IR_NEAREST_MODEL_NAME = "xgboost"
+IR_JOB_DURATION_IN_SECONDS = 7200
+IR_ENDPOINT_CONFIGURATIONS = [
+    {
+        "EnvironmentParameterRanges": {
+            "CategoricalParameterRanges": [{"Name": "OMP_NUM_THREADS", "Value": ["2", "4", "10"]}]
+        },
+        "InferenceSpecificationName": "unit-test-specification",
+        "InstanceType": "ml.c5.xlarge",
+    }
+]
+IR_TRAFFIC_PATTERN = {
+    "Phases": [{"DurationInSeconds": 120, "InitialNumberOfUsers": 1, "SpawnRate": 1}],
+    "TrafficType": "PHASES",
+}
+IR_STOPPING_CONDITIONS = {
+    "MaxInvocations": 300,
+    "ModelLatencyThresholds": [{"Percentile": "P95", "ValueInMilliseconds": 100}],
+}
+IR_RESOURCE_LIMIT = {"MaxNumberOfTests": 10, "MaxParallelOfTests": 1}
+
+
+def create_inference_recommendations_job_default_happy_response():
+    return {
+        "JobName": IR_USER_JOB_NAME,
+        "JobType": "Default",
+        "RoleArn": IR_ROLE_ARN,
+        "InputConfig": {
+            "ContainerConfig": {
+                "Domain": "MACHINE_LEARNING",
+                "Task": "OTHER",
+                "Framework": IR_FRAMEWORK,
+                "PayloadConfig": {
+                    "SamplePayloadUrl": IR_SAMPLE_PAYLOAD_URL,
+                    "SupportedContentTypes": IR_SUPPORTED_CONTENT_TYPES,
+                },
+                "FrameworkVersion": IR_FRAMEWORK_VERSION,
+                "NearestModelName": IR_NEAREST_MODEL_NAME,
+                "SupportedInstanceTypes": IR_SUPPORTED_INSTANCE_TYPES,
+            },
+            "ModelPackageVersionArn": IR_MODEL_PACKAGE_VERSION_ARN,
+        },
+        "JobDescription": "#python-sdk-create",
+    }
+
+
+def create_inference_recommendations_job_advanced_happy_response():
+    base_advanced_job_response = create_inference_recommendations_job_default_happy_response()
+
+    base_advanced_job_response["JobName"] = IR_JOB_NAME
+    base_advanced_job_response["JobType"] = IR_ADVANCED_JOB
+    base_advanced_job_response["StoppingConditions"] = IR_STOPPING_CONDITIONS
+    base_advanced_job_response["InputConfig"]["JobDurationInSeconds"] = IR_JOB_DURATION_IN_SECONDS
+    base_advanced_job_response["InputConfig"]["EndpointConfigurations"] = IR_ENDPOINT_CONFIGURATIONS
+    base_advanced_job_response["InputConfig"]["TrafficPattern"] = IR_TRAFFIC_PATTERN
+    base_advanced_job_response["InputConfig"]["ResourceLimit"] = IR_RESOURCE_LIMIT
+
+    return base_advanced_job_response
+
+
+def test_create_inference_recommendations_job_default_happy(sagemaker_session):
+    job_name = sagemaker_session.create_inference_recommendations_job(
+        role=IR_ROLE_ARN,
+        sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
+        supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
+        model_package_version_arn=IR_MODEL_PACKAGE_VERSION_ARN,
+        framework=IR_FRAMEWORK,
+        framework_version=IR_FRAMEWORK_VERSION,
+        nearest_model_name=IR_NEAREST_MODEL_NAME,
+        supported_instance_types=IR_SUPPORTED_INSTANCE_TYPES,
+        job_name=IR_USER_JOB_NAME,
+    )
+
+    sagemaker_session.sagemaker_client.create_inference_recommendations_job.assert_called_with(
+        **create_inference_recommendations_job_default_happy_response()
+    )
+
+    assert IR_USER_JOB_NAME == job_name
+
+
+@patch("time.time", MagicMock(return_value=1234567891))
+def test_create_inference_recommendations_job_advanced_happy(sagemaker_session):
+    job_name = sagemaker_session.create_inference_recommendations_job(
+        role=IR_ROLE_ARN,
+        sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
+        supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
+        model_package_version_arn=IR_MODEL_PACKAGE_VERSION_ARN,
+        framework=IR_FRAMEWORK,
+        framework_version=IR_FRAMEWORK_VERSION,
+        nearest_model_name=IR_NEAREST_MODEL_NAME,
+        supported_instance_types=IR_SUPPORTED_INSTANCE_TYPES,
+        endpoint_configurations=IR_ENDPOINT_CONFIGURATIONS,
+        traffic_pattern=IR_TRAFFIC_PATTERN,
+        stopping_conditions=IR_STOPPING_CONDITIONS,
+        resource_limit=IR_RESOURCE_LIMIT,
+        job_type=IR_ADVANCED_JOB,
+        job_duration_in_seconds=IR_JOB_DURATION_IN_SECONDS,
+    )
+
+    sagemaker_session.sagemaker_client.create_inference_recommendations_job.assert_called_with(
+        **create_inference_recommendations_job_advanced_happy_response()
+    )
+
+    assert IR_JOB_NAME == job_name
+
+
+def test_create_inference_recommendations_job_propogate_validation_exception(sagemaker_session):
+    validation_exception_message = (
+        "Failed to describe model due to validation failure with following error: test_error"
+    )
+
+    validation_exception = ClientError(
+        {"Error": {"Code": "ValidationException", "Message": validation_exception_message}},
+        "create_inference_recommendations_job",
+    )
+
+    sagemaker_session.sagemaker_client.create_inference_recommendations_job.side_effect = (
+        validation_exception
+    )
+
+    with pytest.raises(ClientError) as error:
+        sagemaker_session.create_inference_recommendations_job(
+            role=IR_ROLE_ARN,
+            sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
+            supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
+            model_package_version_arn=IR_MODEL_PACKAGE_VERSION_ARN,
+            framework=IR_FRAMEWORK,
+            framework_version=IR_FRAMEWORK_VERSION,
+            nearest_model_name=IR_NEAREST_MODEL_NAME,
+            supported_instance_types=IR_SUPPORTED_INSTANCE_TYPES,
+        )
+
+    assert "ValidationException" in str(error)
+
+
+def test_create_inference_recommendations_job_propogate_other_exception(sagemaker_session):
+    access_denied_exception_message = "Access is not allowed for the caller."
+
+    access_denied_exception = ClientError(
+        {"Error": {"Code": "AccessDeniedException", "Message": access_denied_exception_message}},
+        "create_inference_recommendations_job",
+    )
+
+    sagemaker_session.sagemaker_client.create_inference_recommendations_job.side_effect = (
+        access_denied_exception
+    )
+
+    with pytest.raises(ClientError) as error:
+        sagemaker_session.create_inference_recommendations_job(
+            role=IR_ROLE_ARN,
+            sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
+            supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
+            model_package_version_arn=IR_MODEL_PACKAGE_VERSION_ARN,
+            framework=IR_FRAMEWORK,
+            framework_version=IR_FRAMEWORK_VERSION,
+            nearest_model_name=IR_NEAREST_MODEL_NAME,
+            supported_instance_types=IR_SUPPORTED_INSTANCE_TYPES,
+        )
+
+    assert "AccessDeniedException" in str(error)
