@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.127.0 (2023-01-03)
+
+### Features
+
+ * tensorflow inference 2.10.1 release
+
 ## v2.126.0 (2022-12-22)
 
 ### Features
