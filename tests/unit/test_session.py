@@ -2939,7 +2939,7 @@ def test_wait_for_athena_query(query_execution, sagemaker_session):
 
 
 IR_USER_JOB_NAME = "custom-job-name"
-IR_JOB_NAME = "SMPYTHONSDK-1234567891"
+IR_JOB_NAME = "SMPYTHONSDK-sample-unique-uuid"
 IR_ADVANCED_JOB = "Advanced"
 IR_ROLE_ARN = "arn:aws:iam::123456789123:role/service-role/AmazonSageMaker-ExecutionRole-UnitTest"
 IR_SAMPLE_PAYLOAD_URL = "s3://sagemaker-us-west-2-123456789123/payload/payload.tar.gz"
@@ -3031,7 +3031,7 @@ def test_create_inference_recommendations_job_default_happy(sagemaker_session):
     assert IR_USER_JOB_NAME == job_name
 
 
-@patch("time.time", MagicMock(return_value=1234567891))
+@patch("uuid.uuid4", MagicMock(return_value="sample-unique-uuid"))
 def test_create_inference_recommendations_job_advanced_happy(sagemaker_session):
     job_name = sagemaker_session.create_inference_recommendations_job(
         role=IR_ROLE_ARN,

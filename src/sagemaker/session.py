@@ -21,6 +21,7 @@ import sys
 import time
 import typing
 import warnings
+import uuid
 from typing import List, Dict, Any, Sequence, Optional
 
 import boto3
@@ -4810,7 +4811,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
 
         if not job_name:
-            job_name = "SMPYTHONSDK-" + str(round(time.time()))
+            unique_tail = uuid.uuid4()
+            job_name = "SMPYTHONSDK-" + str(unique_tail)
         job_description = "#python-sdk-create"
 
         create_inference_recommendations_job_request = (
