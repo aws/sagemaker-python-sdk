@@ -60,6 +60,7 @@ for env in base /home/ec2-user/anaconda3/envs/*; do
 
     echo "Updating SageMaker Python SDK..."
     pip install "$TARBALL_DIRECTORY/sagemaker.tar.gz"
+    pip install --upgrade boto3
 
     sudo -u ec2-user -E sh -c 'source /home/ec2-user/anaconda3/bin/deactivate'
 
