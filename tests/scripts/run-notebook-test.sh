@@ -60,8 +60,7 @@ for env in base /home/ec2-user/anaconda3/envs/*; do
 
     echo "Updating SageMaker Python SDK..."
     pip install "$TARBALL_DIRECTORY/sagemaker.tar.gz"
-    pip install --upgrade boto3
-
+    
     sudo -u ec2-user -E sh -c 'source /home/ec2-user/anaconda3/bin/deactivate'
 
     echo "Update of $env is complete."
@@ -94,6 +93,8 @@ ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 LIFECYCLE_CONFIG_NAME="install-python-sdk-$COMMIT_ID"
 
 python setup.py sdist
+pip install --upgrade boto3
+
 
 aws s3 --region us-west-2 cp ./dist/sagemaker-*.tar.gz s3://sagemaker-python-sdk-$ACCOUNT_ID/notebook_test/sagemaker-$COMMIT_ID.tar.gz
 aws s3 cp s3://sagemaker-python-sdk-cli-$ACCOUNT_ID/mead-nb-test.tar.gz mead-nb-test.tar.gz
