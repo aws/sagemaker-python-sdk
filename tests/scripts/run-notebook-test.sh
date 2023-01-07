@@ -96,14 +96,23 @@ python setup.py sdist
 #pip install boto3==1.26.42
 #pip install botocore==1.29.42
 #for env in base /home/ec2-user/anaconda3/envs/*; do
-for env in base /home/ec2-user/anaconda3/envs/python3; do
-        pip install --upgrade boto3
-        pip list | grep boto
-done
+#for env in base /home/ec2-user/anaconda3/envs/python3; do
+#        pip install --upgrade boto3
+#        pip list | grep boto
+#done
 #    if env == python3 ; then
 #        pip install --upgrade boto3
 #        pip list | grep boto
 #    fi
+
+
+for env in base /home/ec2-user/anaconda3/envs/*; do
+    if env == python3 ; then
+        pip install boto3==1.26.42
+        pip install botocore==1.29.42
+        pip list | grep boto
+    fi
+done
 
 aws s3 --region us-west-2 cp ./dist/sagemaker-*.tar.gz s3://sagemaker-python-sdk-$ACCOUNT_ID/notebook_test/sagemaker-$COMMIT_ID.tar.gz
 aws s3 cp s3://sagemaker-python-sdk-cli-$ACCOUNT_ID/mead-nb-test.tar.gz mead-nb-test.tar.gz
