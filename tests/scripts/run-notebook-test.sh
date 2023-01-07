@@ -95,7 +95,7 @@ LIFECYCLE_CONFIG_NAME="install-python-sdk-$COMMIT_ID"
 python setup.py sdist
 #pip install boto3==1.26.42
 #pip install botocore==1.29.42
-for env in base /home/ec2-user/anaconda3/envs/*; do
+#for env in base /home/ec2-user/anaconda3/envs/*; do
 for env in base /home/ec2-user/anaconda3/envs/python3; do
         pip install --upgrade boto3
         pip list | grep boto
