@@ -122,8 +122,11 @@ MODALITY_MAP = {
         Tasks.TRANSLATION,
         Frameworks.HUGGINGFACE,
     ): "algorithms/text/machine_translation_hugging_face.rst",
-    (Tasks.NER, Frameworks.GLUONCV): "algorithms/text/named_entity_recognition_hugging_face.rst",
-    (Tasks.EQA, Frameworks.PYTORCH): "algorithms/text/question_answering_pytorch.rst",
+    (Tasks.NER, Frameworks.HUGGINGFACE): "algorithms/text/named_entity_recognition_hugging_face.rst",
+    # This EQA - Pytorch is currently mapping to EQA -> HuggingFace in the SDK metadata. Due to this, we will keep the mapping as-is here, but
+    # will modify documentation to reflect the actual models being displayed. Will need to follow up to potentially change SDK metadata 
+    # to show actual mapping
+    (Tasks.EQA, Frameworks.PYTORCH): "algorithms/text/question_answering_hugging_face.rst",
     (
         Tasks.SPC,
         Frameworks.HUGGINGFACE,
@@ -136,11 +139,11 @@ MODALITY_MAP = {
     (
         Tasks.TC_EMBEDDING,
         Frameworks.GLUONCV,
-    ): "algorithms/vision/text_embedding_tensorflow_mxnet.rst",
+    ): "algorithms/vision/text_embedding_mxnet.rst",
     (
         Tasks.TC_EMBEDDING,
         Frameworks.TENSORFLOW,
-    ): "algorithms/vision/text_embedding_tensorflow_mxnet.rst",
+    ): "algorithms/vision/text_embedding_tensorflow.rst",
     (
         Tasks.TEXT_GENERATION,
         Frameworks.HUGGINGFACE,
@@ -149,6 +152,10 @@ MODALITY_MAP = {
         Tasks.SUMMARIZATION,
         Frameworks.HUGGINGFACE,
     ): "algorithms/text/text_summarization_hugging_face.rst",
+    (
+        Tasks.TC,
+        Frameworks.HUGGINGFACE,
+    ): "algorithms/text/text_classifcation_hugging_face.rst",
 }
 
 

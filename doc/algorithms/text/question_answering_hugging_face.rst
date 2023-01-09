@@ -1,5 +1,5 @@
 #####################################
-Question Answering - PyTorch
+Question Answering - HuggingFace
 #####################################
 
 This is a supervised question answering algorithm which supports fine-tuning of many pre-trained models available in Hugging Face. The following

@@ -1,8 +1,8 @@
 ####################################
-Text Embedding - TensorFlow, MxNet
+Text Embedding - MxNet
 ####################################
 
-This is a supervised text embedding algorithm which supports many pre-trained models available in MXNet and Tensorflow Hub. The following
+This is a supervised text embedding algorithm which supports many pre-trained models available in MXNet Hub. The following
 `sample notebook <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_text_embedding/Amazon_JumpStart_Text_Embedding.ipynb>`__
 demonstrates how to use the Sagemaker Python SDK for Text Embedding for using these algorithms.
 
