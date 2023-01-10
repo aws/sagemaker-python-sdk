@@ -17,3 +17,4 @@ Built-in algorithms are offered in 2 modes:
     time_series/index
     unsupervised/index
     vision/index
+    audio/index
