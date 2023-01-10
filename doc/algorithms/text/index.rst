@@ -15,7 +15,7 @@ Amazon SageMaker provides algorithms that are tailored to the analysis of textua
     text_classification_tensorflow
     sentence_pair_classification_tensorflow
     sentence_pair_classification_hugging_face
-    question_answering_pytorch
+    question_answering_hugging_face
     named_entity_recognition_hugging_face
     text_summarization_hugging_face
     text_generation_hugging_face

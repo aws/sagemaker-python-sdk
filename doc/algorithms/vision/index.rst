@@ -18,4 +18,6 @@ Amazon SageMaker provides image processing algorithms that are used for image cl
     object_detection_mxnet
     semantic_segmentation_mxnet_gluoncv
     semantic_segmentation_mxnet
-    text_embedding_tensorflow_mxnet
+    text_embedding_tensorflow
+    text_embedding_mxnet
+    upscaling_stability_ai
