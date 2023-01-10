@@ -23,7 +23,7 @@ from botocore.exceptions import ClientError
 from mock import ANY, MagicMock, Mock, patch, call, mock_open
 
 import sagemaker
-from sagemaker import TrainingInput, Session, get_execution_role
+from sagemaker import TrainingInput, Session, get_execution_role, exceptions
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.session import (
     _tuning_job_status,
@@ -2261,7 +2261,6 @@ DEFAULT_EXPECTED_AUTO_ML_JOB_ARGS = {
     "GenerateCandidateDefinitionsOnly": False,
 }
 
-
 COMPLETE_EXPECTED_AUTO_ML_JOB_ARGS = {
     "AutoMLJobName": JOB_NAME,
     "InputDataConfig": [
@@ -2931,3 +2930,335 @@ def test_wait_for_athena_query(query_execution, sagemaker_session):
     query_execution.return_value = {"QueryExecution": {"Status": {"State": "SUCCEEDED"}}}
     sagemaker_session.wait_for_athena_query(query_execution_id="query_id")
     assert query_execution.called_with(query_execution_id="query_id")
+
+
+IR_USER_JOB_NAME = "custom-job-name"
+IR_JOB_NAME = "SMPYTHONSDK-sample-unique-uuid"
+IR_ADVANCED_JOB = "Advanced"
+IR_ROLE_ARN = "arn:aws:iam::123456789123:role/service-role/AmazonSageMaker-ExecutionRole-UnitTest"
+IR_SAMPLE_PAYLOAD_URL = "s3://sagemaker-us-west-2-123456789123/payload/payload.tar.gz"
+IR_SUPPORTED_CONTENT_TYPES = ["text/csv"]
+IR_MODEL_PACKAGE_VERSION_ARN = (
+    "arn:aws:sagemaker:us-west-2:123456789123:model-package/unit-test-package-version/1"
+)
+IR_NEAREST_MODEL_NAME = "xgboost"
+IR_SUPPORTED_INSTANCE_TYPES = ["ml.c5.xlarge", "ml.c5.2xlarge"]
+IR_FRAMEWORK = "XGBOOST"
+IR_FRAMEWORK_VERSION = "1.2.0"
+IR_NEAREST_MODEL_NAME = "xgboost"
+IR_JOB_DURATION_IN_SECONDS = 7200
+IR_ENDPOINT_CONFIGURATIONS = [
+    {
+        "EnvironmentParameterRanges": {
+            "CategoricalParameterRanges": [{"Name": "OMP_NUM_THREADS", "Value": ["2", "4", "10"]}]
+        },
+        "InferenceSpecificationName": "unit-test-specification",
+        "InstanceType": "ml.c5.xlarge",
+    }
+]
+IR_TRAFFIC_PATTERN = {
+    "Phases": [{"DurationInSeconds": 120, "InitialNumberOfUsers": 1, "SpawnRate": 1}],
+    "TrafficType": "PHASES",
+}
+IR_STOPPING_CONDITIONS = {
+    "MaxInvocations": 300,
+    "ModelLatencyThresholds": [{"Percentile": "P95", "ValueInMilliseconds": 100}],
+}
+IR_RESOURCE_LIMIT = {"MaxNumberOfTests": 10, "MaxParallelOfTests": 1}
+
+
+def create_inference_recommendations_job_default_happy_response():
+    return {
+        "JobName": IR_USER_JOB_NAME,
+        "JobType": "Default",
+        "RoleArn": IR_ROLE_ARN,
+        "InputConfig": {
+            "ContainerConfig": {
+                "Domain": "MACHINE_LEARNING",
+                "Task": "OTHER",
+                "Framework": IR_FRAMEWORK,
+                "PayloadConfig": {
+                    "SamplePayloadUrl": IR_SAMPLE_PAYLOAD_URL,
+                    "SupportedContentTypes": IR_SUPPORTED_CONTENT_TYPES,
+                },
+                "FrameworkVersion": IR_FRAMEWORK_VERSION,
+                "NearestModelName": IR_NEAREST_MODEL_NAME,
+                "SupportedInstanceTypes": IR_SUPPORTED_INSTANCE_TYPES,
+            },
+            "ModelPackageVersionArn": IR_MODEL_PACKAGE_VERSION_ARN,
+        },
+        "JobDescription": "#python-sdk-create",
+    }
+
+
+def create_inference_recommendations_job_advanced_happy_response():
+    base_advanced_job_response = create_inference_recommendations_job_default_happy_response()
+
+    base_advanced_job_response["JobName"] = IR_JOB_NAME
+    base_advanced_job_response["JobType"] = IR_ADVANCED_JOB
+    base_advanced_job_response["StoppingConditions"] = IR_STOPPING_CONDITIONS
+    base_advanced_job_response["InputConfig"]["JobDurationInSeconds"] = IR_JOB_DURATION_IN_SECONDS
+    base_advanced_job_response["InputConfig"]["EndpointConfigurations"] = IR_ENDPOINT_CONFIGURATIONS
+    base_advanced_job_response["InputConfig"]["TrafficPattern"] = IR_TRAFFIC_PATTERN
+    base_advanced_job_response["InputConfig"]["ResourceLimit"] = IR_RESOURCE_LIMIT
+
+    return base_advanced_job_response
+
+
+def test_create_inference_recommendations_job_default_happy(sagemaker_session):
+    job_name = sagemaker_session.create_inference_recommendations_job(
+        role=IR_ROLE_ARN,
+        sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
+        supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
+        model_package_version_arn=IR_MODEL_PACKAGE_VERSION_ARN,
+        framework=IR_FRAMEWORK,
+        framework_version=IR_FRAMEWORK_VERSION,
+        nearest_model_name=IR_NEAREST_MODEL_NAME,
+        supported_instance_types=IR_SUPPORTED_INSTANCE_TYPES,
+        job_name=IR_USER_JOB_NAME,
+    )
+
+    sagemaker_session.sagemaker_client.create_inference_recommendations_job.assert_called_with(
+        **create_inference_recommendations_job_default_happy_response()
+    )
+
+    assert IR_USER_JOB_NAME == job_name
+
+
+@patch("uuid.uuid4", MagicMock(return_value="sample-unique-uuid"))
+def test_create_inference_recommendations_job_advanced_happy(sagemaker_session):
+    job_name = sagemaker_session.create_inference_recommendations_job(
+        role=IR_ROLE_ARN,
+        sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
+        supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
+        model_package_version_arn=IR_MODEL_PACKAGE_VERSION_ARN,
+        framework=IR_FRAMEWORK,
+        framework_version=IR_FRAMEWORK_VERSION,
+        nearest_model_name=IR_NEAREST_MODEL_NAME,
+        supported_instance_types=IR_SUPPORTED_INSTANCE_TYPES,
+        endpoint_configurations=IR_ENDPOINT_CONFIGURATIONS,
+        traffic_pattern=IR_TRAFFIC_PATTERN,
+        stopping_conditions=IR_STOPPING_CONDITIONS,
+        resource_limit=IR_RESOURCE_LIMIT,
+        job_type=IR_ADVANCED_JOB,
+        job_duration_in_seconds=IR_JOB_DURATION_IN_SECONDS,
+    )
+
+    sagemaker_session.sagemaker_client.create_inference_recommendations_job.assert_called_with(
+        **create_inference_recommendations_job_advanced_happy_response()
+    )
+
+    assert IR_JOB_NAME == job_name
+
+
+def test_create_inference_recommendations_job_propogate_validation_exception(sagemaker_session):
+    validation_exception_message = (
+        "Failed to describe model due to validation failure with following error: test_error"
+    )
+
+    validation_exception = ClientError(
+        {"Error": {"Code": "ValidationException", "Message": validation_exception_message}},
+        "create_inference_recommendations_job",
+    )
+
+    sagemaker_session.sagemaker_client.create_inference_recommendations_job.side_effect = (
+        validation_exception
+    )
+
+    with pytest.raises(ClientError) as error:
+        sagemaker_session.create_inference_recommendations_job(
+            role=IR_ROLE_ARN,
+            sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
+            supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
+            model_package_version_arn=IR_MODEL_PACKAGE_VERSION_ARN,
+            framework=IR_FRAMEWORK,
+            framework_version=IR_FRAMEWORK_VERSION,
+            nearest_model_name=IR_NEAREST_MODEL_NAME,
+            supported_instance_types=IR_SUPPORTED_INSTANCE_TYPES,
+        )
+
+    assert "ValidationException" in str(error)
+
+
+def test_create_inference_recommendations_job_propogate_other_exception(sagemaker_session):
+    access_denied_exception_message = "Access is not allowed for the caller."
+
+    access_denied_exception = ClientError(
+        {"Error": {"Code": "AccessDeniedException", "Message": access_denied_exception_message}},
+        "create_inference_recommendations_job",
+    )
+
+    sagemaker_session.sagemaker_client.create_inference_recommendations_job.side_effect = (
+        access_denied_exception
+    )
+
+    with pytest.raises(ClientError) as error:
+        sagemaker_session.create_inference_recommendations_job(
+            role=IR_ROLE_ARN,
+            sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
+            supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
+            model_package_version_arn=IR_MODEL_PACKAGE_VERSION_ARN,
+            framework=IR_FRAMEWORK,
+            framework_version=IR_FRAMEWORK_VERSION,
+            nearest_model_name=IR_NEAREST_MODEL_NAME,
+            supported_instance_types=IR_SUPPORTED_INSTANCE_TYPES,
+        )
+
+    assert "AccessDeniedException" in str(error)
+
+
+DEFAULT_LOG_EVENTS_INFERENCE_RECOMMENDER = [
+    MockBotoException("ResourceNotFoundException"),
+    {"nextForwardToken": None, "events": [{"timestamp": 1, "message": "hi there #1"}]},
+    {"nextForwardToken": None, "events": [{"timestamp": 2, "message": "hi there #2"}]},
+    {"nextForwardToken": None, "events": [{"timestamp": 3, "message": "hi there #3"}]},
+    {"nextForwardToken": None, "events": [{"timestamp": 4, "message": "hi there #4"}]},
+]
+
+FLUSH_LOG_EVENTS_INFERENCE_RECOMMENDER = [
+    MockBotoException("ResourceNotFoundException"),
+    {"nextForwardToken": None, "events": [{"timestamp": 1, "message": "hi there #1"}]},
+    {"nextForwardToken": None, "events": [{"timestamp": 2, "message": "hi there #2"}]},
+    {"nextForwardToken": None, "events": []},
+    {"nextForwardToken": None, "events": [{"timestamp": 3, "message": "hi there #3"}]},
+    {"nextForwardToken": None, "events": []},
+    {"nextForwardToken": None, "events": [{"timestamp": 4, "message": "hi there #4"}]},
+]
+
+INFERENCE_RECOMMENDATIONS_DESC_STATUS_PENDING = {"Status": "PENDING"}
+INFERENCE_RECOMMENDATIONS_DESC_STATUS_IN_PROGRESS = {"Status": "IN_PROGRESS"}
+INFERENCE_RECOMMENDATIONS_DESC_STATUS_COMPLETED = {"Status": "COMPLETED"}
+
+
+@pytest.fixture()
+def sm_session_inference_recommender():
+    boto_mock = MagicMock(name="boto_session")
+    boto_mock.client("logs").get_log_events.side_effect = DEFAULT_LOG_EVENTS_INFERENCE_RECOMMENDER
+
+    ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=MagicMock())
+
+    ims.sagemaker_client.describe_inference_recommendations_job.side_effect = [
+        INFERENCE_RECOMMENDATIONS_DESC_STATUS_PENDING,
+        INFERENCE_RECOMMENDATIONS_DESC_STATUS_IN_PROGRESS,
+        INFERENCE_RECOMMENDATIONS_DESC_STATUS_COMPLETED,
+        INFERENCE_RECOMMENDATIONS_DESC_STATUS_COMPLETED,
+    ]
+
+    return ims
+
+
+@pytest.fixture()
+def sm_session_inference_recommender_flush():
+    boto_mock = MagicMock(name="boto_session")
+    boto_mock.client("logs").get_log_events.side_effect = FLUSH_LOG_EVENTS_INFERENCE_RECOMMENDER
+
+    ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=MagicMock())
+
+    ims.sagemaker_client.describe_inference_recommendations_job.side_effect = [
+        INFERENCE_RECOMMENDATIONS_DESC_STATUS_PENDING,
+        INFERENCE_RECOMMENDATIONS_DESC_STATUS_IN_PROGRESS,
+        INFERENCE_RECOMMENDATIONS_DESC_STATUS_IN_PROGRESS,
+        INFERENCE_RECOMMENDATIONS_DESC_STATUS_COMPLETED,
+        INFERENCE_RECOMMENDATIONS_DESC_STATUS_COMPLETED,
+        INFERENCE_RECOMMENDATIONS_DESC_STATUS_COMPLETED,
+    ]
+
+    return ims
+
+
+@patch("time.sleep")
+def test_wait_for_inference_recommendations_job_completed(sleep, sm_session_inference_recommender):
+    assert (
+        sm_session_inference_recommender.wait_for_inference_recommendations_job(
+            JOB_NAME, log_level="Quiet"
+        )["Status"]
+        == "COMPLETED"
+    )
+
+    assert (
+        4
+        == sm_session_inference_recommender.sagemaker_client.describe_inference_recommendations_job.call_count
+    )
+    assert 2 == sleep.call_count
+    sleep.assert_has_calls([call(120), call(120)])
+
+
+def test_wait_for_inference_recommendations_job_failed(sagemaker_session):
+    inference_recommendations_desc_status_failed = {
+        "Status": "FAILED",
+        "FailureReason": "Mock Failure Reason",
+    }
+
+    sagemaker_session.sagemaker_client.describe_inference_recommendations_job = Mock(
+        name="describe_inference_recommendations_job",
+        return_value=inference_recommendations_desc_status_failed,
+    )
+
+    with pytest.raises(exceptions.UnexpectedStatusException) as error:
+        sagemaker_session.wait_for_inference_recommendations_job(JOB_NAME)
+
+    assert "Mock Failure Reason" in str(error)
+
+
+@patch("builtins.print")
+@patch("time.sleep")
+def test_wait_for_inference_recommendations_job_completed_verbose(
+    sleep, mock_print, sm_session_inference_recommender
+):
+    assert (
+        sm_session_inference_recommender.wait_for_inference_recommendations_job(
+            JOB_NAME, log_level="Verbose"
+        )["Status"]
+        == "COMPLETED"
+    )
+    assert (
+        4
+        == sm_session_inference_recommender.sagemaker_client.describe_inference_recommendations_job.call_count
+    )
+
+    assert (
+        5 == sm_session_inference_recommender.boto_session.client("logs").get_log_events.call_count
+    )
+
+    assert 3 == sleep.call_count
+    sleep.assert_has_calls([call(10), call(60), call(60)])
+
+    assert 8 == mock_print.call_count
+
+
+@patch("builtins.print")
+@patch("time.sleep")
+def test_wait_for_inference_recommendations_job_flush_completed(
+    sleep, mock_print, sm_session_inference_recommender_flush
+):
+    assert (
+        sm_session_inference_recommender_flush.wait_for_inference_recommendations_job(
+            JOB_NAME, log_level="Verbose"
+        )["Status"]
+        == "COMPLETED"
+    )
+    assert (
+        6
+        == sm_session_inference_recommender_flush.sagemaker_client.describe_inference_recommendations_job.call_count
+    )
+
+    assert (
+        7
+        == sm_session_inference_recommender_flush.boto_session.client(
+            "logs"
+        ).get_log_events.call_count
+    )
+
+    assert 5 == sleep.call_count
+    sleep.assert_has_calls([call(10), call(60), call(60), call(60), call(60)])
+
+    assert 8 == mock_print.call_count
+
+
+def test_wait_for_inference_recommendations_job_invalid_log_level(sagemaker_session):
+    with pytest.raises(ValueError) as error:
+        sagemaker_session.wait_for_inference_recommendations_job(
+            JOB_NAME, log_level="invalid_log_level"
+        )
+
+    assert "log_level must be either Quiet or Verbose" in str(error)

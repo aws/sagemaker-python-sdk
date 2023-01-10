@@ -21,6 +21,7 @@ import sys
 import time
 import typing
 import warnings
+import uuid
 from typing import List, Dict, Any, Sequence, Optional
 
 import boto3
@@ -53,10 +54,12 @@ NOTEBOOK_METADATA_FILE = "/opt/ml/metadata/resource-metadata.json"
 _STATUS_CODE_TABLE = {
     "COMPLETED": "Completed",
     "INPROGRESS": "InProgress",
+    "IN_PROGRESS": "InProgress",
     "FAILED": "Failed",
     "STOPPED": "Stopped",
     "STOPPING": "Stopping",
     "STARTING": "Starting",
+    "PENDING": "Pending",
 }
 
 
@@ -4643,6 +4646,231 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
         return create(request)
 
+    def _create_inference_recommendations_job_request(
+        self,
+        role: str,
+        job_name: str,
+        job_description: str,
+        framework: str,
+        sample_payload_url: str,
+        supported_content_types: List[str],
+        model_package_version_arn: str = None,
+        job_duration_in_seconds: int = None,
+        job_type: str = "Default",
+        framework_version: str = None,
+        nearest_model_name: str = None,
+        supported_instance_types: List[str] = None,
+        endpoint_configurations: List[Dict[str, Any]] = None,
+        traffic_pattern: Dict[str, Any] = None,
+        stopping_conditions: Dict[str, Any] = None,
+        resource_limit: Dict[str, Any] = None,
+    ) -> Dict[str, Any]:
+        """Get request dictionary for CreateInferenceRecommendationsJob API.
+
+        Args:
+            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training
+                jobs and APIs that create Amazon SageMaker endpoints use this role to access
+                training data and model artifacts.
+                You must grant sufficient permissions to this role.
+            job_name (str): The name of the Inference Recommendations Job.
+            job_description (str): A description of the Inference Recommendations Job.
+            framework (str): The machine learning framework of the Image URI.
+            sample_payload_url (str): The S3 path where the sample payload is stored.
+            supported_content_types (List[str]): The supported MIME types for the input data.
+            model_package_version_arn (str): The Amazon Resource Name (ARN) of a
+                versioned model package.
+            job_duration_in_seconds (int): The maximum job duration that a job
+                can run for. Will be used for `Advanced` jobs.
+            job_type (str): The type of job being run. Must either be `Default` or `Advanced`.
+            framework_version (str): The framework version of the Image URI.
+            nearest_model_name (str): The name of a pre-trained machine learning model
+                benchmarked by Amazon SageMaker Inference Recommender that matches your model.
+            supported_instance_types (List[str]): A list of the instance types that are used
+                to generate inferences in real-time.
+            endpoint_configurations (List[Dict[str, any]]): Specifies the endpoint configurations
+                to use for a job. Will be used for `Advanced` jobs.
+            traffic_pattern (Dict[str, any]): Specifies the traffic pattern for the job.
+                Will be used for `Advanced` jobs.
+            stopping_conditions (Dict[str, any]): A set of conditions for stopping a
+                recommendation job.
+                If any of the conditions are met, the job is automatically stopped.
+                Will be used for `Advanced` jobs.
+            resource_limit (Dict[str, any]): Defines the resource limit for the job.
+                Will be used for `Advanced` jobs.
+        Returns:
+            Dict[str, Any]: request dictionary for the CreateInferenceRecommendationsJob API
+        """
+
+        containerConfig = {
+            "Domain": "MACHINE_LEARNING",
+            "Task": "OTHER",
+            "Framework": framework,
+            "PayloadConfig": {
+                "SamplePayloadUrl": sample_payload_url,
+                "SupportedContentTypes": supported_content_types,
+            },
+        }
+
+        if framework_version:
+            containerConfig["FrameworkVersion"] = framework_version
+        if nearest_model_name:
+            containerConfig["NearestModelName"] = nearest_model_name
+        if supported_instance_types:
+            containerConfig["SupportedInstanceTypes"] = supported_instance_types
+
+        request = {
+            "JobName": job_name,
+            "JobType": job_type,
+            "RoleArn": role,
+            "InputConfig": {
+                "ContainerConfig": containerConfig,
+                "ModelPackageVersionArn": model_package_version_arn,
+            },
+        }
+
+        if job_description:
+            request["JobDescription"] = job_description
+        if job_duration_in_seconds:
+            request["InputConfig"]["JobDurationInSeconds"] = job_duration_in_seconds
+
+        if job_type == "Advanced":
+            if stopping_conditions:
+                request["StoppingConditions"] = stopping_conditions
+            if resource_limit:
+                request["InputConfig"]["ResourceLimit"] = resource_limit
+            if traffic_pattern:
+                request["InputConfig"]["TrafficPattern"] = traffic_pattern
+            if endpoint_configurations:
+                request["InputConfig"]["EndpointConfigurations"] = endpoint_configurations
+
+        return request
+
+    def create_inference_recommendations_job(
+        self,
+        role: str,
+        sample_payload_url: str,
+        supported_content_types: List[str],
+        job_name: str = None,
+        job_type: str = "Default",
+        model_package_version_arn: str = None,
+        job_duration_in_seconds: int = None,
+        nearest_model_name: str = None,
+        supported_instance_types: List[str] = None,
+        framework: str = None,
+        framework_version: str = None,
+        endpoint_configurations: List[Dict[str, any]] = None,
+        traffic_pattern: Dict[str, any] = None,
+        stopping_conditions: Dict[str, any] = None,
+        resource_limit: Dict[str, any] = None,
+    ):
+        """Creates an Inference Recommendations Job
+
+        Args:
+            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training
+                jobs and APIs that create Amazon SageMaker endpoints use this role to access
+                training data and model artifacts.
+                You must grant sufficient permissions to this role.
+            sample_payload_url (str): The S3 path where the sample payload is stored.
+            supported_content_types (List[str]): The supported MIME types for the input data.
+            model_package_version_arn (str): The Amazon Resource Name (ARN) of a
+                versioned model package.
+            job_name (str): The name of the job being run.
+            job_type (str): The type of job being run. Must either be `Default` or `Advanced`.
+            job_duration_in_seconds (int): The maximum job duration that a job
+                can run for. Will be used for `Advanced` jobs.
+            nearest_model_name (str): The name of a pre-trained machine learning model
+                benchmarked by Amazon SageMaker Inference Recommender that matches your model.
+            supported_instance_types (List[str]): A list of the instance types that are used
+                to generate inferences in real-time.
+            framework (str): The machine learning framework of the Image URI.
+            framework_version (str): The framework version of the Image URI.
+            endpoint_configurations (List[Dict[str, any]]): Specifies the endpoint configurations
+                to use for a job. Will be used for `Advanced` jobs.
+            traffic_pattern (Dict[str, any]): Specifies the traffic pattern for the job.
+                Will be used for `Advanced` jobs.
+            stopping_conditions (Dict[str, any]): A set of conditions for stopping a
+                recommendation job.
+                If any of the conditions are met, the job is automatically stopped.
+                Will be used for `Advanced` jobs.
+            resource_limit (Dict[str, any]): Defines the resource limit for the job.
+                Will be used for `Advanced` jobs.
+        Returns:
+            str: The name of the job created. In the form of `SMPYTHONSDK-<timestamp>`
+        """
+
+        if not job_name:
+            unique_tail = uuid.uuid4()
+            job_name = "SMPYTHONSDK-" + str(unique_tail)
+        job_description = "#python-sdk-create"
+
+        create_inference_recommendations_job_request = (
+            self._create_inference_recommendations_job_request(
+                role=role,
+                model_package_version_arn=model_package_version_arn,
+                job_name=job_name,
+                job_type=job_type,
+                job_duration_in_seconds=job_duration_in_seconds,
+                job_description=job_description,
+                framework=framework,
+                framework_version=framework_version,
+                nearest_model_name=nearest_model_name,
+                sample_payload_url=sample_payload_url,
+                supported_content_types=supported_content_types,
+                supported_instance_types=supported_instance_types,
+                endpoint_configurations=endpoint_configurations,
+                traffic_pattern=traffic_pattern,
+                stopping_conditions=stopping_conditions,
+                resource_limit=resource_limit,
+            )
+        )
+
+        def submit(request):
+            LOGGER.info("Creating Inference Recommendations job with name: %s", job_name)
+            LOGGER.debug("process request: %s", json.dumps(request, indent=4))
+            self.sagemaker_client.create_inference_recommendations_job(**request)
+
+        self._intercept_create_request(
+            create_inference_recommendations_job_request,
+            submit,
+            self.create_inference_recommendations_job.__name__,
+        )
+        return job_name
+
+    def wait_for_inference_recommendations_job(
+        self, job_name: str, poll: int = 120, log_level: str = "Verbose"
+    ) -> Dict[str, Any]:
+        """Wait for an Amazon SageMaker Inference Recommender job to complete.
+
+        Args:
+            job_name (str): Name of the Inference Recommender job to wait for.
+            poll (int): Polling interval in seconds (default: 120).
+            log_level (str): The level of verbosity for the logs.
+            Can be "Quiet" or "Verbose" (default: "Quiet").
+
+        Returns:
+            (dict): Return value from the ``DescribeInferenceRecommendationsJob`` API.
+
+        Raises:
+            exceptions.CapacityError: If the Inference Recommender job fails with CapacityError.
+            exceptions.UnexpectedStatusException: If the Inference Recommender job fails.
+        """
+        if log_level == "Quiet":
+            _wait_until(
+                lambda: _describe_inference_recommendations_job_status(
+                    self.sagemaker_client, job_name
+                ),
+                poll,
+            )
+        elif log_level == "Verbose":
+            _display_inference_recommendations_job_steps_status(
+                self, self.sagemaker_client, job_name
+            )
+        else:
+            raise ValueError("log_level must be either Quiet or Verbose")
+        desc = _describe_inference_recommendations_job_status(self.sagemaker_client, job_name)
+        self._check_job_status(job_name, desc, "Status")
+        return desc
+
 
 def get_model_package_args(
     content_types,
@@ -5262,6 +5490,118 @@ def _create_model_package_status(sagemaker_client, model_package_name):
 
     print("")
     return desc
+
+
+def _describe_inference_recommendations_job_status(sagemaker_client, job_name: str):
+    """Describes the status of a job and returns the job description.
+
+    Args:
+        sagemaker_client (boto3.client.sagemaker): A SageMaker client.
+        job_name (str): The name of the job.
+
+    Returns:
+        dict: The job description, or None if the job is still in progress.
+    """
+    inference_recommendations_job_status_codes = {
+        "PENDING": ".",
+        "IN_PROGRESS": ".",
+        "COMPLETED": "!",
+        "FAILED": "*",
+        "STOPPING": "_",
+        "STOPPED": "s",
+    }
+    in_progress_statuses = {"PENDING", "IN_PROGRESS", "STOPPING"}
+
+    desc = sagemaker_client.describe_inference_recommendations_job(JobName=job_name)
+    status = desc["Status"]
+
+    print(inference_recommendations_job_status_codes.get(status, "?"), end="", flush=True)
+
+    if status in in_progress_statuses:
+        return None
+
+    print("")
+    return desc
+
+
+def _display_inference_recommendations_job_steps_status(
+    sagemaker_session, sagemaker_client, job_name: str, poll: int = 60
+):
+    """Placeholder docstring"""
+    cloudwatch_client = sagemaker_session.boto_session.client("logs")
+    in_progress_statuses = {"PENDING", "IN_PROGRESS", "STOPPING"}
+    log_group_name = "/aws/sagemaker/InferenceRecommendationsJobs"
+    log_stream_name = job_name + "/execution"
+
+    initial_logs_batch = get_log_events_for_inference_recommender(
+        cloudwatch_client, log_group_name, log_stream_name
+    )
+    print(f"Retrieved logStream: {log_stream_name} from logGroup: {log_group_name}", flush=True)
+    events = initial_logs_batch["events"]
+    print(*[event["message"] for event in events], sep="\n", flush=True)
+
+    next_forward_token = initial_logs_batch["nextForwardToken"] if events else None
+    flush_remaining = True
+    while True:
+        logs_batch = (
+            cloudwatch_client.get_log_events(
+                logGroupName=log_group_name,
+                logStreamName=log_stream_name,
+                nextToken=next_forward_token,
+            )
+            if next_forward_token
+            else cloudwatch_client.get_log_events(
+                logGroupName=log_group_name, logStreamName=log_stream_name
+            )
+        )
+
+        events = logs_batch["events"]
+
+        desc = sagemaker_client.describe_inference_recommendations_job(JobName=job_name)
+        status = desc["Status"]
+
+        if not events:
+            if status in in_progress_statuses:
+                time.sleep(poll)
+                continue
+            if flush_remaining:
+                flush_remaining = False
+                time.sleep(poll)
+                continue
+
+        next_forward_token = logs_batch["nextForwardToken"]
+        print(*[event["message"] for event in events], sep="\n", flush=True)
+
+        if status not in in_progress_statuses:
+            break
+
+        time.sleep(poll)
+
+
+def get_log_events_for_inference_recommender(cw_client, log_group_name, log_stream_name):
+    """Retrieves log events from the specified CloudWatch log group and log stream.
+
+    Args:
+        cw_client (boto3.client): A boto3 CloudWatch client.
+        log_group_name (str): The name of the CloudWatch log group.
+        log_stream_name (str): The name of the CloudWatch log stream.
+
+    Returns:
+        (dict): A dictionary containing log events from CloudWatch log group and log stream.
+    """
+    print("Fetching logs from CloudWatch...", flush=True)
+    for _ in retries(
+        max_retry_count=30,  # 30*10 = 5min
+        exception_message_prefix="Waiting for cloudwatch stream to appear. ",
+        seconds_to_sleep=10,
+    ):
+        try:
+            return cw_client.get_log_events(
+                logGroupName=log_group_name, logStreamName=log_stream_name
+            )
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "ResourceNotFoundException":
+                pass
 
 
 def _deploy_done(sagemaker_client, endpoint_name):

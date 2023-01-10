@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.128.0 (2023-01-10)
+
+### Features
+
+ * right_size() for inference recommender
+
+### Bug Fixes and Other Changes
+
+ * tf 2.9.3 release images
+ * Retry ValueError for airflow tests
+
 ## v2.127.0 (2023-01-03)
 
 ### Features
