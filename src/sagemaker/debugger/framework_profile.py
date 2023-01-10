@@ -144,7 +144,7 @@ class FrameworkProfile:
                 :class:`~sagemaker.debugger.metrics_config.DetailedProfilingConfig` class.
                 Pass ``DetailedProfilingConfig()`` to use the default configuration.
 
-                .. deprecated:: 
+                .. warning:: 
 
                     This detailed framework profiling feature discontinues support for TensorFlow v2.11 
                     and later. To use the detailed profiling feature, use previous versions of 

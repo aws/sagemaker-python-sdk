@@ -223,7 +223,7 @@ class DetailedProfilingConfig(MetricsConfigBase):
             if one of the two pairs is used. If both pairs are specified, a
             conflict error occurs.
 
-        .. deprecated:: 
+        .. warning:: 
 
             This detailed framework profiling feature discontinues support for TensorFlow v2.11 
             and later. To use the detailed profiling feature, use previous versions of 
