@@ -31,6 +31,10 @@ class Tasks(str, Enum):
     TEXT_GENERATION = "textgeneration"
     IC_EMBEDDING = "icembedding"
     TC_EMBEDDING = "tcembedding"
+    AUDIO_EMBEDDING = "audioembedding"
+    TXT2IMG = "txt2img"
+    UPSCALING = "upscaling"
+    ZSTC = "zstc"
     NER = "ner"
     SUMMARIZATION = "summarization"
     TRANSLATION = "translation"
@@ -69,6 +73,7 @@ class Frameworks(str, Enum):
     LIGHTGBM = "LightGBM"
     XGBOOST = "XGBoost"
     SCIKIT_LEARN = "ScikitLearn"
+    STABILITYAI = "stabilityai"
     SOURCE = "Source"
 
 
@@ -153,9 +158,27 @@ MODALITY_MAP = {
         Frameworks.HUGGINGFACE,
     ): "algorithms/text/text_summarization_hugging_face.rst",
     (
-        Tasks.TC,
+        Tasks.ZSTC,
         Frameworks.HUGGINGFACE,
-    ): "algorithms/text/text_classifcation_hugging_face.rst",
+    ): "algorithms/text/zstc_hugging_face.rst",
+    (
+        Tasks.TXT2IMG,
+        Frameworks.HUGGINGFACE,
+    ): "algorithms/text/txt2img_hugging_face.rst",
+    # Need to confirm if we are specifically using StabilityAI or Huggingface
+    (
+        Tasks.TXT2IMG,
+        Frameworks.HUGGINGFACE,
+    ): "algorithms/text/txt2img_stability_ai.rst",
+    # Need to confirm if we are specifically using StabilityAI or Huggingface
+    (
+        Tasks.UPSCALING,
+        Frameworks.HUGGINGFACE,
+    ): "algorithms/text/upscaling_stability_ai.rst",
+    (
+        Tasks.AUDIO_EMBEDDING,
+        Frameworks.TENSORFLOW,
+    ): "algorithms/audio/audioembedding_tensorflow.rst",
 }
 
 
@@ -180,9 +203,9 @@ def get_model_task(id):
 def get_list_model_task(id):
     tasks = []
     task = get_string_model_task(id)
-    tasks.add(task)
+    tasks.append(task)
     if (tasks == Tasks.OD):
-        tasks.add(Tasks.OD1)
+        tasks.append(Tasks.OD1)
 
     return tasks
 
@@ -280,40 +303,41 @@ def create_jumpstart_model_table():
             "     - `{} <{}>`__ |external-link|\n".format(model_source, model_spec["url"])
         )
 
-        for string_model_task in list_model_task:
-            if (string_model_task, TO_FRAMEWORK[model_source]) in MODALITY_MAP:
-                file_content_single_entry = []
+        # for string_model_task in list_model_task:
+        string_model_task = list_model_task[0]
+        if (string_model_task, TO_FRAMEWORK[model_source]) in MODALITY_MAP:
+            file_content_single_entry = []
 
-                if (
+            if (
+                MODALITY_MAP[(string_model_task, TO_FRAMEWORK[model_source])]
+                not in dynamic_table_files
+            ):
+                file_content_single_entry.append("\n")
+                file_content_single_entry.append(".. list-table:: Available Models\n")
+                file_content_single_entry.append("   :widths: 50 20 20 20 20\n")
+                file_content_single_entry.append("   :header-rows: 1\n")
+                file_content_single_entry.append("   :class: datatable\n")
+                file_content_single_entry.append("\n")
+                file_content_single_entry.append("   * - Model ID\n")
+                file_content_single_entry.append("     - Fine Tunable?\n")
+                file_content_single_entry.append("     - Latest Version\n")
+                file_content_single_entry.append("     - Min SDK Version\n")
+                file_content_single_entry.append("     - Source\n")
+
+                dynamic_table_files.append(
                     MODALITY_MAP[(string_model_task, TO_FRAMEWORK[model_source])]
-                    not in dynamic_table_files
-                ):
-                    file_content_single_entry.append("\n")
-                    file_content_single_entry.append(".. list-table:: Available Models\n")
-                    file_content_single_entry.append("   :widths: 50 20 20 20 20\n")
-                    file_content_single_entry.append("   :header-rows: 1\n")
-                    file_content_single_entry.append("   :class: datatable\n")
-                    file_content_single_entry.append("\n")
-                    file_content_single_entry.append("   * - Model ID\n")
-                    file_content_single_entry.append("     - Fine Tunable?\n")
-                    file_content_single_entry.append("     - Latest Version\n")
-                    file_content_single_entry.append("     - Min SDK Version\n")
-                    file_content_single_entry.append("     - Source\n")
-
-                    dynamic_table_files.append(
-                        MODALITY_MAP[(string_model_task, TO_FRAMEWORK[model_source])]
-                    )
-
-                file_content_single_entry.append("   * - {}\n".format(model_spec["model_id"]))
-                file_content_single_entry.append("     - {}\n".format(model_spec["training_supported"]))
-                file_content_single_entry.append("     - {}\n".format(model["version"]))
-                file_content_single_entry.append("     - {}\n".format(model["min_version"]))
-                file_content_single_entry.append(
-                    "     - `{} <{}>`__\n".format(model_source, model_spec["url"])
                 )
-                f = open(MODALITY_MAP[(string_model_task, TO_FRAMEWORK[model_source])], "a")
-                f.writelines(file_content_single_entry)
-                f.close()
+
+            file_content_single_entry.append("   * - {}\n".format(model_spec["model_id"]))
+            file_content_single_entry.append("     - {}\n".format(model_spec["training_supported"]))
+            file_content_single_entry.append("     - {}\n".format(model["version"]))
+            file_content_single_entry.append("     - {}\n".format(model["min_version"]))
+            file_content_single_entry.append(
+                "     - `{} <{}>`__\n".format(model_source, model_spec["url"])
+            )
+            f = open(MODALITY_MAP[(string_model_task, TO_FRAMEWORK[model_source])], "a")
+            f.writelines(file_content_single_entry)
+            f.close()
 
     f = open("doc_utils/pretrainedmodels.rst", "a")
     f.writelines(file_content_intro)
