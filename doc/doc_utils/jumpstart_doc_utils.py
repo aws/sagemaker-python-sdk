@@ -174,7 +174,7 @@ MODALITY_MAP = {
     (
         Tasks.UPSCALING,
         Frameworks.HUGGINGFACE,
-    ): "algorithms/text/upscaling_stability_ai.rst",
+    ): "algorithms/image/upscaling_stability_ai.rst",
     (
         Tasks.AUDIO_EMBEDDING,
         Frameworks.TENSORFLOW,
