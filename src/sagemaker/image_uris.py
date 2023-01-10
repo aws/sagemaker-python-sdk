@@ -18,6 +18,7 @@ import logging
 import os
 import re
 from typing import Optional
+from packaging.version import Version
 
 from sagemaker import utils
 from sagemaker.jumpstart.utils import is_jumpstart_model_input
@@ -371,7 +372,7 @@ def _validate_instance_deprecation(framework, instance_type, version):
     if (
         framework == "pytorch"
         and _get_instance_type_family(instance_type) == "p2"
-        and version >= "1.13"
+        and Version(version) >= Version("1.13")
     ):
         raise ValueError(
             "P2 instances have been deprecated for sagemaker jobs with PyTorch 1.13 and above. "
