@@ -20,3 +20,4 @@ Amazon SageMaker provides algorithms that are tailored to the analysis of textua
     text_summarization_hugging_face
     text_generation_hugging_face
     machine_translation_hugging_face
+    text_classification_hugging_face
