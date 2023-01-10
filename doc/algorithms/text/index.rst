@@ -24,3 +24,4 @@ Amazon SageMaker provides algorithms that are tailored to the analysis of textua
     txt2img_hugging_face
     txt2img_stability_ai
     upscaling_stability_ai
+    zstc_hugging_face
