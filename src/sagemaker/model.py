@@ -1620,6 +1620,9 @@ class ModelPackage(Model):
 
         container_def = {"ModelPackageName": model_package_name}
 
+        if self.env != {}:
+            container_def["Environment"] = self.env
+
         self._ensure_base_name_if_needed(model_package_name.split("/")[-1])
         self._set_model_name_if_needed()
 
