@@ -52,10 +52,6 @@ DESCRIBE_MODEL_PACKAGE_RESPONSE = {
     "CertifyForMarketplace": False,
 }
 
-ENV_KEY_1 = "env_key_1"
-ENV_VALUE_1 = "env_key_1"
-ENVIRONMENT = {ENV_KEY_1: ENV_VALUE_1}
-
 
 @pytest.fixture
 def sagemaker_session():
@@ -122,12 +118,15 @@ def test_create_sagemaker_model_uses_model_name(name_from_base, sagemaker_sessio
 def test_create_sagemaker_model_include_environment_variable(sagemaker_session):
     model_name = "my-model"
     model_package_name = "my-model-package"
+    env_key = "env_key"
+    env_value = "env_value"
+    environment = {env_key: env_value}
 
     model_package = ModelPackage(
         role="role",
         name=model_name,
         model_package_arn=model_package_name,
-        env=ENVIRONMENT,
+        env=environment,
         sagemaker_session=sagemaker_session,
     )
 
@@ -136,7 +135,7 @@ def test_create_sagemaker_model_include_environment_variable(sagemaker_session):
     sagemaker_session.create_model.assert_called_with(
         model_name,
         "role",
-        {"ModelPackageName": model_package_name, "Environment": ENVIRONMENT},
+        {"ModelPackageName": model_package_name, "Environment": environment},
         vpc_config=None,
         enable_network_isolation=False,
     )
