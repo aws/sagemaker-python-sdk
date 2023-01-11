@@ -1178,6 +1178,7 @@ def test_caching_behavior(
 ):
     default_bucket = pipeline_session.default_bucket()
     data_path = os.path.join(DATA_DIR, "workflow")
+    code_dir = os.path.join(script_dir, "train.py")
 
     framework_version = "0.20.0"
     instance_type = "ml.m5.xlarge"
@@ -1238,7 +1239,7 @@ def test_caching_behavior(
     sklearn_train = SKLearn(
         framework_version=framework_version,
         source_dir=script_dir,
-        entry_point=os.path.join(script_dir, "train.py"),
+        entry_point=code_dir,
         instance_type=instance_type,
         sagemaker_session=pipeline_session,
         role=role,
@@ -1280,7 +1281,12 @@ def test_caching_behavior(
         assert expected_abalone_input_file in s3_input_objects
 
         # verify code path
-        expected_code_path = f"{pipeline_name}/code/" f"{hash_files_or_dirs([script_dir])}"
+        files_to_hash = []
+        if code_dir is not None:
+            files_to_hash.append(code_dir)
+        files_to_hash.append(script_dir)
+
+        expected_code_path = f"{pipeline_name}/code/" f"{hash_files_or_dirs(files_to_hash)}"
         expected_training_file = f"{expected_code_path}/sourcedir.tar.gz"
 
         s3_code_objects = pipeline_session.list_s3_files(

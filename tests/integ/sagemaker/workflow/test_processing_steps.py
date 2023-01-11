@@ -1002,8 +1002,16 @@ def _verify_code_artifacts_of_framework_processing_step(
     pipeline_session, processor, bucket, pipeline_name, step_definition, source_dir, entry_point
 ):
 
+    files_to_hash = []
+
+    if entry_point is not None:
+        files_to_hash.append(f'{DATA_DIR}/{entry_point}')
+
+    files_to_hash.append(f'{DATA_DIR}/{source_dir}')
+
+
     source_dir_s3_uri = (
-        f"s3://{bucket}/{pipeline_name}" f"/code/{hash_files_or_dirs([f'{DATA_DIR}/{source_dir}'])}"
+        f"s3://{bucket}/{pipeline_name}" f"/code/{hash_files_or_dirs(files_to_hash)}"
     )
 
     # verify runproc.sh prefix is different from code artifact prefix
@@ -1020,7 +1028,7 @@ def _verify_code_artifacts_of_framework_processing_step(
 
     expected_source_dir_tar = (
         f"{pipeline_name}"
-        f"/code/{hash_files_or_dirs([DATA_DIR + '/pipeline/test_source_dir'])}/sourcedir.tar.gz"
+        f"/code/{hash_files_or_dirs(files_to_hash)}/sourcedir.tar.gz"
     )
 
     step_script = processor._generate_framework_script(entry_point)
