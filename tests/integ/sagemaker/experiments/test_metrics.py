@@ -30,8 +30,7 @@ def test_end_to_end(trial_component_obj, sagemaker_session):
             sagemaker_session=sagemaker_session,
         )
         metrics = updated_tc.metrics
-        # TODO: revert to len(metrics) == 2 once backend fix reaches prod
-        assert len(metrics) > 0
+        assert len(metrics) == 2
         assert list(filter(lambda x: x.metric_name == "test-x-step", metrics))
         assert list(filter(lambda x: x.metric_name == "test-x-timestamp", metrics))
 
