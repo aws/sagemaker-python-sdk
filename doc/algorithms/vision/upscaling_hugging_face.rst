@@ -1,8 +1,8 @@
 ##################################
-Image Upscaling - Stability AI
+Image Upscaling - HuggingFace
 ##################################
 
-This is a image upscaling algorithm which supports many pre-trained models available in Stability AI Hub. The following
+This is a image upscaling algorithm which supports many pre-trained models available in HuggingFace Hub. The following
 `sample notebook <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_image_classification/Amazon_JumpStart_Image_Classification.ipynb>`__
 demonstrates how to use the Sagemaker Python SDK for Image Classification for using these algorithms.
 

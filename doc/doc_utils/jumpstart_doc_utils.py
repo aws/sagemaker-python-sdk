@@ -73,7 +73,6 @@ class Frameworks(str, Enum):
     LIGHTGBM = "LightGBM"
     XGBOOST = "XGBoost"
     SCIKIT_LEARN = "ScikitLearn"
-    STABILITYAI = "stabilityai"
     SOURCE = "Source"
 
 
@@ -121,17 +120,16 @@ MODALITY_MAP = {
     (Tasks.IS, Frameworks.GLUONCV): "algorithms/vision/instance_segmentation_mxnet.rst",
     (Tasks.OD, Frameworks.GLUONCV): "algorithms/vision/object_detection_mxnet.rst",
     (Tasks.OD, Frameworks.PYTORCH): "algorithms/vision/object_detection_pytorch.rst",
+    (Tasks.OD1, Frameworks.PYTORCH): "algorithms/vision/object_detection_pytorch.rst",
     (Tasks.OD, Frameworks.TENSORFLOW): "algorithms/vision/object_detection_tensorflow.rst",
+    (Tasks.OD1, Frameworks.TENSORFLOW): "algorithms/vision/object_detection_tensorflow.rst",
     (Tasks.SEMSEG, Frameworks.GLUONCV): "algorithms/vision/semantic_segmentation_mxnet.rst",
     (
         Tasks.TRANSLATION,
         Frameworks.HUGGINGFACE,
     ): "algorithms/text/machine_translation_hugging_face.rst",
     (Tasks.NER, Frameworks.HUGGINGFACE): "algorithms/text/named_entity_recognition_hugging_face.rst",
-    # This EQA - Pytorch is currently mapping to EQA -> HuggingFace in the SDK metadata. Due to this, we will keep the mapping as-is here, but
-    # will modify documentation to reflect the actual models being displayed. Will need to follow up to potentially change SDK metadata 
-    # to show actual mapping
-    (Tasks.EQA, Frameworks.PYTORCH): "algorithms/text/question_answering_hugging_face.rst",
+    (Tasks.EQA, Frameworks.HUGGINGFACE): "algorithms/text/question_answering_hugging_face.rst",
     (
         Tasks.SPC,
         Frameworks.HUGGINGFACE,
@@ -165,21 +163,39 @@ MODALITY_MAP = {
         Tasks.TXT2IMG,
         Frameworks.HUGGINGFACE,
     ): "algorithms/text/txt2img_hugging_face.rst",
-    # Need to confirm if we are specifically using StabilityAI or Huggingface
-    (
-        Tasks.TXT2IMG,
-        Frameworks.HUGGINGFACE,
-    ): "algorithms/text/txt2img_stability_ai.rst",
-    # Need to confirm if we are specifically using StabilityAI or Huggingface
     (
         Tasks.UPSCALING,
         Frameworks.HUGGINGFACE,
-    ): "algorithms/vision/upscaling_stability_ai.rst",
+    ): "algorithms/vision/upscaling_hugging_face.rst",
     (
         Tasks.AUDIO_EMBEDDING,
         Frameworks.TENSORFLOW,
     ): "algorithms/audio/audioembedding_tensorflow.rst",
 }
+
+SAMPLE_NOTEBOOK_MODALITY_MAP = {
+    (Tasks.IC): "https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_image_classification/Amazon_JumpStart_Image_Classification.ipynb",
+    (Tasks.IC_EMBEDDING): "https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_image_embedding/Amazon_JumpStart_Image_Embedding.ipynb",
+    (Tasks.IS): "https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_instance_segmentation/Amazon_JumpStart_Instance_Segmentation.ipynb",
+    (Tasks.OD): "https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_object_detection/Amazon_JumpStart_Object_Detection.ipynb",
+    (Tasks.OD1): "https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_object_detection/Amazon_JumpStart_Object_Detection.ipynb",
+    (Tasks.SEMSEG): "https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_semantic_segmentation/Amazon_JumpStart_Semantic_Segmentation.ipynb",
+    (Tasks.TRANSLATION): "https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_machine_translation/Amazon_JumpStart_Machine_Translation.ipynb",
+    (Tasks.NER): "https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_named_entity_recognition/Amazon_JumpStart_Named_Entity_Recognition.ipynb",
+    (Tasks.EQA): "https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_question_answering/Amazon_JumpStart_Question_Answering.ipynb",
+    (Tasks.SPC): "https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_sentence_pair_classification/Amazon_JumpStart_Sentence_Pair_Classification.ipynb",
+    (Tasks.TC): "https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_text_classification/Amazon_JumpStart_Text_Classification.ipynb",
+    (Tasks.TC_EMBEDDING): "https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_text_embedding/Amazon_JumpStart_Text_Embedding.ipynb",
+    (Tasks.TEXT_GENERATION): "https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_text_generation/Amazon_JumpStart_Text_Generation.ipynb",
+    (Tasks.SUMMARIZATION): "https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_text_summarization/Amazon_JumpStart_Text_Summarization.ipynb",
+    # TODO: Find notebook link for  this task
+    (Tasks.ZSTC): "https://www.google.com/",
+    (Tasks.TXT2IMG): "https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_text_to_image/Amazon_JumpStart_Text_To_Image.ipynb",
+    # TODO: Find notebook link for  this task
+    (Tasks.UPSCALING): "https://www.google.com/",
+    # TODO: Find notebook link for  this task
+    (Tasks.AUDIO_EMBEDDING): "https://www.google.com/",
+} 
 
 
 def get_jumpstart_sdk_manifest():
@@ -200,21 +216,12 @@ def get_model_task(id):
     task_short = id.split("-")[1]
     return TASK_MAP[task_short] if task_short in TASK_MAP else "Source"
 
-def get_list_model_task(id):
-    tasks = []
-    task = get_string_model_task(id)
-    tasks.append(task)
-    if (tasks == Tasks.OD):
-        tasks.append(Tasks.OD1)
-
-    return tasks
-
 def get_string_model_task(id):
     return id.split("-")[1]
 
 
 def get_model_source(url):
-    if "tfhub" in url:
+    if "tfhub" in url or "tensorflow" in url:
         return "Tensorflow Hub"
     if "pytorch" in url:
         return "Pytorch Hub"
@@ -246,7 +253,6 @@ def create_jumpstart_model_table():
                 sdk_manifest_top_versions_for_models[model["model_id"]]["version"]
             ) < Version(model["version"]):
                 sdk_manifest_top_versions_for_models[model["model_id"]] = model
-
     file_content_intro = []
 
     file_content_intro.append(".. _all-pretrained-models:\n\n")
@@ -292,7 +298,7 @@ def create_jumpstart_model_table():
     for model in sdk_manifest_top_versions_for_models.values():
         model_spec = get_jumpstart_sdk_spec(model["spec_key"])
         model_task = get_model_task(model_spec["model_id"])
-        list_model_task = get_list_model_task(model_spec["model_id"])
+        string_model_task = get_string_model_task(model_spec["model_id"])
         model_source = get_model_source(model_spec["url"])
         file_content_entries.append("   * - {}\n".format(model_spec["model_id"]))
         file_content_entries.append("     - {}\n".format(model_spec["training_supported"]))
@@ -303,8 +309,6 @@ def create_jumpstart_model_table():
             "     - `{} <{}>`__ |external-link|\n".format(model_source, model_spec["url"])
         )
 
-        # for string_model_task in list_model_task:
-        string_model_task = list_model_task[0]
         if (string_model_task, TO_FRAMEWORK[model_source]) in MODALITY_MAP:
             file_content_single_entry = []
 
@@ -314,7 +318,7 @@ def create_jumpstart_model_table():
             ):
                 file_content_single_entry.append("\n")
                 file_content_single_entry.append(".. list-table:: Available Models\n")
-                file_content_single_entry.append("   :widths: 50 20 20 20 20\n")
+                file_content_single_entry.append("   :widths: 50 20 20 20 20 20\n")
                 file_content_single_entry.append("   :header-rows: 1\n")
                 file_content_single_entry.append("   :class: datatable\n")
                 file_content_single_entry.append("\n")
@@ -322,7 +326,8 @@ def create_jumpstart_model_table():
                 file_content_single_entry.append("     - Fine Tunable?\n")
                 file_content_single_entry.append("     - Latest Version\n")
                 file_content_single_entry.append("     - Min SDK Version\n")
-                file_content_single_entry.append("     - Source\n")
+                file_content_single_entry.append("     - Sample Notebook\n")
+                file_content_single_entry.append("     - Original Source\n")
 
                 dynamic_table_files.append(
                     MODALITY_MAP[(string_model_task, TO_FRAMEWORK[model_source])]
@@ -332,6 +337,9 @@ def create_jumpstart_model_table():
             file_content_single_entry.append("     - {}\n".format(model_spec["training_supported"]))
             file_content_single_entry.append("     - {}\n".format(model["version"]))
             file_content_single_entry.append("     - {}\n".format(model["min_version"]))
+            file_content_single_entry.append(
+                "     - `{} <{}>`__\n".format("Sample Notebook", SAMPLE_NOTEBOOK_MODALITY_MAP[string_model_task])
+            )
             file_content_single_entry.append(
                 "     - `{} <{}>`__\n".format(model_source, model_spec["url"])
             )
