@@ -165,6 +165,7 @@ class IngestionManagerPandas:
         feature_group_name (str): name of the Feature Group.
         sagemaker_fs_runtime_client_config (Config): instance of the Config class
             for boto calls.
+        sagemaker_session (Session): session instance to perform boto calls.
         data_frame (DataFrame): pandas DataFrame to be ingested to the given feature group.
         max_workers (int): number of threads to create.
         max_processes (int): number of processes to create. Each process spawns
@@ -174,7 +175,8 @@ class IngestionManagerPandas:
     """
 
     feature_group_name: str = attr.ib()
-    sagemaker_fs_runtime_client_config: Config = attr.ib()
+    sagemaker_fs_runtime_client_config: Config = attr.ib(default=None)
+    sagemaker_session: Session = attr.ib(default=None)
     max_workers: int = attr.ib(default=1)
     max_processes: int = attr.ib(default=1)
     profile_name: str = attr.ib(default=None)
@@ -210,29 +212,20 @@ class IngestionManagerPandas:
         if "max_attempts" not in retry_config and "total_max_attempts" not in retry_config:
             client_config = copy.deepcopy(client_config)
             client_config.retries = {"max_attempts": 10, "mode": "standard"}
-        sagemaker_featurestore_runtime_client = boto3.Session(profile_name=profile_name).client(
+        sagemaker_fs_runtime_client = boto3.Session(profile_name=profile_name).client(
             service_name="sagemaker-featurestore-runtime", config=client_config
         )
 
         logger.info("Started ingesting index %d to %d", start_index, end_index)
         failed_rows = list()
         for row in data_frame[start_index:end_index].itertuples():
-            record = [
-                FeatureValue(
-                    feature_name=data_frame.columns[index - 1],
-                    value_as_string=str(row[index]),
-                )
-                for index in range(1, len(row))
-                if pd.notna(row[index])
-            ]
-            try:
-                sagemaker_featurestore_runtime_client.put_record(
-                    FeatureGroupName=feature_group_name,
-                    Record=[value.to_dict() for value in record],
-                )
-            except Exception as e:  # pylint: disable=broad-except
-                logger.error("Failed to ingest row %d: %s", row[0], e)
-                failed_rows.append(row[0])
+            IngestionManagerPandas._ingest_row(
+                data_frame=data_frame,
+                row=row,
+                feature_group_name=feature_group_name,
+                sagemaker_fs_runtime_client=sagemaker_fs_runtime_client,
+                failed_rows=failed_rows,
+            )
         return failed_rows
 
     @property
@@ -267,6 +260,69 @@ class IngestionManagerPandas:
         self._failed_indices = [
             failed_index for failed_indices in results for failed_index in failed_indices
         ]
+
+        if len(self._failed_indices) > 0:
+            raise IngestionError(
+                self._failed_indices,
+                f"Failed to ingest some data into FeatureGroup {self.feature_group_name}",
+            )
+
+    @staticmethod
+    def _ingest_row(
+        data_frame: DataFrame,
+        row: int,
+        feature_group_name: str,
+        sagemaker_fs_runtime_client: Session,
+        failed_rows: List[int],
+    ):
+        """Ingest a single Dataframe row into FeatureStore.
+
+        Args:
+            data_frame (DataFrame): source DataFrame to be ingested.
+            row (int): current row that is being ingested
+            feature_group_name (str): name of the Feature Group.
+            sagemaker_featurestore_runtime_client (Session): session instance to perform boto calls.
+            failed_rows (List[int]): list of indices from the data frame for which ingestion failed.
+
+
+        Returns:
+            int of row indices that failed to be ingested.
+        """
+        record = [
+            FeatureValue(
+                feature_name=data_frame.columns[index - 1],
+                value_as_string=str(row[index]),
+            )
+            for index in range(1, len(row))
+            if pd.notna(row[index])
+        ]
+        try:
+            sagemaker_fs_runtime_client.put_record(
+                FeatureGroupName=feature_group_name,
+                Record=[value.to_dict() for value in record],
+            )
+        except Exception as e:  # pylint: disable=broad-except
+            logger.error("Failed to ingest row %d: %s", row[0], e)
+            failed_rows.append(row[0])
+
+    def _run_single_process_single_thread(self, data_frame: DataFrame):
+        """Ingest a utilizing single process and single thread.
+
+        Args:
+            data_frame (DataFrame): source DataFrame to be ingested.
+        """
+        logger.info("Started ingesting index %d to %d")
+        failed_rows = list()
+        sagemaker_fs_runtime_client = self.sagemaker_session.sagemaker_featurestore_runtime_client
+        for row in data_frame.itertuples():
+            IngestionManagerPandas._ingest_row(
+                data_frame=data_frame,
+                row=row,
+                feature_group_name=self.feature_group_name,
+                sagemaker_fs_runtime_client=sagemaker_fs_runtime_client,
+                failed_rows=failed_rows,
+            )
+        self._failed_indices = failed_rows
 
         if len(self._failed_indices) > 0:
             raise IngestionError(
@@ -385,7 +441,10 @@ class IngestionManagerPandas:
             timeout (Union[int, float]): ``concurrent.futures.TimeoutError`` will be raised
                 if timeout is reached.
         """
-        self._run_multi_process(data_frame=data_frame, wait=wait, timeout=timeout)
+        if self.max_workers == 1 and self.max_processes == 1 and self.profile_name is None:
+            self._run_single_process_single_thread(data_frame=data_frame)
+        else:
+            self._run_multi_process(data_frame=data_frame, wait=wait, timeout=timeout)
 
 
 class IngestionError(Exception):
@@ -744,6 +803,7 @@ class FeatureGroup:
 
         manager = IngestionManagerPandas(
             feature_group_name=self.name,
+            sagemaker_session=self.sagemaker_session,
             sagemaker_fs_runtime_client_config=self.sagemaker_session.sagemaker_featurestore_runtime_client.meta.config,
             max_workers=max_workers,
             max_processes=max_processes,
