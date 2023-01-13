@@ -13,6 +13,7 @@
 """This script file runs on SageMaker processing job"""
 from __future__ import absolute_import
 
+import json
 import logging
 import os
 import boto3
@@ -25,8 +26,28 @@ from sagemaker import Session
 from sagemaker.experiments import load_run
 
 
+def _get_client_config_in_dict(cfg_in_str) -> dict:
+    return json.loads(cfg_in_str) if cfg_in_str else None
+
+
 boto_session = boto3.Session(region_name=os.environ["AWS_REGION"])
-sagemaker_session = Session(boto_session=boto_session)
+
+sagemaker_client_config = _get_client_config_in_dict(os.environ.get("SM_CLIENT_CONFIG", None))
+sagemaker_metrics_config = _get_client_config_in_dict(os.environ.get("SM_METRICS_CONFIG", None))
+sagemaker_client = (
+    boto_session.client("sagemaker", **sagemaker_client_config) if sagemaker_client_config else None
+)
+metrics_client = (
+    boto_session.client("sagemaker-metrics", **sagemaker_metrics_config)
+    if sagemaker_metrics_config
+    else None
+)
+
+sagemaker_session = Session(
+    boto_session=boto_session,
+    sagemaker_client=sagemaker_client,
+    sagemaker_metrics_client=metrics_client,
+)
 
 
 with load_run(sagemaker_session=sagemaker_session) as run:
