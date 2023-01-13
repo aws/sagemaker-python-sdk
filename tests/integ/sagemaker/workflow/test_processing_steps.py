@@ -469,7 +469,7 @@ def test_multi_step_framework_processing_pipeline_same_source_dir(
 
         execution = pipeline.start(parameters={})
         try:
-            execution.wait(delay=540, max_attempts=3)
+            execution.wait(delay=60, max_attempts=3)
         except WaiterError:
             pass
 
@@ -1003,15 +1003,13 @@ def _verify_code_artifacts_of_framework_processing_step(
 ):
 
     files_to_hash = []
-
     if entry_point is not None:
-        files_to_hash.append(f'{DATA_DIR}/{entry_point}')
-
-    files_to_hash.append(f'{DATA_DIR}/{source_dir}')
-
-
+        files_to_hash.append(f'{DATA_DIR}{source_dir}/{entry_point}')
+    files_to_hash.append(f'{DATA_DIR}{source_dir}')
+    file_hash = hash_files_or_dirs(files_to_hash)
+    
     source_dir_s3_uri = (
-        f"s3://{bucket}/{pipeline_name}" f"/code/{hash_files_or_dirs(files_to_hash)}"
+        f"s3://{bucket}/{pipeline_name}/code/{file_hash}"
     )
 
     # verify runproc.sh prefix is different from code artifact prefix
@@ -1026,9 +1024,13 @@ def _verify_code_artifacts_of_framework_processing_step(
     # verify only one entrypoint generated per step
     assert len(runprocs) == 1
 
+    # files_to_hash = []
+    # if entry_point is not None:
+    #     files_to_hash.append(DATA_DIR + '/pipeline/test_source_dir/' + entry_point)
+    # files_to_hash.append(DATA_DIR + '/pipeline/test_source_dir')
+
     expected_source_dir_tar = (
-        f"{pipeline_name}"
-        f"/code/{hash_files_or_dirs(files_to_hash)}/sourcedir.tar.gz"
+        f"{pipeline_name}/code/{file_hash}/sourcedir.tar.gz"
     )
 
     step_script = processor._generate_framework_script(entry_point)
