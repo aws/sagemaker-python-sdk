@@ -442,7 +442,7 @@ def test_multi_step_framework_processing_pipeline_same_source_dir(
         pipeline.create(role)
         definition = json.loads(pipeline.definition())
 
-        source_dir_1_s3_uri, entry_point_1 = _verify_code_artifacts_of_framework_processing_step(
+        source_dir_1_tar_uri, entry_point_1 = _verify_code_artifacts_of_framework_processing_step(
             pipeline_session,
             framework_processor_tf,
             default_bucket,
@@ -451,7 +451,8 @@ def test_multi_step_framework_processing_pipeline_same_source_dir(
             SOURCE_DIR,
             "script_1.py",
         )
-        source_dir_2_s3_uri, entry_point_2 = _verify_code_artifacts_of_framework_processing_step(
+
+        source_dir_2_tar_uri, entry_point_2 = _verify_code_artifacts_of_framework_processing_step(
             pipeline_session,
             framework_processor_sk,
             default_bucket,
@@ -461,8 +462,8 @@ def test_multi_step_framework_processing_pipeline_same_source_dir(
             "script_2.py",
         )
 
-        # the same local source_dirs should have the same s3 paths
-        assert source_dir_1_s3_uri == source_dir_2_s3_uri
+        # the tarred source dirs should have a different s3 uri since the entry_point code is different
+        assert source_dir_1_tar_uri != source_dir_2_tar_uri
 
         # verify different entry_point paths
         assert entry_point_1 != entry_point_2
@@ -536,7 +537,7 @@ def test_multi_step_framework_processing_pipeline_different_source_dir(
         pipeline.create(role)
         definition = json.loads(pipeline.definition())
 
-        source_dir_1_s3_uri, entry_point_1 = _verify_code_artifacts_of_framework_processing_step(
+        source_dir_1_tar_uri, entry_point_1 = _verify_code_artifacts_of_framework_processing_step(
             pipeline_session,
             framework_processor_tf,
             default_bucket,
@@ -545,7 +546,8 @@ def test_multi_step_framework_processing_pipeline_different_source_dir(
             SOURCE_DIR_1,
             "script_1.py",
         )
-        source_dir_2_s3_uri, entry_point_2 = _verify_code_artifacts_of_framework_processing_step(
+
+        source_dir_2_tar_uri, entry_point_2 = _verify_code_artifacts_of_framework_processing_step(
             pipeline_session,
             framework_processor_tf,
             default_bucket,
@@ -555,11 +557,28 @@ def test_multi_step_framework_processing_pipeline_different_source_dir(
             "script_2.py",
         )
 
-        # different local source_dirs should have different s3 paths
-        assert source_dir_1_s3_uri != source_dir_2_s3_uri
+        # the tarred source dirs should have a different s3 uri since the source_dirs and entry_point code are different
+        assert source_dir_1_tar_uri != source_dir_2_tar_uri
 
         # verify different entry_point paths
         assert entry_point_1 != entry_point_2
+
+        # define another step with the same source_dir and entry_point as the second step
+        source_dir_3_tar_uri, entry_point_3 = _verify_code_artifacts_of_framework_processing_step(
+            pipeline_session,
+            framework_processor_tf,
+            default_bucket,
+            pipeline_name,
+            definition["Steps"][2],
+            SOURCE_DIR_2,
+            "script_2.py",
+        )
+
+        # verify the same entry_point paths
+        assert entry_point_2 == entry_point_3
+
+        # the tarred source dirs should now be the same since the source_dirs and entry_point are the same
+        assert source_dir_2_tar_uri == source_dir_3_tar_uri
 
         execution = pipeline.start(parameters={})
         try:
@@ -1024,11 +1043,6 @@ def _verify_code_artifacts_of_framework_processing_step(
     # verify only one entrypoint generated per step
     assert len(runprocs) == 1
 
-    # files_to_hash = []
-    # if entry_point is not None:
-    #     files_to_hash.append(DATA_DIR + '/pipeline/test_source_dir/' + entry_point)
-    # files_to_hash.append(DATA_DIR + '/pipeline/test_source_dir')
-
     expected_source_dir_tar = (
         f"{pipeline_name}/code/{file_hash}/sourcedir.tar.gz"
     )
@@ -1048,4 +1062,4 @@ def _verify_code_artifacts_of_framework_processing_step(
         f"s3://{bucket}/{expected_step_artifact}", pipeline_session
     )
     assert f"python {entry_point}" in step_runproc
-    return source_dir, expected_step_artifact
+    return expected_source_dir_tar, expected_step_artifact
