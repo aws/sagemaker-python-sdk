@@ -3303,6 +3303,7 @@ def test_generic_to_deploy_kms(create_model, sagemaker_session):
         volume_size=None,
         model_data_download_timeout=None,
         container_startup_health_check_timeout=None,
+        inference_recommendation_id=None,
     )
 
 
@@ -3503,6 +3504,7 @@ def test_deploy_with_customized_volume_size_timeout(create_model, sagemaker_sess
         volume_size=volume_size_gb,
         model_data_download_timeout=model_data_download_timeout_sec,
         container_startup_health_check_timeout=startup_health_check_timeout_sec,
+        inference_recommendation_id=None,
     )
 
 

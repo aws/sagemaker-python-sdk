@@ -1035,6 +1035,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         volume_size=None,
         model_data_download_timeout=None,
         container_startup_health_check_timeout=None,
+        inference_recommendation_id=None,
         **kwargs,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
@@ -1110,13 +1111,17 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 inference container to pass health check by SageMaker Hosting. For more information
                 about health check see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html#your-algorithms-inference-algo-ping-requests
+            inference_recommendation_id (str): The recommendation id which specifies the
+                recommendation you picked from inference recommendation job results and
+                would like to deploy the model and endpoint with recommended parameters.
         Raises:
              ValueError: If arguments combination check failed in these circumstances:
                 - If no role is specified or
                 - If serverless inference config is not specified and instance type and instance
                     count are also not specified or
                 - If a wrong type of object is provided as serverless inference config or async
-                    inference config
+                    inference config or
+                - If inference recommendation id is specified along with incompatible parameters
         Returns:
             callable[string, sagemaker.session.Session] or None: Invocation of
                 ``self.predictor_cls`` on the created endpoint name, if ``self.predictor_cls``
@@ -1124,16 +1129,19 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         """
         removed_kwargs("update_endpoint", kwargs)
 
-        if self.inference_recommender_job_results:
-            inference_recommendation = self._check_inference_recommender_args(
-                instance_type,
-                initial_instance_count,
-                accelerator_type,
-                serverless_inference_config,
-                async_inference_config,
+        if (
+            inference_recommendation_id is not None
+            or self.inference_recommender_job_results is not None
+        ):
+            instance_type, initial_instance_count = self._update_params(
+                instance_type=instance_type,
+                initial_instance_count=initial_instance_count,
+                accelerator_type=accelerator_type,
+                async_inference_config=async_inference_config,
+                serverless_inference_config=serverless_inference_config,
+                inference_recommendation_id=inference_recommendation_id,
+                inference_recommender_job_results=self.inference_recommender_job_results,
             )
-            if inference_recommendation:
-                instance_type, initial_instance_count = inference_recommendation
 
         self._init_sagemaker_session_if_does_not_exist(instance_type)
 
