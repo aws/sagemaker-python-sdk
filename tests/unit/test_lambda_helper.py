@@ -209,6 +209,42 @@ def test_create_lambda_happycase2(sagemaker_session):
     )
 
 
+@patch("sagemaker.lambda_helper._zip_lambda_code", return_value=ZIPPED_CODE)
+def test_create_lambda_happycase3(sagemaker_session):
+    lambda_obj = lambda_helper.Lambda(
+        function_name=FUNCTION_NAME,
+        execution_role_arn=EXECUTION_ROLE,
+        script=SCRIPT,
+        handler=HANDLER,
+        session=sagemaker_session,
+        architectures=["x86_64"],
+        environment={"Name": "my-test-lambda"},
+        vpc_config={
+            "SubnetIds": ["test-subnet-1"],
+            "SecurityGroupIds": ["sec-group-1"]
+        }
+    )
+
+    lambda_obj.create()
+    code = {"ZipFile": ZIPPED_CODE}
+
+    sagemaker_session.lambda_client.create_function.assert_called_with(
+        FunctionName=FUNCTION_NAME,
+        Runtime="python3.8",
+        Handler=HANDLER,
+        Role=EXECUTION_ROLE,
+        Code=code,
+        Timeout=120,
+        MemorySize=128,
+        Architectures=["x86_64"],
+        VpcConfig={
+            "SubnetIds": ["test-subnet-1"],
+            "SecurityGroupIds": ["sec-group-1"]
+        },
+        Environment={"Name": "my-test-lambda"},
+    )
+
+
 def test_create_lambda_no_function_name_error(sagemaker_session):
     lambda_obj = lambda_helper.Lambda(
         function_arn=LAMBDA_ARN,
@@ -277,6 +313,29 @@ def test_update_lambda_happycase2(sagemaker_session):
 
     sagemaker_session.lambda_client.update_function_code.assert_called_with(
         FunctionName=LAMBDA_ARN, S3Bucket=S3_BUCKET, S3Key=S3_KEY, Architectures=None,
+    )
+
+
+@patch("sagemaker.lambda_helper._zip_lambda_code", return_value=ZIPPED_CODE)
+def test_update_lambda_happycase3(sagemaker_session):
+    lambda_obj = lambda_helper.Lambda(
+        function_name=FUNCTION_NAME,
+        execution_role_arn=EXECUTION_ROLE,
+        script=SCRIPT,
+        handler=HANDLER,
+        session=sagemaker_session,
+        architectures=["x86_64"],
+        environment={"Name": "my-test-lambda"},
+        vpc_config={
+            "SubnetIds": ["test-subnet-1"],
+            "SecurityGroupIds": ["sec-group-1"]
+        }
+    )
+
+    lambda_obj.update()
+
+    sagemaker_session.lambda_client.update_function_code.assert_called_with(
+        FunctionName=FUNCTION_NAME, ZipFile=ZIPPED_CODE, Architectures=["x86_64"],
     )
 
 
