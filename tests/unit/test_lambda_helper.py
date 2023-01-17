@@ -302,6 +302,12 @@ def test_upsert_lambda_happycase1(sagemaker_session):
         script=SCRIPT,
         handler=HANDLER,
         session=sagemaker_session,
+        architectures=["x86_64"],
+        environment={"Name": "my-test-lambda"},
+        vpc_config={
+            "SubnetIds": ["test-subnet-1"],
+            "SecurityGroupIds": ["sec-group-1"]
+        }
     )
 
     code = {"ZipFile": ZIPPED_CODE}
@@ -315,6 +321,12 @@ def test_upsert_lambda_happycase1(sagemaker_session):
         Code=code,
         Timeout=120,
         MemorySize=128,
+        Architectures=["x86_64"],
+        Environment={"Name": "my-test-lambda"},
+        VpcConfig={
+            "SubnetIds": ["test-subnet-1"],
+            "SecurityGroupIds": ["sec-group-1"]
+        }
     )
 
 
@@ -326,6 +338,7 @@ def test_upsert_lambda_happycase2(sagemaker_session):
         script=SCRIPT,
         handler=HANDLER,
         session=sagemaker_session,
+        architectures=["x86_64"]
     )
 
     sagemaker_session.lambda_client.create_function.side_effect = ClientError(
@@ -336,7 +349,7 @@ def test_upsert_lambda_happycase2(sagemaker_session):
     lambda_obj.upsert()
 
     sagemaker_session.lambda_client.update_function_code.assert_called_once_with(
-        FunctionName=FUNCTION_NAME, ZipFile=ZIPPED_CODE
+        FunctionName=FUNCTION_NAME, ZipFile=ZIPPED_CODE, Architectures=["x86_64"]
     )
 
 
