@@ -189,13 +189,25 @@ SAMPLE_NOTEBOOK_MODALITY_MAP = {
     (Tasks.TEXT_GENERATION): "https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_text_generation/Amazon_JumpStart_Text_Generation.ipynb",
     (Tasks.SUMMARIZATION): "https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_text_summarization/Amazon_JumpStart_Text_Summarization.ipynb",
     # TODO: Find notebook link for  this task
-    (Tasks.ZSTC): "https://www.google.com/",
+    (Tasks.ZSTC): "https://www.amazon.com/",
     (Tasks.TXT2IMG): "https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/jumpstart_text_to_image/Amazon_JumpStart_Text_To_Image.ipynb",
     # TODO: Find notebook link for  this task
-    (Tasks.UPSCALING): "https://www.google.com/",
+    (Tasks.UPSCALING): "https://www.amazon.com/",
     # TODO: Find notebook link for  this task
-    (Tasks.AUDIO_EMBEDDING): "https://www.google.com/",
+    (Tasks.AUDIO_EMBEDDING): "https://www.amazon.com/",
 } 
+
+SAMPLE_TENSORFLOW_NOTEBOOK_MODALITY_MAP = {
+    (Tasks.IC): "https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/image_classification_tensorflow/Amazon_TensorFlow_Image_Classification.ipynb",
+    (Tasks.OD): "https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/object_detection_tensorflow/Amazon_Tensorflow_Object_Detection.ipynb",
+    (Tasks.OD1): "https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/object_detection_tensorflow/Amazon_Tensorflow_Object_Detection.ipynb",
+}
+
+def get_sample_notebook_url(task, framework):
+    if (framework == Frameworks.TENSORFLOW and task in SAMPLE_TENSORFLOW_NOTEBOOK_MODALITY_MAP):
+        return SAMPLE_TENSORFLOW_NOTEBOOK_MODALITY_MAP[task]
+    else:
+        return SAMPLE_NOTEBOOK_MODALITY_MAP[task]
 
 
 def get_jumpstart_sdk_manifest():
@@ -338,7 +350,7 @@ def create_jumpstart_model_table():
             file_content_single_entry.append("     - {}\n".format(model["version"]))
             file_content_single_entry.append("     - {}\n".format(model["min_version"]))
             file_content_single_entry.append(
-                "     - `{} <{}>`__\n".format("Sample Notebook", SAMPLE_NOTEBOOK_MODALITY_MAP[string_model_task])
+                "     - `{} <{}>`__\n".format("Sample Notebook", get_sample_notebook_url(string_model_task, TO_FRAMEWORK[model_source]))
             )
             file_content_single_entry.append(
                 "     - `{} <{}>`__\n".format(model_source, model_spec["url"])
