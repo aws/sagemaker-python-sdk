@@ -153,7 +153,9 @@ class Lambda:
             try:
                 if self.script is not None:
                     response = lambda_client.update_function_code(
-                        FunctionName=self.function_name, ZipFile=_zip_lambda_code(self.script)
+                        FunctionName=self.function_name,
+                        ZipFile=_zip_lambda_code(self.script),
+                        Architectures=self.architectures,
                     )
                 else:
                     response = lambda_client.update_function_code(
@@ -165,7 +167,7 @@ class Lambda:
                             zipped_code_dir=self.zipped_code_dir,
                             s3_bucket=self.s3_bucket,
                         ),
-                        Architectures=self.architectures
+                        Architectures=self.architectures,
                     )
                 return response
             except ClientError as e:
