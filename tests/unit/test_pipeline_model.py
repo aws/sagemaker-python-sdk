@@ -18,6 +18,7 @@ from mock import Mock, patch
 from sagemaker.model import FrameworkModel
 from sagemaker.pipeline import PipelineModel
 from sagemaker.predictor import Predictor
+from sagemaker.session_settings import SessionSettings
 from sagemaker.sparkml import SparkMLModel
 
 ENTRY_POINT = "blah.py"
@@ -65,6 +66,7 @@ def sagemaker_session():
         local_mode=False,
         s3_client=None,
         s3_resource=None,
+        settings=SessionSettings(),
     )
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     return sms

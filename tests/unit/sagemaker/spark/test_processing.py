@@ -18,6 +18,7 @@ from unittest.mock import (
 import pytest
 
 from sagemaker.processing import ProcessingInput, ProcessingOutput
+from sagemaker.session_settings import SessionSettings
 from sagemaker.spark.processing import (
     PySparkProcessor,
     SparkJarProcessor,
@@ -57,6 +58,7 @@ def sagemaker_session():
         boto_region_name=REGION,
         config=None,
         local_mode=False,
+        settings=SessionSettings(),
     )
     session_mock.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
 

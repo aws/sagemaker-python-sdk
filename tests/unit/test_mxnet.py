@@ -28,6 +28,7 @@ from sagemaker.model_metrics import FileSource, MetricsSource, ModelMetrics
 from sagemaker.mxnet import defaults
 from sagemaker.mxnet import MXNet
 from sagemaker.mxnet import MXNetPredictor, MXNetModel
+from sagemaker.session_settings import SessionSettings
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_NAME = "dummy_script.py"
@@ -83,6 +84,7 @@ def sagemaker_session():
         local_mode=False,
         s3_resource=None,
         s3_client=None,
+        settings=SessionSettings(),
     )
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}

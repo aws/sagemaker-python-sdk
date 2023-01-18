@@ -776,3 +776,27 @@ def test_register_calls_model_package_args(get_model_package_args, sagemaker_ses
         == get_model_package_args.call_args_list[0][1]["validation_specification"]
     ), """ValidationSpecification from model.register method is not identical to validation_spec from
          get_model_package_args"""
+
+
+@patch("sagemaker.utils.repack_model")
+def test_model_local_download_dir(repack_model, sagemaker_session):
+
+    source_dir = "s3://blah/blah/blah"
+    local_download_dir = "local download dir"
+
+    sagemaker_session.settings.local_download_dir = local_download_dir
+
+    t = Model(
+        entry_point=ENTRY_POINT_INFERENCE,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        source_dir=source_dir,
+        image_uri=IMAGE_URI,
+        model_data=MODEL_DATA,
+    )
+    t.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT)
+
+    assert (
+        repack_model.call_args_list[0][1]["sagemaker_session"].settings.local_download_dir
+        == local_download_dir
+    )

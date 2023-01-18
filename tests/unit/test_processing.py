@@ -29,6 +29,7 @@ from sagemaker.processing import (
     ScriptProcessor,
     ProcessingJob,
 )
+from sagemaker.session_settings import SessionSettings
 from sagemaker.spark.processing import PySparkProcessor
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.pytorch.processing import PyTorchProcessor
@@ -68,6 +69,7 @@ def sagemaker_session():
         boto_region_name=REGION,
         config=None,
         local_mode=False,
+        settings=SessionSettings(),
     )
     session_mock.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
 
@@ -89,6 +91,7 @@ def pipeline_session():
         boto_region_name=REGION,
         config=None,
         local_mode=False,
+        settings=SessionSettings(),
     )
     session_mock.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
 
