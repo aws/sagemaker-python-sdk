@@ -13,8 +13,8 @@
 from __future__ import absolute_import
 
 import pytest
-from botocore.exceptions import WaiterError
 
+from tests.integ.sagemaker.workflow.helpers import wait_pipeline_execution
 from sagemaker import get_execution_role, utils
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.conditions import ConditionGreaterThan
@@ -75,10 +75,7 @@ def test_ppl_var_to_string_and_add(sagemaker_session, role, pipeline_name):
         response = execution.describe()
         assert response["PipelineArn"] == pipeline_arn
 
-        try:
-            execution.wait(delay=30, max_attempts=60)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution)
         execution_steps = execution.list_steps()
 
         assert len(execution_steps) == 2
@@ -95,10 +92,7 @@ def test_ppl_var_to_string_and_add(sagemaker_session, role, pipeline_name):
 
         # Update int param to update cond step outcome
         execution = pipeline.start(parameters={"MyInteger": 0})
-        try:
-            execution.wait(delay=30, max_attempts=60)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution)
         execution_steps = execution.list_steps()
 
         assert len(execution_steps) == 2
