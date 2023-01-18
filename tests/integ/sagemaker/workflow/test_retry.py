@@ -18,7 +18,7 @@ import time
 
 import pytest
 
-from botocore.exceptions import WaiterError
+from tests.integ.sagemaker.workflow.helpers import wait_pipeline_execution
 from sagemaker.processing import ProcessingInput
 from sagemaker.session import get_execution_role
 from sagemaker.sklearn.processing import SKLearnProcessor
@@ -153,10 +153,7 @@ def test_pipeline_execution_processing_step_with_retry(
         pipeline.create(role)
         execution = pipeline.start(parameters={})
 
-        try:
-            execution.wait(delay=30, max_attempts=3)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution, max_attempts=3)
         execution_steps = execution.list_steps()
         assert len(execution_steps) == 1
         assert execution_steps[0]["StepName"] == "sklearn-process"
@@ -267,10 +264,7 @@ def test_model_registration_with_model_repack(
         execution1 = pipeline.start(parameters={})
         execution2 = pipeline.start(parameters={"GoodEnoughInput": 0})
 
-        try:
-            execution1.wait(delay=30, max_attempts=60)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution1)
         execution1_steps = execution1.list_steps()
         for step in execution1_steps:
             assert not step.get("FailureReason", None)
@@ -279,10 +273,7 @@ def test_model_registration_with_model_repack(
                 assert step["Metadata"]["RegisterModel"]
         assert len(execution1_steps) == 4
 
-        try:
-            execution2.wait(delay=30, max_attempts=60)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution2)
         execution2_steps = execution2.list_steps()
         for step in execution2_steps:
             assert not step.get("FailureReason", None)
