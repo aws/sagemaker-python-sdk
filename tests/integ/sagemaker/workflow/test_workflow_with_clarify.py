@@ -21,7 +21,8 @@ import tempfile
 import pytest
 import numpy as np
 import pandas as pd
-from botocore.exceptions import WaiterError
+
+from tests.integ.sagemaker.workflow.helpers import wait_pipeline_execution
 from sagemaker.amazon.linear_learner import LinearLearner, LinearLearnerPredictor
 from sagemaker.clarify import (
     BiasConfig,
@@ -267,10 +268,7 @@ def test_workflow_with_clarify(
             response = execution.describe()
             assert response["PipelineArn"] == create_arn
 
-            try:
-                execution.wait(delay=30, max_attempts=60)
-            except WaiterError:
-                pass
+            wait_pipeline_execution(execution=execution)
             execution_steps = execution.list_steps()
 
             assert len(execution_steps) == 2

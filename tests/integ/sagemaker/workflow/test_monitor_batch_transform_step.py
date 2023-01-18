@@ -18,7 +18,8 @@ import logging
 import os
 
 import pytest
-from botocore.exceptions import WaiterError
+
+from tests.integ.sagemaker.workflow.helpers import wait_pipeline_execution
 from sagemaker.clarify import (
     BiasConfig,
     DataConfig,
@@ -315,10 +316,7 @@ def test_monitor_batch_clarify_data_bias_pipeline_happycase(
 
             assert response["PipelineArn"] == create_arn
 
-            try:
-                execution.wait(delay=30, max_attempts=60)
-            except WaiterError:
-                pass
+            wait_pipeline_execution(execution=execution)
             execution_steps = execution.list_steps()
 
             assert len(execution_steps) == 3
@@ -419,10 +417,7 @@ def test_monitor_batch_clarify_data_bias_pipeline_bad_case(
 
             assert response["PipelineArn"] == create_arn
 
-            try:
-                execution.wait(delay=30, max_attempts=60)
-            except WaiterError:
-                pass
+            wait_pipeline_execution(execution=execution)
             execution_steps = execution.list_steps()
 
             assert len(execution_steps) == 3
@@ -499,10 +494,7 @@ def test_batch_transform_data_quality_step_pipeline_happycase(
 
             assert response["PipelineArn"] == create_arn
 
-            try:
-                execution.wait(delay=30, max_attempts=60)
-            except WaiterError:
-                pass
+            wait_pipeline_execution(execution=execution)
             execution_steps = execution.list_steps()
 
             assert len(execution_steps) == 3
@@ -605,10 +597,7 @@ def test_batch_transform_data_quality_step_pipeline_failure_case(
 
             assert response["PipelineArn"] == create_arn
 
-            try:
-                execution.wait(delay=30, max_attempts=60)
-            except WaiterError:
-                pass
+            wait_pipeline_execution(execution=execution)
             execution_steps = execution.list_steps()
 
             assert len(execution_steps) == 3
@@ -684,10 +673,7 @@ def test_batch_transform_model_quality_step_pipeline_happycase(
 
             assert response["PipelineArn"] == create_arn
 
-            try:
-                execution.wait(delay=30, max_attempts=60)
-            except WaiterError:
-                pass
+            wait_pipeline_execution(execution=execution)
             execution_steps = execution.list_steps()
 
             assert len(execution_steps) == 3
@@ -790,10 +776,7 @@ def test_batch_transform_model_quality_step_pipeline_failure_case(
 
             assert response["PipelineArn"] == create_arn
 
-            try:
-                execution.wait(delay=30, max_attempts=60)
-            except WaiterError:
-                pass
+            wait_pipeline_execution(execution=execution)
             execution_steps = execution.list_steps()
 
             assert len(execution_steps) == 3
@@ -870,10 +853,7 @@ def test_batch_transform_data_quality_step_pipeline_before_transformation(
 
             assert response["PipelineArn"] == create_arn
 
-            try:
-                execution.wait(delay=30, max_attempts=60)
-            except WaiterError:
-                pass
+            wait_pipeline_execution(execution=execution)
             execution_steps = execution.list_steps()
 
             assert len(execution_steps) == 3
@@ -978,10 +958,7 @@ def test_batch_transform_model_quality_step_pipeline_failure_no_violation_case(
 
             assert response["PipelineArn"] == create_arn
 
-            try:
-                execution.wait(delay=30, max_attempts=60)
-            except WaiterError:
-                pass
+            wait_pipeline_execution(execution=execution)
             execution_steps = execution.list_steps()
 
             assert len(execution_steps) == 3
