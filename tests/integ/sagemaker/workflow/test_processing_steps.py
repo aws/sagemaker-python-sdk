@@ -20,7 +20,8 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
-from botocore.exceptions import WaiterError
+
+from tests.integ.sagemaker.workflow.helpers import wait_pipeline_execution
 from sagemaker.workflow.utilities import hash_files_or_dirs, hash_object
 
 from sagemaker import image_uris, get_execution_role, utils
@@ -270,10 +271,7 @@ def test_one_step_sklearn_processing_pipeline(
         assert response["Enabled"] == cache_config.enable_caching
         assert response["ExpireAfter"] == cache_config.expire_after
 
-        try:
-            execution.wait(delay=30, max_attempts=3)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution, max_attempts=3)
         execution_steps = execution.list_steps()
         assert len(execution_steps) == 1
         assert execution_steps[0]["StepName"] == "sklearn-process"
@@ -368,10 +366,7 @@ def test_one_step_framework_processing_pipeline(
         assert response["Enabled"] == cache_config.enable_caching
         assert response["ExpireAfter"] == cache_config.expire_after
 
-        try:
-            execution.wait(delay=30, max_attempts=3)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution, max_attempts=3)
         execution_steps = execution.list_steps()
         assert len(execution_steps) == 1
         assert execution_steps[0]["StepName"] == "sklearn-process"
@@ -468,10 +463,7 @@ def test_multi_step_framework_processing_pipeline_same_source_dir(
         assert entry_point_1 != entry_point_2
 
         execution = pipeline.start(parameters={})
-        try:
-            execution.wait(delay=540, max_attempts=3)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution, delay=540, max_attempts=3)
 
         execution_steps = execution.list_steps()
         assert len(execution_steps) == 2
@@ -562,10 +554,7 @@ def test_multi_step_framework_processing_pipeline_different_source_dir(
         assert entry_point_1 != entry_point_2
 
         execution = pipeline.start(parameters={})
-        try:
-            execution.wait(delay=540, max_attempts=3)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution, delay=540, max_attempts=3)
 
         execution_steps = execution.list_steps()
         assert len(execution_steps) == 2
@@ -667,10 +656,7 @@ def test_one_step_pyspark_processing_pipeline(
         assert response["Enabled"] == cache_config.enable_caching
         assert response["ExpireAfter"] == cache_config.expire_after
 
-        try:
-            execution.wait(delay=30, max_attempts=3)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution, max_attempts=3)
         execution_steps = execution.list_steps()
         assert len(execution_steps) == 1
         assert execution_steps[0]["StepName"] == "pyspark-process"
@@ -772,10 +758,7 @@ def test_one_step_sparkjar_processing_pipeline(
         assert response["Enabled"] == cache_config.enable_caching
         assert response["ExpireAfter"] == cache_config.expire_after
 
-        try:
-            execution.wait(delay=30, max_attempts=3)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution, max_attempts=3)
         execution_steps = execution.list_steps()
         assert len(execution_steps) == 1
         assert execution_steps[0]["StepName"] == "sparkjar-process"
@@ -876,10 +859,7 @@ def test_one_step_data_wrangler_processing_pipeline(sagemaker_session, role, pip
         response = execution.describe()
         assert response["PipelineArn"] == create_arn
 
-        try:
-            execution.wait(delay=60, max_attempts=10)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution, delay=60, max_attempts=10)
 
         execution_steps = execution.list_steps()
         assert len(execution_steps) == 1
@@ -976,10 +956,7 @@ def test_two_processing_job_depends_on(
         response = execution.describe()
         assert response["PipelineArn"] == create_arn
 
-        try:
-            execution.wait(delay=60)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution, delay=60)
 
         execution_steps = execution.list_steps()
         assert len(execution_steps) == 2

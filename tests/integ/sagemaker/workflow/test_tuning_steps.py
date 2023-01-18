@@ -16,8 +16,8 @@ import os
 import re
 
 import pytest
-from botocore.exceptions import WaiterError
 
+from tests.integ.sagemaker.workflow.helpers import wait_pipeline_execution
 from sagemaker.workflow.model_step import ModelStep, _CREATE_MODEL_NAME_BASE
 from sagemaker import TrainingInput, Model, get_execution_role, utils
 from sagemaker.dataset_definition import DatasetDefinition, AthenaDatasetDefinition
@@ -187,10 +187,7 @@ def test_tuning_single_algo(
             rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
-        try:
-            execution.wait(delay=30, max_attempts=60)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution)
         execution_steps = execution.list_steps()
 
         for step in execution_steps:
@@ -327,6 +324,7 @@ def test_tuning_multi_algos(
         )
 
         execution = pipeline.start(parameters={})
+        wait_pipeline_execution(execution=execution)
         assert re.match(
             rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,

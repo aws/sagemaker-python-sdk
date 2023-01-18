@@ -23,9 +23,9 @@ import os
 import re
 
 import pytest
-from botocore.exceptions import WaiterError
 
 import tests
+from tests.integ.sagemaker.workflow.helpers import wait_pipeline_execution
 from sagemaker.tensorflow import TensorFlow, TensorFlowModel
 from tests.integ.retry import retries
 from sagemaker.drift_check_baselines import DriftCheckBaselines
@@ -180,12 +180,14 @@ def test_conditional_pytorch_training_model_registration(
         )
 
         execution = pipeline.start(parameters={})
+        wait_pipeline_execution(execution=execution)
         assert re.match(
             rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
 
         execution = pipeline.start(parameters={"GoodEnoughInput": 0})
+        wait_pipeline_execution(execution=execution)
         assert re.match(
             rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
@@ -259,12 +261,14 @@ def test_mxnet_model_registration(
         )
 
         execution = pipeline.start(parameters={})
+        wait_pipeline_execution(execution=execution)
         assert re.match(
             rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
 
         execution = pipeline.start()
+        wait_pipeline_execution(execution=execution)
         assert re.match(
             rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
@@ -470,12 +474,14 @@ def test_sklearn_xgboost_sip_model_registration(
         )
 
         execution = pipeline.start(parameters={})
+        wait_pipeline_execution(execution=execution)
         assert re.match(
             rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
 
         execution = pipeline.start()
+        wait_pipeline_execution(execution=execution)
         assert re.match(
             rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
@@ -656,10 +662,7 @@ def test_model_registration_with_drift_check_baselines(
 
             assert response["PipelineArn"] == create_arn
 
-            try:
-                execution.wait(delay=30, max_attempts=60)
-            except WaiterError:
-                pass
+            wait_pipeline_execution(execution=execution)
             execution_steps = execution.list_steps()
 
             assert len(execution_steps) == 1
@@ -797,12 +800,14 @@ def test_model_registration_with_model_repack(
         )
 
         execution = pipeline.start(parameters={})
+        wait_pipeline_execution(execution=execution)
         assert re.match(
             rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
 
         execution = pipeline.start(parameters={"GoodEnoughInput": 0})
+        wait_pipeline_execution(execution=execution)
         assert re.match(
             rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
@@ -889,10 +894,7 @@ def test_model_registration_with_tensorflow_model_with_pipeline_model(
             rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
-        try:
-            execution.wait(delay=30, max_attempts=60)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution)
         execution_steps = execution.list_steps()
 
         for step in execution_steps:
