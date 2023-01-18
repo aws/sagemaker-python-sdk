@@ -92,6 +92,8 @@ CODECOMMIT_REPO_SSH = "ssh://git-codecommit.us-west-2.amazonaws.com/v1/repos/tes
 CODECOMMIT_BRANCH = "master"
 REPO_DIR = "/tmp/repo_dir"
 ENV_INPUT = {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_val3"}
+TRAINING_REPOSITORY_ACCESS_MODE = "VPC"
+TRAINING_REPOSITORY_CREDENTIALS_PROVIDER_ARN = "arn:aws:lambda:us-west-2:1234567890:function:test"
 
 DESCRIBE_TRAINING_JOB_RESULT = {"ModelArtifacts": {"S3ModelArtifacts": MODEL_DATA}}
 
@@ -387,6 +389,70 @@ def test_framework_with_keep_alive_period(sagemaker_session):
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
     assert args["resource_config"]["KeepAlivePeriodInSeconds"] == KEEP_ALIVE_PERIOD_IN_SECONDS
+
+
+def test_framework_with_both_training_repository_config(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+        training_repository_access_mode=TRAINING_REPOSITORY_ACCESS_MODE,
+        training_repository_credentials_provider_arn=TRAINING_REPOSITORY_CREDENTIALS_PROVIDER_ARN,
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert (
+        args["training_image_config"]["TrainingRepositoryAccessMode"]
+        == TRAINING_REPOSITORY_ACCESS_MODE
+    )
+    assert (
+        args["training_image_config"]["TrainingRepositoryAuthConfig"][
+            "TrainingRepositoryCredentialsProviderArn"
+        ]
+        == TRAINING_REPOSITORY_CREDENTIALS_PROVIDER_ARN
+    )
+
+
+def test_framework_with_training_repository_access_mode(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+        training_repository_access_mode=TRAINING_REPOSITORY_ACCESS_MODE,
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert (
+        args["training_image_config"]["TrainingRepositoryAccessMode"]
+        == TRAINING_REPOSITORY_ACCESS_MODE
+    )
+    assert "TrainingRepositoryAuthConfig" not in args["training_image_config"]
+
+
+def test_framework_without_training_repository_config(sagemaker_session):
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args.get("training_image_config") is None
 
 
 def test_framework_with_debugger_and_built_in_rule(sagemaker_session):
@@ -3754,6 +3820,28 @@ def test_prepare_init_params_from_job_description_with_retry_strategy():
     assert init_params["max_run"] == 86400
     assert init_params["max_wait"] == 87000
     assert init_params["max_retry_attempts"] == 2
+
+
+def test_prepare_init_params_from_job_description_with_training_image_config():
+    job_description = RETURNED_JOB_DESCRIPTION.copy()
+    job_description["AlgorithmSpecification"]["TrainingImageConfig"] = {
+        "TrainingRepositoryAccessMode": "Vpc",
+        "TrainingRepositoryAuthConfig": {
+            "TrainingRepositoryCredentialsProviderArn": "arn:aws:lambda:us-west-2:1234567890:function:test"
+        },
+    }
+
+    init_params = EstimatorBase._prepare_init_params_from_job_description(
+        job_details=job_description
+    )
+
+    assert init_params["role"] == "arn:aws:iam::366:role/SageMakerRole"
+    assert init_params["instance_count"] == 1
+    assert init_params["training_repository_access_mode"] == "Vpc"
+    assert (
+        init_params["training_repository_credentials_provider_arn"]
+        == "arn:aws:lambda:us-west-2:1234567890:function:test"
+    )
 
 
 def test_prepare_init_params_from_job_description_with_invalid_training_job():
