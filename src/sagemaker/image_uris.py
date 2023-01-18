@@ -18,6 +18,7 @@ import logging
 import os
 import re
 from typing import Optional
+from packaging.version import Version
 
 from sagemaker import utils
 from sagemaker.jumpstart.utils import is_jumpstart_model_input
@@ -232,6 +233,7 @@ def retrieve(
 
     if repo == f"{framework}-inference-graviton":
         container_version = f"{container_version}-sagemaker"
+    _validate_instance_deprecation(framework, instance_type, version)
 
     tag = _get_image_tag(
         container_version,
@@ -363,6 +365,20 @@ def _config_for_framework_and_scope(framework, image_scope, accelerator_type=Non
 
     _validate_arg(image_scope, available_scopes, "image scope")
     return config if "scope" in config else config[image_scope]
+
+
+def _validate_instance_deprecation(framework, instance_type, version):
+    """Check if instance type is deprecated for a certain framework with a certain version"""
+    if (
+        framework == "pytorch"
+        and _get_instance_type_family(instance_type) == "p2"
+        and Version(version) >= Version("1.13")
+    ):
+        raise ValueError(
+            "P2 instances have been deprecated for sagemaker jobs with PyTorch 1.13 and above. "
+            "For information about supported instance types please refer to "
+            "https://aws.amazon.com/sagemaker/pricing/"
+        )
 
 
 def _validate_for_suppported_frameworks_and_instance_type(framework, instace_type):
