@@ -17,8 +17,8 @@ import uuid
 import logging
 
 import pytest
-from botocore.exceptions import WaiterError
 
+from tests.integ.sagemaker.workflow.helpers import wait_pipeline_execution
 from sagemaker import TrainingInput, get_execution_role, utils, image_uris
 from sagemaker.debugger import (
     DebuggerHookConfig,
@@ -333,10 +333,7 @@ def _start_and_verify_execution_with_retry(pipeline: Pipeline, parameters: dict)
         seconds_to_sleep=10,
     ):
         execution = pipeline.start(parameters=parameters)
-        try:
-            execution.wait(delay=30, max_attempts=60)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution)
         execution_steps = execution.list_steps()
         assert len(execution_steps) == 1
         failure_reason = execution_steps[0].get("FailureReason", "")
