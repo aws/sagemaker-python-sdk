@@ -21,6 +21,7 @@ from sagemaker.amazon.factorization_machines import (
     FactorizationMachinesPredictor,
 )
 from sagemaker.amazon.amazon_estimator import RecordSet
+from sagemaker.session_settings import SessionSettings
 
 ROLE = "myrole"
 INSTANCE_COUNT = 1
@@ -58,6 +59,7 @@ def sagemaker_session():
         local_mode=False,
         s3_client=False,
         s3_resource=False,
+        settings=SessionSettings(),
     )
     sms.boto_region_name = REGION
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)

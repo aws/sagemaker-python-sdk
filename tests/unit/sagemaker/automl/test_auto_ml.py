@@ -18,6 +18,7 @@ import pytest
 from mock import Mock, patch
 from sagemaker import AutoML, AutoMLJob, AutoMLInput, CandidateEstimator, PipelineModel
 from sagemaker.predictor import Predictor
+from sagemaker.session_settings import SessionSettings
 from sagemaker.workflow.functions import Join
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
@@ -254,6 +255,7 @@ def sagemaker_session():
         boto_region_name=REGION,
         config=None,
         local_mode=False,
+        settings=SessionSettings(),
     )
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     sms.upload_data = Mock(name="upload_data", return_value=DEFAULT_S3_INPUT_DATA)

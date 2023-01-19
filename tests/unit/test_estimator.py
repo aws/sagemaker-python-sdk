@@ -52,6 +52,7 @@ from sagemaker.model import FrameworkModel
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.predictor import Predictor
 from sagemaker.pytorch.estimator import PyTorch
+from sagemaker.session_settings import SessionSettings
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.tensorflow.estimator import TensorFlow
 from sagemaker.predictor_async import AsyncPredictor
@@ -233,6 +234,7 @@ def sagemaker_session():
         local_mode=False,
         s3_client=None,
         s3_resource=None,
+        settings=SessionSettings(),
     )
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     sms.sagemaker_client.describe_training_job = Mock(
@@ -255,7 +257,7 @@ def pipeline_session():
     type(role_mock).arn = PropertyMock(return_value=ROLE)
     resource_mock = Mock()
     resource_mock.Role.return_value = role_mock
-    session_mock = Mock(region_name=REGION)
+    session_mock = Mock(region_name=REGION, settings=SessionSettings())
     session_mock.resource.return_value = resource_mock
     session_mock.client.return_value = client_mock
     return PipelineSession(
@@ -820,6 +822,7 @@ def test_framework_with_no_default_profiler_in_unsupported_region(region):
         local_mode=False,
         s3_client=None,
         s3_resource=None,
+        settings=SessionSettings(),
     )
     f = DummyFramework(
         entry_point=SCRIPT_PATH,
@@ -849,6 +852,7 @@ def test_framework_with_debugger_config_set_up_in_unsupported_region(region):
             local_mode=False,
             s3_client=None,
             s3_resource=None,
+            settings=SessionSettings(),
         )
         f = DummyFramework(
             entry_point=SCRIPT_PATH,
@@ -875,6 +879,7 @@ def test_framework_enable_profiling_in_unsupported_region(region):
             local_mode=False,
             s3_client=None,
             s3_resource=None,
+            settings=SessionSettings(),
         )
         f = DummyFramework(
             entry_point=SCRIPT_PATH,
@@ -901,6 +906,7 @@ def test_framework_update_profiling_in_unsupported_region(region):
             local_mode=False,
             s3_client=None,
             s3_resource=None,
+            settings=SessionSettings(),
         )
         f = DummyFramework(
             entry_point=SCRIPT_PATH,
@@ -927,6 +933,7 @@ def test_framework_disable_profiling_in_unsupported_region(region):
             local_mode=False,
             s3_client=None,
             s3_resource=None,
+            settings=SessionSettings(),
         )
         f = DummyFramework(
             entry_point=SCRIPT_PATH,
@@ -4732,4 +4739,45 @@ def test_script_mode_estimator_escapes_hyperparameters_as_json(
         set(formatted_hyperparams.items())
         - set(sagemaker_session.train.call_args_list[0][1]["hyperparameters"].items())
         == set()
+    )
+
+
+@patch("time.time", return_value=TIME)
+@patch("sagemaker.estimator.tar_and_upload_dir")
+@patch("sagemaker.model.Model._upload_code")
+def test_estimator_local_download_dir(
+    patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
+):
+    patched_tar_and_upload_dir.return_value = UploadedCode(
+        s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
+    )
+    sagemaker_session.boto_region_name = REGION
+
+    local_download_dir = "some/download/dir"
+
+    sagemaker_session.settings.local_download_dir = local_download_dir
+
+    instance_type = "ml.p2.xlarge"
+    instance_count = 1
+
+    training_data_uri = "s3://bucket/mydata"
+
+    jumpstart_source_dir = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[0]}/source_dirs/source.tar.gz"
+
+    generic_estimator = Estimator(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        region=REGION,
+        sagemaker_session=sagemaker_session,
+        instance_count=instance_count,
+        instance_type=instance_type,
+        source_dir=jumpstart_source_dir,
+        image_uri=IMAGE_URI,
+        model_uri=MODEL_DATA,
+    )
+    generic_estimator.fit(training_data_uri)
+
+    assert (
+        patched_tar_and_upload_dir.call_args_list[0][1]["settings"].local_download_dir
+        == local_download_dir
     )

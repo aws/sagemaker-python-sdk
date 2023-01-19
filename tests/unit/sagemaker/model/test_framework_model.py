@@ -21,6 +21,8 @@ from sagemaker.predictor import Predictor
 import pytest
 from mock import MagicMock, Mock, patch
 
+from sagemaker.session_settings import SessionSettings
+
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
 ENTRY_POINT = "blah.py"
@@ -89,6 +91,7 @@ def sagemaker_session():
         local_mode=False,
         s3_client=None,
         s3_resource=None,
+        settings=SessionSettings(),
     )
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     return sms
