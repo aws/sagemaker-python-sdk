@@ -14,7 +14,7 @@ from __future__ import absolute_import
 
 import os
 import json
-from mock import Mock, PropertyMock, patch
+from mock import patch
 
 import pytest
 import warnings
@@ -25,7 +25,7 @@ from sagemaker import Processor, Model
 from sagemaker.parameter import IntegerParameter
 from sagemaker.transformer import Transformer
 from sagemaker.tuner import HyperparameterTuner
-from sagemaker.workflow.pipeline_context import PipelineSession, _PipelineConfig
+from sagemaker.workflow.pipeline_context import _PipelineConfig
 from sagemaker.workflow.parameters import ParameterString, ParameterBoolean
 
 from sagemaker.workflow.steps import TrainingStep
@@ -61,19 +61,14 @@ from sagemaker.inputs import TrainingInput
 from tests.unit.sagemaker.workflow.helpers import CustomStep, ordered, get_step_args_helper
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.conditions import ConditionGreaterThanOrEqualTo
+from tests.unit.sagemaker.workflow.conftest import ROLE, BUCKET, IMAGE_URI, INSTANCE_TYPE
 
-REGION = "us-west-2"
-BUCKET = "my-bucket"
-ROLE = "DummyRole"
-IMAGE_URI = "fakeimage"
-MODEL_NAME = "gisele"
 LOCAL_ENTRY_POINT = os.path.join(DATA_DIR, "tfs/tfs-test-entrypoint-with-handler/training.py")
 LOCAL_SOURCE_DIR = os.path.join(DATA_DIR, "tfs/tfs-test-entrypoint-with-handler")
 LOCAL_DEPS = [
     os.path.join(DATA_DIR, "tfs/tfs-test-entrypoint-and-dependencies"),
 ]
 DUMMY_S3_SCRIPT_PATH = "s3://dummy-s3/dummy_script.py"
-INSTANCE_TYPE = "ml.m4.xlarge"
 MOCKED_PIPELINE_CONFIG = _PipelineConfig(
     "MyPipeline",
     "MyTrainingStep",
@@ -252,44 +247,6 @@ INPUT_PARAM_LISTS = [
     ParameterString(name="training_input"),
     Join(on="/", values=["s3://my-bucket", "my-input"]),
 ]
-
-
-@pytest.fixture
-def client():
-    """Mock client.
-    Considerations when appropriate:
-        * utilize botocore.stub.Stubber
-        * separate runtime client from client
-    """
-    client_mock = Mock()
-    client_mock._client_config.user_agent = (
-        "Boto3/1.14.24 Python/3.8.5 Linux/5.4.0-42-generic Botocore/1.17.24 Resource"
-    )
-    return client_mock
-
-
-@pytest.fixture
-def boto_session(client):
-    role_mock = Mock()
-    type(role_mock).arn = PropertyMock(return_value=ROLE)
-
-    resource_mock = Mock()
-    resource_mock.Role.return_value = role_mock
-
-    session_mock = Mock(region_name=REGION)
-    session_mock.resource.return_value = resource_mock
-    session_mock.client.return_value = client
-
-    return session_mock
-
-
-@pytest.fixture
-def pipeline_session(boto_session, client):
-    return PipelineSession(
-        boto_session=boto_session,
-        sagemaker_client=client,
-        default_bucket=BUCKET,
-    )
 
 
 @pytest.fixture
