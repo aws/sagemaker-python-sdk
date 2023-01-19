@@ -569,7 +569,7 @@ def test_multi_step_framework_processing_pipeline_different_source_dir(
             framework_processor_tf,
             default_bucket,
             pipeline_name,
-            definition["Steps"][2],
+            definition["Steps"][1],
             SOURCE_DIR_2,
             "script_2.py",
         )
@@ -1026,7 +1026,7 @@ def _verify_code_artifacts_of_framework_processing_step(
         files_to_hash.append(f'{DATA_DIR}{source_dir}/{entry_point}')
     files_to_hash.append(f'{DATA_DIR}{source_dir}')
     file_hash = hash_files_or_dirs(files_to_hash)
-    
+
     source_dir_s3_uri = (
         f"s3://{bucket}/{pipeline_name}/code/{file_hash}"
     )
