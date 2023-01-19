@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 import pytest
 from mock import Mock, MagicMock
+from sagemaker.session_settings import SessionSettings
 
 from sagemaker.wrangler.processing import DataWranglerProcessor
 from sagemaker.processing import ProcessingInput
@@ -36,6 +37,7 @@ def sagemaker_session():
         boto_region_name=REGION,
         config=None,
         local_mode=False,
+        settings=SessionSettings(),
     )
     session_mock.expand_role.return_value = ROLE
     return session_mock

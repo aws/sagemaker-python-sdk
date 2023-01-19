@@ -24,6 +24,7 @@ from sagemaker import image_uris
 from sagemaker.huggingface import HuggingFace, TrainingCompilerConfig
 from sagemaker.huggingface.model import HuggingFaceModel
 from sagemaker.instance_group import InstanceGroup
+from sagemaker.session_settings import SessionSettings
 
 from tests.unit.sagemaker.training_compiler import EC2_GPU_INSTANCE_CLASSES
 
@@ -72,6 +73,7 @@ def fixture_sagemaker_session():
         local_mode=False,
         s3_resource=None,
         s3_client=None,
+        settings=SessionSettings(),
     )
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}

@@ -18,6 +18,7 @@ from mock import Mock, patch
 from sagemaker import image_uris
 from sagemaker.amazon.randomcutforest import RandomCutForest, RandomCutForestPredictor
 from sagemaker.amazon.amazon_estimator import RecordSet
+from sagemaker.session_settings import SessionSettings
 
 ROLE = "myrole"
 INSTANCE_COUNT = 1
@@ -52,6 +53,7 @@ def sagemaker_session():
         region_name=REGION,
         config=None,
         local_mode=False,
+        settings=SessionSettings(),
     )
     sms.boto_region_name = REGION
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
