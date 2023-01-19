@@ -54,10 +54,7 @@ from sagemaker.lambda_helper import Lambda
 from sagemaker.workflow.lambda_step import LambdaStep, LambdaOutput, LambdaOutputTypeEnum
 from tests.unit import DATA_DIR
 from tests.unit.sagemaker.workflow.helpers import CustomStep, ordered
-from tests.unit.sagemaker.workflow.conftest import BUCKET, ROLE
-
-_IMAGE_URI = "fakeimage"
-_INSTANCE_TYPE = "ml.m4.xlarge"
+from tests.unit.sagemaker.workflow.conftest import BUCKET, ROLE, IMAGE_URI, INSTANCE_TYPE
 
 _SAGEMAKER_PROGRAM = SCRIPT_PARAM_NAME.upper()
 _SAGEMAKER_SUBMIT_DIRECTORY = DIR_PARAM_NAME.upper()
@@ -79,7 +76,7 @@ def model_data_param():
 def model(pipeline_session, model_data_param):
     return Model(
         name="MyModel",
-        image_uri=_IMAGE_URI,
+        image_uri=IMAGE_URI,
         model_data=model_data_param,
         sagemaker_session=pipeline_session,
         entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
@@ -159,7 +156,7 @@ def test_register_model_with_runtime_repack(pipeline_session, model_data_param, 
             assert arguments["ModelApprovalStatus"] == "PendingManualApproval"
             assert len(arguments["InferenceSpecification"]["Containers"]) == 1
             container = arguments["InferenceSpecification"]["Containers"][0]
-            assert container["Image"] == _IMAGE_URI
+            assert container["Image"] == IMAGE_URI
             assert container["ModelDataUrl"] == {
                 "Get": f"Steps.{expected_repack_step_name}.ModelArtifacts.S3ModelArtifacts"
             }
@@ -238,7 +235,7 @@ def test_create_model_with_runtime_repack(pipeline_session, model_data_param, mo
             assert step["Name"] == f"MyModelStep-{_CREATE_MODEL_NAME_BASE}"
             arguments = step["Arguments"]
             container = arguments["PrimaryContainer"]
-            assert container["Image"] == _IMAGE_URI
+            assert container["Image"] == IMAGE_URI
             assert container["ModelDataUrl"] == {
                 "Get": f"Steps.{expected_repack_step_name}.ModelArtifacts.S3ModelArtifacts"
             }
@@ -335,7 +332,7 @@ def test_create_pipeline_model_with_runtime_repack(pipeline_session, model_data_
             assert containers[0]["ModelDataUrl"] == {"Get": "Parameters.ModelData"}
             assert containers[1]["Environment"][_SAGEMAKER_PROGRAM] == _SCRIPT_NAME
             assert containers[1]["Environment"][_SAGEMAKER_SUBMIT_DIRECTORY] == _DIR_NAME
-            assert containers[1]["Image"] == _IMAGE_URI
+            assert containers[1]["Image"] == IMAGE_URI
             assert containers[1]["ModelDataUrl"] == {
                 "Get": f"Steps.{expected_repack_step_name}.ModelArtifacts.S3ModelArtifacts"
             }
@@ -371,7 +368,7 @@ def test_register_pipeline_model_with_runtime_repack(pipeline_session, model_dat
     )
     # The model need to runtime repack
     model = Model(
-        image_uri=_IMAGE_URI,
+        image_uri=IMAGE_URI,
         model_data=model_data_param,
         sagemaker_session=pipeline_session,
         entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
@@ -431,7 +428,7 @@ def test_register_pipeline_model_with_runtime_repack(pipeline_session, model_dat
             assert containers[0]["ModelDataUrl"] == {"Get": "Parameters.ModelData"}
             assert containers[0]["Environment"][_SAGEMAKER_PROGRAM] == _SCRIPT_NAME
             assert "s3://" in containers[0]["Environment"][_SAGEMAKER_SUBMIT_DIRECTORY]
-            assert containers[1]["Image"] == _IMAGE_URI
+            assert containers[1]["Image"] == IMAGE_URI
             assert containers[1]["ModelDataUrl"] == {
                 "Get": f"Steps.{expected_repack_step_name}.ModelArtifacts.S3ModelArtifacts"
             }
@@ -459,7 +456,7 @@ def test_register_model_without_repack(pipeline_session):
     model_name = "MyModel"
     model = Model(
         name=model_name,
-        image_uri=_IMAGE_URI,
+        image_uri=IMAGE_URI,
         model_data=model_data,
         entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
         sagemaker_session=pipeline_session,
@@ -489,7 +486,7 @@ def test_register_model_without_repack(pipeline_session):
     assert arguments["ModelApprovalStatus"] == "PendingManualApproval"
     containers = arguments["InferenceSpecification"]["Containers"]
     assert len(containers) == 1
-    assert containers[0]["Image"] == _IMAGE_URI
+    assert containers[0]["Image"] == IMAGE_URI
     assert containers[0]["ModelDataUrl"] == {"Get": "Parameters.ModelData"}
     assert containers[0]["Environment"][_SAGEMAKER_PROGRAM] == _SCRIPT_NAME
     assert (
@@ -506,7 +503,7 @@ def test_create_model_with_compile_time_repack(mock_repack, pipeline_session):
     model_name = "MyModel"
     model = Model(
         name=model_name,
-        image_uri=_IMAGE_URI,
+        image_uri=IMAGE_URI,
         model_data=f"s3://{BUCKET}/model.tar.gz",
         sagemaker_session=pipeline_session,
         entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
@@ -527,7 +524,7 @@ def test_create_model_with_compile_time_repack(mock_repack, pipeline_session):
     assert len(step_dsl_list) == 2
     assert step_dsl_list[0]["Name"] == "MyModelStep-CreateModel"
     arguments = step_dsl_list[0]["Arguments"]
-    assert arguments["PrimaryContainer"]["Image"] == _IMAGE_URI
+    assert arguments["PrimaryContainer"]["Image"] == IMAGE_URI
     assert (
         arguments["PrimaryContainer"]["ModelDataUrl"] == f"s3://{BUCKET}/{model_name}/model.tar.gz"
     )
@@ -609,7 +606,7 @@ def test_conditional_model_create_and_regis(
             assert arguments["ModelApprovalStatus"] == "PendingManualApproval"
             assert len(arguments["InferenceSpecification"]["Containers"]) == 1
             container = arguments["InferenceSpecification"]["Containers"][0]
-            assert container["Image"] == _IMAGE_URI
+            assert container["Image"] == IMAGE_URI
             assert container["ModelDataUrl"] == {
                 "Get": f"Steps.{expected_repack_step_name}.ModelArtifacts.S3ModelArtifacts"
             }
@@ -619,7 +616,7 @@ def test_conditional_model_create_and_regis(
             assert step["Name"] == f"MyModelStepCreate-{_CREATE_MODEL_NAME_BASE}"
             arguments = step["Arguments"]
             container = arguments["PrimaryContainer"]
-            assert container["Image"] == _IMAGE_URI
+            assert container["Image"] == IMAGE_URI
             assert container["ModelDataUrl"] == {"Get": "Parameters.ModelData"}
             assert not container.get("Environment", {})
         else:
@@ -645,7 +642,7 @@ def test_conditional_model_create_and_regis(
             SKLearnModel(
                 name="MySKModel",
                 model_data="dummy_model_data",
-                image_uri=_IMAGE_URI,
+                image_uri=IMAGE_URI,
                 entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
                 role=ROLE,
                 enable_network_isolation=True,
@@ -658,7 +655,7 @@ def test_conditional_model_create_and_regis(
                 name="MYXGBoostModel",
                 model_data="dummy_model_data",
                 framework_version="1.11.0",
-                image_uri=_IMAGE_URI,
+                image_uri=IMAGE_URI,
                 entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
                 role=ROLE,
                 enable_network_isolation=False,
@@ -669,7 +666,7 @@ def test_conditional_model_create_and_regis(
             PyTorchModel(
                 name="MyPyTorchModel",
                 model_data="dummy_model_data",
-                image_uri=_IMAGE_URI,
+                image_uri=IMAGE_URI,
                 entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
                 role=ROLE,
                 framework_version="1.5.0",
@@ -681,7 +678,7 @@ def test_conditional_model_create_and_regis(
             MXNetModel(
                 name="MyMXNetModel",
                 model_data="dummy_model_data",
-                image_uri=_IMAGE_URI,
+                image_uri=IMAGE_URI,
                 entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
                 role=ROLE,
                 framework_version="1.2.0",
@@ -692,7 +689,7 @@ def test_conditional_model_create_and_regis(
             HuggingFaceModel(
                 name="MyHuggingFaceModel",
                 model_data="dummy_model_data",
-                image_uri=_IMAGE_URI,
+                image_uri=IMAGE_URI,
                 entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
                 role=ROLE,
             ),
@@ -702,7 +699,7 @@ def test_conditional_model_create_and_regis(
             TensorFlowModel(
                 name="MyTensorFlowModel",
                 model_data="dummy_model_data",
-                image_uri=_IMAGE_URI,
+                image_uri=IMAGE_URI,
                 entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
                 role=ROLE,
                 code_location=_MODEL_CODE_LOCATION_TRAILING_SLASH,
@@ -713,7 +710,7 @@ def test_conditional_model_create_and_regis(
             ChainerModel(
                 name="MyChainerModel",
                 model_data="dummy_model_data",
-                image_uri=_IMAGE_URI,
+                image_uri=IMAGE_URI,
                 entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
                 role=ROLE,
             ),
@@ -824,7 +821,7 @@ def test_create_model_among_different_model_types(test_input, pipeline_session, 
             TensorFlowModel(
                 model_data="dummy_model_step",
                 role=ROLE,
-                image_uri=_IMAGE_URI,
+                image_uri=IMAGE_URI,
                 entry_point=os.path.join(_TENSORFLOW_PATH, "inference.py"),
             ),
             {
@@ -840,7 +837,7 @@ def test_create_model_among_different_model_types(test_input, pipeline_session, 
             TensorFlowModel(
                 model_data="dummy_model_step",
                 role=ROLE,
-                image_uri=_IMAGE_URI,
+                image_uri=IMAGE_URI,
             ),
             {
                 "expected_step_num": 1,
@@ -975,10 +972,10 @@ def test_model_step_with_lambda_property_reference(pipeline_session):
     [
         (
             Processor(
-                image_uri=_IMAGE_URI,
+                image_uri=IMAGE_URI,
                 role=ROLE,
                 instance_count=1,
-                instance_type=_INSTANCE_TYPE,
+                instance_type=INSTANCE_TYPE,
             ),
             dict(target_fun="run", func_args={}),
         ),
@@ -999,8 +996,8 @@ def test_model_step_with_lambda_property_reference(pipeline_session):
                 estimator=Estimator(
                     role=ROLE,
                     instance_count=1,
-                    instance_type=_INSTANCE_TYPE,
-                    image_uri=_IMAGE_URI,
+                    instance_type=INSTANCE_TYPE,
+                    image_uri=IMAGE_URI,
                 ),
                 objective_metric_name="test:acc",
                 hyperparameter_ranges={"batch-size": IntegerParameter(64, 128)},
@@ -1011,8 +1008,8 @@ def test_model_step_with_lambda_property_reference(pipeline_session):
             Estimator(
                 role=ROLE,
                 instance_count=1,
-                instance_type=_INSTANCE_TYPE,
-                image_uri=_IMAGE_URI,
+                instance_type=INSTANCE_TYPE,
+                image_uri=IMAGE_URI,
             ),
             dict(target_fun="fit", func_args={}),
         ),
