@@ -16,8 +16,8 @@ import logging
 import os
 
 import pytest
-from botocore.exceptions import WaiterError
 
+from tests.integ.sagemaker.workflow.helpers import wait_pipeline_execution
 from sagemaker.workflow.fail_step import FailStep
 from sagemaker.workflow.functions import Join
 from tests.integ.timeout import timeout_and_delete_endpoint_by_name
@@ -155,10 +155,7 @@ def test_pytorch_training_model_registration_and_creation_without_custom_inferen
             seconds_to_sleep=10,
         ):
             execution = pipeline.start(parameters={})
-            try:
-                execution.wait(delay=30, max_attempts=60)
-            except WaiterError:
-                pass
+            wait_pipeline_execution(execution=execution)
             execution_steps = execution.list_steps()
             is_execution_fail = False
             for step in execution_steps:
@@ -284,10 +281,7 @@ def test_pytorch_training_model_registration_and_creation_with_custom_inference(
             seconds_to_sleep=10,
         ):
             execution = pipeline.start(parameters={})
-            try:
-                execution.wait(delay=30, max_attempts=60)
-            except WaiterError:
-                pass
+            wait_pipeline_execution(execution=execution)
             execution_steps = execution.list_steps()
             is_execution_fail = False
             for step in execution_steps:
@@ -372,10 +366,7 @@ def test_mxnet_model_registration_with_custom_inference(
             seconds_to_sleep=10,
         ):
             execution = pipeline.start()
-            try:
-                execution.wait(delay=30, max_attempts=60)
-            except WaiterError:
-                pass
+            wait_pipeline_execution(execution=execution)
             execution_steps = execution.list_steps()
 
             assert len(execution_steps) == 1
@@ -550,10 +541,7 @@ def test_model_registration_with_drift_check_baselines_and_model_metrics(
 
             assert response["PipelineArn"] == create_arn
 
-            try:
-                execution.wait(delay=30, max_attempts=60)
-            except WaiterError:
-                pass
+            wait_pipeline_execution(execution=execution)
             execution_steps = execution.list_steps()
 
             assert len(execution_steps) == 1
@@ -667,10 +655,7 @@ def test_model_registration_with_tensorflow_model_with_pipeline_model(
             seconds_to_sleep=10,
         ):
             execution = pipeline.start(parameters={})
-            try:
-                execution.wait(delay=30, max_attempts=60)
-            except WaiterError:
-                pass
+            wait_pipeline_execution(execution=execution)
             execution_steps = execution.list_steps()
             is_execution_fail = False
             for step in execution_steps:
@@ -750,10 +735,7 @@ def test_xgboost_model_register_and_deploy_with_runtime_repack(
             seconds_to_sleep=10,
         ):
             execution = pipeline.start(parameters={})
-            try:
-                execution.wait(delay=30, max_attempts=60)
-            except WaiterError:
-                pass
+            wait_pipeline_execution(execution=execution)
 
             # Verify the pipeline execution succeeded
             step_register_model = None
@@ -866,10 +848,7 @@ def test_tensorflow_model_register_and_deploy_with_runtime_repack(
             seconds_to_sleep=10,
         ):
             execution = pipeline.start(parameters={})
-            try:
-                execution.wait(delay=30, max_attempts=60)
-            except WaiterError:
-                pass
+            wait_pipeline_execution(execution=execution)
 
             # Verify the pipeline execution succeeded
             step_register_model = None

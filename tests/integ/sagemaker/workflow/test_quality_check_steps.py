@@ -16,8 +16,8 @@ import logging
 import os
 
 import pytest
-from botocore.exceptions import WaiterError
 
+from tests.integ.sagemaker.workflow.helpers import wait_pipeline_execution
 from sagemaker.workflow.parameters import ParameterString
 from tests.integ import DATA_DIR
 
@@ -174,10 +174,7 @@ def test_one_step_data_quality_pipeline_happycase(
 
             assert response["PipelineArn"] == create_arn
 
-            try:
-                execution.wait(delay=30, max_attempts=60)
-            except WaiterError:
-                pass
+            wait_pipeline_execution(execution=execution)
             execution_steps = execution.list_steps()
 
             assert len(execution_steps) == 1
@@ -272,10 +269,7 @@ def test_one_step_data_quality_pipeline_constraint_violation(
 
             assert response["PipelineArn"] == create_arn
 
-            try:
-                execution.wait(delay=30, max_attempts=60)
-            except WaiterError:
-                pass
+            wait_pipeline_execution(execution=execution)
             execution_steps = execution.list_steps()
             assert len(execution_steps) == 1
             assert execution_steps[0]["StepName"] == "DataQualityCheckStep"
@@ -354,10 +348,7 @@ def test_one_step_model_quality_pipeline_happycase(
 
             assert response["PipelineArn"] == create_arn
 
-            try:
-                execution.wait(delay=30, max_attempts=60)
-            except WaiterError:
-                pass
+            wait_pipeline_execution(execution=execution)
             execution_steps = execution.list_steps()
 
             assert len(execution_steps) == 1
@@ -449,10 +440,7 @@ def test_one_step_model_quality_pipeline_constraint_violation(
 
             assert response["PipelineArn"] == create_arn
 
-            try:
-                execution.wait(delay=30, max_attempts=60)
-            except WaiterError:
-                pass
+            wait_pipeline_execution(execution=execution)
             execution_steps = execution.list_steps()
 
             assert len(execution_steps) == 1
