@@ -61,19 +61,19 @@ class EMRStepConfig:
         return config
 
 
-def validate_cluster_config(cluster_config, name):
+def validate_cluster_config(cluster_config, step_name):
     """Validates user provided cluster_config.
 
     Args:
         cluster_config(Union[Dict[str, Any], List[Dict[str, Any]]]):
             user provided cluster configuration.
-        name: name of the EMR cluster.
+        step_name: The name of the EMR step.
     """
 
     instances = "Instances"
     instancegroups = "InstanceGroups"
     instancefleets = "InstanceFleets"
-    prefix_with_in = "In EMRStep " + name + ", "
+    prefix_with_in = "In EMRStep " + step_name + ", "
 
     if (
         "Name" in cluster_config
