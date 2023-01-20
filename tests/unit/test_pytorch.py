@@ -830,7 +830,7 @@ def test_pytorch_ddp_comm_back_nccl(sagemaker_session):
 def test_pytorch_ddp_comm_backend_auto_smddp_supported(sagemaker_session):
     valid_instance_type = "ml.p4d.24xlarge"
     valid_instance_count = 2
-    valid_framework_version = "1.12.1"
+    valid_framework_version = "1.13.1"
     valid_py_version = "py3"
     pytorch = _pytorch_estimator(
         sagemaker_session,
@@ -875,7 +875,7 @@ def test_pytorch_ddp_comm_backend_auto_smddp_unsupported(sagemaker_session):
 def test_pytorch_ddp_no_comm_options_smddp_supported(sagemaker_session):
     valid_instance_type = "ml.p4d.24xlarge"
     valid_instance_count = 2
-    valid_framework_version = "1.12.1"
+    valid_framework_version = "1.13.1"
     valid_py_version = "py3"
     pytorch = _pytorch_estimator(
         sagemaker_session,
