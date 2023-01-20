@@ -61,6 +61,59 @@ class EMRStepConfig:
         return config
 
 
+def validate_cluster_config(cluster_config, name):
+    """Validates user provided cluster_config.
+
+    Args:
+        cluster_config(Union[Dict[str, Any], List[Dict[str, Any]]]):
+            user provided cluster configuration.
+        name: name of the EMR cluster.
+    """
+
+    instances = "Instances"
+    instancegroups = "InstanceGroups"
+    instancefleets = "InstanceFleets"
+    prefix_with_in = "In EMRStep " + name + ", "
+
+    if (
+        "Name" in cluster_config
+        or "AutoTerminationPolicy" in cluster_config
+        or "Steps" in cluster_config
+    ):
+        raise Exception(
+            prefix_with_in + "cluster_config should not contain any of Name, "
+            "AutoTerminationPolicy and/or Steps"
+        )
+
+    if instances not in cluster_config:
+        raise Exception(prefix_with_in + "cluster_config must contain Instances")
+
+    if (
+        "KeepJobFlowAliveWhenNoSteps" in cluster_config[instances]
+        or "TerminationProtected" in cluster_config[instances]
+    ):
+        raise Exception(
+            prefix_with_in + instances + " should not contain "
+            "KeepJobFlowAliveWhenNoSteps or "
+            "TerminationProtected"
+        )
+
+    if (
+        instancegroups in cluster_config[instances] and instancefleets in cluster_config[instances]
+    ) or (
+        instancegroups not in cluster_config[instances]
+        and instancefleets not in cluster_config[instances]
+    ):
+        raise Exception(
+            prefix_with_in
+            + instances
+            + " should contain either "
+            + instancegroups
+            + " or "
+            + instancefleets
+        )
+
+
 class EMRStep(Step):
     """EMR step for workflow."""
 
@@ -73,6 +126,7 @@ class EMRStep(Step):
         step_config: EMRStepConfig,
         depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
         cache_config: CacheConfig = None,
+        cluster_config: RequestType = None,
     ):
         """Constructs a EMRStep.
 
@@ -86,16 +140,46 @@ class EMRStep(Step):
                 names or `Step` instances or `StepCollection` instances that this `EMRStep`
                 depends on.
             cache_config(CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
+            cluster_config(Union[Dict[str, Any], List[Dict[str, Any]]]): The recipe of the
+                EMR Cluster. It is a dictionary.
+                The elements are defined in the Request Syntax Section:
+                https://docs.aws.amazon.com/emr/latest/APIReference/API_RunJobFlow.html
+                However, the following five elements are restricted, and must not present
+                in the dictionary:
+                1. cluster_config[Name]
+                2. cluster_config[Steps]
+                3. cluster_config[AutoTerminationPolicy]
+                4. cluster_config[Instances][KeepJobFlowAliveWhenNoSteps]
+                5. cluster_config[Instances][TerminationProtected]
+                Note that, if user wants to use cluster_config, then they have to explicitly set
+                cluster_id as None
 
         """
         super(EMRStep, self).__init__(name, display_name, description, StepTypeEnum.EMR, depends_on)
 
-        emr_step_args = {"ClusterId": cluster_id, "StepConfig": step_config.to_request()}
+        emr_step_args = {"StepConfig": step_config.to_request()}
+        root_property = Properties(step_name=name, shape_name="Step", service_name="emr")
+
+        if cluster_id is None and cluster_config is None:
+            raise Exception("EMRStep " + name + " must have either cluster_id or cluster_config")
+
+        if cluster_id is not None and cluster_config is not None:
+            raise Exception(
+                "EMRStep " + name + " can not have both cluster_id or cluster_config. "
+                "If user wants to use cluster_config, then they "
+                "have to explicitly set cluster_id as None"
+            )
+
+        if cluster_id is not None:
+            emr_step_args["ClusterId"] = cluster_id
+            root_property.__dict__["ClusterId"] = cluster_id
+        elif cluster_config is not None:
+            validate_cluster_config(cluster_config, name)
+            emr_step_args["ClusterConfig"] = cluster_config
+            root_property.__dict__["ClusterConfig"] = cluster_config
+
         self.args = emr_step_args
         self.cache_config = cache_config
-
-        root_property = Properties(step_name=name, shape_name="Step", service_name="emr")
-        root_property.__dict__["ClusterId"] = cluster_id
         self._properties = root_property
 
     @property
