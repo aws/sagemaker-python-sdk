@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import json
+import pytest
 
 from sagemaker.workflow.emr_step import EMRStep, EMRStepConfig
 from sagemaker.workflow.steps import CacheConfig
