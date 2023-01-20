@@ -743,6 +743,7 @@ def test_ecr_login_non_ecr():
     [
         "520713654638.dkr.ecr.us-east-1.amazonaws.com/image-i-have:1.0",
         "520713654638.dkr.ecr.us-iso-east-1.c2s.ic.gov/image-i-have:1.0",
+        "520713654638.dkr.ecr.us-isob-east-1.sc2s.sgov.gov/image-i-have:1.0",
     ],
 )
 def test_ecr_login_image_exists(_check_output, image):
