@@ -56,6 +56,7 @@ PARAMETER_SERVER_MULTI_GPU_WARNING = (
 
 DEBUGGER_UNSUPPORTED_REGIONS = (
     "us-iso-east-1",
+    "us-isob-east-1",
     "ap-southeast-3",
     "ap-southeast-4",
     "eu-south-2",
@@ -66,6 +67,7 @@ DEBUGGER_UNSUPPORTED_REGIONS = (
 )
 PROFILER_UNSUPPORTED_REGIONS = (
     "us-iso-east-1",
+    "us-isob-east-1",
     "ap-southeast-3",
     "ap-southeast-4",
     "eu-south-2",

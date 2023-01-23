@@ -274,6 +274,7 @@ def test_retrieve_ecr_hostname(config_for_framework):
         "cn-north-1": "000000010010",
         "cn-northwest-1": "010000001000",
         "us-iso-east-1": "000111111000",
+        "us-isob-east-1": "000111111000",
     }
 
     config = copy.deepcopy(BASE_CONFIG)
@@ -309,6 +310,16 @@ def test_retrieve_ecr_hostname(config_for_framework):
         image_scope="training",
     )
     assert "000111111000.dkr.ecr.us-iso-east-1.c2s.ic.gov/dummy:1.0.0-cpu-py3" == uri
+
+    uri = image_uris.retrieve(
+        framework="useless-string",
+        version="1.0.0",
+        py_version="py3",
+        instance_type="ml.c4.xlarge",
+        region="us-isob-east-1",
+        image_scope="training",
+    )
+    assert "000111111000.dkr.ecr.us-isob-east-1.sc2s.sgov.gov/dummy:1.0.0-cpu-py3" == uri
 
 
 @patch("sagemaker.image_uris.config_for_framework")

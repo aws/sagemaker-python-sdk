@@ -30,6 +30,7 @@ DLC_ALTERNATE_REGION_ACCOUNTS = {
     "me-south-1": "217643126080",
     "us-gov-west-1": "442386744353",
     "us-iso-east-1": "886529160074",
+    "us-isob-east-1": "094389454867",
 }
 SAGEMAKER_ACCOUNT = "520713654638"
 SAGEMAKER_ALTERNATE_REGION_ACCOUNTS = {
@@ -41,6 +42,7 @@ SAGEMAKER_ALTERNATE_REGION_ACCOUNTS = {
     "me-south-1": "724002660598",
     "us-gov-west-1": "246785580436",
     "us-iso-east-1": "744548109606",
+    "us-isob-east-1": "453391408702",
 }
 ELASTIC_INFERENCE_REGIONS = [
     "ap-northeast-1",
