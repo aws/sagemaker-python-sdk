@@ -176,9 +176,6 @@ def get_processing_code_hash(code: str, source_dir: str, dependencies: List[str]
         if source_dir_url.scheme == "" or source_dir_url.scheme == "file":
             # Include code in the hash when possible
             if code:
-                # Make sure that code points to the absolute path of the entry point
-                if not os.path.isabs(code):
-                    code = os.path.join(source_dir, code)
                 code_url = urlparse(code)
                 if code_url.scheme == "" or code_url.scheme == "file":
                     return hash_files_or_dirs([code, source_dir] + dependencies)
