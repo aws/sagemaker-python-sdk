@@ -648,7 +648,8 @@ class Run(object):
         """
         if not tags:
             tags = []
-        tags.append(RUN_TC_TAG)
+        if RUN_TC_TAG not in tags:
+            tags.append(RUN_TC_TAG)
         return tags
 
     def __enter__(self):
