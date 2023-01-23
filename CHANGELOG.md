@@ -1,5 +1,28 @@
 # Changelog
 
+## v2.129.0 (2023-01-19)
+
+### Features
+
+ * add p2 deprecation for PT>=1.13
+ * TF2.11 Update to PySDK
+
+### Bug Fixes and Other Changes
+
+ * Improve Pipeline integ tests and fix resource leak
+ * Update TF version to 2.8.4
+
+## v2.128.0 (2023-01-10)
+
+### Features
+
+ * right_size() for inference recommender
+
+### Bug Fixes and Other Changes
+
+ * tf 2.9.3 release images
+ * Retry ValueError for airflow tests
+
 ## v2.127.0 (2023-01-03)
 
 ### Features

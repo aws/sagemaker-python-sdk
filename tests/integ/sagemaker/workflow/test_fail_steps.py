@@ -13,8 +13,8 @@
 from __future__ import absolute_import
 
 import pytest
-from botocore.exceptions import WaiterError
 
+from tests.integ.sagemaker.workflow.helpers import wait_pipeline_execution
 from sagemaker import get_execution_role, utils
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.conditions import ConditionEquals
@@ -62,10 +62,7 @@ def test_two_step_fail_pipeline_with_str_err_msg(sagemaker_session, role, pipeli
         response = execution.describe()
         assert response["PipelineArn"] == pipeline_arn
 
-        try:
-            execution.wait(delay=30, max_attempts=60)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution)
         execution_steps = execution.list_steps()
 
         assert len(execution_steps) == 2
@@ -130,10 +127,7 @@ def test_two_step_fail_pipeline_with_parameter_err_msg(sagemaker_session, role, 
         response = execution.describe()
         assert response["PipelineArn"] == pipeline_arn
 
-        try:
-            execution.wait(delay=30, max_attempts=60)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution)
         execution_steps = execution.list_steps()
 
         assert len(execution_steps) == 2
@@ -196,10 +190,7 @@ def test_two_step_fail_pipeline_with_join_fn(sagemaker_session, role, pipeline_n
         response = execution.describe()
         assert response["PipelineArn"] == pipeline_arn
 
-        try:
-            execution.wait(delay=30, max_attempts=60)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution)
         execution_steps = execution.list_steps()
 
         assert len(execution_steps) == 2
@@ -257,10 +248,7 @@ def test_two_step_fail_pipeline_with_no_err_msg(sagemaker_session, role, pipelin
         response = execution.describe()
         assert response["PipelineArn"] == pipeline_arn
 
-        try:
-            execution.wait(delay=30, max_attempts=60)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution)
         execution_steps = execution.list_steps()
 
         assert len(execution_steps) == 2

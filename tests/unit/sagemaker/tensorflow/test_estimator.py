@@ -21,6 +21,7 @@ from packaging import version
 import pytest
 
 from sagemaker.estimator import _TrainingJob
+from sagemaker.session_settings import SessionSettings
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.instance_group import InstanceGroup
 from sagemaker.workflow.parameters import ParameterString, ParameterBoolean
@@ -71,6 +72,7 @@ def sagemaker_session():
         local_mode=False,
         s3_resource=None,
         s3_client=None,
+        settings=SessionSettings(),
     )
     session.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     session.expand_role = Mock(name="expand_role", return_value=ROLE)
