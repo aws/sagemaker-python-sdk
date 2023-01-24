@@ -170,11 +170,11 @@ _RUN_LOAD = "load"
 
 def test_run_from_local_and_train_job_and_all_exp_cfg_match(sagemaker_session, dev_sdk_tar):
     # Notes:
-    # 1. The 1st Run TC created locally and its exp config was auto passed to the job
+    # 1. The 1st Run created locally and its exp config was auto passed to the job
     # 2. In training job, the same exp and run names are given in the Run constructor
-    # which will load the 1st Run TC in training job and log parameters
+    # which will load the 1st Run in training job and log parameters
     # and metrics there
-    # 3. In a different training job, load the same Run TC and log more parameters there.
+    # 3. In a different training job, load the same Run and log more parameters there.
     exp_name = unique_name_from_base(_EXP_NAME_BASE_IN_SCRIPT)
     estimator = _generate_estimator(
         sdk_tar=dev_sdk_tar, sagemaker_session=sagemaker_session, exp_name=exp_name
@@ -253,12 +253,12 @@ def test_run_from_local_and_train_job_and_all_exp_cfg_match(sagemaker_session, d
 
 def test_run_from_local_and_train_job_and_exp_cfg_not_match(sagemaker_session, dev_sdk_tar):
     # Notes:
-    # 1. The 1st Run TC created locally and its exp config was auto passed to the job
-    # 2. In training job, different exp and run names (i.e. 2nd Run TC) are given
-    # in the Run constructor which will create a Run TC according to the run_name
+    # 1. The 1st Run created locally and its exp config was auto passed to the job
+    # 2. In training job, different exp and run names (i.e. 2nd Run) are given
+    # in the Run constructor which will create a Run according to the run_name
     # passed in there and ignore the exp config in the job
-    # 3. Both metrics and parameters are logged in the Run TC created in job
-    # 4. In a different training job, load the 2nd Run TC and log more parameters there.
+    # 3. Both metrics and parameters are logged in the Run created in job
+    # 4. In a different training job, load the 2nd Run and log more parameters there.
     exp_name = unique_name_from_base(_EXP_NAME_BASE_IN_SCRIPT)
     exp_name2 = unique_name_from_base(_EXP_NAME_BASE_IN_SCRIPT)
     estimator = _generate_estimator(
@@ -328,11 +328,11 @@ def test_run_from_local_and_train_job_and_exp_cfg_not_match(sagemaker_session, d
 
 def test_run_from_train_job_only(sagemaker_session, dev_sdk_tar):
     # Notes:
-    # 1. No Run TC created locally or specified in experiment config
+    # 1. No Run created locally or specified in experiment config
     # 2. In training job, Run is initialized
-    # which will create a Run TC according to the run_name passed in there
-    # 3. Both metrics and parameters are logged in the Run TC created in job
-    # 4. In a different training job, load the same Run TC and log more parameters there.
+    # which will create a Run according to the run_name passed in there
+    # 3. Both metrics and parameters are logged in the Run created in job
+    # 4. In a different training job, load the same Run and log more parameters there.
     exp_name = unique_name_from_base(_EXP_NAME_BASE_IN_SCRIPT)
     estimator = _generate_estimator(
         sdk_tar=dev_sdk_tar,
@@ -370,13 +370,13 @@ def test_run_from_processing_job_and_override_default_exp_config(
     sagemaker_session, dev_sdk_tar, run_obj
 ):
     # Notes:
-    # 1. The 1st Run TC (run) created locally
-    # 2. Within the 2nd Run TC (run_obj)'s context, invoke processor.run
-    # but override the default experiment config in context of 2nd Run TC
-    # with the experiment config of the 1st Run TC
-    # 3. In the processing job script, load the 1st Run TC via the experiment config
+    # 1. The 1st Run (run) created locally
+    # 2. Within the 2nd Run (run_obj)'s context, invoke processor.run
+    # but override the default experiment config in context of 2nd Run
+    # with the experiment config of the 1st Run
+    # 3. In the processing job script, load the 1st Run via the experiment config
     # fetched from the job env
-    # 4. All data are logged in the Run TC either locally or in the processing job
+    # 4. All data are logged in the Run either locally or in the processing job
     exp_name = unique_name_from_base(_EXP_NAME_BASE_IN_SCRIPT)
     processor = FrameworkProcessor(
         estimator_cls=PyTorch,
@@ -441,14 +441,15 @@ def test_run_from_processing_job_and_override_default_exp_config(
 
 
 # dev_sdk_tar is required to trigger generating the dev SDK tar
-def test_run_from_transform_job(sagemaker_session, dev_sdk_tar, run_obj, xgboost_latest_version):
+def test_run_from_transform_job(sagemaker_session, dev_sdk_tar, xgboost_latest_version):
     # Notes:
-    # 1. The 1st Run TC (run) created locally
-    # 2. In the inference script running in a transform job, load the 1st Run TC
-    # via explicitly passing the experiment_name and run_name of the 1st Run TC
+    # 1. The 1st Run (run) created locally
+    # 2. In the inference script running in a transform job, load the 1st Run
+    # via explicitly passing the experiment_name and run_name of the 1st Run
     # TODO: once we're able to retrieve exp config from the transform job env,
     # we should expand this test and add the load_run() without explicitly supplying the names
-    # 3. All data are logged in the Run TC either locally or in the transform job
+    # 3. All data are logged in the Run either locally or in the transform job
+    exp_name = unique_name_from_base(_EXP_NAME_BASE_IN_SCRIPT)
     xgb_model_data_s3 = sagemaker_session.upload_data(
         path=os.path.join(_TRANSFORM_MATERIALS, "xgb_model.tar.gz"),
         key_prefix="integ-test-data/xgboost/model",
@@ -461,8 +462,8 @@ def test_run_from_transform_job(sagemaker_session, dev_sdk_tar, run_obj, xgboost
         source_dir=_EXP_DIR,
         framework_version=xgboost_latest_version,
         env={
-            "EXPERIMENT_NAME": run_obj.experiment_name,
-            "RUN_NAME": run_obj.run_name,
+            "EXPERIMENT_NAME": exp_name,
+            "RUN_NAME": _RUN_NAME_IN_SCRIPT,
         },
     )
     transformer = xgboost_model.transformer(
@@ -481,25 +482,83 @@ def test_run_from_transform_job(sagemaker_session, dev_sdk_tar, run_obj, xgboost
         os.path.join(_TRANSFORM_MATERIALS, "data.csv"), uri, sagemaker_session=sagemaker_session
     )
 
-    with run_obj:
-        _local_run_log_behaviors(is_complete_log=False, sagemaker_session=sagemaker_session)
-        transformer.transform(
-            data=input_data,
-            content_type="text/libsvm",
-            split_type="Line",
-            wait=True,
-            job_name=f"transform-job-{name()}",
+    with cleanup_exp_resources(exp_names=[exp_name], sagemaker_session=sagemaker_session):
+        with Run(
+            experiment_name=exp_name,
+            run_name=_RUN_NAME_IN_SCRIPT,
+            sagemaker_session=sagemaker_session,
+        ) as run:
+            _local_run_log_behaviors(is_complete_log=False, sagemaker_session=sagemaker_session)
+            transformer.transform(
+                data=input_data,
+                content_type="text/libsvm",
+                split_type="Line",
+                wait=True,
+                job_name=f"transform-job-{name()}",
+            )
+
+        _check_run_from_local_end_result(
+            tc=run._trial_component,
+            sagemaker_session=sagemaker_session,
+            is_complete_log=False,
+        )
+        tc_name = Run._generate_trial_component_name(
+            experiment_name=run.experiment_name, run_name=run.run_name
+        )
+        _check_run_from_job_result(
+            tc_name=tc_name, sagemaker_session=sagemaker_session, is_init=False
         )
 
-    _check_run_from_local_end_result(
-        tc=run_obj._trial_component,
+
+# dev_sdk_tar is required to trigger generating the dev SDK tar
+def test_load_run_auto_pass_in_exp_config_to_job(sagemaker_session, dev_sdk_tar):
+    # Notes:
+    # 1. In local side, load the Run created previously and invoke a job under the load context
+    # 2. In the job script, load the 1st Run via exp config auto-passed to the job env
+    # 3. All data are logged in the Run either locally or in the transform job
+    exp_name = unique_name_from_base(_EXP_NAME_BASE_IN_SCRIPT)
+    processor = FrameworkProcessor(
+        estimator_cls=PyTorch,
+        framework_version="1.10",
+        py_version="py38",
+        instance_count=1,
+        instance_type="ml.m5.xlarge",
+        role=EXECUTION_ROLE,
         sagemaker_session=sagemaker_session,
-        is_complete_log=False,
     )
-    tc_name = Run._generate_trial_component_name(
-        experiment_name=run_obj.experiment_name, run_name=run_obj.run_name
-    )
-    _check_run_from_job_result(tc_name=tc_name, sagemaker_session=sagemaker_session, is_init=False)
+
+    with cleanup_exp_resources(exp_names=[exp_name], sagemaker_session=sagemaker_session):
+        with Run(
+            experiment_name=exp_name,
+            run_name=_RUN_NAME_IN_SCRIPT,
+            sagemaker_session=sagemaker_session,
+        ) as run:
+            _local_run_log_behaviors(is_complete_log=False, sagemaker_session=sagemaker_session)
+
+        with load_run(
+            experiment_name=run.experiment_name,
+            run_name=run.run_name,
+            sagemaker_session=sagemaker_session,
+        ):
+            processor.run(
+                code=_PYTHON_PROCESS_SCRIPT,
+                source_dir=_EXP_DIR,
+                job_name=f"process-job-{name()}",
+                wait=True,  # wait the job to finish
+                logs=False,
+            )
+
+        _check_run_from_local_end_result(
+            tc=run._trial_component,
+            sagemaker_session=sagemaker_session,
+            is_complete_log=False,
+        )
+        tc_name = Run._generate_trial_component_name(
+            experiment_name=run.experiment_name, run_name=run.run_name
+        )
+        _check_run_from_job_result(
+            tc_name=tc_name, sagemaker_session=sagemaker_session, is_init=False
+        )
 
 
 def test_list(run_obj, sagemaker_session):
