@@ -144,7 +144,7 @@ PYTORCHDDP_SUPPORTED_FRAMEWORK_VERSIONS = [
     "1.12",
     "1.12.0",
     "1.12.1",
-    "1.13.1"
+    "1.13.1",
 ]
 
 
