@@ -664,6 +664,10 @@ class Run(object):
             if self._inside_load_context:
                 raise RuntimeError(nested_with_err_msg_template.format("load_run"))
             self._inside_load_context = True
+            if not self._inside_init_context:
+                # Add to run context only if the load_run is called separately
+                # without under a Run init context
+                _RunContext.add_run_object(self)
         else:
             if _RunContext.get_current_run():
                 raise RuntimeError(nested_with_err_msg_template.format("Run"))
@@ -692,6 +696,8 @@ class Run(object):
         if self._in_load:
             self._inside_load_context = False
             self._in_load = False
+            if not self._inside_init_context:
+                _RunContext.drop_current_run()
         else:
             self._inside_init_context = False
             _RunContext.drop_current_run()
