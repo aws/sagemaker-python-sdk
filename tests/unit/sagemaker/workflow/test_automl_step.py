@@ -15,7 +15,6 @@ from __future__ import absolute_import
 import json
 
 import pytest
-from mock import Mock, PropertyMock
 from sagemaker.automl.automl import AutoML, AutoMLInput
 from sagemaker.exceptions import AutoMLStepInvalidModeError
 from sagemaker.workflow import ParameterString
@@ -23,49 +22,7 @@ from sagemaker.workflow import ParameterString
 from sagemaker.workflow.automl_step import AutoMLStep
 from sagemaker.workflow.model_step import ModelStep
 from sagemaker.workflow.pipeline import Pipeline
-from sagemaker.workflow.pipeline_context import PipelineSession
-
-REGION = "us-west-2"
-BUCKET = "my-bucket"
-ROLE = "DummyRole"
-
-
-@pytest.fixture
-def client():
-    """Mock client.
-    Considerations when appropriate:
-        * utilize botocore.stub.Stubber
-        * separate runtime client from client
-    """
-    client_mock = Mock()
-    client_mock._client_config.user_agent = (
-        "Boto3/1.14.24 Python/3.8.5 Linux/5.4.0-42-generic Botocore/1.17.24 Resource"
-    )
-    return client_mock
-
-
-@pytest.fixture
-def boto_session(client):
-    role_mock = Mock()
-    type(role_mock).arn = PropertyMock(return_value=ROLE)
-
-    resource_mock = Mock()
-    resource_mock.Role.return_value = role_mock
-
-    session_mock = Mock(region_name=REGION)
-    session_mock.resource.return_value = resource_mock
-    session_mock.client.return_value = client
-
-    return session_mock
-
-
-@pytest.fixture
-def pipeline_session(boto_session, client):
-    return PipelineSession(
-        boto_session=boto_session,
-        sagemaker_client=client,
-        default_bucket=BUCKET,
-    )
+from tests.unit.sagemaker.workflow.conftest import ROLE
 
 
 def test_single_automl_step(pipeline_session):

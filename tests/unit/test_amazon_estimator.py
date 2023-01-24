@@ -23,6 +23,7 @@ from sagemaker.amazon.amazon_estimator import (
     _build_shards,
     FileSystemRecordSet,
 )
+from sagemaker.session_settings import SessionSettings
 
 COMMON_ARGS = {"role": "myrole", "instance_count": 1, "instance_type": "ml.c4.xlarge"}
 
@@ -40,6 +41,7 @@ def sagemaker_session():
         region_name=REGION,
         config=None,
         local_mode=False,
+        settings=SessionSettings(),
     )
     sms.boto_region_name = REGION
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)

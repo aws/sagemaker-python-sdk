@@ -14,28 +14,11 @@ from __future__ import absolute_import
 
 import json
 
-import pytest
-
-from mock import Mock
-
 from sagemaker.workflow.emr_step import EMRStep, EMRStepConfig
 from sagemaker.workflow.steps import CacheConfig
 from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
 from sagemaker.workflow.parameters import ParameterString
 from tests.unit.sagemaker.workflow.helpers import CustomStep, ordered
-
-
-@pytest.fixture()
-def sagemaker_session():
-    boto_mock = Mock(name="boto_session", region_name="us-west-2")
-    session_mock = Mock(
-        name="sagemaker_session",
-        boto_session=boto_mock,
-        boto_region_name="us-west-2",
-        config=None,
-        local_mode=False,
-    )
-    return session_mock
 
 
 def test_emr_step_with_one_step_config(sagemaker_session):

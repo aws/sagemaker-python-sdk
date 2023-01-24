@@ -12,23 +12,13 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-from mock.mock import Mock
-import pytest
+from botocore.exceptions import WaiterError
 
-from sagemaker.session_settings import SessionSettings
-
-REGION_NAME = "us-west-2"
-BUCKET_NAME = "some-bucket-name"
+from sagemaker.workflow.pipeline import _PipelineExecution
 
 
-@pytest.fixture(scope="module")
-def session():
-    boto_mock = Mock(region_name=REGION_NAME)
-    sms = Mock(
-        boto_session=boto_mock,
-        boto_region_name=REGION_NAME,
-        config=None,
-        settings=SessionSettings(),
-    )
-    sms.default_bucket = Mock(return_value=BUCKET_NAME)
-    return sms
+def wait_pipeline_execution(execution: _PipelineExecution, delay: int = 30, max_attempts: int = 60):
+    try:
+        execution.wait(delay=delay, max_attempts=max_attempts)
+    except WaiterError:
+        pass
