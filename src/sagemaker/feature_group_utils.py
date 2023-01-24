@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 
 def _get_session_from_role(role: str, region: str) -> Session:
-    """Method use to get the ":class:~`sagemaker.session.Session`"  from a role and a region.
+    """Method use to get the :class:`sagemaker.session.Session`  from a role and a region.
 
     Helpful in case it's invoke from a session with a role without permission it can assume
     another role temporarily to perform certain taks.
@@ -89,7 +89,7 @@ def get_feature_group_as_dataframe(
     verbose: bool = True,
     **pandas_read_csv_kwargs,
 ) -> DataFrame:
-    """Get a ":class:~`sagemaker.feature_store.feature_group.FeatureGroup`" as a pandas.DataFrame
+    """Get a :class:`sagemaker.feature_store.feature_group.FeatureGroup` as a pandas.DataFrame
 
     Description:
         Method to run an athena query over a Feature Group in a Feature Store
@@ -107,7 +107,7 @@ def get_feature_group_as_dataframe(
                     'SELECT * FROM "sagemaker_featurestore"."#{table}"'
         athena_bucket (str): Amazon S3 bucket for running the query
         role (str): role of the account used to extract data from feature store
-        session (str): ":class:"~`sagemaker.session.Session`"
+        session (str): :class:`sagemaker.session.Session`
                         of SageMaker used to work with the feature store
         event_time_feature_name (str): eventTimeId feature. Mandatory only if the
                                         latest ingestion is True
@@ -174,10 +174,12 @@ def get_feature_group_as_dataframe(
 
 
 def _format_column_names(data: pandas.DataFrame) -> pandas.DataFrame:
-    """Formats the column names in a valid way for ":class:~`sagemaker.feature_store.feature_group.FeatureGroup`"
+    """Formats the column names in a valid way for
+    :class:`sagemaker.feature_store.feature_group.FeatureGroup`
 
-    Module to format correctly the name of the columns of a DataFrame
-    to later generate the features names of a Feature Group
+    Description:
+        Module to format correctly the name of the columns of a DataFrame
+        to later generate the features names of a Feature Group
 
     Args:
         data (pandas.DataFrame): dataframe used
@@ -218,13 +220,14 @@ def prepare_fg_from_dataframe_or_file(
     **pandas_read_csv_kwargs,
 ) -> FeatureGroup:
     """Module to prepare a dataframe before creating a
-        ":class:"~`sagemaker.feature_store.feature_group.FeatureGroup`"
+    :class:`sagemaker.feature_store.feature_group.FeatureGroup`
 
-    Function to prepare a dataframe for creating a Feature Group from a pandas.DataFrame
-    or a path to a file with proper dtypes, feature names and mandatory features (record_id,
-    event_id). It needs the sagemaker.Session linked to a role or the role and region used
-    to work Feature Stores. If record_id or event_id are not specified it will create ones
-    by default with the names 'record_id' and 'data_as_of_date'.
+    Description:
+        Function to prepare a dataframe for creating a Feature Group from a pandas.DataFrame
+        or a path to a file with proper dtypes, feature names and mandatory features (record_id,
+        event_id). It needs the sagemaker.Session linked to a role or the role and region used
+        to work Feature Stores. If record_id or event_id are not specified it will create ones
+        by default with the names 'record_id' and 'data_as_of_date'.
 
     Args:
         feature_group_name (str): feature group name
@@ -242,7 +245,7 @@ def prepare_fg_from_dataframe_or_file(
         session (str): session of SageMaker used to work with the feature store
 
     Returns:
-        ":class:"~`sagemaker.feature_store.feature_group.FeatureGroup`": FG prepared with all
+        :class:`sagemaker.feature_store.feature_group.FeatureGroup`: FG prepared with all
             the methods and definitions properly defined
     """
 
