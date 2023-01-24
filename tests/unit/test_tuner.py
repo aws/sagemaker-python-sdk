@@ -30,6 +30,7 @@ from sagemaker.jumpstart.constants import (
 from sagemaker.jumpstart.enums import JumpStartTag
 from sagemaker.mxnet import MXNet
 from sagemaker.parameter import ParameterRange
+from sagemaker.session_settings import SessionSettings
 from sagemaker.tuner import (
     HYPERBAND_MAX_RESOURCE,
     HYPERBAND_MIN_RESOURCE,
@@ -55,6 +56,7 @@ def sagemaker_session():
         boto_session=boto_mock,
         s3_client=None,
         s3_resource=None,
+        settings=SessionSettings(),
     )
     sms.boto_region_name = REGION
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)

@@ -16,6 +16,7 @@ import pytest
 from mock import Mock
 
 from sagemaker import image_uris
+from sagemaker.session_settings import SessionSettings
 from sagemaker.sparkml import SparkMLModel, SparkMLPredictor
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
@@ -40,6 +41,7 @@ def sagemaker_session():
         region_name=REGION,
         config=None,
         local_mode=False,
+        settings=SessionSettings(),
     )
     sms.boto_region_name = REGION
     sms.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)

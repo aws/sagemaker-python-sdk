@@ -42,6 +42,7 @@ ALGO_REGISTRIES = {
     "us-gov-west-1": "226302683700",
     "us-gov-east-1": "237065988967",
     "us-iso-east-1": "490574956308",
+    "us-isob-east-1": "765400339828",
     "us-west-1": "632365934929",
     "us-west-2": "433757028032",
 }
@@ -76,6 +77,7 @@ FRAMEWORK_REGISTRIES = {
     "us-gov-west-1": "414596584902",
     "us-gov-east-1": "237065988967",
     "us-iso-east-1": "833128469047",
+    "us-isob-east-1": "281123927165",
     "us-west-1": "746614075791",
     "us-west-2": "246618743249",
 }

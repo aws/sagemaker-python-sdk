@@ -56,6 +56,7 @@ PARAMETER_SERVER_MULTI_GPU_WARNING = (
 
 DEBUGGER_UNSUPPORTED_REGIONS = (
     "us-iso-east-1",
+    "us-isob-east-1",
     "ap-southeast-3",
     "ap-southeast-4",
     "eu-south-2",
@@ -66,6 +67,7 @@ DEBUGGER_UNSUPPORTED_REGIONS = (
 )
 PROFILER_UNSUPPORTED_REGIONS = (
     "us-iso-east-1",
+    "us-isob-east-1",
     "ap-southeast-3",
     "ap-southeast-4",
     "eu-south-2",
@@ -422,7 +424,20 @@ def tar_and_upload_dir(
     script_name = script if directory else os.path.basename(script)
     dependencies = dependencies or []
     key = "%s/sourcedir.tar.gz" % s3_key_prefix
-    tmp = tempfile.mkdtemp()
+    if (
+        settings is not None
+        and settings.local_download_dir is not None
+        and not (
+            os.path.exists(settings.local_download_dir)
+            and os.path.isdir(settings.local_download_dir)
+        )
+    ):
+        raise ValueError(
+            "Inputted directory for storing newly generated temporary directory does "
+            f"not exist: '{settings.local_download_dir}'"
+        )
+    local_download_dir = None if settings is None else settings.local_download_dir
+    tmp = tempfile.mkdtemp(dir=local_download_dir)
     encrypt_artifact = True if settings is None else settings.encrypt_repacked_artifacts
 
     try:

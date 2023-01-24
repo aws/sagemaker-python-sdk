@@ -14,14 +14,12 @@ from __future__ import absolute_import
 
 import os
 import json
-from mock import Mock, PropertyMock
 import pytest
 import warnings
 
 from sagemaker import Model, Processor
 from sagemaker.estimator import Estimator
 from sagemaker.transformer import Transformer
-from sagemaker.workflow.pipeline_context import PipelineSession
 
 from sagemaker.workflow.steps import TuningStep
 from sagemaker.inputs import TrainingInput
@@ -34,50 +32,7 @@ from sagemaker.pytorch.estimator import PyTorch
 
 from tests.unit import DATA_DIR
 from tests.unit.sagemaker.workflow.helpers import get_step_args_helper
-
-REGION = "us-west-2"
-BUCKET = "my-bucket"
-ROLE = "DummyRole"
-IMAGE_URI = "fakeimage"
-INSTANCE_TYPE = "ml.m4.xlarge"
-
-
-@pytest.fixture
-def client():
-    """Mock client.
-    Considerations when appropriate:
-        * utilize botocore.stub.Stubber
-        * separate runtime client from client
-    """
-    client_mock = Mock()
-    client_mock._client_config.user_agent = (
-        "Boto3/1.14.24 Python/3.8.5 Linux/5.4.0-42-generic Botocore/1.17.24 Resource"
-    )
-    return client_mock
-
-
-@pytest.fixture
-def boto_session(client):
-    role_mock = Mock()
-    type(role_mock).arn = PropertyMock(return_value=ROLE)
-
-    resource_mock = Mock()
-    resource_mock.Role.return_value = role_mock
-
-    session_mock = Mock(region_name=REGION)
-    session_mock.resource.return_value = resource_mock
-    session_mock.client.return_value = client
-
-    return session_mock
-
-
-@pytest.fixture
-def pipeline_session(boto_session, client):
-    return PipelineSession(
-        boto_session=boto_session,
-        sagemaker_client=client,
-        default_bucket=BUCKET,
-    )
+from tests.unit.sagemaker.workflow.conftest import ROLE, INSTANCE_TYPE, IMAGE_URI
 
 
 @pytest.fixture
