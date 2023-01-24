@@ -43,7 +43,11 @@ def cd(path):
 def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name="us-west-2")
     session_mock = Mock(
-        name="sagemaker_session", boto_session=boto_mock, s3_client=None, s3_resource=None
+        name="sagemaker_session",
+        boto_session=boto_mock,
+        s3_client=None,
+        s3_resource=None,
+        settings=SessionSettings(),
     )
     session_mock.default_bucket = Mock(name="default_bucket", return_value="my-bucket")
     session_mock.expand_role = Mock(name="expand_role", return_value="my-role")
@@ -617,6 +621,7 @@ def test_region_supports_debugger_feature_returns_true_for_supported_regions():
 
 def test_region_supports_debugger_feature_returns_false_for_unsupported_regions():
     assert fw_utils._region_supports_debugger("us-iso-east-1") is False
+    assert fw_utils._region_supports_debugger("us-isob-east-1") is False
     assert fw_utils._region_supports_debugger("ap-southeast-3") is False
     assert fw_utils._region_supports_debugger("ap-southeast-4") is False
     assert fw_utils._region_supports_debugger("eu-south-2") is False
