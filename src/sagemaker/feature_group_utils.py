@@ -174,8 +174,7 @@ def get_feature_group_as_dataframe(
 
 
 def _format_column_names(data: pandas.DataFrame) -> pandas.DataFrame:
-    """Formats the column names in a valid way for
-    :class:`sagemaker.feature_store.feature_group.FeatureGroup`
+    """Formats the column names for :class:`sagemaker.feature_store.feature_group.FeatureGroup`
 
     Description:
         Module to format correctly the name of the columns of a DataFrame
@@ -219,8 +218,7 @@ def prepare_fg_from_dataframe_or_file(
     verbose: bool = False,
     **pandas_read_csv_kwargs,
 ) -> FeatureGroup:
-    """Module to prepare a dataframe before creating a
-    :class:`sagemaker.feature_store.feature_group.FeatureGroup`
+    """Prepares a dataframe to create a :class:`sagemaker.feature_store.feature_group.FeatureGroup`
 
     Description:
         Function to prepare a dataframe for creating a Feature Group from a pandas.DataFrame
