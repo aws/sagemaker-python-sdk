@@ -224,7 +224,10 @@ def pytorch_training_py_version(pytorch_training_version, request):
     if Version(pytorch_training_version) < Version("1.5.0"):
         return request.param
     elif Version(pytorch_training_version) >= Version("1.9"):
-        return "py38"
+        if Version(pytorch_inference_version) >= Version("1.13.1"):
+            return "py39"
+        else: 
+            return "py38"
     else:
         return "py3"
 
@@ -234,7 +237,10 @@ def pytorch_inference_py_version(pytorch_inference_version, request):
     if Version(pytorch_inference_version) < Version("1.4.0"):
         return request.param
     elif Version(pytorch_inference_version) >= Version("1.9"):
-        return "py38"
+        if Version(pytorch_inference_version) >= Version("1.13.1"):
+            return "py39"
+        else: 
+            return "py38"
     else:
         return "py3"
 
