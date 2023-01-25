@@ -13,7 +13,6 @@
 """Utilities to support workflow."""
 from __future__ import absolute_import
 
-import os
 import inspect
 import logging
 from functools import wraps

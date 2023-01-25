@@ -448,7 +448,7 @@ def test_multi_step_framework_processing_pipeline_same_source_dir(
             default_bucket,
             pipeline_name,
             definition["Steps"][0],
-            SOURCE_DIR,
+            DATA_DIR + SOURCE_DIR,
             "script_1.py",
         )
 
@@ -458,7 +458,7 @@ def test_multi_step_framework_processing_pipeline_same_source_dir(
             default_bucket,
             pipeline_name,
             definition["Steps"][1],
-            SOURCE_DIR,
+            DATA_DIR + SOURCE_DIR,
             "script_2.py",
         )
 
@@ -543,7 +543,7 @@ def test_multi_step_framework_processing_pipeline_different_source_dir(
             default_bucket,
             pipeline_name,
             definition["Steps"][0],
-            SOURCE_DIR_1,
+            DATA_DIR + SOURCE_DIR_1,
             "script_1.py",
         )
 
@@ -553,7 +553,7 @@ def test_multi_step_framework_processing_pipeline_different_source_dir(
             default_bucket,
             pipeline_name,
             definition["Steps"][1],
-            SOURCE_DIR_2,
+            DATA_DIR + SOURCE_DIR_2,
             "script_2.py",
         )
 
@@ -570,7 +570,7 @@ def test_multi_step_framework_processing_pipeline_different_source_dir(
             default_bucket,
             pipeline_name,
             definition["Steps"][1],
-            SOURCE_DIR_2,
+            DATA_DIR + SOURCE_DIR_2,
             "script_2.py",
         )
 
@@ -1016,15 +1016,16 @@ def test_two_processing_job_depends_on(
         except Exception:
             pass
 
-
+# Verifies that the processing step artifacts are created as expected.
+# Requires that source_dir and entry_point are exactly those passed to the processing step.
 def _verify_code_artifacts_of_framework_processing_step(
     pipeline_session, processor, bucket, pipeline_name, step_definition, source_dir, entry_point
 ):
 
     files_to_hash = []
     if entry_point is not None:
-        files_to_hash.append(f'{DATA_DIR}{source_dir}/{entry_point}')
-    files_to_hash.append(f'{DATA_DIR}{source_dir}')
+        files_to_hash.append(source_dir)
+    files_to_hash.append(entry_point)
     file_hash = hash_files_or_dirs(files_to_hash)
 
     source_dir_s3_uri = (
