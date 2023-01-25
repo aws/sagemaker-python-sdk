@@ -993,6 +993,7 @@ def test_two_processing_job_depends_on(
         except Exception:
             pass
 
+
 # Verifies that the processing step artifacts are created as expected.
 # Requires that source_dir and entry_point are exactly those passed to the processing step.
 def _verify_code_artifacts_of_framework_processing_step(
@@ -1005,9 +1006,7 @@ def _verify_code_artifacts_of_framework_processing_step(
     files_to_hash.append(entry_point)
     file_hash = hash_files_or_dirs(files_to_hash)
 
-    source_dir_s3_uri = (
-        f"s3://{bucket}/{pipeline_name}/code/{file_hash}"
-    )
+    source_dir_s3_uri = f"s3://{bucket}/{pipeline_name}/code/{file_hash}"
 
     # verify runproc.sh prefix is different from code artifact prefix
     runprocs = []
@@ -1021,9 +1020,7 @@ def _verify_code_artifacts_of_framework_processing_step(
     # verify only one entrypoint generated per step
     assert len(runprocs) == 1
 
-    expected_source_dir_tar = (
-        f"{pipeline_name}/code/{file_hash}/sourcedir.tar.gz"
-    )
+    expected_source_dir_tar = f"{pipeline_name}/code/{file_hash}/sourcedir.tar.gz"
 
     step_script = processor._generate_framework_script(entry_point)
     expected_step_artifact = f"{pipeline_name}/code/{hash_object(step_script)}/runproc.sh"
