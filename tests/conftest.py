@@ -88,6 +88,7 @@ FRAMEWORKS_FOR_GENERATED_VERSION_FIXTURES = (
 
 PYTORCH_RENEWED_GPU = "ml.g4dn.xlarge"
 
+
 def pytest_addoption(parser):
     parser.addoption("--sagemaker-client-config", action="store", default=None)
     parser.addoption("--sagemaker-runtime-config", action="store", default=None)
@@ -257,9 +258,13 @@ def huggingface_pytorch_training_py_version(huggingface_pytorch_training_version
 
 
 @pytest.fixture(scope="module")
-def huggingface_training_compiler_pytorch_version(huggingface_training_compiler_version):
+def huggingface_training_compiler_pytorch_version(
+    huggingface_training_compiler_version,
+):
     versions = _huggingface_base_fm_version(
-        huggingface_training_compiler_version, "pytorch", "huggingface_training_compiler"
+        huggingface_training_compiler_version,
+        "pytorch",
+        "huggingface_training_compiler",
     )
     if not versions:
         pytest.skip(
@@ -270,9 +275,13 @@ def huggingface_training_compiler_pytorch_version(huggingface_training_compiler_
 
 
 @pytest.fixture(scope="module")
-def huggingface_training_compiler_tensorflow_version(huggingface_training_compiler_version):
+def huggingface_training_compiler_tensorflow_version(
+    huggingface_training_compiler_version,
+):
     versions = _huggingface_base_fm_version(
-        huggingface_training_compiler_version, "tensorflow", "huggingface_training_compiler"
+        huggingface_training_compiler_version,
+        "tensorflow",
+        "huggingface_training_compiler",
     )
     if not versions:
         pytest.skip(
@@ -294,19 +303,25 @@ def huggingface_training_compiler_tensorflow_py_version(
 
 
 @pytest.fixture(scope="module")
-def huggingface_training_compiler_pytorch_py_version(huggingface_training_compiler_pytorch_version):
+def huggingface_training_compiler_pytorch_py_version(
+    huggingface_training_compiler_pytorch_version,
+):
     return "py38"
 
 
 @pytest.fixture(scope="module")
-def huggingface_pytorch_latest_training_py_version(huggingface_training_pytorch_latest_version):
+def huggingface_pytorch_latest_training_py_version(
+    huggingface_training_pytorch_latest_version,
+):
     return (
         "py38" if Version(huggingface_training_pytorch_latest_version) >= Version("1.9") else "py36"
     )
 
 
 @pytest.fixture(scope="module")
-def huggingface_pytorch_latest_inference_py_version(huggingface_inference_pytorch_latest_version):
+def huggingface_pytorch_latest_inference_py_version(
+    huggingface_inference_pytorch_latest_version,
+):
     return (
         "py38"
         if Version(huggingface_inference_pytorch_latest_version) >= Version("1.9")
@@ -482,7 +497,8 @@ def pytorch_ddp_py_version():
 
 
 @pytest.fixture(
-    scope="module", params=["1.10", "1.10.0", "1.10.2", "1.11", "1.11.0", "1.12", "1.12.0"]
+    scope="module",
+    params=["1.10", "1.10.0", "1.10.2", "1.11", "1.11.0", "1.12", "1.12.0"],
 )
 def pytorch_ddp_framework_version(request):
     return request.param
@@ -515,6 +531,7 @@ def gpu_instance_type(sagemaker_session, request):
     else:
         return "ml.p3.2xlarge"
 
+
 @pytest.fixture()
 def gpu_pytorch_instance_type(sagemaker_session, request):
     if "pytorch_inference_version" in request.fixturenames:
@@ -530,6 +547,7 @@ def gpu_pytorch_instance_type(sagemaker_session, request):
             return "ml.p2.xlarge"
     else:
         return "ml.p3.2xlarge"
+
 
 @pytest.fixture(scope="session")
 def gpu_instance_type_list(sagemaker_session, request):

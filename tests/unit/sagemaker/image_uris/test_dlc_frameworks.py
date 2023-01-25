@@ -73,7 +73,7 @@ def _test_image_uris(
 
     TYPES_AND_PROCESSORS = INSTANCE_TYPES_AND_PROCESSORS
     if framework == "pytorch" and Version(fw_version) >= Version("1.13"):
-        '''Handle P2 deprecation'''
+        """Handle P2 deprecation"""
         TYPES_AND_PROCESSORS = RENEWED_PYTORCH_INSTANCE_TYPES_AND_PROCESSORS
 
     for instance_type, processor in TYPES_AND_PROCESSORS:
