@@ -43,7 +43,11 @@ def cd(path):
 def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name="us-west-2")
     session_mock = Mock(
-        name="sagemaker_session", boto_session=boto_mock, s3_client=None, s3_resource=None
+        name="sagemaker_session",
+        boto_session=boto_mock,
+        s3_client=None,
+        s3_resource=None,
+        settings=SessionSettings(),
     )
     session_mock.default_bucket = Mock(name="default_bucket", return_value="my-bucket")
     session_mock.expand_role = Mock(name="expand_role", return_value="my-role")
@@ -617,6 +621,7 @@ def test_region_supports_debugger_feature_returns_true_for_supported_regions():
 
 def test_region_supports_debugger_feature_returns_false_for_unsupported_regions():
     assert fw_utils._region_supports_debugger("us-iso-east-1") is False
+    assert fw_utils._region_supports_debugger("us-isob-east-1") is False
     assert fw_utils._region_supports_debugger("ap-southeast-3") is False
     assert fw_utils._region_supports_debugger("ap-southeast-4") is False
     assert fw_utils._region_supports_debugger("eu-south-2") is False
@@ -886,8 +891,10 @@ def test_validate_smdataparallel_args_not_raises():
         ("ml.p3.16xlarge", "tensorflow", "2.9.2", "py39", smdataparallel_enabled),
         ("ml.p3.16xlarge", "tensorflow", "2.9.1", "py39", smdataparallel_enabled),
         ("ml.p3.16xlarge", "tensorflow", "2.9", "py39", smdataparallel_enabled),
-        ("ml.p3.16xlarge", "tensorflow", "2.10.0", "py39", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "tensorflow", "2.10.1", "py39", smdataparallel_enabled),
         ("ml.p3.16xlarge", "tensorflow", "2.10", "py39", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "tensorflow", "2.11.0", "py39", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "tensorflow", "2.11", "py39", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.6.0", "py3", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.6", "py3", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.7.1", "py3", smdataparallel_enabled),
@@ -917,7 +924,8 @@ def test_validate_smdataparallel_args_not_raises():
         ("ml.p3.16xlarge", "tensorflow", "2.8.0", "py39", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "tensorflow", "2.9.1", "py39", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "tensorflow", "2.9.2", "py39", smdataparallel_enabled_custom_mpi),
-        ("ml.p3.16xlarge", "tensorflow", "2.10.0", "py39", smdataparallel_enabled_custom_mpi),
+        ("ml.p3.16xlarge", "tensorflow", "2.10.1", "py39", smdataparallel_enabled_custom_mpi),
+        ("ml.p3.16xlarge", "tensorflow", "2.11.0", "py39", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "pytorch", "1.8.0", "py3", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "pytorch", "1.9.1", "py38", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "pytorch", "1.10.2", "py38", smdataparallel_enabled_custom_mpi),

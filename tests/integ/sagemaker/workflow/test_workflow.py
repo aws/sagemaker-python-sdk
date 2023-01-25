@@ -22,9 +22,9 @@ import shutil
 from contextlib import contextmanager
 import pytest
 
-from botocore.exceptions import WaiterError
 import pandas as pd
 
+from tests.integ.sagemaker.workflow.helpers import wait_pipeline_execution
 from tests.integ.s3_utils import extract_files_from_s3
 from sagemaker.workflow.model_step import (
     ModelStep,
@@ -588,10 +588,7 @@ def test_one_step_ingestion_pipeline(
             response = execution.describe()
             assert response["PipelineArn"] == create_arn
 
-            try:
-                execution.wait(delay=60, max_attempts=10)
-            except WaiterError:
-                pass
+            wait_pipeline_execution(execution=execution, delay=60, max_attempts=10)
 
             execution_steps = execution.list_steps()
 
@@ -1119,10 +1116,7 @@ def test_model_registration_with_tuning_model(
             rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
-        try:
-            execution.wait(delay=30, max_attempts=60)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution)
         execution_steps = execution.list_steps()
 
         for step in execution_steps:

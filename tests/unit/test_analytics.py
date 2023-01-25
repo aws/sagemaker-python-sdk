@@ -24,6 +24,7 @@ from sagemaker.analytics import (
     HyperparameterTuningJobAnalytics,
     TrainingJobAnalytics,
 )
+from sagemaker.session_settings import SessionSettings
 
 BUCKET_NAME = "mybucket"
 REGION = "us-west-2"
@@ -47,6 +48,7 @@ def create_sagemaker_session(
         boto_region_name=REGION,
         config=None,
         local_mode=False,
+        settings=SessionSettings(),
     )
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     sms.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(

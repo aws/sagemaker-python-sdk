@@ -16,17 +16,17 @@ from unittest.mock import Mock, PropertyMock
 
 import pytest
 
-from sagemaker import Session
 from sagemaker.workflow.pipeline_context import PipelineSession
 
 REGION = "us-west-2"
 BUCKET = "my-bucket"
 ROLE = "DummyRole"
 IMAGE_URI = "fakeimage"
+INSTANCE_TYPE = "ml.m4.xlarge"
 
 
 @pytest.fixture(scope="module")
-def client():
+def mock_client():
     """Mock client.
 
     Considerations when appropriate:
@@ -38,11 +38,12 @@ def client():
     client_mock._client_config.user_agent = (
         "Boto3/1.14.24 Python/3.8.5 Linux/5.4.0-42-generic Botocore/1.17.24 Resource"
     )
+    client_mock.describe_model.return_value = {"PrimaryContainer": {}, "Containers": {}}
     return client_mock
 
 
 @pytest.fixture(scope="module")
-def boto_session(client):
+def mock_boto_session(client):
     role_mock = Mock()
     type(role_mock).arn = PropertyMock(return_value=ROLE)
 
@@ -57,19 +58,9 @@ def boto_session(client):
 
 
 @pytest.fixture(scope="module")
-def pipeline_session(boto_session, client):
+def pipeline_session(mock_boto_session, mock_client):
     return PipelineSession(
-        boto_session=boto_session,
-        sagemaker_client=client,
-        default_bucket=BUCKET,
-    )
-
-
-@pytest.fixture(scope="module")
-def sagemaker_session(boto_session, client):
-    return Session(
-        boto_session=boto_session,
-        sagemaker_client=client,
-        sagemaker_runtime_client=client,
+        boto_session=mock_boto_session,
+        sagemaker_client=mock_client,
         default_bucket=BUCKET,
     )

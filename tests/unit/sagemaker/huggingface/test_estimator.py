@@ -20,6 +20,8 @@ import pytest
 from mock import MagicMock, Mock, patch
 
 from sagemaker.huggingface import HuggingFace, HuggingFaceModel
+from sagemaker.session_settings import SessionSettings
+
 
 from .huggingface_utils import get_full_gpu_image_uri, GPU_INSTANCE_TYPE, REGION
 
@@ -63,6 +65,7 @@ def fixture_sagemaker_session():
         local_mode=False,
         s3_resource=None,
         s3_client=None,
+        settings=SessionSettings(),
     )
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}

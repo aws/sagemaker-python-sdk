@@ -16,8 +16,8 @@ import os
 import re
 
 import pytest
-from botocore.exceptions import WaiterError
 
+from tests.integ.sagemaker.workflow.helpers import wait_pipeline_execution
 from sagemaker.workflow import ParameterString
 from sagemaker.workflow.automl_step import AutoMLStep
 from sagemaker.automl.automl import AutoML, AutoMLInput
@@ -133,10 +133,7 @@ def test_automl_step(pipeline_session, role, pipeline_name):
     try:
         _ = pipeline.create(role)
         execution = pipeline.start(parameters={})
-        try:
-            execution.wait(delay=30, max_attempts=60)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution)
 
         execution_steps = execution.list_steps()
         has_automl_job = False

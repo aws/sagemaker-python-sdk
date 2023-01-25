@@ -23,6 +23,7 @@ from mock import Mock, patch, call
 import stopit
 
 from botocore.exceptions import ClientError
+from sagemaker.session_settings import SessionSettings
 
 from tests.integ.timeout import (
     timeout,
@@ -56,6 +57,7 @@ def session():
         boto_region_name=REGION,
         config=None,
         local_mode=True,
+        settings=SessionSettings(),
     )
     sms.default_bucket = Mock(name=DEFAULT_BUCKET_NAME, return_value=BUCKET_NAME)
     return sms

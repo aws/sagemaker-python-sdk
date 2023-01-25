@@ -21,6 +21,7 @@ from mock import Mock
 from mock import patch
 
 from sagemaker.fw_utils import UploadedCode
+from sagemaker.session_settings import SessionSettings
 from sagemaker.sklearn import SKLearn, SKLearnModel, SKLearnPredictor
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -66,6 +67,7 @@ def sagemaker_session():
         local_mode=False,
         s3_resource=None,
         s3_client=None,
+        settings=SessionSettings(),
     )
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}

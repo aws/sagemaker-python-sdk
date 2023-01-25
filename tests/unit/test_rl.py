@@ -21,6 +21,7 @@ from mock import MagicMock, Mock, patch
 
 from sagemaker.mxnet import MXNetModel, MXNetPredictor
 from sagemaker.rl import RLEstimator, RLFramework, RLToolkit, TOOLKIT_FRAMEWORK_VERSION_MAP
+from sagemaker.session_settings import SessionSettings
 from sagemaker.tensorflow import TensorFlowModel, TensorFlowPredictor
 
 
@@ -64,6 +65,7 @@ def fixture_sagemaker_session():
         local_mode=False,
         s3_resource=None,
         s3_client=None,
+        settings=SessionSettings(),
     )
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}

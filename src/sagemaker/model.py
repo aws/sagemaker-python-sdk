@@ -48,6 +48,7 @@ from sagemaker.predictor_async import AsyncPredictor
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline, PipelineSession
+from sagemaker.inference_recommender.inference_recommender_mixin import InferenceRecommenderMixin
 
 LOGGER = logging.getLogger("sagemaker")
 
@@ -83,7 +84,7 @@ SAGEMAKER_REGION_PARAM_NAME = "sagemaker_region"
 SAGEMAKER_OUTPUT_LOCATION = "sagemaker_s3_output"
 
 
-class Model(ModelBase):
+class Model(ModelBase, InferenceRecommenderMixin):
     """A SageMaker ``Model`` that can be deployed to an ``Endpoint``."""
 
     def __init__(
@@ -279,6 +280,8 @@ class Model(ModelBase):
         self._is_compiled_model = False
         self._compilation_job_name = None
         self._is_edge_packaged_model = False
+        self.inference_recommender_job_results = None
+        self.inference_recommendations = None
         self._enable_network_isolation = enable_network_isolation
         self.model_kms_key = model_kms_key
         self.image_config = image_config
@@ -1050,11 +1053,13 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         Args:
             initial_instance_count (int): The initial number of instances to run
                 in the ``Endpoint`` created from this ``Model``. If not using
-                serverless inference, then it need to be a number larger or equals
+                serverless inference or the model has not called ``right_size()``,
+                then it need to be a number larger or equals
                 to 1 (default: None)
             instance_type (str): The EC2 instance type to deploy this Model to.
                 For example, 'ml.p2.xlarge', or 'local' for local mode. If not using
-                serverless inference, then it is required to deploy a model.
+                serverless inference or the model has not called ``right_size()``,
+                then it is required to deploy a model.
                 (default: None)
             serializer (:class:`~sagemaker.serializers.BaseSerializer`): A
                 serializer object, used to encode data for an inference endpoint
@@ -1118,6 +1123,18 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 is not None. Otherwise, return None.
         """
         removed_kwargs("update_endpoint", kwargs)
+
+        if self.inference_recommender_job_results:
+            inference_recommendation = self._check_inference_recommender_args(
+                instance_type,
+                initial_instance_count,
+                accelerator_type,
+                serverless_inference_config,
+                async_inference_config,
+            )
+            if inference_recommendation:
+                instance_type, initial_instance_count = inference_recommendation
+
         self._init_sagemaker_session_if_does_not_exist(instance_type)
 
         tags = add_jumpstart_tags(
@@ -1602,6 +1619,9 @@ class ModelPackage(Model):
             model_package_name = self.model_package_arn
 
         container_def = {"ModelPackageName": model_package_name}
+
+        if self.env != {}:
+            container_def["Environment"] = self.env
 
         self._ensure_base_name_if_needed(model_package_name.split("/")[-1])
         self._set_model_name_if_needed()
