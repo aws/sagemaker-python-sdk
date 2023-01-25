@@ -302,7 +302,12 @@ def test_create_model_with_custom_image(name_from_base, sagemaker_session):
 @patch("sagemaker.estimator.name_from_base", return_value=JOB_NAME)
 @patch("time.time", return_value=TIME)
 def test_pytorch(
-    time, name_from_base, sagemaker_session, pytorch_inference_version, pytorch_inference_py_version, gpu_pytorch_instance_type
+    time,
+    name_from_base,
+    sagemaker_session,
+    pytorch_inference_version,
+    pytorch_inference_py_version,
+    gpu_pytorch_instance_type,
 ):
     pytorch = PyTorch(
         entry_point=SCRIPT_PATH,
@@ -356,7 +361,12 @@ def test_pytorch(
 
 @patch("sagemaker.utils.repack_model", MagicMock())
 @patch("sagemaker.utils.create_tar_file", MagicMock())
-def test_model(sagemaker_session, pytorch_inference_version, pytorch_inference_py_version, gpu_pytorch_instance_type):
+def test_model(
+    sagemaker_session,
+    pytorch_inference_version,
+    pytorch_inference_py_version,
+    gpu_pytorch_instance_type,
+):
     model = PyTorchModel(
         MODEL_DATA,
         role=ROLE,
@@ -429,7 +439,7 @@ def test_model_custom_serialization(
     sagemaker_session,
     pytorch_inference_version,
     pytorch_inference_py_version,
-    gpu_pytorch_instance_type
+    gpu_pytorch_instance_type,
 ):
     model = PyTorchModel(
         MODEL_DATA,
