@@ -86,6 +86,7 @@ FRAMEWORKS_FOR_GENERATED_VERSION_FIXTURES = (
     "huggingface_training_compiler",
 )
 
+PYTORCH_RENEWED_GPU = "ml.g4dn.xlarge"
 
 def pytest_addoption(parser):
     parser.addoption("--sagemaker-client-config", action="store", default=None)
@@ -514,6 +515,21 @@ def gpu_instance_type(sagemaker_session, request):
     else:
         return "ml.p3.2xlarge"
 
+@pytest.fixture()
+def gpu_pytorch_instance_type(sagemaker_session, request):
+    if "pytorch_inference_version" in request.fixturenames:
+        fw_version = request.getfixturevalue("pytorch_inference_version")
+    else:
+        fw_version = request.param
+
+    region = sagemaker_session.boto_session.region_name
+    if region in NO_P3_REGIONS:
+        if Version(fw_version) >= Version("1.13"):
+            return PYTORCH_RENEWED_GPU
+        else:
+            return "ml.p2.xlarge"
+    else:
+        return "ml.p3.2xlarge"
 
 @pytest.fixture(scope="session")
 def gpu_instance_type_list(sagemaker_session, request):
