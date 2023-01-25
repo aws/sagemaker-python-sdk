@@ -264,7 +264,6 @@
             },
             "1.4.0": {
                 "py_versions": [
-                    "py2",
                     "py3"
                 ],
                 "registries": {
