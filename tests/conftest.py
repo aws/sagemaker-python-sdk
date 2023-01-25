@@ -233,12 +233,14 @@ def pytorch_training_py_version(pytorch_training_version, request):
 
 @pytest.fixture(scope="module", params=["py2", "py3"])
 def pytorch_inference_py_version(pytorch_inference_version, request):
-    if Version(pytorch_inference_version) < Version("1.4.0"):
-        return request.param
+    if Version(pytorch_inference_version) >= Version("1.13"):
+        return "py39"
     elif Version(pytorch_inference_version) >= Version("1.9"):
         return "py38"
-    else:
+    elif Version(pytorch_inference_version) >= Version("1.5"):
         return "py3"
+    else:
+        return request.param
 
 
 @pytest.fixture(scope="module")

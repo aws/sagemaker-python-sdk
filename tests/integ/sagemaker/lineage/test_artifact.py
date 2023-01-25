@@ -22,6 +22,8 @@ import pytest
 from sagemaker.lineage import artifact
 from sagemaker.utils import retry_with_backoff
 
+CREATION_VERIFICATION_WINDOW_MINUTES = 2
+
 
 def test_create_delete(artifact_obj):
     # fixture does create and then delete, this test ensures it happens at least once
@@ -81,7 +83,7 @@ def test_list(artifact_objs, sagemaker_session):
 
 
 def test_list_by_type(artifact_objs, sagemaker_session):
-    slack = datetime.timedelta(minutes=1)
+    slack = datetime.timedelta(minutes=CREATION_VERIFICATION_WINDOW_MINUTES)
     now = datetime.datetime.now(datetime.timezone.utc)
     expected_name = list(
         filter(lambda x: x.artifact_type == "SDKIntegrationTestType2", artifact_objs)
