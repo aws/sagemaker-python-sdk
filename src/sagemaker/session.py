@@ -488,6 +488,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         metric_definitions,
         enable_network_isolation=False,
         image_uri=None,
+        training_image_config=None,
         algorithm_arn=None,
         encrypt_inter_container_traffic=False,
         use_spot_instances=False,
@@ -548,6 +549,28 @@ class Session(object):  # pylint: disable=too-many-public-methods
             enable_network_isolation (bool): Whether to request for the training job to run with
                 network isolation or not.
             image_uri (str): Docker image containing training code.
+            training_image_config(dict): Training image configuration.
+                Optionally, the dict can contain 'TrainingRepositoryAccessMode' and
+                'TrainingRepositoryCredentialsProviderArn' (under 'TrainingRepositoryAuthConfig').
+                For example,
+
+                .. code:: python
+
+                    training_image_config = {
+                        "TrainingRepositoryAccessMode": "Vpc",
+                        "TrainingRepositoryAuthConfig": {
+                            "TrainingRepositoryCredentialsProviderArn":
+                              "arn:aws:lambda:us-west-2:1234567890:function:test"
+                        },
+                    }
+
+                If TrainingRepositoryAccessMode is set to Vpc, the training image is accessed
+                through a private Docker registry in customer Vpc. If it's set to Platform or None,
+                the training image is accessed through ECR.
+                If TrainingRepositoryCredentialsProviderArn is provided, the credentials to
+                authenticate to the private Docker registry will be retrieved from this AWS Lambda
+                function. (default: ``None``). When it's set to None, SageMaker will not do
+                authentication before pulling the image in the private Docker registry.
             algorithm_arn (str): Algorithm Arn from Marketplace.
             encrypt_inter_container_traffic (bool): Specifies whether traffic between training
                 containers is encrypted for the training job (default: ``False``).
@@ -606,6 +629,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             metric_definitions=metric_definitions,
             enable_network_isolation=enable_network_isolation,
             image_uri=image_uri,
+            training_image_config=training_image_config,
             algorithm_arn=algorithm_arn,
             encrypt_inter_container_traffic=encrypt_inter_container_traffic,
             use_spot_instances=use_spot_instances,
@@ -644,6 +668,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         metric_definitions,
         enable_network_isolation=False,
         image_uri=None,
+        training_image_config=None,
         algorithm_arn=None,
         encrypt_inter_container_traffic=False,
         use_spot_instances=False,
@@ -704,6 +729,28 @@ class Session(object):  # pylint: disable=too-many-public-methods
             enable_network_isolation (bool): Whether to request for the training job to run with
                 network isolation or not.
             image_uri (str): Docker image containing training code.
+            training_image_config(dict): Training image configuration.
+                Optionally, the dict can contain 'TrainingRepositoryAccessMode' and
+                'TrainingRepositoryCredentialsProviderArn' (under 'TrainingRepositoryAuthConfig').
+                For example,
+
+                .. code:: python
+
+                    training_image_config = {
+                        "TrainingRepositoryAccessMode": "Vpc",
+                        "TrainingRepositoryAuthConfig": {
+                            "TrainingRepositoryCredentialsProviderArn":
+                              "arn:aws:lambda:us-west-2:1234567890:function:test"
+                        },
+                    }
+
+                If TrainingRepositoryAccessMode is set to Vpc, the training image is accessed
+                through a private Docker registry in customer Vpc. If it's set to Platform or None,
+                the training image is accessed through ECR.
+                If TrainingRepositoryCredentialsProviderArn is provided, the credentials to
+                authenticate to the private Docker registry will be retrieved from this AWS Lambda
+                function. (default: ``None``). When it's set to None, SageMaker will not do
+                authentication before pulling the image in the private Docker registry.
             algorithm_arn (str): Algorithm Arn from Marketplace.
             encrypt_inter_container_traffic (bool): Specifies whether traffic between training
                 containers is encrypted for the training job (default: ``False``).
@@ -767,6 +814,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if image_uri is not None:
             train_request["AlgorithmSpecification"]["TrainingImage"] = image_uri
+
+        if training_image_config is not None:
+            train_request["AlgorithmSpecification"]["TrainingImageConfig"] = training_image_config
 
         if algorithm_arn is not None:
             train_request["AlgorithmSpecification"]["AlgorithmName"] = algorithm_arn
