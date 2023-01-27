@@ -385,8 +385,10 @@ def test_multi_step_framework_processing_pipeline_same_source_dir(
 
     SOURCE_DIR = "/pipeline/test_source_dir"
 
+    role_param = ParameterString(name="Role", default_value=role)
+
     framework_processor_tf = FrameworkProcessor(
-        role=role,
+        role=role_param,
         instance_type="ml.m5.xlarge",
         instance_count=1,
         estimator_cls=TensorFlow,
@@ -400,7 +402,7 @@ def test_multi_step_framework_processing_pipeline_same_source_dir(
         instance_type="ml.m5.xlarge",
         instance_count=1,
         base_job_name="my-job",
-        role=role,
+        role=role_param,
         estimator_cls=SKLearn,
         sagemaker_session=pipeline_session,
     )
@@ -431,7 +433,10 @@ def test_multi_step_framework_processing_pipeline_same_source_dir(
     )
 
     pipeline = Pipeline(
-        name=pipeline_name, steps=[step_1, step_2], sagemaker_session=pipeline_session
+        name=pipeline_name,
+        steps=[step_1, step_2],
+        sagemaker_session=pipeline_session,
+        parameters=[role_param],
     )
     try:
         pipeline.create(role)
