@@ -16,7 +16,7 @@ which is used for Amazon SageMaker Processing Jobs. These jobs let users perform
 data pre-processing, post-processing, feature engineering, data validation, and model evaluation,
 and interpretation on Amazon SageMaker.
 """
-from __future__ import print_function, absolute_import
+from __future__ import absolute_import
 
 import os
 import pathlib
@@ -840,11 +840,10 @@ class ProcessingJob(_Job):
         """
         process_args = cls._get_process_args(processor, inputs, outputs, experiment_config)
 
-        # Print the job name and the user's inputs and outputs as lists of dictionaries.
-        print()
-        print("Job Name: ", process_args["job_name"])
-        print("Inputs: ", process_args["inputs"])
-        print("Outputs: ", process_args["output_config"]["Outputs"])
+        # Log the job name and the user's inputs and outputs as lists of dictionaries.
+        logger.debug("Job Name: %s", process_args["job_name"])
+        logger.debug("Inputs: %s", process_args["inputs"])
+        logger.debug("Outputs: %s", process_args["output_config"]["Outputs"])
 
         # Call sagemaker_session.process using the arguments dictionary.
         processor.sagemaker_session.process(**process_args)
