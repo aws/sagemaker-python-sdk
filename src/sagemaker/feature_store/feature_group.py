@@ -702,26 +702,26 @@ class FeatureGroup:
     ) -> IngestionManagerPandas:
         """Ingest the content of a pandas DataFrame to feature store.
 
-        ``max_worker`` the number of threads created to work on different partitions of the 
+        ``max_worker`` the number of threads created to work on different partitions of the
         ``data_frame`` in parallel.
 
-        ``max_processes`` the number of processes will be created to work on different 
+        ``max_processes`` the number of processes will be created to work on different
         partitions of the ``data_frame`` in parallel, each with ``max_worker`` threads.
 
-        The ingest function attempts to ingest all records in the data frame. SageMaker 
+        The ingest function attempts to ingest all records in the data frame. SageMaker
         Feature Store throws an exception if it fails to ingest any records.
 
-        If ``wait`` is ``True``, Feature Store runs the ``ingest`` function synchronously. 
-        You receive an ``IngestionError`` if there are any records that can't be ingested. 
+        If ``wait`` is ``True``, Feature Store runs the ``ingest`` function synchronously.
+        You receive an ``IngestionError`` if there are any records that can't be ingested.
         If ``wait`` is ``False``, Feature Store runs the ``ingest`` function asynchronously.
-        
-        Instead of setting ``wait`` to ``True`` in the ``ingest`` function, you can invoke 
-        the ``wait`` function on the returned instance of ``IngestionManagerPandas`` to run 
+
+        Instead of setting ``wait`` to ``True`` in the ``ingest`` function, you can invoke
+        the ``wait`` function on the returned instance of ``IngestionManagerPandas`` to run
         the ``ingest`` function synchronously.
-        
-        To access the rows that failed to ingest, set ``wait`` to ``False``. The 
+
+        To access the rows that failed to ingest, set ``wait`` to ``False``. The
         ``IngestionError.failed_rows`` object saves all of the rows that failed to ingest.
-        
+
         `profile_name` argument is an optional one. It will use the default credential if None is
         passed. This `profile_name` is used in the sagemaker_featurestore_runtime client only. See
         https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html for more
