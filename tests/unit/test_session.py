@@ -928,6 +928,7 @@ SAMPLE_TUNING_JOB_REQUEST = {
         "OutputDataConfig": SAMPLE_OUTPUT,
         "ResourceConfig": RESOURCE_CONFIG,
         "StoppingCondition": SAMPLE_STOPPING_CONDITION,
+        "Environment": ENV_INPUT,
     },
 }
 
@@ -957,6 +958,7 @@ SAMPLE_MULTI_ALGO_TUNING_JOB_REQUEST = {
             "OutputDataConfig": SAMPLE_OUTPUT,
             "ResourceConfig": RESOURCE_CONFIG,
             "StoppingCondition": SAMPLE_STOPPING_CONDITION,
+            "Environment": ENV_INPUT,
         },
         {
             "DefinitionName": "estimator_2",
@@ -973,6 +975,7 @@ SAMPLE_MULTI_ALGO_TUNING_JOB_REQUEST = {
             "OutputDataConfig": SAMPLE_OUTPUT,
             "ResourceConfig": RESOURCE_CONFIG,
             "StoppingCondition": SAMPLE_STOPPING_CONDITION,
+            "Environment": ENV_INPUT,
         },
     ],
 }
@@ -1032,6 +1035,7 @@ def test_tune_warm_start(sagemaker_session, warm_start_type, parents):
         warm_start_config=WarmStartConfig(
             warm_start_type=WarmStartTypes(warm_start_type), parents=parents
         ).to_input_req(),
+        environment=ENV_INPUT,
     )
 
 
@@ -1122,6 +1126,7 @@ def test_create_tuning_job(sagemaker_session):
             "output_config": SAMPLE_OUTPUT,
             "resource_config": RESOURCE_CONFIG,
             "stop_condition": SAMPLE_STOPPING_CONDITION,
+            "environment": ENV_INPUT,
         },
         tags=None,
         warm_start_config=None,
@@ -1163,6 +1168,7 @@ def test_create_tuning_job_multi_algo(sagemaker_session):
                 "objective_type": "Maximize",
                 "objective_metric_name": "val-score",
                 "parameter_ranges": SAMPLE_PARAM_RANGES,
+                "environment": ENV_INPUT,
             },
             {
                 "static_hyperparameters": STATIC_HPs_2,
@@ -1178,6 +1184,7 @@ def test_create_tuning_job_multi_algo(sagemaker_session):
                 "objective_type": "Maximize",
                 "objective_metric_name": "value-score",
                 "parameter_ranges": SAMPLE_PARAM_RANGES_2,
+                "environment": ENV_INPUT,
             },
         ],
         tags=None,
@@ -1218,6 +1225,7 @@ def test_tune(sagemaker_session):
         stop_condition=SAMPLE_STOPPING_CONDITION,
         tags=None,
         warm_start_config=None,
+        environment=ENV_INPUT,
     )
 
 
@@ -1259,6 +1267,7 @@ def test_tune_with_strategy_config(sagemaker_session):
         tags=None,
         warm_start_config=None,
         strategy_config=SAMPLE_HYPERBAND_STRATEGY_CONFIG,
+        environment=ENV_INPUT,
     )
 
 

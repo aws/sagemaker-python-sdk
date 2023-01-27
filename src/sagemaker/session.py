@@ -2200,6 +2200,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
         random_seed=None,
+        environment=None,
     ):
         """Create an Amazon SageMaker hyperparameter tuning job.
 
@@ -2283,6 +2284,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             random_seed (int): An initial value used to initialize a pseudo-random number generator.
                 Setting a random seed will make the hyperparameter tuning search strategies to
                 produce more consistent configurations for the same tuning job. (default: ``None``).
+            environment (dict[str, str]) : Environment variables to be set for
+                use during training jobs (default: ``None``)
         """
 
         tune_request = {
@@ -2315,6 +2318,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 use_spot_instances=use_spot_instances,
                 checkpoint_s3_uri=checkpoint_s3_uri,
                 checkpoint_local_path=checkpoint_local_path,
+                environment=environment,
             ),
         }
 
@@ -2558,6 +2562,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
         max_retry_attempts=None,
+        environment=None,
     ):
         """Construct a dictionary of training job configuration from the arguments.
 
@@ -2612,6 +2617,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             parameter_ranges (dict): Dictionary of parameter ranges. These parameter ranges can
                 be one of three types: Continuous, Integer, or Categorical.
             max_retry_attempts (int): The number of times to retry the job.
+            environment (dict[str, str]) : Environment variables to be set for
+                use during training jobs (default: ``None``)
 
         Returns:
             A dictionary of training job configuration. For format details, please refer to
@@ -2674,6 +2681,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if max_retry_attempts is not None:
             training_job_definition["RetryStrategy"] = {"MaximumRetryAttempts": max_retry_attempts}
+
+        if environment is not None:
+            training_job_definition["Environment"] = environment
         return training_job_definition
 
     def stop_tuning_job(self, name):
