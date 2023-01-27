@@ -3043,6 +3043,70 @@ def test_wait_for_athena_query(query_execution, sagemaker_session):
     assert query_execution.called_with(query_execution_id="query_id")
 
 
+def test_search(sagemaker_session):
+    expected_search_args = {
+        "Resource": "FeatureGroup",
+        "SearchExpression": {
+            "Filters": [
+                {
+                    "Name": "FeatureGroupName",
+                    "Value": "MyFeatureGroup",
+                    "Operator": "Contains",
+                }
+            ],
+            "Operator": "And",
+        },
+        "SortBy": "Name",
+        "SortOrder": "Ascending",
+        "NextToken": "token",
+        "MaxResults": 50,
+    }
+    sagemaker_session.search(
+        resource="FeatureGroup",
+        search_expression={
+            "Filters": [
+                {
+                    "Name": "FeatureGroupName",
+                    "Value": "MyFeatureGroup",
+                    "Operator": "Contains",
+                }
+            ],
+            "Operator": "And",
+        },
+        sort_by="Name",
+        sort_order="Ascending",
+        next_token="token",
+        max_results=50,
+    )
+    assert sagemaker_session.sagemaker_client.search.called_once()
+    assert sagemaker_session.sagemaker_client.search.called_with(**expected_search_args)
+
+
+def test_batch_get_record(sagemaker_session):
+    expected_batch_get_record_args = {
+        "Identifiers": [
+            {
+                "FeatureGroupName": "name",
+                "RecordIdentifiersValueAsString": ["identifier"],
+                "FeatureNames": ["feature_1"],
+            }
+        ]
+    }
+    sagemaker_session.batch_get_record(
+        identifiers=[
+            {
+                "FeatureGroupName": "name",
+                "RecordIdentifiersValueAsString": ["identifier"],
+                "FeatureNames": ["feature_1"],
+            }
+        ]
+    )
+    assert sagemaker_session.sagemaker_client.batch_get_record.called_once()
+    assert sagemaker_session.sagemaker_client.batch_get_record.called_with(
+        **expected_batch_get_record_args
+    )
+
+
 IR_USER_JOB_NAME = "custom-job-name"
 IR_JOB_NAME = "SMPYTHONSDK-sample-unique-uuid"
 IR_ADVANCED_JOB = "Advanced"
