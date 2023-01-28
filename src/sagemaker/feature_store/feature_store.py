@@ -26,6 +26,13 @@ import pandas as pd
 from sagemaker import Session
 from sagemaker.feature_store.dataset_builder import DatasetBuilder
 from sagemaker.feature_store.feature_group import FeatureGroup
+from sagemaker.feature_store.inputs import (
+    Filter,
+    ResourceEnum,
+    SearchOperatorEnum,
+    SortOrderEnum,
+    Identifier,
+)
 
 
 @attr.s
@@ -114,6 +121,7 @@ class FeatureStore:
             sort_by (str): The value on which the FeatureGroup list is sorted.
             max_results (int): The maximum number of results returned by ListFeatureGroups.
             next_token (str): A token to resume pagination of ListFeatureGroups results.
+
         Returns:
             Response dict from service.
         """
@@ -127,4 +135,62 @@ class FeatureStore:
             sort_by=sort_by,
             max_results=max_results,
             next_token=next_token,
+        )
+
+    def batch_get_record(self, identifiers: Sequence[Identifier]) -> Dict[str, Any]:
+        """Get record in batch from FeatureStore
+
+        Args:
+            identifiers (Sequence[Identifier]): A list of identifiers to uniquely identify records
+                in FeatureStore.
+
+        Returns:
+            Response dict from service.
+        """
+        batch_get_record_identifiers = [identifier.to_dict() for identifier in identifiers]
+        return self.sagemaker_session.batch_get_record(identifiers=batch_get_record_identifiers)
+
+    def search(
+        self,
+        resource: ResourceEnum,
+        filters: Sequence[Filter] = None,
+        operator: SearchOperatorEnum = None,
+        sort_by: str = None,
+        sort_order: SortOrderEnum = None,
+        next_token: str = None,
+        max_results: int = None,
+    ) -> Dict[str, Any]:
+        """Search for FeatureGroups or FeatureMetadata satisfying given filters.
+
+        Args:
+            resource (ResourceEnum): The name of the Amazon SageMaker resource to search for.
+                Valid values are ``FeatureGroup`` or ``FeatureMetadata``.
+            filters (Sequence[Filter]): A list of filter objects (Default: None).
+            operator (SearchOperatorEnum): A Boolean operator used to evaluate the filters.
+                Valid values are ``And`` or ``Or``. The default is ``And`` (Default: None).
+            sort_by (str): The name of the resource property used to sort the ``SearchResults``.
+                The default is ``LastModifiedTime``.
+            sort_order (SortOrderEnum): How ``SearchResults`` are ordered.
+                Valid values are ``Ascending`` or ``Descending``. The default is ``Descending``.
+            next_token (str): If more than ``MaxResults`` resources match the specified
+                filters, the response includes a ``NextToken``. The ``NextToken`` can be passed to
+                the next ``SearchRequest`` to continue retrieving results (Default: None).
+            max_results (int): The maximum number of results to return (Default: None).
+
+        Returns:
+            Response dict from service.
+        """
+        search_expression = {}
+        if filters:
+            search_expression["Filters"] = [filter.to_dict() for filter in filters]
+        if operator:
+            search_expression["Operator"] = str(operator)
+
+        return self.sagemaker_session.search(
+            resource=str(resource),
+            search_expression=search_expression,
+            sort_by=sort_by,
+            sort_order=None if not sort_order else str(sort_order),
+            next_token=next_token,
+            max_results=max_results,
         )
