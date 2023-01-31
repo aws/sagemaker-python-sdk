@@ -143,6 +143,12 @@ class FrameworkProfile:
                 profiling. Configure it using the
                 :class:`~sagemaker.debugger.metrics_config.DetailedProfilingConfig` class.
                 Pass ``DetailedProfilingConfig()`` to use the default configuration.
+
+                .. warning::
+                    This detailed framework profiling feature discontinues support for TensorFlow v2.11
+                    and later. To use the detailed profiling feature, use previous versions of
+                    TensorFlow between v2.3.1 and v2.10.0.
+
             dataloader_profiling_config (DataloaderProfilingConfig): The configuration for
                 dataloader metrics profiling. Configure it using the
                 :class:`~sagemaker.debugger.metrics_config.DataloaderProfilingConfig` class.
