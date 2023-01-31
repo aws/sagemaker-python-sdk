@@ -428,7 +428,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                     You must not include any security-sensitive information, such as
                     account access IDs, secrets, and tokens, in the dictionary for configuring
                     hyperparameters. SageMaker rejects the training job request and returns an
-                    exception error for detected credentials, if such user input is found.
+                    validation error for detected credentials, if such user input is found.
 
             container_log_level (int or PipelineVariable): The log level to use within the container
                 (default: logging.INFO). Valid values are defined in the Python
@@ -2474,7 +2474,7 @@ class Estimator(EstimatorBase):
                     You must not include any security-sensitive information, such as
                     account access IDs, secrets, and tokens, in the dictionary for configuring
                     hyperparameters. SageMaker rejects the training job request and returns an
-                    exception error for detected credentials, if such user input is found.
+                    validation error for detected credentials, if such user input is found.
 
             tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): List of tags for
                 labeling a training job. For more, see
@@ -2958,8 +2958,8 @@ class Framework(EstimatorBase):
                     You must not include any security-sensitive information, such as
                     account access IDs, secrets, and tokens, in the dictionary for configuring
                     hyperparameters. SageMaker rejects the training job request and returns an
-                    exception error for detected credentials, if such user input is found.
-                    
+                    validation error for detected credentials, if such user input is found.
+
             container_log_level (int or PipelineVariable): Log level to use within the container
                 (default: logging.INFO). Valid values are defined in the Python
                 logging module.
