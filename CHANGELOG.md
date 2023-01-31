@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.131.0 (2023-01-31)
+
+### Features
+
+ * Display file diff on black-check
+ * Support for environment variables in the HPO
+ * Support role as PipelineParameter in Processor class
+ * Add TrainingImageConfig support for SageMaker training jobs
+
+### Bug Fixes and Other Changes
+
+ * use FeatureGroup's Session in nonconcurrency ingestion
+ * Update feature_group.py ingest() description
+ * Do not use print function. User logger instead
+ * Add batch_get_record and search API for FeatureStore
+ * hashing problem for framework processors with identical source dirs
+
 ## v2.130.0 (2023-01-26)
 
 ### Features
