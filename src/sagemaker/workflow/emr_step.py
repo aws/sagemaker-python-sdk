@@ -33,7 +33,8 @@ class EMRStepConfig:
     ):
         """Create a definition for input data used by an EMR cluster(job flow) step.
 
-        See AWS documentation on the ``StepConfig`` API for more details on the parameters.
+        See AWS documentation for more information about the `StepConfig
+        <https://docs.aws.amazon.com/emr/latest/APIReference/API_StepConfig.html>`_ API parameters.
 
         Args:
             args(List[str]):
@@ -73,14 +74,34 @@ class EMRStep(Step):
         step_config: EMRStepConfig,
         depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
         cache_config: CacheConfig = None,
+        cluster_config: RequestType = None,
     ):
-        """Constructs a EMRStep.
+        """Constructs an `EMRStep`.
 
         Args:
             name(str): The name of the EMR step.
             display_name(str): The display name of the EMR step.
             description(str): The description of the EMR step.
             cluster_id(str): The ID of the running EMR cluster.
+            cluster_config(Union[Dict[str, Any], List[Dict[str, Any]]]): The recipe of the
+                EMR cluster, passed as a dictionary.
+                The elements are defined in the request syntax for `RunJobFlow`.
+                However, the following elements are not recognized as part of the cluster
+                configuration and you should not include them in the dictionary:
+
+                * ``cluster_config[Name]``
+                * ``cluster_config[Steps]``
+                * ``cluster_config[AutoTerminationPolicy]``
+                * ``cluster_config[Instances][KeepJobFlowAliveWhenNoSteps]``
+                * ``cluster_config[Instances][TerminationProtected]``
+
+                For more information about the fields you can include in your cluster
+                configuration, see https://docs.aws.amazon.com/emr/latest/APIReference/API_RunJobFlow.html.
+
+
+                Note that if you want to use ``cluster_config``, then you have to set
+                ``cluster_id`` as None.
+
             step_config(EMRStepConfig): One StepConfig to be executed by the job flow.
             depends_on (List[Union[str, Step, StepCollection]]): A list of `Step`/`StepCollection`
                 names or `Step` instances or `StepCollection` instances that this `EMRStep`
@@ -90,12 +111,28 @@ class EMRStep(Step):
         """
         super(EMRStep, self).__init__(name, display_name, description, StepTypeEnum.EMR, depends_on)
 
-        emr_step_args = {"ClusterId": cluster_id, "StepConfig": step_config.to_request()}
+        emr_step_args = {"StepConfig": step_config.to_request()}
+        root_property = Properties(step_name=name, shape_name="Step", service_name="emr")
+
+        if cluster_id is None and cluster_config is None:
+            raise Exception("EMRStep " + name + " must have either cluster_id or cluster_config")
+
+        if cluster_id is not None and cluster_config is not None:
+            raise Exception(
+                "EMRStep " + name + " can not have both cluster_id or cluster_config. "
+                "If user wants to use cluster_config, then they "
+                "have to explicitly set cluster_id as None"
+            )
+
+        if cluster_id is not None:
+            emr_step_args["ClusterId"] = cluster_id
+            root_property.__dict__["ClusterId"] = cluster_id
+        elif cluster_config is not None:
+            emr_step_args["ClusterConfig"] = cluster_config
+            root_property.__dict__["ClusterConfig"] = cluster_config
+
         self.args = emr_step_args
         self.cache_config = cache_config
-
-        root_property = Properties(step_name=name, shape_name="Step", service_name="emr")
-        root_property.__dict__["ClusterId"] = cluster_id
         self._properties = root_property
 
     @property
