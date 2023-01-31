@@ -911,7 +911,7 @@ def test_append_run_tc_label_to_tags():
     ret = Run._append_run_tc_label_to_tags(tags)
     assert len(ret) == 2
     assert expected_tc_tag in ret
-    
+
     tags = [expected_tc_tag]
     ret = Run._append_run_tc_label_to_tags(tags)
     assert len(ret) == 1
