@@ -84,7 +84,7 @@ This version passed benchmark testing and is migrated to the following AWS Deep 
 Binary file of this version of the library for `custom container
 <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-sm-sdk.html#model-parallel-bring-your-own-container>`_ users:
 
-- For PyTorch 1.12.0
+- For PyTorch 1.12.1
 
   .. code::
 
