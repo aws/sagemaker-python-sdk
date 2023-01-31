@@ -33,7 +33,7 @@ This version passed benchmark testing and is migrated to the following AWS Deep 
 Binary file of this version of the library for `custom container
 <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-sm-sdk.html#model-parallel-bring-your-own-container>`_ users:
 
-- For PyTorch 1.12.0
+- For PyTorch 1.13.1
 
   .. code::
 
@@ -126,7 +126,7 @@ Binary file of this version of the library for `custom container
 
   .. code::
 
-    https://sagemaker-distribu
+    https://sagemaker-distributed-model-parallel.s3.us-west-2.amazonaws.com/pytorch-1.12.0/build-artifacts/2022-08-12-16-58/smdistributed_modelparallel-1.11.0-cp38-cp38-linux_x86_64.whl
 
 SageMaker Distributed Model Parallel 1.10.1 Release Notes
 ---------------------------------------------------------
