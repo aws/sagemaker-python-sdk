@@ -18,12 +18,13 @@ import json
 import logging
 import os
 
+from sagemaker import Session
 from sagemaker.experiments import trial_component
 from sagemaker.utils import retry_with_backoff
 
 TRAINING_JOB_ARN_ENV = "TRAINING_JOB_ARN"
 PROCESSING_JOB_CONFIG_PATH = "/opt/ml/config/processingjobconfig.json"
-TRANSFORM_JOB_ENV_BATCH_VAR = "SAGEMAKER_BATCH"
+TRANSFORM_JOB_ARN_ENV = "TRANSFORM_JOB_ARN"
 MAX_RETRY_ATTEMPTS = 7
 
 logger = logging.getLogger(__name__)
@@ -40,7 +41,7 @@ class _EnvironmentType(enum.Enum):
 class _RunEnvironment(object):
     """Retrieves job specific data from the environment."""
 
-    def __init__(self, environment_type, source_arn):
+    def __init__(self, environment_type: _EnvironmentType, source_arn: str):
         """Init for _RunEnvironment.
 
         Args:
@@ -53,9 +54,9 @@ class _RunEnvironment(object):
     @classmethod
     def load(
         cls,
-        training_job_arn_env=TRAINING_JOB_ARN_ENV,
-        processing_job_config_path=PROCESSING_JOB_CONFIG_PATH,
-        transform_job_batch_var=TRANSFORM_JOB_ENV_BATCH_VAR,
+        training_job_arn_env: str = TRAINING_JOB_ARN_ENV,
+        processing_job_config_path: str = PROCESSING_JOB_CONFIG_PATH,
+        transform_job_arn_env: str = TRANSFORM_JOB_ARN_ENV,
     ):
         """Loads source arn of current job from environment.
 
@@ -64,8 +65,8 @@ class _RunEnvironment(object):
                 (default: `TRAINING_JOB_ARN`).
             processing_job_config_path (str): The processing job config path
                 (default: `/opt/ml/config/processingjobconfig.json`).
-            transform_job_batch_var (str): The environment variable indicating if
-                it is a transform job (default: `SAGEMAKER_BATCH`).
+            transform_job_arn_env (str): The environment key for transform job ARN
+                (default: `TRANSFORM_JOB_ARN_ENV`).
 
         Returns:
             _RunEnvironment: Job data loaded from the environment. None if config does not exist.
@@ -78,16 +79,15 @@ class _RunEnvironment(object):
             environment_type = _EnvironmentType.SageMakerProcessingJob
             source_arn = json.loads(open(processing_job_config_path).read())["ProcessingJobArn"]
             return _RunEnvironment(environment_type, source_arn)
-        if transform_job_batch_var in os.environ and os.environ[transform_job_batch_var] == "true":
+        if transform_job_arn_env in os.environ:
             environment_type = _EnvironmentType.SageMakerTransformJob
-            # TODO: need to figure out how to get source_arn from job env
-            # with Transform team's help.
-            source_arn = ""
+            # TODO: need to update to get source_arn from config file once Transform side ready
+            source_arn = os.environ.get(transform_job_arn_env)
             return _RunEnvironment(environment_type, source_arn)
 
         return None
 
-    def get_trial_component(self, sagemaker_session):
+    def get_trial_component(self, sagemaker_session: Session):
         """Retrieves the trial component from the job in the environment.
 
         Args:
@@ -99,14 +99,6 @@ class _RunEnvironment(object):
         Returns:
             _TrialComponent: The trial component created from the job. None if not found.
         """
-        # TODO: Remove this condition check once we have a way to retrieve source ARN
-        # from transform job env
-        if self.environment_type == _EnvironmentType.SageMakerTransformJob:
-            logger.error(
-                "Currently getting the job trial component from the transform job environment "
-                "is not supported. Returning None."
-            )
-            return None
 
         def _get_trial_component():
             summaries = list(

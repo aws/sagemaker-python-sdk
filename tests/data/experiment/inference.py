@@ -68,6 +68,9 @@ def model_fn(model_dir):
         run.log_parameters({"p3": 3.0, "p4": 4.0})
         run.log_metric("test-job-load-log-metric", 0.1)
 
+    with load_run(sagemaker_session=sagemaker_session) as run:
+        run.log_parameters({"p5": 5.0, "p6": 6})
+
     model_file = "xgboost-model"
     booster = pkl.load(open(os.path.join(model_dir, model_file), "rb"))
     return booster
