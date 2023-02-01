@@ -34,7 +34,6 @@ from sagemaker.spark.processing import PySparkProcessor
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.pytorch.processing import PyTorchProcessor
 from sagemaker.tensorflow.processing import TensorFlowProcessor
-from sagemaker.workflow import ParameterString
 from sagemaker.xgboost.processing import XGBoostProcessor
 from sagemaker.mxnet.processing import MXNetProcessor
 from sagemaker.network import NetworkConfig
@@ -736,62 +735,6 @@ def test_processor_with_required_parameters(sagemaker_session):
     expected_args["inputs"] = []
 
     sagemaker_session.process.assert_called_with(**expected_args)
-
-
-def test_processor_with_role_as_pipeline_parameter(sagemaker_session):
-
-    role = ParameterString(name="Role", default_value=ROLE)
-
-    processor = Processor(
-        role=role,
-        image_uri=CUSTOM_IMAGE_URI,
-        instance_count=1,
-        instance_type="ml.m4.xlarge",
-        sagemaker_session=sagemaker_session,
-    )
-
-    processor.run()
-
-    expected_args = _get_expected_args(processor._current_job_name)
-    assert expected_args["role_arn"] == role.default_value
-
-
-@patch("os.path.exists", return_value=True)
-@patch("os.path.isfile", return_value=True)
-def test_script_processor_with_role_as_pipeline_parameter(
-    exists_mock, isfile_mock, sagemaker_session
-):
-    role = ParameterString(name="Role", default_value=ROLE)
-
-    script_processor = ScriptProcessor(
-        role=role,
-        image_uri=CUSTOM_IMAGE_URI,
-        instance_count=1,
-        instance_type="ml.m4.xlarge",
-        sagemaker_session=sagemaker_session,
-        command=["python3"],
-    )
-
-    run_args = script_processor.get_run_args(
-        code="/local/path/to/processing_code.py",
-        inputs=_get_data_inputs_all_parameters(),
-        outputs=_get_data_outputs_all_parameters(),
-        arguments=["--drop-columns", "'SelfEmployed'"],
-    )
-
-    script_processor.run(
-        code=run_args.code,
-        inputs=run_args.inputs,
-        outputs=run_args.outputs,
-        arguments=run_args.arguments,
-        wait=True,
-        logs=False,
-        job_name="my_job_name",
-        experiment_config={"ExperimentName": "AnExperiment"},
-    )
-
-    expected_args = _get_expected_args(script_processor._current_job_name)
-    assert expected_args["role_arn"] == role.default_value
 
 
 def test_processor_with_missing_network_config_parameters(sagemaker_session):

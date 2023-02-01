@@ -1361,7 +1361,7 @@ class FrameworkProcessor(ScriptProcessor):
         self,
         estimator_cls: type,
         framework_version: str,
-        role: str,
+        role: Union[str, PipelineVariable],
         instance_count: Union[int, PipelineVariable],
         instance_type: Union[str, PipelineVariable],
         py_version: str = "py3",
@@ -1389,8 +1389,9 @@ class FrameworkProcessor(ScriptProcessor):
                 estimator
             framework_version (str): The version of the framework. Value is ignored when
                 ``image_uri`` is provided.
-            role (str): An AWS IAM role name or ARN. Amazon SageMaker Processing uses
-                this role to access AWS resources, such as data stored in Amazon S3.
+            role (str or PipelineVariable): An AWS IAM role name or ARN. Amazon SageMaker
+                Processing uses this role to access AWS resources, such as data stored
+                in Amazon S3.
             instance_count (int or PipelineVariable): The number of instances to run a
                 processing job with.
             instance_type (str or PipelineVariable): The type of EC2 instance to use for
