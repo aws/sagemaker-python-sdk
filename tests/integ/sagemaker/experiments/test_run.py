@@ -482,10 +482,9 @@ def test_run_from_transform_job(
 ):
     # Notes:
     # 1. The 1st Run (run) created locally
-    # 2. In the inference script running in a transform job, load the 1st Run
-    # via explicitly passing the experiment_name and run_name of the 1st Run
-    # TODO: once we're able to retrieve exp config from the transform job env,
-    # we should expand this test and add the load_run() without explicitly supplying the names
+    # 2. In the inference script running in a transform job, load the 1st Run twice and log data
+    # 1) via explicitly passing the experiment_name and run_name of the 1st Run
+    # 2) use load_run() without explicitly supplying the names
     # 3. All data are logged in the Run either locally or in the transform job
     exp_name = unique_name_from_base(_EXP_NAME_BASE_IN_SCRIPT)
     xgb_model_data_s3 = sagemaker_session.upload_data(
@@ -537,6 +536,7 @@ def test_run_from_transform_job(
                 content_type="text/libsvm",
                 split_type="Line",
                 wait=True,
+                logs=False,
                 job_name=f"transform-job-{name()}",
             )
 
@@ -549,7 +549,7 @@ def test_run_from_transform_job(
             experiment_name=run.experiment_name, run_name=run.run_name
         )
         _check_run_from_job_result(
-            tc_name=tc_name, sagemaker_session=sagemaker_session, is_init=False
+            tc_name=tc_name, sagemaker_session=sagemaker_session, is_init=False, has_extra_load=True
         )
 
 
@@ -718,8 +718,7 @@ def _check_run_from_local_end_result(sagemaker_session, tc, is_complete_log=True
     assert "s3://Input" == tc.input_artifacts[artifact_name].value
     assert not tc.input_artifacts[artifact_name].media_type
 
-    # TODO: revert to len(tc.metrics) == 1 once backend fix reaches prod
-    assert len(tc.metrics) > 0
+    assert len(tc.metrics) == 1
     metric_summary = tc.metrics[0]
     assert metric_summary.metric_name == metric_name
     assert metric_summary.max == 9.0
@@ -733,9 +732,7 @@ def _check_run_from_job_result(sagemaker_session, tc_name=None, is_init=True, ha
         assert tc.status.primary_status == _TrialComponentStatusType.Completed.value
         assert tc.parameters["p1"] == 1.0
         assert tc.parameters["p2"] == 2.0
-        # TODO: revert to assert len(tc.metrics) == 5 once
-        # backend fix hits prod
-        assert len(tc.metrics) > 0
+        assert len(tc.metrics) == 5
         for metric_summary in tc.metrics:
             # metrics deletion is not supported at this point
             # so its count would accumulate
