@@ -427,12 +427,10 @@ class IngestionManagerPandas:
         failed_indices = list()
         for future in as_completed(futures, timeout=timeout):
             start, end = futures[future]
-            result = future.result()
-            if result:
-                logger.error("Failed to ingest row %d to %d", start, end)
-            else:
+            failed_rows = future.result()
+            if not failed_rows:
                 logger.info("Successfully ingested row %d to %d", start, end)
-            failed_indices += result
+            failed_indices += failed_rows
 
         executor.shutdown(wait=False)
 
