@@ -936,6 +936,11 @@ def test_append_run_tc_label_to_tags():
     assert len(ret) == 2
     assert expected_tc_tag in ret
 
+    tags = [expected_tc_tag]
+    ret = Run._append_run_tc_label_to_tags(tags)
+    assert len(ret) == 1
+    assert expected_tc_tag in ret
+
 
 def _verify_tc_status_before_enter_init(trial_component):
     assert not trial_component.start_time
