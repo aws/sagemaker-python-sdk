@@ -10,6 +10,7 @@
 #  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
 #  express or implied. See the License for the specific language governing
 #  permissions and limitations under the License.
+import json
 import logging
 import os
 import pickle as pkl
@@ -24,11 +25,32 @@ code_dir = "/opt/ml/code"
 sdk_file = f"{code_dir}/{sdk_name}"
 os.system(f"pip install {sdk_file}")
 
+
+def _get_client_config_in_dict(cfg_in_str) -> dict:
+    return json.loads(cfg_in_str) if cfg_in_str else None
+
+
 from sagemaker.session import Session
 from sagemaker.experiments import load_run
 
 boto_session = boto3.Session(region_name=os.environ["AWS_REGION"])
-sagemaker_session = Session(boto_session=boto_session)
+
+sagemaker_client_config = _get_client_config_in_dict(os.environ.get("SM_CLIENT_CONFIG", None))
+sagemaker_metrics_config = _get_client_config_in_dict(os.environ.get("SM_METRICS_CONFIG", None))
+sagemaker_client = (
+    boto_session.client("sagemaker", **sagemaker_client_config) if sagemaker_client_config else None
+)
+metrics_client = (
+    boto_session.client("sagemaker-metrics", **sagemaker_metrics_config)
+    if sagemaker_metrics_config
+    else None
+)
+
+sagemaker_session = Session(
+    boto_session=boto_session,
+    sagemaker_client=sagemaker_client,
+    sagemaker_metrics_client=metrics_client,
+)
 
 
 def model_fn(model_dir):
@@ -45,6 +67,9 @@ def model_fn(model_dir):
         logging.info(f"Trial component name: {run._trial_component.trial_component_name}")
         run.log_parameters({"p3": 3.0, "p4": 4.0})
         run.log_metric("test-job-load-log-metric", 0.1)
+
+    with load_run(sagemaker_session=sagemaker_session) as run:
+        run.log_parameters({"p5": 5.0, "p6": 6})
 
     model_file = "xgboost-model"
     booster = pkl.load(open(os.path.join(model_dir, model_file), "rb"))

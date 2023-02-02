@@ -21,6 +21,7 @@ import unittest.mock
 import pytest
 
 from sagemaker.experiments import _environment
+from sagemaker.experiments._environment import TRANSFORM_JOB_ARN_ENV, TRAINING_JOB_ARN_ENV
 from sagemaker.utils import retry_with_backoff
 
 
@@ -33,22 +34,22 @@ def tempdir():
 
 @pytest.fixture
 def training_job_env():
-    old_value = os.environ.get("TRAINING_JOB_ARN")
-    os.environ["TRAINING_JOB_ARN"] = "arn:1234aBcDe"
+    old_value = os.environ.get(TRAINING_JOB_ARN_ENV)
+    os.environ[TRAINING_JOB_ARN_ENV] = "arn:1234aBcDe"
     yield os.environ
-    del os.environ["TRAINING_JOB_ARN"]
+    del os.environ[TRAINING_JOB_ARN_ENV]
     if old_value:
-        os.environ["TRAINING_JOB_ARN"] = old_value
+        os.environ[TRAINING_JOB_ARN_ENV] = old_value
 
 
 @pytest.fixture
 def transform_job_env():
-    old_value = os.environ.get("SAGEMAKER_BATCH")
-    os.environ["SAGEMAKER_BATCH"] = "true"
+    old_value = os.environ.get(TRANSFORM_JOB_ARN_ENV)
+    os.environ[TRANSFORM_JOB_ARN_ENV] = "arn:1234aBcDe"
     yield os.environ
-    del os.environ["SAGEMAKER_BATCH"]
+    del os.environ[TRANSFORM_JOB_ARN_ENV]
     if old_value:
-        os.environ["SAGEMAKER_BATCH"] = old_value
+        os.environ[TRANSFORM_JOB_ARN_ENV] = old_value
 
 
 def test_processing_job_environment(tempdir):
@@ -70,8 +71,7 @@ def test_training_job_environment(training_job_env):
 def test_transform_job_environment(transform_job_env):
     environment = _environment._RunEnvironment.load()
     assert _environment._EnvironmentType.SageMakerTransformJob == environment.environment_type
-    # TODO: update if we figure out how to get source_arn from the transform job
-    assert not environment.source_arn
+    assert "arn:1234aBcDe" == environment.source_arn
 
 
 def test_no_environment():
@@ -98,10 +98,5 @@ def test_resolve_trial_component_fails(mock_retry, sagemaker_session, training_j
     mock_retry.side_effect = lambda func: retry_with_backoff(func, 2)
     client = sagemaker_session.sagemaker_client
     client.list_trial_components.side_effect = Exception("Failed test")
-    environment = _environment._RunEnvironment.load()
-    assert environment.get_trial_component(sagemaker_session) is None
-
-
-def test_resolve_transform_job_trial_component_fail(transform_job_env, sagemaker_session):
     environment = _environment._RunEnvironment.load()
     assert environment.get_trial_component(sagemaker_session) is None
