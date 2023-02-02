@@ -18,14 +18,9 @@ import tempfile
 import shutil
 import datetime
 import dateutil
-import json
 import time
 
-from sagemaker.experiments._metrics import (
-    _RawMetricData,
-    _SageMakerFileMetricsWriter,
-    SageMakerMetricsWriterException,
-)
+from sagemaker.experiments._metrics import _RawMetricData
 
 
 @pytest.fixture
@@ -104,75 +99,3 @@ def test_raw_metric_data_invalid_timestamp():
     with pytest.raises(ValueError) as error2:
         _RawMetricData(metric_name="IFail", value=100, timestamp=time.time() + 10000)
     assert "Timestamps must be between two weeks before and two hours from now" in str(error2)
-
-
-def test_file_metrics_writer_log_metric(timestamp, filepath):
-    now = datetime.datetime.now(datetime.timezone.utc)
-    writer = _SageMakerFileMetricsWriter(filepath)
-    writer.log_metric(metric_name="foo", value=1.0)
-    writer.log_metric(metric_name="foo", value=2.0, step=1)
-    writer.log_metric(metric_name="foo", value=3.0, timestamp=timestamp)
-    writer.log_metric(metric_name="foo", value=4.0, timestamp=timestamp, step=2)
-    writer.close()
-
-    lines = [x for x in open(filepath).read().split("\n") if x]
-    [entry_one, entry_two, entry_three, entry_four] = [json.loads(line) for line in lines]
-
-    assert "foo" == entry_one["MetricName"]
-    assert 1.0 == entry_one["Value"]
-    assert (now.timestamp() - entry_one["Timestamp"]) < 1
-    assert "Step" not in entry_one
-
-    assert 1 == entry_two["Step"]
-    assert timestamp.timestamp() == entry_three["Timestamp"]
-    assert 2 == entry_four["Step"]
-
-
-def test_file_metrics_writer_flushes_buffer_every_line_log_metric(filepath):
-    writer = _SageMakerFileMetricsWriter(filepath)
-
-    writer.log_metric(metric_name="foo", value=1.0)
-
-    lines = [x for x in open(filepath).read().split("\n") if x]
-    [entry_one] = [json.loads(line) for line in lines]
-    assert "foo" == entry_one["MetricName"]
-    assert 1.0 == entry_one["Value"]
-
-    writer.log_metric(metric_name="bar", value=2.0)
-    lines = [x for x in open(filepath).read().split("\n") if x]
-    [entry_one, entry_two] = [json.loads(line) for line in lines]
-    assert "bar" == entry_two["MetricName"]
-    assert 2.0 == entry_two["Value"]
-
-    writer.log_metric(metric_name="biz", value=3.0)
-    lines = [x for x in open(filepath).read().split("\n") if x]
-    [entry_one, entry_two, entry_three] = [json.loads(line) for line in lines]
-    assert "biz" == entry_three["MetricName"]
-    assert 3.0 == entry_three["Value"]
-
-    writer.close()
-
-
-def test_file_metrics_writer_context_manager(timestamp, filepath):
-    with _SageMakerFileMetricsWriter(filepath) as writer:
-        writer.log_metric("foo", value=1.0, timestamp=timestamp)
-    entry = json.loads(open(filepath, "r").read().strip())
-    assert {
-        "MetricName": "foo",
-        "Value": 1.0,
-        "Timestamp": timestamp.timestamp(),
-    }.items() <= entry.items()
-
-
-def test_file_metrics_writer_fail_write_on_close(filepath):
-    writer = _SageMakerFileMetricsWriter(filepath)
-    writer.log_metric(metric_name="foo", value=1.0)
-    writer.close()
-    with pytest.raises(SageMakerMetricsWriterException):
-        writer.log_metric(metric_name="foo", value=1.0)
-
-
-def test_file_metrics_writer_no_write(filepath):
-    writer = _SageMakerFileMetricsWriter(filepath)
-    writer.close()
-    assert not os.path.exists(filepath)

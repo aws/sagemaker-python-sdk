@@ -1064,3 +1064,54 @@ def test_spark_processor_local_code(spark_processor, processing_input, pipeline_
     step_def = json.loads(pipeline.definition())["Steps"][0]
     step_def2 = json.loads(pipeline.definition())["Steps"][0]
     assert step_def == step_def2
+
+
+_PARAM_ROLE_NAME = "Role"
+
+
+@pytest.mark.parametrize(
+    "processor_args",
+    [
+        (
+            ScriptProcessor(
+                role=ParameterString(name=_PARAM_ROLE_NAME, default_value=ROLE),
+                image_uri=IMAGE_URI,
+                instance_count=1,
+                instance_type="ml.m4.xlarge",
+                command=["python3"],
+            ),
+            {"code": DUMMY_S3_SCRIPT_PATH},
+        ),
+        (
+            Processor(
+                role=ParameterString(name=_PARAM_ROLE_NAME, default_value=ROLE),
+                image_uri=IMAGE_URI,
+                instance_count=1,
+                instance_type="ml.m4.xlarge",
+            ),
+            {},
+        ),
+    ],
+)
+@patch("os.path.exists", return_value=True)
+@patch("os.path.isfile", return_value=True)
+def test_processor_with_role_as_pipeline_parameter(
+    exists_mock, isfile_mock, processor_args, pipeline_session
+):
+    processor, run_inputs = processor_args
+    processor.sagemaker_session = pipeline_session
+    processor.run(**run_inputs)
+
+    step_args = processor.run(**run_inputs)
+    step = ProcessingStep(
+        name="MyProcessingStep",
+        step_args=step_args,
+    )
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[step],
+        sagemaker_session=pipeline_session,
+    )
+
+    step_def = json.loads(pipeline.definition())["Steps"][0]
+    assert step_def["Arguments"]["RoleArn"] == {"Get": f"Parameters.{_PARAM_ROLE_NAME}"}

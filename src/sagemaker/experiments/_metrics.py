@@ -14,7 +14,6 @@
 from __future__ import absolute_import
 
 import datetime
-import json
 import logging
 import os
 import time
@@ -33,85 +32,6 @@ BATCH_SIZE = 10
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
-# TODO: remove this _SageMakerFileMetricsWriter class
-# when _MetricsManager is fully ready
-class _SageMakerFileMetricsWriter(object):
-    """Write metric data to file."""
-
-    def __init__(self, metrics_file_path=None):
-        """Construct a `_SageMakerFileMetricsWriter` object"""
-        self._metrics_file_path = metrics_file_path
-        self._file = None
-        self._closed = False
-
-    def log_metric(self, metric_name, value, timestamp=None, step=None):
-        """Write a metric to file.
-
-        Args:
-            metric_name (str): The name of the metric.
-            value (float): The value of the metric.
-            timestamp (datetime.datetime): Timestamp of the metric.
-                If not specified, the current UTC time will be used.
-            step (int):  Iteration number of the metric (default: None).
-
-        Raises:
-            SageMakerMetricsWriterException: If the metrics file is closed.
-            AttributeError: If file has been initialized and the writer hasn't been closed.
-        """
-        raw_metric_data = _RawMetricData(
-            metric_name=metric_name, value=value, timestamp=timestamp, step=step
-        )
-        try:
-            logger.debug("Writing metric: %s", raw_metric_data)
-            self._file.write(json.dumps(raw_metric_data.to_record()))
-            self._file.write("\n")
-        except AttributeError as attr_err:
-            if self._closed:
-                raise SageMakerMetricsWriterException("log_metric called on a closed writer")
-            if not self._file:
-                self._file = open(self._get_metrics_file_path(), "a", buffering=1)
-                self._file.write(json.dumps(raw_metric_data.to_record()))
-                self._file.write("\n")
-            else:
-                raise attr_err
-
-    def close(self):
-        """Closes the metric file."""
-        if not self._closed and self._file:
-            self._file.close()
-            self._file = None  # invalidate reference, causing subsequent log_metric to fail.
-        self._closed = True
-
-    def __enter__(self):
-        """Return self"""
-        return self
-
-    def __exit__(self, exc_type, exc_value, exc_traceback):
-        """Execute self.close()"""
-        self.close()
-
-    def __del__(self):
-        """Execute self.close()"""
-        self.close()
-
-    def _get_metrics_file_path(self):
-        """Get file path to store metrics"""
-        pid_filename = "{}.json".format(str(os.getpid()))
-        metrics_file_path = self._metrics_file_path or os.path.join(METRICS_DIR, pid_filename)
-        logger.debug("metrics_file_path = %s", metrics_file_path)
-        return metrics_file_path
-
-
-class SageMakerMetricsWriterException(Exception):
-    """SageMakerMetricsWriterException"""
-
-    def __init__(self, message, errors=None):
-        """Construct a `SageMakerMetricsWriterException` instance"""
-        super().__init__(message)
-        if errors:
-            self.errors = errors
 
 
 class _RawMetricData(object):
