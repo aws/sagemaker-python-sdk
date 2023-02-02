@@ -44,6 +44,32 @@ class TableType(Enum):
 
 
 @attr.s
+class JoinTypeEnum(Enum):
+    """Enum of Join types.
+    The Join comparator can be "INNER_JOIN", "LEFT_JOIN", "RIGHT_JOIN", "FULL_JOIN"
+    """
+
+    INNER_JOIN = "JOIN"
+    LEFT_JOIN = "LEFT JOIN"
+    RIGHT_JOIN = "RIGHT JOIN"
+    FULL_JOIN = "FULL JOIN"
+
+
+@attr.s
+class JoinComparatorEnum(Enum):
+    """Enum of Join comparators.
+    The Join comparator can be "EQUALS", "GREATER_THAN", "LESS_THAN",
+    "GREATER_THAN_OR_EQUAL_TO", or "LESS_THAN_OR_EQUAL_TO"
+    """
+
+    EQUALS = "="
+    GREATER_THAN = ">"
+    GREATER_THAN_OR_EQUAL_TO = ">="
+    LESS_THAN = "<"
+    LESS_THAN_OR_EQUAL_TO = "<="
+
+
+@attr.s
 class FeatureGroupToBeMerged:
     """FeatureGroup metadata which will be used for SQL join.
 
@@ -68,6 +94,13 @@ class FeatureGroupToBeMerged:
             be used as target join key (default: None).
         table_type (TableType): A TableType representing the type of table if it is Feature Group or
             Panda Data Frame (default: None).
+        feature_name_in_target (str): A string representing the feature in the target feature group
+            that will be compared to the target feature in the base feature group
+        join_comparator (JoinComparatorEnum): A JoinComparatorEnum representing the comparator used
+            when joining the target feature in the base feature group and the feature in the target
+            feature group (default: None).
+        join_type (JoinTypeEnum): A JoinTypeEnum representing the type of join between the base and
+            target feature groups. (default: None).
     """
 
     features: List[str] = attr.ib()
@@ -80,12 +113,18 @@ class FeatureGroupToBeMerged:
     event_time_identifier_feature: FeatureDefinition = attr.ib()
     target_feature_name_in_base: str = attr.ib(default=None)
     table_type: TableType = attr.ib(default=None)
+    feature_name_in_target: str = attr.ib(default=None)
+    join_comparator: JoinComparatorEnum = attr.ib(default=None)
+    join_type: JoinTypeEnum = attr.ib(default=None)
 
 
 def construct_feature_group_to_be_merged(
-    feature_group: FeatureGroup,
+    target_feature_group: FeatureGroup,
     included_feature_names: List[str],
     target_feature_name_in_base: str = None,
+    feature_name_in_target: str = None,
+    join_comparator: JoinComparatorEnum = None,
+    join_type: JoinTypeEnum = None
 ) -> FeatureGroupToBeMerged:
     """Construct a FeatureGroupToBeMerged object by provided parameters.
 
@@ -101,12 +140,12 @@ def construct_feature_group_to_be_merged(
     Raises:
         ValueError: Invalid feature name(s) in included_feature_names.
     """
-    feature_group_metadata = feature_group.describe()
+    feature_group_metadata = target_feature_group.describe()
     data_catalog_config = feature_group_metadata.get("OfflineStoreConfig", {}).get(
         "DataCatalogConfig", None
     )
     if not data_catalog_config:
-        raise RuntimeError(f"No metastore is configured with FeatureGroup {feature_group.name}.")
+        raise RuntimeError(f"No metastore is configured with FeatureGroup {target_feature_group.name}.")
 
     record_identifier_feature_name = feature_group_metadata.get("RecordIdentifierFeatureName", None)
     feature_definitions = feature_group_metadata.get("FeatureDefinitions", [])
@@ -126,10 +165,15 @@ def construct_feature_group_to_be_merged(
     catalog = data_catalog_config.get("Catalog", None) if disable_glue else _DEFAULT_CATALOG
     features = [feature.get("FeatureName", None) for feature in feature_definitions]
 
+    if (feature_name_in_target is not None and feature_name_in_target not in features):
+        raise ValueError(
+            f"Feature {feature_name_in_target} not found in FeatureGroup {target_feature_group.name}"
+        )
+
     for included_feature in included_feature_names or []:
         if included_feature not in features:
             raise ValueError(
-                f"Feature {included_feature} not found in FeatureGroup {feature_group.name}"
+                f"Feature {included_feature} not found in FeatureGroup {target_feature_group.name}"
             )
     if not included_feature_names:
         included_feature_names = features
@@ -151,6 +195,9 @@ def construct_feature_group_to_be_merged(
         FeatureDefinition(event_time_identifier_feature_name, event_time_identifier_feature_type),
         target_feature_name_in_base,
         TableType.FEATURE_GROUP,
+        feature_name_in_target,
+        join_comparator,
+        join_type
     )
 
 
@@ -227,6 +274,9 @@ class DatasetBuilder:
         feature_group: FeatureGroup,
         target_feature_name_in_base: str = None,
         included_feature_names: List[str] = None,
+        feature_name_in_target: str = None,
+        join_comparator: JoinComparatorEnum = None,
+        join_type: JoinTypeEnum = None
     ):
         """Join FeatureGroup with base.
 
@@ -241,7 +291,11 @@ class DatasetBuilder:
         """
         self._feature_groups_to_be_merged.append(
             construct_feature_group_to_be_merged(
-                feature_group, included_feature_names, target_feature_name_in_base
+                feature_group, included_feature_names,
+                target_feature_name_in_base,
+                feature_name_in_target,
+                join_comparator,
+                join_type
             )
         )
         return self
@@ -905,10 +959,22 @@ class DatasetBuilder:
         Returns:
             The JOIN query string.
         """
+
+        join_type = (feature_group.join_type if feature_group.join_type is not None
+                     else JoinTypeEnum.INNER_JOIN)
+
+        join_comparator = (feature_group.join_comparator
+                           if feature_group.join_comparator is not None
+                           else JoinComparatorEnum.EQUALS)
+
+        feature_name_in_target = (feature_group.feature_name_in_target
+                                  if feature_group.feature_name_in_target is not None
+                                  else feature_group.record_identifier_feature_name)
+
         join_condition_string = (
-            f"\nJOIN fg_{suffix}\n"
-            + f'ON fg_base."{feature_group.target_feature_name_in_base}" = '
-            + f'fg_{suffix}."{feature_group.record_identifier_feature_name}"'
+            f"\n{join_type.value} fg_{suffix}\n"
+            + f'ON fg_base."{feature_group.target_feature_name_in_base}" {join_comparator.value} '
+            + f'fg_{suffix}."{feature_name_in_target}"'
         )
         base_timestamp_cast_function_name = "from_unixtime"
         if self._event_time_identifier_feature_type == FeatureTypeEnum.STRING:
