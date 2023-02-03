@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.131.1 (2023-02-03)
+
+### Bug Fixes and Other Changes
+
+ * test dub gpu integs with p3
+ * fix(experiments/run.py): Stop duplication of RUN_TC_TAG on Consecutive Experiment Runs
+ * Enable load_run without name args in Transform env
+ * Remove confusing log line emitted during feature group ingestion
+ * Enable Experiment integ test on beta clients
+ * Make test_processor_with_role_as_pipeline_parameter more concrete
+
+### Documentation Changes
+
+ * add security note for the estimator hyperparameter arg
+ * SageMaker distributed - model parallism library release note
+ * Add a deprecation note for DetailedProfileConfig
+
 ## v2.131.0 (2023-01-31)
 
 ### Features
