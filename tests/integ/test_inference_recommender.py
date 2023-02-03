@@ -43,6 +43,7 @@ def default_right_sized_model(sagemaker_session, cpu_instance_type):
     with timeout(minutes=45):
         try:
             model_package_group_name = unique_name_from_base("test-ir-right-size-model-pkg-sklearn")
+            ir_job_name = unique_name_from_base("test-ir-right-size-job-name")
             model_data = sagemaker_session.upload_data(path=IR_SKLEARN_MODEL)
             payload_data = sagemaker_session.upload_data(path=IR_SKLEARN_PAYLOAD)
 
@@ -66,6 +67,7 @@ def default_right_sized_model(sagemaker_session, cpu_instance_type):
 
             return (
                 sklearn_model_package.right_size(
+                    job_name=ir_job_name,
                     sample_payload_url=payload_data,
                     supported_content_types=IR_SKLEARN_CONTENT_TYPE,
                     supported_instance_types=[cpu_instance_type],
@@ -73,6 +75,7 @@ def default_right_sized_model(sagemaker_session, cpu_instance_type):
                     log_level="Quiet",
                 ),
                 model_package_group_name,
+                ir_job_name,
             )
         except Exception:
             sagemaker_session.sagemaker_client.delete_model_package(
@@ -157,7 +160,7 @@ def test_default_right_size_and_deploy_registered_model_sklearn(
 ):
     endpoint_name = unique_name_from_base("test-ir-right-size-default-sklearn")
 
-    right_size_model_package, model_package_group_name = default_right_sized_model
+    right_size_model_package, model_package_group_name, ir_job_name = default_right_sized_model
     with timeout(minutes=45):
         try:
             right_size_model_package.predictor_cls = SKLearnPredictor
@@ -169,12 +172,6 @@ def test_default_right_size_and_deploy_registered_model_sklearn(
             assert inference is not None
             assert 26 == len(inference)
         finally:
-            sagemaker_session.sagemaker_client.delete_model_package(
-                ModelPackageName=right_size_model_package.model_package_arn
-            )
-            sagemaker_session.sagemaker_client.delete_model_package_group(
-                ModelPackageGroupName=model_package_group_name
-            )
             predictor.delete_model()
             predictor.delete_endpoint()
 
@@ -209,3 +206,35 @@ def test_advanced_right_size_and_deploy_registered_model_sklearn(
 
 # TODO when we've added support for inference_recommendation_id
 # then add tests to test Framework models
+@pytest.mark.slow_test
+def test_deploy_inference_recommendation_id_with_registered_model_sklearn(
+    default_right_sized_model, sagemaker_session
+):
+    right_size_model_package, model_package_group_name, ir_job_name = default_right_sized_model
+    endpoint_name = unique_name_from_base("test-rec-id-deployment-default-sklearn")
+    rec_res = sagemaker_session.sagemaker_client.describe_inference_recommendations_job(
+        JobName=ir_job_name
+    )
+    rec_id = rec_res["InferenceRecommendations"][0]["RecommendationId"]
+
+    with timeout(minutes=45):
+        try:
+            right_size_model_package.predictor_cls = SKLearnPredictor
+            predictor = right_size_model_package.deploy(
+                inference_recommendation_id=rec_id, endpoint_name=endpoint_name
+            )
+
+            payload = pd.read_csv(IR_SKLEARN_DATA, header=None)
+
+            inference = predictor.predict(payload)
+            assert inference is not None
+            assert 26 == len(inference)
+        finally:
+            sagemaker_session.sagemaker_client.delete_model_package(
+                ModelPackageName=right_size_model_package.model_package_arn
+            )
+            sagemaker_session.sagemaker_client.delete_model_package_group(
+                ModelPackageGroupName=model_package_group_name
+            )
+            predictor.delete_model()
+            predictor.delete_endpoint()
