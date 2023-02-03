@@ -72,6 +72,11 @@ HYPERBAND_STRATEGY_CONFIG = "HyperbandStrategyConfig"
 HYPERBAND_MIN_RESOURCE = "MinResource"
 HYPERBAND_MAX_RESOURCE = "MaxResource"
 GRID_SEARCH = "GridSearch"
+MAX_NUMBER_OF_TRAINING_JOBS_NOT_IMPROVING = "MaxNumberOfTrainingJobsNotImproving"
+BEST_OBJECTIVE_NOT_IMPROVING = "BestObjectiveNotImproving"
+CONVERGENCE_DETECTED = "ConvergenceDetected"
+COMPLETE_ON_CONVERGENCE_DETECTED = "CompleteOnConvergence"
+TARGET_OBJECTIVE_METRIC_VALUE = "TargetObjectiveMetricValue"
 
 logger = logging.getLogger(__name__)
 
@@ -383,6 +388,108 @@ class StrategyConfig(object):
         }
 
 
+class TuningJobCompletionCriteriaConfig(object):
+    """The configuration for a job completion criteria.
+    """
+
+    def __init__(
+            self,
+            max_number_of_training_jobs_not_improving: int = None,
+            complete_on_convergence_detected: bool = None,
+            target_objective_metric_value: float = None
+    ):
+        """Creates a ``TuningJobCompletionCriteriaConfig`` with provided criteria.
+
+        Args:
+            max_number_of_training_jobs_not_improving (int): The number of training jobs that have failed
+                to improve model performance by 1% or greater over prior training jobs as evaluated
+                against an objective function.
+            complete_on_convergence_detected (bool): A flag to top your hyperparameter tuning job if
+                automatic model tuning (AMT) has detected that your model has converged as evaluated against
+                your objective function.
+            target_objective_metric_value (float): The value of the objective metric.
+        """
+
+        self.max_number_of_training_jobs_not_improving = max_number_of_training_jobs_not_improving
+        self.complete_on_convergence_detected = complete_on_convergence_detected
+        self.target_objective_metric_value = target_objective_metric_value
+
+    @classmethod
+    def from_job_desc(cls, tuning_job_completion_criteria_config):
+        """Creates a ``TuningJobCompletionCriteriaConfig`` from a tuning job completion criteria configuration response.
+
+        This is the completion criteria configuration from the DescribeTuningJob response.
+
+        Args:
+            tuning_job_completion_criteria_config (dict): The expected format of the
+                ``tuning_job_completion_criteria_config`` contains three first-class fields
+
+        Returns:
+            sagemaker.tuner.TuningJobCompletionCriteriaConfig: De-serialized instance of
+            TuningJobCompletionCriteriaConfig containing the completion criteria.
+        """
+        complete_on_convergence_detected = None
+        if tuning_job_completion_criteria_config[CONVERGENCE_DETECTED]:
+            if tuning_job_completion_criteria_config[CONVERGENCE_DETECTED][COMPLETE_ON_CONVERGENCE_DETECTED]:
+                complete_on_convergence_detected = \
+                    tuning_job_completion_criteria_config[CONVERGENCE_DETECTED][COMPLETE_ON_CONVERGENCE_DETECTED]
+
+        max_number_of_training_jobs_not_improving = None
+        if tuning_job_completion_criteria_config[BEST_OBJECTIVE_NOT_IMPROVING]:
+            if tuning_job_completion_criteria_config[BEST_OBJECTIVE_NOT_IMPROVING] \
+                    [MAX_NUMBER_OF_TRAINING_JOBS_NOT_IMPROVING]:
+                max_number_of_training_jobs_not_improving = \
+                    tuning_job_completion_criteria_config[BEST_OBJECTIVE_NOT_IMPROVING][
+                        MAX_NUMBER_OF_TRAINING_JOBS_NOT_IMPROVING]
+
+        target_objective_metric_value = None
+        if tuning_job_completion_criteria_config[TARGET_OBJECTIVE_METRIC_VALUE]:
+            target_objective_metric_value = tuning_job_completion_criteria_config[TARGET_OBJECTIVE_METRIC_VALUE]
+
+        return cls(
+            max_number_of_training_jobs_not_improving=max_number_of_training_jobs_not_improving,
+            complete_on_convergence_detected=complete_on_convergence_detected,
+            target_objective_metric_value=tuning_job_completion_criteria_config[TARGET_OBJECTIVE_METRIC_VALUE]
+        )
+
+    def to_input_req(self):
+        """Converts the ``self`` instance to the desired input request format.
+
+        Examples:
+            >>> tuning_job_completion_criteria_config = TuningJobCompletionCriteriaConfig(
+                max_number_of_training_jobs_not_improving=5
+                complete_on_convergence_detected = True,
+                target_objective_metric_value = 0.42
+            )
+            >>> tuning_job_completion_criteria_config.to_input_req()
+            {
+                "BestObjectiveNotImproving": {
+                    "MaxNumberOfTrainingJobsNotImproving":5
+                },
+                "ConvergenceDetected": {
+                    "CompleteOnConvergence": "Enabled",
+                },
+                "TargetObjectiveMetricValue": 0.42
+            }
+
+        Returns:
+            dict: Containing the completion criteria configurations.
+        """
+        completion_criteria_config = {}
+        if self.max_number_of_training_jobs_not_improving is not None:
+            completion_criteria_config[BEST_OBJECTIVE_NOT_IMPROVING][MAX_NUMBER_OF_TRAINING_JOBS_NOT_IMPROVING] =\
+                self.max_number_of_training_jobs_not_improving
+
+        if self.target_objective_metric_value is not None:
+            completion_criteria_config[TARGET_OBJECTIVE_METRIC_VALUE] = self.target_objective_metric_value
+
+        if self.complete_on_convergence_detected is not None:
+            completion_criteria_config[CONVERGENCE_DETECTED][COMPLETE_ON_CONVERGENCE_DETECTED] = \
+                self.complete_on_convergence_detected
+
+        return completion_criteria_config
+
+
 class HyperparameterTuner(object):
     """Defines interaction with Amazon SageMaker hyperparameter tuning jobs.
 
@@ -407,10 +514,12 @@ class HyperparameterTuner(object):
         objective_type: Union[str, PipelineVariable] = "Maximize",
         max_jobs: Union[int, PipelineVariable] = None,
         max_parallel_jobs: Union[int, PipelineVariable] = 1,
+        max_jobs_runtime_in_seconds: Optional[int, PipelineVariable] = None,
         tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
         base_tuning_job_name: Optional[str] = None,
         warm_start_config: Optional[WarmStartConfig] = None,
         strategy_config: Optional[StrategyConfig] = None,
+            completion_criteria_config: Optional[TuningJobCompletionCriteriaConfig] = None,
         early_stopping_type: Union[str, PipelineVariable] = "Off",
         estimator_name: Optional[str] = None,
         random_seed: Optional[int] = None,
@@ -450,6 +559,8 @@ class HyperparameterTuner(object):
                 strategy and the default value is 1 for all others strategies (default: None).
             max_parallel_jobs (int or PipelineVariable): Maximum number of parallel training jobs to
                 start (default: 1).
+            max_jobs_runtime_in_seconds (int or PipelineVariable): The maximum time in seconds
+                that a training job launched by a hyperparameter tuning job can run.
             tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): List of tags for
                 labeling the tuning job (default: None). For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
@@ -463,6 +574,8 @@ class HyperparameterTuner(object):
                 configuration defining the nature of warm start tuning job.
             strategy_config (sagemaker.tuner.StrategyConfig): A configuration for "Hyperparameter"
                 tuning job optimisation strategy.
+            completion_criteria_config (sagemaker.tuner.TuningJobCompletionCriteriaConfig): A configuration
+                for the completion criteria.
             early_stopping_type (str or PipelineVariable): Specifies whether early stopping is
                 enabled for the job. Can be either 'Auto' or 'Off' (default:
                 'Off'). If set to 'Off', early stopping will not be attempted.
@@ -505,6 +618,7 @@ class HyperparameterTuner(object):
 
         self.strategy = strategy
         self.strategy_config = strategy_config
+        self.completion_criteria_config = completion_criteria_config
         self.objective_type = objective_type
         # For the GridSearch strategy we expect the max_jobs equals None and recalculate it later.
         # For all other strategies for the backward compatibility we keep
@@ -513,6 +627,7 @@ class HyperparameterTuner(object):
         if max_jobs is None and strategy is not GRID_SEARCH:
             self.max_jobs = 1
         self.max_parallel_jobs = max_parallel_jobs
+        self.max_jobs_runtime_in_seconds = max_jobs_runtime_in_seconds
 
         self.tags = tags
         self.base_tuning_job_name = base_tuning_job_name
@@ -1484,9 +1599,11 @@ class HyperparameterTuner(object):
                 hyperparameter_ranges=self._hyperparameter_ranges,
                 strategy=self.strategy,
                 strategy_config=self.strategy_config,
+                completion_criteria_config=self.completion_criteria_config,
                 objective_type=self.objective_type,
                 max_jobs=self.max_jobs,
                 max_parallel_jobs=self.max_parallel_jobs,
+                max_jobs_runtime_in_seconds=self.max_jobs_runtime_in_seconds,
                 warm_start_config=WarmStartConfig(
                     warm_start_type=warm_start_type, parents=all_parents
                 ),
@@ -1512,9 +1629,11 @@ class HyperparameterTuner(object):
             metric_definitions_dict=self.metric_definitions_dict,
             strategy=self.strategy,
             strategy_config=self.strategy_config,
+            completion_criteria_config=self.completion_criteria_config,
             objective_type=self.objective_type,
             max_jobs=self.max_jobs,
             max_parallel_jobs=self.max_parallel_jobs,
+            max_jobs_runtime_in_seconds=self.max_jobs_runtime_in_seconds,
             warm_start_config=WarmStartConfig(warm_start_type=warm_start_type, parents=all_parents),
             early_stopping_type=self.early_stopping_type,
             random_seed=self.random_seed,
@@ -1530,9 +1649,11 @@ class HyperparameterTuner(object):
         base_tuning_job_name=None,
         strategy="Bayesian",
         strategy_config=None,
+        completion_criteria_config=None,
         objective_type="Maximize",
         max_jobs=None,
         max_parallel_jobs=1,
+        max_jobs_runtime_in_seconds=None,
         tags=None,
         warm_start_config=None,
         early_stopping_type="Off",
@@ -1581,6 +1702,7 @@ class HyperparameterTuner(object):
                 (default: 'Bayesian').
             strategy_config (dict): The configuration for a training job launched by a
                 hyperparameter tuning job.
+            completion_criteria_config (dict): The configuration for tuning job completion criteria.
             objective_type (str): The type of the objective metric for evaluating training jobs.
                 This value can be either 'Minimize' or 'Maximize' (default: 'Maximize').
             max_jobs (int): Maximum total number of training jobs to start for the hyperparameter
@@ -1588,6 +1710,8 @@ class HyperparameterTuner(object):
                 and the value is 1 for all others strategies (default: None).
             max_parallel_jobs (int): Maximum number of parallel training jobs to start
                 (default: 1).
+            max_jobs_runtime_in_seconds (int): The maximum time in seconds
+                that a training job launched by a hyperparameter tuning job can run.
             tags (list[dict]): List of tags for labeling the tuning job (default: None). For more,
                 see https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             warm_start_config (sagemaker.tuner.WarmStartConfig): A ``WarmStartConfig`` object that
@@ -1632,9 +1756,11 @@ class HyperparameterTuner(object):
             metric_definitions=metric_definitions,
             strategy=strategy,
             strategy_config=strategy_config,
+            completion_criteria_config=completion_criteria_config,
             objective_type=objective_type,
             max_jobs=max_jobs,
             max_parallel_jobs=max_parallel_jobs,
+            max_jobs_runtime_in_seconds=max_jobs_runtime_in_seconds,
             tags=tags,
             warm_start_config=warm_start_config,
             early_stopping_type=early_stopping_type,
@@ -1790,6 +1916,9 @@ class _TuningJob(_Job):
             "early_stopping_type": tuner.early_stopping_type,
         }
 
+        if tuner.max_jobs_runtime_in_seconds is not None:
+            tuning_config["max_jobs_runtime_in_seconds"] = tuner.max_jobs_runtime_in_seconds
+
         if tuner.random_seed is not None:
             tuning_config["random_seed"] = tuner.random_seed
 
@@ -1803,6 +1932,9 @@ class _TuningJob(_Job):
         parameter_ranges = tuner.hyperparameter_ranges()
         if parameter_ranges is not None:
             tuning_config["parameter_ranges"] = parameter_ranges
+
+        if tuner.tuning_job_completion_criteria_config is not None:
+            tuning_config["completion_criteria_config"] = tuner.tuning_job_completion_criteria_config.to_input_req()
 
         tuner_args = {
             "job_name": tuner._current_job_name,

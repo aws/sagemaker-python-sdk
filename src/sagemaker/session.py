@@ -2178,6 +2178,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         objective_metric_name,
         max_jobs,
         max_parallel_jobs,
+        max_jobs_runtime_in_seconds,
         parameter_ranges,
         static_hyperparameters,
         input_mode,
@@ -2190,6 +2191,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         tags,
         warm_start_config,
         strategy_config=None,
+        completion_criteria_config=None,
         enable_network_isolation=False,
         image_uri=None,
         algorithm_arn=None,
@@ -2215,6 +2217,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             max_jobs (int): Maximum total number of training jobs to start for the hyperparameter
                 tuning job.
             max_parallel_jobs (int): Maximum number of parallel training jobs to start.
+            max_jobs_runtime_in_seconds (int or PipelineVariable): The maximum time in seconds
+                that a training job launched by a hyperparameter tuning job can run.
             parameter_ranges (dict): Dictionary of parameter ranges. These parameter ranges can be
                 one of three types: Continuous, Integer, or Categorical.
             static_hyperparameters (dict): Hyperparameters for model training. These
@@ -2255,6 +2259,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             warm_start_config (dict): Configuration defining the type of warm start and
                 other required configurations.
+            completion_criteria_config (sagemaker.tuner.TuningJobCompletionCriteriaConfig): A configuration
+                for the completion criteria.
             early_stopping_type (str): Specifies whether early stopping is enabled for the job.
                 Can be either 'Auto' or 'Off'. If set to 'Off', early stopping will not be
                 attempted. If set to 'Auto', early stopping of some training jobs may happen, but
@@ -2294,12 +2300,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 strategy=strategy,
                 max_jobs=max_jobs,
                 max_parallel_jobs=max_parallel_jobs,
+                max_jobs_runtime_in_seconds=max_jobs_runtime_in_seconds,
                 objective_type=objective_type,
                 objective_metric_name=objective_metric_name,
                 parameter_ranges=parameter_ranges,
                 early_stopping_type=early_stopping_type,
                 random_seed=random_seed,
                 strategy_config=strategy_config,
+                completion_criteria_config=completion_criteria_config,
             ),
             "TrainingJobDefinition": self._map_training_config(
                 static_hyperparameters=static_hyperparameters,
@@ -2452,12 +2460,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
         strategy,
         max_jobs,
         max_parallel_jobs,
+        max_jobs_runtime_in_seconds=None,
         early_stopping_type="Off",
         objective_type=None,
         objective_metric_name=None,
         parameter_ranges=None,
         random_seed=None,
         strategy_config=None,
+        completion_criteria_config=None,
     ):
         """Construct tuning job configuration dictionary.
 
@@ -2466,6 +2476,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             max_jobs (int): Maximum total number of training jobs to start for the hyperparameter
                 tuning job.
             max_parallel_jobs (int): Maximum number of parallel training jobs to start.
+            max_jobs_runtime_in_seconds (int or PipelineVariable): The maximum time in seconds
+                that a training job launched by a hyperparameter tuning job can run.
             early_stopping_type (str): Specifies whether early stopping is enabled for the job.
                 Can be either 'Auto' or 'Off'. If set to 'Off', early stopping will not be
                 attempted. If set to 'Auto', early stopping of some training jobs may happen,
@@ -2480,6 +2492,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 produce more consistent configurations for the same tuning job.
             strategy_config (dict): A configuration for the hyperparameter tuning job optimisation
                 strategy.
+            completion_criteria_config (dict): A configuration
+                for the completion criteria.
 
         Returns:
             A dictionary of tuning job configuration. For format details, please refer to
@@ -2496,6 +2510,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "TrainingJobEarlyStoppingType": early_stopping_type,
         }
 
+        if max_jobs_runtime_in_seconds is not None:
+            tuning_config["ResourceLimits"]["MaxRuntimeInSeconds"] = max_jobs_runtime_in_seconds
+
         if random_seed is not None:
             tuning_config["RandomSeed"] = random_seed
 
@@ -2508,6 +2525,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if strategy_config is not None:
             tuning_config["StrategyConfig"] = strategy_config
+
+        if completion_criteria_config is not None:
+            tuning_config["TuningJobCompletionCriteria"] = completion_criteria_config
         return tuning_config
 
     @classmethod
