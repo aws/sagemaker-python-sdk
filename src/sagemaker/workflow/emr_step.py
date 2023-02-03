@@ -61,61 +61,88 @@ class EMRStepConfig:
         return config
 
 
-def validate_cluster_config(cluster_config, step_name):
-    """Validates user provided cluster_config.
+instances = "Instances"
+instancegroups = "InstanceGroups"
+instancefleets = "InstanceFleets"
+err_str_with_name_auto_termination_or_steps = (
+    "In EMRStep {step_name}, cluster_config "
+    "should not contain any of the Name, "
+    "AutoTerminationPolicy and/or Steps."
+)
 
-    Args:
-        cluster_config(Union[Dict[str, Any], List[Dict[str, Any]]]):
-            user provided cluster configuration.
-        step_name: The name of the EMR step.
-    """
+err_str_without_instance = "In EMRStep {step_name}, cluster_config must contain " + instances + "."
 
-    instances = "Instances"
-    instancegroups = "InstanceGroups"
-    instancefleets = "InstanceFleets"
-    prefix_with_in = "In EMRStep " + step_name + ", "
+err_str_with_keepjobflow_or_terminationprotected = (
+    "In EMRStep {step_name}, " + instances + " should not contain "
+    "KeepJobFlowAliveWhenNoSteps or "
+    "TerminationProtected."
+)
 
-    if (
-        "Name" in cluster_config
-        or "AutoTerminationPolicy" in cluster_config
-        or "Steps" in cluster_config
-    ):
-        raise Exception(
-            prefix_with_in + "cluster_config should not contain any of Name, "
-            "AutoTerminationPolicy and/or Steps"
-        )
+err_str_both_or_none_instancegroups_or_instancefleets = (
+    "In EMRStep {step_name}, "
+    + instances
+    + " should contain either "
+    + instancegroups
+    + " or "
+    + instancefleets
+    + "."
+)
 
-    if instances not in cluster_config:
-        raise Exception(prefix_with_in + "cluster_config must contain Instances")
+err_str_with_both_cluster_id_and_cluster_cfg = (
+    "EMRStep {step_name} can not have both cluster_id"
+    "or cluster_config."
+    "To use EMRStep with "
+    "cluster_config, cluster_id "
+    "must be explicitly set to None."
+)
 
-    if (
-        "KeepJobFlowAliveWhenNoSteps" in cluster_config[instances]
-        or "TerminationProtected" in cluster_config[instances]
-    ):
-        raise Exception(
-            prefix_with_in + instances + " should not contain "
-            "KeepJobFlowAliveWhenNoSteps or "
-            "TerminationProtected"
-        )
-
-    if (
-        instancegroups in cluster_config[instances] and instancefleets in cluster_config[instances]
-    ) or (
-        instancegroups not in cluster_config[instances]
-        and instancefleets not in cluster_config[instances]
-    ):
-        raise Exception(
-            prefix_with_in
-            + instances
-            + " should contain either "
-            + instancegroups
-            + " or "
-            + instancefleets
-        )
+err_str_without_cluster_id_and_cluster_cfg = (
+    "EMRStep {step_name} must have either cluster_id or cluster_config"
+)
 
 
 class EMRStep(Step):
     """EMR step for workflow."""
+
+    def _validate_cluster_config(self, cluster_config, step_name):
+        """Validates user provided cluster_config.
+
+        Args:
+            cluster_config(Union[Dict[str, Any], List[Dict[str, Any]]]):
+                user provided cluster configuration.
+            step_name: The name of the EMR step.
+        """
+
+        if (
+            "Name" in cluster_config
+            or "AutoTerminationPolicy" in cluster_config
+            or "Steps" in cluster_config
+        ):
+            raise ValueError(
+                err_str_with_name_auto_termination_or_steps.format(step_name=step_name)
+            )
+
+        if instances not in cluster_config:
+            raise ValueError(err_str_without_instance.format(step_name=step_name))
+
+        if (
+            "KeepJobFlowAliveWhenNoSteps" in cluster_config[instances]
+            or "TerminationProtected" in cluster_config[instances]
+        ):
+            raise ValueError(
+                err_str_with_keepjobflow_or_terminationprotected.format(step_name=step_name)
+            )
+
+        if (
+            instancegroups in cluster_config[instances]
+            and instancefleets in cluster_config[instances]
+        ) or (
+            instancegroups not in cluster_config[instances]
+            and instancefleets not in cluster_config[instances]
+        ):
+            raise ValueError(
+                err_str_both_or_none_instancegroups_or_instancefleets.format(step_name=step_name)
+            )
 
     def __init__(
         self,
@@ -128,7 +155,7 @@ class EMRStep(Step):
         cache_config: CacheConfig = None,
         cluster_config: RequestType = None,
     ):
-        """Constructs a EMRStep.
+        """Constructs an EMRStep.
 
         Args:
             name(str): The name of the EMR step.
@@ -141,19 +168,19 @@ class EMRStep(Step):
                 depends on.
             cache_config(CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
             cluster_config(Union[Dict[str, Any], List[Dict[str, Any]]]): The recipe of the
-                EMR Cluster. It is a dictionary.
-                The elements are defined in the Request Syntax Section:
+                EMR cluster, passed as a dictionary. The elements are defined in the request syntax
+                for RunJobFlow. However, the following elements are not recognized as part of the
+                cluster configuration and you should not include them in the dictionary:
+                    1. cluster_config[Name]
+                    2. cluster_config[Steps]
+                    3. cluster_config[AutoTerminationPolicy]
+                    4. cluster_config[Instances][KeepJobFlowAliveWhenNoSteps]
+                    5. cluster_config[Instances][TerminationProtected]
+                For more information about the fields you can include in your cluster
+                configuration, see
                 https://docs.aws.amazon.com/emr/latest/APIReference/API_RunJobFlow.html
-                However, the following five elements are restricted, and must not present
-                in the dictionary:
-                1. cluster_config[Name]
-                2. cluster_config[Steps]
-                3. cluster_config[AutoTerminationPolicy]
-                4. cluster_config[Instances][KeepJobFlowAliveWhenNoSteps]
-                5. cluster_config[Instances][TerminationProtected]
-                Note that, if user wants to use cluster_config, then they have to explicitly set
-                cluster_id as None
-
+                Note that if you want to use cluster_config,
+                then you have to set cluster_id as None.
         """
         super(EMRStep, self).__init__(name, display_name, description, StepTypeEnum.EMR, depends_on)
 
@@ -161,20 +188,16 @@ class EMRStep(Step):
         root_property = Properties(step_name=name, shape_name="Step", service_name="emr")
 
         if cluster_id is None and cluster_config is None:
-            raise Exception("EMRStep " + name + " must have either cluster_id or cluster_config")
+            raise ValueError(err_str_without_cluster_id_and_cluster_cfg.format(step_name=name))
 
         if cluster_id is not None and cluster_config is not None:
-            raise Exception(
-                "EMRStep " + name + " can not have both cluster_id or cluster_config. "
-                "If user wants to use cluster_config, then they "
-                "have to explicitly set cluster_id as None"
-            )
+            raise ValueError(err_str_with_both_cluster_id_and_cluster_cfg.format(step_name=name))
 
         if cluster_id is not None:
             emr_step_args["ClusterId"] = cluster_id
             root_property.__dict__["ClusterId"] = cluster_id
         elif cluster_config is not None:
-            validate_cluster_config(cluster_config, name)
+            self._validate_cluster_config(cluster_config, name)
             emr_step_args["ClusterConfig"] = cluster_config
             root_property.__dict__["ClusterConfig"] = cluster_config
 

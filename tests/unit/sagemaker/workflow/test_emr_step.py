@@ -15,7 +15,16 @@ from __future__ import absolute_import
 import json
 import pytest
 
-from sagemaker.workflow.emr_step import EMRStep, EMRStepConfig
+from sagemaker.workflow.emr_step import (
+    EMRStep,
+    EMRStepConfig,
+    err_str_with_name_auto_termination_or_steps,
+    err_str_without_instance,
+    err_str_with_keepjobflow_or_terminationprotected,
+    err_str_both_or_none_instancegroups_or_instancefleets,
+    err_str_with_both_cluster_id_and_cluster_cfg,
+    err_str_without_cluster_id_and_cluster_cfg,
+)
 from sagemaker.workflow.steps import CacheConfig
 from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
 from sagemaker.workflow.parameters import ParameterString
@@ -172,8 +181,6 @@ def test_pipeline_interpolates_emr_outputs(sagemaker_session):
 
 g_emr_step_config = EMRStepConfig(jar="s3:/script-runner/script-runner.jar")
 g_emr_step_name = "MyEMRStep"
-g_prefix = "EMRStep " + g_emr_step_name + " "
-g_prefix_with_in = "In EMRStep " + g_emr_step_name + ", "
 g_cluster_config = {
     "Instances": {
         "InstanceGroups": [
@@ -194,7 +201,7 @@ g_cluster_config = {
 
 
 def test_emr_step_throws_exception_when_both_cluster_id_and_cluster_config_are_present():
-    with pytest.raises(Exception) as exceptionInfo:
+    with pytest.raises(ValueError) as exceptionInfo:
         EMRStep(
             name=g_emr_step_name,
             display_name="MyEMRStep",
@@ -205,10 +212,8 @@ def test_emr_step_throws_exception_when_both_cluster_id_and_cluster_config_are_p
             depends_on=["TestStep"],
             cache_config=CacheConfig(enable_caching=True, expire_after="PT1H"),
         )
-    expected_error_msg = (
-        g_prefix + "can not have both cluster_id or cluster_config. "
-        "If user wants to use cluster_config, then they "
-        "have to explicitly set cluster_id as None"
+    expected_error_msg = err_str_with_both_cluster_id_and_cluster_cfg.format(
+        step_name=g_emr_step_name
     )
     actual_error_msg = exceptionInfo.value.args[0]
 
@@ -216,7 +221,7 @@ def test_emr_step_throws_exception_when_both_cluster_id_and_cluster_config_are_p
 
 
 def test_emr_step_throws_exception_when_both_cluster_id_and_cluster_config_are_none():
-    with pytest.raises(Exception) as exceptionInfo:
+    with pytest.raises(ValueError) as exceptionInfo:
         EMRStep(
             name=g_emr_step_name,
             display_name="MyEMRStep",
@@ -226,7 +231,9 @@ def test_emr_step_throws_exception_when_both_cluster_id_and_cluster_config_are_n
             depends_on=["TestStep"],
             cache_config=CacheConfig(enable_caching=True, expire_after="PT1H"),
         )
-    expected_error_msg = g_prefix + "must have either cluster_id or cluster_config"
+    expected_error_msg = err_str_without_cluster_id_and_cluster_cfg.format(
+        step_name=g_emr_step_name
+    )
     actual_error_msg = exceptionInfo.value.args[0]
 
     assert actual_error_msg == expected_error_msg
@@ -327,8 +334,7 @@ def test_emr_step_with_valid_cluster_config():
                     ],
                 },
             },
-            g_prefix_with_in + "cluster_config should not contain any of "
-            "Name, AutoTerminationPolicy and/or Steps",
+            err_str_with_name_auto_termination_or_steps.format(step_name=g_emr_step_name),
         ),
         (
             {
@@ -341,8 +347,7 @@ def test_emr_step_with_valid_cluster_config():
                     ],
                 },
             },
-            g_prefix_with_in + "cluster_config should not contain any of "
-            "Name, AutoTerminationPolicy and/or Steps",
+            err_str_with_name_auto_termination_or_steps.format(step_name=g_emr_step_name),
         ),
         (
             {
@@ -355,22 +360,20 @@ def test_emr_step_with_valid_cluster_config():
                     ],
                 },
             },
-            g_prefix_with_in + "cluster_config should not contain any of "
-            "Name, AutoTerminationPolicy and/or Steps",
+            err_str_with_name_auto_termination_or_steps.format(step_name=g_emr_step_name),
         ),
         (
             {
                 "AmiVersion": "3.8.0",
                 "AdditionalInfo": "MyAdditionalInfo",
             },
-            g_prefix_with_in + "cluster_config must contain Instances",
+            err_str_without_instance.format(step_name=g_emr_step_name),
         ),
         (
             {
                 "Instances": {},
             },
-            g_prefix_with_in + "Instances should contain either "
-            "InstanceGroups or InstanceFleets",
+            err_str_both_or_none_instancegroups_or_instancefleets.format(step_name=g_emr_step_name),
         ),
         (
             {
@@ -387,8 +390,7 @@ def test_emr_step_with_valid_cluster_config():
                     ],
                 },
             },
-            g_prefix_with_in + "Instances should contain either "
-            "InstanceGroups or InstanceFleets",
+            err_str_both_or_none_instancegroups_or_instancefleets.format(step_name=g_emr_step_name),
         ),
         (
             {
@@ -401,9 +403,7 @@ def test_emr_step_with_valid_cluster_config():
                     "KeepJobFlowAliveWhenNoSteps": True,
                 },
             },
-            g_prefix_with_in + "Instances should not contain "
-            "KeepJobFlowAliveWhenNoSteps or "
-            "TerminationProtected",
+            err_str_with_keepjobflow_or_terminationprotected.format(step_name=g_emr_step_name),
         ),
         (
             {
@@ -416,16 +416,14 @@ def test_emr_step_with_valid_cluster_config():
                     "TerminationProtected": True,
                 },
             },
-            g_prefix_with_in + "Instances should not contain "
-            "KeepJobFlowAliveWhenNoSteps or "
-            "TerminationProtected",
+            err_str_with_keepjobflow_or_terminationprotected.format(step_name=g_emr_step_name),
         ),
     ],
 )
 def test_emr_step_throws_exception_when_cluster_config_contains_restricted_entities(
     invalid_cluster_config, expected_error_msg
 ):
-    with pytest.raises(Exception) as exceptionInfo:
+    with pytest.raises(ValueError) as exceptionInfo:
         EMRStep(
             name=g_emr_step_name,
             display_name="MyEMRStep",
