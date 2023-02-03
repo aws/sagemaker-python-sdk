@@ -1129,6 +1129,15 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         """
         removed_kwargs("update_endpoint", kwargs)
 
+        self._init_sagemaker_session_if_does_not_exist(instance_type)
+
+        tags = add_jumpstart_tags(
+            tags=tags, inference_model_uri=self.model_data, inference_script_uri=self.source_dir
+        )
+
+        if self.role is None:
+            raise ValueError("Role can not be null for deploying a model")
+
         if (
             inference_recommendation_id is not None
             or self.inference_recommender_job_results is not None
@@ -1142,15 +1151,6 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 inference_recommendation_id=inference_recommendation_id,
                 inference_recommender_job_results=self.inference_recommender_job_results,
             )
-
-        self._init_sagemaker_session_if_does_not_exist(instance_type)
-
-        tags = add_jumpstart_tags(
-            tags=tags, inference_model_uri=self.model_data, inference_script_uri=self.source_dir
-        )
-
-        if self.role is None:
-            raise ValueError("Role can not be null for deploying a model")
 
         is_async = async_inference_config is not None
         if is_async and not isinstance(async_inference_config, AsyncInferenceConfig):

@@ -530,12 +530,17 @@ def test_deploy_with_wrong_recommendation_id(sagemaker_session):
         )
 
 
+def mock_describe_model_package(ModelPackageName):
+    if ModelPackageName == IR_MODEL_PACKAGE_VERSION_ARN:
+        return DESCRIBE_MODEL_PACKAGE_RESPONSE
+
+
 def test_deploy_with_recommendation_id_with_model_pkg_arn(sagemaker_session):
     sagemaker_session.sagemaker_client.describe_inference_recommendations_job.return_value = (
         create_inference_recommendations_job_default_with_model_package_arn()
     )
-    sagemaker_session.sagemaker_client.describe_model_package.return_value = (
-        DESCRIBE_MODEL_PACKAGE_RESPONSE
+    sagemaker_session.sagemaker_client.describe_model_package.side_effect = (
+        mock_describe_model_package
     )
 
     model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session, role=ROLE)
@@ -544,19 +549,20 @@ def test_deploy_with_recommendation_id_with_model_pkg_arn(sagemaker_session):
         inference_recommendation_id=RECOMMENDATION_ID,
     )
 
-    sagemaker_session.sagemaker_client.describe_model_package.assert_called_once_with(
-        ModelPackageName=IR_MODEL_PACKAGE_VERSION_ARN
-    )
     assert model.model_data == IR_MODEL_DATA
     assert model.image_uri == IR_IMAGE
     assert model.env == IR_ENV
 
 
 def test_deploy_with_recommendation_id_with_model_name(sagemaker_session):
+    def mock_describe_model(ModelName):
+        if ModelName == IR_MODEL_NAME:
+            return DESCRIBE_MODEL_RESPONSE
+
     sagemaker_session.sagemaker_client.describe_inference_recommendations_job.return_value = (
         create_inference_recommendations_job_default_with_model_name()
     )
-    sagemaker_session.sagemaker_client.describe_model.return_value = DESCRIBE_MODEL_RESPONSE
+    sagemaker_session.sagemaker_client.describe_model.side_effect = mock_describe_model
 
     model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session, role=ROLE)
 
@@ -564,9 +570,6 @@ def test_deploy_with_recommendation_id_with_model_name(sagemaker_session):
         inference_recommendation_id=RECOMMENDATION_ID,
     )
 
-    sagemaker_session.sagemaker_client.describe_model.assert_called_once_with(
-        ModelName=IR_MODEL_NAME
-    )
     assert model.model_data == IR_MODEL_DATA
     assert model.image_uri == IR_IMAGE
     assert model.env == IR_ENV
@@ -576,8 +579,8 @@ def test_deploy_with_recommendation_id_with_model_pkg_arn_and_compilation(sagema
     sagemaker_session.sagemaker_client.describe_inference_recommendations_job.return_value = (
         create_inference_recommendations_job_default_with_model_package_arn_and_compilation()
     )
-    sagemaker_session.sagemaker_client.describe_model_package.return_value = (
-        DESCRIBE_MODEL_PACKAGE_RESPONSE
+    sagemaker_session.sagemaker_client.describe_model_package.side_effect = (
+        mock_describe_model_package
     )
 
     model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session, role=ROLE)
@@ -586,19 +589,20 @@ def test_deploy_with_recommendation_id_with_model_pkg_arn_and_compilation(sagema
         inference_recommendation_id=RECOMMENDATION_ID,
     )
 
-    sagemaker_session.sagemaker_client.describe_model_package.assert_called_once_with(
-        ModelPackageName=IR_MODEL_PACKAGE_VERSION_ARN
-    )
     assert model.model_data == IR_COMPILATION_MODEL_DATA
     assert model.image_uri == IR_COMPILATION_IMAGE
 
 
 def test_deploy_with_recommendation_id_with_model_name_and_compilation(sagemaker_session):
+    def mock_describe_compilation_job(CompilationJobName):
+        if CompilationJobName == IR_COMPILATION_JOB_NAME:
+            return DESCRIBE_COMPILATION_JOB_RESPONSE
+
     sagemaker_session.sagemaker_client.describe_inference_recommendations_job.return_value = (
         create_inference_recommendations_job_default_with_model_name_and_compilation()
     )
-    sagemaker_session.sagemaker_client.describe_compilation_job.return_value = (
-        DESCRIBE_COMPILATION_JOB_RESPONSE
+    sagemaker_session.sagemaker_client.describe_compilation_job.side_effect = (
+        mock_describe_compilation_job
     )
 
     model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session, role=ROLE)
@@ -607,9 +611,6 @@ def test_deploy_with_recommendation_id_with_model_name_and_compilation(sagemaker
         inference_recommendation_id=RECOMMENDATION_ID,
     )
 
-    sagemaker_session.sagemaker_client.describe_compilation_job.assert_called_once_with(
-        CompilationJobName=IR_COMPILATION_JOB_NAME
-    )
     assert model.model_data == IR_COMPILATION_MODEL_DATA
     assert model.image_uri == IR_COMPILATION_IMAGE
 

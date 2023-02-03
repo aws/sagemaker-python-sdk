@@ -100,13 +100,15 @@ class InferenceRecommenderMixin:
                         'OMP_NUM_THREADS': CategoricalParameter(['1', '2', '3', '4'])
                     }]
 
-            phases (list[Phase]): Specifies the criteria for increasing load
-                during endpoint load tests. (default: None).
-            traffic_type (str): Specifies the traffic type that matches the phases. (default: None).
-            max_invocations (str): defines invocation limit for endpoint load tests (default: None).
-            model_latency_thresholds (list[ModelLatencyThreshold]): defines the response latency
-                thresholds for endpoint load tests (default: None).
-            max_tests (int): restricts how many endpoints are allowed to be
+            phases (list[Phase]): Shape of the traffic pattern to use in the load test
+                (default: None).
+            traffic_type (str): Specifies the traffic pattern type. Currently only supports
+                one type 'PHASES' (default: None).
+            max_invocations (str): defines the minimum invocations per minute for the endpoint
+                to support (default: None).
+            model_latency_thresholds (list[ModelLatencyThreshold]): defines the maximum response
+                latency for endpoints to support (default: None).
+            max_tests (int): restricts how many endpoints in total are allowed to be
                 spun up for this job (default: None).
             max_parallel_tests (int): restricts how many concurrent endpoints
                 this job is allowed to spin up (default: None).
@@ -121,7 +123,7 @@ class InferenceRecommenderMixin:
             raise ValueError("right_size() is currently only supported with a registered model")
 
         if not framework and self._framework():
-            framework = INFERENCE_RECOMMENDER_FRAMEWORK_MAPPING.get(self._framework, framework)
+            framework = INFERENCE_RECOMMENDER_FRAMEWORK_MAPPING.get(self._framework(), framework)
 
         framework_version = self._get_framework_version()
 
@@ -177,15 +179,16 @@ class InferenceRecommenderMixin:
 
     def _update_params(
         self,
-        instance_type,
-        initial_instance_count,
-        accelerator_type,
-        async_inference_config,
-        serverless_inference_config,
-        inference_recommendation_id,
-        inference_recommender_job_results,
+        **kwargs,
     ):
         """Check and update params based on inference recommendation id or right size case"""
+        instance_type = kwargs["instance_type"]
+        initial_instance_count = kwargs["initial_instance_count"]
+        accelerator_type = kwargs["accelerator_type"]
+        async_inference_config = kwargs["async_inference_config"]
+        serverless_inference_config = kwargs["serverless_inference_config"]
+        inference_recommendation_id = kwargs["inference_recommendation_id"]
+        inference_recommender_job_results = kwargs["inference_recommender_job_results"]
         if inference_recommendation_id is not None:
             inference_recommendation = self._update_params_for_recommendation_id(
                 instance_type=instance_type,
@@ -394,7 +397,6 @@ class InferenceRecommenderMixin:
                 self.model_data = model_res["PrimaryContainer"]["ModelDataUrl"]
                 self.image_uri = model_res["PrimaryContainer"]["Image"]
         else:
-            # Update params with compilation recommendation results
             if "InferenceSpecificationName" in model_config:
                 modelpkg_res = sage_client.describe_model_package(
                     ModelPackageName=input_config["ModelPackageVersionArn"]
