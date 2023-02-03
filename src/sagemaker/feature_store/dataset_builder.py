@@ -124,7 +124,7 @@ def construct_feature_group_to_be_merged(
     target_feature_name_in_base: str = None,
     feature_name_in_target: str = None,
     join_comparator: JoinComparatorEnum = None,
-    join_type: JoinTypeEnum = None
+    join_type: JoinTypeEnum = None,
 ) -> FeatureGroupToBeMerged:
     """Construct a FeatureGroupToBeMerged object by provided parameters.
 
@@ -145,7 +145,9 @@ def construct_feature_group_to_be_merged(
         "DataCatalogConfig", None
     )
     if not data_catalog_config:
-        raise RuntimeError(f"No metastore is configured with FeatureGroup {target_feature_group.name}.")
+        raise RuntimeError(
+            f"No metastore is configured with FeatureGroup {target_feature_group.name}."
+        )
 
     record_identifier_feature_name = feature_group_metadata.get("RecordIdentifierFeatureName", None)
     feature_definitions = feature_group_metadata.get("FeatureDefinitions", [])
@@ -165,7 +167,7 @@ def construct_feature_group_to_be_merged(
     catalog = data_catalog_config.get("Catalog", None) if disable_glue else _DEFAULT_CATALOG
     features = [feature.get("FeatureName", None) for feature in feature_definitions]
 
-    if (feature_name_in_target is not None and feature_name_in_target not in features):
+    if feature_name_in_target is not None and feature_name_in_target not in features:
         raise ValueError(
             f"Feature {feature_name_in_target} not found in FeatureGroup {target_feature_group.name}"
         )
@@ -197,7 +199,7 @@ def construct_feature_group_to_be_merged(
         TableType.FEATURE_GROUP,
         feature_name_in_target,
         join_comparator,
-        join_type
+        join_type,
     )
 
 
@@ -276,7 +278,7 @@ class DatasetBuilder:
         included_feature_names: List[str] = None,
         feature_name_in_target: str = None,
         join_comparator: JoinComparatorEnum = None,
-        join_type: JoinTypeEnum = None
+        join_type: JoinTypeEnum = None,
     ):
         """Join FeatureGroup with base.
 
@@ -291,11 +293,12 @@ class DatasetBuilder:
         """
         self._feature_groups_to_be_merged.append(
             construct_feature_group_to_be_merged(
-                feature_group, included_feature_names,
+                feature_group,
+                included_feature_names,
                 target_feature_name_in_base,
                 feature_name_in_target,
                 join_comparator,
-                join_type
+                join_type,
             )
         )
         return self
@@ -960,16 +963,23 @@ class DatasetBuilder:
             The JOIN query string.
         """
 
-        join_type = (feature_group.join_type if feature_group.join_type is not None
-                     else JoinTypeEnum.INNER_JOIN)
+        join_type = (
+            feature_group.join_type
+            if feature_group.join_type is not None
+            else JoinTypeEnum.INNER_JOIN
+        )
 
-        join_comparator = (feature_group.join_comparator
-                           if feature_group.join_comparator is not None
-                           else JoinComparatorEnum.EQUALS)
+        join_comparator = (
+            feature_group.join_comparator
+            if feature_group.join_comparator is not None
+            else JoinComparatorEnum.EQUALS
+        )
 
-        feature_name_in_target = (feature_group.feature_name_in_target
-                                  if feature_group.feature_name_in_target is not None
-                                  else feature_group.record_identifier_feature_name)
+        feature_name_in_target = (
+            feature_group.feature_name_in_target
+            if feature_group.feature_name_in_target is not None
+            else feature_group.record_identifier_feature_name
+        )
 
         join_condition_string = (
             f"\n{join_type.value} fg_{suffix}\n"
