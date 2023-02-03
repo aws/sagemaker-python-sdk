@@ -24,13 +24,9 @@ from sagemaker.feature_store.dataset_builder import (
     FeatureGroupToBeMerged,
     TableType,
     JoinComparatorEnum,
-    JoinTypeEnum
+    JoinTypeEnum,
 )
-from sagemaker.feature_store.feature_group import (
-    FeatureDefinition,
-    FeatureGroup,
-    FeatureTypeEnum
-)
+from sagemaker.feature_store.feature_group import FeatureDefinition, FeatureGroup, FeatureTypeEnum
 
 
 @pytest.fixture
@@ -530,10 +526,15 @@ def test_construct_query_string(sagemaker_session_mock):
         + ")\n"
     )
 
+
 # Tests the optional feature_name_in_target, join_comparator and join_type parameters
 def test_with_feature_group_with_optional_params_query_string(sagemaker_session_mock):
-    base_feature_group = FeatureGroup(name="base_feature_group", sagemaker_session=sagemaker_session_mock)
-    target_feature_group = FeatureGroup(name="target_feature_group", sagemaker_session=sagemaker_session_mock)
+    base_feature_group = FeatureGroup(
+        name="base_feature_group", sagemaker_session=sagemaker_session_mock
+    )
+    target_feature_group = FeatureGroup(
+        name="target_feature_group", sagemaker_session=sagemaker_session_mock
+    )
 
     dataset_builder = DatasetBuilder(
         sagemaker_session=sagemaker_session_mock,
@@ -545,7 +546,9 @@ def test_with_feature_group_with_optional_params_query_string(sagemaker_session_
     dataset_builder._event_time_identifier_feature_name = "target-feature"
 
     sagemaker_session_mock.describe_feature_group.return_value = {
-        "OfflineStoreConfig": {"DataCatalogConfig": {"TableName": "table-name", "Database": "database"}},
+        "OfflineStoreConfig": {
+            "DataCatalogConfig": {"TableName": "table-name", "Database": "database"}
+        },
         "RecordIdentifierFeatureName": "feature-1",
         "EventTimeFeatureName": "feature-2",
         "FeatureDefinitions": [
@@ -554,12 +557,14 @@ def test_with_feature_group_with_optional_params_query_string(sagemaker_session_
         ],
     }
 
-    dataset_builder.with_feature_group(target_feature_group, 
-        "target-feature", 
-        ["feature-1", "feature-2"], 
-        "feature-2", 
-        JoinComparatorEnum.GREATER_THAN, 
-        JoinTypeEnum.FULL_JOIN)
+    dataset_builder.with_feature_group(
+        target_feature_group,
+        "target-feature",
+        ["feature-1", "feature-2"],
+        "feature-2",
+        JoinComparatorEnum.GREATER_THAN,
+        JoinTypeEnum.FULL_JOIN,
+    )
 
     query_string = dataset_builder._construct_query_string(BASE)
 
@@ -671,7 +676,6 @@ def test_with_feature_group_with_optional_params_query_string(sagemaker_session_
         + 'ON fg_base."target-feature" > fg_0."feature-2"\n'
         + ")\n"
     )
-
 
 
 def test_create_temp_table(sagemaker_session_mock):
