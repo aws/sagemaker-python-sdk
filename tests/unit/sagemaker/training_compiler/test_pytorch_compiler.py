@@ -45,7 +45,9 @@ ROLE = "Dummy"
 REGION = "us-east-1"
 GPU = "ml.p3.2xlarge"
 SUPPORTED_GPU_INSTANCE_CLASSES = {"p3", "p3dn", "g4dn", "p4d", "g5"}
-UNSUPPORTED_GPU_INSTANCE_CLASSES = EC2_GPU_INSTANCE_CLASSES - SUPPORTED_GPU_INSTANCE_CLASSES
+UNSUPPORTED_GPU_INSTANCE_CLASSES = (
+    EC2_GPU_INSTANCE_CLASSES - SUPPORTED_GPU_INSTANCE_CLASSES
+)
 
 LIST_TAGS_RESULT = {"Tags": [{"Key": "TagtestKey", "Value": "TagtestValue"}]}
 
@@ -96,9 +98,13 @@ def _get_full_gpu_image_uri(version, instance_type, training_compiler_config):
     )
 
 
-def _create_train_job(version, instance_type, training_compiler_config, instance_count=1):
+def _create_train_job(
+    version, instance_type, training_compiler_config, instance_count=1
+):
     return {
-        "image_uri": _get_full_gpu_image_uri(version, instance_type, training_compiler_config),
+        "image_uri": _get_full_gpu_image_uri(
+            version, instance_type, training_compiler_config
+        ),
         "input_mode": "File",
         "input_config": [
             {
@@ -183,7 +189,9 @@ def test_unsupported_cpu_instance(cpu_instance_type, pytorch_training_compiler_v
         ).fit()
 
 
-@pytest.mark.parametrize("unsupported_gpu_instance_class", UNSUPPORTED_GPU_INSTANCE_CLASSES)
+@pytest.mark.parametrize(
+    "unsupported_gpu_instance_class", UNSUPPORTED_GPU_INSTANCE_CLASSES
+)
 def test_unsupported_gpu_instance(
     unsupported_gpu_instance_class, pytorch_training_compiler_version
 ):
@@ -303,7 +311,12 @@ def test_unsupported_distribution(
 @patch("time.time", return_value=TIME)
 @pytest.mark.parametrize("instance_class", SUPPORTED_GPU_INSTANCE_CLASSES)
 def test_pytorchxla_distribution(
-    time, name_from_base, sagemaker_session, pytorch_training_compiler_version, instance_class, pytorch_training_py_version
+    time,
+    name_from_base,
+    sagemaker_session,
+    pytorch_training_compiler_version,
+    instance_class,
+    pytorch_training_py_version,
 ):
     if Version(pytorch_training_compiler_version) < Version("1.12"):
         pytest.skip("This test is intended for PyTorch 1.12 and above")
@@ -333,17 +346,24 @@ def test_pytorchxla_distribution(
     assert boto_call_names == ["resource"]
 
     expected_train_args = _create_train_job(
-        pytorch_training_compiler_version, instance_type, compiler_config, instance_count=2
+        pytorch_training_compiler_version,
+        instance_type,
+        compiler_config,
+        instance_count=2,
     )
-    expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
+    expected_train_args["input_config"][0]["DataSource"]["S3DataSource"][
+        "S3Uri"
+    ] = inputs
     expected_train_args["enable_sagemaker_metrics"] = False
-    expected_train_args["hyperparameters"][TrainingCompilerConfig.HP_ENABLE_COMPILER] = json.dumps(
+    expected_train_args["hyperparameters"][
+        TrainingCompilerConfig.HP_ENABLE_COMPILER
+    ] = json.dumps(True)
+    expected_train_args["hyperparameters"][PyTorch.LAUNCH_PT_XLA_ENV_NAME] = json.dumps(
         True
     )
-    expected_train_args["hyperparameters"][PyTorch.LAUNCH_PT_XLA_ENV_NAME] = json.dumps(True)
-    expected_train_args["hyperparameters"][TrainingCompilerConfig.HP_ENABLE_DEBUG] = json.dumps(
-        False
-    )
+    expected_train_args["hyperparameters"][
+        TrainingCompilerConfig.HP_ENABLE_DEBUG
+    ] = json.dumps(False)
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert (
@@ -357,7 +377,12 @@ def test_pytorchxla_distribution(
 @patch("time.time", return_value=TIME)
 @pytest.mark.parametrize("instance_class", SUPPORTED_GPU_INSTANCE_CLASSES)
 def test_default_compiler_config(
-    time, name_from_base, sagemaker_session, pytorch_training_compiler_version, instance_class, pytorch_training_py_version
+    time,
+    name_from_base,
+    sagemaker_session,
+    pytorch_training_compiler_version,
+    instance_class,
+    pytorch_training_py_version,
 ):
     compiler_config = TrainingCompilerConfig()
     instance_type = f"ml.{instance_class}.xlarge"
@@ -386,14 +411,16 @@ def test_default_compiler_config(
     expected_train_args = _create_train_job(
         pytorch_training_compiler_version, instance_type, compiler_config
     )
-    expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
+    expected_train_args["input_config"][0]["DataSource"]["S3DataSource"][
+        "S3Uri"
+    ] = inputs
     expected_train_args["enable_sagemaker_metrics"] = False
-    expected_train_args["hyperparameters"][TrainingCompilerConfig.HP_ENABLE_COMPILER] = json.dumps(
-        True
-    )
-    expected_train_args["hyperparameters"][TrainingCompilerConfig.HP_ENABLE_DEBUG] = json.dumps(
-        False
-    )
+    expected_train_args["hyperparameters"][
+        TrainingCompilerConfig.HP_ENABLE_COMPILER
+    ] = json.dumps(True)
+    expected_train_args["hyperparameters"][
+        TrainingCompilerConfig.HP_ENABLE_DEBUG
+    ] = json.dumps(False)
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert (
@@ -406,7 +433,11 @@ def test_default_compiler_config(
 @patch("sagemaker.estimator.name_from_base", return_value=JOB_NAME)
 @patch("time.time", return_value=TIME)
 def test_debug_compiler_config(
-    time, name_from_base, sagemaker_session, pytorch_training_compiler_version, pytorch_training_py_version
+    time,
+    name_from_base,
+    sagemaker_session,
+    pytorch_training_compiler_version,
+    pytorch_training_py_version,
 ):
     compiler_config = TrainingCompilerConfig(debug=True)
 
@@ -434,14 +465,16 @@ def test_debug_compiler_config(
     expected_train_args = _create_train_job(
         pytorch_training_compiler_version, INSTANCE_TYPE, compiler_config
     )
-    expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
+    expected_train_args["input_config"][0]["DataSource"]["S3DataSource"][
+        "S3Uri"
+    ] = inputs
     expected_train_args["enable_sagemaker_metrics"] = False
-    expected_train_args["hyperparameters"][TrainingCompilerConfig.HP_ENABLE_COMPILER] = json.dumps(
-        True
-    )
-    expected_train_args["hyperparameters"][TrainingCompilerConfig.HP_ENABLE_DEBUG] = json.dumps(
-        True
-    )
+    expected_train_args["hyperparameters"][
+        TrainingCompilerConfig.HP_ENABLE_COMPILER
+    ] = json.dumps(True)
+    expected_train_args["hyperparameters"][
+        TrainingCompilerConfig.HP_ENABLE_DEBUG
+    ] = json.dumps(True)
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert (
@@ -454,7 +487,11 @@ def test_debug_compiler_config(
 @patch("sagemaker.estimator.name_from_base", return_value=JOB_NAME)
 @patch("time.time", return_value=TIME)
 def test_disable_compiler_config(
-    time, name_from_base, sagemaker_session, pytorch_training_compiler_version, pytorch_training_py_version
+    time,
+    name_from_base,
+    sagemaker_session,
+    pytorch_training_compiler_version,
+    pytorch_training_py_version,
 ):
     compiler_config = TrainingCompilerConfig(enabled=False)
 
@@ -482,14 +519,16 @@ def test_disable_compiler_config(
     expected_train_args = _create_train_job(
         pytorch_training_compiler_version, INSTANCE_TYPE, compiler_config
     )
-    expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
+    expected_train_args["input_config"][0]["DataSource"]["S3DataSource"][
+        "S3Uri"
+    ] = inputs
     expected_train_args["enable_sagemaker_metrics"] = False
-    expected_train_args["hyperparameters"][TrainingCompilerConfig.HP_ENABLE_COMPILER] = json.dumps(
-        False
-    )
-    expected_train_args["hyperparameters"][TrainingCompilerConfig.HP_ENABLE_DEBUG] = json.dumps(
-        False
-    )
+    expected_train_args["hyperparameters"][
+        TrainingCompilerConfig.HP_ENABLE_COMPILER
+    ] = json.dumps(False)
+    expected_train_args["hyperparameters"][
+        TrainingCompilerConfig.HP_ENABLE_DEBUG
+    ] = json.dumps(False)
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert (
@@ -508,7 +547,10 @@ def test_attach(sagemaker_session, compiler_enabled, debug_enabled):
         "py38-cu113-ubuntu20.04"
     )
     returned_job_description = {
-        "AlgorithmSpecification": {"TrainingInputMode": "File", "TrainingImage": training_image},
+        "AlgorithmSpecification": {
+            "TrainingInputMode": "File",
+            "TrainingImage": training_image,
+        },
         "HyperParameters": {
             "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
             "sagemaker_program": '"iris-dnn-classifier.py"',
@@ -530,14 +572,19 @@ def test_attach(sagemaker_session, compiler_enabled, debug_enabled):
         "TrainingJobName": "trcomp",
         "TrainingJobStatus": "Completed",
         "TrainingJobArn": "arn:aws:sagemaker:us-west-2:336:training-job/trcomp",
-        "OutputDataConfig": {"KmsKeyId": "", "S3OutputPath": "s3://place/output/trcomp"},
+        "OutputDataConfig": {
+            "KmsKeyId": "",
+            "S3OutputPath": "s3://place/output/trcomp",
+        },
         "TrainingJobOutput": {"S3TrainingJobOutput": "s3://here/output.tar.gz"},
     }
     sagemaker_session.sagemaker_client.describe_training_job = Mock(
         name="describe_training_job", return_value=returned_job_description
     )
 
-    estimator = PyTorch.attach(training_job_name="trcomp", sagemaker_session=sagemaker_session)
+    estimator = PyTorch.attach(
+        training_job_name="trcomp", sagemaker_session=sagemaker_session
+    )
     assert estimator.latest_training_job.job_name == "trcomp"
     assert estimator.py_version == "py38"
     assert estimator.framework_version == "1.12.0"
@@ -549,12 +596,12 @@ def test_attach(sagemaker_session, compiler_enabled, debug_enabled):
     assert estimator.output_path == "s3://place/output/trcomp"
     assert estimator.output_kms_key == ""
     assert estimator.hyperparameters()["training_steps"] == "100"
-    assert estimator.hyperparameters()[TrainingCompilerConfig.HP_ENABLE_COMPILER] == json.dumps(
-        compiler_enabled
-    )
-    assert estimator.hyperparameters()[TrainingCompilerConfig.HP_ENABLE_DEBUG] == json.dumps(
-        debug_enabled
-    )
+    assert estimator.hyperparameters()[
+        TrainingCompilerConfig.HP_ENABLE_COMPILER
+    ] == json.dumps(compiler_enabled)
+    assert estimator.hyperparameters()[
+        TrainingCompilerConfig.HP_ENABLE_DEBUG
+    ] == json.dumps(debug_enabled)
     assert estimator.source_dir == "s3://some/sourcedir.tar.gz"
     assert estimator.entry_point == "iris-dnn-classifier.py"
 
