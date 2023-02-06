@@ -13,7 +13,7 @@
 """The step definitions for workflow."""
 from __future__ import absolute_import
 
-from typing import List, Union, Optional
+from typing import Any, Dict, List, Union, Optional
 
 from sagemaker.workflow.entities import (
     RequestType,
@@ -153,7 +153,7 @@ class EMRStep(Step):
         step_config: EMRStepConfig,
         depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
         cache_config: CacheConfig = None,
-        cluster_config: RequestType = None,
+        cluster_config: Dict[str, Any] = None,
     ):
         """Constructs an EMRStep.
 
@@ -167,7 +167,7 @@ class EMRStep(Step):
                 names or `Step` instances or `StepCollection` instances that this `EMRStep`
                 depends on.
             cache_config(CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
-            cluster_config(Union[Dict[str, Any], List[Dict[str, Any]]]): The recipe of the
+            cluster_config(Dict[str, Any]): The recipe of the
                 EMR cluster, passed as a dictionary. The elements are defined in the request syntax
                 for RunJobFlow. However, the following elements are not recognized as part of the
                 cluster configuration and you should not include them in the dictionary:
