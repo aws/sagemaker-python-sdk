@@ -33,7 +33,8 @@ class EMRStepConfig:
     ):
         """Create a definition for input data used by an EMR cluster(job flow) step.
 
-        See AWS documentation on the ``StepConfig`` API for more details on the parameters.
+        See AWS documentation for more information about the `StepConfig
+        <https://docs.aws.amazon.com/emr/latest/APIReference/API_StepConfig.html>`_ API parameters.
 
         Args:
             args(List[str]):
@@ -155,7 +156,7 @@ class EMRStep(Step):
         cache_config: CacheConfig = None,
         cluster_config: Dict[str, Any] = None,
     ):
-        """Constructs an EMRStep.
+        """Constructs an `EMRStep`.
 
         Args:
             name(str): The name of the EMR step.
@@ -168,19 +169,23 @@ class EMRStep(Step):
                 depends on.
             cache_config(CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
             cluster_config(Dict[str, Any]): The recipe of the
-                EMR cluster, passed as a dictionary. The elements are defined in the request syntax
-                for RunJobFlow. However, the following elements are not recognized as part of the
-                cluster configuration and you should not include them in the dictionary:
-                    1. cluster_config[Name]
-                    2. cluster_config[Steps]
-                    3. cluster_config[AutoTerminationPolicy]
-                    4. cluster_config[Instances][KeepJobFlowAliveWhenNoSteps]
-                    5. cluster_config[Instances][TerminationProtected]
+                EMR cluster, passed as a dictionary.
+                The elements are defined in the request syntax for `RunJobFlow`.
+                However, the following elements are not recognized as part of the cluster
+                configuration and you should not include them in the dictionary:
+
+                * ``cluster_config[Name]``
+                * ``cluster_config[Steps]``
+                * ``cluster_config[AutoTerminationPolicy]``
+                * ``cluster_config[Instances][KeepJobFlowAliveWhenNoSteps]``
+                * ``cluster_config[Instances][TerminationProtected]``
+
                 For more information about the fields you can include in your cluster
                 configuration, see
-                https://docs.aws.amazon.com/emr/latest/APIReference/API_RunJobFlow.html
-                Note that if you want to use cluster_config,
-                then you have to set cluster_id as None.
+                https://docs.aws.amazon.com/emr/latest/APIReference/API_RunJobFlow.html.
+                Note that if you want to use ``cluster_config``, then you have to set
+                ``cluster_id`` as None.
+
         """
         super(EMRStep, self).__init__(name, display_name, description, StepTypeEnum.EMR, depends_on)
 
