@@ -61,34 +61,34 @@ class EMRStepConfig:
         return config
 
 
-instances = "Instances"
-instancegroups = "InstanceGroups"
-instancefleets = "InstanceFleets"
-err_str_with_name_auto_termination_or_steps = (
+INSTANCES = "Instances"
+INSTANCEGROUPS = "InstanceGroups"
+INSTANCEFLEETS = "InstanceFleets"
+ERR_STR_WITH_NAME_AUTO_TERMINATION_OR_STEPS = (
     "In EMRStep {step_name}, cluster_config "
     "should not contain any of the Name, "
     "AutoTerminationPolicy and/or Steps."
 )
 
-err_str_without_instance = "In EMRStep {step_name}, cluster_config must contain " + instances + "."
+ERR_STR_WITHOUT_INSTANCE = "In EMRStep {step_name}, cluster_config must contain " + INSTANCES + "."
 
-err_str_with_keepjobflow_or_terminationprotected = (
-    "In EMRStep {step_name}, " + instances + " should not contain "
+ERR_STR_WITH_KEEPJOBFLOW_OR_TERMINATIONPROTECTED = (
+    "In EMRStep {step_name}, " + INSTANCES + " should not contain "
     "KeepJobFlowAliveWhenNoSteps or "
     "TerminationProtected."
 )
 
-err_str_both_or_none_instancegroups_or_instancefleets = (
+ERR_STR_BOTH_OR_NONE_INSTANCEGROUPS_OR_INSTANCEFLEETS = (
     "In EMRStep {step_name}, "
-    + instances
+    + INSTANCES
     + " should contain either "
-    + instancegroups
+    + INSTANCEGROUPS
     + " or "
-    + instancefleets
+    + INSTANCEFLEETS
     + "."
 )
 
-err_str_with_both_cluster_id_and_cluster_cfg = (
+ERR_STR_WITH_BOTH_CLUSTER_ID_AND_CLUSTER_CFG = (
     "EMRStep {step_name} can not have both cluster_id"
     "or cluster_config."
     "To use EMRStep with "
@@ -96,7 +96,7 @@ err_str_with_both_cluster_id_and_cluster_cfg = (
     "must be explicitly set to None."
 )
 
-err_str_without_cluster_id_and_cluster_cfg = (
+ERR_STR_WITHOUT_CLUSTER_ID_AND_CLUSTER_CFG = (
     "EMRStep {step_name} must have either cluster_id or cluster_config"
 )
 
@@ -119,29 +119,29 @@ class EMRStep(Step):
             or "Steps" in cluster_config
         ):
             raise ValueError(
-                err_str_with_name_auto_termination_or_steps.format(step_name=step_name)
+                ERR_STR_WITH_NAME_AUTO_TERMINATION_OR_STEPS.format(step_name=step_name)
             )
 
-        if instances not in cluster_config:
-            raise ValueError(err_str_without_instance.format(step_name=step_name))
+        if INSTANCES not in cluster_config:
+            raise ValueError(ERR_STR_WITHOUT_INSTANCE.format(step_name=step_name))
 
         if (
-            "KeepJobFlowAliveWhenNoSteps" in cluster_config[instances]
-            or "TerminationProtected" in cluster_config[instances]
+            "KeepJobFlowAliveWhenNoSteps" in cluster_config[INSTANCES]
+            or "TerminationProtected" in cluster_config[INSTANCES]
         ):
             raise ValueError(
-                err_str_with_keepjobflow_or_terminationprotected.format(step_name=step_name)
+                ERR_STR_WITH_KEEPJOBFLOW_OR_TERMINATIONPROTECTED.format(step_name=step_name)
             )
 
         if (
-            instancegroups in cluster_config[instances]
-            and instancefleets in cluster_config[instances]
+            INSTANCEGROUPS in cluster_config[INSTANCES]
+            and INSTANCEFLEETS in cluster_config[INSTANCES]
         ) or (
-            instancegroups not in cluster_config[instances]
-            and instancefleets not in cluster_config[instances]
+            INSTANCEGROUPS not in cluster_config[INSTANCES]
+            and INSTANCEFLEETS not in cluster_config[INSTANCES]
         ):
             raise ValueError(
-                err_str_both_or_none_instancegroups_or_instancefleets.format(step_name=step_name)
+                ERR_STR_BOTH_OR_NONE_INSTANCEGROUPS_OR_INSTANCEFLEETS.format(step_name=step_name)
             )
 
     def __init__(
@@ -188,10 +188,10 @@ class EMRStep(Step):
         root_property = Properties(step_name=name, shape_name="Step", service_name="emr")
 
         if cluster_id is None and cluster_config is None:
-            raise ValueError(err_str_without_cluster_id_and_cluster_cfg.format(step_name=name))
+            raise ValueError(ERR_STR_WITHOUT_CLUSTER_ID_AND_CLUSTER_CFG.format(step_name=name))
 
         if cluster_id is not None and cluster_config is not None:
-            raise ValueError(err_str_with_both_cluster_id_and_cluster_cfg.format(step_name=name))
+            raise ValueError(ERR_STR_WITH_BOTH_CLUSTER_ID_AND_CLUSTER_CFG.format(step_name=name))
 
         if cluster_id is not None:
             emr_step_args["ClusterId"] = cluster_id

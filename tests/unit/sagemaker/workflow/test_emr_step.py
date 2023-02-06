@@ -18,12 +18,12 @@ import pytest
 from sagemaker.workflow.emr_step import (
     EMRStep,
     EMRStepConfig,
-    err_str_with_name_auto_termination_or_steps,
-    err_str_without_instance,
-    err_str_with_keepjobflow_or_terminationprotected,
-    err_str_both_or_none_instancegroups_or_instancefleets,
-    err_str_with_both_cluster_id_and_cluster_cfg,
-    err_str_without_cluster_id_and_cluster_cfg,
+    ERR_STR_WITH_NAME_AUTO_TERMINATION_OR_STEPS,
+    ERR_STR_WITHOUT_INSTANCE,
+    ERR_STR_WITH_KEEPJOBFLOW_OR_TERMINATIONPROTECTED,
+    ERR_STR_BOTH_OR_NONE_INSTANCEGROUPS_OR_INSTANCEFLEETS,
+    ERR_STR_WITH_BOTH_CLUSTER_ID_AND_CLUSTER_CFG,
+    ERR_STR_WITHOUT_CLUSTER_ID_AND_CLUSTER_CFG,
 )
 from sagemaker.workflow.steps import CacheConfig
 from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
@@ -212,7 +212,7 @@ def test_emr_step_throws_exception_when_both_cluster_id_and_cluster_config_are_p
             depends_on=["TestStep"],
             cache_config=CacheConfig(enable_caching=True, expire_after="PT1H"),
         )
-    expected_error_msg = err_str_with_both_cluster_id_and_cluster_cfg.format(
+    expected_error_msg = ERR_STR_WITH_BOTH_CLUSTER_ID_AND_CLUSTER_CFG.format(
         step_name=g_emr_step_name
     )
     actual_error_msg = exceptionInfo.value.args[0]
@@ -231,7 +231,7 @@ def test_emr_step_throws_exception_when_both_cluster_id_and_cluster_config_are_n
             depends_on=["TestStep"],
             cache_config=CacheConfig(enable_caching=True, expire_after="PT1H"),
         )
-    expected_error_msg = err_str_without_cluster_id_and_cluster_cfg.format(
+    expected_error_msg = ERR_STR_WITHOUT_CLUSTER_ID_AND_CLUSTER_CFG.format(
         step_name=g_emr_step_name
     )
     actual_error_msg = exceptionInfo.value.args[0]
@@ -334,7 +334,7 @@ def test_emr_step_with_valid_cluster_config():
                     ],
                 },
             },
-            err_str_with_name_auto_termination_or_steps.format(step_name=g_emr_step_name),
+            ERR_STR_WITH_NAME_AUTO_TERMINATION_OR_STEPS.format(step_name=g_emr_step_name),
         ),
         (
             {
@@ -347,7 +347,7 @@ def test_emr_step_with_valid_cluster_config():
                     ],
                 },
             },
-            err_str_with_name_auto_termination_or_steps.format(step_name=g_emr_step_name),
+            ERR_STR_WITH_NAME_AUTO_TERMINATION_OR_STEPS.format(step_name=g_emr_step_name),
         ),
         (
             {
@@ -360,20 +360,20 @@ def test_emr_step_with_valid_cluster_config():
                     ],
                 },
             },
-            err_str_with_name_auto_termination_or_steps.format(step_name=g_emr_step_name),
+            ERR_STR_WITH_NAME_AUTO_TERMINATION_OR_STEPS.format(step_name=g_emr_step_name),
         ),
         (
             {
                 "AmiVersion": "3.8.0",
                 "AdditionalInfo": "MyAdditionalInfo",
             },
-            err_str_without_instance.format(step_name=g_emr_step_name),
+            ERR_STR_WITHOUT_INSTANCE.format(step_name=g_emr_step_name),
         ),
         (
             {
                 "Instances": {},
             },
-            err_str_both_or_none_instancegroups_or_instancefleets.format(step_name=g_emr_step_name),
+            ERR_STR_BOTH_OR_NONE_INSTANCEGROUPS_OR_INSTANCEFLEETS.format(step_name=g_emr_step_name),
         ),
         (
             {
@@ -390,7 +390,7 @@ def test_emr_step_with_valid_cluster_config():
                     ],
                 },
             },
-            err_str_both_or_none_instancegroups_or_instancefleets.format(step_name=g_emr_step_name),
+            ERR_STR_BOTH_OR_NONE_INSTANCEGROUPS_OR_INSTANCEFLEETS.format(step_name=g_emr_step_name),
         ),
         (
             {
@@ -403,7 +403,7 @@ def test_emr_step_with_valid_cluster_config():
                     "KeepJobFlowAliveWhenNoSteps": True,
                 },
             },
-            err_str_with_keepjobflow_or_terminationprotected.format(step_name=g_emr_step_name),
+            ERR_STR_WITH_KEEPJOBFLOW_OR_TERMINATIONPROTECTED.format(step_name=g_emr_step_name),
         ),
         (
             {
@@ -416,7 +416,7 @@ def test_emr_step_with_valid_cluster_config():
                     "TerminationProtected": True,
                 },
             },
-            err_str_with_keepjobflow_or_terminationprotected.format(step_name=g_emr_step_name),
+            ERR_STR_WITH_KEEPJOBFLOW_OR_TERMINATIONPROTECTED.format(step_name=g_emr_step_name),
         ),
     ],
 )
