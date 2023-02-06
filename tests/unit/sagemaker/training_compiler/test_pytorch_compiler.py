@@ -303,7 +303,7 @@ def test_unsupported_distribution(
 @patch("time.time", return_value=TIME)
 @pytest.mark.parametrize("instance_class", SUPPORTED_GPU_INSTANCE_CLASSES)
 def test_pytorchxla_distribution(
-    time, name_from_base, sagemaker_session, pytorch_training_compiler_version, instance_class
+    time, name_from_base, sagemaker_session, pytorch_training_compiler_version, instance_class, pytorch_training_py_version
 ):
     if Version(pytorch_training_compiler_version) < Version("1.12"):
         pytest.skip("This test is intended for PyTorch 1.12 and above")
@@ -311,7 +311,7 @@ def test_pytorchxla_distribution(
     instance_type = f"ml.{instance_class}.xlarge"
 
     pt = PyTorch(
-        py_version="py38",
+        py_version=pytorch_training_py_version,
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -357,13 +357,13 @@ def test_pytorchxla_distribution(
 @patch("time.time", return_value=TIME)
 @pytest.mark.parametrize("instance_class", SUPPORTED_GPU_INSTANCE_CLASSES)
 def test_default_compiler_config(
-    time, name_from_base, sagemaker_session, pytorch_training_compiler_version, instance_class
+    time, name_from_base, sagemaker_session, pytorch_training_compiler_version, instance_class, pytorch_training_py_version
 ):
     compiler_config = TrainingCompilerConfig()
     instance_type = f"ml.{instance_class}.xlarge"
 
     pt = PyTorch(
-        py_version="py38",
+        py_version=pytorch_training_py_version,
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -406,12 +406,12 @@ def test_default_compiler_config(
 @patch("sagemaker.estimator.name_from_base", return_value=JOB_NAME)
 @patch("time.time", return_value=TIME)
 def test_debug_compiler_config(
-    time, name_from_base, sagemaker_session, pytorch_training_compiler_version
+    time, name_from_base, sagemaker_session, pytorch_training_compiler_version, pytorch_training_py_version
 ):
     compiler_config = TrainingCompilerConfig(debug=True)
 
     pt = PyTorch(
-        py_version="py38",
+        py_version=pytorch_training_py_version,
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -454,12 +454,12 @@ def test_debug_compiler_config(
 @patch("sagemaker.estimator.name_from_base", return_value=JOB_NAME)
 @patch("time.time", return_value=TIME)
 def test_disable_compiler_config(
-    time, name_from_base, sagemaker_session, pytorch_training_compiler_version
+    time, name_from_base, sagemaker_session, pytorch_training_compiler_version, pytorch_training_py_version
 ):
     compiler_config = TrainingCompilerConfig(enabled=False)
 
     pt = PyTorch(
-        py_version="py38",
+        py_version=pytorch_training_py_version,
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,

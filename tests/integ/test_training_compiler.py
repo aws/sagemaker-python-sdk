@@ -150,7 +150,7 @@ def test_pytorch(
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
 
         hf = PyTorch(
-            py_version="py38",
+            py_version="py39",
             source_dir=os.path.join(DATA_DIR, "huggingface_byoc"),
             entry_point="run_glue.py",
             role="SageMakerRole",
