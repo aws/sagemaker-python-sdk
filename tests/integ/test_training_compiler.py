@@ -76,10 +76,7 @@ def skip_if_incompatible(gpu_instance_type, request):
     region = integ.test_region()
     if region not in integ.TRAINING_COMPILER_SUPPORTED_REGIONS:
         pytest.skip("SageMaker Training Compiler is not supported in this region")
-    if (
-        gpu_instance_type == "ml.p3.16xlarge"
-        and region not in integ.DATA_PARALLEL_TESTING_REGIONS
-    ):
+    if gpu_instance_type == "ml.p3.16xlarge" and region not in integ.DATA_PARALLEL_TESTING_REGIONS:
         pytest.skip("Data parallel testing is not allowed in this region")
     if gpu_instance_type == "ml.p3.2xlarge" and region in integ.TRAINING_NO_P3_REGIONS:
         pytest.skip("no ml.p3 instances in this region")
@@ -127,9 +124,7 @@ def test_huggingface_pytorch(
             sagemaker_session=sagemaker_session,
             disable_profiler=True,
             compiler_config=HFTrainingCompilerConfig(),
-            distribution={"pytorchxla": {"enabled": True}}
-            if instance_count > 1
-            else None,
+            distribution={"pytorchxla": {"enabled": True}} if instance_count > 1 else None,
         )
 
         hf.fit(huggingface_dummy_dataset)
@@ -175,9 +170,7 @@ def test_pytorch(
             sagemaker_session=sagemaker_session,
             disable_profiler=True,
             compiler_config=PTTrainingCompilerConfig(),
-            distribution={"pytorchxla": {"enabled": True}}
-            if instance_count > 1
-            else None,
+            distribution={"pytorchxla": {"enabled": True}} if instance_count > 1 else None,
         )
 
         hf.fit(huggingface_dummy_dataset)
@@ -257,9 +250,7 @@ def test_tensorflow(
             py_version="py39",
             git_config={
                 "repo": "https://github.com/tensorflow/models.git",
-                "branch": "v"
-                + ".".join(tensorflow_training_latest_version.split(".")[:2])
-                + ".0",
+                "branch": "v" + ".".join(tensorflow_training_latest_version.split(".")[:2]) + ".0",
             },
             source_dir=".",
             entry_point="official/vision/train.py",
