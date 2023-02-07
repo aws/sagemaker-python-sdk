@@ -155,6 +155,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         entry_point: Optional[Union[str, PipelineVariable]] = None,
         dependencies: Optional[List[Union[str]]] = None,
         instance_groups: Optional[List[InstanceGroup]] = None,
+        training_repository_access_mode: Optional[Union[str, PipelineVariable]] = None,
+        training_repository_credentials_provider_arn: Optional[Union[str, PipelineVariable]] = None,
         **kwargs,
     ):
         """Initialize an ``EstimatorBase`` instance.
@@ -421,6 +423,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             hyperparameters (dict[str, str] or dict[str, PipelineVariable]):
                 A dictionary containing the hyperparameters to
                 initialize this estimator with. (Default: None).
+
+                .. caution::
+                    You must not include any security-sensitive information, such as
+                    account access IDs, secrets, and tokens, in the dictionary for configuring
+                    hyperparameters. SageMaker rejects the training job request and returns an
+                    validation error for detected credentials, if such user input is found.
+
             container_log_level (int or PipelineVariable): The log level to use within the container
                 (default: logging.INFO). Valid values are defined in the Python
                 logging module.
@@ -489,6 +498,18 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 `Train Using a Heterogeneous Cluster
                 <https://docs.aws.amazon.com/sagemaker/latest/dg/train-heterogeneous-cluster.html>`_
                 in the *Amazon SageMaker developer guide*.
+            training_repository_access_mode (str): Optional. Specifies how SageMaker accesses the
+                Docker image that contains the training algorithm (default: None).
+                Set this to one of the following values:
+                * 'Platform' - The training image is hosted in Amazon ECR.
+                * 'Vpc' - The training image is hosted in a private Docker registry in your VPC.
+                When it's default to None, its behavior will be same as 'Platform' - image is hosted
+                in ECR.
+            training_repository_credentials_provider_arn (str): Optional. The Amazon Resource Name
+                (ARN) of an AWS Lambda function that provides credentials to authenticate to the
+                private Docker registry where your training image is hosted (default: None).
+                When it's set to None, SageMaker will not do authentication before pulling the image
+                in the private Docker registry.
         """
         instance_count = renamed_kwargs(
             "train_instance_count", "instance_count", instance_count, kwargs
@@ -536,7 +557,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.dependencies = dependencies or []
         self.uploaded_code = None
         self.tags = add_jumpstart_tags(
-            tags=tags, training_model_uri=self.model_uri, training_script_uri=self.source_dir
+            tags=tags,
+            training_model_uri=self.model_uri,
+            training_script_uri=self.source_dir,
         )
         if self.instance_type in ("local", "local_gpu"):
             if self.instance_type == "local_gpu" and self.instance_count > 1:
@@ -570,6 +593,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         # VPC configurations
         self.subnets = subnets
         self.security_group_ids = security_group_ids
+
+        # training image configs
+        self.training_repository_access_mode = training_repository_access_mode
+        self.training_repository_credentials_provider_arn = (
+            training_repository_credentials_provider_arn
+        )
 
         self.encrypt_inter_container_traffic = encrypt_inter_container_traffic
         self.use_spot_instances = use_spot_instances
@@ -651,7 +680,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             self.base_job_name
             or get_jumpstart_base_name_if_jumpstart_model(self.source_dir, self.model_uri)
             or base_name_from_image(
-                self.training_image_uri(), default_base_name=EstimatorBase.JOB_CLASS_NAME
+                self.training_image_uri(),
+                default_base_name=EstimatorBase.JOB_CLASS_NAME,
             )
         )
 
@@ -1312,6 +1342,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         volume_size=None,
         model_data_download_timeout=None,
         container_startup_health_check_timeout=None,
+        inference_recommendation_id=None,
         **kwargs,
     ):
         """Deploy the trained model to an Amazon SageMaker endpoint.
@@ -1389,6 +1420,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 inference container to pass health check by SageMaker Hosting. For more information
                 about health check see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html#your-algorithms-inference-algo-ping-requests
+            inference_recommendation_id (str): The recommendation id which specifies the
+                recommendation you picked from inference recommendation job results and
+                would like to deploy the model and endpoint with recommended parameters.
             **kwargs: Passed to invocation of ``create_model()``.
                 Implementations may customize ``create_model()`` to accept
                 ``**kwargs`` to customize model creation during deploy.
@@ -1405,7 +1439,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self._ensure_base_job_name()
 
         jumpstart_base_name = get_jumpstart_base_name_if_jumpstart_model(
-            kwargs.get("source_dir"), self.source_dir, kwargs.get("model_data"), self.model_uri
+            kwargs.get("source_dir"),
+            self.source_dir,
+            kwargs.get("model_data"),
+            self.model_uri,
         )
         default_name = (
             name_from_base(jumpstart_base_name)
@@ -1450,6 +1487,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             volume_size=volume_size,
             model_data_download_timeout=model_data_download_timeout,
             container_startup_health_check_timeout=container_startup_health_check_timeout,
+            inference_recommendation_id=inference_recommendation_id,
         )
 
     def register(
@@ -1638,6 +1676,15 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             init_params["algorithm_arn"] = job_details["AlgorithmSpecification"]["AlgorithmName"]
         elif "TrainingImage" in job_details["AlgorithmSpecification"]:
             init_params["image_uri"] = job_details["AlgorithmSpecification"]["TrainingImage"]
+            if "TrainingImageConfig" in job_details["AlgorithmSpecification"]:
+                init_params["training_repository_access_mode"] = job_details[
+                    "AlgorithmSpecification"
+                ]["TrainingImageConfig"].get("TrainingRepositoryAccessMode")
+                init_params["training_repository_credentials_provider_arn"] = (
+                    job_details["AlgorithmSpecification"]["TrainingImageConfig"]
+                    .get("TrainingRepositoryAuthConfig", {})
+                    .get("TrainingRepositoryCredentialsProviderArn")
+                )
         else:
             raise RuntimeError(
                 "Invalid AlgorithmSpecification. Either TrainingImage or "
@@ -2118,6 +2165,17 @@ class _TrainingJob(_Job):
         else:
             train_args["retry_strategy"] = None
 
+        if estimator.training_repository_access_mode is not None:
+            training_image_config = {
+                "TrainingRepositoryAccessMode": estimator.training_repository_access_mode
+            }
+            if estimator.training_repository_credentials_provider_arn is not None:
+                training_image_config["TrainingRepositoryAuthConfig"] = {}
+                training_image_config["TrainingRepositoryAuthConfig"][
+                    "TrainingRepositoryCredentialsProviderArn"
+                ] = estimator.training_repository_credentials_provider_arn
+            train_args["training_image_config"] = training_image_config
+
         # encrypt_inter_container_traffic may be a pipeline variable place holder object
         # which is parsed in execution time
         if estimator.encrypt_inter_container_traffic:
@@ -2182,7 +2240,11 @@ class _TrainingJob(_Job):
 
     @classmethod
     def update(
-        cls, estimator, profiler_rule_configs=None, profiler_config=None, resource_config=None
+        cls,
+        estimator,
+        profiler_rule_configs=None,
+        profiler_config=None,
+        resource_config=None,
     ):
         """Update a running Amazon SageMaker training job.
 
@@ -2321,6 +2383,8 @@ class Estimator(EstimatorBase):
         entry_point: Optional[Union[str, PipelineVariable]] = None,
         dependencies: Optional[List[str]] = None,
         instance_groups: Optional[List[InstanceGroup]] = None,
+        training_repository_access_mode: Optional[Union[str, PipelineVariable]] = None,
+        training_repository_credentials_provider_arn: Optional[Union[str, PipelineVariable]] = None,
         **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
@@ -2410,6 +2474,13 @@ class Estimator(EstimatorBase):
                 using the default AWS configuration chain.
             hyperparameters (dict[str, str] or dict[str, PipelineVariable]):
                 Dictionary containing the hyperparameters to initialize this estimator with.
+
+                .. caution::
+                    You must not include any security-sensitive information, such as
+                    account access IDs, secrets, and tokens, in the dictionary for configuring
+                    hyperparameters. SageMaker rejects the training job request and returns an
+                    validation error for detected credentials, if such user input is found.
+
             tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): List of tags for
                 labeling a training job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
@@ -2654,6 +2725,18 @@ class Estimator(EstimatorBase):
                 `Train Using a Heterogeneous Cluster
                 <https://docs.aws.amazon.com/sagemaker/latest/dg/train-heterogeneous-cluster.html>`_
                 in the *Amazon SageMaker developer guide*.
+            training_repository_access_mode (str): Optional. Specifies how SageMaker accesses the
+                Docker image that contains the training algorithm (default: None).
+                Set this to one of the following values:
+                * 'Platform' - The training image is hosted in Amazon ECR.
+                * 'Vpc' - The training image is hosted in a private Docker registry in your VPC.
+                When it's default to None, its behavior will be same as 'Platform' - image is hosted
+                in ECR.
+            training_repository_credentials_provider_arn (str): Optional. The Amazon Resource Name
+                (ARN) of an AWS Lambda function that provides credentials to authenticate to the
+                private Docker registry where your training image is hosted (default: None).
+                When it's set to None, SageMaker will not do authentication before pulling the image
+                in the private Docker registry.
         """
         self.image_uri = image_uri
         self._hyperparameters = hyperparameters.copy() if hyperparameters else {}
@@ -2698,6 +2781,8 @@ class Estimator(EstimatorBase):
             dependencies=dependencies,
             hyperparameters=hyperparameters,
             instance_groups=instance_groups,
+            training_repository_access_mode=training_repository_access_mode,
+            training_repository_credentials_provider_arn=training_repository_credentials_provider_arn,  # noqa: E501 # pylint: disable=line-too-long
             **kwargs,
         )
 
@@ -2873,6 +2958,13 @@ class Framework(EstimatorBase):
                 SageMaker. For convenience, this accepts other types for keys
                 and values, but ``str()`` will be called to convert them before
                 training.
+
+                .. caution::
+                    You must not include any security-sensitive information, such as
+                    account access IDs, secrets, and tokens, in the dictionary for configuring
+                    hyperparameters. SageMaker rejects the training job request and returns an
+                    validation error for detected credentials, if such user input is found.
+
             container_log_level (int or PipelineVariable): Log level to use within the container
                 (default: logging.INFO). Valid values are defined in the Python
                 logging module.

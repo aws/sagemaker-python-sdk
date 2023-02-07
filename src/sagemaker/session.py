@@ -488,6 +488,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         metric_definitions,
         enable_network_isolation=False,
         image_uri=None,
+        training_image_config=None,
         algorithm_arn=None,
         encrypt_inter_container_traffic=False,
         use_spot_instances=False,
@@ -548,6 +549,28 @@ class Session(object):  # pylint: disable=too-many-public-methods
             enable_network_isolation (bool): Whether to request for the training job to run with
                 network isolation or not.
             image_uri (str): Docker image containing training code.
+            training_image_config(dict): Training image configuration.
+                Optionally, the dict can contain 'TrainingRepositoryAccessMode' and
+                'TrainingRepositoryCredentialsProviderArn' (under 'TrainingRepositoryAuthConfig').
+                For example,
+
+                .. code:: python
+
+                    training_image_config = {
+                        "TrainingRepositoryAccessMode": "Vpc",
+                        "TrainingRepositoryAuthConfig": {
+                            "TrainingRepositoryCredentialsProviderArn":
+                              "arn:aws:lambda:us-west-2:1234567890:function:test"
+                        },
+                    }
+
+                If TrainingRepositoryAccessMode is set to Vpc, the training image is accessed
+                through a private Docker registry in customer Vpc. If it's set to Platform or None,
+                the training image is accessed through ECR.
+                If TrainingRepositoryCredentialsProviderArn is provided, the credentials to
+                authenticate to the private Docker registry will be retrieved from this AWS Lambda
+                function. (default: ``None``). When it's set to None, SageMaker will not do
+                authentication before pulling the image in the private Docker registry.
             algorithm_arn (str): Algorithm Arn from Marketplace.
             encrypt_inter_container_traffic (bool): Specifies whether traffic between training
                 containers is encrypted for the training job (default: ``False``).
@@ -606,6 +629,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             metric_definitions=metric_definitions,
             enable_network_isolation=enable_network_isolation,
             image_uri=image_uri,
+            training_image_config=training_image_config,
             algorithm_arn=algorithm_arn,
             encrypt_inter_container_traffic=encrypt_inter_container_traffic,
             use_spot_instances=use_spot_instances,
@@ -644,6 +668,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         metric_definitions,
         enable_network_isolation=False,
         image_uri=None,
+        training_image_config=None,
         algorithm_arn=None,
         encrypt_inter_container_traffic=False,
         use_spot_instances=False,
@@ -704,6 +729,28 @@ class Session(object):  # pylint: disable=too-many-public-methods
             enable_network_isolation (bool): Whether to request for the training job to run with
                 network isolation or not.
             image_uri (str): Docker image containing training code.
+            training_image_config(dict): Training image configuration.
+                Optionally, the dict can contain 'TrainingRepositoryAccessMode' and
+                'TrainingRepositoryCredentialsProviderArn' (under 'TrainingRepositoryAuthConfig').
+                For example,
+
+                .. code:: python
+
+                    training_image_config = {
+                        "TrainingRepositoryAccessMode": "Vpc",
+                        "TrainingRepositoryAuthConfig": {
+                            "TrainingRepositoryCredentialsProviderArn":
+                              "arn:aws:lambda:us-west-2:1234567890:function:test"
+                        },
+                    }
+
+                If TrainingRepositoryAccessMode is set to Vpc, the training image is accessed
+                through a private Docker registry in customer Vpc. If it's set to Platform or None,
+                the training image is accessed through ECR.
+                If TrainingRepositoryCredentialsProviderArn is provided, the credentials to
+                authenticate to the private Docker registry will be retrieved from this AWS Lambda
+                function. (default: ``None``). When it's set to None, SageMaker will not do
+                authentication before pulling the image in the private Docker registry.
             algorithm_arn (str): Algorithm Arn from Marketplace.
             encrypt_inter_container_traffic (bool): Specifies whether traffic between training
                 containers is encrypted for the training job (default: ``False``).
@@ -767,6 +814,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if image_uri is not None:
             train_request["AlgorithmSpecification"]["TrainingImage"] = image_uri
+
+        if training_image_config is not None:
+            train_request["AlgorithmSpecification"]["TrainingImageConfig"] = training_image_config
 
         if algorithm_arn is not None:
             train_request["AlgorithmSpecification"]["AlgorithmName"] = algorithm_arn
@@ -2150,6 +2200,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
         random_seed=None,
+        environment=None,
     ):
         """Create an Amazon SageMaker hyperparameter tuning job.
 
@@ -2233,6 +2284,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             random_seed (int): An initial value used to initialize a pseudo-random number generator.
                 Setting a random seed will make the hyperparameter tuning search strategies to
                 produce more consistent configurations for the same tuning job. (default: ``None``).
+            environment (dict[str, str]) : Environment variables to be set for
+                use during training jobs (default: ``None``)
         """
 
         tune_request = {
@@ -2265,6 +2318,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 use_spot_instances=use_spot_instances,
                 checkpoint_s3_uri=checkpoint_s3_uri,
                 checkpoint_local_path=checkpoint_local_path,
+                environment=environment,
             ),
         }
 
@@ -2508,6 +2562,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
         max_retry_attempts=None,
+        environment=None,
     ):
         """Construct a dictionary of training job configuration from the arguments.
 
@@ -2562,6 +2617,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             parameter_ranges (dict): Dictionary of parameter ranges. These parameter ranges can
                 be one of three types: Continuous, Integer, or Categorical.
             max_retry_attempts (int): The number of times to retry the job.
+            environment (dict[str, str]) : Environment variables to be set for
+                use during training jobs (default: ``None``)
 
         Returns:
             A dictionary of training job configuration. For format details, please refer to
@@ -2624,6 +2681,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if max_retry_attempts is not None:
             training_job_definition["RetryStrategy"] = {"MaximumRetryAttempts": max_retry_attempts}
+
+        if environment is not None:
+            training_job_definition["Environment"] = environment
         return training_job_definition
 
     def stop_tuning_job(self, name):
@@ -4476,6 +4536,48 @@ class Session(object):  # pylint: disable=too-many-public-methods
             FeatureGroupName=feature_group_name, FeatureName=feature_name
         )
 
+    def search(
+        self,
+        resource: str,
+        search_expression: Dict[str, any] = None,
+        sort_by: str = None,
+        sort_order: str = None,
+        next_token: str = None,
+        max_results: int = None,
+    ) -> Dict[str, Any]:
+        """Search for SageMaker resources satisfying given filters.
+
+        Args:
+            resource (str): The name of the Amazon SageMaker resource to search for.
+            search_expression (Dict[str, any]): A Boolean conditional statement. Resources must
+                satisfy this condition to be included in search results.
+            sort_by (str): The name of the resource property used to sort the ``SearchResults``.
+                The default is ``LastModifiedTime``.
+            sort_order (str): How ``SearchResults`` are ordered.
+                Valid values are ``Ascending`` or ``Descending``. The default is ``Descending``.
+                next_token (str): If more than ``MaxResults`` resources match the specified
+                ``SearchExpression``, the response includes a ``NextToken``. The ``NextToken`` can
+                be passed to the next ``SearchRequest`` to continue retrieving results.
+            max_results (int): The maximum number of results to return.
+
+        Returns:
+            Response dict from service.
+        """
+        search_args = {"Resource": resource}
+
+        if search_expression:
+            search_args["SearchExpression"] = search_expression
+        if sort_by:
+            search_args["SortBy"] = sort_by
+        if sort_order:
+            search_args["SortOrder"] = sort_order
+        if next_token:
+            search_args["NextToken"] = next_token
+        if max_results:
+            search_args["MaxResults"] = max_results
+
+        return self.sagemaker_client.search(**search_args)
+
     def put_record(
         self,
         feature_group_name: str,
@@ -4534,6 +4636,20 @@ class Session(object):  # pylint: disable=too-many-public-methods
             get_record_args["FeatureNames"] = feature_names
 
         return self.sagemaker_featurestore_runtime_client.get_record(**get_record_args)
+
+    def batch_get_record(self, identifiers: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
+        """Gets a batch of record from FeatureStore.
+
+        Args:
+            identifiers (Sequence[Dict[str, Any]]): list of identifiers to uniquely identify records
+                in FeatureStore.
+
+        Returns:
+            Response dict from service.
+        """
+        batch_get_record_args = {"Identifiers": identifiers}
+
+        return self.sagemaker_featurestore_runtime_client.batch_get_record(**batch_get_record_args)
 
     def start_query_execution(
         self,

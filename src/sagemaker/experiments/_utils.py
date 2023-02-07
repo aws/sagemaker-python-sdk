@@ -127,11 +127,9 @@ def get_tc_and_exp_config_from_job_env(
             num_attempts=4,
         )
     else:  # environment.environment_type == _EnvironmentType.SageMakerTransformJob
-        raise RuntimeError(
-            "Failed to load the Run as loading experiment config "
-            "from transform job environment is not currently supported. "
-            "As a workaround, please explicitly pass in "
-            "the experiment_name and run_name in load_run."
+        job_response = retry_with_backoff(
+            callable_func=lambda: sagemaker_session.describe_transform_job(job_name),
+            num_attempts=4,
         )
 
     job_exp_config = job_response.get("ExperimentConfig", dict())

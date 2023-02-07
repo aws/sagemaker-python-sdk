@@ -1892,6 +1892,9 @@ class _TuningJob(_Job):
         if estimator.max_retry_attempts is not None:
             training_config["max_retry_attempts"] = estimator.max_retry_attempts
 
+        if estimator.environment is not None:
+            training_config["environment"] = estimator.environment
+
         return training_config
 
     def stop(self):

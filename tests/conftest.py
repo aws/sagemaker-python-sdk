@@ -22,7 +22,7 @@ import tests.integ
 from botocore.config import Config
 from packaging.version import Version
 
-from sagemaker import Session, image_uris, utils
+from sagemaker import Session, image_uris, utils, get_execution_role
 from sagemaker.local import LocalSession
 from sagemaker.workflow.pipeline_context import PipelineSession, LocalPipelineSession
 
@@ -46,7 +46,6 @@ NO_P3_REGIONS = [
     "ca-central-1",  # it has p3, but not enough
     "eu-central-1",  # it has p3, but not enough
     "eu-north-1",
-    "eu-west-1",  # it has p3, but not enough
     "eu-west-2",  # it has p3, but not enough
     "eu-west-3",
     "eu-south-1",
@@ -93,6 +92,7 @@ def pytest_addoption(parser):
     parser.addoption("--sagemaker-client-config", action="store", default=None)
     parser.addoption("--sagemaker-runtime-config", action="store", default=None)
     parser.addoption("--boto-config", action="store", default=None)
+    parser.addoption("--sagemaker-metrics-config", action="store", default=None)
 
 
 def pytest_configure(config):
@@ -116,6 +116,12 @@ def sagemaker_runtime_config(request):
 
 
 @pytest.fixture(scope="session")
+def sagemaker_metrics_config(request):
+    config = request.config.getoption("--sagemaker-metrics-config")
+    return json.loads(config) if config else None
+
+
+@pytest.fixture(scope="session")
 def boto_session(request):
     config = request.config.getoption("--boto-config")
     if config:
@@ -135,7 +141,9 @@ def region(boto_session):
 
 
 @pytest.fixture(scope="session")
-def sagemaker_session(sagemaker_client_config, sagemaker_runtime_config, boto_session):
+def sagemaker_session(
+    sagemaker_client_config, sagemaker_runtime_config, boto_session, sagemaker_metrics_config
+):
     sagemaker_client_config.setdefault("config", Config(retries=dict(max_attempts=10)))
     sagemaker_client = (
         boto_session.client("sagemaker", **sagemaker_client_config)
@@ -147,11 +155,17 @@ def sagemaker_session(sagemaker_client_config, sagemaker_runtime_config, boto_se
         if sagemaker_runtime_config
         else None
     )
+    metrics_client = (
+        boto_session.client("sagemaker-metrics", **sagemaker_metrics_config)
+        if sagemaker_metrics_config
+        else None
+    )
 
     return Session(
         boto_session=boto_session,
         sagemaker_client=sagemaker_client,
         sagemaker_runtime_client=runtime_client,
+        sagemaker_metrics_client=metrics_client,
     )
 
 
@@ -168,6 +182,11 @@ def pipeline_session(boto_session):
 @pytest.fixture(scope="session")
 def local_pipeline_session(boto_session):
     return LocalPipelineSession(boto_session=boto_session)
+
+
+@pytest.fixture(scope="session")
+def execution_role(sagemaker_session):
+    return get_execution_role(sagemaker_session)
 
 
 @pytest.fixture(scope="module")

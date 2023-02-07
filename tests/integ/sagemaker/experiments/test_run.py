@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import datetime
+import json
 import os
 
 import pytest
@@ -36,10 +37,6 @@ from sagemaker.experiments.run import (
 )
 from sagemaker.experiments import Run, load_run, list_runs
 from sagemaker.experiments._helper import _DEFAULT_ARTIFACT_PREFIX
-
-
-# when running integration tests locally modify this to your test account's execution role
-EXECUTION_ROLE = "SageMakerRole"
 
 
 @pytest.fixture
@@ -168,7 +165,13 @@ _RUN_INIT = "init"
 _RUN_LOAD = "load"
 
 
-def test_run_from_local_and_train_job_and_all_exp_cfg_match(sagemaker_session, dev_sdk_tar):
+def test_run_from_local_and_train_job_and_all_exp_cfg_match(
+    sagemaker_session,
+    dev_sdk_tar,
+    execution_role,
+    sagemaker_client_config,
+    sagemaker_metrics_config,
+):
     # Notes:
     # 1. The 1st Run created locally and its exp config was auto passed to the job
     # 2. In training job, the same exp and run names are given in the Run constructor
@@ -177,7 +180,12 @@ def test_run_from_local_and_train_job_and_all_exp_cfg_match(sagemaker_session, d
     # 3. In a different training job, load the same Run and log more parameters there.
     exp_name = unique_name_from_base(_EXP_NAME_BASE_IN_SCRIPT)
     estimator = _generate_estimator(
-        sdk_tar=dev_sdk_tar, sagemaker_session=sagemaker_session, exp_name=exp_name
+        sdk_tar=dev_sdk_tar,
+        sagemaker_session=sagemaker_session,
+        exp_name=exp_name,
+        execution_role=execution_role,
+        sagemaker_client_config=sagemaker_client_config,
+        sagemaker_metrics_config=sagemaker_metrics_config,
     )
     tc_name = Run._generate_trial_component_name(
         experiment_name=exp_name, run_name=_RUN_NAME_IN_SCRIPT
@@ -251,7 +259,13 @@ def test_run_from_local_and_train_job_and_all_exp_cfg_match(sagemaker_session, d
         )
 
 
-def test_run_from_local_and_train_job_and_exp_cfg_not_match(sagemaker_session, dev_sdk_tar):
+def test_run_from_local_and_train_job_and_exp_cfg_not_match(
+    sagemaker_session,
+    dev_sdk_tar,
+    execution_role,
+    sagemaker_client_config,
+    sagemaker_metrics_config,
+):
     # Notes:
     # 1. The 1st Run created locally and its exp config was auto passed to the job
     # 2. In training job, different exp and run names (i.e. 2nd Run) are given
@@ -262,7 +276,12 @@ def test_run_from_local_and_train_job_and_exp_cfg_not_match(sagemaker_session, d
     exp_name = unique_name_from_base(_EXP_NAME_BASE_IN_SCRIPT)
     exp_name2 = unique_name_from_base(_EXP_NAME_BASE_IN_SCRIPT)
     estimator = _generate_estimator(
-        sdk_tar=dev_sdk_tar, sagemaker_session=sagemaker_session, exp_name=exp_name
+        sdk_tar=dev_sdk_tar,
+        sagemaker_session=sagemaker_session,
+        exp_name=exp_name,
+        execution_role=execution_role,
+        sagemaker_client_config=sagemaker_client_config,
+        sagemaker_metrics_config=sagemaker_metrics_config,
     )
     tc_name = Run._generate_trial_component_name(
         experiment_name=exp_name, run_name=_RUN_NAME_IN_SCRIPT
@@ -326,7 +345,13 @@ def test_run_from_local_and_train_job_and_exp_cfg_not_match(sagemaker_session, d
         )
 
 
-def test_run_from_train_job_only(sagemaker_session, dev_sdk_tar):
+def test_run_from_train_job_only(
+    sagemaker_session,
+    dev_sdk_tar,
+    execution_role,
+    sagemaker_client_config,
+    sagemaker_metrics_config,
+):
     # Notes:
     # 1. No Run created locally or specified in experiment config
     # 2. In training job, Run is initialized
@@ -338,6 +363,9 @@ def test_run_from_train_job_only(sagemaker_session, dev_sdk_tar):
         sdk_tar=dev_sdk_tar,
         sagemaker_session=sagemaker_session,
         exp_name=exp_name,
+        execution_role=execution_role,
+        sagemaker_client_config=sagemaker_client_config,
+        sagemaker_metrics_config=sagemaker_metrics_config,
     )
     tc_name = Run._generate_trial_component_name(
         experiment_name=exp_name, run_name=_RUN_NAME_IN_SCRIPT
@@ -367,7 +395,12 @@ def test_run_from_train_job_only(sagemaker_session, dev_sdk_tar):
 
 # dev_sdk_tar is required to trigger generating the dev SDK tar
 def test_run_from_processing_job_and_override_default_exp_config(
-    sagemaker_session, dev_sdk_tar, run_obj
+    sagemaker_session,
+    dev_sdk_tar,
+    run_obj,
+    execution_role,
+    sagemaker_client_config,
+    sagemaker_metrics_config,
 ):
     # Notes:
     # 1. The 1st Run (run) created locally
@@ -378,14 +411,12 @@ def test_run_from_processing_job_and_override_default_exp_config(
     # fetched from the job env
     # 4. All data are logged in the Run either locally or in the processing job
     exp_name = unique_name_from_base(_EXP_NAME_BASE_IN_SCRIPT)
-    processor = FrameworkProcessor(
-        estimator_cls=PyTorch,
-        framework_version="1.10",
-        py_version="py38",
-        instance_count=1,
-        instance_type="ml.m5.xlarge",
-        role=EXECUTION_ROLE,
+    processor = _generate_processor(
+        exp_name=exp_name,
         sagemaker_session=sagemaker_session,
+        execution_role=execution_role,
+        sagemaker_client_config=sagemaker_client_config,
+        sagemaker_metrics_config=sagemaker_metrics_config,
     )
 
     with cleanup_exp_resources(exp_names=[exp_name], sagemaker_session=sagemaker_session):
@@ -441,30 +472,41 @@ def test_run_from_processing_job_and_override_default_exp_config(
 
 
 # dev_sdk_tar is required to trigger generating the dev SDK tar
-def test_run_from_transform_job(sagemaker_session, dev_sdk_tar, xgboost_latest_version):
+def test_run_from_transform_job(
+    sagemaker_session,
+    dev_sdk_tar,
+    xgboost_latest_version,
+    execution_role,
+    sagemaker_client_config,
+    sagemaker_metrics_config,
+):
     # Notes:
     # 1. The 1st Run (run) created locally
-    # 2. In the inference script running in a transform job, load the 1st Run
-    # via explicitly passing the experiment_name and run_name of the 1st Run
-    # TODO: once we're able to retrieve exp config from the transform job env,
-    # we should expand this test and add the load_run() without explicitly supplying the names
+    # 2. In the inference script running in a transform job, load the 1st Run twice and log data
+    # 1) via explicitly passing the experiment_name and run_name of the 1st Run
+    # 2) use load_run() without explicitly supplying the names
     # 3. All data are logged in the Run either locally or in the transform job
     exp_name = unique_name_from_base(_EXP_NAME_BASE_IN_SCRIPT)
     xgb_model_data_s3 = sagemaker_session.upload_data(
         path=os.path.join(_TRANSFORM_MATERIALS, "xgb_model.tar.gz"),
         key_prefix="integ-test-data/xgboost/model",
     )
-    xgboost_model = XGBoostModel(
-        sagemaker_session=sagemaker_session,
-        model_data=xgb_model_data_s3,
-        role=EXECUTION_ROLE,
-        entry_point="inference.py",
-        source_dir=_EXP_DIR,
-        framework_version=xgboost_latest_version,
+    env = _update_env_with_client_config(
         env={
             "EXPERIMENT_NAME": exp_name,
             "RUN_NAME": _RUN_NAME_IN_SCRIPT,
         },
+        sagemaker_metrics_config=sagemaker_metrics_config,
+        sagemaker_client_config=sagemaker_client_config,
+    )
+    xgboost_model = XGBoostModel(
+        sagemaker_session=sagemaker_session,
+        model_data=xgb_model_data_s3,
+        role=execution_role,
+        entry_point="inference.py",
+        source_dir=_EXP_DIR,
+        framework_version=xgboost_latest_version,
+        env=env,
     )
     transformer = xgboost_model.transformer(
         instance_count=1,
@@ -494,6 +536,7 @@ def test_run_from_transform_job(sagemaker_session, dev_sdk_tar, xgboost_latest_v
                 content_type="text/libsvm",
                 split_type="Line",
                 wait=True,
+                logs=False,
                 job_name=f"transform-job-{name()}",
             )
 
@@ -506,25 +549,29 @@ def test_run_from_transform_job(sagemaker_session, dev_sdk_tar, xgboost_latest_v
             experiment_name=run.experiment_name, run_name=run.run_name
         )
         _check_run_from_job_result(
-            tc_name=tc_name, sagemaker_session=sagemaker_session, is_init=False
+            tc_name=tc_name, sagemaker_session=sagemaker_session, is_init=False, has_extra_load=True
         )
 
 
 # dev_sdk_tar is required to trigger generating the dev SDK tar
-def test_load_run_auto_pass_in_exp_config_to_job(sagemaker_session, dev_sdk_tar):
+def test_load_run_auto_pass_in_exp_config_to_job(
+    sagemaker_session,
+    dev_sdk_tar,
+    execution_role,
+    sagemaker_client_config,
+    sagemaker_metrics_config,
+):
     # Notes:
     # 1. In local side, load the Run created previously and invoke a job under the load context
     # 2. In the job script, load the 1st Run via exp config auto-passed to the job env
     # 3. All data are logged in the Run either locally or in the transform job
     exp_name = unique_name_from_base(_EXP_NAME_BASE_IN_SCRIPT)
-    processor = FrameworkProcessor(
-        estimator_cls=PyTorch,
-        framework_version="1.10",
-        py_version="py38",
-        instance_count=1,
-        instance_type="ml.m5.xlarge",
-        role=EXECUTION_ROLE,
+    processor = _generate_processor(
+        exp_name=exp_name,
         sagemaker_session=sagemaker_session,
+        execution_role=execution_role,
+        sagemaker_client_config=sagemaker_client_config,
+        sagemaker_metrics_config=sagemaker_metrics_config,
     )
 
     with cleanup_exp_resources(exp_names=[exp_name], sagemaker_session=sagemaker_session):
@@ -583,23 +630,58 @@ def test_list(run_obj, sagemaker_session):
     assert run_tcs[0].experiment_config == run_obj.experiment_config
 
 
-def _generate_estimator(exp_name, sdk_tar, sagemaker_session):
+def _generate_estimator(
+    exp_name,
+    sdk_tar,
+    sagemaker_session,
+    execution_role,
+    sagemaker_client_config,
+    sagemaker_metrics_config,
+):
+    env = _update_env_with_client_config(
+        env={
+            "EXPERIMENT_NAME": exp_name,
+            "RUN_NAME": _RUN_NAME_IN_SCRIPT,
+            "RUN_OPERATION": _RUN_INIT,
+        },
+        sagemaker_metrics_config=sagemaker_metrics_config,
+        sagemaker_client_config=sagemaker_client_config,
+    )
     return SKLearn(
         framework_version="0.23-1",
         entry_point=_ENTRY_POINT_PATH,
         dependencies=[sdk_tar],
-        role=EXECUTION_ROLE,
+        role=execution_role,
         instance_type="ml.m5.large",
         instance_count=1,
         volume_size=10,
         max_run=900,
         enable_sagemaker_metrics=True,
-        environment={
+        environment=env,
+        sagemaker_session=sagemaker_session,
+    )
+
+
+def _generate_processor(
+    exp_name, sagemaker_session, execution_role, sagemaker_metrics_config, sagemaker_client_config
+):
+    env = _update_env_with_client_config(
+        env={
             "EXPERIMENT_NAME": exp_name,
             "RUN_NAME": _RUN_NAME_IN_SCRIPT,
-            "RUN_OPERATION": _RUN_INIT,
         },
+        sagemaker_metrics_config=sagemaker_metrics_config,
+        sagemaker_client_config=sagemaker_client_config,
+    )
+    return FrameworkProcessor(
+        estimator_cls=PyTorch,
+        framework_version="1.10",
+        py_version="py38",
+        instance_count=1,
+        instance_type="ml.m5.xlarge",
+        role=execution_role,
         sagemaker_session=sagemaker_session,
+        env=env,
     )
 
 
@@ -636,8 +718,7 @@ def _check_run_from_local_end_result(sagemaker_session, tc, is_complete_log=True
     assert "s3://Input" == tc.input_artifacts[artifact_name].value
     assert not tc.input_artifacts[artifact_name].media_type
 
-    # TODO: revert to len(tc.metrics) == 1 once backend fix reaches prod
-    assert len(tc.metrics) > 0
+    assert len(tc.metrics) == 1
     metric_summary = tc.metrics[0]
     assert metric_summary.metric_name == metric_name
     assert metric_summary.max == 9.0
@@ -651,9 +732,7 @@ def _check_run_from_job_result(sagemaker_session, tc_name=None, is_init=True, ha
         assert tc.status.primary_status == _TrialComponentStatusType.Completed.value
         assert tc.parameters["p1"] == 1.0
         assert tc.parameters["p2"] == 2.0
-        # TODO: revert to assert len(tc.metrics) == 5 once
-        # backend fix hits prod
-        assert len(tc.metrics) > 0
+        assert len(tc.metrics) == 5
         for metric_summary in tc.metrics:
             # metrics deletion is not supported at this point
             # so its count would accumulate
@@ -719,3 +798,15 @@ def _check_tc_status_intermediate(
         return
     assert isinstance(tc_load.end_time, datetime.datetime)
     assert tc_load.end_time == old_end_time
+
+
+def _update_env_with_client_config(env, sagemaker_client_config, sagemaker_metrics_config):
+    if sagemaker_client_config and sagemaker_client_config.get("endpoint_url", None):
+        env["SM_CLIENT_CONFIG"] = json.dumps(
+            {"endpoint_url": sagemaker_client_config["endpoint_url"]}
+        )
+    if sagemaker_metrics_config and sagemaker_metrics_config.get("endpoint_url", None):
+        env["SM_METRICS_CONFIG"] = json.dumps(
+            {"endpoint_url": sagemaker_metrics_config["endpoint_url"]}
+        )
+    return env
