@@ -144,6 +144,65 @@ def test_with_feature_group(sagemaker_session_mock):
     )
 
 
+def test_with_feature_group_with_additional_params(sagemaker_session_mock):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    dataframe = pd.DataFrame({"feature-1": [420, 380, 390], "feature-2": [50, 40, 45]})
+    feature_group.load_feature_definitions(dataframe)
+    dataset_builder = DatasetBuilder(
+        sagemaker_session=sagemaker_session_mock,
+        base=feature_group,
+        output_path="file/to/path",
+        record_identifier_feature_name="target-feature",
+    )
+    sagemaker_session_mock.describe_feature_group.return_value = {
+        "OfflineStoreConfig": {"DataCatalogConfig": {"TableName": "table", "Database": "database"}},
+        "RecordIdentifierFeatureName": "feature-1",
+        "EventTimeFeatureName": "feature-2",
+        "FeatureDefinitions": [
+            {"FeatureName": "feature-1", "FeatureType": "String"},
+            {"FeatureName": "feature-2", "FeatureType": "String"},
+        ],
+    }
+    dataset_builder.with_feature_group(feature_group, "target-feature", [
+                                       "feature-1", "feature-2"], join_comparator=JoinComparatorEnum.LESS_THAN, join_type=JoinTypeEnum.LEFT_JOIN, feature_name_in_target='feature-2')
+                                       
+    assert len(dataset_builder._feature_groups_to_be_merged) == 1
+    assert dataset_builder._feature_groups_to_be_merged[0].features == [
+        "feature-1",
+        "feature-2",
+    ]
+    assert dataset_builder._feature_groups_to_be_merged[0].included_feature_names == [
+        "feature-1",
+        "feature-2",
+    ]
+    assert dataset_builder._feature_groups_to_be_merged[0].database == "database"
+    assert dataset_builder._feature_groups_to_be_merged[0].table_name == "table"
+    assert (
+        dataset_builder._feature_groups_to_be_merged[0].record_identifier_feature_name
+        == "feature-1"
+    )
+    assert (
+        dataset_builder._feature_groups_to_be_merged[0].event_time_identifier_feature.feature_name
+        == "feature-2"
+    )
+    assert (
+        dataset_builder._feature_groups_to_be_merged[0].event_time_identifier_feature.feature_type
+        == FeatureTypeEnum.STRING
+    )
+    assert (
+        dataset_builder._feature_groups_to_be_merged[0].join_type
+        == JoinTypeEnum.LEFT_JOIN
+    )
+    assert (
+        dataset_builder._feature_groups_to_be_merged[0].join_comparator
+        == JoinComparatorEnum.LESS_THAN
+    )
+    assert (
+        dataset_builder._feature_groups_to_be_merged[0].target_feature_name_in_base
+        == "target-feature"
+    )
+
+
 def test_point_in_time_accurate_join(sagemaker_session_mock, feature_group_mock):
     dataset_builder = DatasetBuilder(
         sagemaker_session=sagemaker_session_mock,
