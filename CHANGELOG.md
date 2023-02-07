@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.132.0 (2023-02-07)
+
+### Features
+
+ * support cluster lifecycle management for Sagemaker EMR step
+ * Inference recommendation id deployment support
+
 ## v2.131.1 (2023-02-03)
 
 ### Bug Fixes and Other Changes
