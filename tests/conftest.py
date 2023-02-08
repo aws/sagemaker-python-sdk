@@ -277,13 +277,9 @@ def huggingface_pytorch_training_py_version(huggingface_pytorch_training_version
 
 
 @pytest.fixture(scope="module")
-def huggingface_training_compiler_pytorch_version(
-    huggingface_training_compiler_version,
-):
+def huggingface_training_compiler_pytorch_version(huggingface_training_compiler_version,):
     versions = _huggingface_base_fm_version(
-        huggingface_training_compiler_version,
-        "pytorch",
-        "huggingface_training_compiler",
+        huggingface_training_compiler_version, "pytorch", "huggingface_training_compiler"
     )
     if not versions:
         pytest.skip(
@@ -294,13 +290,9 @@ def huggingface_training_compiler_pytorch_version(
 
 
 @pytest.fixture(scope="module")
-def huggingface_training_compiler_tensorflow_version(
-    huggingface_training_compiler_version,
-):
+def huggingface_training_compiler_tensorflow_version(huggingface_training_compiler_version,):
     versions = _huggingface_base_fm_version(
-        huggingface_training_compiler_version,
-        "tensorflow",
-        "huggingface_training_compiler",
+        huggingface_training_compiler_version, "tensorflow", "huggingface_training_compiler"
     )
     if not versions:
         pytest.skip(
@@ -329,18 +321,14 @@ def huggingface_training_compiler_pytorch_py_version(
 
 
 @pytest.fixture(scope="module")
-def huggingface_pytorch_latest_training_py_version(
-    huggingface_training_pytorch_latest_version,
-):
+def huggingface_pytorch_latest_training_py_version(huggingface_training_pytorch_latest_version,):
     return (
         "py38" if Version(huggingface_training_pytorch_latest_version) >= Version("1.9") else "py36"
     )
 
 
 @pytest.fixture(scope="module")
-def huggingface_pytorch_latest_inference_py_version(
-    huggingface_inference_pytorch_latest_version,
-):
+def huggingface_pytorch_latest_inference_py_version(huggingface_inference_pytorch_latest_version,):
     return (
         "py38"
         if Version(huggingface_inference_pytorch_latest_version) >= Version("1.9")
@@ -516,8 +504,7 @@ def pytorch_ddp_py_version():
 
 
 @pytest.fixture(
-    scope="module",
-    params=["1.10", "1.10.0", "1.10.2", "1.11", "1.11.0", "1.12", "1.12.0"],
+    scope="module", params=["1.10", "1.10.0", "1.10.2", "1.11", "1.11.0", "1.12", "1.12.0"]
 )
 def pytorch_ddp_framework_version(request):
     return request.param
@@ -615,13 +602,10 @@ def imagenet_train_set(request, sagemaker_session, tmpdir_factory):
     """
     local_path = tmpdir_factory.mktemp("imagenet_tfrecords_train_set")
     sagemaker_session.download_data(
-        path=local_path,
-        bucket="collection-of-ml-datasets",
-        key_prefix="Imagenet/TFRecords/train",
+        path=local_path, bucket="collection-of-ml-datasets", key_prefix="Imagenet/TFRecords/train"
     )
     train_input = sagemaker_session.upload_data(
-        path=local_path,
-        key_prefix="integ-test-data/imagenet/TFRecords/train",
+        path=local_path, key_prefix="integ-test-data/imagenet/TFRecords/train"
     )
     return train_input
 

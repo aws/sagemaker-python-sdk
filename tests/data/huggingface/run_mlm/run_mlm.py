@@ -60,7 +60,10 @@ from transformers.utils.versions import require_version
 
 
 logger = logging.getLogger(__name__)
-require_version("datasets>=1.8.0", "To fix: pip install -r examples/tensorflow/language-modeling/requirements.txt")
+require_version(
+    "datasets>=1.8.0",
+    "To fix: pip install -r examples/tensorflow/language-modeling/requirements.txt",
+)
 MODEL_CONFIG_CLASSES = list(TF_MODEL_FOR_MASKED_LM_MAPPING.keys())
 MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
 
@@ -81,7 +84,10 @@ class ModelArguments:
     )
     model_type: Optional[str] = field(
         default=None,
-        metadata={"help": "If training from scratch, pass a model type from the list: " + ", ".join(MODEL_TYPES)},
+        metadata={
+            "help": "If training from scratch, pass a model type from the list: "
+            + ", ".join(MODEL_TYPES)
+        },
     )
     config_overrides: Optional[str] = field(
         default=None,
@@ -91,22 +97,30 @@ class ModelArguments:
         },
     )
     config_name: Optional[str] = field(
-        default=None, metadata={"help": "Pretrained config name or path if not the same as model_name"}
+        default=None,
+        metadata={"help": "Pretrained config name or path if not the same as model_name"},
     )
     tokenizer_name: Optional[str] = field(
-        default=None, metadata={"help": "Pretrained tokenizer name or path if not the same as model_name"}
+        default=None,
+        metadata={"help": "Pretrained tokenizer name or path if not the same as model_name"},
     )
     cache_dir: Optional[str] = field(
         default=None,
-        metadata={"help": "Where do you want to store the pretrained models downloaded from huggingface.co"},
+        metadata={
+            "help": "Where do you want to store the pretrained models downloaded from huggingface.co"
+        },
     )
     use_fast_tokenizer: bool = field(
         default=True,
-        metadata={"help": "Whether to use one of the fast tokenizer (backed by the tokenizers library) or not."},
+        metadata={
+            "help": "Whether to use one of the fast tokenizer (backed by the tokenizers library) or not."
+        },
     )
     model_revision: str = field(
         default="main",
-        metadata={"help": "The specific model version to use (can be a branch name, tag name or commit id)."},
+        metadata={
+            "help": "The specific model version to use (can be a branch name, tag name or commit id)."
+        },
     )
     use_auth_token: bool = field(
         default=False,
@@ -117,7 +131,9 @@ class ModelArguments:
     )
 
     def __post_init__(self):
-        if self.config_overrides is not None and (self.config_name is not None or self.model_name_or_path is not None):
+        if self.config_overrides is not None and (
+            self.config_name is not None or self.model_name_or_path is not None
+        ):
             raise ValueError(
                 "--config_overrides can't be used in combination with --config_name or --model_name_or_path"
             )
@@ -130,15 +146,23 @@ class DataTrainingArguments:
     """
 
     dataset_name: Optional[str] = field(
-        default=None, metadata={"help": "The name of the dataset to use (via the datasets library)."}
+        default=None,
+        metadata={"help": "The name of the dataset to use (via the datasets library)."},
     )
     dataset_config_name: Optional[str] = field(
-        default=None, metadata={"help": "The configuration name of the dataset to use (via the datasets library)."}
+        default=None,
+        metadata={
+            "help": "The configuration name of the dataset to use (via the datasets library)."
+        },
     )
-    train_file: Optional[str] = field(default=None, metadata={"help": "The input training data file (a text file)."})
+    train_file: Optional[str] = field(
+        default=None, metadata={"help": "The input training data file (a text file)."}
+    )
     validation_file: Optional[str] = field(
         default=None,
-        metadata={"help": "An optional input evaluation data file to evaluate the perplexity on (a text file)."},
+        metadata={
+            "help": "An optional input evaluation data file to evaluate the perplexity on (a text file)."
+        },
     )
     overwrite_cache: bool = field(
         default=False, metadata={"help": "Overwrite the cached training and evaluation sets"}
@@ -157,15 +181,16 @@ class DataTrainingArguments:
         },
     )
     preprocessing_num_workers: Optional[int] = field(
-        default=None,
-        metadata={"help": "The number of processes to use for the preprocessing."},
+        default=None, metadata={"help": "The number of processes to use for the preprocessing."}
     )
     mlm_probability: float = field(
         default=0.15, metadata={"help": "Ratio of tokens to mask for masked language modeling loss"}
     )
     line_by_line: bool = field(
         default=False,
-        metadata={"help": "Whether distinct lines of text in the dataset are to be handled as distinct sequences."},
+        metadata={
+            "help": "Whether distinct lines of text in the dataset are to be handled as distinct sequences."
+        },
     )
     pad_to_max_length: bool = field(
         default=False,
@@ -195,10 +220,18 @@ class DataTrainingArguments:
         else:
             if self.train_file is not None:
                 extension = self.train_file.split(".")[-1]
-                assert extension in ["csv", "json", "txt"], "`train_file` should be a csv, a json or a txt file."
+                assert extension in [
+                    "csv",
+                    "json",
+                    "txt",
+                ], "`train_file` should be a csv, a json or a txt file."
             if self.validation_file is not None:
                 extension = self.validation_file.split(".")[-1]
-                assert extension in ["csv", "json", "txt"], "`validation_file` should be a csv, a json or a txt file."
+                assert extension in [
+                    "csv",
+                    "json",
+                    "txt",
+                ], "`validation_file` should be a csv, a json or a txt file."
 
 
 # endregion
@@ -226,20 +259,34 @@ def main():
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
         # If we pass only one argument to the script and it's the path to a json file,
         # let's parse it to get our arguments.
-        model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
+        model_args, data_args, training_args = parser.parse_json_file(
+            json_file=os.path.abspath(sys.argv[1])
+        )
     else:
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
     # Sanity checks
-    if data_args.dataset_name is None and data_args.train_file is None and data_args.validation_file is None:
+    if (
+        data_args.dataset_name is None
+        and data_args.train_file is None
+        and data_args.validation_file is None
+    ):
         raise ValueError("Need either a dataset name or a training/validation file.")
     else:
         if data_args.train_file is not None:
             extension = data_args.train_file.split(".")[-1]
-            assert extension in ["csv", "json", "txt"], "`train_file` should be a csv, json or txt file."
+            assert extension in [
+                "csv",
+                "json",
+                "txt",
+            ], "`train_file` should be a csv, json or txt file."
         if data_args.validation_file is not None:
             extension = data_args.validation_file.split(".")[-1]
-            assert extension in ["csv", "json", "txt"], "`validation_file` should be a csv, json or txt file."
+            assert extension in [
+                "csv",
+                "json",
+                "txt",
+            ], "`validation_file` should be a csv, json or txt file."
 
     if training_args.output_dir is not None:
         training_args.output_dir = Path(training_args.output_dir)
@@ -463,16 +510,20 @@ def main():
     # endregion
 
     communication_options = tf.distribute.experimental.CommunicationOptions(
-    implementation=tf.distribute.experimental.CommunicationImplementation.NCCL)
+        implementation=tf.distribute.experimental.CommunicationImplementation.NCCL
+    )
     strategy = tf.distribute.MultiWorkerMirroredStrategy(
-    communication_options=communication_options)
+        communication_options=communication_options
+    )
 
     with strategy.scope():
         # region Prepare model
         if checkpoint is not None:
             model = TFAutoModelForMaskedLM.from_pretrained(checkpoint, config=config)
         elif model_args.model_name_or_path:
-            model = TFAutoModelForMaskedLM.from_pretrained(model_args.model_name_or_path, config=config)
+            model = TFAutoModelForMaskedLM.from_pretrained(
+                model_args.model_name_or_path, config=config
+            )
         else:
             logger.info("Training new model from scratch")
             model = TFAutoModelForMaskedLM.from_config(config)
@@ -490,7 +541,8 @@ def main():
 
         tf_train_dataset = train_dataset.to_tf_dataset(
             # labels are passed as input, as we will use the model's internal loss
-            columns=[col for col in train_dataset.features if col != "special_tokens_mask"] + ["labels"],
+            columns=[col for col in train_dataset.features if col != "special_tokens_mask"]
+            + ["labels"],
             shuffle=True,
             batch_size=num_replicas * training_args.per_device_train_batch_size,
             collate_fn=data_collator,
@@ -499,7 +551,8 @@ def main():
 
         tf_eval_dataset = eval_dataset.to_tf_dataset(
             # labels are passed as input, as we will use the model's internal loss
-            columns=[col for col in eval_dataset.features if col != "special_tokens_mask"] + ["labels"],
+            columns=[col for col in eval_dataset.features if col != "special_tokens_mask"]
+            + ["labels"],
             shuffle=False,
             batch_size=num_replicas * training_args.per_device_train_batch_size,
             collate_fn=data_collator,
@@ -508,7 +561,9 @@ def main():
         # endregion
 
         # region Optimizer and loss
-        batches_per_epoch = len(train_dataset) // (num_replicas * training_args.per_device_train_batch_size)
+        batches_per_epoch = len(train_dataset) // (
+            num_replicas * training_args.per_device_train_batch_size
+        )
         # Bias and layernorm weights are automatically excluded from the decay
         optimizer, lr_schedule = create_optimizer(
             init_lr=training_args.learning_rate,
@@ -528,14 +583,19 @@ def main():
         logger.info("***** Running training *****")
         logger.info(f"  Num examples = {len(train_dataset)}")
         logger.info(f"  Num Epochs = {training_args.num_train_epochs}")
-        logger.info(f"  Instantaneous batch size per device = {training_args.per_device_train_batch_size}")
-        logger.info(f"  Total train batch size = {training_args.per_device_train_batch_size * num_replicas}")
+        logger.info(
+            f"  Instantaneous batch size per device = {training_args.per_device_train_batch_size}"
+        )
+        logger.info(
+            f"  Total train batch size = {training_args.per_device_train_batch_size * num_replicas}"
+        )
 
         history = model.fit(
             tf_train_dataset,
             validation_data=tf_eval_dataset,
             epochs=int(training_args.num_train_epochs),
-            steps_per_epoch=len(train_dataset) // (training_args.per_device_train_batch_size * num_replicas),
+            steps_per_epoch=len(train_dataset)
+            // (training_args.per_device_train_batch_size * num_replicas),
             callbacks=[SavePretrainedCallback(output_dir=training_args.output_dir)],
         )
 

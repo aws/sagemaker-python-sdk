@@ -85,10 +85,7 @@ from sagemaker.utils import (
 )
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
-from sagemaker.workflow.pipeline_context import (
-    PipelineSession,
-    runnable_by_pipeline,
-)
+from sagemaker.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -560,9 +557,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.dependencies = dependencies or []
         self.uploaded_code = None
         self.tags = add_jumpstart_tags(
-            tags=tags,
-            training_model_uri=self.model_uri,
-            training_script_uri=self.source_dir,
+            tags=tags, training_model_uri=self.model_uri, training_script_uri=self.source_dir
         )
         if self.instance_type in ("local", "local_gpu"):
             if self.instance_type == "local_gpu" and self.instance_count > 1:
@@ -683,8 +678,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             self.base_job_name
             or get_jumpstart_base_name_if_jumpstart_model(self.source_dir, self.model_uri)
             or base_name_from_image(
-                self.training_image_uri(),
-                default_base_name=EstimatorBase.JOB_CLASS_NAME,
+                self.training_image_uri(), default_base_name=EstimatorBase.JOB_CLASS_NAME
             )
         )
 
@@ -1026,10 +1020,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             parse_result = urlparse(rule.rule_parameters["source_s3_uri"])
             if parse_result.scheme != "s3":
                 desired_s3_uri = os.path.join(
-                    "s3://",
-                    self.sagemaker_session.default_bucket(),
-                    rule.name,
-                    str(uuid.uuid4()),
+                    "s3://", self.sagemaker_session.default_bucket(), rule.name, str(uuid.uuid4())
                 )
                 s3_uri = S3Uploader.upload(
                     local_path=rule.rule_parameters["source_s3_uri"],
@@ -1442,10 +1433,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self._ensure_base_job_name()
 
         jumpstart_base_name = get_jumpstart_base_name_if_jumpstart_model(
-            kwargs.get("source_dir"),
-            self.source_dir,
-            kwargs.get("model_data"),
-            self.model_uri,
+            kwargs.get("source_dir"), self.source_dir, kwargs.get("model_data"), self.model_uri
         )
         default_name = (
             name_from_base(jumpstart_base_name)
@@ -2243,11 +2231,7 @@ class _TrainingJob(_Job):
 
     @classmethod
     def update(
-        cls,
-        estimator,
-        profiler_rule_configs=None,
-        profiler_config=None,
-        resource_config=None,
+        cls, estimator, profiler_rule_configs=None, profiler_config=None, resource_config=None
     ):
         """Update a running Amazon SageMaker training job.
 
@@ -3170,13 +3154,13 @@ class Framework(EstimatorBase):
 
     def _validate_mwms_config(self, distribution):
         """Validate Multi Worker Mirrored Strategy configuration."""
-        minimum_supported_framework_version = {
-                                                'tensorflow': {'framework_version': '2.9'},
-                                            }
+        minimum_supported_framework_version = {"tensorflow": {"framework_version": "2.9"}}
         if self._framework_name in minimum_supported_framework_version:
             for version_argument in minimum_supported_framework_version[self._framework_name]:
                 current = getattr(self, version_argument)
-                threshold = minimum_supported_framework_version[self._framework_name][version_argument]
+                threshold = minimum_supported_framework_version[self._framework_name][
+                    version_argument
+                ]
                 if Version(current) in SpecifierSet(f"< {threshold}"):
                     raise ValueError(
                         "Multi Worker Mirrored Strategy is only supported "

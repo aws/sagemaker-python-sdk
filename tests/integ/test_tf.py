@@ -69,12 +69,7 @@ def test_framework_processing_job_with_deps(
             sagemaker_session=sagemaker_session,
             base_job_name="test-tensorflow",
         )
-        processor.run(
-            code=entry_point,
-            source_dir=code_path,
-            inputs=[],
-            wait=True,
-        )
+        processor.run(code=entry_point, source_dir=code_path, inputs=[], wait=True)
 
 
 def test_mnist_with_checkpoint_config(
@@ -111,9 +106,7 @@ def test_mnist_with_checkpoint_config(
     with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
         estimator.fit(inputs=inputs, job_name=training_job_name)
     assert_s3_file_patterns_exist(
-        sagemaker_session,
-        estimator.model_dir,
-        [r"model\.ckpt-\d+\.index", r"checkpoint"],
+        sagemaker_session, estimator.model_dir, [r"model\.ckpt-\d+\.index", r"checkpoint"]
     )
     # remove dataframe assertion to unblock PR build
     # TODO: add independent integration test for `training_job_analytics`
@@ -125,15 +118,13 @@ def test_mnist_with_checkpoint_config(
     actual_training_checkpoint_config = sagemaker_session.sagemaker_client.describe_training_job(
         TrainingJobName=training_job_name
     )["CheckpointConfig"]
-    actual_training_environment_variable_config = (
-        sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=training_job_name)[
-            "Environment"
-        ]
-    )
+    actual_training_environment_variable_config = sagemaker_session.sagemaker_client.describe_training_job(
+        TrainingJobName=training_job_name
+    )[
+        "Environment"
+    ]
 
-    expected_retry_strategy = {
-        "MaximumRetryAttempts": 2,
-    }
+    expected_retry_strategy = {"MaximumRetryAttempts": 2}
     actual_retry_strategy = sagemaker_session.sagemaker_client.describe_training_job(
         TrainingJobName=training_job_name
     )["RetryStrategy"]
@@ -143,10 +134,7 @@ def test_mnist_with_checkpoint_config(
 
 
 def test_server_side_encryption(sagemaker_session, tf_full_version, tf_full_py_version):
-    with kms_utils.bucket_with_encryption(sagemaker_session, ROLE) as (
-        bucket_with_kms,
-        kms_key,
-    ):
+    with kms_utils.bucket_with_encryption(sagemaker_session, ROLE) as (bucket_with_kms, kms_key):
         output_path = os.path.join(
             bucket_with_kms, "test-server-side-encryption", time.strftime("%y%m%d-%H%M")
         )
@@ -167,14 +155,12 @@ def test_server_side_encryption(sagemaker_session, tf_full_version, tf_full_py_v
         )
 
         inputs = estimator.sagemaker_session.upload_data(
-            path=os.path.join(MNIST_RESOURCE_PATH, "data"),
-            key_prefix="scriptmode/mnist",
+            path=os.path.join(MNIST_RESOURCE_PATH, "data"), key_prefix="scriptmode/mnist"
         )
 
         with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
             estimator.fit(
-                inputs=inputs,
-                job_name=unique_name_from_base("test-server-side-encryption"),
+                inputs=inputs, job_name=unique_name_from_base("test-server-side-encryption")
             )
 
         endpoint_name = unique_name_from_base("test-server-side-encryption")
@@ -227,9 +213,7 @@ def test_mwms_gpu(
             "logging_strategy": "epoch",
             "per_device_train_batch_size": 16,
         },
-        environment={
-            "NCCL_DEBUG": "INFO",
-        },
+        environment={"NCCL_DEBUG": "INFO"},
         max_run=60 * 60 * 1,  # 1 hour
         role=ROLE,
         volume_size=400,
@@ -297,16 +281,13 @@ def _create_and_fit_estimator(sagemaker_session, tf_version, py_version, instanc
         disable_profiler=True,
     )
     inputs = estimator.sagemaker_session.upload_data(
-        path=os.path.join(MNIST_RESOURCE_PATH, "data"),
-        key_prefix="scriptmode/distributed_mnist",
+        path=os.path.join(MNIST_RESOURCE_PATH, "data"), key_prefix="scriptmode/distributed_mnist"
     )
 
     with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
         estimator.fit(inputs=inputs, job_name=unique_name_from_base("test-tf-sm-distributed"))
     assert_s3_file_patterns_exist(
-        sagemaker_session,
-        estimator.model_dir,
-        [r"model\.ckpt-\d+\.index", r"checkpoint"],
+        sagemaker_session, estimator.model_dir, [r"model\.ckpt-\d+\.index", r"checkpoint"]
     )
 
 
@@ -413,8 +394,7 @@ def test_model_deploy_with_serverless_inference_config(
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(
-            serverless_inference_config=ServerlessInferenceConfig(),
-            endpoint_name=endpoint_name,
+            serverless_inference_config=ServerlessInferenceConfig(), endpoint_name=endpoint_name
         )
 
         input_data = {"instances": [1.0, 2.0, 5.0]}

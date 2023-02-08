@@ -156,10 +156,7 @@ def _create_train_job(framework_version, instance_type, training_compiler_config
 
 class TestUnsupportedConfig:
     def test_cpu_instance(
-        self,
-        cpu_instance_type,
-        tensorflow_training_version,
-        tensorflow_training_py_version,
+        self, cpu_instance_type, tensorflow_training_version, tensorflow_training_py_version
     ):
         with pytest.raises(ValueError):
             TensorFlow(
@@ -192,10 +189,7 @@ class TestUnsupportedConfig:
                 compiler_config=TrainingCompilerConfig(),
             ).fit()
 
-    def test_framework_version(
-        self,
-        tensorflow_training_py_version,
-    ):
+    def test_framework_version(self, tensorflow_training_py_version):
         with pytest.raises(ValueError):
             TensorFlow(
                 py_version=tensorflow_training_py_version,
@@ -208,11 +202,7 @@ class TestUnsupportedConfig:
                 compiler_config=TrainingCompilerConfig(),
             ).fit()
 
-    def test_mwms(
-        self,
-        tensorflow_training_version,
-        tensorflow_training_py_version,
-    ):
+    def test_mwms(self, tensorflow_training_version, tensorflow_training_py_version):
         with pytest.raises(ValueError):
             TensorFlow(
                 py_version=tensorflow_training_py_version,
@@ -223,13 +213,10 @@ class TestUnsupportedConfig:
                 framework_version=tensorflow_training_version,
                 enable_sagemaker_metrics=False,
                 compiler_config=TrainingCompilerConfig(),
-                distribution={'multi_worker_mirrored_strategy': True},
+                distribution={"multi_worker_mirrored_strategy": True},
             ).fit()
 
-    def test_python_2(
-        self,
-        tensorflow_training_version,
-    ):
+    def test_python_2(self, tensorflow_training_version):
         with pytest.raises(ValueError):
             TensorFlow(
                 py_version="py27",
