@@ -4,10 +4,7 @@ from unittest.mock import patch, MagicMock, ANY
 
 from sagemaker.model import Model, ModelPackage
 from sagemaker.parameter import CategoricalParameter
-from sagemaker.inference_recommender.inference_recommender_mixin import (
-    Phase,
-    ModelLatencyThreshold,
-)
+from sagemaker.inference_recommender import ModelLatencyThreshold, Phase
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.serverless import ServerlessInferenceConfig
 
