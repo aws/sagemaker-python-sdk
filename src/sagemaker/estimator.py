@@ -3572,12 +3572,6 @@ class Framework(EstimatorBase):
                 "Don't set training instance groups while no distribution strategies enabled!"
             )
 
-        if "multi_worker_mirrored_strategy" in distribution:
-            mwms_enabled = distribution.get("multi_worker_mirrored_strategy").get("enabled", False)
-            if mwms_enabled:
-                self._validate_mwms_config()
-            distribution_config[self.LAUNCH_MWMS_ENV_NAME] = mwms_enabled
-
         return distribution_config
 
 
