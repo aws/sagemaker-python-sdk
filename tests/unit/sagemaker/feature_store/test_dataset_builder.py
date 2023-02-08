@@ -163,9 +163,15 @@ def test_with_feature_group_with_additional_params(sagemaker_session_mock):
             {"FeatureName": "feature-2", "FeatureType": "String"},
         ],
     }
-    dataset_builder.with_feature_group(feature_group, "target-feature", [
-                                       "feature-1", "feature-2"], join_comparator=JoinComparatorEnum.LESS_THAN, join_type=JoinTypeEnum.LEFT_JOIN, feature_name_in_target='feature-2')
-                                       
+    dataset_builder.with_feature_group(
+        feature_group,
+        "target-feature",
+        ["feature-1", "feature-2"],
+        join_comparator=JoinComparatorEnum.LESS_THAN,
+        join_type=JoinTypeEnum.LEFT_JOIN,
+        feature_name_in_target="feature-2",
+    )
+
     assert len(dataset_builder._feature_groups_to_be_merged) == 1
     assert dataset_builder._feature_groups_to_be_merged[0].features == [
         "feature-1",
@@ -189,10 +195,7 @@ def test_with_feature_group_with_additional_params(sagemaker_session_mock):
         dataset_builder._feature_groups_to_be_merged[0].event_time_identifier_feature.feature_type
         == FeatureTypeEnum.STRING
     )
-    assert (
-        dataset_builder._feature_groups_to_be_merged[0].join_type
-        == JoinTypeEnum.LEFT_JOIN
-    )
+    assert dataset_builder._feature_groups_to_be_merged[0].join_type == JoinTypeEnum.LEFT_JOIN
     assert (
         dataset_builder._feature_groups_to_be_merged[0].join_comparator
         == JoinComparatorEnum.LESS_THAN
