@@ -96,14 +96,15 @@ class FeatureGroupToBeMerged:
             be used as target join key (default: None).
         table_type (TableType): A TableType representing the type of table if it is Feature Group or
             Panda Data Frame (default: None).
-        feature_name_in_target (str): A string representing the feature in the target feature group
-            that will be compared to the target feature in the base feature group. If None is
-            provided, the record identifier will be used in the join statement. (default: None).
-        join_comparator (JoinComparatorEnum): A JoinComparatorEnum representing the comparator used
-            when joining the target feature in the base feature group and the feature in the target
-            feature group (default: None).
-        join_type (JoinTypeEnum): A JoinTypeEnum representing the type of join between the base and
-            target feature groups. (default: None).
+        feature_name_in_target (str): A string representing the feature in the target feature
+            group that will be compared to the target feature in the base feature group.
+            If None is provided, the record identifier will be used in the
+            join statement. (default: None).
+        join_comparator (JoinComparatorEnum): A JoinComparatorEnum representing the comparator
+            used when joining the target feature in the base feature group and the feature
+            in the target feature group (default: None).
+        join_type (JoinTypeEnum): A JoinTypeEnum representing the type of join between
+            the base and target feature groups. (default: None).
     """
 
     features: List[str] = attr.ib()
@@ -137,14 +138,15 @@ def construct_feature_group_to_be_merged(
             included in the output.
         target_feature_name_in_base (str): A string representing the feature name in base which
             will be used as target join key (default: None).
-        feature_name_in_target (str): A string representing the feature in the target feature group
-            that will be compared to the target feature in the base feature group. If None is
-            provided, the record identifier will be used in the join statement. (default: None).
-        join_comparator (JoinComparatorEnum): A JoinComparatorEnum representing the comparator used
-            when joining the target feature in the base feature group and the feature in the target
-            feature group (default: None).
-        join_type (JoinTypeEnum): A JoinTypeEnum representing the type of join between the base and
-            target feature groups. (default: None).
+        feature_name_in_target (str): A string representing the feature in the target feature
+            group that will be compared to the target feature in the base feature group.
+            If None is provided, the record identifier will be used in the
+            join statement. (default: None).
+        join_comparator (JoinComparatorEnum): A JoinComparatorEnum representing the comparator
+            used when joining the target feature in the base feature group and the feature
+            in the target feature group (default: None).
+        join_type (JoinTypeEnum): A JoinTypeEnum representing the type of join between
+            the base and target feature groups. (default: None).
     Returns:
         A FeatureGroupToBeMerged object.
 
@@ -299,14 +301,15 @@ class DatasetBuilder:
                 will be used as a join key (default: None).
             included_feature_names (List[str]): A list of strings representing features to be
                 included in the output (default: None).
-            feature_name_in_target (str): A string representing the feature in the target feature group
-                that will be compared to the target feature in the base feature group. If None is
-                provided, the record identifier will be used in the join statement. (default: None).
-            join_comparator (JoinComparatorEnum): A JoinComparatorEnum representing the comparator used
-                when joining the target feature in the base feature group and the feature in the target
-                feature group (default: None).
-            join_type (JoinTypeEnum): A JoinTypeEnum representing the type of join between the base and
-                target feature groups. (default: None).
+            feature_name_in_target (str): A string representing the feature in the target feature
+                group that will be compared to the target feature in the base feature group.
+                If None is provided, the record identifier will be used in the
+                join statement. (default: None).
+            join_comparator (JoinComparatorEnum): A JoinComparatorEnum representing the comparator
+                used when joining the target feature in the base feature group and the feature
+                in the target feature group (default: None).
+            join_type (JoinTypeEnum): A JoinTypeEnum representing the type of join between
+                the base and target feature groups. (default: None).
             Returns:
                 This DatasetBuilder object.
         """
