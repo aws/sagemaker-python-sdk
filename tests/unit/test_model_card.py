@@ -27,8 +27,10 @@ from sagemaker.model_card import (
     Environment,
     ModelOverview,
     IntendedUses,
+    BusinessDetails,
     ObjectiveFunction,
     TrainingMetric,
+    HyperParameter,
     Metric,
     TrainingDetails,
     MetricGroup,
@@ -75,6 +77,11 @@ FACTORS_AFFECTING_MODEL_EFFICIENCY = "a bad factor"
 RISK_RATING = schema_constraints.RiskRatingEnum.LOW
 EXPLANATIONS_FOR_RISK_RATING = "ramdomly the first example"
 
+# business details auguments
+BUSINESS_PROBLEM = "mock model for business problem testing"
+BUSINESS_STAKEHOLDERS = "business stakeholders testing"
+LINE_OF_BUSINESS = "how many business models"
+
 # training details arguments
 OBJECITVE_FUNCTION_FUNC = schema_constraints.ObjectiveFunctionEnum.MINIMIZE
 OBJECTIVE_FUNCTION_FACET = schema_constraints.FacetEnum.LOSS
@@ -89,6 +96,10 @@ TRAINING_METRICS = [TrainingMetric(name="binary_f_beta", value=0.965, notes="exa
 USER_METRIC_NAME = "test_metric"
 USER_METRIC = TrainingMetric(name=USER_METRIC_NAME, value=1)
 USER_PROVIDED_TRAINING_METRICS = [USER_METRIC]
+HYPER_PARAMETER = [HyperParameter(name="binary_f_beta", value=0.965)]
+USER_PARAMETER_NAME = "test_parameter"
+USER_PARAMETER = HyperParameter(name=USER_PARAMETER_NAME, value=1)
+USER_PROVIDED_HYPER_PARAMETER = [USER_PARAMETER]
 
 # evaluation job arguments
 EVALUATION_JOB_NAME = "evaluation job 1"
@@ -350,6 +361,22 @@ SEARCH_TRAINING_JOB_EXAMPLE = {
                         "Timestamp": datetime.datetime(2022, 9, 5, 19, 18, 40),
                     },
                 ],
+                "HyperParameters": {
+                    "_kfold": "5",
+                    "_tuning_objective_metric": "validation:accuracy",
+                    "alpha": "0.0037170512924477993",
+                    "colsample_bytree": "0.7476726040667319",
+                    "eta": "0.011391935592233605",
+                    "eval_metric": "accuracy,f1,balanced_accuracy,precision_macro,recall_macro,mlogloss",
+                    "gamma": "1.8903517751689445",
+                    "lambda": "0.5098604662224621",
+                    "max_depth": "3",
+                    "min_child_weight": "5.081388147234708e-06",
+                    "num_class": "28",
+                    "num_round": "165",
+                    "objective": "multi:softprob",
+                    "subsample": "0.8828549481113146",
+                },
                 "CreatedBy": {},
             }
         }
@@ -583,6 +610,17 @@ def fixture_fixture_intended_uses_example():
     return test_example
 
 
+@pytest.fixture(name="business_details_example")
+def fixture_fixture_business_details_example():
+    """Example business details instance."""
+    test_example = BusinessDetails(
+        business_problem=BUSINESS_PROBLEM,
+        business_stakeholders=BUSINESS_STAKEHOLDERS,
+        line_of_business=LINE_OF_BUSINESS,
+    )
+    return test_example
+
+
 @pytest.fixture(name="training_details_example")
 def fixture_fixture_training_details_example():
     """Example training details instance."""
@@ -601,6 +639,7 @@ def fixture_fixture_training_details_example():
             training_datasets=TRAINING_DATASETS,
             training_environment=TRAINING_ENVIRONMENT,
             training_metrics=TRAINING_METRICS,
+            hyper_parameters=HYPER_PARAMETER,
         ),
     )
     return test_example
@@ -637,6 +676,7 @@ def test_create_model_card(
     session,
     model_overview_example,
     intended_uses_example,
+    business_details_example,
     training_details_example,
     evaluation_details_example,
     additional_information_example,
@@ -649,6 +689,7 @@ def test_create_model_card(
         status=MODEL_CARD_STATUS,
         model_overview=model_overview_example,
         intended_uses=intended_uses_example,
+        business_details=business_details_example,
         training_details=training_details_example,
         evaluation_details=evaluation_details_example,
         additional_information=additional_information_example,
@@ -1017,6 +1058,9 @@ def test_training_details_autodiscovery_from_model_overview(
     assert len(training_details.training_job_details.training_metrics) == len(
         SEARCH_TRAINING_JOB_EXAMPLE["Results"][0]["TrainingJob"]["FinalMetricDataList"]
     )
+    assert len(training_details.training_job_details.hyper_parameters) == len(
+        SEARCH_TRAINING_JOB_EXAMPLE["Results"][0]["TrainingJob"]["HyperParameters"]
+    )
     assert training_details.training_job_details.training_environment.container_image == [
         TRAINING_IMAGE
     ]
@@ -1046,7 +1090,10 @@ def test_training_details_autodiscovery_from_model_overview_autopilot(
         model_overview=model_overview_example, sagemaker_session=session
     )
 
+    # MetricDefinitions is empty
     assert len(training_details.training_job_details.training_metrics) == 0
+    # HyperParameters have 3 keys
+    assert len(training_details.training_job_details.hyper_parameters) == 3
 
 
 @patch("sagemaker.Session")
@@ -1062,6 +1109,9 @@ def test_training_details_autodiscovery_from_job_name(session):
     assert training_details.training_job_details.training_arn == TRAINING_JOB_ARN
     assert len(training_details.training_job_details.training_metrics) == len(
         SEARCH_TRAINING_JOB_EXAMPLE["Results"][0]["TrainingJob"]["FinalMetricDataList"]
+    )
+    assert len(training_details.training_job_details.hyper_parameters) == len(
+        SEARCH_TRAINING_JOB_EXAMPLE["Results"][0]["TrainingJob"]["HyperParameters"]
     )
     assert training_details.training_job_details.training_environment.container_image == [
         TRAINING_IMAGE
@@ -1088,6 +1138,16 @@ def test_add_user_provided_training_metrics(training_details_example):
     assert (
         training_details_example.training_job_details.user_provided_training_metrics[0].name
         == USER_METRIC_NAME
+    )
+
+
+def test_add_user_provided_hyper_parameters(training_details_example):
+    assert len(training_details_example.training_job_details.user_provided_hyper_parameters) == 0
+    training_details_example.add_parameter(USER_PARAMETER)
+    assert len(training_details_example.training_job_details.user_provided_hyper_parameters) == 1
+    assert (
+        training_details_example.training_job_details.user_provided_hyper_parameters[0].name
+        == USER_PARAMETER_NAME
     )
 
 
