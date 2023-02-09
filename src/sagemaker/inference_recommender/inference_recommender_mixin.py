@@ -18,7 +18,6 @@ import re
 
 from typing import List, Dict, Optional
 import sagemaker
-from sagemaker.inference_recommender import ModelLatencyThreshold, Phase
 from sagemaker.parameter import CategoricalParameter
 
 INFERENCE_RECOMMENDER_FRAMEWORK_MAPPING = {
@@ -30,6 +29,32 @@ INFERENCE_RECOMMENDER_FRAMEWORK_MAPPING = {
 }
 
 LOGGER = logging.getLogger("sagemaker")
+
+
+class Phase:
+    """Used to store phases of a traffic pattern to perform endpoint load testing.
+
+    Required for an Advanced Inference Recommendations Job
+    """
+
+    def __init__(self, duration_in_seconds: int, initial_number_of_users: int, spawn_rate: int):
+        """Initialze a `Phase`"""
+        self.to_json = {
+            "DurationInSeconds": duration_in_seconds,
+            "InitialNumberOfUsers": initial_number_of_users,
+            "SpawnRate": spawn_rate,
+        }
+
+
+class ModelLatencyThreshold:
+    """Used to store inference request/response latency to perform endpoint load testing.
+
+    Required for an Advanced Inference Recommendations Job
+    """
+
+    def __init__(self, percentile: str, value_in_milliseconds: int):
+        """Initialze a `ModelLatencyThreshold`"""
+        self.to_json = {"Percentile": percentile, "ValueInMilliseconds": value_in_milliseconds}
 
 
 class InferenceRecommenderMixin:
@@ -439,18 +464,12 @@ class InferenceRecommenderMixin:
         """Bundle right_size() parameters into a resource limit for Advanced job"""
         if not max_tests and not max_parallel_tests:
             return None
-        if max_tests and not max_parallel_tests:
-            return {
-                "MaxNumberOfTests": max_tests,
-            }
-        if not max_tests and max_parallel_tests:
-            return {
-                "MaxParallelOfTests": max_parallel_tests,
-            }
-        return {
-            "MaxNumberOfTests": max_tests,
-            "MaxParallelOfTests": max_parallel_tests,
-        }
+        resource_limit = {}
+        if max_tests:
+            resource_limit["MaxNumberOfTests"] = max_tests
+        if max_parallel_tests:
+            resource_limit["MaxParallelOfTests"] = max_parallel_tests
+        return resource_limit
 
     def _convert_to_stopping_conditions_json(
         self, max_invocations: int, model_latency_thresholds: List[ModelLatencyThreshold]
@@ -458,17 +477,11 @@ class InferenceRecommenderMixin:
         """Bundle right_size() parameters into stopping conditions for Advanced job"""
         if not max_invocations and not model_latency_thresholds:
             return None
-        if max_invocations and not model_latency_thresholds:
-            return {
-                "MaxInvocations": max_invocations,
-            }
-        if not max_invocations and model_latency_thresholds:
-            return {
-                "ModelLatencyThresholds": [
-                    threshold.to_json for threshold in model_latency_thresholds
-                ],
-            }
-        return {
-            "MaxInvocations": max_invocations,
-            "ModelLatencyThresholds": [threshold.to_json for threshold in model_latency_thresholds],
-        }
+        stopping_conditions = {}
+        if max_invocations:
+            stopping_conditions["MaxInvocations"] = max_invocations
+        if model_latency_thresholds:
+            stopping_conditions["ModelLatencyThresholds"] = [
+                threshold.to_json for threshold in model_latency_thresholds
+            ]
+        return stopping_conditions

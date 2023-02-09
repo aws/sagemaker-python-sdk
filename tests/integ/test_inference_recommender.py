@@ -21,7 +21,7 @@ from sagemaker.utils import unique_name_from_base
 from tests.integ import DATA_DIR
 from tests.integ.timeout import timeout
 import pandas as pd
-from sagemaker.inference_recommender import ModelLatencyThreshold, Phase
+from sagemaker.inference_recommender.inference_recommender_mixin import Phase, ModelLatencyThreshold
 from sagemaker.parameter import CategoricalParameter
 import logging
 
