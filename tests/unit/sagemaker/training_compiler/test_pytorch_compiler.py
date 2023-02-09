@@ -83,12 +83,12 @@ def fixture_sagemaker_session():
     return session
 
 
-def _get_full_gpu_image_uri(version, instance_type, training_compiler_config):
+def _get_full_gpu_image_uri(version, instance_type, training_compiler_config, py_version):
     return image_uris.retrieve(
         "pytorch-training-compiler",
         REGION,
         version=version,
-        py_version="py38",
+        py_version=py_version,
         instance_type=instance_type,
         image_scope="training",
         container_version=None,
@@ -96,9 +96,13 @@ def _get_full_gpu_image_uri(version, instance_type, training_compiler_config):
     )
 
 
-def _create_train_job(version, instance_type, training_compiler_config, instance_count=1):
+def _create_train_job(
+    version, instance_type, training_compiler_config, py_version, instance_count=1
+):
     return {
-        "image_uri": _get_full_gpu_image_uri(version, instance_type, training_compiler_config),
+        "image_uri": _get_full_gpu_image_uri(
+            version, instance_type, training_compiler_config, py_version
+        ),
         "input_mode": "File",
         "input_config": [
             {
@@ -308,7 +312,7 @@ def test_pytorchxla_distribution(
     sagemaker_session,
     pytorch_training_compiler_version,
     instance_class,
-    pytorch_training_py_version,
+    pytorch_training_compiler_py_version,
 ):
     if Version(pytorch_training_compiler_version) < Version("1.12"):
         pytest.skip("This test is intended for PyTorch 1.12 and above")
@@ -316,7 +320,7 @@ def test_pytorchxla_distribution(
     instance_type = f"ml.{instance_class}.xlarge"
 
     pt = PyTorch(
-        py_version=pytorch_training_py_version,
+        py_version=pytorch_training_compiler_py_version,
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -341,6 +345,7 @@ def test_pytorchxla_distribution(
         pytorch_training_compiler_version,
         instance_type,
         compiler_config,
+        pytorch_training_compiler_py_version,
         instance_count=2,
     )
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
@@ -370,13 +375,12 @@ def test_default_compiler_config(
     sagemaker_session,
     pytorch_training_compiler_version,
     instance_class,
-    pytorch_training_py_version,
+    pytorch_training_compiler_py_version,
 ):
     compiler_config = TrainingCompilerConfig()
     instance_type = f"ml.{instance_class}.xlarge"
-
     pt = PyTorch(
-        py_version=pytorch_training_py_version,
+        py_version=pytorch_training_compiler_py_version,
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -397,7 +401,10 @@ def test_default_compiler_config(
     assert boto_call_names == ["resource"]
 
     expected_train_args = _create_train_job(
-        pytorch_training_compiler_version, instance_type, compiler_config
+        pytorch_training_compiler_version,
+        instance_type,
+        compiler_config,
+        pytorch_training_compiler_py_version,
     )
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
     expected_train_args["enable_sagemaker_metrics"] = False
@@ -423,12 +430,12 @@ def test_debug_compiler_config(
     name_from_base,
     sagemaker_session,
     pytorch_training_compiler_version,
-    pytorch_training_py_version,
+    pytorch_training_compiler_py_version,
 ):
     compiler_config = TrainingCompilerConfig(debug=True)
 
     pt = PyTorch(
-        py_version=pytorch_training_py_version,
+        py_version=pytorch_training_compiler_py_version,
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -449,7 +456,10 @@ def test_debug_compiler_config(
     assert boto_call_names == ["resource"]
 
     expected_train_args = _create_train_job(
-        pytorch_training_compiler_version, INSTANCE_TYPE, compiler_config
+        pytorch_training_compiler_version,
+        INSTANCE_TYPE,
+        compiler_config,
+        pytorch_training_compiler_py_version,
     )
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
     expected_train_args["enable_sagemaker_metrics"] = False
@@ -475,12 +485,12 @@ def test_disable_compiler_config(
     name_from_base,
     sagemaker_session,
     pytorch_training_compiler_version,
-    pytorch_training_py_version,
+    pytorch_training_compiler_py_version,
 ):
     compiler_config = TrainingCompilerConfig(enabled=False)
 
     pt = PyTorch(
-        py_version=pytorch_training_py_version,
+        py_version=pytorch_training_compiler_py_version,
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -501,7 +511,10 @@ def test_disable_compiler_config(
     assert boto_call_names == ["resource"]
 
     expected_train_args = _create_train_job(
-        pytorch_training_compiler_version, INSTANCE_TYPE, compiler_config
+        pytorch_training_compiler_version,
+        INSTANCE_TYPE,
+        compiler_config,
+        pytorch_training_compiler_py_version,
     )
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
     expected_train_args["enable_sagemaker_metrics"] = False

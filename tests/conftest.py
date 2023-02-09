@@ -310,6 +310,13 @@ def huggingface_training_compiler_pytorch_py_version(
 
 
 @pytest.fixture(scope="module")
+def pytorch_training_compiler_py_version(
+    pytorch_training_compiler_version,
+):
+    return "py39" if Version(pytorch_training_compiler_version) > Version("1.12") else "py38"
+
+
+@pytest.fixture(scope="module")
 def huggingface_pytorch_latest_training_py_version(
     huggingface_training_pytorch_latest_version,
 ):
