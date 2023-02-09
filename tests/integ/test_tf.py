@@ -189,30 +189,14 @@ def test_mwms_gpu(
 ):
     instance_count = 2
     estimator = TensorFlow(
-        source_dir=os.path.join(RESOURCE_PATH, "huggingface", "run_mlm"),
-        entry_point="run_mlm.py",
+        source_dir=os.path.join(RESOURCE_PATH, "tensorflow_mnist"),
+        entry_point="mnist_mwms.py",
         model_dir=False,
         instance_type=kwargs["instance_type"],
         instance_count=instance_count,
         framework_version=tensorflow_training_latest_version,
         py_version=tensorflow_training_latest_py_version,
         distribution=MWMS_DISTRIBUTION,
-        hyperparameters={
-            "model_name_or_path": "bert-base-uncased",
-            "output_dir": "/opt/ml/model",
-            "dataset_name": "glue",
-            "dataset_config_name": "sst2",
-            "do_train": True,
-            "do_eval": False,
-            "max_seq_length": 128,
-            "num_train_epochs": 1,
-            "max_steps": 16,
-            "overwrite_output_dir": True,
-            "save_strategy": "no",
-            "evaluation_strategy": "no",
-            "logging_strategy": "epoch",
-            "per_device_train_batch_size": 16,
-        },
         environment={"NCCL_DEBUG": "INFO"},
         max_run=60 * 60 * 1,  # 1 hour
         role=ROLE,
