@@ -380,7 +380,8 @@ class DatasetBuilder:
                 "OutputLocation", None
             ), query_result.get("QueryExecution", {}).get("Query", None)
 
-            # TODO: cleanup temp table, need more clarification, keep it for now
+            self._drop_temp_table(temp_table_name)
+            
             return res
         if isinstance(self._base, FeatureGroup):
             base_feature_group = construct_feature_group_to_be_merged(
