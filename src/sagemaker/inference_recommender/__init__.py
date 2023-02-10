@@ -12,4 +12,7 @@
 # language governing permissions and limitations under the License.
 """Classes for using Inference Recommender with Amazon SageMaker."""
 from __future__ import absolute_import
-from inference_recommender_mixin import Phase, ModelLatencyThreshold  # noqa: F401
+from sagemaker.inference_recommender.inference_recommender_mixin import (  # noqa: F401
+    Phase,
+    ModelLatencyThreshold,
+)
