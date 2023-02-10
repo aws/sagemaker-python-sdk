@@ -41,3 +41,9 @@ see `Amazon SageMaker Model Cards <https://docs.aws.amazon.com/sagemaker/latest/
 
 .. autoclass:: TrainingJobDetails
     :show-inheritance:
+
+.. autoclass:: BusinessDetails
+    :show-inheritance:
+
+.. autoclass:: HyperParameter
+    :show-inheritance:
