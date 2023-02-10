@@ -2201,6 +2201,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         checkpoint_local_path=None,
         random_seed=None,
         environment=None,
+        hpo_resource_config=None,
     ):
         """Create an Amazon SageMaker hyperparameter tuning job.
 
@@ -2286,6 +2287,22 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 produce more consistent configurations for the same tuning job. (default: ``None``).
             environment (dict[str, str]) : Environment variables to be set for
                 use during training jobs (default: ``None``)
+            hpo_resource_config (dict): The configuration for the hyperparameter tuning resources,
+                including the compute instances and storage volumes, used for training jobs launched
+                by the tuning job, where you must specify either
+                instance_configs or instance_count + instance_type + volume_size:
+                * instance_count (int): Number of EC2 instances to use for training.
+                The key in resource_config is 'InstanceCount'.
+                * instance_type (str): Type of EC2 instance to use for training, for example,
+                'ml.c4.xlarge'. The key in resource_config is 'InstanceType'.
+                * volume_size (int or PipelineVariable): The volume size in GB of the data to be
+                processed for hyperparameter optimisation
+                * instance_configs (List[InstanceConfig]): A list containing the configuration(s)
+                for one or more resources for processing hyperparameter jobs. These resources
+                include compute instances and storage volumes to use in model training jobs.
+                * volume_kms_key_id: The AWS Key Management Service (AWS KMS) key
+                that Amazon SageMaker uses to encrypt data on the storage
+                volume attached to the ML compute instance(s) that run the training job.
         """
 
         tune_request = {
@@ -2311,6 +2328,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 input_config=input_config,
                 output_config=output_config,
                 resource_config=resource_config,
+                hpo_resource_config=hpo_resource_config,
                 vpc_config=vpc_config,
                 stop_condition=stop_condition,
                 enable_network_isolation=enable_network_isolation,
@@ -2545,9 +2563,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
         input_mode,
         role,
         output_config,
-        resource_config,
         stop_condition,
         input_config=None,
+        resource_config=None,
+        hpo_resource_config=None,
         metric_definitions=None,
         image_uri=None,
         algorithm_arn=None,
@@ -2625,13 +2644,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
             TrainingJobDefinition as described in
             https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_hyper_parameter_tuning_job
         """
+        if hpo_resource_config is not None:
+            resource_config_map = {"HyperParameterTuningResourceConfig": hpo_resource_config}
+        else:
+            resource_config_map = {"ResourceConfig": resource_config}
 
         training_job_definition = {
             "StaticHyperParameters": static_hyperparameters,
             "RoleArn": role,
             "OutputDataConfig": output_config,
-            "ResourceConfig": resource_config,
             "StoppingCondition": stop_condition,
+            **resource_config_map,
         }
 
         algorithm_spec = {"TrainingInputMode": input_mode}

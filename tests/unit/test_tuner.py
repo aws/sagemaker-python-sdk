@@ -45,6 +45,7 @@ from sagemaker.tuner import (
 from sagemaker.workflow.functions import JsonGet, Join
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
 
+from src.sagemaker.tuner import InstanceConfig
 from .tuner_test_utils import *  # noqa: F403
 
 
@@ -118,6 +119,27 @@ def test_prepare_for_training(tuner):
         }
     }
     assert tuner.static_hyperparameters["hp2"] == hp2
+
+
+def test_prepare_for_tuning_with_instance_config_overrides(tuner, sagemaker_session):
+    tuner.estimator = PCA(
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        NUM_COMPONENTS,
+        sagemaker_session=sagemaker_session,
+    )
+
+    tuner._prepare_for_tuning()
+    tuner.override_resource_config(
+        instance_configs=[
+            InstanceConfig(instance_count=1, instance_type="ml.m4.2xlarge"),
+            InstanceConfig(instance_count=1, instance_type="ml.m4.4xlarge"),
+        ]
+    )
+
+    assert "sagemaker_estimator_class_name" not in tuner.static_hyperparameters
+    assert "sagemaker_estimator_module" not in tuner.static_hyperparameters
 
 
 def test_prepare_for_tuning_with_amazon_estimator(tuner, sagemaker_session):
@@ -263,6 +285,66 @@ def test_fit_pca_with_early_stopping(sagemaker_session, tuner):
     assert tune_kwargs["tuning_config"]["early_stopping_type"] == "Auto"
 
 
+def test_fit_pca_with_flexible_instance_types(sagemaker_session, tuner):
+    pca = PCA(
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        NUM_COMPONENTS,
+        base_job_name="pca",
+        sagemaker_session=sagemaker_session,
+    )
+
+    tuner.override_resource_config(
+        instance_configs=[
+            InstanceConfig(instance_count=1, instance_type="ml.m4.2xlarge"),
+            InstanceConfig(instance_count=1, instance_type="ml.m4.4xlarge"),
+        ]
+    )
+
+    tuner.estimator = pca
+
+    records = RecordSet(s3_data=INPUTS, num_records=1, feature_dim=1)
+    tuner.fit(records)
+
+    _, _, tune_kwargs = sagemaker_session.create_tuning_job.mock_calls[0]
+
+    assert "hpo_resource_config" in tune_kwargs["training_config"]
+    assert "InstanceConfigs" in tune_kwargs["training_config"]["hpo_resource_config"]
+    assert "InstanceCount" not in tune_kwargs["training_config"]["hpo_resource_config"]
+
+
+def test_fit_pca_with_removed_flexible_instance_types(sagemaker_session, tuner):
+    pca = PCA(
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        NUM_COMPONENTS,
+        base_job_name="pca",
+        sagemaker_session=sagemaker_session,
+    )
+
+    tuner.override_resource_config(
+        instance_configs=[
+            InstanceConfig(instance_count=1, instance_type="ml.m4.2xlarge"),
+            InstanceConfig(instance_count=1, instance_type="ml.m4.4xlarge"),
+        ]
+    )
+
+    tuner.override_resource_config(instance_configs=None)
+
+    tuner.estimator = pca
+
+    records = RecordSet(s3_data=INPUTS, num_records=1, feature_dim=1)
+    tuner.fit(records)
+
+    _, _, tune_kwargs = sagemaker_session.create_tuning_job.mock_calls[0]
+
+    assert "hpo_resource_config" in tune_kwargs["training_config"]
+    assert "InstanceConfigs" not in tune_kwargs["training_config"]["hpo_resource_config"]
+    assert "InstanceCount" in tune_kwargs["training_config"]["hpo_resource_config"]
+
+
 def test_fit_pca_with_vpc_config(sagemaker_session, tuner):
     subnets = ["foo"]
     security_group_ids = ["bar"]
@@ -395,6 +477,44 @@ def test_fit_multi_estimators_invalid_inputs(
             include_cls_metadata=include_cls_metadata,
             estimator_kwargs=estimator_kwargs,
         )
+
+
+def test_multi_estimators_flexible_instance_types(sagemaker_session):
+    (tuner, estimator_one, estimator_two) = _create_multi_estimator_tuner(sagemaker_session)
+
+    records = {ESTIMATOR_NAME_TWO: RecordSet(s3_data=INPUTS, num_records=1, feature_dim=1)}
+
+    estimator_kwargs = {ESTIMATOR_NAME_TWO: {"mini_batch_size": 4000}}
+
+    instance_configs1 = [
+        InstanceConfig(instance_count=1, instance_type="ml.m4.2xlarge"),
+        InstanceConfig(instance_count=1, instance_type="ml.m4.4xlarge"),
+    ]
+    instance_configs2 = [
+        InstanceConfig(instance_count=1, instance_type="ml.m4.xlarge"),
+        InstanceConfig(instance_count=1, instance_type="ml.m4.2xlarge"),
+    ]
+
+    tuner.override_resource_config(
+        instance_configs={
+            ESTIMATOR_NAME: instance_configs1,
+            ESTIMATOR_NAME_TWO: instance_configs2,
+        }
+    )
+
+    tuner.fit(inputs=records, include_cls_metadata={}, estimator_kwargs=estimator_kwargs)
+
+    _, _, tune_kwargs = sagemaker_session.create_tuning_job.mock_calls[0]
+
+    training_config_one = tune_kwargs["training_config_list"][0]
+    training_config_two = tune_kwargs["training_config_list"][1]
+
+    assert "hpo_resource_config" in training_config_one
+    assert "InstanceConfigs" in training_config_one["hpo_resource_config"]
+    assert "InstanceCount" not in training_config_one["hpo_resource_config"]
+    assert "hpo_resource_config" in training_config_two
+    assert "InstanceConfigs" in training_config_two["hpo_resource_config"]
+    assert "InstanceCount" not in training_config_two["hpo_resource_config"]
 
 
 def test_fit_multi_estimators(sagemaker_session):
