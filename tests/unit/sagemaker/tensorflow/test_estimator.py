@@ -523,9 +523,11 @@ def test_fit_mpi(time, strftime, sagemaker_session):
 @patch("time.strftime", return_value=TIMESTAMP)
 @patch("time.time", return_value=TIME)
 @patch("sagemaker.utils.create_tar_file", MagicMock())
-def test_fit_mwms(time, strftime, sagemaker_session):
-    framework_version = "2.9.1"
-    py_version = "py39"
+def test_fit_mwms(
+    time, strftime, sagemaker_session, tensorflow_training_version, tensorflow_training_py_version
+):
+    framework_version = tensorflow_training_version
+    py_version = tensorflow_training_py_version
     tf = TensorFlow(
         entry_point=SCRIPT_FILE,
         framework_version=framework_version,
@@ -544,7 +546,7 @@ def test_fit_mwms(time, strftime, sagemaker_session):
     call_names = [c[0] for c in sagemaker_session.method_calls]
     assert call_names == ["train", "logs_for_job"]
 
-    expected_train_args = _create_train_job("2.9.1", py_version="py39")
+    expected_train_args = _create_train_job(framework_version, py_version=py_version)
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
     expected_train_args[
         "image_uri"
