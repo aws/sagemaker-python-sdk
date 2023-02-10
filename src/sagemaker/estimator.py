@@ -741,7 +741,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             self.dependencies = updated_paths["dependencies"]
 
         if self.source_dir or self.entry_point or self.dependencies:
-
             # validate source dir will raise a ValueError if there is something wrong with
             # the source directory. We are intentionally not handling it because this is a
             # critical error.

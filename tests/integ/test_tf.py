@@ -118,11 +118,11 @@ def test_mnist_with_checkpoint_config(
     actual_training_checkpoint_config = sagemaker_session.sagemaker_client.describe_training_job(
         TrainingJobName=training_job_name
     )["CheckpointConfig"]
-    actual_training_environment_variable_config = sagemaker_session.sagemaker_client.describe_training_job(
-        TrainingJobName=training_job_name
-    )[
-        "Environment"
-    ]
+    actual_training_environment_variable_config = (
+        sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=training_job_name)[
+            "Environment"
+        ]
+    )
 
     expected_retry_strategy = {"MaximumRetryAttempts": 2}
     actual_retry_strategy = sagemaker_session.sagemaker_client.describe_training_job(

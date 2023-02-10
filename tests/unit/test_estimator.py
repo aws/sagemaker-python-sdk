@@ -1163,7 +1163,9 @@ def test_framework_with_disable_framework_metrics(sagemaker_session):
     assert "profiler_rule_configs" not in args
 
 
-def test_framework_with_disable_framework_metrics_and_update_system_metrics(sagemaker_session,):
+def test_framework_with_disable_framework_metrics_and_update_system_metrics(
+    sagemaker_session,
+):
     f = DummyFramework(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -1183,7 +1185,9 @@ def test_framework_with_disable_framework_metrics_and_update_system_metrics(sage
     assert "profiler_rule_configs" not in args
 
 
-def test_framework_with_disable_framework_metrics_and_update_framework_params(sagemaker_session,):
+def test_framework_with_disable_framework_metrics_and_update_framework_params(
+    sagemaker_session,
+):
     with pytest.raises(ValueError) as error:
         f = DummyFramework(
             entry_point=SCRIPT_PATH,
@@ -3753,7 +3757,6 @@ def test_prepare_init_params_from_job_description_with_training_image_config():
 
 
 def test_prepare_init_params_from_job_description_with_invalid_training_job():
-
     invalid_job_description = RETURNED_JOB_DESCRIPTION.copy()
     invalid_job_description["AlgorithmSpecification"] = {"TrainingInputMode": "File"}
 
@@ -3805,7 +3808,9 @@ def test_prepare_for_training_with_name_based_on_algorithm(sagemaker_session):
 
 
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
-def test_prepare_for_training_with_pipeline_name_in_s3_path_no_source_dir(pipeline_session,):
+def test_prepare_for_training_with_pipeline_name_in_s3_path_no_source_dir(
+    pipeline_session,
+):
     # script_uri is NOT provided -> use new cache key behavior that builds path using pipeline name + code_hash
     image_uri = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.9.0-gpu-py38"
     model_uri = "s3://someprefix2/models/model.tar.gz"
@@ -3993,7 +3998,6 @@ def test_script_mode_estimator(patched_stage_user_code, sagemaker_session):
 def test_script_mode_estimator_same_calls_as_framework(
     patched_tar_and_upload_dir, sagemaker_session
 ):
-
     patched_tar_and_upload_dir.return_value = UploadedCode(
         s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
     )
@@ -4253,7 +4257,6 @@ def test_script_mode_estimator_tags_jumpstart_models_with_no_estimator_js_tags(
 def test_all_framework_estimators_add_jumpstart_tags(
     patched_repack_model, patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
 ):
-
     sagemaker_session.boto_region_name = REGION
     sagemaker_session.sagemaker_client.describe_training_job.return_value = {
         "ModelArtifacts": {"S3ModelArtifacts": "some-uri"}
@@ -4286,7 +4289,7 @@ def test_all_framework_estimators_add_jumpstart_tags(
     }
     jumpstart_model_uri = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[0]}/model_dirs/model.tar.gz"
     jumpstart_model_uri_2 = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[1]}/model_dirs/model.tar.gz"
-    for (framework_estimator_class, kwargs) in framework_estimator_classes_to_kwargs.items():
+    for framework_estimator_class, kwargs in framework_estimator_classes_to_kwargs.items():
         estimator = framework_estimator_class(
             entry_point=ENTRY_POINT,
             role=ROLE,
@@ -4392,7 +4395,6 @@ def test_script_mode_estimator_uses_jumpstart_base_name_with_js_models(
 def test_all_framework_estimators_add_jumpstart_base_name(
     patched_repack_model, patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
 ):
-
     sagemaker_session.boto_region_name = REGION
     sagemaker_session.sagemaker_client.describe_training_job.return_value = {
         "ModelArtifacts": {"S3ModelArtifacts": "some-uri"}
@@ -4425,7 +4427,7 @@ def test_all_framework_estimators_add_jumpstart_base_name(
     }
     jumpstart_model_uri = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[0]}/model_dirs/model.tar.gz"
     jumpstart_model_uri_2 = f"s3://{list(JUMPSTART_BUCKET_NAME_SET)[1]}/model_dirs/model.tar.gz"
-    for (framework_estimator_class, kwargs) in framework_estimator_classes_to_kwargs.items():
+    for framework_estimator_class, kwargs in framework_estimator_classes_to_kwargs.items():
         estimator = framework_estimator_class(
             entry_point=ENTRY_POINT,
             role=ROLE,

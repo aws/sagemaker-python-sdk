@@ -149,7 +149,6 @@ def test_pytorch(
     Test the PyTorch estimator
     """
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-
         hf = PyTorch(
             py_version="py38",
             source_dir=os.path.join(DATA_DIR, "huggingface_byoc"),
