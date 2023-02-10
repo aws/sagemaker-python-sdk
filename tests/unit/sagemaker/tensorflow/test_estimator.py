@@ -526,6 +526,8 @@ def test_fit_mpi(time, strftime, sagemaker_session):
 def test_fit_mwms(
     time, strftime, sagemaker_session, tensorflow_training_version, tensorflow_training_py_version
 ):
+    if version.Version(tensorflow_training_version) < version.Version("2.11"):
+        pytest.skip("Multi Worker Mirrored Strategy was added in TF 2.11")
     framework_version = tensorflow_training_version
     py_version = tensorflow_training_py_version
     tf = TensorFlow(
