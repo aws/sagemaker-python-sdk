@@ -213,7 +213,7 @@ class TestUnsupportedConfig:
                 framework_version=tensorflow_training_version,
                 enable_sagemaker_metrics=False,
                 compiler_config=TrainingCompilerConfig(),
-                distribution={"multi_worker_mirrored_strategy": True},
+                distribution={"multi_worker_mirrored_strategy": {"enabled": True}},
             ).fit()
 
     def test_python_2(self, tensorflow_training_version):
