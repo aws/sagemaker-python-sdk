@@ -212,7 +212,7 @@ def test_mwms_gpu(
     logs = captured.out + captured.err
     print(logs)
     assert "Running distributed training job with multi_worker_mirrored_strategy setup" in logs
-    assert f"nranks {instance_count}" in logs
+    assert f"strategy.num_replicas_in_sync={instance_count}" in logs
 
 
 @pytest.mark.release

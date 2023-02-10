@@ -53,3 +53,5 @@ with strategy.scope():
     multi_worker_model = build_and_compile_cnn_model()
 
 multi_worker_model.fit(multi_worker_dataset, epochs=3, steps_per_epoch=70)
+
+print(f"strategy.num_replicas_in_sync={strategy.num_replicas_in_sync}")
