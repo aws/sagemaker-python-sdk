@@ -169,4 +169,8 @@ Steps
 
 .. autoclass:: sagemaker.workflow.fail_step.FailStep
 
+.. autoclass:: sagemaker.workflow.emr_step.EMRStepConfig
+
+.. autoclass:: sagemaker.workflow.emr_step.EMRStep
+
 .. autoclass:: sagemaker.workflow.automl_step.AutoMLStep
