@@ -375,10 +375,13 @@ class DatasetBuilder:
                 )
             )
             query_result = self._run_query(query_string, _DEFAULT_CATALOG, _DEFAULT_DATABASE)
-            # TODO: cleanup temp table, need more clarification, keep it for now
-            return query_result.get("QueryExecution", {}).get("ResultConfiguration", {}).get(
+
+            res = query_result.get("QueryExecution", {}).get("ResultConfiguration", {}).get(
                 "OutputLocation", None
             ), query_result.get("QueryExecution", {}).get("Query", None)
+
+            # TODO: cleanup temp table, need more clarification, keep it for now
+            return res
         if isinstance(self._base, FeatureGroup):
             base_feature_group = construct_feature_group_to_be_merged(
                 self._base, self._included_feature_names
@@ -942,6 +945,19 @@ class DatasetBuilder:
             + f"WITH SERDEPROPERTIES ({serde_properties}) "
             + f"LOCATION '{desired_s3_folder}';"
         )
+        self._run_query(query_string, _DEFAULT_CATALOG, _DEFAULT_DATABASE)
+
+    def _drop_temp_table(self, temp_table_name: str):
+        """Internal method to drop a temp Athena table for the base pandas.Dataframe.
+
+        Args:
+            temp_table_name (str): The Athena table name of base pandas.DataFrame.
+            database (str): The database to run the query against
+        """
+        query_string = (
+            f"DROP TABLE {temp_table_name}"
+        )
+
         self._run_query(query_string, _DEFAULT_CATALOG, _DEFAULT_DATABASE)
 
     def _construct_athena_table_column_string(self, column: str) -> str:
