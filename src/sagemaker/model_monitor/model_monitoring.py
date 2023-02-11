@@ -2054,6 +2054,21 @@ class DefaultModelMonitor(ModelMonitor):
             self._update_monitoring_schedule(self.job_definition_name, schedule_cron_expression)
             return
 
+        existing_desc = self.sagemaker_session.describe_monitoring_schedule(
+            monitoring_schedule_name=self.monitoring_schedule_name
+        )
+
+        if (
+            existing_desc.get("MonitoringScheduleConfig") is not None
+            and existing_desc["MonitoringScheduleConfig"].get("ScheduleConfig") is not None
+            and existing_desc["MonitoringScheduleConfig"]["ScheduleConfig"]["ScheduleExpression"]
+            is not None
+            and schedule_cron_expression is None
+        ):
+            schedule_cron_expression = existing_desc["MonitoringScheduleConfig"]["ScheduleConfig"][
+                "ScheduleExpression"
+            ]
+
         # Need to update schedule with a new job definition
         job_desc = self.sagemaker_session.sagemaker_client.describe_data_quality_job_definition(
             JobDefinitionName=self.job_definition_name
