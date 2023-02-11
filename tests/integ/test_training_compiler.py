@@ -143,6 +143,7 @@ def test_pytorch(
     instance_count,
     pytorch_training_compiler_latest_version,
     huggingface_dummy_dataset,
+    pytorch_training_compiler_py_version,
 ):
     """
     Test the PyTorch estimator
@@ -150,7 +151,7 @@ def test_pytorch(
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
 
         hf = PyTorch(
-            py_version="py39",
+            py_version=pytorch_training_compiler_py_version,
             source_dir=os.path.join(DATA_DIR, "huggingface_byoc"),
             entry_point="run_glue.py",
             role="SageMakerRole",
