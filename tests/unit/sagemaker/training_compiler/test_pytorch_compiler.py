@@ -60,6 +60,7 @@ EXPERIMENT_CONFIG = {
 def cpu_instance_type():
     return "ml.m5.xlarge"
 
+
 @pytest.fixture(scope="module")
 def pytorch_training_compiler_py_version(
     pytorch_training_compiler_version,
