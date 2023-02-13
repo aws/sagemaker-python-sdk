@@ -935,8 +935,7 @@ def test_get_feature_group_with_session(
             latest_ingestion=True,
             athena_bucket=f"{offline_store_s3_uri}/query",
             low_memory=False,
-        )  # Using kwargs to pass a parameter to
-        # pandas.read_csv
+        )  # Using kwargs to pass a parameter to pandas.read_csv
 
     assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
     assert not dataset.empty
