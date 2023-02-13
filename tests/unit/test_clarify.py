@@ -1575,3 +1575,89 @@ def test_analysis_config_generator_for_bias(data_config, data_bias_config, model
         },
     }
     assert actual == expected
+
+
+def test_analysis_config_for_bias_no_model_config(data_bias_config):
+    s3_data_input_path = "s3://path/to/input.csv"
+    s3_output_path = "s3://path/to/output"
+    predicted_labels_uri = "s3://path/to/predicted_labels.csv"
+    label_name = "Label"
+    headers = [
+        "Label",
+        "F1",
+        "F2",
+        "F3",
+        "F4",
+    ]
+    dataset_type = "text/csv"
+    data_config = DataConfig(
+        s3_data_input_path=s3_data_input_path,
+        s3_output_path=s3_output_path,
+        label=label_name,
+        headers=headers,
+        dataset_type=dataset_type,
+        predicted_label_dataset_uri=predicted_labels_uri,
+        predicted_label_headers=["PredictedLabel"],
+        predicted_label="PredictedLabel",
+    )
+    model_config = None
+    model_predicted_label_config = ModelPredictedLabelConfig(
+        probability="pr",
+        probability_threshold=0.8,
+        label_headers=["success"],
+    )
+    actual = _AnalysisConfigGenerator.bias(
+        data_config,
+        data_bias_config,
+        model_config,
+        model_predicted_label_config,
+        pre_training_methods="all",
+        post_training_methods="all",
+    )
+    expected = {
+        "dataset_type": "text/csv",
+        "headers": ["Label", "F1", "F2", "F3", "F4"],
+        "label": "Label",
+        "predicted_label_dataset_uri": "s3://path/to/predicted_labels.csv",
+        "predicted_label_headers": ["PredictedLabel"],
+        "predicted_label": "PredictedLabel",
+        "label_values_or_threshold": [1],
+        "facet": [{"name_or_index": "F1"}],
+        "group_variable": "F2",
+        "methods": {
+            "report": {"name": "report", "title": "Analysis Report"},
+            "pre_training_bias": {"methods": "all"},
+            "post_training_bias": {"methods": "all"},
+        },
+        "probability_threshold": 0.8,
+    }
+    assert actual == expected
+
+
+def test_invalid_analysis_config(data_config, data_bias_config, model_config):
+    with pytest.raises(
+        ValueError, match="model_config must be provided when explainability methods are selected."
+    ):
+        _AnalysisConfigGenerator.bias_and_explainability(
+            data_config=data_config,
+            model_config=None,
+            model_predicted_label_config=ModelPredictedLabelConfig(),
+            explainability_config=SHAPConfig(),
+            bias_config=data_bias_config,
+            pre_training_methods="all",
+            post_training_methods="all",
+        )
+
+    with pytest.raises(
+        ValueError,
+        match="model_config must be provided when `predicted_label_dataset_uri` or "
+        "`predicted_label` are not provided in data_config.",
+    ):
+        _AnalysisConfigGenerator.bias(
+            data_config=data_config,
+            model_config=None,
+            model_predicted_label_config=ModelPredictedLabelConfig(),
+            bias_config=data_bias_config,
+            pre_training_methods="all",
+            post_training_methods="all",
+        )

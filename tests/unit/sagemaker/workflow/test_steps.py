@@ -1133,7 +1133,7 @@ def test_single_algo_tuning_step(sagemaker_session):
                 },
                 "RoleArn": "DummyRole",
                 "OutputDataConfig": {"S3OutputPath": "s3://my-bucket/"},
-                "ResourceConfig": {
+                "HyperParameterTuningResourceConfig": {
                     "InstanceCount": 1,
                     "InstanceType": "ml.c5.4xlarge",
                     "VolumeSizeInGB": 30,
@@ -1285,7 +1285,7 @@ def test_multi_algo_tuning_step(sagemaker_session):
                     },
                     "RoleArn": "DummyRole",
                     "OutputDataConfig": {"S3OutputPath": "s3://my-bucket/"},
-                    "ResourceConfig": {
+                    "HyperParameterTuningResourceConfig": {
                         "InstanceCount": {"Get": "Parameters.InstanceCount"},
                         "InstanceType": "ml.c5.4xlarge",
                         "VolumeSizeInGB": 30,
@@ -1352,7 +1352,7 @@ def test_multi_algo_tuning_step(sagemaker_session):
                     },
                     "RoleArn": "DummyRole",
                     "OutputDataConfig": {"S3OutputPath": "s3://my-bucket/"},
-                    "ResourceConfig": {
+                    "HyperParameterTuningResourceConfig": {
                         "InstanceCount": {"Get": "Parameters.InstanceCount"},
                         "InstanceType": "ml.c5.4xlarge",
                         "VolumeSizeInGB": 30,
