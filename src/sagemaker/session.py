@@ -2199,7 +2199,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
         use_spot_instances=False,
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
-        random_seed=None,
         environment=None,
     ):
         """Create an Amazon SageMaker hyperparameter tuning job.
@@ -2281,9 +2280,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 started. If the path is unset then SageMaker assumes the
                 checkpoints will be provided under `/opt/ml/checkpoints/`.
                 (default: ``None``).
-            random_seed (int): An initial value used to initialize a pseudo-random number generator.
-                Setting a random seed will make the hyperparameter tuning search strategies to
-                produce more consistent configurations for the same tuning job. (default: ``None``).
             environment (dict[str, str]) : Environment variables to be set for
                 use during training jobs (default: ``None``)
         """
