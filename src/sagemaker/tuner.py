@@ -383,6 +383,83 @@ class StrategyConfig(object):
         }
 
 
+class InstanceConfig:
+    """Instance configuration for training jobs started by hyperparameter tuning.
+
+    Contains the configuration(s) for one or more resources for processing hyperparameter jobs.
+    These resources include compute instances and storage volumes to use in model training jobs
+    launched by hyperparameter tuning jobs.
+    """
+
+    def __init__(
+        self,
+        instance_count: Union[int, PipelineVariable] = None,
+        instance_type: Union[str, PipelineVariable] = None,
+        volume_size: Union[int, PipelineVariable] = 30,
+    ):
+        """Creates a ``InstanceConfig`` instance.
+
+        It takes instance configuration information for training
+        jobs that are created as the result of a hyperparameter tuning job.
+
+        Args:
+            * instance_count (str or PipelineVariable): The number of compute instances of type
+            InstanceType to use. For distributed training, select a value greater than 1.
+            * instance_type (str or PipelineVariable):
+            The instance type used to run hyperparameter optimization tuning jobs.
+            * volume_size (int or PipelineVariable): The volume size in GB of the data to be
+            processed for hyperparameter optimization
+        """
+        self.instance_count = instance_count
+        self.instance_type = instance_type
+        self.volume_size = volume_size
+
+    @classmethod
+    def from_job_desc(cls, instance_config):
+        """Creates a ``InstanceConfig`` from an instance configuration response.
+
+        This is the instance configuration from the DescribeTuningJob response.
+
+        Args:
+            instance_config (dict): The expected format of the
+                ``instance_config`` contains one first-class field
+
+        Returns:
+            sagemaker.tuner.InstanceConfig: De-serialized instance of
+            InstanceConfig containing the strategy configuration.
+        """
+        return cls(
+            instance_count=instance_config["InstanceCount"],
+            instance_type=instance_config[" InstanceType "],
+            volume_size=instance_config["VolumeSizeInGB"],
+        )
+
+    def to_input_req(self):
+        """Converts the ``self`` instance to the desired input request format.
+
+        Examples:
+            >>> strategy_config = InstanceConfig(
+                instance_count=1,
+                instance_type='ml.m4.xlarge',
+                volume_size=30
+            )
+            >>> strategy_config.to_input_req()
+            {
+                "InstanceCount":1,
+                "InstanceType":"ml.m4.xlarge",
+                "VolumeSizeInGB":30
+            }
+
+        Returns:
+            dict: Containing the instance configurations.
+        """
+        return {
+            "InstanceCount": self.instance_count,
+            "InstanceType": self.instance_type,
+            "VolumeSizeInGB": self.volume_size,
+        }
+
+
 class HyperparameterTuner(object):
     """Defines interaction with Amazon SageMaker hyperparameter tuning jobs.
 
@@ -478,6 +555,7 @@ class HyperparameterTuner(object):
             self.estimator = None
             self.objective_metric_name = None
             self._hyperparameter_ranges = None
+            self.static_hyperparameters = None
             self.metric_definitions = None
             self.estimator_dict = {estimator_name: estimator}
             self.objective_metric_name_dict = {estimator_name: objective_metric_name}
@@ -485,7 +563,6 @@ class HyperparameterTuner(object):
             self.metric_definitions_dict = (
                 {estimator_name: metric_definitions} if metric_definitions is not None else {}
             )
-            self.static_hyperparameters = None
         else:
             self.estimator = estimator
             self.objective_metric_name = objective_metric_name
@@ -516,6 +593,32 @@ class HyperparameterTuner(object):
         self.latest_tuning_job = None
         self.warm_start_config = warm_start_config
         self.early_stopping_type = early_stopping_type
+        self.random_seed = random_seed
+        self.instance_configs_dict = None
+        self.instance_configs = None
+
+    def override_resource_config(
+        self, instance_configs: Union[List[InstanceConfig], Dict[str, List[InstanceConfig]]]
+    ):
+        """Override the instance configuration of the estimators used by the tuner.
+
+        Args:
+            instance_configs (List[InstanceConfig] or Dict[str, List[InstanceConfig]):
+                The InstanceConfigs to use as an override for the instance configuration
+                of the estimator. ``None`` will remove the override.
+        """
+        if isinstance(instance_configs, dict):
+            self._validate_dict_argument(
+                name="instance_configs",
+                value=instance_configs,
+                allowed_keys=list(self.estimator_dict.keys()),
+            )
+            self.instance_configs_dict = instance_configs
+        else:
+            self.instance_configs = instance_configs
+            if self.estimator_dict is not None and self.estimator_dict.keys():
+                estimator_names = list(self.estimator_dict.keys())
+                self.instance_configs_dict = {estimator_names[0]: instance_configs}
 
     def _prepare_for_tuning(self, job_name=None, include_cls_metadata=False):
         """Prepare the tuner instance for tuning (fit)."""
@@ -584,7 +687,6 @@ class HyperparameterTuner(object):
 
     def _prepare_static_hyperparameters_for_tuning(self, include_cls_metadata=False):
         """Prepare static hyperparameters for all estimators before tuning."""
-        self.static_hyperparameters = None
         if self.estimator is not None:
             self.static_hyperparameters = self._prepare_static_hyperparameters(
                 self.estimator, self._hyperparameter_ranges, include_cls_metadata
@@ -1799,6 +1901,7 @@ class _TuningJob(_Job):
                 estimator=tuner.estimator,
                 static_hyperparameters=tuner.static_hyperparameters,
                 metric_definitions=tuner.metric_definitions,
+                instance_configs=tuner.instance_configs,
             )
 
         if tuner.estimator_dict is not None:
@@ -1812,11 +1915,43 @@ class _TuningJob(_Job):
                     tuner.objective_type,
                     tuner.objective_metric_name_dict[estimator_name],
                     tuner.hyperparameter_ranges_dict()[estimator_name],
+                    tuner.instance_configs_dict.get(estimator_name, None)
+                    if tuner.instance_configs_dict is not None
+                    else None,
                 )
                 for estimator_name in sorted(tuner.estimator_dict.keys())
             ]
 
         return tuner_args
+
+    @staticmethod
+    def _prepare_hp_resource_config(
+        instance_configs: List[InstanceConfig],
+        instance_count: int,
+        instance_type: str,
+        volume_size: int,
+        volume_kms_key: str,
+    ):
+        """Placeholder hpo resource config for one estimator of the tuner."""
+        resource_config = {}
+        if volume_kms_key is not None:
+            resource_config["VolumeKmsKeyId"] = volume_kms_key
+
+        if instance_configs is None:
+            resource_config["InstanceCount"] = instance_count
+            resource_config["InstanceType"] = instance_type
+            resource_config["VolumeSizeInGB"] = volume_size
+        else:
+            resource_config["InstanceConfigs"] = _TuningJob._prepare_instance_configs(
+                instance_configs
+            )
+
+        return resource_config
+
+    @staticmethod
+    def _prepare_instance_configs(instance_configs: List[InstanceConfig]):
+        """Prepare instance config for create tuning request."""
+        return [config.to_input_req() for config in instance_configs]
 
     @staticmethod
     def _prepare_training_config(
@@ -1828,9 +1963,19 @@ class _TuningJob(_Job):
         objective_type=None,
         objective_metric_name=None,
         parameter_ranges=None,
+        instance_configs=None,
     ):
         """Prepare training config for one estimator."""
         training_config = _Job._load_config(inputs, estimator)
+
+        del training_config["resource_config"]
+        training_config["hpo_resource_config"] = _TuningJob._prepare_hp_resource_config(
+            instance_configs,
+            estimator.instance_count,
+            estimator.instance_type,
+            estimator.volume_size,
+            estimator.volume_kms_key,
+        )
 
         training_config["input_mode"] = estimator.input_mode
         training_config["metric_definitions"] = metric_definitions

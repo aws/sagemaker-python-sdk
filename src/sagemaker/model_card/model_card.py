@@ -34,6 +34,8 @@ from sagemaker.model_card.schema_constraints import (
     TRAINING_DATASETS_MAX_SIZE,
     TRAINING_METRICS_MAX_SIZE,
     USER_PROVIDED_TRAINING_METRICS_MAX_SIZE,
+    HYPER_PARAMETERS_MAX_SIZE,
+    USER_PROVIDED_HYPER_PARAMETERS_MAX_SIZE,
     EVALUATION_DATASETS_MAX_SIZE,
 )
 from sagemaker.model_card.helpers import (
@@ -235,6 +237,27 @@ class IntendedUses(_DefaultToRequestDict, _DefaultFromDict):
         self.explanations_for_risk_rating = explanations_for_risk_rating
 
 
+class BusinessDetails(_DefaultToRequestDict, _DefaultFromDict):
+    """The business details of a model."""
+
+    def __init__(
+        self,
+        business_problem: Optional[str] = None,
+        business_stakeholders: Optional[str] = None,
+        line_of_business: Optional[str] = None,
+    ):
+        """Initialize an Business Details object.
+
+        Args:
+            business_problem (str, optional): The business problem of this model (default: None).
+            business_stakeholders (str, optional): The business stakeholders for this model (default: None).
+            line_of_business (str, optional): The line of business for this model (default: None).
+        """  # noqa E501 # pylint: disable=line-too-long
+        self.business_problem = business_problem
+        self.business_stakeholders = business_stakeholders
+        self.line_of_business = line_of_business
+
+
 class Function(_DefaultToRequestDict, _DefaultFromDict):
     """Function details."""
 
@@ -363,6 +386,24 @@ class TrainingMetric(_DefaultToRequestDict, _DefaultFromDict):
         self.notes = notes
 
 
+class HyperParameter(_DefaultToRequestDict, _DefaultFromDict):
+    """Hyper-Parameters data."""
+
+    def __init__(
+        self,
+        name: str,
+        value: str,
+    ):
+        """Initialize a HyperParameter object.
+
+        Args:
+            name (str): The hyper parameter name.
+            value (str): The hyper parameter value.
+        """
+        self.name = name
+        self.value = value
+
+
 class TrainingJobDetails(_DefaultToRequestDict, _DefaultFromDict):
     """The overview of a training job."""
 
@@ -370,6 +411,10 @@ class TrainingJobDetails(_DefaultToRequestDict, _DefaultFromDict):
     training_metrics = _IsList(TrainingMetric, TRAINING_METRICS_MAX_SIZE)
     user_provided_training_metrics = _IsList(
         TrainingMetric, USER_PROVIDED_TRAINING_METRICS_MAX_SIZE
+    )
+    hyper_parameters = _IsList(HyperParameter, HYPER_PARAMETERS_MAX_SIZE)
+    user_provided_hyper_parameters = _IsList(
+        HyperParameter, USER_PROVIDED_HYPER_PARAMETERS_MAX_SIZE
     )
     training_environment = _IsModelCardObject(Environment)
 
@@ -380,6 +425,8 @@ class TrainingJobDetails(_DefaultToRequestDict, _DefaultFromDict):
         training_environment: Optional[Environment] = None,
         training_metrics: Optional[List[TrainingMetric]] = None,
         user_provided_training_metrics: Optional[List[TrainingMetric]] = None,
+        hyper_parameters: Optional[List[HyperParameter]] = None,
+        user_provided_hyper_parameters: Optional[List[HyperParameter]] = None,
     ):
         """Initialize a Training Job Details object.
 
@@ -389,12 +436,16 @@ class TrainingJobDetails(_DefaultToRequestDict, _DefaultFromDict):
             training_environment (Environment, optional): The SageMaker training image URI. (default: None).
             training_metrics (list[TrainingMetric], optional): SageMaker training job results. The maximum `training_metrics` list length is 50 (default: None).
             user_provided_training_metrics (list[TrainingMetric], optional): Custom training job results. The maximum `user_provided_training_metrics` list length is 50 (default: None).
+            hyper_parameters (list[HyperParameter], optional): SageMaker hyper parameter results. The maximum `hyper_parameters` list length is 100 (default: None).
+            user_provided_hyper_parameters (list[HyperParameter], optional): Custom hyper parameter results. The maximum `user_provided_hyper_parameters` list length is 100 (default: None).
         """  # noqa E501 # pylint: disable=line-too-long
         self.training_arn = training_arn
         self.training_datasets = training_datasets
         self.training_environment = training_environment
         self.training_metrics = training_metrics
         self.user_provided_training_metrics = user_provided_training_metrics
+        self.hyper_parameters = hyper_parameters
+        self.user_provided_hyper_parameters = user_provided_hyper_parameters
 
 
 class TrainingDetails(_DefaultToRequestDict, _DefaultFromDict):
@@ -442,6 +493,10 @@ class TrainingDetails(_DefaultToRequestDict, _DefaultFromDict):
                 ]
                 if "FinalMetricDataList" in training_job_data
                 else [],
+                "hyper_parameters": [
+                    HyperParameter(key, value)
+                    for key, value in training_job_data["HyperParameters"].items()
+                ],
             }
             kwargs.update({"training_job_details": TrainingJobDetails(**job)})
             instance = cls(**kwargs)
@@ -567,6 +622,16 @@ class TrainingDetails(_DefaultToRequestDict, _DefaultFromDict):
         if not self.training_job_details:
             self.training_job_details = TrainingJobDetails()
         self.training_job_details.user_provided_training_metrics.append(metric)
+
+    def add_parameter(self, parameter: HyperParameter):
+        """Add custom hyper-parameter.
+
+        Args:
+            parameter (HyperParameter): The custom parameter to add.
+        """
+        if not self.training_job_details:
+            self.training_job_details = TrainingJobDetails()
+        self.training_job_details.user_provided_hyper_parameters.append(parameter)
 
 
 class MetricGroup(_DefaultToRequestDict, _DefaultFromDict):
@@ -777,6 +842,7 @@ class ModelCard(object):
     status = _OneOf(ModelCardStatusEnum)
     model_overview = _IsModelCardObject(ModelOverview)
     intended_uses = _IsModelCardObject(IntendedUses)
+    business_details = _IsModelCardObject(BusinessDetails)
     training_details = _IsModelCardObject(TrainingDetails)
     evaluation_details = _IsList(EvaluationJob)
     additional_information = _IsModelCardObject(AdditionalInformation)
@@ -793,6 +859,7 @@ class ModelCard(object):
         last_modified_by: Optional[dict] = None,
         model_overview: Optional[ModelOverview] = None,
         intended_uses: Optional[IntendedUses] = None,
+        business_details: Optional[BusinessDetails] = None,
         training_details: Optional[TrainingDetails] = None,
         evaluation_details: Optional[List[EvaluationJob]] = None,
         additional_information: Optional[AdditionalInformation] = None,
@@ -811,6 +878,7 @@ class ModelCard(object):
             last_modified_by (dict, optional): The group or individual that last modified the model card (default: None).
             model_overview (ModelOverview, optional): An overview of the model (default: None).
             intended_uses (IntendedUses, optional): The intended uses of the model (default: None).
+            business_details (BusinessDetails, optional): The business details of the model (default: None).
             training_details (TrainingDetails, optional): The training details of the model (default: None).
             evaluation_details (List[EvaluationJob], optional): The evaluation details of the model (default: None).
             additional_information (AdditionalInformation, optional): Additional information about the model (default: None).
@@ -826,6 +894,7 @@ class ModelCard(object):
         self.last_modified_by = last_modified_by
         self.model_overview = model_overview
         self.intended_uses = intended_uses
+        self.business_details = business_details
         self.training_details = training_details
         self.evaluation_details = evaluation_details
         self.additional_information = additional_information

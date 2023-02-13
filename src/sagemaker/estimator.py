@@ -423,6 +423,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             hyperparameters (dict[str, str] or dict[str, PipelineVariable]):
                 A dictionary containing the hyperparameters to
                 initialize this estimator with. (Default: None).
+
+                .. caution::
+                    You must not include any security-sensitive information, such as
+                    account access IDs, secrets, and tokens, in the dictionary for configuring
+                    hyperparameters. SageMaker rejects the training job request and returns an
+                    validation error for detected credentials, if such user input is found.
+
             container_log_level (int or PipelineVariable): The log level to use within the container
                 (default: logging.INFO). Valid values are defined in the Python
                 logging module.
@@ -1335,6 +1342,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         volume_size=None,
         model_data_download_timeout=None,
         container_startup_health_check_timeout=None,
+        inference_recommendation_id=None,
         **kwargs,
     ):
         """Deploy the trained model to an Amazon SageMaker endpoint.
@@ -1412,6 +1420,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 inference container to pass health check by SageMaker Hosting. For more information
                 about health check see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html#your-algorithms-inference-algo-ping-requests
+            inference_recommendation_id (str): The recommendation id which specifies the
+                recommendation you picked from inference recommendation job results and
+                would like to deploy the model and endpoint with recommended parameters.
             **kwargs: Passed to invocation of ``create_model()``.
                 Implementations may customize ``create_model()`` to accept
                 ``**kwargs`` to customize model creation during deploy.
@@ -1476,6 +1487,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             volume_size=volume_size,
             model_data_download_timeout=model_data_download_timeout,
             container_startup_health_check_timeout=container_startup_health_check_timeout,
+            inference_recommendation_id=inference_recommendation_id,
         )
 
     def register(
@@ -2462,6 +2474,13 @@ class Estimator(EstimatorBase):
                 using the default AWS configuration chain.
             hyperparameters (dict[str, str] or dict[str, PipelineVariable]):
                 Dictionary containing the hyperparameters to initialize this estimator with.
+
+                .. caution::
+                    You must not include any security-sensitive information, such as
+                    account access IDs, secrets, and tokens, in the dictionary for configuring
+                    hyperparameters. SageMaker rejects the training job request and returns an
+                    validation error for detected credentials, if such user input is found.
+
             tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): List of tags for
                 labeling a training job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
@@ -2939,6 +2958,13 @@ class Framework(EstimatorBase):
                 SageMaker. For convenience, this accepts other types for keys
                 and values, but ``str()`` will be called to convert them before
                 training.
+
+                .. caution::
+                    You must not include any security-sensitive information, such as
+                    account access IDs, secrets, and tokens, in the dictionary for configuring
+                    hyperparameters. SageMaker rejects the training job request and returns an
+                    validation error for detected credentials, if such user input is found.
+
             container_log_level (int or PipelineVariable): Log level to use within the container
                 (default: logging.INFO). Valid values are defined in the Python
                 logging module.
