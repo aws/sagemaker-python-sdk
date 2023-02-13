@@ -97,7 +97,11 @@ WARM_START_CONFIG = WarmStartConfig(
 
 TUNING_JOB_DETAILS = {
     "HyperParameterTuningJobConfig": {
-        "ResourceLimits": {"MaxParallelTrainingJobs": 1, "MaxNumberOfTrainingJobs": 1},
+        "ResourceLimits": {
+            "MaxParallelTrainingJobs": 1,
+            "MaxNumberOfTrainingJobs": 1,
+            "MaxRuntimeInSeconds": 1,
+        },
         "HyperParameterTuningJobObjective": {
             "MetricName": OBJECTIVE_METRIC_NAME,
             "Type": "Minimize",
@@ -117,6 +121,11 @@ TUNING_JOB_DETAILS = {
         },
         "TrainingJobEarlyStoppingType": "Off",
         "RandomSeed": 0,
+        "TuningJobCompletionCriteria": {
+            "BestObjectiveNotImproving": {"MaxNumberOfTrainingJobsNotImproving": 5},
+            "ConvergenceDetected": {"CompleteOnConvergence": "Enabled"},
+            "TargetObjectiveMetricValue": 0.42,
+        },
     },
     "HyperParameterTuningJobName": JOB_NAME,
     "TrainingJobDefinition": {

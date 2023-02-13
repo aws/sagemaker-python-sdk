@@ -663,11 +663,16 @@ def test_attach_tuning_job_with_estimator_from_hyperparameters(sagemaker_session
     assert tuner.objective_metric_name == OBJECTIVE_METRIC_NAME
     assert tuner.max_jobs == 1
     assert tuner.max_parallel_jobs == 1
+    assert tuner.max_runtime_in_seconds == 1
     assert tuner.metric_definitions == METRIC_DEFINITIONS
     assert tuner.strategy == "Bayesian"
     assert tuner.objective_type == "Minimize"
     assert tuner.early_stopping_type == "Off"
     assert tuner.random_seed == 0
+
+    assert tuner.completion_criteria_config.complete_on_convergence is True
+    assert tuner.completion_criteria_config.target_objective_metric_value == 0.42
+    assert tuner.completion_criteria_config.max_number_of_training_jobs_not_improving == 5
 
     assert isinstance(tuner.estimator, PCA)
     assert tuner.estimator.role == ROLE
