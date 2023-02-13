@@ -325,12 +325,7 @@ def pytorch_training_compiler_py_version(
     return "py39" if Version(pytorch_training_compiler_version) > Version("1.12") else "py38"
 
 
-# TODO:
-# @pytest.fixture(scope="module")
-# def pytorch_training_compiler_latest_py_version(
-#     pytorch_training_compiler_latest_version,
-# ):
-#     return "py39" if Version(pytorch_training_compiler_latest_version) > Version("1.12") else "py38"
+# TODO: Create a fixture to get the latest py version from TRCOMP image_uri.
 
 
 @pytest.fixture(scope="module")
