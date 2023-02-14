@@ -338,6 +338,16 @@ def huggingface_pytorch_latest_training_py_version(
 
 
 @pytest.fixture(scope="module")
+def pytorch_training_compiler_py_version(
+    pytorch_training_compiler_version,
+):
+    return "py39" if Version(pytorch_training_compiler_version) > Version("1.12") else "py38"
+
+
+# TODO: Create a fixture to get the latest py version from TRCOMP image_uri.
+
+
+@pytest.fixture(scope="module")
 def huggingface_pytorch_latest_inference_py_version(
     huggingface_inference_pytorch_latest_version,
 ):
