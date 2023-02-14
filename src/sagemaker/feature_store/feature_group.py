@@ -665,6 +665,32 @@ class FeatureGroup:
             feature_group_name=self.name, feature_name=feature_name
         )
 
+    def list_tags(self) -> Sequence[Dict[str, str]]:
+        """List all tags for a feature group.
+
+        Returns:
+            list of key, value pair of the tags.
+        """
+
+        feature_group_arn = self.sagemaker_session.describe_feature_group(
+            feature_group_name=self.name
+        ).get("FeatureGroupArn")
+
+        return self.sagemaker_session.list_tags(resource_arn=feature_group_arn)
+
+    def list_parameters_for_feature_metadata(self, feature_name: str) -> Sequence[Dict[str, str]]:
+        """List all parameters for a feature metadata.
+
+        Args:
+            feature_name (str): name of the feature.
+        Returns:
+            list of key, value pair of the parameters.
+        """
+
+        return self.sagemaker_session.describe_feature_metadata(
+            feature_group_name=self.name, feature_name=feature_name
+        ).get("Parameters")
+
     def load_feature_definitions(
         self,
         data_frame: DataFrame,

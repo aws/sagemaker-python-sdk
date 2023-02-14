@@ -274,6 +274,25 @@ def test_load_feature_definition_unsupported_types(sagemaker_session_mock):
     assert "Failed to infer Feature type based on dtype bool for column bool." in str(error)
 
 
+def test_list_tags(sagemaker_session_mock):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    sagemaker_session_mock.describe_feature_group.return_value = {"FeatureGroupArn": "test-arn"}
+    feature_group.list_tags()
+    sagemaker_session_mock.list_tags.assert_called_with(resource_arn="test-arn")
+
+
+def test_list_parameters_for_feature_metadata(sagemaker_session_mock):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    test_feature_metadata = {"Parameters": [{"Key": "k", "Value": "y"}]}
+    sagemaker_session_mock.describe_feature_metadata.return_value = test_feature_metadata
+    assert feature_group.list_parameters_for_feature_metadata(feature_name="feature") == [
+        {"Key": "k", "Value": "y"}
+    ]
+    sagemaker_session_mock.describe_feature_metadata.assert_called_with(
+        feature_group_name="MyFeatureGroup", feature_name="feature"
+    )
+
+
 def test_ingest_zero_processes():
     feature_group = FeatureGroup(name="MyGroup", sagemaker_session=sagemaker_session_mock)
     df = Mock()
