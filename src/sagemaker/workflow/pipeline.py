@@ -241,20 +241,19 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         Returns:
             response dict from service
         """
-        exists = True
         try:
-            self.describe()
-        except ClientError as e:
-            err = e.response.get("Error", {})
-            if err.get("Code", None) == "ResourceNotFound":
-                exists = False
-            else:
-                raise e
-
-        if not exists:
             response = self.create(role_arn, description, tags, parallelism_config)
-        else:
+        except ClientError as ce:
+            error_code = ce.response["Error"]["Code"]
+            error_message = ce.response["Error"]["Message"]
+            if not (
+                    error_code == "ValidationException"
+                    and "already exists" in error_message
+            ):
+                raise ce
+            # already exists
             response = self.update(role_arn, description)
+            # add new tags to existing resource
             if tags is not None:
                 old_tags = self.sagemaker_session.sagemaker_client.list_tags(
                     ResourceArn=response["PipelineArn"]

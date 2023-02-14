@@ -3223,14 +3223,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         def submit(request):
             if model_package_group_name is not None:
-                try:
-                    self.sagemaker_client.describe_model_package_group(
-                        ModelPackageGroupName=request["ModelPackageGroupName"]
-                    )
-                except ClientError:
+                _create_resource(
                     self.sagemaker_client.create_model_package_group(
                         ModelPackageGroupName=request["ModelPackageGroupName"]
                     )
+                )
             return self.sagemaker_client.create_model_package(**request)
 
         return self._intercept_create_request(
@@ -3918,33 +3915,22 @@ class Session(object):  # pylint: disable=too-many-public-methods
         name = name or name_from_image(image_uri)
         model_vpc_config = vpc_utils.sanitize(model_vpc_config)
 
-        if _deployment_entity_exists(
-            lambda: self.sagemaker_client.describe_endpoint(EndpointName=name)
-        ):
-            raise ValueError(
-                'Endpoint with name "{}" already exists; please pick a different name.'.format(name)
-            )
+        primary_container = container_def(
+            image_uri=image_uri,
+            model_data_url=model_s3_location,
+            env=model_environment_vars,
+        )
 
-        if not _deployment_entity_exists(
-            lambda: self.sagemaker_client.describe_model(ModelName=name)
-        ):
-            primary_container = container_def(
-                image_uri=image_uri,
-                model_data_url=model_s3_location,
-                env=model_environment_vars,
-            )
-            self.create_model(
-                name=name, role=role, container_defs=primary_container, vpc_config=model_vpc_config
-            )
+        self.create_model(
+            name=name, role=role, container_defs=primary_container, vpc_config=model_vpc_config
+        )
 
         data_capture_config_dict = None
         if data_capture_config is not None:
             data_capture_config_dict = data_capture_config._to_request_dict()
 
-        if not _deployment_entity_exists(
-            lambda: self.sagemaker_client.describe_endpoint_config(EndpointConfigName=name)
-        ):
-            self.create_endpoint_config(
+        _create_resource(
+            lambda: self.create_endpoint_config(
                 name=name,
                 model_name=name,
                 initial_instance_count=initial_instance_count,
@@ -3952,8 +3938,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 accelerator_type=accelerator_type,
                 data_capture_config_dict=data_capture_config_dict,
             )
+        )
 
-        self.create_endpoint(endpoint_name=name, config_name=name, wait=wait)
+        # to make change backwards compatible
+        response = _create_resource(
+            lambda: self.create_endpoint(endpoint_name=name, config_name=name, wait=wait)
+        )
+        if not response:
+            raise ValueError(
+                'Endpoint with name "{}" already exists; please pick a different name.'.format(name)
+            )
+
         return name
 
     def endpoint_from_production_variants(
@@ -5449,6 +5444,34 @@ def _deployment_entity_exists(describe_fn):
             and "Could not find" in ce.response["Error"]["Message"]
         ):
             raise ce
+        return False
+
+
+def _create_resource(create_fn):
+    """Call create function and while doing so accepts/passes the resource already exists exception.
+    Throws an exception if any exception other than resource already exists.
+
+    Args:
+        create_fn: Create resource function.
+
+    Returns:
+        (bool): True if new resource was created, False if resource already exists.
+    """
+    try:
+        create_fn()
+        # create function succeeded, resource does not exist already
+        return True
+    except ClientError as ce:
+        error_code = ce.response["Error"]["Code"]
+        error_message = ce.response["Error"]["Message"]
+        already_exists_exceptions = ["ValidationException", "ResourceInUse"]
+        already_exists_msg_patterns = ["Cannot create already existing", "already exists"]
+        if not (
+            error_code in already_exists_exceptions
+            and any(p in error_message for p in already_exists_msg_patterns)
+        ):
+            raise ce
+        # no new resource created as resource already exists
         return False
 
 
