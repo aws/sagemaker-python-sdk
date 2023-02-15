@@ -42,7 +42,6 @@ from sagemaker.utils import (
     secondary_training_status_changed,
     secondary_training_status_message,
     sts_regional_endpoint,
-    retries,
 )
 from sagemaker import exceptions
 from sagemaker.session_settings import SessionSettings
@@ -5479,30 +5478,21 @@ def _train_done(sagemaker_client, job_name, last_desc):
     """Placeholder docstring"""
     in_progress_statuses = ["InProgress", "Created"]
 
-    for _ in retries(
-        max_retry_count=10,  # 10*30 = 5min
-        exception_message_prefix="Waiting for schedule to leave 'Pending' status",
-        seconds_to_sleep=30,
-    ):
-        try:
-            desc = sagemaker_client.describe_training_job(TrainingJobName=job_name)
-            status = desc["TrainingJobStatus"]
+    desc = sagemaker_client.describe_training_job(TrainingJobName=job_name)
+    status = desc["TrainingJobStatus"]
 
-            if secondary_training_status_changed(desc, last_desc):
-                print()
-                print(secondary_training_status_message(desc, last_desc), end="")
-            else:
-                print(".", end="")
-            sys.stdout.flush()
+    if secondary_training_status_changed(desc, last_desc):
+        print()
+        print(secondary_training_status_message(desc, last_desc), end="")
+    else:
+        print(".", end="")
+    sys.stdout.flush()
 
-            if status in in_progress_statuses:
-                return desc, False
+    if status in in_progress_statuses:
+        return desc, False
 
-            print()
-            return desc, True
-        except botocore.exceptions.ClientError as err:
-            if err.response["Error"]["Code"] == "AccessDeniedException":
-                pass
+    print()
+    return desc, True
 
 
 def _processing_job_status(sagemaker_client, job_name):
