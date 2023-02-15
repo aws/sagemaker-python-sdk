@@ -10,7 +10,7 @@ distributed data parallel library.
 SageMaker Distributed Data Parallel 1.7.0 Release Notes
 =======================================================
 
-*Date: Feb. 10. 2022*
+*Date: Feb. 10. 2023*
 
 **New Features**
 
@@ -23,14 +23,14 @@ SageMaker Distributed Data Parallel 1.7.0 Release Notes
 **Bug Fixes**
 
 * Improved tests for large model collectives (LMC) such as AllGather and ReduceScatter.
-* Fixed the missing Estimator arguments (hyperparameters, specifically) issue when launching a distributed 
-  training job with a shell script as the entry point and with the pytorchddp distribution strategy.
+* Fixed the missing Estimator arguments (hyperparameters, specifically) issue when launching a 
+  distributed training job with a shell script as the entry point and with the ``pytorchddp`` distribution strategy.
 
 **Migration to AWS Deep Learning Containers**
 
 This version passed benchmark testing and is migrated to the following AWS Deep Learning Containers (DLC):
 
-* PyTorch 1.13.1 DLC
+- PyTorch 1.13.1 DLC
 
   .. code::
 
