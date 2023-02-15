@@ -16,10 +16,6 @@ SageMaker Distributed Data Parallel 1.7.0 Release Notes
 
 * Added support for PyTorch 1.13.1.
 
-**Improvements**
-
-* SMDDP throws timeout attribution that provides a more descriptive message about what causes timeout error.
-
 **Bug Fixes**
 
 * Improved tests for large model collectives (LMC) such as AllGather and ReduceScatter.
