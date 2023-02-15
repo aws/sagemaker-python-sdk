@@ -47,13 +47,14 @@ class TableType(Enum):
 class JoinTypeEnum(Enum):
     """Enum of Join types.
 
-    The Join comparator can be "INNER_JOIN", "LEFT_JOIN", "RIGHT_JOIN", "FULL_JOIN"
+    The Join type can be "INNER_JOIN", "LEFT_JOIN", "RIGHT_JOIN", "FULL_JOIN", or "CROSS_JOIN".
     """
 
     INNER_JOIN = "JOIN"
     LEFT_JOIN = "LEFT JOIN"
     RIGHT_JOIN = "RIGHT JOIN"
     FULL_JOIN = "FULL JOIN"
+    CROSS_JOIN = "CROSS JOIN"
 
 
 @attr.s
@@ -61,7 +62,7 @@ class JoinComparatorEnum(Enum):
     """Enum of Join comparators.
 
     The Join comparator can be "EQUALS", "GREATER_THAN", "LESS_THAN",
-    "GREATER_THAN_OR_EQUAL_TO", or "LESS_THAN_OR_EQUAL_TO"
+    "GREATER_THAN_OR_EQUAL_TO", "LESS_THAN_OR_EQUAL_TO" or "NOT_EQUAL_TO"
     """
 
     EQUALS = "="
@@ -69,6 +70,7 @@ class JoinComparatorEnum(Enum):
     GREATER_THAN_OR_EQUAL_TO = ">="
     LESS_THAN = "<"
     LESS_THAN_OR_EQUAL_TO = "<="
+    NOT_EQUAL_TO = "<>"
 
 
 @attr.s
