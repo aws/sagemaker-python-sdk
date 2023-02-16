@@ -553,6 +553,18 @@ def test_create_temp_table(sagemaker_session_mock):
         kms_key=None,
     )
 
+def test_cleanup_temporary_tables(sagemaker_session_mock):
+    dataframe = pd.DataFrame({"feature-1": [420, 380, 390], "feature-2": [50, 40, 45]})
+
+    dataset_builder = DatasetBuilder(
+        sagemaker_session=sagemaker_session_mock,
+        base=dataframe,
+        output_path="file/to/path",
+    )
+
+    dataset_builder.cleanup_temporary_tables()
+
+    assert dataset_builder._cleanup_temporary_tables is True
 
 @pytest.mark.parametrize(
     "column, expected",

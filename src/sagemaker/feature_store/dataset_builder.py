@@ -21,12 +21,15 @@ from enum import Enum
 import os
 from typing import Any, Dict, List, Tuple, Union
 
+import logging
+
 import attr
 import pandas as pd
 
 from sagemaker import Session, s3, utils
 from sagemaker.feature_store.feature_group import FeatureDefinition, FeatureGroup, FeatureTypeEnum
 
+logger = logging.getLogger(__name__)
 
 _DEFAULT_CATALOG = "AwsDataCatalog"
 _DEFAULT_DATABASE = "sagemaker_featurestore"
@@ -180,6 +183,8 @@ class DatasetBuilder:
             records or not (default: False).
         _include_deleted_records (bool): A boolean representing whether including deleted records or
             not (default: False).
+        _cleanup_temporary_tables (bool): A boolean representing whether temporary tables are
+            cleaned up after calling to_dataframe when a dataframe is the base (default: False)
         _number_of_recent_records (int): An int that how many records will be returned for each
             record identifier (default: 1).
         _number_of_records (int): An int that how many records will be returned (default: None).
@@ -206,6 +211,7 @@ class DatasetBuilder:
     _point_in_time_accurate_join: bool = attr.ib(init=False, default=False)
     _include_duplicated_records: bool = attr.ib(init=False, default=False)
     _include_deleted_records: bool = attr.ib(init=False, default=False)
+    _cleanup_temporary_tables: bool = attr.ib(init=False, default=False)
     _number_of_recent_records: int = attr.ib(init=False, default=None)
     _number_of_records: int = attr.ib(init=False, default=None)
     _write_time_ending_timestamp: datetime.datetime = attr.ib(init=False, default=None)
@@ -271,6 +277,16 @@ class DatasetBuilder:
             This DatasetBuilder object.
         """
         self._include_deleted_records = True
+        return self
+
+    def cleanup_temporary_tables(self):
+        """Cleans up temporary tables when calling to_dataframe with a dataframe as the base
+        feature group.
+
+        Returns:
+            This DatasetBuilder object.
+        """
+        self._cleanup_temporary_tables = True
         return self
 
     def with_number_of_recent_records_by_record_identifier(self, number_of_recent_records: int):
@@ -380,8 +396,9 @@ class DatasetBuilder:
                 "OutputLocation", None
             ), query_result.get("QueryExecution", {}).get("Query", None)
 
-            self._drop_temp_table(temp_table_name)
-            
+            if self._cleanup_temporary_tables is True:
+                self._drop_temp_table(temp_table_name)
+
             return res
         if isinstance(self._base, FeatureGroup):
             base_feature_group = construct_feature_group_to_be_merged(
@@ -959,7 +976,10 @@ class DatasetBuilder:
             f"DROP TABLE {temp_table_name}"
         )
 
-        self._run_query(query_string, _DEFAULT_CATALOG, _DEFAULT_DATABASE)
+        try:
+            self._run_query(query_string, _DEFAULT_CATALOG, _DEFAULT_DATABASE)
+        except Exception as e: # pylint: disable=broad-except
+            logger.debug("The temporary table was unsuccessfully cleaned up. %s", e)
 
     def _construct_athena_table_column_string(self, column: str) -> str:
         """Internal method for constructing string of Athena column.
