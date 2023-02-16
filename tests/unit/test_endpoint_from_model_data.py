@@ -17,6 +17,11 @@ from botocore.exceptions import ClientError
 from mock import MagicMock, Mock
 from mock import patch
 
+from .common import (
+    _raise_unexpected_client_error,
+    _raise_does_already_exists_client_error,
+    _raise_does_not_exist_client_error,
+)
 import sagemaker
 
 ENDPOINT_NAME = "myendpoint"
@@ -126,7 +131,7 @@ def test_model_and_endpoint_config_exist(name_from_image_mock, sagemaker_session
             wait=False,
         )
     except ClientError:
-        assert False, f"Unexpected ClientError raised for resource already exists scenario"
+        assert False, "Unexpected ClientError raised for resource already exists scenario"
 
     sagemaker_session.create_model.assert_called_once_with(
         name=NAME_FROM_IMAGE,
@@ -208,20 +213,3 @@ def test_entity_doesnt_exist():
 def test_describe_failure():
     with pytest.raises(ClientError):
         sagemaker.session._deployment_entity_exists(_raise_unexpected_client_error)
-
-
-def _raise_unexpected_client_error(**kwargs):
-    response = {
-        "Error": {"Code": "ValidationException", "Message": "Name does not satisfy expression."}
-    }
-    raise ClientError(error_response=response, operation_name="foo")
-
-
-def _raise_does_not_exist_client_error(**kwargs):
-    response = {"Error": {"Code": "ValidationException", "Message": "Could not find entity."}}
-    raise ClientError(error_response=response, operation_name="foo")
-
-
-def _raise_does_already_exists_client_error(**kwargs):
-    response = {"Error": {"Code": "ValidationException", "Message": "Resource already exists."}}
-    raise ClientError(error_response=response, operation_name="foo")

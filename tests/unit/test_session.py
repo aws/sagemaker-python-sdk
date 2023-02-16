@@ -22,6 +22,7 @@ import six
 from botocore.exceptions import ClientError
 from mock import ANY, MagicMock, Mock, patch, call, mock_open
 
+from .common import _raise_unexpected_client_error
 import sagemaker
 from sagemaker import TrainingInput, Session, get_execution_role, exceptions
 from sagemaker.async_inference import AsyncInferenceConfig
@@ -29,6 +30,8 @@ from sagemaker.session import (
     _tuning_job_status,
     _transform_job_status,
     _train_done,
+    _wait_until,
+    _wait_until_training_done,
     NOTEBOOK_METADATA_FILE,
 )
 from sagemaker.tuner import WarmStartConfig, WarmStartTypes
@@ -2340,6 +2343,81 @@ def test_train_done_in_progress(sagemaker_session):
 
     assert actual_job_desc["TrainingJobStatus"] == "InProgress"
     assert training_finished is False
+
+
+@patch("time.sleep", return_value=None)
+def test_wait_until_training_done_raises_other_exception(patched_sleep):
+    response = {"Error": {"Code": "ValidationException", "Message": "Could not access entity."}}
+    mock_func = Mock(
+        name="describe_training_job",
+        side_effect=ClientError(error_response=response, operation_name="foo"),
+    )
+    desc = "dummy"
+    with pytest.raises(ClientError) as error:
+        _wait_until_training_done(mock_func, desc)
+
+    mock_func.assert_called_once()
+    assert "ValidationException" in str(error)
+
+
+@patch("time.sleep", return_value=None)
+def test_wait_until_training_done_tag_propagation(patched_sleep):
+    response = {"Error": {"Code": "AccessDeniedException", "Message": "Could not access entity."}}
+    side_effect_iter = [ClientError(error_response=response, operation_name="foo")] * 3
+    side_effect_iter.append(("result", "result"))
+    mock_func = Mock(name="describe_training_job", side_effect=side_effect_iter)
+    desc = "dummy"
+    result = _wait_until_training_done(mock_func, desc)
+    assert result == "result"
+    assert mock_func.call_count == 4
+
+
+@patch("time.sleep", return_value=None)
+def test_wait_until_training_done_fail_access_denied_after_5_mins(patched_sleep):
+    response = {"Error": {"Code": "AccessDeniedException", "Message": "Could not access entity."}}
+    side_effect_iter = [ClientError(error_response=response, operation_name="foo")] * 70
+    mock_func = Mock(name="describe_training_job", side_effect=side_effect_iter)
+    desc = "dummy"
+    with pytest.raises(ClientError) as error:
+        _wait_until_training_done(mock_func, desc)
+
+    # mock_func should be retried 300(elapsed time)/5(default poll delay) = 60 times
+    assert mock_func.call_count == 61
+    assert "AccessDeniedException" in str(error)
+
+
+@patch("time.sleep", return_value=None)
+def test_wait_until_raises_other_exception(patched_sleep):
+    mock_func = Mock(name="describe_training_job", side_effect=_raise_unexpected_client_error)
+    with pytest.raises(ClientError) as error:
+        _wait_until(mock_func)
+
+    mock_func.assert_called_once()
+    assert "ValidationException" in str(error)
+
+
+@patch("time.sleep", return_value=None)
+def test_wait_until_tag_propagation(patched_sleep):
+    response = {"Error": {"Code": "AccessDeniedException", "Message": "Could not access entity."}}
+    side_effect_iter = [ClientError(error_response=response, operation_name="foo")] * 3
+    side_effect_iter.append("result")
+    mock_func = Mock(name="describe_training_job", side_effect=side_effect_iter)
+    result = _wait_until(mock_func)
+    assert result == "result"
+    assert mock_func.call_count == 4
+
+
+@patch("time.sleep", return_value=None)
+def test_wait_until_fail_access_denied_after_5_mins(patched_sleep):
+    response = {"Error": {"Code": "AccessDeniedException", "Message": "Could not access entity."}}
+    side_effect_iter = [ClientError(error_response=response, operation_name="foo")] * 70
+    mock_func = Mock(name="describe_training_job", side_effect=side_effect_iter)
+    with pytest.raises(ClientError) as error:
+        _wait_until(mock_func)
+
+    # mock_func should be retried 300(elapsed time)/5(default poll delay) = 60 times
+    assert mock_func.call_count == 61
+    assert "AccessDeniedException" in str(error)
 
 
 DEFAULT_EXPECTED_AUTO_ML_JOB_ARGS = {

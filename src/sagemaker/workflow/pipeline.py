@@ -246,10 +246,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         except ClientError as ce:
             error_code = ce.response["Error"]["Code"]
             error_message = ce.response["Error"]["Message"]
-            if not (
-                    error_code == "ValidationException"
-                    and "already exists" in error_message
-            ):
+            if not (error_code == "ValidationException" and "already exists" in error_message):
                 raise ce
             # already exists
             response = self.update(role_arn, description)

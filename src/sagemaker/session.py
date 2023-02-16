@@ -42,6 +42,7 @@ from sagemaker.utils import (
     secondary_training_status_changed,
     secondary_training_status_message,
     sts_regional_endpoint,
+    retries,
 )
 from sagemaker import exceptions
 from sagemaker.session_settings import SessionSettings
@@ -5812,19 +5813,56 @@ def _deploy_done(sagemaker_client, endpoint_name):
 
 def _wait_until_training_done(callable_fn, desc, poll=5):
     """Placeholder docstring"""
-    job_desc, finished = callable_fn(desc)
+    elapsed_time = 0
+    finished = None
+    job_desc = desc
     while not finished:
-        time.sleep(poll)
-        job_desc, finished = callable_fn(job_desc)
+        try:
+            elapsed_time += poll
+            time.sleep(poll)
+            job_desc, finished = callable_fn(job_desc)
+        except botocore.exceptions.ClientError as err:
+            # For initial 5 mins we accept/pass AccessDeniedException.
+            # The reason is to await tag propagation to avoid false AccessDenied claims for an access
+            # policy based on resource tags, The caveat here is for true AccessDenied cases the routine
+            # will fail after 5 mins
+            if err.response["Error"]["Code"] == "AccessDeniedException" and elapsed_time <= 300:
+                LOGGER.warning(
+                    "Received AccessDeniedException. This could mean the IAM role does not "
+                    "have the resource permissions, in which case please add resource access "
+                    "and retry. For cases where the role has tag based resource policy, "
+                    "continuing to wait for tag propagation.."
+                )
+                continue
+            else:
+                raise err
     return job_desc
 
 
 def _wait_until(callable_fn, poll=5):
     """Placeholder docstring"""
-    result = callable_fn()
+    elapsed_time = 0
+    result = None
     while result is None:
-        time.sleep(poll)
-        result = callable_fn()
+        try:
+            elapsed_time += poll
+            time.sleep(poll)
+            result = callable_fn()
+        except botocore.exceptions.ClientError as err:
+            # For initial 5 mins we accept/pass AccessDeniedException.
+            # The reason is to await tag propagation to avoid false AccessDenied claims for an
+            # access policy based on resource tags, The caveat here is for true AccessDenied
+            # cases the routine will fail after 5 mins
+            if err.response["Error"]["Code"] == "AccessDeniedException" and elapsed_time <= 300:
+                LOGGER.warning(
+                    "Received AccessDeniedException. This could mean the IAM role does not "
+                    "have the resource permissions, in which case please add resource access "
+                    "and retry. For cases where the role has tag based resource policy, "
+                    "continuing to wait for tag propagation.."
+                )
+                continue
+            else:
+                raise err
     return result
 
 
