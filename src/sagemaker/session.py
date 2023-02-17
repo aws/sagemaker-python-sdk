@@ -2189,7 +2189,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         stop_condition,
         tags,
         warm_start_config,
+        max_runtime_in_seconds=None,
         strategy_config=None,
+        completion_criteria_config=None,
         enable_network_isolation=False,
         image_uri=None,
         algorithm_arn=None,
@@ -2201,6 +2203,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         checkpoint_local_path=None,
         random_seed=None,
         environment=None,
+        hpo_resource_config=None,
     ):
         """Create an Amazon SageMaker hyperparameter tuning job.
 
@@ -2255,6 +2258,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             warm_start_config (dict): Configuration defining the type of warm start and
                 other required configurations.
+            max_runtime_in_seconds (int or PipelineVariable): The maximum time in seconds
+                that a training job launched by a hyperparameter tuning job can run.
+            completion_criteria_config (sagemaker.tuner.TuningJobCompletionCriteriaConfig): A
+                configuration for the completion criteria.
             early_stopping_type (str): Specifies whether early stopping is enabled for the job.
                 Can be either 'Auto' or 'Off'. If set to 'Off', early stopping will not be
                 attempted. If set to 'Auto', early stopping of some training jobs may happen, but
@@ -2286,6 +2293,22 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 produce more consistent configurations for the same tuning job. (default: ``None``).
             environment (dict[str, str]) : Environment variables to be set for
                 use during training jobs (default: ``None``)
+            hpo_resource_config (dict): The configuration for the hyperparameter tuning resources,
+                including the compute instances and storage volumes, used for training jobs launched
+                by the tuning job, where you must specify either
+                instance_configs or instance_count + instance_type + volume_size:
+                * instance_count (int): Number of EC2 instances to use for training.
+                The key in resource_config is 'InstanceCount'.
+                * instance_type (str): Type of EC2 instance to use for training, for example,
+                'ml.c4.xlarge'. The key in resource_config is 'InstanceType'.
+                * volume_size (int or PipelineVariable): The volume size in GB of the data to be
+                processed for hyperparameter optimisation
+                * instance_configs (List[InstanceConfig]): A list containing the configuration(s)
+                for one or more resources for processing hyperparameter jobs. These resources
+                include compute instances and storage volumes to use in model training jobs.
+                * volume_kms_key_id: The AWS Key Management Service (AWS KMS) key
+                that Amazon SageMaker uses to encrypt data on the storage
+                volume attached to the ML compute instance(s) that run the training job.
         """
 
         tune_request = {
@@ -2294,12 +2317,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 strategy=strategy,
                 max_jobs=max_jobs,
                 max_parallel_jobs=max_parallel_jobs,
+                max_runtime_in_seconds=max_runtime_in_seconds,
                 objective_type=objective_type,
                 objective_metric_name=objective_metric_name,
                 parameter_ranges=parameter_ranges,
                 early_stopping_type=early_stopping_type,
                 random_seed=random_seed,
                 strategy_config=strategy_config,
+                completion_criteria_config=completion_criteria_config,
             ),
             "TrainingJobDefinition": self._map_training_config(
                 static_hyperparameters=static_hyperparameters,
@@ -2311,6 +2336,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 input_config=input_config,
                 output_config=output_config,
                 resource_config=resource_config,
+                hpo_resource_config=hpo_resource_config,
                 vpc_config=vpc_config,
                 stop_condition=stop_condition,
                 enable_network_isolation=enable_network_isolation,
@@ -2452,12 +2478,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
         strategy,
         max_jobs,
         max_parallel_jobs,
+        max_runtime_in_seconds=None,
         early_stopping_type="Off",
         objective_type=None,
         objective_metric_name=None,
         parameter_ranges=None,
         random_seed=None,
         strategy_config=None,
+        completion_criteria_config=None,
     ):
         """Construct tuning job configuration dictionary.
 
@@ -2466,6 +2494,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             max_jobs (int): Maximum total number of training jobs to start for the hyperparameter
                 tuning job.
             max_parallel_jobs (int): Maximum number of parallel training jobs to start.
+            max_runtime_in_seconds (int or PipelineVariable): The maximum time in seconds
+                that a training job launched by a hyperparameter tuning job can run.
             early_stopping_type (str): Specifies whether early stopping is enabled for the job.
                 Can be either 'Auto' or 'Off'. If set to 'Off', early stopping will not be
                 attempted. If set to 'Auto', early stopping of some training jobs may happen,
@@ -2480,6 +2510,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 produce more consistent configurations for the same tuning job.
             strategy_config (dict): A configuration for the hyperparameter tuning job optimisation
                 strategy.
+            completion_criteria_config (dict): A configuration
+                for the completion criteria.
 
         Returns:
             A dictionary of tuning job configuration. For format details, please refer to
@@ -2496,6 +2528,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "TrainingJobEarlyStoppingType": early_stopping_type,
         }
 
+        if max_runtime_in_seconds is not None:
+            tuning_config["ResourceLimits"]["MaxRuntimeInSeconds"] = max_runtime_in_seconds
+
         if random_seed is not None:
             tuning_config["RandomSeed"] = random_seed
 
@@ -2508,6 +2543,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if strategy_config is not None:
             tuning_config["StrategyConfig"] = strategy_config
+
+        if completion_criteria_config is not None:
+            tuning_config["TuningJobCompletionCriteria"] = completion_criteria_config
         return tuning_config
 
     @classmethod
@@ -2545,9 +2583,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
         input_mode,
         role,
         output_config,
-        resource_config,
         stop_condition,
         input_config=None,
+        resource_config=None,
+        hpo_resource_config=None,
         metric_definitions=None,
         image_uri=None,
         algorithm_arn=None,
@@ -2625,13 +2664,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
             TrainingJobDefinition as described in
             https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_hyper_parameter_tuning_job
         """
+        if hpo_resource_config is not None:
+            resource_config_map = {"HyperParameterTuningResourceConfig": hpo_resource_config}
+        else:
+            resource_config_map = {"ResourceConfig": resource_config}
 
         training_job_definition = {
             "StaticHyperParameters": static_hyperparameters,
             "RoleArn": role,
             "OutputDataConfig": output_config,
-            "ResourceConfig": resource_config,
             "StoppingCondition": stop_condition,
+            **resource_config_map,
         }
 
         algorithm_spec = {"TrainingInputMode": input_mode}

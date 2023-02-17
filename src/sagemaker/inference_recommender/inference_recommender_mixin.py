@@ -464,10 +464,12 @@ class InferenceRecommenderMixin:
         """Bundle right_size() parameters into a resource limit for Advanced job"""
         if not max_tests and not max_parallel_tests:
             return None
-        return {
-            "MaxNumberOfTests": max_tests,
-            "MaxParallelOfTests": max_parallel_tests,
-        }
+        resource_limit = {}
+        if max_tests:
+            resource_limit["MaxNumberOfTests"] = max_tests
+        if max_parallel_tests:
+            resource_limit["MaxParallelOfTests"] = max_parallel_tests
+        return resource_limit
 
     def _convert_to_stopping_conditions_json(
         self, max_invocations: int, model_latency_thresholds: List[ModelLatencyThreshold]
@@ -475,7 +477,11 @@ class InferenceRecommenderMixin:
         """Bundle right_size() parameters into stopping conditions for Advanced job"""
         if not max_invocations and not model_latency_thresholds:
             return None
-        return {
-            "MaxInvocations": max_invocations,
-            "ModelLatencyThresholds": [threshold.to_json for threshold in model_latency_thresholds],
-        }
+        stopping_conditions = {}
+        if max_invocations:
+            stopping_conditions["MaxInvocations"] = max_invocations
+        if model_latency_thresholds:
+            stopping_conditions["ModelLatencyThresholds"] = [
+                threshold.to_json for threshold in model_latency_thresholds
+            ]
+        return stopping_conditions

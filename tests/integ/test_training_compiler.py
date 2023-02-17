@@ -150,7 +150,7 @@ def test_pytorch(
     """
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         hf = PyTorch(
-            py_version="py38",
+            py_version="py39",
             source_dir=os.path.join(DATA_DIR, "huggingface_byoc"),
             entry_point="run_glue.py",
             role="SageMakerRole",
@@ -216,7 +216,10 @@ def test_huggingface_tensorflow(
 
 @pytest.mark.release
 def test_tensorflow(
-    sagemaker_session, gpu_instance_type, tensorflow_training_latest_version, imagenet_val_set
+    sagemaker_session,
+    gpu_instance_type,
+    tensorflow_training_latest_version,
+    imagenet_val_set,
 ):
     """
     Test the TensorFlow estimator
