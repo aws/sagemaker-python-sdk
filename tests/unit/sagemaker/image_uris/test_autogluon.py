@@ -56,7 +56,9 @@ VERSIONS = [
     "0.5",
     "0.6.1",
     "0.6",
+    "0.6.2",
 ]
+
 SCOPES = ["training", "inference"]
 PROCESSORS = ["cpu", "gpu"]
 

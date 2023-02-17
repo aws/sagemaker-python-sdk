@@ -474,6 +474,37 @@ def data_config_facets_not_included_pred_labels(
     )
 
 
+@pytest.fixture
+def data_config_pred_labels(
+    sagemaker_session,
+    pred_data_path,
+    data_path,
+    headers,
+    pred_label_headers,
+):
+    test_run = utils.unique_name_from_base("test_run")
+    output_path = "s3://{}/{}/{}".format(
+        sagemaker_session.default_bucket(), "linear_learner_analysis_result", test_run
+    )
+    pred_label_data_s3_uri = "s3://{}/{}/{}/{}".format(
+        sagemaker_session.default_bucket(),
+        "linear_learner_analysis_resources",
+        test_run,
+        "predicted_labels.csv",
+    )
+    _upload_dataset(pred_data_path, pred_label_data_s3_uri, sagemaker_session)
+    return DataConfig(
+        s3_data_input_path=data_path,
+        s3_output_path=output_path,
+        label="Label",
+        headers=headers,
+        dataset_type="text/csv",
+        predicted_label_dataset_uri=pred_label_data_s3_uri,
+        predicted_label_headers=pred_label_headers,
+        predicted_label="PredictedLabel",
+    )
+
+
 @pytest.fixture(scope="module")
 def data_bias_config():
     return BiasConfig(
@@ -690,6 +721,39 @@ def test_post_training_bias_excluded_columns(
             <= 1.0
         )
         check_analysis_config(data_config_excluded_columns, sagemaker_session, "post_training_bias")
+
+
+def test_post_training_bias_predicted_labels(
+    clarify_processor,
+    data_config_pred_labels,
+    data_bias_config,
+    model_predicted_label_config,
+    sagemaker_session,
+):
+    model_config = None
+    with timeout.timeout(minutes=CLARIFY_DEFAULT_TIMEOUT_MINUTES):
+        clarify_processor.run_post_training_bias(
+            data_config_pred_labels,
+            data_bias_config,
+            model_config,
+            model_predicted_label_config,
+            job_name=utils.unique_name_from_base("clarify-posttraining-bias-pred-labels"),
+            wait=True,
+        )
+        analysis_result_json = s3.S3Downloader.read_file(
+            data_config_pred_labels.s3_output_path + "/analysis.json",
+            sagemaker_session,
+        )
+        analysis_result = json.loads(analysis_result_json)
+        assert (
+            math.fabs(
+                analysis_result["post_training_bias_metrics"]["facets"]["F1"][0]["metrics"][0][
+                    "value"
+                ]
+            )
+            <= 1.0
+        )
+        check_analysis_config(data_config_pred_labels, sagemaker_session, "post_training_bias")
 
 
 def test_shap(clarify_processor, data_config, model_config, shap_config, sagemaker_session):
