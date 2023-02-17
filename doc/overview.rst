@@ -1578,6 +1578,7 @@ A few important notes:
 - If you are using S3 data as input, it is pulled from S3 to your local environment. Ensure you have sufficient space to store the data locally.
 - If you run into problems it often due to different Docker containers conflicting. Killing these containers and re-running often solves your problems.
 - Local Mode requires Docker Compose and `nvidia-docker2 <https://github.com/NVIDIA/nvidia-docker>`__ for ``local_gpu``.
+- Set `USE_SHORT_LIVED_CREDENTIALS=1` if running on EC2 and you would like to use the session credentials instead of EC2 Metadata Service credentials.
 
 .. warning::
 
