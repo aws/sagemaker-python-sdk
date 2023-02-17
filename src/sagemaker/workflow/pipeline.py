@@ -26,6 +26,7 @@ from botocore.exceptions import ClientError
 from sagemaker import s3
 from sagemaker._studio import _append_project_tags
 from sagemaker.session import Session
+from sagemaker.utils import retry_with_backoff
 from sagemaker.workflow.callback_step import CallbackOutput, CallbackStep
 from sagemaker.workflow.lambda_step import LambdaOutput, LambdaStep
 from sagemaker.workflow.entities import (
@@ -306,7 +307,12 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             update_args(kwargs, PipelineParameters=parameters)
             return self.sagemaker_session.sagemaker_client.start_pipeline_execution(**kwargs)
         update_args(kwargs, PipelineParameters=format_start_parameters(parameters))
-        response = self.sagemaker_session.sagemaker_client.start_pipeline_execution(**kwargs)
+
+        # retry on AccessDeniedException to cover case of tag propagation delay
+        response = retry_with_backoff(
+            lambda: self.sagemaker_session.sagemaker_client.start_pipeline_execution(**kwargs),
+            botocore_client_error_code="AccessDeniedException",
+        )
         return _PipelineExecution(
             arn=response["PipelineExecutionArn"],
             sagemaker_session=self.sagemaker_session,

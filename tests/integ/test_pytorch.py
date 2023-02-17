@@ -20,7 +20,7 @@ from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.pytorch.processing import PyTorchProcessor
 from sagemaker.serverless import ServerlessInferenceConfig
-from sagemaker.utils import sagemaker_timestamp
+from sagemaker.utils import unique_name_from_base
 from tests.integ import (
     test_region,
     DATA_DIR,
@@ -130,7 +130,7 @@ def test_framework_processing_job_with_deps(
 def test_fit_deploy(
     pytorch_training_job_with_latest_infernce_version, sagemaker_session, cpu_instance_type
 ):
-    endpoint_name = "test-pytorch-sync-fit-attach-deploy{}".format(sagemaker_timestamp())
+    endpoint_name = unique_name_from_base("test-pytorch-sync-fit-attach-deploy")
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         estimator = PyTorch.attach(
             pytorch_training_job_with_latest_infernce_version, sagemaker_session=sagemaker_session
@@ -180,7 +180,7 @@ def test_deploy_model(
     pytorch_inference_latest_version,
     pytorch_inference_latest_py_version,
 ):
-    endpoint_name = "test-pytorch-deploy-model-{}".format(sagemaker_timestamp())
+    endpoint_name = unique_name_from_base("test-pytorch-deploy-model")
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         desc = sagemaker_session.sagemaker_client.describe_training_job(
@@ -210,7 +210,7 @@ def test_deploy_packed_model_with_entry_point_name(
     pytorch_inference_latest_version,
     pytorch_inference_latest_py_version,
 ):
-    endpoint_name = "test-pytorch-deploy-model-{}".format(sagemaker_timestamp())
+    endpoint_name = unique_name_from_base("test-pytorch-deploy-model")
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         model_data = sagemaker_session.upload_data(path=PACKED_MODEL)
@@ -240,7 +240,7 @@ def test_deploy_model_with_accelerator(
     pytorch_eia_latest_version,
     pytorch_eia_latest_py_version,
 ):
-    endpoint_name = "test-pytorch-deploy-eia-{}".format(sagemaker_timestamp())
+    endpoint_name = unique_name_from_base("test-pytorch-deploy-eia")
     model_data = sagemaker_session.upload_data(path=EIA_MODEL)
     pytorch = PyTorchModel(
         model_data,
@@ -272,7 +272,7 @@ def test_deploy_model_with_serverless_inference_config(
     pytorch_inference_latest_version,
     pytorch_inference_latest_py_version,
 ):
-    endpoint_name = "test-pytorch-deploy-model-serverless-{}".format(sagemaker_timestamp())
+    endpoint_name = unique_name_from_base("test-pytorch-deploy-model-serverless")
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         desc = sagemaker_session.sagemaker_client.describe_training_job(

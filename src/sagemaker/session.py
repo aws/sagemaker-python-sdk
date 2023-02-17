@@ -3224,7 +3224,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         def submit(request):
             if model_package_group_name is not None:
                 _create_resource(
-                    self.sagemaker_client.create_model_package_group(
+                    lambda: self.sagemaker_client.create_model_package_group(
                         ModelPackageGroupName=request["ModelPackageGroupName"]
                     )
                 )
@@ -5448,8 +5448,9 @@ def _deployment_entity_exists(describe_fn):
 
 
 def _create_resource(create_fn):
-    """Call create function and while doing so accepts/passes the resource already exists exception.
-    Throws an exception if any exception other than resource already exists.
+    """Call create function and accepts/pass when resource already exists.
+
+    This is a helper function to use an existing resource if found when creating.
 
     Args:
         create_fn: Create resource function.
@@ -5823,9 +5824,9 @@ def _wait_until_training_done(callable_fn, desc, poll=5):
             job_desc, finished = callable_fn(job_desc)
         except botocore.exceptions.ClientError as err:
             # For initial 5 mins we accept/pass AccessDeniedException.
-            # The reason is to await tag propagation to avoid false AccessDenied claims for an access
-            # policy based on resource tags, The caveat here is for true AccessDenied cases the routine
-            # will fail after 5 mins
+            # The reason is to await tag propagation to avoid false AccessDenied claims for an
+            # access policy based on resource tags, The caveat here is for true AccessDenied
+            # cases the routine will fail after 5 mins
             if err.response["Error"]["Code"] == "AccessDeniedException" and elapsed_time <= 300:
                 LOGGER.warning(
                     "Received AccessDeniedException. This could mean the IAM role does not "
@@ -5834,8 +5835,7 @@ def _wait_until_training_done(callable_fn, desc, poll=5):
                     "continuing to wait for tag propagation.."
                 )
                 continue
-            else:
-                raise err
+            raise err
     return job_desc
 
 
@@ -5861,8 +5861,7 @@ def _wait_until(callable_fn, poll=5):
                     "continuing to wait for tag propagation.."
                 )
                 continue
-            else:
-                raise err
+            raise err
     return result
 
 

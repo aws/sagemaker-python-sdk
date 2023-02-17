@@ -3432,8 +3432,8 @@ def test_wait_for_inference_recommendations_job_completed(sleep, sm_session_infe
         4
         == sm_session_inference_recommender.sagemaker_client.describe_inference_recommendations_job.call_count
     )
-    assert 2 == sleep.call_count
-    sleep.assert_has_calls([call(120), call(120)])
+    assert 3 == sleep.call_count
+    sleep.assert_has_calls([call(120), call(120), call(120)])
 
 
 def test_wait_for_inference_recommendations_job_failed(sagemaker_session):
