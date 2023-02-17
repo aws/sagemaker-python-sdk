@@ -973,7 +973,7 @@ class DatasetBuilder:
             database (str): The database to run the query against
         """
         query_string = (
-            f"DROP TABLE {temp_table_name}"
+            f"DROP TABLE `{_DEFAULT_DATABASE}.{temp_table_name}`"
         )
 
         try:
