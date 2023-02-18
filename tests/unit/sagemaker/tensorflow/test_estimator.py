@@ -42,6 +42,7 @@ IMAGE_URI_FORMAT_STRING = (
     "520713654638.dkr.ecr.{}.amazonaws.com/sagemaker-tensorflow-scriptmode:{}-cpu-{}"
 )
 DISTRIBUTION_PS_ENABLED = {"parameter_server": {"enabled": True}}
+DISTRIBUTION_MWMS_ENABLED = {"multi_worker_mirrored_strategy": {"enabled": True}}
 DISTRIBUTION_MPI_ENABLED = {
     "mpi": {"enabled": True, "custom_mpi_options": "options", "processes_per_host": 2}
 }
@@ -519,6 +520,99 @@ def test_fit_mpi(time, strftime, sagemaker_session):
     assert actual_train_args == expected_train_args
 
 
+@patch("time.strftime", return_value=TIMESTAMP)
+@patch("time.time", return_value=TIME)
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+def test_fit_mwms(
+    time, strftime, sagemaker_session, tensorflow_training_version, tensorflow_training_py_version
+):
+    if version.Version(tensorflow_training_version) < version.Version("2.11"):
+        pytest.skip("Multi Worker Mirrored Strategy was added in TF 2.11")
+    framework_version = tensorflow_training_version
+    py_version = tensorflow_training_py_version
+    tf = TensorFlow(
+        entry_point=SCRIPT_FILE,
+        framework_version=framework_version,
+        py_version=py_version,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_type=INSTANCE_TYPE,
+        instance_count=1,
+        source_dir=DATA_DIR,
+        distribution=DISTRIBUTION_MWMS_ENABLED,
+    )
+
+    inputs = "s3://mybucket/train"
+    tf.fit(inputs=inputs)
+
+    call_names = [c[0] for c in sagemaker_session.method_calls]
+    assert call_names == ["train", "logs_for_job"]
+
+    expected_train_args = _create_train_job(framework_version, py_version=py_version)
+    expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
+    expected_train_args[
+        "image_uri"
+    ] = f"763104351884.dkr.ecr.{REGION}.amazonaws.com/tensorflow-training:{framework_version}-cpu-{py_version}"
+    expected_train_args["job_name"] = f"tensorflow-training-{TIMESTAMP}"
+    expected_train_args["hyperparameters"][TensorFlow.LAUNCH_MWMS_ENV_NAME] = json.dumps(True)
+    expected_train_args["hyperparameters"]["sagemaker_job_name"] = json.dumps(
+        expected_train_args["job_name"]
+    )
+    expected_train_args["hyperparameters"]["sagemaker_submit_directory"] = json.dumps(
+        f"s3://{BUCKET_NAME}/{expected_train_args['job_name']}/source/sourcedir.tar.gz"
+    )
+    expected_train_args["hyperparameters"]["model_dir"] = json.dumps(
+        f"s3://{BUCKET_NAME}/{expected_train_args['job_name']}/model"
+    )
+    expected_train_args["enable_sagemaker_metrics"] = True
+
+    actual_train_args = sagemaker_session.method_calls[0][2]
+    assert actual_train_args == expected_train_args
+
+
+@patch("time.strftime", return_value=TIMESTAMP)
+@patch("time.time", return_value=TIME)
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+def test_fit_mwms_unsupported(time, strftime, sagemaker_session):
+    with pytest.raises(ValueError) as error:
+        tf = TensorFlow(
+            entry_point=SCRIPT_FILE,
+            framework_version="2.8",
+            py_version="py39",
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            instance_type=INSTANCE_TYPE,
+            instance_count=1,
+            source_dir=DATA_DIR,
+            distribution=DISTRIBUTION_MWMS_ENABLED,
+        )
+        inputs = "s3://mybucket/train"
+        tf.fit(inputs=inputs)
+
+    assert "only supported from" in str(error)
+    assert "but received" in str(error)
+
+    with pytest.raises(ValueError) as error:
+        tf = TensorFlow(
+            entry_point=SCRIPT_FILE,
+            framework_version="2.10",
+            py_version="py39",
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            instance_type="ml.p4d.24xlarge",
+            instance_count=4,
+            source_dir=DATA_DIR,
+            distribution={
+                **DISTRIBUTION_MWMS_ENABLED,
+                **{"smdistributed": {"dataparallel": {"enabled": True}}},
+            },
+        )
+        inputs = "s3://mybucket/train"
+        tf.fit(inputs=inputs)
+    assert "is currently not supported" in str(error)
+    assert "following distribution strategies" in str(error)
+
+
 def test_hyperparameters_no_model_dir(
     sagemaker_session, tensorflow_training_version, tensorflow_training_py_version
 ):
@@ -552,10 +646,7 @@ def test_tf_heterogeneous_cluster_distribution_config(
         framework_version=tensorflow_training_version,
         py_version=tensorflow_training_py_version,
         instance_groups=[training_group],
-        distribution={
-            "mpi": {"enabled": True},
-            "instance_groups": [training_group],
-        },
+        distribution={"mpi": {"enabled": True}, "instance_groups": [training_group]},
     )
     assert tf.distribution == expected_return
 
