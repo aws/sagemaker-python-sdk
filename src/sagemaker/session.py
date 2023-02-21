@@ -41,7 +41,6 @@ from sagemaker.config.config_schema import (
     ENDPOINT_CONFIG,
     FEATURE_GROUP,
     KEY,
-    HYPER_PARAMETER_TUNING_JOB,
     SAGEMAKER,
     MODEL,
     MONITORING_SCHEDULE,
@@ -219,7 +218,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if sagemaker_config:
             self.sagemaker_config = sagemaker_config
         else:
-            self.sagemaker_config = SageMakerConfig(s3_resource=self.boto_session)
+            self.sagemaker_config = SageMakerConfig(s3_resource=self.boto_session.resource("s3"))
 
     @property
     def boto_region_name(self):
@@ -2642,9 +2641,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
             tune_request["WarmStartConfig"] = warm_start_config
 
         tags = _append_project_tags(tags)
-        tags = self._append_sagemaker_config_tags(
-            tags, "{}.{}.{}".format(SAGEMAKER, HYPER_PARAMETER_TUNING_JOB, TAGS)
-        )
         if tags is not None:
             tune_request["Tags"] = tags
 
@@ -2747,9 +2743,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
             tune_request["WarmStartConfig"] = warm_start_config
 
         tags = _append_project_tags(tags)
-        tags = self._append_sagemaker_config_tags(
-            tags, "{}.{}.{}".format(SAGEMAKER, HYPER_PARAMETER_TUNING_JOB, TAGS)
-        )
         if tags is not None:
             tune_request["Tags"] = tags
 

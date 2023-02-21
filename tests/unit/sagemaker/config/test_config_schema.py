@@ -38,7 +38,7 @@ def test_invalid_schema_version():
 
 
 def test_valid_config_with_all_the_features(
-    base_config_with_schema, valid_config_with_all_the_scopes
+        base_config_with_schema, valid_config_with_all_the_scopes
 ):
     _validate_config(base_config_with_schema, valid_config_with_all_the_scopes)
 
@@ -135,5 +135,33 @@ def test_invalid_feature_group_schema(base_config_with_schema):
     }
     config = base_config_with_schema
     config["SageMaker"] = {"FeatureGroup": feature_group_config}
+    with pytest.raises(exceptions.ValidationError):
+        validate(config, SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA)
+
+
+def test_valid_custom_parameters_schema(base_config_with_schema):
+    config = base_config_with_schema
+    config["CustomParameters"] = {
+        "custom_key": "custom_value",
+        "CustomKey": "CustomValue",
+        "custom key": "custom value",
+        "custom-key": "custom-value",
+        "custom0123 key0123": "custom0123 value0123",
+    }
+    validate(config, SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA)
+
+
+def test_invalid_custom_parameters_schema(base_config_with_schema):
+    config = base_config_with_schema
+
+    config["CustomParameters"] = {"^&": "custom_value"}
+    with pytest.raises(exceptions.ValidationError):
+        validate(config, SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA)
+
+    config["CustomParameters"] = {"custom_key": 476}
+    with pytest.raises(exceptions.ValidationError):
+        validate(config, SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA)
+
+    config["CustomParameters"] = {"custom_key": {"custom_key": "custom_value"}}
     with pytest.raises(exceptions.ValidationError):
         validate(config, SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA)

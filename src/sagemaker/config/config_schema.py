@@ -70,9 +70,11 @@ MONITORING_SCHEDULE = "MonitoringSchedule"
 ENDPOINT_CONFIG = "EndpointConfig"
 AUTO_ML = "AutoML"
 COMPILATION_JOB = "CompilationJob"
+CUSTOM_PARAMETERS = "CustomParameters"
 PIPELINE = "Pipeline"
 TRANSFORM_JOB = "TransformJob"
 PROPERTIES = "properties"
+PATTERN_PROPERTIES = "patternProperties"
 TYPE = "type"
 OBJECT = "object"
 ADDITIONAL_PROPERTIES = "additionalProperties"
@@ -103,7 +105,6 @@ PATH_V1_PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION = _simple_path(
 PATH_V1_TRAINING_JOB_INTER_CONTAINER_ENCRYPTION = _simple_path(
     SAGEMAKER, TRAINING_JOB, ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION
 )
-
 
 SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -230,6 +231,13 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
             # So adding an enum as a validator.
             "enum": ["1.0"],
             "description": "The schema version of the document.",
+        },
+        CUSTOM_PARAMETERS: {
+            TYPE: OBJECT,
+            ADDITIONAL_PROPERTIES: False,
+            PATTERN_PROPERTIES: {
+                "^[\w\s\d_.:/=+\-@]+$": {TYPE: "string"},
+            }
         },
         SAGEMAKER: {
             TYPE: OBJECT,
