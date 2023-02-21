@@ -909,6 +909,13 @@ def test_algorithm_enable_network_isolation_with_product_id(session):
 
 @patch("sagemaker.Session")
 def test_algorithm_encrypt_inter_container_traffic(session):
+    session.resolve_value_from_config = Mock(
+        name="resolve_value_from_config",
+        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
+        if direct_input is not None
+        else default_value,
+    )
+
     response = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     response["encrypt_inter_container_traffic"] = True
     session.sagemaker_client.describe_algorithm = Mock(return_value=response)

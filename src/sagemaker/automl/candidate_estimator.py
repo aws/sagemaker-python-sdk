@@ -16,6 +16,7 @@ from __future__ import absolute_import
 from six import string_types
 
 from sagemaker import Session
+from sagemaker.config.config_schema import PATH_V1_TRAINING_JOB_INTER_CONTAINER_ENCRYPTION
 from sagemaker.job import _Job
 from sagemaker.utils import name_from_base
 
@@ -72,7 +73,8 @@ class CandidateEstimator(object):
         inputs,
         candidate_name=None,
         volume_kms_key=None,
-        encrypt_inter_container_traffic=False,
+        # default of False for training job, checked inside function
+        encrypt_inter_container_traffic=None,
         vpc_config=None,
         wait=True,
         logs=True,
@@ -87,7 +89,8 @@ class CandidateEstimator(object):
             volume_kms_key (str): The KMS key id to encrypt data on the storage volume attached to
                 the ML compute instance(s).
             encrypt_inter_container_traffic (bool): To encrypt all communications between ML compute
-                instances in distributed training. Default: False.
+                instances in distributed training. If not passed, will be fetched from
+                sagemaker_config. Default: False.
             vpc_config (dict): Specifies a VPC that jobs and hosted models have access to.
                 Control access to and from training and model containers by configuring the VPC
             wait (bool): Whether the call should wait until all jobs completes (default: True).
@@ -131,12 +134,21 @@ class CandidateEstimator(object):
                 base_name = "sagemaker-automl-training-rerun"
                 step_name = name_from_base(base_name)
                 step["name"] = step_name
+
+                # Check training_job config not auto_ml_job config because this function calls
+                # training job API
+                _encrypt_inter_container_traffic = self.sagemaker_session.resolve_value_from_config(
+                    direct_input=encrypt_inter_container_traffic,
+                    config_path=PATH_V1_TRAINING_JOB_INTER_CONTAINER_ENCRYPTION,
+                    default_value=False,
+                )
+
                 train_args = self._get_train_args(
                     desc,
                     channels,
                     step_name,
                     volume_kms_key,
-                    encrypt_inter_container_traffic,
+                    _encrypt_inter_container_traffic,
                     vpc_config,
                 )
                 self.sagemaker_session.train(**train_args)

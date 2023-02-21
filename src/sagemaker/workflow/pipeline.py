@@ -25,6 +25,11 @@ from botocore.exceptions import ClientError
 
 from sagemaker import s3
 from sagemaker._studio import _append_project_tags
+from sagemaker.config.config_schema import (
+    SAGEMAKER,
+    PIPELINE,
+    TAGS,
+)
 from sagemaker.session import Session
 from sagemaker.utils import retry_with_backoff
 from sagemaker.workflow.callback_step import CallbackOutput, CallbackStep
@@ -132,6 +137,9 @@ class Pipeline(Entity):
                 logger.warning("Pipeline parallelism config is not supported in the local mode.")
             return self.sagemaker_session.sagemaker_client.create_pipeline(self, description)
         tags = _append_project_tags(tags)
+        tags = self.sagemaker_session._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, PIPELINE, TAGS)
+        )
         kwargs = self._create_args(role_arn, description, parallelism_config)
         update_args(
             kwargs,

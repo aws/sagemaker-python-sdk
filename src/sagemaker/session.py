@@ -13,6 +13,7 @@
 """Placeholder docstring"""
 from __future__ import absolute_import, print_function
 
+import inspect
 import json
 import logging
 import os
@@ -32,7 +33,27 @@ import six
 
 import sagemaker.logs
 from sagemaker import vpc_utils
-
+from sagemaker.config.config import SageMakerConfig
+from sagemaker.config.config_schema import (
+    AUTO_ML,
+    COMPILATION_JOB,
+    EDGE_PACKAGING_JOB,
+    ENDPOINT_CONFIG,
+    FEATURE_GROUP,
+    KEY,
+    HYPER_PARAMETER_TUNING_JOB,
+    SAGEMAKER,
+    MODEL,
+    MONITORING_SCHEDULE,
+    PROCESSING_JOB,
+    TAGS,
+    TRAINING_JOB,
+    TRANSFORM_JOB,
+    PATH_V1_TRAINING_JOB_INTER_CONTAINER_ENCRYPTION,
+    PATH_V1_PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION,
+    PATH_V1_MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION,
+    PATH_V1_AUTO_ML_INTER_CONTAINER_ENCRYPTION,
+)
 from sagemaker._studio import _append_project_tags
 from sagemaker.deprecations import deprecated_class
 from sagemaker.inputs import ShuffleConfig, TrainingInput, BatchDataCaptureConfig
@@ -43,6 +64,9 @@ from sagemaker.utils import (
     secondary_training_status_message,
     sts_regional_endpoint,
     retries,
+    get_config_value,
+    get_nested_value,
+    set_nested_value,
 )
 from sagemaker import exceptions
 from sagemaker.session_settings import SessionSettings
@@ -50,7 +74,6 @@ from sagemaker.session_settings import SessionSettings
 LOGGER = logging.getLogger("sagemaker")
 
 NOTEBOOK_METADATA_FILE = "/opt/ml/metadata/resource-metadata.json"
-
 _STATUS_CODE_TABLE = {
     "COMPLETED": "Completed",
     "INPROGRESS": "InProgress",
@@ -93,6 +116,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         default_bucket=None,
         settings=SessionSettings(),
         sagemaker_metrics_client=None,
+        sagemaker_config: SageMakerConfig = None,
     ):
         """Initialize a SageMaker ``Session``.
 
@@ -139,6 +163,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             sagemaker_runtime_client=sagemaker_runtime_client,
             sagemaker_featurestore_runtime_client=sagemaker_featurestore_runtime_client,
             sagemaker_metrics_client=sagemaker_metrics_client,
+            sagemaker_config=sagemaker_config,
         )
 
     def _initialize(
@@ -148,6 +173,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         sagemaker_runtime_client,
         sagemaker_featurestore_runtime_client,
         sagemaker_metrics_client,
+        sagemaker_config: SageMakerConfig = None,
     ):
         """Initialize this SageMaker Session.
 
@@ -189,6 +215,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
         prepend_user_agent(self.sagemaker_metrics_client)
 
         self.local_mode = False
+
+        if sagemaker_config:
+            self.sagemaker_config = sagemaker_config
+        else:
+            self.sagemaker_config = SageMakerConfig(s3_resource=self.boto_session)
 
     @property
     def boto_region_name(self):
@@ -473,6 +504,216 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 else:
                     raise
 
+    def _get_sagemaker_config_value(self, config_path: str):
+        """returns the value of the config at the path provided"""
+        return get_config_value(config_path, self.sagemaker_config.config)
+
+    def _print_message_sagemaker_config_used(self, config_value, config_path):
+        """Informs the SDK user that a config value was substituted in automatically"""
+        print(
+            "[Sagemaker Config] config value {} at config path {}".format(
+                config_value, config_path
+            ),
+            "was automatically applied"
+        )
+
+    def _print_message_sagemaker_config_present_but_not_used(
+        self, direct_input, config_value, config_path
+    ):
+        """Informs the SDK user that a config value was not substituted in automatically despite
+        existing"""
+        print(
+            "[Sagemaker Config] value {} was specified,".format(direct_input),
+            "so config value {} at config path {} was not applied".format(
+                config_value, config_path
+            )
+        )
+
+    def resolve_value_from_config(
+        self, direct_input=None, config_path: str = None, default_value=None
+    ):
+        """Makes a decision of which value is the right value for the caller to use while
+        incorporating info from the sagemaker config.
+
+        Uses this order of prioritization:
+        (1) direct_input, (2) config value, (3) default_value, (4) None
+
+        Args:
+            direct_input: the value that the caller of this method started with. Usually this is an
+                          input to the caller's class or method
+            config_path (str): a string denoting the path to use to lookup the config value in the
+                               sagemaker config
+            default_value: the value to use if not present elsewhere
+
+        Returns:
+            The value that should be used by the caller
+        """
+        config_value = self._get_sagemaker_config_value(config_path)
+
+        if direct_input is not None:
+            if config_value is not None:
+                self._print_message_sagemaker_config_present_but_not_used(
+                    direct_input, config_value, config_path
+                )
+            # No print statement if there was nothing in the config, because nothing is
+            # being overridden
+            return direct_input
+
+        if config_value is not None:
+            self._print_message_sagemaker_config_used(config_value, config_path)
+            return config_value
+
+        return default_value
+
+    def resolve_class_attribute_from_config(
+        self, clazz, instance, attribute: str, config_path: str, default_value=None
+    ):
+        """Takes an instance of a class and, if not already set, sets the instance's attribute to a
+        value fetched from the sagemaker_config or the default_value.
+
+        Uses this order of prioritization to determine what the value of the attribute should be:
+        (1) current value of attribute, (2) config value, (3) default_value, (4) does not set it
+
+        Args:
+            clazz: Class of 'instance'. Used to generate a new instance if the instance is None.
+                   It is advised for the constructor of a given Class to set default values to
+                   None; otherwise the constructor's non-None default value will be used instead
+                   of any config value
+            instance (str): instance of the Class 'clazz' that has an attribute
+                            of 'attribute' to set
+            attribute: attribute of the instance to set if not already set
+            config_path (str): a string denoting the path to use to lookup the config value in the
+                               sagemaker config
+            default_value: the value to use if not present elsewhere
+
+        Returns:
+            The updated class instance that should be used by the caller instead of the
+            'instance' parameter that was passed in.
+        """
+        config_value = self._get_sagemaker_config_value(config_path)
+
+        if config_value is None and default_value is None:
+            # return instance unmodified. Could be None or populated
+            return instance
+
+        if instance is None:
+            if clazz is None or not inspect.isclass(clazz):
+                return instance
+            # construct a new instance if the instance does not exist
+            instance = clazz()
+
+        if not hasattr(instance, attribute):
+            raise TypeError(
+                "Unexpected structure of object.",
+                "Expected attribute {} to be present inside instance {} of class {}".format(
+                    attribute, instance, clazz
+                ),
+            )
+
+        current_value = getattr(instance, attribute)
+        if current_value is None:
+            # only set value if object does not already have a value set
+            if config_value is not None:
+                setattr(instance, attribute, config_value)
+                self._print_message_sagemaker_config_used(config_value, config_path)
+            elif default_value is not None:
+                setattr(instance, attribute, default_value)
+        elif current_value is not None and config_value is not None:
+            self._print_message_sagemaker_config_present_but_not_used(
+                current_value, config_value, config_path
+            )
+
+        return instance
+
+    def resolve_nested_dict_value_from_config(
+        self,
+        dictionary: dict,
+        nested_keys: list[str],
+        config_path: str,
+        default_value: object = None,
+    ):
+        """Takes a dictionary and, if not already set, sets the value for the provided list of
+        nested keys to the value fetched from the sagemaker_config or the default_value.
+
+        Uses this order of prioritization to determine what the value of the attribute should be:
+        (1) current value of nested key, (2) config value, (3) default_value, (4) does not set it
+
+        Args:
+            dictionary: dict to update
+            nested_keys: path of keys at which the value should be checked (and set if needed)
+            config_path (str): a string denoting the path to use to lookup the config value in the
+                               sagemaker config
+            default_value: the value to use if not present elsewhere
+
+        Returns:
+            The updated dictionary that should be used by the caller instead of the
+            'dictionary' parameter that was passed in.
+        """
+        config_value = self._get_sagemaker_config_value(config_path)
+
+        if config_value is None and default_value is None:
+            # if there is nothing to set, return early. And there is no need to traverse through
+            # the dictionary or add nested dicts to it
+            return dictionary
+
+        try:
+            current_nested_value = get_nested_value(dictionary, nested_keys)
+        except ValueError as e:
+            logging.error("Failed to check dictionary for applying sagemaker config: %s", e)
+            return dictionary
+
+        if current_nested_value is None:
+            # only set value if not already set
+            if config_value is not None:
+                dictionary = set_nested_value(dictionary, nested_keys, config_value)
+                self._print_message_sagemaker_config_used(config_value, config_path)
+            elif default_value is not None:
+                dictionary = set_nested_value(dictionary, nested_keys, default_value)
+        elif current_nested_value is not None and config_value is not None:
+            self._print_message_sagemaker_config_present_but_not_used(
+                current_nested_value, config_value, config_path
+            )
+
+        return dictionary
+
+    def _append_sagemaker_config_tags(self, tags: list, config_path_to_tags: str):
+        """Appends tags specified in the sagemaker_config to the given list of tags.
+
+        To minimize the chance of duplicate tags being applied, this is intended
+        to be used right before calls to sagemaker_client (rather
+        than during initialization of classes like EstimatorBase)
+
+        Args:
+            tags: the list of tags to append to.
+            config_path_to_tags: the path to look up in the config
+
+        Returns:
+            A potentially extended list of tags.
+        """
+        config_tags = self._get_sagemaker_config_value(config_path_to_tags)
+
+        if config_tags is None or len(config_tags) == 0:
+            return tags
+
+        all_tags = tags or []
+        for config_tag in config_tags:
+            config_tag_key = config_tag[KEY]
+            if not any(tag.get("Key", None) == config_tag_key for tag in all_tags):
+                # This check prevents new tags with duplicate keys from being added
+                # (to prevent API failure and/or overwriting of tags). If there is a conflict,
+                # the user-provided tag should take precedence over the config-provided tag.
+                # Note: this does not check user-provided tags for conflicts with other
+                # user-provided tags.
+                all_tags.append(config_tag)
+
+        print(
+            "Appended tags from sagemaker_config to input.\n\texisting tags: {},".format(tags)
+            + "\n\ttags provided via sagemaker_config: {},".format(config_tags)
+            + "\n\tcombined tags: {}".format(all_tags)
+        )
+
+        return all_tags
+
     def train(  # noqa: C901
         self,
         input_mode,
@@ -490,7 +731,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         image_uri=None,
         training_image_config=None,
         algorithm_arn=None,
-        encrypt_inter_container_traffic=False,
+        encrypt_inter_container_traffic=None,
         use_spot_instances=False,
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
@@ -615,6 +856,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
             str: ARN of the training job, if it is created.
         """
         tags = _append_project_tags(tags)
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, TRAINING_JOB, TAGS)
+        )
+
+        _encrypt_inter_container_traffic = self.resolve_value_from_config(
+            direct_input=encrypt_inter_container_traffic,
+            config_path=PATH_V1_TRAINING_JOB_INTER_CONTAINER_ENCRYPTION,
+            default_value=False,
+        )
+
         train_request = self._get_train_request(
             input_mode=input_mode,
             input_config=input_config,
@@ -631,7 +882,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             image_uri=image_uri,
             training_image_config=training_image_config,
             algorithm_arn=algorithm_arn,
-            encrypt_inter_container_traffic=encrypt_inter_container_traffic,
+            encrypt_inter_container_traffic=_encrypt_inter_container_traffic,
             use_spot_instances=use_spot_instances,
             checkpoint_s3_uri=checkpoint_s3_uri,
             checkpoint_local_path=checkpoint_local_path,
@@ -1002,6 +1253,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 * `TrialComponentDisplayName` is used for display in Studio.
         """
         tags = _append_project_tags(tags)
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, PROCESSING_JOB, TAGS)
+        )
+
+        network_config = self.resolve_nested_dict_value_from_config(
+            network_config,
+            ["EnableInterContainerTrafficEncryption"],
+            PATH_V1_PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION,
+        )
+
         process_request = self._get_process_request(
             inputs=inputs,
             output_config=output_config,
@@ -1248,12 +1509,20 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 "Environment"
             ] = environment
 
+        network_config = self.resolve_nested_dict_value_from_config(
+            network_config,
+            ["EnableInterContainerTrafficEncryption"],
+            PATH_V1_MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION,
+        )
         if network_config is not None:
             monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
                 "NetworkConfig"
             ] = network_config
 
         tags = _append_project_tags(tags)
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, MONITORING_SCHEDULE, TAGS)
+        )
         if tags is not None:
             monitoring_schedule_request["Tags"] = tags
 
@@ -1528,10 +1797,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
         existing_network_config = existing_desc["MonitoringScheduleConfig"][
             "MonitoringJobDefinition"
         ].get("NetworkConfig")
-        if network_config is not None or existing_network_config is not None:
+
+        _network_config = network_config or existing_network_config
+        _network_config = self.resolve_nested_dict_value_from_config(
+            _network_config,
+            ["EnableInterContainerTrafficEncryption"],
+            PATH_V1_MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION,
+        )
+        if _network_config is not None:
             monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
                 "NetworkConfig"
-            ] = (network_config or existing_network_config)
+            ] = _network_config
 
         LOGGER.info("Updating monitoring schedule with name: %s .", monitoring_schedule_name)
         LOGGER.debug(
@@ -1848,6 +2124,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 for an automatic one-click Autopilot model deployment.
                 Contains "AutoGenerateEndpointName" and "EndpointName"
         """
+
+        auto_ml_job_config = self.resolve_nested_dict_value_from_config(
+            auto_ml_job_config,
+            ["SecurityConfig", "EnableInterContainerTrafficEncryption"],
+            PATH_V1_AUTO_ML_INTER_CONTAINER_ENCRYPTION,
+        )
+
         auto_ml_job_request = self._get_auto_ml_request(
             input_config=input_config,
             output_config=output_config,
@@ -1927,6 +2210,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             auto_ml_job_request["ProblemType"] = problem_type
 
         tags = _append_project_tags(tags)
+        tags = self._append_sagemaker_config_tags(tags, "{}.{}.{}".format(SAGEMAKER, AUTO_ML, TAGS))
         if tags is not None:
             auto_ml_job_request["Tags"] = tags
 
@@ -2122,6 +2406,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         }
 
         tags = _append_project_tags(tags)
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, COMPILATION_JOB, TAGS)
+        )
         if tags is not None:
             compilation_job_request["Tags"] = tags
 
@@ -2162,6 +2449,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "CompilationJobName": compilation_job_name,
         }
 
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, EDGE_PACKAGING_JOB, TAGS)
+        )
         if tags is not None:
             edge_packaging_job_request["Tags"] = tags
         if resource_key is not None:
@@ -2352,6 +2642,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             tune_request["WarmStartConfig"] = warm_start_config
 
         tags = _append_project_tags(tags)
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, HYPER_PARAMETER_TUNING_JOB, TAGS)
+        )
         if tags is not None:
             tune_request["Tags"] = tags
 
@@ -2454,6 +2747,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             tune_request["WarmStartConfig"] = warm_start_config
 
         tags = _append_project_tags(tags)
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, HYPER_PARAMETER_TUNING_JOB, TAGS)
+        )
         if tags is not None:
             tune_request["Tags"] = tags
 
@@ -2903,6 +3199,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 specifies the configurations related to the batch data capture for the transform job
         """
         tags = _append_project_tags(tags)
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, TRANSFORM_JOB, TAGS)
+        )
+
         transform_request = self._get_transform_request(
             job_name=job_name,
             model_name=model_name,
@@ -3028,6 +3328,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             str: Name of the Amazon SageMaker ``Model`` created.
         """
         tags = _append_project_tags(tags)
+        tags = self._append_sagemaker_config_tags(tags, "{}.{}.{}".format(SAGEMAKER, MODEL, TAGS))
+
         create_model_request = self._create_model_request(
             name=name,
             role=role,
@@ -3359,6 +3661,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         }
 
         tags = _append_project_tags(tags)
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT_CONFIG, TAGS)
+        )
         if tags is not None:
             request["Tags"] = tags
 
@@ -3428,6 +3733,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             existing_endpoint_config_desc["EndpointConfigArn"]
         )
         request_tags = _append_project_tags(request_tags)
+        request_tags = self._append_sagemaker_config_tags(
+            request_tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT_CONFIG, TAGS)
+        )
         if request_tags:
             request["Tags"] = request_tags
 
@@ -3984,6 +4292,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
         config_options = {"EndpointConfigName": name, "ProductionVariants": production_variants}
         tags = _append_project_tags(tags)
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT_CONFIG, TAGS)
+        )
         if tags:
             config_options["Tags"] = tags
         if kms_key:
@@ -4426,6 +4737,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
             Response dict from service.
         """
         tags = _append_project_tags(tags)
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, FEATURE_GROUP, TAGS)
+        )
+
         kwargs = dict(
             FeatureGroupName=feature_group_name,
             RecordIdentifierFeatureName=record_identifier_name,

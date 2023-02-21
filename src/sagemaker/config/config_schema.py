@@ -19,6 +19,9 @@ ENABLE_NETWORK_ISOLATION = "EnableNetworkIsolation"
 VOLUME_KMS_KEY_ID = "VolumeKmsKeyId"
 KMS_KEY_ID = "KmsKeyId"
 ROLE_ARN = "RoleArn"
+TAGS = "Tags"
+KEY = "Key"
+VALUE = "Value"
 EXECUTION_ROLE_ARN = "ExecutionRoleArn"
 CLUSTER_ROLE_ARN = "ClusterRoleArn"
 VPC_CONFIG = "VpcConfig"
@@ -73,6 +76,35 @@ PROPERTIES = "properties"
 TYPE = "type"
 OBJECT = "object"
 ADDITIONAL_PROPERTIES = "additionalProperties"
+ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION = "EnableInterContainerTrafficEncryption"
+
+
+def _simple_path(*args: str):
+    """Appends an arbitrary number of strings to use as path constants"""
+    return ".".join(args)
+
+
+# Paths for reference elsewhere in the SDK.
+# Names include the schema version since the paths could change with other schema versions
+PATH_V1_MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION = _simple_path(
+    SAGEMAKER,
+    MONITORING_SCHEDULE,
+    MONITORING_SCHEDULE_CONFIG,
+    MONITORING_JOB_DEFINITION,
+    NETWORK_CONFIG,
+    ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION,
+)
+PATH_V1_AUTO_ML_INTER_CONTAINER_ENCRYPTION = _simple_path(
+    SAGEMAKER, AUTO_ML, SECURITY_CONFIG, ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION
+)
+PATH_V1_PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION = _simple_path(
+    SAGEMAKER, PROCESSING_JOB, NETWORK_CONFIG, ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION
+)
+PATH_V1_TRAINING_JOB_INTER_CONTAINER_ENCRYPTION = _simple_path(
+    SAGEMAKER, TRAINING_JOB, ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION
+)
+
+
 SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     TYPE: OBJECT,
@@ -164,6 +196,31 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                 }
             },
         },
+        # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_Tag.html
+        "tags": {
+            TYPE: "array",
+            "items": {
+                TYPE: OBJECT,
+                ADDITIONAL_PROPERTIES: False,
+                PROPERTIES: {
+                    KEY: {
+                        TYPE: "string",
+                        "pattern": r"^[\w\s\d_.:/=+\-@]*$",
+                        "minLength": 1,
+                        "maxLength": 128,
+                    },
+                    VALUE: {
+                        TYPE: "string",
+                        "pattern": r"^[\w\s\d_.:/=+\-@]*$",
+                        "minLength": 0,
+                        "maxLength": 256,
+                    },
+                },
+            },
+            "minItems": 0,
+            "maxItems": 50,
+        },
+        SUBNETS: {TYPE: "array", "items": {"$ref": "#/definitions/subnet"}},
     },
     PROPERTIES: {
         SCHEMA_VERSION: {
@@ -219,6 +276,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                             },
                         },
                         ROLE_ARN: {"$ref": "#/definitions/roleArn"},
+                        TAGS: {"$ref": "#/definitions/tags"},
                     },
                 },
                 # Monitoring Schedule
@@ -257,6 +315,9 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                             TYPE: OBJECT,
                                             ADDITIONAL_PROPERTIES: False,
                                             PROPERTIES: {
+                                                ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION: {
+                                                    TYPE: "boolean"
+                                                },
                                                 ENABLE_NETWORK_ISOLATION: {TYPE: "boolean"},
                                                 VPC_CONFIG: {"$ref": "#/definitions/vpcConfig"},
                                             },
@@ -265,7 +326,8 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                     },
                                 }
                             },
-                        }
+                        },
+                        TAGS: {"$ref": "#/definitions/tags"},
                     },
                 },
                 # Endpoint Config
@@ -302,6 +364,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                             TYPE: "array",
                             "items": {"$ref": "#/definitions/productionVariant"},
                         },
+                        TAGS: {"$ref": "#/definitions/tags"},
                     },
                 },
                 # Auto ML
@@ -318,6 +381,9 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                     TYPE: OBJECT,
                                     ADDITIONAL_PROPERTIES: False,
                                     PROPERTIES: {
+                                        ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION: {
+                                            TYPE: "boolean"
+                                        },
                                         VOLUME_KMS_KEY_ID: {
                                             TYPE: "string",
                                         },
@@ -332,6 +398,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                             PROPERTIES: {KMS_KEY_ID: {TYPE: "string"}},
                         },
                         ROLE_ARN: {"$ref": "#/definitions/roleArn"},
+                        TAGS: {"$ref": "#/definitions/tags"},
                     },
                 },
                 # Transform Job
@@ -355,6 +422,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                             ADDITIONAL_PROPERTIES: False,
                             PROPERTIES: {VOLUME_KMS_KEY_ID: {TYPE: "string"}},
                         },
+                        TAGS: {"$ref": "#/definitions/tags"},
                     },
                 },
                 # Compilation Job
@@ -371,6 +439,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                         },
                         ROLE_ARN: {"$ref": "#/definitions/roleArn"},
                         VPC_CONFIG: {"$ref": "#/definitions/vpcConfig"},
+                        TAGS: {"$ref": "#/definitions/tags"},
                     },
                 },
                 # Pipeline
@@ -378,7 +447,10 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                 PIPELINE: {
                     TYPE: OBJECT,
                     ADDITIONAL_PROPERTIES: False,
-                    PROPERTIES: {ROLE_ARN: {"$ref": "#/definitions/roleArn"}},
+                    PROPERTIES: {
+                        ROLE_ARN: {"$ref": "#/definitions/roleArn"},
+                        TAGS: {"$ref": "#/definitions/tags"},
+                    },
                 },
                 # Model
                 # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateModel.html
@@ -389,6 +461,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                         ENABLE_NETWORK_ISOLATION: {TYPE: "boolean"},
                         EXECUTION_ROLE_ARN: {"$ref": "#/definitions/roleArn"},
                         VPC_CONFIG: {"$ref": "#/definitions/vpcConfig"},
+                        TAGS: {"$ref": "#/definitions/tags"},
                     },
                 },
                 # Model Package
@@ -407,7 +480,8 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                 },
                                 VALIDATION_ROLE: {"$ref": "#/definitions/roleArn"},
                             },
-                        }
+                        },
+                        TAGS: {"$ref": "#/definitions/tags"},
                     },
                 },
                 # Processing Job
@@ -420,6 +494,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                             TYPE: OBJECT,
                             ADDITIONAL_PROPERTIES: False,
                             PROPERTIES: {
+                                ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION: {TYPE: "boolean"},
                                 ENABLE_NETWORK_ISOLATION: {TYPE: "boolean"},
                                 VPC_CONFIG: {"$ref": "#/definitions/vpcConfig"},
                             },
@@ -445,6 +520,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                             },
                         },
                         ROLE_ARN: {"$ref": "#/definitions/roleArn"},
+                        TAGS: {"$ref": "#/definitions/tags"},
                     },
                 },
                 # Training Job
@@ -453,6 +529,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                     TYPE: OBJECT,
                     ADDITIONAL_PROPERTIES: False,
                     PROPERTIES: {
+                        ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION: {TYPE: "boolean"},
                         ENABLE_NETWORK_ISOLATION: {TYPE: "boolean"},
                         OUTPUT_DATA_CONFIG: {
                             TYPE: OBJECT,
@@ -466,6 +543,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                         },
                         ROLE_ARN: {"$ref": "#/definitions/roleArn"},
                         VPC_CONFIG: {"$ref": "#/definitions/vpcConfig"},
+                        TAGS: {"$ref": "#/definitions/tags"},
                     },
                 },
                 # Edge Packaging Job
@@ -480,6 +558,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                             PROPERTIES: {KMS_KEY_ID: {TYPE: "string"}},
                         },
                         ROLE_ARN: {"$ref": "#/definitions/roleArn"},
+                        TAGS: {"$ref": "#/definitions/tags"},
                     },
                 },
             },

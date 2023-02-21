@@ -176,6 +176,68 @@ def get_config_value(key_path, config):
     return current_section
 
 
+def get_nested_value(dictionary: dict, nested_keys: list[str]):
+    """Returns a nested value from the given dictionary, and None if none present.
+
+    Raises
+        ValueError if the dictionary structure does not match the nested_keys
+    """
+    if (
+        dictionary is not None
+        and isinstance(dictionary, dict)
+        and nested_keys is not None
+        and len(nested_keys) > 0
+    ):
+
+        current_section = dictionary
+
+        for key in nested_keys[:-1]:
+            current_section = current_section.get(key, None)
+            if current_section is None:
+                # means the full path of nested_keys doesnt exist in the dictionary
+                # or the value was set to None
+                return None
+            if not isinstance(current_section, dict):
+                raise ValueError(
+                    "Unexpected structure of dictionary.",
+                    "Expected value of type dict at key '{}' but got '{}' for dict '{}'".format(
+                        key, current_section, dictionary
+                    ),
+                )
+        return current_section.get(nested_keys[-1], None)
+
+    return None
+
+
+def set_nested_value(dictionary: dict, nested_keys: list[str], value_to_set: object):
+    """Sets a nested value inside the given dictionary and returns the new dictionary. Note: if
+    provided an unintended list of nested keys, this can overwrite an unexpected part of the dict.
+    Recommended to use after a check with get_nested_value first
+    """
+
+    if dictionary is None:
+        dictionary = {}
+
+    if (
+        dictionary is not None
+        and isinstance(dictionary, dict)
+        and nested_keys is not None
+        and len(nested_keys) > 0
+    ):
+        current_section = dictionary
+        for key in nested_keys[:-1]:
+            if (
+                key not in current_section
+                or current_section[key] is None
+                or not isinstance(current_section[key], dict)
+            ):
+                current_section[key] = {}
+            current_section = current_section[key]
+
+        current_section[nested_keys[-1]] = value_to_set
+    return dictionary
+
+
 def get_short_version(framework_version):
     """Return short version in the format of x.x
 

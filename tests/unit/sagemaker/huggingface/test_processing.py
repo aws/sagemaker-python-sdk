@@ -50,6 +50,12 @@ def sagemaker_session():
     session_mock.upload_data = Mock(name="upload_data", return_value=MOCKED_S3_URI)
     session_mock.download_data = Mock(name="download_data")
     session_mock.expand_role.return_value = ROLE
+
+    # For the purposes of unit tests, no values should be fetched from sagemaker config
+    session_mock.resolve_class_attribute_from_config = Mock(
+        name="resolve_class_attribute_from_config",
+        side_effect=lambda clazz, instance, attribute, config_path, default_value=None: instance,
+    )
     return session_mock
 
 

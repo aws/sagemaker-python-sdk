@@ -14,6 +14,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import copy
 import shutil
 import tarfile
 from datetime import datetime
@@ -53,6 +54,133 @@ def test_get_config_value():
 
     assert sagemaker.utils.get_config_value("does_not.exist", config) is None
     assert sagemaker.utils.get_config_value("other.key", None) is None
+
+
+def test_get_nested_value():
+    dictionary = {
+        "local": {"region_name": "us-west-2", "port": "123"},
+        "other": {"key": 1},
+        "nest1": {"nest2": {"nest3": {"nest4": {"nest5a": "value", "nest5b": None}}}},
+    }
+
+    # happy cases: keys and values exist
+    assert sagemaker.utils.get_nested_value(dictionary, ["local", "region_name"]) == "us-west-2"
+    assert sagemaker.utils.get_nested_value(dictionary, ["local"]) == {
+        "region_name": "us-west-2",
+        "port": "123",
+    }
+    assert (
+        sagemaker.utils.get_nested_value(dictionary, ["nest1", "nest2", "nest3", "nest4", "nest5a"])
+        == "value"
+    )
+
+    # edge cases: non-existing keys
+    assert sagemaker.utils.get_nested_value(dictionary, ["local", "new_depth_1_key"]) is None
+    assert sagemaker.utils.get_nested_value(dictionary, ["new_depth_0_key"]) is None
+    assert (
+        sagemaker.utils.get_nested_value(dictionary, ["new_depth_0_key", "new_depth_1_key"]) is None
+    )
+    assert (
+        sagemaker.utils.get_nested_value(
+            dictionary, ["nest1", "nest2", "nest3", "nest4", "nest5b", "does_not", "exist"]
+        )
+        is None
+    )
+
+    # edge case: specified nested_keys contradict structure of dict
+    with pytest.raises(ValueError):
+        sagemaker.utils.get_nested_value(
+            dictionary, ["nest1", "nest2", "nest3", "nest4", "nest5a", "does_not", "exist"]
+        )
+
+    # edge cases: non-actionable inputs
+    assert sagemaker.utils.get_nested_value(None, ["other", "key"]) is None
+    assert sagemaker.utils.get_nested_value("not_a_dict", ["other", "key"]) is None
+    assert sagemaker.utils.get_nested_value(dictionary, None) is None
+    assert sagemaker.utils.get_nested_value(dictionary, []) is None
+
+
+def test_set_nested_value():
+    dictionary = {
+        "local": {"region_name": "us-west-2", "port": "123"},
+        "other": {"key": 1},
+        "nest1": {"nest2": {"nest3": {"nest4": {"nest5a": "value", "nest5b": None}}}},
+        "existing_depth_0_key": None,
+    }
+    dictionary_copy = copy.deepcopy(dictionary)
+
+    # happy cases: change existing values
+    dictionary_copy["local"]["region_name"] = "region1"
+    assert (
+        sagemaker.utils.set_nested_value(dictionary, ["local", "region_name"], "region1")
+        == dictionary_copy
+    )
+
+    dictionary_copy["existing_depth_0_key"] = {"new_key": "new_value"}
+    assert (
+        sagemaker.utils.set_nested_value(
+            dictionary, ["existing_depth_0_key"], {"new_key": "new_value"}
+        )
+        == dictionary_copy
+    )
+
+    dictionary_copy["nest1"]["nest2"]["nest3"]["nest4"]["nest5a"] = "value2"
+    assert (
+        sagemaker.utils.set_nested_value(
+            dictionary, ["nest1", "nest2", "nest3", "nest4", "nest5a"], "value2"
+        )
+        == dictionary_copy
+    )
+
+    # happy cases: add new keys and values
+    dictionary_copy["local"]["new_depth_1_key"] = "value"
+    assert (
+        sagemaker.utils.set_nested_value(dictionary, ["local", "new_depth_1_key"], "value")
+        == dictionary_copy
+    )
+
+    dictionary_copy["new_depth_0_key"] = "value"
+    assert (
+        sagemaker.utils.set_nested_value(dictionary, ["new_depth_0_key"], "value")
+        == dictionary_copy
+    )
+
+    dictionary_copy["new_depth_0_key_2"] = {"new_depth_1_key_2": "value"}
+    assert (
+        sagemaker.utils.set_nested_value(
+            dictionary, ["new_depth_0_key_2", "new_depth_1_key_2"], "value"
+        )
+        == dictionary_copy
+    )
+
+    dictionary_copy["nest1"]["nest2"]["nest3"]["nest4"]["nest5b"] = {"does_not": {"exist": "value"}}
+    assert (
+        sagemaker.utils.set_nested_value(
+            dictionary, ["nest1", "nest2", "nest3", "nest4", "nest5b", "does_not", "exist"], "value"
+        )
+        == dictionary_copy
+    )
+
+    # edge case: overwrite non-dict value
+    dictionary["nest1"]["nest2"]["nest3"]["nest4"]["nest5a"] = "value2"
+    dictionary_copy["nest1"]["nest2"]["nest3"]["nest4"]["nest5a"] = {"does_not": {"exist": "value"}}
+    assert (
+        sagemaker.utils.set_nested_value(
+            dictionary, ["nest1", "nest2", "nest3", "nest4", "nest5a", "does_not", "exist"], "value"
+        )
+        == dictionary_copy
+    )
+
+    # edge case: dict does not exist
+    assert sagemaker.utils.set_nested_value(None, ["other", "key"], "value") == {
+        "other": {"key": "value"}
+    }
+
+    # edge cases: non-actionable inputs
+    dictionary_copy_2 = copy.deepcopy(dictionary)
+    assert sagemaker.utils.set_nested_value("not_a_dict", ["other", "key"], "value") == "not_a_dict"
+    assert sagemaker.utils.set_nested_value(dictionary, None, "value") == dictionary_copy_2
+    assert sagemaker.utils.set_nested_value(dictionary, [], "value") == dictionary_copy_2
 
 
 def test_get_short_version():
@@ -130,13 +258,13 @@ def test_base_name_from_image_with_pipeline_param(inputs):
 @patch("sagemaker.utils.sagemaker_timestamp")
 def test_name_from_base(sagemaker_timestamp):
     sagemaker.utils.name_from_base(NAME, short=False)
-    assert sagemaker_timestamp.called_once
+    sagemaker_timestamp.assert_called_once
 
 
 @patch("sagemaker.utils.sagemaker_short_timestamp")
 def test_name_from_base_short(sagemaker_short_timestamp):
     sagemaker.utils.name_from_base(NAME, short=True)
-    assert sagemaker_short_timestamp.called_once
+    sagemaker_short_timestamp.assert_called_once
 
 
 def test_unique_name_from_base():

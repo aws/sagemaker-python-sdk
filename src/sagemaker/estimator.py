@@ -29,6 +29,7 @@ from six.moves.urllib.parse import urlparse
 import sagemaker
 from sagemaker import git_utils, image_uris, vpc_utils
 from sagemaker.analytics import TrainingJobAnalytics
+from sagemaker.config.config_schema import PATH_V1_TRAINING_JOB_INTER_CONTAINER_ENCRYPTION
 from sagemaker.debugger import (  # noqa: F401 # pylint: disable=unused-import
     DEBUGGER_FLAG,
     DebuggerHookConfig,
@@ -133,7 +134,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         model_uri: Optional[str] = None,
         model_channel_name: Union[str, PipelineVariable] = "model",
         metric_definitions: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
-        encrypt_inter_container_traffic: Union[bool, PipelineVariable] = False,
+        encrypt_inter_container_traffic: Union[bool, PipelineVariable] = None,
         use_spot_instances: Union[bool, PipelineVariable] = False,
         max_wait: Optional[Union[int, PipelineVariable]] = None,
         checkpoint_s3_uri: Optional[Union[str, PipelineVariable]] = None,
@@ -598,7 +599,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             training_repository_credentials_provider_arn
         )
 
-        self.encrypt_inter_container_traffic = encrypt_inter_container_traffic
+        self.encrypt_inter_container_traffic = self.sagemaker_session.resolve_value_from_config(
+            direct_input=encrypt_inter_container_traffic,
+            config_path=PATH_V1_TRAINING_JOB_INTER_CONTAINER_ENCRYPTION,
+            default_value=False,
+        )
+
         self.use_spot_instances = use_spot_instances
         self.max_wait = max_wait
         self.checkpoint_s3_uri = checkpoint_s3_uri
@@ -2168,6 +2174,7 @@ class _TrainingJob(_Job):
 
         # encrypt_inter_container_traffic may be a pipeline variable place holder object
         # which is parsed in execution time
+        # This does not check config because the EstimatorBase constuctor already did that check
         if estimator.encrypt_inter_container_traffic:
             train_args[
                 "encrypt_inter_container_traffic"
@@ -2745,6 +2752,7 @@ class Estimator(EstimatorBase):
             model_uri=model_uri,
             model_channel_name=model_channel_name,
             metric_definitions=metric_definitions,
+            # Does not check sagemaker config because EstimatorBase will do that check
             encrypt_inter_container_traffic=encrypt_inter_container_traffic,
             use_spot_instances=use_spot_instances,
             max_wait=max_wait,

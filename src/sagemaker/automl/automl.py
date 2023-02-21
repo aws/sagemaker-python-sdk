@@ -19,6 +19,9 @@ from six import string_types
 
 from sagemaker import Model, PipelineModel
 from sagemaker.automl.candidate_estimator import CandidateEstimator
+from sagemaker.config.config_schema import (
+    PATH_V1_AUTO_ML_INTER_CONTAINER_ENCRYPTION,
+)
 from sagemaker.job import _Job
 from sagemaker.session import Session
 from sagemaker.utils import name_from_base
@@ -106,7 +109,7 @@ class AutoML(object):
         compression_type: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
         volume_kms_key: Optional[str] = None,
-        encrypt_inter_container_traffic: Optional[bool] = False,
+        encrypt_inter_container_traffic: Optional[bool] = None,
         vpc_config: Optional[Dict[str, List]] = None,
         problem_type: Optional[str] = None,
         max_candidates: Optional[int] = None,
@@ -182,7 +185,6 @@ class AutoML(object):
         self.base_job_name = base_job_name
         self.compression_type = compression_type
         self.volume_kms_key = volume_kms_key
-        self.encrypt_inter_container_traffic = encrypt_inter_container_traffic
         self.vpc_config = vpc_config
         self.problem_type = problem_type
         self.max_candidate = max_candidates
@@ -204,6 +206,12 @@ class AutoML(object):
         self._auto_ml_job_desc = None
         self._best_candidate = None
         self.sagemaker_session = sagemaker_session or Session()
+
+        self.encrypt_inter_container_traffic = self.sagemaker_session.resolve_value_from_config(
+            direct_input=encrypt_inter_container_traffic,
+            config_path=PATH_V1_AUTO_ML_INTER_CONTAINER_ENCRYPTION,
+            default_value=False,
+        )
 
         self._check_problem_type_and_job_objective(self.problem_type, self.job_objective)
 
@@ -276,6 +284,8 @@ class AutoML(object):
             volume_kms_key=auto_ml_job_desc.get("AutoMLJobConfig", {})
             .get("SecurityConfig", {})
             .get("VolumeKmsKeyId"),
+            # Do not override encrypt_inter_container_traffic from config because this info
+            # is pulled from an existing automl job
             encrypt_inter_container_traffic=auto_ml_job_desc.get("AutoMLJobConfig", {})
             .get("SecurityConfig", {})
             .get("EnableInterContainerTrafficEncryption", False),

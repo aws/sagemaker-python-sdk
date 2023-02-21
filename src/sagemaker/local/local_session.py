@@ -21,6 +21,7 @@ from datetime import datetime
 import boto3
 from botocore.exceptions import ClientError
 
+from sagemaker.config.config import SageMakerConfig
 from sagemaker.local.image import _SageMakerContainer
 from sagemaker.local.utils import get_docker_host
 from sagemaker.local.entities import (
@@ -599,7 +600,12 @@ class LocalSession(Session):
     """
 
     def __init__(
-        self, boto_session=None, default_bucket=None, s3_endpoint_url=None, disable_local_code=False
+        self,
+        boto_session=None,
+        default_bucket=None,
+        s3_endpoint_url=None,
+        disable_local_code=False,
+        sagemaker_config: SageMakerConfig = None,
     ):
         """Create a Local SageMaker Session.
 
@@ -619,13 +625,22 @@ class LocalSession(Session):
         # discourage external use:
         self._disable_local_code = disable_local_code
 
-        super(LocalSession, self).__init__(boto_session=boto_session, default_bucket=default_bucket)
+        super(LocalSession, self).__init__(
+            boto_session=boto_session,
+            default_bucket=default_bucket,
+            sagemaker_config=sagemaker_config,
+        )
 
         if platform.system() == "Windows":
             logger.warning("Windows Support for Local Mode is Experimental")
 
     def _initialize(
-        self, boto_session, sagemaker_client, sagemaker_runtime_client, **kwargs
+        self,
+        boto_session,
+        sagemaker_client,
+        sagemaker_runtime_client,
+        sagemaker_config: SageMakerConfig = None,
+        **kwargs
     ):  # pylint: disable=unused-argument
         """Initialize this Local SageMaker Session.
 
@@ -670,6 +685,11 @@ class LocalSession(Session):
             self.config = yaml.safe_load(open(sagemaker_config_file, "r"))
             if self._disable_local_code and "local" in self.config:
                 self.config["local"]["local_code"] = False
+
+        if sagemaker_config:
+            self.sagemaker_config = sagemaker_config
+        else:
+            self.sagemaker_config = SageMakerConfig(s3_resource=self.boto_session)
 
     def logs_for_job(self, job_name, wait=False, poll=5, log_type="All"):
         """A no-op method meant to override the sagemaker client.

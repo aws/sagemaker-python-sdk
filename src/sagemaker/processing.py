@@ -30,6 +30,7 @@ import attr
 from six.moves.urllib.parse import urlparse
 from six.moves.urllib.request import url2pathname
 from sagemaker import s3
+from sagemaker.config.config_schema import PATH_V1_PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
 from sagemaker.network import NetworkConfig
@@ -130,7 +131,6 @@ class Processor(object):
         self.base_job_name = base_job_name
         self.env = env
         self.tags = tags
-        self.network_config = network_config
 
         self.jobs = []
         self.latest_job = None
@@ -143,6 +143,13 @@ class Processor(object):
                 sagemaker_session = LocalSession(disable_local_code=True)
 
         self.sagemaker_session = sagemaker_session or Session()
+
+        self.network_config = self.sagemaker_session.resolve_class_attribute_from_config(
+            NetworkConfig,
+            network_config,
+            "encrypt_inter_container_traffic",
+            PATH_V1_PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION,
+        )
 
     @runnable_by_pipeline
     def run(

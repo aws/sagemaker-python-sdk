@@ -31,6 +31,12 @@ from six.moves.urllib.parse import urlparse
 from botocore.exceptions import ClientError
 
 from sagemaker import image_uris, s3
+from sagemaker.config.config_schema import (
+    SAGEMAKER,
+    MONITORING_SCHEDULE,
+    TAGS,
+    PATH_V1_MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION,
+)
 from sagemaker.exceptions import UnexpectedStatusException
 from sagemaker.model_monitor.monitoring_files import Constraints, ConstraintViolations, Statistics
 from sagemaker.model_monitor.monitoring_alert import (
@@ -159,7 +165,6 @@ class ModelMonitor(object):
         self.sagemaker_session = sagemaker_session or Session()
         self.env = env
         self.tags = tags
-        self.network_config = network_config
 
         self.baselining_jobs = []
         self.latest_baselining_job = None
@@ -167,6 +172,13 @@ class ModelMonitor(object):
         self.latest_baselining_job_name = None
         self.monitoring_schedule_name = None
         self.job_definition_name = None
+
+        self.network_config = self.sagemaker_session.resolve_class_attribute_from_config(
+            NetworkConfig,
+            network_config,
+            "encrypt_inter_container_traffic",
+            PATH_V1_MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION,
+        )
 
     def run_baseline(
         self, baseline_inputs, output, arguments=None, wait=True, logs=True, job_name=None
@@ -482,6 +494,8 @@ class ModelMonitor(object):
         network_config_dict = None
         if self.network_config is not None:
             network_config_dict = self.network_config._to_request_dict()
+        # Do not need to check config because that check is done inside
+        # self.sagemaker_session.update_monitoring_schedule
 
         self.sagemaker_session.update_monitoring_schedule(
             monitoring_schedule_name=self.monitoring_schedule_name,
@@ -1381,10 +1395,27 @@ class ModelMonitor(object):
             monitoring_schedule_config["ScheduleConfig"] = {
                 "ScheduleExpression": schedule_cron_expression
             }
+        all_tags = self.sagemaker_session._append_sagemaker_config_tags(
+            self.tags, "{}.{}.{}".format(SAGEMAKER, MONITORING_SCHEDULE, TAGS)
+        )
+
+        _enable_inter_container_traffic_encryption_from_config = (
+            self.sagemaker_session.resolve_value_from_config(
+                config_path=PATH_V1_MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION
+            )
+        )
+        if _enable_inter_container_traffic_encryption_from_config is not None:
+            # Not checking 'self.network_config' for 'enable_network_isolation' because that
+            # wasnt used here before this config value was set. Unclear whether there was a
+            # specific reason for that omission.
+            monitoring_schedule_config["MonitoringJobDefinition"]["NetworkConfig"][
+                "EnableInterContainerTrafficEncryption"
+            ] = _enable_inter_container_traffic_encryption_from_config
+
         self.sagemaker_session.sagemaker_client.create_monitoring_schedule(
             MonitoringScheduleName=monitor_schedule_name,
             MonitoringScheduleConfig=monitoring_schedule_config,
-            Tags=self.tags or [],
+            Tags=all_tags or [],
         )
 
     def _upload_and_convert_to_processing_input(self, source, destination, name):
@@ -1446,6 +1477,20 @@ class ModelMonitor(object):
             monitoring_schedule_config["ScheduleConfig"] = {
                 "ScheduleExpression": schedule_cron_expression
             }
+
+        _enable_inter_container_traffic_encryption_from_config = (
+            self.sagemaker_session.resolve_value_from_config(
+                config_path=PATH_V1_MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION
+            )
+        )
+        if _enable_inter_container_traffic_encryption_from_config is not None:
+            # Not checking 'self.network_config' for 'enable_network_isolation' because that
+            # wasnt used here before this config value was checked. Unclear whether there was a
+            # specific reason for that omission.
+            monitoring_schedule_config["MonitoringJobDefinition"]["NetworkConfig"][
+                "EnableInterContainerTrafficEncryption"
+            ] = _enable_inter_container_traffic_encryption_from_config
+
         self.sagemaker_session.sagemaker_client.update_monitoring_schedule(
             MonitoringScheduleName=self.monitoring_schedule_name,
             MonitoringScheduleConfig=monitoring_schedule_config,
@@ -1958,6 +2003,8 @@ class DefaultModelMonitor(ModelMonitor):
         network_config_dict = None
         if self.network_config is not None:
             network_config_dict = self.network_config._to_request_dict()
+        # Do not need to check config because that check is done inside
+        # self.sagemaker_session.update_monitoring_schedule
 
         if role is not None:
             self.role = role

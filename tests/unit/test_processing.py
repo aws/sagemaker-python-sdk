@@ -16,6 +16,7 @@ import pytest
 from mock import Mock, patch, MagicMock
 from packaging import version
 
+from sagemaker import LocalSession
 from sagemaker.dataset_definition.inputs import (
     S3Input,
     DatasetDefinition,
@@ -79,6 +80,13 @@ def sagemaker_session():
     session_mock.describe_processing_job = MagicMock(
         name="describe_processing_job", return_value=_get_describe_response_inputs_and_ouputs()
     )
+
+    # For the purposes of unit tests, no values should be fetched from sagemaker config
+    session_mock.resolve_class_attribute_from_config = Mock(
+        name="resolve_class_attribute_from_config",
+        side_effect=lambda clazz, instance, attribute, config_path, default_value=None: instance,
+    )
+
     return session_mock
 
 
@@ -102,6 +110,13 @@ def pipeline_session():
         name="describe_processing_job", return_value=_get_describe_response_inputs_and_ouputs()
     )
     session_mock.__class__ = PipelineSession
+
+    # For the purposes of unit tests, no values should be fetched from sagemaker config
+    session_mock.resolve_class_attribute_from_config = Mock(
+        name="resolve_class_attribute_from_config",
+        side_effect=lambda clazz, instance, attribute, config_path, default_value=None: instance,
+    )
+
     return session_mock
 
 
@@ -188,9 +203,8 @@ def test_sklearn_with_all_parameters(
     sagemaker_session.process.assert_called_with(**expected_args)
 
 
-@patch("sagemaker.local.LocalSession.__init__", return_value=None)
-def test_local_mode_disables_local_code_by_default(localsession_mock):
-    Processor(
+def test_local_mode_disables_local_code_by_default():
+    processor = Processor(
         image_uri="",
         role=ROLE,
         instance_count=1,
@@ -199,7 +213,8 @@ def test_local_mode_disables_local_code_by_default(localsession_mock):
 
     # Most tests use a fixture for sagemaker_session for consistent behaviour, so this unit test
     # checks that the default initialization disables unsupported 'local_code' mode:
-    localsession_mock.assert_called_with(disable_local_code=True)
+    assert processor.sagemaker_session._disable_local_code
+    assert isinstance(processor.sagemaker_session, LocalSession)
 
 
 @patch("sagemaker.utils._botocore_resolver")
