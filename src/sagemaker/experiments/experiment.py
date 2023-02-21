@@ -15,6 +15,8 @@ from __future__ import absolute_import
 
 import time
 
+from botocore.exceptions import ClientError
+
 from sagemaker.apiutils import _base_types
 from sagemaker.experiments.trial import _Trial
 from sagemaker.experiments.trial_component import _TrialComponent
@@ -154,10 +156,7 @@ class _Experiment(_base_types.Record):
         Returns:
             experiments.experiment._Experiment: A SageMaker `_Experiment` object
         """
-        sagemaker_client = sagemaker_session.sagemaker_client
         try:
-            experiment = _Experiment.load(experiment_name, sagemaker_session)
-        except sagemaker_client.exceptions.ResourceNotFound:
             experiment = _Experiment.create(
                 experiment_name=experiment_name,
                 display_name=display_name,
@@ -165,6 +164,13 @@ class _Experiment(_base_types.Record):
                 tags=tags,
                 sagemaker_session=sagemaker_session,
             )
+        except ClientError as ce:
+            error_code = ce.response["Error"]["Code"]
+            error_message = ce.response["Error"]["Message"]
+            if not (error_code == "ValidationException" and "already exists" in error_message):
+                raise ce
+            # already exists
+            experiment = _Experiment.load(experiment_name, sagemaker_session)
         return experiment
 
     def list_trials(self, created_before=None, created_after=None, sort_by=None, sort_order=None):

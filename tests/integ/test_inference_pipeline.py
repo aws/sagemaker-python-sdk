@@ -28,7 +28,7 @@ from sagemaker.pipeline import PipelineModel
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import JSONSerializer
 from sagemaker.sparkml.model import SparkMLModel
-from sagemaker.utils import sagemaker_timestamp
+from sagemaker.utils import unique_name_from_base
 
 SPARKML_DATA_PATH = os.path.join(DATA_DIR, "sparkml_model")
 XGBOOST_DATA_PATH = os.path.join(DATA_DIR, "xgboost_model")
@@ -60,7 +60,7 @@ def test_inference_pipeline_batch_transform(sagemaker_session, cpu_instance_type
         path=os.path.join(XGBOOST_DATA_PATH, "xgb_model.tar.gz"),
         key_prefix="integ-test-data/xgboost/model",
     )
-    batch_job_name = "test-inference-pipeline-batch-{}".format(sagemaker_timestamp())
+    batch_job_name = unique_name_from_base("test-inference-pipeline-batch")
     sparkml_model = SparkMLModel(
         model_data=sparkml_model_data,
         env={"SAGEMAKER_SPARKML_SCHEMA": SCHEMA},
@@ -99,7 +99,7 @@ def test_inference_pipeline_batch_transform(sagemaker_session, cpu_instance_type
 def test_inference_pipeline_model_deploy(sagemaker_session, cpu_instance_type):
     sparkml_data_path = os.path.join(DATA_DIR, "sparkml_model")
     xgboost_data_path = os.path.join(DATA_DIR, "xgboost_model")
-    endpoint_name = "test-inference-pipeline-deploy-{}".format(sagemaker_timestamp())
+    endpoint_name = unique_name_from_base("test-inference-pipeline-deploy")
     sparkml_model_data = sagemaker_session.upload_data(
         path=os.path.join(sparkml_data_path, "mleap_model.tar.gz"),
         key_prefix="integ-test-data/sparkml/model",
@@ -156,7 +156,7 @@ def test_inference_pipeline_model_deploy_and_update_endpoint(
 ):
     sparkml_data_path = os.path.join(DATA_DIR, "sparkml_model")
     xgboost_data_path = os.path.join(DATA_DIR, "xgboost_model")
-    endpoint_name = "test-inference-pipeline-deploy-{}".format(sagemaker_timestamp())
+    endpoint_name = unique_name_from_base("test-inference-pipeline-deploy")
     sparkml_model_data = sagemaker_session.upload_data(
         path=os.path.join(sparkml_data_path, "mleap_model.tar.gz"),
         key_prefix="integ-test-data/sparkml/model",
