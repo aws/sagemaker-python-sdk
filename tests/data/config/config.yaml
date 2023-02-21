@@ -1,0 +1,123 @@
+SchemaVersion: '1.0'
+SageMaker:
+  FeatureGroup:
+    OnlineStoreConfig:
+      SecurityConfig:
+        KmsKeyId: 'someotherkmskeyid'
+    OfflineStoreConfig:
+      S3StorageConfig:
+        KmsKeyId: 'somekmskeyid'
+    RoleArn: 'arn:aws:iam::366666666666:role/IMRole'
+  MonitoringSchedule:
+    MonitoringScheduleConfig:
+      MonitoringJobDefinition:
+        MonitoringOutputConfig:
+          KmsKeyId: 'somekmskey'
+        MonitoringResources:
+          ClusterConfig:
+            VolumeKmsKeyId: 'somevolumekmskey'
+        NetworkConfig:
+          EnableNetworkIsolation: true
+          VpcConfig:
+            SecurityGroupIds:
+              - 'sg123'
+            Subnets:
+              - 'subnet-1234'
+        RoleArn: 'arn:aws:iam::366666666666:role/IMRole'
+  EndpointConfig:
+    AsyncInferenceConfig:
+      OutputConfig:
+        KmsKeyId: 'somekmskey'
+    DataCaptureConfig:
+      KmsKeyId: 'somekmskey2'
+    KmsKeyId: 'somekmskey3'
+    ProductionVariants:
+      - CoreDumpConfig:
+          KmsKeyId: 'somekmskey4'
+    ShadowProductionVariants:
+      - CoreDumpConfig:
+          KmsKeyId: 'somekmskey5'
+  AutoML:
+    AutoMLJobConfig:
+      SecurityConfig:
+        VolumeKmsKeyId: 'somevolumekmskey'
+        VpcConfig:
+          SecurityGroupIds:
+            - 'sg123'
+          Subnets:
+            - 'subnet-1234'
+    OutputDataConfig:
+      KmsKeyId: 'somekmskey'
+    RoleArn: 'arn:aws:iam::366666666666:role/IMRole'
+  TransformJob:
+    DataCaptureConfig:
+      KmsKeyId: 'somekmskey'
+    TransformOutput:
+      KmsKeyId: 'somekmskey2'
+    TransformResources:
+      VolumeKmsKeyId: 'somevolumekmskey'
+  CompilationJob:
+    OutputConfig:
+      KmsKeyId: 'somekmskey'
+    RoleArn: 'arn:aws:iam::366666666666:role/IMRole'
+    VpcConfig:
+      SecurityGroupIds:
+        - 'sg123'
+      Subnets:
+        - 'subnet-1234'
+  Pipeline:
+    RoleArn: 'arn:aws:iam::366666666666:role/IMRole'
+  Model:
+    EnableNetworkIsolation: true
+    ExecutionRoleArn: 'arn:aws:iam::366666666666:role/IMRole'
+    VpcConfig:
+      SecurityGroupIds:
+        - 'sg123'
+      Subnets:
+        - 'subnet-1234'
+  ModelPackage:
+    ValidationSpecification:
+      ValidationProfiles:
+        - TransformJobDefinition:
+            TransformOutput:
+              KmsKeyId: 'somerandomkmskeyid'
+            TransformResources:
+              VolumeKmsKeyId: 'somerandomkmskeyid'
+      ValidationRole: 'arn:aws:iam::366666666666:role/IMRole'
+  ProcessingJob:
+    NetworkConfig:
+      EnableNetworkIsolation: true
+      VpcConfig:
+        SecurityGroupIds:
+          - 'sg123'
+        Subnets:
+          - 'subnet-1234'
+    ProcessingInputs:
+      - DatasetDefinition:
+          AthenaDatasetDefinition:
+            KmsKeyId: 'somekmskeyid'
+          RedshiftDatasetDefinition:
+            KmsKeyId: 'someotherkmskeyid'
+            ClusterRoleArn: 'arn:aws:iam::366666666666:role/IMRole'
+    ProcessingOutputConfig:
+      KmsKeyId: 'somerandomkmskeyid'
+    ProcessingResources:
+      ClusterConfig:
+        VolumeKmsKeyId: 'somerandomkmskeyid'
+    RoleArn: 'arn:aws:iam::366666666666:role/IMRole'
+  TrainingJob:
+    EnableNetworkIsolation: true
+    OutputDataConfig:
+      KmsKeyId: 'somekmskey'
+    ResourceConfig:
+      VolumeKmsKeyId: 'somevolumekmskey'
+    RoleArn: 'arn:aws:iam::366666666666:role/IMRole'
+    VpcConfig:
+      SecurityGroupIds:
+        - 'sg123'
+      Subnets:
+        - 'subnet-1234'
+  EdgePackagingJob:
+    OutputConfig:
+      KmsKeyId: 'somekeyid'
+    RoleArn: 'arn:aws:iam::366666666666:role/IMRole'
