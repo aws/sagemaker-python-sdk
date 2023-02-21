@@ -1102,3 +1102,28 @@ def test_instance_type_supports_profiler():
     assert fw_utils._instance_type_supports_profiler("ml.trn1.xlarge") is True
     assert fw_utils._instance_type_supports_profiler("ml.m4.xlarge") is False
     assert fw_utils._instance_type_supports_profiler("local") is False
+
+def test_is_gpu_instance():
+    gpu_instance_types = [
+        "ml.p3.2xlarge",
+        "ml.p3.8xlarge",
+        "ml.p3.16xlarge",
+        "ml.p3dn.24xlarge",
+        "ml.p4d.24xlarge",
+        "ml.p4de.24xlarge",
+        "ml.g4dn.xlarge",
+        "ml.g5.xlarge",
+        "ml.g5.48xlarge",
+        "local_gpu"
+    ]
+    non_gpu_instance_types = [
+        "ml.t3.xlarge",
+        "ml.m5.8xlarge",
+        "ml.m5d.16xlarge",
+        "ml.c5.9xlarge",
+        "ml.r5.8xlarge",
+    ]
+    for gpu_type in gpu_instance_types:
+        assert fw_utils._is_gpu_instance(gpu_type) is True
+    for non_gpu_type in non_gpu_instance_types:
+        assert fw_utils._is_gpu_instance(non_gpu_type) is False
