@@ -1077,8 +1077,10 @@ def validate_torch_distributed_distribution(
     if not image_uri:
         # ignore framework_version and py_version if image_uri is set
         # in case image_uri is not set, then both are mandatory
-        if framework_version not in TORCH_DISTRIBUTED_SUPPORTED_FRAMEWORK_VERSIONS or \
-            framework_version not in TORCH_DISTRIBUTED_TRAINIUM_SUPPORTED_FRAMEWORK_VERSIONS:
+        if (
+            framework_version not in TORCH_DISTRIBUTED_SUPPORTED_FRAMEWORK_VERSIONS
+            or framework_version not in TORCH_DISTRIBUTED_TRAINIUM_SUPPORTED_FRAMEWORK_VERSIONS
+        ):
             err_msg += (
                 f"Provided framework_version {framework_version} is not supported by"
                 " torch_distributed.\n"
@@ -1093,16 +1095,16 @@ def validate_torch_distributed_distribution(
 
     # Check instance compatibility
     if not _is_gpu_instance(instance_type):
-            err_msg += (
-                "torch_distributed is supported only for GPU instances.\n"
-            )
+        err_msg += "torch_distributed is supported only for GPU instances.\n"
 
     # Check version compatibility for GPU instance
     match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
     if match:
         # Non-Trainium GPU instance but version earlier than 1.13.1
-        if not match[1].startswith("trn") and \
-                framework_version not in TORCH_DISTRIBUTED_SUPPORTED_FRAMEWORK_VERSIONS:
+        if (
+            not match[1].startswith("trn")
+            and framework_version not in TORCH_DISTRIBUTED_SUPPORTED_FRAMEWORK_VERSIONS
+        ):
             err_msg += (
                 f"Provided framework_version {framework_version} is not supported by"
                 f" torch_distributed for instance {instance_type}.\n"
@@ -1133,7 +1135,7 @@ def _is_gpu_instance(instance_type):
     if isinstance(instance_type, str):
         match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
         if match:
-            if (match[1].startswith("trn") or match[1].startswith("p") or match[1].startswith("g")):
+            if match[1].startswith("trn") or match[1].startswith("p") or match[1].startswith("g"):
                 return True
         if instance_type == "local_gpu":
             return True
