@@ -24,7 +24,7 @@ from sagemaker.mxnet.estimator import MXNet
 from sagemaker.mxnet.model import MXNetModel
 from sagemaker.mxnet.processing import MXNetProcessor
 from sagemaker.serverless import ServerlessInferenceConfig
-from sagemaker.utils import sagemaker_timestamp
+from sagemaker.utils import unique_name_from_base
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.kms_utils import get_or_create_kms_key
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
@@ -98,7 +98,7 @@ def test_framework_processing_job_with_deps(
 
 @pytest.mark.release
 def test_attach_deploy(mxnet_training_job, sagemaker_session, cpu_instance_type):
-    endpoint_name = "test-mxnet-attach-deploy-{}".format(sagemaker_timestamp())
+    endpoint_name = unique_name_from_base("test-mxnet-attach-deploy")
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         estimator = MXNet.attach(mxnet_training_job, sagemaker_session=sagemaker_session)
@@ -165,7 +165,7 @@ def test_deploy_model(
     mxnet_inference_latest_py_version,
     cpu_instance_type,
 ):
-    endpoint_name = "test-mxnet-deploy-model-{}".format(sagemaker_timestamp())
+    endpoint_name = unique_name_from_base("test-mxnet-deploy-model")
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         desc = sagemaker_session.sagemaker_client.describe_training_job(
@@ -200,7 +200,7 @@ def test_register_model_package(
     mxnet_inference_latest_py_version,
     cpu_instance_type,
 ):
-    endpoint_name = "test-mxnet-deploy-model-{}".format(sagemaker_timestamp())
+    endpoint_name = unique_name_from_base("test-mxnet-deploy-model")
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         desc = sagemaker_session.sagemaker_client.describe_training_job(
@@ -216,7 +216,7 @@ def test_register_model_package(
             sagemaker_session=sagemaker_session,
             framework_version=mxnet_inference_latest_version,
         )
-        model_package_name = "register-model-package-{}".format(sagemaker_timestamp())
+        model_package_name = unique_name_from_base("register-model-package")
         model_pkg = model.register(
             content_types=["application/json"],
             response_types=["application/json"],
@@ -239,13 +239,13 @@ def test_register_model_package_versioned(
     mxnet_inference_latest_py_version,
     cpu_instance_type,
 ):
-    endpoint_name = "test-mxnet-deploy-model-{}".format(sagemaker_timestamp())
+    endpoint_name = unique_name_from_base("test-mxnet-deploy-model")
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         desc = sagemaker_session.sagemaker_client.describe_training_job(
             TrainingJobName=mxnet_training_job
         )
-        model_package_group_name = "register-model-package-{}".format(sagemaker_timestamp())
+        model_package_group_name = unique_name_from_base("register-model-package")
         sagemaker_session.sagemaker_client.create_model_package_group(
             ModelPackageGroupName=model_package_group_name
         )
@@ -287,7 +287,7 @@ def test_deploy_model_with_tags_and_kms(
     mxnet_inference_latest_py_version,
     cpu_instance_type,
 ):
-    endpoint_name = "test-mxnet-deploy-model-{}".format(sagemaker_timestamp())
+    endpoint_name = unique_name_from_base("test-mxnet-deploy-model")
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         desc = sagemaker_session.sagemaker_client.describe_training_job(
@@ -347,7 +347,7 @@ def test_deploy_model_and_update_endpoint(
     cpu_instance_type,
     alternative_cpu_instance_type,
 ):
-    endpoint_name = "test-mxnet-deploy-model-{}".format(sagemaker_timestamp())
+    endpoint_name = unique_name_from_base("test-mxnet-deploy-model")
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         desc = sagemaker_session.sagemaker_client.describe_training_job(
@@ -395,7 +395,7 @@ def test_deploy_model_with_accelerator(
     mxnet_eia_latest_py_version,
     cpu_instance_type,
 ):
-    endpoint_name = "test-mxnet-deploy-model-ei-{}".format(sagemaker_timestamp())
+    endpoint_name = unique_name_from_base("test-mxnet-deploy-model-ei")
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         desc = sagemaker_session.sagemaker_client.describe_training_job(
@@ -426,7 +426,7 @@ def test_deploy_model_with_serverless_inference_config(
     mxnet_inference_latest_version,
     mxnet_inference_latest_py_version,
 ):
-    endpoint_name = "test-mxnet-deploy-model-serverless-{}".format(sagemaker_timestamp())
+    endpoint_name = unique_name_from_base("test-mxnet-deploy-model-serverless")
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         desc = sagemaker_session.sagemaker_client.describe_training_job(
@@ -465,7 +465,7 @@ def test_async_fit(
     mxnet_inference_latest_py_version,
     cpu_instance_type,
 ):
-    endpoint_name = "test-mxnet-attach-deploy-{}".format(sagemaker_timestamp())
+    endpoint_name = unique_name_from_base("test-mxnet-attach-deploy")
 
     with timeout(minutes=5):
         script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist.py")

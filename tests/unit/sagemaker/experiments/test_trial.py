@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import botocore
 import pytest
 
 import datetime
@@ -133,11 +134,21 @@ def test_remove_trial_component(sagemaker_session):
 
 
 @patch("sagemaker.experiments.trial._Trial.load")
-def test_load_or_create_when_exist(mock_load):
+@patch("sagemaker.experiments.trial._Trial.create")
+def test_load_or_create_when_exist(mock_create, mock_load):
     sagemaker_session = Session()
     trial_name = "trial_name"
     exp_name = "exp_name"
-
+    exists_error = botocore.exceptions.ClientError(
+        error_response={
+            "Error": {
+                "Code": "ValidationException",
+                "Message": "Experiment with name (experiment-xyz) already exists.",
+            }
+        },
+        operation_name="foo",
+    )
+    mock_create.side_effect = exists_error
     # The trial exists and experiment matches
     mock_load.return_value = _Trial(
         trial_name=trial_name,
@@ -146,6 +157,13 @@ def test_load_or_create_when_exist(mock_load):
     )
     _Trial._load_or_create(
         trial_name=trial_name, experiment_name=exp_name, sagemaker_session=sagemaker_session
+    )
+    mock_create.assert_called_once_with(
+        trial_name=trial_name,
+        experiment_name=exp_name,
+        display_name=None,
+        tags=None,
+        sagemaker_session=sagemaker_session,
     )
     mock_load.assert_called_once_with(trial_name, sagemaker_session)
 
@@ -168,14 +186,8 @@ def test_load_or_create_when_exist(mock_load):
 @patch("sagemaker.experiments.trial._Trial.create")
 def test_load_or_create_when_not_exist(mock_create, mock_load):
     sagemaker_session = Session()
-    client = sagemaker_session.sagemaker_client
     trial_name = "trial_name"
     exp_name = "exp_name"
-    not_found_err = client.exceptions.ResourceNotFound(
-        error_response={"Error": {"Code": "ResourceNotFound", "Message": "Not Found"}},
-        operation_name="foo",
-    )
-    mock_load.side_effect = not_found_err
 
     _Trial._load_or_create(
         trial_name=trial_name, experiment_name=exp_name, sagemaker_session=sagemaker_session
@@ -188,6 +200,7 @@ def test_load_or_create_when_not_exist(mock_create, mock_load):
         tags=None,
         sagemaker_session=sagemaker_session,
     )
+    mock_load.assert_not_called()
 
 
 def test_list_trials_without_experiment_name(sagemaker_session, datetime_obj):

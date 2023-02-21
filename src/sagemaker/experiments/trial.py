@@ -13,6 +13,8 @@
 """Contains the Trial class."""
 from __future__ import absolute_import
 
+from botocore.exceptions import ClientError
+
 from sagemaker.apiutils import _base_types
 from sagemaker.experiments import _api_types
 from sagemaker.experiments.trial_component import _TrialComponent
@@ -268,8 +270,20 @@ class _Trial(_base_types.Record):
         Returns:
             experiments.trial._Trial: A SageMaker `_Trial` object
         """
-        sagemaker_client = sagemaker_session.sagemaker_client
         try:
+            trial = _Trial.create(
+                experiment_name=experiment_name,
+                trial_name=trial_name,
+                display_name=display_name,
+                tags=tags,
+                sagemaker_session=sagemaker_session,
+            )
+        except ClientError as ce:
+            error_code = ce.response["Error"]["Code"]
+            error_message = ce.response["Error"]["Message"]
+            if not (error_code == "ValidationException" and "already exists" in error_message):
+                raise ce
+            # already exists
             trial = _Trial.load(trial_name, sagemaker_session)
             if trial.experiment_name != experiment_name:  # pylint: disable=no-member
                 raise ValueError(
@@ -278,12 +292,4 @@ class _Trial(_base_types.Record):
                         trial.experiment_name  # pylint: disable=no-member
                     )
                 )
-        except sagemaker_client.exceptions.ResourceNotFound:
-            trial = _Trial.create(
-                experiment_name=experiment_name,
-                trial_name=trial_name,
-                display_name=display_name,
-                tags=tags,
-                sagemaker_session=sagemaker_session,
-            )
         return trial
