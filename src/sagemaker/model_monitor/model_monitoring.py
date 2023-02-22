@@ -233,6 +233,7 @@ class ModelMonitor(object):
         monitor_schedule_name=None,
         schedule_cron_expression=None,
         batch_transform_input=None,
+        arguments=None,
     ):
         """Creates a monitoring schedule to monitor an Amazon SageMaker Endpoint.
 
@@ -262,6 +263,7 @@ class ModelMonitor(object):
             batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to
                 run the monitoring schedule on the batch transform
                 (default: None)
+            arguments ([str]): A list of string arguments to be passed to a processing job.
 
         """
         if self.monitoring_schedule_name is not None:
@@ -325,6 +327,9 @@ class ModelMonitor(object):
         network_config_dict = None
         if self.network_config is not None:
             network_config_dict = self.network_config._to_request_dict()
+
+        if arguments is not None:
+            self.arguments = arguments
 
         self.sagemaker_session.create_monitoring_schedule(
             monitoring_schedule_name=self.monitoring_schedule_name,
