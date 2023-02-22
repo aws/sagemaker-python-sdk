@@ -66,7 +66,7 @@ ENABLE_CLOUDWATCH_METRICS = True
 PROBLEM_TYPE = "Regression"
 GROUND_TRUTH_ATTRIBUTE = "TestAttribute"
 
-
+CRON_DAILY = CronExpressionGenerator.daily()
 BASELINING_JOB_NAME = "baselining-job"
 BASELINE_DATASET_PATH = "/my/local/path/baseline.csv"
 PREPROCESSOR_PATH = "/my/local/path/preprocessor.py"
@@ -85,7 +85,9 @@ INTER_CONTAINER_ENCRYPTION_EXCEPTION_MSG = (
 MONITORING_SCHEDULE_DESC = {
     "MonitoringScheduleArn": "arn:aws:monitoring-schedule",
     "MonitoringScheduleName": "my-monitoring-schedule",
+    "MonitoringScheduleStatus": "Completed",
     "MonitoringScheduleConfig": {
+        "ScheduleExpression": CRON_DAILY,
         "MonitoringJobDefinition": {
             "MonitoringOutputConfig": {},
             "MonitoringResources": {
@@ -102,7 +104,7 @@ MONITORING_SCHEDULE_DESC = {
                 ],
             },
             "RoleArn": ROLE,
-        }
+        },
     },
     "EndpointName": "my-endpoint",
 }
@@ -284,7 +286,6 @@ NEW_NETWORK_CONFIG = NetworkConfig(
     security_group_ids=NEW_SECURITY_GROUP_IDS,
     subnets=NEW_SUBNETS,
 )
-CRON_DAILY = CronExpressionGenerator.daily()
 NEW_ENDPOINT_NAME = "new-endpoint"
 NEW_GROUND_TRUTH_S3_URI = "s3://bucket/monitoring_captured/groundtruth"
 NEW_START_TIME_OFFSET = "-PT2H"
@@ -893,6 +894,7 @@ def _test_data_quality_monitor_update_schedule(data_quality_monitor, sagemaker_s
     )
     sagemaker_session.sagemaker_client.create_data_quality_job_definition = Mock()
     sagemaker_session.expand_role = Mock(return_value=NEW_ROLE_ARN)
+    sagemaker_session.describe_monitoring_schedule = Mock(return_value=MONITORING_SCHEDULE_DESC)
     old_job_definition_name = data_quality_monitor.job_definition_name
     data_quality_monitor.update_monitoring_schedule(role=NEW_ROLE_ARN)
     expected_arguments = {
