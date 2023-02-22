@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.134.1 (2023-02-22)
+
+### Bug Fixes and Other Changes
+
+ * local mode deletion of temp files on job end
+ * Cron expression resetting on update monitor
+ * added support to update arguments in create_monitoring_schedule
+
 ## v2.134.0 (2023-02-22)
 
 ### Features
