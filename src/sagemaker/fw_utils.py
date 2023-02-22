@@ -1079,7 +1079,7 @@ def validate_torch_distributed_distribution(
         # in case image_uri is not set, then both are mandatory
         if (
             framework_version not in TORCH_DISTRIBUTED_SUPPORTED_FRAMEWORK_VERSIONS
-            or framework_version not in TORCH_DISTRIBUTED_TRAINIUM_SUPPORTED_FRAMEWORK_VERSIONS
+            and framework_version not in TORCH_DISTRIBUTED_TRAINIUM_SUPPORTED_FRAMEWORK_VERSIONS
         ):
             err_msg += (
                 f"Provided framework_version {framework_version} is not supported by"
@@ -1090,7 +1090,7 @@ def validate_torch_distributed_distribution(
         if "py3" not in py_version:
             err_msg += (
                 f"Provided py_version {py_version} is not supported by torch_distributed.\n"
-                "Please specify py_version>=py3"
+                "Please specify py_version>=py3\n"
             )
 
     # Check instance compatibility
