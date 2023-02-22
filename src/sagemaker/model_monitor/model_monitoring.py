@@ -233,6 +233,7 @@ class ModelMonitor(object):
         monitor_schedule_name=None,
         schedule_cron_expression=None,
         batch_transform_input=None,
+        arguments=None,
     ):
         """Creates a monitoring schedule to monitor an Amazon SageMaker Endpoint.
 
@@ -262,6 +263,7 @@ class ModelMonitor(object):
             batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to
                 run the monitoring schedule on the batch transform
                 (default: None)
+            arguments ([str]): A list of string arguments to be passed to a processing job.
 
         """
         if self.monitoring_schedule_name is not None:
@@ -325,6 +327,9 @@ class ModelMonitor(object):
         network_config_dict = None
         if self.network_config is not None:
             network_config_dict = self.network_config._to_request_dict()
+
+        if arguments is not None:
+            self.arguments = arguments
 
         self.sagemaker_session.create_monitoring_schedule(
             monitoring_schedule_name=self.monitoring_schedule_name,
@@ -2053,6 +2058,21 @@ class DefaultModelMonitor(ModelMonitor):
         if len(valid_args) == 1 and schedule_cron_expression is not None:
             self._update_monitoring_schedule(self.job_definition_name, schedule_cron_expression)
             return
+
+        existing_desc = self.sagemaker_session.describe_monitoring_schedule(
+            monitoring_schedule_name=self.monitoring_schedule_name
+        )
+
+        if (
+            existing_desc.get("MonitoringScheduleConfig") is not None
+            and existing_desc["MonitoringScheduleConfig"].get("ScheduleConfig") is not None
+            and existing_desc["MonitoringScheduleConfig"]["ScheduleConfig"]["ScheduleExpression"]
+            is not None
+            and schedule_cron_expression is None
+        ):
+            schedule_cron_expression = existing_desc["MonitoringScheduleConfig"]["ScheduleConfig"][
+                "ScheduleExpression"
+            ]
 
         # Need to update schedule with a new job definition
         job_desc = self.sagemaker_session.sagemaker_client.describe_data_quality_job_definition(

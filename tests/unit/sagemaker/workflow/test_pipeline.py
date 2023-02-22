@@ -33,6 +33,7 @@ from sagemaker.workflow.pipeline_experiment_config import (
 from sagemaker.workflow.step_collections import StepCollection
 from tests.unit.sagemaker.workflow.helpers import ordered, CustomStep
 from sagemaker.local.local_session import LocalSession
+from botocore.exceptions import ClientError
 
 
 @pytest.fixture
@@ -173,10 +174,17 @@ def test_large_pipeline_update(sagemaker_session_mock, role_arn):
     )
 
 
-def test_pipeline_upsert(sagemaker_session_mock, role_arn):
-    sagemaker_session_mock.sagemaker_client.describe_pipeline.return_value = {
-        "PipelineArn": "pipeline-arn"
-    }
+def test_pipeline_upsert_resource_already_exists(sagemaker_session_mock, role_arn):
+
+    # case 1: resource already exists
+    def _raise_does_already_exists_client_error(**kwargs):
+        response = {"Error": {"Code": "ValidationException", "Message": "Resource already exists."}}
+        raise ClientError(error_response=response, operation_name="create_pipeline")
+
+    sagemaker_session_mock.sagemaker_client.create_pipeline = Mock(
+        name="create_pipeline", side_effect=_raise_does_already_exists_client_error
+    )
+
     sagemaker_session_mock.sagemaker_client.update_pipeline.return_value = {
         "PipelineArn": "pipeline-arn"
     }
@@ -197,9 +205,14 @@ def test_pipeline_upsert(sagemaker_session_mock, role_arn):
     ]
     pipeline.upsert(role_arn=role_arn, tags=tags)
 
-    sagemaker_session_mock.sagemaker_client.create_pipeline.assert_not_called()
+    sagemaker_session_mock.sagemaker_client.create_pipeline.assert_called_once_with(
+        PipelineName="MyPipeline",
+        RoleArn=role_arn,
+        PipelineDefinition=pipeline.definition(),
+        Tags=tags,
+    )
 
-    assert sagemaker_session_mock.sagemaker_client.update_pipeline.called_with(
+    sagemaker_session_mock.sagemaker_client.update_pipeline.assert_called_once_with(
         PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn=role_arn
     )
     assert sagemaker_session_mock.sagemaker_client.list_tags.called_with(
@@ -210,6 +223,93 @@ def test_pipeline_upsert(sagemaker_session_mock, role_arn):
     assert sagemaker_session_mock.sagemaker_client.add_tags.called_with(
         ResourceArn="mock_pipeline_arn", Tags=tags
     )
+
+
+def test_pipeline_upsert_create_unexpected_failure(sagemaker_session_mock, role_arn):
+
+    # case 2: unexpected failure on create
+    def _raise_unexpected_client_error(**kwargs):
+        response = {
+            "Error": {"Code": "ValidationException", "Message": "Name does not satisfy expression."}
+        }
+        raise ClientError(error_response=response, operation_name="foo")
+
+    sagemaker_session_mock.sagemaker_client.create_pipeline = Mock(
+        name="create_pipeline", side_effect=_raise_unexpected_client_error
+    )
+
+    sagemaker_session_mock.sagemaker_client.update_pipeline.return_value = {
+        "PipelineArn": "pipeline-arn"
+    }
+    sagemaker_session_mock.sagemaker_client.list_tags.return_value = {
+        "Tags": [{"Key": "dummy", "Value": "dummy_tag"}]
+    }
+
+    tags = [
+        {"Key": "foo", "Value": "abc"},
+        {"Key": "bar", "Value": "xyz"},
+    ]
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[],
+        steps=[],
+        sagemaker_session=sagemaker_session_mock,
+    )
+
+    with pytest.raises(ClientError):
+        pipeline.upsert(role_arn=role_arn, tags=tags)
+
+    sagemaker_session_mock.sagemaker_client.create_pipeline.assert_called_once_with(
+        PipelineName="MyPipeline",
+        RoleArn=role_arn,
+        PipelineDefinition=pipeline.definition(),
+        Tags=tags,
+    )
+    sagemaker_session_mock.sagemaker_client.update_pipeline.assert_not_called()
+    sagemaker_session_mock.sagemaker_client.list_tags.assert_not_called()
+    sagemaker_session_mock.sagemaker_client.add_tags.assert_not_called()
+
+
+def test_pipeline_upsert_resourse_doesnt_exist(sagemaker_session_mock, role_arn):
+
+    # case 3: resource does not exist
+    sagemaker_session_mock.sagemaker_client.create_pipeline = Mock(name="create_pipeline")
+
+    sagemaker_session_mock.sagemaker_client.update_pipeline.return_value = {
+        "PipelineArn": "pipeline-arn"
+    }
+    sagemaker_session_mock.sagemaker_client.list_tags.return_value = {
+        "Tags": [{"Key": "dummy", "Value": "dummy_tag"}]
+    }
+
+    tags = [
+        {"Key": "foo", "Value": "abc"},
+        {"Key": "bar", "Value": "xyz"},
+    ]
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[],
+        steps=[],
+        sagemaker_session=sagemaker_session_mock,
+    )
+
+    try:
+        pipeline.upsert(role_arn=role_arn, tags=tags)
+    except ClientError:
+        assert False, "Unexpected ClientError raised"
+
+    sagemaker_session_mock.sagemaker_client.create_pipeline.assert_called_once_with(
+        PipelineName="MyPipeline",
+        RoleArn=role_arn,
+        PipelineDefinition=pipeline.definition(),
+        Tags=tags,
+    )
+
+    sagemaker_session_mock.sagemaker_client.update_pipeline.assert_not_called()
+    sagemaker_session_mock.sagemaker_client.list_tags.assert_not_called()
+    sagemaker_session_mock.sagemaker_client.add_tags.assert_not_called()
 
 
 def test_pipeline_delete(sagemaker_session_mock):

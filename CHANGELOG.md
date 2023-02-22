@@ -1,5 +1,35 @@
 # Changelog
 
+## v2.134.0 (2023-02-22)
+
+### Features
+
+ * Add python 3.9 and spark 3.2 support for spark processor
+ * Adding support for Multi Worker Mirrored Strategy in TF estimator
+
+### Bug Fixes and Other Changes
+
+ * tag permission issue - remove describe before create
+
+## v2.133.0 (2023-02-18)
+
+### Features
+
+ * feature store with_feature_group functionality changes
+ * Adding support for SageMaker Training Compiler PyTorch 1.13
+ * support of the intelligent stopping in the tuner
+ * AutoGluon 0.6.2 image_uris update
+ * Support for flexible instance types in the HPO
+ * Add business details and hyper parameters fields and update test_model_card.py
+
+### Bug Fixes and Other Changes
+
+ * disable the tuner test
+ * Skip test_run_from_transform_job integ test to unblock python-sdk code pipeline
+ * Revert "feature: feature store with_feature_group functionality changes"
+ * advanced inference recommendation jobs parameters check
+ * make model_config optional when predicted labels are provided for bias detection
+
 ## v2.132.0 (2023-02-07)
 
 ### Features

@@ -177,7 +177,6 @@ def test_tuning_kmeans(
     )
 
 
-@pytest.mark.release
 def test_tuning_kmeans_with_instance_configs(
     sagemaker_session, kmeans_train_set, kmeans_estimator, hyperparameter_ranges, cpu_instance_type
 ):

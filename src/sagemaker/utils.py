@@ -604,12 +604,17 @@ def retries(
     )
 
 
-def retry_with_backoff(callable_func, num_attempts=8):
+def retry_with_backoff(callable_func, num_attempts=8, botocore_client_error_code=None):
     """Retry with backoff until maximum attempts are reached
 
     Args:
         callable_func (callable): The callable function to retry.
-        num_attempts (int): The maximum number of attempts to retry.
+        num_attempts (int): The maximum number of attempts to retry.(Default: 8)
+        botocore_client_error_code (str): The specific Botocore ClientError exception error code
+            on which to retry on.
+            If provided other exceptions will be raised directly w/o retry.
+            If not provided, retry on any exception.
+            (Default: None)
     """
     if num_attempts < 1:
         raise ValueError(
@@ -619,7 +624,15 @@ def retry_with_backoff(callable_func, num_attempts=8):
         try:
             return callable_func()
         except Exception as ex:  # pylint: disable=broad-except
-            if i == num_attempts - 1:
+            if not botocore_client_error_code or (
+                botocore_client_error_code
+                and isinstance(ex, botocore.exceptions.ClientError)
+                and ex.response["Error"]["Code"]  # pylint: disable=no-member
+                == botocore_client_error_code
+            ):
+                if i == num_attempts - 1:
+                    raise ex
+            else:
                 raise ex
             logger.error("Retrying in attempt %s, due to %s", (i + 1), str(ex))
             time.sleep(2**i)

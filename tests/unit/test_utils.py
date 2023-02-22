@@ -795,7 +795,8 @@ def test_to_string():
     }
 
 
-def test_start_waiting(capfd):
+@patch("time.sleep", return_value=None)
+def test_start_waiting(patched_sleep, capfd):
     waiting_time = 1
     sagemaker.utils._start_waiting(waiting_time)
     out, _ = capfd.readouterr()
@@ -803,7 +804,8 @@ def test_start_waiting(capfd):
     assert "." * sagemaker.utils.WAITING_DOT_NUMBER in out
 
 
-def test_retry_with_backoff():
+@patch("time.sleep", return_value=None)
+def test_retry_with_backoff(patched_sleep):
     callable_func = Mock()
 
     # Invalid input
@@ -823,6 +825,25 @@ def test_retry_with_backoff():
     func_return_val = "Test Return"
     callable_func.side_effect = [RuntimeError(run_err_msg), func_return_val]
     assert retry_with_backoff(callable_func, 2) == func_return_val
+
+    # when retry on specific error, fail for other error on 1st try
+    func_return_val = "Test Return"
+    response = {"Error": {"Code": "ValidationException", "Message": "Could not find entity."}}
+    error = botocore.exceptions.ClientError(error_response=response, operation_name="foo")
+    callable_func.side_effect = [error, func_return_val]
+    with pytest.raises(botocore.exceptions.ClientError) as run_err:
+        retry_with_backoff(callable_func, 2, botocore_client_error_code="AccessDeniedException")
+    assert "ValidationException" in str(run_err)
+
+    # when retry on specific error, One retry passes
+    func_return_val = "Test Return"
+    response = {"Error": {"Code": "AccessDeniedException", "Message": "Access denied."}}
+    error = botocore.exceptions.ClientError(error_response=response, operation_name="foo")
+    callable_func.side_effect = [error, func_return_val]
+    assert (
+        retry_with_backoff(callable_func, 2, botocore_client_error_code="AccessDeniedException")
+        == func_return_val
+    )
 
     # No retry
     callable_func.side_effect = None

@@ -3223,14 +3223,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         def submit(request):
             if model_package_group_name is not None:
-                try:
-                    self.sagemaker_client.describe_model_package_group(
+                _create_resource(
+                    lambda: self.sagemaker_client.create_model_package_group(
                         ModelPackageGroupName=request["ModelPackageGroupName"]
                     )
-                except ClientError:
-                    self.sagemaker_client.create_model_package_group(
-                        ModelPackageGroupName=request["ModelPackageGroupName"]
-                    )
+                )
             return self.sagemaker_client.create_model_package(**request)
 
         return self._intercept_create_request(
@@ -3918,33 +3915,22 @@ class Session(object):  # pylint: disable=too-many-public-methods
         name = name or name_from_image(image_uri)
         model_vpc_config = vpc_utils.sanitize(model_vpc_config)
 
-        if _deployment_entity_exists(
-            lambda: self.sagemaker_client.describe_endpoint(EndpointName=name)
-        ):
-            raise ValueError(
-                'Endpoint with name "{}" already exists; please pick a different name.'.format(name)
-            )
+        primary_container = container_def(
+            image_uri=image_uri,
+            model_data_url=model_s3_location,
+            env=model_environment_vars,
+        )
 
-        if not _deployment_entity_exists(
-            lambda: self.sagemaker_client.describe_model(ModelName=name)
-        ):
-            primary_container = container_def(
-                image_uri=image_uri,
-                model_data_url=model_s3_location,
-                env=model_environment_vars,
-            )
-            self.create_model(
-                name=name, role=role, container_defs=primary_container, vpc_config=model_vpc_config
-            )
+        self.create_model(
+            name=name, role=role, container_defs=primary_container, vpc_config=model_vpc_config
+        )
 
         data_capture_config_dict = None
         if data_capture_config is not None:
             data_capture_config_dict = data_capture_config._to_request_dict()
 
-        if not _deployment_entity_exists(
-            lambda: self.sagemaker_client.describe_endpoint_config(EndpointConfigName=name)
-        ):
-            self.create_endpoint_config(
+        _create_resource(
+            lambda: self.create_endpoint_config(
                 name=name,
                 model_name=name,
                 initial_instance_count=initial_instance_count,
@@ -3952,8 +3938,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 accelerator_type=accelerator_type,
                 data_capture_config_dict=data_capture_config_dict,
             )
+        )
 
-        self.create_endpoint(endpoint_name=name, config_name=name, wait=wait)
+        # to make change backwards compatible
+        response = _create_resource(
+            lambda: self.create_endpoint(endpoint_name=name, config_name=name, wait=wait)
+        )
+        if not response:
+            raise ValueError(
+                'Endpoint with name "{}" already exists; please pick a different name.'.format(name)
+            )
+
         return name
 
     def endpoint_from_production_variants(
@@ -5452,34 +5447,54 @@ def _deployment_entity_exists(describe_fn):
         return False
 
 
+def _create_resource(create_fn):
+    """Call create function and accepts/pass when resource already exists.
+
+    This is a helper function to use an existing resource if found when creating.
+
+    Args:
+        create_fn: Create resource function.
+
+    Returns:
+        (bool): True if new resource was created, False if resource already exists.
+    """
+    try:
+        create_fn()
+        # create function succeeded, resource does not exist already
+        return True
+    except ClientError as ce:
+        error_code = ce.response["Error"]["Code"]
+        error_message = ce.response["Error"]["Message"]
+        already_exists_exceptions = ["ValidationException", "ResourceInUse"]
+        already_exists_msg_patterns = ["Cannot create already existing", "already exists"]
+        if not (
+            error_code in already_exists_exceptions
+            and any(p in error_message for p in already_exists_msg_patterns)
+        ):
+            raise ce
+        # no new resource created as resource already exists
+        return False
+
+
 def _train_done(sagemaker_client, job_name, last_desc):
     """Placeholder docstring"""
     in_progress_statuses = ["InProgress", "Created"]
 
-    for _ in retries(
-        max_retry_count=10,  # 10*30 = 5min
-        exception_message_prefix="Waiting for schedule to leave 'Pending' status",
-        seconds_to_sleep=30,
-    ):
-        try:
-            desc = sagemaker_client.describe_training_job(TrainingJobName=job_name)
-            status = desc["TrainingJobStatus"]
+    desc = sagemaker_client.describe_training_job(TrainingJobName=job_name)
+    status = desc["TrainingJobStatus"]
 
-            if secondary_training_status_changed(desc, last_desc):
-                print()
-                print(secondary_training_status_message(desc, last_desc), end="")
-            else:
-                print(".", end="")
-            sys.stdout.flush()
+    if secondary_training_status_changed(desc, last_desc):
+        print()
+        print(secondary_training_status_message(desc, last_desc), end="")
+    else:
+        print(".", end="")
+    sys.stdout.flush()
 
-            if status in in_progress_statuses:
-                return desc, False
+    if status in in_progress_statuses:
+        return desc, False
 
-            print()
-            return desc, True
-        except botocore.exceptions.ClientError as err:
-            if err.response["Error"]["Code"] == "AccessDeniedException":
-                pass
+    print()
+    return desc, True
 
 
 def _processing_job_status(sagemaker_client, job_name):
@@ -5799,19 +5814,54 @@ def _deploy_done(sagemaker_client, endpoint_name):
 
 def _wait_until_training_done(callable_fn, desc, poll=5):
     """Placeholder docstring"""
-    job_desc, finished = callable_fn(desc)
+    elapsed_time = 0
+    finished = None
+    job_desc = desc
     while not finished:
-        time.sleep(poll)
-        job_desc, finished = callable_fn(job_desc)
+        try:
+            elapsed_time += poll
+            time.sleep(poll)
+            job_desc, finished = callable_fn(job_desc)
+        except botocore.exceptions.ClientError as err:
+            # For initial 5 mins we accept/pass AccessDeniedException.
+            # The reason is to await tag propagation to avoid false AccessDenied claims for an
+            # access policy based on resource tags, The caveat here is for true AccessDenied
+            # cases the routine will fail after 5 mins
+            if err.response["Error"]["Code"] == "AccessDeniedException" and elapsed_time <= 300:
+                LOGGER.warning(
+                    "Received AccessDeniedException. This could mean the IAM role does not "
+                    "have the resource permissions, in which case please add resource access "
+                    "and retry. For cases where the role has tag based resource policy, "
+                    "continuing to wait for tag propagation.."
+                )
+                continue
+            raise err
     return job_desc
 
 
 def _wait_until(callable_fn, poll=5):
     """Placeholder docstring"""
-    result = callable_fn()
+    elapsed_time = 0
+    result = None
     while result is None:
-        time.sleep(poll)
-        result = callable_fn()
+        try:
+            elapsed_time += poll
+            time.sleep(poll)
+            result = callable_fn()
+        except botocore.exceptions.ClientError as err:
+            # For initial 5 mins we accept/pass AccessDeniedException.
+            # The reason is to await tag propagation to avoid false AccessDenied claims for an
+            # access policy based on resource tags, The caveat here is for true AccessDenied
+            # cases the routine will fail after 5 mins
+            if err.response["Error"]["Code"] == "AccessDeniedException" and elapsed_time <= 300:
+                LOGGER.warning(
+                    "Received AccessDeniedException. This could mean the IAM role does not "
+                    "have the resource permissions, in which case please add resource access "
+                    "and retry. For cases where the role has tag based resource policy, "
+                    "continuing to wait for tag propagation.."
+                )
+                continue
+            raise err
     return result
 
 
