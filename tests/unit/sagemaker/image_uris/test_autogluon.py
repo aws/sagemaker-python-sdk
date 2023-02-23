@@ -40,6 +40,7 @@ ACCOUNTS = {
     "us-gov-east-1": "446045086412",
     "us-gov-west-1": "442386744353",
     "us-iso-east-1": "886529160074",
+    "us-isob-east-1": "094389454867",
     "us-west-1": "763104351884",
     "us-west-2": "763104351884",
 }
@@ -55,7 +56,9 @@ VERSIONS = [
     "0.5",
     "0.6.1",
     "0.6",
+    "0.6.2",
 ]
+
 SCOPES = ["training", "inference"]
 PROCESSORS = ["cpu", "gpu"]
 

@@ -743,6 +743,7 @@ def test_ecr_login_non_ecr():
     [
         "520713654638.dkr.ecr.us-east-1.amazonaws.com/image-i-have:1.0",
         "520713654638.dkr.ecr.us-iso-east-1.c2s.ic.gov/image-i-have:1.0",
+        "520713654638.dkr.ecr.us-isob-east-1.sc2s.sgov.gov/image-i-have:1.0",
     ],
 )
 def test_ecr_login_image_exists(_check_output, image):
@@ -850,6 +851,26 @@ def test__aws_credentials_with_short_lived_credentials_and_ec2_metadata_service_
     session = Mock()
     session.get_credentials.return_value = credentials
     mock.return_value = False
+    aws_credentials = _aws_credentials(session)
+
+    assert aws_credentials == [
+        "AWS_ACCESS_KEY_ID=%s" % credentials.access_key,
+        "AWS_SECRET_ACCESS_KEY=%s" % credentials.secret_key,
+        "AWS_SESSION_TOKEN=%s" % credentials.token,
+    ]
+
+
+@patch("sagemaker.local.image._aws_credentials_available_in_metadata_service")
+def test__aws_credentials_with_short_lived_credentials_and_ec2_metadata_service_having_credentials_override(
+    mock,
+):
+    os.environ["USE_SHORT_LIVED_CREDENTIALS"] = "1"
+    credentials = Credentials(
+        access_key=_random_string(), secret_key=_random_string(), token=_random_string()
+    )
+    session = Mock()
+    session.get_credentials.return_value = credentials
+    mock.return_value = True
     aws_credentials = _aws_credentials(session)
 
     assert aws_credentials == [

@@ -558,7 +558,7 @@ def test_repack_model_from_file_to_file(tmp):
     model_tar_path = os.path.join(tmp, "model.tar.gz")
     sagemaker.utils.create_tar_file([os.path.join(tmp, "model")], model_tar_path)
 
-    sagemaker_session = MagicMock()
+    sagemaker_session = MagicMock(settings=SessionSettings())
 
     file_mode_path = "file://%s" % model_tar_path
     destination_path = "file://%s" % os.path.join(tmp, "repacked-model.tar.gz")
@@ -608,7 +608,7 @@ def test_repack_model_from_file_to_folder(tmp):
         [],
         file_mode_path,
         "file://%s/repacked-model.tar.gz" % tmp,
-        MagicMock(),
+        MagicMock(settings=SessionSettings()),
     )
 
     assert list_tar_files("file://%s/repacked-model.tar.gz" % tmp, tmp) == {
@@ -679,7 +679,7 @@ def test_repack_model_with_same_inference_file_name(tmp, fake_s3):
 class FakeS3(object):
     def __init__(self, tmp):
         self.tmp = tmp
-        self.sagemaker_session = MagicMock()
+        self.sagemaker_session = MagicMock(settings=SessionSettings())
         self.location_map = {}
         self.current_bucket = None
         self.object_mock = MagicMock()
@@ -757,6 +757,10 @@ def test_sts_regional_endpoint():
     assert endpoint == "https://sts.us-iso-east-1.c2s.ic.gov"
     assert botocore.utils.is_valid_endpoint_url(endpoint)
 
+    endpoint = sagemaker.utils.sts_regional_endpoint("us-isob-east-1")
+    assert endpoint == "https://sts.us-isob-east-1.sc2s.sgov.gov"
+    assert botocore.utils.is_valid_endpoint_url(endpoint)
+
 
 def test_partition_by_region():
     assert sagemaker.utils._aws_partition("us-west-2") == "aws"
@@ -791,7 +795,8 @@ def test_to_string():
     }
 
 
-def test_start_waiting(capfd):
+@patch("time.sleep", return_value=None)
+def test_start_waiting(patched_sleep, capfd):
     waiting_time = 1
     sagemaker.utils._start_waiting(waiting_time)
     out, _ = capfd.readouterr()
@@ -799,7 +804,8 @@ def test_start_waiting(capfd):
     assert "." * sagemaker.utils.WAITING_DOT_NUMBER in out
 
 
-def test_retry_with_backoff():
+@patch("time.sleep", return_value=None)
+def test_retry_with_backoff(patched_sleep):
     callable_func = Mock()
 
     # Invalid input
@@ -819,6 +825,25 @@ def test_retry_with_backoff():
     func_return_val = "Test Return"
     callable_func.side_effect = [RuntimeError(run_err_msg), func_return_val]
     assert retry_with_backoff(callable_func, 2) == func_return_val
+
+    # when retry on specific error, fail for other error on 1st try
+    func_return_val = "Test Return"
+    response = {"Error": {"Code": "ValidationException", "Message": "Could not find entity."}}
+    error = botocore.exceptions.ClientError(error_response=response, operation_name="foo")
+    callable_func.side_effect = [error, func_return_val]
+    with pytest.raises(botocore.exceptions.ClientError) as run_err:
+        retry_with_backoff(callable_func, 2, botocore_client_error_code="AccessDeniedException")
+    assert "ValidationException" in str(run_err)
+
+    # when retry on specific error, One retry passes
+    func_return_val = "Test Return"
+    response = {"Error": {"Code": "AccessDeniedException", "Message": "Access denied."}}
+    error = botocore.exceptions.ClientError(error_response=response, operation_name="foo")
+    callable_func.side_effect = [error, func_return_val]
+    assert (
+        retry_with_backoff(callable_func, 2, botocore_client_error_code="AccessDeniedException")
+        == func_return_val
+    )
 
     # No retry
     callable_func.side_effect = None

@@ -43,7 +43,11 @@ def cd(path):
 def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name="us-west-2")
     session_mock = Mock(
-        name="sagemaker_session", boto_session=boto_mock, s3_client=None, s3_resource=None
+        name="sagemaker_session",
+        boto_session=boto_mock,
+        s3_client=None,
+        s3_resource=None,
+        settings=SessionSettings(),
     )
     session_mock.default_bucket = Mock(name="default_bucket", return_value="my-bucket")
     session_mock.expand_role = Mock(name="expand_role", return_value="my-role")
@@ -617,6 +621,7 @@ def test_region_supports_debugger_feature_returns_true_for_supported_regions():
 
 def test_region_supports_debugger_feature_returns_false_for_unsupported_regions():
     assert fw_utils._region_supports_debugger("us-iso-east-1") is False
+    assert fw_utils._region_supports_debugger("us-isob-east-1") is False
     assert fw_utils._region_supports_debugger("ap-southeast-3") is False
     assert fw_utils._region_supports_debugger("ap-southeast-4") is False
     assert fw_utils._region_supports_debugger("eu-south-2") is False
@@ -907,6 +912,7 @@ def test_validate_smdataparallel_args_not_raises():
         ("ml.p3.16xlarge", "pytorch", "1.12.0", "py38", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.12.1", "py38", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.12", "py38", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "pytorch", "1.13.1", "py39", smdataparallel_enabled),
         ("ml.p3.16xlarge", "tensorflow", "2.4.1", "py3", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "tensorflow", "2.4.1", "py37", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "tensorflow", "2.4.3", "py3", smdataparallel_enabled_custom_mpi),
@@ -927,6 +933,7 @@ def test_validate_smdataparallel_args_not_raises():
         ("ml.p3.16xlarge", "pytorch", "1.11.0", "py38", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "pytorch", "1.12.0", "py38", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "pytorch", "1.12.1", "py38", smdataparallel_enabled_custom_mpi),
+        ("ml.p3.16xlarge", "pytorch", "1.13.1", "py39", smdataparallel_enabled_custom_mpi),
     ]
     for instance_type, framework_name, framework_version, py_version, distribution in good_args:
         fw_utils._validate_smdataparallel_args(

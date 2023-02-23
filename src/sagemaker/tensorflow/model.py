@@ -323,6 +323,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         volume_size=None,
         model_data_download_timeout=None,
         container_startup_health_check_timeout=None,
+        inference_recommendation_id=None,
     ):
         """Deploy a Tensorflow ``Model`` to a SageMaker ``Endpoint``."""
 
@@ -347,6 +348,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             model_data_download_timeout=model_data_download_timeout,
             container_startup_health_check_timeout=container_startup_health_check_timeout,
             update_endpoint=update_endpoint,
+            inference_recommendation_id=inference_recommendation_id,
         )
 
     def _eia_supported(self):

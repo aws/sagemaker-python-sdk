@@ -299,21 +299,45 @@ def test_run_load_in_sm_processing_job(mock_run_env, sagemaker_session):
     client.describe_processing_job.assert_called_once_with(ProcessingJobName=job_name)
 
 
+@patch(
+    "sagemaker.experiments.run._Experiment._load_or_create",
+    MagicMock(return_value=_Experiment(experiment_name=TEST_EXP_NAME)),
+)
+@patch(
+    "sagemaker.experiments.run._Trial._load_or_create",
+    MagicMock(side_effect=mock_trial_load_or_create_func),
+)
+@patch.object(_Trial, "add_trial_component", MagicMock(return_value=None))
+@patch(
+    "sagemaker.experiments.run._TrialComponent._load_or_create",
+    MagicMock(side_effect=mock_tc_load_or_create_func),
+)
+@patch.object(_TrialComponent, "save", MagicMock(return_value=None))
 @patch("sagemaker.experiments.run._RunEnvironment")
 def test_run_load_in_sm_transform_job(mock_run_env, sagemaker_session):
-    # TODO: update this test once figure out how to get source_arn from transform job
+    client = sagemaker_session.sagemaker_client
+    job_name = "my-transform-job"
     rv = unittest.mock.Mock()
+    rv.source_arn = f"arn:1234/{job_name}"
     rv.environment_type = _environment._EnvironmentType.SageMakerTransformJob
-    rv.source_arn = ""
     mock_run_env.load.return_value = rv
 
-    with pytest.raises(RuntimeError) as err:
-        with load_run(sagemaker_session=sagemaker_session):
-            pass
+    expected_tc_name = f"{TEST_EXP_NAME}{DELIMITER}{TEST_RUN_NAME}"
+    exp_config = {
+        EXPERIMENT_NAME: TEST_EXP_NAME,
+        TRIAL_NAME: Run._generate_trial_name(TEST_EXP_NAME),
+        RUN_NAME: expected_tc_name,
+    }
+    client.describe_transform_job.return_value = {
+        "TransformJobName": "transform-job-experiments",
+        # The Run object has been created else where
+        "ExperimentConfig": exp_config,
+    }
 
-    assert (
-        "loading experiment config from transform job environment is not currently supported"
-    ) in str(err)
+    with load_run(sagemaker_session=sagemaker_session):
+        pass
+
+    client.describe_transform_job.assert_called_once_with(TransformJobName=job_name)
 
 
 def test_log_parameter_outside_run_context(run_obj):
@@ -910,6 +934,11 @@ def test_append_run_tc_label_to_tags():
     tags = [{"Key": "foo", "Value": "bar"}]
     ret = Run._append_run_tc_label_to_tags(tags)
     assert len(ret) == 2
+    assert expected_tc_tag in ret
+
+    tags = [expected_tc_tag]
+    ret = Run._append_run_tc_label_to_tags(tags)
+    assert len(ret) == 1
     assert expected_tc_tag in ret
 
 

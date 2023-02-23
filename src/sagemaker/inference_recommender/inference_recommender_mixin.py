@@ -14,11 +14,10 @@
 from __future__ import absolute_import
 
 import logging
+import re
 
 from typing import List, Dict, Optional
-
 import sagemaker
-
 from sagemaker.parameter import CategoricalParameter
 
 INFERENCE_RECOMMENDER_FRAMEWORK_MAPPING = {
@@ -101,13 +100,15 @@ class InferenceRecommenderMixin:
                         'OMP_NUM_THREADS': CategoricalParameter(['1', '2', '3', '4'])
                     }]
 
-            phases (list[Phase]): Specifies the criteria for increasing load
-                during endpoint load tests. (default: None).
-            traffic_type (str): Specifies the traffic type that matches the phases. (default: None).
-            max_invocations (str): defines invocation limit for endpoint load tests (default: None).
-            model_latency_thresholds (list[ModelLatencyThreshold]): defines the response latency
-                thresholds for endpoint load tests (default: None).
-            max_tests (int): restricts how many endpoints are allowed to be
+            phases (list[Phase]): Shape of the traffic pattern to use in the load test
+                (default: None).
+            traffic_type (str): Specifies the traffic pattern type. Currently only supports
+                one type 'PHASES' (default: None).
+            max_invocations (str): defines the minimum invocations per minute for the endpoint
+                to support (default: None).
+            model_latency_thresholds (list[ModelLatencyThreshold]): defines the maximum response
+                latency for endpoints to support (default: None).
+            max_tests (int): restricts how many endpoints in total are allowed to be
                 spun up for this job (default: None).
             max_parallel_tests (int): restricts how many concurrent endpoints
                 this job is allowed to spin up (default: None).
@@ -122,7 +123,7 @@ class InferenceRecommenderMixin:
             raise ValueError("right_size() is currently only supported with a registered model")
 
         if not framework and self._framework():
-            framework = INFERENCE_RECOMMENDER_FRAMEWORK_MAPPING.get(self._framework, framework)
+            framework = INFERENCE_RECOMMENDER_FRAMEWORK_MAPPING.get(self._framework(), framework)
 
         framework_version = self._get_framework_version()
 
@@ -176,7 +177,38 @@ class InferenceRecommenderMixin:
 
         return self
 
-    def _check_inference_recommender_args(
+    def _update_params(
+        self,
+        **kwargs,
+    ):
+        """Check and update params based on inference recommendation id or right size case"""
+        instance_type = kwargs["instance_type"]
+        initial_instance_count = kwargs["initial_instance_count"]
+        accelerator_type = kwargs["accelerator_type"]
+        async_inference_config = kwargs["async_inference_config"]
+        serverless_inference_config = kwargs["serverless_inference_config"]
+        inference_recommendation_id = kwargs["inference_recommendation_id"]
+        inference_recommender_job_results = kwargs["inference_recommender_job_results"]
+        if inference_recommendation_id is not None:
+            inference_recommendation = self._update_params_for_recommendation_id(
+                instance_type=instance_type,
+                initial_instance_count=initial_instance_count,
+                accelerator_type=accelerator_type,
+                async_inference_config=async_inference_config,
+                serverless_inference_config=serverless_inference_config,
+                inference_recommendation_id=inference_recommendation_id,
+            )
+        elif inference_recommender_job_results is not None:
+            inference_recommendation = self._update_params_for_right_size(
+                instance_type,
+                initial_instance_count,
+                accelerator_type,
+                serverless_inference_config,
+                async_inference_config,
+            )
+        return inference_recommendation or (instance_type, initial_instance_count)
+
+    def _update_params_for_right_size(
         self,
         instance_type=None,
         initial_instance_count=None,
@@ -232,6 +264,161 @@ class InferenceRecommenderMixin:
         ]
         return (instance_type, initial_instance_count)
 
+    def _update_params_for_recommendation_id(
+        self,
+        instance_type,
+        initial_instance_count,
+        accelerator_type,
+        async_inference_config,
+        serverless_inference_config,
+        inference_recommendation_id,
+    ):
+        """Update parameters with inference recommendation results.
+
+        Args:
+            instance_type (str): The EC2 instance type to deploy this Model to.
+                For example, 'ml.p2.xlarge', or 'local' for local mode. If not using
+                serverless inference, then it is required to deploy a model.
+            initial_instance_count (int): The initial number of instances to run
+                in the ``Endpoint`` created from this ``Model``. If not using
+                serverless inference, then it need to be a number larger or equals
+                to 1.
+            accelerator_type (str): Type of Elastic Inference accelerator to
+                deploy this model for model loading and inference, for example,
+                'ml.eia1.medium'. If not specified, no Elastic Inference
+                accelerator will be attached to the endpoint. For more
+                information:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
+            async_inference_config (sagemaker.model_monitor.AsyncInferenceConfig): Specifies
+                configuration related to async endpoint. Use this configuration when trying
+                to create async endpoint and make async inference. If empty config object
+                passed through, will use default config to deploy async endpoint. Deploy a
+                real-time endpoint if it's None.
+            serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
+                Specifies configuration related to serverless endpoint. Use this configuration
+                when trying to create serverless endpoint and make serverless inference. If
+                empty object passed through, will use pre-defined values in
+                ``ServerlessInferenceConfig`` class to deploy serverless endpoint. Deploy an
+                instance based endpoint if it's None.
+            inference_recommendation_id (str): The recommendation id which specifies
+                the recommendation you picked from inference recommendation job
+                results and would like to deploy the model and endpoint with
+                recommended parameters.
+        Raises:
+            ValueError: If arguments combination check failed in these circumstances:
+                - If only one of instance type or instance count specified or
+                - If recommendation id does not follow the required format or
+                - If recommendation id is not valid or
+                - If inference recommendation id is specified along with incompatible parameters
+        Returns:
+            (string, int): instance type and associated instance count from selected
+            inference recommendation id if arguments combination check passed.
+        """
+
+        if instance_type is not None and initial_instance_count is not None:
+            LOGGER.warning(
+                "Both instance_type and initial_instance_count are specified,"
+                "overriding the recommendation result."
+            )
+            return (instance_type, initial_instance_count)
+
+        # Validate non-compatible parameters with recommendation id
+        if bool(instance_type) != bool(initial_instance_count):
+            raise ValueError(
+                "Please either do not specify instance_type and initial_instance_count"
+                "since they are in recommendation, or specify both of them if you want"
+                "to override the recommendation."
+            )
+        if accelerator_type is not None:
+            raise ValueError("accelerator_type is not compatible with inference_recommendation_id.")
+        if async_inference_config is not None:
+            raise ValueError(
+                "async_inference_config is not compatible with inference_recommendation_id."
+            )
+        if serverless_inference_config is not None:
+            raise ValueError(
+                "serverless_inference_config is not compatible with inference_recommendation_id."
+            )
+
+        # Validate recommendation id
+        if not re.match(r"[a-zA-Z0-9](-*[a-zA-Z0-9]){0,63}\/\w{8}$", inference_recommendation_id):
+            raise ValueError("Inference Recommendation id is not valid")
+        recommendation_job_name = inference_recommendation_id.split("/")[0]
+
+        sage_client = self.sagemaker_session.sagemaker_client
+        recommendation_res = sage_client.describe_inference_recommendations_job(
+            JobName=recommendation_job_name
+        )
+        input_config = recommendation_res["InputConfig"]
+
+        recommendation = next(
+            (
+                rec
+                for rec in recommendation_res["InferenceRecommendations"]
+                if rec["RecommendationId"] == inference_recommendation_id
+            ),
+            None,
+        )
+
+        if not recommendation:
+            raise ValueError(
+                "inference_recommendation_id does not exist in InferenceRecommendations list"
+            )
+
+        model_config = recommendation["ModelConfiguration"]
+        envs = (
+            model_config["EnvironmentParameters"]
+            if "EnvironmentParameters" in model_config
+            else None
+        )
+        # Update envs
+        recommend_envs = {}
+        if envs is not None:
+            for env in envs:
+                recommend_envs[env["Key"]] = env["Value"]
+        self.env.update(recommend_envs)
+
+        # Update params with non-compilation recommendation results
+        if (
+            "InferenceSpecificationName" not in model_config
+            and "CompilationJobName" not in model_config
+        ):
+
+            if "ModelPackageVersionArn" in input_config:
+                modelpkg_res = sage_client.describe_model_package(
+                    ModelPackageName=input_config["ModelPackageVersionArn"]
+                )
+                self.model_data = modelpkg_res["InferenceSpecification"]["Containers"][0][
+                    "ModelDataUrl"
+                ]
+                self.image_uri = modelpkg_res["InferenceSpecification"]["Containers"][0]["Image"]
+            elif "ModelName" in input_config:
+                model_res = sage_client.describe_model(ModelName=input_config["ModelName"])
+                self.model_data = model_res["PrimaryContainer"]["ModelDataUrl"]
+                self.image_uri = model_res["PrimaryContainer"]["Image"]
+        else:
+            if "InferenceSpecificationName" in model_config:
+                modelpkg_res = sage_client.describe_model_package(
+                    ModelPackageName=input_config["ModelPackageVersionArn"]
+                )
+                self.model_data = modelpkg_res["AdditionalInferenceSpecificationDefinition"][
+                    "Containers"
+                ][0]["ModelDataUrl"]
+                self.image_uri = modelpkg_res["AdditionalInferenceSpecificationDefinition"][
+                    "Containers"
+                ][0]["Image"]
+            elif "CompilationJobName" in model_config:
+                compilation_res = sage_client.describe_compilation_job(
+                    CompilationJobName=model_config["CompilationJobName"]
+                )
+                self.model_data = compilation_res["ModelArtifacts"]["S3ModelArtifacts"]
+                self.image_uri = compilation_res["InferenceImage"]
+
+        instance_type = recommendation["EndpointConfiguration"]["InstanceType"]
+        initial_instance_count = recommendation["EndpointConfiguration"]["InitialInstanceCount"]
+
+        return (instance_type, initial_instance_count)
+
     def _convert_to_endpoint_configurations_json(
         self, hyperparameter_ranges: List[Dict[str, CategoricalParameter]]
     ):
@@ -277,10 +464,12 @@ class InferenceRecommenderMixin:
         """Bundle right_size() parameters into a resource limit for Advanced job"""
         if not max_tests and not max_parallel_tests:
             return None
-        return {
-            "MaxNumberOfTests": max_tests,
-            "MaxParallelOfTests": max_parallel_tests,
-        }
+        resource_limit = {}
+        if max_tests:
+            resource_limit["MaxNumberOfTests"] = max_tests
+        if max_parallel_tests:
+            resource_limit["MaxParallelOfTests"] = max_parallel_tests
+        return resource_limit
 
     def _convert_to_stopping_conditions_json(
         self, max_invocations: int, model_latency_thresholds: List[ModelLatencyThreshold]
@@ -288,7 +477,11 @@ class InferenceRecommenderMixin:
         """Bundle right_size() parameters into stopping conditions for Advanced job"""
         if not max_invocations and not model_latency_thresholds:
             return None
-        return {
-            "MaxInvocations": max_invocations,
-            "ModelLatencyThresholds": [threshold.to_json for threshold in model_latency_thresholds],
-        }
+        stopping_conditions = {}
+        if max_invocations:
+            stopping_conditions["MaxInvocations"] = max_invocations
+        if model_latency_thresholds:
+            stopping_conditions["ModelLatencyThresholds"] = [
+                threshold.to_json for threshold in model_latency_thresholds
+            ]
+        return stopping_conditions

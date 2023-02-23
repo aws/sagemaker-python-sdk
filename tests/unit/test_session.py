@@ -22,6 +22,7 @@ import six
 from botocore.exceptions import ClientError
 from mock import ANY, MagicMock, Mock, patch, call, mock_open
 
+from .common import _raise_unexpected_client_error
 import sagemaker
 from sagemaker import TrainingInput, Session, get_execution_role, exceptions
 from sagemaker.async_inference import AsyncInferenceConfig
@@ -29,6 +30,8 @@ from sagemaker.session import (
     _tuning_job_status,
     _transform_job_status,
     _train_done,
+    _wait_until,
+    _wait_until_training_done,
     NOTEBOOK_METADATA_FILE,
 )
 from sagemaker.tuner import WarmStartConfig, WarmStartTypes
@@ -296,7 +299,10 @@ def test_get_execution_role_throws_exception_if_arn_is_not_role_with_role_in_nam
     assert "The current AWS identity is not a role" in str(error.value)
 
 
-@patch("six.moves.builtins.open", mock_open(read_data='{"ResourceName": "SageMakerInstance"}'))
+@patch(
+    "six.moves.builtins.open",
+    mock_open(read_data='{"ResourceName": "SageMakerInstance"}'),
+)
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
 def test_get_caller_identity_arn_from_describe_notebook_instance(boto_session):
     sess = Session(boto_session)
@@ -419,7 +425,10 @@ def test_get_caller_identity_arn_from_describe_domain_for_space(boto_session):
     sess.sagemaker_client.describe_domain.assert_called_once_with(DomainId="d-kbnw5yk6tg8j")
 
 
-@patch("six.moves.builtins.open", mock_open(read_data='{"ResourceName": "SageMakerInstance"}'))
+@patch(
+    "six.moves.builtins.open",
+    mock_open(read_data='{"ResourceName": "SageMakerInstance"}'),
+)
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
 @patch("sagemaker.session.sts_regional_endpoint", return_value=STS_ENDPOINT)
 def test_get_caller_identity_arn_from_a_role_after_describe_notebook_exception(
@@ -427,7 +436,8 @@ def test_get_caller_identity_arn_from_a_role_after_describe_notebook_exception(
 ):
     sess = Session(boto_session)
     exception = ClientError(
-        {"Error": {"Code": "ValidationException", "Message": "RecordNotFound"}}, "Operation"
+        {"Error": {"Code": "ValidationException", "Message": "RecordNotFound"}},
+        "Operation",
     )
     sess.sagemaker_client.describe_notebook_instance.side_effect = exception
 
@@ -771,10 +781,17 @@ COMPLETED_DESCRIBE_TRANSFORM_JOB_RESULT = {
     "TransformJobStatus": "Completed",
     "ModelName": "some-model",
     "TransformJobName": JOB_NAME,
-    "TransformResources": {"InstanceCount": INSTANCE_COUNT, "InstanceType": INSTANCE_TYPE},
+    "TransformResources": {
+        "InstanceCount": INSTANCE_COUNT,
+        "InstanceType": INSTANCE_TYPE,
+    },
     "TransformEndTime": datetime.datetime(2018, 2, 17, 7, 19, 34, 953000),
     "TransformStartTime": datetime.datetime(2018, 2, 17, 7, 15, 0, 103000),
-    "TransformOutput": {"AssembleWith": "None", "KmsKeyId": "", "S3OutputPath": S3_OUTPUT},
+    "TransformOutput": {
+        "AssembleWith": "None",
+        "KmsKeyId": "",
+        "S3OutputPath": S3_OUTPUT,
+    },
     "TransformInput": {
         "CompressionType": "None",
         "ContentType": "text/csv",
@@ -894,7 +911,10 @@ SAMPLE_TUNING_JOB_REQUEST = {
     "HyperParameterTuningJobConfig": {
         "Strategy": "Bayesian",
         "HyperParameterTuningJobObjective": SAMPLE_OBJECTIVE,
-        "ResourceLimits": {"MaxNumberOfTrainingJobs": 100, "MaxParallelTrainingJobs": 5},
+        "ResourceLimits": {
+            "MaxNumberOfTrainingJobs": 100,
+            "MaxParallelTrainingJobs": 5,
+        },
         "ParameterRanges": SAMPLE_PARAM_RANGES,
         "TrainingJobEarlyStoppingType": "Off",
         "RandomSeed": 0,
@@ -911,6 +931,7 @@ SAMPLE_TUNING_JOB_REQUEST = {
         "OutputDataConfig": SAMPLE_OUTPUT,
         "ResourceConfig": RESOURCE_CONFIG,
         "StoppingCondition": SAMPLE_STOPPING_CONDITION,
+        "Environment": ENV_INPUT,
     },
 }
 
@@ -918,7 +939,10 @@ SAMPLE_MULTI_ALGO_TUNING_JOB_REQUEST = {
     "HyperParameterTuningJobName": "dummy-tuning-1",
     "HyperParameterTuningJobConfig": {
         "Strategy": "Bayesian",
-        "ResourceLimits": {"MaxNumberOfTrainingJobs": 100, "MaxParallelTrainingJobs": 5},
+        "ResourceLimits": {
+            "MaxNumberOfTrainingJobs": 100,
+            "MaxParallelTrainingJobs": 5,
+        },
         "TrainingJobEarlyStoppingType": "Off",
     },
     "TrainingJobDefinitions": [
@@ -937,6 +961,7 @@ SAMPLE_MULTI_ALGO_TUNING_JOB_REQUEST = {
             "OutputDataConfig": SAMPLE_OUTPUT,
             "ResourceConfig": RESOURCE_CONFIG,
             "StoppingCondition": SAMPLE_STOPPING_CONDITION,
+            "Environment": ENV_INPUT,
         },
         {
             "DefinitionName": "estimator_2",
@@ -953,6 +978,7 @@ SAMPLE_MULTI_ALGO_TUNING_JOB_REQUEST = {
             "OutputDataConfig": SAMPLE_OUTPUT,
             "ResourceConfig": RESOURCE_CONFIG,
             "StoppingCondition": SAMPLE_STOPPING_CONDITION,
+            "Environment": ENV_INPUT,
         },
     ],
 }
@@ -967,7 +993,10 @@ SAMPLE_HYPERBAND_STRATEGY_CONFIG = {
 
 @pytest.mark.parametrize(
     "warm_start_type, parents",
-    [("IdenticalDataAndAlgorithm", {"p1", "p2", "p3"}), ("TransferLearning", {"p1", "p2", "p3"})],
+    [
+        ("IdenticalDataAndAlgorithm", {"p1", "p2", "p3"}),
+        ("TransferLearning", {"p1", "p2", "p3"}),
+    ],
 )
 def test_tune_warm_start(sagemaker_session, warm_start_type, parents):
     def assert_create_tuning_job_request(**kwrags):
@@ -1009,12 +1038,14 @@ def test_tune_warm_start(sagemaker_session, warm_start_type, parents):
         warm_start_config=WarmStartConfig(
             warm_start_type=WarmStartTypes(warm_start_type), parents=parents
         ).to_input_req(),
+        environment=ENV_INPUT,
     )
 
 
 def test_create_tuning_job_without_training_config_or_list(sagemaker_session):
     with pytest.raises(
-        ValueError, match="Either training_config or training_config_list should be provided."
+        ValueError,
+        match="Either training_config or training_config_list should be provided.",
     ):
         sagemaker_session.create_tuning_job(
             job_name="dummy-tuning-1",
@@ -1031,7 +1062,8 @@ def test_create_tuning_job_without_training_config_or_list(sagemaker_session):
 
 def test_create_tuning_job_with_both_training_config_and_list(sagemaker_session):
     with pytest.raises(
-        ValueError, match="Only one of training_config and training_config_list should be provided."
+        ValueError,
+        match="Only one of training_config and training_config_list should be provided.",
     ):
         sagemaker_session.create_tuning_job(
             job_name="dummy-tuning-1",
@@ -1043,7 +1075,10 @@ def test_create_tuning_job_with_both_training_config_and_list(sagemaker_session)
                 "max_parallel_jobs": 5,
                 "parameter_ranges": SAMPLE_PARAM_RANGES,
             },
-            training_config={"static_hyperparameters": STATIC_HPs, "image_uri": "dummy-image-1"},
+            training_config={
+                "static_hyperparameters": STATIC_HPs,
+                "image_uri": "dummy-image-1",
+            },
             training_config_list=[
                 {
                     "static_hyperparameters": STATIC_HPs,
@@ -1094,6 +1129,7 @@ def test_create_tuning_job(sagemaker_session):
             "output_config": SAMPLE_OUTPUT,
             "resource_config": RESOURCE_CONFIG,
             "stop_condition": SAMPLE_STOPPING_CONDITION,
+            "environment": ENV_INPUT,
         },
         tags=None,
         warm_start_config=None,
@@ -1135,6 +1171,7 @@ def test_create_tuning_job_multi_algo(sagemaker_session):
                 "objective_type": "Maximize",
                 "objective_metric_name": "val-score",
                 "parameter_ranges": SAMPLE_PARAM_RANGES,
+                "environment": ENV_INPUT,
             },
             {
                 "static_hyperparameters": STATIC_HPs_2,
@@ -1150,6 +1187,7 @@ def test_create_tuning_job_multi_algo(sagemaker_session):
                 "objective_type": "Maximize",
                 "objective_metric_name": "value-score",
                 "parameter_ranges": SAMPLE_PARAM_RANGES_2,
+                "environment": ENV_INPUT,
             },
         ],
         tags=None,
@@ -1190,6 +1228,7 @@ def test_tune(sagemaker_session):
         stop_condition=SAMPLE_STOPPING_CONDITION,
         tags=None,
         warm_start_config=None,
+        environment=ENV_INPUT,
     )
 
 
@@ -1231,6 +1270,7 @@ def test_tune_with_strategy_config(sagemaker_session):
         tags=None,
         warm_start_config=None,
         strategy_config=SAMPLE_HYPERBAND_STRATEGY_CONFIG,
+        environment=ENV_INPUT,
     )
 
 
@@ -1389,6 +1429,12 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
     stop_cond = {"MaxRuntimeInSeconds": MAX_TIME}
     RETRY_STRATEGY = {"MaximumRetryAttempts": 2}
     hyperparameters = {"foo": "bar"}
+    TRAINING_IMAGE_CONFIG = {
+        "TrainingRepositoryAccessMode": "Vpc",
+        "TrainingRepositoryAuthConfig": {
+            "TrainingRepositoryCredentialsProviderArn": "arn:aws:lambda:us-west-2:1234567897:function:test"
+        },
+    }
 
     sagemaker_session.train(
         image_uri=IMAGE,
@@ -1410,6 +1456,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
         enable_sagemaker_metrics=True,
         environment=ENV_INPUT,
         retry_strategy=RETRY_STRATEGY,
+        training_image_config=TRAINING_IMAGE_CONFIG,
     )
 
     _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
@@ -1425,6 +1472,9 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
     assert actual_train_args["CheckpointConfig"]["LocalPath"] == "/tmp/checkpoints"
     assert actual_train_args["Environment"] == ENV_INPUT
     assert actual_train_args["RetryStrategy"] == RETRY_STRATEGY
+    assert (
+        actual_train_args["AlgorithmSpecification"]["TrainingImageConfig"] == TRAINING_IMAGE_CONFIG
+    )
 
 
 def test_transform_pack_to_request(sagemaker_session):
@@ -1765,7 +1815,9 @@ def test_create_model(expand_container_def, sagemaker_session):
 
     assert model == MODEL_NAME
     sagemaker_session.sagemaker_client.create_model.assert_called_with(
-        ExecutionRoleArn=EXPANDED_ROLE, ModelName=MODEL_NAME, PrimaryContainer=PRIMARY_CONTAINER
+        ExecutionRoleArn=EXPANDED_ROLE,
+        ModelName=MODEL_NAME,
+        PrimaryContainer=PRIMARY_CONTAINER,
     )
 
 
@@ -1790,7 +1842,9 @@ def test_create_model_with_primary_container(expand_container_def, sagemaker_ses
 
     assert model == MODEL_NAME
     sagemaker_session.sagemaker_client.create_model.assert_called_with(
-        ExecutionRoleArn=EXPANDED_ROLE, ModelName=MODEL_NAME, PrimaryContainer=PRIMARY_CONTAINER
+        ExecutionRoleArn=EXPANDED_ROLE,
+        ModelName=MODEL_NAME,
+        PrimaryContainer=PRIMARY_CONTAINER,
     )
 
 
@@ -1798,7 +1852,10 @@ def test_create_model_with_primary_container(expand_container_def, sagemaker_ses
 def test_create_model_with_both(expand_container_def, sagemaker_session):
     with pytest.raises(ValueError):
         sagemaker_session.create_model(
-            MODEL_NAME, ROLE, container_defs=PRIMARY_CONTAINER, primary_container=PRIMARY_CONTAINER
+            MODEL_NAME,
+            ROLE,
+            container_defs=PRIMARY_CONTAINER,
+            primary_container=PRIMARY_CONTAINER,
         )
 
 
@@ -1857,7 +1914,10 @@ def test_create_pipeline_model_vpc_config(expand_container_def, sagemaker_sessio
 @patch("sagemaker.session._expand_container_def", return_value=PRIMARY_CONTAINER)
 def test_create_model_already_exists(expand_container_def, sagemaker_session, caplog):
     error_response = {
-        "Error": {"Code": "ValidationException", "Message": "Cannot create already existing model"}
+        "Error": {
+            "Code": "ValidationException",
+            "Message": "Cannot create already existing model",
+        }
     }
     exception = ClientError(error_response, "Operation")
     sagemaker_session.sagemaker_client.create_model.side_effect = exception
@@ -1961,7 +2021,13 @@ def test_endpoint_from_production_variants(sagemaker_session):
         sagemaker.production_variant("B", "p299.4096xlarge"),
     ]
     ex = ClientError(
-        {"Error": {"Code": "ValidationException", "Message": "Could not find your thing"}}, "b"
+        {
+            "Error": {
+                "Code": "ValidationException",
+                "Message": "Could not find your thing",
+            }
+        },
+        "b",
     )
     ims.sagemaker_client.describe_endpoint_config = Mock(side_effect=ex)
     sagemaker_session.endpoint_from_production_variants("some-endpoint", pvs)
@@ -1991,7 +2057,13 @@ def test_endpoint_from_production_variants_with_tags(sagemaker_session):
         sagemaker.production_variant("B", "p299.4096xlarge"),
     ]
     ex = ClientError(
-        {"Error": {"Code": "ValidationException", "Message": "Could not find your thing"}}, "b"
+        {
+            "Error": {
+                "Code": "ValidationException",
+                "Message": "Could not find your thing",
+            }
+        },
+        "b",
     )
     ims.sagemaker_client.describe_endpoint_config = Mock(side_effect=ex)
     tags = [{"ModelName": "TestModel"}]
@@ -2012,7 +2084,13 @@ def test_endpoint_from_production_variants_with_accelerator_type(sagemaker_sessi
         sagemaker.production_variant("B", "p299.4096xlarge", accelerator_type=ACCELERATOR_TYPE),
     ]
     ex = ClientError(
-        {"Error": {"Code": "ValidationException", "Message": "Could not find your thing"}}, "b"
+        {
+            "Error": {
+                "Code": "ValidationException",
+                "Message": "Could not find your thing",
+            }
+        },
+        "b",
     )
     ims.sagemaker_client.describe_endpoint_config = Mock(side_effect=ex)
     tags = [{"ModelName": "TestModel"}]
@@ -2025,7 +2103,9 @@ def test_endpoint_from_production_variants_with_accelerator_type(sagemaker_sessi
     )
 
 
-def test_endpoint_from_production_variants_with_serverless_inference_config(sagemaker_session):
+def test_endpoint_from_production_variants_with_serverless_inference_config(
+    sagemaker_session,
+):
     ims = sagemaker_session
     ims.sagemaker_client.describe_endpoint = Mock(return_value={"EndpointStatus": "InService"})
     pvs = [
@@ -2033,11 +2113,19 @@ def test_endpoint_from_production_variants_with_serverless_inference_config(sage
             "A", "ml.p2.xlarge", serverless_inference_config=SERVERLESS_INFERENCE_CONFIG
         ),
         sagemaker.production_variant(
-            "B", "p299.4096xlarge", serverless_inference_config=SERVERLESS_INFERENCE_CONFIG
+            "B",
+            "p299.4096xlarge",
+            serverless_inference_config=SERVERLESS_INFERENCE_CONFIG,
         ),
     ]
     ex = ClientError(
-        {"Error": {"Code": "ValidationException", "Message": "Could not find your thing"}}, "b"
+        {
+            "Error": {
+                "Code": "ValidationException",
+                "Message": "Could not find your thing",
+            }
+        },
+        "b",
     )
     ims.sagemaker_client.describe_endpoint_config = Mock(side_effect=ex)
     tags = [{"ModelName": "TestModel"}]
@@ -2058,7 +2146,13 @@ def test_endpoint_from_production_variants_with_async_config(sagemaker_session):
         sagemaker.production_variant("B", "p299.4096xlarge"),
     ]
     ex = ClientError(
-        {"Error": {"Code": "ValidationException", "Message": "Could not find your thing"}}, "b"
+        {
+            "Error": {
+                "Code": "ValidationException",
+                "Message": "Could not find your thing",
+            }
+        },
+        "b",
     )
     ims.sagemaker_client.describe_endpoint_config = Mock(side_effect=ex)
     sagemaker_session.endpoint_from_production_variants(
@@ -2100,7 +2194,8 @@ def test_update_endpoint_no_wait(sagemaker_session):
 
 def test_update_endpoint_non_existing_endpoint(sagemaker_session):
     error = ClientError(
-        {"Error": {"Code": "ValidationException", "Message": "Could not find entity"}}, "foo"
+        {"Error": {"Code": "ValidationException", "Message": "Could not find entity"}},
+        "foo",
     )
     expected_error_message = (
         "Endpoint with name 'non-existing-endpoint' does not exist; "
@@ -2145,7 +2240,8 @@ def test_create_endpoint_config_from_existing(sagemaker_session):
 def test_wait_for_tuning_job(sleep, sagemaker_session):
     hyperparameter_tuning_job_desc = {"HyperParameterTuningJobStatus": "Completed"}
     sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
-        name="describe_hyper_parameter_tuning_job", return_value=hyperparameter_tuning_job_desc
+        name="describe_hyper_parameter_tuning_job",
+        return_value=hyperparameter_tuning_job_desc,
     )
 
     result = sagemaker_session.wait_for_tuning_job(JOB_NAME)
@@ -2155,7 +2251,8 @@ def test_wait_for_tuning_job(sleep, sagemaker_session):
 def test_tune_job_status(sagemaker_session):
     hyperparameter_tuning_job_desc = {"HyperParameterTuningJobStatus": "Completed"}
     sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
-        name="describe_hyper_parameter_tuning_job", return_value=hyperparameter_tuning_job_desc
+        name="describe_hyper_parameter_tuning_job",
+        return_value=hyperparameter_tuning_job_desc,
     )
 
     result = _tuning_job_status(sagemaker_session.sagemaker_client, JOB_NAME)
@@ -2166,7 +2263,8 @@ def test_tune_job_status(sagemaker_session):
 def test_tune_job_status_none(sagemaker_session):
     hyperparameter_tuning_job_desc = {"HyperParameterTuningJobStatus": "InProgress"}
     sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
-        name="describe_hyper_parameter_tuning_job", return_value=hyperparameter_tuning_job_desc
+        name="describe_hyper_parameter_tuning_job",
+        return_value=hyperparameter_tuning_job_desc,
     )
 
     result = _tuning_job_status(sagemaker_session.sagemaker_client, JOB_NAME)
@@ -2247,6 +2345,81 @@ def test_train_done_in_progress(sagemaker_session):
     assert training_finished is False
 
 
+@patch("time.sleep", return_value=None)
+def test_wait_until_training_done_raises_other_exception(patched_sleep):
+    response = {"Error": {"Code": "ValidationException", "Message": "Could not access entity."}}
+    mock_func = Mock(
+        name="describe_training_job",
+        side_effect=ClientError(error_response=response, operation_name="foo"),
+    )
+    desc = "dummy"
+    with pytest.raises(ClientError) as error:
+        _wait_until_training_done(mock_func, desc)
+
+    mock_func.assert_called_once()
+    assert "ValidationException" in str(error)
+
+
+@patch("time.sleep", return_value=None)
+def test_wait_until_training_done_tag_propagation(patched_sleep):
+    response = {"Error": {"Code": "AccessDeniedException", "Message": "Could not access entity."}}
+    side_effect_iter = [ClientError(error_response=response, operation_name="foo")] * 3
+    side_effect_iter.append(("result", "result"))
+    mock_func = Mock(name="describe_training_job", side_effect=side_effect_iter)
+    desc = "dummy"
+    result = _wait_until_training_done(mock_func, desc)
+    assert result == "result"
+    assert mock_func.call_count == 4
+
+
+@patch("time.sleep", return_value=None)
+def test_wait_until_training_done_fail_access_denied_after_5_mins(patched_sleep):
+    response = {"Error": {"Code": "AccessDeniedException", "Message": "Could not access entity."}}
+    side_effect_iter = [ClientError(error_response=response, operation_name="foo")] * 70
+    mock_func = Mock(name="describe_training_job", side_effect=side_effect_iter)
+    desc = "dummy"
+    with pytest.raises(ClientError) as error:
+        _wait_until_training_done(mock_func, desc)
+
+    # mock_func should be retried 300(elapsed time)/5(default poll delay) = 60 times
+    assert mock_func.call_count == 61
+    assert "AccessDeniedException" in str(error)
+
+
+@patch("time.sleep", return_value=None)
+def test_wait_until_raises_other_exception(patched_sleep):
+    mock_func = Mock(name="describe_training_job", side_effect=_raise_unexpected_client_error)
+    with pytest.raises(ClientError) as error:
+        _wait_until(mock_func)
+
+    mock_func.assert_called_once()
+    assert "ValidationException" in str(error)
+
+
+@patch("time.sleep", return_value=None)
+def test_wait_until_tag_propagation(patched_sleep):
+    response = {"Error": {"Code": "AccessDeniedException", "Message": "Could not access entity."}}
+    side_effect_iter = [ClientError(error_response=response, operation_name="foo")] * 3
+    side_effect_iter.append("result")
+    mock_func = Mock(name="describe_training_job", side_effect=side_effect_iter)
+    result = _wait_until(mock_func)
+    assert result == "result"
+    assert mock_func.call_count == 4
+
+
+@patch("time.sleep", return_value=None)
+def test_wait_until_fail_access_denied_after_5_mins(patched_sleep):
+    response = {"Error": {"Code": "AccessDeniedException", "Message": "Could not access entity."}}
+    side_effect_iter = [ClientError(error_response=response, operation_name="foo")] * 70
+    mock_func = Mock(name="describe_training_job", side_effect=side_effect_iter)
+    with pytest.raises(ClientError) as error:
+        _wait_until(mock_func)
+
+    # mock_func should be retried 300(elapsed time)/5(default poll delay) = 60 times
+    assert mock_func.call_count == 61
+    assert "AccessDeniedException" in str(error)
+
+
 DEFAULT_EXPECTED_AUTO_ML_JOB_ARGS = {
     "AutoMLJobName": JOB_NAME,
     "InputDataConfig": [
@@ -2307,7 +2480,10 @@ COMPLETE_EXPECTED_AUTO_ML_JOB_ARGS = {
         "SecurityConfig": {
             "VolumeKmsKeyId": "volume-kms-key-id-string",
             "EnableInterContainerTrafficEncryption": False,
-            "VpcConfig": {"SecurityGroupIds": ["security-group-id"], "Subnets": ["subnet"]},
+            "VpcConfig": {
+                "SecurityGroupIds": ["security-group-id"],
+                "Subnets": ["subnet"],
+            },
         },
     },
     "RoleArn": EXPANDED_ROLE,
@@ -2393,7 +2569,10 @@ def test_auto_ml_pack_to_request_with_optional_args(sagemaker_session):
         "SecurityConfig": {
             "VolumeKmsKeyId": "volume-kms-key-id-string",
             "EnableInterContainerTrafficEncryption": False,
-            "VpcConfig": {"SecurityGroupIds": ["security-group-id"], "Subnets": ["subnet"]},
+            "VpcConfig": {
+                "SecurityGroupIds": ["security-group-id"],
+                "Subnets": ["subnet"],
+            },
         },
     }
 
@@ -2499,7 +2678,9 @@ def test_create_model_package_from_containers_incomplete_args(sagemaker_session)
         )
 
 
-def test_create_model_package_from_containers_without_model_package_group_name(sagemaker_session):
+def test_create_model_package_from_containers_without_model_package_group_name(
+    sagemaker_session,
+):
     model_package_name = "sagemaker-model-package"
     containers = ["dummy-container"]
     content_types = ["application/json"]
@@ -2654,7 +2835,9 @@ def test_create_model_package_from_containers_without_instance_types(sagemaker_s
     sagemaker_session.sagemaker_client.create_model_package.assert_called_with(**expected_args)
 
 
-def test_create_model_package_from_containers_with_one_instance_types(sagemaker_session):
+def test_create_model_package_from_containers_with_one_instance_types(
+    sagemaker_session,
+):
     model_package_group_name = "sagemaker-model-package-group-name-1.0"
     containers = ["dummy-container"]
     content_types = ["application/json"]
@@ -2938,6 +3121,70 @@ def test_wait_for_athena_query(query_execution, sagemaker_session):
     assert query_execution.called_with(query_execution_id="query_id")
 
 
+def test_search(sagemaker_session):
+    expected_search_args = {
+        "Resource": "FeatureGroup",
+        "SearchExpression": {
+            "Filters": [
+                {
+                    "Name": "FeatureGroupName",
+                    "Value": "MyFeatureGroup",
+                    "Operator": "Contains",
+                }
+            ],
+            "Operator": "And",
+        },
+        "SortBy": "Name",
+        "SortOrder": "Ascending",
+        "NextToken": "token",
+        "MaxResults": 50,
+    }
+    sagemaker_session.search(
+        resource="FeatureGroup",
+        search_expression={
+            "Filters": [
+                {
+                    "Name": "FeatureGroupName",
+                    "Value": "MyFeatureGroup",
+                    "Operator": "Contains",
+                }
+            ],
+            "Operator": "And",
+        },
+        sort_by="Name",
+        sort_order="Ascending",
+        next_token="token",
+        max_results=50,
+    )
+    assert sagemaker_session.sagemaker_client.search.called_once()
+    assert sagemaker_session.sagemaker_client.search.called_with(**expected_search_args)
+
+
+def test_batch_get_record(sagemaker_session):
+    expected_batch_get_record_args = {
+        "Identifiers": [
+            {
+                "FeatureGroupName": "name",
+                "RecordIdentifiersValueAsString": ["identifier"],
+                "FeatureNames": ["feature_1"],
+            }
+        ]
+    }
+    sagemaker_session.batch_get_record(
+        identifiers=[
+            {
+                "FeatureGroupName": "name",
+                "RecordIdentifiersValueAsString": ["identifier"],
+                "FeatureNames": ["feature_1"],
+            }
+        ]
+    )
+    assert sagemaker_session.sagemaker_client.batch_get_record.called_once()
+    assert sagemaker_session.sagemaker_client.batch_get_record.called_with(
+        **expected_batch_get_record_args
+    )
+
+
 IR_USER_JOB_NAME = "custom-job-name"
 IR_JOB_NAME = "SMPYTHONSDK-sample-unique-uuid"
 IR_ADVANCED_JOB = "Advanced"
@@ -3185,8 +3432,8 @@ def test_wait_for_inference_recommendations_job_completed(sleep, sm_session_infe
         4
         == sm_session_inference_recommender.sagemaker_client.describe_inference_recommendations_job.call_count
     )
-    assert 2 == sleep.call_count
-    sleep.assert_has_calls([call(120), call(120)])
+    assert 3 == sleep.call_count
+    sleep.assert_has_calls([call(120), call(120), call(120)])
 
 
 def test_wait_for_inference_recommendations_job_failed(sagemaker_session):

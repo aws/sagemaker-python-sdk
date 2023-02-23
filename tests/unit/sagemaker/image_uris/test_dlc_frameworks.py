@@ -18,6 +18,7 @@ from sagemaker import image_uris
 from tests.unit.sagemaker.image_uris import expected_uris
 
 INSTANCE_TYPES_AND_PROCESSORS = (("ml.c4.xlarge", "cpu"), ("ml.p2.xlarge", "gpu"))
+RENEWED_PYTORCH_INSTANCE_TYPES_AND_PROCESSORS = (("ml.c4.xlarge", "cpu"), ("ml.g4dn.xlarge", "gpu"))
 REGION = "us-west-2"
 
 DLC_ACCOUNT = "763104351884"
@@ -30,6 +31,7 @@ DLC_ALTERNATE_REGION_ACCOUNTS = {
     "me-south-1": "217643126080",
     "us-gov-west-1": "442386744353",
     "us-iso-east-1": "886529160074",
+    "us-isob-east-1": "094389454867",
 }
 SAGEMAKER_ACCOUNT = "520713654638"
 SAGEMAKER_ALTERNATE_REGION_ACCOUNTS = {
@@ -41,6 +43,7 @@ SAGEMAKER_ALTERNATE_REGION_ACCOUNTS = {
     "me-south-1": "724002660598",
     "us-gov-west-1": "246785580436",
     "us-iso-east-1": "744548109606",
+    "us-isob-east-1": "453391408702",
 }
 ELASTIC_INFERENCE_REGIONS = [
     "ap-northeast-1",
@@ -68,7 +71,12 @@ def _test_image_uris(
         "image_scope": scope,
     }
 
-    for instance_type, processor in INSTANCE_TYPES_AND_PROCESSORS:
+    TYPES_AND_PROCESSORS = INSTANCE_TYPES_AND_PROCESSORS
+    if framework == "pytorch" and Version(fw_version) >= Version("1.13"):
+        """Handle P2 deprecation"""
+        TYPES_AND_PROCESSORS = RENEWED_PYTORCH_INSTANCE_TYPES_AND_PROCESSORS
+
+    for instance_type, processor in TYPES_AND_PROCESSORS:
         uri = image_uris.retrieve(region=REGION, instance_type=instance_type, **base_args)
 
         expected = expected_fn(processor=processor, **expected_fn_args)

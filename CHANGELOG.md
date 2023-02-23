@@ -1,5 +1,123 @@
 # Changelog
 
+## v2.135.0 (2023-02-23)
+
+### Features
+
+ * Add DLC accounts for MEL Region
+ * allow use of short lived creds for local container
+
+### Bug Fixes and Other Changes
+
+ * update lambda function when function arn is provided
+
+## v2.134.1 (2023-02-22)
+
+### Bug Fixes and Other Changes
+
+ * local mode deletion of temp files on job end
+ * Cron expression resetting on update monitor
+ * added support to update arguments in create_monitoring_schedule
+
+## v2.134.0 (2023-02-22)
+
+### Features
+
+ * Add python 3.9 and spark 3.2 support for spark processor
+ * Adding support for Multi Worker Mirrored Strategy in TF estimator
+
+### Bug Fixes and Other Changes
+
+ * tag permission issue - remove describe before create
+
+## v2.133.0 (2023-02-18)
+
+### Features
+
+ * feature store with_feature_group functionality changes
+ * Adding support for SageMaker Training Compiler PyTorch 1.13
+ * support of the intelligent stopping in the tuner
+ * AutoGluon 0.6.2 image_uris update
+ * Support for flexible instance types in the HPO
+ * Add business details and hyper parameters fields and update test_model_card.py
+
+### Bug Fixes and Other Changes
+
+ * disable the tuner test
+ * Skip test_run_from_transform_job integ test to unblock python-sdk code pipeline
+ * Revert "feature: feature store with_feature_group functionality changes"
+ * advanced inference recommendation jobs parameters check
+ * make model_config optional when predicted labels are provided for bias detection
+
+## v2.132.0 (2023-02-07)
+
+### Features
+
+ * support cluster lifecycle management for Sagemaker EMR step
+ * Inference recommendation id deployment support
+
+## v2.131.1 (2023-02-03)
+
+### Bug Fixes and Other Changes
+
+ * test dub gpu integs with p3
+ * fix(experiments/run.py): Stop duplication of RUN_TC_TAG on Consecutive Experiment Runs
+ * Enable load_run without name args in Transform env
+ * Remove confusing log line emitted during feature group ingestion
+ * Enable Experiment integ test on beta clients
+ * Make test_processor_with_role_as_pipeline_parameter more concrete
+
+### Documentation Changes
+
+ * add security note for the estimator hyperparameter arg
+ * SageMaker distributed - model parallism library release note
+ * Add a deprecation note for DetailedProfileConfig
+
+## v2.131.0 (2023-01-31)
+
+### Features
+
+ * Display file diff on black-check
+ * Support for environment variables in the HPO
+ * Support role as PipelineParameter in Processor class
+ * Add TrainingImageConfig support for SageMaker training jobs
+
+### Bug Fixes and Other Changes
+
+ * use FeatureGroup's Session in nonconcurrency ingestion
+ * Update feature_group.py ingest() description
+ * Do not use print function. User logger instead
+ * Add batch_get_record and search API for FeatureStore
+ * hashing problem for framework processors with identical source dirs
+
+## v2.130.0 (2023-01-26)
+
+### Features
+
+ * Add PyTorch 1.13.1 to SDK
+ * Adding image_uri config for DJL containers
+ * Support specifying env-vars when creating model from model package
+ * local download dir for Model and Estimator classes
+
+### Bug Fixes and Other Changes
+
+ * increase creation time slack minutes
+ * Enable load_run auto pass in experiment config
+ * Add us-isob-east-1 accounts and configs
+ * Clean up Pipeline unit tests
+
+## v2.129.0 (2023-01-19)
+
+### Features
+
+ * add p2 deprecation for PT>=1.13
+ * TF2.11 Update to PySDK
+
+### Bug Fixes and Other Changes
+
+ * Improve Pipeline integ tests and fix resource leak
+ * Update TF version to 2.8.4
+
 ## v2.128.0 (2023-01-10)
 
 ### Features

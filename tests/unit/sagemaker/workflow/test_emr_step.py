@@ -13,29 +13,22 @@
 from __future__ import absolute_import
 
 import json
-
 import pytest
 
-from mock import Mock
-
-from sagemaker.workflow.emr_step import EMRStep, EMRStepConfig
+from sagemaker.workflow.emr_step import (
+    EMRStep,
+    EMRStepConfig,
+    ERR_STR_WITH_NAME_AUTO_TERMINATION_OR_STEPS,
+    ERR_STR_WITHOUT_INSTANCE,
+    ERR_STR_WITH_KEEPJOBFLOW_OR_TERMINATIONPROTECTED,
+    ERR_STR_BOTH_OR_NONE_INSTANCEGROUPS_OR_INSTANCEFLEETS,
+    ERR_STR_WITH_BOTH_CLUSTER_ID_AND_CLUSTER_CFG,
+    ERR_STR_WITHOUT_CLUSTER_ID_AND_CLUSTER_CFG,
+)
 from sagemaker.workflow.steps import CacheConfig
 from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
 from sagemaker.workflow.parameters import ParameterString
 from tests.unit.sagemaker.workflow.helpers import CustomStep, ordered
-
-
-@pytest.fixture()
-def sagemaker_session():
-    boto_mock = Mock(name="boto_session", region_name="us-west-2")
-    session_mock = Mock(
-        name="sagemaker_session",
-        boto_session=boto_mock,
-        boto_region_name="us-west-2",
-        config=None,
-        local_mode=False,
-    )
-    return session_mock
 
 
 def test_emr_step_with_one_step_config(sagemaker_session):
@@ -184,3 +177,264 @@ def test_pipeline_interpolates_emr_outputs(sagemaker_session):
     assert ordered(adjacency_list) == ordered(
         {"emr_step_1": [], "emr_step_2": [], "TestStep": ["emr_step_1", "emr_step_2"]}
     )
+
+
+g_emr_step_config = EMRStepConfig(jar="s3:/script-runner/script-runner.jar")
+g_emr_step_name = "MyEMRStep"
+g_cluster_config = {
+    "Instances": {
+        "InstanceGroups": [
+            {
+                "Name": "Master Instance Group",
+                "InstanceRole": "MASTER",
+                "InstanceCount": 1,
+                "InstanceType": "m1.small",
+                "Market": "ON_DEMAND",
+            }
+        ],
+        "InstanceCount": 1,
+        "HadoopVersion": "MyHadoopVersion",
+    },
+    "AmiVersion": "3.8.0",
+    "AdditionalInfo": "MyAdditionalInfo",
+}
+
+
+def test_emr_step_throws_exception_when_both_cluster_id_and_cluster_config_are_present():
+    with pytest.raises(ValueError) as exceptionInfo:
+        EMRStep(
+            name=g_emr_step_name,
+            display_name="MyEMRStep",
+            description="MyEMRStepDescription",
+            step_config=g_emr_step_config,
+            cluster_id="MyClusterID",
+            cluster_config=g_cluster_config,
+            depends_on=["TestStep"],
+            cache_config=CacheConfig(enable_caching=True, expire_after="PT1H"),
+        )
+    expected_error_msg = ERR_STR_WITH_BOTH_CLUSTER_ID_AND_CLUSTER_CFG.format(
+        step_name=g_emr_step_name
+    )
+    actual_error_msg = exceptionInfo.value.args[0]
+
+    assert actual_error_msg == expected_error_msg
+
+
+def test_emr_step_throws_exception_when_both_cluster_id_and_cluster_config_are_none():
+    with pytest.raises(ValueError) as exceptionInfo:
+        EMRStep(
+            name=g_emr_step_name,
+            display_name="MyEMRStep",
+            description="MyEMRStepDescription",
+            cluster_id=None,
+            step_config=g_emr_step_config,
+            depends_on=["TestStep"],
+            cache_config=CacheConfig(enable_caching=True, expire_after="PT1H"),
+        )
+    expected_error_msg = ERR_STR_WITHOUT_CLUSTER_ID_AND_CLUSTER_CFG.format(
+        step_name=g_emr_step_name
+    )
+    actual_error_msg = exceptionInfo.value.args[0]
+
+    assert actual_error_msg == expected_error_msg
+
+
+def test_emr_step_with_valid_cluster_config():
+    emr_step = EMRStep(
+        name=g_emr_step_name,
+        display_name="MyEMRStep",
+        description="MyEMRStepDescription",
+        cluster_id=None,
+        cluster_config=g_cluster_config,
+        step_config=g_emr_step_config,
+        cache_config=CacheConfig(enable_caching=True, expire_after="PT1H"),
+    )
+
+    assert emr_step.to_request() == {
+        "Name": "MyEMRStep",
+        "Type": "EMR",
+        "Arguments": {
+            "StepConfig": {"HadoopJarStep": {"Jar": "s3:/script-runner/script-runner.jar"}},
+            "ClusterConfig": {
+                "AdditionalInfo": "MyAdditionalInfo",
+                "AmiVersion": "3.8.0",
+                "Instances": {
+                    "HadoopVersion": "MyHadoopVersion",
+                    "InstanceCount": 1,
+                    "InstanceGroups": [
+                        {
+                            "InstanceCount": 1,
+                            "InstanceRole": "MASTER",
+                            "InstanceType": "m1.small",
+                            "Market": "ON_DEMAND",
+                            "Name": "Master Instance Group",
+                        }
+                    ],
+                },
+            },
+        },
+        "DisplayName": "MyEMRStep",
+        "Description": "MyEMRStepDescription",
+        "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
+    }
+
+    pipeline = Pipeline(name="MyPipeline", steps=[emr_step])
+
+    assert json.loads(pipeline.definition()) == {
+        "Version": "2020-12-01",
+        "Metadata": {},
+        "Parameters": [],
+        "PipelineExperimentConfig": {
+            "ExperimentName": {"Get": "Execution.PipelineName"},
+            "TrialName": {"Get": "Execution.PipelineExecutionId"},
+        },
+        "Steps": [
+            {
+                "Name": "MyEMRStep",
+                "Type": "EMR",
+                "Arguments": {
+                    "StepConfig": {"HadoopJarStep": {"Jar": "s3:/script-runner/script-runner.jar"}},
+                    "ClusterConfig": {
+                        "AdditionalInfo": "MyAdditionalInfo",
+                        "AmiVersion": "3.8.0",
+                        "Instances": {
+                            "HadoopVersion": "MyHadoopVersion",
+                            "InstanceCount": 1,
+                            "InstanceGroups": [
+                                {
+                                    "InstanceCount": 1,
+                                    "InstanceRole": "MASTER",
+                                    "InstanceType": "m1.small",
+                                    "Market": "ON_DEMAND",
+                                    "Name": "Master Instance Group",
+                                }
+                            ],
+                        },
+                    },
+                },
+                "DisplayName": "MyEMRStep",
+                "Description": "MyEMRStepDescription",
+                "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
+            }
+        ],
+    }
+
+
+@pytest.mark.parametrize(
+    "invalid_cluster_config, expected_error_msg",
+    [
+        (
+            {
+                "Name": "someName",
+                "Instances": {
+                    "InstanceGroups": [
+                        {
+                            "Name": "Master Instance Group",
+                        }
+                    ],
+                },
+            },
+            ERR_STR_WITH_NAME_AUTO_TERMINATION_OR_STEPS.format(step_name=g_emr_step_name),
+        ),
+        (
+            {
+                "AutoTerminationPolicy": {},
+                "Instances": {
+                    "InstanceGroups": [
+                        {
+                            "Name": "Master Instance Group",
+                        }
+                    ],
+                },
+            },
+            ERR_STR_WITH_NAME_AUTO_TERMINATION_OR_STEPS.format(step_name=g_emr_step_name),
+        ),
+        (
+            {
+                "Steps": [],
+                "Instances": {
+                    "InstanceGroups": [
+                        {
+                            "Name": "Master Instance Group",
+                        }
+                    ],
+                },
+            },
+            ERR_STR_WITH_NAME_AUTO_TERMINATION_OR_STEPS.format(step_name=g_emr_step_name),
+        ),
+        (
+            {
+                "AmiVersion": "3.8.0",
+                "AdditionalInfo": "MyAdditionalInfo",
+            },
+            ERR_STR_WITHOUT_INSTANCE.format(step_name=g_emr_step_name),
+        ),
+        (
+            {
+                "Instances": {},
+            },
+            ERR_STR_BOTH_OR_NONE_INSTANCEGROUPS_OR_INSTANCEFLEETS.format(step_name=g_emr_step_name),
+        ),
+        (
+            {
+                "Instances": {
+                    "InstanceGroups": [
+                        {
+                            "Name": "Master Instance Group",
+                        }
+                    ],
+                    "InstanceFleets": [
+                        {
+                            "Name": "Master Instance Fleets",
+                        }
+                    ],
+                },
+            },
+            ERR_STR_BOTH_OR_NONE_INSTANCEGROUPS_OR_INSTANCEFLEETS.format(step_name=g_emr_step_name),
+        ),
+        (
+            {
+                "Instances": {
+                    "InstanceGroups": [
+                        {
+                            "Name": "Master Instance Group",
+                        }
+                    ],
+                    "KeepJobFlowAliveWhenNoSteps": True,
+                },
+            },
+            ERR_STR_WITH_KEEPJOBFLOW_OR_TERMINATIONPROTECTED.format(step_name=g_emr_step_name),
+        ),
+        (
+            {
+                "Instances": {
+                    "InstanceGroups": [
+                        {
+                            "Name": "Master Instance Group",
+                        }
+                    ],
+                    "TerminationProtected": True,
+                },
+            },
+            ERR_STR_WITH_KEEPJOBFLOW_OR_TERMINATIONPROTECTED.format(step_name=g_emr_step_name),
+        ),
+    ],
+)
+def test_emr_step_throws_exception_when_cluster_config_contains_restricted_entities(
+    invalid_cluster_config, expected_error_msg
+):
+    with pytest.raises(ValueError) as exceptionInfo:
+        EMRStep(
+            name=g_emr_step_name,
+            display_name="MyEMRStep",
+            description="MyEMRStepDescription",
+            cluster_id=None,
+            step_config=g_emr_step_config,
+            cluster_config=invalid_cluster_config,
+            depends_on=["TestStep"],
+            cache_config=CacheConfig(enable_caching=True, expire_after="PT1H"),
+        )
+
+    actual_error_msg = exceptionInfo.value.args[0]
+
+    assert actual_error_msg == expected_error_msg

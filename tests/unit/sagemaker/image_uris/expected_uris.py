@@ -72,3 +72,9 @@ def graviton_framework_uri(
     tag = "-".join(x for x in (fw_version, processor, py_version, container_version) if x)
 
     return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
+
+
+def djl_framework_uri(repo, account, djl_version, primary_framework, region=REGION):
+    domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
+    tag = f"{djl_version}-{primary_framework}"
+    return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)

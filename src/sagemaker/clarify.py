@@ -1423,8 +1423,8 @@ class SageMakerClarifyProcessor(Processor):
         self,
         data_config: DataConfig,
         data_bias_config: BiasConfig,
-        model_config: ModelConfig,
-        model_predicted_label_config: ModelPredictedLabelConfig,
+        model_config: Optional[ModelConfig] = None,
+        model_predicted_label_config: Optional[ModelPredictedLabelConfig] = None,
         methods: Union[str, List[str]] = "all",
         wait: bool = True,
         logs: bool = True,
@@ -1444,7 +1444,8 @@ class SageMakerClarifyProcessor(Processor):
             data_config (:class:`~sagemaker.clarify.DataConfig`): Config of the input/output data.
             data_bias_config (:class:`~sagemaker.clarify.BiasConfig`): Config of sensitive groups.
             model_config (:class:`~sagemaker.clarify.ModelConfig`): Config of the model and its
-                endpoint to be created.
+                endpoint to be created. This is required unless``predicted_label_dataset_uri`` or
+                ``predicted_label`` is provided in ``data_config``.
             model_predicted_label_config (:class:`~sagemaker.clarify.ModelPredictedLabelConfig`):
                 Config of how to extract the predicted label from the model output.
             methods (str or list[str]): Selector of a subset of potential metrics:
@@ -1508,7 +1509,7 @@ class SageMakerClarifyProcessor(Processor):
         self,
         data_config: DataConfig,
         bias_config: BiasConfig,
-        model_config: ModelConfig,
+        model_config: Optional[ModelConfig] = None,
         model_predicted_label_config: Optional[ModelPredictedLabelConfig] = None,
         pre_training_methods: Union[str, List[str]] = "all",
         post_training_methods: Union[str, List[str]] = "all",
@@ -1529,7 +1530,8 @@ class SageMakerClarifyProcessor(Processor):
             data_config (:class:`~sagemaker.clarify.DataConfig`): Config of the input/output data.
             bias_config (:class:`~sagemaker.clarify.BiasConfig`): Config of sensitive groups.
             model_config (:class:`~sagemaker.clarify.ModelConfig`): Config of the model and its
-                endpoint to be created.
+                endpoint to be created. This is required unless``predicted_label_dataset_uri`` or
+                ``predicted_label`` is provided in ``data_config``.
             model_predicted_label_config (:class:`~sagemaker.clarify.ModelPredictedLabelConfig`):
                 Config of how to extract the predicted label from the model output.
             pre_training_methods (str or list[str]): Selector of a subset of potential metrics:
@@ -1930,16 +1932,30 @@ class _AnalysisConfigGenerator:
     ):
         """Extends analysis config with predictor."""
         analysis_config = {**analysis_config}
-        analysis_config["predictor"] = model_config.get_predictor_config()
+        if isinstance(model_config, ModelConfig):
+            analysis_config["predictor"] = model_config.get_predictor_config()
+        else:
+            if "shap" in analysis_config["methods"] or "pdp" in analysis_config["methods"]:
+                raise ValueError(
+                    "model_config must be provided when explainability methods are selected."
+                )
+            if (
+                "predicted_label_dataset_uri" not in analysis_config
+                and "predicted_label" not in analysis_config
+            ):
+                raise ValueError(
+                    "model_config must be provided when `predicted_label_dataset_uri` or "
+                    "`predicted_label` are not provided in data_config."
+                )
         if isinstance(model_predicted_label_config, ModelPredictedLabelConfig):
             (
                 probability_threshold,
                 predictor_config,
             ) = model_predicted_label_config.get_predictor_config()
-            if predictor_config:
+            if predictor_config and "predictor" in analysis_config:
                 analysis_config["predictor"].update(predictor_config)
             _set(probability_threshold, "probability_threshold", analysis_config)
-        else:
+        elif "predictor" in analysis_config:
             _set(model_predicted_label_config, "label", analysis_config["predictor"])
         return analysis_config
 

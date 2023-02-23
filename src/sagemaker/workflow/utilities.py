@@ -169,10 +169,15 @@ def get_processing_code_hash(code: str, source_dir: str, dependencies: List[str]
         str: A hash string representing the unique code artifact(s) for the step
     """
 
-    # If FrameworkProcessor contains source_dir
+    # FrameworkProcessor
     if source_dir:
         source_dir_url = urlparse(source_dir)
         if source_dir_url.scheme == "" or source_dir_url.scheme == "file":
+            # Include code in the hash when possible
+            if code:
+                code_url = urlparse(code)
+                if code_url.scheme == "" or code_url.scheme == "file":
+                    return hash_files_or_dirs([code, source_dir] + dependencies)
             return hash_files_or_dirs([source_dir] + dependencies)
     # Other Processors - Spark, Script, Base, etc.
     if code:

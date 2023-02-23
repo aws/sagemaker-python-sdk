@@ -19,6 +19,14 @@ import pytest
 from mock import Mock
 
 from sagemaker.feature_store.feature_store import FeatureStore
+from sagemaker.feature_store.inputs import (
+    Filter,
+    FilterOperatorEnum,
+    ResourceEnum,
+    SearchOperatorEnum,
+    SortOrderEnum,
+    Identifier,
+)
 
 DATAFRAME = pd.DataFrame({"feature_1": [420, 380, 390], "feature_2": [50, 40, 45]})
 
@@ -133,4 +141,82 @@ def test_list_feature_groups_with_all_filters(sagemaker_session_mock):
         sort_by="Name",
         max_results=50,
         next_token="token",
+    )
+
+
+def test_search(sagemaker_session_mock):
+    feature_store = FeatureStore(sagemaker_session=sagemaker_session_mock)
+    feature_store.search(resource=ResourceEnum.FEATURE_GROUP)
+    sagemaker_session_mock.search.assert_called_with(
+        resource="FeatureGroup",
+        search_expression={},
+        sort_by=None,
+        sort_order=None,
+        next_token=None,
+        max_results=None,
+    )
+
+
+def test_search_with_no_operator(sagemaker_session_mock):
+    feature_store = FeatureStore(sagemaker_session=sagemaker_session_mock)
+    feature_store.search(
+        resource=ResourceEnum.FEATURE_GROUP,
+        filters=[Filter(name="FeatureName", value="feature", operator=FilterOperatorEnum.CONTAINS)],
+    )
+    sagemaker_session_mock.search.assert_called_with(
+        resource="FeatureGroup",
+        search_expression={
+            "Filters": [{"Name": "FeatureName", "Value": "feature", "Operator": "Contains"}],
+        },
+        sort_by=None,
+        sort_order=None,
+        next_token=None,
+        max_results=None,
+    )
+
+
+def test_search_with_all_filters(sagemaker_session_mock):
+    feature_store = FeatureStore(sagemaker_session=sagemaker_session_mock)
+    feature_store.search(
+        resource=ResourceEnum.FEATURE_METADATA,
+        filters=[Filter(name="FeatureName", value="feature", operator=FilterOperatorEnum.CONTAINS)],
+        operator=SearchOperatorEnum.AND,
+        sort_by="Name",
+        sort_order=SortOrderEnum.ASCENDING,
+        next_token="token",
+        max_results=50,
+    )
+    sagemaker_session_mock.search.assert_called_with(
+        resource="FeatureMetadata",
+        search_expression={
+            "Filters": [{"Name": "FeatureName", "Value": "feature", "Operator": "Contains"}],
+            "Operator": "And",
+        },
+        sort_by="Name",
+        sort_order="Ascending",
+        next_token="token",
+        max_results=50,
+    )
+
+
+def test_batch_get_record(sagemaker_session_mock):
+    feature_store = FeatureStore(sagemaker_session=sagemaker_session_mock)
+    feature_store.batch_get_record(
+        identifiers=[
+            Identifier(
+                feature_group_name="name",
+                record_identifiers_value_as_string=["identifier"],
+                feature_names=["feature_1"],
+            )
+        ]
+    )
+
+    sagemaker_session_mock.batch_get_record.assert_called_with(
+        identifiers=[
+            {
+                "FeatureGroupName": "name",
+                "RecordIdentifiersValueAsString": ["identifier"],
+                "FeatureNames": ["feature_1"],
+            }
+        ]
     )

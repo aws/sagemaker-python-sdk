@@ -16,11 +16,15 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
+from sagemaker import Processor
 from sagemaker.estimator import Estimator, _TrainingJob
 from sagemaker.experiments.experiment import _Experiment
 from sagemaker.experiments.run import _RunContext
 from sagemaker.experiments import load_run, Run
 from sagemaker.experiments.trial import _Trial
+from sagemaker.experiments.trial_component import _TrialComponent
+from sagemaker.processing import ProcessingJob
+from sagemaker.transformer import _TransformJob, Transformer
 from tests.unit.sagemaker.experiments.helpers import (
     TEST_EXP_NAME,
     mock_trial_load_or_create_func,
@@ -54,6 +58,97 @@ def test_auto_pass_in_exp_config_to_train_job(mock_start_job, run_obj, sagemaker
 
     # _RunContext is cleaned up after exiting the with statement
     assert not _RunContext.get_current_run()
+
+
+@patch.object(_Trial, "add_trial_component", MagicMock(return_value=None))
+@patch.object(_TrialComponent, "save", MagicMock(return_value=None))
+@patch("sagemaker.experiments.run._Experiment._load_or_create")
+@patch("sagemaker.experiments.run._Trial._load_or_create")
+@patch("sagemaker.experiments.run._TrialComponent._load_or_create")
+@patch.object(_TrainingJob, "start_new")
+def test_auto_pass_in_exp_config_under_load_run(
+    mock_start_job, mock_load_tc, mock_load_trial, mock_load_exp, run_obj, sagemaker_session
+):
+    mock_start_job.return_value = _TrainingJob(sagemaker_session, "my-job")
+    mock_load_tc.return_value = run_obj._trial_component, True
+    mock_load_trial.return_value = run_obj._trial
+    mock_load_exp.return_value = run_obj._experiment
+    with load_run(
+        run_name=run_obj.run_name,
+        experiment_name=run_obj.experiment_name,
+        sagemaker_session=sagemaker_session,
+    ):
+        estimator = Estimator(
+            role="arn:my-role",
+            image_uri="my-image",
+            sagemaker_session=sagemaker_session,
+            output_path=_train_output_path,
+        )
+        estimator.fit(
+            inputs=_train_input_path,
+            wait=False,
+        )
+
+        loaded_run = _RunContext.get_current_run()
+        assert loaded_run.run_name == run_obj.run_name
+        assert loaded_run.experiment_config == run_obj.experiment_config
+
+    expected_exp_config = run_obj.experiment_config
+    mock_start_job.assert_called_once_with(estimator, _train_input_path, expected_exp_config)
+
+    # _RunContext is cleaned up after exiting the with statement
+    assert not _RunContext.get_current_run()
+
+
+@patch.object(ProcessingJob, "start_new")
+def test_auto_pass_in_exp_config_to_process_job(mock_start_job, run_obj, sagemaker_session):
+    mock_start_job.return_value = ProcessingJob(sagemaker_session, "my-job", [], [], "")
+    with run_obj:
+        processor = Processor(
+            role="arn:my-role",
+            image_uri="my-image",
+            instance_count=1,
+            instance_type="ml.m5.large",
+            sagemaker_session=sagemaker_session,
+        )
+        processor.run(wait=False, logs=False)
+
+        assert _RunContext.get_current_run() == run_obj
+
+    expected_exp_config = run_obj.experiment_config
+    assert mock_start_job.call_args[1]["experiment_config"] == expected_exp_config
+
+    # _RunContext is cleaned up after exiting the with statement
+    assert not _RunContext.get_current_run()
+
+
+@patch.object(_TransformJob, "start_new")
+def test_auto_pass_in_exp_config_to_transform_job(mock_start_job, run_obj, sagemaker_session):
+    bucket_name = "my-bucket"
+    job_name = "my-job"
+    mock_start_job.return_value = _TransformJob(sagemaker_session, job_name)
+    with run_obj:
+        transformer = Transformer(
+            model_name="my-model",
+            instance_count=1,
+            instance_type="ml.m5.large",
+            output_path=f"s3://{bucket_name}/output",
+            sagemaker_session=sagemaker_session,
+        )
+        transformer.transform(
+            data=f"s3://{bucket_name}/data", wait=False, logs=False, job_name=job_name
+        )
+
+        assert _RunContext.get_current_run() == run_obj
+
+    expected_exp_config = run_obj.experiment_config
+    assert mock_start_job.call_args[0][9] == expected_exp_config
+
+    # _RunContext is cleaned up after exiting the with statement
+    assert not _RunContext.get_current_run()
+
+
+# TODO: add unit test for test_auto_pass_in_exp_config_to_tuning_job once ready
 
 
 @patch.object(_TrainingJob, "start_new")
@@ -94,6 +189,7 @@ def test_auto_fetch_created_run_obj_from_context(run_obj, sagemaker_session):
     def train():
         with load_run(sagemaker_session=sagemaker_session) as run_load:
             assert run_load == run_obj
+            assert _RunContext.get_current_run() == run_obj
             assert run_obj._inside_init_context
             assert run_obj._inside_load_context
             assert run_obj._in_load
@@ -105,14 +201,14 @@ def test_auto_fetch_created_run_obj_from_context(run_obj, sagemaker_session):
         assert run_obj._inside_init_context
         assert not run_obj._inside_load_context
         assert not run_obj._in_load
-        assert _RunContext.get_current_run()
+        assert _RunContext.get_current_run() == run_obj
 
         train()
 
         assert run_obj._inside_init_context
         assert not run_obj._inside_load_context
         assert not run_obj._in_load
-        assert _RunContext.get_current_run()
+        assert _RunContext.get_current_run() == run_obj
 
         run_obj.log_parameters({"a": "b", "c": 2})
 
@@ -132,7 +228,7 @@ def test_auto_fetch_created_run_obj_from_context(run_obj, sagemaker_session):
         assert run_obj._inside_init_context
         assert not run_obj._inside_load_context
         assert not run_obj._in_load
-        assert _RunContext.get_current_run()
+        assert _RunContext.get_current_run() == run_obj
 
     assert not run_obj._inside_init_context
     assert not run_obj._inside_load_context
@@ -176,6 +272,14 @@ def test_nested_run_init_context_on_different_run_object(run_obj, sagemaker_sess
                 pass
     assert "It is not allowed to use nested 'with' statements on the Run" in str(err)
 
+    with pytest.raises(RuntimeError) as err:
+        with Run(experiment_name=TEST_EXP_NAME, sagemaker_session=sagemaker_session):
+            assert _RunContext.get_current_run()
+
+            with Run(experiment_name=TEST_EXP_NAME, sagemaker_session=sagemaker_session):
+                pass
+    assert "It is not allowed to use nested 'with' statements on the Run" in str(err)
+
 
 def test_nested_run_load_context(run_obj, sagemaker_session):
     assert not _RunContext.get_current_run()
@@ -189,3 +293,37 @@ def test_nested_run_load_context(run_obj, sagemaker_session):
                 with run_load:
                     pass
     assert "It is not allowed to use nested 'with' statements on the load_run" in str(err)
+
+    with pytest.raises(RuntimeError) as err:
+        with run_obj:
+            assert _RunContext.get_current_run()
+
+            with load_run():
+                with load_run():
+                    pass
+    assert "It is not allowed to use nested 'with' statements on the load_run" in str(err)
+
+
+@patch.object(_Trial, "add_trial_component", MagicMock(return_value=None))
+@patch("sagemaker.experiments.run._Experiment._load_or_create")
+@patch("sagemaker.experiments.run._Trial._load_or_create")
+@patch("sagemaker.experiments.run._TrialComponent._load_or_create")
+def test_run_init_under_run_load_context(
+    mock_load_tc, mock_load_trial, mock_load_exp, run_obj, sagemaker_session
+):
+    mock_load_tc.return_value = run_obj._trial_component, True
+    mock_load_trial.return_value = run_obj._trial
+    mock_load_exp.return_value = run_obj._experiment
+    assert not _RunContext.get_current_run()
+
+    with pytest.raises(RuntimeError) as err:
+        with load_run(
+            run_name=run_obj.run_name,
+            experiment_name=run_obj.experiment_name,
+            sagemaker_session=sagemaker_session,
+        ):
+            assert _RunContext.get_current_run()
+
+            with Run(experiment_name=TEST_EXP_NAME, sagemaker_session=sagemaker_session):
+                pass
+    assert "It is not allowed to use nested 'with' statements on the Run" in str(err)

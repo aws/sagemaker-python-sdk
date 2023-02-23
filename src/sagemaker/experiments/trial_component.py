@@ -15,6 +15,8 @@ from __future__ import absolute_import
 
 import time
 
+from botocore.exceptions import ClientError
+
 from sagemaker.apiutils import _base_types
 from sagemaker.experiments import _api_types
 from sagemaker.experiments._api_types import TrialComponentSearchResult
@@ -326,16 +328,20 @@ class _TrialComponent(_base_types.Record):
             experiments.trial_component._TrialComponent: A SageMaker `_TrialComponent` object.
             bool: A boolean variable indicating whether the trail component already exists
         """
-        sagemaker_client = sagemaker_session.sagemaker_client
         is_existed = False
         try:
-            run_tc = _TrialComponent.load(trial_component_name, sagemaker_session)
-            is_existed = True
-        except sagemaker_client.exceptions.ResourceNotFound:
             run_tc = _TrialComponent.create(
                 trial_component_name=trial_component_name,
                 display_name=display_name,
                 tags=tags,
                 sagemaker_session=sagemaker_session,
             )
+        except ClientError as ce:
+            error_code = ce.response["Error"]["Code"]
+            error_message = ce.response["Error"]["Message"]
+            if not (error_code == "ValidationException" and "already exists" in error_message):
+                raise ce
+            # already exists
+            run_tc = _TrialComponent.load(trial_component_name, sagemaker_session)
+            is_existed = True
         return run_tc, is_existed

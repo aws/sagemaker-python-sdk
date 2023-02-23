@@ -20,6 +20,8 @@ import re
 import uuid
 from abc import ABCMeta, abstractmethod
 from typing import Any, Dict, Union, Optional, List
+from packaging.specifiers import SpecifierSet
+from packaging.version import Version
 
 from six import string_types, with_metaclass
 from six.moves.urllib.parse import urlparse
@@ -83,10 +85,7 @@ from sagemaker.utils import (
 )
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
-from sagemaker.workflow.pipeline_context import (
-    PipelineSession,
-    runnable_by_pipeline,
-)
+from sagemaker.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +105,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
     LAUNCH_PS_ENV_NAME = "sagemaker_parameter_server_enabled"
     LAUNCH_MPI_ENV_NAME = "sagemaker_mpi_enabled"
     LAUNCH_SM_DDP_ENV_NAME = "sagemaker_distributed_dataparallel_enabled"
+    LAUNCH_MWMS_ENV_NAME = "sagemaker_multi_worker_mirrored_strategy_enabled"
     INSTANCE_TYPE = "sagemaker_instance_type"
     MPI_NUM_PROCESSES_PER_HOST = "sagemaker_mpi_num_of_processes_per_host"
     MPI_CUSTOM_MPI_OPTIONS = "sagemaker_mpi_custom_mpi_options"
@@ -155,6 +155,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         entry_point: Optional[Union[str, PipelineVariable]] = None,
         dependencies: Optional[List[Union[str]]] = None,
         instance_groups: Optional[List[InstanceGroup]] = None,
+        training_repository_access_mode: Optional[Union[str, PipelineVariable]] = None,
+        training_repository_credentials_provider_arn: Optional[Union[str, PipelineVariable]] = None,
         **kwargs,
     ):
         """Initialize an ``EstimatorBase`` instance.
@@ -421,6 +423,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             hyperparameters (dict[str, str] or dict[str, PipelineVariable]):
                 A dictionary containing the hyperparameters to
                 initialize this estimator with. (Default: None).
+
+                .. caution::
+                    You must not include any security-sensitive information, such as
+                    account access IDs, secrets, and tokens, in the dictionary for configuring
+                    hyperparameters. SageMaker rejects the training job request and returns an
+                    validation error for detected credentials, if such user input is found.
+
             container_log_level (int or PipelineVariable): The log level to use within the container
                 (default: logging.INFO). Valid values are defined in the Python
                 logging module.
@@ -489,6 +498,18 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 `Train Using a Heterogeneous Cluster
                 <https://docs.aws.amazon.com/sagemaker/latest/dg/train-heterogeneous-cluster.html>`_
                 in the *Amazon SageMaker developer guide*.
+            training_repository_access_mode (str): Optional. Specifies how SageMaker accesses the
+                Docker image that contains the training algorithm (default: None).
+                Set this to one of the following values:
+                * 'Platform' - The training image is hosted in Amazon ECR.
+                * 'Vpc' - The training image is hosted in a private Docker registry in your VPC.
+                When it's default to None, its behavior will be same as 'Platform' - image is hosted
+                in ECR.
+            training_repository_credentials_provider_arn (str): Optional. The Amazon Resource Name
+                (ARN) of an AWS Lambda function that provides credentials to authenticate to the
+                private Docker registry where your training image is hosted (default: None).
+                When it's set to None, SageMaker will not do authentication before pulling the image
+                in the private Docker registry.
         """
         instance_count = renamed_kwargs(
             "train_instance_count", "instance_count", instance_count, kwargs
@@ -570,6 +591,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         # VPC configurations
         self.subnets = subnets
         self.security_group_ids = security_group_ids
+
+        # training image configs
+        self.training_repository_access_mode = training_repository_access_mode
+        self.training_repository_credentials_provider_arn = (
+            training_repository_credentials_provider_arn
+        )
 
         self.encrypt_inter_container_traffic = encrypt_inter_container_traffic
         self.use_spot_instances = use_spot_instances
@@ -714,7 +741,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             self.dependencies = updated_paths["dependencies"]
 
         if self.source_dir or self.entry_point or self.dependencies:
-
             # validate source dir will raise a ValueError if there is something wrong with
             # the source directory. We are intentionally not handling it because this is a
             # critical error.
@@ -993,10 +1019,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             parse_result = urlparse(rule.rule_parameters["source_s3_uri"])
             if parse_result.scheme != "s3":
                 desired_s3_uri = os.path.join(
-                    "s3://",
-                    self.sagemaker_session.default_bucket(),
-                    rule.name,
-                    str(uuid.uuid4()),
+                    "s3://", self.sagemaker_session.default_bucket(), rule.name, str(uuid.uuid4())
                 )
                 s3_uri = S3Uploader.upload(
                     local_path=rule.rule_parameters["source_s3_uri"],
@@ -1312,6 +1335,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         volume_size=None,
         model_data_download_timeout=None,
         container_startup_health_check_timeout=None,
+        inference_recommendation_id=None,
         **kwargs,
     ):
         """Deploy the trained model to an Amazon SageMaker endpoint.
@@ -1389,6 +1413,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 inference container to pass health check by SageMaker Hosting. For more information
                 about health check see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html#your-algorithms-inference-algo-ping-requests
+            inference_recommendation_id (str): The recommendation id which specifies the
+                recommendation you picked from inference recommendation job results and
+                would like to deploy the model and endpoint with recommended parameters.
             **kwargs: Passed to invocation of ``create_model()``.
                 Implementations may customize ``create_model()`` to accept
                 ``**kwargs`` to customize model creation during deploy.
@@ -1450,6 +1477,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             volume_size=volume_size,
             model_data_download_timeout=model_data_download_timeout,
             container_startup_health_check_timeout=container_startup_health_check_timeout,
+            inference_recommendation_id=inference_recommendation_id,
         )
 
     def register(
@@ -1638,6 +1666,15 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             init_params["algorithm_arn"] = job_details["AlgorithmSpecification"]["AlgorithmName"]
         elif "TrainingImage" in job_details["AlgorithmSpecification"]:
             init_params["image_uri"] = job_details["AlgorithmSpecification"]["TrainingImage"]
+            if "TrainingImageConfig" in job_details["AlgorithmSpecification"]:
+                init_params["training_repository_access_mode"] = job_details[
+                    "AlgorithmSpecification"
+                ]["TrainingImageConfig"].get("TrainingRepositoryAccessMode")
+                init_params["training_repository_credentials_provider_arn"] = (
+                    job_details["AlgorithmSpecification"]["TrainingImageConfig"]
+                    .get("TrainingRepositoryAuthConfig", {})
+                    .get("TrainingRepositoryCredentialsProviderArn")
+                )
         else:
             raise RuntimeError(
                 "Invalid AlgorithmSpecification. Either TrainingImage or "
@@ -2118,6 +2155,17 @@ class _TrainingJob(_Job):
         else:
             train_args["retry_strategy"] = None
 
+        if estimator.training_repository_access_mode is not None:
+            training_image_config = {
+                "TrainingRepositoryAccessMode": estimator.training_repository_access_mode
+            }
+            if estimator.training_repository_credentials_provider_arn is not None:
+                training_image_config["TrainingRepositoryAuthConfig"] = {}
+                training_image_config["TrainingRepositoryAuthConfig"][
+                    "TrainingRepositoryCredentialsProviderArn"
+                ] = estimator.training_repository_credentials_provider_arn
+            train_args["training_image_config"] = training_image_config
+
         # encrypt_inter_container_traffic may be a pipeline variable place holder object
         # which is parsed in execution time
         if estimator.encrypt_inter_container_traffic:
@@ -2321,6 +2369,8 @@ class Estimator(EstimatorBase):
         entry_point: Optional[Union[str, PipelineVariable]] = None,
         dependencies: Optional[List[str]] = None,
         instance_groups: Optional[List[InstanceGroup]] = None,
+        training_repository_access_mode: Optional[Union[str, PipelineVariable]] = None,
+        training_repository_credentials_provider_arn: Optional[Union[str, PipelineVariable]] = None,
         **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
@@ -2410,6 +2460,13 @@ class Estimator(EstimatorBase):
                 using the default AWS configuration chain.
             hyperparameters (dict[str, str] or dict[str, PipelineVariable]):
                 Dictionary containing the hyperparameters to initialize this estimator with.
+
+                .. caution::
+                    You must not include any security-sensitive information, such as
+                    account access IDs, secrets, and tokens, in the dictionary for configuring
+                    hyperparameters. SageMaker rejects the training job request and returns an
+                    validation error for detected credentials, if such user input is found.
+
             tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): List of tags for
                 labeling a training job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
@@ -2654,6 +2711,18 @@ class Estimator(EstimatorBase):
                 `Train Using a Heterogeneous Cluster
                 <https://docs.aws.amazon.com/sagemaker/latest/dg/train-heterogeneous-cluster.html>`_
                 in the *Amazon SageMaker developer guide*.
+            training_repository_access_mode (str): Optional. Specifies how SageMaker accesses the
+                Docker image that contains the training algorithm (default: None).
+                Set this to one of the following values:
+                * 'Platform' - The training image is hosted in Amazon ECR.
+                * 'Vpc' - The training image is hosted in a private Docker registry in your VPC.
+                When it's default to None, its behavior will be same as 'Platform' - image is hosted
+                in ECR.
+            training_repository_credentials_provider_arn (str): Optional. The Amazon Resource Name
+                (ARN) of an AWS Lambda function that provides credentials to authenticate to the
+                private Docker registry where your training image is hosted (default: None).
+                When it's set to None, SageMaker will not do authentication before pulling the image
+                in the private Docker registry.
         """
         self.image_uri = image_uri
         self._hyperparameters = hyperparameters.copy() if hyperparameters else {}
@@ -2698,6 +2767,8 @@ class Estimator(EstimatorBase):
             dependencies=dependencies,
             hyperparameters=hyperparameters,
             instance_groups=instance_groups,
+            training_repository_access_mode=training_repository_access_mode,
+            training_repository_credentials_provider_arn=training_repository_credentials_provider_arn,  # noqa: E501 # pylint: disable=line-too-long
             **kwargs,
         )
 
@@ -2873,6 +2944,13 @@ class Framework(EstimatorBase):
                 SageMaker. For convenience, this accepts other types for keys
                 and values, but ``str()`` will be called to convert them before
                 training.
+
+                .. caution::
+                    You must not include any security-sensitive information, such as
+                    account access IDs, secrets, and tokens, in the dictionary for configuring
+                    hyperparameters. SageMaker rejects the training job request and returns an
+                    validation error for detected credentials, if such user input is found.
+
             container_log_level (int or PipelineVariable): Log level to use within the container
                 (default: logging.INFO). Valid values are defined in the Python
                 logging module.
@@ -3072,6 +3150,34 @@ class Framework(EstimatorBase):
                         Distributed Training Jobs With Checkpointing Enabled"
                     )
                     self.debugger_hook_config = False
+
+    def _validate_mwms_config(self, distribution):
+        """Validate Multi Worker Mirrored Strategy configuration."""
+        minimum_supported_framework_version = {"tensorflow": {"framework_version": "2.9"}}
+        if self._framework_name in minimum_supported_framework_version:
+            for version_argument in minimum_supported_framework_version[self._framework_name]:
+                current = getattr(self, version_argument)
+                threshold = minimum_supported_framework_version[self._framework_name][
+                    version_argument
+                ]
+                if Version(current) in SpecifierSet(f"< {threshold}"):
+                    raise ValueError(
+                        "Multi Worker Mirrored Strategy is only supported "
+                        "from {} {} but received {}".format(version_argument, threshold, current)
+                    )
+        else:
+            raise ValueError(
+                "Multi Worker Mirrored Strategy is currently only supported "
+                "with {} frameworks but received {}".format(
+                    minimum_supported_framework_version.keys(), self._framework_name
+                )
+            )
+        unsupported_distributions = ["smdistributed", "parameter_server"]
+        if any(i in distribution for i in unsupported_distributions):
+            raise ValueError(
+                "Multi Worker Mirrored Strategy is currently not supported with the"
+                " following distribution strategies: {}".format(unsupported_distributions)
+            )
 
     def _model_source_dir(self):
         """Get the appropriate value to pass as ``source_dir`` to a model constructor.
@@ -3435,6 +3541,12 @@ class Framework(EstimatorBase):
                 distribution_config[self.SM_DDP_CUSTOM_MPI_OPTIONS] = smdistributed[
                     "dataparallel"
                 ].get("custom_mpi_options", "")
+
+        if "multi_worker_mirrored_strategy" in distribution:
+            mwms_enabled = distribution.get("multi_worker_mirrored_strategy").get("enabled", False)
+            if mwms_enabled:
+                self._validate_mwms_config(distribution)
+            distribution_config[self.LAUNCH_MWMS_ENV_NAME] = mwms_enabled
 
         if not (mpi_enabled or smdataparallel_enabled) and distribution_config.get(
             "sagemaker_distribution_instance_groups"

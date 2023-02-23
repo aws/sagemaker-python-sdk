@@ -358,7 +358,7 @@ def create_tar_file(source_files, target=None):
 
 
 @contextlib.contextmanager
-def _tmpdir(suffix="", prefix="tmp"):
+def _tmpdir(suffix="", prefix="tmp", directory=None):
     """Create a temporary directory with a context manager.
 
     The file is deleted when the context exits.
@@ -369,11 +369,18 @@ def _tmpdir(suffix="", prefix="tmp"):
             suffix, otherwise there will be no suffix.
         prefix (str): If prefix is specified, the file name will begin with that
             prefix; otherwise, a default prefix is used.
+        directory (str): If a directory is specified, the file will be downloaded
+            in this directory; otherwise, a default directory is used.
 
     Returns:
         str: path to the directory
     """
-    tmp = tempfile.mkdtemp(suffix=suffix, prefix=prefix, dir=None)
+    if directory is not None and not (os.path.exists(directory) and os.path.isdir(directory)):
+        raise ValueError(
+            "Inputted directory for storing newly generated temporary "
+            f"directory does not exist: '{directory}'"
+        )
+    tmp = tempfile.mkdtemp(suffix=suffix, prefix=prefix, dir=directory)
     yield tmp
     shutil.rmtree(tmp)
 
@@ -427,7 +434,13 @@ def repack_model(
     """
     dependencies = dependencies or []
 
-    with _tmpdir() as tmp:
+    local_download_dir = (
+        None
+        if sagemaker_session.settings is None
+        or sagemaker_session.settings.local_download_dir is None
+        else sagemaker_session.settings.local_download_dir
+    )
+    with _tmpdir(directory=local_download_dir) as tmp:
         model_dir = _extract_model(model_uri, sagemaker_session, tmp)
 
         _create_or_update_code_dir(
@@ -591,12 +604,17 @@ def retries(
     )
 
 
-def retry_with_backoff(callable_func, num_attempts=8):
+def retry_with_backoff(callable_func, num_attempts=8, botocore_client_error_code=None):
     """Retry with backoff until maximum attempts are reached
 
     Args:
         callable_func (callable): The callable function to retry.
-        num_attempts (int): The maximum number of attempts to retry.
+        num_attempts (int): The maximum number of attempts to retry.(Default: 8)
+        botocore_client_error_code (str): The specific Botocore ClientError exception error code
+            on which to retry on.
+            If provided other exceptions will be raised directly w/o retry.
+            If not provided, retry on any exception.
+            (Default: None)
     """
     if num_attempts < 1:
         raise ValueError(
@@ -606,7 +624,15 @@ def retry_with_backoff(callable_func, num_attempts=8):
         try:
             return callable_func()
         except Exception as ex:  # pylint: disable=broad-except
-            if i == num_attempts - 1:
+            if not botocore_client_error_code or (
+                botocore_client_error_code
+                and isinstance(ex, botocore.exceptions.ClientError)
+                and ex.response["Error"]["Code"]  # pylint: disable=no-member
+                == botocore_client_error_code
+            ):
+                if i == num_attempts - 1:
+                    raise ex
+            else:
                 raise ex
             logger.error("Retrying in attempt %s, due to %s", (i + 1), str(ex))
             time.sleep(2**i)

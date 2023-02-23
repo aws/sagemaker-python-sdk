@@ -120,19 +120,18 @@ class Run(object):
                 estimator.fit(job_name="my-job")  # Create a training job
 
         In order to reuse an existing run to log extra data, ``load_run`` is recommended.
+        For example, instead of the ``Run`` constructor, the ``load_run`` is recommended to use
+        in a job script to load the existing run created before the job launch.
+        Otherwise, a new run may be created each time you launch a job.
+
         The code snippet below displays how to load the run initialized above
         in a custom training job script, where no ``run_name`` or ``experiment_name``
         is presented as they are automatically retrieved from the experiment config
         in the job environment.
 
-        Note:
-            Instead of the ``Run`` constructor, the ``load_run`` is recommended to use
-            in a job script to load the existing run created before the job launch.
-            Otherwise, a new run may be created each time you launch a job.
-
         .. code:: python
 
-            with load_run() as run:
+            with load_run(sagemaker_session=sagemaker_session) as run:
                 run.log_metric(...)
                 ...
 
@@ -648,7 +647,8 @@ class Run(object):
         """
         if not tags:
             tags = []
-        tags.append(RUN_TC_TAG)
+        if RUN_TC_TAG not in tags:
+            tags.append(RUN_TC_TAG)
         return tags
 
     def __enter__(self):
@@ -664,6 +664,10 @@ class Run(object):
             if self._inside_load_context:
                 raise RuntimeError(nested_with_err_msg_template.format("load_run"))
             self._inside_load_context = True
+            if not self._inside_init_context:
+                # Add to run context only if the load_run is called separately
+                # without under a Run init context
+                _RunContext.add_run_object(self)
         else:
             if _RunContext.get_current_run():
                 raise RuntimeError(nested_with_err_msg_template.format("Run"))
@@ -692,6 +696,8 @@ class Run(object):
         if self._in_load:
             self._inside_load_context = False
             self._in_load = False
+            if not self._inside_init_context:
+                _RunContext.drop_current_run()
         else:
             self._inside_init_context = False
             _RunContext.drop_current_run()
