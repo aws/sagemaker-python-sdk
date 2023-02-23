@@ -260,8 +260,27 @@ class BatchDataCaptureConfig(object):
                 (default: None)
         """
         self.destination_s3_uri = destination_s3_uri
-        self.kms_key_id = kms_key_id
+        self._kms_key_id = kms_key_id
         self.generate_inference_id = generate_inference_id
+
+    @property
+    def kms_key_id(self):
+        """Getter for KmsKeyId
+
+        Returns:
+            str: The KMS Key ID.
+        """
+        return self._kms_key_id
+
+    @kms_key_id.setter
+    def kms_key_id(self, kms_key_id: str):
+        """Setter for KmsKeyId
+
+        Args:
+            kms_key_id: The KMS Key ID to set.
+
+        """
+        self._kms_key_id = kms_key_id
 
     def _to_request_dict(self):
         """Generates a request dictionary using the parameters provided to the class."""

@@ -35,7 +35,6 @@ from sagemaker.config.config_schema import (
     SAGEMAKER,
     MONITORING_SCHEDULE,
     TAGS,
-    PATH_V1_MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION,
 )
 from sagemaker.exceptions import UnexpectedStatusException
 from sagemaker.model_monitor.monitoring_files import Constraints, ConstraintViolations, Statistics
@@ -48,7 +47,16 @@ from sagemaker.model_monitor.monitoring_alert import (
 from sagemaker.model_monitor.dataset_format import MonitoringDatasetFormat
 from sagemaker.network import NetworkConfig
 from sagemaker.processing import Processor, ProcessingInput, ProcessingJob, ProcessingOutput
-from sagemaker.session import Session
+from sagemaker.session import (
+    Session,
+    MONITORING_JOB_SUBNETS_PATH,
+    MONITORING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+    PATH_V1_MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION,
+    MONITORING_JOB_VOLUME_KMS_KEY_ID_PATH,
+    MONITORING_JOB_SECURITY_GROUP_IDS_PATH,
+    MONITORING_JOB_OUTPUT_KMS_KEY_ID_PATH,
+    MONITORING_JOB_ROLE_ARN_PATH,
+)
 from sagemaker.utils import name_from_base, retries
 
 DEFAULT_REPOSITORY_NAME = "sagemaker-model-monitor-analyzer"
@@ -102,8 +110,8 @@ class ModelMonitor(object):
 
     def __init__(
         self,
-        role,
-        image_uri,
+        role=None,
+        image_uri=None,
         instance_count=1,
         instance_type="ml.m5.xlarge",
         entrypoint=None,
@@ -152,14 +160,11 @@ class ModelMonitor(object):
                 inter-container traffic, security group IDs, and subnets.
 
         """
-        self.role = role
         self.image_uri = image_uri
         self.instance_count = instance_count
         self.instance_type = instance_type
         self.entrypoint = entrypoint
         self.volume_size_in_gb = volume_size_in_gb
-        self.volume_kms_key = volume_kms_key
-        self.output_kms_key = output_kms_key
         self.max_runtime_in_seconds = max_runtime_in_seconds
         self.base_job_name = base_job_name
         self.sagemaker_session = sagemaker_session or Session()
@@ -172,10 +177,60 @@ class ModelMonitor(object):
         self.latest_baselining_job_name = None
         self.monitoring_schedule_name = None
         self.job_definition_name = None
+        self.role = self.sagemaker_session.get_sagemaker_config_override(
+            MONITORING_JOB_ROLE_ARN_PATH, default_value=role
+        )
+        if not self.role:
+            # Originally IAM role was a required parameter.
+            # Now we marked that as Optional because we can fetch it from SageMakerConfig
+            # Because of marking that parameter as optional, we should validate if it is None, even
+            # after fetching the config.
+            raise ValueError("IAM role should be provided for creating Monitoring Schedule.")
+        self.volume_kms_key = self.sagemaker_session.get_sagemaker_config_override(
+            MONITORING_JOB_VOLUME_KMS_KEY_ID_PATH, default_value=volume_kms_key
+        )
+        self.output_kms_key = self.sagemaker_session.get_sagemaker_config_override(
+            MONITORING_JOB_OUTPUT_KMS_KEY_ID_PATH, default_value=output_kms_key
+        )
+        _enable_network_isolation_from_config = (
+            self.sagemaker_session.get_sagemaker_config_override(
+                MONITORING_JOB_ENABLE_NETWORK_ISOLATION_PATH
+            )
+        )
+
+        _subnets_from_config = self.sagemaker_session.get_sagemaker_config_override(
+            MONITORING_JOB_SUBNETS_PATH
+        )
+        _security_group_ids_from_config = self.sagemaker_session.get_sagemaker_config_override(
+            MONITORING_JOB_SECURITY_GROUP_IDS_PATH
+        )
+        if network_config:
+            if not network_config.subnets:
+                network_config.subnets = _subnets_from_config
+            if network_config.enable_network_isolation is None:
+                network_config.enable_network_isolation = (
+                    _enable_network_isolation_from_config or False
+                )
+            if not network_config.security_group_ids:
+                network_config.security_group_ids = _security_group_ids_from_config
+            self.network_config = network_config
+        else:
+            if (
+                _enable_network_isolation_from_config is not None
+                or _subnets_from_config
+                or _security_group_ids_from_config
+            ):
+                self.network_config = NetworkConfig(
+                    enable_network_isolation=_enable_network_isolation_from_config or False,
+                    security_group_ids=_security_group_ids_from_config,
+                    subnets=_subnets_from_config,
+                )
+            else:
+                self.network_config = None
 
         self.network_config = self.sagemaker_session.resolve_class_attribute_from_config(
             NetworkConfig,
-            network_config,
+            self.network_config,
             "encrypt_inter_container_traffic",
             PATH_V1_MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION,
         )

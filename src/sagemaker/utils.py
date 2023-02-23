@@ -27,7 +27,7 @@ import json
 import abc
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from importlib import import_module
 import botocore
@@ -176,7 +176,7 @@ def get_config_value(key_path, config):
     return current_section
 
 
-def get_nested_value(dictionary: dict, nested_keys: list[str]):
+def get_nested_value(dictionary: dict, nested_keys: List[str]):
     """Returns a nested value from the given dictionary, and None if none present.
 
     Raises
@@ -209,8 +209,10 @@ def get_nested_value(dictionary: dict, nested_keys: list[str]):
     return None
 
 
-def set_nested_value(dictionary: dict, nested_keys: list[str], value_to_set: object):
-    """Sets a nested value inside the given dictionary and returns the new dictionary. Note: if
+def set_nested_value(dictionary: dict, nested_keys: List[str], value_to_set: object):
+    """Sets a nested value in a dictionary.
+
+    This sets a nested value inside the given dictionary and returns the new dictionary. Note: if
     provided an unintended list of nested keys, this can overwrite an unexpected part of the dict.
     Recommended to use after a check with get_nested_value first
     """

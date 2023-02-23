@@ -244,6 +244,10 @@ def sagemaker_session():
         else default_value,
     )
 
+    sms.get_sagemaker_config_override = Mock(
+        name="get_sagemaker_config_override",
+        side_effect=lambda key, default_value=None: default_value,
+    )
     return sms
 
 
@@ -343,6 +347,77 @@ def test_framework_all_init_args(sagemaker_session):
         "enable_sagemaker_metrics": True,
         "enable_network_isolation": True,
     }
+
+
+def test_framework_without_role_parameter(sagemaker_session):
+    with pytest.raises(ValueError):
+        DummyFramework(
+            entry_point=SCRIPT_PATH,
+            sagemaker_session=sagemaker_session,
+            instance_groups=[
+                InstanceGroup("group1", "ml.c4.xlarge", 1),
+                InstanceGroup("group2", "ml.m4.xlarge", 2),
+            ],
+        )
+
+
+def test_default_value_of_enable_network_isolation(sagemaker_session):
+    framework = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+    )
+    assert framework.enable_network_isolation() is False
+
+
+def _config_override_mock(key, default_value=None):
+    from sagemaker.session import (
+        TRAINING_JOB_SUBNETS_PATH,
+        TRAINING_JOB_SECURITY_GROUP_IDS_PATH,
+        TRAINING_JOB_KMS_KEY_ID_PATH,
+        TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+        TRAINING_JOB_ROLE_ARN_PATH,
+        TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH,
+    )
+
+    if key == TRAINING_JOB_ROLE_ARN_PATH:
+        return "ConfigRoleArn"
+    elif key == TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH:
+        return True
+    elif key == TRAINING_JOB_KMS_KEY_ID_PATH:
+        return "ConfigKmsKeyId"
+    elif key == TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH:
+        return "ConfigVolumeKmsKeyId"
+    elif key == TRAINING_JOB_SECURITY_GROUP_IDS_PATH:
+        return ["sg-config"]
+    elif key == TRAINING_JOB_SUBNETS_PATH:
+        return ["subnet-config"]
+    return default_value
+
+
+def test_framework_initialization_with_defaults(sagemaker_session):
+
+    sagemaker_session.get_sagemaker_config_override = Mock(
+        name="get_sagemaker_config_override", side_effect=_config_override_mock
+    )
+    framework = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+    )
+    assert framework.role == "ConfigRoleArn"
+    assert framework.enable_network_isolation()
+    assert framework.output_kms_key == "ConfigKmsKeyId"
+    assert framework.volume_kms_key == "ConfigVolumeKmsKeyId"
+    assert framework.security_group_ids == ["sg-config"]
+    assert framework.subnets == ["subnet-config"]
 
 
 def test_framework_with_heterogeneous_cluster(sagemaker_session):
@@ -3886,6 +3961,10 @@ def test_estimator_local_mode_error(sagemaker_session):
 
 
 def test_estimator_local_mode_ok(sagemaker_local_session):
+    sagemaker_local_session.get_sagemaker_config_override = Mock(
+        name="get_sagemaker_config_override",
+        side_effect=lambda key, default_value=None: default_value,
+    )
     # When using instance local with a session which is not LocalSession we should error out
     Estimator(
         image_uri="some-image",

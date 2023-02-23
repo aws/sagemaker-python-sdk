@@ -15,8 +15,12 @@ from __future__ import absolute_import
 
 from six import string_types
 
-from sagemaker import Session
-from sagemaker.config.config_schema import PATH_V1_TRAINING_JOB_INTER_CONTAINER_ENCRYPTION
+from sagemaker.session import (
+    Session,
+    TRAINING_JOB_VPC_CONFIG_PATH,
+    TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH,
+    PATH_V1_TRAINING_JOB_INTER_CONTAINER_ENCRYPTION,
+)
 from sagemaker.job import _Job
 from sagemaker.utils import name_from_base
 
@@ -102,7 +106,12 @@ class CandidateEstimator(object):
                 """Logs can only be shown if wait is set to True.
                 Please either set wait to True or set logs to False."""
             )
-
+        vpc_config = self.sagemaker_session.get_sagemaker_config_override(
+            TRAINING_JOB_VPC_CONFIG_PATH, default_value=vpc_config
+        )
+        volume_kms_key = self.sagemaker_session.get_sagemaker_config_override(
+            TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH, default_value=volume_kms_key
+        )
         self.name = candidate_name or self.name
         running_jobs = {}
 

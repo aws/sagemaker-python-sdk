@@ -79,13 +79,16 @@ def fixture_sagemaker_session():
     session.sagemaker_client.list_tags = Mock(return_value=LIST_TAGS_RESULT)
     session.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     session.expand_role = Mock(name="expand_role", return_value=ROLE)
-
     # For the purposes of unit tests, no values should be fetched from sagemaker config
     session.resolve_value_from_config = Mock(
         name="resolve_value_from_config",
         side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
         if direct_input is not None
         else default_value,
+    )
+    session.get_sagemaker_config_override = Mock(
+        name="get_sagemaker_config_override",
+        side_effect=lambda key, default_value=None: default_value,
     )
     return session
 

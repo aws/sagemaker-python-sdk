@@ -60,6 +60,10 @@ def session():
         settings=SessionSettings(),
     )
     sms.default_bucket = Mock(name=DEFAULT_BUCKET_NAME, return_value=BUCKET_NAME)
+    sms.get_sagemaker_config_override = Mock(
+        name="get_sagemaker_config_override",
+        side_effect=lambda key, default_value=None: default_value,
+    )
     return sms
 
 

@@ -41,7 +41,12 @@ import boto3
 from botocore.config import Config
 from pathos.multiprocessing import ProcessingPool
 
-from sagemaker import Session
+from sagemaker.session import (
+    Session,
+    FEATURE_GROUP_ROLE_ARN_PATH,
+    FEATURE_GROUP_OFFLINE_STORE_KMS_KEY_ID_PATH,
+    FEATURE_GROUP_ONLINE_STORE_KMS_KEY_ID_PATH,
+)
 from sagemaker.feature_store.feature_definition import (
     FeatureDefinition,
     FeatureTypeEnum,
@@ -513,7 +518,7 @@ class FeatureGroup:
         s3_uri: Union[str, bool],
         record_identifier_name: str,
         event_time_feature_name: str,
-        role_arn: str,
+        role_arn: str = None,
         online_store_kms_key_id: str = None,
         enable_online_store: bool = False,
         offline_store_kms_key_id: str = None,
@@ -552,6 +557,21 @@ class FeatureGroup:
         Returns:
             Response dict from service.
         """
+        role_arn = self.sagemaker_session.get_sagemaker_config_override(
+            FEATURE_GROUP_ROLE_ARN_PATH, default_value=role_arn
+        )
+        offline_store_kms_key_id = self.sagemaker_session.get_sagemaker_config_override(
+            FEATURE_GROUP_OFFLINE_STORE_KMS_KEY_ID_PATH, default_value=offline_store_kms_key_id
+        )
+        online_store_kms_key_id = self.sagemaker_session.get_sagemaker_config_override(
+            FEATURE_GROUP_ONLINE_STORE_KMS_KEY_ID_PATH, default_value=online_store_kms_key_id
+        )
+        if not role_arn:
+            # Originally IAM role was a required parameter.
+            # Now we marked that as Optional because we can fetch it from SageMakerConfig,
+            # Because of marking that parameter as optional, we should validate if it is None, even
+            # after fetching the config.
+            raise ValueError("IAM role should be provided for creating Feature Groups.")
         create_feature_store_args = dict(
             feature_group_name=self.name,
             record_identifier_name=record_identifier_name,

@@ -38,7 +38,7 @@ def test_invalid_schema_version():
 
 
 def test_valid_config_with_all_the_features(
-        base_config_with_schema, valid_config_with_all_the_scopes
+    base_config_with_schema, valid_config_with_all_the_scopes
 ):
     _validate_config(base_config_with_schema, valid_config_with_all_the_scopes)
 

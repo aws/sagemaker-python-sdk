@@ -80,6 +80,10 @@ def sagemaker_session():
         name="upload_data",
         return_value=os.path.join(VALID_MULTI_MODEL_DATA_PREFIX, "mleap_model.tar.gz"),
     )
+    session.get_sagemaker_config_override = Mock(
+        name="get_sagemaker_config_override",
+        side_effect=lambda key, default_value=None: default_value,
+    )
 
     s3_mock = Mock()
     boto_mock.client("s3").return_value = s3_mock

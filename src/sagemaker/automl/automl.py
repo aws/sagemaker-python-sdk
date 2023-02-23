@@ -19,11 +19,15 @@ from six import string_types
 
 from sagemaker import Model, PipelineModel
 from sagemaker.automl.candidate_estimator import CandidateEstimator
-from sagemaker.config.config_schema import (
+from sagemaker.job import _Job
+from sagemaker.session import (
+    Session,
+    AUTO_ML_KMS_KEY_ID_PATH,
+    AUTO_ML_ROLE_ARN_PATH,
+    AUTO_ML_VPC_CONFIG_PATH,
+    AUTO_ML_VOLUME_KMS_KEY_ID_PATH,
     PATH_V1_AUTO_ML_INTER_CONTAINER_ENCRYPTION,
 )
-from sagemaker.job import _Job
-from sagemaker.session import Session
 from sagemaker.utils import name_from_base
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
@@ -101,8 +105,8 @@ class AutoML(object):
 
     def __init__(
         self,
-        role: str,
-        target_attribute_name: str,
+        role: Optional[str] = None,
+        target_attribute_name: str = None,
         output_kms_key: Optional[str] = None,
         output_path: Optional[str] = None,
         base_job_name: Optional[str] = None,
@@ -179,13 +183,10 @@ class AutoML(object):
         Returns:
             AutoML object.
         """
-        self.role = role
-        self.output_kms_key = output_kms_key
         self.output_path = output_path
         self.base_job_name = base_job_name
         self.compression_type = compression_type
-        self.volume_kms_key = volume_kms_key
-        self.vpc_config = vpc_config
+        self.encrypt_inter_container_traffic = encrypt_inter_container_traffic
         self.problem_type = problem_type
         self.max_candidate = max_candidates
         self.max_runtime_per_training_job_in_seconds = max_runtime_per_training_job_in_seconds
@@ -206,6 +207,24 @@ class AutoML(object):
         self._auto_ml_job_desc = None
         self._best_candidate = None
         self.sagemaker_session = sagemaker_session or Session()
+        self.vpc_config = self.sagemaker_session.get_sagemaker_config_override(
+            AUTO_ML_VPC_CONFIG_PATH, default_value=vpc_config
+        )
+        self.volume_kms_key = self.sagemaker_session.get_sagemaker_config_override(
+            AUTO_ML_VOLUME_KMS_KEY_ID_PATH, default_value=volume_kms_key
+        )
+        self.output_kms_key = self.sagemaker_session.get_sagemaker_config_override(
+            AUTO_ML_KMS_KEY_ID_PATH, default_value=output_kms_key
+        )
+        self.role = self.sagemaker_session.get_sagemaker_config_override(
+            AUTO_ML_ROLE_ARN_PATH, default_value=role
+        )
+        if not self.role:
+            # Originally IAM role was a required parameter.
+            # Now we marked that as Optional because we can fetch it from SageMakerConfig
+            # Because of marking that parameter as optional, we should validate if it is None, even
+            # after fetching the config.
+            raise ValueError("IAM role should be provided for creating AutoML jobs.")
 
         self.encrypt_inter_container_traffic = self.sagemaker_session.resolve_value_from_config(
             direct_input=encrypt_inter_container_traffic,

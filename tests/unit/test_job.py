@@ -80,7 +80,10 @@ def sagemaker_session():
         name="sagemaker_session", boto_session=boto_mock, s3_client=None, s3_resource=None
     )
     mock_session.expand_role = Mock(name="expand_role", return_value=ROLE)
-
+    mock_session.get_sagemaker_config_override = Mock(
+        name="get_sagemaker_config_override",
+        side_effect=lambda key, default_value=None: default_value,
+    )
     return mock_session
 
 

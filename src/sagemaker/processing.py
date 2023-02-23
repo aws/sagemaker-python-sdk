@@ -30,7 +30,6 @@ import attr
 from six.moves.urllib.parse import urlparse
 from six.moves.urllib.request import url2pathname
 from sagemaker import s3
-from sagemaker.config.config_schema import PATH_V1_PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
 from sagemaker.network import NetworkConfig
@@ -40,7 +39,16 @@ from sagemaker.utils import (
     name_from_base,
     check_and_get_run_experiment_config,
 )
-from sagemaker.session import Session
+from sagemaker.session import (
+    Session,
+    PROCESSING_JOB_KMS_KEY_ID_PATH,
+    PROCESSING_JOB_SECURITY_GROUP_IDS_PATH,
+    PROCESSING_JOB_SUBNETS_PATH,
+    PROCESSING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+    PROCESSING_JOB_VOLUME_KMS_KEY_ID_PATH,
+    PROCESSING_JOB_ROLE_ARN_PATH,
+    PATH_V1_PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION,
+)
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.functions import Join
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
@@ -60,10 +68,10 @@ class Processor(object):
 
     def __init__(
         self,
-        role: Union[str, PipelineVariable],
-        image_uri: Union[str, PipelineVariable],
-        instance_count: Union[int, PipelineVariable],
-        instance_type: Union[str, PipelineVariable],
+        role: str = None,
+        image_uri: Union[str, PipelineVariable] = None,
+        instance_count: Union[int, PipelineVariable] = None,
+        instance_type: Union[str, PipelineVariable] = None,
         entrypoint: Optional[List[Union[str, PipelineVariable]]] = None,
         volume_size_in_gb: Union[int, PipelineVariable] = 30,
         volume_kms_key: Optional[Union[str, PipelineVariable]] = None,
@@ -119,14 +127,11 @@ class Processor(object):
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
         """
-        self.role = role
         self.image_uri = image_uri
         self.instance_count = instance_count
         self.instance_type = instance_type
         self.entrypoint = entrypoint
         self.volume_size_in_gb = volume_size_in_gb
-        self.volume_kms_key = volume_kms_key
-        self.output_kms_key = output_kms_key
         self.max_runtime_in_seconds = max_runtime_in_seconds
         self.base_job_name = base_job_name
         self.env = env
@@ -143,10 +148,60 @@ class Processor(object):
                 sagemaker_session = LocalSession(disable_local_code=True)
 
         self.sagemaker_session = sagemaker_session or Session()
+        self.output_kms_key = self.sagemaker_session.get_sagemaker_config_override(
+            PROCESSING_JOB_KMS_KEY_ID_PATH, default_value=output_kms_key
+        )
+        self.volume_kms_key = self.sagemaker_session.get_sagemaker_config_override(
+            PROCESSING_JOB_VOLUME_KMS_KEY_ID_PATH, default_value=volume_kms_key
+        )
+        _enable_network_isolation_from_config = (
+            self.sagemaker_session.get_sagemaker_config_override(
+                PROCESSING_JOB_ENABLE_NETWORK_ISOLATION_PATH
+            )
+        )
+
+        _subnets_from_config = self.sagemaker_session.get_sagemaker_config_override(
+            PROCESSING_JOB_SUBNETS_PATH
+        )
+        _security_group_ids_from_config = self.sagemaker_session.get_sagemaker_config_override(
+            PROCESSING_JOB_SECURITY_GROUP_IDS_PATH
+        )
+        if network_config:
+            if not network_config.subnets:
+                network_config.subnets = _subnets_from_config
+            if network_config.enable_network_isolation is None:
+                network_config.enable_network_isolation = (
+                    _enable_network_isolation_from_config or False
+                )
+            if not network_config.security_group_ids:
+                network_config.security_group_ids = _security_group_ids_from_config
+            self.network_config = network_config
+        else:
+            if (
+                _enable_network_isolation_from_config is not None
+                or _subnets_from_config
+                or _security_group_ids_from_config
+            ):
+                self.network_config = NetworkConfig(
+                    enable_network_isolation=_enable_network_isolation_from_config or False,
+                    security_group_ids=_security_group_ids_from_config,
+                    subnets=_subnets_from_config,
+                )
+            else:
+                self.network_config = None
+        self.role = self.sagemaker_session.get_sagemaker_config_override(
+            PROCESSING_JOB_ROLE_ARN_PATH, default_value=role
+        )
+        if not self.role:
+            # Originally IAM role was a required parameter.
+            # Now we marked that as Optional because we can fetch it from SageMakerConfig
+            # Because of marking that parameter as optional, we should validate if it is None, even
+            # after fetching the config.
+            raise ValueError("IAM role should be provided for creating Processing jobs.")
 
         self.network_config = self.sagemaker_session.resolve_class_attribute_from_config(
             NetworkConfig,
-            network_config,
+            self.network_config,
             "encrypt_inter_container_traffic",
             PATH_V1_PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION,
         )
@@ -445,11 +500,11 @@ class ScriptProcessor(Processor):
 
     def __init__(
         self,
-        role: Union[str, PipelineVariable],
-        image_uri: Union[str, PipelineVariable],
-        command: List[str],
-        instance_count: Union[int, PipelineVariable],
-        instance_type: Union[str, PipelineVariable],
+        role: Optional[Union[str, PipelineVariable]] = None,
+        image_uri: Union[str, PipelineVariable] = None,
+        command: List[str] = None,
+        instance_count: Union[int, PipelineVariable] = None,
+        instance_type: Union[str, PipelineVariable] = None,
         volume_size_in_gb: Union[int, PipelineVariable] = 30,
         volume_kms_key: Optional[Union[str, PipelineVariable]] = None,
         output_kms_key: Optional[Union[str, PipelineVariable]] = None,
@@ -1201,9 +1256,19 @@ class ProcessingInput(object):
         self.s3_data_distribution_type = s3_data_distribution_type
         self.s3_compression_type = s3_compression_type
         self.s3_input = s3_input
-        self.dataset_definition = dataset_definition
+        self._dataset_definition = dataset_definition
         self.app_managed = app_managed
         self._create_s3_input()
+
+    @property
+    def dataset_definition(self):
+        """Getter for DataSetDefinition
+
+        Returns:
+            DatasetDefinition: The DatasetDefinition Object.
+
+        """
+        return self._dataset_definition
 
     def _to_request_dict(self):
         """Generates a request dictionary using the parameters provided to the class."""
@@ -1368,9 +1433,9 @@ class FrameworkProcessor(ScriptProcessor):
         self,
         estimator_cls: type,
         framework_version: str,
-        role: Union[str, PipelineVariable],
-        instance_count: Union[int, PipelineVariable],
-        instance_type: Union[str, PipelineVariable],
+        role: Optional[Union[str, PipelineVariable]] = None,
+        instance_count: Union[int, PipelineVariable] = None,
+        instance_type: Union[str, PipelineVariable] = None,
         py_version: str = "py3",
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         command: Optional[List[str]] = None,

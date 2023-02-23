@@ -21,7 +21,7 @@ from datetime import datetime
 import boto3
 from botocore.exceptions import ClientError
 
-from sagemaker.config.config import SageMakerConfig
+from sagemaker.config import SageMakerConfig
 from sagemaker.local.image import _SageMakerContainer
 from sagemaker.local.utils import get_docker_host
 from sagemaker.local.entities import (
@@ -673,6 +673,17 @@ class LocalSession(Session):
         if self.s3_endpoint_url is not None:
             self.s3_resource = boto_session.resource("s3", endpoint_url=self.s3_endpoint_url)
             self.s3_client = boto_session.client("s3", endpoint_url=self.s3_endpoint_url)
+            self.sagemaker_config = sagemaker_config or (
+                SageMakerConfig(s3_resource=self.s3_resource)
+                if "sagemaker_config" not in kwargs
+                else kwargs.get("sagemaker_config")
+            )
+        else:
+            self.sagemaker_config = sagemaker_config or (
+                SageMakerConfig()
+                if "sagemaker_config" not in kwargs
+                else kwargs.get("sagemaker_config")
+            )
 
         sagemaker_config_file = os.path.join(os.path.expanduser("~"), ".sagemaker", "config.yaml")
         if os.path.exists(sagemaker_config_file):
@@ -685,11 +696,6 @@ class LocalSession(Session):
             self.config = yaml.safe_load(open(sagemaker_config_file, "r"))
             if self._disable_local_code and "local" in self.config:
                 self.config["local"]["local_code"] = False
-
-        if sagemaker_config:
-            self.sagemaker_config = sagemaker_config
-        else:
-            self.sagemaker_config = SageMakerConfig(s3_resource=self.boto_session)
 
     def logs_for_job(self, job_name, wait=False, poll=5, log_type="All"):
         """A no-op method meant to override the sagemaker client.

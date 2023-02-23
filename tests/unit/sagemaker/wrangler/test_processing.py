@@ -46,6 +46,10 @@ def sagemaker_session():
         name="resolve_class_attribute_from_config",
         side_effect=lambda clazz, instance, attribute, config_path, default_value=None: instance,
     )
+    session_mock.get_sagemaker_config_override = Mock(
+        name="get_sagemaker_config_override",
+        side_effect=lambda key, default_value=None: default_value,
+    )
     return session_mock
 
 

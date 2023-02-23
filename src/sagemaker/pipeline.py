@@ -19,7 +19,14 @@ import sagemaker
 from sagemaker import ModelMetrics, Model
 from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.metadata_properties import MetadataProperties
-from sagemaker.session import Session
+from sagemaker.session import (
+    Session,
+    ENDPOINT_CONFIG_KMS_KEY_ID_PATH,
+    MODEL_VPC_CONFIG_PATH,
+    MODEL_ENABLE_NETWORK_ISOLATION_PATH,
+    MODEL_EXECUTION_ROLE_ARN_PATH,
+)
+
 from sagemaker.utils import (
     name_from_image,
     update_container_with_inference_params,
@@ -38,12 +45,12 @@ class PipelineModel(object):
     def __init__(
         self,
         models: List[Model],
-        role: str,
+        role: str = None,
         predictor_cls: Optional[callable] = None,
         name: Optional[str] = None,
         vpc_config: Optional[Dict[str, List[Union[str, PipelineVariable]]]] = None,
         sagemaker_session: Optional[Session] = None,
-        enable_network_isolation: Union[bool, PipelineVariable] = False,
+        enable_network_isolation: Union[bool, PipelineVariable] = None,
     ):
         """Initialize a SageMaker `Model` instance.
 
@@ -80,13 +87,26 @@ class PipelineModel(object):
                 or from the model container.Boolean
         """
         self.models = models
-        self.role = role
         self.predictor_cls = predictor_cls
         self.name = name
-        self.vpc_config = vpc_config
         self.sagemaker_session = sagemaker_session
-        self.enable_network_isolation = enable_network_isolation
         self.endpoint_name = None
+        self.role = self.sagemaker_session.get_sagemaker_config_override(
+            MODEL_EXECUTION_ROLE_ARN_PATH, default_value=role
+        )
+        self.vpc_config = self.sagemaker_session.get_sagemaker_config_override(
+            MODEL_VPC_CONFIG_PATH, default_value=vpc_config
+        )
+        self.enable_network_isolation = self.sagemaker_session.get_sagemaker_config_override(
+            MODEL_ENABLE_NETWORK_ISOLATION_PATH,
+            default_value=False if enable_network_isolation is None else enable_network_isolation,
+        )
+        if not self.role:
+            # Originally IAM role was a required parameter.
+            # Now we marked that as Optional because we can fetch it from SageMakerConfig
+            # Because of marking that parameter as optional, we should validate if it is None, even
+            # after fetching the config.
+            raise ValueError("IAM role should be provided for creating Pipeline Model.")
 
     def pipeline_container_def(self, instance_type=None):
         """The pipeline definition for deploying this model.
@@ -212,6 +232,9 @@ class PipelineModel(object):
             container_startup_health_check_timeout=container_startup_health_check_timeout,
         )
         self.endpoint_name = endpoint_name or self.name
+        kms_key = self.sagemaker_session.get_sagemaker_config_override(
+            ENDPOINT_CONFIG_KMS_KEY_ID_PATH, default_value=kms_key
+        )
 
         data_capture_config_dict = None
         if data_capture_config is not None:

@@ -18,6 +18,12 @@ from mock import Mock, patch
 from sagemaker.model import FrameworkModel
 from sagemaker.pipeline import PipelineModel
 from sagemaker.predictor import Predictor
+from sagemaker.session import (
+    ENDPOINT_CONFIG_KMS_KEY_ID_PATH,
+    MODEL_ENABLE_NETWORK_ISOLATION_PATH,
+    MODEL_EXECUTION_ROLE_ARN_PATH,
+    MODEL_VPC_CONFIG_PATH,
+)
 from sagemaker.session_settings import SessionSettings
 from sagemaker.sparkml import SparkMLModel
 
@@ -69,6 +75,10 @@ def sagemaker_session():
         settings=SessionSettings(),
     )
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
+    sms.get_sagemaker_config_override = Mock(
+        name="get_sagemaker_config_override",
+        side_effect=lambda key, default_value=None: default_value,
+    )
     return sms
 
 
@@ -285,6 +295,61 @@ def test_deploy_tags(tfo, time, sagemaker_session):
         tags=tags,
         wait=True,
         kms_key=None,
+        data_capture_config_dict=None,
+    )
+
+
+def test_pipeline_model_without_role(sagemaker_session):
+    with pytest.raises(ValueError):
+        PipelineModel([], sagemaker_session=sagemaker_session)
+
+
+def _config_override_mock(key, default_value=None):
+    if key == ENDPOINT_CONFIG_KMS_KEY_ID_PATH:
+        return "ConfigKmsKeyId"
+    elif key == MODEL_ENABLE_NETWORK_ISOLATION_PATH:
+        return True
+    elif key == MODEL_EXECUTION_ROLE_ARN_PATH:
+        return "ConfigRoleArn"
+    elif key == MODEL_VPC_CONFIG_PATH:
+        return {"SecurityGroupIds": ["sg-config"], "Subnets": ["subnet-config"]}
+    return default_value
+
+
+@patch("tarfile.open")
+@patch("time.strftime", return_value=TIMESTAMP)
+def test_pipeline_model_with_config_injection(tfo, time, sagemaker_session):
+    framework_model = DummyFrameworkModel(sagemaker_session)
+    sparkml_model = SparkMLModel(
+        model_data=MODEL_DATA_2, role=ROLE, sagemaker_session=sagemaker_session
+    )
+    sagemaker_session.get_sagemaker_config_override = Mock(
+        name="get_sagemaker_config_override", side_effect=_config_override_mock
+    )
+    pipeline_model = PipelineModel(
+        [framework_model, sparkml_model], sagemaker_session=sagemaker_session
+    )
+    assert pipeline_model.role == "ConfigRoleArn"
+    assert pipeline_model.vpc_config == {
+        "SecurityGroupIds": ["sg-config"],
+        "Subnets": ["subnet-config"],
+    }
+    assert pipeline_model.enable_network_isolation
+    pipeline_model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1)
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        name="mi-1-2017-10-10-14-14-15",
+        production_variants=[
+            {
+                "InitialVariantWeight": 1,
+                "ModelName": "mi-1-2017-10-10-14-14-15",
+                "InstanceType": INSTANCE_TYPE,
+                "InitialInstanceCount": 1,
+                "VariantName": "AllTraffic",
+            }
+        ],
+        tags=None,
+        kms_key="ConfigKmsKeyId",
+        wait=True,
         data_capture_config_dict=None,
     )
 

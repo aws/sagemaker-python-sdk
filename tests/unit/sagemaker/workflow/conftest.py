@@ -59,8 +59,13 @@ def mock_boto_session(client):
 
 @pytest.fixture(scope="module")
 def pipeline_session(mock_boto_session, mock_client):
-    return PipelineSession(
+    pipeline_session = PipelineSession(
         boto_session=mock_boto_session,
         sagemaker_client=mock_client,
         default_bucket=BUCKET,
     )
+    pipeline_session.get_sagemaker_config_override = Mock(
+        name="get_sagemaker_config_override",
+        side_effect=lambda key, default_value=None: default_value,
+    )
+    return pipeline_session

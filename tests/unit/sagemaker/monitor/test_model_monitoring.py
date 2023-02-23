@@ -480,7 +480,10 @@ def sagemaker_session():
     session_mock._append_sagemaker_config_tags = Mock(
         name="_append_sagemaker_config_tags", side_effect=lambda tags, config_path_to_tags: tags
     )
-
+    session_mock.get_sagemaker_config_override = Mock(
+        name="get_sagemaker_config_override",
+        side_effect=lambda key, default_value=None: default_value,
+    )
     return session_mock
 
 

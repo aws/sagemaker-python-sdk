@@ -32,6 +32,11 @@ from sagemaker.feature_store.feature_group import (
     IngestionError,
 )
 from sagemaker.feature_store.inputs import FeatureParameter
+from sagemaker.session import (
+    FEATURE_GROUP_OFFLINE_STORE_KMS_KEY_ID_PATH,
+    FEATURE_GROUP_ONLINE_STORE_KMS_KEY_ID_PATH,
+    FEATURE_GROUP_ROLE_ARN_PATH,
+)
 
 
 class PicklableMock(Mock):
@@ -51,7 +56,12 @@ def s3_uri():
 
 @pytest.fixture
 def sagemaker_session_mock():
-    return Mock()
+    session_mock = Mock()
+    session_mock.get_sagemaker_config_override = Mock(
+        name="get_sagemaker_config_override",
+        side_effect=lambda key, default_value=None: default_value,
+    )
+    return session_mock
 
 
 @pytest.fixture
@@ -84,6 +94,63 @@ def create_table_ddl():
         "  INPUTFORMAT 'parquet.hive.DeprecatedParquetInputFormat'\n"
         "  OUTPUTFORMAT 'parquet.hive.DeprecatedParquetOutputFormat'\n"
         "LOCATION 's3://resolved_output_s3_uri'"
+    )
+
+
+def test_feature_group_create_without_role(
+    sagemaker_session_mock, feature_group_dummy_definitions, s3_uri
+):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    feature_group.feature_definitions = feature_group_dummy_definitions
+    with pytest.raises(ValueError):
+        feature_group.create(
+            s3_uri=s3_uri,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature2",
+            enable_online_store=True,
+        )
+
+
+def _config_override_mock(key, default_value=None):
+    if key == FEATURE_GROUP_ONLINE_STORE_KMS_KEY_ID_PATH:
+        return "OnlineConfigKmsKeyId"
+    elif key == FEATURE_GROUP_OFFLINE_STORE_KMS_KEY_ID_PATH:
+        return "OfflineConfigKmsKeyId"
+    elif key == FEATURE_GROUP_ROLE_ARN_PATH:
+        return "ConfigRoleArn"
+    return default_value
+
+
+def test_feature_store_create_with_config_injection(
+    sagemaker_session_mock, role_arn, feature_group_dummy_definitions, s3_uri
+):
+    sagemaker_session_mock.get_sagemaker_config_override = Mock(
+        name="get_sagemaker_config_override", side_effect=_config_override_mock
+    )
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    feature_group.feature_definitions = feature_group_dummy_definitions
+    feature_group.create(
+        s3_uri=s3_uri,
+        record_identifier_name="feature1",
+        event_time_feature_name="feature2",
+        enable_online_store=True,
+    )
+    sagemaker_session_mock.create_feature_group.assert_called_with(
+        feature_group_name="MyFeatureGroup",
+        record_identifier_name="feature1",
+        event_time_feature_name="feature2",
+        feature_definitions=[fd.to_dict() for fd in feature_group_dummy_definitions],
+        role_arn="ConfigRoleArn",
+        description=None,
+        tags=None,
+        online_store_config={
+            "EnableOnlineStore": True,
+            "SecurityConfig": {"KmsKeyId": "OnlineConfigKmsKeyId"},
+        },
+        offline_store_config={
+            "DisableGlueTableCreation": False,
+            "S3StorageConfig": {"S3Uri": s3_uri, "KmsKeyId": "OfflineConfigKmsKeyId"},
+        },
     )
 
 

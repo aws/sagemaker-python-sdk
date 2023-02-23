@@ -109,7 +109,10 @@ def sagemaker_session():
         s3_resource=None,
     )
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
-
+    sms.get_sagemaker_config_override = Mock(
+        name="get_sagemaker_config_override",
+        side_effect=lambda key, default_value=None: default_value,
+    )
     return sms
 
 

@@ -57,10 +57,15 @@ def boto_session(client):
 def sagemaker_session(boto_session, client):
     # ideally this would mock Session instead of instantiating it
     # most unit tests do mock the session correctly
-    return sagemaker.session.Session(
+    session = sagemaker.session.Session(
         boto_session=boto_session,
         sagemaker_client=client,
         sagemaker_runtime_client=client,
         default_bucket=_DEFAULT_BUCKET,
         sagemaker_metrics_client=client,
     )
+    session.get_sagemaker_config_override = Mock(
+        name="get_sagemaker_config_override",
+        side_effect=lambda key, default_value=None: default_value,
+    )
+    return session

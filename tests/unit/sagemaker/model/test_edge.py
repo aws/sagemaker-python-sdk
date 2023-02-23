@@ -30,7 +30,12 @@ DESCRIBE_EDGE_PACKAGING_JOB_RESPONSE = {
 
 @pytest.fixture
 def sagemaker_session():
-    return Mock(boto_region_name=REGION)
+    session = Mock(boto_region_name=REGION)
+    session.get_sagemaker_config_override = Mock(
+        name="get_sagemaker_config_override",
+        side_effect=lambda key, default_value=None: default_value,
+    )
+    return session
 
 
 def _create_model(sagemaker_session=None):

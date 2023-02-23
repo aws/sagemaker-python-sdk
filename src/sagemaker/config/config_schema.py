@@ -81,31 +81,6 @@ ADDITIONAL_PROPERTIES = "additionalProperties"
 ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION = "EnableInterContainerTrafficEncryption"
 
 
-def _simple_path(*args: str):
-    """Appends an arbitrary number of strings to use as path constants"""
-    return ".".join(args)
-
-
-# Paths for reference elsewhere in the SDK.
-# Names include the schema version since the paths could change with other schema versions
-PATH_V1_MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION = _simple_path(
-    SAGEMAKER,
-    MONITORING_SCHEDULE,
-    MONITORING_SCHEDULE_CONFIG,
-    MONITORING_JOB_DEFINITION,
-    NETWORK_CONFIG,
-    ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION,
-)
-PATH_V1_AUTO_ML_INTER_CONTAINER_ENCRYPTION = _simple_path(
-    SAGEMAKER, AUTO_ML, SECURITY_CONFIG, ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION
-)
-PATH_V1_PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION = _simple_path(
-    SAGEMAKER, PROCESSING_JOB, NETWORK_CONFIG, ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION
-)
-PATH_V1_TRAINING_JOB_INTER_CONTAINER_ENCRYPTION = _simple_path(
-    SAGEMAKER, TRAINING_JOB, ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION
-)
-
 SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     TYPE: OBJECT,
@@ -236,8 +211,8 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
             TYPE: OBJECT,
             ADDITIONAL_PROPERTIES: False,
             PATTERN_PROPERTIES: {
-                "^[\w\s\d_.:/=+\-@]+$": {TYPE: "string"},
-            }
+                r"^[\w\s\d_.:/=+\-@]+$": {TYPE: "string"},
+            },
         },
         SAGEMAKER: {
             TYPE: OBJECT,

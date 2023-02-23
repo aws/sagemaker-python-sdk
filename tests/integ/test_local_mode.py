@@ -67,6 +67,10 @@ class LocalNoS3Session(LocalSession):
         self.sagemaker_client = LocalSagemakerClient(self)
         self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)
         self.local_mode = True
+        self.get_sagemaker_config_override = Mock(
+            name="get_sagemaker_config_override",
+            side_effect=lambda key, default_value=None: default_value,
+        )
 
 
 class LocalPipelineNoS3Session(LocalPipelineSession):

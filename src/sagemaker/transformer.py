@@ -20,7 +20,14 @@ import time
 
 from botocore import exceptions
 from sagemaker.job import _Job
-from sagemaker.session import Session, get_execution_role
+from sagemaker.session import (
+    Session,
+    get_execution_role,
+    TRANSFORM_OUTPUT_KMS_KEY_ID_PATH,
+    TRANSFORM_JOB_KMS_KEY_ID_PATH,
+    TRANSFORM_RESOURCES_VOLUME_KMS_KEY_ID_PATH,
+    PIPELINE_ROLE_ARN_PATH,
+)
 from sagemaker.inputs import BatchDataCaptureConfig
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.functions import Join
@@ -103,13 +110,11 @@ class Transformer(object):
         self.env = env
 
         self.output_path = output_path
-        self.output_kms_key = output_kms_key
         self.accept = accept
         self.assemble_with = assemble_with
 
         self.instance_count = instance_count
         self.instance_type = instance_type
-        self.volume_kms_key = volume_kms_key
 
         self.max_concurrent_transforms = max_concurrent_transforms
         self.max_payload = max_payload
@@ -121,6 +126,24 @@ class Transformer(object):
         self._reset_output_path = False
 
         self.sagemaker_session = sagemaker_session or Session()
+        self.volume_kms_key = self.sagemaker_session.get_sagemaker_config_override(
+            TRANSFORM_RESOURCES_VOLUME_KMS_KEY_ID_PATH, default_value=volume_kms_key
+        )
+        self.output_kms_key = self.sagemaker_session.get_sagemaker_config_override(
+            TRANSFORM_OUTPUT_KMS_KEY_ID_PATH, default_value=output_kms_key
+        )
+
+    def _update_batch_capture_config(self, batch_capture_config: BatchDataCaptureConfig):
+        """Utility method that updates BatchDataCaptureConfig with values from SageMakerConfig.
+
+        Args:
+            batch_capture_config: The BatchDataCaptureConfig object.
+
+        """
+        if batch_capture_config:
+            batch_capture_config.kms_key_id = self.sagemaker_session.get_sagemaker_config_override(
+                TRANSFORM_JOB_KMS_KEY_ID_PATH, default_value=batch_capture_config.kms_key_id
+            )
 
     @runnable_by_pipeline
     def transform(
@@ -256,6 +279,7 @@ class Transformer(object):
             self._reset_output_path = True
 
         experiment_config = check_and_get_run_experiment_config(experiment_config)
+        self._update_batch_capture_config(batch_data_capture_config)
         self.latest_transform_job = _TransformJob.start_new(
             self,
             data,
@@ -377,7 +401,7 @@ class Transformer(object):
             transformer = copy.deepcopy(self)
             transformer.sagemaker_session = PipelineSession()
             self.sagemaker_session = sagemaker_session
-
+        self._update_batch_capture_config(batch_data_capture_config)
         transform_step_args = transformer.transform(
             data=data,
             data_type=data_type,
@@ -416,7 +440,14 @@ class Transformer(object):
             steps=[monitoring_batch_step],
             sagemaker_session=transformer.sagemaker_session,
         )
-        pipeline.upsert(role_arn=role if role else get_execution_role())
+        pipeline_role_arn = (
+            role
+            if role
+            else transformer.sagemaker_session.get_sagemaker_config_override(
+                PIPELINE_ROLE_ARN_PATH, default_value=get_execution_role()
+            )
+        )
+        pipeline.upsert(pipeline_role_arn)
         execution = pipeline.start()
         if wait:
             logging.info("Waiting for transform with monitoring to execute ...")

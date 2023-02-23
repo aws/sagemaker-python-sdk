@@ -29,7 +29,6 @@ from six.moves.urllib.parse import urlparse
 import sagemaker
 from sagemaker import git_utils, image_uris, vpc_utils
 from sagemaker.analytics import TrainingJobAnalytics
-from sagemaker.config.config_schema import PATH_V1_TRAINING_JOB_INTER_CONTAINER_ENCRYPTION
 from sagemaker.debugger import (  # noqa: F401 # pylint: disable=unused-import
     DEBUGGER_FLAG,
     DebuggerHookConfig,
@@ -73,7 +72,16 @@ from sagemaker.model import (
 )
 from sagemaker.predictor import Predictor
 from sagemaker.s3 import S3Uploader, parse_s3_url
-from sagemaker.session import Session
+from sagemaker.session import (
+    Session,
+    TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH,
+    TRAINING_JOB_ROLE_ARN_PATH,
+    TRAINING_JOB_SECURITY_GROUP_IDS_PATH,
+    TRAINING_JOB_SUBNETS_PATH,
+    TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+    TRAINING_JOB_KMS_KEY_ID_PATH,
+    PATH_V1_TRAINING_JOB_INTER_CONTAINER_ENCRYPTION,
+)
 from sagemaker.transformer import Transformer
 from sagemaker.utils import (
     base_from_name,
@@ -116,7 +124,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
     def __init__(
         self,
-        role: str,
+        role: str = None,
         instance_count: Optional[Union[int, PipelineVariable]] = None,
         instance_type: Optional[Union[str, PipelineVariable]] = None,
         keep_alive_period_in_seconds: Optional[Union[int, PipelineVariable]] = None,
@@ -143,7 +151,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         debugger_hook_config: Optional[Union[bool, DebuggerHookConfig]] = None,
         tensorboard_output_config: Optional[TensorBoardOutputConfig] = None,
         enable_sagemaker_metrics: Optional[Union[bool, PipelineVariable]] = None,
-        enable_network_isolation: Union[bool, PipelineVariable] = False,
+        enable_network_isolation: Union[bool, PipelineVariable] = None,
         profiler_config: Optional[ProfilerConfig] = None,
         disable_profiler: bool = False,
         environment: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
@@ -535,13 +543,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             enable_network_isolation=enable_network_isolation,
         )
 
-        self.role = role
         self.instance_count = instance_count
         self.instance_type = instance_type
         self.keep_alive_period_in_seconds = keep_alive_period_in_seconds
         self.instance_groups = instance_groups
         self.volume_size = volume_size
-        self.volume_kms_key = volume_kms_key
         self.max_run = max_run
         self.input_mode = input_mode
         self.metric_definitions = metric_definitions
@@ -582,16 +588,34 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         ):
             raise RuntimeError("file:// output paths are only supported in Local Mode")
         self.output_path = output_path
-        self.output_kms_key = output_kms_key
         self.latest_training_job = None
         self.jobs = []
         self.deploy_instance_type = None
 
         self._compiled_models = {}
+        self.role = self.sagemaker_session.get_sagemaker_config_override(
+            TRAINING_JOB_ROLE_ARN_PATH, role
+        )
+        if not self.role:
+            # Originally IAM role was a required parameter.
+            # Now we marked that as Optional because we can fetch it from SageMakerConfig
+            # Because of marking that parameter as optional, we should validate if it is None, even
+            # after fetching the config.
+            raise ValueError("IAM role should be provided for creating estimators.")
+        self.output_kms_key = self.sagemaker_session.get_sagemaker_config_override(
+            TRAINING_JOB_KMS_KEY_ID_PATH, default_value=output_kms_key
+        )
+        self.volume_kms_key = self.sagemaker_session.get_sagemaker_config_override(
+            TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH, default_value=volume_kms_key
+        )
 
         # VPC configurations
-        self.subnets = subnets
-        self.security_group_ids = security_group_ids
+        self.subnets = self.sagemaker_session.get_sagemaker_config_override(
+            TRAINING_JOB_SUBNETS_PATH, default_value=subnets
+        )
+        self.security_group_ids = self.sagemaker_session.get_sagemaker_config_override(
+            TRAINING_JOB_SECURITY_GROUP_IDS_PATH, default_value=security_group_ids
+        )
 
         # training image configs
         self.training_repository_access_mode = training_repository_access_mode
@@ -618,7 +642,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.collection_configs = None
 
         self.enable_sagemaker_metrics = enable_sagemaker_metrics
-        self._enable_network_isolation = enable_network_isolation
+        self._enable_network_isolation = self.sagemaker_session.get_sagemaker_config_override(
+            TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+            default_value=False if enable_network_isolation is None else enable_network_isolation,
+        )
 
         self.profiler_config = profiler_config
         self.disable_profiler = disable_profiler
@@ -2336,7 +2363,7 @@ class Estimator(EstimatorBase):
     def __init__(
         self,
         image_uri: Union[str, PipelineVariable],
-        role: str,
+        role: str = None,
         instance_count: Optional[Union[int, PipelineVariable]] = None,
         instance_type: Optional[Union[str, PipelineVariable]] = None,
         keep_alive_period_in_seconds: Optional[Union[int, PipelineVariable]] = None,

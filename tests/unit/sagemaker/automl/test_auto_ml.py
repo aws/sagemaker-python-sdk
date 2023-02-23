@@ -17,6 +17,18 @@ import copy
 import pytest
 from mock import Mock, patch
 from sagemaker import AutoML, AutoMLJob, AutoMLInput, CandidateEstimator, PipelineModel
+from sagemaker.config import (
+    RESOURCE_CONFIG,
+    AUTO_ML,
+    AUTO_ML_JOB_CONFIG,
+    SECURITY_CONFIG,
+    VOLUME_KMS_KEY_ID,
+    KMS_KEY_ID,
+    OUTPUT_DATA_CONFIG,
+    ROLE_ARN,
+    SAGEMAKER,
+)
+
 from sagemaker.predictor import Predictor
 from sagemaker.session_settings import SessionSettings
 from sagemaker.workflow.functions import Join
@@ -271,7 +283,6 @@ def sagemaker_session():
     )
     sms.list_candidates = Mock(name="list_candidates", return_value={"Candidates": []})
     sms.sagemaker_client.list_tags = Mock(name="list_tags", return_value=LIST_TAGS_RESULT)
-
     # For the purposes of unit tests, no values should be fetched from sagemaker config
     sms.resolve_value_from_config = Mock(
         name="resolve_value_from_config",
@@ -279,7 +290,10 @@ def sagemaker_session():
         if direct_input is not None
         else default_value,
     )
-
+    sms.get_sagemaker_config_override = Mock(
+        name="get_sagemaker_config_override",
+        side_effect=lambda key, default_value=None: default_value,
+    )
     return sms
 
 
@@ -292,6 +306,48 @@ def candidate_mock(sagemaker_session):
         sagemaker_session=sagemaker_session,
     )
     return candidate
+
+
+def test_auto_ml_without_role_parameter(sagemaker_session):
+    with pytest.raises(ValueError):
+        AutoML(
+            target_attribute_name=TARGET_ATTRIBUTE_NAME,
+            sagemaker_session=sagemaker_session,
+        )
+
+
+def _config_override_mock(key, default_value=None):
+    kms_key_id_path = "{}.{}.{}.{}".format(SAGEMAKER, AUTO_ML, OUTPUT_DATA_CONFIG, KMS_KEY_ID)
+    volume_kms_key_id_path = "{}.{}.{}.{}.{}".format(
+        SAGEMAKER, AUTO_ML, AUTO_ML_JOB_CONFIG, SECURITY_CONFIG, VOLUME_KMS_KEY_ID
+    )
+    role_arn_path = "{}.{}.{}".format(SAGEMAKER, AUTO_ML, ROLE_ARN)
+    vpc_config_path = "{}.{}.{}.{}.{}".format(
+        SAGEMAKER, AUTO_ML, AUTO_ML_JOB_CONFIG, SECURITY_CONFIG, "VpcConfig"
+    )
+    if key == role_arn_path:
+        return "ConfigRoleArn"
+    elif key == kms_key_id_path:
+        return "ConfigKmsKeyId"
+    elif key == volume_kms_key_id_path:
+        return "ConfigVolumeKmsKeyId"
+    elif key == vpc_config_path:
+        return {"SecurityGroupIds": ["sg-config"], "Subnets": ["subnet-config"]}
+    return default_value
+
+
+def test_framework_initialization_with_defaults(sagemaker_session):
+    sagemaker_session.get_sagemaker_config_override = Mock(
+        name="get_sagemaker_config_override", side_effect=_config_override_mock
+    )
+    auto_ml = AutoML(
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
+    )
+    assert auto_ml.role == "ConfigRoleArn"
+    assert auto_ml.output_kms_key == "ConfigKmsKeyId"
+    assert auto_ml.volume_kms_key == "ConfigVolumeKmsKeyId"
+    assert auto_ml.vpc_config == {"SecurityGroupIds": ["sg-config"], "Subnets": ["subnet-config"]}
 
 
 def test_auto_ml_default_channel_name(sagemaker_session):
@@ -798,6 +854,47 @@ def test_deploy_optional_args(candidate_estimator, sagemaker_session, candidate_
         tags=TAGS,
         wait=False,
     )
+
+
+def _config_override_mock_for_candidate_estimator(key, default_value=None):
+    from sagemaker.config import TRAINING_JOB
+
+    vpc_config_path = "{}.{}.{}".format(SAGEMAKER, TRAINING_JOB, "VpcConfig")
+    volume_kms_key_id_path = "{}.{}.{}.{}".format(
+        SAGEMAKER, TRAINING_JOB, RESOURCE_CONFIG, VOLUME_KMS_KEY_ID
+    )
+    if key == volume_kms_key_id_path:
+        return "ConfigVolumeKmsKeyId"
+    elif key == vpc_config_path:
+        return {"SecurityGroupIds": ["sg-config"], "Subnets": ["subnet-config"]}
+    return default_value
+
+
+def test_candidate_estimator_fit_initialization_with_defaults(sagemaker_session):
+    sagemaker_session.get_sagemaker_config_override = Mock(
+        name="get_sagemaker_config_override",
+        side_effect=_config_override_mock_for_candidate_estimator,
+    )
+    desc_training_job_response = TRAINING_JOB
+    del desc_training_job_response["VpcConfig"]
+    sagemaker_session.sagemaker_client.describe_training_job = Mock(
+        name="describe_training_job", return_value=desc_training_job_response
+    )
+    candidate_estimator = CandidateEstimator(CANDIDATE_DICT, sagemaker_session=sagemaker_session)
+    candidate_estimator._check_all_job_finished = Mock(
+        name="_check_all_job_finished", return_value=True
+    )
+    inputs = DEFAULT_S3_INPUT_DATA
+    candidate_estimator.fit(inputs)
+    sagemaker_call_names = [c[0] for c in sagemaker_session.method_calls]
+    assert "train" in sagemaker_call_names
+    index_of_train = sagemaker_call_names.index("train")
+    actual_train_args = sagemaker_session.method_calls[index_of_train][2]
+    assert actual_train_args["vpc_config"] == {
+        "SecurityGroupIds": ["sg-config"],
+        "Subnets": ["subnet-config"],
+    }
+    assert actual_train_args["resource_config"]["VolumeKmsKeyId"] == "ConfigVolumeKmsKeyId"
 
 
 def test_candidate_estimator_get_steps(sagemaker_session):

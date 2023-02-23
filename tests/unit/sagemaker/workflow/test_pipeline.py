@@ -46,7 +46,56 @@ def sagemaker_session_mock():
     session_mock = Mock()
     session_mock.default_bucket = Mock(name="default_bucket", return_value="s3_bucket")
     session_mock.local_mode = False
+    session_mock.get_sagemaker_config_override = Mock(
+        name="get_sagemaker_config_override",
+        side_effect=lambda key, default_value=None: default_value,
+    )
+    session_mock._append_sagemaker_config_tags = Mock(
+        name="_append_sagemaker_config_tags", side_effect=lambda tags, config_path_to_tags: tags
+    )
     return session_mock
+
+
+def test_pipeline_create_and_update_without_role_arn(sagemaker_session_mock):
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[],
+        steps=[],
+        sagemaker_session=sagemaker_session_mock,
+    )
+    with pytest.raises(ValueError):
+        pipeline.create()
+    with pytest.raises(ValueError):
+        pipeline.update()
+    with pytest.raises(ValueError):
+        pipeline.upsert()
+
+
+def test_pipeline_create_and_update_with_config_injection(sagemaker_session_mock):
+    sagemaker_session_mock.get_sagemaker_config_override = Mock(
+        name="get_sagemaker_config_override", side_effect=lambda a, b: "ConfigRoleArn"
+    )
+    sagemaker_session_mock.sagemaker_client.describe_pipeline.return_value = {
+        "PipelineArn": "pipeline-arn"
+    }
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[],
+        steps=[],
+        sagemaker_session=sagemaker_session_mock,
+    )
+    pipeline.create()
+    sagemaker_session_mock.sagemaker_client.create_pipeline.assert_called_with(
+        PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn="ConfigRoleArn"
+    )
+    pipeline.update()
+    sagemaker_session_mock.sagemaker_client.update_pipeline.assert_called_with(
+        PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn="ConfigRoleArn"
+    )
+    pipeline.upsert()
+    assert sagemaker_session_mock.sagemaker_client.update_pipeline.called_with(
+        PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn="ConfigRoleArn"
+    )
 
 
 def test_pipeline_create(sagemaker_session_mock, role_arn):
@@ -57,7 +106,7 @@ def test_pipeline_create(sagemaker_session_mock, role_arn):
         sagemaker_session=sagemaker_session_mock,
     )
     pipeline.create(role_arn=role_arn)
-    assert sagemaker_session_mock.sagemaker_client.create_pipeline.called_with(
+    sagemaker_session_mock.sagemaker_client.create_pipeline.assert_called_with(
         PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn=role_arn
     )
 

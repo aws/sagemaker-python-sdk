@@ -59,7 +59,10 @@ def sagemaker_session():
     session.sagemaker_client.describe_model_package = Mock(
         return_value=DESCRIBE_MODEL_PACKAGE_RESPONSE
     )
-
+    session.get_sagemaker_config_override = Mock(
+        name="get_sagemaker_config_override",
+        side_effect=lambda key, default_value=None: default_value,
+    )
     return session
 
 
