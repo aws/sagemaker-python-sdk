@@ -39,6 +39,7 @@ class Lambda:
         vpc_config: dict = None,
         architectures: list = None,
         environment: dict = None,
+        layers: list = None,
     ):
         """Constructs a Lambda instance.
 
@@ -73,6 +74,7 @@ class Lambda:
             architectures (list): Which architecture to deploy to. Valid Values are
                 'x86_64' and 'arm64', default is None.
             environment (dict): Environment Variables for the Lambda function. Default is None.
+            layers (list): List of Lambda layers for the Lambda function. Default is None.
         """
         self.function_arn = function_arn
         self.function_name = function_name
@@ -88,6 +90,7 @@ class Lambda:
         self.vpc_config = vpc_config
         self.environment = environment
         self.architectures = architectures
+        self.layers = layers
 
         if function_arn is None and function_name is None:
             raise ValueError("Either function_arn or function_name must be provided.")
@@ -140,6 +143,7 @@ class Lambda:
                 VpcConfig=self.vpc_config,
                 Environment=self.environment,
                 Architectures=self.architectures,
+                Layers=self.layers,
             )
             return response
         except ClientError as e:

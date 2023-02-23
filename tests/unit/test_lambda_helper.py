@@ -190,6 +190,7 @@ def test_create_lambda_happycase1(sagemaker_session):
         Architectures=None,
         VpcConfig=None,
         Environment=None,
+        Layers=None,
     )
 
 
@@ -218,6 +219,7 @@ def test_create_lambda_happycase2(sagemaker_session):
         Architectures=None,
         VpcConfig=None,
         Environment=None,
+        Layers=None,
     )
 
 
@@ -235,6 +237,7 @@ def test_create_lambda_happycase3(sagemaker_session):
             "SubnetIds": ["test-subnet-1"],
             "SecurityGroupIds": ["sec-group-1"],
         },
+        layers=["my-test-layer-1", "my-test-layer-2"],
     )
 
     lambda_obj.create()
@@ -251,6 +254,7 @@ def test_create_lambda_happycase3(sagemaker_session):
         Architectures=["x86_64"],
         VpcConfig={"SubnetIds": ["test-subnet-1"], "SecurityGroupIds": ["sec-group-1"]},
         Environment={"Name": "my-test-lambda"},
+        Layers=["my-test-layer-1", "my-test-layer-2"],
     )
 
 
@@ -424,6 +428,7 @@ def test_upsert_lambda_happycase1(sagemaker_session):
         Architectures=None,
         VpcConfig=None,
         Environment=None,
+        Layers=None,
     )
 
 
