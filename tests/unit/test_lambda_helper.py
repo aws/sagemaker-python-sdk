@@ -54,7 +54,9 @@ def s3_client(sagemaker_session):
 
 
 def test_lambda_object_with_arn_happycase():
-    lambda_obj = lambda_helper.Lambda(function_arn=LAMBDA_ARN, session=sagemaker_session)
+    lambda_obj = lambda_helper.Lambda(
+        function_arn=LAMBDA_ARN, session=sagemaker_session
+    )
     assert lambda_obj.function_arn == LAMBDA_ARN
 
 
@@ -233,8 +235,8 @@ def test_create_lambda_happycase3(sagemaker_session):
         environment={"Name": "my-test-lambda"},
         vpc_config={
             "SubnetIds": ["test-subnet-1"],
-            "SecurityGroupIds": ["sec-group-1"]
-        }
+            "SecurityGroupIds": ["sec-group-1"],
+        },
     )
 
     lambda_obj.create()
@@ -249,10 +251,7 @@ def test_create_lambda_happycase3(sagemaker_session):
         Timeout=120,
         MemorySize=128,
         Architectures=["x86_64"],
-        VpcConfig={
-            "SubnetIds": ["test-subnet-1"],
-            "SecurityGroupIds": ["sec-group-1"]
-        },
+        VpcConfig={"SubnetIds": ["test-subnet-1"], "SecurityGroupIds": ["sec-group-1"]},
         Environment={"Name": "my-test-lambda"},
     )
 
@@ -283,7 +282,12 @@ def test_create_lambda_client_error(sagemaker_session):
         session=sagemaker_session,
     )
     sagemaker_session.lambda_client.create_function.side_effect = ClientError(
-        {"Error": {"Code": "ResourceConflictException", "Message": "Function already exists"}},
+        {
+            "Error": {
+                "Code": "ResourceConflictException",
+                "Message": "Function already exists",
+            }
+        },
         "CreateFunction",
     )
 
@@ -306,7 +310,9 @@ def test_update_lambda_happycase1(sagemaker_session):
     lambda_obj.update()
 
     sagemaker_session.lambda_client.update_function_code.assert_called_with(
-        FunctionName=FUNCTION_NAME, ZipFile=ZIPPED_CODE, Architectures=None,
+        FunctionName=FUNCTION_NAME,
+        ZipFile=ZIPPED_CODE,
+        Architectures=None,
     )
 
 
@@ -324,7 +330,10 @@ def test_update_lambda_happycase2(sagemaker_session):
     lambda_obj.update()
 
     sagemaker_session.lambda_client.update_function_code.assert_called_with(
-        FunctionName=LAMBDA_ARN, S3Bucket=S3_BUCKET, S3Key=S3_KEY, Architectures=None,
+        FunctionName=LAMBDA_ARN,
+        S3Bucket=S3_BUCKET,
+        S3Key=S3_KEY,
+        Architectures=None,
     )
 
 
@@ -340,14 +349,16 @@ def test_update_lambda_happycase3(sagemaker_session):
         environment={"Name": "my-test-lambda"},
         vpc_config={
             "SubnetIds": ["test-subnet-1"],
-            "SecurityGroupIds": ["sec-group-1"]
-        }
+            "SecurityGroupIds": ["sec-group-1"],
+        },
     )
 
     lambda_obj.update()
 
     sagemaker_session.lambda_client.update_function_code.assert_called_with(
-        FunctionName=FUNCTION_NAME, ZipFile=ZIPPED_CODE, Architectures=["x86_64"],
+        FunctionName=FUNCTION_NAME,
+        ZipFile=ZIPPED_CODE,
+        Architectures=["x86_64"],
     )
 
 
@@ -428,7 +439,12 @@ def test_upsert_lambda_happycase2(sagemaker_session):
     )
 
     sagemaker_session.lambda_client.create_function.side_effect = ClientError(
-        {"Error": {"Code": "ResourceConflictException", "Message": "Lambda already exists"}},
+        {
+            "Error": {
+                "Code": "ResourceConflictException",
+                "Message": "Lambda already exists",
+            }
+        },
         "CreateFunction",
     )
 
@@ -450,12 +466,22 @@ def test_upsert_lambda_client_error(sagemaker_session):
     )
 
     sagemaker_session.lambda_client.create_function.side_effect = ClientError(
-        {"Error": {"Code": "ResourceConflictException", "Message": "Lambda already exists"}},
+        {
+            "Error": {
+                "Code": "ResourceConflictException",
+                "Message": "Lambda already exists",
+            }
+        },
         "CreateFunction",
     )
 
     sagemaker_session.lambda_client.update_function_code.side_effect = ClientError(
-        {"Error": {"Code": "ResourceConflictException", "Message": "Cannot update code"}},
+        {
+            "Error": {
+                "Code": "ResourceConflictException",
+                "Message": "Cannot update code",
+            }
+        },
         "UpdateFunctionCode",
     )
 
@@ -466,7 +492,9 @@ def test_upsert_lambda_client_error(sagemaker_session):
 
 
 def test_invoke_lambda_happycase(sagemaker_session):
-    lambda_obj = lambda_helper.Lambda(function_arn=LAMBDA_ARN, session=sagemaker_session)
+    lambda_obj = lambda_helper.Lambda(
+        function_arn=LAMBDA_ARN, session=sagemaker_session
+    )
     lambda_obj.invoke()
 
     sagemaker_session.lambda_client.invoke.assert_called_with(
@@ -475,10 +503,13 @@ def test_invoke_lambda_happycase(sagemaker_session):
 
 
 def test_invoke_lambda_client_error(sagemaker_session):
-    lambda_obj = lambda_helper.Lambda(function_arn=LAMBDA_ARN, session=sagemaker_session)
+    lambda_obj = lambda_helper.Lambda(
+        function_arn=LAMBDA_ARN, session=sagemaker_session
+    )
 
     sagemaker_session.lambda_client.invoke.side_effect = ClientError(
-        {"Error": {"Code": "InvalidCodeException", "Message": "invoke failed"}}, "Invoke"
+        {"Error": {"Code": "InvalidCodeException", "Message": "invoke failed"}},
+        "Invoke",
     )
     with pytest.raises(ValueError) as error:
         lambda_obj.invoke()
@@ -487,13 +518,19 @@ def test_invoke_lambda_client_error(sagemaker_session):
 
 
 def test_delete_lambda_happycase(sagemaker_session):
-    lambda_obj = lambda_helper.Lambda(function_arn=LAMBDA_ARN, session=sagemaker_session)
+    lambda_obj = lambda_helper.Lambda(
+        function_arn=LAMBDA_ARN, session=sagemaker_session
+    )
     lambda_obj.delete()
-    sagemaker_session.lambda_client.delete_function.assert_called_with(FunctionName=LAMBDA_ARN)
+    sagemaker_session.lambda_client.delete_function.assert_called_with(
+        FunctionName=LAMBDA_ARN
+    )
 
 
 def test_delete_lambda_client_error(sagemaker_session):
-    lambda_obj = lambda_helper.Lambda(function_arn=LAMBDA_ARN, session=sagemaker_session)
+    lambda_obj = lambda_helper.Lambda(
+        function_arn=LAMBDA_ARN, session=sagemaker_session
+    )
 
     sagemaker_session.lambda_client.delete_function.side_effect = ClientError(
         {"Error": {"Code": "Invalid", "Message": "Delete failed"}}, "Invoke"
@@ -505,7 +542,9 @@ def test_delete_lambda_client_error(sagemaker_session):
 
 
 def test_upload_to_s3(s3_client):
-    key = lambda_helper._upload_to_s3(s3_client, FUNCTION_NAME, ZIPPED_CODE_DIR, S3_BUCKET)
+    key = lambda_helper._upload_to_s3(
+        s3_client, FUNCTION_NAME, ZIPPED_CODE_DIR, S3_BUCKET
+    )
     s3_client.upload_file.assert_called_with(ZIPPED_CODE_DIR, S3_BUCKET, key)
     assert key == S3_KEY
 
