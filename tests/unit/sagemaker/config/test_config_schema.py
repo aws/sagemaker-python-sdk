@@ -95,6 +95,26 @@ def test_valid_monitoring_schedule_schema(
     )
 
 
+def test_tags_with_invalid_schema(base_config_with_schema, valid_edge_packaging_config):
+    edge_packaging_config = valid_edge_packaging_config.copy()
+    edge_packaging_config["Tags"] = [{"Key": "somekey"}]
+    config = base_config_with_schema
+    config["SageMaker"] = {"EdgePackagingJob": edge_packaging_config}
+    with pytest.raises(exceptions.ValidationError):
+        validate(config, SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA)
+    edge_packaging_config["Tags"] = [{"Value": "somekey"}]
+    with pytest.raises(exceptions.ValidationError):
+        validate(config, SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA)
+
+
+def test_tags_with_valid_schema(base_config_with_schema, valid_edge_packaging_config):
+    edge_packaging_config = valid_edge_packaging_config.copy()
+    edge_packaging_config["Tags"] = [{"Key": "somekey", "Value": "somevalue"}]
+    config = base_config_with_schema
+    config["SageMaker"] = {"EdgePackagingJob": edge_packaging_config}
+    validate(config, SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA)
+
+
 def test_invalid_training_job_schema(base_config_with_schema, valid_iam_role_arn, valid_vpc_config):
     # Changing key names
     training_job_config = {

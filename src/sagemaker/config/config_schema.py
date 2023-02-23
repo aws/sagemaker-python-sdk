@@ -192,6 +192,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                         "maxLength": 256,
                     },
                 },
+                "required": [KEY, VALUE],
             },
             "minItems": 0,
             "maxItems": 50,
