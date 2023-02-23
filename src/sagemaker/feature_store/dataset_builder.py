@@ -171,24 +171,33 @@ class DatasetBuilder:
         _event_time_identifier_feature_name (str): A string representing the event time identifier
             feature if base is a DataFrame (default: None).
         _included_feature_names (List[str]): A list of strings representing features to be
-            included in the output (default: None).
-        _kms_key_id (str): An KMS key id. If set, will be used to encrypt the result file
+            included in the output. If not set, all features will be included in the output.
             (default: None).
-        _point_in_time_accurate_join (bool): A boolean representing whether using point in time join
-            or not (default: False).
-        _include_duplicated_records (bool): A boolean representing whether including duplicated
-            records or not (default: False).
-        _include_deleted_records (bool): A boolean representing whether including deleted records or
-            not (default: False).
-        _number_of_recent_records (int): An int that how many records will be returned for each
-            record identifier (default: 1).
-        _number_of_records (int): An int that how many records will be returned (default: None).
-        _write_time_ending_timestamp (datetime.datetime): A datetime that all records' write time in
-            dataset will be before it (default: None).
-        _event_time_starting_timestamp (datetime.datetime): A datetime that all records' event time
-            in dataset will be after it (default: None).
-        _event_time_ending_timestamp (datetime.datetime): A datetime that all records' event time in
-            dataset will be before it (default: None).
+        _kms_key_id (str): A KMS key id. If set, will be used to encrypt the result file
+            (default: None).
+        _point_in_time_accurate_join (bool): A boolean representing if point-in-time join
+            is applied to the resulting dataframe when calling "to_dataframe".
+            When set to True, users can retrieve data using “row-level time travel”
+            according to the event times provided to the DatasetBuilder. This requires that the 
+            entity dataframe with event times is submitted as the base in the constructor
+            (default: False).
+        _include_duplicated_records (bool): A boolean representing whether the resulting dataframe
+            when calling "to_dataframe" should include duplicated records (default: False).
+        _include_deleted_records (bool): A boolean representing whether the resulting 
+            dataframe when calling "to_dataframe" should include deleted records (default: False).
+        _number_of_recent_records (int): An integer representing how many records will be
+            returned for each record identifier (default: 1).
+        _number_of_records (int): An integer representing the number of records that should be
+            returned in the resulting dataframe when calling "to_dataframe" (default: None).
+        _write_time_ending_timestamp (datetime.datetime): A datetime that represents the latest 
+            write time for a record to be included in the resulting dataset. Records with a
+            newer write time will be omitted from the resulting dataset. (default: None).
+        _event_time_starting_timestamp (datetime.datetime): A datetime that represents the earliest 
+            event time for a record to be included in the resulting dataset. Records
+            with an older event time will be omitted from the resulting dataset. (default: None).
+        _event_time_ending_timestamp (datetime.datetime): A datetime that represents the latest 
+            event time for a record to be included in the resulting dataset. Records
+            with a newer event time will be omitted from the resulting dataset. (default: None).
         _feature_groups_to_be_merged (List[FeatureGroupToBeMerged]): A list of
             FeatureGroupToBeMerged which will be joined to base (default: []).
         _event_time_identifier_feature_type (FeatureTypeEnum): A FeatureTypeEnum representing the
@@ -247,7 +256,7 @@ class DatasetBuilder:
         return self
 
     def point_in_time_accurate_join(self):
-        """Set join type as point in time accurate join.
+        """Enable point-in-time accurate join.
 
         Returns:
             This DatasetBuilder object.
