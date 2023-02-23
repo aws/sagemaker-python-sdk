@@ -203,10 +203,12 @@ def test_lambda_step_no_inputs_outputs(sagemaker_session):
     }
 
 
-def test_lambda_step_with_function_arn(sagemaker_session):
+def test_lambda_step_with_function_arn_no_lambda_update(sagemaker_session):
     lambda_func = MagicMock(
         function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
         session=sagemaker_session,
+        zipped_code_dir=None,
+        script=None,
     )
     lambda_step = LambdaStep(
         name="MyLambdaStep",
@@ -218,6 +220,24 @@ def test_lambda_step_with_function_arn(sagemaker_session):
     function_arn = lambda_step._get_function_arn()
     assert function_arn == "arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda"
     lambda_func.upsert.assert_not_called()
+
+
+def test_lambda_step_with_function_arn_lambda_updated(sagemaker_session):
+    lambda_func = MagicMock(
+        function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
+        zipped_code_dir=None,
+        script="code",
+        session=sagemaker_session,
+    )
+    lambda_step = LambdaStep(
+        name="MyLambdaStep",
+        depends_on=["TestStep"],
+        lambda_func=lambda_func,
+        inputs={},
+        outputs=[],
+    )
+    lambda_step._get_function_arn()
+    lambda_func.update.assert_called_once()
 
 
 def test_lambda_step_without_function_arn(sagemaker_session):

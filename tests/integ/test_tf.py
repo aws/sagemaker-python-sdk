@@ -38,6 +38,7 @@ TFS_RESOURCE_PATH = os.path.join(RESOURCE_PATH, "tfs", "tfs-test-entrypoint-with
 SCRIPT = "mnist.py"
 PARAMETER_SERVER_DISTRIBUTION = {"parameter_server": {"enabled": True}}
 MPI_DISTRIBUTION = {"mpi": {"enabled": True}}
+MWMS_DISTRIBUTION = {"multi_worker_mirrored_strategy": {"enabled": True}}
 TAGS = [{"Key": "some-key", "Value": "some-value"}]
 ENV_INPUT = {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_val3"}
 
@@ -68,12 +69,7 @@ def test_framework_processing_job_with_deps(
             sagemaker_session=sagemaker_session,
             base_job_name="test-tensorflow",
         )
-        processor.run(
-            code=entry_point,
-            source_dir=code_path,
-            inputs=[],
-            wait=True,
-        )
+        processor.run(code=entry_point, source_dir=code_path, inputs=[], wait=True)
 
 
 def test_mnist_with_checkpoint_config(
@@ -110,9 +106,7 @@ def test_mnist_with_checkpoint_config(
     with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
         estimator.fit(inputs=inputs, job_name=training_job_name)
     assert_s3_file_patterns_exist(
-        sagemaker_session,
-        estimator.model_dir,
-        [r"model\.ckpt-\d+\.index", r"checkpoint"],
+        sagemaker_session, estimator.model_dir, [r"model\.ckpt-\d+\.index", r"checkpoint"]
     )
     # remove dataframe assertion to unblock PR build
     # TODO: add independent integration test for `training_job_analytics`
@@ -130,9 +124,7 @@ def test_mnist_with_checkpoint_config(
         ]
     )
 
-    expected_retry_strategy = {
-        "MaximumRetryAttempts": 2,
-    }
+    expected_retry_strategy = {"MaximumRetryAttempts": 2}
     actual_retry_strategy = sagemaker_session.sagemaker_client.describe_training_job(
         TrainingJobName=training_job_name
     )["RetryStrategy"]
@@ -179,6 +171,48 @@ def test_server_side_encryption(sagemaker_session, tf_full_version, tf_full_py_v
                 endpoint_name=endpoint_name,
                 entry_point=os.path.join(TFS_RESOURCE_PATH, "inference.py"),
             )
+
+
+@pytest.mark.release
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.TRAINING_NO_P2_REGIONS
+    and tests.integ.test_region() in tests.integ.TRAINING_NO_P3_REGIONS,
+    reason="no ml.p2 or ml.p3 instances in this region",
+)
+@retry_with_instance_list(gpu_list(tests.integ.test_region()))
+def test_mwms_gpu(
+    sagemaker_session,
+    tensorflow_training_latest_version,
+    tensorflow_training_latest_py_version,
+    capsys,
+    **kwargs,
+):
+    instance_count = 2
+    estimator = TensorFlow(
+        source_dir=os.path.join(RESOURCE_PATH, "tensorflow_mnist"),
+        entry_point="mnist_mwms.py",
+        model_dir=False,
+        instance_type=kwargs["instance_type"],
+        instance_count=instance_count,
+        framework_version=tensorflow_training_latest_version,
+        py_version=tensorflow_training_latest_py_version,
+        distribution=MWMS_DISTRIBUTION,
+        environment={"NCCL_DEBUG": "INFO"},
+        max_run=60 * 60 * 1,  # 1 hour
+        role=ROLE,
+        volume_size=400,
+        sagemaker_session=sagemaker_session,
+        disable_profiler=True,
+    )
+
+    with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        estimator.fit(job_name=unique_name_from_base("test-tf-mwms"))
+
+    captured = capsys.readouterr()
+    logs = captured.out + captured.err
+    print(logs)
+    assert "Running distributed training job with multi_worker_mirrored_strategy setup" in logs
+    assert f"strategy.num_replicas_in_sync={instance_count}" in logs
 
 
 @pytest.mark.release
@@ -237,9 +271,7 @@ def _create_and_fit_estimator(sagemaker_session, tf_version, py_version, instanc
     with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
         estimator.fit(inputs=inputs, job_name=unique_name_from_base("test-tf-sm-distributed"))
     assert_s3_file_patterns_exist(
-        sagemaker_session,
-        estimator.model_dir,
-        [r"model\.ckpt-\d+\.index", r"checkpoint"],
+        sagemaker_session, estimator.model_dir, [r"model\.ckpt-\d+\.index", r"checkpoint"]
     )
 
 
@@ -346,8 +378,7 @@ def test_model_deploy_with_serverless_inference_config(
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(
-            serverless_inference_config=ServerlessInferenceConfig(),
-            endpoint_name=endpoint_name,
+            serverless_inference_config=ServerlessInferenceConfig(), endpoint_name=endpoint_name
         )
 
         input_data = {"instances": [1.0, 2.0, 5.0]}

@@ -806,6 +806,49 @@ def test_default_monitor_create_and_update_schedule_config_without_customization
     tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
     reason="ModelMonitoring is not yet supported in this region.",
 )
+def test_default_monitor_create_and_simple_update_schedule_config(sagemaker_session, predictor):
+    my_default_monitor = DefaultModelMonitor(role=ROLE, sagemaker_session=sagemaker_session)
+
+    my_default_monitor.create_monitoring_schedule(
+        endpoint_input=predictor.endpoint_name,
+        schedule_cron_expression=CronExpressionGenerator.hourly(),
+    )
+
+    schedule_description = my_default_monitor.describe_schedule()
+    _verify_default_monitoring_schedule(
+        sagemaker_session=sagemaker_session,
+        schedule_description=schedule_description,
+        cron_expression=CronExpressionGenerator.hourly(),
+    )
+
+    _wait_for_schedule_changes_to_apply(my_default_monitor)
+
+    my_default_monitor.update_monitoring_schedule(
+        max_runtime_in_seconds=UPDATED_MAX_RUNTIME_IN_SECONDS
+    )
+
+    _wait_for_schedule_changes_to_apply(my_default_monitor)
+
+    schedule_description = my_default_monitor.describe_schedule()
+
+    _verify_default_monitoring_schedule(
+        sagemaker_session=sagemaker_session,
+        schedule_description=schedule_description,
+        cron_expression=CronExpressionGenerator.hourly(),
+        max_runtime_in_seconds=UPDATED_MAX_RUNTIME_IN_SECONDS,
+    )
+
+    _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
+
+    my_default_monitor.stop_monitoring_schedule()
+
+    _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
+
+
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
 @pytest.mark.cron
 def test_default_monitor_attach_followed_by_baseline_and_update_monitoring_schedule(
     sagemaker_session,
@@ -1644,7 +1687,10 @@ def _verify_default_monitoring_schedule(
         schedule_description["MonitoringScheduleConfig"]["ScheduleConfig"]["ScheduleExpression"]
         == cron_expression
     )
-    assert schedule_description["MonitoringType"] == "DataQuality"
+    if schedule_description.get("MonitoringType") is not None:
+        assert schedule_description["MonitoringType"] == "DataQuality"
+    else:
+        assert schedule_description["MonitoringScheduleConfig"]["MonitoringType"] == "DataQuality"
     job_definition_name = schedule_description["MonitoringScheduleConfig"].get(
         "MonitoringJobDefinitionName"
     )
