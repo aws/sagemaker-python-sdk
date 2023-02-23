@@ -67,7 +67,7 @@ def test_create_model_invalid_s3_uri():
             ROLE,
         )
     assert str(invalid_s3_data.value).startswith(
-        "DJLLargeModel does not support model artifacts in tar.gz"
+        "DJLModel does not support model artifacts in tar.gz"
     )
 
     with pytest.raises(ValueError) as invalid_s3_data:
@@ -75,9 +75,7 @@ def test_create_model_invalid_s3_uri():
             SOURCE_DIR,
             ROLE,
         )
-    assert str(invalid_s3_data.value).startswith(
-        "DJLLargeModel only supports loading model artifacts"
-    )
+    assert str(invalid_s3_data.value).startswith("DJLModel only supports loading model artifacts")
 
 
 @patch("sagemaker.s3.S3Downloader.read_file")

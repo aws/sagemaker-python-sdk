@@ -562,7 +562,7 @@ class DJLModel(FrameworkModel):
             str: The appropriate image URI based on the given parameters.
         """
         if not self.djl_version:
-            self.djl_version = "0.20.0"
+            self.djl_version = "0.21.0"
 
         return image_uris.retrieve(
             self._framework(),
