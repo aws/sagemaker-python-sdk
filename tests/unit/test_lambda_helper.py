@@ -54,9 +54,7 @@ def s3_client(sagemaker_session):
 
 
 def test_lambda_object_with_arn_happycase():
-    lambda_obj = lambda_helper.Lambda(
-        function_arn=LAMBDA_ARN, session=sagemaker_session
-    )
+    lambda_obj = lambda_helper.Lambda(function_arn=LAMBDA_ARN, session=sagemaker_session)
     assert lambda_obj.function_arn == LAMBDA_ARN
 
 
@@ -378,6 +376,7 @@ def test_update_lambda_s3bucket_not_provided(s3_upload, sagemaker_session):
         FunctionName=LAMBDA_ARN,
         S3Bucket=sagemaker_session.default_bucket(),
         S3Key=s3_upload.return_value,
+        Architectures=None,
     )
 
 
@@ -492,9 +491,7 @@ def test_upsert_lambda_client_error(sagemaker_session):
 
 
 def test_invoke_lambda_happycase(sagemaker_session):
-    lambda_obj = lambda_helper.Lambda(
-        function_arn=LAMBDA_ARN, session=sagemaker_session
-    )
+    lambda_obj = lambda_helper.Lambda(function_arn=LAMBDA_ARN, session=sagemaker_session)
     lambda_obj.invoke()
 
     sagemaker_session.lambda_client.invoke.assert_called_with(
@@ -503,9 +500,7 @@ def test_invoke_lambda_happycase(sagemaker_session):
 
 
 def test_invoke_lambda_client_error(sagemaker_session):
-    lambda_obj = lambda_helper.Lambda(
-        function_arn=LAMBDA_ARN, session=sagemaker_session
-    )
+    lambda_obj = lambda_helper.Lambda(function_arn=LAMBDA_ARN, session=sagemaker_session)
 
     sagemaker_session.lambda_client.invoke.side_effect = ClientError(
         {"Error": {"Code": "InvalidCodeException", "Message": "invoke failed"}},
@@ -518,19 +513,13 @@ def test_invoke_lambda_client_error(sagemaker_session):
 
 
 def test_delete_lambda_happycase(sagemaker_session):
-    lambda_obj = lambda_helper.Lambda(
-        function_arn=LAMBDA_ARN, session=sagemaker_session
-    )
+    lambda_obj = lambda_helper.Lambda(function_arn=LAMBDA_ARN, session=sagemaker_session)
     lambda_obj.delete()
-    sagemaker_session.lambda_client.delete_function.assert_called_with(
-        FunctionName=LAMBDA_ARN
-    )
+    sagemaker_session.lambda_client.delete_function.assert_called_with(FunctionName=LAMBDA_ARN)
 
 
 def test_delete_lambda_client_error(sagemaker_session):
-    lambda_obj = lambda_helper.Lambda(
-        function_arn=LAMBDA_ARN, session=sagemaker_session
-    )
+    lambda_obj = lambda_helper.Lambda(function_arn=LAMBDA_ARN, session=sagemaker_session)
 
     sagemaker_session.lambda_client.delete_function.side_effect = ClientError(
         {"Error": {"Code": "Invalid", "Message": "Delete failed"}}, "Invoke"
@@ -542,9 +531,7 @@ def test_delete_lambda_client_error(sagemaker_session):
 
 
 def test_upload_to_s3(s3_client):
-    key = lambda_helper._upload_to_s3(
-        s3_client, FUNCTION_NAME, ZIPPED_CODE_DIR, S3_BUCKET
-    )
+    key = lambda_helper._upload_to_s3(s3_client, FUNCTION_NAME, ZIPPED_CODE_DIR, S3_BUCKET)
     s3_client.upload_file.assert_called_with(ZIPPED_CODE_DIR, S3_BUCKET, key)
     assert key == S3_KEY
 
