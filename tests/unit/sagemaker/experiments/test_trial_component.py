@@ -17,6 +17,8 @@ import unittest.mock
 
 from unittest.mock import patch
 
+import botocore
+
 from sagemaker import Session
 from sagemaker.experiments import _api_types
 from sagemaker.experiments._api_types import (
@@ -300,10 +302,27 @@ def test_list_trial_components_call_args(sagemaker_session):
 
 
 @patch("sagemaker.experiments.trial_component._TrialComponent.load")
-def test_load_or_create_when_exist(mock_load, sagemaker_session):
+@patch("sagemaker.experiments.trial_component._TrialComponent.create")
+def test_load_or_create_when_exist(mock_create, mock_load, sagemaker_session):
     tc_name = "tc_name"
+    exists_error = botocore.exceptions.ClientError(
+        error_response={
+            "Error": {
+                "Code": "ValidationException",
+                "Message": "Experiment with name (experiment-xyz) already exists.",
+            }
+        },
+        operation_name="foo",
+    )
+    mock_create.side_effect = exists_error
     _, is_existed = _TrialComponent._load_or_create(
         trial_component_name=tc_name, sagemaker_session=sagemaker_session
+    )
+    mock_create.assert_called_once_with(
+        trial_component_name=tc_name,
+        display_name=None,
+        tags=None,
+        sagemaker_session=sagemaker_session,
     )
     assert is_existed
     mock_load.assert_called_once_with(
@@ -316,13 +335,7 @@ def test_load_or_create_when_exist(mock_load, sagemaker_session):
 @patch("sagemaker.experiments.trial_component._TrialComponent.create")
 def test_load_or_create_when_not_exist(mock_create, mock_load):
     sagemaker_session = Session()
-    client = sagemaker_session.sagemaker_client
     tc_name = "tc_name"
-    not_found_err = client.exceptions.ResourceNotFound(
-        error_response={"Error": {"Code": "ResourceNotFound", "Message": "Not Found"}},
-        operation_name="foo",
-    )
-    mock_load.side_effect = not_found_err
 
     _, is_existed = _TrialComponent._load_or_create(
         trial_component_name=tc_name, sagemaker_session=sagemaker_session
@@ -335,6 +348,7 @@ def test_load_or_create_when_not_exist(mock_create, mock_load):
         tags=None,
         sagemaker_session=sagemaker_session,
     )
+    mock_load.assert_not_called()
 
 
 def test_search(sagemaker_session):

@@ -20,6 +20,8 @@ import re
 import uuid
 from abc import ABCMeta, abstractmethod
 from typing import Any, Dict, Union, Optional, List
+from packaging.specifiers import SpecifierSet
+from packaging.version import Version
 
 from six import string_types, with_metaclass
 from six.moves.urllib.parse import urlparse
@@ -83,10 +85,7 @@ from sagemaker.utils import (
 )
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
-from sagemaker.workflow.pipeline_context import (
-    PipelineSession,
-    runnable_by_pipeline,
-)
+from sagemaker.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +105,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
     LAUNCH_PS_ENV_NAME = "sagemaker_parameter_server_enabled"
     LAUNCH_MPI_ENV_NAME = "sagemaker_mpi_enabled"
     LAUNCH_SM_DDP_ENV_NAME = "sagemaker_distributed_dataparallel_enabled"
+    LAUNCH_MWMS_ENV_NAME = "sagemaker_multi_worker_mirrored_strategy_enabled"
     INSTANCE_TYPE = "sagemaker_instance_type"
     MPI_NUM_PROCESSES_PER_HOST = "sagemaker_mpi_num_of_processes_per_host"
     MPI_CUSTOM_MPI_OPTIONS = "sagemaker_mpi_custom_mpi_options"
@@ -557,9 +557,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.dependencies = dependencies or []
         self.uploaded_code = None
         self.tags = add_jumpstart_tags(
-            tags=tags,
-            training_model_uri=self.model_uri,
-            training_script_uri=self.source_dir,
+            tags=tags, training_model_uri=self.model_uri, training_script_uri=self.source_dir
         )
         if self.instance_type in ("local", "local_gpu"):
             if self.instance_type == "local_gpu" and self.instance_count > 1:
@@ -680,8 +678,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             self.base_job_name
             or get_jumpstart_base_name_if_jumpstart_model(self.source_dir, self.model_uri)
             or base_name_from_image(
-                self.training_image_uri(),
-                default_base_name=EstimatorBase.JOB_CLASS_NAME,
+                self.training_image_uri(), default_base_name=EstimatorBase.JOB_CLASS_NAME
             )
         )
 
@@ -744,7 +741,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             self.dependencies = updated_paths["dependencies"]
 
         if self.source_dir or self.entry_point or self.dependencies:
-
             # validate source dir will raise a ValueError if there is something wrong with
             # the source directory. We are intentionally not handling it because this is a
             # critical error.
@@ -1023,10 +1019,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             parse_result = urlparse(rule.rule_parameters["source_s3_uri"])
             if parse_result.scheme != "s3":
                 desired_s3_uri = os.path.join(
-                    "s3://",
-                    self.sagemaker_session.default_bucket(),
-                    rule.name,
-                    str(uuid.uuid4()),
+                    "s3://", self.sagemaker_session.default_bucket(), rule.name, str(uuid.uuid4())
                 )
                 s3_uri = S3Uploader.upload(
                     local_path=rule.rule_parameters["source_s3_uri"],
@@ -1439,10 +1432,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self._ensure_base_job_name()
 
         jumpstart_base_name = get_jumpstart_base_name_if_jumpstart_model(
-            kwargs.get("source_dir"),
-            self.source_dir,
-            kwargs.get("model_data"),
-            self.model_uri,
+            kwargs.get("source_dir"), self.source_dir, kwargs.get("model_data"), self.model_uri
         )
         default_name = (
             name_from_base(jumpstart_base_name)
@@ -2240,11 +2230,7 @@ class _TrainingJob(_Job):
 
     @classmethod
     def update(
-        cls,
-        estimator,
-        profiler_rule_configs=None,
-        profiler_config=None,
-        resource_config=None,
+        cls, estimator, profiler_rule_configs=None, profiler_config=None, resource_config=None
     ):
         """Update a running Amazon SageMaker training job.
 
@@ -3165,6 +3151,34 @@ class Framework(EstimatorBase):
                     )
                     self.debugger_hook_config = False
 
+    def _validate_mwms_config(self, distribution):
+        """Validate Multi Worker Mirrored Strategy configuration."""
+        minimum_supported_framework_version = {"tensorflow": {"framework_version": "2.9"}}
+        if self._framework_name in minimum_supported_framework_version:
+            for version_argument in minimum_supported_framework_version[self._framework_name]:
+                current = getattr(self, version_argument)
+                threshold = minimum_supported_framework_version[self._framework_name][
+                    version_argument
+                ]
+                if Version(current) in SpecifierSet(f"< {threshold}"):
+                    raise ValueError(
+                        "Multi Worker Mirrored Strategy is only supported "
+                        "from {} {} but received {}".format(version_argument, threshold, current)
+                    )
+        else:
+            raise ValueError(
+                "Multi Worker Mirrored Strategy is currently only supported "
+                "with {} frameworks but received {}".format(
+                    minimum_supported_framework_version.keys(), self._framework_name
+                )
+            )
+        unsupported_distributions = ["smdistributed", "parameter_server"]
+        if any(i in distribution for i in unsupported_distributions):
+            raise ValueError(
+                "Multi Worker Mirrored Strategy is currently not supported with the"
+                " following distribution strategies: {}".format(unsupported_distributions)
+            )
+
     def _model_source_dir(self):
         """Get the appropriate value to pass as ``source_dir`` to a model constructor.
 
@@ -3527,6 +3541,12 @@ class Framework(EstimatorBase):
                 distribution_config[self.SM_DDP_CUSTOM_MPI_OPTIONS] = smdistributed[
                     "dataparallel"
                 ].get("custom_mpi_options", "")
+
+        if "multi_worker_mirrored_strategy" in distribution:
+            mwms_enabled = distribution.get("multi_worker_mirrored_strategy").get("enabled", False)
+            if mwms_enabled:
+                self._validate_mwms_config(distribution)
+            distribution_config[self.LAUNCH_MWMS_ENV_NAME] = mwms_enabled
 
         if not (mpi_enabled or smdataparallel_enabled) and distribution_config.get(
             "sagemaker_distribution_instance_groups"

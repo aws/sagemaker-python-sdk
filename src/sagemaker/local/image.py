@@ -1014,7 +1014,7 @@ def _aws_credentials(session):
                 "AWS_ACCESS_KEY_ID=%s" % (str(access_key)),
                 "AWS_SECRET_ACCESS_KEY=%s" % (str(secret_key)),
             ]
-        if not _aws_credentials_available_in_metadata_service():
+        if _use_short_lived_credentials() or not _aws_credentials_available_in_metadata_service():
             logger.warning(
                 "Using the short-lived AWS credentials found in session. They might expire while "
                 "running."
@@ -1050,6 +1050,11 @@ def _aws_credentials_available_in_metadata_service():
         )
     )
     return not instance_metadata_provider.load() is None
+
+
+def _use_short_lived_credentials():
+    """Use short-lived AWS credentials found in session."""
+    return os.environ.get("USE_SHORT_LIVED_CREDENTIALS") == "1"
 
 
 def _write_json_file(filename, content):

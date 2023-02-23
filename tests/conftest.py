@@ -262,9 +262,7 @@ def huggingface_training_compiler_pytorch_version(
     huggingface_training_compiler_version,
 ):
     versions = _huggingface_base_fm_version(
-        huggingface_training_compiler_version,
-        "pytorch",
-        "huggingface_training_compiler",
+        huggingface_training_compiler_version, "pytorch", "huggingface_training_compiler"
     )
     if not versions:
         pytest.skip(
@@ -279,9 +277,7 @@ def huggingface_training_compiler_tensorflow_version(
     huggingface_training_compiler_version,
 ):
     versions = _huggingface_base_fm_version(
-        huggingface_training_compiler_version,
-        "tensorflow",
-        "huggingface_training_compiler",
+        huggingface_training_compiler_version, "tensorflow", "huggingface_training_compiler"
     )
     if not versions:
         pytest.skip(
@@ -316,6 +312,16 @@ def huggingface_pytorch_latest_training_py_version(
     return (
         "py38" if Version(huggingface_training_pytorch_latest_version) >= Version("1.9") else "py36"
     )
+
+
+@pytest.fixture(scope="module")
+def pytorch_training_compiler_py_version(
+    pytorch_training_compiler_version,
+):
+    return "py39" if Version(pytorch_training_compiler_version) > Version("1.12") else "py38"
+
+
+# TODO: Create a fixture to get the latest py version from TRCOMP image_uri.
 
 
 @pytest.fixture(scope="module")
@@ -497,8 +503,7 @@ def pytorch_ddp_py_version():
 
 
 @pytest.fixture(
-    scope="module",
-    params=["1.10", "1.10.0", "1.10.2", "1.11", "1.11.0", "1.12", "1.12.0"],
+    scope="module", params=["1.10", "1.10.0", "1.10.2", "1.11", "1.11.0", "1.12", "1.12.0"]
 )
 def pytorch_ddp_framework_version(request):
     return request.param

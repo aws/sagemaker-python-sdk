@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import botocore.exceptions
 import pytest
 import unittest.mock
 import datetime
@@ -78,10 +79,28 @@ def test_delete(sagemaker_session):
 
 
 @patch("sagemaker.experiments.experiment._Experiment.load")
-def test_load_or_create_when_exist(mock_load, sagemaker_session):
+@patch("sagemaker.experiments.experiment._Experiment.create")
+def test_load_or_create_when_exist(mock_create, mock_load, sagemaker_session):
     exp_name = "exp_name"
+    exists_error = botocore.exceptions.ClientError(
+        error_response={
+            "Error": {
+                "Code": "ValidationException",
+                "Message": "Experiment with name (experiment-xyz) already exists.",
+            }
+        },
+        operation_name="foo",
+    )
+    mock_create.side_effect = exists_error
     experiment._Experiment._load_or_create(
         experiment_name=exp_name, sagemaker_session=sagemaker_session
+    )
+    mock_create.assert_called_once_with(
+        experiment_name=exp_name,
+        display_name=None,
+        description=None,
+        tags=None,
+        sagemaker_session=sagemaker_session,
     )
     mock_load.assert_called_once_with(exp_name, sagemaker_session)
 
@@ -90,18 +109,10 @@ def test_load_or_create_when_exist(mock_load, sagemaker_session):
 @patch("sagemaker.experiments.experiment._Experiment.create")
 def test_load_or_create_when_not_exist(mock_create, mock_load):
     sagemaker_session = Session()
-    client = sagemaker_session.sagemaker_client
     exp_name = "exp_name"
-    not_found_err = client.exceptions.ResourceNotFound(
-        error_response={"Error": {"Code": "ResourceNotFound", "Message": "Not Found"}},
-        operation_name="foo",
-    )
-    mock_load.side_effect = not_found_err
-
     experiment._Experiment._load_or_create(
         experiment_name=exp_name, sagemaker_session=sagemaker_session
     )
-
     mock_create.assert_called_once_with(
         experiment_name=exp_name,
         display_name=None,
@@ -109,6 +120,7 @@ def test_load_or_create_when_not_exist(mock_create, mock_load):
         tags=None,
         sagemaker_session=sagemaker_session,
     )
+    mock_load.assert_not_called()
 
 
 def test_list_trials_empty(sagemaker_session):
