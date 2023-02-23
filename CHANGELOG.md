@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.135.0 (2023-02-23)
+
+### Features
+
+ * Add DLC accounts for MEL Region
+ * allow use of short lived creds for local container
+
+### Bug Fixes and Other Changes
+
+ * update lambda function when function arn is provided
+
 ## v2.134.1 (2023-02-22)
 
 ### Bug Fixes and Other Changes
