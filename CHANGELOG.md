@@ -1,5 +1,24 @@
 # Changelog
 
+## v2.134.1 (2023-02-22)
+
+### Bug Fixes and Other Changes
+
+ * local mode deletion of temp files on job end
+ * Cron expression resetting on update monitor
+ * added support to update arguments in create_monitoring_schedule
+
+## v2.134.0 (2023-02-22)
+
+### Features
+
+ * Add python 3.9 and spark 3.2 support for spark processor
+ * Adding support for Multi Worker Mirrored Strategy in TF estimator
+
+### Bug Fixes and Other Changes
+
+ * tag permission issue - remove describe before create
+
 ## v2.133.0 (2023-02-18)
 
 ### Features
