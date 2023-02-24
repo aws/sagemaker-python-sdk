@@ -15,6 +15,7 @@ from __future__ import absolute_import
 
 from typing import List, Dict, Optional, Union
 from enum import Enum
+import warnings
 
 import attr
 
@@ -152,10 +153,20 @@ class LambdaStep(Step):
     def _get_function_arn(self):
         """Returns the lambda function arn
 
-        Method creates a lambda function and returns it's arn.
-        If the lambda is already present, it will build it's arn and return that.
+        It upserts a lambda function if function name is provided.
+        It updates a lambda function if lambda arn and code is provided.
+        It is a no-op if code is not provided but function arn is provided.
         """
         if self.lambda_func.function_arn is None:
             response = self.lambda_func.upsert()
             return response["FunctionArn"]
-        return self.lambda_func.function_arn
+
+        if self.lambda_func.zipped_code_dir is None and self.lambda_func.script is None:
+            warnings.warn(
+                "Lambda function won't be updated because zipped_code_dir \
+                or script is not provided."
+            )
+            return self.lambda_func.function_arn
+
+        response = self.lambda_func.update()
+        return response["FunctionArn"]
