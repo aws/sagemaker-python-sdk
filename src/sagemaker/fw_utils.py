@@ -1074,6 +1074,10 @@ def validate_torch_distributed_distribution(
         return
 
     err_msg = ""
+    # Check instance compatibility
+    if not _is_gpu_instance(instance_type):
+        err_msg += "torch_distributed is supported only for GPU instances.\n"
+
     if not image_uri:
         # ignore framework_version and py_version if image_uri is set
         # in case image_uri is not set, then both are mandatory
@@ -1093,24 +1097,21 @@ def validate_torch_distributed_distribution(
                 "Please specify py_version>=py3\n"
             )
 
-    # Check instance compatibility
-    if not _is_gpu_instance(instance_type):
-        err_msg += "torch_distributed is supported only for GPU instances.\n"
-
-    # Check version compatibility for GPU instance
-    match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
-    if match:
-        # Non-Trainium GPU instance but version earlier than 1.13.1
-        if (
-            not match[1].startswith("trn")
-            and framework_version not in TORCH_DISTRIBUTED_SUPPORTED_FRAMEWORK_VERSIONS
-        ):
-            err_msg += (
-                f"Provided framework_version {framework_version} is not supported by"
-                f" torch_distributed for instance {instance_type}.\n"
-                "Please specify one of the supported framework versions:"
-                f"{TORCH_DISTRIBUTED_SUPPORTED_FRAMEWORK_VERSIONS} \n"
-            )
+        # Check version compatibility for GPU instance
+        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        if match:
+            # Non-Trainium GPU instance but version earlier than 1.13.1
+            if (
+                not match[1].startswith("trn")
+                and framework_version not in TORCH_DISTRIBUTED_SUPPORTED_FRAMEWORK_VERSIONS
+            ):
+                print(match)
+                err_msg += (
+                    f"Provided framework_version {framework_version} is not supported by"
+                    f" torch_distributed for instance {instance_type}.\n"
+                    "Please specify one of the supported framework versions:"
+                    f"{TORCH_DISTRIBUTED_SUPPORTED_FRAMEWORK_VERSIONS} \n"
+                )
 
     # Check entry point type
     if not entry_point.endswith(".py"):
