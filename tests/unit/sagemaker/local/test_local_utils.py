@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import os
+import errno
 import pytest
 from mock import patch, Mock
 
@@ -168,3 +169,20 @@ def test_get_using_dot_notation_key_error():
 def test_get_using_dot_notation_index_error():
     with pytest.raises(ValueError):
         sagemaker.local.utils.get_using_dot_notation({"foo": ["bar"]}, "foo[1]")
+
+
+def raise_os_error(args):
+    err = OSError()
+    err.errno = errno.EACCES
+    raise err
+
+
+@patch("shutil.rmtree", side_effect=raise_os_error)
+@patch("sagemaker.local.utils.recursive_copy")
+def test_move_to_destination_local_root_failure(recursive_copy, mock_rmtree):
+    # This should not raise, in case root owns files, make sure it doesn't
+    sagemaker.local.utils.move_to_destination("/tmp/data", "file:///target/dir/", "job", None)
+    mock_rmtree.assert_called_once()
+    recursive_copy.assert_called_with(
+        "/tmp/data", os.path.abspath(os.path.join(os.sep, "target", "dir"))
+    )
