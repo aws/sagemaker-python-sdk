@@ -1093,7 +1093,10 @@ def validate_torch_distributed_distribution(
                         f"{TRAINIUM_SUPPORTED_TORCH_DISTRIBUTED_FRAMEWORK_VERSIONS} \n"
                     )
             else:
-                err_msg += "Currently torch_distributed is supported only for GPU and Trainium instances.\n"
+                err_msg += (
+                    "Currently torch_distributed is supported only for GPU and Trainium "
+                    "instances.\n"
+                )
         else:
             # for gpu instances
             if framework_version not in TORCH_DISTRIBUTED_GPU_SUPPORTED_FRAMEWORK_VERSIONS:
