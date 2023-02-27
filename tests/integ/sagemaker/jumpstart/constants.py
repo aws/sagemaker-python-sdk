@@ -42,6 +42,7 @@ JUMPSTART_TAG = "JumpStart-SDK-Integ-Test-Suite-Id"
 
 TRAINING_DATASET_MODEL_DICT = {
     ("huggingface-spc-bert-base-cased", "1.0.0"): ("training-datasets/QNLI-tiny/"),
+    ("huggingface-spc-bert-base-cased", "1.2.3"): ("training-datasets/QNLI-tiny/"),
 }
 
 
