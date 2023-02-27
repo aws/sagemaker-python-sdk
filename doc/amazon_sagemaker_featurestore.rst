@@ -467,11 +467,12 @@ be chained.
    dataset_builder
       .with_number_of_records_from_query_results(number_of_records=100)
       .include_duplicated_records()
-      .to_dataframe()
+      .with_number_of_recent_records_by_record_identifier(number_of_recent_records=1)
 
 There are additional configurations that can be made for various use cases,
 such as time travel and point-in-time join. These are outlined in the
-Feature Store DatasetBuilder API Reference.
+Feature Store `DatasetBuilder API Reference
+<https://sagemaker.readthedocs.io/en/stable/api/prep_data/feature_store.html#dataset-builder>`__.
 
 .. rubric:: Delete a feature group
    :name: bCe9CA61b78
