@@ -651,11 +651,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
             object: The corresponding value in the Config file/ the default value.
 
         """
+        config_value = get_config_value(key, self.sagemaker_config.config)
+        self._print_message_on_sagemaker_config_usage(default_value, config_value, key)
+
         if default_value is not None:
             return default_value
-        config_value = get_config_value(key, self.sagemaker_config.config)
-        if config_value is not None:
-            self._print_message_sagemaker_config_used(config_value, key)
+
         return config_value
 
     def _create_s3_bucket_if_it_does_not_exist(self, bucket_name, region):
@@ -726,29 +727,31 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 else:
                     raise
 
-    def _print_message_sagemaker_config_used(self, config_value, config_path):
-        """Informs the SDK user that a config value was substituted in automatically"""
-        print(
-            "[Sagemaker Config] config value {} at config path {}".format(
-                config_value, config_path
-            ),
-            "was automatically applied",
-        )
+    def _print_message_on_sagemaker_config_usage(self, direct_input, config_value, config_path):
+        """Informs the SDK user whether a config value was present and automatically substituted"""
 
-    def _print_message_sagemaker_config_present_but_not_used(
-        self, direct_input, config_value, config_path
-    ):
-        """Informs the SDK user that a config value was not substituted in automatically.
+        if config_value is not None:
 
-        This is because method parameter is already provided.
+            if direct_input is not None and config_value != direct_input:
+                # Sagemaker Config had a value defined that is NOT going to be used
+                # and the config value has not already been applied earlier
+                print(
+                    "[Sagemaker Config - skipped value]\n",
+                    "config key = {}\n".format(config_path),
+                    "config value = {}\n".format(config_value),
+                    "specified value that will be used = {}\n".format(direct_input),
+                )
 
-        """
-        print(
-            "[Sagemaker Config] value {} was specified,".format(direct_input),
-            "so config value {} at config path {} was not applied".format(
-                config_value, config_path
-            ),
-        )
+            elif direct_input is None:
+                # Sagemaker Config value is going to be used
+                print(
+                    "[Sagemaker Config - applied value]\n",
+                    "config key = {}\n".format(config_path),
+                    "config value that will be used = {}\n".format(config_value),
+                )
+
+        # There is no print statement needed if nothing was specified in the config and nothing is
+        # being automatically applied
 
     def resolve_value_from_config(
         self, direct_input=None, config_path: str = None, default_value=None
@@ -771,18 +774,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
             The value that should be used by the caller
         """
         config_value = self.get_sagemaker_config_override(config_path)
+        self._print_message_on_sagemaker_config_usage(direct_input, config_value, config_path)
 
         if direct_input is not None:
-            if config_value is not None:
-                self._print_message_sagemaker_config_present_but_not_used(
-                    direct_input, config_value, config_path
-                )
-            # No print statement if there was nothing in the config, because nothing is
-            # being overridden
             return direct_input
 
         if config_value is not None:
-            self._print_message_sagemaker_config_used(config_value, config_path)
             return config_value
 
         return default_value
@@ -839,13 +836,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
             # only set value if object does not already have a value set
             if config_value is not None:
                 setattr(instance, attribute, config_value)
-                self._print_message_sagemaker_config_used(config_value, config_path)
             elif default_value is not None:
                 setattr(instance, attribute, default_value)
-        elif current_value is not None and config_value is not None:
-            self._print_message_sagemaker_config_present_but_not_used(
-                current_value, config_value, config_path
-            )
+
+        self._print_message_on_sagemaker_config_usage(current_value, config_value, config_path)
 
         return instance
 
@@ -892,13 +886,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
             # only set value if not already set
             if config_value is not None:
                 dictionary = set_nested_value(dictionary, nested_keys, config_value)
-                self._print_message_sagemaker_config_used(config_value, config_path)
             elif default_value is not None:
                 dictionary = set_nested_value(dictionary, nested_keys, default_value)
-        elif current_nested_value is not None and config_value is not None:
-            self._print_message_sagemaker_config_present_but_not_used(
-                current_nested_value, config_value, config_path
-            )
+
+        self._print_message_on_sagemaker_config_usage(
+            current_nested_value, config_value, config_path
+        )
 
         return dictionary
 
@@ -933,9 +926,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 all_tags.append(config_tag)
 
         print(
-            "Appended tags from sagemaker_config to input.\n\texisting tags: {},".format(tags)
-            + "\n\ttags provided via sagemaker_config: {},".format(config_tags)
-            + "\n\tcombined tags: {}".format(all_tags)
+            "[Sagemaker Config - applied value]\n",
+            "config key = {}\n".format(config_path_to_tags),
+            "config value = {}\n".format(config_tags),
+            "source value = {}\n".format(tags),
+            "combined value that will be used = {}\n".format(all_tags),
         )
 
         return all_tags
@@ -5593,17 +5588,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
         merge_dicts(inferred_config_dict, source_dict or {})
         if source_dict == inferred_config_dict:
             # Corresponds to the case where we didn't use any values from Config.
-            self._print_message_sagemaker_config_present_but_not_used(
+            self._print_message_on_sagemaker_config_usage(
                 source_dict, original_config_dict_value, config_key_path
             )
         else:
             print(
-                "Config value {} at config path {} was fetched first.".format(
-                    original_config_dict_value, config_key_path
-                ),
-                "It was then merged with the existing value {} to give {}".format(
-                    source_dict, inferred_config_dict
-                ),
+                "[Sagemaker Config - applied value]\n",
+                "config key = {}\n".format(config_key_path),
+                "config value = {}\n".format(original_config_dict_value),
+                "source value = {}\n".format(source_dict),
+                "combined value that will be used = {}\n".format(inferred_config_dict),
             )
         return inferred_config_dict
 
