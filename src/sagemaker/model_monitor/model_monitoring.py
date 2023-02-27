@@ -1454,18 +1454,9 @@ class ModelMonitor(object):
             self.tags, "{}.{}.{}".format(SAGEMAKER, MONITORING_SCHEDULE, TAGS)
         )
 
-        _enable_inter_container_traffic_encryption_from_config = (
-            self.sagemaker_session.resolve_value_from_config(
-                config_path=PATH_V1_MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION
-            )
-        )
-        if _enable_inter_container_traffic_encryption_from_config is not None:
-            # Not checking 'self.network_config' for 'enable_network_isolation' because that
-            # wasnt used here before this config value was set. Unclear whether there was a
-            # specific reason for that omission.
-            monitoring_schedule_config["MonitoringJobDefinition"]["NetworkConfig"][
-                "EnableInterContainerTrafficEncryption"
-            ] = _enable_inter_container_traffic_encryption_from_config
+        # Not using value from sagemaker
+        # config key PATH_V1_MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION here
+        # because no MonitoringJobDefinition is set for this call
 
         self.sagemaker_session.sagemaker_client.create_monitoring_schedule(
             MonitoringScheduleName=monitor_schedule_name,
@@ -1533,18 +1524,9 @@ class ModelMonitor(object):
                 "ScheduleExpression": schedule_cron_expression
             }
 
-        _enable_inter_container_traffic_encryption_from_config = (
-            self.sagemaker_session.resolve_value_from_config(
-                config_path=PATH_V1_MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION
-            )
-        )
-        if _enable_inter_container_traffic_encryption_from_config is not None:
-            # Not checking 'self.network_config' for 'enable_network_isolation' because that
-            # wasnt used here before this config value was checked. Unclear whether there was a
-            # specific reason for that omission.
-            monitoring_schedule_config["MonitoringJobDefinition"]["NetworkConfig"][
-                "EnableInterContainerTrafficEncryption"
-            ] = _enable_inter_container_traffic_encryption_from_config
+        # Not using value from sagemaker
+        # config key PATH_V1_MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION here
+        # because no MonitoringJobDefinition is set for this call
 
         self.sagemaker_session.sagemaker_client.update_monitoring_schedule(
             MonitoringScheduleName=self.monitoring_schedule_name,
