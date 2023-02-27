@@ -1005,15 +1005,14 @@ def test_validate_pytorchddp_raises():
 
 
 def test_validate_torch_distributed_not_raises():
-
-    # Case 1: Framework is PyTorch, but distribution is not torch_distributed
+    # Case 1: Framework is PyTorch, but torch_distributed is not enabled
     torch_distributed_disabled = {"torch_distributed": {"enabled": False}}
     fw_utils.validate_torch_distributed_distribution(
         instance_type="ml.trn1.2xlarge",
         distribution=torch_distributed_disabled,
         framework_version="1.11.0",
         py_version="py3",
-        image_uri="custom-container",
+        image_uri=None,
         entry_point="train.py",
     )
     # Case 2: Distribution is torch_distributed enabled, supported framework and py versions
@@ -1027,7 +1026,22 @@ def test_validate_torch_distributed_not_raises():
             distribution=torch_distributed_enabled,
             framework_version=framework_version,
             py_version="py3",
-            image_uri="custom-container",
+            image_uri=None,
+            entry_point="train.py",
+        )
+
+    # Case 3: Distribution is torch_distributed enabled, supported framework and instances
+    torch_distributed_enabled = {"torch_distributed": {"enabled": True}}
+    torch_distributed_gpu_supported_fw_versions = [
+        "1.13.1",
+    ]
+    for framework_version in torch_distributed_gpu_supported_fw_versions:
+        fw_utils.validate_torch_distributed_distribution(
+            instance_type="ml.p3.8xlarge",
+            distribution=torch_distributed_enabled,
+            framework_version=framework_version,
+            py_version="py3",
+            image_uri=None,
             entry_point="train.py",
         )
 
@@ -1065,6 +1079,17 @@ def test_validate_torch_distributed_raises():
             py_version="py3",
             image_uri=None,
             entry_point="train.sh",
+        )
+
+    # Case 4: Unsupported framework version for gpu instances
+    with pytest.raises(ValueError):
+        fw_utils.validate_torch_distributed_distribution(
+            instance_type="ml.p3.8xlarge",
+            distribution=torch_distributed_enabled,
+            framework_version="1.11.0",
+            py_version="py3",
+            image_uri=None,
+            entry_point="train.py",
         )
 
 
@@ -1128,3 +1153,31 @@ def test_is_gpu_instance():
         assert fw_utils._is_gpu_instance(gpu_type) is True
     for non_gpu_type in non_gpu_instance_types:
         assert fw_utils._is_gpu_instance(non_gpu_type) is False
+
+
+def test_is_trainium_instance():
+    trainium_instance_types = [
+        "ml.trn1.2xlarge",
+        "ml.trn1.32xlarge",
+    ]
+    non_trainum_instance_types = [
+        "ml.t3.xlarge",
+        "ml.m5.8xlarge",
+        "ml.m5d.16xlarge",
+        "ml.c5.9xlarge",
+        "ml.r5.8xlarge",
+        "ml.p3.2xlarge",
+        "ml.p3.8xlarge",
+        "ml.p3.16xlarge",
+        "ml.p3dn.24xlarge",
+        "ml.p4d.24xlarge",
+        "ml.p4de.24xlarge",
+        "ml.g4dn.xlarge",
+        "ml.g5.xlarge",
+        "ml.g5.48xlarge",
+        "local_gpu",
+    ]
+    for tr_type in trainium_instance_types:
+        assert fw_utils.test_is_trainium_instance(tr_type) is True
+    for non_tr_type in non_trainum_instance_types:
+        assert fw_utils.test_is_trainium_instance(non_tr_type) is False

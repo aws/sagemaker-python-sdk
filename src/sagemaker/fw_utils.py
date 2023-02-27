@@ -148,7 +148,10 @@ PYTORCHDDP_SUPPORTED_FRAMEWORK_VERSIONS = [
 ]
 
 
-TORCH_DISTRIBUTED_TRAINIUM_SUPPORTED_FRAMEWORK_VERSIONS = [
+TORCH_DISTRIBUTED_GPU_SUPPORTED_FRAMEWORK_VERSIONS = ["1.13.1"]
+
+TRAINIUM_SUPPORTED_DISTRIBUTION_STRATEGIES = ["torch_distributed"]
+TRAINIUM_SUPPORTED_TORCH_DISTRIBUTED_FRAMEWORK_VERSIONS = [
     "1.11",
     "1.11.0",
     "1.12",
@@ -156,11 +159,6 @@ TORCH_DISTRIBUTED_TRAINIUM_SUPPORTED_FRAMEWORK_VERSIONS = [
     "1.12.1",
     "1.13.1",
 ]
-TORCH_DISTRIBUTED_SUPPORTED_FRAMEWORK_VERSIONS = ["1.13.1"]
-
-
-TRAINIUM_SUPPORTED_DISTRIBUTION_STRATEGIES = ["torch_distributed"]
-
 
 SMDISTRIBUTED_SUPPORTED_STRATEGIES = ["dataparallel", "modelparallel"]
 
@@ -1063,9 +1061,8 @@ def validate_torch_distributed_distribution(
     Raises:
         ValueError: if
             `py_version` is not python3 or
-            `framework_version` is not in TORCH_DISTRIBUTED_SUPPORTED_FRAMEWORK_VERSIONS
+            `framework_version` is not compatible with instance types
     """
-
     torch_distributed_enabled = False
     if "torch_distributed" in distribution:
         torch_distributed_enabled = distribution.get("torch_distributed").get("enabled", False)
@@ -1074,44 +1071,38 @@ def validate_torch_distributed_distribution(
         return
 
     err_msg = ""
-    # Check instance compatibility
-    if not _is_gpu_instance(instance_type):
-        err_msg += "torch_distributed is supported only for GPU instances.\n"
 
     if not image_uri:
         # ignore framework_version and py_version if image_uri is set
         # in case image_uri is not set, then both are mandatory
-        if (
-            framework_version not in TORCH_DISTRIBUTED_SUPPORTED_FRAMEWORK_VERSIONS
-            and framework_version not in TORCH_DISTRIBUTED_TRAINIUM_SUPPORTED_FRAMEWORK_VERSIONS
-        ):
-            err_msg += (
-                f"Provided framework_version {framework_version} is not supported by"
-                " torch_distributed.\n"
-                "Please specify one of the supported framework versions:"
-                f"{TORCH_DISTRIBUTED_TRAINIUM_SUPPORTED_FRAMEWORK_VERSIONS} \n"
-            )
         if "py3" not in py_version:
             err_msg += (
                 f"Provided py_version {py_version} is not supported by torch_distributed.\n"
                 "Please specify py_version>=py3\n"
             )
 
-        # Check version compatibility for GPU instance
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
-        if match:
-            # Non-Trainium GPU instance but version earlier than 1.13.1
-            if (
-                not match[1].startswith("trn")
-                and framework_version not in TORCH_DISTRIBUTED_SUPPORTED_FRAMEWORK_VERSIONS
-            ):
+        # Check instance and framework_version compatibility
+        if not _is_gpu_instance(instance_type):
+            # for non-gpu instances
+            if _is_trainium_instance(instance_type):
+                if framework_version not in TRAINIUM_SUPPORTED_TORCH_DISTRIBUTED_FRAMEWORK_VERSIONS:
+                    err_msg += (
+                        f"Provided framework_version {framework_version} is not supported by"
+                        f" torch_distributed for instance {instance_type}.\n"
+                        "Please specify one of the supported framework versions:"
+                        f"{TRAINIUM_SUPPORTED_TORCH_DISTRIBUTED_FRAMEWORK_VERSIONS} \n"
+                    )
+            else:
+                err_msg += "Currently torch_distributed is supported only for GPU and Trainium instances.\n"
+        else:
+            # for gpu instances
+            if framework_version not in TORCH_DISTRIBUTED_GPU_SUPPORTED_FRAMEWORK_VERSIONS:
                 err_msg += (
                     f"Provided framework_version {framework_version} is not supported by"
                     f" torch_distributed for instance {instance_type}.\n"
                     "Please specify one of the supported framework versions:"
-                    f"{TORCH_DISTRIBUTED_SUPPORTED_FRAMEWORK_VERSIONS} \n"
+                    f"{TORCH_DISTRIBUTED_GPU_SUPPORTED_FRAMEWORK_VERSIONS} \n"
                 )
-
     # Check entry point type
     if not entry_point.endswith(".py"):
         err_msg += (
@@ -1134,10 +1125,25 @@ def _is_gpu_instance(instance_type):
     """
     if isinstance(instance_type, str):
         match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
-        if match:
-            if match[1].startswith("trn") or match[1].startswith("p") or match[1].startswith("g"):
-                return True
+        if match and match[1].startswith("p") or match[1].startswith("g"):
+            return True
         if instance_type == "local_gpu":
+            return True
+    return False
+
+
+def _is_trainium_instance(instance_type):
+    """Returns bool indicating whether instance_type is a Trainium instance
+
+    Args:
+        instance_type (str): Name of the instance_type to check against.
+
+    Returns:
+        bool: Whether or not the instance_type is a Trainium instance
+    """
+    if isinstance(instance_type, str):
+        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        if match and match[1].startswith("trn"):
             return True
     return False
 
