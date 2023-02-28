@@ -1100,8 +1100,7 @@ def validate_torch_distributed_distribution(
                 )
         else:
             err_msg += (
-                "Currently torch_distributed is supported only for GPU and Trainium "
-                "instances.\n"
+                "Currently torch_distributed is supported only for GPU and Trainium instances.\n"
             )
 
     # Check entry point type
