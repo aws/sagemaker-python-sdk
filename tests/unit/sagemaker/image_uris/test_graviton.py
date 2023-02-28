@@ -27,7 +27,7 @@ GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY = [
     "r6g",
     "r6gd",
 ]
-GRAVITON_ALGOS = ("tensorflow", "pytotch")
+GRAVITON_ALGOS = ("tensorflow", "pytorch")
 GRAVITON_INSTANCE_TYPES = [
     "ml.m6g.4xlarge",
     "ml.m6gd.2xlarge",
