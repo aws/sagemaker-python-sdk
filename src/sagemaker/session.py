@@ -637,6 +637,18 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         return self._default_bucket
 
+    def get_sagemaker_config_value(self, key):
+        """Util method that fetches a particular key path in the SageMakerConfig and returns it.
+
+        Args:
+            key: Key Path of the config file entry.
+
+        Returns:
+            object: The corresponding value in the Config file/ the default value.
+        """
+        config_value = get_config_value(key, self.sagemaker_config.config)
+        return config_value
+
     def get_sagemaker_config_override(self, key, default_value=None):
         """Util method that fetches a particular key path in the SageMakerConfig and returns it.
 
@@ -773,7 +785,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             The value that should be used by the caller
         """
-        config_value = self.get_sagemaker_config_override(config_path)
+        config_value = self.get_sagemaker_config_value(config_path)
         self._print_message_on_sagemaker_config_usage(direct_input, config_value, config_path)
 
         if direct_input is not None:
@@ -811,7 +823,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             The updated class instance that should be used by the caller instead of the
             'instance' parameter that was passed in.
         """
-        config_value = self.get_sagemaker_config_override(config_path)
+        config_value = self.get_sagemaker_config_value(config_path)
 
         if config_value is None and default_value is None:
             # return instance unmodified. Could be None or populated
@@ -869,7 +881,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             The updated dictionary that should be used by the caller instead of the
             'dictionary' parameter that was passed in.
         """
-        config_value = self.get_sagemaker_config_override(config_path)
+        config_value = self.get_sagemaker_config_value(config_path)
 
         if config_value is None and default_value is None:
             # if there is nothing to set, return early. And there is no need to traverse through
@@ -909,7 +921,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             A potentially extended list of tags.
         """
-        config_tags = self.get_sagemaker_config_override(config_path_to_tags)
+        config_tags = self.get_sagemaker_config_value(config_path_to_tags)
 
         if config_tags is None or len(config_tags) == 0:
             return tags
@@ -5583,7 +5595,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             in the Config file.
 
         """
-        inferred_config_dict = self.get_sagemaker_config_override(config_key_path) or {}
+        inferred_config_dict = self.get_sagemaker_config_value(config_key_path) or {}
         original_config_dict_value = inferred_config_dict.copy()
         merge_dicts(inferred_config_dict, source_dict or {})
         if source_dict == inferred_config_dict:

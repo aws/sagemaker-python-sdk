@@ -290,6 +290,8 @@ def test_create_process_with_configs(sagemaker_session):
         name="get_sagemaker_config_override",
         side_effect=_sagemaker_config_override_mock_for_process,
     )
+    sagemaker_session.get_sagemaker_config_value = sagemaker_session.get_sagemaker_config_override
+
     processing_inputs = [
         {
             "InputName": "input-1",
@@ -1585,6 +1587,8 @@ def test_train_with_configs(sagemaker_session):
         name="get_sagemaker_config_override",
         side_effect=_sagemaker_config_override_mock_for_train,
     )
+    sagemaker_session.get_sagemaker_config_value = sagemaker_session.get_sagemaker_config_override
+
     in_config = [
         {
             "ChannelName": "training",
@@ -2168,6 +2172,8 @@ def test_create_model_with_configs(expand_container_def, sagemaker_session):
         name="get_sagemaker_config_override",
         side_effect=_sagemaker_config_override_mock_for_model,
     )
+    sagemaker_session.get_sagemaker_config_value = sagemaker_session.get_sagemaker_config_override
+
     sagemaker_session.expand_role = Mock(
         name="expand_role", side_effect=lambda role_name: role_name
     )
@@ -2371,6 +2377,7 @@ def test_create_edge_packaging_with_configs(sagemaker_session):
         name="get_sagemaker_config_override",
         side_effect=_sagemaker_config_override_mock_for_edge_packaging,
     )
+    sagemaker_session.get_sagemaker_config_value = sagemaker_session.get_sagemaker_config_override
 
     output_config = {"S3OutputLocation": S3_OUTPUT}
 
@@ -2417,6 +2424,7 @@ def test_create_monitoring_schedule_with_configs(sagemaker_session):
         name="get_sagemaker_config_override",
         side_effect=_sagemaker_config_override_mock_for_monitoring_schedule,
     )
+    sagemaker_session.get_sagemaker_config_value = sagemaker_session.get_sagemaker_config_override
 
     monitoring_output_config = {"MonitoringOutputs": [{"S3Output": {"S3Uri": S3_OUTPUT}}]}
 
@@ -2487,6 +2495,8 @@ def test_compile_with_configs(sagemaker_session):
         name="get_sagemaker_config_override",
         side_effect=_sagemaker_config_override_mock_for_compile,
     )
+    sagemaker_session.get_sagemaker_config_value = sagemaker_session.get_sagemaker_config_override
+
     sagemaker_session.compile_model(
         input_model_config={},
         output_model_config={"S3OutputLocation": "s3://test"},
@@ -2585,6 +2595,8 @@ def test_create_enpoint_config_with_configs(sagemaker_session):
         name="get_sagemaker_config_override",
         side_effect=_sagemaker_config_override_mock_for_endpoint_config,
     )
+    sagemaker_session.get_sagemaker_config_value = sagemaker_session.get_sagemaker_config_override
+
     data_capture_config_dict = {"DestinationS3Uri": "s3://test"}
 
     tags = [{"Key": "TagtestKey", "Value": "TagtestValue"}]
@@ -3135,6 +3147,8 @@ def test_create_auto_ml_with_configs(sagemaker_session):
         name="get_sagemaker_config_override",
         side_effect=_sagemaker_config_override_mock_for_auto_ml,
     )
+    sagemaker_session.get_sagemaker_config_value = sagemaker_session.get_sagemaker_config_override
+
     input_config = [
         {
             "DataSource": {"S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": S3_INPUT_URI}},
@@ -4488,7 +4502,7 @@ def test_append_sagemaker_config_tags(sagemaker_session):
     def sort(tags):
         return tags.sort(key=lambda tag: tag["Key"])
 
-    sagemaker_session.get_sagemaker_config_override = MagicMock(
+    sagemaker_session.get_sagemaker_config_value = MagicMock(
         return_value=[
             {"Key": "tagkey1", "Value": "tagvalue1"},
             {"Key": "tagkey2", "Value": "tagvalue2"},
@@ -4536,7 +4550,7 @@ def test_append_sagemaker_config_tags(sagemaker_session):
         ]
     )
 
-    sagemaker_session.get_sagemaker_config_override = MagicMock(return_value=tags_none)
+    sagemaker_session.get_sagemaker_config_value = MagicMock(return_value=tags_none)
     config_tags_none = sagemaker_session._append_sagemaker_config_tags(
         tags_base, "DUMMY.CONFIG.PATH"
     )
@@ -4547,7 +4561,7 @@ def test_append_sagemaker_config_tags(sagemaker_session):
         ]
     )
 
-    sagemaker_session.get_sagemaker_config_override = MagicMock(return_value=tags_empty)
+    sagemaker_session.get_sagemaker_config_value = MagicMock(return_value=tags_empty)
     config_tags_empty = sagemaker_session._append_sagemaker_config_tags(
         tags_base, "DUMMY.CONFIG.PATH"
     )
@@ -4564,56 +4578,56 @@ def test_resolve_value_from_config(sagemaker_session_without_mocked_sagemaker_co
     ss = sagemaker_session_without_mocked_sagemaker_config
 
     # direct_input should be respected
-    ss.get_sagemaker_config_override = MagicMock(return_value="CONFIG_VALUE")
+    ss.get_sagemaker_config_value = MagicMock(return_value="CONFIG_VALUE")
     assert ss.resolve_value_from_config("INPUT", "DUMMY.CONFIG.PATH", "DEFAULT_VALUE") == "INPUT"
 
-    ss.get_sagemaker_config_override = MagicMock(return_value="CONFIG_VALUE")
+    ss.get_sagemaker_config_value = MagicMock(return_value="CONFIG_VALUE")
     assert ss.resolve_value_from_config("INPUT", "DUMMY.CONFIG.PATH", None) == "INPUT"
 
-    ss.get_sagemaker_config_override = MagicMock(return_value=None)
+    ss.get_sagemaker_config_value = MagicMock(return_value=None)
     assert ss.resolve_value_from_config("INPUT", "DUMMY.CONFIG.PATH", None) == "INPUT"
 
     # Config or default values should be returned if no direct_input
-    ss.get_sagemaker_config_override = MagicMock(return_value=None)
+    ss.get_sagemaker_config_value = MagicMock(return_value=None)
     assert ss.resolve_value_from_config(None, None, "DEFAULT_VALUE") == "DEFAULT_VALUE"
 
-    ss.get_sagemaker_config_override = MagicMock(return_value=None)
+    ss.get_sagemaker_config_value = MagicMock(return_value=None)
     assert (
         ss.resolve_value_from_config(None, "DUMMY.CONFIG.PATH", "DEFAULT_VALUE") == "DEFAULT_VALUE"
     )
 
-    ss.get_sagemaker_config_override = MagicMock(return_value="CONFIG_VALUE")
+    ss.get_sagemaker_config_value = MagicMock(return_value="CONFIG_VALUE")
     assert (
         ss.resolve_value_from_config(None, "DUMMY.CONFIG.PATH", "DEFAULT_VALUE") == "CONFIG_VALUE"
     )
 
-    ss.get_sagemaker_config_override = MagicMock(return_value=None)
+    ss.get_sagemaker_config_value = MagicMock(return_value=None)
     assert ss.resolve_value_from_config(None, None, None) is None
 
     # Different falsy direct_inputs
-    ss.get_sagemaker_config_override = MagicMock(return_value=None)
+    ss.get_sagemaker_config_value = MagicMock(return_value=None)
     assert ss.resolve_value_from_config("", "DUMMY.CONFIG.PATH", None) == ""
 
-    ss.get_sagemaker_config_override = MagicMock(return_value=None)
+    ss.get_sagemaker_config_value = MagicMock(return_value=None)
     assert ss.resolve_value_from_config([], "DUMMY.CONFIG.PATH", None) == []
 
-    ss.get_sagemaker_config_override = MagicMock(return_value=None)
+    ss.get_sagemaker_config_value = MagicMock(return_value=None)
     assert ss.resolve_value_from_config(False, "DUMMY.CONFIG.PATH", None) is False
 
-    ss.get_sagemaker_config_override = MagicMock(return_value=None)
+    ss.get_sagemaker_config_value = MagicMock(return_value=None)
     assert ss.resolve_value_from_config({}, "DUMMY.CONFIG.PATH", None) == {}
 
     # Different falsy config_values
-    ss.get_sagemaker_config_override = MagicMock(return_value="")
+    ss.get_sagemaker_config_value = MagicMock(return_value="")
     assert ss.resolve_value_from_config(None, "DUMMY.CONFIG.PATH", None) == ""
 
-    ss.get_sagemaker_config_override = MagicMock(return_value=[])
+    ss.get_sagemaker_config_value = MagicMock(return_value=[])
     assert ss.resolve_value_from_config(None, "DUMMY.CONFIG.PATH", None) == []
 
-    ss.get_sagemaker_config_override = MagicMock(return_value=False)
+    ss.get_sagemaker_config_value = MagicMock(return_value=False)
     assert ss.resolve_value_from_config(None, "DUMMY.CONFIG.PATH", None) is False
 
-    ss.get_sagemaker_config_override = MagicMock(return_value={})
+    ss.get_sagemaker_config_value = MagicMock(return_value={})
     assert ss.resolve_value_from_config(None, "DUMMY.CONFIG.PATH", None) == {}
 
 
@@ -4648,7 +4662,7 @@ def test_resolve_class_attribute_from_config(
     dummy_config_path = ["DUMMY", "CONFIG", "PATH"]
 
     # with an existing config value
-    ss.get_sagemaker_config_override = MagicMock(return_value=config_value)
+    ss.get_sagemaker_config_value = MagicMock(return_value=config_value)
 
     # instance exists and has value; config has value
     test_instance = TestClass(test_attribute=existing_value, extra="EXTRA_VALUE")
@@ -4694,7 +4708,7 @@ def test_resolve_class_attribute_from_config(
     )
 
     # without an existing config value
-    ss.get_sagemaker_config_override = MagicMock(return_value=None)
+    ss.get_sagemaker_config_value = MagicMock(return_value=None)
 
     # instance exists but doesnt have value; config doesnt have value
     test_instance = TestClass(extra="EXTRA_VALUE")
@@ -4731,7 +4745,7 @@ def test_resolve_nested_dict_value_from_config(sagemaker_session_without_mocked_
     dummy_config_path = ["DUMMY", "CONFIG", "PATH"]
 
     # with an existing config value
-    ss.get_sagemaker_config_override = MagicMock(return_value="CONFIG_VALUE")
+    ss.get_sagemaker_config_value = MagicMock(return_value="CONFIG_VALUE")
 
     # happy cases: return existing dict with existing values
     assert ss.resolve_nested_dict_value_from_config(
@@ -4803,7 +4817,7 @@ def test_resolve_nested_dict_value_from_config(sagemaker_session_without_mocked_
     )
 
     # without an existing config value
-    ss.get_sagemaker_config_override = MagicMock(return_value=None)
+    ss.get_sagemaker_config_value = MagicMock(return_value=None)
 
     # happy case: return dict with default_value when it wasnt set in dict and in config
     assert ss.resolve_nested_dict_value_from_config(
