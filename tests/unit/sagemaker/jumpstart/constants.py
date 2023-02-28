@@ -1183,6 +1183,24 @@ BASE_SPEC = {
     "training_dependencies": [],
     "training_vulnerabilities": [],
     "deprecated": False,
+    "default_inference_instance_type": "ml.p2.xlarge",
+    "supported_inference_instance_types": [
+        "ml.p2.xlarge",
+        "ml.p3.2xlarge",
+        "ml.g4dn.xlarge",
+        "ml.m5.large",
+        "ml.m5.xlarge",
+        "ml.c5.xlarge",
+        "ml.c5.2xlarge",
+    ],
+    "default_training_instance_type": "ml.p3.2xlarge",
+    "supported_training_instance_types": [
+        "ml.p3.2xlarge",
+        "ml.p2.xlarge",
+        "ml.g4dn.2xlarge",
+        "ml.m5.xlarge",
+        "ml.c5.2xlarge",
+    ],
 }
 
 BASE_HEADER = {

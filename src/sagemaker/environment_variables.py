@@ -27,6 +27,8 @@ def retrieve_default(
     region=None,
     model_id=None,
     model_version=None,
+    tolerate_vulnerable_model: bool = False,
+    tolerate_deprecated_model: bool = False,
 ) -> Dict[str, str]:
     """Retrieves the default container environment variables for the model matching the arguments.
 
@@ -37,6 +39,13 @@ def retrieve_default(
             retrieve the default environment variables. (Default: None).
         model_version (str): Optional. The version of the model for which to retrieve the
             default environment variables. (Default: None).
+        tolerate_vulnerable_model (bool): True if vulnerable versions of model
+            specifications should be tolerated (exception not raised). If False, raises an
+            exception if the script used by this version of the model has dependencies with known
+            security vulnerabilities. (Default: False).
+        tolerate_deprecated_model (bool): True if deprecated models should be tolerated
+            (exception not raised). False if these models should raise an exception.
+            (Default: False).
     Returns:
         dict: The variables to use for the model.
 
@@ -48,4 +57,6 @@ def retrieve_default(
             "Must specify `model_id` and `model_version` when retrieving environment variables."
         )
 
-    return artifacts._retrieve_default_environment_variables(model_id, model_version, region)
+    return artifacts._retrieve_default_environment_variables(
+        model_id, model_version, region, tolerate_vulnerable_model, tolerate_deprecated_model
+    )
