@@ -184,7 +184,8 @@ class DatasetBuilder:
         _include_deleted_records (bool): A boolean representing whether including deleted records or
             not (default: False).
         _cleanup_temporary_tables (bool): A boolean representing whether temporary tables are
-            cleaned up after calling to_dataframe when a dataframe is the base (default: False)
+            cleaned up after calling to_dataframe when a dataframe is the base. This requires
+            Glue:DeleteTable permissions in your execution role. (default: False)
         _number_of_recent_records (int): An int that how many records will be returned for each
             record identifier (default: 1).
         _number_of_records (int): An int that how many records will be returned (default: None).
