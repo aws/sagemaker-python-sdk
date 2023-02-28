@@ -436,15 +436,12 @@ dataset builder.
 
 .. code:: python
 
-   dataset_builder.include_duplicated_records().to_dataframe()
+   dataset_builder.include_duplicated_records()
+   dataset_builder.include_deleted_records()
 
 The DatasetBuilder provides `with_number_of_records_from_query_results` and
 `with_number_of_recent_records_by_record_identifier` methods to limit the
 number of records returned for the offline snapshot.
-
-.. code:: python
-
-   dataset_builder.with_number_of_recent_records_by_record_identifier(number_of_recent_records=1).to_dataframe()
 
 `with_number_of_records_from_query_results` will limit the number of records
 in the output. For example, when N = 100, only 100 records are going to be
@@ -452,12 +449,16 @@ returned in either the csv or dataframe.
 
 .. code:: python
 
-   dataset_builder.with_number_of_records_from_query_results(number_of_records=100).to_dataframe()
+   dataset_builder.with_number_of_records_from_query_results(number_of_records=N)
 
 On the other hand, `with_number_of_recent_records_by_record_identifier` is
 used to deal with records which have the same identifier. They are going
 to be sorted according to `event_time` and return at most N recent records
 in the output.
+
+.. code:: python
+
+   dataset_builder.with_number_of_recent_records_by_record_identifier(number_of_recent_records=N)
 
 Since these functions return the dataset builder, these functions can
 be chained.
@@ -465,9 +466,10 @@ be chained.
 .. code:: python
    
    dataset_builder
-      .with_number_of_records_from_query_results(number_of_records=100)
+      .with_number_of_records_from_query_results(number_of_records=N)
       .include_duplicated_records()
-      .with_number_of_recent_records_by_record_identifier(number_of_recent_records=1)
+      .with_number_of_recent_records_by_record_identifier(number_of_recent_records=N)
+      .to_dataframe()
 
 There are additional configurations that can be made for various use cases,
 such as time travel and point-in-time join. These are outlined in the
