@@ -1178,6 +1178,6 @@ def test_is_trainium_instance():
         "local_gpu",
     ]
     for tr_type in trainium_instance_types:
-        assert fw_utils.test_is_trainium_instance(tr_type) is True
+        assert fw_utils._is_trainium_instance(tr_type) is True
     for non_tr_type in non_trainum_instance_types:
-        assert fw_utils.test_is_trainium_instance(non_tr_type) is False
+        assert fw_utils._is_trainium_instance(non_tr_type) is False
