@@ -154,6 +154,95 @@ def advanced_right_sized_model(sagemaker_session, cpu_instance_type):
             )
 
 
+@pytest.fixture(scope="module")
+def default_right_sized_unregistered_model(sagemaker_session, cpu_instance_type):
+     with timeout(minutes=45):
+        try:
+            ir_job_name = unique_name_from_base("test-ir-right-size-job-name")
+            model_data = sagemaker_session.upload_data(path=IR_SKLEARN_MODEL)
+            payload_data = sagemaker_session.upload_data(path=IR_SKLEARN_PAYLOAD)
+
+            iam_client = sagemaker_session.boto_session.client("iam")
+            role_arn = iam_client.get_role(RoleName="SageMakerRole")["Role"]["Arn"]
+
+            sklearn_model = SKLearnModel(
+                model_data=model_data,
+                role=role_arn,
+                entry_point=IR_SKLEARN_ENTRY_POINT,
+                framework_version=IR_SKLEARN_FRAMEWORK_VERSION,
+            )
+
+            return (
+                sklearn_model.right_size(
+                    job_name=ir_job_name,
+                    sample_payload_url=payload_data,
+                    supported_content_types=IR_SKLEARN_CONTENT_TYPE,
+                    supported_instance_types=[cpu_instance_type],
+                    framework=IR_SKLEARN_FRAMEWORK,
+                    log_level="Quiet",
+                ),
+                ir_job_name,
+            )
+        except Exception:
+            sagemaker_session.delete_model(
+                ModelName=sklearn_model.temp_model_name
+            )
+
+
+@pytest.fixture(scope="module")
+def advanced_right_sized_unregistered_model(sagemaker_session, cpu_instance_type):
+    with timeout(minutes=45):
+        try:
+            model_data = sagemaker_session.upload_data(path=IR_SKLEARN_MODEL)
+            payload_data = sagemaker_session.upload_data(path=IR_SKLEARN_PAYLOAD)
+
+            iam_client = sagemaker_session.boto_session.client("iam")
+            role_arn = iam_client.get_role(RoleName="SageMakerRole")["Role"]["Arn"]
+
+            sklearn_model = SKLearnModel(
+                model_data=model_data,
+                role=role_arn,
+                entry_point=IR_SKLEARN_ENTRY_POINT,
+                framework_version=IR_SKLEARN_FRAMEWORK_VERSION,
+            )
+
+            hyperparameter_ranges = [
+                {
+                    "instance_types": CategoricalParameter([cpu_instance_type]),
+                    "TEST_PARAM": CategoricalParameter(
+                        ["TEST_PARAM_VALUE_1", "TEST_PARAM_VALUE_2"]
+                    ),
+                }
+            ]
+
+            phases = [
+                Phase(duration_in_seconds=300, initial_number_of_users=2, spawn_rate=2),
+                Phase(duration_in_seconds=300, initial_number_of_users=14, spawn_rate=2),
+            ]
+
+            model_latency_thresholds = [
+                ModelLatencyThreshold(percentile="P95", value_in_milliseconds=100)
+            ]
+
+            return sklearn_model.right_size(
+                    sample_payload_url=payload_data,
+                    supported_content_types=IR_SKLEARN_CONTENT_TYPE,
+                    framework=IR_SKLEARN_FRAMEWORK,
+                    job_duration_in_seconds=3600,
+                    hyperparameter_ranges=hyperparameter_ranges,
+                    phases=phases,
+                    model_latency_thresholds=model_latency_thresholds,
+                    max_invocations=100,
+                    max_tests=5,
+                    max_parallel_tests=5,
+                    log_level="Quiet",
+                )
+            
+        except Exception:
+            sagemaker_session.delete_model(
+                ModelName=sklearn_model.temp_model_name
+            )
+            
 @pytest.mark.slow_test
 def test_default_right_size_and_deploy_registered_model_sklearn(
     default_right_sized_model, sagemaker_session
@@ -174,6 +263,49 @@ def test_default_right_size_and_deploy_registered_model_sklearn(
         finally:
             predictor.delete_model()
             predictor.delete_endpoint()
+
+@pytest.mark.slow_test
+def test_default_right_size_and_deploy_unregistered_model_sklearn(
+    default_right_sized_unregistered_model, sagemaker_session
+):
+    endpoint_name = unique_name_from_base("test-ir-right-size-default-unregistered-sklearn")
+
+    right_size_model, ir_job_name = default_right_sized_unregistered_model
+    with timeout(minutes=45):
+        try:
+            right_size_model.predictor_cls = SKLearnPredictor
+            predictor = right_size_model.deploy(endpoint_name=endpoint_name)
+
+            payload = pd.read_csv(IR_SKLEARN_DATA, header=None)
+
+            inference = predictor.predict(payload)
+            assert inference is not None
+            assert 26 == len(inference)
+        finally:
+            predictor.delete_model()
+            predictor.delete_endpoint()
+
+@pytest.mark.slow_test
+def test_advanced_right_size_and_deploy_unregistered_model_sklearn(
+    advanced_right_sized_unregistered_model, sagemaker_session
+):
+    endpoint_name = unique_name_from_base("test-ir-right-size-advanced-sklearn")
+
+    right_size_model = advanced_right_sized_unregistered_model
+    with timeout(minutes=45):
+        try:
+            right_size_model.predictor_cls = SKLearnPredictor
+            predictor = right_size_model.deploy(endpoint_name=endpoint_name)
+
+            payload = pd.read_csv(IR_SKLEARN_DATA, header=None)
+
+            inference = predictor.predict(payload)
+            assert inference is not None
+            assert 26 == len(inference)
+        finally:
+            predictor.delete_model()
+            predictor.delete_endpoint() 
+
 
 
 @pytest.mark.slow_test
