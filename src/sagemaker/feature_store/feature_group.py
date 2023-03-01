@@ -473,11 +473,12 @@ class FeatureGroup:
     Attributes:
         name (str): name of the FeatureGroup instance.
         sagemaker_session (Session): session instance to perform boto calls.
+            If None, a new Session will be created.
         feature_definitions (Sequence[FeatureDefinition]): list of FeatureDefinitions.
     """
 
     name: str = attr.ib(factory=str)
-    sagemaker_session: Session = attr.ib(default=Session)
+    sagemaker_session: Session = attr.ib(factory=Session)
     feature_definitions: Sequence[FeatureDefinition] = attr.ib(factory=list)
 
     _INTEGER_TYPES = [

@@ -1,5 +1,38 @@
 # Changelog
 
+## v2.135.1 (2023-03-01)
+
+### Bug Fixes and Other Changes
+
+ * Revert back to stable apache-airflow-providers-amazon from 7.2.1 to 4.0.0.
+ * Typo in graviton algos
+ * build(deps): bump apache-airflow-providers-amazon from 4.0.0 to 7.2.1 in /requirements/extras
+ * Support cloning private repo using ssh key
+ * Create a default SageMaker Session inside FeatureGroup class
+
+### Documentation Changes
+
+ * fix typo in README
+
+## v2.135.0 (2023-02-23)
+
+### Features
+
+ * Add DLC accounts for MEL Region
+ * allow use of short lived creds for local container
+
+### Bug Fixes and Other Changes
+
+ * update lambda function when function arn is provided
+
+## v2.134.1 (2023-02-22)
+
+### Bug Fixes and Other Changes
+
+ * local mode deletion of temp files on job end
+ * Cron expression resetting on update monitor
+ * added support to update arguments in create_monitoring_schedule
+
 ## v2.134.0 (2023-02-22)
 
 ### Features

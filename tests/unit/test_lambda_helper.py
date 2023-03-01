@@ -41,6 +41,7 @@ def sagemaker_session():
         boto_region_name=REGION,
         config=None,
         local_mode=False,
+        # default_bucket=S3_BUCKET,
     )
     return session_mock
 
@@ -117,7 +118,7 @@ def test_lambda_object_no_code_error():
     assert "Either zipped_code_dir or script must be provided" in str(error)
 
 
-def test_lambda_object_both_script_and_code_dir_error():
+def test_lambda_object_both_script_and_code_dir_error_with_name():
     with pytest.raises(ValueError) as error:
         lambda_helper.Lambda(
             function_name=FUNCTION_NAME,
@@ -125,6 +126,17 @@ def test_lambda_object_both_script_and_code_dir_error():
             script=SCRIPT,
             zipped_code_dir=ZIPPED_CODE_DIR,
             handler=HANDLER,
+            session=sagemaker_session,
+        )
+    assert "Provide either script or zipped_code_dir, not both." in str(error)
+
+
+def test_lambda_object_both_script_and_code_dir_error_with_arn():
+    with pytest.raises(ValueError) as error:
+        lambda_helper.Lambda(
+            function_arn=LAMBDA_ARN,
+            script=SCRIPT,
+            zipped_code_dir=ZIPPED_CODE_DIR,
             session=sagemaker_session,
         )
     assert "Provide either script or zipped_code_dir, not both." in str(error)
@@ -271,6 +283,25 @@ def test_update_lambda_happycase2(sagemaker_session):
 
     sagemaker_session.lambda_client.update_function_code.assert_called_with(
         FunctionName=LAMBDA_ARN, S3Bucket=S3_BUCKET, S3Key=S3_KEY
+    )
+
+
+@patch("sagemaker.lambda_helper._upload_to_s3", return_value=S3_KEY)
+def test_update_lambda_s3bucket_not_provided(s3_upload, sagemaker_session):
+    lambda_obj = lambda_helper.Lambda(
+        function_arn=LAMBDA_ARN,
+        execution_role_arn=EXECUTION_ROLE,
+        zipped_code_dir=ZIPPED_CODE_DIR,
+        handler=HANDLER,
+        session=sagemaker_session,
+    )
+
+    lambda_obj.update()
+
+    sagemaker_session.lambda_client.update_function_code.assert_called_with(
+        FunctionName=LAMBDA_ARN,
+        S3Bucket=sagemaker_session.default_bucket(),
+        S3Key=s3_upload.return_value,
     )
 
 
