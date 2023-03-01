@@ -26,6 +26,7 @@ IR_SAMPLE_FRAMEWORK = "SAGEMAKER-SCIKIT-LEARN"
 IR_SUPPORTED_CONTENT_TYPES = ["text/csv"]
 IR_JOB_NAME = "SMPYTHONSDK-1234567891"
 IR_SAMPLE_INSTANCE_TYPE = "ml.c5.xlarge"
+IR_MODEL_NAME = "SMPYTHONSDK-sample-unique-uuid"
 
 IR_SAMPLE_LIST_OF_INSTANCES_HYPERPARAMETER_RANGES = [
     {
@@ -174,7 +175,7 @@ def default_right_sized_model(model_package):
         framework=IR_SAMPLE_FRAMEWORK,
     )
 
-
+@patch("uuid.uuid4", MagicMock(return_value="sample-unique-uuid"))
 def test_right_size_default_with_model_name_successful(sagemaker_session, model):
     inference_recommender_model = model.right_size(
         sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
@@ -184,13 +185,23 @@ def test_right_size_default_with_model_name_successful(sagemaker_session, model)
         framework=IR_SAMPLE_FRAMEWORK,
     )
 
+    # assert that the create model api has been called with default parameters
+    assert sagemaker_session.create_model.called_with(
+        name=IR_MODEL_NAME,
+        role=IR_ROLE_ARN,
+        container_defs=None,
+        primary_container={},
+        vpc_config=None,
+        enable_network_isolation=False
+    )
+
     # assert that the create api has been called with default parameters with model name
     assert sagemaker_session.create_inference_recommendations_job.called_with(
         role=IR_ROLE_ARN,
         job_name=IR_JOB_NAME,
         job_type="Default",
         job_duration_in_seconds=None,
-        model_name=ANY,
+        model_name=IR_MODEL_NAME,
         model_package_version_arn=None,
         framework=IR_SAMPLE_FRAMEWORK,
         framework_version=None,
@@ -218,6 +229,7 @@ def test_right_size_default_with_model_name_successful(sagemaker_session, model)
     # confirm that the returned object of right_size is itself
     assert inference_recommender_model == model
 
+@patch("uuid.uuid4", MagicMock(return_value="sample-unique-uuid"))
 def test_right_size_advanced_list_instances_model_name_successful(sagemaker_session, model):
     inference_recommender_model = model.right_size(
         sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
@@ -239,7 +251,7 @@ def test_right_size_advanced_list_instances_model_name_successful(sagemaker_sess
         job_name=IR_JOB_NAME,
         job_type="Advanced",
         job_duration_in_seconds=7200,
-        model_name=ANY,
+        model_name=IR_MODEL_NAME,
         model_package_version_arn=None,
         framework=IR_SAMPLE_FRAMEWORK,
         framework_version=None,
@@ -267,6 +279,7 @@ def test_right_size_advanced_list_instances_model_name_successful(sagemaker_sess
     # confirm that the returned object of right_size is itself
     assert inference_recommender_model == model
     
+@patch("uuid.uuid4", MagicMock(return_value="sample-unique-uuid"))
 def test_right_size_advanced_single_instances_model_name_successful(sagemaker_session, model):
     model.right_size(
         sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
@@ -288,7 +301,7 @@ def test_right_size_advanced_single_instances_model_name_successful(sagemaker_se
         job_name=IR_JOB_NAME,
         job_type="Advanced",
         job_duration_in_seconds=7200,
-        model_name=ANY,
+        model_name=IR_MODEL_NAME,
         model_package_version_arn=None,
         framework=IR_SAMPLE_FRAMEWORK,
         framework_version=None,

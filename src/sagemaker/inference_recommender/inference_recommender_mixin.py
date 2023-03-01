@@ -148,25 +148,32 @@ class InferenceRecommenderMixin:
 
         self._init_sagemaker_session_if_does_not_exist()
 
-        model_name = None
-        if isinstance(self, sagemaker.model.FrameworkModel):
+        temp_model_name = None
+        if isinstance(self, sagemaker.model.Model) and not isinstance(self, sagemaker.model.ModelPackage):
 
             unique_tail = uuid.uuid4()
-            model_name = "SMPYTHONSDK-" + str(unique_tail)
+            temp_model_name = "SMPYTHONSDK-" + str(unique_tail)
 
-            self.sagemaker_session.create_model(
-                name=model_name,
+            create_model_args = dict(
+                name=temp_model_name,
                 role=self.role,
                 container_defs=None,
                 primary_container=self.prepare_container_def(),
+                vpc_config=self.vpc_config,
+                enable_network_isolation=self.enable_network_isolation()
             )
+            print(f"Creating temporary model with name: {temp_model_name}" \
+                "for Inference Recommender.", flush=True)
+            self.sagemaker_session.create_model(**create_model_args)
+            print("Temporary model created. Start to run Inference Recommender...", flush=True)
+
 
         ret_name = self.sagemaker_session.create_inference_recommendations_job(
             role=self.role,
             job_name=job_name,
             job_type=job_type,
             job_duration_in_seconds=job_duration_in_seconds,
-            model_name=model_name,
+            model_name=temp_model_name,
             model_package_version_arn=getattr(self, "model_package_arn", None),
             framework=framework,
             framework_version=framework_version,
@@ -188,8 +195,11 @@ class InferenceRecommenderMixin:
             "InferenceRecommendations"
         )
 
-        if model_name is not None:
-            self.sagemaker_session.delete_model(model_name)
+        if temp_model_name is not None:
+            print(f"Deleting temporary model with name: {temp_model_name}" \
+                "for Inference Recommender.", flush=True)
+            self.sagemaker_session.delete_model(temp_model_name)
+            print("Delete complete.")
         return self
 
     def _update_params(
