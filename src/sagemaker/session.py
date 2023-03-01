@@ -4820,6 +4820,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         framework: str,
         sample_payload_url: str,
         supported_content_types: List[str],
+        model_name: str = None,
         model_package_version_arn: str = None,
         job_duration_in_seconds: int = None,
         job_type: str = "Default",
@@ -4843,6 +4844,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             framework (str): The machine learning framework of the Image URI.
             sample_payload_url (str): The S3 path where the sample payload is stored.
             supported_content_types (List[str]): The supported MIME types for the input data.
+            model_name (str): Name of the Amazon SageMaker ``Model`` to be used.
             model_package_version_arn (str): The Amazon Resource Name (ARN) of a
                 versioned model package.
             job_duration_in_seconds (int): The maximum job duration that a job
@@ -4884,15 +4886,26 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if supported_instance_types:
             containerConfig["SupportedInstanceTypes"] = supported_instance_types
 
-        request = {
-            "JobName": job_name,
-            "JobType": job_type,
-            "RoleArn": role,
-            "InputConfig": {
-                "ContainerConfig": containerConfig,
-                "ModelPackageVersionArn": model_package_version_arn,
-            },
-        }
+        if model_package_version_arn:
+            request = {
+                "JobName": job_name,
+                "JobType": job_type,
+                "RoleArn": role,
+                "InputConfig": {
+                    "ContainerConfig": containerConfig,
+                    "ModelPackageVersionArn": model_package_version_arn,
+                },
+            }
+        else:
+            request = {
+                "JobName": job_name,
+                "JobType": job_type,
+                "RoleArn": role,
+                "InputConfig": {
+                    "ContainerConfig": containerConfig,
+                    "ModelName": model_name,
+                },
+            }
 
         if job_description:
             request["JobDescription"] = job_description
@@ -4918,6 +4931,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         supported_content_types: List[str],
         job_name: str = None,
         job_type: str = "Default",
+        model_name: str = None,
         model_package_version_arn: str = None,
         job_duration_in_seconds: int = None,
         nearest_model_name: str = None,
@@ -4938,6 +4952,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 You must grant sufficient permissions to this role.
             sample_payload_url (str): The S3 path where the sample payload is stored.
             supported_content_types (List[str]): The supported MIME types for the input data.
+            model_name (str): Name of the Amazon SageMaker ``Model`` to be used.
             model_package_version_arn (str): The Amazon Resource Name (ARN) of a
                 versioned model package.
             job_name (str): The name of the job being run.
@@ -4964,6 +4979,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             str: The name of the job created. In the form of `SMPYTHONSDK-<timestamp>`
         """
 
+        if model_name is None and model_package_version_arn is None:
+            raise ValueError("Either model_name or model_package_version_arn should be provided.")
+
         if not job_name:
             unique_tail = uuid.uuid4()
             job_name = "SMPYTHONSDK-" + str(unique_tail)
@@ -4972,6 +4990,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         create_inference_recommendations_job_request = (
             self._create_inference_recommendations_job_request(
                 role=role,
+                model_name=model_name,
                 model_package_version_arn=model_package_version_arn,
                 job_name=job_name,
                 job_type=job_type,

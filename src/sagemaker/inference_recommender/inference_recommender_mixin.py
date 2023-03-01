@@ -15,6 +15,7 @@ from __future__ import absolute_import
 
 import logging
 import re
+import uuid
 
 from typing import List, Dict, Optional
 import sagemaker
@@ -38,7 +39,7 @@ class Phase:
     """
 
     def __init__(self, duration_in_seconds: int, initial_number_of_users: int, spawn_rate: int):
-        """Initialze a `Phase`"""
+        """Initialize a `Phase`"""
         self.to_json = {
             "DurationInSeconds": duration_in_seconds,
             "InitialNumberOfUsers": initial_number_of_users,
@@ -53,7 +54,7 @@ class ModelLatencyThreshold:
     """
 
     def __init__(self, percentile: str, value_in_milliseconds: int):
-        """Initialze a `ModelLatencyThreshold`"""
+        """Initialize a `ModelLatencyThreshold`"""
         self.to_json = {"Percentile": percentile, "ValueInMilliseconds": value_in_milliseconds}
 
 
@@ -119,8 +120,6 @@ class InferenceRecommenderMixin:
             sagemaker.model.Model: A SageMaker ``Model`` object. See
             :func:`~sagemaker.model.Model` for full details.
         """
-        if not isinstance(self, sagemaker.model.ModelPackage):
-            raise ValueError("right_size() is currently only supported with a registered model")
 
         if not framework and self._framework():
             framework = INFERENCE_RECOMMENDER_FRAMEWORK_MAPPING.get(self._framework(), framework)
@@ -149,12 +148,26 @@ class InferenceRecommenderMixin:
 
         self._init_sagemaker_session_if_does_not_exist()
 
+        model_name = None
+        if isinstance(self, sagemaker.model.FrameworkModel):
+
+            unique_tail = uuid.uuid4()
+            model_name = "SMPYTHONSDK-" + str(unique_tail)
+
+            self.sagemaker_session.create_model(
+                name=model_name,
+                role=self.role,
+                container_defs=None,
+                primary_container=self.prepare_container_def(),
+            )
+
         ret_name = self.sagemaker_session.create_inference_recommendations_job(
             role=self.role,
             job_name=job_name,
             job_type=job_type,
             job_duration_in_seconds=job_duration_in_seconds,
-            model_package_version_arn=self.model_package_arn,
+            model_name=model_name,
+            model_package_version_arn=getattr(self, "model_package_arn", None),
             framework=framework,
             framework_version=framework_version,
             sample_payload_url=sample_payload_url,
@@ -175,6 +188,8 @@ class InferenceRecommenderMixin:
             "InferenceRecommendations"
         )
 
+        if model_name is not None:
+            self.sagemaker_session.delete_model(model_name)
         return self
 
     def _update_params(
