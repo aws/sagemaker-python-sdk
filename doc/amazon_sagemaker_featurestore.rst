@@ -464,7 +464,7 @@ Since these functions return the dataset builder, these functions can
 be chained.
 
 .. code:: python
-   
+
    dataset_builder
       .with_number_of_records_from_query_results(number_of_records=N)
       .include_duplicated_records()
