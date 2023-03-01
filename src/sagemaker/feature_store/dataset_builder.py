@@ -178,24 +178,24 @@ class DatasetBuilder:
         _point_in_time_accurate_join (bool): A boolean representing if point-in-time join
             is applied to the resulting dataframe when calling "to_dataframe".
             When set to True, users can retrieve data using “row-level time travel”
-            according to the event times provided to the DatasetBuilder. This requires that the 
+            according to the event times provided to the DatasetBuilder. This requires that the
             entity dataframe with event times is submitted as the base in the constructor
             (default: False).
         _include_duplicated_records (bool): A boolean representing whether the resulting dataframe
             when calling "to_dataframe" should include duplicated records (default: False).
-        _include_deleted_records (bool): A boolean representing whether the resulting 
+        _include_deleted_records (bool): A boolean representing whether the resulting
             dataframe when calling "to_dataframe" should include deleted records (default: False).
         _number_of_recent_records (int): An integer representing how many records will be
             returned for each record identifier (default: 1).
         _number_of_records (int): An integer representing the number of records that should be
             returned in the resulting dataframe when calling "to_dataframe" (default: None).
-        _write_time_ending_timestamp (datetime.datetime): A datetime that represents the latest 
+        _write_time_ending_timestamp (datetime.datetime): A datetime that represents the latest
             write time for a record to be included in the resulting dataset. Records with a
             newer write time will be omitted from the resulting dataset. (default: None).
-        _event_time_starting_timestamp (datetime.datetime): A datetime that represents the earliest 
+        _event_time_starting_timestamp (datetime.datetime): A datetime that represents the earliest
             event time for a record to be included in the resulting dataset. Records
             with an older event time will be omitted from the resulting dataset. (default: None).
-        _event_time_ending_timestamp (datetime.datetime): A datetime that represents the latest 
+        _event_time_ending_timestamp (datetime.datetime): A datetime that represents the latest
             event time for a record to be included in the resulting dataset. Records
             with a newer event time will be omitted from the resulting dataset. (default: None).
         _feature_groups_to_be_merged (List[FeatureGroupToBeMerged]): A list of
