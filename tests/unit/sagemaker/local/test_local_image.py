@@ -860,5 +860,25 @@ def test__aws_credentials_with_short_lived_credentials_and_ec2_metadata_service_
     ]
 
 
+@patch("sagemaker.local.image._aws_credentials_available_in_metadata_service")
+def test__aws_credentials_with_short_lived_credentials_and_ec2_metadata_service_having_credentials_override(
+    mock,
+):
+    os.environ["USE_SHORT_LIVED_CREDENTIALS"] = "1"
+    credentials = Credentials(
+        access_key=_random_string(), secret_key=_random_string(), token=_random_string()
+    )
+    session = Mock()
+    session.get_credentials.return_value = credentials
+    mock.return_value = True
+    aws_credentials = _aws_credentials(session)
+
+    assert aws_credentials == [
+        "AWS_ACCESS_KEY_ID=%s" % credentials.access_key,
+        "AWS_SECRET_ACCESS_KEY=%s" % credentials.secret_key,
+        "AWS_SESSION_TOKEN=%s" % credentials.token,
+    ]
+
+
 def _random_string(size=6, chars=string.ascii_uppercase):
     return "".join(random.choice(chars) for x in range(size))
