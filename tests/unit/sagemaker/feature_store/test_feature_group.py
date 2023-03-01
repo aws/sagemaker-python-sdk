@@ -323,6 +323,7 @@ def test_ingest_default(ingestion_manager_init, sagemaker_session_mock):
     sagemaker_session_mock.sagemaker_featurestore_runtime_client.meta.config = (
         fs_runtime_client_config_mock
     )
+    sagemaker_session_mock.boto_session.profile_name = "default"
 
     feature_group = FeatureGroup(name="MyGroup", sagemaker_session=sagemaker_session_mock)
     df = pd.DataFrame(dict((f"float{i}", pd.Series([2.0], dtype="float64")) for i in range(300)))
@@ -337,7 +338,7 @@ def test_ingest_default(ingestion_manager_init, sagemaker_session_mock):
         sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
         max_workers=1,
         max_processes=1,
-        profile_name=sagemaker_session_mock.boto_session.profile_name,
+        profile_name=None,
     )
     mock_ingestion_manager_instance.run.assert_called_once_with(
         data_frame=df, wait=True, timeout=None
