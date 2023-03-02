@@ -126,7 +126,7 @@ To run the unit tests with tox, run:
 
     tox tests/unit
 
-**Integrations tests**
+**Integration tests**
 
 To run the integration tests, the following prerequisites must be met
 
