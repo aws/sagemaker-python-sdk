@@ -175,6 +175,7 @@ def default_right_sized_model(model_package):
         framework=IR_SAMPLE_FRAMEWORK,
     )
 
+
 @patch("uuid.uuid4", MagicMock(return_value="sample-unique-uuid"))
 def test_right_size_default_with_model_name_successful(sagemaker_session, model):
     inference_recommender_model = model.right_size(
@@ -229,6 +230,7 @@ def test_right_size_default_with_model_name_successful(sagemaker_session, model)
     # confirm that the returned object of right_size is itself
     assert inference_recommender_model == model
 
+
 @patch("uuid.uuid4", MagicMock(return_value="sample-unique-uuid"))
 def test_right_size_advanced_list_instances_model_name_successful(sagemaker_session, model):
     inference_recommender_model = model.right_size(
@@ -278,7 +280,8 @@ def test_right_size_advanced_list_instances_model_name_successful(sagemaker_sess
 
     # confirm that the returned object of right_size is itself
     assert inference_recommender_model == model
-    
+
+
 @patch("uuid.uuid4", MagicMock(return_value="sample-unique-uuid"))
 def test_right_size_advanced_single_instances_model_name_successful(sagemaker_session, model):
     model.right_size(
@@ -313,7 +316,6 @@ def test_right_size_advanced_single_instances_model_name_successful(sagemaker_se
         stopping_conditions=IR_SAMPLE_STOPPING_CONDITIONS,
         resource_limit=IR_SAMPLE_RESOURCE_LIMIT,
     )
-
 
 
 def test_right_size_default_with_model_package_successful(sagemaker_session, model_package):
@@ -358,7 +360,7 @@ def test_right_size_default_with_model_package_successful(sagemaker_session, mod
 
     # confirm that the returned object of right_size is itself
     assert inference_recommender_model_pkg == model_package
-    
+
 
 def test_right_size_advanced_list_instances_model_package_successful(
     sagemaker_session, model_package

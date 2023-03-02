@@ -156,7 +156,7 @@ def advanced_right_sized_model(sagemaker_session, cpu_instance_type):
 
 @pytest.fixture(scope="module")
 def default_right_sized_unregistered_model(sagemaker_session, cpu_instance_type):
-     with timeout(minutes=45):
+    with timeout(minutes=45):
         try:
             ir_job_name = unique_name_from_base("test-ir-right-size-job-name")
             model_data = sagemaker_session.upload_data(path=IR_SKLEARN_MODEL)
@@ -225,24 +225,25 @@ def advanced_right_sized_unregistered_model(sagemaker_session, cpu_instance_type
             ]
 
             return sklearn_model.right_size(
-                    sample_payload_url=payload_data,
-                    supported_content_types=IR_SKLEARN_CONTENT_TYPE,
-                    framework=IR_SKLEARN_FRAMEWORK,
-                    job_duration_in_seconds=3600,
-                    hyperparameter_ranges=hyperparameter_ranges,
-                    phases=phases,
-                    model_latency_thresholds=model_latency_thresholds,
-                    max_invocations=100,
-                    max_tests=5,
-                    max_parallel_tests=5,
-                    log_level="Quiet",
-                )
-            
+                sample_payload_url=payload_data,
+                supported_content_types=IR_SKLEARN_CONTENT_TYPE,
+                framework=IR_SKLEARN_FRAMEWORK,
+                job_duration_in_seconds=3600,
+                hyperparameter_ranges=hyperparameter_ranges,
+                phases=phases,
+                model_latency_thresholds=model_latency_thresholds,
+                max_invocations=100,
+                max_tests=5,
+                max_parallel_tests=5,
+                log_level="Quiet",
+            )
+
         except Exception:
             sagemaker_session.delete_model(
                 ModelName=sklearn_model.temp_model_name
             )
-            
+
+
 @pytest.mark.slow_test
 def test_default_right_size_and_deploy_registered_model_sklearn(
     default_right_sized_model, sagemaker_session
@@ -263,6 +264,7 @@ def test_default_right_size_and_deploy_registered_model_sklearn(
         finally:
             predictor.delete_model()
             predictor.delete_endpoint()
+
 
 @pytest.mark.slow_test
 def test_default_right_size_and_deploy_unregistered_model_sklearn(
@@ -285,6 +287,7 @@ def test_default_right_size_and_deploy_unregistered_model_sklearn(
             predictor.delete_model()
             predictor.delete_endpoint()
 
+
 @pytest.mark.slow_test
 def test_advanced_right_size_and_deploy_unregistered_model_sklearn(
     advanced_right_sized_unregistered_model, sagemaker_session
@@ -304,8 +307,7 @@ def test_advanced_right_size_and_deploy_unregistered_model_sklearn(
             assert 26 == len(inference)
         finally:
             predictor.delete_model()
-            predictor.delete_endpoint() 
-
+            predictor.delete_endpoint()
 
 
 @pytest.mark.slow_test

@@ -3244,6 +3244,7 @@ def create_inference_recommendations_job_default_happy_response():
         "JobDescription": "#python-sdk-create",
     }
 
+
 def create_inference_recommendations_job_default_model_name_happy_response():
     return {
         "JobName": IR_USER_JOB_NAME,
@@ -3347,7 +3348,7 @@ def test_create_inference_recommendations_job_default_model_name_happy(sagemaker
         role=IR_ROLE_ARN,
         sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
         supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
-        model_name = IR_MODEL_NAME,
+        model_name=IR_MODEL_NAME,
         model_package_version_arn=None,
         framework=IR_FRAMEWORK,
         framework_version=IR_FRAMEWORK_VERSION,
@@ -3361,6 +3362,7 @@ def test_create_inference_recommendations_job_default_model_name_happy(sagemaker
     )
 
     assert IR_USER_JOB_NAME == job_name
+
 
 @patch("uuid.uuid4", MagicMock(return_value="sample-unique-uuid"))
 def test_create_inference_recommendations_job_advanced_model_name_happy(sagemaker_session):
@@ -3388,23 +3390,25 @@ def test_create_inference_recommendations_job_advanced_model_name_happy(sagemake
 
     assert IR_JOB_NAME == job_name
 
+
 def test_create_inference_recommendations_job_missing_model_name_and_pkg(sagemaker_session):
     with pytest.raises(
         ValueError,
         match="Missing model_name and model_package_version_arn, please provide one of them."
     ):
         sagemaker_session.create_inference_recommendations_job(
-        role=IR_ROLE_ARN,
-        sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
-        supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
-        model_name = None,
-        model_package_version_arn=None,
-        framework=IR_FRAMEWORK,
-        framework_version=IR_FRAMEWORK_VERSION,
-        nearest_model_name=IR_NEAREST_MODEL_NAME,
-        supported_instance_types=IR_SUPPORTED_INSTANCE_TYPES,
-        job_name=IR_USER_JOB_NAME,
+            role=IR_ROLE_ARN,
+            sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
+            supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
+            model_name=None,
+            model_package_version_arn=None,
+            framework=IR_FRAMEWORK,
+            framework_version=IR_FRAMEWORK_VERSION,
+            nearest_model_name=IR_NEAREST_MODEL_NAME,
+            supported_instance_types=IR_SUPPORTED_INSTANCE_TYPES,
+            job_name=IR_USER_JOB_NAME,
         )
+
 
 def test_create_inference_recommendations_job_provided_model_name_and_pkg(sagemaker_session):
     with pytest.raises(
@@ -3412,16 +3416,16 @@ def test_create_inference_recommendations_job_provided_model_name_and_pkg(sagema
         match="Please provide either model_name or model_package_version_arn should be provided, not both."
     ):
         sagemaker_session.create_inference_recommendations_job(
-        role=IR_ROLE_ARN,
-        sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
-        supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
-        model_name=IR_MODEL_NAME,
-        model_package_version_arn=IR_MODEL_PACKAGE_VERSION_ARN,
-        framework=IR_FRAMEWORK,
-        framework_version=IR_FRAMEWORK_VERSION,
-        nearest_model_name=IR_NEAREST_MODEL_NAME,
-        supported_instance_types=IR_SUPPORTED_INSTANCE_TYPES,
-        job_name=IR_USER_JOB_NAME,
+            role=IR_ROLE_ARN,
+            sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
+            supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
+            model_name=IR_MODEL_NAME,
+            model_package_version_arn=IR_MODEL_PACKAGE_VERSION_ARN,
+            framework=IR_FRAMEWORK,
+            framework_version=IR_FRAMEWORK_VERSION,
+            nearest_model_name=IR_NEAREST_MODEL_NAME,
+            supported_instance_types=IR_SUPPORTED_INSTANCE_TYPES,
+            job_name=IR_USER_JOB_NAME,
         )
 
 

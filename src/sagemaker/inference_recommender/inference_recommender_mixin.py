@@ -162,11 +162,10 @@ class InferenceRecommenderMixin:
                 vpc_config=self.vpc_config,
                 enable_network_isolation=self.enable_network_isolation()
             )
-            print(f"Creating temporary model with name: {self.temp_model_name}" \
-                " for Inference Recommender.", flush=True)
+            print(f"Creating temporary model with name: {self.temp_model_name}"
+                   " for Inference Recommender.", flush=True)
             self.sagemaker_session.create_model(**create_model_args)
             print("Temporary model created. Start to run Inference Recommender...", flush=True)
-
 
         ret_name = self.sagemaker_session.create_inference_recommendations_job(
             role=self.role,
@@ -196,8 +195,8 @@ class InferenceRecommenderMixin:
         )
 
         if self.temp_model_name is not None:
-            print(f"Deleting temporary model with name: {self.temp_model_name} " \
-                "for Inference Recommender.", flush=True)
+            print(f"Deleting temporary model with name: {self.temp_model_name} "
+                   "for Inference Recommender.", flush=True)
             self.sagemaker_session.delete_model(self.temp_model_name)
             self.temp_model_name = None
             print("Delete complete.")
