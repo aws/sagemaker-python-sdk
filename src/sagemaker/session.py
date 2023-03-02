@@ -220,6 +220,10 @@ TRANSFORM_RESOURCES_VOLUME_KMS_KEY_ID_PATH = _simple_path(
 TRANSFORM_JOB_KMS_KEY_ID_PATH = _simple_path(
     SAGEMAKER, TRANSFORM_JOB, DATA_CAPTURE_CONFIG, KMS_KEY_ID
 )
+TRANSFORM_JOB_VOLUME_KMS_KEY_ID_PATH = _simple_path(
+    SAGEMAKER, TRANSFORM_JOB, TRANSFORM_RESOURCES, VOLUME_KMS_KEY_ID
+)
+
 MODEL_VPC_CONFIG_PATH = _simple_path(SAGEMAKER, MODEL, VPC_CONFIG)
 MODEL_ENABLE_NETWORK_ISOLATION_PATH = _simple_path(SAGEMAKER, MODEL, ENABLE_NETWORK_ISOLATION)
 MODEL_EXECUTION_ROLE_ARN_PATH = _simple_path(SAGEMAKER, MODEL, EXECUTION_ROLE_ARN)
@@ -812,7 +816,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
         return default_value
 
     def resolve_class_attribute_from_config(
-        self, clazz, instance, attribute: str, config_path: str, default_value=None
+        self,
+        clazz: Optional[type],
+        instance: Optional[object],
+        attribute: str,
+        config_path: str,
+        default_value=None,
     ):
         """Utility method that merges config values to data classes.
 
@@ -823,13 +832,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
         (1) current value of attribute, (2) config value, (3) default_value, (4) does not set it
 
         Args:
-            clazz: Class of 'instance'. Used to generate a new instance if the instance is None.
-                   It is advised for the constructor of a given Class to set default values to
-                   None; otherwise the constructor's non-None default value will be used instead
-                   of any config value
-            instance (str): instance of the Class 'clazz' that has an attribute
-                            of 'attribute' to set
-            attribute: attribute of the instance to set if not already set
+            clazz (Optional[type]): Class of 'instance'. Used to generate a new instance if the
+                   instance is None. If None is provided here, no new object will be created
+                   if 'instance' doesnt exist. Note: if provided, the constructor should set default
+                   values to None; Otherwise, the constructor's non-None default will be left
+                   as-is even if a config value was defined.
+            instance (Optional[object]): instance of the Class 'clazz' that has an attribute
+                     of 'attribute' to set
+            attribute (str): attribute of the instance to set if not already set
             config_path (str): a string denoting the path to use to lookup the config value in the
                                sagemaker config
             default_value: the value to use if not present elsewhere
@@ -3545,23 +3555,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
         tags = self._append_sagemaker_config_tags(
             tags, "{}.{}.{}".format(SAGEMAKER, TRANSFORM_JOB, TAGS)
         )
-        if batch_data_capture_config:
-            if not batch_data_capture_config.kms_key_id:
-                batch_data_capture_config.kms_key_id = self.get_sagemaker_config_override(
-                    TRANSFORM_JOB_KMS_KEY_ID_PATH
-                )
-        if output_config:
-            kms_key_from_config = self.get_sagemaker_config_override(
-                TRANSFORM_OUTPUT_KMS_KEY_ID_PATH
-            )
-            if KMS_KEY_ID not in output_config and kms_key_from_config:
-                output_config[KMS_KEY_ID] = kms_key_from_config
-        if resource_config:
-            volume_kms_key_from_config = self.get_sagemaker_config_override(
-                TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH
-            )
-            if VOLUME_KMS_KEY_ID not in resource_config and volume_kms_key_from_config:
-                resource_config[VOLUME_KMS_KEY_ID] = volume_kms_key_from_config
+        batch_data_capture_config = self.resolve_class_attribute_from_config(
+            None, batch_data_capture_config, "kms_key_id", TRANSFORM_JOB_KMS_KEY_ID_PATH
+        )
+        output_config = self.resolve_nested_dict_value_from_config(
+            output_config, [KMS_KEY_ID], TRANSFORM_OUTPUT_KMS_KEY_ID_PATH
+        )
+        resource_config = self.resolve_nested_dict_value_from_config(
+            resource_config, [VOLUME_KMS_KEY_ID], TRANSFORM_JOB_VOLUME_KMS_KEY_ID_PATH
+        )
 
         transform_request = self._get_transform_request(
             job_name=job_name,
@@ -5248,7 +5250,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         inferred_online_store_from_config = self._update_nested_dictionary_with_values_from_config(
             online_store_config, FEATURE_GROUP_ONLINE_STORE_CONFIG_PATH
         )
-        if len(inferred_online_store_from_config) > 0:
+        if inferred_online_store_from_config is not None:
             # OnlineStore should be handled differently because if you set KmsKeyId, then you
             # need to set EnableOnlineStore key as well
             inferred_online_store_from_config["EnableOnlineStore"] = True
@@ -5608,17 +5610,31 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             dict: The merged nested dictionary which includes missings values that are present
             in the Config file.
-
         """
         inferred_config_dict = self.get_sagemaker_config_value(config_key_path) or {}
         original_config_dict_value = inferred_config_dict.copy()
         merge_dicts(inferred_config_dict, source_dict or {})
+
+        if original_config_dict_value == {}:
+            # The config value is empty. That means either
+            # (1) inferred_config_dict equals source_dict, or
+            # (2) if source_dict was None, inferred_config_dict equals {}
+            # We should return whatever source_dict was to be safe. Because if for example,
+            # a VpcConfig is set to {} instead of None, some boto calls will fail due to
+            # ParamValidationError (because a VpcConfig was specified but required parameters for
+            # the VpcConfig were missing.)
+
+            # Dont need to print because no config value was used or defined
+            return source_dict
+
         if source_dict == inferred_config_dict:
-            # Corresponds to the case where we didn't use any values from Config.
+            # We didnt use any values from the config, but we should print if any of the config
+            # values were defined
             self._print_message_on_sagemaker_config_usage(
                 source_dict, original_config_dict_value, config_key_path
             )
         else:
+            # Something from the config was merged in
             print(
                 "[Sagemaker Config - applied value]\n",
                 "config key = {}\n".format(config_key_path),

@@ -18,6 +18,7 @@ import inspect
 from functools import wraps
 from typing import Dict, Optional, Callable
 
+from sagemaker.config import SageMakerConfig
 from sagemaker.session import Session, SessionSettings
 from sagemaker.local import LocalSession
 
@@ -112,6 +113,7 @@ class PipelineSession(Session):
         sagemaker_client=None,
         default_bucket=None,
         settings=SessionSettings(),
+        sagemaker_config: SageMakerConfig = None,
     ):
         """Initialize a ``PipelineSession``.
 
@@ -131,12 +133,15 @@ class PipelineSession(Session):
                 Example: "sagemaker-my-custom-bucket".
             settings (sagemaker.session_settings.SessionSettings): Optional. Set of optional
                 parameters to apply to the session.
+            sagemaker_config (sagemaker.config.SageMakerConfig): The SageMakerConfig object which
+                holds the default values for the SageMaker Python SDK. (default: None).
         """
         super().__init__(
             boto_session=boto_session,
             sagemaker_client=sagemaker_client,
             default_bucket=default_bucket,
             settings=settings,
+            sagemaker_config=sagemaker_config,
         )
         self._context = None
 

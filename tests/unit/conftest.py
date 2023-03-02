@@ -13,9 +13,13 @@
 from __future__ import absolute_import
 
 import pytest
+from mock.mock import MagicMock
+
 import sagemaker
 
 from mock import Mock, PropertyMock
+
+from sagemaker.config import SageMakerConfig
 
 _ROLE = "DummyRole"
 _REGION = "us-west-2"
@@ -69,3 +73,44 @@ def sagemaker_session(boto_session, client):
         side_effect=lambda key, default_value=None: default_value,
     )
     return session
+
+
+@pytest.fixture()
+def sagemaker_config_session():
+    """
+    Returns: a sagemaker.Session to use for tests of injection of default parameters from the
+    sagemaker_config.
+
+    This session has a custom SageMakerConfig that allows us to set the sagemaker_config.config
+    dict manually. This allows us to test in unit tests without tight coupling to the exact
+    sagemaker_config related helpers/utils/methods used. (And those helpers/utils/methods should
+    have their own separate and specific unit tests.)
+
+    An alternative would be to mock each call to a sagemaker_config-related method, but that would
+    be harder to maintain/update over time, and be less readable.
+    """
+
+    class SageMakerConfigWithSetter(SageMakerConfig):
+        """
+        Version of SageMakerConfig that allows the config to be set
+        """
+
+        def __init__(self):
+            self._config = {}
+            # no need to call super
+
+        @property
+        def config(self) -> dict:
+            return self._config
+
+        @config.setter
+        def config(self, new_config):
+            self._config = new_config
+
+    boto_mock = MagicMock(name="boto_session")
+    session_with_custom_sagemaker_config = sagemaker.Session(
+        boto_session=boto_mock,
+        sagemaker_client=MagicMock(),
+        sagemaker_config=SageMakerConfigWithSetter(),
+    )
+    return session_with_custom_sagemaker_config

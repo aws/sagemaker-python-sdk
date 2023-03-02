@@ -133,18 +133,6 @@ class Transformer(object):
             TRANSFORM_OUTPUT_KMS_KEY_ID_PATH, default_value=output_kms_key
         )
 
-    def _update_batch_capture_config(self, batch_capture_config: BatchDataCaptureConfig):
-        """Utility method that updates BatchDataCaptureConfig with values from SageMakerConfig.
-
-        Args:
-            batch_capture_config: The BatchDataCaptureConfig object.
-
-        """
-        if batch_capture_config:
-            batch_capture_config.kms_key_id = self.sagemaker_session.get_sagemaker_config_override(
-                TRANSFORM_JOB_KMS_KEY_ID_PATH, default_value=batch_capture_config.kms_key_id
-            )
-
     @runnable_by_pipeline
     def transform(
         self,
@@ -279,7 +267,11 @@ class Transformer(object):
             self._reset_output_path = True
 
         experiment_config = check_and_get_run_experiment_config(experiment_config)
-        self._update_batch_capture_config(batch_data_capture_config)
+
+        batch_data_capture_config = self.sagemaker_session.resolve_class_attribute_from_config(
+            None, batch_data_capture_config, "kms_key_id", TRANSFORM_JOB_KMS_KEY_ID_PATH
+        )
+
         self.latest_transform_job = _TransformJob.start_new(
             self,
             data,
@@ -401,7 +393,11 @@ class Transformer(object):
             transformer = copy.deepcopy(self)
             transformer.sagemaker_session = PipelineSession()
             self.sagemaker_session = sagemaker_session
-        self._update_batch_capture_config(batch_data_capture_config)
+
+        batch_data_capture_config = self.sagemaker_session.resolve_class_attribute_from_config(
+            None, batch_data_capture_config, "kms_key_id", TRANSFORM_JOB_KMS_KEY_ID_PATH
+        )
+
         transform_step_args = transformer.transform(
             data=data,
             data_type=data_type,

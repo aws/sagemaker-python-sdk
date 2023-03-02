@@ -27,6 +27,16 @@ from .common import _raise_unexpected_client_error
 import sagemaker
 from sagemaker import TrainingInput, Session, get_execution_role, exceptions
 from sagemaker.async_inference import AsyncInferenceConfig
+from sagemaker.config import (
+    SAGEMAKER,
+    TRANSFORM_JOB,
+    DATA_CAPTURE_CONFIG,
+    TRANSFORM_OUTPUT,
+    TRANSFORM_RESOURCES,
+    KMS_KEY_ID,
+    VOLUME_KMS_KEY_ID,
+    TAGS,
+)
 from sagemaker.session import (
     _tuning_job_status,
     _transform_job_status,
@@ -852,7 +862,7 @@ ACCELERATOR_TYPE = "ml.eia.medium"
 MAX_SIZE = 30
 MAX_TIME = 3 * 60 * 60
 JOB_NAME = "jobname"
-TAGS = [{"Name": "some-tag", "Value": "value-for-tag"}]
+EXAMPLE_TAGS = [{"Key": "some-tag", "Value": "value-for-tag"}]
 VPC_CONFIG = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
 METRIC_DEFINITONS = [{"Name": "validation-rmse", "Regex": "validation-rmse=(\\d+)"}]
 EXPERIMENT_CONFIG = {
@@ -956,26 +966,6 @@ def sagemaker_session():
     ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=MagicMock())
     ims.expand_role = Mock(return_value=EXPANDED_ROLE)
 
-    # For the purposes of unit tests, no values should be fetched from sagemaker config
-    ims.resolve_nested_dict_value_from_config = Mock(
-        name="resolve_nested_dict_value_from_config",
-        side_effect=lambda dictionary, nested_keys, config_path, default_value=None: dictionary,
-    )
-    ims.resolve_class_attribute_from_config = Mock(
-        name="resolve_class_attribute_from_config",
-        side_effect=lambda clazz, instance, attribute, config_path, default_value=None: instance,
-    )
-    return ims
-
-
-@pytest.fixture()
-def sagemaker_session_without_mocked_sagemaker_config():
-    boto_mock = MagicMock(name="boto_session")
-    boto_mock.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {
-        "Account": "123"
-    }
-    ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=MagicMock())
-    ims.expand_role = Mock(return_value=EXPANDED_ROLE)
     return ims
 
 
@@ -1629,7 +1619,7 @@ def test_train_with_configs(sagemaker_session):
         resource_config=resource_config,
         hyperparameters=hyperparameters,
         stop_condition=stop_cond,
-        tags=TAGS,
+        tags=EXAMPLE_TAGS,
         metric_definitions=METRIC_DEFINITONS,
         encrypt_inter_container_traffic=True,
         use_spot_instances=True,
@@ -1648,7 +1638,7 @@ def test_train_with_configs(sagemaker_session):
         "SecurityGroupIds": ["sg-123"],
     }
     assert actual_train_args["HyperParameters"] == hyperparameters
-    assert actual_train_args["Tags"] == TAGS
+    assert actual_train_args["Tags"] == EXAMPLE_TAGS
     assert actual_train_args["AlgorithmSpecification"]["MetricDefinitions"] == METRIC_DEFINITONS
     assert actual_train_args["AlgorithmSpecification"]["EnableSageMakerMetricsTimeSeries"] is True
     assert actual_train_args["EnableInterContainerTrafficEncryption"] is True
@@ -1717,7 +1707,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
         vpc_config=VPC_CONFIG,
         hyperparameters=hyperparameters,
         stop_condition=stop_cond,
-        tags=TAGS,
+        tags=EXAMPLE_TAGS,
         metric_definitions=METRIC_DEFINITONS,
         encrypt_inter_container_traffic=True,
         use_spot_instances=True,
@@ -1733,7 +1723,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
 
     assert actual_train_args["VpcConfig"] == VPC_CONFIG
     assert actual_train_args["HyperParameters"] == hyperparameters
-    assert actual_train_args["Tags"] == TAGS
+    assert actual_train_args["Tags"] == EXAMPLE_TAGS
     assert actual_train_args["AlgorithmSpecification"]["MetricDefinitions"] == METRIC_DEFINITONS
     assert actual_train_args["AlgorithmSpecification"]["EnableSageMakerMetricsTimeSeries"] is True
     assert actual_train_args["EnableInterContainerTrafficEncryption"] is True
@@ -1747,57 +1737,56 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
     )
 
 
-def _sagemaker_config_override_mock_for_transform(key, default_value=None):
-    from sagemaker.session import (
-        TRANSFORM_JOB_KMS_KEY_ID_PATH,
-        TRANSFORM_OUTPUT_KMS_KEY_ID_PATH,
-        TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH,
-    )
+def test_create_transform_job_with_sagemaker_config_injection(sagemaker_config_session):
 
-    if key is TRANSFORM_JOB_KMS_KEY_ID_PATH:
-        return "jobKmsKeyId"
-    elif key is TRANSFORM_OUTPUT_KMS_KEY_ID_PATH:
-        return "outputKmsKeyId"
-    elif key is TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH:
-        return "volumeKmsKeyId"
-    return default_value
-
-
-def test_create_transform_job_with_configs(sagemaker_session):
-    sagemaker_session.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override",
-        side_effect=_sagemaker_config_override_mock_for_transform,
-    )
+    # Config to test injection for
+    sagemaker_config_session.sagemaker_config.config = {
+        SAGEMAKER: {
+            TRANSFORM_JOB: {
+                DATA_CAPTURE_CONFIG: {KMS_KEY_ID: "jobKmsKeyId"},
+                TRANSFORM_OUTPUT: {KMS_KEY_ID: "outputKmsKeyId"},
+                TRANSFORM_RESOURCES: {VOLUME_KMS_KEY_ID: "volumeKmsKeyId"},
+                TAGS: EXAMPLE_TAGS,
+            }
+        }
+    }
 
     model_name = "my-model"
-
     in_config = {
         "CompressionType": "None",
         "ContentType": "text/csv",
         "SplitType": "None",
         "DataSource": {"S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": S3_INPUT_URI}},
     }
-
     out_config = {"S3OutputPath": S3_OUTPUT}
-
     resource_config = {"InstanceCount": INSTANCE_COUNT, "InstanceType": INSTANCE_TYPE}
-
     data_processing = {"OutputFilter": "$", "InputFilter": "$", "JoinSource": "Input"}
-
     data_capture_config = BatchDataCaptureConfig(destination_s3_uri="s3://test")
-    expected_args = {
-        "TransformJobName": JOB_NAME,
-        "ModelName": model_name,
-        "TransformInput": in_config,
-        "TransformOutput": out_config,
-        "TransformResources": resource_config,
-        "DataProcessing": data_processing,
-        "DataCaptureConfig": data_capture_config._to_request_dict(),
-    }
+
+    # important to deepcopy, otherwise the original dicts are modified when we add expected params
+    expected_args = copy.deepcopy(
+        {
+            "TransformJobName": JOB_NAME,
+            "ModelName": model_name,
+            "TransformInput": in_config,
+            "TransformOutput": out_config,
+            "TransformResources": resource_config,
+            "DataProcessing": data_processing,
+            "DataCaptureConfig": data_capture_config._to_request_dict(),
+            "Tags": EXAMPLE_TAGS,
+        }
+    )
     expected_args["DataCaptureConfig"]["KmsKeyId"] = "jobKmsKeyId"
     expected_args["TransformOutput"]["KmsKeyId"] = "outputKmsKeyId"
     expected_args["TransformResources"]["VolumeKmsKeyId"] = "volumeKmsKeyId"
-    sagemaker_session.transform(
+
+    # make sure the original dicts were not modified before config injection
+    assert "KmsKeyId" not in in_config
+    assert "KmsKeyId" not in out_config
+    assert "VolumeKmsKeyId" not in resource_config
+
+    # injection should happen during this method
+    sagemaker_config_session.transform(
         job_name=JOB_NAME,
         model_name=model_name,
         strategy=None,
@@ -1809,12 +1798,12 @@ def test_create_transform_job_with_configs(sagemaker_session):
         resource_config=resource_config,
         experiment_config=None,
         model_client_config=None,
-        tags=None,
+        tags=EXAMPLE_TAGS,
         data_processing=data_processing,
         batch_data_capture_config=data_capture_config,
     )
 
-    _, _, actual_args = sagemaker_session.sagemaker_client.method_calls[0]
+    _, _, actual_args = sagemaker_config_session.sagemaker_client.method_calls[0]
     assert actual_args == expected_args
 
 
@@ -1888,7 +1877,7 @@ def test_transform_pack_to_request_with_optional_params(sagemaker_session):
         resource_config={},
         experiment_config=EXPERIMENT_CONFIG,
         model_client_config=MODEL_CLIENT_CONFIG,
-        tags=TAGS,
+        tags=EXAMPLE_TAGS,
         data_processing=None,
         batch_data_capture_config=batch_data_capture_config,
     )
@@ -1898,7 +1887,7 @@ def test_transform_pack_to_request_with_optional_params(sagemaker_session):
     assert actual_args["MaxConcurrentTransforms"] == max_concurrent_transforms
     assert actual_args["MaxPayloadInMB"] == max_payload
     assert actual_args["Environment"] == env
-    assert actual_args["Tags"] == TAGS
+    assert actual_args["Tags"] == EXAMPLE_TAGS
     assert actual_args["ExperimentConfig"] == EXPERIMENT_CONFIG
     assert actual_args["ModelClientConfig"] == MODEL_CLIENT_CONFIG
     assert actual_args["DataCaptureConfig"] == batch_data_capture_config._to_request_dict()
@@ -2345,7 +2334,7 @@ def test_create_model_from_job(sagemaker_session):
 def test_create_model_from_job_with_tags(sagemaker_session):
     ims = sagemaker_session
     ims.sagemaker_client.describe_training_job.return_value = COMPLETED_DESCRIBE_JOB_RESULT
-    ims.create_model_from_job(JOB_NAME, tags=TAGS)
+    ims.create_model_from_job(JOB_NAME, tags=EXAMPLE_TAGS)
 
     assert (
         call(TrainingJobName=JOB_NAME) in ims.sagemaker_client.describe_training_job.call_args_list
@@ -2355,7 +2344,7 @@ def test_create_model_from_job_with_tags(sagemaker_session):
         ModelName=JOB_NAME,
         PrimaryContainer=PRIMARY_CONTAINER,
         VpcConfig=VPC_CONFIG,
-        Tags=TAGS,
+        Tags=EXAMPLE_TAGS,
     )
 
 
@@ -4573,9 +4562,9 @@ def test_append_sagemaker_config_tags(sagemaker_session):
     )
 
 
-def test_resolve_value_from_config(sagemaker_session_without_mocked_sagemaker_config):
+def test_resolve_value_from_config(sagemaker_session):
     # using a shorter name for inside the test
-    ss = sagemaker_session_without_mocked_sagemaker_config
+    ss = sagemaker_session
 
     # direct_input should be respected
     ss.get_sagemaker_config_value = MagicMock(return_value="CONFIG_VALUE")
@@ -4641,10 +4630,10 @@ def test_resolve_value_from_config(sagemaker_session_without_mocked_sagemaker_co
     ],
 )
 def test_resolve_class_attribute_from_config(
-    sagemaker_session_without_mocked_sagemaker_config, existing_value, config_value, default_value
+    sagemaker_session, existing_value, config_value, default_value
 ):
     # using a shorter name for inside the test
-    ss = sagemaker_session_without_mocked_sagemaker_config
+    ss = sagemaker_session
 
     class TestClass(object):
         def __init__(self, test_attribute=None, extra=None):
@@ -4738,9 +4727,9 @@ def test_resolve_class_attribute_from_config(
     ) == TestClass(test_attribute=default_value, extra=None)
 
 
-def test_resolve_nested_dict_value_from_config(sagemaker_session_without_mocked_sagemaker_config):
+def test_resolve_nested_dict_value_from_config(sagemaker_session):
     # using a shorter name for inside the test
-    ss = sagemaker_session_without_mocked_sagemaker_config
+    ss = sagemaker_session
 
     dummy_config_path = ["DUMMY", "CONFIG", "PATH"]
 

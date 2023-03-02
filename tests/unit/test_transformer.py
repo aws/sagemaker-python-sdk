@@ -15,6 +15,16 @@ from __future__ import absolute_import
 import pytest
 from mock import MagicMock, Mock, patch, PropertyMock
 
+import sagemaker
+from sagemaker.config import (
+    SAGEMAKER,
+    TRANSFORM_JOB,
+    DATA_CAPTURE_CONFIG,
+    TRANSFORM_OUTPUT,
+    TRANSFORM_RESOURCES,
+    VOLUME_KMS_KEY_ID,
+    TAGS,
+)
 from sagemaker.transformer import _TransformJob, Transformer
 from sagemaker.workflow.pipeline_context import PipelineSession, _PipelineConfig
 from sagemaker.inputs import BatchDataCaptureConfig
@@ -69,6 +79,12 @@ def mock_create_tar_file():
 def sagemaker_session():
     boto_mock = Mock(name="boto_session")
     session = Mock(name="sagemaker_session", boto_session=boto_mock, local_mode=False)
+
+    # For the purposes of unit tests, no values should be fetched from sagemaker config
+    session.resolve_class_attribute_from_config = Mock(
+        name="resolve_class_attribute_from_config",
+        side_effect=lambda clazz, instance, attribute, config_path, default_value=None: instance,
+    )
     session.get_sagemaker_config_override = Mock(
         name="get_sagemaker_config_override",
         side_effect=lambda key, default_value=None: default_value,
@@ -118,16 +134,24 @@ def _config_override_mock(key, default_value=None):
 
 
 @patch("sagemaker.transformer._TransformJob.start_new")
-def test_transform_with_config_injection(start_new_job, sagemaker_session):
-    sagemaker_session.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override", side_effect=_config_override_mock
-    )
+def test_transform_with_sagemaker_config_injection(start_new_job, sagemaker_config_session):
+    sagemaker_config_session.sagemaker_config.config = {
+        SAGEMAKER: {
+            TRANSFORM_JOB: {
+                DATA_CAPTURE_CONFIG: {sagemaker.config.KMS_KEY_ID: "DataCaptureConfigKmsKeyId"},
+                TRANSFORM_OUTPUT: {sagemaker.config.KMS_KEY_ID: "ConfigKmsKeyId"},
+                TRANSFORM_RESOURCES: {VOLUME_KMS_KEY_ID: "ConfigVolumeKmsKeyId"},
+                TAGS: [],
+            }
+        }
+    }
+
     transformer = Transformer(
         MODEL_NAME,
         INSTANCE_COUNT,
         INSTANCE_TYPE,
         output_path=OUTPUT_PATH,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_config_session,
     )
     assert transformer.volume_kms_key == "ConfigVolumeKmsKeyId"
     assert transformer.output_kms_key == "ConfigKmsKeyId"
