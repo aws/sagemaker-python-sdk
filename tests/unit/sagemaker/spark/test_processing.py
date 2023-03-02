@@ -355,7 +355,7 @@ def test_stage_configuration(mock_s3_upload, mock_bytesIO, config, expected, sag
                 "dependency_location": None,
                 "submit_deps": ["s3"],
                 "input_channel_name": None,
-            }, 
+            },
             ValueError,
         ),
         (
@@ -412,7 +412,7 @@ def test_stage_configuration(mock_s3_upload, mock_bytesIO, config, expected, sag
             },
             (
                 "s3://codebucket/someprefix/None/input/channelName",
-                "/opt/ml/processing/input/channelName"
+                "/opt/ml/processing/input/channelName",
             ),
         ),
         (
@@ -433,7 +433,7 @@ def test_stage_configuration(mock_s3_upload, mock_bytesIO, config, expected, sag
             },
             (
                 "s3://codebucket/someprefix/None/input/channelName",
-                "/opt/ml/processing/input/channelName"
+                "/opt/ml/processing/input/channelName",
             ),
         ),
     ],

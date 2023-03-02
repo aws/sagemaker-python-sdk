@@ -533,8 +533,7 @@ class _SparkProcessorBase(ScriptProcessor):
                     )
                 else:
                     input_channel_s3_uri = (
-                        f"{s3_prefix_uri}/{self._current_job_name}/"
-                        f"input/{input_channel_name}"
+                        f"{s3_prefix_uri}/{self._current_job_name}/input/{input_channel_name}"
                     )
                 logger.info(
                     "Uploading dependencies from tmpdir %s to S3 %s", tmpdir, input_channel_s3_uri
