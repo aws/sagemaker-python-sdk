@@ -26,7 +26,7 @@ IR_SAMPLE_FRAMEWORK = "SAGEMAKER-SCIKIT-LEARN"
 IR_SUPPORTED_CONTENT_TYPES = ["text/csv"]
 IR_JOB_NAME = "SMPYTHONSDK-1234567891"
 IR_SAMPLE_INSTANCE_TYPE = "ml.c5.xlarge"
-IR_MODEL_NAME = "SMPYTHONSDK-sample-unique-uuid"
+IR_MODEL_NAME = "SageMaker-Model-RightSized-sample-unique-uuid"
 
 IR_SAMPLE_LIST_OF_INSTANCES_HYPERPARAMETER_RANGES = [
     {
@@ -186,7 +186,6 @@ def test_right_size_default_with_model_name_successful(sagemaker_session, model)
         framework=IR_SAMPLE_FRAMEWORK,
     )
 
-    # assert that the create model api has been called with default parameters
     assert sagemaker_session.create_model.called_with(
         name=IR_MODEL_NAME,
         role=IR_ROLE_ARN,

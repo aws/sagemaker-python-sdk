@@ -80,6 +80,12 @@ class InferenceRecommenderMixin:
     ):
         """Recommends an instance type for a SageMaker or BYOC model.
 
+        Create a SageMaker ``Model`` or use a registered ``ModelPackage``,
+        to start an Inference Recommender job.
+
+        The name of the created model is accessible in the ``name`` field of
+        this ``Model`` after right_size returns.
+
         Args:
             sample_payload_url (str): The S3 path where the sample payload is stored.
             supported_content_types: (list[str]): The supported MIME types for the input data.
@@ -148,36 +154,29 @@ class InferenceRecommenderMixin:
 
         self._init_sagemaker_session_if_does_not_exist()
 
-        self.temp_model_name = None
         if isinstance(self, sagemaker.model.Model) and not isinstance(
             self, sagemaker.model.ModelPackage
         ):
-
-            unique_tail = uuid.uuid4()
-            self.temp_model_name = "SMPYTHONSDK-" + str(unique_tail)
-
+            if not self.name:
+                unique_tail = uuid.uuid4()
+                self.name = "SageMaker-Model-RightSized-" + str(unique_tail)
             create_model_args = dict(
-                name=self.temp_model_name,
+                name=self.name,
                 role=self.role,
                 container_defs=None,
                 primary_container=self.prepare_container_def(),
                 vpc_config=self.vpc_config,
                 enable_network_isolation=self.enable_network_isolation(),
             )
-            print(
-                f"Creating temporary model with name: {self.temp_model_name}"
-                " for Inference Recommender.",
-                flush=True,
-            )
+            LOGGER.warning("Attempting to create new model with name %s", self.name)
             self.sagemaker_session.create_model(**create_model_args)
-            print("Temporary model created. Start to run Inference Recommender...", flush=True)
 
         ret_name = self.sagemaker_session.create_inference_recommendations_job(
             role=self.role,
             job_name=job_name,
             job_type=job_type,
             job_duration_in_seconds=job_duration_in_seconds,
-            model_name=self.temp_model_name,
+            model_name=self.name,
             model_package_version_arn=getattr(self, "model_package_arn", None),
             framework=framework,
             framework_version=framework_version,
@@ -199,15 +198,6 @@ class InferenceRecommenderMixin:
             "InferenceRecommendations"
         )
 
-        if self.temp_model_name is not None:
-            print(
-                f"Deleting temporary model with name: {self.temp_model_name} "
-                "for Inference Recommender.",
-                flush=True,
-            )
-            self.sagemaker_session.delete_model(self.temp_model_name)
-            self.temp_model_name = None
-            print("Delete complete.")
         return self
 
     def _update_params(
