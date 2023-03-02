@@ -15,7 +15,6 @@ from __future__ import absolute_import
 
 import logging
 import re
-import uuid
 
 from typing import List, Dict, Optional
 import sagemaker
@@ -157,14 +156,20 @@ class InferenceRecommenderMixin:
         if isinstance(self, sagemaker.model.Model) and not isinstance(
             self, sagemaker.model.ModelPackage
         ):
+            primary_container_def = self.prepare_container_def()
             if not self.name:
-                unique_tail = uuid.uuid4()
-                self.name = "SageMaker-Model-RightSized-" + str(unique_tail)
+                self._ensure_base_name_if_needed(
+                    image_uri=primary_container_def["Image"],
+                    script_uri=self.source_dir,
+                    model_uri=self.model_data,
+                )
+                self._set_model_name_if_needed()
+
             create_model_args = dict(
                 name=self.name,
                 role=self.role,
                 container_defs=None,
-                primary_container=self.prepare_container_def(),
+                primary_container=primary_container_def,
                 vpc_config=self.vpc_config,
                 enable_network_isolation=self.enable_network_isolation(),
             )

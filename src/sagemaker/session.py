@@ -4974,14 +4974,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
 
         if model_name is None and model_package_version_arn is None:
-            raise ValueError(
-                "Please provide either model_name or model_package_version_arn, not both."
-            )
+            raise ValueError("Please provide either model_name or model_package_version_arn.")
 
         if model_name is not None and model_package_version_arn is not None:
-            raise ValueError(
-                "Please provide either model_name or model_package_version_arn, not both."
-            )
+            raise ValueError("Please provide either model_name or model_package_version_arn.")
 
         if not job_name:
             unique_tail = uuid.uuid4()

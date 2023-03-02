@@ -26,7 +26,6 @@ IR_SAMPLE_FRAMEWORK = "SAGEMAKER-SCIKIT-LEARN"
 IR_SUPPORTED_CONTENT_TYPES = ["text/csv"]
 IR_JOB_NAME = "SMPYTHONSDK-1234567891"
 IR_SAMPLE_INSTANCE_TYPE = "ml.c5.xlarge"
-IR_MODEL_NAME = "SageMaker-Model-RightSized-sample-unique-uuid"
 
 IR_SAMPLE_LIST_OF_INSTANCES_HYPERPARAMETER_RANGES = [
     {
@@ -187,7 +186,7 @@ def test_right_size_default_with_model_name_successful(sagemaker_session, model)
     )
 
     assert sagemaker_session.create_model.called_with(
-        name=IR_MODEL_NAME,
+        name=ANY,
         role=IR_ROLE_ARN,
         container_defs=None,
         primary_container={},
@@ -201,7 +200,7 @@ def test_right_size_default_with_model_name_successful(sagemaker_session, model)
         job_name=IR_JOB_NAME,
         job_type="Default",
         job_duration_in_seconds=None,
-        model_name=IR_MODEL_NAME,
+        model_name=ANY,
         model_package_version_arn=None,
         framework=IR_SAMPLE_FRAMEWORK,
         framework_version=None,
@@ -252,7 +251,7 @@ def test_right_size_advanced_list_instances_model_name_successful(sagemaker_sess
         job_name=IR_JOB_NAME,
         job_type="Advanced",
         job_duration_in_seconds=7200,
-        model_name=IR_MODEL_NAME,
+        model_name=ANY,
         model_package_version_arn=None,
         framework=IR_SAMPLE_FRAMEWORK,
         framework_version=None,
@@ -303,7 +302,7 @@ def test_right_size_advanced_single_instances_model_name_successful(sagemaker_se
         job_name=IR_JOB_NAME,
         job_type="Advanced",
         job_duration_in_seconds=7200,
-        model_name=IR_MODEL_NAME,
+        model_name=ANY,
         model_package_version_arn=None,
         framework=IR_SAMPLE_FRAMEWORK,
         framework_version=None,
