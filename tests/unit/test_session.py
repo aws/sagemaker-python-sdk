@@ -3284,7 +3284,9 @@ def create_inference_recommendations_job_advanced_happy_response():
 
 
 def create_inference_recommendations_job_advanced_model_name_happy_response():
-    base_advanced_job_response = create_inference_recommendations_job_default_model_name_happy_response()
+    base_advanced_job_response = (
+        create_inference_recommendations_job_default_model_name_happy_response()
+    )
 
     base_advanced_job_response["JobName"] = IR_JOB_NAME
     base_advanced_job_response["JobType"] = IR_ADVANCED_JOB
@@ -3394,7 +3396,7 @@ def test_create_inference_recommendations_job_advanced_model_name_happy(sagemake
 def test_create_inference_recommendations_job_missing_model_name_and_pkg(sagemaker_session):
     with pytest.raises(
         ValueError,
-        match="Missing model_name and model_package_version_arn, please provide one of them."
+        match="Missing model_name and model_package_version_arn, please provide one of them.",
     ):
         sagemaker_session.create_inference_recommendations_job(
             role=IR_ROLE_ARN,
@@ -3413,7 +3415,7 @@ def test_create_inference_recommendations_job_missing_model_name_and_pkg(sagemak
 def test_create_inference_recommendations_job_provided_model_name_and_pkg(sagemaker_session):
     with pytest.raises(
         ValueError,
-        match="Please provide either model_name or model_package_version_arn should be provided, not both."
+        match="Please provide either model_name or model_package_version_arn should be provided, not both.",
     ):
         sagemaker_session.create_inference_recommendations_job(
             role=IR_ROLE_ARN,

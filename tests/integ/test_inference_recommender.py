@@ -184,9 +184,7 @@ def default_right_sized_unregistered_model(sagemaker_session, cpu_instance_type)
                 ir_job_name,
             )
         except Exception:
-            sagemaker_session.delete_model(
-                ModelName=sklearn_model.temp_model_name
-            )
+            sagemaker_session.delete_model(ModelName=sklearn_model.temp_model_name)
 
 
 @pytest.fixture(scope="module")
@@ -239,9 +237,7 @@ def advanced_right_sized_unregistered_model(sagemaker_session, cpu_instance_type
             )
 
         except Exception:
-            sagemaker_session.delete_model(
-                ModelName=sklearn_model.temp_model_name
-            )
+            sagemaker_session.delete_model(ModelName=sklearn_model.temp_model_name)
 
 
 @pytest.mark.slow_test

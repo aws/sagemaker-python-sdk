@@ -193,7 +193,7 @@ def test_right_size_default_with_model_name_successful(sagemaker_session, model)
         container_defs=None,
         primary_container={},
         vpc_config=None,
-        enable_network_isolation=False
+        enable_network_isolation=False,
     )
 
     # assert that the create api has been called with default parameters with model name

@@ -149,7 +149,9 @@ class InferenceRecommenderMixin:
         self._init_sagemaker_session_if_does_not_exist()
 
         self.temp_model_name = None
-        if isinstance(self, sagemaker.model.Model) and not isinstance(self, sagemaker.model.ModelPackage):
+        if isinstance(self, sagemaker.model.Model) and not isinstance(
+            self, sagemaker.model.ModelPackage
+        ):
 
             unique_tail = uuid.uuid4()
             self.temp_model_name = "SMPYTHONSDK-" + str(unique_tail)
@@ -160,10 +162,13 @@ class InferenceRecommenderMixin:
                 container_defs=None,
                 primary_container=self.prepare_container_def(),
                 vpc_config=self.vpc_config,
-                enable_network_isolation=self.enable_network_isolation()
+                enable_network_isolation=self.enable_network_isolation(),
             )
-            print(f"Creating temporary model with name: {self.temp_model_name}"
-                   " for Inference Recommender.", flush=True)
+            print(
+                f"Creating temporary model with name: {self.temp_model_name}"
+                " for Inference Recommender.",
+                flush=True,
+            )
             self.sagemaker_session.create_model(**create_model_args)
             print("Temporary model created. Start to run Inference Recommender...", flush=True)
 
@@ -195,8 +200,11 @@ class InferenceRecommenderMixin:
         )
 
         if self.temp_model_name is not None:
-            print(f"Deleting temporary model with name: {self.temp_model_name} "
-                   "for Inference Recommender.", flush=True)
+            print(
+                f"Deleting temporary model with name: {self.temp_model_name} "
+                "for Inference Recommender.",
+                flush=True,
+            )
             self.sagemaker_session.delete_model(self.temp_model_name)
             self.temp_model_name = None
             print("Delete complete.")
