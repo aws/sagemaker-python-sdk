@@ -268,6 +268,7 @@ class ModelStep(StepCollection):
                     depends_on=self.depends_on,
                     retry_policies=self._repack_model_retry_policies,
                     output_path=self._runtime_repack_output_prefix,
+                    output_kms_key=model.model_kms_key,
                 )
                 self.steps.append(repack_model_step)
 
