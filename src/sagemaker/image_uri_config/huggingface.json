@@ -1311,7 +1311,7 @@
             },
             "4.26.0": {
                 "version_aliases": {
-                    "pytorch1.10": "pytorch1.13.1"
+                    "pytorch1.13": "pytorch1.13.1"
                 },
                 "pytorch1.13.1": {
                     "py_versions": ["py39"],
