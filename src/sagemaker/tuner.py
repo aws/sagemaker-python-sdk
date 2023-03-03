@@ -608,6 +608,7 @@ class HyperparameterTuner(object):
         completion_criteria_config: Optional[TuningJobCompletionCriteriaConfig] = None,
         early_stopping_type: Union[str, PipelineVariable] = "Off",
         estimator_name: Optional[str] = None,
+        random_seed: Optional[int] = None,
     ):
         """Creates a ``HyperparameterTuner`` instance.
 
@@ -1448,7 +1449,7 @@ class HyperparameterTuner(object):
             "early_stopping_type": tuning_config["TrainingJobEarlyStoppingType"],
             "base_tuning_job_name": base_from_name(job_details["HyperParameterTuningJobName"]),
         }
-        
+
         if "TuningJobCompletionCriteria" in tuning_config:
             params["completion_criteria_config"] = TuningJobCompletionCriteriaConfig.from_job_desc(
                 tuning_config["TuningJobCompletionCriteria"]
@@ -1461,7 +1462,7 @@ class HyperparameterTuner(object):
 
         if "RandomSeed" in tuning_config:
             params["random_seed"] = tuning_config["RandomSeed"]
-        
+
         if "HyperParameterTuningJobObjective" in tuning_config:
             params["objective_metric_name"] = tuning_config["HyperParameterTuningJobObjective"][
                 "MetricName"
@@ -2026,13 +2027,12 @@ class _TuningJob(_Job):
             "early_stopping_type": tuner.early_stopping_type,
         }
 
-        
         if tuner.max_runtime_in_seconds is not None:
             tuning_config["max_runtime_in_seconds"] = tuner.max_runtime_in_seconds
 
         if tuner.random_seed is not None:
             tuning_config["random_seed"] = tuner.random_seed
-        
+
         if tuner.strategy_config is not None:
             tuning_config["strategy_config"] = tuner.strategy_config.to_input_req()
 

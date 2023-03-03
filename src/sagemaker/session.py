@@ -2479,6 +2479,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         objective_metric_name=None,
         parameter_ranges=None,
         strategy_config=None,
+        random_seed=None,
         completion_criteria_config=None,
     ):
         """Construct tuning job configuration dictionary.
@@ -2518,14 +2519,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
             },
             "TrainingJobEarlyStoppingType": early_stopping_type,
         }
-      
-        
+
         if max_runtime_in_seconds is not None:
             tuning_config["ResourceLimits"]["MaxRuntimeInSeconds"] = max_runtime_in_seconds
 
         if random_seed is not None:
             tuning_config["RandomSeed"] = random_seed
-        
+
         tuning_objective = cls._map_tuning_objective(objective_type, objective_metric_name)
         if tuning_objective is not None:
             tuning_config["HyperParameterTuningJobObjective"] = tuning_objective

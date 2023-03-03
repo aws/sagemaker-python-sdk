@@ -77,16 +77,17 @@ def _get_session_from_role(region: str, role: str = None) -> Session:
 
 
 def get_feature_group_as_dataframe(
-        feature_group_name: str,
-        athena_bucket: str,
-        query: str = """SELECT * FROM "sagemaker_featurestore"."#{table}" WHERE is_deleted=False """,
-        role: str = None,
-        region: str = None,
-        session=None,
-        event_time_feature_name: str = None,
-        latest_ingestion: bool = True,
-        verbose: bool = True,
-        **pandas_read_csv_kwargs,
+    feature_group_name: str,
+    athena_bucket: str,
+    query: str = """SELECT * FROM "sagemaker_featurestore"."#{table}"
+                        WHERE is_deleted=False """,
+    role: str = None,
+    region: str = None,
+    session=None,
+    event_time_feature_name: str = None,
+    latest_ingestion: bool = True,
+    verbose: bool = True,
+    **pandas_read_csv_kwargs,
 ) -> DataFrame:
     """Get a :class:`sagemaker.feature_store.feature_group.FeatureGroup` as a pandas.DataFrame
 
@@ -126,8 +127,8 @@ def get_feature_group_as_dataframe(
     if latest_ingestion:
         if event_time_feature_name is not None:
             query += str(
-                f"AND {event_time_feature_name}=(SELECT " +
-                f"MAX({event_time_feature_name}) FROM " +
+                f"AND {event_time_feature_name}=(SELECT "
+                f"MAX({event_time_feature_name}) FROM "
                 '"sagemaker_featurestore"."#{table}")'
             )
         else:
@@ -207,15 +208,15 @@ def _cast_object_to_string(data_frame: pandas.DataFrame) -> pandas.DataFrame:
 
 
 def prepare_fg_from_dataframe_or_file(
-        dataframe_or_path: Union[str, Path, pandas.DataFrame],
-        feature_group_name: str,
-        role: str = None,
-        region: str = None,
-        session=None,
-        record_id: str = "record_id",
-        event_id: str = "data_as_of_date",
-        verbose: bool = False,
-        **pandas_read_csv_kwargs
+    dataframe_or_path: Union[str, Path, pandas.DataFrame],
+    feature_group_name: str,
+    role: str = None,
+    region: str = None,
+    session=None,
+    record_id: str = "record_id",
+    event_id: str = "data_as_of_date",
+    verbose: bool = False,
+    **pandas_read_csv_kwargs,
 ) -> FeatureGroup:
     """Prepares a dataframe to create a :class:`sagemaker.feature_store.feature_group.FeatureGroup`
 
