@@ -3188,6 +3188,7 @@ IR_SUPPORTED_CONTENT_TYPES = ["text/csv"]
 IR_MODEL_PACKAGE_VERSION_ARN = (
     "arn:aws:sagemaker:us-west-2:123456789123:model-package/unit-test-package-version/1"
 )
+IR_MODEL_NAME = "MODEL_NAME"
 IR_NEAREST_MODEL_NAME = "xgboost"
 IR_SUPPORTED_INSTANCE_TYPES = ["ml.c5.xlarge", "ml.c5.2xlarge"]
 IR_FRAMEWORK = "XGBOOST"
@@ -3238,8 +3239,48 @@ def create_inference_recommendations_job_default_happy_response():
     }
 
 
+def create_inference_recommendations_job_default_model_name_happy_response():
+    return {
+        "JobName": IR_USER_JOB_NAME,
+        "JobType": "Default",
+        "RoleArn": IR_ROLE_ARN,
+        "InputConfig": {
+            "ContainerConfig": {
+                "Domain": "MACHINE_LEARNING",
+                "Task": "OTHER",
+                "Framework": IR_FRAMEWORK,
+                "PayloadConfig": {
+                    "SamplePayloadUrl": IR_SAMPLE_PAYLOAD_URL,
+                    "SupportedContentTypes": IR_SUPPORTED_CONTENT_TYPES,
+                },
+                "FrameworkVersion": IR_FRAMEWORK_VERSION,
+                "NearestModelName": IR_NEAREST_MODEL_NAME,
+                "SupportedInstanceTypes": IR_SUPPORTED_INSTANCE_TYPES,
+            },
+            "ModelName": IR_MODEL_NAME,
+        },
+        "JobDescription": "#python-sdk-create",
+    }
+
+
 def create_inference_recommendations_job_advanced_happy_response():
     base_advanced_job_response = create_inference_recommendations_job_default_happy_response()
+
+    base_advanced_job_response["JobName"] = IR_JOB_NAME
+    base_advanced_job_response["JobType"] = IR_ADVANCED_JOB
+    base_advanced_job_response["StoppingConditions"] = IR_STOPPING_CONDITIONS
+    base_advanced_job_response["InputConfig"]["JobDurationInSeconds"] = IR_JOB_DURATION_IN_SECONDS
+    base_advanced_job_response["InputConfig"]["EndpointConfigurations"] = IR_ENDPOINT_CONFIGURATIONS
+    base_advanced_job_response["InputConfig"]["TrafficPattern"] = IR_TRAFFIC_PATTERN
+    base_advanced_job_response["InputConfig"]["ResourceLimit"] = IR_RESOURCE_LIMIT
+
+    return base_advanced_job_response
+
+
+def create_inference_recommendations_job_advanced_model_name_happy_response():
+    base_advanced_job_response = (
+        create_inference_recommendations_job_default_model_name_happy_response()
+    )
 
     base_advanced_job_response["JobName"] = IR_JOB_NAME
     base_advanced_job_response["JobType"] = IR_ADVANCED_JOB
@@ -3296,6 +3337,92 @@ def test_create_inference_recommendations_job_advanced_happy(sagemaker_session):
     )
 
     assert IR_JOB_NAME == job_name
+
+
+def test_create_inference_recommendations_job_default_model_name_happy(sagemaker_session):
+    job_name = sagemaker_session.create_inference_recommendations_job(
+        role=IR_ROLE_ARN,
+        sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
+        supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
+        model_name=IR_MODEL_NAME,
+        model_package_version_arn=None,
+        framework=IR_FRAMEWORK,
+        framework_version=IR_FRAMEWORK_VERSION,
+        nearest_model_name=IR_NEAREST_MODEL_NAME,
+        supported_instance_types=IR_SUPPORTED_INSTANCE_TYPES,
+        job_name=IR_USER_JOB_NAME,
+    )
+
+    sagemaker_session.sagemaker_client.create_inference_recommendations_job.assert_called_with(
+        **create_inference_recommendations_job_default_model_name_happy_response()
+    )
+
+    assert IR_USER_JOB_NAME == job_name
+
+
+@patch("uuid.uuid4", MagicMock(return_value="sample-unique-uuid"))
+def test_create_inference_recommendations_job_advanced_model_name_happy(sagemaker_session):
+    job_name = sagemaker_session.create_inference_recommendations_job(
+        role=IR_ROLE_ARN,
+        sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
+        supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
+        model_name=IR_MODEL_NAME,
+        model_package_version_arn=None,
+        framework=IR_FRAMEWORK,
+        framework_version=IR_FRAMEWORK_VERSION,
+        nearest_model_name=IR_NEAREST_MODEL_NAME,
+        supported_instance_types=IR_SUPPORTED_INSTANCE_TYPES,
+        endpoint_configurations=IR_ENDPOINT_CONFIGURATIONS,
+        traffic_pattern=IR_TRAFFIC_PATTERN,
+        stopping_conditions=IR_STOPPING_CONDITIONS,
+        resource_limit=IR_RESOURCE_LIMIT,
+        job_type=IR_ADVANCED_JOB,
+        job_duration_in_seconds=IR_JOB_DURATION_IN_SECONDS,
+    )
+
+    sagemaker_session.sagemaker_client.create_inference_recommendations_job.assert_called_with(
+        **create_inference_recommendations_job_advanced_model_name_happy_response()
+    )
+
+    assert IR_JOB_NAME == job_name
+
+
+def test_create_inference_recommendations_job_missing_model_name_and_pkg(sagemaker_session):
+    with pytest.raises(
+        ValueError,
+        match="Please provide either model_name or model_package_version_arn.",
+    ):
+        sagemaker_session.create_inference_recommendations_job(
+            role=IR_ROLE_ARN,
+            sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
+            supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
+            model_name=None,
+            model_package_version_arn=None,
+            framework=IR_FRAMEWORK,
+            framework_version=IR_FRAMEWORK_VERSION,
+            nearest_model_name=IR_NEAREST_MODEL_NAME,
+            supported_instance_types=IR_SUPPORTED_INSTANCE_TYPES,
+            job_name=IR_USER_JOB_NAME,
+        )
+
+
+def test_create_inference_recommendations_job_provided_model_name_and_pkg(sagemaker_session):
+    with pytest.raises(
+        ValueError,
+        match="Please provide either model_name or model_package_version_arn.",
+    ):
+        sagemaker_session.create_inference_recommendations_job(
+            role=IR_ROLE_ARN,
+            sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
+            supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
+            model_name=IR_MODEL_NAME,
+            model_package_version_arn=IR_MODEL_PACKAGE_VERSION_ARN,
+            framework=IR_FRAMEWORK,
+            framework_version=IR_FRAMEWORK_VERSION,
+            nearest_model_name=IR_NEAREST_MODEL_NAME,
+            supported_instance_types=IR_SUPPORTED_INSTANCE_TYPES,
+            job_name=IR_USER_JOB_NAME,
+        )
 
 
 def test_create_inference_recommendations_job_propogate_validation_exception(sagemaker_session):
