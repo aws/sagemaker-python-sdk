@@ -273,7 +273,7 @@ def huggingface_pytorch_training_version(huggingface_training_version):
 
 @pytest.fixture(scope="module")
 def huggingface_pytorch_training_py_version(huggingface_pytorch_training_version):
-    return "py38" if Version(huggingface_pytorch_training_version) >= Version("1.9") else "py36"
+    return "py39" if Version(huggingface_pytorch_training_version) >= Version("1.9") else "py36"
 
 
 @pytest.fixture(scope="module")
@@ -348,7 +348,7 @@ def huggingface_pytorch_latest_inference_py_version(
     huggingface_inference_pytorch_latest_version,
 ):
     return (
-        "py38"
+        "py39"
         if Version(huggingface_inference_pytorch_latest_version) >= Version("1.9")
         else "py36"
     )
