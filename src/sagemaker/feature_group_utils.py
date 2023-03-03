@@ -29,37 +29,38 @@ from sagemaker.session import Session
 logger = logging.getLogger(__name__)
 
 
-def _get_session_from_role(role: str, region: str) -> Session:
+def _get_session_from_role(region: str, role: str = None) -> Session:
     """Method use to get the :class:`sagemaker.session.Session`  from a role and a region.
 
     Helpful in case it's invoke from a session with a role without permission it can assume
-    another role temporarily to perform certain taks.
-
+    another role temporarily to perform certain tasks.
     Args:
         role: role name
         region: region name
 
     Returns:
-
+        :class:`sagemaker.session`
     """
     boto_session = boto3.Session(region_name=region)
 
-    sts = boto_session.client(
-        "sts", region_name=region, endpoint_url="https://sts.eu-west-1.amazonaws.com"
-    )
+    # It will try to assume the role specified
+    if role:
+        sts = boto_session.client(
+            "sts", region_name=region, endpoint_url="https://sts.eu-west-1.amazonaws.com"
+        )
 
-    metadata = sts.assume_role(RoleArn=role, RoleSessionName="SagemakerExecution")
+        metadata = sts.assume_role(RoleArn=role, RoleSessionName="SagemakerExecution")
 
-    access_key_id = metadata["Credentials"]["AccessKeyId"]
-    secret_access_key = metadata["Credentials"]["SecretAccessKey"]
-    session_token = metadata["Credentials"]["SessionToken"]
+        access_key_id = metadata["Credentials"]["AccessKeyId"]
+        secret_access_key = metadata["Credentials"]["SecretAccessKey"]
+        session_token = metadata["Credentials"]["SessionToken"]
 
-    boto_session = boto3.session.Session(
-        region_name=region,
-        aws_access_key_id=access_key_id,
-        aws_secret_access_key=secret_access_key,
-        aws_session_token=session_token,
-    )
+        boto_session = boto3.session.Session(
+            region_name=region,
+            aws_access_key_id=access_key_id,
+            aws_secret_access_key=secret_access_key,
+            aws_session_token=session_token,
+        )
 
     # Sessions
     sagemaker_client = boto_session.client("sagemaker")
@@ -76,18 +77,16 @@ def _get_session_from_role(role: str, region: str) -> Session:
 
 
 def get_feature_group_as_dataframe(
-    feature_group_name: str,
-    athena_bucket: str,
-    query: str = str(
-        "SELECT * FROM " '"sagemaker_featurestore"."#{table}" ' "WHERE is_deleted=False"
-    ),
-    role: str = None,
-    region: str = None,
-    session=None,
-    event_time_feature_name: str = None,
-    latest_ingestion: bool = True,
-    verbose: bool = True,
-    **pandas_read_csv_kwargs,
+        feature_group_name: str,
+        athena_bucket: str,
+        query: str = """SELECT * FROM "sagemaker_featurestore"."#{table}" WHERE is_deleted=False """,
+        role: str = None,
+        region: str = None,
+        session=None,
+        event_time_feature_name: str = None,
+        latest_ingestion: bool = True,
+        verbose: bool = True,
+        **pandas_read_csv_kwargs,
 ) -> DataFrame:
     """Get a :class:`sagemaker.feature_store.feature_group.FeatureGroup` as a pandas.DataFrame
 
@@ -127,9 +126,9 @@ def get_feature_group_as_dataframe(
     if latest_ingestion:
         if event_time_feature_name is not None:
             query += str(
-                f"AND {event_time_feature_name}=(SELECT "
-                f"MAX({event_time_feature_name}) FROM "
-                + f'"sagemaker_featurestore"."{feature_group_name}")'
+                f"AND {event_time_feature_name}=(SELECT " +
+                f"MAX({event_time_feature_name}) FROM " +
+                '"sagemaker_featurestore"."#{table}")'
             )
         else:
             exc = Exception(
@@ -143,7 +142,7 @@ def get_feature_group_as_dataframe(
     if session is not None:
         sagemaker_session = session
     elif role is not None and region is not None:
-        sagemaker_session = _get_session_from_role(role=role, region=region)
+        sagemaker_session = _get_session_from_role(region=region)
     else:
         exc = Exception("Argument Session or role and region must be specified.")
         logger.exception(exc)
@@ -208,15 +207,15 @@ def _cast_object_to_string(data_frame: pandas.DataFrame) -> pandas.DataFrame:
 
 
 def prepare_fg_from_dataframe_or_file(
-    dataframe_or_path: Union[str, Path, pandas.DataFrame],
-    feature_group_name: str,
-    role: str = None,
-    region: str = None,
-    session=None,
-    record_id: str = "record_id",
-    event_id: str = "data_as_of_date",
-    verbose: bool = False,
-    **pandas_read_csv_kwargs,
+        dataframe_or_path: Union[str, Path, pandas.DataFrame],
+        feature_group_name: str,
+        role: str = None,
+        region: str = None,
+        session=None,
+        record_id: str = "record_id",
+        event_id: str = "data_as_of_date",
+        verbose: bool = False,
+        **pandas_read_csv_kwargs
 ) -> FeatureGroup:
     """Prepares a dataframe to create a :class:`sagemaker.feature_store.feature_group.FeatureGroup`
 
@@ -228,6 +227,7 @@ def prepare_fg_from_dataframe_or_file(
         by default with the names 'record_id' and 'data_as_of_date'.
 
     Args:
+        **pandas_read_csv_kwargs (object):
         feature_group_name (str): feature group name
         dataframe_or_path (str, Path, pandas.DataFrame) : pandas.DataFrame or path to the data
         verbose (bool)           : True for displaying messages, False for silent method.
@@ -292,13 +292,12 @@ def prepare_fg_from_dataframe_or_file(
         import time
 
         current_time_sec = int(round(time.time()))
-
         data[event_id] = Series([current_time_sec] * lg_id, dtype="float64")
 
     if session is not None:
         sagemaker_session = session
     elif role is not None and region is not None:
-        sagemaker_session = _get_session_from_role(role=role, region=region)
+        sagemaker_session = _get_session_from_role(region=region)
     else:
         exc = Exception("Argument Session or role and region must be specified.")
         logger.exception(exc)
