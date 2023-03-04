@@ -928,12 +928,6 @@ def test_get_feature_group_with_session(
             data_frame=pandas_data_frame, max_workers=3, max_processes=2, wait=True
         )
 
-        dataset = get_feature_group_as_dataframe(feature_group_name=feature_group_name,
-                                                 session=feature_store_session,
-                                                 event_time_feature_name="feature3",
-                                                 latest_ingestion=True,
-                                                 athena_bucket=f'{offline_store_s3_uri}/query',
-
         dataset = get_feature_group_as_dataframe(
             feature_group_name=feature_group_name,
             session=feature_store_session,
@@ -942,7 +936,7 @@ def test_get_feature_group_with_session(
             athena_bucket=f"{offline_store_s3_uri}/query",
             low_memory=False,
         )  # Using kwargs to pass a parameter to pandas.read_csv
-                                                 low_memory=False)
+
     assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
     assert not dataset.empty
     assert isinstance(dataset, DataFrame)
