@@ -29,13 +29,13 @@ from sagemaker.session import Session
 logger = logging.getLogger(__name__)
 
 
-def _get_session_from_role(region: str, role: str = None) -> Session:
+def _get_session_from_role(region: str, assume_role: str = None) -> Session:
     """Method use to get the :class:`sagemaker.session.Session`  from a role and a region.
 
     Helpful in case it's invoke from a session with a role without permission it can assume
     another role temporarily to perform certain tasks.
     Args:
-        role: role name
+        assume_role: role name
         region: region name
 
     Returns:
@@ -44,12 +44,12 @@ def _get_session_from_role(region: str, role: str = None) -> Session:
     boto_session = boto3.Session(region_name=region)
 
     # It will try to assume the role specified
-    if role:
+    if assume_role:
         sts = boto_session.client(
             "sts", region_name=region, endpoint_url="https://sts.eu-west-1.amazonaws.com"
         )
 
-        metadata = sts.assume_role(RoleArn=role, RoleSessionName="SagemakerExecution")
+        metadata = sts.assume_role(RoleArn=assume_role, RoleSessionName="SagemakerExecution")
 
         access_key_id = metadata["Credentials"]["AccessKeyId"]
         secret_access_key = metadata["Credentials"]["SecretAccessKey"]
@@ -80,7 +80,7 @@ def get_feature_group_as_dataframe(
     feature_group_name: str,
     athena_bucket: str,
     query: str = """SELECT * FROM "sagemaker_featurestore"."#{table}"
-                        WHERE is_deleted=False """,
+                    WHERE is_deleted=False """,
     role: str = None,
     region: str = None,
     session=None,
