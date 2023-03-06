@@ -147,6 +147,35 @@ IR_SAMPLE_PRIMARY_CONTAINER = {
     "ModelDataUrl": "s3://bucket/model.tar.gz",
 }
 
+IR_PRODUCTION_VARIANTS = [
+    {
+        "ModelName": "model-name-for-ir",
+        "VariantName": "AllTraffic",
+        "InitialVariantWeight": 1,
+        "InitialInstanceCount": 1,
+        "InstanceType": "ml.m5.xlarge",
+    }
+]
+
+IR_OVERRIDDEN_PRODUCTION_VARIANTS = [
+    {
+        "ModelName": "model-name-for-ir",
+        "VariantName": "AllTraffic",
+        "InitialVariantWeight": 1,
+        "InitialInstanceCount": 5,
+        "InstanceType": "ml.c5.2xlarge",
+    }
+]
+
+IR_SERVERLESS_PRODUCTION_VARIANTS = [
+    {
+        "ModelName": "model-name-for-ir",
+        "VariantName": "AllTraffic",
+        "InitialVariantWeight": 1,
+        "ServerlessConfig": {"MemorySizeInMB": 2048, "MaxConcurrency": 5},
+    }
+]
+
 
 @pytest.fixture()
 def sagemaker_session():
@@ -526,47 +555,43 @@ def test_right_size_invalid_hyperparameter_ranges(sagemaker_session, model_packa
 # TODO check our framework mapping when we add in inference_recommendation_id support
 
 
-@patch("sagemaker.production_variant")
-@patch("sagemaker.utils.name_from_base", return_value=MODEL_NAME)
 def test_deploy_right_size_with_model_package_succeeds(
-    production_variant, default_right_sized_model
+    sagemaker_session, default_right_sized_model
 ):
+
+    default_right_sized_model.name = MODEL_NAME
     default_right_sized_model.deploy(endpoint_name=IR_DEPLOY_ENDPOINT_NAME)
-    # TODO: enable this assert after fix
-    # production_variant.assert_called_with(
-    #     model_name=MODEL_NAME,
-    #     instance_type=IR_RIGHT_SIZE_INSTANCE_TYPE,
-    #     initial_instance_count=IR_RIGHT_SIZE_INITIAL_INSTANCE_COUNT,
-    #     accelerator_type=None,
-    #     serverless_inference_config=None,
-    #     volume_size=None,
-    #     model_data_download_timeout=None,
-    #     container_startup_health_check_timeout=None,
-    # )
+
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        async_inference_config_dict=None,
+        data_capture_config_dict=None,
+        kms_key=None,
+        name="ir-endpoint-test",
+        production_variants=IR_PRODUCTION_VARIANTS,
+        tags=None,
+        wait=True,
+    )
 
 
-@patch("sagemaker.production_variant")
-@patch("sagemaker.utils.name_from_base", return_value=MODEL_NAME)
 def test_deploy_right_size_with_both_overrides_succeeds(
-    production_variant, default_right_sized_model
+    sagemaker_session, default_right_sized_model
 ):
+    default_right_sized_model.name = MODEL_NAME
     default_right_sized_model.deploy(
         instance_type="ml.c5.2xlarge",
         initial_instance_count=5,
         endpoint_name=IR_DEPLOY_ENDPOINT_NAME,
     )
 
-    # TODO: enable this assert after fix
-    # production_variant.assert_called_with(
-    #     model_name=MODEL_NAME,
-    #     instance_type="ml.c5.2xlarge",
-    #     initial_instance_count=5,
-    #     accelerator_type=None,
-    #     serverless_inference_config=None,
-    #     volume_size=None,
-    #     model_data_download_timeout=None,
-    #     container_startup_health_check_timeout=None,
-    # )
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        async_inference_config_dict=None,
+        data_capture_config_dict=None,
+        kms_key=None,
+        name="ir-endpoint-test",
+        production_variants=IR_OVERRIDDEN_PRODUCTION_VARIANTS,
+        tags=None,
+        wait=True,
+    )
 
 
 def test_deploy_right_size_instance_type_override_fails(default_right_sized_model):
@@ -599,23 +624,21 @@ def test_deploy_right_size_accelerator_type_fails(default_right_sized_model):
         default_right_sized_model.deploy(accelerator_type="ml.eia.medium")
 
 
-@patch("sagemaker.production_variant")
-@patch("sagemaker.utils.name_from_base", return_value=MODEL_NAME)
-def test_deploy_right_size_serverless_override(production_variant, default_right_sized_model):
+@patch("sagemaker.utils.name_from_base", MagicMock(return_value=MODEL_NAME))
+def test_deploy_right_size_serverless_override(sagemaker_session, default_right_sized_model):
+    default_right_sized_model.name = MODEL_NAME
     serverless_inference_config = ServerlessInferenceConfig()
     default_right_sized_model.deploy(serverless_inference_config=serverless_inference_config)
 
-    # TODO: enable this assert after fix
-    # production_variant.assert_called_with(
-    #     model_name=MODEL_NAME,
-    #     instance_type=None,
-    #     initial_instance_count=None,
-    #     accelerator_type=None,
-    #     serverless_inference_config=serverless_inference_config._to_request_dict,
-    #     volume_size=None,
-    #     model_data_download_timeout=None,
-    #     container_startup_health_check_timeout=None,
-    # )
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        name=MODEL_NAME,
+        production_variants=IR_SERVERLESS_PRODUCTION_VARIANTS,
+        tags=None,
+        kms_key=None,
+        wait=True,
+        data_capture_config_dict=None,
+        async_inference_config_dict=None,
+    )
 
 
 @patch("sagemaker.utils.name_from_base", return_value=MODEL_NAME)
