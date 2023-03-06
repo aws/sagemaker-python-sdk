@@ -739,8 +739,23 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 else:
                     raise
 
-    def _print_message_on_sagemaker_config_usage(self, direct_input, config_value, config_path):
-        """Informs the SDK user whether a config value was present and automatically substituted"""
+    def _print_message_on_sagemaker_config_usage(
+        self, direct_input, config_value, config_path: str
+    ):
+        """Informs the SDK user whether a config value was present and automatically substituted
+
+        Args:
+            direct_input: the value that would be used if no sagemaker_config or default values
+                          existed. Usually this will be user-provided input to a Class or to a
+                          session.py method, or None if no input was provided.
+            config_value: the value fetched from sagemaker_config. This is usually the value that
+                          will be used if direct_input is None.
+            config_path: a string denoting the path of keys that point to the config value in the
+                         sagemaker_config
+
+        Returns:
+            No output (just prints information)
+        """
 
         if config_value is not None:
 
