@@ -23,12 +23,10 @@ from sagemaker.feature_store.dataset_builder import (
     DatasetBuilder,
     FeatureGroupToBeMerged,
     TableType,
+    JoinComparatorEnum,
+    JoinTypeEnum,
 )
-from sagemaker.feature_store.feature_group import (
-    FeatureDefinition,
-    FeatureGroup,
-    FeatureTypeEnum,
-)
+from sagemaker.feature_store.feature_group import FeatureDefinition, FeatureGroup, FeatureTypeEnum
 
 
 @pytest.fixture
@@ -139,6 +137,68 @@ def test_with_feature_group(sagemaker_session_mock):
     assert (
         dataset_builder._feature_groups_to_be_merged[0].event_time_identifier_feature.feature_type
         == FeatureTypeEnum.STRING
+    )
+    assert (
+        dataset_builder._feature_groups_to_be_merged[0].target_feature_name_in_base
+        == "target-feature"
+    )
+
+
+def test_with_feature_group_with_additional_params(sagemaker_session_mock):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    dataframe = pd.DataFrame({"feature-1": [420, 380, 390], "feature-2": [50, 40, 45]})
+    feature_group.load_feature_definitions(dataframe)
+    dataset_builder = DatasetBuilder(
+        sagemaker_session=sagemaker_session_mock,
+        base=feature_group,
+        output_path="file/to/path",
+        record_identifier_feature_name="target-feature",
+    )
+    sagemaker_session_mock.describe_feature_group.return_value = {
+        "OfflineStoreConfig": {"DataCatalogConfig": {"TableName": "table", "Database": "database"}},
+        "RecordIdentifierFeatureName": "feature-1",
+        "EventTimeFeatureName": "feature-2",
+        "FeatureDefinitions": [
+            {"FeatureName": "feature-1", "FeatureType": "String"},
+            {"FeatureName": "feature-2", "FeatureType": "String"},
+        ],
+    }
+    dataset_builder.with_feature_group(
+        feature_group,
+        "target-feature",
+        ["feature-1", "feature-2"],
+        join_comparator=JoinComparatorEnum.LESS_THAN,
+        join_type=JoinTypeEnum.LEFT_JOIN,
+        feature_name_in_target="feature-2",
+    )
+
+    assert len(dataset_builder._feature_groups_to_be_merged) == 1
+    assert dataset_builder._feature_groups_to_be_merged[0].features == [
+        "feature-1",
+        "feature-2",
+    ]
+    assert dataset_builder._feature_groups_to_be_merged[0].included_feature_names == [
+        "feature-1",
+        "feature-2",
+    ]
+    assert dataset_builder._feature_groups_to_be_merged[0].database == "database"
+    assert dataset_builder._feature_groups_to_be_merged[0].table_name == "table"
+    assert (
+        dataset_builder._feature_groups_to_be_merged[0].record_identifier_feature_name
+        == "feature-1"
+    )
+    assert (
+        dataset_builder._feature_groups_to_be_merged[0].event_time_identifier_feature.feature_name
+        == "feature-2"
+    )
+    assert (
+        dataset_builder._feature_groups_to_be_merged[0].event_time_identifier_feature.feature_type
+        == FeatureTypeEnum.STRING
+    )
+    assert dataset_builder._feature_groups_to_be_merged[0].join_type == JoinTypeEnum.LEFT_JOIN
+    assert (
+        dataset_builder._feature_groups_to_be_merged[0].join_comparator
+        == JoinComparatorEnum.LESS_THAN
     )
     assert (
         dataset_builder._feature_groups_to_be_merged[0].target_feature_name_in_base
@@ -525,6 +585,157 @@ def test_construct_query_string(sagemaker_session_mock):
         + "JOIN fg_0\n"
         + 'ON fg_base."target-feature" = fg_0."feature-1"\n'
         + 'AND from_unixtime(fg_base."target-feature") >= from_unixtime(fg_0."feature-2")\n'
+        + ")\n"
+    )
+
+
+# Tests the optional feature_name_in_target, join_comparator and join_type parameters
+def test_with_feature_group_with_optional_params_query_string(sagemaker_session_mock):
+    base_feature_group = FeatureGroup(
+        name="base_feature_group", sagemaker_session=sagemaker_session_mock
+    )
+    target_feature_group = FeatureGroup(
+        name="target_feature_group", sagemaker_session=sagemaker_session_mock
+    )
+
+    dataset_builder = DatasetBuilder(
+        sagemaker_session=sagemaker_session_mock,
+        base=base_feature_group,
+        output_path="file/to/path",
+        record_identifier_feature_name="target-feature",
+    )
+
+    dataset_builder._event_time_identifier_feature_name = "target-feature"
+
+    sagemaker_session_mock.describe_feature_group.return_value = {
+        "OfflineStoreConfig": {
+            "DataCatalogConfig": {"TableName": "table-name", "Database": "database"}
+        },
+        "RecordIdentifierFeatureName": "feature-1",
+        "EventTimeFeatureName": "feature-2",
+        "FeatureDefinitions": [
+            {"FeatureName": "feature-1", "FeatureType": "String"},
+            {"FeatureName": "feature-2", "FeatureType": "String"},
+        ],
+    }
+
+    dataset_builder.with_feature_group(
+        target_feature_group,
+        "target-feature",
+        ["feature-1", "feature-2"],
+        "feature-2",
+        JoinComparatorEnum.GREATER_THAN,
+        JoinTypeEnum.FULL_JOIN,
+    )
+
+    query_string = dataset_builder._construct_query_string(BASE)
+
+    assert (
+        query_string
+        == "WITH fg_base AS (WITH table_base AS (\n"
+        + "SELECT *\n"
+        + "FROM (\n"
+        + "SELECT *, row_number() OVER (\n"
+        + 'PARTITION BY origin_base."target-feature", origin_base."other-feature"\n'
+        + 'ORDER BY origin_base."api_invocation_time" DESC, origin_base."write_time" DESC\n'
+        + ") AS dedup_row_base\n"
+        + 'FROM "database"."base-table" origin_base\n'
+        + ")\n"
+        + "WHERE dedup_row_base = 1\n"
+        + "),\n"
+        + "deleted_base AS (\n"
+        + "SELECT *\n"
+        + "FROM (\n"
+        + "SELECT *, row_number() OVER (\n"
+        + 'PARTITION BY origin_base."target-feature"\n'
+        + 'ORDER BY origin_base."other-feature" DESC, origin_base."api_invocation_time" '
+        + 'DESC, origin_base."write_time" DESC\n'
+        + ") AS deleted_row_base\n"
+        + 'FROM "database"."base-table" origin_base\n'
+        + "WHERE is_deleted\n"
+        + ")\n"
+        + "WHERE deleted_row_base = 1\n"
+        + ")\n"
+        + 'SELECT table_base."target-feature", table_base."other-feature"\n'
+        + "FROM (\n"
+        + 'SELECT table_base."target-feature", table_base."other-feature", '
+        + 'table_base."write_time"\n'
+        + "FROM table_base\n"
+        + "LEFT JOIN deleted_base\n"
+        + 'ON table_base."target-feature" = deleted_base."target-feature"\n'
+        + 'WHERE deleted_base."target-feature" IS NULL\n'
+        + "UNION ALL\n"
+        + 'SELECT table_base."target-feature", table_base."other-feature", '
+        + 'table_base."write_time"\n'
+        + "FROM deleted_base\n"
+        + "JOIN table_base\n"
+        + 'ON table_base."target-feature" = deleted_base."target-feature"\n'
+        + "AND (\n"
+        + 'table_base."other-feature" > deleted_base."other-feature"\n'
+        + 'OR (table_base."other-feature" = deleted_base."other-feature" AND '
+        + 'table_base."api_invocation_time" > deleted_base."api_invocation_time")\n'
+        + 'OR (table_base."other-feature" = deleted_base."other-feature" AND '
+        + 'table_base."api_invocation_time" = deleted_base."api_invocation_time" AND '
+        + 'table_base."write_time" > deleted_base."write_time")\n'
+        + ")\n"
+        + ") AS table_base\n"
+        + "),\n"
+        + "fg_0 AS (WITH table_0 AS (\n"
+        + "SELECT *\n"
+        + "FROM (\n"
+        + "SELECT *, row_number() OVER (\n"
+        + 'PARTITION BY origin_0."feature-1", origin_0."feature-2"\n'
+        + 'ORDER BY origin_0."api_invocation_time" DESC, origin_0."write_time" DESC\n'
+        + ") AS dedup_row_0\n"
+        + 'FROM "database"."table-name" origin_0\n'
+        + ")\n"
+        + "WHERE dedup_row_0 = 1\n"
+        + "),\n"
+        + "deleted_0 AS (\n"
+        + "SELECT *\n"
+        + "FROM (\n"
+        + "SELECT *, row_number() OVER (\n"
+        + 'PARTITION BY origin_0."feature-1"\n'
+        + 'ORDER BY origin_0."feature-2" DESC, origin_0."api_invocation_time" DESC, '
+        + 'origin_0."write_time" DESC\n'
+        + ") AS deleted_row_0\n"
+        + 'FROM "database"."table-name" origin_0\n'
+        + "WHERE is_deleted\n"
+        + ")\n"
+        + "WHERE deleted_row_0 = 1\n"
+        + ")\n"
+        + 'SELECT table_0."feature-1", table_0."feature-2"\n'
+        + "FROM (\n"
+        + 'SELECT table_0."feature-1", table_0."feature-2", table_0."write_time"\n'
+        + "FROM table_0\n"
+        + "LEFT JOIN deleted_0\n"
+        + 'ON table_0."feature-1" = deleted_0."feature-1"\n'
+        + 'WHERE deleted_0."feature-1" IS NULL\n'
+        + "UNION ALL\n"
+        + 'SELECT table_0."feature-1", table_0."feature-2", table_0."write_time"\n'
+        + "FROM deleted_0\n"
+        + "JOIN table_0\n"
+        + 'ON table_0."feature-1" = deleted_0."feature-1"\n'
+        + "AND (\n"
+        + 'table_0."feature-2" > deleted_0."feature-2"\n'
+        + 'OR (table_0."feature-2" = deleted_0."feature-2" AND '
+        + 'table_0."api_invocation_time" > deleted_0."api_invocation_time")\n'
+        + 'OR (table_0."feature-2" = deleted_0."feature-2" AND '
+        + 'table_0."api_invocation_time" = deleted_0."api_invocation_time" AND '
+        + 'table_0."write_time" > deleted_0."write_time")\n'
+        + ")\n"
+        + ") AS table_0\n"
+        + ")\n"
+        + 'SELECT target-feature, other-feature, "feature-1.1", "feature-2.1"\n'
+        + "FROM (\n"
+        + 'SELECT fg_base.target-feature, fg_base.other-feature, fg_0."feature-1" as '
+        + '"feature-1.1", fg_0."feature-2" as "feature-2.1", row_number() OVER (\n'
+        + 'PARTITION BY fg_base."target-feature"\n'
+        + 'ORDER BY fg_base."other-feature" DESC, fg_0."feature-2" DESC\n'
+        + ") AS row_recent\n"
+        + "FROM fg_base\n"
+        + "FULL JOIN fg_0\n"
+        + 'ON fg_base."target-feature" > fg_0."feature-2"\n'
         + ")\n"
     )
 
