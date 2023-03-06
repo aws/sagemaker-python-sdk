@@ -47,7 +47,6 @@ HTTPS_PREFIX = "https://"
 DEFAULT_SLEEP_TIME_SECONDS = 10
 WAITING_DOT_NUMBER = 10
 
-
 logger = logging.getLogger(__name__)
 
 

@@ -157,7 +157,7 @@ class AthenaQuery:
             filename=output_filename,
         )
 
-        kwargs.pop('delimiter', None)
+        kwargs.pop("delimiter", None)
         return pd.read_csv(filepath_or_buffer=output_filename, delimiter=",", **kwargs)
 
 

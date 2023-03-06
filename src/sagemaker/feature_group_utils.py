@@ -19,11 +19,12 @@ import logging
 from typing import Union
 from pathlib import Path
 
+import boto3
 import pandas
 from pandas import DataFrame, Series, read_csv
 
+from sagemaker import Session
 from sagemaker.feature_store.feature_group import FeatureGroup
-from sagemaker.utils import get_session_from_role
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +97,7 @@ def get_feature_group_as_dataframe(
     if session is not None:
         sagemaker_session = session
     elif role is not None and region is not None:
-        sagemaker_session = get_session_from_role(region=region, assume_role=role)
+        sagemaker_session = _get_session_from_role(region=region, assume_role=role)
     else:
         exc = Exception("Argument Session or role and region must be specified.")
         logger.exception(exc)
@@ -251,7 +252,7 @@ def prepare_fg_from_dataframe_or_file(
     if session is not None:
         sagemaker_session = session
     elif role is not None and region is not None:
-        sagemaker_session = get_session_from_role(region=region)
+        sagemaker_session = _get_session_from_role(region=region)
     else:
         exc = Exception("Argument Session or role and region must be specified.")
         logger.exception(exc)
@@ -262,3 +263,51 @@ def prepare_fg_from_dataframe_or_file(
     feature_group.load_feature_definitions(data_frame=data)
 
     return feature_group
+
+
+def _get_session_from_role(region: str, assume_role: Union[str, None] = None) -> Session:
+    """Method use to get the :class:`sagemaker.session.Session`  from a role and a region.
+
+    Description:
+        Helpful in case it's invoke from a session with a role without permission it can assume
+        another role temporarily to perform certain tasks.
+
+    Args:
+        assume_role: role name to assume. If not specified will use the default execution role.
+        region: region name
+    Returns:
+        `:obj:sagemaker.session.Session`
+    """
+    boto_session = boto3.Session(region_name=region)
+
+    # It will try to assume the role specified
+    if assume_role:
+        sts = boto_session.client(
+            "sts", region_name=region, endpoint_url="https://sts.eu-west-1.amazonaws.com"
+        )
+
+        metadata = sts.assume_role(RoleArn=assume_role, RoleSessionName="SagemakerExecution")
+
+        access_key_id = metadata["Credentials"]["AccessKeyId"]
+        secret_access_key = metadata["Credentials"]["SecretAccessKey"]
+        session_token = metadata["Credentials"]["SessionToken"]
+
+        boto_session = boto3.session.Session(
+            region_name=region,
+            aws_access_key_id=access_key_id,
+            aws_secret_access_key=secret_access_key,
+            aws_session_token=session_token,
+        )
+
+    # Sessions
+    sagemaker_client = boto_session.client("sagemaker")
+    sagemaker_runtime = boto_session.client("sagemaker-runtime")
+    runtime_client = boto_session.client(service_name="sagemaker-featurestore-runtime")
+    sagemaker_session = Session(
+        boto_session=boto_session,
+        sagemaker_client=sagemaker_client,
+        sagemaker_runtime_client=sagemaker_runtime,
+        sagemaker_featurestore_runtime_client=runtime_client,
+    )
+
+    return sagemaker_session
