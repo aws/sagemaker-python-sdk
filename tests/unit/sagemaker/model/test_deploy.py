@@ -26,6 +26,8 @@ from tests.unit.sagemaker.inference_recommender.constants import (
     DESCRIBE_COMPILATION_JOB_RESPONSE,
     DESCRIBE_MODEL_PACKAGE_RESPONSE,
     DESCRIBE_MODEL_RESPONSE,
+    INSTANT_RECOMMENDATION_ENV,
+    INSTANT_RECOMMENDATION_ID,
     INVALID_RECOMMENDATION_ID,
     IR_COMPILATION_JOB_NAME,
     IR_ENV,
@@ -35,6 +37,7 @@ from tests.unit.sagemaker.inference_recommender.constants import (
     IR_MODEL_PACKAGE_VERSION_ARN,
     IR_COMPILATION_IMAGE,
     IR_COMPILATION_MODEL_DATA,
+    NOT_EXISTED_INSTANT_RECOMMENDATION_ID,
     RECOMMENDATION_ID,
     NOT_EXISTED_RECOMMENDATION_ID,
 )
@@ -543,6 +546,11 @@ def test_deploy_wrong_async_inferenc_config(sagemaker_session):
 
 
 def test_deploy_ir_with_incompatible_parameters(sagemaker_session):
+    sagemaker_session.sagemaker_client.describe_inference_recommendations_job.return_value = (
+        create_inference_recommendations_job_default_with_model_package_arn()
+    )
+    sagemaker_session.sagemaker_client.describe_model.return_value = None
+
     model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session, role=ROLE)
 
     with pytest.raises(
@@ -553,7 +561,7 @@ def test_deploy_ir_with_incompatible_parameters(sagemaker_session):
     ):
         model.deploy(
             instance_type=INSTANCE_TYPE,
-            inference_recommendation_id=INFERENCE_RECOMMENDATION_ID,
+            inference_recommendation_id=RECOMMENDATION_ID,
         )
 
     with pytest.raises(
@@ -564,7 +572,7 @@ def test_deploy_ir_with_incompatible_parameters(sagemaker_session):
     ):
         model.deploy(
             initial_instance_count=INSTANCE_COUNT,
-            inference_recommendation_id=INFERENCE_RECOMMENDATION_ID,
+            inference_recommendation_id=RECOMMENDATION_ID,
         )
 
     with pytest.raises(
@@ -615,6 +623,7 @@ def test_deploy_with_recommendation_id_with_model_pkg_arn(sagemaker_session):
     sagemaker_session.sagemaker_client.describe_model_package.side_effect = (
         mock_describe_model_package
     )
+    sagemaker_session.sagemaker_client.describe_model.return_value = None
 
     model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session, role=ROLE)
 
@@ -627,11 +636,12 @@ def test_deploy_with_recommendation_id_with_model_pkg_arn(sagemaker_session):
     assert model.env == IR_ENV
 
 
-def test_deploy_with_recommendation_id_with_model_name(sagemaker_session):
-    def mock_describe_model(ModelName):
-        if ModelName == IR_MODEL_NAME:
-            return DESCRIBE_MODEL_RESPONSE
+def mock_describe_model(ModelName):
+    if ModelName == IR_MODEL_NAME:
+        return DESCRIBE_MODEL_RESPONSE
 
+
+def test_deploy_with_recommendation_id_with_model_name(sagemaker_session):
     sagemaker_session.sagemaker_client.describe_inference_recommendations_job.return_value = (
         create_inference_recommendations_job_default_with_model_name()
     )
@@ -655,6 +665,7 @@ def test_deploy_with_recommendation_id_with_model_pkg_arn_and_compilation(sagema
     sagemaker_session.sagemaker_client.describe_model_package.side_effect = (
         mock_describe_model_package
     )
+    sagemaker_session.sagemaker_client.describe_model.return_value = None
 
     model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session, role=ROLE)
 
@@ -677,6 +688,7 @@ def test_deploy_with_recommendation_id_with_model_name_and_compilation(sagemaker
     sagemaker_session.sagemaker_client.describe_compilation_job.side_effect = (
         mock_describe_compilation_job
     )
+    sagemaker_session.sagemaker_client.describe_model.side_effect = mock_describe_model
 
     model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session, role=ROLE)
 
@@ -695,16 +707,47 @@ def test_deploy_with_not_existed_recommendation_id(sagemaker_session):
     sagemaker_session.sagemaker_client.describe_compilation_job.return_value = (
         DESCRIBE_COMPILATION_JOB_RESPONSE
     )
+    sagemaker_session.sagemaker_client.describe_model.return_value = None
 
     model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session, role=ROLE)
 
     with pytest.raises(
         ValueError,
-        match="inference_recommendation_id does not exist in InferenceRecommendations list",
+        match="Inference Recommendation id does not exist",
     ):
         model.deploy(
             inference_recommendation_id=NOT_EXISTED_RECOMMENDATION_ID,
         )
+
+
+def test_deploy_with_invalid_instant_recommendation_id(sagemaker_session):
+    sagemaker_session.sagemaker_client.describe_inference_recommendations_job.return_value = None
+    sagemaker_session.sagemaker_client.describe_model.side_effect = mock_describe_model
+
+    model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session, role=ROLE)
+
+    with pytest.raises(
+        ValueError,
+        match="Inference Recommendation id does not exist",
+    ):
+        model.deploy(
+            inference_recommendation_id=NOT_EXISTED_INSTANT_RECOMMENDATION_ID,
+        )
+
+
+def test_deploy_with_valid_instant_recommendation_id(sagemaker_session):
+    sagemaker_session.sagemaker_client.describe_inference_recommendations_job.return_value = None
+    sagemaker_session.sagemaker_client.describe_model.side_effect = mock_describe_model
+
+    model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session, role=ROLE)
+    model.deploy(
+        inference_recommendation_id=INSTANT_RECOMMENDATION_ID,
+        initial_instance_count=INSTANCE_COUNT,
+    )
+
+    assert model.model_data == MODEL_DATA
+    assert model.image_uri == MODEL_IMAGE
+    assert model.env == INSTANT_RECOMMENDATION_ENV
 
 
 @patch("sagemaker.model.Model._create_sagemaker_model", Mock())

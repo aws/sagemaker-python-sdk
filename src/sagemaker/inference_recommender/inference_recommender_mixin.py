@@ -365,12 +365,6 @@ class InferenceRecommenderMixin:
             return (instance_type, initial_instance_count)
 
         # Validate non-compatible parameters with recommendation id
-        if bool(instance_type) != bool(initial_instance_count):
-            raise ValueError(
-                "Please either do not specify instance_type and initial_instance_count"
-                "since they are in recommendation, or specify both of them if you want"
-                "to override the recommendation."
-            )
         if accelerator_type is not None:
             raise ValueError("accelerator_type is not compatible with inference_recommendation_id.")
         if async_inference_config is not None:
@@ -390,26 +384,66 @@ class InferenceRecommenderMixin:
         recommendation_job_name = inference_recommendation_id.split("/")[0]
 
         sage_client = self.sagemaker_session.sagemaker_client
-        recommendation_res = sage_client.describe_inference_recommendations_job(
-            JobName=recommendation_job_name
-        )
-        input_config = recommendation_res["InputConfig"]
 
-        recommendation = next(
-            (
-                rec
-                for rec in recommendation_res["InferenceRecommendations"]
-                if rec["RecommendationId"] == inference_recommendation_id
-            ),
-            None,
-        )
-
-        if not recommendation:
-            raise ValueError(
-                "inference_recommendation_id does not exist in InferenceRecommendations list"
+        # Retrieve model or inference recommendation job details
+        recommendation_res, model_res = None, None
+        try:
+            recommendation_res = sage_client.describe_inference_recommendations_job(
+                JobName=recommendation_job_name
             )
+        except sage_client.exceptions.ResourceNotFound:
+            pass
+        try:
+            model_res = sage_client.describe_model(ModelName=recommendation_job_name)
+        except sage_client.exceptions.ResourceNotFound:
+            pass
+        if recommendation_res is None and model_res is None:
+            raise ValueError("Inference Recommendation id is not valid")
 
-        model_config = recommendation["ModelConfiguration"]
+        # Search the recommendation from above describe result lists
+        inference_recommendation, instant_recommendation = None, None
+        if recommendation_res:
+            inference_recommendation = next(
+                (
+                    rec
+                    for rec in recommendation_res["InferenceRecommendations"]
+                    if rec["RecommendationId"] == inference_recommendation_id
+                ),
+                None,
+            )
+        if model_res:
+            instant_recommendation = next(
+                (
+                    rec
+                    for rec in model_res["DeploymentRecommendation"][
+                        "RealTimeInferenceRecommendations"
+                    ]
+                    if rec["RecommendationId"] == inference_recommendation_id
+                ),
+                None,
+            )
+        if inference_recommendation is None and instant_recommendation is None:
+            raise ValueError("Inference Recommendation id does not exist")
+
+        # Update params beased on instant recommendation
+        if instant_recommendation:
+            if initial_instance_count is None:
+                raise ValueError(
+                    "Please specify initial_instance_count with instant recommendation id"
+                )
+            self.env.update(instant_recommendation["Environment"])
+            instance_type = instant_recommendation["InstanceType"]
+            return (instance_type, initial_instance_count)
+
+        # Update params based on default inference recommendation
+        if bool(instance_type) != bool(initial_instance_count):
+            raise ValueError(
+                "Please either do not specify instance_type and initial_instance_count"
+                "since they are in recommendation, or specify both of them if you want"
+                "to override the recommendation."
+            )
+        input_config = recommendation_res["InputConfig"]
+        model_config = inference_recommendation["ModelConfiguration"]
         envs = (
             model_config["EnvironmentParameters"]
             if "EnvironmentParameters" in model_config
@@ -458,8 +492,10 @@ class InferenceRecommenderMixin:
                 self.model_data = compilation_res["ModelArtifacts"]["S3ModelArtifacts"]
                 self.image_uri = compilation_res["InferenceImage"]
 
-        instance_type = recommendation["EndpointConfiguration"]["InstanceType"]
-        initial_instance_count = recommendation["EndpointConfiguration"]["InitialInstanceCount"]
+        instance_type = inference_recommendation["EndpointConfiguration"]["InstanceType"]
+        initial_instance_count = inference_recommendation["EndpointConfiguration"][
+            "InitialInstanceCount"
+        ]
 
         return (instance_type, initial_instance_count)
 
