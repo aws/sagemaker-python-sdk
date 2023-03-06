@@ -463,10 +463,9 @@ class InferenceRecommenderMixin:
             parameter_range.pop("instance_types")
 
             for instance_type in instance_types:
-                parameter_ranges = []
-                for name, param in parameter_range.items():
-                    as_json = {"Name": name, "Value": param.values}
-                    parameter_ranges.append(as_json)
+                parameter_ranges = [
+                    {"Name": name, "Value": param.values} for name, param in parameter_range.items()
+                ]
                 endpoint_configurations_to_json.append(
                     {
                         "EnvironmentParameterRanges": {
