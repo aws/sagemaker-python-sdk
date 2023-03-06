@@ -37,7 +37,10 @@ IR_SUPPORTED_INSTANCE_TYPES = ["ml.c5.xlarge", "ml.c5.2xlarge"]
 
 INVALID_RECOMMENDATION_ID = "ir-job6ab0ff22"
 NOT_EXISTED_RECOMMENDATION_ID = IR_JOB_NAME + "/ad3ec9ee"
+NOT_EXISTED_INSTANT_RECOMMENDATION_ID = IR_MODEL_NAME + "/ad3ec9ee"
 RECOMMENDATION_ID = IR_JOB_NAME + "/5bcee92e"
+INSTANT_RECOMMENDATION_ID = IR_MODEL_NAME + "/v0KObO5d"
+INSTANT_RECOMMENDATION_ENV = {"TS_DEFAULT_WORKERS_PER_MODEL": "4"}
 
 IR_CONTAINER_CONFIG = {
     "Domain": "MACHINE_LEARNING",
@@ -94,6 +97,21 @@ DESCRIBE_MODEL_RESPONSE = {
         "Environment": {"SAGEMAKER_REGION": "us-west-2"},
         "Image": IR_IMAGE,
         "ModelDataUrl": IR_MODEL_DATA,
+    },
+    "DeploymentRecommendation": {
+        "RecommendationStatus": "COMPLETED",
+        "RealTimeInferenceRecommendations": [
+            {
+                "RecommendationId": INSTANT_RECOMMENDATION_ID,
+                "InstanceType": "ml.g4dn.2xlarge",
+                "Environment": INSTANT_RECOMMENDATION_ENV,
+            },
+            {
+                "RecommendationId": "test-model-name/d248qVYU",
+                "InstanceType": "ml.c6i.large",
+                "Environment": {},
+            },
+        ],
     },
 }
 
