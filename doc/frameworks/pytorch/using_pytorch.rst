@@ -315,6 +315,13 @@ to run a distributed training job on two ``ml.p4d.24xlarge`` instances.
         }
     )
 
+
+.. note:: 
+    
+    For more information about setting up ``torchrun`` in your training script,
+    see `torchrun (Elastic Launch) <https://pytorch.org/docs/stable/elastic/run.html>_` in *the
+    PyTorch documentation*.
+
 ----
 
 .. _distributed-pytorch-training-on-trainium:
