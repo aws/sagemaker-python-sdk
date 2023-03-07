@@ -275,7 +275,7 @@ PyTorch documentation.
 The following examples show how to set a PyTorch estimator
 to run a distributed training job on two ``ml.p4d.24xlarge`` instances.
 
-**Using PyTorch DDP with the ``mpirun`` backend**
+**Using PyTorch DDP with the mpirun backend**
 
 .. code:: python
 
@@ -295,7 +295,7 @@ to run a distributed training job on two ``ml.p4d.24xlarge`` instances.
         }
     )
 
-**Using PyTorch DDP with the ``torchrun`` backend**
+**Using PyTorch DDP with the torchrun backend**
 
 .. code:: python
 
