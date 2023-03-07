@@ -38,7 +38,7 @@ class Phase:
     """
 
     def __init__(self, duration_in_seconds: int, initial_number_of_users: int, spawn_rate: int):
-        """Initialize a `Phase`"""
+        """Initialze a `Phase`"""
         self.to_json = {
             "DurationInSeconds": duration_in_seconds,
             "InitialNumberOfUsers": initial_number_of_users,
@@ -53,7 +53,7 @@ class ModelLatencyThreshold:
     """
 
     def __init__(self, percentile: str, value_in_milliseconds: int):
-        """Initialize a `ModelLatencyThreshold`"""
+        """Initialze a `ModelLatencyThreshold`"""
         self.to_json = {"Percentile": percentile, "ValueInMilliseconds": value_in_milliseconds}
 
 
@@ -78,12 +78,6 @@ class InferenceRecommenderMixin:
         log_level: Optional[str] = "Verbose",
     ):
         """Recommends an instance type for a SageMaker or BYOC model.
-
-        Create a SageMaker ``Model`` or use a registered ``ModelPackage``,
-        to start an Inference Recommender job.
-
-        The name of the created model is accessible in the ``name`` field of
-        this ``Model`` after right_size returns.
 
         Args:
             sample_payload_url (str): The S3 path where the sample payload is stored.
@@ -125,6 +119,8 @@ class InferenceRecommenderMixin:
             sagemaker.model.Model: A SageMaker ``Model`` object. See
             :func:`~sagemaker.model.Model` for full details.
         """
+        if not isinstance(self, sagemaker.model.ModelPackage):
+            raise ValueError("right_size() is currently only supported with a registered model")
 
         if not framework and self._framework():
             framework = INFERENCE_RECOMMENDER_FRAMEWORK_MAPPING.get(self._framework(), framework)
@@ -153,36 +149,12 @@ class InferenceRecommenderMixin:
 
         self._init_sagemaker_session_if_does_not_exist()
 
-        if isinstance(self, sagemaker.model.Model) and not isinstance(
-            self, sagemaker.model.ModelPackage
-        ):
-            primary_container_def = self.prepare_container_def()
-            if not self.name:
-                self._ensure_base_name_if_needed(
-                    image_uri=primary_container_def["Image"],
-                    script_uri=self.source_dir,
-                    model_uri=self.model_data,
-                )
-                self._set_model_name_if_needed()
-
-            create_model_args = dict(
-                name=self.name,
-                role=self.role,
-                container_defs=None,
-                primary_container=primary_container_def,
-                vpc_config=self.vpc_config,
-                enable_network_isolation=self.enable_network_isolation(),
-            )
-            LOGGER.warning("Attempting to create new model with name %s", self.name)
-            self.sagemaker_session.create_model(**create_model_args)
-
         ret_name = self.sagemaker_session.create_inference_recommendations_job(
             role=self.role,
             job_name=job_name,
             job_type=job_type,
             job_duration_in_seconds=job_duration_in_seconds,
-            model_name=self.name,
-            model_package_version_arn=getattr(self, "model_package_arn", None),
+            model_package_version_arn=self.model_package_arn,
             framework=framework,
             framework_version=framework_version,
             sample_payload_url=sample_payload_url,
