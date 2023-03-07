@@ -172,6 +172,7 @@ class PyTorch(Framework):
                     <https://sagemaker.readthedocs.io/en/stable/frameworks/pytorch/using_pytorch.html#distributed-pytorch-training>`_.
 
                 **To enable Torch Distributed:**
+                    
                     This is available for general distributed training on 
                     GPU instances from PyTorch v1.13.1 and later.
 
