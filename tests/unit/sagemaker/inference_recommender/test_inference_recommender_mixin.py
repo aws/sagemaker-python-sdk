@@ -175,6 +175,147 @@ def default_right_sized_model(model_package):
     )
 
 
+@patch("uuid.uuid4", MagicMock(return_value="sample-unique-uuid"))
+def test_right_size_default_with_model_name_successful(sagemaker_session, model):
+    inference_recommender_model = model.right_size(
+        sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
+        supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
+        supported_instance_types=[IR_SAMPLE_INSTANCE_TYPE],
+        job_name=IR_JOB_NAME,
+        framework=IR_SAMPLE_FRAMEWORK,
+    )
+
+    assert sagemaker_session.create_model.called_with(
+        name=ANY,
+        role=IR_ROLE_ARN,
+        container_defs=None,
+        primary_container={},
+        vpc_config=None,
+        enable_network_isolation=False,
+    )
+
+    # assert that the create api has been called with default parameters with model name
+    assert sagemaker_session.create_inference_recommendations_job.called_with(
+        role=IR_ROLE_ARN,
+        job_name=IR_JOB_NAME,
+        job_type="Default",
+        job_duration_in_seconds=None,
+        model_name=ANY,
+        model_package_version_arn=None,
+        framework=IR_SAMPLE_FRAMEWORK,
+        framework_version=None,
+        sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
+        supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
+        supported_instance_types=[IR_SAMPLE_INSTANCE_TYPE],
+        endpoint_configurations=None,
+        traffic_pattern=None,
+        stopping_conditions=None,
+        resource_limit=None,
+    )
+
+    assert sagemaker_session.wait_for_inference_recommendations_job.called_with(IR_JOB_NAME)
+
+    # confirm that the IR instance attributes have been set
+    assert (
+        inference_recommender_model.inference_recommender_job_results
+        == IR_SAMPLE_INFERENCE_RESPONSE
+    )
+    assert (
+        inference_recommender_model.inference_recommendations
+        == IR_SAMPLE_INFERENCE_RESPONSE["InferenceRecommendations"]
+    )
+
+    # confirm that the returned object of right_size is itself
+    assert inference_recommender_model == model
+
+
+@patch("uuid.uuid4", MagicMock(return_value="sample-unique-uuid"))
+def test_right_size_advanced_list_instances_model_name_successful(sagemaker_session, model):
+    inference_recommender_model = model.right_size(
+        sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
+        supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
+        framework="SAGEMAKER-SCIKIT-LEARN",
+        job_duration_in_seconds=7200,
+        hyperparameter_ranges=IR_SAMPLE_LIST_OF_INSTANCES_HYPERPARAMETER_RANGES,
+        phases=IR_SAMPLE_PHASES,
+        traffic_type="PHASES",
+        max_invocations=100,
+        model_latency_thresholds=IR_SAMPLE_MODEL_LATENCY_THRESHOLDS,
+        max_tests=5,
+        max_parallel_tests=5,
+    )
+
+    # assert that the create api has been called with advanced parameters
+    assert sagemaker_session.create_inference_recommendations_job.called_with(
+        role=IR_ROLE_ARN,
+        job_name=IR_JOB_NAME,
+        job_type="Advanced",
+        job_duration_in_seconds=7200,
+        model_name=ANY,
+        model_package_version_arn=None,
+        framework=IR_SAMPLE_FRAMEWORK,
+        framework_version=None,
+        sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
+        supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
+        supported_instance_types=[IR_SAMPLE_INSTANCE_TYPE],
+        endpoint_configurations=IR_SAMPLE_ENDPOINT_CONFIG,
+        traffic_pattern=IR_SAMPLE_TRAFFIC_PATTERN,
+        stopping_conditions=IR_SAMPLE_STOPPING_CONDITIONS,
+        resource_limit=IR_SAMPLE_RESOURCE_LIMIT,
+    )
+
+    assert sagemaker_session.wait_for_inference_recommendations_job.called_with(IR_JOB_NAME)
+
+    # confirm that the IR instance attributes have been set
+    assert (
+        inference_recommender_model.inference_recommender_job_results
+        == IR_SAMPLE_INFERENCE_RESPONSE
+    )
+    assert (
+        inference_recommender_model.inference_recommendations
+        == IR_SAMPLE_INFERENCE_RESPONSE["InferenceRecommendations"]
+    )
+
+    # confirm that the returned object of right_size is itself
+    assert inference_recommender_model == model
+
+
+@patch("uuid.uuid4", MagicMock(return_value="sample-unique-uuid"))
+def test_right_size_advanced_single_instances_model_name_successful(sagemaker_session, model):
+    model.right_size(
+        sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
+        supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
+        framework="SAGEMAKER-SCIKIT-LEARN",
+        job_duration_in_seconds=7200,
+        hyperparameter_ranges=IR_SAMPLE_SINGLE_INSTANCES_HYPERPARAMETER_RANGES,
+        phases=IR_SAMPLE_PHASES,
+        traffic_type="PHASES",
+        max_invocations=100,
+        model_latency_thresholds=IR_SAMPLE_MODEL_LATENCY_THRESHOLDS,
+        max_tests=5,
+        max_parallel_tests=5,
+    )
+
+    # assert that the create api has been called with advanced parameters
+    assert sagemaker_session.create_inference_recommendations_job.called_with(
+        role=IR_ROLE_ARN,
+        job_name=IR_JOB_NAME,
+        job_type="Advanced",
+        job_duration_in_seconds=7200,
+        model_name=ANY,
+        model_package_version_arn=None,
+        framework=IR_SAMPLE_FRAMEWORK,
+        framework_version=None,
+        sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
+        supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
+        supported_instance_types=[IR_SAMPLE_INSTANCE_TYPE],
+        endpoint_configurations=IR_SAMPLE_ENDPOINT_CONFIG,
+        traffic_pattern=IR_SAMPLE_TRAFFIC_PATTERN,
+        stopping_conditions=IR_SAMPLE_STOPPING_CONDITIONS,
+        resource_limit=IR_SAMPLE_RESOURCE_LIMIT,
+    )
+
+
 def test_right_size_default_with_model_package_successful(sagemaker_session, model_package):
     inference_recommender_model_pkg = model_package.right_size(
         sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
@@ -190,6 +331,7 @@ def test_right_size_default_with_model_package_successful(sagemaker_session, mod
         job_name=IR_JOB_NAME,
         job_type="Default",
         job_duration_in_seconds=None,
+        model_name=None,
         model_package_version_arn=model_package.model_package_arn,
         framework=IR_SAMPLE_FRAMEWORK,
         framework_version=None,
@@ -202,7 +344,7 @@ def test_right_size_default_with_model_package_successful(sagemaker_session, mod
         resource_limit=None,
     )
 
-    assert sagemaker_session.wait_for_inference_recomendations_job.called_with(IR_JOB_NAME)
+    assert sagemaker_session.wait_for_inference_recommendations_job.called_with(IR_JOB_NAME)
 
     # confirm that the IR instance attributes have been set
     assert (
@@ -253,7 +395,7 @@ def test_right_size_advanced_list_instances_model_package_successful(
         resource_limit=IR_SAMPLE_RESOURCE_LIMIT,
     )
 
-    assert sagemaker_session.wait_for_inference_recomendations_job.called_with(IR_JOB_NAME)
+    assert sagemaker_session.wait_for_inference_recommendations_job.called_with(IR_JOB_NAME)
 
     # confirm that the IR instance attributes have been set
     assert (
@@ -356,21 +498,6 @@ def test_right_size_invalid_hyperparameter_ranges(sagemaker_session, model_packa
             model_latency_thresholds=IR_SAMPLE_MODEL_LATENCY_THRESHOLDS,
             max_tests=5,
             max_parallel_tests=5,
-        )
-
-
-# TODO -> removed once model registry is decoupled
-def test_right_size_missing_model_package_arn(sagemaker_session, model):
-    with pytest.raises(
-        ValueError,
-        match="right_size\\(\\) is currently only supported with a registered model",
-    ):
-        model.right_size(
-            sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
-            supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
-            supported_instance_types=[IR_SAMPLE_INSTANCE_TYPE],
-            job_name=IR_JOB_NAME,
-            framework=IR_SAMPLE_FRAMEWORK,
         )
 
 
