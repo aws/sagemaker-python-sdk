@@ -262,8 +262,7 @@ during the PyTorch DDP initialization.
 
 .. note::
 
-  The SageMaker PyTorch estimator operates ``mpirun`` in the backend.
-  It doesn’t use ``torchrun`` for distributed training.
+  The SageMaker PyTorch estimator can operates both ``mpirun`` and ``torchrun`` in the backend for distributed training.
 
 For more information about setting up PyTorch DDP in your training script,
 see `Getting Started with Distributed Data Parallel
@@ -317,7 +316,7 @@ with the ``torch_distributed`` option as the distribution strategy.
 .. note::
 
   This ``torch_distributed`` support is available
-  in the AWS Deep Learning Containers for PyTorch Neuron starting v1.11.0.
+  in the AWS Deep Learning Containers for PyTorch Neuron starting v1.11.0 and other gpu instances starting v1.31.1.
   To find a complete list of supported versions of PyTorch Neuron, see
   `Neuron Containers <https://github.com/aws/deep-learning-containers/blob/master/available_images.md#neuron-containers>`_
   in the *AWS Deep Learning Containers GitHub repository*.
