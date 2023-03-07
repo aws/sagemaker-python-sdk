@@ -196,6 +196,7 @@ fit Optional Arguments
 -  ``logs``: Defaults to True, whether to show logs produced by training
    job in the Python session. Only meaningful when wait is True.
 
+----
 
 Distributed PyTorch Training
 ============================
@@ -262,15 +263,19 @@ during the PyTorch DDP initialization.
 
 .. note::
 
-  The SageMaker PyTorch estimator can operates both ``mpirun`` and ``torchrun`` in the backend for distributed training.
+  The SageMaker PyTorch estimator can operate both ``mpirun`` (for PyTorch 1.12.0 and later)
+  and ``torchrun`` 
+  (for PyTorch 1.13.1 and later) in the backend for distributed training.
 
 For more information about setting up PyTorch DDP in your training script,
 see `Getting Started with Distributed Data Parallel
 <https://pytorch.org/tutorials/intermediate/ddp_tutorial.html>`_ in the
 PyTorch documentation.
 
-The following example shows how to run a PyTorch DDP training in SageMaker
-using two ``ml.p4d.24xlarge`` instances:
+The following examples show how to set a PyTorch estimator
+to run a distributed training job on two ``ml.p4d.24xlarge`` instances.
+
+**Using PyTorch DDP with the ``mpirun`` backend**
 
 .. code:: python
 
@@ -290,7 +295,27 @@ using two ``ml.p4d.24xlarge`` instances:
         }
     )
 
-    pt_estimator.fit("s3://bucket/path/to/training/data")
+**Using PyTorch DDP with the ``torchrun`` backend**
+
+.. code:: python
+
+    from sagemaker.pytorch import PyTorch
+
+    pt_estimator = PyTorch(
+        entry_point="train_ptddp.py",
+        role="SageMakerRole",
+        framework_version="1.13.1",
+        py_version="py38",
+        instance_count=2,
+        instance_type="ml.p4d.24xlarge",
+        distribution={
+            "torch_distributed": {
+                "enabled": True
+            }
+        }
+    )
+
+----
 
 .. _distributed-pytorch-training-on-trainium:
 
@@ -316,14 +341,14 @@ with the ``torch_distributed`` option as the distribution strategy.
 .. note::
 
   This ``torch_distributed`` support is available
-  in the AWS Deep Learning Containers for PyTorch Neuron starting v1.11.0 and other gpu instances starting v1.13.1.
+  in the AWS Deep Learning Containers for PyTorch Neuron starting v1.11.0.
   To find a complete list of supported versions of PyTorch Neuron, see
   `Neuron Containers <https://github.com/aws/deep-learning-containers/blob/master/available_images.md#neuron-containers>`_
   in the *AWS Deep Learning Containers GitHub repository*.
 
 .. note::
 
-  SageMaker Debugger is currently not supported with Trn1 instances.
+  SageMaker Debugger is not compatible with Trn1 instances.
 
 Adapt Your Training Script to Initialize with the XLA backend
 -------------------------------------------------------------
