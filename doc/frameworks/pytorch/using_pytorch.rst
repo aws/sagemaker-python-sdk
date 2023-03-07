@@ -316,7 +316,7 @@ with the ``torch_distributed`` option as the distribution strategy.
 .. note::
 
   This ``torch_distributed`` support is available
-  in the AWS Deep Learning Containers for PyTorch Neuron starting v1.11.0 and other gpu instances starting v1.31.1.
+  in the AWS Deep Learning Containers for PyTorch Neuron starting v1.11.0 and other gpu instances starting v1.13.1.
   To find a complete list of supported versions of PyTorch Neuron, see
   `Neuron Containers <https://github.com/aws/deep-learning-containers/blob/master/available_images.md#neuron-containers>`_
   in the *AWS Deep Learning Containers GitHub repository*.
