@@ -641,8 +641,9 @@ def test_deploy_right_size_serverless_override(sagemaker_session, default_right_
     )
 
 
-@patch("sagemaker.utils.name_from_base", return_value=MODEL_NAME)
+@patch("sagemaker.utils.name_from_base", MagicMock(return_value=MODEL_NAME))
 def test_deploy_right_size_async_override(sagemaker_session, default_right_sized_model):
+    default_right_sized_model.name = MODEL_NAME
     async_inference_config = AsyncInferenceConfig(output_path="s3://some-path")
     default_right_sized_model.deploy(
         instance_type="ml.c5.2xlarge",
@@ -650,14 +651,14 @@ def test_deploy_right_size_async_override(sagemaker_session, default_right_sized
         async_inference_config=async_inference_config,
     )
 
-    sagemaker_session.endpoint_from_production_variants.called_with(
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
         name=MODEL_NAME,
         production_variants=[ANY],
         tags=None,
         kms_key=None,
-        wait=None,
+        wait=True,
         data_capture_config_dict=None,
-        async_inference_config_dict=async_inference_config._to_request_dict,
+        async_inference_config_dict={"OutputConfig": {"S3OutputPath": "s3://some-path"}},
     )
 
 
