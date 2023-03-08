@@ -41,11 +41,12 @@ ACCOUNTS = {
     "us-west-1": "763104351884",
     "us-west-2": "763104351884",
 }
-VERSIONS = ["0.20.0", "0.19.0"]
+VERSIONS = ["0.21.0", "0.20.0", "0.19.0"]
 DJL_FRAMEWORKS = ["djl-deepspeed"]
 DJL_VERSIONS_TO_FRAMEWORK = {
     "0.19.0": {"djl-deepspeed": "deepspeed0.7.3-cu113"},
     "0.20.0": {"djl-deepspeed": "deepspeed0.7.5-cu116"},
+    "0.21.0": {"djl-deepspeed": "deepspeed0.8.0-cu117"},
 }
 
 
