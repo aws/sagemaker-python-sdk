@@ -381,58 +381,34 @@ class InferenceRecommenderMixin:
         # Validate recommendation id
         if not re.match(r"[a-zA-Z0-9](-*[a-zA-Z0-9]){0,63}\/\w{8}$", inference_recommendation_id):
             raise ValueError("Inference Recommendation id is not valid")
-        recommendation_job_name = inference_recommendation_id.split("/")[0]
+        job_or_model_name = inference_recommendation_id.split("/")[0]
 
         sage_client = self.sagemaker_session.sagemaker_client
 
-        # Retrieve model or inference recommendation job details
-        recommendation_res, model_res = None, None
-        try:
-            recommendation_res = sage_client.describe_inference_recommendations_job(
-                JobName=recommendation_job_name
-            )
-        except sage_client.exceptions.ResourceNotFound:
-            pass
-        try:
-            model_res = sage_client.describe_model(ModelName=recommendation_job_name)
-        except sage_client.exceptions.ResourceNotFound:
-            pass
-        if recommendation_res is None and model_res is None:
-            raise ValueError("Inference Recommendation id is not valid")
+        # Desribe inference recommendation job and model details
+        recommendation_res, model_res = self._describe_recommendation_job_and_model(
+            sage_client=sage_client,
+            job_or_model_name=job_or_model_name,
+        )
 
-        # Search the recommendation from above describe result lists
-        inference_recommendation, instant_recommendation = None, None
-        if recommendation_res:
-            inference_recommendation = next(
-                (
-                    rec
-                    for rec in recommendation_res["InferenceRecommendations"]
-                    if rec["RecommendationId"] == inference_recommendation_id
-                ),
-                None,
-            )
-        if model_res:
-            instant_recommendation = next(
-                (
-                    rec
-                    for rec in model_res["DeploymentRecommendation"][
-                        "RealTimeInferenceRecommendations"
-                    ]
-                    if rec["RecommendationId"] == inference_recommendation_id
-                ),
-                None,
-            )
-        if inference_recommendation is None and instant_recommendation is None:
-            raise ValueError("Inference Recommendation id does not exist")
+        # Search the recommendation from above describe results
+        (
+            right_size_recommendation,
+            model_recommendation,
+        ) = self._get_right_size_and_model_recommendation(
+            recommendation_res=recommendation_res,
+            model_res=model_res,
+            inference_recommendation_id=inference_recommendation_id,
+        )
 
-        # Update params beased on instant recommendation
-        if instant_recommendation:
+        # Update params beased on model recommendation
+        if model_recommendation:
             if initial_instance_count is None:
                 raise ValueError(
-                    "Please specify initial_instance_count with instant recommendation id"
+                    "Please specify initial_instance_count with model recommendation id"
                 )
-            self.env.update(instant_recommendation["Environment"])
-            instance_type = instant_recommendation["InstanceType"]
+            self.env.update(model_recommendation["Environment"])
+            instance_type = model_recommendation["InstanceType"]
             return (instance_type, initial_instance_count)
 
         # Update params based on default inference recommendation
@@ -443,7 +419,7 @@ class InferenceRecommenderMixin:
                 "to override the recommendation."
             )
         input_config = recommendation_res["InputConfig"]
-        model_config = inference_recommendation["ModelConfiguration"]
+        model_config = right_size_recommendation["ModelConfiguration"]
         envs = (
             model_config["EnvironmentParameters"]
             if "EnvironmentParameters" in model_config
@@ -492,8 +468,8 @@ class InferenceRecommenderMixin:
                 self.model_data = compilation_res["ModelArtifacts"]["S3ModelArtifacts"]
                 self.image_uri = compilation_res["InferenceImage"]
 
-        instance_type = inference_recommendation["EndpointConfiguration"]["InstanceType"]
-        initial_instance_count = inference_recommendation["EndpointConfiguration"][
+        instance_type = right_size_recommendation["EndpointConfiguration"]["InstanceType"]
+        initial_instance_count = right_size_recommendation["EndpointConfiguration"][
             "InitialInstanceCount"
         ]
 
@@ -563,3 +539,57 @@ class InferenceRecommenderMixin:
                 threshold.to_json for threshold in model_latency_thresholds
             ]
         return stopping_conditions
+
+    def _get_right_size_and_model_recommendation(
+        self,
+        model_res=None,
+        recommendation_res=None,
+        inference_recommendation_id=None,
+    ):
+        """Get recommendation from right size job or model"""
+        right_size_recommendation, model_recommendation = None, None
+        if recommendation_res:
+            right_size_recommendation = self._get_recommendation(
+                recommendation_list=recommendation_res["InferenceRecommendations"],
+                inference_recommendation_id=inference_recommendation_id,
+            )
+        if model_res:
+            model_recommendation = self._get_recommendation(
+                recommendation_list=model_res["DeploymentRecommendation"][
+                    "RealTimeInferenceRecommendations"
+                ],
+                inference_recommendation_id=inference_recommendation_id,
+            )
+        if right_size_recommendation is None and model_recommendation is None:
+            raise ValueError("Inference Recommendation id is not valid")
+
+        return right_size_recommendation, model_recommendation
+
+    def _get_recommendation(self, recommendation_list, inference_recommendation_id):
+        """Get recommendation based on recommendation id"""
+        return next(
+            (
+                rec
+                for rec in recommendation_list
+                if rec["RecommendationId"] == inference_recommendation_id
+            ),
+            None,
+        )
+
+    def _describe_recommendation_job_and_model(self, sage_client, job_or_model_name):
+        """Describe inference recommendation job and model results"""
+        recommendation_res, model_res = None, None
+        try:
+            recommendation_res = sage_client.describe_inference_recommendations_job(
+                JobName=job_or_model_name
+            )
+        except sage_client.exceptions.ResourceNotFound:
+            pass
+        try:
+            model_res = sage_client.describe_model(ModelName=job_or_model_name)
+        except sage_client.exceptions.ResourceNotFound:
+            pass
+        if recommendation_res is None and model_res is None:
+            raise ValueError("Inference Recommendation id is not valid")
+
+        return recommendation_res, model_res

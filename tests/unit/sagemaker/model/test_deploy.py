@@ -26,8 +26,8 @@ from tests.unit.sagemaker.inference_recommender.constants import (
     DESCRIBE_COMPILATION_JOB_RESPONSE,
     DESCRIBE_MODEL_PACKAGE_RESPONSE,
     DESCRIBE_MODEL_RESPONSE,
-    INSTANT_RECOMMENDATION_ENV,
-    INSTANT_RECOMMENDATION_ID,
+    MODEL_RECOMMENDATION_ENV,
+    MODEL_RECOMMENDATION_ID,
     INVALID_RECOMMENDATION_ID,
     IR_COMPILATION_JOB_NAME,
     IR_ENV,
@@ -37,7 +37,7 @@ from tests.unit.sagemaker.inference_recommender.constants import (
     IR_MODEL_PACKAGE_VERSION_ARN,
     IR_COMPILATION_IMAGE,
     IR_COMPILATION_MODEL_DATA,
-    NOT_EXISTED_INSTANT_RECOMMENDATION_ID,
+    NOT_EXISTED_MODEL_RECOMMENDATION_ID,
     RECOMMENDATION_ID,
     NOT_EXISTED_RECOMMENDATION_ID,
 )
@@ -700,7 +700,7 @@ def test_deploy_with_recommendation_id_with_model_name_and_compilation(sagemaker
     assert model.image_uri == IR_COMPILATION_IMAGE
 
 
-def test_deploy_with_not_existed_recommendation_id(sagemaker_session):
+def test_deploy_with_invalid_inference_recommendation_id(sagemaker_session):
     sagemaker_session.sagemaker_client.describe_inference_recommendations_job.return_value = (
         create_inference_recommendations_job_default_with_model_name_and_compilation()
     )
@@ -713,14 +713,14 @@ def test_deploy_with_not_existed_recommendation_id(sagemaker_session):
 
     with pytest.raises(
         ValueError,
-        match="Inference Recommendation id does not exist",
+        match="Inference Recommendation id is not valid",
     ):
         model.deploy(
             inference_recommendation_id=NOT_EXISTED_RECOMMENDATION_ID,
         )
 
 
-def test_deploy_with_invalid_instant_recommendation_id(sagemaker_session):
+def test_deploy_with_invalid_model_recommendation_id(sagemaker_session):
     sagemaker_session.sagemaker_client.describe_inference_recommendations_job.return_value = None
     sagemaker_session.sagemaker_client.describe_model.side_effect = mock_describe_model
 
@@ -728,26 +728,26 @@ def test_deploy_with_invalid_instant_recommendation_id(sagemaker_session):
 
     with pytest.raises(
         ValueError,
-        match="Inference Recommendation id does not exist",
+        match="Inference Recommendation id is not valid",
     ):
         model.deploy(
-            inference_recommendation_id=NOT_EXISTED_INSTANT_RECOMMENDATION_ID,
+            inference_recommendation_id=NOT_EXISTED_MODEL_RECOMMENDATION_ID,
         )
 
 
-def test_deploy_with_valid_instant_recommendation_id(sagemaker_session):
+def test_deploy_with_valid_model_recommendation_id(sagemaker_session):
     sagemaker_session.sagemaker_client.describe_inference_recommendations_job.return_value = None
     sagemaker_session.sagemaker_client.describe_model.side_effect = mock_describe_model
 
     model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session, role=ROLE)
     model.deploy(
-        inference_recommendation_id=INSTANT_RECOMMENDATION_ID,
+        inference_recommendation_id=MODEL_RECOMMENDATION_ID,
         initial_instance_count=INSTANCE_COUNT,
     )
 
     assert model.model_data == MODEL_DATA
     assert model.image_uri == MODEL_IMAGE
-    assert model.env == INSTANT_RECOMMENDATION_ENV
+    assert model.env == MODEL_RECOMMENDATION_ENV
 
 
 @patch("sagemaker.model.Model._create_sagemaker_model", Mock())
