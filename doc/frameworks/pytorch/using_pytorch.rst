@@ -264,8 +264,7 @@ during the PyTorch DDP initialization.
 .. note::
 
   The SageMaker PyTorch estimator can operate both ``mpirun`` (for PyTorch 1.12.0 and later)
-  and ``torchrun`` 
-  (for PyTorch 1.13.1 and later) in the backend for distributed training.
+  and ``torchrun`` (for PyTorch 1.13.1 and later) in the backend for distributed training.
 
 For more information about setting up PyTorch DDP in your training script,
 see `Getting Started with Distributed Data Parallel
@@ -316,8 +315,8 @@ to run a distributed training job on two ``ml.p4d.24xlarge`` instances.
     )
 
 
-.. note:: 
-    
+.. note::
+
     For more information about setting up ``torchrun`` in your training script,
     see `torchrun (Elastic Launch) <https://pytorch.org/docs/stable/elastic/run.html>`_ in *the
     PyTorch documentation*.
