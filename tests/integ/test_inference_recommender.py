@@ -16,6 +16,7 @@ import os
 
 import pytest
 
+from sagemaker import image_uris
 from sagemaker.model import Model
 from sagemaker.sklearn.model import SKLearnModel, SKLearnPredictor
 from sagemaker.utils import unique_name_from_base
@@ -248,11 +249,20 @@ def default_right_sized_unregistered_base_model(sagemaker_session, cpu_instance_
             ir_job_name = unique_name_from_base("test-ir-right-size-job-name")
             model_data = sagemaker_session.upload_data(path=IR_SKLEARN_MODEL)
             payload_data = sagemaker_session.upload_data(path=IR_SKLEARN_PAYLOAD)
+            region = sagemaker_session._region_name
+            image_uri = image_uris.retrieve(
+                framework="sklearn", region=region, version="1.0-1", image_scope="inference"
+            )
 
             iam_client = sagemaker_session.boto_session.client("iam")
             role_arn = iam_client.get_role(RoleName="SageMakerRole")["Role"]["Arn"]
 
-            model = Model(model_data=model_data, role=role_arn, entry_point=IR_SKLEARN_ENTRY_POINT)
+            model = Model(
+                model_data=model_data,
+                role=role_arn,
+                entry_point=IR_SKLEARN_ENTRY_POINT,
+                image_uri=image_uri,
+            )
 
             return (
                 model.right_size(
