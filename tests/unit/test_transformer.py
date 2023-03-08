@@ -15,25 +15,12 @@ from __future__ import absolute_import
 import pytest
 from mock import MagicMock, Mock, patch, PropertyMock
 
-import sagemaker
-from sagemaker.config import (
-    SAGEMAKER,
-    TRANSFORM_JOB,
-    DATA_CAPTURE_CONFIG,
-    TRANSFORM_OUTPUT,
-    TRANSFORM_RESOURCES,
-    VOLUME_KMS_KEY_ID,
-    TAGS,
-)
 from sagemaker.transformer import _TransformJob, Transformer
 from sagemaker.workflow.pipeline_context import PipelineSession, _PipelineConfig
 from sagemaker.inputs import BatchDataCaptureConfig
-from sagemaker.session import (
-    TRANSFORM_JOB_KMS_KEY_ID_PATH,
-    TRANSFORM_OUTPUT_KMS_KEY_ID_PATH,
-    TRANSFORM_RESOURCES_VOLUME_KMS_KEY_ID_PATH,
-)
+
 from tests.integ import test_local_mode
+from tests.unit import SAGEMAKER_CONFIG_TRANSFORM_JOB
 
 ROLE = "DummyRole"
 REGION = "us-west-2"
@@ -123,28 +110,9 @@ def transformer(sagemaker_session):
     )
 
 
-def _config_override_mock(key, default_value=None):
-    if key == TRANSFORM_OUTPUT_KMS_KEY_ID_PATH:
-        return "ConfigKmsKeyId"
-    elif key == TRANSFORM_RESOURCES_VOLUME_KMS_KEY_ID_PATH:
-        return "ConfigVolumeKmsKeyId"
-    elif key == TRANSFORM_JOB_KMS_KEY_ID_PATH:
-        return "DataCaptureConfigKmsKeyId"
-    return default_value
-
-
 @patch("sagemaker.transformer._TransformJob.start_new")
 def test_transform_with_sagemaker_config_injection(start_new_job, sagemaker_config_session):
-    sagemaker_config_session.sagemaker_config.config = {
-        SAGEMAKER: {
-            TRANSFORM_JOB: {
-                DATA_CAPTURE_CONFIG: {sagemaker.config.KMS_KEY_ID: "DataCaptureConfigKmsKeyId"},
-                TRANSFORM_OUTPUT: {sagemaker.config.KMS_KEY_ID: "ConfigKmsKeyId"},
-                TRANSFORM_RESOURCES: {VOLUME_KMS_KEY_ID: "ConfigVolumeKmsKeyId"},
-                TAGS: [],
-            }
-        }
-    }
+    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_TRANSFORM_JOB
 
     transformer = Transformer(
         MODEL_NAME,
@@ -153,8 +121,8 @@ def test_transform_with_sagemaker_config_injection(start_new_job, sagemaker_conf
         output_path=OUTPUT_PATH,
         sagemaker_session=sagemaker_config_session,
     )
-    assert transformer.volume_kms_key == "ConfigVolumeKmsKeyId"
-    assert transformer.output_kms_key == "ConfigKmsKeyId"
+    assert transformer.volume_kms_key == "volumeKmsKeyId"
+    assert transformer.output_kms_key == "outputKmsKeyId"
 
     content_type = "text/csv"
     compression = "Gzip"
@@ -203,7 +171,7 @@ def test_transform_with_sagemaker_config_injection(start_new_job, sagemaker_conf
         batch_data_capture_config,
     )
     # KmsKeyId in BatchDataCapture will be inserted from the config
-    assert batch_data_capture_config.kms_key_id == "DataCaptureConfigKmsKeyId"
+    assert batch_data_capture_config.kms_key_id == "jobKmsKeyId"
 
 
 def test_delete_model(sagemaker_session):

@@ -12,7 +12,9 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+
 import pytest
+from jsonschema.validators import validate
 from mock.mock import MagicMock
 
 import sagemaker
@@ -20,6 +22,7 @@ import sagemaker
 from mock import Mock, PropertyMock
 
 from sagemaker.config import SageMakerConfig
+from sagemaker.config.config_schema import SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA, SCHEMA_VERSION
 
 _ROLE = "DummyRole"
 _REGION = "us-west-2"
@@ -105,9 +108,15 @@ def sagemaker_config_session():
 
         @config.setter
         def config(self, new_config):
+            """Validates and sets a new config."""
+            # Add schema version if not already there since that is required
+            if SCHEMA_VERSION not in new_config:
+                new_config[SCHEMA_VERSION] = "1.0"
+            # Validate to make sure unit tests are not accidentally testing with a wrong config
+            validate(new_config, SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA)
             self._config = new_config
 
-    boto_mock = MagicMock(name="boto_session")
+    boto_mock = MagicMock(name="boto_session", region_name="us-west-2")
     session_with_custom_sagemaker_config = sagemaker.Session(
         boto_session=boto_mock,
         sagemaker_client=MagicMock(),

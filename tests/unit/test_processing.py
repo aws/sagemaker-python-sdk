@@ -12,6 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import copy
+
 import pytest
 from mock import Mock, patch, MagicMock
 from packaging import version
@@ -30,14 +32,6 @@ from sagemaker.processing import (
     ScriptProcessor,
     ProcessingJob,
 )
-from sagemaker.session import (
-    PROCESSING_JOB_SUBNETS_PATH,
-    PROCESSING_JOB_SECURITY_GROUP_IDS_PATH,
-    PROCESSING_JOB_ROLE_ARN_PATH,
-    PROCESSING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
-    PROCESSING_JOB_KMS_KEY_ID_PATH,
-    PROCESSING_JOB_VOLUME_KMS_KEY_ID_PATH,
-)
 from sagemaker.session_settings import SessionSettings
 from sagemaker.spark.processing import PySparkProcessor
 from sagemaker.sklearn.processing import SKLearnProcessor
@@ -51,6 +45,7 @@ from sagemaker.fw_utils import UploadedCode
 from sagemaker.workflow.pipeline_context import PipelineSession, _PipelineConfig
 from sagemaker.workflow.functions import Join
 from sagemaker.workflow.execution_variables import ExecutionVariables
+from tests.unit import SAGEMAKER_CONFIG_PROCESSING_JOB
 
 BUCKET_NAME = "mybucket"
 REGION = "us-west-2"
@@ -98,6 +93,12 @@ def sagemaker_session():
     session_mock.get_sagemaker_config_override = Mock(
         name="get_sagemaker_config_override",
         side_effect=lambda key, default_value=None: default_value,
+    )
+    session_mock.resolve_value_from_config = Mock(
+        name="resolve_value_from_config",
+        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
+        if direct_input is not None
+        else default_value,
     )
     return session_mock
 
@@ -637,22 +638,6 @@ def test_script_processor_with_required_parameters(exists_mock, isfile_mock, sag
     sagemaker_session.process.assert_called_with(**expected_args)
 
 
-def _config_override_mock(key, default_value=None):
-    if key == PROCESSING_JOB_ENABLE_NETWORK_ISOLATION_PATH:
-        return True
-    if key == PROCESSING_JOB_ROLE_ARN_PATH:
-        return "arn:aws:iam::012345678901:role/ConfigRoleArn"
-    elif key == PROCESSING_JOB_KMS_KEY_ID_PATH:
-        return "ConfigKmsKeyId"
-    elif key == PROCESSING_JOB_VOLUME_KMS_KEY_ID_PATH:
-        return "ConfigVolumeKmsKeyId"
-    elif key == PROCESSING_JOB_SECURITY_GROUP_IDS_PATH:
-        return ["sg-config"]
-    elif key == PROCESSING_JOB_SUBNETS_PATH:
-        return ["subnet-config"]
-    return default_value
-
-
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
 def test_script_processor_without_role(exists_mock, isfile_mock, sagemaker_session):
@@ -681,13 +666,19 @@ def test_script_processor_without_role(exists_mock, isfile_mock, sagemaker_sessi
 
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
-def test_script_processor_with_some_parameters_from_config(
-    exists_mock, isfile_mock, sagemaker_session
+def test_script_processor_with_sagemaker_config_injection(
+    exists_mock, isfile_mock, sagemaker_config_session
 ):
-    sagemaker_session.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override", side_effect=_config_override_mock
+    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_PROCESSING_JOB
+
+    sagemaker_config_session.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
+    sagemaker_config_session.upload_data = Mock(name="upload_data", return_value=MOCKED_S3_URI)
+    sagemaker_config_session.wait_for_processing_job = MagicMock(
+        name="wait_for_processing_job", return_value=_get_describe_response_inputs_and_ouputs()
     )
-    sagemaker_session.expand_role = Mock(name="expand_role", side_effect=lambda a: a)
+    sagemaker_config_session.process = Mock()
+    sagemaker_config_session.expand_role = Mock(name="expand_role", side_effect=lambda a: a)
+
     processor = ScriptProcessor(
         image_uri=CUSTOM_IMAGE_URI,
         command=["python3"],
@@ -698,10 +689,7 @@ def test_script_processor_with_some_parameters_from_config(
         base_job_name="my_sklearn_processor",
         env={"my_env_variable": "my_env_variable_value"},
         tags=[{"Key": "my-tag", "Value": "my-tag-value"}],
-        network_config=NetworkConfig(
-            encrypt_inter_container_traffic=True,
-        ),
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_config_session,
     )
     processor.run(
         code="/local/path/to/processing_code.py",
@@ -713,16 +701,18 @@ def test_script_processor_with_some_parameters_from_config(
         job_name="my_job_name",
         experiment_config={"ExperimentName": "AnExperiment"},
     )
-    expected_args = _get_expected_args_all_parameters(processor._current_job_name)
-    expected_args["resources"]["ClusterConfig"]["VolumeKmsKeyId"] = "ConfigVolumeKmsKeyId"
-    expected_args["output_config"]["KmsKeyId"] = "ConfigKmsKeyId"
-    expected_args["role_arn"] = "arn:aws:iam::012345678901:role/ConfigRoleArn"
+    expected_args = copy.deepcopy(_get_expected_args_all_parameters(processor._current_job_name))
+    expected_args["resources"]["ClusterConfig"]["VolumeKmsKeyId"] = "testVolumeKmsKeyId"
+    expected_args["output_config"]["KmsKeyId"] = "testKmsKeyId"
+    expected_args["role_arn"] = "arn:aws:iam::111111111111:role/ConfigRole"
     expected_args["network_config"]["VpcConfig"] = {
-        "SecurityGroupIds": ["sg-config"],
-        "Subnets": ["subnet-config"],
+        "SecurityGroupIds": ["sg-123"],
+        "Subnets": ["subnets-123"],
     }
+    expected_args["network_config"]["EnableNetworkIsolation"] = True
+    expected_args["network_config"]["EnableInterContainerTrafficEncryption"] = False
 
-    sagemaker_session.process.assert_called_with(**expected_args)
+    sagemaker_config_session.process.assert_called_with(**expected_args)
     assert "my_job_name" in processor._current_job_name
 
 

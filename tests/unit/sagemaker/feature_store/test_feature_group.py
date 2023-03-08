@@ -32,11 +32,8 @@ from sagemaker.feature_store.feature_group import (
     IngestionError,
 )
 from sagemaker.feature_store.inputs import FeatureParameter
-from sagemaker.session import (
-    FEATURE_GROUP_OFFLINE_STORE_KMS_KEY_ID_PATH,
-    FEATURE_GROUP_ONLINE_STORE_KMS_KEY_ID_PATH,
-    FEATURE_GROUP_ROLE_ARN_PATH,
-)
+
+from tests.unit import SAGEMAKER_CONFIG_FEATURE_GROUP
 
 
 class PicklableMock(Mock):
@@ -111,23 +108,14 @@ def test_feature_group_create_without_role(
         )
 
 
-def _config_override_mock(key, default_value=None):
-    if key == FEATURE_GROUP_ONLINE_STORE_KMS_KEY_ID_PATH:
-        return "OnlineConfigKmsKeyId"
-    elif key == FEATURE_GROUP_OFFLINE_STORE_KMS_KEY_ID_PATH:
-        return "OfflineConfigKmsKeyId"
-    elif key == FEATURE_GROUP_ROLE_ARN_PATH:
-        return "ConfigRoleArn"
-    return default_value
-
-
 def test_feature_store_create_with_config_injection(
-    sagemaker_session_mock, role_arn, feature_group_dummy_definitions, s3_uri
+    sagemaker_config_session, role_arn, feature_group_dummy_definitions, s3_uri
 ):
-    sagemaker_session_mock.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override", side_effect=_config_override_mock
-    )
-    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+
+    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_FEATURE_GROUP
+    sagemaker_config_session.create_feature_group = Mock()
+
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_config_session)
     feature_group.feature_definitions = feature_group_dummy_definitions
     feature_group.create(
         s3_uri=s3_uri,
@@ -135,12 +123,12 @@ def test_feature_store_create_with_config_injection(
         event_time_feature_name="feature2",
         enable_online_store=True,
     )
-    sagemaker_session_mock.create_feature_group.assert_called_with(
+    sagemaker_config_session.create_feature_group.assert_called_with(
         feature_group_name="MyFeatureGroup",
         record_identifier_name="feature1",
         event_time_feature_name="feature2",
         feature_definitions=[fd.to_dict() for fd in feature_group_dummy_definitions],
-        role_arn="ConfigRoleArn",
+        role_arn="arn:aws:iam::111111111111:role/ConfigRole",
         description=None,
         tags=None,
         online_store_config={

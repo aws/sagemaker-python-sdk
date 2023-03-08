@@ -34,9 +34,6 @@ SageMaker:
     ProductionVariants:
       - CoreDumpConfig:
           KmsKeyId: 'somekmskey4'
-    ShadowProductionVariants:
-      - CoreDumpConfig:
-          KmsKeyId: 'somekmskey5'
   AutoML:
     AutoMLJobConfig:
       SecurityConfig:

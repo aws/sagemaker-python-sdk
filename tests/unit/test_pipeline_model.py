@@ -12,20 +12,18 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import copy
+
 import pytest
+from botocore.utils import merge_dicts
 from mock import Mock, patch
 
 from sagemaker.model import FrameworkModel
 from sagemaker.pipeline import PipelineModel
 from sagemaker.predictor import Predictor
-from sagemaker.session import (
-    ENDPOINT_CONFIG_KMS_KEY_ID_PATH,
-    MODEL_ENABLE_NETWORK_ISOLATION_PATH,
-    MODEL_EXECUTION_ROLE_ARN_PATH,
-    MODEL_VPC_CONFIG_PATH,
-)
 from sagemaker.session_settings import SessionSettings
 from sagemaker.sparkml import SparkMLModel
+from tests.unit import SAGEMAKER_CONFIG_MODEL, SAGEMAKER_CONFIG_ENDPOINT_CONFIG
 
 ENTRY_POINT = "blah.py"
 MODEL_DATA_1 = "s3://bucket/model_1.tar.gz"
@@ -75,10 +73,18 @@ def sagemaker_session():
         settings=SessionSettings(),
     )
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
+
     sms.get_sagemaker_config_override = Mock(
         name="get_sagemaker_config_override",
         side_effect=lambda key, default_value=None: default_value,
     )
+    sms.resolve_value_from_config = Mock(
+        name="resolve_value_from_config",
+        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
+        if direct_input is not None
+        else default_value,
+    )
+
     return sms
 
 
@@ -304,39 +310,30 @@ def test_pipeline_model_without_role(sagemaker_session):
         PipelineModel([], sagemaker_session=sagemaker_session)
 
 
-def _config_override_mock(key, default_value=None):
-    if key == ENDPOINT_CONFIG_KMS_KEY_ID_PATH:
-        return "ConfigKmsKeyId"
-    elif key == MODEL_ENABLE_NETWORK_ISOLATION_PATH:
-        return True
-    elif key == MODEL_EXECUTION_ROLE_ARN_PATH:
-        return "ConfigRoleArn"
-    elif key == MODEL_VPC_CONFIG_PATH:
-        return {"SecurityGroupIds": ["sg-config"], "Subnets": ["subnet-config"]}
-    return default_value
-
-
 @patch("tarfile.open")
 @patch("time.strftime", return_value=TIMESTAMP)
-def test_pipeline_model_with_config_injection(tfo, time, sagemaker_session):
-    framework_model = DummyFrameworkModel(sagemaker_session)
+def test_pipeline_model_with_config_injection(tfo, time, sagemaker_config_session):
+    combined_config = copy.deepcopy(SAGEMAKER_CONFIG_MODEL)
+    endpoint_config = copy.deepcopy(SAGEMAKER_CONFIG_ENDPOINT_CONFIG)
+    merge_dicts(combined_config, endpoint_config)
+    sagemaker_config_session.sagemaker_config.config = combined_config
+    sagemaker_config_session.endpoint_from_production_variants = Mock()
+
+    framework_model = DummyFrameworkModel(sagemaker_config_session)
     sparkml_model = SparkMLModel(
-        model_data=MODEL_DATA_2, role=ROLE, sagemaker_session=sagemaker_session
-    )
-    sagemaker_session.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override", side_effect=_config_override_mock
+        model_data=MODEL_DATA_2, role=ROLE, sagemaker_session=sagemaker_config_session
     )
     pipeline_model = PipelineModel(
-        [framework_model, sparkml_model], sagemaker_session=sagemaker_session
+        [framework_model, sparkml_model], sagemaker_session=sagemaker_config_session
     )
-    assert pipeline_model.role == "ConfigRoleArn"
+    assert pipeline_model.role == "arn:aws:iam::111111111111:role/ConfigRole"
     assert pipeline_model.vpc_config == {
-        "SecurityGroupIds": ["sg-config"],
-        "Subnets": ["subnet-config"],
+        "SecurityGroupIds": ["sg-123"],
+        "Subnets": ["subnets-123"],
     }
-    assert pipeline_model.enable_network_isolation
+    assert pipeline_model.enable_network_isolation is True
     pipeline_model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1)
-    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+    sagemaker_config_session.endpoint_from_production_variants.assert_called_with(
         name="mi-1-2017-10-10-14-14-15",
         production_variants=[
             {

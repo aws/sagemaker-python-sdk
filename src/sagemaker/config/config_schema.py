@@ -53,7 +53,6 @@ MONITORING_SCHEDULE_CONFIG = "MonitoringScheduleConfig"
 MONITORING_RESOURCES = "MonitoringResources"
 PROCESSING_RESOURCES = "ProcessingResources"
 PRODUCTION_VARIANTS = "ProductionVariants"
-SHADOW_PRODUCTION_VARIANTS = "ShadowProductionVariants"
 TRANSFORM_OUTPUT = "TransformOutput"
 TRANSFORM_RESOURCES = "TransformResources"
 VALIDATION_ROLE = "ValidationRole"
@@ -344,10 +343,6 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                             TYPE: "array",
                             "items": {"$ref": "#/definitions/productionVariant"},
                         },
-                        SHADOW_PRODUCTION_VARIANTS: {
-                            TYPE: "array",
-                            "items": {"$ref": "#/definitions/productionVariant"},
-                        },
                         TAGS: {"$ref": "#/definitions/tags"},
                     },
                 },
@@ -465,7 +460,6 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                 VALIDATION_ROLE: {"$ref": "#/definitions/roleArn"},
                             },
                         },
-                        TAGS: {"$ref": "#/definitions/tags"},
                     },
                 },
                 # Processing Job

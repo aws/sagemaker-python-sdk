@@ -146,7 +146,6 @@ def valid_endpointconfig_config():
         "DataCaptureConfig": {"KmsKeyId": "somekmskey2"},
         "KmsKeyId": "somekmskey3",
         "ProductionVariants": [{"CoreDumpConfig": {"KmsKeyId": "somekmskey4"}}],
-        "ShadowProductionVariants": [{"CoreDumpConfig": {"KmsKeyId": "somekmskey5"}}],
     }
 
 

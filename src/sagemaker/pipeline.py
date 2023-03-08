@@ -95,26 +95,28 @@ class PipelineModel(object):
             self.sagemaker_session.get_sagemaker_config_override(
                 MODEL_EXECUTION_ROLE_ARN_PATH, default_value=role
             )
-            if sagemaker_session
+            if self.sagemaker_session
             else role
         )
         self.vpc_config = (
             self.sagemaker_session.get_sagemaker_config_override(
                 MODEL_VPC_CONFIG_PATH, default_value=vpc_config
             )
-            if sagemaker_session
+            if self.sagemaker_session
             else vpc_config
         )
-        default_enable_network_isolation = (
-            False if enable_network_isolation is None else enable_network_isolation
-        )
-        self.enable_network_isolation = (
-            self.sagemaker_session.get_sagemaker_config_override(
-                MODEL_ENABLE_NETWORK_ISOLATION_PATH, default_value=default_enable_network_isolation
+
+        if self.sagemaker_session is not None:
+            self.enable_network_isolation = self.sagemaker_session.resolve_value_from_config(
+                direct_input=enable_network_isolation,
+                config_path=MODEL_ENABLE_NETWORK_ISOLATION_PATH,
+                default_value=False,
             )
-            if sagemaker_session
-            else default_enable_network_isolation
-        )
+        else:
+            self.enable_network_isolation = (
+                False if enable_network_isolation is None else enable_network_isolation
+            )
+
         if not self.role:
             # Originally IAM role was a required parameter.
             # Now we marked that as Optional because we can fetch it from SageMakerConfig

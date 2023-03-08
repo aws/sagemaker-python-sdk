@@ -78,6 +78,12 @@ def sagemaker_session():
         name="get_sagemaker_config_override",
         side_effect=lambda key, default_value=None: default_value,
     )
+    sms.resolve_value_from_config = Mock(
+        name="resolve_value_from_config",
+        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
+        if direct_input is not None
+        else default_value,
+    )
     return sms
 
 

@@ -18,6 +18,7 @@ import json
 import os
 import subprocess
 from time import sleep
+
 from sagemaker.fw_utils import UploadedCode
 
 
@@ -57,6 +58,7 @@ from sagemaker.transformer import Transformer
 from sagemaker.workflow.parameters import ParameterString, ParameterBoolean
 from sagemaker.workflow.pipeline_context import PipelineSession, _PipelineConfig
 from sagemaker.xgboost.estimator import XGBoost
+from tests.unit import SAGEMAKER_CONFIG_TRAINING_JOB
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -374,50 +376,47 @@ def test_default_value_of_enable_network_isolation(sagemaker_session):
     assert framework.enable_network_isolation() is False
 
 
-def _config_override_mock(key, default_value=None):
-    from sagemaker.session import (
-        TRAINING_JOB_SUBNETS_PATH,
-        TRAINING_JOB_SECURITY_GROUP_IDS_PATH,
-        TRAINING_JOB_KMS_KEY_ID_PATH,
-        TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
-        TRAINING_JOB_ROLE_ARN_PATH,
-        TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH,
-    )
+def test_framework_initialization_with_sagemaker_config_injection(sagemaker_config_session):
 
-    if key == TRAINING_JOB_ROLE_ARN_PATH:
-        return "ConfigRoleArn"
-    elif key == TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH:
-        return True
-    elif key == TRAINING_JOB_KMS_KEY_ID_PATH:
-        return "ConfigKmsKeyId"
-    elif key == TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH:
-        return "ConfigVolumeKmsKeyId"
-    elif key == TRAINING_JOB_SECURITY_GROUP_IDS_PATH:
-        return ["sg-config"]
-    elif key == TRAINING_JOB_SUBNETS_PATH:
-        return ["subnet-config"]
-    return default_value
+    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_TRAINING_JOB
 
-
-def test_framework_initialization_with_defaults(sagemaker_session):
-
-    sagemaker_session.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override", side_effect=_config_override_mock
-    )
     framework = DummyFramework(
         entry_point=SCRIPT_PATH,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=sagemaker_config_session,
         instance_groups=[
             InstanceGroup("group1", "ml.c4.xlarge", 1),
             InstanceGroup("group2", "ml.m4.xlarge", 2),
         ],
     )
-    assert framework.role == "ConfigRoleArn"
-    assert framework.enable_network_isolation()
-    assert framework.output_kms_key == "ConfigKmsKeyId"
-    assert framework.volume_kms_key == "ConfigVolumeKmsKeyId"
-    assert framework.security_group_ids == ["sg-config"]
-    assert framework.subnets == ["subnet-config"]
+    assert framework.role == "arn:aws:iam::111111111111:role/ConfigRole"
+    assert framework.enable_network_isolation() is True
+    assert framework.encrypt_inter_container_traffic is True
+    assert framework.output_kms_key == "TestKms"
+    assert framework.volume_kms_key == "volumekey"
+    assert framework.security_group_ids == ["sg-123"]
+    assert framework.subnets == ["subnets-123"]
+
+
+def test_estimator_initialization_with_sagemaker_config_injection(sagemaker_config_session):
+
+    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_TRAINING_JOB
+
+    estimator = Estimator(
+        image_uri="some-image",
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.p3.16xlarge", 2),
+        ],
+        sagemaker_session=sagemaker_config_session,
+        base_job_name="base_job_name",
+    )
+    assert estimator.role == "arn:aws:iam::111111111111:role/ConfigRole"
+    assert estimator.enable_network_isolation() is True
+    assert estimator.encrypt_inter_container_traffic is True
+    assert estimator.output_kms_key == "TestKms"
+    assert estimator.volume_kms_key == "volumekey"
+    assert estimator.security_group_ids == ["sg-123"]
+    assert estimator.subnets == ["subnets-123"]
 
 
 def test_framework_with_heterogeneous_cluster(sagemaker_session):

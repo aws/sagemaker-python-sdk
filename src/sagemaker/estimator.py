@@ -536,13 +536,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             "train_volume_kms_key", "volume_kms_key", volume_kms_key, kwargs
         )
 
-        validate_source_code_input_against_pipeline_variables(
-            entry_point=entry_point,
-            source_dir=source_dir,
-            git_config=git_config,
-            enable_network_isolation=enable_network_isolation,
-        )
-
         self.instance_count = instance_count
         self.instance_type = instance_type
         self.keep_alive_period_in_seconds = keep_alive_period_in_seconds
@@ -642,9 +635,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.collection_configs = None
 
         self.enable_sagemaker_metrics = enable_sagemaker_metrics
-        self._enable_network_isolation = self.sagemaker_session.get_sagemaker_config_override(
-            TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
-            default_value=False if enable_network_isolation is None else enable_network_isolation,
+
+        self._enable_network_isolation = self.sagemaker_session.resolve_value_from_config(
+            direct_input=enable_network_isolation,
+            config_path=TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+            default_value=False,
         )
 
         self.profiler_config = profiler_config
@@ -662,6 +657,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.profiler_rule_configs = None
         self.profiler_rules = None
         self.debugger_rules = None
+
+        validate_source_code_input_against_pipeline_variables(
+            entry_point=entry_point,
+            source_dir=source_dir,
+            git_config=git_config,
+            enable_network_isolation=self._enable_network_isolation,
+        )
 
     @abstractmethod
     def training_image_uri(self):
@@ -2382,12 +2384,12 @@ class Estimator(EstimatorBase):
         model_uri: Optional[str] = None,
         model_channel_name: Union[str, PipelineVariable] = "model",
         metric_definitions: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
-        encrypt_inter_container_traffic: Union[bool, PipelineVariable] = False,
+        encrypt_inter_container_traffic: Union[bool, PipelineVariable] = None,
         use_spot_instances: Union[bool, PipelineVariable] = False,
         max_wait: Optional[Union[int, PipelineVariable]] = None,
         checkpoint_s3_uri: Optional[Union[str, PipelineVariable]] = None,
         checkpoint_local_path: Optional[Union[str, PipelineVariable]] = None,
-        enable_network_isolation: Union[bool, PipelineVariable] = False,
+        enable_network_isolation: Union[bool, PipelineVariable] = None,
         rules: Optional[List[RuleBase]] = None,
         debugger_hook_config: Optional[Union[DebuggerHookConfig, bool]] = None,
         tensorboard_output_config: Optional[TensorBoardOutputConfig] = None,
@@ -2925,7 +2927,7 @@ class Framework(EstimatorBase):
         code_location: Optional[str] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         dependencies: Optional[List[str]] = None,
-        enable_network_isolation: Union[bool, PipelineVariable] = False,
+        enable_network_isolation: Union[bool, PipelineVariable] = None,
         git_config: Optional[Dict[str, str]] = None,
         checkpoint_s3_uri: Optional[Union[str, PipelineVariable]] = None,
         checkpoint_local_path: Optional[Union[str, PipelineVariable]] = None,

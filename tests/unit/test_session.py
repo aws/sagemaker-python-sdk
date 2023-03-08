@@ -27,16 +27,6 @@ from .common import _raise_unexpected_client_error
 import sagemaker
 from sagemaker import TrainingInput, Session, get_execution_role, exceptions
 from sagemaker.async_inference import AsyncInferenceConfig
-from sagemaker.config import (
-    SAGEMAKER,
-    TRANSFORM_JOB,
-    DATA_CAPTURE_CONFIG,
-    TRANSFORM_OUTPUT,
-    TRANSFORM_RESOURCES,
-    KMS_KEY_ID,
-    VOLUME_KMS_KEY_ID,
-    TAGS,
-)
 from sagemaker.session import (
     _tuning_job_status,
     _transform_job_status,
@@ -47,6 +37,19 @@ from sagemaker.session import (
 )
 from sagemaker.tuner import WarmStartConfig, WarmStartTypes
 from sagemaker.inputs import BatchDataCaptureConfig
+from tests.unit import (
+    SAGEMAKER_CONFIG_MONITORING_SCHEDULE,
+    SAGEMAKER_CONFIG_COMPILATION_JOB,
+    SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB,
+    SAGEMAKER_CONFIG_ENDPOINT_CONFIG,
+    SAGEMAKER_CONFIG_AUTO_ML,
+    SAGEMAKER_CONFIG_MODEL_PACKAGE,
+    SAGEMAKER_CONFIG_FEATURE_GROUP,
+    SAGEMAKER_CONFIG_PROCESSING_JOB,
+    SAGEMAKER_CONFIG_TRAINING_JOB,
+    SAGEMAKER_CONFIG_TRANSFORM_JOB,
+    SAGEMAKER_CONFIG_MODEL,
+)
 
 STATIC_HPs = {"feature_dim": "784"}
 
@@ -259,48 +262,8 @@ def test_process(boto_session):
     session.sagemaker_client.create_processing_job.assert_called_with(**expected_request)
 
 
-def _sagemaker_config_override_mock_for_process(key, default_value=None):
-    from sagemaker.session import (
-        PROCESSING_JOB_ROLE_ARN_PATH,
-        PROCESSING_JOB_NETWORK_CONFIG_PATH,
-        PROCESSING_OUTPUT_CONFIG_PATH,
-        PROCESSING_JOB_PROCESSING_RESOURCES_PATH,
-        PROCESSING_JOB_INPUTS_PATH,
-    )
-
-    if key is PROCESSING_JOB_ROLE_ARN_PATH:
-        return "arn:aws:iam::111111111111:role/ConfigRole"
-    elif key is PROCESSING_JOB_NETWORK_CONFIG_PATH:
-        return {
-            "VpcConfig": {"Subnets": ["subnets-123"], "SecurityGroupIds": ["sg-123"]},
-            "EnableNetworkIsolation": True,
-        }
-    elif key is PROCESSING_OUTPUT_CONFIG_PATH:
-        return {"KmsKeyId": "testKmsKeyId"}
-    elif key is PROCESSING_JOB_PROCESSING_RESOURCES_PATH:
-        return {"ClusterConfig": {"VolumeKmsKeyId": "testVolumeKmsKeyId"}}
-    elif key is PROCESSING_JOB_INPUTS_PATH:
-        return [
-            {
-                "DatasetDefinition": {
-                    "AthenaDatasetDefinition": {"KmsKeyId": "AthenaKmsKeyId"},
-                    "RedshiftDatasetDefinition": {
-                        "KmsKeyId": "RedshiftKmsKeyId",
-                        "ClusterRoleArn": "clusterrole",
-                    },
-                }
-            }
-        ]
-
-    return default_value
-
-
-def test_create_process_with_configs(sagemaker_session):
-    sagemaker_session.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override",
-        side_effect=_sagemaker_config_override_mock_for_process,
-    )
-    sagemaker_session.get_sagemaker_config_value = sagemaker_session.get_sagemaker_config_override
+def test_create_process_with_sagemaker_config_injection(sagemaker_config_session):
+    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_PROCESSING_JOB
 
     processing_inputs = [
         {
@@ -312,6 +275,14 @@ def test_create_process_with_configs(sagemaker_session):
                 "S3InputMode": "File",
                 "S3DataDistributionType": "FullyReplicated",
                 "S3CompressionType": "None",
+            },
+            # DatasetDefinition and (AthenaDatasetDefinition or RedshiftDatasetDefinition) need
+            # to be present for config injection. Included both AthenaDatasetDefinition and
+            # RedshiftDatasetDefinition at the same time to test injection (even though this API
+            # call would fail normally)
+            "DatasetDefinition": {
+                "AthenaDatasetDefinition": {},
+                "RedshiftDatasetDefinition": {},
             },
         }
     ]
@@ -357,32 +328,34 @@ def test_create_process_with_configs(sagemaker_session):
         "stopping_condition": {"MaxRuntimeInSeconds": 3600},
         "app_specification": app_specification,
         "environment": {"my_env_variable": 20},
-        "tags": [{"Name": "my-tag", "Value": "my-tag-value"}],
         "experiment_config": {"ExperimentName": "AnExperiment"},
     }
-    sagemaker_session.process(**process_request_args)
+    sagemaker_config_session.process(**process_request_args)
 
-    expected_request = {
-        "ProcessingJobName": job_name,
-        "ProcessingResources": resource_config,
-        "AppSpecification": app_specification,
-        "RoleArn": "arn:aws:iam::111111111111:role/ConfigRole",
-        "ProcessingInputs": processing_inputs,
-        "ProcessingOutputConfig": output_config,
-        "Environment": {"my_env_variable": 20},
-        "NetworkConfig": {
-            "VpcConfig": {"Subnets": ["subnets-123"], "SecurityGroupIds": ["sg-123"]},
-            "EnableNetworkIsolation": True,
-        },
-        "StoppingCondition": {"MaxRuntimeInSeconds": 3600},
-        "Tags": [{"Name": "my-tag", "Value": "my-tag-value"}],
-        "ExperimentConfig": {"ExperimentName": "AnExperiment"},
-    }
+    expected_request = copy.deepcopy(
+        {
+            "ProcessingJobName": job_name,
+            "ProcessingResources": resource_config,
+            "AppSpecification": app_specification,
+            "RoleArn": "arn:aws:iam::111111111111:role/ConfigRole",
+            "ProcessingInputs": processing_inputs,
+            "ProcessingOutputConfig": output_config,
+            "Environment": {"my_env_variable": 20},
+            "NetworkConfig": {
+                "VpcConfig": {"Subnets": ["subnets-123"], "SecurityGroupIds": ["sg-123"]},
+                "EnableNetworkIsolation": True,
+                "EnableInterContainerTrafficEncryption": False,
+            },
+            "StoppingCondition": {"MaxRuntimeInSeconds": 3600},
+            "Tags": TAGS,
+            "ExperimentConfig": {"ExperimentName": "AnExperiment"},
+        }
+    )
     expected_request["ProcessingInputs"][0]["DatasetDefinition"] = {
         "AthenaDatasetDefinition": {"KmsKeyId": "AthenaKmsKeyId"},
         "RedshiftDatasetDefinition": {
             "KmsKeyId": "RedshiftKmsKeyId",
-            "ClusterRoleArn": "clusterrole",
+            "ClusterRoleArn": "arn:aws:iam::111111111111:role/ClusterRole",
         },
     }
     expected_request["ProcessingOutputConfig"]["KmsKeyId"] = "testKmsKeyId"
@@ -390,7 +363,9 @@ def test_create_process_with_configs(sagemaker_session):
         "VolumeKmsKeyId"
     ] = "testVolumeKmsKeyId"
 
-    sagemaker_session.sagemaker_client.create_processing_job.assert_called_with(**expected_request)
+    sagemaker_config_session.sagemaker_client.create_processing_job.assert_called_with(
+        **expected_request
+    )
 
 
 def mock_exists(filepath_to_mock, exists_result):
@@ -862,7 +837,7 @@ ACCELERATOR_TYPE = "ml.eia.medium"
 MAX_SIZE = 30
 MAX_TIME = 3 * 60 * 60
 JOB_NAME = "jobname"
-EXAMPLE_TAGS = [{"Key": "some-tag", "Value": "value-for-tag"}]
+TAGS = [{"Key": "some-tag", "Value": "value-for-tag"}]
 VPC_CONFIG = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
 METRIC_DEFINITONS = [{"Name": "validation-rmse", "Regex": "validation-rmse=(\\d+)"}]
 EXPERIMENT_CONFIG = {
@@ -1550,34 +1525,8 @@ def test_stop_tuning_job_client_error(sagemaker_session):
     )
 
 
-def _sagemaker_config_override_mock_for_train(key, default_value=None):
-    from sagemaker.session import (
-        TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
-        TRAINING_JOB_VPC_CONFIG_PATH,
-        TRAINING_JOB_RESOURCE_CONFIG_PATH,
-        TRAINING_JOB_OUTPUT_DATA_CONFIG_PATH,
-        TRAINING_JOB_ROLE_ARN_PATH,
-    )
-
-    if key is TRAINING_JOB_ROLE_ARN_PATH:
-        return "arn:aws:iam::111111111111:role/ConfigRole"
-    elif key is TRAINING_JOB_VPC_CONFIG_PATH:
-        return {"Subnets": ["subnets-123"], "SecurityGroupIds": ["sg-123"]}
-    elif key is TRAINING_JOB_OUTPUT_DATA_CONFIG_PATH:
-        return {"KmsKeyId": "TestKms"}
-    elif key is TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH:
-        return True
-    elif key is TRAINING_JOB_RESOURCE_CONFIG_PATH:
-        return {"VolumeKmsKeyId": "volumekey"}
-    return default_value
-
-
-def test_train_with_configs(sagemaker_session):
-    sagemaker_session.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override",
-        side_effect=_sagemaker_config_override_mock_for_train,
-    )
-    sagemaker_session.get_sagemaker_config_value = sagemaker_session.get_sagemaker_config_override
+def test_train_with_sagemaker_config_injection(sagemaker_config_session):
+    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_TRAINING_JOB
 
     in_config = [
         {
@@ -1610,7 +1559,7 @@ def test_train_with_configs(sagemaker_session):
         },
     }
 
-    sagemaker_session.train(
+    sagemaker_config_session.train(
         image_uri=IMAGE,
         input_mode="File",
         input_config=in_config,
@@ -1619,9 +1568,7 @@ def test_train_with_configs(sagemaker_session):
         resource_config=resource_config,
         hyperparameters=hyperparameters,
         stop_condition=stop_cond,
-        tags=EXAMPLE_TAGS,
         metric_definitions=METRIC_DEFINITONS,
-        encrypt_inter_container_traffic=True,
         use_spot_instances=True,
         checkpoint_s3_uri="s3://mybucket/checkpoints/",
         checkpoint_local_path="/tmp/checkpoints",
@@ -1631,14 +1578,14 @@ def test_train_with_configs(sagemaker_session):
         training_image_config=TRAINING_IMAGE_CONFIG,
     )
 
-    _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
+    _, _, actual_train_args = sagemaker_config_session.sagemaker_client.method_calls[0]
 
     assert actual_train_args["VpcConfig"] == {
         "Subnets": ["subnets-123"],
         "SecurityGroupIds": ["sg-123"],
     }
     assert actual_train_args["HyperParameters"] == hyperparameters
-    assert actual_train_args["Tags"] == EXAMPLE_TAGS
+    assert actual_train_args["Tags"] == TAGS
     assert actual_train_args["AlgorithmSpecification"]["MetricDefinitions"] == METRIC_DEFINITONS
     assert actual_train_args["AlgorithmSpecification"]["EnableSageMakerMetricsTimeSeries"] is True
     assert actual_train_args["EnableInterContainerTrafficEncryption"] is True
@@ -1707,7 +1654,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
         vpc_config=VPC_CONFIG,
         hyperparameters=hyperparameters,
         stop_condition=stop_cond,
-        tags=EXAMPLE_TAGS,
+        tags=TAGS,
         metric_definitions=METRIC_DEFINITONS,
         encrypt_inter_container_traffic=True,
         use_spot_instances=True,
@@ -1723,7 +1670,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
 
     assert actual_train_args["VpcConfig"] == VPC_CONFIG
     assert actual_train_args["HyperParameters"] == hyperparameters
-    assert actual_train_args["Tags"] == EXAMPLE_TAGS
+    assert actual_train_args["Tags"] == TAGS
     assert actual_train_args["AlgorithmSpecification"]["MetricDefinitions"] == METRIC_DEFINITONS
     assert actual_train_args["AlgorithmSpecification"]["EnableSageMakerMetricsTimeSeries"] is True
     assert actual_train_args["EnableInterContainerTrafficEncryption"] is True
@@ -1738,18 +1685,8 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
 
 
 def test_create_transform_job_with_sagemaker_config_injection(sagemaker_config_session):
-
     # Config to test injection for
-    sagemaker_config_session.sagemaker_config.config = {
-        SAGEMAKER: {
-            TRANSFORM_JOB: {
-                DATA_CAPTURE_CONFIG: {KMS_KEY_ID: "jobKmsKeyId"},
-                TRANSFORM_OUTPUT: {KMS_KEY_ID: "outputKmsKeyId"},
-                TRANSFORM_RESOURCES: {VOLUME_KMS_KEY_ID: "volumeKmsKeyId"},
-                TAGS: EXAMPLE_TAGS,
-            }
-        }
-    }
+    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_TRANSFORM_JOB
 
     model_name = "my-model"
     in_config = {
@@ -1773,7 +1710,7 @@ def test_create_transform_job_with_sagemaker_config_injection(sagemaker_config_s
             "TransformResources": resource_config,
             "DataProcessing": data_processing,
             "DataCaptureConfig": data_capture_config._to_request_dict(),
-            "Tags": EXAMPLE_TAGS,
+            "Tags": TAGS,
         }
     )
     expected_args["DataCaptureConfig"]["KmsKeyId"] = "jobKmsKeyId"
@@ -1798,7 +1735,7 @@ def test_create_transform_job_with_sagemaker_config_injection(sagemaker_config_s
         resource_config=resource_config,
         experiment_config=None,
         model_client_config=None,
-        tags=EXAMPLE_TAGS,
+        tags=TAGS,
         data_processing=data_processing,
         batch_data_capture_config=data_capture_config,
     )
@@ -1877,7 +1814,7 @@ def test_transform_pack_to_request_with_optional_params(sagemaker_session):
         resource_config={},
         experiment_config=EXPERIMENT_CONFIG,
         model_client_config=MODEL_CLIENT_CONFIG,
-        tags=EXAMPLE_TAGS,
+        tags=TAGS,
         data_processing=None,
         batch_data_capture_config=batch_data_capture_config,
     )
@@ -1887,7 +1824,7 @@ def test_transform_pack_to_request_with_optional_params(sagemaker_session):
     assert actual_args["MaxConcurrentTransforms"] == max_concurrent_transforms
     assert actual_args["MaxPayloadInMB"] == max_payload
     assert actual_args["Environment"] == env
-    assert actual_args["Tags"] == EXAMPLE_TAGS
+    assert actual_args["Tags"] == TAGS
     assert actual_args["ExperimentConfig"] == EXPERIMENT_CONFIG
     assert actual_args["ModelClientConfig"] == MODEL_CLIENT_CONFIG
     assert actual_args["DataCaptureConfig"] == batch_data_capture_config._to_request_dict()
@@ -2139,44 +2076,25 @@ PRIMARY_CONTAINER = {
 }
 
 
-def _sagemaker_config_override_mock_for_model(key, default_value=None):
-    from sagemaker.session import (
-        MODEL_EXECUTION_ROLE_ARN_PATH,
-        MODEL_VPC_CONFIG_PATH,
-        MODEL_ENABLE_NETWORK_ISOLATION_PATH,
-    )
+def test_create_model_with_sagemaker_config_injection(sagemaker_config_session):
 
-    if key is MODEL_EXECUTION_ROLE_ARN_PATH:
-        return "arn:aws:iam::111111111111:role/ConfigRole"
-    elif key is MODEL_VPC_CONFIG_PATH:
-        return {"Subnets": ["subnets-123"], "SecurityGroupIds": ["sg-123"]}
-    elif key is MODEL_ENABLE_NETWORK_ISOLATION_PATH:
-        return True
-    return default_value
+    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_MODEL
 
-
-@patch("sagemaker.session._expand_container_def", return_value=PRIMARY_CONTAINER)
-def test_create_model_with_configs(expand_container_def, sagemaker_session):
-    sagemaker_session.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override",
-        side_effect=_sagemaker_config_override_mock_for_model,
-    )
-    sagemaker_session.get_sagemaker_config_value = sagemaker_session.get_sagemaker_config_override
-
-    sagemaker_session.expand_role = Mock(
+    sagemaker_config_session.expand_role = Mock(
         name="expand_role", side_effect=lambda role_name: role_name
     )
-    model = sagemaker_session.create_model(
+    model = sagemaker_config_session.create_model(
         MODEL_NAME,
         container_defs=PRIMARY_CONTAINER,
     )
     assert model == MODEL_NAME
-    sagemaker_session.sagemaker_client.create_model.assert_called_with(
+    sagemaker_config_session.sagemaker_client.create_model.assert_called_with(
         ExecutionRoleArn="arn:aws:iam::111111111111:role/ConfigRole",
         ModelName=MODEL_NAME,
         PrimaryContainer=PRIMARY_CONTAINER,
         VpcConfig={"Subnets": ["subnets-123"], "SecurityGroupIds": ["sg-123"]},
         EnableNetworkIsolation=True,
+        Tags=TAGS,
     )
 
 
@@ -2334,7 +2252,7 @@ def test_create_model_from_job(sagemaker_session):
 def test_create_model_from_job_with_tags(sagemaker_session):
     ims = sagemaker_session
     ims.sagemaker_client.describe_training_job.return_value = COMPLETED_DESCRIBE_JOB_RESULT
-    ims.create_model_from_job(JOB_NAME, tags=EXAMPLE_TAGS)
+    ims.create_model_from_job(JOB_NAME, tags=TAGS)
 
     assert (
         call(TrainingJobName=JOB_NAME) in ims.sagemaker_client.describe_training_job.call_args_list
@@ -2344,36 +2262,19 @@ def test_create_model_from_job_with_tags(sagemaker_session):
         ModelName=JOB_NAME,
         PrimaryContainer=PRIMARY_CONTAINER,
         VpcConfig=VPC_CONFIG,
-        Tags=EXAMPLE_TAGS,
+        Tags=TAGS,
     )
 
 
-def _sagemaker_config_override_mock_for_edge_packaging(key, default_value=None):
-    from sagemaker.session import (
-        EDGE_PACKAGING_ROLE_ARN_PATH,
-        EDGE_PACKAGING_OUTPUT_CONFIG_PATH,
-    )
-
-    if key is EDGE_PACKAGING_ROLE_ARN_PATH:
-        return "arn:aws:iam::111111111111:role/ConfigRole"
-    elif key is EDGE_PACKAGING_OUTPUT_CONFIG_PATH:
-        return {"KmsKeyId": "configKmsKeyId"}
-    return default_value
-
-
-def test_create_edge_packaging_with_configs(sagemaker_session):
-    sagemaker_session.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override",
-        side_effect=_sagemaker_config_override_mock_for_edge_packaging,
-    )
-    sagemaker_session.get_sagemaker_config_value = sagemaker_session.get_sagemaker_config_override
+def test_create_edge_packaging_with_sagemaker_config_injection(sagemaker_config_session):
+    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB
 
     output_config = {"S3OutputLocation": S3_OUTPUT}
 
-    sagemaker_session.package_model_for_edge(
+    sagemaker_config_session.package_model_for_edge(
         output_config,
     )
-    sagemaker_session.sagemaker_client.create_edge_packaging_job.assert_called_with(
+    sagemaker_config_session.sagemaker_client.create_edge_packaging_job.assert_called_with(
         RoleArn="arn:aws:iam::111111111111:role/ConfigRole",  # provided from config
         OutputConfig={
             "S3OutputLocation": S3_OUTPUT,  # provided as param
@@ -2383,41 +2284,16 @@ def test_create_edge_packaging_with_configs(sagemaker_session):
         ModelVersion=None,
         EdgePackagingJobName=None,
         CompilationJobName=None,
+        Tags=TAGS,
     )
 
 
-def _sagemaker_config_override_mock_for_monitoring_schedule(key, default_value=None):
-    from sagemaker.session import (
-        MONITORING_JOB_ROLE_ARN_PATH,
-        MONITORING_JOB_VOLUME_KMS_KEY_ID_PATH,
-        MONITORING_JOB_NETWORK_CONFIG_PATH,
-        MONITORING_JOB_OUTPUT_KMS_KEY_ID_PATH,
-    )
-
-    if key is MONITORING_JOB_ROLE_ARN_PATH:
-        return "arn:aws:iam::111111111111:role/ConfigRole"
-    elif key is MONITORING_JOB_NETWORK_CONFIG_PATH:
-        return {
-            "VpcConfig": {"Subnets": ["subnets-123"], "SecurityGroupIds": ["sg-123"]},
-            "EnableNetworkIsolation": True,
-        }
-    elif key is MONITORING_JOB_OUTPUT_KMS_KEY_ID_PATH:
-        return "configKmsKeyId"
-    elif key is MONITORING_JOB_VOLUME_KMS_KEY_ID_PATH:
-        return "configVolumeKmsKeyId"
-    return default_value
-
-
-def test_create_monitoring_schedule_with_configs(sagemaker_session):
-    sagemaker_session.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override",
-        side_effect=_sagemaker_config_override_mock_for_monitoring_schedule,
-    )
-    sagemaker_session.get_sagemaker_config_value = sagemaker_session.get_sagemaker_config_override
+def test_create_monitoring_schedule_with_sagemaker_config_injection(sagemaker_config_session):
+    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_MONITORING_SCHEDULE
 
     monitoring_output_config = {"MonitoringOutputs": [{"S3Output": {"S3Uri": S3_OUTPUT}}]}
 
-    sagemaker_session.create_monitoring_schedule(
+    sagemaker_config_session.create_monitoring_schedule(
         JOB_NAME,
         schedule_expression=None,
         statistics_s3_uri=None,
@@ -2430,7 +2306,7 @@ def test_create_monitoring_schedule_with_configs(sagemaker_session):
         image_uri="someimageuri",
         network_config={"VpcConfig": {"SecurityGroupIds": ["sg-asparam"]}},
     )
-    sagemaker_session.sagemaker_client.create_monitoring_schedule.assert_called_with(
+    sagemaker_config_session.sagemaker_client.create_monitoring_schedule.assert_called_with(
         MonitoringScheduleName=JOB_NAME,
         MonitoringScheduleConfig={
             "MonitoringJobDefinition": {
@@ -2457,47 +2333,30 @@ def test_create_monitoring_schedule_with_configs(sagemaker_session):
                         "SecurityGroupIds": ["sg-asparam"],  # provided as param
                     },
                     "EnableNetworkIsolation": True,  # fetched from config
+                    "EnableInterContainerTrafficEncryption": False,  # fetched from config
                 },
-            }
+            },
         },
+        Tags=TAGS,  # fetched from config
     )
 
 
-def _sagemaker_config_override_mock_for_compile(key, default_value=None):
-    from sagemaker.session import (
-        COMPILATION_JOB_ROLE_ARN_PATH,
-        COMPILATION_JOB_OUTPUT_CONFIG_PATH,
-        COMPILATION_JOB_VPC_CONFIG_PATH,
-    )
+def test_compile_with_sagemaker_config_injection(sagemaker_config_session):
+    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_COMPILATION_JOB
 
-    if key is COMPILATION_JOB_ROLE_ARN_PATH:
-        return "arn:aws:iam::111111111111:role/ConfigRole"
-    elif key is COMPILATION_JOB_VPC_CONFIG_PATH:
-        return {"Subnets": ["subnets-123"], "SecurityGroupIds": ["sg-123"]}
-    elif key is COMPILATION_JOB_OUTPUT_CONFIG_PATH:
-        return {"KmsKeyId": "TestKms"}
-    return default_value
-
-
-def test_compile_with_configs(sagemaker_session):
-    sagemaker_session.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override",
-        side_effect=_sagemaker_config_override_mock_for_compile,
-    )
-    sagemaker_session.get_sagemaker_config_value = sagemaker_session.get_sagemaker_config_override
-
-    sagemaker_session.compile_model(
+    sagemaker_config_session.compile_model(
         input_model_config={},
         output_model_config={"S3OutputLocation": "s3://test"},
         job_name="TestJob",
     )
-    sagemaker_session.sagemaker_client.create_compilation_job.assert_called_with(
+    sagemaker_config_session.sagemaker_client.create_compilation_job.assert_called_with(
         InputConfig={},
         OutputConfig={"S3OutputLocation": "s3://test", "KmsKeyId": "TestKms"},
         RoleArn="arn:aws:iam::111111111111:role/ConfigRole",
         StoppingCondition=None,
         CompilationJobName="TestJob",
         VpcConfig={"Subnets": ["subnets-123"], "SecurityGroupIds": ["sg-123"]},
+        Tags=TAGS,
     )
 
 
@@ -2563,43 +2422,21 @@ def test_endpoint_from_production_variants(sagemaker_session):
     )
 
 
-def _sagemaker_config_override_mock_for_endpoint_config(key, default_value=None):
-    from sagemaker.session import (
-        ENDPOINT_CONFIG_DATA_CAPTURE_PATH,
-        ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH,
-        ENDPOINT_CONFIG_KMS_KEY_ID_PATH,
-    )
-
-    if key is ENDPOINT_CONFIG_KMS_KEY_ID_PATH:
-        return "testKmsKeyId"
-    elif key is ENDPOINT_CONFIG_DATA_CAPTURE_PATH:
-        return {"KmsKeyId": "testDataCaptureKmsKeyId"}
-    elif key is ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH:
-        return [{"CoreDumpConfig": {"KmsKeyId": "testCoreKmsKeyId"}}]
-    return default_value
-
-
-def test_create_enpoint_config_with_configs(sagemaker_session):
-    sagemaker_session.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override",
-        side_effect=_sagemaker_config_override_mock_for_endpoint_config,
-    )
-    sagemaker_session.get_sagemaker_config_value = sagemaker_session.get_sagemaker_config_override
+def test_create_endpoint_config_with_sagemaker_config_injection(sagemaker_config_session):
+    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_ENDPOINT_CONFIG
 
     data_capture_config_dict = {"DestinationS3Uri": "s3://test"}
 
-    tags = [{"Key": "TagtestKey", "Value": "TagtestValue"}]
-
-    sagemaker_session.create_endpoint_config(
+    # This method does not support ASYNC_INFERENCE_CONFIG or multiple PRODUCTION_VARIANTS
+    sagemaker_config_session.create_endpoint_config(
         "endpoint-test",
         "simple-model",
         1,
         "local",
-        tags=tags,
         data_capture_config_dict=data_capture_config_dict,
     )
 
-    sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
+    sagemaker_config_session.sagemaker_client.create_endpoint_config.assert_called_with(
         EndpointConfigName="endpoint-test",
         ProductionVariants=[
             {
@@ -2612,8 +2449,88 @@ def test_create_enpoint_config_with_configs(sagemaker_session):
             }
         ],
         DataCaptureConfig={"DestinationS3Uri": "s3://test", "KmsKeyId": "testDataCaptureKmsKeyId"},
-        KmsKeyId="testKmsKeyId",
-        Tags=tags,
+        KmsKeyId="ConfigKmsKeyId",
+        Tags=TAGS,
+    )
+
+
+def test_create_endpoint_config_from_existing_with_sagemaker_config_injection(
+    sagemaker_config_session,
+):
+    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_ENDPOINT_CONFIG
+
+    pvs = [
+        sagemaker.production_variant("A", "ml.p2.xlarge"),
+        sagemaker.production_variant("B", "ml.p2.xlarge"),
+        sagemaker.production_variant("C", "ml.p2.xlarge"),
+    ]
+    existing_endpoint_arn = "arn:aws:sagemaker:us-west-2:123412341234:endpoint-config/foo"
+    existing_endpoint_name = "foo"
+    new_endpoint_name = "new-foo"
+    sagemaker_config_session.sagemaker_client.describe_endpoint_config.return_value = {
+        "ProductionVariants": [sagemaker.production_variant("A", "ml.m4.xlarge")],
+        "EndpointConfigArn": existing_endpoint_arn,
+        "AsyncInferenceConfig": {},
+    }
+    sagemaker_config_session.sagemaker_client.list_tags.return_value = {"Tags": []}
+
+    sagemaker_config_session.create_endpoint_config_from_existing(
+        existing_endpoint_name, new_endpoint_name, new_production_variants=pvs
+    )
+
+    sagemaker_config_session.sagemaker_client.create_endpoint_config.assert_called_with(
+        EndpointConfigName=new_endpoint_name,
+        ProductionVariants=[
+            {
+                "CoreDumpConfig": {"KmsKeyId": "testCoreKmsKeyId"},
+                **sagemaker.production_variant("A", "ml.p2.xlarge"),
+            },
+            {
+                "CoreDumpConfig": {"KmsKeyId": "testCoreKmsKeyId2"},
+                **sagemaker.production_variant("B", "ml.p2.xlarge"),
+            },
+            sagemaker.production_variant("C", "ml.p2.xlarge"),
+        ],
+        KmsKeyId="ConfigKmsKeyId",  # from config
+        Tags=TAGS,  # from config
+        AsyncInferenceConfig={"OutputConfig": {"KmsKeyId": "testOutputKmsKeyId"}},  # from config
+    )
+
+
+def test_endpoint_from_production_variants_with_sagemaker_config_injection(
+    sagemaker_config_session,
+):
+    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_ENDPOINT_CONFIG
+
+    sagemaker_config_session.sagemaker_client.describe_endpoint = Mock(
+        return_value={"EndpointStatus": "InService"}
+    )
+    pvs = [
+        sagemaker.production_variant("A", "ml.p2.xlarge"),
+        sagemaker.production_variant("B", "ml.p2.xlarge"),
+        sagemaker.production_variant("C", "ml.p2.xlarge"),
+    ]
+    sagemaker_config_session.endpoint_from_production_variants(
+        "some-endpoint",
+        pvs,
+        data_capture_config_dict={},
+        async_inference_config_dict=AsyncInferenceConfig()._to_request_dict(),
+    )
+
+    expected_async_inference_config_dict = AsyncInferenceConfig()._to_request_dict()
+    expected_async_inference_config_dict["OutputConfig"]["KmsKeyId"] = "testOutputKmsKeyId"
+    sagemaker_config_session.sagemaker_client.create_endpoint_config.assert_called_with(
+        EndpointConfigName="some-endpoint",
+        ProductionVariants=pvs,
+        Tags=TAGS,  # from config
+        KmsKeyId="ConfigKmsKeyId",  # from config
+        AsyncInferenceConfig=expected_async_inference_config_dict,
+        DataCaptureConfig={"KmsKeyId": "testDataCaptureKmsKeyId"},
+    )
+    sagemaker_config_session.sagemaker_client.create_endpoint.assert_called_with(
+        EndpointConfigName="some-endpoint",
+        EndpointName="some-endpoint",
+        Tags=TAGS,  # from config
     )
 
 
@@ -3078,27 +2995,6 @@ COMPLETE_EXPECTED_LIST_CANDIDATES_ARGS = {
 }
 
 
-def _sagemaker_config_override_mock_for_auto_ml(key, default_value=None):
-    from sagemaker.session import (
-        AUTO_ML_OUTPUT_CONFIG_PATH,
-        AUTO_ML_ROLE_ARN_PATH,
-        AUTO_ML_JOB_CONFIG_PATH,
-    )
-
-    if key is AUTO_ML_ROLE_ARN_PATH:
-        return "arn:aws:iam::111111111111:role/ConfigRole"
-    elif key is AUTO_ML_JOB_CONFIG_PATH:
-        return {
-            "SecurityConfig": {
-                "VpcConfig": {"Subnets": ["subnets-123"], "SecurityGroupIds": ["sg-123"]},
-                "VolumeKmsKeyId": "TestKmsKeyId",
-            }
-        }
-    elif key is AUTO_ML_OUTPUT_CONFIG_PATH:
-        return {"KmsKeyId": "configKmsKeyId"}
-    return default_value
-
-
 def test_auto_ml_pack_to_request(sagemaker_session):
     input_config = [
         {
@@ -3131,12 +3027,8 @@ def test_auto_ml_pack_to_request(sagemaker_session):
     )
 
 
-def test_create_auto_ml_with_configs(sagemaker_session):
-    sagemaker_session.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override",
-        side_effect=_sagemaker_config_override_mock_for_auto_ml,
-    )
-    sagemaker_session.get_sagemaker_config_value = sagemaker_session.get_sagemaker_config_override
+def test_create_auto_ml_with_sagemaker_config_injection(sagemaker_config_session):
+    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_AUTO_ML
 
     input_config = [
         {
@@ -3156,23 +3048,28 @@ def test_create_auto_ml_with_configs(sagemaker_session):
     }
 
     job_name = JOB_NAME
-    sagemaker_session.auto_ml(input_config, output_config, auto_ml_job_config, job_name=job_name)
-    expected_call_args = DEFAULT_EXPECTED_AUTO_ML_JOB_ARGS.copy()
+    sagemaker_config_session.auto_ml(
+        input_config, output_config, auto_ml_job_config, job_name=job_name
+    )
+    expected_call_args = copy.deepcopy(DEFAULT_EXPECTED_AUTO_ML_JOB_ARGS)
     expected_call_args["OutputDataConfig"]["KmsKeyId"] = "configKmsKeyId"
     expected_call_args["RoleArn"] = "arn:aws:iam::111111111111:role/ConfigRole"
-    expected_call_args["AutoMLJobConfig"]["SecurityConfig"] = {}
+    expected_call_args["AutoMLJobConfig"]["SecurityConfig"] = {
+        "EnableInterContainerTrafficEncryption": True
+    }
     expected_call_args["AutoMLJobConfig"]["SecurityConfig"]["VpcConfig"] = {
         "Subnets": ["subnets-123"],
         "SecurityGroupIds": ["sg-123"],
     }
     expected_call_args["AutoMLJobConfig"]["SecurityConfig"]["VolumeKmsKeyId"] = "TestKmsKeyId"
-    sagemaker_session.sagemaker_client.create_auto_ml_job.assert_called_with(
+    sagemaker_config_session.sagemaker_client.create_auto_ml_job.assert_called_with(
         AutoMLJobName=expected_call_args["AutoMLJobName"],
         InputDataConfig=expected_call_args["InputDataConfig"],
         OutputDataConfig=expected_call_args["OutputDataConfig"],
         AutoMLJobConfig=expected_call_args["AutoMLJobConfig"],
         RoleArn=expected_call_args["RoleArn"],
         GenerateCandidateDefinitionsOnly=False,
+        Tags=TAGS,
     )
 
 
@@ -3373,31 +3270,9 @@ def test_create_model_package_from_containers_without_model_package_group_name(
         )
 
 
-def _sagemaker_config_override_mock_for_model_package(key, default_value=None):
-    from sagemaker.session import (
-        MODEL_PACKAGE_VALIDATION_ROLE_PATH,
-        MODEL_PACKAGE_VALIDATION_PROFILES_PATH,
-    )
+def test_create_model_package_with_sagemaker_config_injection(sagemaker_config_session):
+    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_MODEL_PACKAGE
 
-    if key is MODEL_PACKAGE_VALIDATION_ROLE_PATH:
-        return "arn:aws:iam::111111111111:role/ConfigRole"
-    elif key is MODEL_PACKAGE_VALIDATION_PROFILES_PATH:
-        return [
-            {
-                "TransformJobDefinition": {
-                    "TransformOutput": {"KmsKeyId": "testKmsKeyId"},
-                    "TransformResources": {"VolumeKmsKeyId": "testVolumeKmsKeyId"},
-                }
-            }
-        ]
-    return default_value
-
-
-def test_create_model_package_with_configs(sagemaker_session):
-    sagemaker_session.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override",
-        side_effect=_sagemaker_config_override_mock_for_model_package,
-    )
     model_package_name = "sagemaker-model-package"
     containers = ["dummy-container"]
     content_types = ["application/json"]
@@ -3436,7 +3311,7 @@ def test_create_model_package_with_configs(sagemaker_session):
     domain = "COMPUTER_VISION"
     task = "IMAGE_CLASSIFICATION"
     sample_payload_url = "s3://test-bucket/model"
-    sagemaker_session.create_model_package_from_containers(
+    sagemaker_config_session.create_model_package_from_containers(
         containers=containers,
         content_types=content_types,
         response_types=response_types,
@@ -3455,27 +3330,29 @@ def test_create_model_package_with_configs(sagemaker_session):
         task=task,
         validation_specification=validation_specification,
     )
-    expected_args = {
-        "ModelPackageName": model_package_name,
-        "InferenceSpecification": {
-            "Containers": containers,
-            "SupportedContentTypes": content_types,
-            "SupportedResponseMIMETypes": response_types,
-            "SupportedRealtimeInferenceInstanceTypes": inference_instances,
-            "SupportedTransformInstanceTypes": transform_instances,
-        },
-        "ModelPackageDescription": description,
-        "ModelMetrics": model_metrics,
-        "MetadataProperties": metadata_properties,
-        "CertifyForMarketplace": marketplace_cert,
-        "ModelApprovalStatus": approval_status,
-        "DriftCheckBaselines": drift_check_baselines,
-        "CustomerMetadataProperties": customer_metadata_properties,
-        "Domain": domain,
-        "SamplePayloadUrl": sample_payload_url,
-        "Task": task,
-        "ValidationSpecification": validation_specification,
-    }
+    expected_args = copy.deepcopy(
+        {
+            "ModelPackageName": model_package_name,
+            "InferenceSpecification": {
+                "Containers": containers,
+                "SupportedContentTypes": content_types,
+                "SupportedResponseMIMETypes": response_types,
+                "SupportedRealtimeInferenceInstanceTypes": inference_instances,
+                "SupportedTransformInstanceTypes": transform_instances,
+            },
+            "ModelPackageDescription": description,
+            "ModelMetrics": model_metrics,
+            "MetadataProperties": metadata_properties,
+            "CertifyForMarketplace": marketplace_cert,
+            "ModelApprovalStatus": approval_status,
+            "DriftCheckBaselines": drift_check_baselines,
+            "CustomerMetadataProperties": customer_metadata_properties,
+            "Domain": domain,
+            "SamplePayloadUrl": sample_payload_url,
+            "Task": task,
+            "ValidationSpecification": validation_specification,
+        }
+    )
     expected_args["ValidationSpecification"][
         "ValidationRole"
     ] = "arn:aws:iam::111111111111:role/ConfigRole"
@@ -3485,7 +3362,10 @@ def test_create_model_package_with_configs(sagemaker_session):
     expected_args["ValidationSpecification"]["ValidationProfiles"][0]["TransformJobDefinition"][
         "TransformOutput"
     ]["KmsKeyId"] = "testKmsKeyId"
-    sagemaker_session.sagemaker_client.create_model_package.assert_called_with(**expected_args)
+
+    sagemaker_config_session.sagemaker_client.create_model_package.assert_called_with(
+        **expected_args
+    )
 
 
 def test_create_model_package_from_containers_all_args(sagemaker_session):
@@ -3696,37 +3576,20 @@ def feature_group_dummy_definitions():
     return [{"FeatureName": "feature1", "FeatureType": "String"}]
 
 
-def _sagemaker_config_override_mock_for_feature_store(key, default_value=None):
-    from sagemaker.session import (
-        FEATURE_GROUP_ROLE_ARN_PATH,
-        FEATURE_GROUP_ONLINE_STORE_CONFIG_PATH,
-        FEATURE_GROUP_OFFLINE_STORE_CONFIG_PATH,
-    )
-
-    if key is FEATURE_GROUP_ROLE_ARN_PATH:
-        return "config_role"
-    elif key is FEATURE_GROUP_OFFLINE_STORE_CONFIG_PATH:
-        return {"S3StorageConfig": {"KmsKeyId": "testKmsId"}}
-    elif key is FEATURE_GROUP_ONLINE_STORE_CONFIG_PATH:
-        return {"SecurityConfig": {"KmsKeyId": "testKmsId2"}}
-    return default_value
-
-
-def test_feature_group_create_with_config_injections(
-    sagemaker_session, feature_group_dummy_definitions
+def test_feature_group_create_with_sagemaker_config_injection(
+    sagemaker_config_session, feature_group_dummy_definitions
 ):
-    sagemaker_session.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override",
-        side_effect=_sagemaker_config_override_mock_for_feature_store,
-    )
-    sagemaker_session.create_feature_group(
+
+    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_FEATURE_GROUP
+
+    sagemaker_config_session.create_feature_group(
         feature_group_name="MyFeatureGroup",
         record_identifier_name="feature1",
         event_time_feature_name="feature2",
         feature_definitions=feature_group_dummy_definitions,
         offline_store_config={"S3StorageConfig": {"S3Uri": "s3://test"}},
     )
-    assert sagemaker_session.sagemaker_client.create_feature_group.called_with(
+    assert sagemaker_config_session.sagemaker_client.create_feature_group.called_with(
         FeatureGroupName="MyFeatureGroup",
         RecordIdentifierFeatureName="feature1",
         EventTimeFeatureName="feature2",
@@ -3734,6 +3597,7 @@ def test_feature_group_create_with_config_injections(
         RoleArn="config_role",
         OnlineStoreConfig={"SecurityConfig": {"KmsKeyId": "testKmsId2"}, "EnableOnlineStore": True},
         OfflineStoreConfig={"S3StorageConfig": {"KmsKeyId": "testKmsId", "S3Uri": "s3://test"}},
+        Tags=TAGS,
     )
 
 

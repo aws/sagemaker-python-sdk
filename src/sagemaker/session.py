@@ -13,6 +13,7 @@
 """Placeholder docstring"""
 from __future__ import absolute_import, print_function
 
+import copy
 import inspect
 import json
 import logging
@@ -275,7 +276,11 @@ PATH_V1_MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION = _simple_path(
     ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION,
 )
 PATH_V1_AUTO_ML_INTER_CONTAINER_ENCRYPTION = _simple_path(
-    SAGEMAKER, AUTO_ML, SECURITY_CONFIG, ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION
+    SAGEMAKER,
+    AUTO_ML,
+    AUTO_ML_JOB_CONFIG,
+    SECURITY_CONFIG,
+    ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION,
 )
 PATH_V1_PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION = _simple_path(
     SAGEMAKER, PROCESSING_JOB, NETWORK_CONFIG, ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION
@@ -651,7 +656,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             object: The corresponding value in the Config file/ the default value.
         """
         config_value = get_config_value(key, self.sagemaker_config.config)
-        return config_value
+
+        # Copy the value so any modifications to the output will not modify the source config
+        return copy.deepcopy(config_value)
 
     def get_sagemaker_config_override(self, key, default_value=None):
         """Util method that fetches a particular key path in the SageMakerConfig and returns it.
@@ -667,7 +674,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             object: The corresponding value in the Config file/ the default value.
 
         """
-        config_value = get_config_value(key, self.sagemaker_config.config)
+        config_value = self.get_sagemaker_config_value(key)
         self._print_message_on_sagemaker_config_usage(default_value, config_value, key)
 
         if default_value is not None:
@@ -1471,6 +1478,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         return update_training_job_request
 
+    # TODO: unit tests or make a more generic version
     def update_processing_input_from_config(self, inputs):
         """Updates Processor Inputs to fetch values from SageMakerConfig wherever applicable.
 
@@ -1478,41 +1486,49 @@ class Session(object):  # pylint: disable=too-many-public-methods
             inputs (list[dict]): A list of Processing Input objects.
 
         """
+        inputs_copy = copy.deepcopy(inputs)
         processing_inputs_from_config = (
             self.get_sagemaker_config_override(PROCESSING_JOB_INPUTS_PATH) or []
         )
         for i in range(min(len(inputs), len(processing_inputs_from_config))):
-            processing_input_from_config = processing_inputs_from_config[i]
-            if "DatasetDefinition" in inputs[i]:
-                dataset_definition = inputs[i]["DatasetDefinition"]
-                if "AthenaDatasetDefinition" in dataset_definition:
-                    athena_dataset_definition = dataset_definition["AthenaDatasetDefinition"]
-                    if KMS_KEY_ID not in athena_dataset_definition:
-                        athena_kms_key_id_from_config = get_config_value(
-                            ATHENA_DATASET_DEFINITION_KMS_KEY_ID_PATH, processing_input_from_config
-                        )
-                        if athena_kms_key_id_from_config:
-                            athena_dataset_definition[KMS_KEY_ID] = athena_kms_key_id_from_config
-                if "RedshiftDatasetDefinition" in dataset_definition:
-                    redshift_dataset_definition = dataset_definition["RedshiftDatasetDefinition"]
-                    if CLUSTER_ROLE_ARN not in redshift_dataset_definition:
-                        redshift_role_arn_from_config = get_config_value(
-                            REDSHIFT_DATASET_DEFINITION_CLUSTER_ROLE_ARN_PATH,
-                            processing_input_from_config,
-                        )
-                        if redshift_role_arn_from_config:
-                            redshift_dataset_definition[
-                                CLUSTER_ROLE_ARN
-                            ] = redshift_role_arn_from_config
-                    if not redshift_dataset_definition.kms_key_id:
-                        redshift_kms_key_id_from_config = get_config_value(
-                            REDSHIFT_DATASET_DEFINITION_KMS_KEY_ID_PATH,
-                            processing_input_from_config,
-                        )
-                        if redshift_kms_key_id_from_config:
-                            redshift_dataset_definition[
-                                KMS_KEY_ID
-                            ] = redshift_kms_key_id_from_config
+            dict_from_inputs = inputs[i]
+            dict_from_config = processing_inputs_from_config[i]
+
+            # The Dataset Definition input must specify exactly one of either
+            # AthenaDatasetDefinition or RedshiftDatasetDefinition types (source: API reference).
+            # So to prevent API failure because of sagemaker_config, we will only populate from the
+            # config for the ones already present in dict_from_inputs.
+            # If BOTH are present, we will still add to both and let the API call fail as it would
+            # have even without injection from sagemaker_config.
+            athena_path = [DATASET_DEFINITION, ATHENA_DATASET_DEFINITION]
+            redshift_path = [DATASET_DEFINITION, REDSHIFT_DATASET_DEFINITION]
+
+            athena_value_from_inputs = get_nested_value(dict_from_inputs, athena_path)
+            athena_value_from_config = get_nested_value(dict_from_config, athena_path)
+
+            redshift_value_from_inputs = get_nested_value(dict_from_inputs, redshift_path)
+            redshift_value_from_config = get_nested_value(dict_from_config, redshift_path)
+
+            if athena_value_from_inputs is not None:
+                merge_dicts(athena_value_from_config, athena_value_from_inputs)
+                inputs[i] = set_nested_value(
+                    dict_from_inputs, athena_path, athena_value_from_config
+                )
+
+            if redshift_value_from_inputs is not None:
+                merge_dicts(redshift_value_from_config, redshift_value_from_inputs)
+                inputs[i] = set_nested_value(
+                    dict_from_inputs, redshift_path, redshift_value_from_config
+                )
+
+        if processing_inputs_from_config != []:
+            print(
+                "[Sagemaker Config - applied value]\n",
+                "config key = {}\n".format(PROCESSING_JOB_INPUTS_PATH),
+                "config value = {}\n".format(processing_inputs_from_config),
+                "source value = {}\n".format(inputs_copy),
+                "combined value that will be used = {}\n".format(inputs),
+            )
 
     def process(
         self,
@@ -4178,6 +4194,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "EndpointConfigName": new_config_name,
         }
 
+        # TODO: should this merge from config even if new_production_variants is None?
         if new_production_variants:
             inferred_production_variants_from_config = (
                 self.get_sagemaker_config_override(ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH) or []
@@ -4234,10 +4251,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
             )
             request["DataCaptureConfig"] = inferred_data_capture_config_dict
 
-        if existing_endpoint_config_desc.get("AsyncInferenceConfig") is not None:
-            async_inference_config_dict = existing_endpoint_config_desc.get(
-                "AsyncInferenceConfig", None
-            )
+        async_inference_config_dict = existing_endpoint_config_desc.get(
+            "AsyncInferenceConfig", None
+        )
+        if async_inference_config_dict is not None:
             inferred_async_inference_config_dict = (
                 self._update_nested_dictionary_with_values_from_config(
                     async_inference_config_dict, ENDPOINT_CONFIG_ASYNC_INFERENCE_PATH
@@ -5612,7 +5629,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             in the Config file.
         """
         inferred_config_dict = self.get_sagemaker_config_value(config_key_path) or {}
-        original_config_dict_value = inferred_config_dict.copy()
+        original_config_dict_value = copy.deepcopy(inferred_config_dict)
         merge_dicts(inferred_config_dict, source_dict or {})
 
         if original_config_dict_value == {}:
@@ -5678,7 +5695,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
         return sts_client.get_caller_identity()["Account"]
 
     def _intercept_create_request(
-        self, request: typing.Dict, create, func_name: str = None  # pylint: disable=unused-argument
+        self,
+        request: typing.Dict,
+        create,
+        func_name: str = None
+        # pylint: disable=unused-argument
     ):
         """This function intercepts the create job request.
 
