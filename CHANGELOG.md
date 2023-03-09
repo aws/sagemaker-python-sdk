@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.136.0 (2023-03-09)
+
+### Features
+
+ * with_feature_group [feature_store]
+ * Djl Large Model Support
+ * Decouple model.right_size() from model registry
+
+### Bug Fixes and Other Changes
+
+ * Fix integration test error in test_default_right_size_and_deploy_unregistered_base_model
+ * Add djl 0.21.0 dlc images
+
+### Documentation Changes
+
+ * Torchrun gpu support documentation change
+
 ## v2.135.1.post0 (2023-03-02)
 
 ### Documentation Changes
