@@ -12,9 +12,9 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import datetime
 import json
 import time
-import datetime
 import dateutil.parser as date_parser
 from contextlib import contextmanager
 
@@ -24,6 +24,7 @@ import pandas as pd
 import pytest
 from pandas import DataFrame
 
+from sagemaker.feature_store.feature_utils import get_feature_group_as_dataframe
 from sagemaker.feature_store.feature_definition import FractionalFeatureDefinition
 from sagemaker.feature_store.feature_group import FeatureGroup
 from sagemaker.feature_store.feature_store import FeatureStore
@@ -1346,6 +1347,82 @@ def _wait_for_feature_group_update(feature_group: FeatureGroup):
         print(feature_group.describe())
         raise RuntimeError(f"Failed to update feature group {feature_group.name}")
     print(f"FeatureGroup {feature_group.name} successfully updated.")
+
+
+def test_get_feature_group_with_role_region(
+    feature_store_session,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+
+    with cleanup_feature_group(feature_group):
+        output = feature_group.create(
+            s3_uri=offline_store_s3_uri,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        feature_group.ingest(
+            data_frame=pandas_data_frame, max_workers=3, max_processes=2, wait=True
+        )
+
+        dataset = get_feature_group_as_dataframe(
+            feature_group_name=feature_group_name,
+            region=region_name,
+            role=role,
+            event_time_feature_name="feature3",
+            latest_ingestion=True,
+            athena_bucket=f"{offline_store_s3_uri}/query",
+        )
+
+    assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
+    assert not dataset.empty
+    assert isinstance(dataset, DataFrame)
+
+
+def test_get_feature_group_with_session(
+    feature_store_session,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+
+    with cleanup_feature_group(feature_group):
+        output = feature_group.create(
+            s3_uri=offline_store_s3_uri,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        feature_group.ingest(
+            data_frame=pandas_data_frame, max_workers=3, max_processes=2, wait=True
+        )
+
+        dataset = get_feature_group_as_dataframe(
+            feature_group_name=feature_group_name,
+            session=feature_store_session,
+            event_time_feature_name="feature3",
+            latest_ingestion=True,
+            athena_bucket=f"{offline_store_s3_uri}/query",
+            low_memory=False,
+        )  # Using kwargs to pass a parameter to pandas.read_csv
+
+    assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
+    assert not dataset.empty
+    assert isinstance(dataset, DataFrame)
 
 
 @contextmanager
