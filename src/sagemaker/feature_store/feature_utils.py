@@ -47,7 +47,7 @@ def get_session_from_role(region: str, assume_role: str = None) -> Session:
     # It will try to assume the role specified
     if assume_role:
         sts = boto_session.client(
-            "sts", region_name=region, endpoint_url=f"https://sts.{region}.amazonaws.com"
+            "sts", region_name=region
         )
 
         credentials = sts.assume_role(
