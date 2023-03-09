@@ -81,7 +81,7 @@ def get_feature_group_as_dataframe(
     feature_group_name: str,
     athena_bucket: str,
     query: str = """SELECT * FROM "sagemaker_featurestore"."#{table}"
-                        WHERE is_deleted=False """,
+                    WHERE is_deleted=False """,
     role: str = None,
     region: str = None,
     session=None,
