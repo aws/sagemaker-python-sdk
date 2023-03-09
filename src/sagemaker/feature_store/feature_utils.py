@@ -88,9 +88,23 @@ def get_feature_group_as_dataframe(
     event_time_feature_name: str = None,
     latest_ingestion: bool = True,
     verbose: bool = True,
-    **pandas_read_csv_kwargs,
+    **kwargs,
 ) -> DataFrame:
     """Get a :class:`sagemaker.feature_store.feature_group.FeatureGroup` as a pandas.DataFrame
+
+    Examples:
+        >>> from sagemaker.feature_store.feature_utils import get_feature_group_as_dataframe
+        >>>
+        >>> region = "eu-west-1"
+        >>> fg_data = get_feature_group_as_dataframe(feature_group_name="feature_group",
+        >>>                                          athena_bucket="s3://bucket/athena_queries",
+        >>>                                          region=region,
+        >>>                                          event_time_feature_name="EventTimeId"
+        >>>                                          )
+        >>>
+        >>> type(fg_data)
+        <class 'pandas.core.frame.DataFrame'>
+        >>>
 
     Description:
         Method to run an athena query over a Feature Group in a Feature Store
@@ -106,17 +120,22 @@ def get_feature_group_as_dataframe(
                     in the feature group that wasn't deleted. It needs to use the keyword
                     "#{table}" to refer to the FeatureGroup name. e.g.:
                     'SELECT * FROM "sagemaker_featurestore"."#{table}"'
+                    It must not end by ';'.
         athena_bucket (str): Amazon S3 bucket for running the query
-        role (str): role of the account used to extract data from feature store
-        session (str): :class:`sagemaker.session.Session`
-                        of SageMaker used to work with the feature store
+        role (str): role to be assumed to extract data from feature store. If not specified
+                    the default sagemaker execution role will be used.
+        session (str): `:obj:sagemaker.session.Session`
+                        of SageMaker used to work with the feature store. Optional, with
+                        role and region parameters it will infer the session.
         event_time_feature_name (str): eventTimeId feature. Mandatory only if the
-                                        latest ingestion is True
+                                        latest ingestion is True.
         latest_ingestion (bool): if True it will get the data only from the latest ingestion.
                                  If False it will take whatever is specified in the query, or
                                  if not specify it, it will get all the data that wasn't deleted.
         verbose (bool): if True show messages, if False is silent.
-
+        **kwargs (object): key arguments used for the method pandas.read_csv to be able to
+                    have a better tuning on data. For more info read:
+                    https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_csv.html
     Returns:
         dataset (pandas.DataFrame): dataset with the data retrieved from feature group
     """
@@ -139,12 +158,13 @@ def get_feature_group_as_dataframe(
             )
             logger.exception(exc)
             raise exc
+
     query += ";"
 
     if session is not None:
         sagemaker_session = session
-    elif role is not None and region is not None:
-        sagemaker_session = get_session_from_role(region=region)
+    elif region is not None:
+        sagemaker_session = get_session_from_role(region=region, assume_role=role)
     else:
         exc = Exception("Argument Session or role and region must be specified.")
         logger.exception(exc)
@@ -166,7 +186,7 @@ def get_feature_group_as_dataframe(
     sample_query.wait()
 
     # run Athena query. The output is loaded to a Pandas dataframe.
-    dataset = sample_query.as_dataframe(**pandas_read_csv_kwargs)
+    dataset = sample_query.as_dataframe(**kwargs)
 
     msg = f"Data shape retrieve from {feature_group_name}: {dataset.shape}"
     logger.info(msg)
@@ -217,7 +237,7 @@ def prepare_fg_from_dataframe_or_file(
     record_id: str = "record_id",
     event_id: str = "data_as_of_date",
     verbose: bool = False,
-    **pandas_read_csv_kwargs,
+    **kwargs,
 ) -> FeatureGroup:
     """Prepares a dataframe to create a :class:`sagemaker.feature_store.feature_group.FeatureGroup`
 
@@ -229,7 +249,9 @@ def prepare_fg_from_dataframe_or_file(
         by default with the names 'record_id' and 'data_as_of_date'.
 
     Args:
-        **pandas_read_csv_kwargs (object):
+        **kwargs (object): key arguments used for the method pandas.read_csv to be able to
+                    have a better tuning on data. For more info read:
+                    https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_csv.html
         feature_group_name (str): feature group name
         dataframe_or_path (str, Path, pandas.DataFrame) : pandas.DataFrame or path to the data
         verbose (bool)           : True for displaying messages, False for silent method.
@@ -256,8 +278,8 @@ def prepare_fg_from_dataframe_or_file(
     if isinstance(dataframe_or_path, DataFrame):
         data = dataframe_or_path
     elif isinstance(dataframe_or_path, str):
-        pandas_read_csv_kwargs.pop("filepath_or_buffer", None)
-        data = read_csv(filepath_or_buffer=dataframe_or_path, **pandas_read_csv_kwargs)
+        kwargs.pop("filepath_or_buffer", None)
+        data = read_csv(filepath_or_buffer=dataframe_or_path, **kwargs)
     else:
         exc = Exception(
             str(
