@@ -171,7 +171,10 @@ class PyTorch(Framework):
                     To learn more, see `Distributed PyTorch Training
                     <https://sagemaker.readthedocs.io/en/stable/frameworks/pytorch/using_pytorch.html#distributed-pytorch-training>`_.
 
-                **To enable Torch Distributed (for Trainium instances only):**
+                **To enable Torch Distributed:**
+
+                    This is available for general distributed training on
+                    GPU instances from PyTorch v1.13.1 and later.
 
                     .. code:: python
 
@@ -181,6 +184,7 @@ class PyTorch(Framework):
                             }
                         }
 
+                    This option also supports distributed training on Trn1.
                     To learn more, see `Distributed PyTorch Training on Trainium
                     <https://sagemaker.readthedocs.io/en/stable/frameworks/pytorch/using_pytorch.html#distributed-pytorch-training-on-trainium>`_.
 
@@ -210,9 +214,7 @@ class PyTorch(Framework):
                     To learn more, see `Training with parameter servers
                     <https://sagemaker.readthedocs.io/en/stable/frameworks/tensorflow/using_tf.html#training-with-parameter-servers>`_.
 
-                **To enable distributed training with
-                `SageMaker Training Compiler <https://docs.aws.amazon.com/sagemaker/latest/dg/training-compiler.html>`_
-                for PyTorch:**
+                **To enable distributed training with SageMaker Training Compiler:**
 
                     .. code:: python
 
