@@ -31,11 +31,15 @@ logger = logging.getLogger(__name__)
 
 def get_session_from_role(region: str, assume_role: str = None) -> Session:
     """Method use to get the :class:`sagemaker.session.Session`  from a role and a region.
-    Helpful in case it's invoke from a session with a role without permission it can assume
-    another role temporarily to perform certain tasks.
+
+    Description:
+        Helpful in case it's invoke from a session with a role without permission it can assume
+        another role temporarily to perform certain tasks.
+
     Args:
         assume_role: role name
         region: region name
+
     Returns:
     """
     boto_session = boto3.Session(region_name=region)
@@ -74,24 +78,26 @@ def get_session_from_role(region: str, assume_role: str = None) -> Session:
 
 
 def get_feature_group_as_dataframe(
-        feature_group_name: str,
-        athena_bucket: str,
-        query: str = """SELECT * FROM "sagemaker_featurestore"."#{table}" 
-                        WHERE is_deleted=False """,
-        role: str = None,
-        region: str = None,
-        session=None,
-        event_time_feature_name: str = None,
-        latest_ingestion: bool = True,
-        verbose: bool = True,
-        **pandas_read_csv_kwargs,
+    feature_group_name: str,
+    athena_bucket: str,
+    query: str = """SELECT * FROM "sagemaker_featurestore"."#{table}"
+                    WHERE is_deleted=False """,
+    role: str = None,
+    region: str = None,
+    session=None,
+    event_time_feature_name: str = None,
+    latest_ingestion: bool = True,
+    verbose: bool = True,
+    **pandas_read_csv_kwargs,
 ) -> DataFrame:
     """Get a :class:`sagemaker.feature_store.feature_group.FeatureGroup` as a pandas.DataFrame
+
     Description:
         Method to run an athena query over a Feature Group in a Feature Store
         to retrieve its data.It needs the sagemaker.Session linked to a role
         or the role and region used to work Feature Stores.Returns a dataframe
         with the data.
+
     Args:
         region (str): region of the target Feature Store
         feature_group_name (str): feature store name
@@ -110,6 +116,7 @@ def get_feature_group_as_dataframe(
                                  If False it will take whatever is specified in the query, or
                                  if not specify it, it will get all the data that wasn't deleted.
         verbose (bool): if True show messages, if False is silent.
+
     Returns:
         dataset (pandas.DataFrame): dataset with the data retrieved from feature group
     """
@@ -121,8 +128,8 @@ def get_feature_group_as_dataframe(
     if latest_ingestion:
         if event_time_feature_name is not None:
             query += str(
-                f"AND {event_time_feature_name}=(SELECT " +
-                f"MAX({event_time_feature_name}) FROM " +
+                f"AND {event_time_feature_name}=(SELECT "
+                f"MAX({event_time_feature_name}) FROM "
                 '"sagemaker_featurestore"."#{table}")'
             )
         else:
@@ -169,11 +176,14 @@ def get_feature_group_as_dataframe(
 
 def _format_column_names(data: pandas.DataFrame) -> pandas.DataFrame:
     """Formats the column names for :class:`sagemaker.feature_store.feature_group.FeatureGroup`
+
     Description:
         Module to format correctly the name of the columns of a DataFrame
         to later generate the features names of a Feature Group
+
     Args:
         data (pandas.DataFrame): dataframe used
+
     Returns:
         pandas.DataFrame
     """
@@ -183,8 +193,11 @@ def _format_column_names(data: pandas.DataFrame) -> pandas.DataFrame:
 
 def _cast_object_to_string(data_frame: pandas.DataFrame) -> pandas.DataFrame:
     """Cast properly pandas object types to strings
-    Method to convert 'object' and 'O' column dtypes of a pandas.DataFrame to
-    a valid string type recognized by Feature Groups.
+
+    Description:
+        Method to convert 'object' and 'O' column dtypes of a pandas.DataFrame to
+        a valid string type recognized by Feature Groups.
+
     Args:
         data_frame: dataframe used
     Returns:
@@ -196,23 +209,25 @@ def _cast_object_to_string(data_frame: pandas.DataFrame) -> pandas.DataFrame:
 
 
 def prepare_fg_from_dataframe_or_file(
-        dataframe_or_path: Union[str, Path, pandas.DataFrame],
-        feature_group_name: str,
-        role: str = None,
-        region: str = None,
-        session=None,
-        record_id: str = "record_id",
-        event_id: str = "data_as_of_date",
-        verbose: bool = False,
-        **pandas_read_csv_kwargs
+    dataframe_or_path: Union[str, Path, pandas.DataFrame],
+    feature_group_name: str,
+    role: str = None,
+    region: str = None,
+    session=None,
+    record_id: str = "record_id",
+    event_id: str = "data_as_of_date",
+    verbose: bool = False,
+    **pandas_read_csv_kwargs,
 ) -> FeatureGroup:
     """Prepares a dataframe to create a :class:`sagemaker.feature_store.feature_group.FeatureGroup`
+
     Description:
         Function to prepare a dataframe for creating a Feature Group from a pandas.DataFrame
         or a path to a file with proper dtypes, feature names and mandatory features (record_id,
         event_id). It needs the sagemaker.Session linked to a role or the role and region used
         to work Feature Stores. If record_id or event_id are not specified it will create ones
         by default with the names 'record_id' and 'data_as_of_date'.
+
     Args:
         **pandas_read_csv_kwargs (object):
         feature_group_name (str): feature group name
@@ -228,6 +243,7 @@ def prepare_fg_from_dataframe_or_file(
         role (str)               : role used to get the session.
         region (str)             : region used to get the session.
         session (str): session of SageMaker used to work with the feature store
+
     Returns:
         :class:`sagemaker.feature_store.feature_group.FeatureGroup`: FG prepared with all
             the methods and definitions properly defined
