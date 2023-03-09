@@ -380,24 +380,18 @@ class InferenceRecommenderMixin:
 
         # Validate recommendation id
         if not re.match(r"[a-zA-Z0-9](-*[a-zA-Z0-9]){0,63}\/\w{8}$", inference_recommendation_id):
-            raise ValueError("Inference Recommendation id is not valid")
+            raise ValueError("inference_recommendation_id is not valid")
         job_or_model_name = inference_recommendation_id.split("/")[0]
 
         sage_client = self.sagemaker_session.sagemaker_client
-
-        # Desribe inference recommendation job and model details
-        recommendation_res, model_res = self._describe_recommendation_job_and_model(
-            sage_client=sage_client,
-            job_or_model_name=job_or_model_name,
-        )
-
-        # Search the recommendation from above describe results
+        # Get recommendation from right size job and model
         (
             right_size_recommendation,
             model_recommendation,
-        ) = self._get_right_size_and_model_recommendation(
-            recommendation_res=recommendation_res,
-            model_res=model_res,
+            right_size_job_res,
+        ) = self._get_recommendation(
+            sage_client=sage_client,
+            job_or_model_name=job_or_model_name,
             inference_recommendation_id=inference_recommendation_id,
         )
 
@@ -418,7 +412,7 @@ class InferenceRecommenderMixin:
                 "since they are in recommendation, or specify both of them if you want"
                 "to override the recommendation."
             )
-        input_config = recommendation_res["InputConfig"]
+        input_config = right_size_job_res["InputConfig"]
         model_config = right_size_recommendation["ModelConfiguration"]
         envs = (
             model_config["EnvironmentParameters"]
@@ -540,33 +534,71 @@ class InferenceRecommenderMixin:
             ]
         return stopping_conditions
 
-    def _get_right_size_and_model_recommendation(
+    def _get_recommendation(self, sage_client, job_or_model_name, inference_recommendation_id):
+        """Get recommendation from right size job and model"""
+        right_size_recommendation, model_recommendation, right_size_job_res = None, None, None
+        right_size_recommendation, right_size_job_res = self._get_right_size_recommendation(
+            sage_client=sage_client,
+            job_or_model_name=job_or_model_name,
+            inference_recommendation_id=inference_recommendation_id,
+        )
+        if right_size_recommendation is None:
+            model_recommendation = self._get_model_recommendation(
+                sage_client=sage_client,
+                job_or_model_name=job_or_model_name,
+                inference_recommendation_id=inference_recommendation_id,
+            )
+            if model_recommendation is None:
+                raise ValueError("inference_recommendation_id is not valid")
+
+        return right_size_recommendation, model_recommendation, right_size_job_res
+
+    def _get_right_size_recommendation(
         self,
-        model_res=None,
-        recommendation_res=None,
-        inference_recommendation_id=None,
+        sage_client,
+        job_or_model_name,
+        inference_recommendation_id,
     ):
-        """Get recommendation from right size job or model"""
-        right_size_recommendation, model_recommendation = None, None
-        if recommendation_res:
-            right_size_recommendation = self._get_recommendation(
-                recommendation_list=recommendation_res["InferenceRecommendations"],
-                inference_recommendation_id=inference_recommendation_id,
+        """Get recommendation from right size job"""
+        right_size_recommendation, right_size_job_res = None, None
+        try:
+            right_size_job_res = sage_client.describe_inference_recommendations_job(
+                JobName=job_or_model_name
             )
-        if model_res:
-            model_recommendation = self._get_recommendation(
-                recommendation_list=model_res["DeploymentRecommendation"][
-                    "RealTimeInferenceRecommendations"
-                ],
-                inference_recommendation_id=inference_recommendation_id,
-            )
-        if right_size_recommendation is None and model_recommendation is None:
-            raise ValueError("Inference Recommendation id is not valid")
+            if right_size_job_res:
+                right_size_recommendation = self._search_recommendation(
+                    recommendation_list=right_size_job_res["InferenceRecommendations"],
+                    inference_recommendation_id=inference_recommendation_id,
+                )
+        except sage_client.exceptions.ResourceNotFound:
+            pass
 
-        return right_size_recommendation, model_recommendation
+        return right_size_recommendation, right_size_job_res
 
-    def _get_recommendation(self, recommendation_list, inference_recommendation_id):
-        """Get recommendation based on recommendation id"""
+    def _get_model_recommendation(
+        self,
+        sage_client,
+        job_or_model_name,
+        inference_recommendation_id,
+    ):
+        """Get recommendation from model"""
+        model_recommendation = None
+        try:
+            model_res = sage_client.describe_model(ModelName=job_or_model_name)
+            if model_res:
+                model_recommendation = self._search_recommendation(
+                    recommendation_list=model_res["DeploymentRecommendation"][
+                        "RealTimeInferenceRecommendations"
+                    ],
+                    inference_recommendation_id=inference_recommendation_id,
+                )
+        except sage_client.exceptions.ResourceNotFound:
+            pass
+
+        return model_recommendation
+
+    def _search_recommendation(self, recommendation_list, inference_recommendation_id):
+        """Search recommendation based on recommendation id"""
         return next(
             (
                 rec
@@ -575,21 +607,3 @@ class InferenceRecommenderMixin:
             ),
             None,
         )
-
-    def _describe_recommendation_job_and_model(self, sage_client, job_or_model_name):
-        """Describe inference recommendation job and model results"""
-        recommendation_res, model_res = None, None
-        try:
-            recommendation_res = sage_client.describe_inference_recommendations_job(
-                JobName=job_or_model_name
-            )
-        except sage_client.exceptions.ResourceNotFound:
-            pass
-        try:
-            model_res = sage_client.describe_model(ModelName=job_or_model_name)
-        except sage_client.exceptions.ResourceNotFound:
-            pass
-        if recommendation_res is None and model_res is None:
-            raise ValueError("Inference Recommendation id is not valid")
-
-        return recommendation_res, model_res
