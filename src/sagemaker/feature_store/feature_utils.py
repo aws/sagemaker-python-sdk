@@ -47,14 +47,16 @@ def get_session_from_role(region: str, assume_role: str = None) -> Session:
     # It will try to assume the role specified
     if assume_role:
         sts = boto_session.client(
-            "sts", region_name=region, endpoint_url="https://sts.eu-west-1.amazonaws.com"
+            "sts", region_name=region, endpoint_url=f"https://sts.{region}.amazonaws.com"
         )
 
-        metadata = sts.assume_role(RoleArn=assume_role, RoleSessionName="SagemakerExecution")
+        credentials = sts.assume_role(
+            RoleArn=assume_role, RoleSessionName="SagemakerExecution"
+        ).get("Credentials", {})
 
-        access_key_id = metadata["Credentials"]["AccessKeyId"]
-        secret_access_key = metadata["Credentials"]["SecretAccessKey"]
-        session_token = metadata["Credentials"]["SessionToken"]
+        access_key_id = credentials.get("AccessKeyId", None)
+        secret_access_key = credentials.get("SecretAccessKey", None)
+        session_token = credentials.get("SessionToken", None)
 
         boto_session = boto3.session.Session(
             region_name=region,
@@ -63,15 +65,13 @@ def get_session_from_role(region: str, assume_role: str = None) -> Session:
             aws_session_token=session_token,
         )
 
-    # Sessions
-    sagemaker_client = boto_session.client("sagemaker")
-    sagemaker_runtime = boto_session.client("sagemaker-runtime")
-    runtime_client = boto_session.client(service_name="sagemaker-featurestore-runtime")
     sagemaker_session = Session(
         boto_session=boto_session,
-        sagemaker_client=sagemaker_client,
-        sagemaker_runtime_client=sagemaker_runtime,
-        sagemaker_featurestore_runtime_client=runtime_client,
+        sagemaker_client=boto_session.client("sagemaker"),
+        sagemaker_runtime_client=boto_session.client("sagemaker-runtime"),
+        sagemaker_featurestore_runtime_client=boto_session.client(
+            service_name="sagemaker-featurestore-runtime"
+        ),
     )
 
     return sagemaker_session
@@ -81,7 +81,7 @@ def get_feature_group_as_dataframe(
     feature_group_name: str,
     athena_bucket: str,
     query: str = """SELECT * FROM "sagemaker_featurestore"."#{table}"
-                    WHERE is_deleted=False """,
+                        WHERE is_deleted=False """,
     role: str = None,
     region: str = None,
     session=None,
