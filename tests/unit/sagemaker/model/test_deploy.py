@@ -605,7 +605,7 @@ def test_deploy_ir_with_incompatible_parameters(sagemaker_session):
 def test_deploy_with_wrong_recommendation_id(sagemaker_session):
     model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session, role=ROLE)
 
-    with pytest.raises(ValueError, match="Inference Recommendation id is not valid"):
+    with pytest.raises(ValueError, match="inference_recommendation_id is not valid"):
         model.deploy(
             inference_recommendation_id=INVALID_RECOMMENDATION_ID,
         )
@@ -713,7 +713,7 @@ def test_deploy_with_invalid_inference_recommendation_id(sagemaker_session):
 
     with pytest.raises(
         ValueError,
-        match="Inference Recommendation id is not valid",
+        match="inference_recommendation_id is not valid",
     ):
         model.deploy(
             inference_recommendation_id=NOT_EXISTED_RECOMMENDATION_ID,
@@ -728,7 +728,7 @@ def test_deploy_with_invalid_model_recommendation_id(sagemaker_session):
 
     with pytest.raises(
         ValueError,
-        match="Inference Recommendation id is not valid",
+        match="inference_recommendation_id is not valid",
     ):
         model.deploy(
             inference_recommendation_id=NOT_EXISTED_MODEL_RECOMMENDATION_ID,
