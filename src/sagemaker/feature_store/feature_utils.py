@@ -111,7 +111,7 @@ def get_feature_group_as_dataframe(
         :class:`sagemaker.feature_store.feature_group.FeatureGroup` in a Feature Store
         to retrieve its data. It needs the :class:`sagemaker.session.Session` linked to a role
         or the region and/or role used to work with Feature Stores (it uses the module
-        :module:`sagemaker.feature_store.feature_utils.get_session_from_role`
+        `sagemaker.feature_store.feature_utils.get_session_from_role`
         to get the session).
 
     Args:
@@ -250,7 +250,7 @@ def prepare_fg_from_dataframe_or_file(
         event_id).
         It needs the :class:`sagemaker.session.Session` linked to a role
         or the region and/or role used to work with Feature Stores (it uses the module
-        :module:`sagemaker.feature_store.feature_utils.get_session_from_role`
+        `sagemaker.feature_store.feature_utils.get_session_from_role`
         to get the session).
         If record_id or event_id are not specified it will create ones
         by default with the names 'record_id' and 'data_as_of_date'.
