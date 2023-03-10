@@ -1183,6 +1183,7 @@ BASE_SPEC = {
     "training_dependencies": [],
     "training_vulnerabilities": [],
     "deprecated": False,
+    "metrics": [{"Regex": "val_accuracy: ([0-9\\.]+)", "Name": "pytorch-ic:val-accuracy"}],
 }
 
 BASE_HEADER = {
