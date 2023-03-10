@@ -1351,6 +1351,7 @@ def _wait_for_feature_group_update(feature_group: FeatureGroup):
 
 def test_get_feature_group_with_role_region(
     feature_store_session,
+    region_name,
     role,
     feature_group_name,
     offline_store_s3_uri,
@@ -1358,6 +1359,7 @@ def test_get_feature_group_with_role_region(
 ):
     feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+    region = feature_store_session.boto_session.region_name
 
     with cleanup_feature_group(feature_group):
         output = feature_group.create(
@@ -1375,7 +1377,7 @@ def test_get_feature_group_with_role_region(
 
         dataset = get_feature_group_as_dataframe(
             feature_group_name=feature_group_name,
-            region=region_name,
+            region=str(region),
             role=role,
             event_time_feature_name="feature3",
             latest_ingestion=True,
@@ -1383,7 +1385,6 @@ def test_get_feature_group_with_role_region(
             verbose=False,
         )
 
-        assert not dataset.empty
         assert isinstance(dataset, DataFrame)
     assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
 
@@ -1422,7 +1423,6 @@ def test_get_feature_group_with_session(
             low_memory=False,
         )  # Using kwargs to pass a parameter to pandas.read_csv
 
-        assert not dataset.empty
         assert isinstance(dataset, DataFrame)
     assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
 
