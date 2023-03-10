@@ -91,8 +91,7 @@ def get_feature_group_as_dataframe(
     verbose: bool = True,
     **kwargs,
 ) -> DataFrame:
-    """Get data from a :class:`sagemaker.feature_store.feature_group.FeatureGroup` as
-    a :class:`pandas.DataFrame`
+    """:class:`sagemaker.feature_store.feature_group.FeatureGroup` as :class:`pandas.DataFrame`
 
     Examples:
         >>> from sagemaker.feature_store.feature_utils import get_feature_group_as_dataframe
