@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.137.0 (2023-03-10)
+
+### Features
+
+ * support JSON for input dataset and model output
+
+### Bug Fixes and Other Changes
+
+ * Wait on describe for tag propagation
+ * Extracted profile_name directly from sagemaker.Session if None
+ * Avoid double encoding to JSON in InferenceRecommenderMixin
+ * RepackStep must use the same KMS key as the Model
+
 ## v2.136.0 (2023-03-09)
 
 ### Features
