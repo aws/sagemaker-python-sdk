@@ -1359,7 +1359,6 @@ def test_get_feature_group_with_role_region(
 ):
     feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
-    region = feature_store_session.boto_session.region_name
 
     with cleanup_feature_group(feature_group):
         output = feature_group.create(
@@ -1377,7 +1376,7 @@ def test_get_feature_group_with_role_region(
 
         dataset = get_feature_group_as_dataframe(
             feature_group_name=feature_group_name,
-            region=str(region),
+            region=str(region_name),
             role=role,
             event_time_feature_name="feature3",
             latest_ingestion=True,
