@@ -2029,7 +2029,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             exceptions.UnexpectedStatusException: If waiting and auto ml job fails.
         """
 
-        description = self.sagemaker_client.describe_auto_ml_job(AutoMLJobName=job_name)
+        description = _wait_until(lambda: self.describe_auto_ml_job(job_name), poll)
 
         instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
             self, description, job="AutoML"
@@ -4113,7 +4113,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             exceptions.UnexpectedStatusException: If waiting and the training job fails.
         """
 
-        description = self.sagemaker_client.describe_training_job(TrainingJobName=job_name)
+        description = _wait_until(lambda: self.describe_training_job(job_name), poll)
         print(secondary_training_status_message(description, None), end="")
 
         instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
@@ -4240,7 +4240,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             ValueError: If the processing job fails.
         """
 
-        description = self.sagemaker_client.describe_processing_job(ProcessingJobName=job_name)
+        description = _wait_until(lambda: self.describe_processing_job(job_name), poll)
 
         instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
             self, description, job="Processing"
@@ -4321,7 +4321,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             ValueError: If the transform job fails.
         """
 
-        description = self.sagemaker_client.describe_transform_job(TransformJobName=job_name)
+        description = _wait_until(lambda: self.describe_transform_job(job_name), poll)
 
         instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
             self, description, job="Transform"

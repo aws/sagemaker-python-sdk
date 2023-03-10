@@ -141,6 +141,41 @@ IR_SAMPLE_RESOURCE_LIMIT = {
     "MaxParallelOfTests": 5,
 }
 
+IR_SAMPLE_PRIMARY_CONTAINER = {
+    "Image": "model-image-for-ir",
+    "Environment": {},
+    "ModelDataUrl": "s3://bucket/model.tar.gz",
+}
+
+IR_PRODUCTION_VARIANTS = [
+    {
+        "ModelName": "model-name-for-ir",
+        "VariantName": "AllTraffic",
+        "InitialVariantWeight": 1,
+        "InitialInstanceCount": 1,
+        "InstanceType": "ml.m5.xlarge",
+    }
+]
+
+IR_OVERRIDDEN_PRODUCTION_VARIANTS = [
+    {
+        "ModelName": "model-name-for-ir",
+        "VariantName": "AllTraffic",
+        "InitialVariantWeight": 1,
+        "InitialInstanceCount": 5,
+        "InstanceType": "ml.c5.2xlarge",
+    }
+]
+
+IR_SERVERLESS_PRODUCTION_VARIANTS = [
+    {
+        "ModelName": "model-name-for-ir",
+        "VariantName": "AllTraffic",
+        "InitialVariantWeight": 1,
+        "ServerlessConfig": {"MemorySizeInMB": 2048, "MaxConcurrency": 5},
+    }
+]
+
 
 @pytest.fixture()
 def sagemaker_session():
@@ -185,17 +220,17 @@ def test_right_size_default_with_model_name_successful(sagemaker_session, model)
         framework=IR_SAMPLE_FRAMEWORK,
     )
 
-    assert sagemaker_session.create_model.called_with(
+    sagemaker_session.create_model.assert_called_with(
         name=ANY,
         role=IR_ROLE_ARN,
         container_defs=None,
-        primary_container={},
+        primary_container=IR_SAMPLE_PRIMARY_CONTAINER,
         vpc_config=None,
         enable_network_isolation=False,
     )
 
     # assert that the create api has been called with default parameters with model name
-    assert sagemaker_session.create_inference_recommendations_job.called_with(
+    sagemaker_session.create_inference_recommendations_job.assert_called_with(
         role=IR_ROLE_ARN,
         job_name=IR_JOB_NAME,
         job_type="Default",
@@ -213,7 +248,9 @@ def test_right_size_default_with_model_name_successful(sagemaker_session, model)
         resource_limit=None,
     )
 
-    assert sagemaker_session.wait_for_inference_recommendations_job.called_with(IR_JOB_NAME)
+    sagemaker_session.wait_for_inference_recommendations_job.assert_called_with(
+        IR_JOB_NAME, log_level="Verbose"
+    )
 
     # confirm that the IR instance attributes have been set
     assert (
@@ -232,6 +269,7 @@ def test_right_size_default_with_model_name_successful(sagemaker_session, model)
 @patch("uuid.uuid4", MagicMock(return_value="sample-unique-uuid"))
 def test_right_size_advanced_list_instances_model_name_successful(sagemaker_session, model):
     inference_recommender_model = model.right_size(
+        job_name=IR_JOB_NAME,
         sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
         supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
         framework="SAGEMAKER-SCIKIT-LEARN",
@@ -246,7 +284,7 @@ def test_right_size_advanced_list_instances_model_name_successful(sagemaker_sess
     )
 
     # assert that the create api has been called with advanced parameters
-    assert sagemaker_session.create_inference_recommendations_job.called_with(
+    sagemaker_session.create_inference_recommendations_job.assert_called_with(
         role=IR_ROLE_ARN,
         job_name=IR_JOB_NAME,
         job_type="Advanced",
@@ -256,15 +294,17 @@ def test_right_size_advanced_list_instances_model_name_successful(sagemaker_sess
         framework=IR_SAMPLE_FRAMEWORK,
         framework_version=None,
         sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
-        supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
-        supported_instance_types=[IR_SAMPLE_INSTANCE_TYPE],
+        supported_content_types=["text/csv"],
+        supported_instance_types=None,
         endpoint_configurations=IR_SAMPLE_ENDPOINT_CONFIG,
         traffic_pattern=IR_SAMPLE_TRAFFIC_PATTERN,
         stopping_conditions=IR_SAMPLE_STOPPING_CONDITIONS,
         resource_limit=IR_SAMPLE_RESOURCE_LIMIT,
     )
 
-    assert sagemaker_session.wait_for_inference_recommendations_job.called_with(IR_JOB_NAME)
+    sagemaker_session.wait_for_inference_recommendations_job.assert_called_with(
+        IR_JOB_NAME, log_level="Verbose"
+    )
 
     # confirm that the IR instance attributes have been set
     assert (
@@ -283,6 +323,7 @@ def test_right_size_advanced_list_instances_model_name_successful(sagemaker_sess
 @patch("uuid.uuid4", MagicMock(return_value="sample-unique-uuid"))
 def test_right_size_advanced_single_instances_model_name_successful(sagemaker_session, model):
     model.right_size(
+        job_name=IR_JOB_NAME,
         sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
         supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
         framework="SAGEMAKER-SCIKIT-LEARN",
@@ -297,7 +338,7 @@ def test_right_size_advanced_single_instances_model_name_successful(sagemaker_se
     )
 
     # assert that the create api has been called with advanced parameters
-    assert sagemaker_session.create_inference_recommendations_job.called_with(
+    sagemaker_session.create_inference_recommendations_job.assert_called_with(
         role=IR_ROLE_ARN,
         job_name=IR_JOB_NAME,
         job_type="Advanced",
@@ -308,7 +349,7 @@ def test_right_size_advanced_single_instances_model_name_successful(sagemaker_se
         framework_version=None,
         sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
         supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
-        supported_instance_types=[IR_SAMPLE_INSTANCE_TYPE],
+        supported_instance_types=None,
         endpoint_configurations=IR_SAMPLE_ENDPOINT_CONFIG,
         traffic_pattern=IR_SAMPLE_TRAFFIC_PATTERN,
         stopping_conditions=IR_SAMPLE_STOPPING_CONDITIONS,
@@ -326,7 +367,7 @@ def test_right_size_default_with_model_package_successful(sagemaker_session, mod
     )
 
     # assert that the create api has been called with default parameters
-    assert sagemaker_session.create_inference_recommendations_job.called_with(
+    sagemaker_session.create_inference_recommendations_job.assert_called_with(
         role=IR_ROLE_ARN,
         job_name=IR_JOB_NAME,
         job_type="Default",
@@ -344,7 +385,9 @@ def test_right_size_default_with_model_package_successful(sagemaker_session, mod
         resource_limit=None,
     )
 
-    assert sagemaker_session.wait_for_inference_recommendations_job.called_with(IR_JOB_NAME)
+    sagemaker_session.wait_for_inference_recommendations_job.assert_called_with(
+        IR_JOB_NAME, log_level="Verbose"
+    )
 
     # confirm that the IR instance attributes have been set
     assert (
@@ -364,6 +407,7 @@ def test_right_size_advanced_list_instances_model_package_successful(
     sagemaker_session, model_package
 ):
     inference_recommender_model_pkg = model_package.right_size(
+        job_name=IR_JOB_NAME,
         sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
         supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
         framework="SAGEMAKER-SCIKIT-LEARN",
@@ -378,24 +422,27 @@ def test_right_size_advanced_list_instances_model_package_successful(
     )
 
     # assert that the create api has been called with advanced parameters
-    assert sagemaker_session.create_inference_recommendations_job.called_with(
+    sagemaker_session.create_inference_recommendations_job.assert_called_with(
         role=IR_ROLE_ARN,
         job_name=IR_JOB_NAME,
         job_type="Advanced",
         job_duration_in_seconds=7200,
+        model_name=None,
         model_package_version_arn=model_package.model_package_arn,
         framework=IR_SAMPLE_FRAMEWORK,
         framework_version=None,
         sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
         supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
-        supported_instance_types=[IR_SAMPLE_INSTANCE_TYPE],
+        supported_instance_types=None,
         endpoint_configurations=IR_SAMPLE_ENDPOINT_CONFIG,
         traffic_pattern=IR_SAMPLE_TRAFFIC_PATTERN,
         stopping_conditions=IR_SAMPLE_STOPPING_CONDITIONS,
         resource_limit=IR_SAMPLE_RESOURCE_LIMIT,
     )
 
-    assert sagemaker_session.wait_for_inference_recommendations_job.called_with(IR_JOB_NAME)
+    sagemaker_session.wait_for_inference_recommendations_job.assert_called_with(
+        IR_JOB_NAME, log_level="Verbose"
+    )
 
     # confirm that the IR instance attributes have been set
     assert (
@@ -415,6 +462,7 @@ def test_right_size_advanced_single_instances_model_package_successful(
     sagemaker_session, model_package
 ):
     model_package.right_size(
+        job_name=IR_JOB_NAME,
         sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
         supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
         framework="SAGEMAKER-SCIKIT-LEARN",
@@ -429,17 +477,18 @@ def test_right_size_advanced_single_instances_model_package_successful(
     )
 
     # assert that the create api has been called with advanced parameters
-    assert sagemaker_session.create_inference_recommendations_job.called_with(
+    sagemaker_session.create_inference_recommendations_job.assert_called_with(
         role=IR_ROLE_ARN,
         job_name=IR_JOB_NAME,
         job_type="Advanced",
         job_duration_in_seconds=7200,
+        model_name=None,
         model_package_version_arn=model_package.model_package_arn,
         framework=IR_SAMPLE_FRAMEWORK,
         framework_version=None,
         sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
         supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
-        supported_instance_types=[IR_SAMPLE_INSTANCE_TYPE],
+        supported_instance_types=None,
         endpoint_configurations=IR_SAMPLE_ENDPOINT_CONFIG,
         traffic_pattern=IR_SAMPLE_TRAFFIC_PATTERN,
         stopping_conditions=IR_SAMPLE_STOPPING_CONDITIONS,
@@ -451,6 +500,7 @@ def test_right_size_advanced_model_package_partial_params_successful(
     sagemaker_session, model_package
 ):
     model_package.right_size(
+        job_name=IR_JOB_NAME,
         sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
         supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
         framework="SAGEMAKER-SCIKIT-LEARN",
@@ -463,17 +513,18 @@ def test_right_size_advanced_model_package_partial_params_successful(
     )
 
     # assert that the create api has been called with advanced parameters
-    assert sagemaker_session.create_inference_recommendations_job.called_with(
+    sagemaker_session.create_inference_recommendations_job.assert_called_with(
         role=IR_ROLE_ARN,
         job_name=IR_JOB_NAME,
         job_type="Advanced",
         job_duration_in_seconds=7200,
+        model_name=None,
         model_package_version_arn=model_package.model_package_arn,
         framework=IR_SAMPLE_FRAMEWORK,
         framework_version=None,
         sample_payload_url=IR_SAMPLE_PAYLOAD_URL,
         supported_content_types=IR_SUPPORTED_CONTENT_TYPES,
-        supported_instance_types=[IR_SAMPLE_INSTANCE_TYPE],
+        supported_instance_types=None,
         endpoint_configurations=IR_SAMPLE_ENDPOINT_CONFIG,
         traffic_pattern=IR_SAMPLE_TRAFFIC_PATTERN,
         stopping_conditions=IR_SAMPLE_STOPPING_CONDITIONS,
@@ -504,45 +555,42 @@ def test_right_size_invalid_hyperparameter_ranges(sagemaker_session, model_packa
 # TODO check our framework mapping when we add in inference_recommendation_id support
 
 
-@patch("sagemaker.production_variant")
-@patch("sagemaker.utils.name_from_base", return_value=MODEL_NAME)
 def test_deploy_right_size_with_model_package_succeeds(
-    production_variant, default_right_sized_model
+    sagemaker_session, default_right_sized_model
 ):
+
+    default_right_sized_model.name = MODEL_NAME
     default_right_sized_model.deploy(endpoint_name=IR_DEPLOY_ENDPOINT_NAME)
 
-    assert production_variant.called_with(
-        model_name=MODEL_NAME,
-        instance_type=IR_RIGHT_SIZE_INSTANCE_TYPE,
-        initial_instance_count=IR_RIGHT_SIZE_INITIAL_INSTANCE_COUNT,
-        accelerator_type=None,
-        serverless_inference_config=None,
-        volume_size=None,
-        model_data_download_timeout=None,
-        container_startup_health_check_timeout=None,
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        async_inference_config_dict=None,
+        data_capture_config_dict=None,
+        kms_key=None,
+        name="ir-endpoint-test",
+        production_variants=IR_PRODUCTION_VARIANTS,
+        tags=None,
+        wait=True,
     )
 
 
-@patch("sagemaker.production_variant")
-@patch("sagemaker.utils.name_from_base", return_value=MODEL_NAME)
 def test_deploy_right_size_with_both_overrides_succeeds(
-    production_variant, default_right_sized_model
+    sagemaker_session, default_right_sized_model
 ):
+    default_right_sized_model.name = MODEL_NAME
     default_right_sized_model.deploy(
         instance_type="ml.c5.2xlarge",
         initial_instance_count=5,
         endpoint_name=IR_DEPLOY_ENDPOINT_NAME,
     )
 
-    assert production_variant.called_with(
-        model_name=MODEL_NAME,
-        instance_type="ml.c5.2xlarge",
-        initial_instance_count=5,
-        accelerator_type=None,
-        serverless_inference_config=None,
-        volume_size=None,
-        model_data_download_timeout=None,
-        container_startup_health_check_timeout=None,
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        async_inference_config_dict=None,
+        data_capture_config_dict=None,
+        kms_key=None,
+        name="ir-endpoint-test",
+        production_variants=IR_OVERRIDDEN_PRODUCTION_VARIANTS,
+        tags=None,
+        wait=True,
     )
 
 
@@ -576,26 +624,26 @@ def test_deploy_right_size_accelerator_type_fails(default_right_sized_model):
         default_right_sized_model.deploy(accelerator_type="ml.eia.medium")
 
 
-@patch("sagemaker.production_variant")
-@patch("sagemaker.utils.name_from_base", return_value=MODEL_NAME)
-def test_deploy_right_size_serverless_override(production_variant, default_right_sized_model):
+@patch("sagemaker.utils.name_from_base", MagicMock(return_value=MODEL_NAME))
+def test_deploy_right_size_serverless_override(sagemaker_session, default_right_sized_model):
+    default_right_sized_model.name = MODEL_NAME
     serverless_inference_config = ServerlessInferenceConfig()
     default_right_sized_model.deploy(serverless_inference_config=serverless_inference_config)
 
-    assert production_variant.called_with(
-        model_name=MODEL_NAME,
-        instance_type=None,
-        initial_instance_count=None,
-        accelerator_type=None,
-        serverless_inference_config=serverless_inference_config._to_request_dict,
-        volume_size=None,
-        model_data_download_timeout=None,
-        container_startup_health_check_timeout=None,
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        name=MODEL_NAME,
+        production_variants=IR_SERVERLESS_PRODUCTION_VARIANTS,
+        tags=None,
+        kms_key=None,
+        wait=True,
+        data_capture_config_dict=None,
+        async_inference_config_dict=None,
     )
 
 
-@patch("sagemaker.utils.name_from_base", return_value=MODEL_NAME)
+@patch("sagemaker.utils.name_from_base", MagicMock(return_value=MODEL_NAME))
 def test_deploy_right_size_async_override(sagemaker_session, default_right_sized_model):
+    default_right_sized_model.name = MODEL_NAME
     async_inference_config = AsyncInferenceConfig(output_path="s3://some-path")
     default_right_sized_model.deploy(
         instance_type="ml.c5.2xlarge",
@@ -603,14 +651,14 @@ def test_deploy_right_size_async_override(sagemaker_session, default_right_sized
         async_inference_config=async_inference_config,
     )
 
-    assert sagemaker_session.endpoint_from_production_variants.called_with(
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
         name=MODEL_NAME,
         production_variants=[ANY],
         tags=None,
         kms_key=None,
-        wait=None,
+        wait=True,
         data_capture_config_dict=None,
-        async_inference_config_dict=async_inference_config._to_request_dict,
+        async_inference_config_dict={"OutputConfig": {"S3OutputPath": "s3://some-path"}},
     )
 
 

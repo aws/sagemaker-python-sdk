@@ -49,6 +49,7 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
             in (
                 "text/csv",
                 "application/jsonlines",
+                "application/json",
                 "application/sagemakercapturejson",
                 "application/x-parquet",
                 "application/x-image",
@@ -311,7 +312,7 @@ class DataConfig:
         s3_analysis_config_output_path: Optional[str] = None,
         label: Optional[str] = None,
         headers: Optional[List[str]] = None,
-        features: Optional[List[str]] = None,
+        features: Optional[str] = None,
         dataset_type: str = "text/csv",
         s3_compression_type: str = "None",
         joinsource: Optional[Union[str, int]] = None,
@@ -331,12 +332,18 @@ class DataConfig:
                 If this field is None, then the ``s3_output_path`` will be used
                 to store the ``analysis_config`` output.
             label (str): Target attribute of the model required by bias metrics. Specified as
-                column name or index for CSV dataset or as JMESPath expression for JSONLines.
+                column name or index for CSV dataset or a JMESPath expression for JSON/JSON Lines.
                 *Required parameter* except for when the input dataset does not contain the label.
-            features (List[str]): JMESPath expression to locate the feature columns for
-                bias metrics if the dataset format is JSONLines.
+                Note: For JSON, the JMESPath query must result in a list of labels for each
+                sample.  For JSON Lines, it must result in the label for each line.
+                Only a single label per sample is supported at this time.
+            features (str): JMESPath expression to locate the feature values
+                if the dataset format is JSON/JSON Lines.
+                Note: For JSON, the JMESPath query must result in a 2-D list (or a matrix) of
+                feature values.  For JSON Lines, it must result in a 1-D list of features for each
+                line.
             dataset_type (str): Format of the dataset. Valid values are ``"text/csv"`` for CSV,
-                ``"application/jsonlines"`` for JSONLines, and
+                ``"application/jsonlines"`` for JSON Lines, ``"application/json"`` for JSON, and
                 ``"application/x-parquet"`` for Parquet.
             s3_compression_type (str): Valid options are "None" or ``"Gzip"``.
             joinsource (str or int): The name or index of the column in the dataset that
@@ -359,6 +366,7 @@ class DataConfig:
 
                 Clarify will not use the ``joinsource`` column and columns present in the facet
                 dataset when calling model inference APIs.
+                Note: this is only supported for ``"text/csv"`` dataset type.
             facet_headers (list[str]): List of column names in the facet dataset.
             predicted_label_dataset_uri (str): Dataset S3 prefix/object URI with predicted labels,
                 which are used directly for analysis instead of making model inference API calls.
@@ -368,11 +376,16 @@ class DataConfig:
                 * If the dataset and predicted label dataset are in multiple files (either one),
                   then an index column, ``joinsource``, is required to join the two datasets.
 
+                Note: this is only supported for ``"text/csv"`` dataset type.
             predicted_label_headers (list[str]): List of column names in the predicted label dataset
             predicted_label (str or int): Predicted label of the target attribute of the model
-                required for running bias analysis. Specified as column name or index for CSV data.
+                required for running bias analysis. Specified as column name or index for CSV data,
+                or a JMESPath expression for JSON/JSON Lines.
                 Clarify uses the predicted labels directly instead of making model inference API
                 calls.
+                Note: For JSON, the JMESPath query must result in a list of predicted labels for
+                each sample.  For JSON Lines, it must result in the predicted label for each line.
+                Only a single predicted label per sample is supported at this time.
             excluded_columns (list[int] or list[str]): A list of names or indices of the columns
                 which are to be excluded from making model inference API calls.
 
@@ -384,6 +397,7 @@ class DataConfig:
         if dataset_type not in [
             "text/csv",
             "application/jsonlines",
+            "application/json",
             "application/x-parquet",
             "application/x-image",
         ]:
@@ -391,8 +405,13 @@ class DataConfig:
                 f"Invalid dataset_type '{dataset_type}'."
                 f" Please check the API documentation for the supported dataset types."
             )
-        # parameters for analysis on datasets without facets are only supported for CSV datasets
-        if dataset_type != "text/csv":
+        # predicted_label and excluded_columns are only supported for tabular datasets
+        if dataset_type not in [
+            "text/csv",
+            "application/jsonlines",
+            "application/json",
+            "application/x-parquet",
+        ]:
             if predicted_label:
                 raise ValueError(
                     f"The parameter 'predicted_label' is not supported"
@@ -405,6 +424,8 @@ class DataConfig:
                     f" for dataset_type '{dataset_type}'."
                     f" Please check the API documentation for the supported dataset types."
                 )
+        # parameters for analysis on datasets without facets are only supported for CSV datasets
+        if dataset_type != "text/csv":
             if facet_dataset_uri or facet_headers:
                 raise ValueError(
                     f"The parameters 'facet_dataset_uri' and 'facet_headers'"
@@ -417,6 +438,9 @@ class DataConfig:
                     f" are not supported for dataset_type '{dataset_type}'."
                     f" Please check the API documentation for the supported dataset types."
                 )
+        # features JMESPath is required for JSON as we can't derive it ourselves
+        if dataset_type == "application/json" and features is None:
+            raise ValueError("features JMESPath is required for application/json dataset_type")
         self.s3_data_input_path = s3_data_input_path
         self.s3_output_path = s3_output_path
         self.s3_analysis_config_output_path = s3_analysis_config_output_path
@@ -571,11 +595,13 @@ class ModelConfig:
                 Cannot be set when ``endpoint_name`` is set.
                 Must be set with ``instance_count``, ``model_name``
             accept_type (str): The model output format to be used for getting inferences with the
-                shadow endpoint. Valid values are ``"text/csv"`` for CSV and
-                ``"application/jsonlines"``. Default is the same as ``content_type``.
+                shadow endpoint. Valid values are ``"text/csv"`` for CSV,
+                ``"application/jsonlines"`` for JSON Lines, and ``"application/json"`` for JSON.
+                Default is the same as ``content_type``.
             content_type (str): The model input format to be used for getting inferences with the
                 shadow endpoint. Valid values are ``"text/csv"`` for CSV and
-                ``"application/jsonlines"``. Default is the same as ``dataset_format``.
+                ``"application/jsonlines"`` for JSON Lines. Default is the same as
+                ``dataset_format``.
             content_template (str): A template string to be used to construct the model input from
                 dataset instances. It is only used when ``model_content_type`` is
                 ``"application/jsonlines"``. The template should have one and only one placeholder,
@@ -641,7 +667,7 @@ class ModelConfig:
                 )
             self.predictor_config["endpoint_name_prefix"] = endpoint_name_prefix
         if accept_type is not None:
-            if accept_type not in ["text/csv", "application/jsonlines"]:
+            if accept_type not in ["text/csv", "application/jsonlines", "application/json"]:
                 raise ValueError(
                     f"Invalid accept_type {accept_type}."
                     f" Please choose text/csv or application/jsonlines."

@@ -400,6 +400,7 @@ class EstimatorTransformer(StepCollection):
                 security_group_ids=estimator.security_group_ids,
                 description=description,
                 display_name=display_name,
+                output_kms_key=estimator.output_kms_key,
             )
             steps.append(repack_model_step)
             model_data = repack_model_step.properties.ModelArtifacts.S3ModelArtifacts
