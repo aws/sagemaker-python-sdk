@@ -33,14 +33,15 @@ def get_session_from_role(region: str, assume_role: str = None) -> Session:
     """Method use to get the :class:`sagemaker.session.Session`  from a role and a region.
 
     Description:
-        Helpful in case it's invoke from a session with a role without permission it can assume
-        another role temporarily to perform certain tasks.
+        If invoked from a session with a role that lacks permissions, it can temporarily
+        assume another role to perform certain tasks.
 
     Args:
-        assume_role: role name
-        region: region name
+        assume_role (str): (Optional) role name to be assumed
+        region (str): region name
 
     Returns:
+        :class:`sagemaker.session.Session`
     """
     boto_session = boto3.Session(region_name=region)
 
@@ -135,7 +136,7 @@ def get_feature_group_as_dataframe(
                     have a better tuning on data. For more info read:
                     https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_csv.html
     Returns:
-        dataset (pandas.DataFrame): dataset with the data retrieved from feature group
+        :class:`pandas.DataFrame`: dataset with the data retrieved from feature group
     """
 
     logger.setLevel(logging.WARNING)
@@ -203,7 +204,7 @@ def _format_column_names(data: pandas.DataFrame) -> pandas.DataFrame:
         data (pandas.DataFrame): dataframe used
 
     Returns:
-        pandas.DataFrame
+        :class:`pandas.DataFrame`
     """
     data.rename(columns=lambda x: x.replace(" ", "_").replace(".", "").lower()[:62], inplace=True)
     return data
@@ -247,9 +248,6 @@ def prepare_fg_from_dataframe_or_file(
         by default with the names 'record_id' and 'data_as_of_date'.
 
     Args:
-        **kwargs (object): key arguments used for the method pandas.read_csv to be able to
-                    have a better tuning on data. For more info read:
-                    https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_csv.html
         feature_group_name (str): feature group name
         dataframe_or_path (str, Path, pandas.DataFrame) : pandas.DataFrame or path to the data
         verbose (bool)           : True for displaying messages, False for silent method.
@@ -263,10 +261,13 @@ def prepare_fg_from_dataframe_or_file(
         role (str)               : role used to get the session.
         region (str)             : region used to get the session.
         session (str): session of SageMaker used to work with the feature store
+        **kwargs (object): key arguments used for the method pandas.read_csv to be able to
+                    have a better tuning on data. For more info read:
+                    https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_csv.html
 
     Returns:
-        :class:`sagemaker.feature_store.feature_group.FeatureGroup`: FG prepared with all
-            the methods and definitions properly defined
+        :class:`sagemaker.feature_store.feature_group.FeatureGroup`:
+            FG prepared with all the methods and definitions properly defined
     """
 
     logger.setLevel(logging.WARNING)
