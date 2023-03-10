@@ -30,11 +30,13 @@ logger = logging.getLogger(__name__)
 
 
 def get_session_from_role(region: str, assume_role: str = None) -> Session:
-    """Method use to get the :class:`sagemaker.session.Session`  from a role and a region.
+    """Method used to get the :class:`sagemaker.session.Session`  from a region and/or a role.
 
     Description:
         If invoked from a session with a role that lacks permissions, it can temporarily
         assume another role to perform certain tasks.
+        If `assume_role` is not specified it will attempt to use the default sagemaker
+        execution role to get the session to use the Feature Store runtime client.
 
     Args:
         assume_role (str): (Optional) role name to be assumed
@@ -103,7 +105,6 @@ def get_feature_group_as_dataframe(
         >>>
         >>> type(fg_data)
         <class 'pandas.core.frame.DataFrame'>
-        >>>
 
     Description:
         Method to run an athena query over a Feature Group in a Feature Store
