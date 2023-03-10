@@ -91,7 +91,8 @@ def get_feature_group_as_dataframe(
     verbose: bool = True,
     **kwargs,
 ) -> DataFrame:
-    """Get a :class:`sagemaker.feature_store.feature_group.FeatureGroup` as a pandas.DataFrame
+    """Get data from a :class:`sagemaker.feature_store.feature_group.FeatureGroup` as
+    a :class:`pandas.DataFrame`
 
     Examples:
         >>> from sagemaker.feature_store.feature_utils import get_feature_group_as_dataframe
@@ -107,10 +108,12 @@ def get_feature_group_as_dataframe(
         <class 'pandas.core.frame.DataFrame'>
 
     Description:
-        Method to run an athena query over a Feature Group in a Feature Store
-        to retrieve its data.It needs the sagemaker.Session linked to a role
-        or the role and region used to work Feature Stores.Returns a dataframe
-        with the data.
+        Method to run an athena query over a
+        :class:`sagemaker.feature_store.feature_group.FeatureGroup` in a Feature Store
+        to retrieve its data. It needs the :class:`sagemaker.session.Session` linked to a role
+        or the region and/or role used to work with Feature Stores (it uses the module
+        :module:`sagemaker.feature_store.feature_utils.get_session_from_role`
+        to get the session).
 
     Args:
         region (str): region of the target Feature Store
@@ -124,7 +127,7 @@ def get_feature_group_as_dataframe(
         athena_bucket (str): Amazon S3 bucket for running the query
         role (str): role to be assumed to extract data from feature store. If not specified
                     the default sagemaker execution role will be used.
-        session (str): `:obj:sagemaker.session.Session`
+        session (str): :class:`sagemaker.session.Session`
                         of SageMaker used to work with the feature store. Optional, with
                         role and region parameters it will infer the session.
         event_time_feature_name (str): eventTimeId feature. Mandatory only if the
@@ -202,7 +205,7 @@ def _format_column_names(data: pandas.DataFrame) -> pandas.DataFrame:
         to later generate the features names of a Feature Group
 
     Args:
-        data (pandas.DataFrame): dataframe used
+        data (:class:`pandas.DataFrame`): dataframe used
 
     Returns:
         :class:`pandas.DataFrame`
@@ -242,10 +245,15 @@ def prepare_fg_from_dataframe_or_file(
     """Prepares a dataframe to create a :class:`sagemaker.feature_store.feature_group.FeatureGroup`
 
     Description:
-        Function to prepare a dataframe for creating a Feature Group from a pandas.DataFrame
-        or a path to a file with proper dtypes, feature names and mandatory features (record_id,
-        event_id). It needs the sagemaker.Session linked to a role or the role and region used
-        to work Feature Stores. If record_id or event_id are not specified it will create ones
+        Function to prepare a :class:`pandas.DataFrame` read from a path to a csv file or pass it
+        directly to create a :class:`sagemaker.feature_store.feature_group.FeatureGroup`.
+        The path to the file needs proper dtypes, feature names and mandatory features (record_id,
+        event_id).
+        It needs the :class:`sagemaker.session.Session` linked to a role
+        or the region and/or role used to work with Feature Stores (it uses the module
+        :module:`sagemaker.feature_store.feature_utils.get_session_from_role`
+        to get the session).
+        If record_id or event_id are not specified it will create ones
         by default with the names 'record_id' and 'data_as_of_date'.
 
     Args:
