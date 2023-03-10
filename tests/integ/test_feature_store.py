@@ -1380,6 +1380,7 @@ def test_get_feature_group_with_role_region(
             event_time_feature_name="feature3",
             latest_ingestion=True,
             athena_bucket=f"{offline_store_s3_uri}/query",
+            verbose=False,
         )
 
         assert not dataset.empty
@@ -1417,6 +1418,7 @@ def test_get_feature_group_with_session(
             event_time_feature_name="feature3",
             latest_ingestion=True,
             athena_bucket=f"{offline_store_s3_uri}/query",
+            verbose=False,
             low_memory=False,
         )  # Using kwargs to pass a parameter to pandas.read_csv
 
