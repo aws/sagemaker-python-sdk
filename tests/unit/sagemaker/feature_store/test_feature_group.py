@@ -123,21 +123,28 @@ def test_feature_store_create_with_config_injection(
         event_time_feature_name="feature2",
         enable_online_store=True,
     )
+    expected_offline_store_kms_key_id = SAGEMAKER_CONFIG_FEATURE_GROUP["SageMaker"]["FeatureGroup"][
+        "OfflineStoreConfig"
+    ]["S3StorageConfig"]["KmsKeyId"]
+    expected_role_arn = SAGEMAKER_CONFIG_FEATURE_GROUP["SageMaker"]["FeatureGroup"]["RoleArn"]
+    expected_online_store_kms_key_id = SAGEMAKER_CONFIG_FEATURE_GROUP["SageMaker"]["FeatureGroup"][
+        "OnlineStoreConfig"
+    ]["SecurityConfig"]["KmsKeyId"]
     sagemaker_config_session.create_feature_group.assert_called_with(
         feature_group_name="MyFeatureGroup",
         record_identifier_name="feature1",
         event_time_feature_name="feature2",
         feature_definitions=[fd.to_dict() for fd in feature_group_dummy_definitions],
-        role_arn="arn:aws:iam::111111111111:role/ConfigRole",
+        role_arn=expected_role_arn,
         description=None,
         tags=None,
         online_store_config={
             "EnableOnlineStore": True,
-            "SecurityConfig": {"KmsKeyId": "OnlineConfigKmsKeyId"},
+            "SecurityConfig": {"KmsKeyId": expected_online_store_kms_key_id},
         },
         offline_store_config={
             "DisableGlueTableCreation": False,
-            "S3StorageConfig": {"S3Uri": s3_uri, "KmsKeyId": "OfflineConfigKmsKeyId"},
+            "S3StorageConfig": {"S3Uri": s3_uri, "KmsKeyId": expected_offline_store_kms_key_id},
         },
     )
 

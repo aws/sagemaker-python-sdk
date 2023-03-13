@@ -121,8 +121,19 @@ def test_transform_with_sagemaker_config_injection(start_new_job, sagemaker_conf
         output_path=OUTPUT_PATH,
         sagemaker_session=sagemaker_config_session,
     )
-    assert transformer.volume_kms_key == "volumeKmsKeyId"
-    assert transformer.output_kms_key == "outputKmsKeyId"
+    # volume kms key and output kms key are inserted from the config
+    assert (
+        transformer.volume_kms_key
+        == SAGEMAKER_CONFIG_TRANSFORM_JOB["SageMaker"]["TransformJob"]["TransformResources"][
+            "VolumeKmsKeyId"
+        ]
+    )
+    assert (
+        transformer.output_kms_key
+        == SAGEMAKER_CONFIG_TRANSFORM_JOB["SageMaker"]["TransformJob"]["TransformOutput"][
+            "KmsKeyId"
+        ]
+    )
 
     content_type = "text/csv"
     compression = "Gzip"
@@ -171,7 +182,12 @@ def test_transform_with_sagemaker_config_injection(start_new_job, sagemaker_conf
         batch_data_capture_config,
     )
     # KmsKeyId in BatchDataCapture will be inserted from the config
-    assert batch_data_capture_config.kms_key_id == "jobKmsKeyId"
+    assert (
+        batch_data_capture_config.kms_key_id
+        == SAGEMAKER_CONFIG_TRANSFORM_JOB["SageMaker"]["TransformJob"]["DataCaptureConfig"][
+            "KmsKeyId"
+        ]
+    )
 
 
 def test_delete_model(sagemaker_session):

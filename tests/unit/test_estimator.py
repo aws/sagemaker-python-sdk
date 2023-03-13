@@ -388,13 +388,35 @@ def test_framework_initialization_with_sagemaker_config_injection(sagemaker_conf
             InstanceGroup("group2", "ml.m4.xlarge", 2),
         ],
     )
-    assert framework.role == "arn:aws:iam::111111111111:role/ConfigRole"
-    assert framework.enable_network_isolation() is True
-    assert framework.encrypt_inter_container_traffic is True
-    assert framework.output_kms_key == "TestKms"
-    assert framework.volume_kms_key == "volumekey"
-    assert framework.security_group_ids == ["sg-123"]
-    assert framework.subnets == ["subnets-123"]
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "ResourceConfig"
+    ]["VolumeKmsKeyId"]
+    expected_role_arn = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["RoleArn"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "OutputDataConfig"
+    ]["KmsKeyId"]
+    expected_subnets = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["VpcConfig"][
+        "Subnets"
+    ]
+    expected_security_groups = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "VpcConfig"
+    ]["SecurityGroupIds"]
+    expected_enable_network_isolation = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "EnableNetworkIsolation"
+    ]
+    expected_enable_inter_container_traffic_encryption = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"][
+        "TrainingJob"
+    ]["EnableInterContainerTrafficEncryption"]
+    assert framework.role == expected_role_arn
+    assert framework.enable_network_isolation() == expected_enable_network_isolation
+    assert (
+        framework.encrypt_inter_container_traffic
+        == expected_enable_inter_container_traffic_encryption
+    )
+    assert framework.output_kms_key == expected_kms_key_id
+    assert framework.volume_kms_key == expected_volume_kms_key_id
+    assert framework.security_group_ids == expected_security_groups
+    assert framework.subnets == expected_subnets
 
 
 def test_estimator_initialization_with_sagemaker_config_injection(sagemaker_config_session):
@@ -410,13 +432,35 @@ def test_estimator_initialization_with_sagemaker_config_injection(sagemaker_conf
         sagemaker_session=sagemaker_config_session,
         base_job_name="base_job_name",
     )
-    assert estimator.role == "arn:aws:iam::111111111111:role/ConfigRole"
-    assert estimator.enable_network_isolation() is True
-    assert estimator.encrypt_inter_container_traffic is True
-    assert estimator.output_kms_key == "TestKms"
-    assert estimator.volume_kms_key == "volumekey"
-    assert estimator.security_group_ids == ["sg-123"]
-    assert estimator.subnets == ["subnets-123"]
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "ResourceConfig"
+    ]["VolumeKmsKeyId"]
+    expected_role_arn = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["RoleArn"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "OutputDataConfig"
+    ]["KmsKeyId"]
+    expected_subnets = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["VpcConfig"][
+        "Subnets"
+    ]
+    expected_security_groups = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "VpcConfig"
+    ]["SecurityGroupIds"]
+    expected_enable_network_isolation = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "EnableNetworkIsolation"
+    ]
+    expected_enable_inter_container_traffic_encryption = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"][
+        "TrainingJob"
+    ]["EnableInterContainerTrafficEncryption"]
+    assert estimator.role == expected_role_arn
+    assert estimator.enable_network_isolation() == expected_enable_network_isolation
+    assert (
+        estimator.encrypt_inter_container_traffic
+        == expected_enable_inter_container_traffic_encryption
+    )
+    assert estimator.output_kms_key == expected_kms_key_id
+    assert estimator.volume_kms_key == expected_volume_kms_key_id
+    assert estimator.security_group_ids == expected_security_groups
+    assert estimator.subnets == expected_subnets
 
 
 def test_framework_with_heterogeneous_cluster(sagemaker_session):

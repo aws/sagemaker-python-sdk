@@ -326,12 +326,17 @@ def test_pipeline_model_with_config_injection(tfo, time, sagemaker_config_sessio
     pipeline_model = PipelineModel(
         [framework_model, sparkml_model], sagemaker_session=sagemaker_config_session
     )
-    assert pipeline_model.role == "arn:aws:iam::111111111111:role/ConfigRole"
-    assert pipeline_model.vpc_config == {
-        "SecurityGroupIds": ["sg-123"],
-        "Subnets": ["subnets-123"],
-    }
-    assert pipeline_model.enable_network_isolation is True
+    expected_role_arn = SAGEMAKER_CONFIG_MODEL["SageMaker"]["Model"]["ExecutionRoleArn"]
+    expected_enable_network_isolation = SAGEMAKER_CONFIG_MODEL["SageMaker"]["Model"][
+        "EnableNetworkIsolation"
+    ]
+    expected_vpc_config = SAGEMAKER_CONFIG_MODEL["SageMaker"]["Model"]["VpcConfig"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"]["EndpointConfig"][
+        "KmsKeyId"
+    ]
+    assert pipeline_model.role == expected_role_arn
+    assert pipeline_model.vpc_config == expected_vpc_config
+    assert pipeline_model.enable_network_isolation == expected_enable_network_isolation
     pipeline_model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1)
     sagemaker_config_session.endpoint_from_production_variants.assert_called_with(
         name="mi-1-2017-10-10-14-14-15",
@@ -345,7 +350,7 @@ def test_pipeline_model_with_config_injection(tfo, time, sagemaker_config_sessio
             }
         ],
         tags=None,
-        kms_key="ConfigKmsKeyId",
+        kms_key=expected_kms_key_id,
         wait=True,
         data_capture_config_dict=None,
     )

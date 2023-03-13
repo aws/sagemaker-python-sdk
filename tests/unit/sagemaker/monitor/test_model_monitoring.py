@@ -915,6 +915,9 @@ def test_data_quality_batch_transform_monitor_create_schedule_with_sagemaker_con
         monitor_schedule_name=SCHEDULE_NAME,
         schedule_cron_expression=CRON_HOURLY,
     )
+    expected_tags_from_config = SAGEMAKER_CONFIG_MONITORING_SCHEDULE["SageMaker"][
+        "MonitoringSchedule"
+    ]["Tags"][0]
 
     sagemaker_config_session.sagemaker_client.create_monitoring_schedule.assert_called_with(
         MonitoringScheduleName=SCHEDULE_NAME,
@@ -926,7 +929,7 @@ def test_data_quality_batch_transform_monitor_create_schedule_with_sagemaker_con
         # new tags appended from config
         Tags=[
             {"Key": "tag_key_1", "Value": "tag_value_1"},
-            {"Key": "some-tag", "Value": "value-for-tag"},
+            expected_tags_from_config,
         ],
     )
 

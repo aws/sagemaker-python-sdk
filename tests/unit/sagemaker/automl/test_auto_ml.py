@@ -313,11 +313,28 @@ def test_framework_initialization_with_sagemaker_config_injection(sagemaker_conf
         target_attribute_name=TARGET_ATTRIBUTE_NAME,
         sagemaker_session=sagemaker_config_session,
     )
-    assert auto_ml.role == "arn:aws:iam::111111111111:role/ConfigRole"
-    assert auto_ml.output_kms_key == "configKmsKeyId"
-    assert auto_ml.volume_kms_key == "TestKmsKeyId"
-    assert auto_ml.vpc_config == {"SecurityGroupIds": ["sg-123"], "Subnets": ["subnets-123"]}
-    assert auto_ml.encrypt_inter_container_traffic is True
+
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoML"]["AutoMLJobConfig"][
+        "SecurityConfig"
+    ]["VolumeKmsKeyId"]
+    expected_role_arn = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoML"]["RoleArn"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoML"]["OutputDataConfig"][
+        "KmsKeyId"
+    ]
+    expected_vpc_config = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoML"]["AutoMLJobConfig"][
+        "SecurityConfig"
+    ]["VpcConfig"]
+    expected_enable_inter_container_traffic_encryption = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"][
+        "AutoML"
+    ]["AutoMLJobConfig"]["SecurityConfig"]["EnableInterContainerTrafficEncryption"]
+    assert auto_ml.role == expected_role_arn
+    assert auto_ml.output_kms_key == expected_kms_key_id
+    assert auto_ml.volume_kms_key == expected_volume_kms_key_id
+    assert auto_ml.vpc_config == expected_vpc_config
+    assert (
+        auto_ml.encrypt_inter_container_traffic
+        == expected_enable_inter_container_traffic_encryption
+    )
 
 
 def test_auto_ml_default_channel_name(sagemaker_session):
@@ -849,15 +866,22 @@ def test_candidate_estimator_fit_initialization_with_sagemaker_config_injection(
     )
     inputs = DEFAULT_S3_INPUT_DATA
     candidate_estimator.fit(inputs)
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "ResourceConfig"
+    ]["VolumeKmsKeyId"]
+    expected_vpc_config = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["VpcConfig"]
+    expected_enable_inter_container_traffic_encryption = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"][
+        "TrainingJob"
+    ]["EnableInterContainerTrafficEncryption"]
 
     for train_call in sagemaker_config_session.train.call_args_list:
         train_args = train_call.kwargs
-        assert train_args["vpc_config"] == {
-            "SecurityGroupIds": ["sg-123"],
-            "Subnets": ["subnets-123"],
-        }
-        assert train_args["resource_config"]["VolumeKmsKeyId"] == "volumekey"
-        assert train_args["encrypt_inter_container_traffic"] is True
+        assert train_args["vpc_config"] == expected_vpc_config
+        assert train_args["resource_config"]["VolumeKmsKeyId"] == expected_volume_kms_key_id
+        assert (
+            train_args["encrypt_inter_container_traffic"]
+            == expected_enable_inter_container_traffic_encryption
+        )
 
 
 def test_candidate_estimator_get_steps(sagemaker_session):

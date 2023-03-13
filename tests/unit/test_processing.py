@@ -702,15 +702,31 @@ def test_script_processor_with_sagemaker_config_injection(
         experiment_config={"ExperimentName": "AnExperiment"},
     )
     expected_args = copy.deepcopy(_get_expected_args_all_parameters(processor._current_job_name))
-    expected_args["resources"]["ClusterConfig"]["VolumeKmsKeyId"] = "testVolumeKmsKeyId"
-    expected_args["output_config"]["KmsKeyId"] = "testKmsKeyId"
-    expected_args["role_arn"] = "arn:aws:iam::111111111111:role/ConfigRole"
-    expected_args["network_config"]["VpcConfig"] = {
-        "SecurityGroupIds": ["sg-123"],
-        "Subnets": ["subnets-123"],
-    }
-    expected_args["network_config"]["EnableNetworkIsolation"] = True
-    expected_args["network_config"]["EnableInterContainerTrafficEncryption"] = False
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"][
+        "ProcessingResources"
+    ]["ClusterConfig"]["VolumeKmsKeyId"]
+    expected_output_kms_key_id = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"][
+        "ProcessingOutputConfig"
+    ]["KmsKeyId"]
+    expected_role_arn = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"]["RoleArn"]
+    expected_vpc_config = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"][
+        "NetworkConfig"
+    ]["VpcConfig"]
+    expected_enable_network_isolation = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"][
+        "ProcessingJob"
+    ]["NetworkConfig"]["EnableNetworkIsolation"]
+    expected_enable_inter_containter_traffic_encryption = SAGEMAKER_CONFIG_PROCESSING_JOB[
+        "SageMaker"
+    ]["ProcessingJob"]["NetworkConfig"]["EnableInterContainerTrafficEncryption"]
+
+    expected_args["resources"]["ClusterConfig"]["VolumeKmsKeyId"] = expected_volume_kms_key_id
+    expected_args["output_config"]["KmsKeyId"] = expected_output_kms_key_id
+    expected_args["role_arn"] = expected_role_arn
+    expected_args["network_config"]["VpcConfig"] = expected_vpc_config
+    expected_args["network_config"]["EnableNetworkIsolation"] = expected_enable_network_isolation
+    expected_args["network_config"][
+        "EnableInterContainerTrafficEncryption"
+    ] = expected_enable_inter_containter_traffic_encryption
 
     sagemaker_config_session.process.assert_called_with(**expected_args)
     assert "my_job_name" in processor._current_job_name
