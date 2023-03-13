@@ -103,7 +103,7 @@ class TrainingCompilerConfig(BaseConfig):
                     cls.MIN_SUPPORTED_VERSION, estimator.framework_version
                 )
                 raise ValueError(error_helper_string)
-            elif Version(estimator.framework_version) in SpecifierSet(
+            if Version(estimator.framework_version) in SpecifierSet(
                 f"> {cls.MAX_SUPPORTED_VERSION}"
             ):
                 error_helper_string = (
