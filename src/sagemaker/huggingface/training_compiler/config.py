@@ -103,7 +103,9 @@ class TrainingCompilerConfig(BaseConfig):
         super(TrainingCompilerConfig, cls).validate(estimator)
 
         if estimator.pytorch_version:
-            if (Version(estimator.pytorch_version) in SpecifierSet("< 1.9")) or (Version(estimator.pytorch_version) in SpecifierSet("> 1.11")):
+            if (Version(estimator.pytorch_version) in SpecifierSet("< 1.9")) or (
+                Version(estimator.pytorch_version) in SpecifierSet("> 1.11")
+            ):
                 error_helper_string = (
                     "Training Compiler is only valid between HuggingFace PyTorch 1.9-1.11 "
                     "for SageMaker Training Compiler."
