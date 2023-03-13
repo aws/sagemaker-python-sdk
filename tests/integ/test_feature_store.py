@@ -1349,7 +1349,7 @@ def _wait_for_feature_group_update(feature_group: FeatureGroup):
     print(f"FeatureGroup {feature_group.name} successfully updated.")
 
 
-def test_get_feature_group_with_role_region(
+def test_get_feature_group_with_region(
     feature_store_session,
     region_name,
     role,
@@ -1377,7 +1377,6 @@ def test_get_feature_group_with_role_region(
         dataset = get_feature_group_as_dataframe(
             feature_group_name=feature_group_name,
             region=str(region_name),
-            role=role,
             event_time_feature_name="feature3",
             latest_ingestion=True,
             athena_bucket=f"{offline_store_s3_uri}/query",
