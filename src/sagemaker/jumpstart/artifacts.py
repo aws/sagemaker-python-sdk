@@ -208,8 +208,6 @@ def _retrieve_model_uri(
         VulnerableJumpStartModelError: If any of the dependencies required by the script have
             known security vulnerabilities.
         DeprecatedJumpStartModelError: If the version of the model is deprecated.
-        NotImplementedError: If the combination of arguments doesn't support combined model
-            and script artifact.
     """
     if region is None:
         region = JUMPSTART_DEFAULT_REGION_NAME
@@ -234,13 +232,13 @@ def _retrieve_model_uri(
         else:
             model_artifact_key = getattr(model_specs, "hosting_prepacked_artifact_key", None)
             if model_artifact_key is None:
-                raise NotImplementedError(error_msg_no_combined_artifact)
+                raise ValueError(error_msg_no_combined_artifact)
 
     elif model_scope == JumpStartScriptScope.TRAINING:
         if not include_script:
             model_artifact_key = model_specs.training_artifact_key
         else:
-            raise NotImplementedError(error_msg_no_combined_artifact)
+            raise ValueError(error_msg_no_combined_artifact)
 
     bucket = os.environ.get(
         ENV_VARIABLE_JUMPSTART_MODEL_ARTIFACT_BUCKET_OVERRIDE

@@ -39,10 +39,10 @@ def test_jumpstart_combined_artifacts(patched_get_model_specs):
         "prepack/v1.0.0/infer-prepack-huggingface-text2text-flan-t5-xxl-fp16.tar.gz"
     )
 
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(ValueError):
         model_uris.retrieve(
             region="us-west-2",
-            model_scope="transfer_learning",
+            model_scope="training",
             model_id=model_id_combined_model_artifact,
             model_version="*",
             include_script=True,
@@ -50,7 +50,7 @@ def test_jumpstart_combined_artifacts(patched_get_model_specs):
 
     model_id_combined_model_artifact_unsupported = "xgboost-classification-model"
 
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(ValueError):
         model_uris.retrieve(
             region="us-west-2",
             model_scope="inference",

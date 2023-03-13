@@ -60,8 +60,6 @@ def retrieve(
         VulnerableJumpStartModelError: If any of the dependencies required by the script have
             known security vulnerabilities.
         DeprecatedJumpStartModelError: If the version of the model is deprecated.
-        NotImplementedError: If the combination of arguments doesn't support combined model
-            and script artifact.
     """
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
         raise ValueError("Must specify `model_id` and `model_version` when retrieving model URIs.")
