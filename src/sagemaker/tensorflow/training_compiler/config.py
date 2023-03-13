@@ -26,6 +26,7 @@ class TrainingCompilerConfig(BaseConfig):
 
     SUPPORTED_INSTANCE_CLASS_PREFIXES = ["p3", "p3dn", "g4dn", "p4d", "g5"]
     MIN_SUPPORTED_VERSION = "2.9"
+    MAX_SUPPORTED_VERSION = "2.11"
 
     def __init__(self, enabled=True, debug=False):
         """This class initializes a ``TrainingCompilerConfig`` instance.
@@ -100,6 +101,17 @@ class TrainingCompilerConfig(BaseConfig):
                 )
                 error_helper_string = error_helper_string.format(
                     cls.MIN_SUPPORTED_VERSION, estimator.framework_version
+                )
+                raise ValueError(error_helper_string)
+            elif Version(estimator.framework_version) in SpecifierSet(
+                f"> {cls.MAX_SUPPORTED_VERSION}"
+            ):
+                error_helper_string = (
+                    "SageMaker Training Compiler only supports TensorFlow version "
+                    "<= {} but received {}"
+                )
+                error_helper_string = error_helper_string.format(
+                    cls.MAX_SUPPORTED_VERSION, estimator.framework_version
                 )
                 raise ValueError(error_helper_string)
 
