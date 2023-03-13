@@ -30,6 +30,7 @@ def retrieve(
     model_scope: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
+    include_script: bool = False,
 ) -> str:
     """Retrieves the model artifact Amazon S3 URI for the model matching the given arguments.
 
@@ -48,6 +49,8 @@ def retrieve(
         tolerate_deprecated_model (bool): ``True`` if deprecated versions of model
             specifications should be tolerated without raising an exception. If ``False``, raises
             an exception if the version of the model is deprecated. (Default: False).
+        include_script (bool): True if script artifact should be packaged alongside model
+            tarball. (Default: False).
     Returns:
         str: The model artifact S3 URI for the corresponding model.
 
@@ -57,6 +60,8 @@ def retrieve(
         VulnerableJumpStartModelError: If any of the dependencies required by the script have
             known security vulnerabilities.
         DeprecatedJumpStartModelError: If the version of the model is deprecated.
+        NotImplementedError: If the combination of arguments doesn't support combined model
+            and script artifact.
     """
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
         raise ValueError("Must specify `model_id` and `model_version` when retrieving model URIs.")
@@ -68,4 +73,5 @@ def retrieve(
         region,
         tolerate_vulnerable_model,
         tolerate_deprecated_model,
+        include_script,
     )
