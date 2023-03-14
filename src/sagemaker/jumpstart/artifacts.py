@@ -222,7 +222,7 @@ def _retrieve_model_uri(
     )
 
     error_msg_no_combined_artifact = (
-        "No combined script + model tarball available "
+        "No combined script and model tarball available "
         f"for {model_id} with version {model_version} for {model_scope}."
     )
 
