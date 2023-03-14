@@ -752,7 +752,7 @@ def test_athena_query_as_dataframe(read_csv, sagemaker_session_mock, query):
         query_execution_id="query_id",
         filename="tmp/query_id.csv",
     )
-    read_csv.assert_called_with("tmp/query_id.csv", delimiter=",")
+    read_csv.assert_called_with(filepath_or_buffer="tmp/query_id.csv", delimiter=",")
 
 
 @patch("tempfile.gettempdir", Mock(return_value="tmp"))
