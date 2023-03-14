@@ -805,6 +805,9 @@ class FeatureGroup:
         if max_workers <= 0:
             raise RuntimeError("max_workers must be greater than 0.")
 
+        if profile_name is None and self.sagemaker_session.boto_session.profile_name != "default":
+            profile_name = self.sagemaker_session.boto_session.profile_name
+
         manager = IngestionManagerPandas(
             feature_group_name=self.name,
             sagemaker_session=self.sagemaker_session,

@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 from sagemaker import image_uris
 from tests.unit.sagemaker.image_uris import expected_uris
+from sagemaker.fw_utils import GRAVITON_ALLOWED_FRAMEWORKS
 
 import pytest
 
@@ -27,7 +28,7 @@ GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY = [
     "r6g",
     "r6gd",
 ]
-GRAVITON_ALGOS = ("tensorflow", "pytotch")
+GRAVITON_ALGOS = ("tensorflow", "pytorch")
 GRAVITON_INSTANCE_TYPES = [
     "ml.m6g.4xlarge",
     "ml.m6gd.2xlarge",
@@ -88,6 +89,24 @@ def test_graviton_tensorflow(graviton_tensorflow_version):
 
 def test_graviton_pytorch(graviton_pytorch_version):
     _test_graviton_framework_uris("pytorch", graviton_pytorch_version)
+
+
+def _test_graviton_unsupported_framework(framework, framework_version):
+    for region in GRAVITON_REGIONS:
+        for instance_type in GRAVITON_INSTANCE_TYPES:
+            with pytest.raises(ValueError) as error:
+                image_uris.retrieve(
+                    framework, region, version=framework_version, instance_type=instance_type
+                )
+            expectedErr = (
+                f"Unsupported framework: {framework}. Supported framework(s) for Graviton instances: "
+                f"{GRAVITON_ALLOWED_FRAMEWORKS}."
+            )
+            assert expectedErr in str(error)
+
+
+def test_graviton_unsupported_framework():
+    _test_graviton_unsupported_framework("autogluon", "0.6.1")
 
 
 def test_graviton_xgboost_instance_type_specified(graviton_xgboost_versions):

@@ -1,5 +1,65 @@
 # Changelog
 
+## v2.138.0 (2023-03-13)
+
+### Features
+
+ * Jumpstart training metrics
+
+### Bug Fixes and Other Changes
+
+ * Add new region support for MX, PT, TF on SM Training
+
+## v2.137.0 (2023-03-10)
+
+### Features
+
+ * support JSON for input dataset and model output
+
+### Bug Fixes and Other Changes
+
+ * Wait on describe for tag propagation
+ * Extracted profile_name directly from sagemaker.Session if None
+ * Avoid double encoding to JSON in InferenceRecommenderMixin
+ * RepackStep must use the same KMS key as the Model
+
+## v2.136.0 (2023-03-09)
+
+### Features
+
+ * with_feature_group [feature_store]
+ * Djl Large Model Support
+ * Decouple model.right_size() from model registry
+
+### Bug Fixes and Other Changes
+
+ * Fix integration test error in test_default_right_size_and_deploy_unregistered_base_model
+ * Add djl 0.21.0 dlc images
+
+### Documentation Changes
+
+ * Torchrun gpu support documentation change
+
+## v2.135.1.post0 (2023-03-02)
+
+### Documentation Changes
+
+ * update feature store dataset builder docs
+
+## v2.135.1 (2023-03-01)
+
+### Bug Fixes and Other Changes
+
+ * Revert back to stable apache-airflow-providers-amazon from 7.2.1 to 4.0.0.
+ * Typo in graviton algos
+ * build(deps): bump apache-airflow-providers-amazon from 4.0.0 to 7.2.1 in /requirements/extras
+ * Support cloning private repo using ssh key
+ * Create a default SageMaker Session inside FeatureGroup class
+
+### Documentation Changes
+
+ * fix typo in README
+
 ## v2.135.0 (2023-02-23)
 
 ### Features
