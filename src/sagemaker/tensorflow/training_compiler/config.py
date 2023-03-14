@@ -92,7 +92,7 @@ class TrainingCompilerConfig(BaseConfig):
         super(TrainingCompilerConfig, cls).validate(estimator)
 
         if estimator.framework_version:
-            if not Version(estimator.framework_version) in SpecifierSet(
+            if Version(estimator.framework_version) not in SpecifierSet(
                 f">= {cls.MIN_SUPPORTED_VERSION}", f"<= {cls.MAX_SUPPORTED_VERSION}"
             ):
                 error_helper_string = (

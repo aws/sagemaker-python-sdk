@@ -107,8 +107,9 @@ class TrainingCompilerConfig(BaseConfig):
                 Version(estimator.pytorch_version) in SpecifierSet("> 1.11")
             ):
                 error_helper_string = (
-                    "SageMaker Training Compiler is only supported with HuggingFace PyTorch 1.9-1.11 "
-                    " Received pytorch_version={} which is unsupported."
+                    "SageMaker Training Compiler is only supported "
+                    "with HuggingFace PyTorch 1.9-1.11. "
+                    "Received pytorch_version={} which is unsupported."
                 )
                 raise ValueError(error_helper_string.format(estimator.pytorch_version))
 
