@@ -21,7 +21,7 @@ from mock import Mock
 from sagemaker.feature_store.feature_utils import (
     _cast_object_to_string,
     prepare_fg_from_dataframe_or_file,
-    get_feature_group_as_dataframe
+    get_feature_group_as_dataframe,
 )
 from sagemaker.feature_store.feature_definition import (
     FeatureTypeEnum,
@@ -109,7 +109,7 @@ def test_get_fg_latest_without_eventid(sagemaker_session_mock):
             feature_group_name="testFG",
             athena_bucket="s3://test",
             latest_ingestion=True,
-            event_time_feature_name=None
+            event_time_feature_name=None,
         )
 
 
@@ -121,5 +121,5 @@ def test_get_fg_without_sess_role_region(sagemaker_session_mock):
             role=None,
             feature_group_name="testFG",
             athena_bucket="s3://test",
-            latest_ingestion=False
+            latest_ingestion=False,
         )
