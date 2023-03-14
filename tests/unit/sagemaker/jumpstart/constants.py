@@ -12,6 +12,131 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+
+SPECIAL_MODEL_SPECS_DICT = {
+    "mock-model-training-prepacked-script-key": {
+        "model_id": "sklearn-classification-linear",
+        "url": "https://scikit-learn.org/stable/",
+        "version": "1.0.0",
+        "min_sdk_version": "2.68.1",
+        "training_supported": True,
+        "incremental_training_supported": False,
+        "hosting_ecr_specs": {
+            "framework": "sklearn",
+            "framework_version": "0.23-1",
+            "py_version": "py3",
+        },
+        "hosting_artifact_key": "sklearn-infer/infer-sklearn-classification-linear.tar.gz",
+        "hosting_script_key": "source-directory-tarballs/sklearn/inference/classification/v1.0.0/sourcedir.tar.gz",
+        "inference_vulnerable": False,
+        "inference_dependencies": [],
+        "inference_vulnerabilities": [],
+        "training_vulnerable": False,
+        "training_dependencies": [],
+        "training_vulnerabilities": [],
+        "deprecated": False,
+        "hyperparameters": [
+            {
+                "name": "tol",
+                "type": "float",
+                "default": 0.0001,
+                "min": 1e-20,
+                "max": 50,
+                "scope": "algorithm",
+            },
+            {
+                "name": "penalty",
+                "type": "text",
+                "default": "l2",
+                "options": ["l1", "l2", "elasticnet", "none"],
+                "scope": "algorithm",
+            },
+            {
+                "name": "alpha",
+                "type": "float",
+                "default": 0.0001,
+                "min": 1e-20,
+                "max": 999,
+                "scope": "algorithm",
+            },
+            {
+                "name": "l1_ratio",
+                "type": "float",
+                "default": 0.15,
+                "min": 0,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "sagemaker_submit_directory",
+                "type": "text",
+                "default": "/opt/ml/input/data/code/sourcedir.tar.gz",
+                "scope": "container",
+            },
+            {
+                "name": "sagemaker_program",
+                "type": "text",
+                "default": "transfer_learning.py",
+                "scope": "container",
+            },
+            {
+                "name": "sagemaker_container_log_level",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+            },
+        ],
+        "training_script_key": "source-directory-tarballs/sklearn/transfer_learning/classification/"
+        "v1.0.0/sourcedir.tar.gz",
+        "training_prepacked_script_key": "some/key/to/training_prepacked_script_key.tar.gz",
+        "training_ecr_specs": {
+            "framework_version": "0.23-1",
+            "framework": "sklearn",
+            "py_version": "py3",
+        },
+        "training_artifact_key": "sklearn-training/train-sklearn-classification-linear.tar.gz",
+        "inference_environment_variables": [
+            {
+                "name": "SAGEMAKER_PROGRAM",
+                "type": "text",
+                "default": "inference.py",
+                "scope": "container",
+            },
+            {
+                "name": "SAGEMAKER_SUBMIT_DIRECTORY",
+                "type": "text",
+                "default": "/opt/ml/model/code",
+                "scope": "container",
+            },
+            {
+                "name": "SAGEMAKER_CONTAINER_LOG_LEVEL",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+            },
+            {
+                "name": "MODEL_CACHE_ROOT",
+                "type": "text",
+                "default": "/opt/ml/model",
+                "scope": "container",
+            },
+            {"name": "SAGEMAKER_ENV", "type": "text", "default": "1", "scope": "container"},
+            {
+                "name": "SAGEMAKER_MODEL_SERVER_WORKERS",
+                "type": "text",
+                "default": "1",
+                "scope": "container",
+            },
+            {
+                "name": "SAGEMAKER_MODEL_SERVER_TIMEOUT",
+                "type": "text",
+                "default": "3600",
+                "scope": "container",
+            },
+        ],
+    }
+}
+
 PROTOTYPICAL_MODEL_SPECS_DICT = {
     "pytorch-eqa-bert-base-cased": {
         "model_id": "pytorch-eqa-bert-base-cased",
@@ -1024,127 +1149,6 @@ PROTOTYPICAL_MODEL_SPECS_DICT = {
         ],
         "training_script_key": "source-directory-tarballs/sklearn/transfer_learning/classification/"
         "v1.0.0/sourcedir.tar.gz",
-        "training_ecr_specs": {
-            "framework_version": "0.23-1",
-            "framework": "sklearn",
-            "py_version": "py3",
-        },
-        "training_artifact_key": "sklearn-training/train-sklearn-classification-linear.tar.gz",
-        "inference_environment_variables": [
-            {
-                "name": "SAGEMAKER_PROGRAM",
-                "type": "text",
-                "default": "inference.py",
-                "scope": "container",
-            },
-            {
-                "name": "SAGEMAKER_SUBMIT_DIRECTORY",
-                "type": "text",
-                "default": "/opt/ml/model/code",
-                "scope": "container",
-            },
-            {
-                "name": "SAGEMAKER_CONTAINER_LOG_LEVEL",
-                "type": "text",
-                "default": "20",
-                "scope": "container",
-            },
-            {
-                "name": "MODEL_CACHE_ROOT",
-                "type": "text",
-                "default": "/opt/ml/model",
-                "scope": "container",
-            },
-            {"name": "SAGEMAKER_ENV", "type": "text", "default": "1", "scope": "container"},
-            {
-                "name": "SAGEMAKER_MODEL_SERVER_WORKERS",
-                "type": "text",
-                "default": "1",
-                "scope": "container",
-            },
-            {
-                "name": "SAGEMAKER_MODEL_SERVER_TIMEOUT",
-                "type": "text",
-                "default": "3600",
-                "scope": "container",
-            },
-        ],
-    },
-    "mock-model-training-prepacked-script-key": {
-        "model_id": "sklearn-classification-linear",
-        "url": "https://scikit-learn.org/stable/",
-        "version": "1.0.0",
-        "min_sdk_version": "2.68.1",
-        "training_supported": True,
-        "incremental_training_supported": False,
-        "hosting_ecr_specs": {
-            "framework": "sklearn",
-            "framework_version": "0.23-1",
-            "py_version": "py3",
-        },
-        "hosting_artifact_key": "sklearn-infer/infer-sklearn-classification-linear.tar.gz",
-        "hosting_script_key": "source-directory-tarballs/sklearn/inference/classification/v1.0.0/sourcedir.tar.gz",
-        "inference_vulnerable": False,
-        "inference_dependencies": [],
-        "inference_vulnerabilities": [],
-        "training_vulnerable": False,
-        "training_dependencies": [],
-        "training_vulnerabilities": [],
-        "deprecated": False,
-        "hyperparameters": [
-            {
-                "name": "tol",
-                "type": "float",
-                "default": 0.0001,
-                "min": 1e-20,
-                "max": 50,
-                "scope": "algorithm",
-            },
-            {
-                "name": "penalty",
-                "type": "text",
-                "default": "l2",
-                "options": ["l1", "l2", "elasticnet", "none"],
-                "scope": "algorithm",
-            },
-            {
-                "name": "alpha",
-                "type": "float",
-                "default": 0.0001,
-                "min": 1e-20,
-                "max": 999,
-                "scope": "algorithm",
-            },
-            {
-                "name": "l1_ratio",
-                "type": "float",
-                "default": 0.15,
-                "min": 0,
-                "max": 1,
-                "scope": "algorithm",
-            },
-            {
-                "name": "sagemaker_submit_directory",
-                "type": "text",
-                "default": "/opt/ml/input/data/code/sourcedir.tar.gz",
-                "scope": "container",
-            },
-            {
-                "name": "sagemaker_program",
-                "type": "text",
-                "default": "transfer_learning.py",
-                "scope": "container",
-            },
-            {
-                "name": "sagemaker_container_log_level",
-                "type": "text",
-                "default": "20",
-                "scope": "container",
-            },
-        ],
-        "training_script_key": "source-directory-tarballs/sklearn/transfer_learning/classification/"
-        "v1.0.0/sourcedir.tar.gz",
-        "training_prepacked_script_key": "some/key/to/training_prepacked_script_key.tar.gz",
         "training_ecr_specs": {
             "framework_version": "0.23-1",
             "framework": "sklearn",

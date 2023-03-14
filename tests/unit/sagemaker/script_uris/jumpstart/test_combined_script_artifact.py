@@ -17,13 +17,13 @@ from mock.mock import patch
 from sagemaker import script_uris
 import pytest
 
-from tests.unit.sagemaker.jumpstart.utils import get_prototype_model_spec
+from tests.unit.sagemaker.jumpstart.utils import get_prototype_model_spec, get_special_model_spec
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 def test_jumpstart_combined_artifacts(patched_get_model_specs):
 
-    patched_get_model_specs.side_effect = get_prototype_model_spec
+    patched_get_model_specs.side_effect = get_special_model_spec
 
     model_id_combined_script_artifact = "mock-model-training-prepacked-script-key"
 
@@ -47,6 +47,8 @@ def test_jumpstart_combined_artifacts(patched_get_model_specs):
             model_version="*",
             include_training_script=True,
         )
+
+    patched_get_model_specs.side_effect = get_prototype_model_spec
 
     model_id_combined_script_artifact_unsupported = "xgboost-classification-model"
 
