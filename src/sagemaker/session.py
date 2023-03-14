@@ -4194,31 +4194,30 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "EndpointConfigName": new_config_name,
         }
 
-        # TODO: should this merge from config even if new_production_variants is None?
-        if new_production_variants:
+        production_variants = (
+            new_production_variants or existing_endpoint_config_desc["ProductionVariants"]
+        )
+        if production_variants:
             inferred_production_variants_from_config = (
                 self.get_sagemaker_config_override(ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH) or []
             )
             for i in range(
-                min(len(new_production_variants), len(inferred_production_variants_from_config))
+                min(len(production_variants), len(inferred_production_variants_from_config))
             ):
                 original_config_dict_value = inferred_production_variants_from_config[i].copy()
-                merge_dicts(inferred_production_variants_from_config[i], new_production_variants[i])
-                if new_production_variants[i] != inferred_production_variants_from_config[i]:
+                merge_dicts(inferred_production_variants_from_config[i], production_variants[i])
+                if production_variants[i] != inferred_production_variants_from_config[i]:
                     print(
                         "Config value {} at config path {} was fetched first for "
                         "index: 0.".format(
                             original_config_dict_value, ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH
                         ),
                         "It was then merged with the existing value {} to give {}".format(
-                            new_production_variants[i], inferred_production_variants_from_config[i]
+                            production_variants[i], inferred_production_variants_from_config[i]
                         ),
                     )
-                new_production_variants[i].update(inferred_production_variants_from_config[i])
-
-        request["ProductionVariants"] = (
-            new_production_variants or existing_endpoint_config_desc["ProductionVariants"]
-        )
+                production_variants[i].update(inferred_production_variants_from_config[i])
+        request["ProductionVariants"] = production_variants
 
         request_tags = new_tags or self.list_tags(
             existing_endpoint_config_desc["EndpointConfigArn"]
