@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.138.0 (2023-03-13)
+
+### Features
+
+ * Jumpstart training metrics
+
+### Bug Fixes and Other Changes
+
+ * Add new region support for MX, PT, TF on SM Training
+
 ## v2.137.0 (2023-03-10)
 
 ### Features

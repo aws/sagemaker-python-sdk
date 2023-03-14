@@ -381,14 +381,23 @@ def _validate_instance_deprecation(framework, instance_type, version):
         )
 
 
-def _validate_for_suppported_frameworks_and_instance_type(framework, instace_type):
+def _validate_for_suppported_frameworks_and_instance_type(framework, instance_type):
     """Validate if framework is supported for the instance_type"""
+    # Validate for Trainium allowed frameworks
     if (
-        instace_type is not None
-        and "trn" in instace_type
+        instance_type is not None
+        and "trn" in instance_type
         and framework not in TRAINIUM_ALLOWED_FRAMEWORKS
     ):
-        _validate_framework(framework, TRAINIUM_ALLOWED_FRAMEWORKS, "framework")
+        _validate_framework(framework, TRAINIUM_ALLOWED_FRAMEWORKS, "framework", "Trainium")
+
+    # Validate for Graviton allowed frameowrks
+    if (
+        instance_type is not None
+        and _get_instance_type_family(instance_type) in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
+        and framework not in GRAVITON_ALLOWED_FRAMEWORKS
+    ):
+        _validate_framework(framework, GRAVITON_ALLOWED_FRAMEWORKS, "framework", "Graviton")
 
 
 def config_for_framework(framework):
@@ -572,12 +581,12 @@ def _validate_arg(arg, available_options, arg_name):
         )
 
 
-def _validate_framework(framework, allowed_frameworks, arg_name):
+def _validate_framework(framework, allowed_frameworks, arg_name, hardware_name):
     """Checks if the framework is in the allowed frameworks, and raises a ``ValueError`` if not."""
     if framework not in allowed_frameworks:
         raise ValueError(
             f"Unsupported {arg_name}: {framework}. "
-            f"Supported {arg_name}(s) for trainium instances: {allowed_frameworks}."
+            f"Supported {arg_name}(s) for {hardware_name} instances: {allowed_frameworks}."
         )
 
 
