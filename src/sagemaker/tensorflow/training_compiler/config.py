@@ -92,26 +92,17 @@ class TrainingCompilerConfig(BaseConfig):
         super(TrainingCompilerConfig, cls).validate(estimator)
 
         if estimator.framework_version:
-            if Version(estimator.framework_version) in SpecifierSet(
-                f"< {cls.MIN_SUPPORTED_VERSION}"
+            if not Version(estimator.framework_version) in SpecifierSet(
+                f">= {cls.MIN_SUPPORTED_VERSION}", f"<= {cls.MAX_SUPPORTED_VERSION}"
             ):
                 error_helper_string = (
                     "SageMaker Training Compiler only supports TensorFlow version "
-                    ">= {} but received {}"
+                    "between {} to {} but received {}"
                 )
                 error_helper_string = error_helper_string.format(
-                    cls.MIN_SUPPORTED_VERSION, estimator.framework_version
-                )
-                raise ValueError(error_helper_string)
-            if Version(estimator.framework_version) in SpecifierSet(
-                f"> {cls.MAX_SUPPORTED_VERSION}"
-            ):
-                error_helper_string = (
-                    "SageMaker Training Compiler only supports TensorFlow version "
-                    "<= {} but received {}"
-                )
-                error_helper_string = error_helper_string.format(
-                    cls.MAX_SUPPORTED_VERSION, estimator.framework_version
+                    cls.MIN_SUPPORTED_VERSION,
+                    cls.MAX_SUPPORTED_VERSION,
+                    estimator.framework_version,
                 )
                 raise ValueError(error_helper_string)
 
