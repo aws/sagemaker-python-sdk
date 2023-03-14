@@ -235,10 +235,11 @@ def _retrieve_model_uri(
 def _retrieve_script_uri(
     model_id: str,
     model_version: str,
-    script_scope: Optional[str],
-    region: Optional[str],
-    tolerate_vulnerable_model: bool,
-    tolerate_deprecated_model: bool,
+    script_scope: Optional[str] = None,
+    region: Optional[str] = False,
+    tolerate_vulnerable_model: bool = False,
+    tolerate_deprecated_model: bool = False,
+    include_training_script: bool = False,
 ):
     """Retrieves the script S3 URI associated with the model matching the given arguments.
 
@@ -259,6 +260,8 @@ def _retrieve_script_uri(
         tolerate_deprecated_model (bool): True if deprecated versions of model
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated.
+        include_training_script (bool): True if training script should be packaged along with
+            inference script. (Default: False.)
     Returns:
         str: the model script URI for the corresponding model.
 
@@ -281,8 +284,17 @@ def _retrieve_script_uri(
     )
 
     if script_scope == JumpStartScriptScope.INFERENCE:
-        model_script_key = model_specs.hosting_script_key
+        if not include_training_script:
+            model_script_key = model_specs.hosting_script_key
+        else:
+            model_script_key = getattr(model_specs, "training_prepacked_script_key", None)
+            if model_script_key is None:
+                raise ValueError(
+                    f"Cannot include training script for {model_id} with version {model_version}."
+                )
     elif script_scope == JumpStartScriptScope.TRAINING:
+        if include_training_script:
+            raise ValueError("Can only include training script for inference jobs.")
         model_script_key = model_specs.training_script_key
 
     bucket = os.environ.get(
