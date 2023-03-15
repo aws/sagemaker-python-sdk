@@ -64,8 +64,8 @@ Debugger Configuration APIs
 .. autoclass:: ProfilerConfig
     :show-inheritance:
     
-Debugger Configuration APIs for Framework Profiling 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
+Debugger Configuration APIs for Framework Profiling (Deprecated)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
     
 .. warning::
     
