@@ -33,15 +33,22 @@ from sagemaker.config.config_schema import SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA
 logger = logging.getLogger("sagemaker")
 
 _APP_NAME = "sagemaker"
+# The default config file location of the Administrator provided Config file. This path can be
+# overridden with `SAGEMAKER_ADMIN_CONFIG_OVERRIDE` environment variable.
 _DEFAULT_ADMIN_CONFIG_FILE_PATH = os.path.join(site_config_dir(_APP_NAME), "config.yaml")
+# The default config file location of the user provided Config file. This path can be
+# overridden with `SAGEMAKER_USER_CONFIG_OVERRIDE` environment variable.
 _DEFAULT_USER_CONFIG_FILE_PATH = os.path.join(user_config_dir(_APP_NAME), "config.yaml")
 
-ENV_VARIABLE_DEFAULT_CONFIG_OVERRIDE = "SAGEMAKER_DEFAULT_CONFIG_OVERRIDE"
+ENV_VARIABLE_ADMIN_CONFIG_OVERRIDE = "SAGEMAKER_ADMIN_CONFIG_OVERRIDE"
 ENV_VARIABLE_USER_CONFIG_OVERRIDE = "SAGEMAKER_USER_CONFIG_OVERRIDE"
 
-_config_paths = [_DEFAULT_ADMIN_CONFIG_FILE_PATH, _DEFAULT_USER_CONFIG_FILE_PATH]
 _BOTO_SESSION = boto3.DEFAULT_SESSION or boto3.Session()
+# The default Boto3 S3 Resource. This is constructed from the default Boto3 session. This will be
+# used to fetch SageMakerConfig from S3. Users can override this by passing their own S3 Resource
+# as the constructor parameter for SageMakerConfig.
 _DEFAULT_S3_RESOURCE = _BOTO_SESSION.resource("s3")
+S3_PREFIX = "s3://"
 
 
 class SageMakerConfig(object):
@@ -68,7 +75,7 @@ class SageMakerConfig(object):
         _DEFAULT_ADMIN_CONFIG_FILE_PATH and _DEFAULT_USER_CONFIG_FILE_PATH.
 
         Users can override the _DEFAULT_ADMIN_CONFIG_FILE_PATH and _DEFAULT_USER_CONFIG_FILE_PATH
-        by using environment variables - SAGEMAKER_DEFAULT_CONFIG_OVERRIDE and
+        by using environment variables - SAGEMAKER_ADMIN_CONFIG_OVERRIDE and
         SAGEMAKER_USER_CONFIG_OVERRIDE
 
         Additional Configuration file paths can also be provided as a constructor parameter.
@@ -105,7 +112,7 @@ class SageMakerConfig(object):
 
         """
         default_config_path = os.getenv(
-            ENV_VARIABLE_DEFAULT_CONFIG_OVERRIDE, _DEFAULT_ADMIN_CONFIG_FILE_PATH
+            ENV_VARIABLE_ADMIN_CONFIG_OVERRIDE, _DEFAULT_ADMIN_CONFIG_FILE_PATH
         )
         user_config_path = os.getenv(
             ENV_VARIABLE_USER_CONFIG_OVERRIDE, _DEFAULT_USER_CONFIG_FILE_PATH
@@ -113,17 +120,8 @@ class SageMakerConfig(object):
         self._config_paths = [default_config_path, user_config_path]
         if additional_config_paths:
             self._config_paths += additional_config_paths
-        self._s3_resource = s3_resource
-        config = {}
-        for file_path in self._config_paths:
-            if file_path.startswith("s3://"):
-                config_from_file = _load_config_from_s3(file_path, self._s3_resource)
-            else:
-                config_from_file = _load_config_from_file(file_path)
-            if config_from_file:
-                validate(config_from_file, SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA)
-            merge_dicts(config, config_from_file)
-        self._config = config
+        self._config_paths = list(filter(lambda item: item is not None, self._config_paths))
+        self._config = _load_config_files(self._config_paths, s3_resource)
 
     @property
     def config_paths(self) -> List[str]:
@@ -145,6 +143,53 @@ class SageMakerConfig(object):
         return self._config
 
 
+def _load_config_files(file_paths: List[str], s3_resource_for_config) -> dict:
+    """This method loads all the config files from the paths that were provided as Inputs.
+
+    Note: Supported Config file locations are Local File System and S3.
+
+    This method will throw exceptions for the following cases:
+        * Schema validation fails for one/more config files.
+        * When the config file is not a proper YAML file.
+        * Any S3 related issues that arises while fetching config file from S3. This includes
+        permission issues, S3 Object is not found in the specified S3 URI.
+        * File doesn't exist in a path that was specified by the user as part of environment
+        variable/ additional_config_paths. This doesn't include
+        _DEFAULT_ADMIN_CONFIG_FILE_PATH and _DEFAULT_USER_CONFIG_FILE_PATH
+
+    Args:
+        file_paths(List[str]): The list of paths corresponding to the config file. Note: This
+        path can either be a Local File System path or it can be a S3 URI.
+        s3_resource_for_config: Corresponds to boto3 S3 resource. This will be used to fetch Config
+        files from S3. See :py:meth:`boto3.session.Session.resource`.
+
+    Returns:
+        dict: A dictionary representing the configurations that were loaded from the config files.
+
+    """
+    merged_config = {}
+    for file_path in file_paths:
+        config_from_file = {}
+        if file_path.startswith(S3_PREFIX):
+            config_from_file = _load_config_from_s3(file_path, s3_resource_for_config)
+        else:
+            try:
+                config_from_file = _load_config_from_file(file_path)
+            except ValueError:
+                if file_path not in (
+                    _DEFAULT_ADMIN_CONFIG_FILE_PATH,
+                    _DEFAULT_USER_CONFIG_FILE_PATH,
+                ):
+                    # Throw exception only when User provided file path is invalid.
+                    # If there are no files in the Default config file locations, don't throw
+                    # Exceptions.
+                    raise
+        if config_from_file:
+            validate(config_from_file, SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA)
+            merge_dicts(merged_config, config_from_file)
+    return merged_config
+
+
 def _load_config_from_file(file_path: str) -> dict:
     """This method loads the config file from the path that was specified as parameter.
 
@@ -159,28 +204,19 @@ def _load_config_from_file(file_path: str) -> dict:
 
     This method will throw Exceptions for the following cases:
     * When the config file is not a proper YAML file.
-    * File doesn't exist in a path that was specified by the consumer. This doesn't include
-        _DEFAULT_ADMIN_CONFIG_FILE_PATH and _DEFAULT_USER_CONFIG_FILE_PATH
+    * File doesn't exist in a path that was specified by the consumer.
     """
-    config = {}
-    if file_path:
-        inferred_file_path = file_path
-        if os.path.isdir(file_path):
-            inferred_file_path = os.path.join(file_path, "config.yaml")
-        if not os.path.exists(inferred_file_path):
-            if inferred_file_path not in (
-                _DEFAULT_ADMIN_CONFIG_FILE_PATH,
-                _DEFAULT_USER_CONFIG_FILE_PATH,
-            ):
-                # Customer provided file path is invalid.
-                raise ValueError(
-                    f"Unable to load config file from the location: {file_path} Please"
-                    f" provide a valid file path"
-                )
-        else:
-            logger.debug("Fetching configuration file from the path: %s", file_path)
-            config = yaml.safe_load(open(inferred_file_path, "r"))
-    return config
+    inferred_file_path = file_path
+    if os.path.isdir(file_path):
+        inferred_file_path = os.path.join(file_path, "config.yaml")
+    if not os.path.exists(inferred_file_path):
+        raise ValueError(
+            f"Unable to load config file from the location: {file_path} Please"
+            f" provide a valid file path"
+        )
+    else:
+        logger.debug("Fetching configuration file from the path: %s", file_path)
+        return yaml.safe_load(open(inferred_file_path, "r"))
 
 
 def _load_config_from_s3(s3_uri, s3_resource_for_config) -> dict:
@@ -247,7 +283,7 @@ def _get_inferred_s3_uri(s3_uri, s3_resource_for_config):
         s3_bucket = s3_resource_for_config.Bucket(name=bucket)
         s3_objects = s3_bucket.objects.filter(Prefix=key_prefix).all()
         s3_files_with_same_prefix = [
-            "s3://{}/{}".format(bucket, s3_object.key) for s3_object in s3_objects
+            "{}{}/{}".format(S3_PREFIX, bucket, s3_object.key) for s3_object in s3_objects
         ]
     except Exception as e:  # pylint: disable=W0703
         # if customers didn't provide us with a valid S3 File/insufficient read permission,
