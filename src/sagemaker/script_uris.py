@@ -29,7 +29,6 @@ def retrieve(
     script_scope=None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-    include_training_script: bool = False,
 ) -> str:
     """Retrieves the script S3 URI associated with the model matching the given arguments.
 
@@ -48,8 +47,6 @@ def retrieve(
         tolerate_deprecated_model (bool): ``True`` if deprecated models should be tolerated
             without raising an exception. ``False`` if these models should raise an exception.
             (Default: False).
-        include_training_script (bool): True if training script should be packaged along with
-            inference script. (Default: False.)
     Returns:
         str: The model script URI for the corresponding model.
 
@@ -70,5 +67,4 @@ def retrieve(
         region,
         tolerate_vulnerable_model,
         tolerate_deprecated_model,
-        include_training_script,
     )
