@@ -19,6 +19,7 @@ from mock import Mock, MagicMock
 
 from sagemaker.config.config import SageMakerConfig
 from jsonschema import exceptions
+from yaml.constructor import ConstructorError
 
 
 @pytest.fixture()
@@ -45,6 +46,17 @@ def test_config_when_overriden_default_config_file_is_not_found(get_data_dir):
     with pytest.raises(ValueError):
         SageMakerConfig()
     del os.environ["SAGEMAKER_DEFAULT_CONFIG_OVERRIDE"]
+
+
+def test_invalid_config_file_which_has_python_code(get_data_dir):
+    invalid_config_file_path = os.path.join(get_data_dir, "config_file_with_code.yaml")
+    # no exceptions will be thrown with yaml.unsafe_load
+    yaml.unsafe_load(open(invalid_config_file_path, "r"))
+    # PyYAML will throw exceptions for yaml.safe_load. SageMaker Config is using
+    # yaml.safe_load internally
+    with pytest.raises(ConstructorError) as exception_info:
+        SageMakerConfig(additional_config_paths=[invalid_config_file_path])
+    assert "python/object/apply:eval" in str(exception_info.value)
 
 
 def test_config_when_additional_config_file_path_is_not_found(get_data_dir):
