@@ -192,42 +192,24 @@ class ModelMonitor(object):
         self.output_kms_key = self.sagemaker_session.get_sagemaker_config_override(
             MONITORING_JOB_OUTPUT_KMS_KEY_ID_PATH, default_value=output_kms_key
         )
-        _enable_network_isolation_from_config = (
-            self.sagemaker_session.get_sagemaker_config_override(
-                MONITORING_JOB_ENABLE_NETWORK_ISOLATION_PATH
-            )
+        self.network_config = self.sagemaker_session.resolve_class_attribute_from_config(
+            NetworkConfig,
+            network_config,
+            "subnets",
+            MONITORING_JOB_SUBNETS_PATH,
         )
-
-        _subnets_from_config = self.sagemaker_session.get_sagemaker_config_override(
-            MONITORING_JOB_SUBNETS_PATH
+        self.network_config = self.sagemaker_session.resolve_class_attribute_from_config(
+            NetworkConfig,
+            self.network_config,
+            "security_group_ids",
+            MONITORING_JOB_SECURITY_GROUP_IDS_PATH,
         )
-        _security_group_ids_from_config = self.sagemaker_session.get_sagemaker_config_override(
-            MONITORING_JOB_SECURITY_GROUP_IDS_PATH
+        self.network_config = self.sagemaker_session.resolve_class_attribute_from_config(
+            NetworkConfig,
+            self.network_config,
+            "enable_network_isolation",
+            MONITORING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
         )
-        if network_config:
-            if not network_config.subnets:
-                network_config.subnets = _subnets_from_config
-            if network_config.enable_network_isolation is None:
-                network_config.enable_network_isolation = (
-                    _enable_network_isolation_from_config or False
-                )
-            if not network_config.security_group_ids:
-                network_config.security_group_ids = _security_group_ids_from_config
-            self.network_config = network_config
-        else:
-            if (
-                _enable_network_isolation_from_config is not None
-                or _subnets_from_config
-                or _security_group_ids_from_config
-            ):
-                self.network_config = NetworkConfig(
-                    enable_network_isolation=_enable_network_isolation_from_config or False,
-                    security_group_ids=_security_group_ids_from_config,
-                    subnets=_subnets_from_config,
-                )
-            else:
-                self.network_config = None
-
         self.network_config = self.sagemaker_session.resolve_class_attribute_from_config(
             NetworkConfig,
             self.network_config,

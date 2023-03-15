@@ -48,82 +48,18 @@ class NetworkConfig(object):
             encrypt_inter_container_traffic (bool or PipelineVariable): Boolean that determines
                 whether to encrypt inter-container traffic. Default value is None.
         """
-        self._enable_network_isolation = enable_network_isolation
-        self._security_group_ids = security_group_ids
-        self._subnets = subnets
+        self.enable_network_isolation = enable_network_isolation
+        self.security_group_ids = security_group_ids
+        self.subnets = subnets
         self.encrypt_inter_container_traffic = encrypt_inter_container_traffic
-
-    @property
-    def security_group_ids(self):
-        """Getter for Security Groups
-
-        Returns:
-            list[str]: List of Security Groups
-
-        """
-        return self._security_group_ids
-
-    @property
-    def subnets(self):
-        """Getter for Subnets
-
-        Returns:
-            list[str]: List of Subnets
-
-        """
-        return self._subnets
-
-    @property
-    def enable_network_isolation(self):
-        """Getter for Enable Network Isolation
-
-        Returns:
-            bool: Value of Enable Network Isolation
-
-        """
-        return self._enable_network_isolation
-
-    @security_group_ids.setter
-    def security_group_ids(
-        self,
-        security_group_ids: Optional[List[Union[str, PipelineVariable]]] = None,
-    ):
-        """Setter for security groups.
-
-        Args:
-            security_group_ids: List of Security Group Ids.
-
-        """
-        self._security_group_ids = security_group_ids
-
-    @subnets.setter
-    def subnets(
-        self,
-        subnets: Optional[List[Union[str, PipelineVariable]]] = None,
-    ):
-        """Setter for subnets.
-
-        Args:
-            subnets: List of Subnets.
-
-        """
-        self._subnets = subnets
-
-    @enable_network_isolation.setter
-    def enable_network_isolation(
-        self, enable_network_isolation: Union[bool, PipelineVariable] = False
-    ):
-        """Setter for enable network isolation.
-
-        Args:
-            enable_network_isolation: Value for enable network isolation
-
-        """
-        self._enable_network_isolation = enable_network_isolation
 
     def _to_request_dict(self):
         """Generates a request dictionary using the parameters provided to the class."""
-        network_config_request = {"EnableNetworkIsolation": self.enable_network_isolation}
+        # Enable Network Isolation should default to False if it is not provided.
+        enable_network_isolation = (
+            False if self.enable_network_isolation is None else self.enable_network_isolation
+        )
+        network_config_request = {"EnableNetworkIsolation": enable_network_isolation}
 
         if self.encrypt_inter_container_traffic is not None:
             network_config_request[

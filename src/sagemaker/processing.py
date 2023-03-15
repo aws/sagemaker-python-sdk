@@ -154,41 +154,30 @@ class Processor(object):
         self.volume_kms_key = self.sagemaker_session.get_sagemaker_config_override(
             PROCESSING_JOB_VOLUME_KMS_KEY_ID_PATH, default_value=volume_kms_key
         )
-        _enable_network_isolation_from_config = (
-            self.sagemaker_session.get_sagemaker_config_override(
-                PROCESSING_JOB_ENABLE_NETWORK_ISOLATION_PATH
-            )
+        self.network_config = self.sagemaker_session.resolve_class_attribute_from_config(
+            NetworkConfig,
+            network_config,
+            "subnets",
+            PROCESSING_JOB_SUBNETS_PATH,
         )
-
-        _subnets_from_config = self.sagemaker_session.get_sagemaker_config_override(
-            PROCESSING_JOB_SUBNETS_PATH
+        self.network_config = self.sagemaker_session.resolve_class_attribute_from_config(
+            NetworkConfig,
+            self.network_config,
+            "security_group_ids",
+            PROCESSING_JOB_SECURITY_GROUP_IDS_PATH,
         )
-        _security_group_ids_from_config = self.sagemaker_session.get_sagemaker_config_override(
-            PROCESSING_JOB_SECURITY_GROUP_IDS_PATH
+        self.network_config = self.sagemaker_session.resolve_class_attribute_from_config(
+            NetworkConfig,
+            self.network_config,
+            "enable_network_isolation",
+            PROCESSING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
         )
-        if network_config:
-            if not network_config.subnets:
-                network_config.subnets = _subnets_from_config
-            if network_config.enable_network_isolation is None:
-                network_config.enable_network_isolation = (
-                    _enable_network_isolation_from_config or False
-                )
-            if not network_config.security_group_ids:
-                network_config.security_group_ids = _security_group_ids_from_config
-            self.network_config = network_config
-        else:
-            if (
-                _enable_network_isolation_from_config is not None
-                or _subnets_from_config
-                or _security_group_ids_from_config
-            ):
-                self.network_config = NetworkConfig(
-                    enable_network_isolation=_enable_network_isolation_from_config or False,
-                    security_group_ids=_security_group_ids_from_config,
-                    subnets=_subnets_from_config,
-                )
-            else:
-                self.network_config = None
+        self.network_config = self.sagemaker_session.resolve_class_attribute_from_config(
+            NetworkConfig,
+            self.network_config,
+            "encrypt_inter_container_traffic",
+            PATH_V1_PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION,
+        )
         self.role = self.sagemaker_session.get_sagemaker_config_override(
             PROCESSING_JOB_ROLE_ARN_PATH, default_value=role
         )
@@ -198,13 +187,6 @@ class Processor(object):
             # Because of marking that parameter as optional, we should validate if it is None, even
             # after fetching the config.
             raise ValueError("IAM role should be provided for creating Processing jobs.")
-
-        self.network_config = self.sagemaker_session.resolve_class_attribute_from_config(
-            NetworkConfig,
-            self.network_config,
-            "encrypt_inter_container_traffic",
-            PATH_V1_PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION,
-        )
 
     @runnable_by_pipeline
     def run(
