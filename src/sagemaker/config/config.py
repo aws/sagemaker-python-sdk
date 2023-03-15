@@ -214,9 +214,8 @@ def _load_config_from_file(file_path: str) -> dict:
             f"Unable to load config file from the location: {file_path} Please"
             f" provide a valid file path"
         )
-    else:
-        logger.debug("Fetching configuration file from the path: %s", file_path)
-        return yaml.safe_load(open(inferred_file_path, "r"))
+    logger.debug("Fetching configuration file from the path: %s", file_path)
+    return yaml.safe_load(open(inferred_file_path, "r"))
 
 
 def _load_config_from_s3(s3_uri, s3_resource_for_config) -> dict:

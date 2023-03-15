@@ -456,6 +456,11 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                 VALIDATION_PROFILES: {
                                     TYPE: "array",
                                     "items": {"$ref": "#/definitions/validationProfile"},
+                                    # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_ModelPackageValidationSpecification.html
+                                    # According to the API docs, This array should have exactly 1
+                                    # item.
+                                    "minItems": 1,
+                                    "maxItems": 1,
                                 },
                                 VALIDATION_ROLE: {"$ref": "#/definitions/roleArn"},
                             },

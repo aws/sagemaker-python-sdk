@@ -1483,7 +1483,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         return update_training_job_request
 
     # TODO: unit tests or make a more generic version
-    def update_processing_input_from_config(self, inputs):
+    def _update_processing_input_from_config(self, inputs):
         """Updates Processor Inputs to fetch values from SageMakerConfig wherever applicable.
 
         Args:
@@ -1504,28 +1504,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             # config for the ones already present in dict_from_inputs.
             # If BOTH are present, we will still add to both and let the API call fail as it would
             # have even without injection from sagemaker_config.
-            athena_path = [DATASET_DEFINITION, ATHENA_DATASET_DEFINITION]
-            redshift_path = [DATASET_DEFINITION, REDSHIFT_DATASET_DEFINITION]
-
-            athena_value_from_inputs = get_nested_value(dict_from_inputs, athena_path)
-            athena_value_from_config = get_nested_value(dict_from_config, athena_path)
-
-            redshift_value_from_inputs = get_nested_value(dict_from_inputs, redshift_path)
-            redshift_value_from_config = get_nested_value(dict_from_config, redshift_path)
-
-            if athena_value_from_inputs is not None:
-                merge_dicts(athena_value_from_config, athena_value_from_inputs)
-                inputs[i] = set_nested_value(
-                    dict_from_inputs, athena_path, athena_value_from_config
-                )
-
-            if redshift_value_from_inputs is not None:
-                merge_dicts(redshift_value_from_config, redshift_value_from_inputs)
-                inputs[i] = set_nested_value(
-                    dict_from_inputs, redshift_path, redshift_value_from_config
-                )
-
-        if processing_inputs_from_config != []:
+            merge_dicts(dict_from_config, dict_from_inputs)
+            inputs[i] = dict_from_config
+        if processing_inputs_from_config:
             print(
                 "[Sagemaker Config - applied value]\n",
                 "config key = {}\n".format(PROCESSING_JOB_INPUTS_PATH),
@@ -1598,7 +1579,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             PATH_V1_PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION,
         )
 
-        self.update_processing_input_from_config(inputs)
+        self._update_processing_input_from_config(inputs)
         role_arn = self.get_sagemaker_config_override(
             PROCESSING_JOB_ROLE_ARN_PATH, default_value=role_arn
         )
@@ -3902,53 +3883,40 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION", "IMAGE_SEGMENTATION",
                 "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
         """
-        validation_role_from_config = self.get_sagemaker_config_override(
-            MODEL_PACKAGE_VALIDATION_ROLE_PATH
-        )
-        validation_profiles_from_config = self.get_sagemaker_config_override(
-            MODEL_PACKAGE_VALIDATION_PROFILES_PATH
-        )
-        if validation_role_from_config or validation_profiles_from_config:
-            if not validation_specification:
-                validation_specification = {
-                    VALIDATION_ROLE: validation_role_from_config,
-                    VALIDATION_PROFILES: validation_profiles_from_config,
-                }
-            else:
-                # ValidationSpecification is provided as method parameter
-                # Now we need to carefully merge
-                if VALIDATION_ROLE not in validation_specification:
-                    # if Validation role is not provided as part of the dict, merge it
-                    validation_specification[VALIDATION_ROLE] = validation_role_from_config
-                if VALIDATION_PROFILES not in validation_specification:
-                    # if Validation profile is not provided as part of the dict, merge it
-                    validation_specification[VALIDATION_PROFILES] = validation_profiles_from_config
-                elif validation_profiles_from_config:
-                    # Validation profiles are provided in the config as well as parameter.
-                    validation_profiles = validation_specification[VALIDATION_PROFILES]
-                    for i in range(
-                        min(len(validation_profiles), len(validation_profiles_from_config))
-                    ):
-                        # Now we need to merge corresponding entries which are not provided in the
-                        # dict , but are present in the config
-                        validation_profile = validation_profiles[i]
-                        validation_profile_from_config = validation_profiles_from_config[i]
-                        original_config_dict_value = validation_profile_from_config.copy()
-                        # Apply the default configurations on top of the config entries
-                        merge_dicts(validation_profile_from_config, validation_profile)
-                        if validation_profile != validation_profile_from_config:
-                            print(
-                                "Config value {} at config path {} was fetched first for "
-                                "index {}.".format(
-                                    original_config_dict_value,
-                                    MODEL_PACKAGE_VALIDATION_PROFILES_PATH,
-                                    i,
-                                ),
-                                "It was then merged with the existing value {} to give {}".format(
-                                    validation_profile, validation_profile_from_config
-                                ),
-                            )
-                        validation_profile.update(validation_profile_from_config)
+
+        if validation_specification:
+            # ValidationSpecification is provided. Now we can merge missing entries from config.
+            # If ValidationSpecification is not provided, it is safe to ignore. This is because,
+            # if this object is provided to the API, then both ValidationProfiles and ValidationRole
+            # are required and for ValidationProfile, ProfileName is a required parameter. That is
+            # not supported by the config now. So if we merge values from config, then API will
+            # throw an exception. In the future, when SageMaker Config starts supporting other
+            # parameters we can add that.
+            validation_role = self.get_sagemaker_config_override(
+                MODEL_PACKAGE_VALIDATION_ROLE_PATH,
+                default_value=validation_specification.get(VALIDATION_ROLE, None),
+            )
+            validation_specification[VALIDATION_ROLE] = validation_role
+            validation_profiles_from_config = (
+                self.get_sagemaker_config_override(MODEL_PACKAGE_VALIDATION_PROFILES_PATH) or []
+            )
+            validation_profiles = validation_specification.get(VALIDATION_PROFILES, [])
+            for i in range(min(len(validation_profiles), len(validation_profiles_from_config))):
+                original_config_dict_value = copy.deepcopy(validation_profiles_from_config[i])
+                merge_dicts(validation_profiles_from_config[i], validation_profiles[i])
+                if validation_profiles[i] != validation_profiles_from_config[i]:
+                    print(
+                        "Config value {} at config path {} was fetched first for "
+                        "index {}.".format(
+                            original_config_dict_value,
+                            MODEL_PACKAGE_VALIDATION_PROFILES_PATH,
+                            i,
+                        ),
+                        "It was then merged with the existing value {} to give {}".format(
+                            validation_profiles[i], validation_profiles_from_config[i]
+                        ),
+                    )
+                validation_profiles[i].update(validation_profiles_from_config[i])
         model_pkg_request = get_create_model_package_request(
             model_package_name,
             model_package_group_name,
