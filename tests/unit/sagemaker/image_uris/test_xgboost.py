@@ -22,6 +22,7 @@ ALGO_REGISTRIES = {
     "ap-northeast-2": "306986355934",
     "ap-northeast-3": "867004704886",
     "ap-south-1": "991648021394",
+    "ap-south-2": "628508329040",
     "ap-southeast-1": "475088953585",
     "ap-southeast-2": "544295431143",
     "ap-southeast-3": "951798379941",
@@ -44,6 +45,7 @@ ALGO_REGISTRIES = {
     "us-gov-west-1": "226302683700",
     "us-gov-east-1": "237065988967",
     "us-iso-east-1": "490574956308",
+    "us-isob-east-1": "765400339828",
     "us-west-1": "632365934929",
     "us-west-2": "433757028032",
 }
@@ -58,6 +60,7 @@ FRAMEWORK_REGISTRIES = {
     "ap-northeast-2": "366743142698",
     "ap-northeast-3": "867004704886",
     "ap-south-1": "720646828776",
+    "ap-south-2": "628508329040",
     "ap-southeast-1": "121021644041",
     "ap-southeast-2": "783357654285",
     "ap-southeast-3": "951798379941",
@@ -80,6 +83,7 @@ FRAMEWORK_REGISTRIES = {
     "us-gov-west-1": "414596584902",
     "us-gov-east-1": "237065988967",
     "us-iso-east-1": "833128469047",
+    "us-isob-east-1": "281123927165",
     "us-west-1": "746614075791",
     "us-west-2": "246618743249",
 }
