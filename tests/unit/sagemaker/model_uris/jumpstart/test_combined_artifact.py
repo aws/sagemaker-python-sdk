@@ -15,9 +15,8 @@ from __future__ import absolute_import
 from mock.mock import patch
 
 from sagemaker import model_uris
-import pytest
 
-from tests.unit.sagemaker.jumpstart.utils import get_prototype_model_spec, get_special_model_spec
+from tests.unit.sagemaker.jumpstart.utils import get_special_model_spec
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -32,31 +31,8 @@ def test_jumpstart_combined_artifacts(patched_get_model_specs):
         model_scope="inference",
         model_id=model_id_combined_model_artifact,
         model_version="*",
-        include_script=True,
     )
     assert (
         uri == "s3://jumpstart-cache-prod-us-west-2/huggingface-infer/"
         "prepack/v1.0.0/infer-prepack-huggingface-text2text-flan-t5-xxl-fp16.tar.gz"
     )
-
-    with pytest.raises(ValueError):
-        model_uris.retrieve(
-            region="us-west-2",
-            model_scope="training",
-            model_id=model_id_combined_model_artifact,
-            model_version="*",
-            include_script=True,
-        )
-
-    patched_get_model_specs.side_effect = get_prototype_model_spec
-
-    model_id_combined_model_artifact_unsupported = "xgboost-classification-model"
-
-    with pytest.raises(ValueError):
-        model_uris.retrieve(
-            region="us-west-2",
-            model_scope="inference",
-            model_id=model_id_combined_model_artifact_unsupported,
-            model_version="*",
-            include_script=True,
-        )

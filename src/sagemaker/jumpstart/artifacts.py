@@ -177,7 +177,6 @@ def _retrieve_model_uri(
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-    include_script: bool = False,
 ):
     """Retrieves the model artifact S3 URI for the model matching the given arguments.
 
@@ -198,8 +197,6 @@ def _retrieve_model_uri(
         tolerate_deprecated_model (bool): True if deprecated versions of model
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated.
-        include_script (bool): True if script artifact should be packaged alongside model
-            tarball. (Default: False).
     Returns:
         str: the model artifact S3 URI for the corresponding model.
 
@@ -221,24 +218,14 @@ def _retrieve_model_uri(
         tolerate_deprecated_model=tolerate_deprecated_model,
     )
 
-    error_msg_no_combined_artifact = (
-        "No combined script and model tarball available "
-        f"for {model_id} with version {model_version} for {model_scope}."
-    )
-
     if model_scope == JumpStartScriptScope.INFERENCE:
-        if not include_script:
-            model_artifact_key = model_specs.hosting_artifact_key
-        else:
-            model_artifact_key = getattr(model_specs, "hosting_prepacked_artifact_key", None)
-            if model_artifact_key is None:
-                raise ValueError(error_msg_no_combined_artifact)
+        model_artifact_key = (
+            getattr(model_specs, "hosting_prepacked_artifact_key", None)
+            or model_specs.hosting_artifact_key
+        )
 
     elif model_scope == JumpStartScriptScope.TRAINING:
-        if not include_script:
-            model_artifact_key = model_specs.training_artifact_key
-        else:
-            raise ValueError(error_msg_no_combined_artifact)
+        model_artifact_key = model_specs.training_artifact_key
 
     bucket = os.environ.get(
         ENV_VARIABLE_JUMPSTART_MODEL_ARTIFACT_BUCKET_OVERRIDE
