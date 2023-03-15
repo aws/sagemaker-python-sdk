@@ -1432,6 +1432,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 update the keep-alive period if the warm pool status is `Available`. No other fields
                 can be updated. (default: ``None``).
         """
+        # No injections from sagemaker_config because the UpdateTrainingJob API's resource_config
+        # object accepts fewer parameters than the CreateTrainingJob API, and none that the
+        # sagemaker_config currently supports
+
         update_training_job_request = self._get_update_training_job_request(
             job_name=job_name,
             profiler_rule_configs=profiler_rule_configs,

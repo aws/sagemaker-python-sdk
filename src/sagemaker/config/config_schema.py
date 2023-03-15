@@ -203,7 +203,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
             TYPE: "string",
             # Currently we support only one schema version (1.0).
             # In the future this might change if we introduce any breaking changes.
-            # So adding an enum as a validator.
+            # So added an enum as a validator.
             "enum": ["1.0"],
             "description": "The schema version of the document.",
         },
