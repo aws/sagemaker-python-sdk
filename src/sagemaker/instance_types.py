@@ -15,7 +15,7 @@
 from __future__ import absolute_import
 
 import logging
-from typing import List, Optional
+from typing import List
 
 from sagemaker.jumpstart import utils as jumpstart_utils
 from sagemaker.jumpstart import artifacts
@@ -30,7 +30,7 @@ def retrieve_default(
     scope=None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-) -> Optional[str]:
+) -> str:
     """Retrieves the default instance type for the model matching the given arguments.
 
     Args:
@@ -50,7 +50,7 @@ def retrieve_default(
             (exception not raised). False if these models should raise an exception.
             (Default: False).
     Returns:
-        dict: The default instance type to use for the model.
+        str: The default instance type to use for the model.
 
     Raises:
         ValueError: If the combination of arguments specified is not supported.
@@ -80,7 +80,7 @@ def retrieve_supported(
     scope=None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-) -> Optional[List[str]]:
+) -> List[str]:
     """Retrieves the supported training instance types for the model matching the given arguments.
 
     Args:
@@ -98,7 +98,7 @@ def retrieve_supported(
             (exception not raised). False if these models should raise an exception.
             (Default: False).
     Returns:
-        dict: The supported instance types to use for the model.
+        list: The supported instance types to use for the model.
 
     Raises:
         ValueError: If the combination of arguments specified is not supported.

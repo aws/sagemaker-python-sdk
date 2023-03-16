@@ -18,7 +18,7 @@ import pytest
 
 from sagemaker import instance_types
 
-from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
+from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec, get_special_model_spec
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -132,3 +132,31 @@ def test_jumpstart_instance_types(patched_get_model_specs):
 
     with pytest.raises(ValueError):
         instance_types.retrieve_supported(model_id=model_id, scope="training")
+
+
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+def test_jumpstart_no_supported_instance_types(patched_get_model_specs):
+    patched_get_model_specs.side_effect = get_special_model_spec
+
+    model_id, model_version = "no-supported-instance-types-model", "*"
+    region = "us-west-2"
+
+    with pytest.raises(ValueError):
+        instance_types.retrieve_default(
+            region=region, model_id=model_id, model_version=model_version, scope="training"
+        )
+
+    with pytest.raises(ValueError):
+        instance_types.retrieve_default(
+            region=region, model_id=model_id, model_version=model_version, scope="inference"
+        )
+
+    with pytest.raises(ValueError):
+        instance_types.retrieve_supported(
+            region=region, model_id=model_id, model_version=model_version, scope="training"
+        )
+
+    with pytest.raises(ValueError):
+        instance_types.retrieve_supported(
+            region=region, model_id=model_id, model_version=model_version, scope="inference"
+        )

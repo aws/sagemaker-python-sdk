@@ -12,6 +12,127 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+
+SPECIAL_MODEL_SPECS_DICT = {
+    "no-supported-instance-types-model": {
+        "model_id": "pytorch-ic-mobilenet-v2",
+        "url": "https://pytorch.org/hub/pytorch_vision_mobilenet_v2/",
+        "version": "1.0.0",
+        "min_sdk_version": "2.49.0",
+        "training_supported": True,
+        "incremental_training_supported": True,
+        "hosting_ecr_specs": {
+            "framework": "pytorch",
+            "framework_version": "1.5.0",
+            "py_version": "py3",
+        },
+        "training_ecr_specs": {
+            "framework": "pytorch",
+            "framework_version": "1.5.0",
+            "py_version": "py3",
+        },
+        "hosting_artifact_key": "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz",
+        "training_artifact_key": "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
+        "hosting_script_key": "source-directory-tarballs/pytorch/inference/ic/v1.0.0/sourcedir.tar.gz",
+        "training_script_key": "source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz",
+        "hyperparameters": [
+            {
+                "name": "epochs",
+                "type": "int",
+                "default": 3,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            },
+            {
+                "name": "adam-learning-rate",
+                "type": "float",
+                "default": 0.05,
+                "min": 1e-08,
+                "max": 1,
+                "scope": "algorithm",
+            },
+            {
+                "name": "batch-size",
+                "type": "int",
+                "default": 4,
+                "min": 1,
+                "max": 1024,
+                "scope": "algorithm",
+            },
+            {
+                "name": "sagemaker_submit_directory",
+                "type": "text",
+                "default": "/opt/ml/input/data/code/sourcedir.tar.gz",
+                "scope": "container",
+            },
+            {
+                "name": "sagemaker_program",
+                "type": "text",
+                "default": "transfer_learning.py",
+                "scope": "container",
+            },
+            {
+                "name": "sagemaker_container_log_level",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+            },
+        ],
+        "inference_environment_variables": [
+            {
+                "name": "SAGEMAKER_PROGRAM",
+                "type": "text",
+                "default": "inference.py",
+                "scope": "container",
+            },
+            {
+                "name": "SAGEMAKER_SUBMIT_DIRECTORY",
+                "type": "text",
+                "default": "/opt/ml/model/code",
+                "scope": "container",
+            },
+            {
+                "name": "SAGEMAKER_CONTAINER_LOG_LEVEL",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+            },
+            {
+                "name": "MODEL_CACHE_ROOT",
+                "type": "text",
+                "default": "/opt/ml/model",
+                "scope": "container",
+            },
+            {"name": "SAGEMAKER_ENV", "type": "text", "default": "1", "scope": "container"},
+            {
+                "name": "SAGEMAKER_MODEL_SERVER_WORKERS",
+                "type": "text",
+                "default": "1",
+                "scope": "container",
+            },
+            {
+                "name": "SAGEMAKER_MODEL_SERVER_TIMEOUT",
+                "type": "text",
+                "default": "3600",
+                "scope": "container",
+            },
+        ],
+        "inference_vulnerable": False,
+        "inference_dependencies": [],
+        "inference_vulnerabilities": [],
+        "training_vulnerable": False,
+        "training_dependencies": [],
+        "training_vulnerabilities": [],
+        "deprecated": False,
+        "default_inference_instance_type": "",
+        "supported_inference_instance_types": None,
+        "default_training_instance_type": None,
+        "supported_training_instance_types": [],
+    }
+}
+
+
 PROTOTYPICAL_MODEL_SPECS_DICT = {
     "pytorch-eqa-bert-base-cased": {
         "model_id": "pytorch-eqa-bert-base-cased",

@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import os
 from typing import Dict, List, Optional
 from sagemaker import image_uris
+from sagemaker.jumpstart.exceptions import NO_AVAILABLE_INSTANCES_ERROR_MSG
 from sagemaker.jumpstart.constants import (
     ENV_VARIABLE_JUMPSTART_MODEL_ARTIFACT_BUCKET_OVERRIDE,
     ENV_VARIABLE_JUMPSTART_SCRIPT_ARTIFACT_BUCKET_OVERRIDE,
@@ -408,7 +409,7 @@ def _retrieve_default_instance_type(
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-) -> Optional[str]:
+) -> str:
     """Retrieves the default instance type for the model.
 
     Args:
@@ -428,7 +429,11 @@ def _retrieve_default_instance_type(
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
     Returns:
-        list: the default instance type to use for the model or None.
+        str: the default instance type to use for the model or None.
+
+    Raises:
+        ValueError: If the model is not available in the
+            specified region due to lack of supported computing instances.
     """
 
     if region is None:
@@ -444,12 +449,17 @@ def _retrieve_default_instance_type(
     )
 
     if scope == JumpStartScriptScope.INFERENCE:
-        return model_specs.default_inference_instance_type
-    if scope == JumpStartScriptScope.TRAINING:
-        return model_specs.default_training_instance_type
-    raise NotImplementedError(
-        f"Unsupported script scope for retrieving default instance type: '{scope}'"
-    )
+        default_instance_type = model_specs.default_inference_instance_type
+    elif scope == JumpStartScriptScope.TRAINING:
+        default_instance_type = model_specs.default_training_instance_type
+    else:
+        raise NotImplementedError(
+            f"Unsupported script scope for retrieving default instance type: '{scope}'"
+        )
+
+    if default_instance_type in {None, ""}:
+        raise ValueError(NO_AVAILABLE_INSTANCES_ERROR_MSG.format(model_id=model_id, region=region))
+    return default_instance_type
 
 
 def _retrieve_supported_instance_type(
@@ -459,7 +469,7 @@ def _retrieve_supported_instance_type(
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-) -> Optional[List[str]]:
+) -> List[str]:
     """Retrieves the supported instance types for the model.
 
     Args:
@@ -480,6 +490,10 @@ def _retrieve_supported_instance_type(
             an exception if the version of the model is deprecated. (Default: False).
     Returns:
         list: the supported instance types to use for the model or None.
+
+    Raises:
+        ValueError: If the model is not available in the
+            specified region due to lack of supported computing instances.
     """
 
     if region is None:
@@ -495,9 +509,15 @@ def _retrieve_supported_instance_type(
     )
 
     if scope == JumpStartScriptScope.INFERENCE:
-        return model_specs.supported_inference_instance_types
-    if scope == JumpStartScriptScope.TRAINING:
-        return model_specs.supported_training_instance_types
-    raise NotImplementedError(
-        f"Unsupported script scope for retrieving supported instance types: '{scope}'"
-    )
+        instance_types = model_specs.supported_inference_instance_types
+    elif scope == JumpStartScriptScope.TRAINING:
+        instance_types = model_specs.supported_training_instance_types
+    else:
+        raise NotImplementedError(
+            f"Unsupported script scope for retrieving supported instance types: '{scope}'"
+        )
+
+    if instance_types is None or len(instance_types) == 0:
+        raise ValueError(NO_AVAILABLE_INSTANCES_ERROR_MSG.format(model_id=model_id, region=region))
+
+    return instance_types
