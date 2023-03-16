@@ -296,6 +296,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "supported_inference_instance_types",
         "default_training_instance_type",
         "supported_training_instance_types",
+        "metrics",
     ]
 
     def __init__(self, spec: Dict[str, Any]):
@@ -344,6 +345,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         self.supported_training_instance_types: Optional[List[str]] = json_obj.get(
             "supported_training_instance_types"
         )
+        self.metrics: Optional[List[Dict[str, str]]] = json_obj.get("metrics", None)
 
         if self.training_supported:
             self.training_ecr_specs: JumpStartECRSpecs = JumpStartECRSpecs(

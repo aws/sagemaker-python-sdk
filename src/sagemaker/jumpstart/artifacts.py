@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 """This module contains functions for obtaining JumpStart ECR and S3 URIs."""
 from __future__ import absolute_import
+from copy import deepcopy
 import os
 from typing import Dict, List, Optional
 from sagemaker import image_uris
@@ -436,9 +437,6 @@ def _retrieve_default_instance_type(
             specified region due to lack of supported computing instances.
     """
 
-    if region is None:
-        region = JUMPSTART_DEFAULT_REGION_NAME
-
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
@@ -521,3 +519,46 @@ def _retrieve_supported_instance_type(
         raise ValueError(NO_AVAILABLE_INSTANCES_ERROR_MSG.format(model_id=model_id, region=region))
 
     return instance_types
+
+
+def _retrieve_default_training_metric_definitions(
+    model_id: str,
+    model_version: str,
+    region: Optional[str],
+    tolerate_vulnerable_model: bool = False,
+    tolerate_deprecated_model: bool = False,
+) -> Optional[List[Dict[str, str]]]:
+    """Retrieves the default training metric definitions for the model.
+
+    Args:
+        model_id (str): JumpStart model ID of the JumpStart model for which to
+            retrieve the default training metric definitions.
+        model_version (str): Version of the JumpStart model for which to retrieve the
+            default training metric definitions.
+        region (Optional[str]): Region for which to retrieve default training metric
+            definitions.
+        tolerate_vulnerable_model (bool): True if vulnerable versions of model
+            specifications should be tolerated (exception not raised). If False, raises an
+            exception if the script used by this version of the model has dependencies with known
+            security vulnerabilities. (Default: False).
+        tolerate_deprecated_model (bool): True if deprecated versions of model
+            specifications should be tolerated (exception not raised). If False, raises
+            an exception if the version of the model is deprecated. (Default: False).
+
+    Returns:
+        list: the default training metric definitions to use for the model or None.
+    """
+
+    if region is None:
+        region = JUMPSTART_DEFAULT_REGION_NAME
+
+    model_specs = verify_model_region_and_return_specs(
+        model_id=model_id,
+        version=model_version,
+        scope=JumpStartScriptScope.TRAINING,
+        region=region,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
+        tolerate_deprecated_model=tolerate_deprecated_model,
+    )
+
+    return deepcopy(model_specs.metrics) if model_specs.metrics else None

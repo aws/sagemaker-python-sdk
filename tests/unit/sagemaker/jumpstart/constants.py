@@ -1322,6 +1322,7 @@ BASE_SPEC = {
         "ml.m5.xlarge",
         "ml.c5.2xlarge",
     ],
+    "metrics": [{"Regex": "val_accuracy: ([0-9\\.]+)", "Name": "pytorch-ic:val-accuracy"}],
 }
 
 BASE_HEADER = {
