@@ -120,7 +120,7 @@
                     "us-west-2": "246618743249"
                 },
                 "repository": "sagemaker-scikit-learn"
-                },
+            },
             "1.2-1": {
                 "processors": ["cpu"],
                 "py_versions": ["py3"],
@@ -284,7 +284,7 @@
                     "us-west-2": "246618743249"
                 },
                 "repository": "sagemaker-scikit-learn"
-                },
+            },
             "1.2-1": {
                 "processors": ["cpu"],
                 "py_versions": ["py3"],
