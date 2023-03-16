@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.139.0 (2023-03-15)
+
+### Features
+
+ * Add XGBoost framework 1.7-1 version
+
+### Bug Fixes and Other Changes
+
+ * Fix image_uris.retrieve() function to return ValueError when framework is not allowed for an instance_type
+
 ## v2.138.0 (2023-03-13)
 
 ### Features
