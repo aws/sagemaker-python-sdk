@@ -437,6 +437,9 @@ def _retrieve_default_instance_type(
             specified region due to lack of supported computing instances.
     """
 
+    if region is None:
+        region = JUMPSTART_DEFAULT_REGION_NAME
+
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
