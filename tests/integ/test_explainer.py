@@ -81,9 +81,7 @@ def endpoint_name(sagemaker_session):
 
 
 def test_describe_explainer_config(sagemaker_session, endpoint_name):
-    endpoint_desc = sagemaker_session.sagemaker_client.describe_endpoint(
-        EndpointName=endpoint_name
-    )
+    endpoint_desc = sagemaker_session.sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
 
     endpoint_config_desc = sagemaker_session.sagemaker_client.describe_endpoint_config(
         EndpointConfigName=endpoint_desc["EndpointConfigName"]

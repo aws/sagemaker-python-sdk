@@ -2913,6 +2913,7 @@ def test_fit_deploy_tags_in_estimator(name_from_base, sagemaker_session):
         wait=True,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
+        explainer_config_dict=None,
     )
 
     sagemaker_session.create_model.assert_called_with(
@@ -2963,6 +2964,7 @@ def test_fit_deploy_tags(name_from_base, sagemaker_session):
         wait=True,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
+        explainer_config_dict=None,
     )
 
     sagemaker_session.create_model.assert_called_with(

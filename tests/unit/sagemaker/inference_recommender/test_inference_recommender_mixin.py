@@ -566,6 +566,7 @@ def test_deploy_right_size_with_model_package_succeeds(
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
         async_inference_config_dict=None,
         data_capture_config_dict=None,
+        explainer_config_dict=None,
         kms_key=None,
         name="ir-endpoint-test",
         production_variants=IR_PRODUCTION_VARIANTS,
@@ -587,6 +588,7 @@ def test_deploy_right_size_with_both_overrides_succeeds(
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
         async_inference_config_dict=None,
         data_capture_config_dict=None,
+        explainer_config_dict=None,
         kms_key=None,
         name="ir-endpoint-test",
         production_variants=IR_OVERRIDDEN_PRODUCTION_VARIANTS,
@@ -639,6 +641,7 @@ def test_deploy_right_size_serverless_override(sagemaker_session, default_right_
         wait=True,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
+        explainer_config_dict=None,
     )
 
 
@@ -660,6 +663,7 @@ def test_deploy_right_size_async_override(sagemaker_session, default_right_sized
         wait=True,
         data_capture_config_dict=None,
         async_inference_config_dict={"OutputConfig": {"S3OutputPath": "s3://some-path"}},
+        explainer_config_dict=None,
     )
 
 
