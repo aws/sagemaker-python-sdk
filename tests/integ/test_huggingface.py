@@ -162,7 +162,9 @@ def test_huggingface_inference(
     )
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         model.deploy(
-            instance_type=gpu_pytorch_instance_type, initial_instance_count=1, endpoint_name=endpoint_name
+            instance_type=gpu_pytorch_instance_type,
+            initial_instance_count=1,
+            endpoint_name=endpoint_name,
         )
 
         predictor = HuggingFacePredictor(endpoint_name=endpoint_name)
