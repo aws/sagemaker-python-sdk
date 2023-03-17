@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.140.0 (2023-03-17)
+
+### Features
+
+ * SDK changes for TRCOMP support
+
+### Bug Fixes and Other Changes
+
+ * [Feature - Hugging Face] Update Transformers 4.26 - PyTorch 1.13.1 Image uri
+
 ## v2.139.0 (2023-03-15)
 
 ### Features
