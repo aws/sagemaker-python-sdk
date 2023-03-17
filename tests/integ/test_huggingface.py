@@ -28,7 +28,6 @@ ROLE = "SageMakerRole"
 
 
 @pytest.mark.release
-@retry_with_instance_list(gpu_list(integ.test_region()))
 def test_framework_processing_job_with_deps(
     sagemaker_session,
     huggingface_training_latest_version,
@@ -59,7 +58,6 @@ def test_framework_processing_job_with_deps(
 
 
 @pytest.mark.release
-@retry_with_instance_list(gpu_list(integ.test_region()))
 def test_huggingface_training(
     sagemaker_session,
     huggingface_training_latest_version,
@@ -101,12 +99,9 @@ def test_huggingface_training(
 
 
 @pytest.mark.release
-@pytest.mark.skip(
-    reason="need to re enable it later t.corp:V609860141",
-)
 def test_huggingface_training_tf(
     sagemaker_session,
-    gpu_pytorch_instance_type,
+    gpu_instance_type,
     huggingface_training_latest_version,
     huggingface_training_tensorflow_latest_version,
     huggingface_tensorflow_latest_training_py_version,
@@ -121,7 +116,7 @@ def test_huggingface_training_tf(
             transformers_version=huggingface_training_latest_version,
             tensorflow_version=huggingface_training_tensorflow_latest_version,
             instance_count=1,
-            instance_type=gpu_pytorch_instance_type,
+            instance_type=gpu_instance_type,
             hyperparameters={
                 "model_name_or_path": "distilbert-base-cased",
                 "per_device_train_batch_size": 128,
