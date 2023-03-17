@@ -710,8 +710,6 @@ def test_create_pytorch_estimator_w_image_with_framework_profile(
 
 def test_create_tf_estimator_with_framework_profile(
     sagemaker_session,
-    tensorflow_inference_version,
-    tensorflow_inference_py_version,
     default_framework_profile,
 ):
     profiler_config = ProfilerConfig(framework_profile_params=default_framework_profile)
