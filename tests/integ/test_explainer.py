@@ -40,6 +40,11 @@ TEST_CSV_DATA = "42,42,42,42,42,42,42"
 SHAP_BASELINE = "1,2,3,4,5,6,7"
 XGBOOST_DATA_PATH = os.path.join(DATA_DIR, "xgboost_model")
 
+CLARIFY_SHAP_BASELINE_CONFIG = ClarifyShapBaselineConfig(shap_baseline=SHAP_BASELINE)
+CLARIFY_SHAP_CONFIG = ClarifyShapConfig(shap_baseline_config=CLARIFY_SHAP_BASELINE_CONFIG)
+CLARIFY_EXPLAINER_CONFIG = ClarifyExplainerConfig(shap_config=CLARIFY_SHAP_CONFIG)
+EXPLAINER_CONFIG = ExplainerConfig(clarify_explainer_config=CLARIFY_EXPLAINER_CONFIG)
+
 
 @pytest.yield_fixture(scope="module")
 def endpoint_name(sagemaker_session):
@@ -66,17 +71,24 @@ def endpoint_name(sagemaker_session):
             role=ROLE,
             sagemaker_session=sagemaker_session,
         )
-        clarify_shap_baseline_config = ClarifyShapBaselineConfig(shap_baseline=SHAP_BASELINE)
-        clarify_shap_config = ClarifyShapConfig(shap_baseline_config=clarify_shap_baseline_config)
-        clarify_explainer_config = ClarifyExplainerConfig(shap_config=clarify_shap_config)
-        explainer_config = ExplainerConfig(clarify_explainer_config=clarify_explainer_config)
         xgb_model.deploy(
             INSTANCE_COUNT,
             INSTANCE_TYPE,
             endpoint_name=endpoint_name,
-            explainer_config=explainer_config,
+            explainer_config=EXPLAINER_CONFIG,
         )
         yield endpoint_name
+
+
+def test_describe_explainer_config(sagemaker_session, endpoint_name):
+    endpoint_desc = sagemaker_session.sagemaker_client.describe_endpoint(
+        EndpointName=endpoint_name
+    )
+
+    endpoint_config_desc = sagemaker_session.sagemaker_client.describe_endpoint_config(
+        EndpointConfigName=endpoint_desc["EndpointConfigName"]
+    )
+    assert endpoint_config_desc["ExplainerConfig"] == EXPLAINER_CONFIG._to_request_dict()
 
 
 def test_invoke_explainer_enabled_endpoint(sagemaker_session, endpoint_name):
