@@ -63,13 +63,13 @@ Debugger Configuration APIs
 
 .. autoclass:: ProfilerConfig
     :show-inheritance:
-    
+
 Debugger Configuration APIs for Framework Profiling (Deprecated)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
-    
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 .. warning::
 
-	SageMaker Debugger deprecates the framework profiling feature starting from TensorFlow 2.11 and PyTorch 2.0. You can still use the feature in the previous versions of the frameworks and SDKs as follows. 
+  SageMaker Debugger deprecates the framework profiling feature starting from TensorFlow 2.11 and PyTorch 2.0. You can still use the feature in the previous versions of the frameworks and SDKs as follows.
 
   * SageMaker Python SDK <= v2.130.0
   * PyTorch >= v1.6.0, < v2.0
