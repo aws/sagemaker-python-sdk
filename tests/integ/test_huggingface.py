@@ -19,8 +19,6 @@ import pytest
 from sagemaker.huggingface import HuggingFace, HuggingFaceProcessor
 from sagemaker.huggingface.model import HuggingFaceModel, HuggingFacePredictor
 from sagemaker.utils import unique_name_from_base
-from tests import integ
-from tests.integ.utils import gpu_list, retry_with_instance_list
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
