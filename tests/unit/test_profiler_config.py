@@ -664,8 +664,6 @@ def test_create_pytorch_estimator_with_framework_profile(
 ):
     profiler_config = ProfilerConfig(framework_profile_params=default_framework_profile)
 
-    container_log_level = '"logging.INFO"'
-    source_dir = "s3://mybucket/source"
     pytorch = PyTorch(
         entry_point=SCRIPT_PATH,
         framework_version=pytorch_inference_version,
@@ -677,6 +675,7 @@ def test_create_pytorch_estimator_with_framework_profile(
         base_job_name="job",
         profiler_config=profiler_config,
     )
+    assert pytorch._framework_name == "pytorch"
 
 
 def test_create_pytorch_estimator_w_image_with_framework_profile(
@@ -706,6 +705,7 @@ def test_create_pytorch_estimator_w_image_with_framework_profile(
         image_uri=image_uri,
         profiler_config=profiler_config,
     )
+    assert pytorch._framework_name == "pytorch"
 
 
 def test_create_tf_estimator_with_framework_profile(
@@ -724,14 +724,7 @@ def test_create_tf_estimator_with_framework_profile(
         instance_type=INSTANCE_TYPE,
         profiler_config=profiler_config,
     )
-
-
-"""
-... ValueError: TF 1.5 supports only legacy mode. 
-Please supply the image URI directly with 
-'image_uri=520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow:1.5-cpu-py2'
- and set 'model_dir=False'   etc etc
-"""
+    assert tf._framework_name == "tensorflow"
 
 
 def test_create_tf_estimator_w_image_with_framework_profile(
@@ -749,8 +742,6 @@ def test_create_tf_estimator_w_image_with_framework_profile(
         image_scope="inference",
     )
 
-    assert image_uri is not None
-
     profiler_config = ProfilerConfig(framework_profile_params=default_framework_profile)
 
     tf = TensorFlow(
@@ -762,3 +753,4 @@ def test_create_tf_estimator_w_image_with_framework_profile(
         image_uri=image_uri,
         profiler_config=profiler_config,
     )
+    assert tf._framework_name == "tensorflow"
