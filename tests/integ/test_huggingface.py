@@ -28,18 +28,13 @@ ROLE = "SageMakerRole"
 
 
 @pytest.mark.release
-@pytest.mark.skipif(
-    integ.test_region() in integ.TRAINING_NO_P2_REGIONS
-    and integ.test_region() in integ.TRAINING_NO_P3_REGIONS,
-    reason="no ml.p2 or ml.p3 instances in this region",
-)
 @retry_with_instance_list(gpu_list(integ.test_region()))
 def test_framework_processing_job_with_deps(
     sagemaker_session,
     huggingface_training_latest_version,
     huggingface_training_pytorch_latest_version,
     huggingface_pytorch_latest_training_py_version,
-    **kwargs,
+    gpu_pytorch_instance_type,
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         code_path = os.path.join(DATA_DIR, "dummy_code_bundle_with_reqs")
@@ -51,7 +46,7 @@ def test_framework_processing_job_with_deps(
             py_version=huggingface_pytorch_latest_training_py_version,
             role=ROLE,
             instance_count=1,
-            instance_type=kwargs["instance_type"],
+            instance_type=gpu_pytorch_instance_type,
             sagemaker_session=sagemaker_session,
             base_job_name="test-huggingface",
         )
@@ -64,18 +59,13 @@ def test_framework_processing_job_with_deps(
 
 
 @pytest.mark.release
-@pytest.mark.skipif(
-    integ.test_region() in integ.TRAINING_NO_P2_REGIONS
-    and integ.test_region() in integ.TRAINING_NO_P3_REGIONS,
-    reason="no ml.p2 or ml.p3 instances in this region",
-)
 @retry_with_instance_list(gpu_list(integ.test_region()))
 def test_huggingface_training(
     sagemaker_session,
     huggingface_training_latest_version,
     huggingface_training_pytorch_latest_version,
     huggingface_pytorch_latest_training_py_version,
-    **kwargs,
+    gpu_pytorch_instance_type,
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, "huggingface")
@@ -87,7 +77,7 @@ def test_huggingface_training(
             transformers_version=huggingface_training_latest_version,
             pytorch_version=huggingface_training_pytorch_latest_version,
             instance_count=1,
-            instance_type=kwargs["instance_type"],
+            instance_type=gpu_pytorch_instance_type,
             hyperparameters={
                 "model_name_or_path": "distilbert-base-cased",
                 "task_name": "wnli",
@@ -111,17 +101,12 @@ def test_huggingface_training(
 
 
 @pytest.mark.release
-@pytest.mark.skipif(
-    integ.test_region() in integ.TRAINING_NO_P2_REGIONS
-    and integ.test_region() in integ.TRAINING_NO_P3_REGIONS,
-    reason="no ml.p2 or ml.p3 instances in this region",
-)
 @pytest.mark.skip(
     reason="need to re enable it later t.corp:V609860141",
 )
 def test_huggingface_training_tf(
     sagemaker_session,
-    gpu_instance_type,
+    gpu_pytorch_instance_type,
     huggingface_training_latest_version,
     huggingface_training_tensorflow_latest_version,
     huggingface_tensorflow_latest_training_py_version,
@@ -136,7 +121,7 @@ def test_huggingface_training_tf(
             transformers_version=huggingface_training_latest_version,
             tensorflow_version=huggingface_training_tensorflow_latest_version,
             instance_count=1,
-            instance_type=gpu_instance_type,
+            instance_type=gpu_pytorch_instance_type,
             hyperparameters={
                 "model_name_or_path": "distilbert-base-cased",
                 "per_device_train_batch_size": 128,
@@ -161,7 +146,7 @@ def test_huggingface_training_tf(
 )
 def test_huggingface_inference(
     sagemaker_session,
-    gpu_instance_type,
+    gpu_pytorch_instance_type,
     huggingface_inference_latest_version,
     huggingface_inference_pytorch_latest_version,
     huggingface_pytorch_latest_inference_py_version,
@@ -182,7 +167,7 @@ def test_huggingface_inference(
     )
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         model.deploy(
-            instance_type=gpu_instance_type, initial_instance_count=1, endpoint_name=endpoint_name
+            instance_type=gpu_pytorch_instance_type, initial_instance_count=1, endpoint_name=endpoint_name
         )
 
         predictor = HuggingFacePredictor(endpoint_name=endpoint_name)
