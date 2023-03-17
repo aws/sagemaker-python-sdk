@@ -708,7 +708,6 @@ def test_create_pytorch_estimator_w_image_with_framework_profile(
     )
 
 
-"""
 def test_create_tf_estimator_with_framework_profile(
     sagemaker_session,
     tensorflow_inference_version,
@@ -720,13 +719,16 @@ def test_create_tf_estimator_with_framework_profile(
     tf = TensorFlow(
         entry_point=SCRIPT_PATH,
         role=ROLE,
-        framework_version=tensorflow_inference_version,
-        py_version=tensorflow_inference_py_version,
+        framework_version="2.8",
+        py_version="py39",
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
         profiler_config=profiler_config,
     )
+
+
+"""
 ... ValueError: TF 1.5 supports only legacy mode. 
 Please supply the image URI directly with 
 'image_uri=520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow:1.5-cpu-py2'
