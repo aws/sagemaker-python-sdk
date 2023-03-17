@@ -12,11 +12,14 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import os
 import pytest
 import re
 import time
 
-
+from sagemaker import image_uris
+from sagemaker.pytorch import PyTorch
+from sagemaker.tensorflow import TensorFlow
 from sagemaker.debugger.profiler_config import ProfilerConfig, FrameworkProfile
 
 from sagemaker.debugger.metrics_config import (
@@ -643,3 +646,119 @@ def test_validation():
 
     with pytest.raises(AssertionError, match=ErrorMessages.INVALID_CPROFILE_TIMER.value):
         PythonProfilingConfig(cprofile_timer="bad_cprofile_timer")
+
+
+DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
+SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
+INSTANCE_COUNT = 1
+INSTANCE_TYPE = "ml.p3.2xlarge"
+ROLE = "Dummy"
+REGION = "us-west-2"
+
+
+def test_create_pytorch_estimator_with_framework_profile(
+    sagemaker_session,
+    pytorch_inference_version,
+    pytorch_inference_py_version,
+    default_framework_profile,
+):
+    profiler_config = ProfilerConfig(framework_profile_params=default_framework_profile)
+
+    container_log_level = '"logging.INFO"'
+    source_dir = "s3://mybucket/source"
+    pytorch = PyTorch(
+        entry_point=SCRIPT_PATH,
+        framework_version=pytorch_inference_version,
+        py_version=pytorch_inference_py_version,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        base_job_name="job",
+        profiler_config=profiler_config,
+    )
+
+
+def test_create_pytorch_estimator_w_image_with_framework_profile(
+    sagemaker_session,
+    pytorch_inference_version,
+    pytorch_inference_py_version,
+    gpu_pytorch_instance_type,
+    default_framework_profile,
+):
+    image_uri = image_uris.retrieve(
+        "pytorch",
+        REGION,
+        version=pytorch_inference_version,
+        py_version=pytorch_inference_py_version,
+        instance_type=gpu_pytorch_instance_type,
+        image_scope="inference",
+    )
+
+    profiler_config = ProfilerConfig(framework_profile_params=default_framework_profile)
+
+    pytorch = PyTorch(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=gpu_pytorch_instance_type,
+        image_uri=image_uri,
+        profiler_config=profiler_config,
+    )
+
+
+"""
+def test_create_tf_estimator_with_framework_profile(
+    sagemaker_session,
+    tensorflow_inference_version,
+    tensorflow_inference_py_version,
+    default_framework_profile,
+):
+    profiler_config = ProfilerConfig(framework_profile_params=default_framework_profile)
+
+    tf = TensorFlow(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        framework_version=tensorflow_inference_version,
+        py_version=tensorflow_inference_py_version,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        profiler_config=profiler_config,
+    )
+... ValueError: TF 1.5 supports only legacy mode. 
+Please supply the image URI directly with 
+'image_uri=520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow:1.5-cpu-py2'
+ and set 'model_dir=False'   etc etc
+"""
+
+
+def test_create_tf_estimator_w_image_with_framework_profile(
+    sagemaker_session,
+    tensorflow_inference_version,
+    tensorflow_inference_py_version,
+    default_framework_profile,
+):
+    image_uri = image_uris.retrieve(
+        "tensorflow",
+        REGION,
+        version=tensorflow_inference_version,
+        py_version=tensorflow_inference_py_version,
+        instance_type=INSTANCE_TYPE,
+        image_scope="inference",
+    )
+
+    assert image_uri is not None
+
+    profiler_config = ProfilerConfig(framework_profile_params=default_framework_profile)
+
+    tf = TensorFlow(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        image_uri=image_uri,
+        profiler_config=profiler_config,
+    )
