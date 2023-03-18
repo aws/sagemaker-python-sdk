@@ -567,11 +567,15 @@ def gpu_instance_type(sagemaker_session, request):
 
 @pytest.fixture()
 def gpu_pytorch_instance_type(sagemaker_session, request):
-    if "pytorch_inference_version" in request.fixturenames:
-        fw_version = request.getfixturevalue("pytorch_inference_version")
-    else:
+    for pytorch_version_fixture in [
+        "pytorch_inference_version",
+        "huggingface_training_pytorch_latest_version",
+        "huggingface_inference_pytorch_latest_version",
+    ]:
+        if pytorch_version_fixture in request.fixturenames:
+            fw_version = request.getfixturevalue(pytorch_version_fixture)
+    if fw_version is None:
         fw_version = request.param
-
     region = sagemaker_session.boto_session.region_name
     if region in NO_P3_REGIONS:
         if Version(fw_version) >= Version("1.13"):
