@@ -189,7 +189,7 @@ class TestUnsupportedConfig:
                 compiler_config=TrainingCompilerConfig(),
             ).fit()
 
-    def test_framework_version(self, tensorflow_training_py_version):
+    def test_framework_version_min(self, tensorflow_training_py_version):
         with pytest.raises(ValueError):
             TensorFlow(
                 py_version=tensorflow_training_py_version,
@@ -198,6 +198,19 @@ class TestUnsupportedConfig:
                 instance_count=INSTANCE_COUNT,
                 instance_type=INSTANCE_TYPE,
                 framework_version="2.8",
+                enable_sagemaker_metrics=False,
+                compiler_config=TrainingCompilerConfig(),
+            ).fit()
+
+    def test_framework_version_max(self, tensorflow_training_py_version):
+        with pytest.raises(ValueError):
+            TensorFlow(
+                py_version=tensorflow_training_py_version,
+                entry_point=SCRIPT_PATH,
+                role=ROLE,
+                instance_count=INSTANCE_COUNT,
+                instance_type=INSTANCE_TYPE,
+                framework_version="2.12",
                 enable_sagemaker_metrics=False,
                 compiler_config=TrainingCompilerConfig(),
             ).fit()
