@@ -127,8 +127,8 @@ class Pipeline(Entity):
         Returns:
             A response dict from the service.
         """
-        role_arn = self.sagemaker_session.get_sagemaker_config_override(
-            PIPELINE_ROLE_ARN_PATH, role_arn
+        role_arn = self.sagemaker_session.resolve_value_from_config(
+            role_arn, PIPELINE_ROLE_ARN_PATH
         )
         if not role_arn:
             # Originally IAM role was a required parameter.
@@ -221,8 +221,8 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         Returns:
             A response dict from the service.
         """
-        role_arn = self.sagemaker_session.get_sagemaker_config_override(
-            PIPELINE_ROLE_ARN_PATH, role_arn
+        role_arn = self.sagemaker_session.resolve_value_from_config(
+            role_arn, PIPELINE_ROLE_ARN_PATH
         )
         if not role_arn:
             # Originally IAM role was a required parameter.
@@ -261,8 +261,8 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         Returns:
             response dict from service
         """
-        role_arn = self.sagemaker_session.get_sagemaker_config_override(
-            PIPELINE_ROLE_ARN_PATH, role_arn
+        role_arn = self.sagemaker_session.resolve_value_from_config(
+            role_arn, PIPELINE_ROLE_ARN_PATH
         )
         if not role_arn:
             # Originally IAM role was a required parameter.

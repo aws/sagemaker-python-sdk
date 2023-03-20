@@ -660,28 +660,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
         # Copy the value so any modifications to the output will not modify the source config
         return copy.deepcopy(config_value)
 
-    def get_sagemaker_config_override(self, key, default_value=None):
-        """Util method that fetches a particular key path in the SageMakerConfig and returns it.
-
-        If a default value is provided, then this method will return the default value.
-
-        Args:
-            key: Key Path of the config file entry.
-            default_value: The existing value that was passed as method parameter. If this is not
-            None, then the method will return this value
-
-        Returns:
-            object: The corresponding value in the Config file/ the default value.
-
-        """
-        config_value = self.get_sagemaker_config_value(key)
-        self._print_message_on_sagemaker_config_usage(default_value, config_value, key)
-
-        if default_value is not None:
-            return default_value
-
-        return config_value
-
     def _create_s3_bucket_if_it_does_not_exist(self, bucket_name, region):
         """Creates an S3 Bucket if it does not exist.
 
@@ -1130,7 +1108,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             config_path=PATH_V1_TRAINING_JOB_INTER_CONTAINER_ENCRYPTION,
             default_value=False,
         )
-        role = self.get_sagemaker_config_override(TRAINING_JOB_ROLE_ARN_PATH, role)
+        role = self.resolve_value_from_config(role, TRAINING_JOB_ROLE_ARN_PATH)
         enable_network_isolation = self.resolve_value_from_config(
             direct_input=enable_network_isolation,
             config_path=TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
@@ -1491,8 +1469,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         """
         inputs_copy = copy.deepcopy(inputs)
-        processing_inputs_from_config = (
-            self.get_sagemaker_config_override(PROCESSING_JOB_INPUTS_PATH) or []
+        processing_inputs_from_config = self.resolve_value_from_config(
+            config_path=PROCESSING_JOB_INPUTS_PATH, default_value=[]
         )
         for i in range(min(len(inputs), len(processing_inputs_from_config))):
             dict_from_inputs = inputs[i]
@@ -1580,9 +1558,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
 
         self._update_processing_input_from_config(inputs)
-        role_arn = self.get_sagemaker_config_override(
-            PROCESSING_JOB_ROLE_ARN_PATH, default_value=role_arn
-        )
+        role_arn = self.resolve_value_from_config(role_arn, PROCESSING_JOB_ROLE_ARN_PATH)
         inferred_network_config_from_config = (
             self._update_nested_dictionary_with_values_from_config(
                 network_config, PROCESSING_JOB_NETWORK_CONFIG_PATH
@@ -1762,11 +1738,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             tags ([dict[str,str]]): A list of dictionaries containing key-value
                 pairs.
         """
-        role_arn = self.get_sagemaker_config_override(
-            MONITORING_JOB_ROLE_ARN_PATH, default_value=role_arn
-        )
-        volume_kms_key = self.get_sagemaker_config_override(
-            MONITORING_JOB_VOLUME_KMS_KEY_ID_PATH, default_value=volume_kms_key
+        role_arn = self.resolve_value_from_config(role_arn, MONITORING_JOB_ROLE_ARN_PATH)
+        volume_kms_key = self.resolve_value_from_config(
+            volume_kms_key, MONITORING_JOB_VOLUME_KMS_KEY_ID_PATH
         )
         inferred_network_config_from_config = (
             self._update_nested_dictionary_with_values_from_config(
@@ -1797,8 +1771,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             }
 
         if monitoring_output_config is not None:
-            kms_key_from_config = self.get_sagemaker_config_override(
-                MONITORING_JOB_OUTPUT_KMS_KEY_ID_PATH
+            kms_key_from_config = self.resolve_value_from_config(
+                config_path=MONITORING_JOB_OUTPUT_KMS_KEY_ID_PATH
             )
             if KMS_KEY_ID not in monitoring_output_config and kms_key_from_config:
                 monitoring_output_config[KMS_KEY_ID] = kms_key_from_config
@@ -2467,7 +2441,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 Contains "AutoGenerateEndpointName" and "EndpointName"
         """
 
-        role = self.get_sagemaker_config_override(AUTO_ML_ROLE_ARN_PATH, default_value=role)
+        role = self.resolve_value_from_config(role, AUTO_ML_ROLE_ARN_PATH)
         inferred_output_config = self._update_nested_dictionary_with_values_from_config(
             output_config, AUTO_ML_OUTPUT_CONFIG_PATH
         )
@@ -2746,11 +2720,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             str: ARN of the compile model job, if it is created.
         """
-        role = self.get_sagemaker_config_override(COMPILATION_JOB_ROLE_ARN_PATH, default_value=role)
+        role = self.resolve_value_from_config(role, COMPILATION_JOB_ROLE_ARN_PATH)
         inferred_output_model_config = self._update_nested_dictionary_with_values_from_config(
             output_model_config, COMPILATION_JOB_OUTPUT_CONFIG_PATH
         )
-        vpc_config = self.get_sagemaker_config_override(COMPILATION_JOB_VPC_CONFIG_PATH)
+        vpc_config = self.resolve_value_from_config(config_path=COMPILATION_JOB_VPC_CONFIG_PATH)
         compilation_job_request = {
             "InputConfig": input_model_config,
             "OutputConfig": inferred_output_model_config,
@@ -2796,7 +2770,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             tags (list[dict]): List of tags for labeling a compile model job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
         """
-        role = self.get_sagemaker_config_override(EDGE_PACKAGING_ROLE_ARN_PATH, role)
+        role = self.resolve_value_from_config(role, EDGE_PACKAGING_ROLE_ARN_PATH)
         inferred_output_model_config = self._update_nested_dictionary_with_values_from_config(
             output_model_config, EDGE_PACKAGING_OUTPUT_CONFIG_PATH
         )
@@ -3692,10 +3666,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
         tags = _append_project_tags(tags)
         tags = self._append_sagemaker_config_tags(tags, "{}.{}.{}".format(SAGEMAKER, MODEL, TAGS))
-        role = self.get_sagemaker_config_override(MODEL_EXECUTION_ROLE_ARN_PATH, default_value=role)
-        vpc_config = self.get_sagemaker_config_override(
-            MODEL_VPC_CONFIG_PATH, default_value=vpc_config
-        )
+        role = self.resolve_value_from_config(role, MODEL_EXECUTION_ROLE_ARN_PATH)
+        vpc_config = self.resolve_value_from_config(vpc_config, MODEL_VPC_CONFIG_PATH)
         enable_network_isolation = self.resolve_value_from_config(
             direct_input=enable_network_isolation,
             config_path=MODEL_ENABLE_NETWORK_ISOLATION_PATH,
@@ -3773,8 +3745,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
         name = name or training_job_name
         role = role or training_job["RoleArn"]
-        role = self.get_sagemaker_config_override(
-            MODEL_EXECUTION_ROLE_ARN_PATH, default_value=role or training_job["RoleArn"]
+        role = self.resolve_value_from_config(
+            role, MODEL_EXECUTION_ROLE_ARN_PATH, training_job["RoleArn"]
         )
         enable_network_isolation = self.resolve_value_from_config(
             direct_input=enable_network_isolation,
@@ -3788,9 +3760,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             env=env,
         )
         vpc_config = _vpc_config_from_training_job(training_job, vpc_config_override)
-        vpc_config = self.get_sagemaker_config_override(
-            MODEL_VPC_CONFIG_PATH, default_value=vpc_config
-        )
+        vpc_config = self.resolve_value_from_config(vpc_config, MODEL_VPC_CONFIG_PATH)
         return self.create_model(
             name,
             role,
@@ -3892,13 +3862,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
             # not supported by the config now. So if we merge values from config, then API will
             # throw an exception. In the future, when SageMaker Config starts supporting other
             # parameters we can add that.
-            validation_role = self.get_sagemaker_config_override(
+            validation_role = self.resolve_value_from_config(
+                validation_specification.get(VALIDATION_ROLE, None),
                 MODEL_PACKAGE_VALIDATION_ROLE_PATH,
-                default_value=validation_specification.get(VALIDATION_ROLE, None),
             )
             validation_specification[VALIDATION_ROLE] = validation_role
-            validation_profiles_from_config = (
-                self.get_sagemaker_config_override(MODEL_PACKAGE_VALIDATION_PROFILES_PATH) or []
+            validation_profiles_from_config = self.resolve_value_from_config(
+                config_path=MODEL_PACKAGE_VALIDATION_PROFILES_PATH, default_value=[]
             )
             validation_profiles = validation_specification.get(VALIDATION_PROFILES, [])
             for i in range(min(len(validation_profiles), len(validation_profiles_from_config))):
@@ -4068,8 +4038,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             model_data_download_timeout=model_data_download_timeout,
             container_startup_health_check_timeout=container_startup_health_check_timeout,
         )
-        inferred_production_variants_from_config = (
-            self.get_sagemaker_config_override(ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH) or []
+        inferred_production_variants_from_config = self.resolve_value_from_config(
+            config_path=ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH, default_value=[]
         )
         if inferred_production_variants_from_config:
             inferred_production_variant_from_config = (
@@ -4100,9 +4070,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
         if tags is not None:
             request["Tags"] = tags
-        kms_key = self.get_sagemaker_config_override(
-            ENDPOINT_CONFIG_KMS_KEY_ID_PATH, default_value=kms_key
-        )
+        kms_key = self.resolve_value_from_config(kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH)
         if kms_key is not None:
             request["KmsKeyId"] = kms_key
 
@@ -4170,8 +4138,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             new_production_variants or existing_endpoint_config_desc["ProductionVariants"]
         )
         if production_variants:
-            inferred_production_variants_from_config = (
-                self.get_sagemaker_config_override(ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH) or []
+            inferred_production_variants_from_config = self.resolve_value_from_config(
+                config_path=ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH, default_value=[]
             )
             for i in range(
                 min(len(production_variants), len(inferred_production_variants_from_config))
@@ -4204,8 +4172,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if new_kms_key is not None or existing_endpoint_config_desc.get("KmsKeyId") is not None:
             request["KmsKeyId"] = new_kms_key or existing_endpoint_config_desc.get("KmsKeyId")
         if KMS_KEY_ID not in request:
-            kms_key_from_config = self.get_sagemaker_config_override(
-                ENDPOINT_CONFIG_KMS_KEY_ID_PATH
+            kms_key_from_config = self.resolve_value_from_config(
+                config_path=ENDPOINT_CONFIG_KMS_KEY_ID_PATH
             )
             if kms_key_from_config:
                 request[KMS_KEY_ID] = kms_key_from_config
@@ -4770,9 +4738,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             str: The name of the created ``Endpoint``.
         """
         config_options = {"EndpointConfigName": name, "ProductionVariants": production_variants}
-        kms_key = self.get_sagemaker_config_override(
-            ENDPOINT_CONFIG_KMS_KEY_ID_PATH, default_value=kms_key
-        )
+        kms_key = self.resolve_value_from_config(kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH)
         tags = _append_project_tags(tags)
         tags = self._append_sagemaker_config_tags(
             tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT_CONFIG, TAGS)
@@ -5232,9 +5198,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         tags = self._append_sagemaker_config_tags(
             tags, "{}.{}.{}".format(SAGEMAKER, FEATURE_GROUP, TAGS)
         )
-        role_arn = self.get_sagemaker_config_override(
-            FEATURE_GROUP_ROLE_ARN_PATH, default_value=role_arn
-        )
+        role_arn = self.resolve_value_from_config(role_arn, FEATURE_GROUP_ROLE_ARN_PATH)
         inferred_online_store_from_config = self._update_nested_dictionary_with_values_from_config(
             online_store_config, FEATURE_GROUP_ONLINE_STORE_CONFIG_PATH
         )

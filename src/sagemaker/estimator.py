@@ -586,8 +586,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.deploy_instance_type = None
 
         self._compiled_models = {}
-        self.role = self.sagemaker_session.get_sagemaker_config_override(
-            TRAINING_JOB_ROLE_ARN_PATH, role
+        self.role = self.sagemaker_session.resolve_value_from_config(
+            role, TRAINING_JOB_ROLE_ARN_PATH
         )
         if not self.role:
             # Originally IAM role was a required parameter.
@@ -595,19 +595,19 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             # Because of marking that parameter as optional, we should validate if it is None, even
             # after fetching the config.
             raise ValueError("IAM role should be provided for creating estimators.")
-        self.output_kms_key = self.sagemaker_session.get_sagemaker_config_override(
-            TRAINING_JOB_KMS_KEY_ID_PATH, default_value=output_kms_key
+        self.output_kms_key = self.sagemaker_session.resolve_value_from_config(
+            output_kms_key, TRAINING_JOB_KMS_KEY_ID_PATH
         )
-        self.volume_kms_key = self.sagemaker_session.get_sagemaker_config_override(
-            TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH, default_value=volume_kms_key
+        self.volume_kms_key = self.sagemaker_session.resolve_value_from_config(
+            volume_kms_key, TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH
         )
 
         # VPC configurations
-        self.subnets = self.sagemaker_session.get_sagemaker_config_override(
-            TRAINING_JOB_SUBNETS_PATH, default_value=subnets
+        self.subnets = self.sagemaker_session.resolve_value_from_config(
+            subnets, TRAINING_JOB_SUBNETS_PATH
         )
-        self.security_group_ids = self.sagemaker_session.get_sagemaker_config_override(
-            TRAINING_JOB_SECURITY_GROUP_IDS_PATH, default_value=security_group_ids
+        self.security_group_ids = self.sagemaker_session.resolve_value_from_config(
+            security_group_ids, TRAINING_JOB_SECURITY_GROUP_IDS_PATH
         )
 
         # training image configs

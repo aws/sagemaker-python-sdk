@@ -106,11 +106,11 @@ class CandidateEstimator(object):
                 """Logs can only be shown if wait is set to True.
                 Please either set wait to True or set logs to False."""
             )
-        vpc_config = self.sagemaker_session.get_sagemaker_config_override(
-            TRAINING_JOB_VPC_CONFIG_PATH, default_value=vpc_config
+        vpc_config = self.sagemaker_session.resolve_value_from_config(
+            vpc_config, TRAINING_JOB_VPC_CONFIG_PATH
         )
-        volume_kms_key = self.sagemaker_session.get_sagemaker_config_override(
-            TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH, default_value=volume_kms_key
+        volume_kms_key = self.sagemaker_session.resolve_value_from_config(
+            volume_kms_key, TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH
         )
         self.name = candidate_name or self.name
         running_jobs = {}

@@ -140,9 +140,11 @@ def pipeline_session(boto_session, client):
         sagemaker_client=client,
         default_bucket=BUCKET,
     )
-    pipeline_session_mock.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override",
-        side_effect=lambda key, default_value=None: default_value,
+    pipeline_session_mock.resolve_value_from_config = Mock(
+        name="resolve_value_from_config",
+        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
+        if direct_input is not None
+        else default_value,
     )
     return pipeline_session_mock
 
@@ -150,9 +152,11 @@ def pipeline_session(boto_session, client):
 @pytest.fixture()
 def local_sagemaker_session(boto_session):
     local_session_mock = LocalSession(boto_session=boto_session, default_bucket="my-bucket")
-    local_session_mock.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override",
-        side_effect=lambda key, default_value=None: default_value,
+    local_session_mock.resolve_value_from_config = Mock(
+        name="resolve_value_from_config",
+        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
+        if direct_input is not None
+        else default_value,
     )
     return local_session_mock
 

@@ -126,11 +126,11 @@ class Transformer(object):
         self._reset_output_path = False
 
         self.sagemaker_session = sagemaker_session or Session()
-        self.volume_kms_key = self.sagemaker_session.get_sagemaker_config_override(
-            TRANSFORM_RESOURCES_VOLUME_KMS_KEY_ID_PATH, default_value=volume_kms_key
+        self.volume_kms_key = self.sagemaker_session.resolve_value_from_config(
+            volume_kms_key, TRANSFORM_RESOURCES_VOLUME_KMS_KEY_ID_PATH
         )
-        self.output_kms_key = self.sagemaker_session.get_sagemaker_config_override(
-            TRANSFORM_OUTPUT_KMS_KEY_ID_PATH, default_value=output_kms_key
+        self.output_kms_key = self.sagemaker_session.resolve_value_from_config(
+            output_kms_key, TRANSFORM_OUTPUT_KMS_KEY_ID_PATH
         )
 
     @runnable_by_pipeline
@@ -439,8 +439,8 @@ class Transformer(object):
         pipeline_role_arn = (
             role
             if role
-            else transformer.sagemaker_session.get_sagemaker_config_override(
-                PIPELINE_ROLE_ARN_PATH, default_value=get_execution_role()
+            else transformer.sagemaker_session.resolve_value_from_config(
+                get_execution_role(), PIPELINE_ROLE_ARN_PATH
             )
         )
         pipeline.upsert(pipeline_role_arn)

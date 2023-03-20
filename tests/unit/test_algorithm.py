@@ -954,9 +954,11 @@ def test_algorithm_no_required_hyperparameters(session):
 
 def test_algorithm_attach_from_hyperparameter_tuning():
     session = Mock()
-    session.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override",
-        side_effect=lambda key, default_value=None: default_value,
+    session.resolve_value_from_config = Mock(
+        name="resolve_value_from_config",
+        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
+        if direct_input is not None
+        else default_value,
     )
     job_name = "training-job-that-is-part-of-a-tuning-job"
     algo_arn = "arn:aws:sagemaker:us-east-2:000000000000:algorithm/scikit-decision-trees"

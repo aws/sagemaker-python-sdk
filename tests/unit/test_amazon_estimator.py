@@ -74,10 +74,6 @@ def sagemaker_session():
     sms.sagemaker_client.describe_training_job = Mock(
         name="describe_training_job", return_value=returned_job_description
     )
-    sms.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override",
-        side_effect=lambda key, default_value=None: default_value,
-    )
     sms.resolve_value_from_config = Mock(
         name="resolve_value_from_config",
         side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input

@@ -92,16 +92,12 @@ class PipelineModel(object):
         self.sagemaker_session = sagemaker_session
         self.endpoint_name = None
         self.role = (
-            self.sagemaker_session.get_sagemaker_config_override(
-                MODEL_EXECUTION_ROLE_ARN_PATH, default_value=role
-            )
+            self.sagemaker_session.resolve_value_from_config(role, MODEL_EXECUTION_ROLE_ARN_PATH)
             if self.sagemaker_session
             else role
         )
         self.vpc_config = (
-            self.sagemaker_session.get_sagemaker_config_override(
-                MODEL_VPC_CONFIG_PATH, default_value=vpc_config
-            )
+            self.sagemaker_session.resolve_value_from_config(vpc_config, MODEL_VPC_CONFIG_PATH)
             if self.sagemaker_session
             else vpc_config
         )
@@ -248,8 +244,8 @@ class PipelineModel(object):
             container_startup_health_check_timeout=container_startup_health_check_timeout,
         )
         self.endpoint_name = endpoint_name or self.name
-        kms_key = self.sagemaker_session.get_sagemaker_config_override(
-            ENDPOINT_CONFIG_KMS_KEY_ID_PATH, default_value=kms_key
+        kms_key = self.sagemaker_session.resolve_value_from_config(
+            kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH
         )
 
         data_capture_config_dict = None

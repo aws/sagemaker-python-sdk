@@ -284,16 +284,12 @@ class Model(ModelBase, InferenceRecommenderMixin):
         self._base_name = None
         self.sagemaker_session = sagemaker_session
         self.role = (
-            self.sagemaker_session.get_sagemaker_config_override(
-                MODEL_EXECUTION_ROLE_ARN_PATH, default_value=role
-            )
+            self.sagemaker_session.resolve_value_from_config(role, MODEL_EXECUTION_ROLE_ARN_PATH)
             if sagemaker_session
             else role
         )
         self.vpc_config = (
-            self.sagemaker_session.get_sagemaker_config_override(
-                MODEL_VPC_CONFIG_PATH, default_value=vpc_config
-            )
+            self.sagemaker_session.resolve_value_from_config(vpc_config, MODEL_VPC_CONFIG_PATH)
             if sagemaker_session
             else vpc_config
         )
@@ -304,8 +300,8 @@ class Model(ModelBase, InferenceRecommenderMixin):
         self.inference_recommender_job_results = None
         self.inference_recommendations = None
         self._enable_network_isolation = (
-            self.sagemaker_session.get_sagemaker_config_override(
-                MODEL_ENABLE_NETWORK_ISOLATION_PATH, default_value=enable_network_isolation
+            self.sagemaker_session.resolve_value_from_config(
+                enable_network_isolation, MODEL_ENABLE_NETWORK_ISOLATION_PATH
             )
             if sagemaker_session
             else enable_network_isolation
@@ -705,14 +701,14 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
 
         self._init_sagemaker_session_if_does_not_exist(instance_type)
         # Depending on the instance type, a local session (or) a session is initialized.
-        self.role = self.sagemaker_session.get_sagemaker_config_override(
-            MODEL_EXECUTION_ROLE_ARN_PATH, default_value=self.role
+        self.role = self.sagemaker_session.resolve_value_from_config(
+            self.role, MODEL_EXECUTION_ROLE_ARN_PATH
         )
-        self.vpc_config = self.sagemaker_session.get_sagemaker_config_override(
-            MODEL_VPC_CONFIG_PATH, default_value=self.vpc_config
+        self.vpc_config = self.sagemaker_session.resolve_value_from_config(
+            self.vpc_config, MODEL_VPC_CONFIG_PATH
         )
-        self._enable_network_isolation = self.sagemaker_session.get_sagemaker_config_override(
-            MODEL_ENABLE_NETWORK_ISOLATION_PATH, default_value=self._enable_network_isolation
+        self._enable_network_isolation = self.sagemaker_session.resolve_value_from_config(
+            self._enable_network_isolation, MODEL_ENABLE_NETWORK_ISOLATION_PATH
         )
         create_model_args = dict(
             name=self.name,
@@ -910,12 +906,10 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         if job_name is None:
             job_name = f"packaging{self._compilation_job_name[11:]}"
         self._init_sagemaker_session_if_does_not_exist(None)
-        s3_kms_key = self.sagemaker_session.get_sagemaker_config_override(
-            EDGE_PACKAGING_KMS_KEY_ID_PATH, default_value=s3_kms_key
+        s3_kms_key = self.sagemaker_session.resolve_value_from_config(
+            s3_kms_key, EDGE_PACKAGING_KMS_KEY_ID_PATH
         )
-        role = self.sagemaker_session.get_sagemaker_config_override(
-            EDGE_PACKAGING_ROLE_ARN_PATH, default_value=role
-        )
+        role = self.sagemaker_session.resolve_value_from_config(role, EDGE_PACKAGING_ROLE_ARN_PATH)
         if role is not None:
             role = self.sagemaker_session.expand_role(role)
         config = self._edge_packaging_job_config(
@@ -1020,9 +1014,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         framework_version = framework_version or self._get_framework_version()
 
         self._init_sagemaker_session_if_does_not_exist(target_instance_family)
-        role = self.sagemaker_session.get_sagemaker_config_override(
-            COMPILATION_JOB_ROLE_ARN_PATH, default_value=role
-        )
+        role = self.sagemaker_session.resolve_value_from_config(role, COMPILATION_JOB_ROLE_ARN_PATH)
         if not role:
             # Originally IAM role was a required parameter.
             # Now we marked that as Optional because we can fetch it from SageMakerConfig
@@ -1182,14 +1174,14 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
 
         self._init_sagemaker_session_if_does_not_exist(instance_type)
         # Depending on the instance type, a local session (or) a session is initialized.
-        self.role = self.sagemaker_session.get_sagemaker_config_override(
-            MODEL_EXECUTION_ROLE_ARN_PATH, default_value=self.role
+        self.role = self.sagemaker_session.resolve_value_from_config(
+            self.role, MODEL_EXECUTION_ROLE_ARN_PATH
         )
-        self.vpc_config = self.sagemaker_session.get_sagemaker_config_override(
-            MODEL_VPC_CONFIG_PATH, default_value=self.vpc_config
+        self.vpc_config = self.sagemaker_session.resolve_value_from_config(
+            self.vpc_config, MODEL_VPC_CONFIG_PATH
         )
-        self._enable_network_isolation = self.sagemaker_session.get_sagemaker_config_override(
-            MODEL_ENABLE_NETWORK_ISOLATION_PATH, default_value=self._enable_network_isolation
+        self._enable_network_isolation = self.sagemaker_session.resolve_value_from_config(
+            self._enable_network_isolation, MODEL_ENABLE_NETWORK_ISOLATION_PATH
         )
 
         tags = add_jumpstart_tags(
@@ -1277,11 +1269,9 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 async_inference_config = self._build_default_async_inference_config(
                     async_inference_config
                 )
-            async_inference_config.kms_key_id = (
-                self.sagemaker_session.get_sagemaker_config_override(
-                    ENDPOINT_CONFIG_ASYNC_KMS_KEY_ID_PATH,
-                    default_value=async_inference_config.kms_key_id,
-                )
+            async_inference_config.kms_key_id = self.sagemaker_session.resolve_value_from_config(
+                async_inference_config.kms_key_id,
+                ENDPOINT_CONFIG_ASYNC_KMS_KEY_ID_PATH,
             )
             async_inference_config_dict = async_inference_config._to_request_dict()
 

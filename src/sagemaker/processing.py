@@ -148,11 +148,11 @@ class Processor(object):
                 sagemaker_session = LocalSession(disable_local_code=True)
 
         self.sagemaker_session = sagemaker_session or Session()
-        self.output_kms_key = self.sagemaker_session.get_sagemaker_config_override(
-            PROCESSING_JOB_KMS_KEY_ID_PATH, default_value=output_kms_key
+        self.output_kms_key = self.sagemaker_session.resolve_value_from_config(
+            output_kms_key, PROCESSING_JOB_KMS_KEY_ID_PATH
         )
-        self.volume_kms_key = self.sagemaker_session.get_sagemaker_config_override(
-            PROCESSING_JOB_VOLUME_KMS_KEY_ID_PATH, default_value=volume_kms_key
+        self.volume_kms_key = self.sagemaker_session.resolve_value_from_config(
+            volume_kms_key, PROCESSING_JOB_VOLUME_KMS_KEY_ID_PATH
         )
         self.network_config = self.sagemaker_session.resolve_class_attribute_from_config(
             NetworkConfig,
@@ -178,8 +178,8 @@ class Processor(object):
             "encrypt_inter_container_traffic",
             PATH_V1_PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION,
         )
-        self.role = self.sagemaker_session.get_sagemaker_config_override(
-            PROCESSING_JOB_ROLE_ARN_PATH, default_value=role
+        self.role = self.sagemaker_session.resolve_value_from_config(
+            role, PROCESSING_JOB_ROLE_ARN_PATH
         )
         if not self.role:
             # Originally IAM role was a required parameter.

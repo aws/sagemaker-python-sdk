@@ -71,9 +71,11 @@ def sagemaker_session(boto_session, client):
         default_bucket=_DEFAULT_BUCKET,
         sagemaker_metrics_client=client,
     )
-    session.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override",
-        side_effect=lambda key, default_value=None: default_value,
+    session.resolve_value_from_config = Mock(
+        name="resolve_value_from_config",
+        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
+        if direct_input is not None
+        else default_value,
     )
     return session
 

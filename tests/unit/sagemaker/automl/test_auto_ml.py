@@ -280,10 +280,6 @@ def sagemaker_session():
         if direct_input is not None
         else default_value,
     )
-    sms.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override",
-        side_effect=lambda key, default_value=None: default_value,
-    )
     return sms
 
 

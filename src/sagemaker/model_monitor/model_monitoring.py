@@ -177,8 +177,8 @@ class ModelMonitor(object):
         self.latest_baselining_job_name = None
         self.monitoring_schedule_name = None
         self.job_definition_name = None
-        self.role = self.sagemaker_session.get_sagemaker_config_override(
-            MONITORING_JOB_ROLE_ARN_PATH, default_value=role
+        self.role = self.sagemaker_session.resolve_value_from_config(
+            role, MONITORING_JOB_ROLE_ARN_PATH
         )
         if not self.role:
             # Originally IAM role was a required parameter.
@@ -186,11 +186,11 @@ class ModelMonitor(object):
             # Because of marking that parameter as optional, we should validate if it is None, even
             # after fetching the config.
             raise ValueError("IAM role should be provided for creating Monitoring Schedule.")
-        self.volume_kms_key = self.sagemaker_session.get_sagemaker_config_override(
-            MONITORING_JOB_VOLUME_KMS_KEY_ID_PATH, default_value=volume_kms_key
+        self.volume_kms_key = self.sagemaker_session.resolve_value_from_config(
+            volume_kms_key, MONITORING_JOB_VOLUME_KMS_KEY_ID_PATH
         )
-        self.output_kms_key = self.sagemaker_session.get_sagemaker_config_override(
-            MONITORING_JOB_OUTPUT_KMS_KEY_ID_PATH, default_value=output_kms_key
+        self.output_kms_key = self.sagemaker_session.resolve_value_from_config(
+            output_kms_key, MONITORING_JOB_OUTPUT_KMS_KEY_ID_PATH
         )
         self.network_config = self.sagemaker_session.resolve_class_attribute_from_config(
             NetworkConfig,

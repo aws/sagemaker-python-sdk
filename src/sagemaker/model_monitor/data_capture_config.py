@@ -75,8 +75,8 @@ class DataCaptureConfig(object):
                 _DATA_CAPTURE_S3_PATH,
             )
 
-        self.kms_key_id = sagemaker_session.get_sagemaker_config_override(
-            ENDPOINT_CONFIG_DATA_CAPTURE_KMS_KEY_ID_PATH, kms_key_id
+        self.kms_key_id = sagemaker_session.resolve_value_from_config(
+            kms_key_id, ENDPOINT_CONFIG_DATA_CAPTURE_KMS_KEY_ID_PATH
         )
         self.capture_options = capture_options or ["REQUEST", "RESPONSE"]
         self.csv_content_types = csv_content_types or ["text/csv"]

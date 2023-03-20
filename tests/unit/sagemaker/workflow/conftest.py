@@ -64,8 +64,10 @@ def pipeline_session(mock_boto_session, mock_client):
         sagemaker_client=mock_client,
         default_bucket=BUCKET,
     )
-    pipeline_session.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override",
-        side_effect=lambda key, default_value=None: default_value,
+    pipeline_session.resolve_value_from_config = Mock(
+        name="resolve_value_from_config",
+        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
+        if direct_input is not None
+        else default_value,
     )
     return pipeline_session

@@ -245,11 +245,6 @@ def sagemaker_session():
         if direct_input is not None
         else default_value,
     )
-
-    sms.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override",
-        side_effect=lambda key, default_value=None: default_value,
-    )
     return sms
 
 
@@ -4004,9 +3999,11 @@ def test_estimator_local_mode_error(sagemaker_session):
 
 
 def test_estimator_local_mode_ok(sagemaker_local_session):
-    sagemaker_local_session.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override",
-        side_effect=lambda key, default_value=None: default_value,
+    sagemaker_local_session.resolve_value_from_config = Mock(
+        name="resolve_value_from_config",
+        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
+        if direct_input is not None
+        else default_value,
     )
     # When using instance local with a session which is not LocalSession we should error out
     Estimator(

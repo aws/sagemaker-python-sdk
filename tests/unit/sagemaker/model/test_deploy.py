@@ -68,9 +68,11 @@ BASE_PRODUCTION_VARIANT = {
 @pytest.fixture
 def sagemaker_session():
     session = Mock()
-    session.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override",
-        side_effect=lambda key, default_value=None: default_value,
+    session.resolve_value_from_config = Mock(
+        name="resolve_value_from_config",
+        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
+        if direct_input is not None
+        else default_value,
     )
     return session
 
@@ -441,13 +443,17 @@ def test_deploy_wrong_serverless_config(sagemaker_session):
 @patch("sagemaker.session.Session")
 @patch("sagemaker.local.LocalSession")
 def test_deploy_creates_correct_session(local_session, session):
-    local_session.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override",
-        side_effect=lambda key, default_value=None: default_value,
+    local_session.resolve_value_from_config = Mock(
+        name="resolve_value_from_config",
+        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
+        if direct_input is not None
+        else default_value,
     )
-    session.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override",
-        side_effect=lambda key, default_value=None: default_value,
+    session.resolve_value_from_config = Mock(
+        name="resolve_value_from_config",
+        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
+        if direct_input is not None
+        else default_value,
     )
     # We expect a LocalSession when deploying to instance_type = 'local'
     model = Model(MODEL_IMAGE, MODEL_DATA, role=ROLE)

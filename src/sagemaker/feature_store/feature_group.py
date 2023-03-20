@@ -557,14 +557,14 @@ class FeatureGroup:
         Returns:
             Response dict from service.
         """
-        role_arn = self.sagemaker_session.get_sagemaker_config_override(
-            FEATURE_GROUP_ROLE_ARN_PATH, default_value=role_arn
+        role_arn = self.sagemaker_session.resolve_value_from_config(
+            role_arn, FEATURE_GROUP_ROLE_ARN_PATH
         )
-        offline_store_kms_key_id = self.sagemaker_session.get_sagemaker_config_override(
-            FEATURE_GROUP_OFFLINE_STORE_KMS_KEY_ID_PATH, default_value=offline_store_kms_key_id
+        offline_store_kms_key_id = self.sagemaker_session.resolve_value_from_config(
+            offline_store_kms_key_id, FEATURE_GROUP_OFFLINE_STORE_KMS_KEY_ID_PATH
         )
-        online_store_kms_key_id = self.sagemaker_session.get_sagemaker_config_override(
-            FEATURE_GROUP_ONLINE_STORE_KMS_KEY_ID_PATH, default_value=online_store_kms_key_id
+        online_store_kms_key_id = self.sagemaker_session.resolve_value_from_config(
+            online_store_kms_key_id, FEATURE_GROUP_ONLINE_STORE_KMS_KEY_ID_PATH
         )
         if not role_arn:
             # Originally IAM role was a required parameter.

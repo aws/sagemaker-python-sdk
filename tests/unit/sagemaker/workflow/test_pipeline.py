@@ -46,9 +46,11 @@ def sagemaker_session_mock():
     session_mock = Mock()
     session_mock.default_bucket = Mock(name="default_bucket", return_value="s3_bucket")
     session_mock.local_mode = False
-    session_mock.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override",
-        side_effect=lambda key, default_value=None: default_value,
+    session_mock.resolve_value_from_config = Mock(
+        name="resolve_value_from_config",
+        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
+        if direct_input is not None
+        else default_value,
     )
     session_mock._append_sagemaker_config_tags = Mock(
         name="_append_sagemaker_config_tags", side_effect=lambda tags, config_path_to_tags: tags
@@ -72,8 +74,9 @@ def test_pipeline_create_and_update_without_role_arn(sagemaker_session_mock):
 
 
 def test_pipeline_create_and_update_with_config_injection(sagemaker_session_mock):
-    sagemaker_session_mock.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override", side_effect=lambda a, b: "ConfigRoleArn"
+    sagemaker_session_mock.resolve_value_from_config = Mock(
+        name="resolve_value_from_config",
+        side_effect=lambda direct_input=None, config_path=None, default_value=None: "ConfigRoleArn",
     )
     sagemaker_session_mock.sagemaker_client.describe_pipeline.return_value = {
         "PipelineArn": "pipeline-arn"

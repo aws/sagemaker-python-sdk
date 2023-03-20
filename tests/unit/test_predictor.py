@@ -51,10 +51,6 @@ def empty_sagemaker_session():
     ims.sagemaker_runtime_client.invoke_endpoint = Mock(
         name="invoke_endpoint", return_value={"Body": response_body}
     )
-    ims.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override",
-        side_effect=lambda key, default_value=None: default_value,
-    )
     return ims
 
 

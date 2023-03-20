@@ -432,10 +432,6 @@ def sagemaker_session(sagemaker_client):
         if direct_input is not None
         else default_value,
     )
-    session_mock.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override",
-        side_effect=lambda key, default_value=None: default_value,
-    )
     return session_mock
 
 

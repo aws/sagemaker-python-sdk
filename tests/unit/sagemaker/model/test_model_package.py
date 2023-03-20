@@ -59,9 +59,11 @@ def sagemaker_session():
     session.sagemaker_client.describe_model_package = Mock(
         return_value=DESCRIBE_MODEL_PACKAGE_RESPONSE
     )
-    session.get_sagemaker_config_override = Mock(
-        name="get_sagemaker_config_override",
-        side_effect=lambda key, default_value=None: default_value,
+    session.resolve_value_from_config = Mock(
+        name="resolve_value_from_config",
+        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
+        if direct_input is not None
+        else default_value,
     )
     return session
 

@@ -207,18 +207,16 @@ class AutoML(object):
         self._auto_ml_job_desc = None
         self._best_candidate = None
         self.sagemaker_session = sagemaker_session or Session()
-        self.vpc_config = self.sagemaker_session.get_sagemaker_config_override(
-            AUTO_ML_VPC_CONFIG_PATH, default_value=vpc_config
+        self.vpc_config = self.sagemaker_session.resolve_value_from_config(
+            vpc_config, AUTO_ML_VPC_CONFIG_PATH
         )
-        self.volume_kms_key = self.sagemaker_session.get_sagemaker_config_override(
-            AUTO_ML_VOLUME_KMS_KEY_ID_PATH, default_value=volume_kms_key
+        self.volume_kms_key = self.sagemaker_session.resolve_value_from_config(
+            volume_kms_key, AUTO_ML_VOLUME_KMS_KEY_ID_PATH
         )
-        self.output_kms_key = self.sagemaker_session.get_sagemaker_config_override(
-            AUTO_ML_KMS_KEY_ID_PATH, default_value=output_kms_key
+        self.output_kms_key = self.sagemaker_session.resolve_value_from_config(
+            output_kms_key, AUTO_ML_KMS_KEY_ID_PATH
         )
-        self.role = self.sagemaker_session.get_sagemaker_config_override(
-            AUTO_ML_ROLE_ARN_PATH, default_value=role
-        )
+        self.role = self.sagemaker_session.resolve_value_from_config(role, AUTO_ML_ROLE_ARN_PATH)
         if not self.role:
             # Originally IAM role was a required parameter.
             # Now we marked that as Optional because we can fetch it from SageMakerConfig
