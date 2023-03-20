@@ -463,7 +463,7 @@ def _retrieve_default_instance_type(
     return default_instance_type
 
 
-def _retrieve_supported_instance_type(
+def _retrieve_supported_instance_types(
     model_id: str,
     model_version: str,
     scope: str,

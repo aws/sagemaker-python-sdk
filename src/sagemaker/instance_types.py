@@ -111,7 +111,7 @@ def retrieve_supported(
     if scope is None:
         raise ValueError("Must specify scope for instance types.")
 
-    return artifacts._retrieve_supported_instance_type(
+    return artifacts._retrieve_supported_instance_types(
         model_id,
         model_version,
         scope,
