@@ -398,9 +398,7 @@ class InferenceRecommenderMixin:
         # Update params beased on model recommendation
         if model_recommendation:
             if initial_instance_count is None:
-                raise ValueError(
-                    "Please specify initial_instance_count with model recommendation id"
-                )
+                raise ValueError("Must specify model recommendation id and instance count.")
             self.env.update(model_recommendation["Environment"])
             instance_type = model_recommendation["InstanceType"]
             return (instance_type, initial_instance_count)
@@ -408,9 +406,9 @@ class InferenceRecommenderMixin:
         # Update params based on default inference recommendation
         if bool(instance_type) != bool(initial_instance_count):
             raise ValueError(
-                "Please either do not specify instance_type and initial_instance_count"
-                "since they are in recommendation, or specify both of them if you want"
-                "to override the recommendation."
+                "instance_type and initial_instance_count are mutually exclusive with"
+                "recommendation id since they are in recommendation."
+                "Please specify both of them if you want to override the recommendation."
             )
         input_config = right_size_job_res["InputConfig"]
         model_config = right_size_recommendation["ModelConfiguration"]
