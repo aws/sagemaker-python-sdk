@@ -56,10 +56,7 @@ for _ in retries(
         import sagemaker.workflow.airflow as sm_airflow
         import airflow.utils as utils
         from airflow import DAG
-        from airflow.providers.amazon.aws.operators.sagemaker import SageMakerTrainingOperator
-        from airflow.providers.amazon.aws.operators.sagemaker_transform import (
-            SageMakerTransformOperator,
-        )
+        from airflow.providers.amazon.aws.operators.sagemaker import SageMakerTrainingOperator, SageMakerTransformOperator
 
         break
     except ParsingError:
