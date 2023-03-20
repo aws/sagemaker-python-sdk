@@ -218,7 +218,7 @@ def test_unsupported_gpu_instance(
         ).fit()
 
 
-def test_unsupported_framework_version(
+def test_unsupported_framework_version_min(
     huggingface_training_compiler_version,
 ):
     with pytest.raises(ValueError):
@@ -229,9 +229,24 @@ def test_unsupported_framework_version(
             instance_count=INSTANCE_COUNT,
             instance_type=INSTANCE_TYPE,
             transformers_version=huggingface_training_compiler_version,
-            pytorch_version=".".join(
-                ["99"] * len(huggingface_training_compiler_version.split("."))
-            ),
+            pytorch_version="1.8",
+            enable_sagemaker_metrics=False,
+            compiler_config=TrainingCompilerConfig(),
+        ).fit()
+
+
+def test_unsupported_framework_version_max(
+    huggingface_training_compiler_version,
+):
+    with pytest.raises(ValueError):
+        HuggingFace(
+            py_version="py38",
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
+            transformers_version=huggingface_training_compiler_version,
+            pytorch_version="1.12",
             enable_sagemaker_metrics=False,
             compiler_config=TrainingCompilerConfig(),
         ).fit()

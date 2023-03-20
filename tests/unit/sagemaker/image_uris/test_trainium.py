@@ -15,6 +15,8 @@ from __future__ import absolute_import
 from sagemaker import image_uris
 from tests.unit.sagemaker.image_uris import expected_uris
 
+import pytest
+
 ACCOUNTS = {
     "af-south-1": "626614931356",
     "ap-east-1": "871362719292",
@@ -45,6 +47,7 @@ ACCOUNTS = {
 }
 
 TRAINIUM_REGIONS = ACCOUNTS.keys()
+TRAINIUM_ALLOWED_FRAMEWORKS = "pytorch"
 
 
 def _expected_trainium_framework_uri(
@@ -73,3 +76,20 @@ def _test_trainium_framework_uris(framework, version):
 
 def test_trainium_pytorch(pytorch_neuron_version):
     _test_trainium_framework_uris("pytorch", pytorch_neuron_version)
+
+
+def _test_trainium_unsupported_framework(framework, framework_version):
+    for region in TRAINIUM_REGIONS:
+        with pytest.raises(ValueError) as error:
+            image_uris.retrieve(
+                framework, region, version=framework_version, instance_type="ml.trn1.xlarge"
+            )
+        expectedErr = (
+            f"Unsupported framework: {framework}. Supported framework(s) for Trainium instances: "
+            f"{TRAINIUM_ALLOWED_FRAMEWORKS}."
+        )
+        assert expectedErr in str(error)
+
+
+def test_trainium_unsupported_framework():
+    _test_trainium_unsupported_framework("autogluon", "0.6.1")
