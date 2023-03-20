@@ -650,7 +650,6 @@ def profiler_config_deprecation_warning(
         return
 
     if framework_version is None:
-        logger.warning(framework_version)
         framework_name, _, image_tag, _ = framework_name_from_image(image_uri)
 
         if image_tag is not None:
