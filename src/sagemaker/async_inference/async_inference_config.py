@@ -57,29 +57,8 @@ class AsyncInferenceConfig(object):
         """
         self.output_path = output_path
         self.max_concurrent_invocations_per_instance = max_concurrent_invocations_per_instance
-        self._kms_key_id = kms_key_id
+        self.kms_key_id = kms_key_id
         self.notification_config = notification_config
-
-    @property
-    def kms_key_id(self):
-        """Getter for kms_key_id
-
-        Returns:
-            str: The KMS Key ID.
-        """
-        return self._kms_key_id
-
-    @kms_key_id.setter
-    def kms_key_id(self, kms_key_id: str):
-        """Setter for kms_key_id
-
-        Args:
-            kms_key_id: The new kms_key_id to replace the existing one.
-
-        Returns:
-
-        """
-        self._kms_key_id = kms_key_id
 
     def _to_request_dict(self):
         """Generates a request dictionary using the parameters provided to the class."""

@@ -69,31 +69,32 @@ class SageMakerConfig(object):
     """
 
     def __init__(self, additional_config_paths: List[str] = None, s3_resource=_DEFAULT_S3_RESOURCE):
-        """Constructor for SageMakerConfig.
+        """Initializes the SageMakerConfig object.
 
-        By default, it will first look for Config files in paths that are dictated by
-        _DEFAULT_ADMIN_CONFIG_FILE_PATH and _DEFAULT_USER_CONFIG_FILE_PATH.
+        By default, it will first look for Config files in the default locations as dictated by
+        the SDK.
 
-        Users can override the _DEFAULT_ADMIN_CONFIG_FILE_PATH and _DEFAULT_USER_CONFIG_FILE_PATH
+        Users can override the default Admin Config file path and the default User Config file path
         by using environment variables - SAGEMAKER_ADMIN_CONFIG_OVERRIDE and
         SAGEMAKER_USER_CONFIG_OVERRIDE
 
         Additional Configuration file paths can also be provided as a constructor parameter.
 
-        This constructor will then
-        * Load each config file.
+        This __init__ method will then
+        * Load each config file (Can be in S3/Local File system).
         * It will validate the schema of the config files.
         * It will perform the merge operation in the same order.
 
-        This constructor will throw exceptions for the following cases:
-        * Schema validation fails for one/more config files.
-        * When the config file is not a proper YAML file.
-        * Any S3 related issues that arises while fetching config file from S3. This includes
-        permission issues, S3 Object is not found in the specified S3 URI.
-        * File doesn't exist in a path that was specified by the user as part of environment
-        variable/ additional_config_paths. This doesn't include
-        _DEFAULT_ADMIN_CONFIG_FILE_PATH and _DEFAULT_USER_CONFIG_FILE_PATH
-
+        This __init__ method will throw exceptions for the following cases:
+        * jsonschema.exceptions.ValidationError: Schema validation fails for one/more config files.
+        * RuntimeError: If the method is unable to retrieve the list of all the S3 files with the
+        same prefix/Unable to retrieve the file.
+        * ValueError: If an S3 URI is provided and there are no S3 files with that prefix.
+        * ValueError: If a folder in S3 bucket is provided as s3_uri, and if it doesn't have
+        config.yaml.
+        * ValueError: A file doesn't exist in a path that was specified by the user as part of
+        environment variable/ additional_config_paths. This doesn't include the default config
+        file locations.
 
         Args:
             additional_config_paths: List of Config file paths.
@@ -105,8 +106,8 @@ class SageMakerConfig(object):
                 * S3 URI of the directory containing the config file (in this case, we will look for
                 config.yaml in that directory)
                 Note: S3 URI follows the format s3://<bucket>/<Key prefix>
-            s3_resource: Corresponds to boto3 S3 resource. This will be used to fetch Config
-            files from S3. If it is not provided, we will create a default s3 resource
+            s3_resource (boto3.resource("s3")): The Boto3 S3 resource. This will be used to fetch
+            Config files from S3. If it is not provided, we will create a default s3 resource
             See :py:meth:`boto3.session.Session.resource`. This argument is not needed if the
             config files are present in the local file system
 
@@ -128,7 +129,7 @@ class SageMakerConfig(object):
         """Getter for Config paths.
 
         Returns:
-            List[str]: This corresponds to the list of config file paths.
+            List[str]: This method returns the list of config file paths.
         """
         return self._config_paths
 
@@ -144,29 +145,6 @@ class SageMakerConfig(object):
 
 
 def _load_config_files(file_paths: List[str], s3_resource_for_config) -> dict:
-    """This method loads all the config files from the paths that were provided as Inputs.
-
-    Note: Supported Config file locations are Local File System and S3.
-
-    This method will throw exceptions for the following cases:
-        * Schema validation fails for one/more config files.
-        * When the config file is not a proper YAML file.
-        * Any S3 related issues that arises while fetching config file from S3. This includes
-        permission issues, S3 Object is not found in the specified S3 URI.
-        * File doesn't exist in a path that was specified by the user as part of environment
-        variable/ additional_config_paths. This doesn't include
-        _DEFAULT_ADMIN_CONFIG_FILE_PATH and _DEFAULT_USER_CONFIG_FILE_PATH
-
-    Args:
-        file_paths(List[str]): The list of paths corresponding to the config file. Note: This
-        path can either be a Local File System path or it can be a S3 URI.
-        s3_resource_for_config: Corresponds to boto3 S3 resource. This will be used to fetch Config
-        files from S3. See :py:meth:`boto3.session.Session.resource`.
-
-    Returns:
-        dict: A dictionary representing the configurations that were loaded from the config files.
-
-    """
     merged_config = {}
     for file_path in file_paths:
         config_from_file = {}
@@ -191,21 +169,6 @@ def _load_config_files(file_paths: List[str], s3_resource_for_config) -> dict:
 
 
 def _load_config_from_file(file_path: str) -> dict:
-    """This method loads the config file from the path that was specified as parameter.
-
-    If the path that was provided, corresponds to a directory then this method will try to search
-    for 'config.yaml' in that directory. Note: We will not be doing any recursive search.
-
-    Args:
-        file_path(str): The file path from which the Config file needs to be loaded.
-
-    Returns:
-        dict: A dictionary representing the configurations that were loaded from the config file.
-
-    This method will throw Exceptions for the following cases:
-    * When the config file is not a proper YAML file.
-    * File doesn't exist in a path that was specified by the consumer.
-    """
     inferred_file_path = file_path
     if os.path.isdir(file_path):
         inferred_file_path = os.path.join(file_path, "config.yaml")
@@ -219,28 +182,6 @@ def _load_config_from_file(file_path: str) -> dict:
 
 
 def _load_config_from_s3(s3_uri, s3_resource_for_config) -> dict:
-    """This method loads the config file from the S3 URI that was specified as parameter.
-
-    If the S3 URI that was provided, corresponds to a directory then this method will try to
-    search for 'config.yaml' in that directory. Note: We will not be doing any recursive search.
-
-    Args:
-        s3_uri(str): The S3 URI of the config file.
-            Note: S3 URI follows the format s3://<bucket>/<Key prefix>
-        s3_resource_for_config: Corresponds to boto3 S3 resource. This will be used to fetch Config
-        files from S3. See :py:meth:`boto3.session.Session.resource`.
-
-    Returns:
-        dict: A dictionary representing the configurations that were loaded from the config file.
-
-    This method will throw Exceptions for the following cases:
-    * If Boto3 S3 resource is not provided.
-    * When the config file is not a proper YAML file.
-    * If the method is unable to retrieve the list of all the S3 files with the same prefix
-    * If there are no S3 files with that prefix.
-    * If a folder in S3 bucket is provided as s3_uri, and if it doesn't have config.yaml,
-        then we will throw an Exception.
-    """
     if not s3_resource_for_config:
         raise RuntimeError("Please provide a S3 client for loading the config")
     logger.debug("Fetching configuration file from the S3 URI: %s", s3_uri)
@@ -253,29 +194,6 @@ def _load_config_from_s3(s3_uri, s3_resource_for_config) -> dict:
 
 
 def _get_inferred_s3_uri(s3_uri, s3_resource_for_config):
-    """Verifies whether the given S3 URI exists and returns the URI.
-
-    If there are multiple S3 objects with the same key prefix,
-    then this method will verify whether S3 URI + /config.yaml exists.
-    s3://example-bucket/somekeyprefix/config.yaml
-
-    Args:
-        s3_uri (str) : An S3 uri that refers to a location in which config file is present.
-            s3_uri must start with 's3://'.
-            An example s3_uri: 's3://example-bucket/config.yaml'.
-        s3_resource_for_config: Corresponds to boto3 S3 resource. This will be used to fetch Config
-            files from S3.
-            See :py:meth:`boto3.session.Session.resource`
-
-    Returns:
-        str: Valid S3 URI of the Config file. None if it doesn't exist.
-
-    This method will throw Exceptions for the following cases:
-    * If the method is unable to retrieve the list of all the S3 files with the same prefix
-    * If there are no S3 files with that prefix.
-    * If a folder in S3 bucket is provided as s3_uri, and if it doesn't have config.yaml,
-    then we will throw an Exception.
-    """
     parsed_url = urlparse(s3_uri)
     bucket, key_prefix = parsed_url.netloc, parsed_url.path.lstrip("/")
     try:
