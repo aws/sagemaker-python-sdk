@@ -555,9 +555,9 @@ def test_deploy_ir_with_incompatible_parameters(sagemaker_session):
 
     with pytest.raises(
         ValueError,
-        match="Please either do not specify instance_type and initial_instance_count"
-        "since they are in recommendation, or specify both of them if you want"
-        "to override the recommendation.",
+        match="instance_type and initial_instance_count are mutually exclusive with"
+        "recommendation id since they are in recommendation."
+        "Please specify both of them if you want to override the recommendation.",
     ):
         model.deploy(
             instance_type=INSTANCE_TYPE,
@@ -566,9 +566,9 @@ def test_deploy_ir_with_incompatible_parameters(sagemaker_session):
 
     with pytest.raises(
         ValueError,
-        match="Please either do not specify instance_type and initial_instance_count"
-        "since they are in recommendation, or specify both of them if you want"
-        "to override the recommendation.",
+        match="instance_type and initial_instance_count are mutually exclusive with"
+        "recommendation id since they are in recommendation."
+        "Please specify both of them if you want to override the recommendation.",
     ):
         model.deploy(
             initial_instance_count=INSTANCE_COUNT,
