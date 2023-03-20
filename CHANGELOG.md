@@ -1,5 +1,65 @@
 # Changelog
 
+## v2.140.0 (2023-03-17)
+
+### Features
+
+ * SDK changes for TRCOMP support
+
+### Bug Fixes and Other Changes
+
+ * [Feature - Hugging Face] Update Transformers 4.26 - PyTorch 1.13.1 Image uri
+
+## v2.139.0 (2023-03-15)
+
+### Features
+
+ * Add XGBoost framework 1.7-1 version
+
+### Bug Fixes and Other Changes
+
+ * Fix image_uris.retrieve() function to return ValueError when framework is not allowed for an instance_type
+
+## v2.138.0 (2023-03-13)
+
+### Features
+
+ * Jumpstart training metrics
+
+### Bug Fixes and Other Changes
+
+ * Add new region support for MX, PT, TF on SM Training
+
+## v2.137.0 (2023-03-10)
+
+### Features
+
+ * support JSON for input dataset and model output
+
+### Bug Fixes and Other Changes
+
+ * Wait on describe for tag propagation
+ * Extracted profile_name directly from sagemaker.Session if None
+ * Avoid double encoding to JSON in InferenceRecommenderMixin
+ * RepackStep must use the same KMS key as the Model
+
+## v2.136.0 (2023-03-09)
+
+### Features
+
+ * with_feature_group [feature_store]
+ * Djl Large Model Support
+ * Decouple model.right_size() from model registry
+
+### Bug Fixes and Other Changes
+
+ * Fix integration test error in test_default_right_size_and_deploy_unregistered_base_model
+ * Add djl 0.21.0 dlc images
+
+### Documentation Changes
+
+ * Torchrun gpu support documentation change
+
 ## v2.135.1.post0 (2023-03-02)
 
 ### Documentation Changes
