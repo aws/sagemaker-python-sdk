@@ -567,6 +567,7 @@ def gpu_instance_type(sagemaker_session, request):
 
 @pytest.fixture()
 def gpu_pytorch_instance_type(sagemaker_session, request):
+    fw_version = None
     for pytorch_version_fixture in [
         "pytorch_inference_version",
         "huggingface_training_pytorch_latest_version",
