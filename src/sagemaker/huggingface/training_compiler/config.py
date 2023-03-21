@@ -102,6 +102,17 @@ class TrainingCompilerConfig(BaseConfig):
 
         super(TrainingCompilerConfig, cls).validate(estimator)
 
+        if estimator.pytorch_version:
+            if (Version(estimator.pytorch_version) in SpecifierSet("< 1.9")) or (
+                Version(estimator.pytorch_version) in SpecifierSet("> 1.11")
+            ):
+                error_helper_string = (
+                    "SageMaker Training Compiler is only supported "
+                    "with HuggingFace PyTorch 1.9-1.11. "
+                    "Received pytorch_version={} which is unsupported."
+                )
+                raise ValueError(error_helper_string.format(estimator.pytorch_version))
+
         if estimator.image_uri:
             error_helper_string = (
                 "Overriding the image URI is currently not supported "
