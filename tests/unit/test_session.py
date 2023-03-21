@@ -2650,6 +2650,35 @@ def test_create_model_package_from_containers(sagemaker_session):
     sagemaker_session.sagemaker_client.create_model_package.assert_called_once()
 
 
+def test_create_model_package_from_containers_cross_account_mpg_name(sagemaker_session):
+    mpg_name = "arn:aws:sagemaker:us-east-1:215995503607:model-package-group/stage-dev"
+    content_types = ["text/csv"]
+    response_types = ["text/csv"]
+    sagemaker_session.create_model_package_from_containers(
+        model_package_group_name=mpg_name,
+        content_types=content_types,
+        response_types=response_types,
+    )
+    sagemaker_session.sagemaker_client.create_model_package.assert_called_once()
+
+
+def test_create_mpg_from_containers_cross_account_mpg_name(sagemaker_session):
+    mpg_name = "arn:aws:sagemaker:us-east-1:215995503607:model-package-group/stage-dev"
+    content_types = ["text/csv"]
+    response_types = ["text/csv"]
+    with pytest.raises(AssertionError) as error:
+        sagemaker_session.create_model_package_from_containers(
+            model_package_group_name=mpg_name,
+            content_types=content_types,
+            response_types=response_types,
+        )
+        sagemaker_session.sagemaker_client.create_model_package_group.assert_called_once()
+        assert (
+            "Expected 'create_model_package_group' to have been called once. "
+            "Called 0 times." == str(error)
+        )
+
+
 def test_create_model_package_from_containers_name_conflict(sagemaker_session):
     model_package_name = "sagemaker-model-package"
     model_package_group_name = "sagemaker-model-package-group"
