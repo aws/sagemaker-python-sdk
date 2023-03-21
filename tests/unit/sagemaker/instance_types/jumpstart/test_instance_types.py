@@ -51,7 +51,7 @@ def test_jumpstart_instance_types(patched_get_model_specs):
 
     patched_get_model_specs.reset_mock()
 
-    default_training_instance_types = instance_types.retrieve_supported(
+    default_training_instance_types = instance_types.retrieve(
         region=region, model_id=model_id, model_version=model_version, scope="training"
     )
     assert default_training_instance_types == [
@@ -68,7 +68,7 @@ def test_jumpstart_instance_types(patched_get_model_specs):
 
     patched_get_model_specs.reset_mock()
 
-    default_inference_instance_types = instance_types.retrieve_supported(
+    default_inference_instance_types = instance_types.retrieve(
         region=region, model_id=model_id, model_version=model_version, scope="inference"
     )
     assert default_inference_instance_types == [
@@ -95,7 +95,7 @@ def test_jumpstart_instance_types(patched_get_model_specs):
         )
 
     with pytest.raises(ValueError):
-        instance_types.retrieve_supported(
+        instance_types.retrieve(
             region=region,
             model_id=model_id,
             model_version="*",
@@ -118,20 +118,20 @@ def test_jumpstart_instance_types(patched_get_model_specs):
         instance_types.retrieve_default(model_id=model_id, scope="training")
 
     with pytest.raises(KeyError):
-        instance_types.retrieve_supported(
+        instance_types.retrieve(
             region=region, model_id="blah", model_version="*", scope="inference"
         )
 
     with pytest.raises(ValueError):
-        instance_types.retrieve_supported(
+        instance_types.retrieve(
             region="mars-south-1", model_id=model_id, model_version="*", scope="training"
         )
 
     with pytest.raises(ValueError):
-        instance_types.retrieve_supported(model_version="*", scope="inference")
+        instance_types.retrieve(model_version="*", scope="inference")
 
     with pytest.raises(ValueError):
-        instance_types.retrieve_supported(model_id=model_id, scope="training")
+        instance_types.retrieve(model_id=model_id, scope="training")
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -152,11 +152,11 @@ def test_jumpstart_no_supported_instance_types(patched_get_model_specs):
         )
 
     with pytest.raises(ValueError):
-        instance_types.retrieve_supported(
+        instance_types.retrieve(
             region=region, model_id=model_id, model_version=model_version, scope="training"
         )
 
     with pytest.raises(ValueError):
-        instance_types.retrieve_supported(
+        instance_types.retrieve(
             region=region, model_id=model_id, model_version=model_version, scope="inference"
         )

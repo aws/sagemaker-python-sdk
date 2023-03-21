@@ -73,7 +73,7 @@ def retrieve_default(
     )
 
 
-def retrieve_supported(
+def retrieve(
     region=None,
     model_id=None,
     model_version=None,
@@ -111,7 +111,7 @@ def retrieve_supported(
     if scope is None:
         raise ValueError("Must specify scope for instance types.")
 
-    return artifacts._retrieve_supported_instance_types(
+    return artifacts._retrieve_instance_types(
         model_id,
         model_version,
         scope,
