@@ -3,19 +3,19 @@ SageMaker:
   FeatureGroup:
     OnlineStoreConfig:
       SecurityConfig:
-        KmsKeyId: 'someotherkmskeyid'
+        KmsKeyId: 'kmskeyid1'
     OfflineStoreConfig:
       S3StorageConfig:
-        KmsKeyId: 'somekmskeyid'
-    RoleArn: 'arn:aws:iam::366666666666:role/IMRole'
+        KmsKeyId: 'kmskeyid2'
+    RoleArn: 'arn:aws:iam::555555555555:role/IMRole'
   MonitoringSchedule:
     MonitoringScheduleConfig:
       MonitoringJobDefinition:
         MonitoringOutputConfig:
-          KmsKeyId: 'somekmskey'
+          KmsKeyId: 'kmskeyid1'
         MonitoringResources:
           ClusterConfig:
-            VolumeKmsKeyId: 'somevolumekmskey'
+            VolumeKmsKeyId: 'volumekmskeyid1'
         NetworkConfig:
           EnableNetworkIsolation: true
           VpcConfig:
@@ -23,50 +23,50 @@ SageMaker:
               - 'sg123'
             Subnets:
               - 'subnet-1234'
-        RoleArn: 'arn:aws:iam::366666666666:role/IMRole'
+        RoleArn: 'arn:aws:iam::555555555555:role/IMRole'
   EndpointConfig:
     AsyncInferenceConfig:
       OutputConfig:
-        KmsKeyId: 'somekmskey'
+        KmsKeyId: 'kmskeyid1'
     DataCaptureConfig:
-      KmsKeyId: 'somekmskey2'
-    KmsKeyId: 'somekmskey3'
+      KmsKeyId: 'kmskeyid2'
+    KmsKeyId: 'kmskeyid3'
     ProductionVariants:
       - CoreDumpConfig:
-          KmsKeyId: 'somekmskey4'
+          KmsKeyId: 'kmskeyid4'
   AutoML:
     AutoMLJobConfig:
       SecurityConfig:
-        VolumeKmsKeyId: 'somevolumekmskey'
+        VolumeKmsKeyId: 'volumekmskeyid1'
         VpcConfig:
           SecurityGroupIds:
             - 'sg123'
           Subnets:
             - 'subnet-1234'
     OutputDataConfig:
-      KmsKeyId: 'somekmskey'
-    RoleArn: 'arn:aws:iam::366666666666:role/IMRole'
+      KmsKeyId: 'kmskeyid1'
+    RoleArn: 'arn:aws:iam::555555555555:role/IMRole'
   TransformJob:
     DataCaptureConfig:
-      KmsKeyId: 'somekmskey'
+      KmsKeyId: 'kmskeyid1'
     TransformOutput:
-      KmsKeyId: 'somekmskey2'
+      KmsKeyId: 'kmskeyid2'
     TransformResources:
-      VolumeKmsKeyId: 'somevolumekmskey'
+      VolumeKmsKeyId: 'volumekmskeyid1'
   CompilationJob:
     OutputConfig:
-      KmsKeyId: 'somekmskey'
-    RoleArn: 'arn:aws:iam::366666666666:role/IMRole'
+      KmsKeyId: 'kmskeyid1'
+    RoleArn: 'arn:aws:iam::555555555555:role/IMRole'
     VpcConfig:
       SecurityGroupIds:
         - 'sg123'
       Subnets:
         - 'subnet-1234'
   Pipeline:
-    RoleArn: 'arn:aws:iam::366666666666:role/IMRole'
+    RoleArn: 'arn:aws:iam::555555555555:role/IMRole'
   Model:
     EnableNetworkIsolation: true
-    ExecutionRoleArn: 'arn:aws:iam::366666666666:role/IMRole'
+    ExecutionRoleArn: 'arn:aws:iam::555555555555:role/IMRole'
     VpcConfig:
       SecurityGroupIds:
         - 'sg123'
@@ -77,10 +77,10 @@ SageMaker:
       ValidationProfiles:
         - TransformJobDefinition:
             TransformOutput:
-              KmsKeyId: 'somerandomkmskeyid'
+              KmsKeyId: 'kmskeyid1'
             TransformResources:
-              VolumeKmsKeyId: 'somerandomkmskeyid'
-      ValidationRole: 'arn:aws:iam::366666666666:role/IMRole'
+              VolumeKmsKeyId: 'volumekmskeyid1'
+      ValidationRole: 'arn:aws:iam::555555555555:role/IMRole'
   ProcessingJob:
     NetworkConfig:
       EnableNetworkIsolation: true
@@ -92,23 +92,23 @@ SageMaker:
     ProcessingInputs:
       - DatasetDefinition:
           AthenaDatasetDefinition:
-            KmsKeyId: 'somekmskeyid'
+            KmsKeyId: 'kmskeyid1'
           RedshiftDatasetDefinition:
-            KmsKeyId: 'someotherkmskeyid'
-            ClusterRoleArn: 'arn:aws:iam::366666666666:role/IMRole'
+            KmsKeyId: 'kmskeyid2'
+            ClusterRoleArn: 'arn:aws:iam::555555555555:role/IMRole'
     ProcessingOutputConfig:
-      KmsKeyId: 'somerandomkmskeyid'
+      KmsKeyId: 'kmskeyid3'
     ProcessingResources:
       ClusterConfig:
-        VolumeKmsKeyId: 'somerandomkmskeyid'
-    RoleArn: 'arn:aws:iam::366666666666:role/IMRole'
+        VolumeKmsKeyId: 'volumekmskeyid1'
+    RoleArn: 'arn:aws:iam::555555555555:role/IMRole'
   TrainingJob:
     EnableNetworkIsolation: true
     OutputDataConfig:
-      KmsKeyId: 'somekmskey'
+      KmsKeyId: 'kmskeyid1'
     ResourceConfig:
-      VolumeKmsKeyId: 'somevolumekmskey'
-    RoleArn: 'arn:aws:iam::366666666666:role/IMRole'
+      VolumeKmsKeyId: 'volumekmskeyid1'
+    RoleArn: 'arn:aws:iam::555555555555:role/IMRole'
     VpcConfig:
       SecurityGroupIds:
         - 'sg123'
@@ -116,5 +116,5 @@ SageMaker:
         - 'subnet-1234'
   EdgePackagingJob:
     OutputConfig:
-      KmsKeyId: 'somekeyid'
-    RoleArn: 'arn:aws:iam::366666666666:role/IMRole'
+      KmsKeyId: 'kmskeyid1'
+    RoleArn: 'arn:aws:iam::555555555555:role/IMRole'

@@ -3,7 +3,7 @@ SageMaker:
   FeatureGroup:
     OnlineStoreConfig:
       SecurityConfig:
-        KmsKeyId: 'someotherkmskeyid'
+        KmsKeyId: 'kmskeyid1'
     OfflineStoreConfig:
       S3StorageConfig:
-        KmsKeyId: 'somekmskeyid'
+        KmsKeyId: 'kmskeyid2'

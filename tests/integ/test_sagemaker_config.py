@@ -100,12 +100,6 @@ def sagemaker_session_with_dynamically_generated_sagemaker_config(
                 "AsyncInferenceConfig": {"OutputConfig": {"KmsKeyId": kms_key_arn}},
                 "DataCaptureConfig": {"KmsKeyId": kms_key_arn},
                 "KmsKeyId": kms_key_arn,
-                # TODO: re-enable after ProductionVariants injection is complete
-                # "ProductionVariants": [{
-                #     "CoreDumpConfig": {
-                #         "KmsKeyId": kms_key_arn
-                #     }
-                # }],
                 "Tags": ENDPOINT_CONFIG_TAGS,
             },
             "Model": {

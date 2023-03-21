@@ -194,7 +194,7 @@ class Processor(object):
             # Now we marked that as Optional because we can fetch it from SageMakerConfig
             # Because of marking that parameter as optional, we should validate if it is None, even
             # after fetching the config.
-            raise ValueError("IAM role should be provided for creating Processing jobs.")
+            raise ValueError("An AWS IAM role is required to create a Processing job.")
 
     @runnable_by_pipeline
     def run(

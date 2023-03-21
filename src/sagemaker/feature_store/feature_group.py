@@ -576,7 +576,7 @@ class FeatureGroup:
             # Now we marked that as Optional because we can fetch it from SageMakerConfig,
             # Because of marking that parameter as optional, we should validate if it is None, even
             # after fetching the config.
-            raise ValueError("IAM role should be provided for creating Feature Groups.")
+            raise ValueError("An AWS IAM role is required to create a Feature Group.")
         create_feature_store_args = dict(
             feature_group_name=self.name,
             record_identifier_name=record_identifier_name,

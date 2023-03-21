@@ -188,7 +188,7 @@ class ModelMonitor(object):
             # Now we marked that as Optional because we can fetch it from SageMakerConfig
             # Because of marking that parameter as optional, we should validate if it is None, even
             # after fetching the config.
-            raise ValueError("IAM role should be provided for creating Monitoring Schedule.")
+            raise ValueError("An AWS IAM role is required to create a Monitoring Schedule.")
         self.volume_kms_key = resolve_value_from_config(
             volume_kms_key,
             MONITORING_JOB_VOLUME_KMS_KEY_ID_PATH,

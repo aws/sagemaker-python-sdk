@@ -595,7 +595,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             # Now we marked that as Optional because we can fetch it from SageMakerConfig
             # Because of marking that parameter as optional, we should validate if it is None, even
             # after fetching the config.
-            raise ValueError("IAM role should be provided for creating estimators.")
+            raise ValueError("An AWS IAM role is required to create an estimator.")
         self.output_kms_key = resolve_value_from_config(
             output_kms_key, TRAINING_JOB_KMS_KEY_ID_PATH, sagemaker_session=self.sagemaker_session
         )

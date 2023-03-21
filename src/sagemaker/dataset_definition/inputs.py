@@ -71,46 +71,6 @@ class RedshiftDatasetDefinition(ApiObject):
             output_compression=output_compression,
         )
 
-    @property
-    def kms_key_id(self):
-        """Getter for KMSKeyId.
-
-        Returns:
-            str: The KMS Key ID.
-
-        """
-        return self.__dict__["kms_key_id"]
-
-    @kms_key_id.setter
-    def kms_key_id(self, kms_key_id: str):
-        """Setter for KMSKeyId.
-
-        Args:
-            kms_key_id: The KMSKeyId to be used.
-
-        """
-        self.__dict__["kms_key_id"] = kms_key_id
-
-    @property
-    def cluster_role_arn(self):
-        """Getter for Cluster Role ARN.
-
-        Returns:
-            str: The cluster Role ARN.
-
-        """
-        return self.__dict__["cluster_role_arn"]
-
-    @cluster_role_arn.setter
-    def cluster_role_arn(self, cluster_role_arn: str):
-        """Setter for Cluster Role ARN.
-
-        Args:
-            cluster_role_arn: The ClusterRoleArn to be used.
-
-        """
-        self.__dict__["cluster_role_arn"] = cluster_role_arn
-
 
 class AthenaDatasetDefinition(ApiObject):
     """DatasetDefinition for Athena.
@@ -158,26 +118,6 @@ class AthenaDatasetDefinition(ApiObject):
             output_format=output_format,
             output_compression=output_compression,
         )
-
-    @property
-    def kms_key_id(self):
-        """Getter for KMSKeyId.
-
-        Returns:
-            str: The KMS Key ID.
-
-        """
-        return self.__dict__["kms_key_id"]
-
-    @kms_key_id.setter
-    def kms_key_id(self, kms_key_id: str):
-        """Setter for KMSKeyId.
-
-        Args:
-            kms_key_id: The KMSKeyId to be used.
-
-        """
-        self.__dict__["kms_key_id"] = kms_key_id
 
 
 class DatasetDefinition(ApiObject):
@@ -229,26 +169,6 @@ class DatasetDefinition(ApiObject):
             redshift_dataset_definition=redshift_dataset_definition,
             athena_dataset_definition=athena_dataset_definition,
         )
-
-    @property
-    def redshift_dataset_definition(self):
-        """Getter for RedshiftDatasetDefinition
-
-        Returns:
-            RedshiftDatasetDefinition: RedshiftDatasetDefinition object.
-
-        """
-        return self.__dict__["redshift_dataset_definition"]
-
-    @property
-    def athena_dataset_definition(self):
-        """Getter for AthenaDatasetDefinition
-
-        Returns:
-            AthenaDatasetDefinition: AthenaDatasetDefinition object.
-
-        """
-        return self.__dict__["athena_dataset_definition"]
 
 
 class S3Input(ApiObject):

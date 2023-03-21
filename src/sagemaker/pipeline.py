@@ -109,7 +109,7 @@ class PipelineModel(object):
             # Now we marked that as Optional because we can fetch it from SageMakerConfig
             # Because of marking that parameter as optional, we should validate if it is None, even
             # after fetching the config.
-            raise ValueError("IAM role should be provided for creating Pipeline Model.")
+            raise ValueError("An AWS IAM role is required to create a Pipeline Model.")
 
     def pipeline_container_def(self, instance_type=None):
         """The pipeline definition for deploying this model.

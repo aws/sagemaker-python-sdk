@@ -191,7 +191,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 this instance's ``boto_session``.
             sagemaker_config (sagemaker.config.SageMakerConfig): The SageMakerConfig object which
                 holds the default values for the SageMaker Python SDK. (default: None). If not
-                provided, This class will create its own SageMakerConfig object.
+                provided, one will be created.
         """
         self._default_bucket = None
         self._default_bucket_name_override = default_bucket
@@ -595,16 +595,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
     def _append_sagemaker_config_tags(self, tags: list, config_path_to_tags: str):
         """Appends tags specified in the sagemaker_config to the given list of tags.
 
-        To minimize the chance of duplicate tags being applied, this is intended
-        to be used right before calls to sagemaker_client (rather
-        than during initialization of classes like EstimatorBase)
+        To minimize the chance of duplicate tags being applied, this is intended to be used
+        immediately before calls to sagemaker_client, rather than during initialization of
+        classes like EstimatorBase.
 
         Args:
-            tags: the list of tags to append to.
-            config_path_to_tags: the path to look up in the config
+            tags: The list of tags to append to.
+            config_path_to_tags: The path to look up tags in the config.
 
         Returns:
-            A potentially extended list of tags.
+            A list of tags.
         """
         config_tags = get_sagemaker_config_value(self, config_path_to_tags)
 

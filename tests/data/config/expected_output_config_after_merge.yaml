@@ -5,10 +5,10 @@ SageMaker:
       SecurityConfig:
         # Present in the additional override as well as default config.
         # Pick the additional config value.
-        KmsKeyId: 'additionalConfigKmsKeyId'
+        KmsKeyId: 'kmskeyid3'
     OfflineStoreConfig:
       S3StorageConfig:
         # Present only in the default config
-        KmsKeyId: 'somekmskeyid'
+        KmsKeyId: 'kmskeyid2'
     # Present only in the additional config
-    RoleArn: 'arn:aws:iam::377777777777:role/additionalConfigRole'
+    RoleArn: 'arn:aws:iam::555555555555:role/additionalConfigRole'

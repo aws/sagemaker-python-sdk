@@ -136,7 +136,7 @@ class Pipeline(Entity):
             # Now we marked that as Optional because we can fetch it from SageMakerConfig
             # Because of marking that parameter as optional, we should validate if it is None, even
             # after fetching the config.
-            raise ValueError("IAM role should be provided for creating Pipeline.")
+            raise ValueError("An AWS IAM role is required to create a Pipeline.")
         if self.sagemaker_session.local_mode:
             if parallelism_config:
                 logger.warning("Pipeline parallelism config is not supported in the local mode.")
@@ -230,7 +230,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             # Now we marked that as Optional because we can fetch it from SageMakerConfig
             # Because of marking that parameter as optional, we should validate if it is None, even
             # after fetching the config.
-            raise ValueError("IAM role should be provided for updating Pipeline.")
+            raise ValueError("An AWS IAM role is required to update a Pipeline.")
         if self.sagemaker_session.local_mode:
             if parallelism_config:
                 logger.warning("Pipeline parallelism config is not supported in the local mode.")
@@ -270,8 +270,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             # Now we marked that as Optional because we can fetch it from SageMakerConfig
             # Because of marking that parameter as optional, we should validate if it is None, even
             # after fetching the config.
-            raise ValueError("IAM role should be provided for creating/updating Pipeline.")
-        exists = True
+            raise ValueError("An AWS IAM role is required to create or update a Pipeline.")
         try:
             response = self.create(role_arn, description, tags, parallelism_config)
         except ClientError as ce:

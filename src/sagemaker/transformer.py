@@ -130,7 +130,7 @@ class Transformer(object):
         self.volume_kms_key = resolve_value_from_config(
             volume_kms_key,
             TRANSFORM_RESOURCES_VOLUME_KMS_KEY_ID_PATH,
-            sagemaker_session=sagemaker_session,
+            sagemaker_session=self.sagemaker_session,
         )
         self.output_kms_key = resolve_value_from_config(
             output_kms_key,
@@ -408,7 +408,7 @@ class Transformer(object):
             batch_data_capture_config,
             "kms_key_id",
             TRANSFORM_JOB_KMS_KEY_ID_PATH,
-            sagemaker_session=sagemaker_session,
+            sagemaker_session=self.sagemaker_session,
         )
 
         transform_step_args = transformer.transform(

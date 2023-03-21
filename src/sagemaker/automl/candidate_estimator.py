@@ -93,7 +93,7 @@ class CandidateEstimator(object):
                 the ML compute instance(s).
             encrypt_inter_container_traffic (bool): To encrypt all communications between ML compute
                 instances in distributed training. If not passed, will be fetched from
-                sagemaker_config. Default: False.
+                sagemaker_config if a value is defined there. Default: False.
             vpc_config (dict): Specifies a VPC that jobs and hosted models have access to.
                 Control access to and from training and model containers by configuring the VPC
             wait (bool): Whether the call should wait until all jobs completes (default: True).

@@ -1021,7 +1021,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             # Now we marked that as Optional because we can fetch it from SageMakerConfig
             # Because of marking that parameter as optional, we should validate if it is None, even
             # after fetching the config.
-            raise ValueError("IAM role should be provided for creating compilation jobs.")
+            raise ValueError("An AWS IAM role is required to create a compilation job.")
         config = self._compilation_job_config(
             target_instance_family,
             input_shape,

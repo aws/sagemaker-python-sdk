@@ -3,5 +3,5 @@ SageMaker:
   FeatureGroup:
     OnlineStoreConfig:
       SecurityConfig:
-        KmsKeyId: 'additionalConfigKmsKeyId'
-    RoleArn: 'arn:aws:iam::377777777777:role/additionalConfigRole'
+        KmsKeyId: 'kmskeyid3'
+    RoleArn: 'arn:aws:iam::555555555555:role/additionalConfigRole'

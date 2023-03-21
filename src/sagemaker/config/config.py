@@ -10,10 +10,10 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This module configures the default values for SageMaker Python SDK.
+"""This module configures the default values defined by the user for SageMaker Python SDK calls.
 
-It supports loading Config files from local file system/S3.
-The schema of the Config file is dictated in config_schema.py in the same module.
+It supports loading config files from the local file system and Amazon S3.
+The schema of the config file is dictated in config_schema.py in the same module.
 
 """
 from __future__ import absolute_import
@@ -33,10 +33,10 @@ from sagemaker.config.config_schema import SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA
 logger = logging.getLogger("sagemaker")
 
 _APP_NAME = "sagemaker"
-# The default config file location of the Administrator provided Config file. This path can be
+# The default config file location of the Administrator provided config file. This path can be
 # overridden with `SAGEMAKER_ADMIN_CONFIG_OVERRIDE` environment variable.
 _DEFAULT_ADMIN_CONFIG_FILE_PATH = os.path.join(site_config_dir(_APP_NAME), "config.yaml")
-# The default config file location of the user provided Config file. This path can be
+# The default config file location of the user provided config file. This path can be
 # overridden with `SAGEMAKER_USER_CONFIG_OVERRIDE` environment variable.
 _DEFAULT_USER_CONFIG_FILE_PATH = os.path.join(user_config_dir(_APP_NAME), "config.yaml")
 
@@ -61,7 +61,7 @@ class SageMakerConfig(object):
     create its own SageMakerConfig object.
 
     Note: Once sagemaker.session.Session is initialized, it will operate with the configuration
-    values at that instant. If the users wish to alter configuration files/file paths after
+    values at that instant. If the users wish to alter config files/file paths after
     sagemaker.session.Session is initialized, then that will not be reflected in
     sagemaker.session.Session. They would have to re-initialize sagemaker.session.Session to
     pick the latest changes.
@@ -71,45 +71,45 @@ class SageMakerConfig(object):
     def __init__(self, additional_config_paths: List[str] = None, s3_resource=_DEFAULT_S3_RESOURCE):
         """Initializes the SageMakerConfig object.
 
-        By default, it will first look for Config files in the default locations as dictated by
-        the SDK.
+        By default, this method first searches for config files in the default locations
+        defined by the SDK.
 
-        Users can override the default Admin Config file path and the default User Config file path
-        by using environment variables - SAGEMAKER_ADMIN_CONFIG_OVERRIDE and
-        SAGEMAKER_USER_CONFIG_OVERRIDE
+        Users can override the default admin and user config file paths using the
+        SAGEMAKER_ADMIN_CONFIG_OVERRIDE and SAGEMAKER_USER_CONFIG_OVERRIDE environment variables,
+        respectively.
 
-        Additional Configuration file paths can also be provided as a constructor parameter.
+        Additional config file paths can also be provided as a constructor parameter.
 
-        This __init__ method will then
-        * Load each config file (Can be in S3/Local File system).
-        * It will validate the schema of the config files.
-        * It will perform the merge operation in the same order.
+        This method then:
+        * Loads each config file, whether it is Amazon S3 or the local file system.
+        * Validates the schema of the config files.
+        * Merges the files in the same order.
 
-        This __init__ method will throw exceptions for the following cases:
-        * jsonschema.exceptions.ValidationError: Schema validation fails for one/more config files.
-        * RuntimeError: If the method is unable to retrieve the list of all the S3 files with the
-        same prefix/Unable to retrieve the file.
-        * ValueError: If an S3 URI is provided and there are no S3 files with that prefix.
-        * ValueError: If a folder in S3 bucket is provided as s3_uri, and if it doesn't have
-        config.yaml.
-        * ValueError: A file doesn't exist in a path that was specified by the user as part of
-        environment variable/ additional_config_paths. This doesn't include the default config
-        file locations.
+        This method throws exceptions in the following cases:
+        * jsonschema.exceptions.ValidationError: Schema validation fails for one or more config
+        files.
+        * RuntimeError: The method is unable to retrieve the list of all S3 files with the
+        same prefix or is unable to retrieve the file.
+        * ValueError: There are no S3 files with the prefix when an S3 URI is provided.
+        * ValueError: There is no config.yaml file in the S3 bucket when an S3 URI is provided.
+        * ValueError: A file doesn't exist in a path that was specified by the user as part of an
+        environment variable or additional configuration file path. This doesn't include the default
+        config file locations.
 
         Args:
-            additional_config_paths: List of Config file paths.
-                These paths can be one of the following:
+            additional_config_paths: List of config file paths.
+                These paths can be one of the following. In the case of a directory, this method
+                searches for a config.yaml file in that directory. This method does not perform a
+                recursive search of folders in that directory.
                 * Local file path
-                * Local directory path (in this case, we will look for config.yaml in that
-                directory)
+                * Local directory path
                 * S3 URI of the config file
-                * S3 URI of the directory containing the config file (in this case, we will look for
-                config.yaml in that directory)
+                * S3 URI of the directory containing the config file
                 Note: S3 URI follows the format s3://<bucket>/<Key prefix>
-            s3_resource (boto3.resource("s3")): The Boto3 S3 resource. This will be used to fetch
-            Config files from S3. If it is not provided, we will create a default s3 resource
-            See :py:meth:`boto3.session.Session.resource`. This argument is not needed if the
-            config files are present in the local file system
+            s3_resource (boto3.resource("s3")): The Boto3 S3 resource. This is used to fetch
+            config files from S3. If it is not provided, this method creates a default S3 resource
+            See :py:meth:boto3.session.Session.resource. This argument is not needed if the
+            config files are present in the local file system.
 
         """
         default_config_path = os.getenv(
@@ -118,30 +118,11 @@ class SageMakerConfig(object):
         user_config_path = os.getenv(
             ENV_VARIABLE_USER_CONFIG_OVERRIDE, _DEFAULT_USER_CONFIG_FILE_PATH
         )
-        self._config_paths = [default_config_path, user_config_path]
+        self.config_paths = [default_config_path, user_config_path]
         if additional_config_paths:
-            self._config_paths += additional_config_paths
-        self._config_paths = list(filter(lambda item: item is not None, self._config_paths))
-        self._config = _load_config_files(self._config_paths, s3_resource)
-
-    @property
-    def config_paths(self) -> List[str]:
-        """Getter for Config paths.
-
-        Returns:
-            List[str]: This method returns the list of config file paths.
-        """
-        return self._config_paths
-
-    @property
-    def config(self) -> dict:
-        """Getter for the configuration object.
-
-        Returns:
-            dict: A dictionary representing the configurations that were loaded from the config
-            file(s).
-        """
-        return self._config
+            self.config_paths += additional_config_paths
+        self.config_paths = list(filter(lambda item: item is not None, self.config_paths))
+        self.config = _load_config_files(self.config_paths, s3_resource)
 
 
 def _load_config_files(file_paths: List[str], s3_resource_for_config) -> dict:
@@ -176,18 +157,18 @@ def _load_config_from_file(file_path: str) -> dict:
         inferred_file_path = os.path.join(file_path, "config.yaml")
     if not os.path.exists(inferred_file_path):
         raise ValueError(
-            f"Unable to load config file from the location: {file_path} Please"
-            f" provide a valid file path"
+            f"Unable to load the config file from the location: {file_path}"
+            f"Provide a valid file path"
         )
-    logger.debug("Fetching configuration file from the path: %s", file_path)
+    logger.debug("Fetching config file from the path: %s", file_path)
     return yaml.safe_load(open(inferred_file_path, "r"))
 
 
 def _load_config_from_s3(s3_uri, s3_resource_for_config) -> dict:
     """Placeholder docstring"""
     if not s3_resource_for_config:
-        raise RuntimeError("Please provide a S3 client for loading the config")
-    logger.debug("Fetching configuration file from the S3 URI: %s", s3_uri)
+        raise RuntimeError("No S3 client found. Provide a S3 client to load the config file.")
+    logger.debug("Fetching config file from the S3 URI: %s", s3_uri)
     inferred_s3_uri = _get_inferred_s3_uri(s3_uri, s3_resource_for_config)
     parsed_url = urlparse(inferred_s3_uri)
     bucket, key_prefix = parsed_url.netloc, parsed_url.path.lstrip("/")
@@ -212,14 +193,14 @@ def _get_inferred_s3_uri(s3_uri, s3_resource_for_config):
         raise RuntimeError(f"Unable to read from S3 with URI: {s3_uri} due to {e}")
     if len(s3_files_with_same_prefix) == 0:
         # Customer provided us with an incorrect s3 path.
-        raise ValueError("Please provide a valid s3 path instead of {}".format(s3_uri))
+        raise ValueError("Provide a valid S3 path instead of {}".format(s3_uri))
     if len(s3_files_with_same_prefix) > 1:
         # Customer has provided us with a S3 URI which points to a directory
         # search for s3://<bucket>/directory-key-prefix/config.yaml
         inferred_s3_uri = str(pathlib.PurePosixPath(s3_uri, "config.yaml")).replace("s3:/", "s3://")
         if inferred_s3_uri not in s3_files_with_same_prefix:
             # We don't know which file we should be operating with.
-            raise ValueError("Please provide a S3 URI which has config.yaml in the directory")
+            raise ValueError("Provide an S3 URI of a directory that has a config.yaml file.")
         # Customer has a config.yaml present in the directory that was provided as the S3 URI
         return inferred_s3_uri
     return s3_uri

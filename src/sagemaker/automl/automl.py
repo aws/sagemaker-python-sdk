@@ -224,7 +224,7 @@ class AutoML(object):
             # Now we marked that as Optional because we can fetch it from SageMakerConfig
             # Because of marking that parameter as optional, we should validate if it is None, even
             # after fetching the config.
-            raise ValueError("IAM role should be provided for creating AutoML jobs.")
+            raise ValueError("An AWS IAM role is required to create an AutoML job.")
 
         self.encrypt_inter_container_traffic = resolve_value_from_config(
             direct_input=encrypt_inter_container_traffic,
