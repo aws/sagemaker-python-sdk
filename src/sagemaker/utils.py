@@ -1253,6 +1253,101 @@ def resolve_nested_dict_value_from_config(
     return dictionary
 
 
+def update_list_of_dicts_with_values_from_config(
+    input_list,
+    config_key_path,
+    required_key_paths: List[str] = None,
+    union_key_paths: List[List[str]] = None,
+    sagemaker_session=None,
+):
+    """Helper method for updating Lists with corresponding values in the Config
+
+    In some cases, config file might introduce new parameters which requires certain other
+    parameters to be provided as part of the input list. Without those parameters, the underlying
+    service will throw an exception. This method provides the capability to specify required key
+    paths.
+
+    In some other cases, config file might introduce new parameters but the service API requires
+    either an existing parameter or the new parameter that was supplied by config but not both
+
+    Args:
+        input_list: The input list that was provided as a method parameter.
+        config_key_path: The Key Path in the Config file that corresponds to the input_list
+        parameter.
+        required_key_paths (List[str]): List of required key paths that should be verified in the
+        merged output. If a required key path is missing, we will not perform the merge for that
+        item.
+        union_key_paths (List[List[str]]): List of List of Key paths for which we need to verify
+        whether exactly zero/one of the parameters exist.
+        For example: If the resultant dictionary can have either 'X1' or 'X2' as parameter but
+        not both, then pass [['X1', 'X2']]
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session object, used for
+            SageMaker interactions (default: None).
+
+    Returns:
+        No output. In place merge happens.
+    """
+    if not input_list:
+        return
+    inputs_copy = copy.deepcopy(input_list)
+    inputs_from_config = resolve_value_from_config(
+        config_path=config_key_path, default_value=[], sagemaker_session=sagemaker_session
+    )
+    for i in range(min(len(input_list), len(inputs_from_config))):
+        dict_from_inputs = input_list[i]
+        dict_from_config = inputs_from_config[i]
+        merge_dicts(dict_from_config, dict_from_inputs)
+        # Check if required key paths are present in merged dict (dict_from_config)
+        required_key_path_check_failed = _validate_required_paths_in_a_dict(
+            dict_from_config, required_key_paths
+        )
+        if required_key_path_check_failed:
+            # Don't do the merge, config is introducing a new parameter which needs a
+            # corresponding required parameter.
+            continue
+        union_key_path_check_failed = _validate_union_key_paths_in_a_dict(
+            dict_from_config, union_key_paths
+        )
+        if union_key_path_check_failed:
+            # Don't do the merge, Union parameters are not obeyed.
+            continue
+        input_list[i] = dict_from_config
+    if inputs_from_config:
+        print(
+            "[Sagemaker Config - applied value]\n",
+            "config key = {}\n".format(config_key_path),
+            "config value = {}\n".format(inputs_from_config),
+            "source value = {}\n".format(inputs_copy),
+            "combined value that will be used = {}\n".format(input_list),
+        )
+
+
+def _validate_required_paths_in_a_dict(source_dict, required_key_paths: List[str] = None) -> bool:
+    """Placeholder docstring"""
+    if not required_key_paths:
+        return False
+    for required_key_path in required_key_paths:
+        if get_config_value(required_key_path, source_dict) is None:
+            return True
+    return False
+
+
+def _validate_union_key_paths_in_a_dict(
+    source_dict, union_key_paths: List[List[str]] = None
+) -> bool:
+    """Placeholder docstring"""
+    if not union_key_paths:
+        return False
+    for union_key_path in union_key_paths:
+        union_parameter_present = False
+        for key_path in union_key_path:
+            if get_config_value(key_path, source_dict):
+                if union_parameter_present:
+                    return True
+                union_parameter_present = True
+    return False
+
+
 def update_nested_dictionary_with_values_from_config(
     source_dict, config_key_path, sagemaker_session=None
 ) -> dict:

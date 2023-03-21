@@ -37,6 +37,7 @@ from sagemaker.utils import (
     resolve_value_from_config,
     resolve_class_attribute_from_config,
     resolve_nested_dict_value_from_config,
+    update_list_of_dicts_with_values_from_config,
 )
 from tests.unit.sagemaker.workflow.helpers import CustomStep
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
@@ -104,6 +105,127 @@ def test_get_nested_value():
     assert sagemaker.utils.get_nested_value("not_a_dict", ["other", "key"]) is None
     assert sagemaker.utils.get_nested_value(dictionary, None) is None
     assert sagemaker.utils.get_nested_value(dictionary, []) is None
+
+
+def test_update_list_of_dicts_with_values_from_config():
+    input_list = [{"a": 1, "b": 2}]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "c": 3,
+        }
+    ]
+    # Using short form for sagemaker_session
+    ss = MagicMock()
+    ss.sagemaker_config = Mock()
+    ss.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    config_path = "DUMMY.CONFIG.PATH"
+    # happy case - both inputs and config have same number of elements
+    update_list_of_dicts_with_values_from_config(input_list, config_path, sagemaker_session=ss)
+    assert input_list == [{"a": 1, "b": 2, "c": 3}]
+    # Case where Input has more entries compared to Config
+    input_list = [
+        {"a": 1, "b": 2},
+        {"a": 5, "b": 6},
+    ]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "c": 3,
+        }
+    ]
+    ss.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    update_list_of_dicts_with_values_from_config(input_list, config_path, sagemaker_session=ss)
+    assert input_list == [
+        {"a": 1, "b": 2, "c": 3},
+        {"a": 5, "b": 6},
+    ]
+    # Case where Config has more entries when compared to the input
+    input_list = [{"a": 1, "b": 2}]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "c": 3,
+        },
+        {"a": 5, "b": 6},
+    ]
+    ss.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    update_list_of_dicts_with_values_from_config(input_list, config_path, sagemaker_session=ss)
+    assert input_list == [{"a": 1, "b": 2, "c": 3}]
+    # Testing required parameters. If required parameters are not present, don't do the merge
+    input_list = [{"a": 1, "b": 2}]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "c": 3,
+        },
+    ]
+    ss.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    update_list_of_dicts_with_values_from_config(
+        input_list, config_path, required_key_paths=["d"], sagemaker_session=ss
+    )
+    # since 'd' is not there , merge shouldn't have happened
+    assert input_list == [{"a": 1, "b": 2}]
+    # Testing required parameters. If required parameters are present, do the merge
+    input_list = [{"a": 1, "b": 2}, {"a": 5, "c": 6}]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "c": 3,
+        },
+        {
+            "a": 7,  # This should not be used. Use values from Input.
+            "b": 8,
+        },
+    ]
+    ss.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    update_list_of_dicts_with_values_from_config(
+        input_list, config_path, required_key_paths=["c"], sagemaker_session=ss
+    )
+    assert input_list == [
+        {"a": 1, "b": 2, "c": 3},
+        {"a": 5, "b": 8, "c": 6},
+    ]
+    # Testing union parameters: If both parameters are present don't do the merge
+    input_list = [{"a": 1, "b": 2}, {"a": 5, "c": 6}]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "c": 3,
+        },
+        {
+            "a": 7,  # This should not be used. Use values from Input.
+            "d": 8,  # c is present in the original list and d is present in this list.
+        },
+    ]
+    ss.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    update_list_of_dicts_with_values_from_config(
+        input_list, config_path, union_key_paths=[["c", "d"]], sagemaker_session=ss
+    )
+    assert input_list == [
+        {"a": 1, "b": 2, "c": 3},
+        {"a": 5, "c": 6},  # merge didn't happen
+    ]
+    # Testing union parameters: Happy case
+    input_list = [{"a": 1, "b": 2}, {"a": 5, "c": 6}]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "c": 3,
+        },
+        {
+            "a": 7,  # This should not be used. Use values from Input.
+            "d": 8,
+        },
+    ]
+    ss.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    update_list_of_dicts_with_values_from_config(
+        input_list, config_path, union_key_paths=[["c", "e"], ["d", "e"]], sagemaker_session=ss
+    )
+    assert input_list == [
+        {"a": 1, "b": 2, "c": 3},
+        {"a": 5, "c": 6, "d": 8},
+    ]
 
 
 def test_set_nested_value():

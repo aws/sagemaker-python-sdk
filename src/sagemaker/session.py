@@ -13,7 +13,6 @@
 """Placeholder docstring"""
 from __future__ import absolute_import, print_function
 
-import copy
 import json
 import logging
 import os
@@ -28,7 +27,6 @@ from typing import List, Dict, Any, Sequence, Optional
 import boto3
 import botocore
 import botocore.config
-from botocore.utils import merge_dicts
 from botocore.exceptions import ClientError
 import six
 
@@ -109,6 +107,7 @@ from sagemaker.utils import (
     resolve_class_attribute_from_config,
     resolve_nested_dict_value_from_config,
     update_nested_dictionary_with_values_from_config,
+    update_list_of_dicts_with_values_from_config,
 )
 from sagemaker import exceptions
 from sagemaker.session_settings import SessionSettings
@@ -1138,39 +1137,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         return update_training_job_request
 
-    # TODO: unit tests or make a more generic version
-    def _update_processing_input_from_config(self, inputs):
-        """Updates Processor Inputs to fetch values from SageMakerConfig wherever applicable.
-
-        Args:
-            inputs (list[dict]): A list of Processing Input objects.
-
-        """
-        inputs_copy = copy.deepcopy(inputs)
-        processing_inputs_from_config = resolve_value_from_config(
-            config_path=PROCESSING_JOB_INPUTS_PATH, default_value=[], sagemaker_session=self
-        )
-        for i in range(min(len(inputs), len(processing_inputs_from_config))):
-            dict_from_inputs = inputs[i]
-            dict_from_config = processing_inputs_from_config[i]
-
-            # The Dataset Definition input must specify exactly one of either
-            # AthenaDatasetDefinition or RedshiftDatasetDefinition types (source: API reference).
-            # So to prevent API failure because of sagemaker_config, we will only populate from the
-            # config for the ones already present in dict_from_inputs.
-            # If BOTH are present, we will still add to both and let the API call fail as it would
-            # have even without injection from sagemaker_config.
-            merge_dicts(dict_from_config, dict_from_inputs)
-            inputs[i] = dict_from_config
-        if processing_inputs_from_config:
-            print(
-                "[Sagemaker Config - applied value]\n",
-                "config key = {}\n".format(PROCESSING_JOB_INPUTS_PATH),
-                "config value = {}\n".format(processing_inputs_from_config),
-                "source value = {}\n".format(inputs_copy),
-                "combined value that will be used = {}\n".format(inputs),
-            )
-
     def process(
         self,
         inputs,
@@ -1235,8 +1201,20 @@ class Session(object):  # pylint: disable=too-many-public-methods
             PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
             sagemaker_session=self,
         )
-
-        self._update_processing_input_from_config(inputs)
+        # Processing Input can either have AthenaDatasetDefinition or RedshiftDatasetDefinition
+        # or neither, but not both
+        union_key_paths_for_dataset_definition = [
+            [
+                "DatasetDefinition.AthenaDatasetDefinition",
+                "DatasetDefinition.RedshiftDatasetDefinition",
+            ]
+        ]
+        update_list_of_dicts_with_values_from_config(
+            inputs,
+            PROCESSING_JOB_INPUTS_PATH,
+            union_key_paths=union_key_paths_for_dataset_definition,
+            sagemaker_session=self,
+        )
         role_arn = resolve_value_from_config(
             role_arn, PROCESSING_JOB_ROLE_ARN_PATH, sagemaker_session=self
         )
@@ -3567,28 +3545,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 sagemaker_session=self,
             )
             validation_specification[VALIDATION_ROLE] = validation_role
-            validation_profiles_from_config = resolve_value_from_config(
-                config_path=MODEL_PACKAGE_VALIDATION_PROFILES_PATH,
-                default_value=[],
+            validation_profiles = validation_specification.get(VALIDATION_PROFILES, [])
+            update_list_of_dicts_with_values_from_config(
+                validation_profiles,
+                MODEL_PACKAGE_VALIDATION_PROFILES_PATH,
+                required_key_paths=["ProfileName", "TransformJobDefinition"],
                 sagemaker_session=self,
             )
-            validation_profiles = validation_specification.get(VALIDATION_PROFILES, [])
-            for i in range(min(len(validation_profiles), len(validation_profiles_from_config))):
-                original_config_dict_value = copy.deepcopy(validation_profiles_from_config[i])
-                merge_dicts(validation_profiles_from_config[i], validation_profiles[i])
-                if validation_profiles[i] != validation_profiles_from_config[i]:
-                    print(
-                        "Config value {} at config path {} was fetched first for "
-                        "index {}.".format(
-                            original_config_dict_value,
-                            MODEL_PACKAGE_VALIDATION_PROFILES_PATH,
-                            i,
-                        ),
-                        "It was then merged with the existing value {} to give {}".format(
-                            validation_profiles[i], validation_profiles_from_config[i]
-                        ),
-                    )
-                validation_profiles[i].update(validation_profiles_from_config[i])
         model_pkg_request = get_create_model_package_request(
             model_package_name,
             model_package_group_name,
@@ -3740,32 +3703,20 @@ class Session(object):  # pylint: disable=too-many-public-methods
             model_data_download_timeout=model_data_download_timeout,
             container_startup_health_check_timeout=container_startup_health_check_timeout,
         )
-        inferred_production_variants_from_config = resolve_value_from_config(
-            config_path=ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH,
-            default_value=[],
+        production_variants = [provided_production_variant]
+        # Currently we just inject CoreDumpConfig.KmsKeyId from the config for production variant.
+        # But if that parameter is injected, then CoreDumpConfig.DestinationS3Uri needs to be
+        # present.
+        # But SageMaker Python SDK doesn't support CoreDumpConfig.DestinationS3Uri.
+        update_list_of_dicts_with_values_from_config(
+            production_variants,
+            ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH,
+            required_key_paths=["CoreDumpConfig.DestinationS3Uri"],
             sagemaker_session=self,
         )
-        if inferred_production_variants_from_config:
-            inferred_production_variant_from_config = (
-                inferred_production_variants_from_config[0] or {}
-            )
-            original_config_dict_value = inferred_production_variant_from_config.copy()
-            merge_dicts(inferred_production_variant_from_config, provided_production_variant)
-            if provided_production_variant != inferred_production_variant_from_config:
-                print(
-                    "Config value {} at config path {} was fetched first for "
-                    "index: 0.".format(
-                        original_config_dict_value, ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH
-                    ),
-                    "It was then merged with the existing value {} to give {}".format(
-                        provided_production_variant, inferred_production_variant_from_config
-                    ),
-                )
-            provided_production_variant.update(inferred_production_variant_from_config)
-
         request = {
             "EndpointConfigName": name,
-            "ProductionVariants": [provided_production_variant],
+            "ProductionVariants": production_variants,
         }
 
         tags = _append_project_tags(tags)
@@ -3841,28 +3792,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
         production_variants = (
             new_production_variants or existing_endpoint_config_desc["ProductionVariants"]
         )
-        if production_variants:
-            inferred_production_variants_from_config = resolve_value_from_config(
-                config_path=ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH,
-                default_value=[],
-                sagemaker_session=self,
-            )
-            for i in range(
-                min(len(production_variants), len(inferred_production_variants_from_config))
-            ):
-                original_config_dict_value = inferred_production_variants_from_config[i].copy()
-                merge_dicts(inferred_production_variants_from_config[i], production_variants[i])
-                if production_variants[i] != inferred_production_variants_from_config[i]:
-                    print(
-                        "Config value {} at config path {} was fetched first for "
-                        "index: 0.".format(
-                            original_config_dict_value, ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH
-                        ),
-                        "It was then merged with the existing value {} to give {}".format(
-                            production_variants[i], inferred_production_variants_from_config[i]
-                        ),
-                    )
-                production_variants[i].update(inferred_production_variants_from_config[i])
+        update_list_of_dicts_with_values_from_config(
+            production_variants,
+            ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH,
+            required_key_paths=["CoreDumpConfig.DestinationS3Uri"],
+            sagemaker_session=self,
+        )
         request["ProductionVariants"] = production_variants
 
         request_tags = new_tags or self.list_tags(
@@ -4443,6 +4378,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             str: The name of the created ``Endpoint``.
         """
+        update_list_of_dicts_with_values_from_config(
+            production_variants,
+            ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH,
+            required_key_paths=["CoreDumpConfig.DestinationS3Uri"],
+            sagemaker_session=self,
+        )
         config_options = {"EndpointConfigName": name, "ProductionVariants": production_variants}
         kms_key = resolve_value_from_config(
             kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self

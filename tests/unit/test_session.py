@@ -263,7 +263,13 @@ def test_process(boto_session):
 
 
 def test_create_process_with_sagemaker_config_injection(sagemaker_config_session):
-    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_PROCESSING_JOB
+    processing_job_config = copy.deepcopy(SAGEMAKER_CONFIG_PROCESSING_JOB)
+    # deleting RedshiftDatasetDefinition. API can take either RedshiftDatasetDefinition or
+    # AthenaDatasetDefinition
+    del processing_job_config["SageMaker"]["ProcessingJob"]["ProcessingInputs"][0][
+        "DatasetDefinition"
+    ]["RedshiftDatasetDefinition"]
+    sagemaker_config_session.sagemaker_config.config = processing_job_config
 
     processing_inputs = [
         {
@@ -276,13 +282,8 @@ def test_create_process_with_sagemaker_config_injection(sagemaker_config_session
                 "S3DataDistributionType": "FullyReplicated",
                 "S3CompressionType": "None",
             },
-            # DatasetDefinition and (AthenaDatasetDefinition or RedshiftDatasetDefinition) need
-            # to be present for config injection. Included both AthenaDatasetDefinition and
-            # RedshiftDatasetDefinition at the same time to test injection (even though this API
-            # call would fail normally)
             "DatasetDefinition": {
                 "AthenaDatasetDefinition": {},
-                "RedshiftDatasetDefinition": {},
             },
         }
     ]
@@ -368,7 +369,7 @@ def test_create_process_with_sagemaker_config_injection(sagemaker_config_session
             "ExperimentConfig": {"ExperimentName": "AnExperiment"},
         }
     )
-    expected_request["ProcessingInputs"][0]["DatasetDefinition"] = SAGEMAKER_CONFIG_PROCESSING_JOB[
+    expected_request["ProcessingInputs"][0]["DatasetDefinition"] = processing_job_config[
         "SageMaker"
     ]["ProcessingJob"]["ProcessingInputs"][0]["DatasetDefinition"]
     expected_request["ProcessingOutputConfig"]["KmsKeyId"] = expected_output_kms_key_id
@@ -2520,9 +2521,6 @@ def test_create_endpoint_config_with_sagemaker_config_injection(sagemaker_config
         "local",
         data_capture_config_dict=data_capture_config_dict,
     )
-    expected_production_variant_kms_key_id = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"][
-        "EndpointConfig"
-    ]["ProductionVariants"][0]["CoreDumpConfig"]["KmsKeyId"]
     expected_data_capture_kms_key_id = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"][
         "EndpointConfig"
     ]["DataCaptureConfig"]["KmsKeyId"]
@@ -2535,7 +2533,6 @@ def test_create_endpoint_config_with_sagemaker_config_injection(sagemaker_config
         EndpointConfigName="endpoint-test",
         ProductionVariants=[
             {
-                "CoreDumpConfig": {"KmsKeyId": expected_production_variant_kms_key_id},
                 "ModelName": "simple-model",
                 "VariantName": "AllTraffic",
                 "InitialVariantWeight": 1,
@@ -2562,6 +2559,8 @@ def test_create_endpoint_config_from_existing_with_sagemaker_config_injection(
         sagemaker.production_variant("B", "ml.p2.xlarge"),
         sagemaker.production_variant("C", "ml.p2.xlarge"),
     ]
+    # Add DestinationS3Uri to only one production variant
+    pvs[0]["CoreDumpConfig"] = {"DestinationS3Uri": "s3://test"}
     existing_endpoint_arn = "arn:aws:sagemaker:us-west-2:123412341234:endpoint-config/foo"
     existing_endpoint_name = "foo"
     new_endpoint_name = "new-foo"
@@ -2579,9 +2578,6 @@ def test_create_endpoint_config_from_existing_with_sagemaker_config_injection(
     expected_production_variant_0_kms_key_id = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"][
         "EndpointConfig"
     ]["ProductionVariants"][0]["CoreDumpConfig"]["KmsKeyId"]
-    expected_production_variant_1_kms_key_id = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"][
-        "EndpointConfig"
-    ]["ProductionVariants"][1]["CoreDumpConfig"]["KmsKeyId"]
     expected_inference_kms_key_id = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"]["EndpointConfig"][
         "AsyncInferenceConfig"
     ]["OutputConfig"]["KmsKeyId"]
@@ -2594,11 +2590,14 @@ def test_create_endpoint_config_from_existing_with_sagemaker_config_injection(
         EndpointConfigName=new_endpoint_name,
         ProductionVariants=[
             {
-                "CoreDumpConfig": {"KmsKeyId": expected_production_variant_0_kms_key_id},
+                "CoreDumpConfig": {
+                    "KmsKeyId": expected_production_variant_0_kms_key_id,
+                    "DestinationS3Uri": pvs[0]["CoreDumpConfig"]["DestinationS3Uri"],
+                },
                 **sagemaker.production_variant("A", "ml.p2.xlarge"),
             },
             {
-                "CoreDumpConfig": {"KmsKeyId": expected_production_variant_1_kms_key_id},
+                # Merge shouldn't happen because input for this index doesn't have DestinationS3Uri
                 **sagemaker.production_variant("B", "ml.p2.xlarge"),
             },
             sagemaker.production_variant("C", "ml.p2.xlarge"),
@@ -2622,6 +2621,8 @@ def test_endpoint_from_production_variants_with_sagemaker_config_injection(
         sagemaker.production_variant("B", "ml.p2.xlarge"),
         sagemaker.production_variant("C", "ml.p2.xlarge"),
     ]
+    # Add DestinationS3Uri to only one production variant
+    pvs[0]["CoreDumpConfig"] = {"DestinationS3Uri": "s3://test"}
     sagemaker_config_session.endpoint_from_production_variants(
         "some-endpoint",
         pvs,
@@ -2641,9 +2642,22 @@ def test_endpoint_from_production_variants_with_sagemaker_config_injection(
 
     expected_async_inference_config_dict = AsyncInferenceConfig()._to_request_dict()
     expected_async_inference_config_dict["OutputConfig"]["KmsKeyId"] = expected_inference_kms_key_id
+    expected_pvs = [
+        sagemaker.production_variant("A", "ml.p2.xlarge"),
+        sagemaker.production_variant("B", "ml.p2.xlarge"),
+        sagemaker.production_variant("C", "ml.p2.xlarge"),
+    ]
+    # Add DestinationS3Uri, KmsKeyId to only one production variant
+    expected_production_variant_0_kms_key_id = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"][
+        "EndpointConfig"
+    ]["ProductionVariants"][0]["CoreDumpConfig"]["KmsKeyId"]
+    expected_pvs[0]["CoreDumpConfig"] = {
+        "DestinationS3Uri": "s3://test",
+        "KmsKeyId": expected_production_variant_0_kms_key_id,
+    }
     sagemaker_config_session.sagemaker_client.create_endpoint_config.assert_called_with(
         EndpointConfigName="some-endpoint",
-        ProductionVariants=pvs,
+        ProductionVariants=expected_pvs,
         Tags=expected_tags,  # from config
         KmsKeyId=expected_kms_key_id,  # from config
         AsyncInferenceConfig=expected_async_inference_config_dict,
@@ -3429,7 +3443,10 @@ def test_create_model_package_with_sagemaker_config_injection(sagemaker_config_s
         }
     }
     validation_profiles = [
-        {"TransformJobDefinition": {"TransformOutput": {"S3OutputPath": "s3://test"}}}
+        {
+            "ProfileName": "profileName",
+            "TransformJobDefinition": {"TransformOutput": {"S3OutputPath": "s3://test"}},
+        }
     ]
     validation_specification = {"ValidationProfiles": validation_profiles}
 
