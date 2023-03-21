@@ -3222,7 +3222,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
 
         def submit(request):
-            if model_package_group_name is not None:
+            if model_package_group_name is not None and not model_package_group_name.startswith(
+                "arn:"
+            ):
                 _create_resource(
                     lambda: self.sagemaker_client.create_model_package_group(
                         ModelPackageGroupName=request["ModelPackageGroupName"]
