@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.140.1 (2023-03-21)
+
+### Bug Fixes and Other Changes
+
+ * Fix cross account register model
+ * Handle instance support for Hugging Face tests
+ * Upgrade apache-airflow-providers-amazon version
+ * build(deps): bump apache-airflow from 2.4.1 to 2.5.1
+ * Mark test_create_model_package test for xfail
+ * Disable module-not-measured warnings to avoid clutter in build logs
+
 ## v2.140.0 (2023-03-17)
 
 ### Features
