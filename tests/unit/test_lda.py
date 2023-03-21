@@ -57,12 +57,8 @@ def sagemaker_session():
     )
     sms.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
     sms.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
-    sms.resolve_value_from_config = Mock(
-        name="resolve_value_from_config",
-        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
-        if direct_input is not None
-        else default_value,
-    )
+    # For tests which doesn't verify config file injection, operate with empty config
+    sms.sagemaker_config.config = {}
     return sms
 
 

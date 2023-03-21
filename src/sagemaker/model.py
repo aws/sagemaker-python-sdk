@@ -29,8 +29,7 @@ from sagemaker import (
     utils,
     git_utils,
 )
-from sagemaker.session import (
-    Session,
+from sagemaker.config import (
     COMPILATION_JOB_ROLE_ARN_PATH,
     EDGE_PACKAGING_KMS_KEY_ID_PATH,
     EDGE_PACKAGING_ROLE_ARN_PATH,
@@ -39,6 +38,7 @@ from sagemaker.session import (
     MODEL_EXECUTION_ROLE_ARN_PATH,
     ENDPOINT_CONFIG_ASYNC_KMS_KEY_ID_PATH,
 )
+from sagemaker.session import Session
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.deprecations import removed_kwargs
 from sagemaker.drift_check_baselines import DriftCheckBaselines
@@ -51,6 +51,7 @@ from sagemaker.utils import (
     unique_name_from_base,
     update_container_with_inference_params,
     to_string,
+    resolve_value_from_config,
 )
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.predictor_async import AsyncPredictor
@@ -283,15 +284,11 @@ class Model(ModelBase, InferenceRecommenderMixin):
         self.name = name
         self._base_name = None
         self.sagemaker_session = sagemaker_session
-        self.role = (
-            self.sagemaker_session.resolve_value_from_config(role, MODEL_EXECUTION_ROLE_ARN_PATH)
-            if sagemaker_session
-            else role
+        self.role = resolve_value_from_config(
+            role, MODEL_EXECUTION_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
         )
-        self.vpc_config = (
-            self.sagemaker_session.resolve_value_from_config(vpc_config, MODEL_VPC_CONFIG_PATH)
-            if sagemaker_session
-            else vpc_config
+        self.vpc_config = resolve_value_from_config(
+            vpc_config, MODEL_VPC_CONFIG_PATH, sagemaker_session=self.sagemaker_session
         )
         self.endpoint_name = None
         self._is_compiled_model = False
@@ -299,12 +296,10 @@ class Model(ModelBase, InferenceRecommenderMixin):
         self._is_edge_packaged_model = False
         self.inference_recommender_job_results = None
         self.inference_recommendations = None
-        self._enable_network_isolation = (
-            self.sagemaker_session.resolve_value_from_config(
-                enable_network_isolation, MODEL_ENABLE_NETWORK_ISOLATION_PATH
-            )
-            if sagemaker_session
-            else enable_network_isolation
+        self._enable_network_isolation = resolve_value_from_config(
+            enable_network_isolation,
+            MODEL_ENABLE_NETWORK_ISOLATION_PATH,
+            sagemaker_session=self.sagemaker_session,
         )
         if self._enable_network_isolation is None:
             self._enable_network_isolation = False
@@ -701,14 +696,16 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
 
         self._init_sagemaker_session_if_does_not_exist(instance_type)
         # Depending on the instance type, a local session (or) a session is initialized.
-        self.role = self.sagemaker_session.resolve_value_from_config(
-            self.role, MODEL_EXECUTION_ROLE_ARN_PATH
+        self.role = resolve_value_from_config(
+            self.role, MODEL_EXECUTION_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
         )
-        self.vpc_config = self.sagemaker_session.resolve_value_from_config(
-            self.vpc_config, MODEL_VPC_CONFIG_PATH
+        self.vpc_config = resolve_value_from_config(
+            self.vpc_config, MODEL_VPC_CONFIG_PATH, sagemaker_session=self.sagemaker_session
         )
-        self._enable_network_isolation = self.sagemaker_session.resolve_value_from_config(
-            self._enable_network_isolation, MODEL_ENABLE_NETWORK_ISOLATION_PATH
+        self._enable_network_isolation = resolve_value_from_config(
+            self._enable_network_isolation,
+            MODEL_ENABLE_NETWORK_ISOLATION_PATH,
+            sagemaker_session=self.sagemaker_session,
         )
         create_model_args = dict(
             name=self.name,
@@ -906,10 +903,12 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         if job_name is None:
             job_name = f"packaging{self._compilation_job_name[11:]}"
         self._init_sagemaker_session_if_does_not_exist(None)
-        s3_kms_key = self.sagemaker_session.resolve_value_from_config(
-            s3_kms_key, EDGE_PACKAGING_KMS_KEY_ID_PATH
+        s3_kms_key = resolve_value_from_config(
+            s3_kms_key, EDGE_PACKAGING_KMS_KEY_ID_PATH, sagemaker_session=self.sagemaker_session
         )
-        role = self.sagemaker_session.resolve_value_from_config(role, EDGE_PACKAGING_ROLE_ARN_PATH)
+        role = resolve_value_from_config(
+            role, EDGE_PACKAGING_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
+        )
         if role is not None:
             role = self.sagemaker_session.expand_role(role)
         config = self._edge_packaging_job_config(
@@ -1014,7 +1013,9 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         framework_version = framework_version or self._get_framework_version()
 
         self._init_sagemaker_session_if_does_not_exist(target_instance_family)
-        role = self.sagemaker_session.resolve_value_from_config(role, COMPILATION_JOB_ROLE_ARN_PATH)
+        role = resolve_value_from_config(
+            role, COMPILATION_JOB_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
+        )
         if not role:
             # Originally IAM role was a required parameter.
             # Now we marked that as Optional because we can fetch it from SageMakerConfig
@@ -1174,14 +1175,16 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
 
         self._init_sagemaker_session_if_does_not_exist(instance_type)
         # Depending on the instance type, a local session (or) a session is initialized.
-        self.role = self.sagemaker_session.resolve_value_from_config(
-            self.role, MODEL_EXECUTION_ROLE_ARN_PATH
+        self.role = resolve_value_from_config(
+            self.role, MODEL_EXECUTION_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
         )
-        self.vpc_config = self.sagemaker_session.resolve_value_from_config(
-            self.vpc_config, MODEL_VPC_CONFIG_PATH
+        self.vpc_config = resolve_value_from_config(
+            self.vpc_config, MODEL_VPC_CONFIG_PATH, sagemaker_session=self.sagemaker_session
         )
-        self._enable_network_isolation = self.sagemaker_session.resolve_value_from_config(
-            self._enable_network_isolation, MODEL_ENABLE_NETWORK_ISOLATION_PATH
+        self._enable_network_isolation = resolve_value_from_config(
+            self._enable_network_isolation,
+            MODEL_ENABLE_NETWORK_ISOLATION_PATH,
+            sagemaker_session=self.sagemaker_session,
         )
 
         tags = add_jumpstart_tags(
@@ -1269,9 +1272,10 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 async_inference_config = self._build_default_async_inference_config(
                     async_inference_config
                 )
-            async_inference_config.kms_key_id = self.sagemaker_session.resolve_value_from_config(
+            async_inference_config.kms_key_id = resolve_value_from_config(
                 async_inference_config.kms_key_id,
                 ENDPOINT_CONFIG_ASYNC_KMS_KEY_ID_PATH,
+                sagemaker_session=self.sagemaker_session,
             )
             async_inference_config_dict = async_inference_config._to_request_dict()
 

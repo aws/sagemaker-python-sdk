@@ -31,7 +31,13 @@ from mock import call, patch, Mock, MagicMock, PropertyMock
 import sagemaker
 from sagemaker.experiments._run_context import _RunContext
 from sagemaker.session_settings import SessionSettings
-from sagemaker.utils import retry_with_backoff, check_and_get_run_experiment_config
+from sagemaker.utils import (
+    retry_with_backoff,
+    check_and_get_run_experiment_config,
+    resolve_value_from_config,
+    resolve_class_attribute_from_config,
+    resolve_nested_dict_value_from_config,
+)
 from tests.unit.sagemaker.workflow.helpers import CustomStep
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
 
@@ -977,6 +983,310 @@ def test_retry_with_backoff(patched_sleep):
     callable_func.side_effect = None
     callable_func.return_value = func_return_val
     assert retry_with_backoff(callable_func, 2) == func_return_val
+
+
+def test_resolve_value_from_config():
+    # using a shorter name for inside the test
+    sagemaker_session = MagicMock()
+    sagemaker_session.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": "CONFIG_VALUE"}}}
+
+    # direct_input should be respected
+    assert (
+        resolve_value_from_config("INPUT", "DUMMY.CONFIG.PATH", "DEFAULT_VALUE", sagemaker_session)
+        == "INPUT"
+    )
+
+    assert (
+        resolve_value_from_config("INPUT", "DUMMY.CONFIG.PATH", None, sagemaker_session) == "INPUT"
+    )
+
+    assert (
+        resolve_value_from_config("INPUT", "DUMMY.CONFIG.INVALID_PATH", None, sagemaker_session)
+        == "INPUT"
+    )
+
+    # Config or default values should be returned if no direct_input
+    assert (
+        resolve_value_from_config(None, None, "DEFAULT_VALUE", sagemaker_session) == "DEFAULT_VALUE"
+    )
+
+    assert (
+        resolve_value_from_config(
+            None, "DUMMY.CONFIG.INVALID_PATH", "DEFAULT_VALUE", sagemaker_session
+        )
+        == "DEFAULT_VALUE"
+    )
+
+    assert (
+        resolve_value_from_config(None, "DUMMY.CONFIG.PATH", "DEFAULT_VALUE", sagemaker_session)
+        == "CONFIG_VALUE"
+    )
+
+    assert resolve_value_from_config(None, None, None, sagemaker_session) is None
+
+    # Different falsy direct_inputs
+    assert resolve_value_from_config("", "DUMMY.CONFIG.PATH", None, sagemaker_session) == ""
+
+    assert resolve_value_from_config([], "DUMMY.CONFIG.PATH", None, sagemaker_session) == []
+
+    assert resolve_value_from_config(False, "DUMMY.CONFIG.PATH", None, sagemaker_session) is False
+
+    assert resolve_value_from_config({}, "DUMMY.CONFIG.PATH", None, sagemaker_session) == {}
+
+    # Different falsy config_values
+    sagemaker_session.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": ""}}}
+    assert resolve_value_from_config(None, "DUMMY.CONFIG.PATH", None, sagemaker_session) == ""
+
+    sagemaker_session.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": []}}}
+    assert resolve_value_from_config(None, "DUMMY.CONFIG.PATH", None, sagemaker_session) == []
+
+    sagemaker_session.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": False}}}
+    assert resolve_value_from_config(None, "DUMMY.CONFIG.PATH", None, sagemaker_session) is False
+
+    sagemaker_session.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": {}}}}
+    assert resolve_value_from_config(None, "DUMMY.CONFIG.PATH", None, sagemaker_session) == {}
+
+
+@pytest.mark.parametrize(
+    "existing_value, config_value, default_value",
+    [
+        ("EXISTING_VALUE", "CONFIG_VALUE", "DEFAULT_VALUE"),
+        (False, True, False),
+        (False, False, True),
+        (0, 1, 2),
+    ],
+)
+def test_resolve_class_attribute_from_config(existing_value, config_value, default_value):
+    # using a shorter name for inside the test
+    ss = MagicMock()
+
+    class TestClass(object):
+        def __init__(self, test_attribute=None, extra=None):
+            self.test_attribute = test_attribute
+            # the presence of an extra value that is set to None by default helps make sure a brand new
+            # TestClass object is being created only in the right scenarios
+            self.extra_attribute = extra
+
+        def __eq__(self, other):
+            if isinstance(other, self.__class__):
+                return self.__dict__ == other.__dict__
+            else:
+                return False
+
+    dummy_config_path = "DUMMY.CONFIG.PATH"
+
+    # with an existing config value
+    ss.sagemaker_config = Mock()
+    ss.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": config_value}}}
+
+    # instance exists and has value; config has value
+    test_instance = TestClass(test_attribute=existing_value, extra="EXTRA_VALUE")
+    assert resolve_class_attribute_from_config(
+        TestClass, test_instance, "test_attribute", dummy_config_path, sagemaker_session=ss
+    ) == TestClass(test_attribute=existing_value, extra="EXTRA_VALUE")
+
+    # instance exists but doesnt have value; config has value
+    test_instance = TestClass(extra="EXTRA_VALUE")
+    assert resolve_class_attribute_from_config(
+        TestClass, test_instance, "test_attribute", dummy_config_path, sagemaker_session=ss
+    ) == TestClass(test_attribute=config_value, extra="EXTRA_VALUE")
+
+    # instance doesnt exist; config has value
+    test_instance = None
+    assert resolve_class_attribute_from_config(
+        TestClass, test_instance, "test_attribute", dummy_config_path, sagemaker_session=ss
+    ) == TestClass(test_attribute=config_value, extra=None)
+
+    # wrong attribute used
+    test_instance = TestClass()
+    with pytest.raises(TypeError):
+        resolve_class_attribute_from_config(
+            TestClass, test_instance, "other_attribute", dummy_config_path, sagemaker_session=ss
+        )
+
+    # instance doesnt exist; clazz doesnt exist
+    test_instance = None
+    assert (
+        resolve_class_attribute_from_config(
+            None, test_instance, "test_attribute", dummy_config_path, sagemaker_session=ss
+        )
+        is None
+    )
+
+    # instance doesnt exist; clazz isnt a class
+    test_instance = None
+    assert (
+        resolve_class_attribute_from_config(
+            "CLASS", test_instance, "test_attribute", dummy_config_path, sagemaker_session=ss
+        )
+        is None
+    )
+
+    # without an existing config value
+    ss.sagemaker_config.config = {"DUMMY": {"CONFIG": {"SOMEOTHERPATH": config_value}}}
+    # instance exists but doesnt have value; config doesnt have value
+    test_instance = TestClass(extra="EXTRA_VALUE")
+    assert resolve_class_attribute_from_config(
+        TestClass, test_instance, "test_attribute", dummy_config_path, sagemaker_session=ss
+    ) == TestClass(test_attribute=None, extra="EXTRA_VALUE")
+
+    # instance exists but doesnt have value; config doesnt have value; default_value passed in
+    test_instance = TestClass(extra="EXTRA_VALUE")
+    assert resolve_class_attribute_from_config(
+        TestClass,
+        test_instance,
+        "test_attribute",
+        dummy_config_path,
+        default_value=default_value,
+        sagemaker_session=ss,
+    ) == TestClass(test_attribute=default_value, extra="EXTRA_VALUE")
+
+    # instance doesnt exist; config doesnt have value
+    test_instance = None
+    assert (
+        resolve_class_attribute_from_config(
+            TestClass, test_instance, "test_attribute", dummy_config_path, sagemaker_session=ss
+        )
+        is None
+    )
+
+    # instance doesnt exist; config doesnt have value; default_value passed in
+    test_instance = None
+    assert resolve_class_attribute_from_config(
+        TestClass,
+        test_instance,
+        "test_attribute",
+        dummy_config_path,
+        default_value=default_value,
+        sagemaker_session=ss,
+    ) == TestClass(test_attribute=default_value, extra=None)
+
+
+def test_resolve_nested_dict_value_from_config():
+    # using a shorter name for inside the test
+    ss = MagicMock()
+
+    dummy_config_path = "DUMMY.CONFIG.PATH"
+    # happy cases: return existing dict with existing values
+    assert resolve_nested_dict_value_from_config(
+        {"local": {"region_name": "us-west-2", "port": "123"}},
+        ["local", "region_name"],
+        dummy_config_path,
+        default_value="DEFAULT_VALUE",
+        sagemaker_session=ss,
+    ) == {"local": {"region_name": "us-west-2", "port": "123"}}
+    assert resolve_nested_dict_value_from_config(
+        {"local": {"region_name": "us-west-2", "port": "123"}},
+        ["local", "region_name"],
+        dummy_config_path,
+        default_value=None,
+        sagemaker_session=ss,
+    ) == {"local": {"region_name": "us-west-2", "port": "123"}}
+
+    # happy case: return dict with config_value when it wasnt set in dict or was None
+    ss.sagemaker_config = Mock()
+    ss.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": "CONFIG_VALUE"}}}
+    assert resolve_nested_dict_value_from_config(
+        {"local": {"port": "123"}},
+        ["local", "region_name"],
+        dummy_config_path,
+        default_value="DEFAULT_VALUE",
+        sagemaker_session=ss,
+    ) == {"local": {"region_name": "CONFIG_VALUE", "port": "123"}}
+    assert resolve_nested_dict_value_from_config(
+        {}, ["local", "region_name"], dummy_config_path, default_value=None, sagemaker_session=ss
+    ) == {"local": {"region_name": "CONFIG_VALUE"}}
+    assert resolve_nested_dict_value_from_config(
+        None, ["local", "region_name"], dummy_config_path, default_value=None, sagemaker_session=ss
+    ) == {"local": {"region_name": "CONFIG_VALUE"}}
+    assert resolve_nested_dict_value_from_config(
+        {
+            "local": {"region_name": "us-west-2", "port": "123"},
+            "other": {"key": 1},
+            "nest1": {"nest2": {"nest3": {"nest4a": "value", "nest4b": None}}},
+        },
+        ["nest1", "nest2", "nest3", "nest4b", "does_not", "exist"],
+        dummy_config_path,
+        default_value="DEFAULT_VALUE",
+        sagemaker_session=ss,
+    ) == {
+        "local": {"region_name": "us-west-2", "port": "123"},
+        "other": {"key": 1},
+        "nest1": {
+            "nest2": {
+                "nest3": {"nest4a": "value", "nest4b": {"does_not": {"exist": "CONFIG_VALUE"}}}
+            }
+        },
+    }
+
+    # edge case: doesnt overwrite non-None and non-dict values
+    dictionary = {
+        "local": {"region_name": "us-west-2", "port": "123"},
+        "other": {"key": 1},
+        "nest1": {"nest2": {"nest3": {"nest4a": "value", "nest4b": None}}},
+    }
+    dictionary_copy = copy.deepcopy(dictionary)
+    assert (
+        resolve_nested_dict_value_from_config(
+            dictionary,
+            ["nest1", "nest2", "nest3", "nest4a", "does_not", "exist"],
+            dummy_config_path,
+            default_value="DEFAULT_VALUE",
+            sagemaker_session=ss,
+        )
+        == dictionary_copy
+    )
+    assert (
+        resolve_nested_dict_value_from_config(
+            dictionary,
+            ["other", "key"],
+            dummy_config_path,
+            default_value="DEFAULT_VALUE",
+            sagemaker_session=ss,
+        )
+        == dictionary_copy
+    )
+
+    # without an existing config value
+    ss.sagemaker_config.config = {"DUMMY": {"CONFIG": {"ANOTHER_PATH": "CONFIG_VALUE"}}}
+
+    # happy case: return dict with default_value when it wasnt set in dict and in config
+    assert resolve_nested_dict_value_from_config(
+        {"local": {"port": "123"}},
+        ["local", "region_name"],
+        dummy_config_path,
+        default_value="DEFAULT_VALUE",
+        sagemaker_session=ss,
+    ) == {"local": {"region_name": "DEFAULT_VALUE", "port": "123"}}
+
+    # happy case: return dict as-is when value wasnt set in dict, in config, and as default
+    assert resolve_nested_dict_value_from_config(
+        {"local": {"port": "123"}},
+        ["local", "region_name"],
+        dummy_config_path,
+        default_value=None,
+        sagemaker_session=ss,
+    ) == {"local": {"port": "123"}}
+    assert (
+        resolve_nested_dict_value_from_config(
+            {},
+            ["local", "region_name"],
+            dummy_config_path,
+            default_value=None,
+            sagemaker_session=ss,
+        )
+        == {}
+    )
+    assert (
+        resolve_nested_dict_value_from_config(
+            None,
+            ["local", "region_name"],
+            dummy_config_path,
+            default_value=None,
+            sagemaker_session=ss,
+        )
+        is None
+    )
 
 
 def test_check_and_get_run_experiment_config():

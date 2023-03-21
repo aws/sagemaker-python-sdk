@@ -19,16 +19,16 @@ from six import string_types
 
 from sagemaker import Model, PipelineModel
 from sagemaker.automl.candidate_estimator import CandidateEstimator
-from sagemaker.job import _Job
-from sagemaker.session import (
-    Session,
-    AUTO_ML_KMS_KEY_ID_PATH,
+from sagemaker.config import (
     AUTO_ML_ROLE_ARN_PATH,
+    AUTO_ML_KMS_KEY_ID_PATH,
     AUTO_ML_VPC_CONFIG_PATH,
     AUTO_ML_VOLUME_KMS_KEY_ID_PATH,
-    PATH_V1_AUTO_ML_INTER_CONTAINER_ENCRYPTION,
+    AUTO_ML_INTER_CONTAINER_ENCRYPTION_PATH,
 )
-from sagemaker.utils import name_from_base
+from sagemaker.job import _Job
+from sagemaker.session import Session
+from sagemaker.utils import name_from_base, resolve_value_from_config
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
 
@@ -207,16 +207,18 @@ class AutoML(object):
         self._auto_ml_job_desc = None
         self._best_candidate = None
         self.sagemaker_session = sagemaker_session or Session()
-        self.vpc_config = self.sagemaker_session.resolve_value_from_config(
-            vpc_config, AUTO_ML_VPC_CONFIG_PATH
+        self.vpc_config = resolve_value_from_config(
+            vpc_config, AUTO_ML_VPC_CONFIG_PATH, sagemaker_session=self.sagemaker_session
         )
-        self.volume_kms_key = self.sagemaker_session.resolve_value_from_config(
-            volume_kms_key, AUTO_ML_VOLUME_KMS_KEY_ID_PATH
+        self.volume_kms_key = resolve_value_from_config(
+            volume_kms_key, AUTO_ML_VOLUME_KMS_KEY_ID_PATH, sagemaker_session=self.sagemaker_session
         )
-        self.output_kms_key = self.sagemaker_session.resolve_value_from_config(
-            output_kms_key, AUTO_ML_KMS_KEY_ID_PATH
+        self.output_kms_key = resolve_value_from_config(
+            output_kms_key, AUTO_ML_KMS_KEY_ID_PATH, sagemaker_session=self.sagemaker_session
         )
-        self.role = self.sagemaker_session.resolve_value_from_config(role, AUTO_ML_ROLE_ARN_PATH)
+        self.role = resolve_value_from_config(
+            role, AUTO_ML_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
+        )
         if not self.role:
             # Originally IAM role was a required parameter.
             # Now we marked that as Optional because we can fetch it from SageMakerConfig
@@ -224,10 +226,11 @@ class AutoML(object):
             # after fetching the config.
             raise ValueError("IAM role should be provided for creating AutoML jobs.")
 
-        self.encrypt_inter_container_traffic = self.sagemaker_session.resolve_value_from_config(
+        self.encrypt_inter_container_traffic = resolve_value_from_config(
             direct_input=encrypt_inter_container_traffic,
-            config_path=PATH_V1_AUTO_ML_INTER_CONTAINER_ENCRYPTION,
+            config_path=AUTO_ML_INTER_CONTAINER_ENCRYPTION_PATH,
             default_value=False,
+            sagemaker_session=self.sagemaker_session,
         )
 
         self._check_problem_type_and_job_objective(self.problem_type, self.job_objective)

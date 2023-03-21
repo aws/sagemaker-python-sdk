@@ -41,12 +41,12 @@ import boto3
 from botocore.config import Config
 from pathos.multiprocessing import ProcessingPool
 
-from sagemaker.session import (
-    Session,
+from sagemaker.config import (
     FEATURE_GROUP_ROLE_ARN_PATH,
     FEATURE_GROUP_OFFLINE_STORE_KMS_KEY_ID_PATH,
     FEATURE_GROUP_ONLINE_STORE_KMS_KEY_ID_PATH,
 )
+from sagemaker.session import Session
 from sagemaker.feature_store.feature_definition import (
     FeatureDefinition,
     FeatureTypeEnum,
@@ -61,6 +61,7 @@ from sagemaker.feature_store.inputs import (
     FeatureParameter,
     TableFormatEnum,
 )
+from sagemaker.utils import resolve_value_from_config
 
 logger = logging.getLogger(__name__)
 
@@ -557,14 +558,18 @@ class FeatureGroup:
         Returns:
             Response dict from service.
         """
-        role_arn = self.sagemaker_session.resolve_value_from_config(
-            role_arn, FEATURE_GROUP_ROLE_ARN_PATH
+        role_arn = resolve_value_from_config(
+            role_arn, FEATURE_GROUP_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
         )
-        offline_store_kms_key_id = self.sagemaker_session.resolve_value_from_config(
-            offline_store_kms_key_id, FEATURE_GROUP_OFFLINE_STORE_KMS_KEY_ID_PATH
+        offline_store_kms_key_id = resolve_value_from_config(
+            offline_store_kms_key_id,
+            FEATURE_GROUP_OFFLINE_STORE_KMS_KEY_ID_PATH,
+            sagemaker_session=self.sagemaker_session,
         )
-        online_store_kms_key_id = self.sagemaker_session.resolve_value_from_config(
-            online_store_kms_key_id, FEATURE_GROUP_ONLINE_STORE_KMS_KEY_ID_PATH
+        online_store_kms_key_id = resolve_value_from_config(
+            online_store_kms_key_id,
+            FEATURE_GROUP_ONLINE_STORE_KMS_KEY_ID_PATH,
+            sagemaker_session=self.sagemaker_session,
         )
         if not role_arn:
             # Originally IAM role was a required parameter.

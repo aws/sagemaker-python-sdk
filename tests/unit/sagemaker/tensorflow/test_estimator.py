@@ -82,22 +82,8 @@ def sagemaker_session():
     session.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
     session.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
     session.sagemaker_client.list_tags = Mock(return_value=LIST_TAGS_RESULT)
-
-    # For the purposes of unit tests, no values should be fetched from sagemaker config
-    session.resolve_nested_dict_value_from_config = Mock(
-        name="resolve_nested_dict_value_from_config",
-        side_effect=lambda dictionary, nested_keys, config_path, default_value=None: dictionary,
-    )
-    session.resolve_class_attribute_from_config = Mock(
-        name="resolve_class_attribute_from_config",
-        side_effect=lambda clazz, instance, attribute, config_path, default_value=None: instance,
-    )
-    session.resolve_value_from_config = Mock(
-        name="resolve_value_from_config",
-        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
-        if direct_input is not None
-        else default_value,
-    )
+    # For tests which doesn't verify config file injection, operate with empty config
+    session.sagemaker_config.config = {}
     return session
 
 

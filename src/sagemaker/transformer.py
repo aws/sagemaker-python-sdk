@@ -19,15 +19,14 @@ import copy
 import time
 
 from botocore import exceptions
-from sagemaker.job import _Job
-from sagemaker.session import (
-    Session,
-    get_execution_role,
+from sagemaker.config import (
     TRANSFORM_OUTPUT_KMS_KEY_ID_PATH,
     TRANSFORM_JOB_KMS_KEY_ID_PATH,
     TRANSFORM_RESOURCES_VOLUME_KMS_KEY_ID_PATH,
     PIPELINE_ROLE_ARN_PATH,
 )
+from sagemaker.job import _Job
+from sagemaker.session import Session, get_execution_role
 from sagemaker.inputs import BatchDataCaptureConfig
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.functions import Join
@@ -38,6 +37,8 @@ from sagemaker.utils import (
     base_name_from_image,
     name_from_base,
     check_and_get_run_experiment_config,
+    resolve_value_from_config,
+    resolve_class_attribute_from_config,
 )
 
 
@@ -126,11 +127,15 @@ class Transformer(object):
         self._reset_output_path = False
 
         self.sagemaker_session = sagemaker_session or Session()
-        self.volume_kms_key = self.sagemaker_session.resolve_value_from_config(
-            volume_kms_key, TRANSFORM_RESOURCES_VOLUME_KMS_KEY_ID_PATH
+        self.volume_kms_key = resolve_value_from_config(
+            volume_kms_key,
+            TRANSFORM_RESOURCES_VOLUME_KMS_KEY_ID_PATH,
+            sagemaker_session=sagemaker_session,
         )
-        self.output_kms_key = self.sagemaker_session.resolve_value_from_config(
-            output_kms_key, TRANSFORM_OUTPUT_KMS_KEY_ID_PATH
+        self.output_kms_key = resolve_value_from_config(
+            output_kms_key,
+            TRANSFORM_OUTPUT_KMS_KEY_ID_PATH,
+            sagemaker_session=self.sagemaker_session,
         )
 
     @runnable_by_pipeline
@@ -268,8 +273,12 @@ class Transformer(object):
 
         experiment_config = check_and_get_run_experiment_config(experiment_config)
 
-        batch_data_capture_config = self.sagemaker_session.resolve_class_attribute_from_config(
-            None, batch_data_capture_config, "kms_key_id", TRANSFORM_JOB_KMS_KEY_ID_PATH
+        batch_data_capture_config = resolve_class_attribute_from_config(
+            None,
+            batch_data_capture_config,
+            "kms_key_id",
+            TRANSFORM_JOB_KMS_KEY_ID_PATH,
+            sagemaker_session=self.sagemaker_session,
         )
 
         self.latest_transform_job = _TransformJob.start_new(
@@ -394,8 +403,12 @@ class Transformer(object):
             transformer.sagemaker_session = PipelineSession()
             self.sagemaker_session = sagemaker_session
 
-        batch_data_capture_config = self.sagemaker_session.resolve_class_attribute_from_config(
-            None, batch_data_capture_config, "kms_key_id", TRANSFORM_JOB_KMS_KEY_ID_PATH
+        batch_data_capture_config = resolve_class_attribute_from_config(
+            None,
+            batch_data_capture_config,
+            "kms_key_id",
+            TRANSFORM_JOB_KMS_KEY_ID_PATH,
+            sagemaker_session=sagemaker_session,
         )
 
         transform_step_args = transformer.transform(
@@ -439,8 +452,10 @@ class Transformer(object):
         pipeline_role_arn = (
             role
             if role
-            else transformer.sagemaker_session.resolve_value_from_config(
-                get_execution_role(), PIPELINE_ROLE_ARN_PATH
+            else resolve_value_from_config(
+                get_execution_role(),
+                PIPELINE_ROLE_ARN_PATH,
+                sagemaker_session=transformer.sagemaker_session,
             )
         )
         pipeline.upsert(pipeline_role_arn)

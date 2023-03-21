@@ -14,7 +14,6 @@
 from __future__ import absolute_import, print_function
 
 import copy
-import inspect
 import json
 import logging
 import os
@@ -36,61 +35,65 @@ import six
 import sagemaker.logs
 from sagemaker import vpc_utils
 from sagemaker._studio import _append_project_tags
-from sagemaker.config import (  # noqa: F401
-    SageMakerConfig,
-    SAGEMAKER,
-    TRAINING_JOB,
-    ENABLE_NETWORK_ISOLATION,
-    KMS_KEY_ID,
-    RESOURCE_CONFIG,
-    VOLUME_KMS_KEY_ID,
-    ROLE_ARN,
-    VPC_CONFIG,
-    SECURITY_GROUP_IDS,
-    SUBNETS,
-    EDGE_PACKAGING_JOB,
-    OUTPUT_CONFIG,
-    FEATURE_GROUP,
-    OFFLINE_STORE_CONFIG,
-    ONLINE_STORE_CONFIG,
-    AUTO_ML,
-    AUTO_ML_JOB_CONFIG,
-    SECURITY_CONFIG,
-    OUTPUT_DATA_CONFIG,
-    MONITORING_SCHEDULE,
-    MONITORING_SCHEDULE_CONFIG,
-    MONITORING_JOB_DEFINITION,
-    MONITORING_OUTPUT_CONFIG,
-    MONITORING_RESOURCES,
-    CLUSTER_CONFIG,
-    NETWORK_CONFIG,
-    TRANSFORM_JOB,
-    TRANSFORM_OUTPUT,
-    TRANSFORM_RESOURCES,
-    DATA_CAPTURE_CONFIG,
-    MODEL,
-    EXECUTION_ROLE_ARN,
-    S3_STORAGE_CONFIG,
-    ENDPOINT_CONFIG,
-    PIPELINE,
-    COMPILATION_JOB,
-    PROCESSING_JOB,
-    PROCESSING_INPUTS,
-    DATASET_DEFINITION,
-    REDSHIFT_DATASET_DEFINITION,
-    ATHENA_DATASET_DEFINITION,
-    CLUSTER_ROLE_ARN,
-    PROCESSING_OUTPUT_CONFIG,
-    PROCESSING_RESOURCES,
-    ASYNC_INFERENCE_CONFIG,
-    ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION,
-    TAGS,
+from sagemaker.config import SageMakerConfig  # noqa: F401
+from sagemaker.config import (
     KEY,
-    PRODUCTION_VARIANTS,
+    TRAINING_JOB,
+    TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
+    TRAINING_JOB_ROLE_ARN_PATH,
+    TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+    TRAINING_JOB_VPC_CONFIG_PATH,
+    TRAINING_JOB_OUTPUT_DATA_CONFIG_PATH,
+    TRAINING_JOB_RESOURCE_CONFIG_PATH,
+    PROCESSING_JOB_INPUTS_PATH,
+    PROCESSING_JOB,
+    PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
+    PROCESSING_JOB_ROLE_ARN_PATH,
+    PROCESSING_JOB_NETWORK_CONFIG_PATH,
+    PROCESSING_OUTPUT_CONFIG_PATH,
+    PROCESSING_JOB_PROCESSING_RESOURCES_PATH,
+    MONITORING_JOB_ROLE_ARN_PATH,
+    MONITORING_JOB_VOLUME_KMS_KEY_ID_PATH,
+    MONITORING_JOB_NETWORK_CONFIG_PATH,
+    MONITORING_JOB_OUTPUT_KMS_KEY_ID_PATH,
+    MONITORING_SCHEDULE,
+    MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION_PATH,
+    AUTO_ML_ROLE_ARN_PATH,
+    AUTO_ML_OUTPUT_CONFIG_PATH,
+    AUTO_ML_JOB_CONFIG_PATH,
+    AUTO_ML,
+    COMPILATION_JOB_ROLE_ARN_PATH,
+    COMPILATION_JOB_OUTPUT_CONFIG_PATH,
+    COMPILATION_JOB_VPC_CONFIG_PATH,
+    COMPILATION_JOB,
+    EDGE_PACKAGING_ROLE_ARN_PATH,
+    EDGE_PACKAGING_OUTPUT_CONFIG_PATH,
+    EDGE_PACKAGING_JOB,
+    TRANSFORM_JOB,
+    TRANSFORM_JOB_KMS_KEY_ID_PATH,
+    TRANSFORM_OUTPUT_KMS_KEY_ID_PATH,
+    VOLUME_KMS_KEY_ID,
+    TRANSFORM_JOB_VOLUME_KMS_KEY_ID_PATH,
+    MODEL,
+    MODEL_EXECUTION_ROLE_ARN_PATH,
+    MODEL_ENABLE_NETWORK_ISOLATION_PATH,
+    MODEL_VPC_CONFIG_PATH,
+    MODEL_PACKAGE_VALIDATION_ROLE_PATH,
     VALIDATION_ROLE,
     VALIDATION_PROFILES,
-    MODEL_PACKAGE,
-    VALIDATION_SPECIFICATION,
+    MODEL_PACKAGE_VALIDATION_PROFILES_PATH,
+    ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH,
+    KMS_KEY_ID,
+    ENDPOINT_CONFIG_KMS_KEY_ID_PATH,
+    ENDPOINT_CONFIG,
+    ENDPOINT_CONFIG_DATA_CAPTURE_PATH,
+    ENDPOINT_CONFIG_ASYNC_INFERENCE_PATH,
+    SAGEMAKER,
+    FEATURE_GROUP,
+    TAGS,
+    FEATURE_GROUP_ROLE_ARN_PATH,
+    FEATURE_GROUP_ONLINE_STORE_CONFIG_PATH,
+    FEATURE_GROUP_OFFLINE_STORE_CONFIG_PATH,
 )
 from sagemaker.deprecations import deprecated_class
 from sagemaker.inputs import ShuffleConfig, TrainingInput, BatchDataCaptureConfig
@@ -101,9 +104,11 @@ from sagemaker.utils import (
     secondary_training_status_message,
     sts_regional_endpoint,
     retries,
-    get_config_value,
-    get_nested_value,
-    set_nested_value,
+    resolve_value_from_config,
+    get_sagemaker_config_value,
+    resolve_class_attribute_from_config,
+    resolve_nested_dict_value_from_config,
+    update_nested_dictionary_with_values_from_config,
 )
 from sagemaker import exceptions
 from sagemaker.session_settings import SessionSettings
@@ -121,173 +126,6 @@ _STATUS_CODE_TABLE = {
     "STARTING": "Starting",
     "PENDING": "Pending",
 }
-
-
-def _simple_path(*args: str):
-    """Appends an arbitrary number of strings to use as path constants"""
-    return ".".join(args)
-
-
-COMPILATION_JOB_VPC_CONFIG_PATH = _simple_path(SAGEMAKER, COMPILATION_JOB, VPC_CONFIG)
-COMPILATION_JOB_KMS_KEY_ID_PATH = _simple_path(
-    SAGEMAKER, COMPILATION_JOB, OUTPUT_CONFIG, KMS_KEY_ID
-)
-COMPILATION_JOB_OUTPUT_CONFIG_PATH = _simple_path(SAGEMAKER, COMPILATION_JOB, OUTPUT_CONFIG)
-COMPILATION_JOB_ROLE_ARN_PATH = _simple_path(SAGEMAKER, COMPILATION_JOB, ROLE_ARN)
-TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH = _simple_path(
-    SAGEMAKER, TRAINING_JOB, ENABLE_NETWORK_ISOLATION
-)
-TRAINING_JOB_KMS_KEY_ID_PATH = _simple_path(SAGEMAKER, TRAINING_JOB, OUTPUT_DATA_CONFIG, KMS_KEY_ID)
-TRAINING_JOB_RESOURCE_CONFIG_PATH = _simple_path(SAGEMAKER, TRAINING_JOB, RESOURCE_CONFIG)
-TRAINING_JOB_OUTPUT_DATA_CONFIG_PATH = _simple_path(SAGEMAKER, TRAINING_JOB, OUTPUT_DATA_CONFIG)
-TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH = _simple_path(
-    SAGEMAKER, TRAINING_JOB, RESOURCE_CONFIG, VOLUME_KMS_KEY_ID
-)
-TRAINING_JOB_ROLE_ARN_PATH = _simple_path(SAGEMAKER, TRAINING_JOB, ROLE_ARN)
-TRAINING_JOB_VPC_CONFIG_PATH = _simple_path(SAGEMAKER, TRAINING_JOB, VPC_CONFIG)
-TRAINING_JOB_SECURITY_GROUP_IDS_PATH = _simple_path(
-    TRAINING_JOB_VPC_CONFIG_PATH, SECURITY_GROUP_IDS
-)
-TRAINING_JOB_SUBNETS_PATH = _simple_path(TRAINING_JOB_VPC_CONFIG_PATH, SUBNETS)
-EDGE_PACKAGING_KMS_KEY_ID_PATH = _simple_path(
-    SAGEMAKER, EDGE_PACKAGING_JOB, OUTPUT_CONFIG, KMS_KEY_ID
-)
-EDGE_PACKAGING_OUTPUT_CONFIG_PATH = _simple_path(SAGEMAKER, EDGE_PACKAGING_JOB, OUTPUT_CONFIG)
-EDGE_PACKAGING_ROLE_ARN_PATH = _simple_path(SAGEMAKER, EDGE_PACKAGING_JOB, ROLE_ARN)
-ENDPOINT_CONFIG_DATA_CAPTURE_KMS_KEY_ID_PATH = _simple_path(
-    SAGEMAKER, ENDPOINT_CONFIG, DATA_CAPTURE_CONFIG, KMS_KEY_ID
-)
-ENDPOINT_CONFIG_DATA_CAPTURE_PATH = _simple_path(SAGEMAKER, ENDPOINT_CONFIG, DATA_CAPTURE_CONFIG)
-ENDPOINT_CONFIG_ASYNC_INFERENCE_PATH = _simple_path(
-    SAGEMAKER, ENDPOINT_CONFIG, ASYNC_INFERENCE_CONFIG
-)
-ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH = _simple_path(
-    SAGEMAKER, ENDPOINT_CONFIG, PRODUCTION_VARIANTS
-)
-ENDPOINT_CONFIG_ASYNC_KMS_KEY_ID_PATH = _simple_path(
-    SAGEMAKER, ENDPOINT_CONFIG, ASYNC_INFERENCE_CONFIG, OUTPUT_CONFIG, KMS_KEY_ID
-)
-ENDPOINT_CONFIG_KMS_KEY_ID_PATH = _simple_path(SAGEMAKER, ENDPOINT_CONFIG, KMS_KEY_ID)
-FEATURE_GROUP_ONLINE_STORE_CONFIG_PATH = _simple_path(SAGEMAKER, FEATURE_GROUP, ONLINE_STORE_CONFIG)
-FEATURE_GROUP_OFFLINE_STORE_CONFIG_PATH = _simple_path(
-    SAGEMAKER, FEATURE_GROUP, OFFLINE_STORE_CONFIG
-)
-FEATURE_GROUP_ROLE_ARN_PATH = _simple_path(SAGEMAKER, FEATURE_GROUP, ROLE_ARN)
-FEATURE_GROUP_OFFLINE_STORE_KMS_KEY_ID_PATH = _simple_path(
-    FEATURE_GROUP_OFFLINE_STORE_CONFIG_PATH, S3_STORAGE_CONFIG, KMS_KEY_ID
-)
-FEATURE_GROUP_ONLINE_STORE_KMS_KEY_ID_PATH = _simple_path(
-    FEATURE_GROUP_ONLINE_STORE_CONFIG_PATH, SECURITY_CONFIG, KMS_KEY_ID
-)
-AUTO_ML_OUTPUT_CONFIG_PATH = _simple_path(SAGEMAKER, AUTO_ML, OUTPUT_DATA_CONFIG)
-AUTO_ML_KMS_KEY_ID_PATH = _simple_path(SAGEMAKER, AUTO_ML, OUTPUT_DATA_CONFIG, KMS_KEY_ID)
-AUTO_ML_VOLUME_KMS_KEY_ID_PATH = _simple_path(
-    SAGEMAKER, AUTO_ML, AUTO_ML_JOB_CONFIG, SECURITY_CONFIG, VOLUME_KMS_KEY_ID
-)
-AUTO_ML_ROLE_ARN_PATH = _simple_path(SAGEMAKER, AUTO_ML, ROLE_ARN)
-AUTO_ML_VPC_CONFIG_PATH = _simple_path(
-    SAGEMAKER, AUTO_ML, AUTO_ML_JOB_CONFIG, SECURITY_CONFIG, VPC_CONFIG
-)
-AUTO_ML_JOB_CONFIG_PATH = _simple_path(SAGEMAKER, AUTO_ML, AUTO_ML_JOB_CONFIG)
-MONITORING_JOB_DEFINITION_PREFIX = _simple_path(
-    SAGEMAKER, MONITORING_SCHEDULE, MONITORING_SCHEDULE_CONFIG, MONITORING_JOB_DEFINITION
-)
-MONITORING_JOB_OUTPUT_KMS_KEY_ID_PATH = _simple_path(
-    MONITORING_JOB_DEFINITION_PREFIX, MONITORING_OUTPUT_CONFIG, KMS_KEY_ID
-)
-MONITORING_JOB_VOLUME_KMS_KEY_ID_PATH = _simple_path(
-    MONITORING_JOB_DEFINITION_PREFIX, MONITORING_RESOURCES, CLUSTER_CONFIG, VOLUME_KMS_KEY_ID
-)
-MONITORING_JOB_NETWORK_CONFIG_PATH = _simple_path(MONITORING_JOB_DEFINITION_PREFIX, NETWORK_CONFIG)
-MONITORING_JOB_ENABLE_NETWORK_ISOLATION_PATH = _simple_path(
-    MONITORING_JOB_DEFINITION_PREFIX, NETWORK_CONFIG, ENABLE_NETWORK_ISOLATION
-)
-MONITORING_JOB_VPC_CONFIG_PATH = _simple_path(
-    MONITORING_JOB_DEFINITION_PREFIX, NETWORK_CONFIG, VPC_CONFIG
-)
-MONITORING_JOB_SECURITY_GROUP_IDS_PATH = _simple_path(
-    MONITORING_JOB_VPC_CONFIG_PATH, SECURITY_GROUP_IDS
-)
-MONITORING_JOB_SUBNETS_PATH = _simple_path(MONITORING_JOB_VPC_CONFIG_PATH, SUBNETS)
-MONITORING_JOB_ROLE_ARN_PATH = _simple_path(MONITORING_JOB_DEFINITION_PREFIX, ROLE_ARN)
-PIPELINE_ROLE_ARN_PATH = _simple_path(SAGEMAKER, PIPELINE, ROLE_ARN)
-PIPELINE_TAGS_PATH = _simple_path(SAGEMAKER, PIPELINE, TAGS)
-TRANSFORM_OUTPUT_KMS_KEY_ID_PATH = _simple_path(
-    SAGEMAKER, TRANSFORM_JOB, TRANSFORM_OUTPUT, KMS_KEY_ID
-)
-TRANSFORM_RESOURCES_VOLUME_KMS_KEY_ID_PATH = _simple_path(
-    SAGEMAKER, TRANSFORM_JOB, TRANSFORM_RESOURCES, VOLUME_KMS_KEY_ID
-)
-TRANSFORM_JOB_KMS_KEY_ID_PATH = _simple_path(
-    SAGEMAKER, TRANSFORM_JOB, DATA_CAPTURE_CONFIG, KMS_KEY_ID
-)
-TRANSFORM_JOB_VOLUME_KMS_KEY_ID_PATH = _simple_path(
-    SAGEMAKER, TRANSFORM_JOB, TRANSFORM_RESOURCES, VOLUME_KMS_KEY_ID
-)
-
-MODEL_VPC_CONFIG_PATH = _simple_path(SAGEMAKER, MODEL, VPC_CONFIG)
-MODEL_ENABLE_NETWORK_ISOLATION_PATH = _simple_path(SAGEMAKER, MODEL, ENABLE_NETWORK_ISOLATION)
-MODEL_EXECUTION_ROLE_ARN_PATH = _simple_path(SAGEMAKER, MODEL, EXECUTION_ROLE_ARN)
-PROCESSING_JOB_ENABLE_NETWORK_ISOLATION_PATH = _simple_path(
-    SAGEMAKER, PROCESSING_JOB, NETWORK_CONFIG, ENABLE_NETWORK_ISOLATION
-)
-PROCESSING_JOB_INPUTS_PATH = _simple_path(SAGEMAKER, PROCESSING_JOB, PROCESSING_INPUTS)
-REDSHIFT_DATASET_DEFINITION_KMS_KEY_ID_PATH = _simple_path(
-    DATASET_DEFINITION, REDSHIFT_DATASET_DEFINITION, KMS_KEY_ID
-)
-ATHENA_DATASET_DEFINITION_KMS_KEY_ID_PATH = _simple_path(
-    DATASET_DEFINITION, ATHENA_DATASET_DEFINITION, KMS_KEY_ID
-)
-REDSHIFT_DATASET_DEFINITION_CLUSTER_ROLE_ARN_PATH = _simple_path(
-    DATASET_DEFINITION, REDSHIFT_DATASET_DEFINITION, CLUSTER_ROLE_ARN
-)
-PROCESSING_JOB_NETWORK_CONFIG_PATH = _simple_path(SAGEMAKER, PROCESSING_JOB, NETWORK_CONFIG)
-PROCESSING_JOB_VPC_CONFIG_PATH = _simple_path(SAGEMAKER, PROCESSING_JOB, NETWORK_CONFIG, VPC_CONFIG)
-PROCESSING_JOB_SUBNETS_PATH = _simple_path(PROCESSING_JOB_VPC_CONFIG_PATH, SUBNETS)
-PROCESSING_JOB_SECURITY_GROUP_IDS_PATH = _simple_path(
-    PROCESSING_JOB_VPC_CONFIG_PATH, SECURITY_GROUP_IDS
-)
-PROCESSING_OUTPUT_CONFIG_PATH = _simple_path(SAGEMAKER, PROCESSING_JOB, PROCESSING_OUTPUT_CONFIG)
-PROCESSING_JOB_KMS_KEY_ID_PATH = _simple_path(
-    SAGEMAKER, PROCESSING_JOB, PROCESSING_OUTPUT_CONFIG, KMS_KEY_ID
-)
-PROCESSING_JOB_PROCESSING_RESOURCES_PATH = _simple_path(
-    SAGEMAKER, PROCESSING_JOB, PROCESSING_RESOURCES
-)
-PROCESSING_JOB_VOLUME_KMS_KEY_ID_PATH = _simple_path(
-    SAGEMAKER, PROCESSING_JOB, PROCESSING_RESOURCES, CLUSTER_CONFIG, VOLUME_KMS_KEY_ID
-)
-PROCESSING_JOB_ROLE_ARN_PATH = _simple_path(SAGEMAKER, PROCESSING_JOB, ROLE_ARN)
-MODEL_PACKAGE_VALIDATION_ROLE_PATH = _simple_path(
-    SAGEMAKER, MODEL_PACKAGE, VALIDATION_SPECIFICATION, VALIDATION_ROLE
-)
-MODEL_PACKAGE_VALIDATION_PROFILES_PATH = _simple_path(
-    SAGEMAKER, MODEL_PACKAGE, VALIDATION_SPECIFICATION, VALIDATION_PROFILES
-)
-
-# Paths for reference elsewhere in the SDK.
-# Names include the schema version since the paths could change with other schema versions
-PATH_V1_MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION = _simple_path(
-    SAGEMAKER,
-    MONITORING_SCHEDULE,
-    MONITORING_SCHEDULE_CONFIG,
-    MONITORING_JOB_DEFINITION,
-    NETWORK_CONFIG,
-    ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION,
-)
-PATH_V1_AUTO_ML_INTER_CONTAINER_ENCRYPTION = _simple_path(
-    SAGEMAKER,
-    AUTO_ML,
-    AUTO_ML_JOB_CONFIG,
-    SECURITY_CONFIG,
-    ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION,
-)
-PATH_V1_PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION = _simple_path(
-    SAGEMAKER, PROCESSING_JOB, NETWORK_CONFIG, ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION
-)
-PATH_V1_TRAINING_JOB_INTER_CONTAINER_ENCRYPTION = _simple_path(
-    SAGEMAKER, TRAINING_JOB, ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION
-)
 
 
 class LogState(object):
@@ -646,20 +484,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         return self._default_bucket
 
-    def get_sagemaker_config_value(self, key):
-        """Util method that fetches a particular key path in the SageMakerConfig and returns it.
-
-        Args:
-            key: Key Path of the config file entry.
-
-        Returns:
-            object: The corresponding value in the Config file/ the default value.
-        """
-        config_value = get_config_value(key, self.sagemaker_config.config)
-
-        # Copy the value so any modifications to the output will not modify the source config
-        return copy.deepcopy(config_value)
-
     def _create_s3_bucket_if_it_does_not_exist(self, bucket_name, region):
         """Creates an S3 Bucket if it does not exist.
 
@@ -769,154 +593,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
         # There is no print statement needed if nothing was specified in the config and nothing is
         # being automatically applied
 
-    def resolve_value_from_config(
-        self, direct_input=None, config_path: str = None, default_value=None
-    ):
-        """Makes a decision of which value is the right value for the caller to use.
-
-        Note: This method also incorporates info from the sagemaker config.
-
-        Uses this order of prioritization:
-        (1) direct_input, (2) config value, (3) default_value, (4) None
-
-        Args:
-            direct_input: the value that the caller of this method started with. Usually this is an
-                          input to the caller's class or method
-            config_path (str): a string denoting the path to use to lookup the config value in the
-                               sagemaker config
-            default_value: the value to use if not present elsewhere
-
-        Returns:
-            The value that should be used by the caller
-        """
-        config_value = self.get_sagemaker_config_value(config_path)
-        self._print_message_on_sagemaker_config_usage(direct_input, config_value, config_path)
-
-        if direct_input is not None:
-            return direct_input
-
-        if config_value is not None:
-            return config_value
-
-        return default_value
-
-    def resolve_class_attribute_from_config(
-        self,
-        clazz: Optional[type],
-        instance: Optional[object],
-        attribute: str,
-        config_path: str,
-        default_value=None,
-    ):
-        """Utility method that merges config values to data classes.
-
-        Takes an instance of a class and, if not already set, sets the instance's attribute to a
-        value fetched from the sagemaker_config or the default_value.
-
-        Uses this order of prioritization to determine what the value of the attribute should be:
-        (1) current value of attribute, (2) config value, (3) default_value, (4) does not set it
-
-        Args:
-            clazz (Optional[type]): Class of 'instance'. Used to generate a new instance if the
-                   instance is None. If None is provided here, no new object will be created
-                   if 'instance' doesnt exist. Note: if provided, the constructor should set default
-                   values to None; Otherwise, the constructor's non-None default will be left
-                   as-is even if a config value was defined.
-            instance (Optional[object]): instance of the Class 'clazz' that has an attribute
-                     of 'attribute' to set
-            attribute (str): attribute of the instance to set if not already set
-            config_path (str): a string denoting the path to use to lookup the config value in the
-                               sagemaker config
-            default_value: the value to use if not present elsewhere
-
-        Returns:
-            The updated class instance that should be used by the caller instead of the
-            'instance' parameter that was passed in.
-        """
-        config_value = self.get_sagemaker_config_value(config_path)
-
-        if config_value is None and default_value is None:
-            # return instance unmodified. Could be None or populated
-            return instance
-
-        if instance is None:
-            if clazz is None or not inspect.isclass(clazz):
-                return instance
-            # construct a new instance if the instance does not exist
-            instance = clazz()
-
-        if not hasattr(instance, attribute):
-            raise TypeError(
-                "Unexpected structure of object.",
-                "Expected attribute {} to be present inside instance {} of class {}".format(
-                    attribute, instance, clazz
-                ),
-            )
-
-        current_value = getattr(instance, attribute)
-        if current_value is None:
-            # only set value if object does not already have a value set
-            if config_value is not None:
-                setattr(instance, attribute, config_value)
-            elif default_value is not None:
-                setattr(instance, attribute, default_value)
-
-        self._print_message_on_sagemaker_config_usage(current_value, config_value, config_path)
-
-        return instance
-
-    def resolve_nested_dict_value_from_config(
-        self,
-        dictionary: dict,
-        nested_keys: List[str],
-        config_path: str,
-        default_value: object = None,
-    ):
-        """Utility method that sets the value of a key path in a nested dictionary .
-
-        This method takes a dictionary and, if not already set, sets the value for the provided
-        list of nested keys to the value fetched from the sagemaker_config or the default_value.
-
-        Uses this order of prioritization to determine what the value of the attribute should be:
-        (1) current value of nested key, (2) config value, (3) default_value, (4) does not set it
-
-        Args:
-            dictionary: dict to update
-            nested_keys: path of keys at which the value should be checked (and set if needed)
-            config_path (str): a string denoting the path to use to lookup the config value in the
-                               sagemaker config
-            default_value: the value to use if not present elsewhere
-
-        Returns:
-            The updated dictionary that should be used by the caller instead of the
-            'dictionary' parameter that was passed in.
-        """
-        config_value = self.get_sagemaker_config_value(config_path)
-
-        if config_value is None and default_value is None:
-            # if there is nothing to set, return early. And there is no need to traverse through
-            # the dictionary or add nested dicts to it
-            return dictionary
-
-        try:
-            current_nested_value = get_nested_value(dictionary, nested_keys)
-        except ValueError as e:
-            logging.error("Failed to check dictionary for applying sagemaker config: %s", e)
-            return dictionary
-
-        if current_nested_value is None:
-            # only set value if not already set
-            if config_value is not None:
-                dictionary = set_nested_value(dictionary, nested_keys, config_value)
-            elif default_value is not None:
-                dictionary = set_nested_value(dictionary, nested_keys, default_value)
-
-        self._print_message_on_sagemaker_config_usage(
-            current_nested_value, config_value, config_path
-        )
-
-        return dictionary
-
     def _append_sagemaker_config_tags(self, tags: list, config_path_to_tags: str):
         """Appends tags specified in the sagemaker_config to the given list of tags.
 
@@ -931,7 +607,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             A potentially extended list of tags.
         """
-        config_tags = self.get_sagemaker_config_value(config_path_to_tags)
+        config_tags = get_sagemaker_config_value(self, config_path_to_tags)
 
         if config_tags is None or len(config_tags) == 0:
             return tags
@@ -1103,25 +779,27 @@ class Session(object):  # pylint: disable=too-many-public-methods
             tags, "{}.{}.{}".format(SAGEMAKER, TRAINING_JOB, TAGS)
         )
 
-        _encrypt_inter_container_traffic = self.resolve_value_from_config(
+        _encrypt_inter_container_traffic = resolve_value_from_config(
             direct_input=encrypt_inter_container_traffic,
-            config_path=PATH_V1_TRAINING_JOB_INTER_CONTAINER_ENCRYPTION,
+            config_path=TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
             default_value=False,
+            sagemaker_session=self,
         )
-        role = self.resolve_value_from_config(role, TRAINING_JOB_ROLE_ARN_PATH)
-        enable_network_isolation = self.resolve_value_from_config(
+        role = resolve_value_from_config(role, TRAINING_JOB_ROLE_ARN_PATH, sagemaker_session=self)
+        enable_network_isolation = resolve_value_from_config(
             direct_input=enable_network_isolation,
             config_path=TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
             default_value=False,
+            sagemaker_session=self,
         )
-        inferred_vpc_config = self._update_nested_dictionary_with_values_from_config(
-            vpc_config, TRAINING_JOB_VPC_CONFIG_PATH
+        inferred_vpc_config = update_nested_dictionary_with_values_from_config(
+            vpc_config, TRAINING_JOB_VPC_CONFIG_PATH, sagemaker_session=self
         )
-        inferred_output_config = self._update_nested_dictionary_with_values_from_config(
-            output_config, TRAINING_JOB_OUTPUT_DATA_CONFIG_PATH
+        inferred_output_config = update_nested_dictionary_with_values_from_config(
+            output_config, TRAINING_JOB_OUTPUT_DATA_CONFIG_PATH, sagemaker_session=self
         )
-        inferred_resource_config = self._update_nested_dictionary_with_values_from_config(
-            resource_config, TRAINING_JOB_RESOURCE_CONFIG_PATH
+        inferred_resource_config = update_nested_dictionary_with_values_from_config(
+            resource_config, TRAINING_JOB_RESOURCE_CONFIG_PATH, sagemaker_session=self
         )
         train_request = self._get_train_request(
             input_mode=input_mode,
@@ -1469,8 +1147,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         """
         inputs_copy = copy.deepcopy(inputs)
-        processing_inputs_from_config = self.resolve_value_from_config(
-            config_path=PROCESSING_JOB_INPUTS_PATH, default_value=[]
+        processing_inputs_from_config = resolve_value_from_config(
+            config_path=PROCESSING_JOB_INPUTS_PATH, default_value=[], sagemaker_session=self
         )
         for i in range(min(len(inputs), len(processing_inputs_from_config))):
             dict_from_inputs = inputs[i]
@@ -1551,24 +1229,25 @@ class Session(object):  # pylint: disable=too-many-public-methods
             tags, "{}.{}.{}".format(SAGEMAKER, PROCESSING_JOB, TAGS)
         )
 
-        network_config = self.resolve_nested_dict_value_from_config(
+        network_config = resolve_nested_dict_value_from_config(
             network_config,
             ["EnableInterContainerTrafficEncryption"],
-            PATH_V1_PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION,
+            PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
+            sagemaker_session=self,
         )
 
         self._update_processing_input_from_config(inputs)
-        role_arn = self.resolve_value_from_config(role_arn, PROCESSING_JOB_ROLE_ARN_PATH)
-        inferred_network_config_from_config = (
-            self._update_nested_dictionary_with_values_from_config(
-                network_config, PROCESSING_JOB_NETWORK_CONFIG_PATH
-            )
+        role_arn = resolve_value_from_config(
+            role_arn, PROCESSING_JOB_ROLE_ARN_PATH, sagemaker_session=self
         )
-        inferred_output_config = self._update_nested_dictionary_with_values_from_config(
-            output_config, PROCESSING_OUTPUT_CONFIG_PATH
+        inferred_network_config_from_config = update_nested_dictionary_with_values_from_config(
+            network_config, PROCESSING_JOB_NETWORK_CONFIG_PATH, sagemaker_session=self
         )
-        inferred_resources_config = self._update_nested_dictionary_with_values_from_config(
-            resources, PROCESSING_JOB_PROCESSING_RESOURCES_PATH
+        inferred_output_config = update_nested_dictionary_with_values_from_config(
+            output_config, PROCESSING_OUTPUT_CONFIG_PATH, sagemaker_session=self
+        )
+        inferred_resources_config = update_nested_dictionary_with_values_from_config(
+            resources, PROCESSING_JOB_PROCESSING_RESOURCES_PATH, sagemaker_session=self
         )
         process_request = self._get_process_request(
             inputs=inputs,
@@ -1738,14 +1417,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
             tags ([dict[str,str]]): A list of dictionaries containing key-value
                 pairs.
         """
-        role_arn = self.resolve_value_from_config(role_arn, MONITORING_JOB_ROLE_ARN_PATH)
-        volume_kms_key = self.resolve_value_from_config(
-            volume_kms_key, MONITORING_JOB_VOLUME_KMS_KEY_ID_PATH
+        role_arn = resolve_value_from_config(
+            role_arn, MONITORING_JOB_ROLE_ARN_PATH, sagemaker_session=self
         )
-        inferred_network_config_from_config = (
-            self._update_nested_dictionary_with_values_from_config(
-                network_config, MONITORING_JOB_NETWORK_CONFIG_PATH
-            )
+        volume_kms_key = resolve_value_from_config(
+            volume_kms_key, MONITORING_JOB_VOLUME_KMS_KEY_ID_PATH, sagemaker_session=self
+        )
+        inferred_network_config_from_config = update_nested_dictionary_with_values_from_config(
+            network_config, MONITORING_JOB_NETWORK_CONFIG_PATH, sagemaker_session=self
         )
         monitoring_schedule_request = {
             "MonitoringScheduleName": monitoring_schedule_name,
@@ -1771,8 +1450,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             }
 
         if monitoring_output_config is not None:
-            kms_key_from_config = self.resolve_value_from_config(
-                config_path=MONITORING_JOB_OUTPUT_KMS_KEY_ID_PATH
+            kms_key_from_config = resolve_value_from_config(
+                config_path=MONITORING_JOB_OUTPUT_KMS_KEY_ID_PATH, sagemaker_session=self
             )
             if KMS_KEY_ID not in monitoring_output_config and kms_key_from_config:
                 monitoring_output_config[KMS_KEY_ID] = kms_key_from_config
@@ -2115,10 +1794,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
         ].get("NetworkConfig")
 
         _network_config = network_config or existing_network_config
-        _network_config = self.resolve_nested_dict_value_from_config(
+        _network_config = resolve_nested_dict_value_from_config(
             _network_config,
             ["EnableInterContainerTrafficEncryption"],
-            PATH_V1_MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION,
+            MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION_PATH,
+            sagemaker_session=self,
         )
         if _network_config is not None:
             monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
@@ -2441,12 +2121,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 Contains "AutoGenerateEndpointName" and "EndpointName"
         """
 
-        role = self.resolve_value_from_config(role, AUTO_ML_ROLE_ARN_PATH)
-        inferred_output_config = self._update_nested_dictionary_with_values_from_config(
-            output_config, AUTO_ML_OUTPUT_CONFIG_PATH
+        role = resolve_value_from_config(role, AUTO_ML_ROLE_ARN_PATH, sagemaker_session=self)
+        inferred_output_config = update_nested_dictionary_with_values_from_config(
+            output_config, AUTO_ML_OUTPUT_CONFIG_PATH, sagemaker_session=self
         )
-        inferred_automl_job_config = self._update_nested_dictionary_with_values_from_config(
-            auto_ml_job_config, AUTO_ML_JOB_CONFIG_PATH
+        inferred_automl_job_config = update_nested_dictionary_with_values_from_config(
+            auto_ml_job_config, AUTO_ML_JOB_CONFIG_PATH, sagemaker_session=self
         )
         auto_ml_job_request = self._get_auto_ml_request(
             input_config=input_config,
@@ -2720,11 +2400,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             str: ARN of the compile model job, if it is created.
         """
-        role = self.resolve_value_from_config(role, COMPILATION_JOB_ROLE_ARN_PATH)
-        inferred_output_model_config = self._update_nested_dictionary_with_values_from_config(
-            output_model_config, COMPILATION_JOB_OUTPUT_CONFIG_PATH
+        role = resolve_value_from_config(
+            role, COMPILATION_JOB_ROLE_ARN_PATH, sagemaker_session=self
         )
-        vpc_config = self.resolve_value_from_config(config_path=COMPILATION_JOB_VPC_CONFIG_PATH)
+        inferred_output_model_config = update_nested_dictionary_with_values_from_config(
+            output_model_config, COMPILATION_JOB_OUTPUT_CONFIG_PATH, sagemaker_session=self
+        )
+        vpc_config = resolve_value_from_config(
+            config_path=COMPILATION_JOB_VPC_CONFIG_PATH, sagemaker_session=self
+        )
         compilation_job_request = {
             "InputConfig": input_model_config,
             "OutputConfig": inferred_output_model_config,
@@ -2770,9 +2454,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             tags (list[dict]): List of tags for labeling a compile model job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
         """
-        role = self.resolve_value_from_config(role, EDGE_PACKAGING_ROLE_ARN_PATH)
-        inferred_output_model_config = self._update_nested_dictionary_with_values_from_config(
-            output_model_config, EDGE_PACKAGING_OUTPUT_CONFIG_PATH
+        role = resolve_value_from_config(role, EDGE_PACKAGING_ROLE_ARN_PATH, sagemaker_session=self)
+        inferred_output_model_config = update_nested_dictionary_with_values_from_config(
+            output_model_config, EDGE_PACKAGING_OUTPUT_CONFIG_PATH, sagemaker_session=self
         )
         edge_packaging_job_request = {
             "OutputConfig": inferred_output_model_config,
@@ -3530,14 +3214,21 @@ class Session(object):  # pylint: disable=too-many-public-methods
         tags = self._append_sagemaker_config_tags(
             tags, "{}.{}.{}".format(SAGEMAKER, TRANSFORM_JOB, TAGS)
         )
-        batch_data_capture_config = self.resolve_class_attribute_from_config(
-            None, batch_data_capture_config, "kms_key_id", TRANSFORM_JOB_KMS_KEY_ID_PATH
+        batch_data_capture_config = resolve_class_attribute_from_config(
+            None,
+            batch_data_capture_config,
+            "kms_key_id",
+            TRANSFORM_JOB_KMS_KEY_ID_PATH,
+            sagemaker_session=self,
         )
-        output_config = self.resolve_nested_dict_value_from_config(
-            output_config, [KMS_KEY_ID], TRANSFORM_OUTPUT_KMS_KEY_ID_PATH
+        output_config = resolve_nested_dict_value_from_config(
+            output_config, [KMS_KEY_ID], TRANSFORM_OUTPUT_KMS_KEY_ID_PATH, sagemaker_session=self
         )
-        resource_config = self.resolve_nested_dict_value_from_config(
-            resource_config, [VOLUME_KMS_KEY_ID], TRANSFORM_JOB_VOLUME_KMS_KEY_ID_PATH
+        resource_config = resolve_nested_dict_value_from_config(
+            resource_config,
+            [VOLUME_KMS_KEY_ID],
+            TRANSFORM_JOB_VOLUME_KMS_KEY_ID_PATH,
+            sagemaker_session=self,
         )
 
         transform_request = self._get_transform_request(
@@ -3666,12 +3357,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
         tags = _append_project_tags(tags)
         tags = self._append_sagemaker_config_tags(tags, "{}.{}.{}".format(SAGEMAKER, MODEL, TAGS))
-        role = self.resolve_value_from_config(role, MODEL_EXECUTION_ROLE_ARN_PATH)
-        vpc_config = self.resolve_value_from_config(vpc_config, MODEL_VPC_CONFIG_PATH)
-        enable_network_isolation = self.resolve_value_from_config(
+        role = resolve_value_from_config(
+            role, MODEL_EXECUTION_ROLE_ARN_PATH, sagemaker_session=self
+        )
+        vpc_config = resolve_value_from_config(
+            vpc_config, MODEL_VPC_CONFIG_PATH, sagemaker_session=self
+        )
+        enable_network_isolation = resolve_value_from_config(
             direct_input=enable_network_isolation,
             config_path=MODEL_ENABLE_NETWORK_ISOLATION_PATH,
             default_value=False,
+            sagemaker_session=self,
         )
         create_model_request = self._create_model_request(
             name=name,
@@ -3745,13 +3441,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
         name = name or training_job_name
         role = role or training_job["RoleArn"]
-        role = self.resolve_value_from_config(
-            role, MODEL_EXECUTION_ROLE_ARN_PATH, training_job["RoleArn"]
+        role = resolve_value_from_config(
+            role, MODEL_EXECUTION_ROLE_ARN_PATH, training_job["RoleArn"], self
         )
-        enable_network_isolation = self.resolve_value_from_config(
+        enable_network_isolation = resolve_value_from_config(
             direct_input=enable_network_isolation,
             config_path=MODEL_ENABLE_NETWORK_ISOLATION_PATH,
             default_value=False,
+            sagemaker_session=self,
         )
         env = env or {}
         primary_container = container_def(
@@ -3760,7 +3457,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             env=env,
         )
         vpc_config = _vpc_config_from_training_job(training_job, vpc_config_override)
-        vpc_config = self.resolve_value_from_config(vpc_config, MODEL_VPC_CONFIG_PATH)
+        vpc_config = resolve_value_from_config(
+            vpc_config, MODEL_VPC_CONFIG_PATH, sagemaker_session=self
+        )
         return self.create_model(
             name,
             role,
@@ -3862,13 +3561,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
             # not supported by the config now. So if we merge values from config, then API will
             # throw an exception. In the future, when SageMaker Config starts supporting other
             # parameters we can add that.
-            validation_role = self.resolve_value_from_config(
+            validation_role = resolve_value_from_config(
                 validation_specification.get(VALIDATION_ROLE, None),
                 MODEL_PACKAGE_VALIDATION_ROLE_PATH,
+                sagemaker_session=self,
             )
             validation_specification[VALIDATION_ROLE] = validation_role
-            validation_profiles_from_config = self.resolve_value_from_config(
-                config_path=MODEL_PACKAGE_VALIDATION_PROFILES_PATH, default_value=[]
+            validation_profiles_from_config = resolve_value_from_config(
+                config_path=MODEL_PACKAGE_VALIDATION_PROFILES_PATH,
+                default_value=[],
+                sagemaker_session=self,
             )
             validation_profiles = validation_specification.get(VALIDATION_PROFILES, [])
             for i in range(min(len(validation_profiles), len(validation_profiles_from_config))):
@@ -4038,8 +3740,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
             model_data_download_timeout=model_data_download_timeout,
             container_startup_health_check_timeout=container_startup_health_check_timeout,
         )
-        inferred_production_variants_from_config = self.resolve_value_from_config(
-            config_path=ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH, default_value=[]
+        inferred_production_variants_from_config = resolve_value_from_config(
+            config_path=ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH,
+            default_value=[],
+            sagemaker_session=self,
         )
         if inferred_production_variants_from_config:
             inferred_production_variant_from_config = (
@@ -4070,15 +3774,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
         if tags is not None:
             request["Tags"] = tags
-        kms_key = self.resolve_value_from_config(kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH)
+        kms_key = resolve_value_from_config(
+            kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self
+        )
         if kms_key is not None:
             request["KmsKeyId"] = kms_key
 
         if data_capture_config_dict is not None:
-            inferred_data_capture_config_dict = (
-                self._update_nested_dictionary_with_values_from_config(
-                    data_capture_config_dict, ENDPOINT_CONFIG_DATA_CAPTURE_PATH
-                )
+            inferred_data_capture_config_dict = update_nested_dictionary_with_values_from_config(
+                data_capture_config_dict, ENDPOINT_CONFIG_DATA_CAPTURE_PATH, sagemaker_session=self
             )
             request["DataCaptureConfig"] = inferred_data_capture_config_dict
 
@@ -4138,8 +3842,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
             new_production_variants or existing_endpoint_config_desc["ProductionVariants"]
         )
         if production_variants:
-            inferred_production_variants_from_config = self.resolve_value_from_config(
-                config_path=ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH, default_value=[]
+            inferred_production_variants_from_config = resolve_value_from_config(
+                config_path=ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH,
+                default_value=[],
+                sagemaker_session=self,
             )
             for i in range(
                 min(len(production_variants), len(inferred_production_variants_from_config))
@@ -4172,8 +3878,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if new_kms_key is not None or existing_endpoint_config_desc.get("KmsKeyId") is not None:
             request["KmsKeyId"] = new_kms_key or existing_endpoint_config_desc.get("KmsKeyId")
         if KMS_KEY_ID not in request:
-            kms_key_from_config = self.resolve_value_from_config(
-                config_path=ENDPOINT_CONFIG_KMS_KEY_ID_PATH
+            kms_key_from_config = resolve_value_from_config(
+                config_path=ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self
             )
             if kms_key_from_config:
                 request[KMS_KEY_ID] = kms_key_from_config
@@ -4183,10 +3889,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
 
         if request_data_capture_config_dict is not None:
-            inferred_data_capture_config_dict = (
-                self._update_nested_dictionary_with_values_from_config(
-                    request_data_capture_config_dict, ENDPOINT_CONFIG_DATA_CAPTURE_PATH
-                )
+            inferred_data_capture_config_dict = update_nested_dictionary_with_values_from_config(
+                request_data_capture_config_dict,
+                ENDPOINT_CONFIG_DATA_CAPTURE_PATH,
+                sagemaker_session=self,
             )
             request["DataCaptureConfig"] = inferred_data_capture_config_dict
 
@@ -4194,10 +3900,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "AsyncInferenceConfig", None
         )
         if async_inference_config_dict is not None:
-            inferred_async_inference_config_dict = (
-                self._update_nested_dictionary_with_values_from_config(
-                    async_inference_config_dict, ENDPOINT_CONFIG_ASYNC_INFERENCE_PATH
-                )
+            inferred_async_inference_config_dict = update_nested_dictionary_with_values_from_config(
+                async_inference_config_dict,
+                ENDPOINT_CONFIG_ASYNC_INFERENCE_PATH,
+                sagemaker_session=self,
             )
             request["AsyncInferenceConfig"] = inferred_async_inference_config_dict
 
@@ -4738,7 +4444,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             str: The name of the created ``Endpoint``.
         """
         config_options = {"EndpointConfigName": name, "ProductionVariants": production_variants}
-        kms_key = self.resolve_value_from_config(kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH)
+        kms_key = resolve_value_from_config(
+            kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self
+        )
         tags = _append_project_tags(tags)
         tags = self._append_sagemaker_config_tags(
             tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT_CONFIG, TAGS)
@@ -4748,17 +4456,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if kms_key:
             config_options["KmsKeyId"] = kms_key
         if data_capture_config_dict is not None:
-            inferred_data_capture_config_dict = (
-                self._update_nested_dictionary_with_values_from_config(
-                    data_capture_config_dict, ENDPOINT_CONFIG_DATA_CAPTURE_PATH
-                )
+            inferred_data_capture_config_dict = update_nested_dictionary_with_values_from_config(
+                data_capture_config_dict, ENDPOINT_CONFIG_DATA_CAPTURE_PATH, sagemaker_session=self
             )
             config_options["DataCaptureConfig"] = inferred_data_capture_config_dict
         if async_inference_config_dict is not None:
-            inferred_async_inference_config_dict = (
-                self._update_nested_dictionary_with_values_from_config(
-                    async_inference_config_dict, ENDPOINT_CONFIG_ASYNC_INFERENCE_PATH
-                )
+            inferred_async_inference_config_dict = update_nested_dictionary_with_values_from_config(
+                async_inference_config_dict,
+                ENDPOINT_CONFIG_ASYNC_INFERENCE_PATH,
+                sagemaker_session=self,
             )
             config_options["AsyncInferenceConfig"] = inferred_async_inference_config_dict
 
@@ -5198,16 +4904,18 @@ class Session(object):  # pylint: disable=too-many-public-methods
         tags = self._append_sagemaker_config_tags(
             tags, "{}.{}.{}".format(SAGEMAKER, FEATURE_GROUP, TAGS)
         )
-        role_arn = self.resolve_value_from_config(role_arn, FEATURE_GROUP_ROLE_ARN_PATH)
-        inferred_online_store_from_config = self._update_nested_dictionary_with_values_from_config(
-            online_store_config, FEATURE_GROUP_ONLINE_STORE_CONFIG_PATH
+        role_arn = resolve_value_from_config(
+            role_arn, FEATURE_GROUP_ROLE_ARN_PATH, sagemaker_session=self
+        )
+        inferred_online_store_from_config = update_nested_dictionary_with_values_from_config(
+            online_store_config, FEATURE_GROUP_ONLINE_STORE_CONFIG_PATH, sagemaker_session=self
         )
         if inferred_online_store_from_config is not None:
             # OnlineStore should be handled differently because if you set KmsKeyId, then you
             # need to set EnableOnlineStore key as well
             inferred_online_store_from_config["EnableOnlineStore"] = True
-        inferred_offline_store_from_config = self._update_nested_dictionary_with_values_from_config(
-            offline_store_config, FEATURE_GROUP_OFFLINE_STORE_CONFIG_PATH
+        inferred_offline_store_from_config = update_nested_dictionary_with_values_from_config(
+            offline_store_config, FEATURE_GROUP_OFFLINE_STORE_CONFIG_PATH, sagemaker_session=self
         )
         kwargs = dict(
             FeatureGroupName=feature_group_name,
@@ -5548,53 +5256,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
             LOGGER.info("Query %s successfully executed.", query_execution_id)
         else:
             LOGGER.error("Failed to execute query %s.", query_execution_id)
-
-    def _update_nested_dictionary_with_values_from_config(
-        self, source_dict, config_key_path
-    ) -> dict:
-        """Updates a given nested dictionary with missing values which are present in Config.
-
-        Args:
-            source_dict: The input nested dictionary that was provided as method parameter.
-            config_key_path: The Key Path in the Config file which corresponds to this
-            source_dict parameter.
-
-        Returns:
-            dict: The merged nested dictionary which includes missings values that are present
-            in the Config file.
-        """
-        inferred_config_dict = self.get_sagemaker_config_value(config_key_path) or {}
-        original_config_dict_value = copy.deepcopy(inferred_config_dict)
-        merge_dicts(inferred_config_dict, source_dict or {})
-
-        if original_config_dict_value == {}:
-            # The config value is empty. That means either
-            # (1) inferred_config_dict equals source_dict, or
-            # (2) if source_dict was None, inferred_config_dict equals {}
-            # We should return whatever source_dict was to be safe. Because if for example,
-            # a VpcConfig is set to {} instead of None, some boto calls will fail due to
-            # ParamValidationError (because a VpcConfig was specified but required parameters for
-            # the VpcConfig were missing.)
-
-            # Dont need to print because no config value was used or defined
-            return source_dict
-
-        if source_dict == inferred_config_dict:
-            # We didnt use any values from the config, but we should print if any of the config
-            # values were defined
-            self._print_message_on_sagemaker_config_usage(
-                source_dict, original_config_dict_value, config_key_path
-            )
-        else:
-            # Something from the config was merged in
-            print(
-                "[Sagemaker Config - applied value]\n",
-                "config key = {}\n".format(config_key_path),
-                "config value = {}\n".format(original_config_dict_value),
-                "source value = {}\n".format(source_dict),
-                "combined value that will be used = {}\n".format(inferred_config_dict),
-            )
-        return inferred_config_dict
 
     def download_athena_query_result(
         self,

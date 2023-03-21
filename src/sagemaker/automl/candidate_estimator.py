@@ -14,15 +14,14 @@
 from __future__ import absolute_import
 
 from six import string_types
-
-from sagemaker.session import (
-    Session,
+from sagemaker.config import (
     TRAINING_JOB_VPC_CONFIG_PATH,
     TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH,
-    PATH_V1_TRAINING_JOB_INTER_CONTAINER_ENCRYPTION,
+    TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
 )
+from sagemaker.session import Session
 from sagemaker.job import _Job
-from sagemaker.utils import name_from_base
+from sagemaker.utils import name_from_base, resolve_value_from_config
 
 
 class CandidateEstimator(object):
@@ -106,11 +105,13 @@ class CandidateEstimator(object):
                 """Logs can only be shown if wait is set to True.
                 Please either set wait to True or set logs to False."""
             )
-        vpc_config = self.sagemaker_session.resolve_value_from_config(
-            vpc_config, TRAINING_JOB_VPC_CONFIG_PATH
+        vpc_config = resolve_value_from_config(
+            vpc_config, TRAINING_JOB_VPC_CONFIG_PATH, sagemaker_session=self.sagemaker_session
         )
-        volume_kms_key = self.sagemaker_session.resolve_value_from_config(
-            volume_kms_key, TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH
+        volume_kms_key = resolve_value_from_config(
+            volume_kms_key,
+            TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH,
+            sagemaker_session=self.sagemaker_session,
         )
         self.name = candidate_name or self.name
         running_jobs = {}
@@ -146,10 +147,11 @@ class CandidateEstimator(object):
 
                 # Check training_job config not auto_ml_job config because this function calls
                 # training job API
-                _encrypt_inter_container_traffic = self.sagemaker_session.resolve_value_from_config(
+                _encrypt_inter_container_traffic = resolve_value_from_config(
                     direct_input=encrypt_inter_container_traffic,
-                    config_path=PATH_V1_TRAINING_JOB_INTER_CONTAINER_ENCRYPTION,
+                    config_path=TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
                     default_value=False,
+                    sagemaker_session=self.sagemaker_session,
                 )
 
                 train_args = self._get_train_args(

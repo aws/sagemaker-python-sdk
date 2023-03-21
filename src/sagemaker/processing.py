@@ -30,6 +30,15 @@ import attr
 from six.moves.urllib.parse import urlparse
 from six.moves.urllib.request import url2pathname
 from sagemaker import s3
+from sagemaker.config import (
+    PROCESSING_JOB_KMS_KEY_ID_PATH,
+    PROCESSING_JOB_SECURITY_GROUP_IDS_PATH,
+    PROCESSING_JOB_SUBNETS_PATH,
+    PROCESSING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+    PROCESSING_JOB_VOLUME_KMS_KEY_ID_PATH,
+    PROCESSING_JOB_ROLE_ARN_PATH,
+    PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
+)
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
 from sagemaker.network import NetworkConfig
@@ -38,17 +47,10 @@ from sagemaker.utils import (
     get_config_value,
     name_from_base,
     check_and_get_run_experiment_config,
+    resolve_value_from_config,
+    resolve_class_attribute_from_config,
 )
-from sagemaker.session import (
-    Session,
-    PROCESSING_JOB_KMS_KEY_ID_PATH,
-    PROCESSING_JOB_SECURITY_GROUP_IDS_PATH,
-    PROCESSING_JOB_SUBNETS_PATH,
-    PROCESSING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
-    PROCESSING_JOB_VOLUME_KMS_KEY_ID_PATH,
-    PROCESSING_JOB_ROLE_ARN_PATH,
-    PATH_V1_PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION,
-)
+from sagemaker.session import Session
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.functions import Join
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
@@ -148,38 +150,44 @@ class Processor(object):
                 sagemaker_session = LocalSession(disable_local_code=True)
 
         self.sagemaker_session = sagemaker_session or Session()
-        self.output_kms_key = self.sagemaker_session.resolve_value_from_config(
-            output_kms_key, PROCESSING_JOB_KMS_KEY_ID_PATH
+        self.output_kms_key = resolve_value_from_config(
+            output_kms_key, PROCESSING_JOB_KMS_KEY_ID_PATH, sagemaker_session=self.sagemaker_session
         )
-        self.volume_kms_key = self.sagemaker_session.resolve_value_from_config(
-            volume_kms_key, PROCESSING_JOB_VOLUME_KMS_KEY_ID_PATH
+        self.volume_kms_key = resolve_value_from_config(
+            volume_kms_key,
+            PROCESSING_JOB_VOLUME_KMS_KEY_ID_PATH,
+            sagemaker_session=self.sagemaker_session,
         )
-        self.network_config = self.sagemaker_session.resolve_class_attribute_from_config(
+        self.network_config = resolve_class_attribute_from_config(
             NetworkConfig,
             network_config,
             "subnets",
             PROCESSING_JOB_SUBNETS_PATH,
+            sagemaker_session=self.sagemaker_session,
         )
-        self.network_config = self.sagemaker_session.resolve_class_attribute_from_config(
+        self.network_config = resolve_class_attribute_from_config(
             NetworkConfig,
             self.network_config,
             "security_group_ids",
             PROCESSING_JOB_SECURITY_GROUP_IDS_PATH,
+            sagemaker_session=self.sagemaker_session,
         )
-        self.network_config = self.sagemaker_session.resolve_class_attribute_from_config(
+        self.network_config = resolve_class_attribute_from_config(
             NetworkConfig,
             self.network_config,
             "enable_network_isolation",
             PROCESSING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+            sagemaker_session=self.sagemaker_session,
         )
-        self.network_config = self.sagemaker_session.resolve_class_attribute_from_config(
+        self.network_config = resolve_class_attribute_from_config(
             NetworkConfig,
             self.network_config,
             "encrypt_inter_container_traffic",
-            PATH_V1_PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION,
+            PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
+            sagemaker_session=self.sagemaker_session,
         )
-        self.role = self.sagemaker_session.resolve_value_from_config(
-            role, PROCESSING_JOB_ROLE_ARN_PATH
+        self.role = resolve_value_from_config(
+            role, PROCESSING_JOB_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
         )
         if not self.role:
             # Originally IAM role was a required parameter.

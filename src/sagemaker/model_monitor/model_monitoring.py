@@ -35,6 +35,13 @@ from sagemaker.config.config_schema import (
     SAGEMAKER,
     MONITORING_SCHEDULE,
     TAGS,
+    MONITORING_JOB_SUBNETS_PATH,
+    MONITORING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+    MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION_PATH,
+    MONITORING_JOB_VOLUME_KMS_KEY_ID_PATH,
+    MONITORING_JOB_SECURITY_GROUP_IDS_PATH,
+    MONITORING_JOB_OUTPUT_KMS_KEY_ID_PATH,
+    MONITORING_JOB_ROLE_ARN_PATH,
 )
 from sagemaker.exceptions import UnexpectedStatusException
 from sagemaker.model_monitor.monitoring_files import Constraints, ConstraintViolations, Statistics
@@ -47,17 +54,13 @@ from sagemaker.model_monitor.monitoring_alert import (
 from sagemaker.model_monitor.dataset_format import MonitoringDatasetFormat
 from sagemaker.network import NetworkConfig
 from sagemaker.processing import Processor, ProcessingInput, ProcessingJob, ProcessingOutput
-from sagemaker.session import (
-    Session,
-    MONITORING_JOB_SUBNETS_PATH,
-    MONITORING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
-    PATH_V1_MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION,
-    MONITORING_JOB_VOLUME_KMS_KEY_ID_PATH,
-    MONITORING_JOB_SECURITY_GROUP_IDS_PATH,
-    MONITORING_JOB_OUTPUT_KMS_KEY_ID_PATH,
-    MONITORING_JOB_ROLE_ARN_PATH,
+from sagemaker.session import Session
+from sagemaker.utils import (
+    name_from_base,
+    retries,
+    resolve_value_from_config,
+    resolve_class_attribute_from_config,
 )
-from sagemaker.utils import name_from_base, retries
 
 DEFAULT_REPOSITORY_NAME = "sagemaker-model-monitor-analyzer"
 
@@ -177,8 +180,8 @@ class ModelMonitor(object):
         self.latest_baselining_job_name = None
         self.monitoring_schedule_name = None
         self.job_definition_name = None
-        self.role = self.sagemaker_session.resolve_value_from_config(
-            role, MONITORING_JOB_ROLE_ARN_PATH
+        self.role = resolve_value_from_config(
+            role, MONITORING_JOB_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
         )
         if not self.role:
             # Originally IAM role was a required parameter.
@@ -186,35 +189,43 @@ class ModelMonitor(object):
             # Because of marking that parameter as optional, we should validate if it is None, even
             # after fetching the config.
             raise ValueError("IAM role should be provided for creating Monitoring Schedule.")
-        self.volume_kms_key = self.sagemaker_session.resolve_value_from_config(
-            volume_kms_key, MONITORING_JOB_VOLUME_KMS_KEY_ID_PATH
+        self.volume_kms_key = resolve_value_from_config(
+            volume_kms_key,
+            MONITORING_JOB_VOLUME_KMS_KEY_ID_PATH,
+            sagemaker_session=self.sagemaker_session,
         )
-        self.output_kms_key = self.sagemaker_session.resolve_value_from_config(
-            output_kms_key, MONITORING_JOB_OUTPUT_KMS_KEY_ID_PATH
+        self.output_kms_key = resolve_value_from_config(
+            output_kms_key,
+            MONITORING_JOB_OUTPUT_KMS_KEY_ID_PATH,
+            sagemaker_session=self.sagemaker_session,
         )
-        self.network_config = self.sagemaker_session.resolve_class_attribute_from_config(
+        self.network_config = resolve_class_attribute_from_config(
             NetworkConfig,
             network_config,
             "subnets",
             MONITORING_JOB_SUBNETS_PATH,
+            sagemaker_session=self.sagemaker_session,
         )
-        self.network_config = self.sagemaker_session.resolve_class_attribute_from_config(
+        self.network_config = resolve_class_attribute_from_config(
             NetworkConfig,
             self.network_config,
             "security_group_ids",
             MONITORING_JOB_SECURITY_GROUP_IDS_PATH,
+            sagemaker_session=self.sagemaker_session,
         )
-        self.network_config = self.sagemaker_session.resolve_class_attribute_from_config(
+        self.network_config = resolve_class_attribute_from_config(
             NetworkConfig,
             self.network_config,
             "enable_network_isolation",
             MONITORING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+            sagemaker_session=self.sagemaker_session,
         )
-        self.network_config = self.sagemaker_session.resolve_class_attribute_from_config(
+        self.network_config = resolve_class_attribute_from_config(
             NetworkConfig,
             self.network_config,
             "encrypt_inter_container_traffic",
-            PATH_V1_MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION,
+            MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION_PATH,
+            sagemaker_session=self.sagemaker_session,
         )
 
     def run_baseline(
@@ -1437,7 +1448,7 @@ class ModelMonitor(object):
         )
 
         # Not using value from sagemaker
-        # config key PATH_V1_MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION here
+        # config key MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION_PATH here
         # because no MonitoringJobDefinition is set for this call
 
         self.sagemaker_session.sagemaker_client.create_monitoring_schedule(
@@ -1507,7 +1518,7 @@ class ModelMonitor(object):
             }
 
         # Not using value from sagemaker
-        # config key PATH_V1_MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION here
+        # config key MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION_PATH here
         # because no MonitoringJobDefinition is set for this call
 
         self.sagemaker_session.sagemaker_client.update_monitoring_schedule(

@@ -140,24 +140,18 @@ def pipeline_session(boto_session, client):
         sagemaker_client=client,
         default_bucket=BUCKET,
     )
-    pipeline_session_mock.resolve_value_from_config = Mock(
-        name="resolve_value_from_config",
-        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
-        if direct_input is not None
-        else default_value,
-    )
+    # For tests which doesn't verify config file injection, operate with empty config
+    pipeline_session.sagemaker_config = Mock()
+    pipeline_session.sagemaker_config.config = {}
     return pipeline_session_mock
 
 
 @pytest.fixture()
 def local_sagemaker_session(boto_session):
     local_session_mock = LocalSession(boto_session=boto_session, default_bucket="my-bucket")
-    local_session_mock.resolve_value_from_config = Mock(
-        name="resolve_value_from_config",
-        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
-        if direct_input is not None
-        else default_value,
-    )
+    # For tests which doesn't verify config file injection, operate with empty config
+    local_session_mock.sagemaker_config = Mock()
+    local_session_mock.sagemaker_config.config = {}
     return local_session_mock
 
 

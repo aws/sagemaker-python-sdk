@@ -66,18 +66,8 @@ def mock_create_tar_file():
 def sagemaker_session():
     boto_mock = Mock(name="boto_session")
     session = Mock(name="sagemaker_session", boto_session=boto_mock, local_mode=False)
-
-    # For the purposes of unit tests, no values should be fetched from sagemaker config
-    session.resolve_class_attribute_from_config = Mock(
-        name="resolve_class_attribute_from_config",
-        side_effect=lambda clazz, instance, attribute, config_path, default_value=None: instance,
-    )
-    session.resolve_value_from_config = Mock(
-        name="resolve_value_from_config",
-        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
-        if direct_input is not None
-        else default_value,
-    )
+    # For tests which doesn't verify config file injection, operate with empty config
+    session.sagemaker_config.config = {}
     return session
 
 

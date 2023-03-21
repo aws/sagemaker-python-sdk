@@ -145,6 +145,7 @@ class SageMakerConfig(object):
 
 
 def _load_config_files(file_paths: List[str], s3_resource_for_config) -> dict:
+    """Placeholder docstring"""
     merged_config = {}
     for file_path in file_paths:
         config_from_file = {}
@@ -169,6 +170,7 @@ def _load_config_files(file_paths: List[str], s3_resource_for_config) -> dict:
 
 
 def _load_config_from_file(file_path: str) -> dict:
+    """Placeholder docstring"""
     inferred_file_path = file_path
     if os.path.isdir(file_path):
         inferred_file_path = os.path.join(file_path, "config.yaml")
@@ -182,6 +184,7 @@ def _load_config_from_file(file_path: str) -> dict:
 
 
 def _load_config_from_s3(s3_uri, s3_resource_for_config) -> dict:
+    """Placeholder docstring"""
     if not s3_resource_for_config:
         raise RuntimeError("Please provide a S3 client for loading the config")
     logger.debug("Fetching configuration file from the S3 URI: %s", s3_uri)
@@ -194,6 +197,7 @@ def _load_config_from_s3(s3_uri, s3_resource_for_config) -> dict:
 
 
 def _get_inferred_s3_uri(s3_uri, s3_resource_for_config):
+    """Placeholder docstring"""
     parsed_url = urlparse(s3_uri)
     bucket, key_prefix = parsed_url.netloc, parsed_url.path.lstrip("/")
     try:

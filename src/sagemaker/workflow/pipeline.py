@@ -25,8 +25,9 @@ from botocore.exceptions import ClientError
 
 from sagemaker import s3
 from sagemaker._studio import _append_project_tags
-from sagemaker.session import Session, PIPELINE_ROLE_ARN_PATH, PIPELINE_TAGS_PATH
-from sagemaker.utils import retry_with_backoff
+from sagemaker.config import PIPELINE_ROLE_ARN_PATH, PIPELINE_TAGS_PATH
+from sagemaker.session import Session
+from sagemaker.utils import resolve_value_from_config, retry_with_backoff
 from sagemaker.workflow.callback_step import CallbackOutput, CallbackStep
 from sagemaker.workflow.lambda_step import LambdaOutput, LambdaStep
 from sagemaker.workflow.entities import (
@@ -127,8 +128,8 @@ class Pipeline(Entity):
         Returns:
             A response dict from the service.
         """
-        role_arn = self.sagemaker_session.resolve_value_from_config(
-            role_arn, PIPELINE_ROLE_ARN_PATH
+        role_arn = resolve_value_from_config(
+            role_arn, PIPELINE_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
         )
         if not role_arn:
             # Originally IAM role was a required parameter.
@@ -221,8 +222,8 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         Returns:
             A response dict from the service.
         """
-        role_arn = self.sagemaker_session.resolve_value_from_config(
-            role_arn, PIPELINE_ROLE_ARN_PATH
+        role_arn = resolve_value_from_config(
+            role_arn, PIPELINE_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
         )
         if not role_arn:
             # Originally IAM role was a required parameter.
@@ -261,8 +262,8 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         Returns:
             response dict from service
         """
-        role_arn = self.sagemaker_session.resolve_value_from_config(
-            role_arn, PIPELINE_ROLE_ARN_PATH
+        role_arn = resolve_value_from_config(
+            role_arn, PIPELINE_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
         )
         if not role_arn:
             # Originally IAM role was a required parameter.

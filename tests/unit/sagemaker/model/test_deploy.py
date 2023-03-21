@@ -68,12 +68,8 @@ BASE_PRODUCTION_VARIANT = {
 @pytest.fixture
 def sagemaker_session():
     session = Mock()
-    session.resolve_value_from_config = Mock(
-        name="resolve_value_from_config",
-        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
-        if direct_input is not None
-        else default_value,
-    )
+    # For tests which doesn't verify config file injection, operate with empty config
+    session.sagemaker_config.config = {}
     return session
 
 
@@ -443,18 +439,8 @@ def test_deploy_wrong_serverless_config(sagemaker_session):
 @patch("sagemaker.session.Session")
 @patch("sagemaker.local.LocalSession")
 def test_deploy_creates_correct_session(local_session, session):
-    local_session.resolve_value_from_config = Mock(
-        name="resolve_value_from_config",
-        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
-        if direct_input is not None
-        else default_value,
-    )
-    session.resolve_value_from_config = Mock(
-        name="resolve_value_from_config",
-        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
-        if direct_input is not None
-        else default_value,
-    )
+    local_session.sagemaker_config.config = {}
+    session.sagemaker_config.config = {}
     # We expect a LocalSession when deploying to instance_type = 'local'
     model = Model(MODEL_IMAGE, MODEL_DATA, role=ROLE)
     model.deploy(endpoint_name="blah", instance_type="local", initial_instance_count=1)

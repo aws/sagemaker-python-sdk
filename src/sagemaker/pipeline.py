@@ -17,19 +17,19 @@ from typing import Optional, Dict, List, Union
 
 import sagemaker
 from sagemaker import ModelMetrics, Model
-from sagemaker.drift_check_baselines import DriftCheckBaselines
-from sagemaker.metadata_properties import MetadataProperties
-from sagemaker.session import (
-    Session,
+from sagemaker.config import (
     ENDPOINT_CONFIG_KMS_KEY_ID_PATH,
     MODEL_VPC_CONFIG_PATH,
     MODEL_ENABLE_NETWORK_ISOLATION_PATH,
     MODEL_EXECUTION_ROLE_ARN_PATH,
 )
-
+from sagemaker.drift_check_baselines import DriftCheckBaselines
+from sagemaker.metadata_properties import MetadataProperties
+from sagemaker.session import Session
 from sagemaker.utils import (
     name_from_image,
     update_container_with_inference_params,
+    resolve_value_from_config,
 )
 from sagemaker.transformer import Transformer
 from sagemaker.workflow.entities import PipelineVariable
@@ -91,27 +91,18 @@ class PipelineModel(object):
         self.name = name
         self.sagemaker_session = sagemaker_session
         self.endpoint_name = None
-        self.role = (
-            self.sagemaker_session.resolve_value_from_config(role, MODEL_EXECUTION_ROLE_ARN_PATH)
-            if self.sagemaker_session
-            else role
+        self.role = resolve_value_from_config(
+            role, MODEL_EXECUTION_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
         )
-        self.vpc_config = (
-            self.sagemaker_session.resolve_value_from_config(vpc_config, MODEL_VPC_CONFIG_PATH)
-            if self.sagemaker_session
-            else vpc_config
+        self.vpc_config = resolve_value_from_config(
+            vpc_config, MODEL_VPC_CONFIG_PATH, sagemaker_session=self.sagemaker_session
         )
-
-        if self.sagemaker_session is not None:
-            self.enable_network_isolation = self.sagemaker_session.resolve_value_from_config(
-                direct_input=enable_network_isolation,
-                config_path=MODEL_ENABLE_NETWORK_ISOLATION_PATH,
-                default_value=False,
-            )
-        else:
-            self.enable_network_isolation = (
-                False if enable_network_isolation is None else enable_network_isolation
-            )
+        self.enable_network_isolation = resolve_value_from_config(
+            direct_input=enable_network_isolation,
+            config_path=MODEL_ENABLE_NETWORK_ISOLATION_PATH,
+            default_value=False,
+            sagemaker_session=self.sagemaker_session,
+        )
 
         if not self.role:
             # Originally IAM role was a required parameter.
@@ -244,8 +235,8 @@ class PipelineModel(object):
             container_startup_health_check_timeout=container_startup_health_check_timeout,
         )
         self.endpoint_name = endpoint_name or self.name
-        kms_key = self.sagemaker_session.resolve_value_from_config(
-            kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH
+        kms_key = resolve_value_from_config(
+            kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self.sagemaker_session
         )
 
         data_capture_config_dict = None

@@ -42,12 +42,8 @@ def sagemaker_session():
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
     session.sagemaker_client.describe_training_job = Mock(return_value=describe)
     session.sagemaker_client.list_tags = Mock(return_value=LIST_TAGS_RESULT)
-    session.resolve_value_from_config = Mock(
-        name="resolve_value_from_config",
-        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
-        if direct_input is not None
-        else default_value,
-    )
+    # For tests which doesn't verify config file injection, operate with empty config
+    session.sagemaker_config.config = {}
     return session
 
 

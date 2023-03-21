@@ -909,12 +909,6 @@ def test_algorithm_enable_network_isolation_with_product_id(session):
 
 @patch("sagemaker.Session")
 def test_algorithm_encrypt_inter_container_traffic(session):
-    session.resolve_value_from_config = Mock(
-        name="resolve_value_from_config",
-        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
-        if direct_input is not None
-        else default_value,
-    )
 
     response = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     response["encrypt_inter_container_traffic"] = True
@@ -954,12 +948,7 @@ def test_algorithm_no_required_hyperparameters(session):
 
 def test_algorithm_attach_from_hyperparameter_tuning():
     session = Mock()
-    session.resolve_value_from_config = Mock(
-        name="resolve_value_from_config",
-        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
-        if direct_input is not None
-        else default_value,
-    )
+    session.sagemaker_config.config = {}
     job_name = "training-job-that-is-part-of-a-tuning-job"
     algo_arn = "arn:aws:sagemaker:us-east-2:000000000000:algorithm/scikit-decision-trees"
     role_arn = "arn:aws:iam::123412341234:role/SageMakerRole"

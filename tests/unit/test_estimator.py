@@ -238,13 +238,8 @@ def sagemaker_session():
     sms.sagemaker_client.list_tags = Mock(return_value=LIST_TAGS_RESULT)
     sms.upload_data = Mock(return_value=OUTPUT_PATH)
 
-    # For the purposes of unit tests, no values should be fetched from sagemaker config
-    sms.resolve_value_from_config = Mock(
-        name="resolve_value_from_config",
-        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
-        if direct_input is not None
-        else default_value,
-    )
+    # For tests which doesn't verify config file injection, operate with empty config
+    sms.sagemaker_config.config = {}
     return sms
 
 
@@ -1783,6 +1778,8 @@ def test_local_code_location():
         local_mode=True,
         spec=sagemaker.local.LocalSession,
     )
+    sms.sagemaker_config = Mock()
+    sms.sagemaker_config.config = {}
     t = DummyFramework(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -3745,9 +3742,13 @@ def test_register_under_pipeline_session(pipeline_session):
 def test_local_mode(session_class, local_session_class):
     local_session = Mock(spec=sagemaker.local.LocalSession)
     local_session.local_mode = True
+    local_session.sagemaker_config = Mock()
+    local_session.sagemaker_config.config = {}
 
     session = Mock()
     session.local_mode = False
+    session.sagemaker_config = Mock()
+    session.sagemaker_config.config = {}
 
     local_session_class.return_value = local_session
     session_class.return_value = session
@@ -3773,6 +3774,8 @@ def test_local_mode_file_output_path(local_session_class):
     local_session = Mock(spec=sagemaker.local.LocalSession)
     local_session.local_mode = True
     local_session_class.return_value = local_session
+    local_session.sagemaker_config = Mock()
+    local_session.sagemaker_config.config = {}
 
     e = Estimator(IMAGE_URI, ROLE, INSTANCE_COUNT, "local", output_path="file:///tmp/model/")
     assert e.output_path == "file:///tmp/model/"
@@ -3999,12 +4002,8 @@ def test_estimator_local_mode_error(sagemaker_session):
 
 
 def test_estimator_local_mode_ok(sagemaker_local_session):
-    sagemaker_local_session.resolve_value_from_config = Mock(
-        name="resolve_value_from_config",
-        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
-        if direct_input is not None
-        else default_value,
-    )
+    sagemaker_local_session.sagemaker_config = Mock()
+    sagemaker_local_session.sagemaker_config.config = {}
     # When using instance local with a session which is not LocalSession we should error out
     Estimator(
         image_uri="some-image",

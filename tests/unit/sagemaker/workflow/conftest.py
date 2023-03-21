@@ -64,10 +64,7 @@ def pipeline_session(mock_boto_session, mock_client):
         sagemaker_client=mock_client,
         default_bucket=BUCKET,
     )
-    pipeline_session.resolve_value_from_config = Mock(
-        name="resolve_value_from_config",
-        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
-        if direct_input is not None
-        else default_value,
-    )
+    # For tests which doesn't verify config file injection, operate with empty config
+    pipeline_session.sagemaker_config = Mock()
+    pipeline_session.sagemaker_config.config = {}
     return pipeline_session

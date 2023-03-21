@@ -84,17 +84,8 @@ def sagemaker_session():
         name="describe_processing_job", return_value=_get_describe_response_inputs_and_ouputs()
     )
 
-    # For the purposes of unit tests, no values should be fetched from sagemaker config
-    session_mock.resolve_class_attribute_from_config = Mock(
-        name="resolve_class_attribute_from_config",
-        side_effect=lambda clazz, instance, attribute, config_path, default_value=None: instance,
-    )
-    session_mock.resolve_value_from_config = Mock(
-        name="resolve_value_from_config",
-        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
-        if direct_input is not None
-        else default_value,
-    )
+    # For tests which doesn't verify config file injection, operate with empty config
+    session_mock.sagemaker_config.config = {}
     return session_mock
 
 
@@ -117,19 +108,10 @@ def pipeline_session():
     session_mock.describe_processing_job = MagicMock(
         name="describe_processing_job", return_value=_get_describe_response_inputs_and_ouputs()
     )
-    session_mock.resolve_value_from_config = Mock(
-        name="resolve_value_from_config",
-        side_effect=lambda direct_input=None, config_path=None, default_value=None: direct_input
-        if direct_input is not None
-        else default_value,
-    )
     session_mock.__class__ = PipelineSession
 
-    # For the purposes of unit tests, no values should be fetched from sagemaker config
-    session_mock.resolve_class_attribute_from_config = Mock(
-        name="resolve_class_attribute_from_config",
-        side_effect=lambda clazz, instance, attribute, config_path, default_value=None: instance,
-    )
+    # For tests which doesn't verify config file injection, operate with empty config
+    session_mock.sagemaker_config.config = {}
 
     return session_mock
 

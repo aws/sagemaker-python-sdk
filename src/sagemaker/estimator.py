@@ -29,6 +29,15 @@ from six.moves.urllib.parse import urlparse
 import sagemaker
 from sagemaker import git_utils, image_uris, vpc_utils
 from sagemaker.analytics import TrainingJobAnalytics
+from sagemaker.config import (
+    TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH,
+    TRAINING_JOB_SECURITY_GROUP_IDS_PATH,
+    TRAINING_JOB_SUBNETS_PATH,
+    TRAINING_JOB_KMS_KEY_ID_PATH,
+    TRAINING_JOB_ROLE_ARN_PATH,
+    TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+    TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
+)
 from sagemaker.debugger import (  # noqa: F401 # pylint: disable=unused-import
     DEBUGGER_FLAG,
     DebuggerHookConfig,
@@ -72,16 +81,7 @@ from sagemaker.model import (
 )
 from sagemaker.predictor import Predictor
 from sagemaker.s3 import S3Uploader, parse_s3_url
-from sagemaker.session import (
-    Session,
-    TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH,
-    TRAINING_JOB_ROLE_ARN_PATH,
-    TRAINING_JOB_SECURITY_GROUP_IDS_PATH,
-    TRAINING_JOB_SUBNETS_PATH,
-    TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
-    TRAINING_JOB_KMS_KEY_ID_PATH,
-    PATH_V1_TRAINING_JOB_INTER_CONTAINER_ENCRYPTION,
-)
+from sagemaker.session import Session
 from sagemaker.transformer import Transformer
 from sagemaker.utils import (
     base_from_name,
@@ -91,6 +91,7 @@ from sagemaker.utils import (
     name_from_base,
     to_string,
     check_and_get_run_experiment_config,
+    resolve_value_from_config,
 )
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.entities import PipelineVariable
@@ -586,8 +587,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.deploy_instance_type = None
 
         self._compiled_models = {}
-        self.role = self.sagemaker_session.resolve_value_from_config(
-            role, TRAINING_JOB_ROLE_ARN_PATH
+        self.role = resolve_value_from_config(
+            role, TRAINING_JOB_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
         )
         if not self.role:
             # Originally IAM role was a required parameter.
@@ -595,19 +596,23 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             # Because of marking that parameter as optional, we should validate if it is None, even
             # after fetching the config.
             raise ValueError("IAM role should be provided for creating estimators.")
-        self.output_kms_key = self.sagemaker_session.resolve_value_from_config(
-            output_kms_key, TRAINING_JOB_KMS_KEY_ID_PATH
+        self.output_kms_key = resolve_value_from_config(
+            output_kms_key, TRAINING_JOB_KMS_KEY_ID_PATH, sagemaker_session=self.sagemaker_session
         )
-        self.volume_kms_key = self.sagemaker_session.resolve_value_from_config(
-            volume_kms_key, TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH
+        self.volume_kms_key = resolve_value_from_config(
+            volume_kms_key,
+            TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH,
+            sagemaker_session=self.sagemaker_session,
         )
 
         # VPC configurations
-        self.subnets = self.sagemaker_session.resolve_value_from_config(
-            subnets, TRAINING_JOB_SUBNETS_PATH
+        self.subnets = resolve_value_from_config(
+            subnets, TRAINING_JOB_SUBNETS_PATH, sagemaker_session=self.sagemaker_session
         )
-        self.security_group_ids = self.sagemaker_session.resolve_value_from_config(
-            security_group_ids, TRAINING_JOB_SECURITY_GROUP_IDS_PATH
+        self.security_group_ids = resolve_value_from_config(
+            security_group_ids,
+            TRAINING_JOB_SECURITY_GROUP_IDS_PATH,
+            sagemaker_session=self.sagemaker_session,
         )
 
         # training image configs
@@ -616,10 +621,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             training_repository_credentials_provider_arn
         )
 
-        self.encrypt_inter_container_traffic = self.sagemaker_session.resolve_value_from_config(
+        self.encrypt_inter_container_traffic = resolve_value_from_config(
             direct_input=encrypt_inter_container_traffic,
-            config_path=PATH_V1_TRAINING_JOB_INTER_CONTAINER_ENCRYPTION,
+            config_path=TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
             default_value=False,
+            sagemaker_session=self.sagemaker_session,
         )
 
         self.use_spot_instances = use_spot_instances
@@ -636,10 +642,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         self.enable_sagemaker_metrics = enable_sagemaker_metrics
 
-        self._enable_network_isolation = self.sagemaker_session.resolve_value_from_config(
+        self._enable_network_isolation = resolve_value_from_config(
             direct_input=enable_network_isolation,
             config_path=TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
             default_value=False,
+            sagemaker_session=self.sagemaker_session,
         )
 
         self.profiler_config = profiler_config
