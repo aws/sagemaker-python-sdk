@@ -31,6 +31,7 @@ from sagemaker.workflow import is_pipeline_variable
 
 from sagemaker.deprecations import renamed_warning, renamed_kwargs
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.deprecations import deprecation_warn_base
 
 logger = logging.getLogger(__name__)
 
@@ -661,11 +662,10 @@ def profiler_config_deprecation_warning(
         )
         framework_profile = version.parse(framework_version)
         if framework_profile >= framework_profile_thresh:
-            logger.warning(
-                "Framework profiling is deprecated from %s version %s."
-                "No framework metrics will be collected.",
-                framework_name,
-                framework_version,
+            deprecation_warn_base(
+                f"Framework profiling is deprecated from\
+                 {framework_name} version {framework_version}.\
+                 No framework metrics will be collected"
             )
 
 

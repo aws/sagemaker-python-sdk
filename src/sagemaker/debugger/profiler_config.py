@@ -18,6 +18,7 @@ from typing import Optional, Union
 
 from sagemaker.debugger.framework_profile import FrameworkProfile
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.deprecations import deprecation_warn_base
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +86,7 @@ class ProfilerConfig(object):
         self.disable_profiler = disable_profiler
 
         if self.framework_profile_params is not None:
-            logger.warning(
+            deprecation_warn_base(
                 "Framework profiling will be deprecated from tensorflow 2.12 and pytorch 2.0"
             )
 
