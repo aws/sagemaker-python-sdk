@@ -17,12 +17,7 @@ from typing import List, Optional
 
 
 class ClarifyTextConfig(object):
-    """Configuration for natural language processing (NLP) explainability.
-
-    A parameter used to configure the SageMaker Clarify explainer to treat text features as text
-    so that explanations are provided for individual units of text. Required only for NLP
-    explainability.
-    """
+    """A parameter used to configure the SageMaker Clarify explainer to treat text features as text so that explanations are provided for individual units of text. Required only for NLP explainability."""  # noqa E501  # pylint: disable=line-too-long
 
     def __init__(
         self,
