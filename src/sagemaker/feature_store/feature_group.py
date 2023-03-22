@@ -531,9 +531,9 @@ class FeatureGroup:
             record_identifier_name (str): name of the record identifier feature.
             event_time_feature_name (str): name of the event time feature.
             role_arn (str): ARN of the role used to call CreateFeatureGroup.
-            online_store_kms_key_id (str): KMS key id for online store (default: None).
+            online_store_kms_key_id (str): KMS key ARN for online store (default: None).
             enable_online_store (bool): whether to enable online store or not (default: False).
-            offline_store_kms_key_id (str): KMS key id for offline store (default: None).
+            offline_store_kms_key_id (str): KMS key ARN for offline store (default: None).
                 If a KMS encryption key is not specified, SageMaker encrypts all data at
                 rest using the default AWS KMS key. By defining your bucket-level key for
                 SSE, you can reduce the cost of AWS KMS requests.
