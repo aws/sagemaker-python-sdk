@@ -1077,11 +1077,11 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         data_capture_config=None,
         async_inference_config=None,
         serverless_inference_config=None,
-        explainer_config=None,
         volume_size=None,
         model_data_download_timeout=None,
         container_startup_health_check_timeout=None,
         inference_recommendation_id=None,
+        explainer_config=None,
         **kwargs,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
@@ -1147,8 +1147,6 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 empty object passed through, will use pre-defined values in
                 ``ServerlessInferenceConfig`` class to deploy serverless endpoint. Deploy an
                 instance based endpoint if it's None. (default: None)
-            explainer_config (sagemaker.explainer.ExplainerConfig): Specifies online explainability
-                configuration for use with Amazon SageMaker Clarify. Default: None.
             volume_size (int): The size, in GB, of the ML storage volume attached to individual
                 inference instance associated with the production variant. Currenly only Amazon EBS
                 gp2 storage volumes are supported.
@@ -1162,6 +1160,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             inference_recommendation_id (str): The recommendation id which specifies the
                 recommendation you picked from inference recommendation job results and
                 would like to deploy the model and endpoint with recommended parameters.
+            explainer_config (sagemaker.explainer.ExplainerConfig): Specifies online explainability
+                configuration for use with Amazon SageMaker Clarify. Default: None.
         Raises:
              ValueError: If arguments combination check failed in these circumstances:
                 - If no role is specified or

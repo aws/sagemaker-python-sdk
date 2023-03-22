@@ -127,7 +127,6 @@ class Predictor(PredictorBase):
         target_model=None,
         target_variant=None,
         inference_id=None,
-        enable_explanations=None,
     ):
         """Return the inference from the specified endpoint.
 
@@ -148,8 +147,6 @@ class Predictor(PredictorBase):
                 model you want to host and the resources you want to deploy for hosting it.
             inference_id (str): If you provide a value, it is added to the captured data
                 when you enable data capture on the endpoint (Default: None).
-            enable_explanations (str): An optional JMESPath expression used to override the
-                EnableExplanations parameter of the ClarifyExplainerConfig. (Default: None).
 
         Returns:
             object: Inference for the given input. If a deserializer was specified when creating
@@ -159,7 +156,7 @@ class Predictor(PredictorBase):
         """
 
         request_args = self._create_request_args(
-            data, initial_args, target_model, target_variant, inference_id, enable_explanations
+            data, initial_args, target_model, target_variant, inference_id
         )
         response = self.sagemaker_session.sagemaker_runtime_client.invoke_endpoint(**request_args)
         return self._handle_response(response)
@@ -177,7 +174,6 @@ class Predictor(PredictorBase):
         target_model=None,
         target_variant=None,
         inference_id=None,
-        enable_explanations=None,
     ):
         """Placeholder docstring"""
         args = dict(initial_args) if initial_args else {}
@@ -199,9 +195,6 @@ class Predictor(PredictorBase):
 
         if inference_id:
             args["InferenceId"] = inference_id
-
-        if enable_explanations:
-            args["EnableExplanations"] = enable_explanations
 
         data = self.serializer.serialize(data)
 

@@ -42,7 +42,9 @@ XGBOOST_DATA_PATH = os.path.join(DATA_DIR, "xgboost_model")
 
 CLARIFY_SHAP_BASELINE_CONFIG = ClarifyShapBaselineConfig(shap_baseline=SHAP_BASELINE)
 CLARIFY_SHAP_CONFIG = ClarifyShapConfig(shap_baseline_config=CLARIFY_SHAP_BASELINE_CONFIG)
-CLARIFY_EXPLAINER_CONFIG = ClarifyExplainerConfig(shap_config=CLARIFY_SHAP_CONFIG)
+CLARIFY_EXPLAINER_CONFIG = ClarifyExplainerConfig(
+    shap_config=CLARIFY_SHAP_CONFIG, enable_explanations="`true`"
+)
 EXPLAINER_CONFIG = ExplainerConfig(clarify_explainer_config=CLARIFY_EXPLAINER_CONFIG)
 
 
@@ -104,6 +106,26 @@ def test_invoke_explainer_enabled_endpoint(sagemaker_session, endpoint_name):
         response_body_json = json.load(codecs.getreader("utf-8")(response_body_stream))
         assert response_body_json
         assert response_body_json.get("explanations")
+        assert response_body_json.get("predictions")
+    finally:
+        response_body_stream.close()
+
+
+def test_invoke_endpoint_with_on_demand_explanations(sagemaker_session, endpoint_name):
+    response = sagemaker_session.sagemaker_runtime_client.invoke_endpoint(
+        EndpointName=endpoint_name,
+        EnableExplanations="`false`",
+        Body=TEST_CSV_DATA,
+        ContentType="text/csv",
+        Accept="text/csv",
+    )
+    assert response
+    response_body_stream = response["Body"]
+    try:
+        response_body_json = json.load(codecs.getreader("utf-8")(response_body_stream))
+        assert response_body_json
+        # no records are explained when EnableExplanations="`false`"
+        assert response_body_json.get("explanations") == {}
         assert response_body_json.get("predictions")
     finally:
         response_body_stream.close()

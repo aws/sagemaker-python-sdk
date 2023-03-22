@@ -3313,6 +3313,12 @@ def test_generic_to_deploy_bad_arguments_combination(sagemaker_session):
     ):
         e.deploy(serverless_inference_config={})
 
+    with pytest.raises(
+        ValueError,
+        match="explainer_config needs to be a ExplainerConfig object",
+    ):
+        e.deploy(explainer_config={})
+
 
 def test_generic_to_deploy_network_isolation(sagemaker_session):
     e = Estimator(
@@ -3369,6 +3375,7 @@ def test_generic_to_deploy_kms(create_model, sagemaker_session):
         model_data_download_timeout=None,
         container_startup_health_check_timeout=None,
         inference_recommendation_id=None,
+        explainer_config=None,
     )
 
 
@@ -3555,6 +3562,7 @@ def test_deploy_with_customized_volume_size_timeout(create_model, sagemaker_sess
         model_data_download_timeout=model_data_download_timeout_sec,
         container_startup_health_check_timeout=startup_health_check_timeout_sec,
         inference_recommendation_id=None,
+        explainer_config=None,
     )
 
 

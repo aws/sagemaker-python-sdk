@@ -10,27 +10,25 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""A class for ExplainerConfig
-
-Use ExplainerConfig to activate explainers.
-"""
+"""A member of ``CreateEndpointConfig`` that enables explainers."""
 
 from __future__ import print_function, absolute_import
+from typing import Optional
 from sagemaker.explainer.clarify_explainer_config import ClarifyExplainerConfig
 
 
 class ExplainerConfig(object):
-    """Config object to activate explainers."""
+    """A parameter to activate explainers."""
 
     def __init__(
         self,
-        clarify_explainer_config: ClarifyExplainerConfig = None,
+        clarify_explainer_config: Optional[ClarifyExplainerConfig] = None,
     ):
         """Initializes a config object to activate explainer.
 
         Args:
             clarify_explainer_config (:class:`~sagemaker.explainer.explainer_config.ClarifyExplainerConfig`):
-                A config contains parameters for the SageMaker Clarify explainer. (Default: None)
+                Optional. A config contains parameters for the SageMaker Clarify explainer. (Default: None)
         """  # noqa E501  # pylint: disable=line-too-long
         self.clarify_explainer_config = clarify_explainer_config
 
