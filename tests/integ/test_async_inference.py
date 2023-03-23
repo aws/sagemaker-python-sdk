@@ -63,6 +63,9 @@ def test_async_walkthrough(sagemaker_session, cpu_instance_type, training_set):
         assert result_no_wait_with_data.output_path.startswith(
             "s3://" + sagemaker_session.default_bucket()
         )
+        assert result_no_wait_with_data.failure_path.startswith(
+            "s3://" + sagemaker_session.default_bucket() + "/async-endpoint-failures/"
+        )
         time.sleep(5)
         result_no_wait_with_data = result_no_wait_with_data.get_result()
         assert len(result_no_wait_with_data) == 5
@@ -99,6 +102,9 @@ def test_async_walkthrough(sagemaker_session, cpu_instance_type, training_set):
         assert result_not_wait.output_path.startswith("s3://" + sagemaker_session.default_bucket())
         time.sleep(5)
         result_not_wait = result_not_wait.get_result()
+        assert result_not_wait.failure_path.startswith(
+            "s3://" + sagemaker_session.default_bucket() + "/async-endpoint-failures/"
+        )
         assert len(result_not_wait) == 5
         for record in result_not_wait:
             assert record.label["projection"] is not None

@@ -1277,7 +1277,10 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
 
         async_inference_config_dict = None
         if is_async:
-            if async_inference_config.output_path is None:
+            if (
+                async_inference_config.output_path is None
+                or async_inference_config.failure_path is None
+            ):
                 async_inference_config = self._build_default_async_inference_config(
                     async_inference_config
                 )
@@ -1316,11 +1319,19 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
 
     def _build_default_async_inference_config(self, async_inference_config):
         """Build default async inference config and return ``AsyncInferenceConfig``"""
-        async_output_folder = unique_name_from_base(self.name)
-        async_output_s3uri = "s3://{}/async-endpoint-outputs/{}".format(
-            self.sagemaker_session.default_bucket(), async_output_folder
-        )
-        async_inference_config.output_path = async_output_s3uri
+        unique_folder = unique_name_from_base(self.name)
+        if async_inference_config.output_path is None:
+            async_output_s3uri = "s3://{}/async-endpoint-outputs/{}".format(
+                self.sagemaker_session.default_bucket(), unique_folder
+            )
+            async_inference_config.output_path = async_output_s3uri
+
+        if async_inference_config.failure_path is None:
+            async_failure_s3uri = "s3://{}/async-endpoint-failures/{}".format(
+                self.sagemaker_session.default_bucket(), unique_folder
+            )
+            async_inference_config.failure_path = async_failure_s3uri
+
         return async_inference_config
 
     def transformer(
