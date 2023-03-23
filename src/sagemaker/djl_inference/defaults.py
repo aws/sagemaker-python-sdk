@@ -48,5 +48,7 @@ ALLOWED_INSTANCE_FAMILIES = {
     "ml.g5",
     "ml.p3",
     "ml.p4",
+    "ml.p4d",
+    "ml.p4de",
     "local_gpu",
 }
