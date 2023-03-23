@@ -21,6 +21,7 @@ import pytest
 
 from sagemaker.lineage import artifact
 from sagemaker.utils import retry_with_backoff
+from tests.integ.retry import retries
 
 CREATION_VERIFICATION_WINDOW_MINUTES = 2
 
@@ -131,9 +132,14 @@ def test_downstream_trials(trial_associated_artifact, trial_obj, sagemaker_sessi
 
 
 def test_downstream_trials_v2(trial_associated_artifact, trial_obj, sagemaker_session):
-    trials = trial_associated_artifact.downstream_trials_v2()
-    assert len(trials) == 1
-    assert trial_obj.trial_name in trials
+    for _ in retries(
+            max_retry_count=3,
+            exception_message_prefix="Waiting for downstream trials",
+            seconds_to_sleep=5,
+        ):
+        trials = trial_associated_artifact.downstream_trials_v2()
+        assert len(trials) == 1
+        assert trial_obj.trial_name in trials
 
 
 def test_upstream_trials(upstream_trial_associated_artifact, trial_obj, sagemaker_session):
