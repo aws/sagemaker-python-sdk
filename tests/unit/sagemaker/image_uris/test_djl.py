@@ -41,19 +41,31 @@ ACCOUNTS = {
     "us-west-1": "763104351884",
     "us-west-2": "763104351884",
 }
-VERSIONS = ["0.21.0", "0.20.0", "0.19.0"]
-DJL_FRAMEWORKS = ["djl-deepspeed"]
+DJL_DEEPSPEED_VERSIONS = ["0.21.0", "0.20.0", "0.19.0"]
+DJL_FASTERTRANSFORMER_VERSIONS = ["0.21.0"]
 DJL_VERSIONS_TO_FRAMEWORK = {
     "0.19.0": {"djl-deepspeed": "deepspeed0.7.3-cu113"},
     "0.20.0": {"djl-deepspeed": "deepspeed0.7.5-cu116"},
-    "0.21.0": {"djl-deepspeed": "deepspeed0.8.0-cu117"},
+    "0.21.0": {
+        "djl-deepspeed": "deepspeed0.8.0-cu117",
+        "djl-fastertransformer": "fastertransformer5.3.0-cu117",
+    },
 }
 
 
 @pytest.mark.parametrize("region", ACCOUNTS.keys())
-@pytest.mark.parametrize("version", VERSIONS)
-@pytest.mark.parametrize("djl_framework", DJL_FRAMEWORKS)
-def test_djl_uris(region, version, djl_framework):
+@pytest.mark.parametrize("version", DJL_DEEPSPEED_VERSIONS)
+def test_djl_deepspeed(region, version):
+    _test_djl_uris(region, version, "djl-deepspeed")
+
+
+@pytest.mark.parametrize("region", ACCOUNTS.keys())
+@pytest.mark.parametrize("version", DJL_FASTERTRANSFORMER_VERSIONS)
+def test_djl_fastertransformer(region, version):
+    _test_djl_uris(region, version, "djl-fastertransformer")
+
+
+def _test_djl_uris(region, version, djl_framework):
     uri = image_uris.retrieve(framework=djl_framework, region=region, version=version)
     expected = expected_uris.djl_framework_uri(
         "djl-inference",
