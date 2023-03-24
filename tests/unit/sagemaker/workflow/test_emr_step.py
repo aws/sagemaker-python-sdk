@@ -24,6 +24,7 @@ from sagemaker.workflow.emr_step import (
     ERR_STR_BOTH_OR_NONE_INSTANCEGROUPS_OR_INSTANCEFLEETS,
     ERR_STR_WITH_BOTH_CLUSTER_ID_AND_CLUSTER_CFG,
     ERR_STR_WITHOUT_CLUSTER_ID_AND_CLUSTER_CFG,
+    ERR_STR_WITH_EXEC_ROLE_ARN_AND_WITHOUT_CLUSTER_ID,
 )
 from sagemaker.workflow.steps import CacheConfig
 from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
@@ -31,7 +32,8 @@ from sagemaker.workflow.parameters import ParameterString
 from tests.unit.sagemaker.workflow.helpers import CustomStep, ordered
 
 
-def test_emr_step_with_one_step_config(sagemaker_session):
+@pytest.mark.parametrize("execution_role_arn", [None, "arn:aws:iam:000000000000:role/runtime-role"])
+def test_emr_step_with_one_step_config(sagemaker_session, execution_role_arn):
     emr_step_config = EMRStepConfig(
         jar="s3:/script-runner/script-runner.jar",
         args=["--arg_0", "arg_0_value"],
@@ -47,9 +49,11 @@ def test_emr_step_with_one_step_config(sagemaker_session):
         step_config=emr_step_config,
         depends_on=["TestStep"],
         cache_config=CacheConfig(enable_caching=True, expire_after="PT1H"),
+        execution_role_arn=execution_role_arn,
     )
     emr_step.add_depends_on(["SecondTestStep"])
-    assert emr_step.to_request() == {
+
+    expected_request = {
         "Name": "MyEMRStep",
         "Type": "EMR",
         "Arguments": {
@@ -72,7 +76,16 @@ def test_emr_step_with_one_step_config(sagemaker_session):
         "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
     }
 
+    if execution_role_arn is not None:
+        expected_request["Arguments"]["ExecutionRoleArn"] = execution_role_arn
+
+    assert emr_step.to_request() == expected_request
     assert emr_step.properties.ClusterId == "MyClusterID"
+    assert (
+        emr_step.properties.ExecutionRoleArn == execution_role_arn
+        if execution_role_arn is not None
+        else True
+    )
     assert emr_step.properties.ActionOnFailure.expr == {"Get": "Steps.MyEMRStep.ActionOnFailure"}
     assert emr_step.properties.Config.Args.expr == {"Get": "Steps.MyEMRStep.Config.Args"}
     assert emr_step.properties.Config.Jar.expr == {"Get": "Steps.MyEMRStep.Config.Jar"}
@@ -232,6 +245,27 @@ def test_emr_step_throws_exception_when_both_cluster_id_and_cluster_config_are_n
             cache_config=CacheConfig(enable_caching=True, expire_after="PT1H"),
         )
     expected_error_msg = ERR_STR_WITHOUT_CLUSTER_ID_AND_CLUSTER_CFG.format(
+        step_name=g_emr_step_name
+    )
+    actual_error_msg = exceptionInfo.value.args[0]
+
+    assert actual_error_msg == expected_error_msg
+
+
+def test_emr_step_throws_exception_when_both_execution_role_arn_and_cluster_config_are_present():
+    with pytest.raises(ValueError) as exceptionInfo:
+        EMRStep(
+            name=g_emr_step_name,
+            display_name="MyEMRStep",
+            description="MyEMRStepDescription",
+            step_config=g_emr_step_config,
+            cluster_id=None,
+            cluster_config=g_cluster_config,
+            depends_on=["TestStep"],
+            cache_config=CacheConfig(enable_caching=True, expire_after="PT1H"),
+            execution_role_arn="arn:aws:iam:000000000000:role/some-role",
+        )
+    expected_error_msg = ERR_STR_WITH_EXEC_ROLE_ARN_AND_WITHOUT_CLUSTER_ID.format(
         step_name=g_emr_step_name
     )
     actual_error_msg = exceptionInfo.value.args[0]
