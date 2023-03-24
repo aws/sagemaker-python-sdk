@@ -97,6 +97,14 @@ ERR_STR_WITH_BOTH_CLUSTER_ID_AND_CLUSTER_CFG = (
     "must be explicitly set to None."
 )
 
+ERR_STR_WITH_EXEC_ROLE_ARN_AND_WITHOUT_CLUSTER_ID = (
+    "EMRStep {step_name} cannot have execution_role_arn"
+    "without cluster_id."
+    "To use EMRStep with "
+    "execution_role_arn, cluster_id "
+    "must not be None."
+)
+
 ERR_STR_WITHOUT_CLUSTER_ID_AND_CLUSTER_CFG = (
     "EMRStep {step_name} must have either cluster_id or cluster_config"
 )
@@ -155,6 +163,7 @@ class EMRStep(Step):
         depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
         cache_config: CacheConfig = None,
         cluster_config: Dict[str, Any] = None,
+        execution_role_arn: str = None,
     ):
         """Constructs an `EMRStep`.
 
@@ -185,7 +194,11 @@ class EMRStep(Step):
                 https://docs.aws.amazon.com/emr/latest/APIReference/API_RunJobFlow.html.
                 Note that if you want to use ``cluster_config``, then you have to set
                 ``cluster_id`` as None.
-
+            execution_role_arn(str): The ARN of the runtime role assumed by this `EMRStep`. The
+                job submitted to your EMR cluster uses this role to access AWS resources. This
+                value is passed as ExecutionRoleArn to the AddJobFlowSteps request (an EMR request)
+                called on the cluster specified by ``cluster_id``, so you can only include this
+                field if ``cluster_id`` is not None.
         """
         super(EMRStep, self).__init__(name, display_name, description, StepTypeEnum.EMR, depends_on)
 
@@ -198,9 +211,18 @@ class EMRStep(Step):
         if cluster_id is not None and cluster_config is not None:
             raise ValueError(ERR_STR_WITH_BOTH_CLUSTER_ID_AND_CLUSTER_CFG.format(step_name=name))
 
+        if execution_role_arn is not None and cluster_id is None:
+            raise ValueError(
+                ERR_STR_WITH_EXEC_ROLE_ARN_AND_WITHOUT_CLUSTER_ID.format(step_name=name)
+            )
+
         if cluster_id is not None:
             emr_step_args["ClusterId"] = cluster_id
             root_property.__dict__["ClusterId"] = cluster_id
+
+            if execution_role_arn is not None:
+                emr_step_args["ExecutionRoleArn"] = execution_role_arn
+                root_property.__dict__["ExecutionRoleArn"] = execution_role_arn
         elif cluster_config is not None:
             self._validate_cluster_config(cluster_config, name)
             emr_step_args["ClusterConfig"] = cluster_config
