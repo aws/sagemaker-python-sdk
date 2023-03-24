@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.141.0 (2023-03-24)
+
+### Features
+
+ * AutoGluon 0.7.0 image_uris update
+ * Add DJL FasterTransformer image uris
+ * EMR step runtime role support
+ * locations for EMR configuration and Spark dependencies
+ * Adding support for 1P Algorithms in ZAZ, ZRH, HYD, MEL
+
+### Documentation Changes
+
+ * Update FeatureGroup kms key id documentation
+
 ## v2.140.1 (2023-03-21)
 
 ### Bug Fixes and Other Changes
