@@ -1074,21 +1074,20 @@ def cleanup_offline_store(feature_group: FeatureGroup, feature_store_session: Se
         yield
     finally:
         feature_group_metadata = feature_group.describe()
-        feature_group_name = feature_group_metadata['FeatureGroupName']
+        feature_group_name = feature_group_metadata["FeatureGroupName"]
         try:
-            s3_uri = feature_group_metadata['OfflineStoreConfig']['S3StorageConfig']['ResolvedOutputS3Uri']
+            s3_uri = feature_group_metadata["OfflineStoreConfig"]["S3StorageConfig"][
+                "ResolvedOutputS3Uri"
+            ]
             parsed_uri = urlparse(s3_uri)
             bucket_name, prefix = parsed_uri.netloc, parsed_uri.path
-            prefix = prefix.strip('/')
-            prefix = prefix[:-5] if prefix.endswith('/data') else prefix
+            prefix = prefix.strip("/")
+            prefix = prefix[:-5] if prefix.endswith("/data") else prefix
             region_name = feature_store_session.boto_session.region_name
             s3_client = feature_store_session.boto_session.client(
                 service_name="s3", region_name=region_name
             )
-            response = s3_client.list_objects_v2(
-                Bucket=bucket_name,
-                Prefix=prefix
-            )
+            response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=prefix)
             files_in_folder = response["Contents"]
             files_to_delete = []
             for f in files_in_folder:
