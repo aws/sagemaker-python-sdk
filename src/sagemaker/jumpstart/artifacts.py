@@ -179,7 +179,7 @@ def _retrieve_image_uri(
 def _retrieve_model_uri(
     model_id: str,
     model_version: str,
-    model_scope: Optional[str],
+    model_scope: Optional[str] = None,
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
@@ -225,7 +225,11 @@ def _retrieve_model_uri(
     )
 
     if model_scope == JumpStartScriptScope.INFERENCE:
-        model_artifact_key = model_specs.hosting_artifact_key
+        model_artifact_key = (
+            getattr(model_specs, "hosting_prepacked_artifact_key", None)
+            or model_specs.hosting_artifact_key
+        )
+
     elif model_scope == JumpStartScriptScope.TRAINING:
         model_artifact_key = model_specs.training_artifact_key
 

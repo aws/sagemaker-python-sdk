@@ -297,6 +297,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "default_training_instance_type",
         "supported_training_instance_types",
         "metrics",
+        "hosting_prepacked_artifact_key",
     ]
 
     def __init__(self, spec: Dict[str, Any]):
@@ -346,6 +347,9 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
             "supported_training_instance_types"
         )
         self.metrics: Optional[List[Dict[str, str]]] = json_obj.get("metrics", None)
+        self.hosting_prepacked_artifact_key: Optional[str] = json_obj.get(
+            "hosting_prepacked_artifact_key", None
+        )
 
         if self.training_supported:
             self.training_ecr_specs: JumpStartECRSpecs = JumpStartECRSpecs(
