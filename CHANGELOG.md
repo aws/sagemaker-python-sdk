@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.142.0 (2023-03-27)
+
+### Features
+
+ * combined model + script artifact
+
 ## v2.141.0 (2023-03-24)
 
 ### Features
