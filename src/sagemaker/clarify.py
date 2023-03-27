@@ -2112,7 +2112,7 @@ class ProcessingOutputHandler:
         dataset_type = analysis_config["dataset_type"]
         return (
             ProcessingOutputHandler.S3UploadMode.CONTINUOUS.value
-            if dataset_type == DatasetType.IMAGE
+            if dataset_type == DatasetType.IMAGE.value
             else ProcessingOutputHandler.S3UploadMode.ENDOFJOB.value
         )
 
