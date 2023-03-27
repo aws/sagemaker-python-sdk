@@ -1,7 +1,7 @@
 {
     "processing": {
         "versions": {
-            "1.0": {
+            "1.0.beta": {
                 "registries": {
                     "af-south-1": "811711786498",
                     "ap-east-1": "098760798382",
@@ -26,10 +26,10 @@
                     "us-east-1": "205585389593",
                     "us-east-2": "211330385671",
                     "us-west-1": "740489534195",
-                    "us-west-2": "306415355426",
+                    "us-west-2": "551039116605",
                     "us-gov-west-1": "598674086554"
                 },
-                "repository": "sagemaker-clarify-processing"
+                "repository": "cr-clarify-processing"
             }
         }
     }
