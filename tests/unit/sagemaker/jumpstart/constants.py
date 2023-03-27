@@ -12,6 +12,91 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+SPECIAL_MODEL_SPECS_DICT = {
+    "huggingface-text2text-flan-t5-xxl-fp16": {
+        "model_id": "huggingface-text2text-flan-t5-xxl-fp16",
+        "url": "https://huggingface.co/google/flan-t5-xxl",
+        "version": "1.0.0",
+        "min_sdk_version": "2.130.0",
+        "training_supported": False,
+        "incremental_training_supported": False,
+        "hosting_ecr_specs": {
+            "framework": "pytorch",
+            "framework_version": "1.12.0",
+            "py_version": "py38",
+            "huggingface_transformers_version": "4.17.0",
+        },
+        "hosting_artifact_key": "huggingface-infer/infer-huggingface-text2text-flan-t5-xxl-fp16.tar.gz",
+        "hosting_script_key": "source-directory-tarballs/huggingface/inference/text2text/v1.0.2/sourcedir.tar.gz",
+        "hosting_prepacked_artifact_key": "huggingface-infer/prepack/v1.0.0/infer-prepack-huggingface-"
+        "text2text-flan-t5-xxl-fp16.tar.gz",
+        "hosting_prepacked_artifact_version": "1.0.0",
+        "inference_vulnerable": False,
+        "inference_dependencies": [
+            "accelerate==0.16.0",
+            "bitsandbytes==0.37.0",
+            "filelock==3.9.0",
+            "huggingface-hub==0.12.0",
+            "regex==2022.7.9",
+            "tokenizers==0.13.2",
+            "transformers==4.26.0",
+        ],
+        "inference_vulnerabilities": [],
+        "training_vulnerable": False,
+        "training_dependencies": [],
+        "training_vulnerabilities": [],
+        "deprecated": False,
+        "inference_environment_variables": [
+            {
+                "name": "SAGEMAKER_PROGRAM",
+                "type": "text",
+                "default": "inference.py",
+                "scope": "container",
+            },
+            {
+                "name": "SAGEMAKER_SUBMIT_DIRECTORY",
+                "type": "text",
+                "default": "/opt/ml/model/code",
+                "scope": "container",
+            },
+            {
+                "name": "SAGEMAKER_CONTAINER_LOG_LEVEL",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+            },
+            {
+                "name": "MODEL_CACHE_ROOT",
+                "type": "text",
+                "default": "/opt/ml/model",
+                "scope": "container",
+            },
+            {"name": "SAGEMAKER_ENV", "type": "text", "default": "1", "scope": "container"},
+            {
+                "name": "SAGEMAKER_MODEL_SERVER_WORKERS",
+                "type": "text",
+                "default": "1",
+                "scope": "container",
+            },
+            {
+                "name": "SAGEMAKER_MODEL_SERVER_TIMEOUT",
+                "type": "text",
+                "default": "3600",
+                "scope": "container",
+            },
+        ],
+        "metrics": [],
+        "default_inference_instance_type": "ml.g5.12xlarge",
+        "supported_inference_instance_types": [
+            "ml.g5.12xlarge",
+            "ml.g5.24xlarge",
+            "ml.p3.8xlarge",
+            "ml.p3.16xlarge",
+            "ml.g4dn.12xlarge",
+        ],
+    }
+}
+
 PROTOTYPICAL_MODEL_SPECS_DICT = {
     "pytorch-eqa-bert-base-cased": {
         "model_id": "pytorch-eqa-bert-base-cased",
@@ -1093,6 +1178,7 @@ BASE_SPEC = {
     "training_artifact_key": "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
     "hosting_script_key": "source-directory-tarballs/pytorch/inference/ic/v1.0.0/sourcedir.tar.gz",
     "training_script_key": "source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz",
+    "hosting_prepacked_artifact_key": None,
     "hyperparameters": [
         {
             "name": "epochs",

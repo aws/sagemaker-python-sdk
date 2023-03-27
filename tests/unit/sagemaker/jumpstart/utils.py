@@ -29,6 +29,7 @@ from tests.unit.sagemaker.jumpstart.constants import (
     BASE_MANIFEST,
     BASE_SPEC,
     BASE_HEADER,
+    SPECIAL_MODEL_SPECS_DICT,
 )
 
 
@@ -89,6 +90,18 @@ def get_prototype_model_spec(
     """
 
     specs = JumpStartModelSpecs(PROTOTYPICAL_MODEL_SPECS_DICT[model_id])
+    return specs
+
+
+def get_special_model_spec(
+    region: str = None, model_id: str = None, version: str = None
+) -> JumpStartModelSpecs:
+    """This function mocks cache accessor functions. For this mock,
+    we only retrieve model specs based on the model ID. This is reserved
+    for special specs.
+    """
+
+    specs = JumpStartModelSpecs(SPECIAL_MODEL_SPECS_DICT[model_id])
     return specs
 
 
