@@ -1297,6 +1297,8 @@ def update_list_of_dicts_with_values_from_config(
         return
     inputs_copy = copy.deepcopy(input_list)
     inputs_from_config = get_sagemaker_config_value(sagemaker_session, config_key_path) or []
+    unmodified_inputs_from_config = copy.deepcopy(inputs_from_config)
+
     for i in range(min(len(input_list), len(inputs_from_config))):
         dict_from_inputs = input_list[i]
         dict_from_config = inputs_from_config[i]
@@ -1316,11 +1318,12 @@ def update_list_of_dicts_with_values_from_config(
             # Don't do the merge, Union parameters are not obeyed.
             continue
         input_list[i] = dict_from_config
-    if inputs_from_config:
+
+    if unmodified_inputs_from_config:
         print(
             "[Sagemaker Config - applied value]\n",
             "config key = {}\n".format(config_key_path),
-            "config value = {}\n".format(inputs_from_config),
+            "config value = {}\n".format(unmodified_inputs_from_config),
             "source value = {}\n".format(inputs_copy),
             "combined value that will be used = {}\n".format(input_list),
         )
