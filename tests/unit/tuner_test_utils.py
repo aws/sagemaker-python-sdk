@@ -73,7 +73,7 @@ ENV_INPUT = {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_va
 
 SAGEMAKER_SESSION = Mock()
 # For tests which doesn't verify config file injection, operate with empty config
-SAGEMAKER_SESSION.sagemaker_config.config = {}
+SAGEMAKER_SESSION.sagemaker_config = {}
 
 ESTIMATOR = Estimator(
     IMAGE_NAME,

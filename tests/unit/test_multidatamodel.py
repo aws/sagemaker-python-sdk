@@ -81,7 +81,7 @@ def sagemaker_session():
         return_value=os.path.join(VALID_MULTI_MODEL_DATA_PREFIX, "mleap_model.tar.gz"),
     )
     # For tests which doesn't verify config file injection, operate with empty config
-    session.sagemaker_config.config = {}
+    session.sagemaker_config = {}
 
     s3_mock = Mock()
     boto_mock.client("s3").return_value = s3_mock

@@ -1246,19 +1246,9 @@ class ProcessingInput(object):
         self.s3_data_distribution_type = s3_data_distribution_type
         self.s3_compression_type = s3_compression_type
         self.s3_input = s3_input
-        self._dataset_definition = dataset_definition
+        self.dataset_definition = dataset_definition
         self.app_managed = app_managed
         self._create_s3_input()
-
-    @property
-    def dataset_definition(self):
-        """Getter for DataSetDefinition
-
-        Returns:
-            DatasetDefinition: The DatasetDefinition Object.
-
-        """
-        return self._dataset_definition
 
     def _to_request_dict(self):
         """Generates a request dictionary using the parameters provided to the class."""

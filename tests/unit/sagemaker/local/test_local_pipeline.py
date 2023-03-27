@@ -141,8 +141,8 @@ def pipeline_session(boto_session, client):
         default_bucket=BUCKET,
     )
     # For tests which doesn't verify config file injection, operate with empty config
-    pipeline_session.sagemaker_config = Mock()
-    pipeline_session.sagemaker_config.config = {}
+
+    pipeline_session.sagemaker_config = {}
     return pipeline_session_mock
 
 
@@ -150,8 +150,8 @@ def pipeline_session(boto_session, client):
 def local_sagemaker_session(boto_session):
     local_session_mock = LocalSession(boto_session=boto_session, default_bucket="my-bucket")
     # For tests which doesn't verify config file injection, operate with empty config
-    local_session_mock.sagemaker_config = Mock()
-    local_session_mock.sagemaker_config.config = {}
+
+    local_session_mock.sagemaker_config = {}
     return local_session_mock
 
 

@@ -75,7 +75,7 @@ def sagemaker_session():
     )
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     # For tests which doesn't verify config file injection, operate with empty config
-    sms.sagemaker_config.config = {}
+    sms.sagemaker_config = {}
 
     return sms
 
@@ -304,14 +304,14 @@ def test_pipeline_model_without_role(sagemaker_session):
 
 @patch("tarfile.open")
 @patch("time.strftime", return_value=TIMESTAMP)
-def test_pipeline_model_with_config_injection(tfo, time, sagemaker_config_session):
+def test_pipeline_model_with_config_injection(tfo, time, sagemaker_session):
     combined_config = copy.deepcopy(SAGEMAKER_CONFIG_MODEL)
     endpoint_config = copy.deepcopy(SAGEMAKER_CONFIG_ENDPOINT_CONFIG)
     merge_dicts(combined_config, endpoint_config)
-    sagemaker_config_session.sagemaker_config.config = combined_config
+    sagemaker_session.sagemaker_config = combined_config
 
-    sagemaker_config_session.create_model = Mock()
-    sagemaker_config_session.endpoint_from_production_variants = Mock()
+    sagemaker_session.create_model = Mock()
+    sagemaker_session.endpoint_from_production_variants = Mock()
 
     expected_role_arn = SAGEMAKER_CONFIG_MODEL["SageMaker"]["Model"]["ExecutionRoleArn"]
     expected_enable_network_isolation = SAGEMAKER_CONFIG_MODEL["SageMaker"]["Model"][
@@ -322,12 +322,12 @@ def test_pipeline_model_with_config_injection(tfo, time, sagemaker_config_sessio
         "KmsKeyId"
     ]
 
-    framework_model = DummyFrameworkModel(sagemaker_config_session)
+    framework_model = DummyFrameworkModel(sagemaker_session)
     sparkml_model = SparkMLModel(
-        model_data=MODEL_DATA_2, role=ROLE, sagemaker_session=sagemaker_config_session
+        model_data=MODEL_DATA_2, role=ROLE, sagemaker_session=sagemaker_session
     )
     pipeline_model = PipelineModel(
-        [framework_model, sparkml_model], sagemaker_session=sagemaker_config_session
+        [framework_model, sparkml_model], sagemaker_session=sagemaker_session
     )
     assert pipeline_model.role == expected_role_arn
     assert pipeline_model.vpc_config == expected_vpc_config
@@ -335,14 +335,14 @@ def test_pipeline_model_with_config_injection(tfo, time, sagemaker_config_sessio
 
     pipeline_model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1)
 
-    sagemaker_config_session.create_model.assert_called_with(
+    sagemaker_session.create_model.assert_called_with(
         ANY,
         expected_role_arn,
         ANY,
         vpc_config=expected_vpc_config,
         enable_network_isolation=expected_enable_network_isolation,
     )
-    sagemaker_config_session.endpoint_from_production_variants.assert_called_with(
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
         name="mi-1-2017-10-10-14-14-15",
         production_variants=[
             {

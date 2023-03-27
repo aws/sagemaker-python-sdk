@@ -43,7 +43,7 @@ def sagemaker_session():
     session._default_bucket = BUCKET_NAME
 
     # For tests which doesn't verify config file injection, operate with empty config
-    session.sagemaker_config.config = {}
+    session.sagemaker_config = {}
     return session
 
 

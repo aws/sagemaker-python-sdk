@@ -37,6 +37,7 @@ from botocore.utils import merge_dicts
 from six.moves.urllib import parse
 
 from sagemaker import deprecations
+from sagemaker.config import validate_sagemaker_config
 from sagemaker.session_settings import SessionSettings
 from sagemaker.workflow import is_pipeline_variable, is_pipeline_parameter_string
 
@@ -1090,7 +1091,9 @@ def get_sagemaker_config_value(sagemaker_session, key):
     """
     if not sagemaker_session:
         return None
-    config_value = get_config_value(key, sagemaker_session.sagemaker_config.config)
+    if sagemaker_session.sagemaker_config:
+        validate_sagemaker_config(sagemaker_session.sagemaker_config)
+    config_value = get_config_value(key, sagemaker_session.sagemaker_config)
     # Copy the value so any modifications to the output will not modify the source config
     return copy.deepcopy(config_value)
 

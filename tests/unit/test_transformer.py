@@ -67,7 +67,7 @@ def sagemaker_session():
     boto_mock = Mock(name="boto_session")
     session = Mock(name="sagemaker_session", boto_session=boto_mock, local_mode=False)
     # For tests which doesn't verify config file injection, operate with empty config
-    session.sagemaker_config.config = {}
+    session.sagemaker_config = {}
     return session
 
 
@@ -103,15 +103,15 @@ def transformer(sagemaker_session):
 
 
 @patch("sagemaker.transformer._TransformJob.start_new")
-def test_transform_with_sagemaker_config_injection(start_new_job, sagemaker_config_session):
-    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_TRANSFORM_JOB
+def test_transform_with_sagemaker_config_injection(start_new_job, sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRANSFORM_JOB
 
     transformer = Transformer(
         MODEL_NAME,
         INSTANCE_COUNT,
         INSTANCE_TYPE,
         output_path=OUTPUT_PATH,
-        sagemaker_session=sagemaker_config_session,
+        sagemaker_session=sagemaker_session,
     )
     # volume kms key and output kms key are inserted from the config
     assert (

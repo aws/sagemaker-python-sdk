@@ -166,6 +166,7 @@ def sagemaker_session(
         sagemaker_client=sagemaker_client,
         sagemaker_runtime_client=runtime_client,
         sagemaker_metrics_client=metrics_client,
+        sagemaker_config={"SchemaVersion": "1.0"},
     )
 
 

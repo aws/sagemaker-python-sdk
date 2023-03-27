@@ -69,7 +69,7 @@ BASE_PRODUCTION_VARIANT = {
 def sagemaker_session():
     session = Mock()
     # For tests which doesn't verify config file injection, operate with empty config
-    session.sagemaker_config.config = {}
+    session.sagemaker_config = {}
     return session
 
 
@@ -439,8 +439,8 @@ def test_deploy_wrong_serverless_config(sagemaker_session):
 @patch("sagemaker.session.Session")
 @patch("sagemaker.local.LocalSession")
 def test_deploy_creates_correct_session(local_session, session):
-    local_session.sagemaker_config.config = {}
-    session.sagemaker_config.config = {}
+    local_session.sagemaker_config = {}
+    session.sagemaker_config = {}
     # We expect a LocalSession when deploying to instance_type = 'local'
     model = Model(MODEL_IMAGE, MODEL_DATA, role=ROLE)
     model.deploy(endpoint_name="blah", instance_type="local", initial_instance_count=1)

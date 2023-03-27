@@ -69,6 +69,7 @@ from sagemaker.config import (
     EXECUTION_ROLE_ARN,
     MODEL,
     ASYNC_INFERENCE_CONFIG,
+    SCHEMA_VERSION,
 )
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -76,6 +77,7 @@ PY_VERSION = "py3"
 
 
 SAGEMAKER_CONFIG_MONITORING_SCHEDULE = {
+    SCHEMA_VERSION: "1.0",
     SAGEMAKER: {
         MONITORING_SCHEDULE: {
             MONITORING_SCHEDULE_CONFIG: {
@@ -94,10 +96,11 @@ SAGEMAKER_CONFIG_MONITORING_SCHEDULE = {
             },
             TAGS: [{KEY: "some-tag", VALUE: "value-for-tag"}],
         }
-    }
+    },
 }
 
 SAGEMAKER_CONFIG_COMPILATION_JOB = {
+    SCHEMA_VERSION: "1.0",
     SAGEMAKER: {
         COMPILATION_JOB: {
             OUTPUT_CONFIG: {KMS_KEY_ID: "TestKms"},
@@ -105,10 +108,11 @@ SAGEMAKER_CONFIG_COMPILATION_JOB = {
             VPC_CONFIG: {SUBNETS: ["subnets-123"], SECURITY_GROUP_IDS: ["sg-123"]},
             TAGS: [{KEY: "some-tag", VALUE: "value-for-tag"}],
         },
-    }
+    },
 }
 
 SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB = {
+    SCHEMA_VERSION: "1.0",
     SAGEMAKER: {
         EDGE_PACKAGING_JOB: {
             OUTPUT_CONFIG: {
@@ -121,6 +125,7 @@ SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB = {
 }
 
 SAGEMAKER_CONFIG_ENDPOINT_CONFIG = {
+    SCHEMA_VERSION: "1.0",
     SAGEMAKER: {
         ENDPOINT_CONFIG: {
             ASYNC_INFERENCE_CONFIG: {
@@ -138,10 +143,11 @@ SAGEMAKER_CONFIG_ENDPOINT_CONFIG = {
             ],
             TAGS: [{KEY: "some-tag", VALUE: "value-for-tag"}],
         },
-    }
+    },
 }
 
 SAGEMAKER_CONFIG_AUTO_ML = {
+    SCHEMA_VERSION: "1.0",
     SAGEMAKER: {
         AUTO_ML: {
             AUTO_ML_JOB_CONFIG: {
@@ -155,10 +161,11 @@ SAGEMAKER_CONFIG_AUTO_ML = {
             ROLE_ARN: "arn:aws:iam::111111111111:role/ConfigRole",
             TAGS: [{KEY: "some-tag", VALUE: "value-for-tag"}],
         },
-    }
+    },
 }
 
 SAGEMAKER_CONFIG_MODEL_PACKAGE = {
+    SCHEMA_VERSION: "1.0",
     SAGEMAKER: {
         MODEL_PACKAGE: {
             VALIDATION_SPECIFICATION: {
@@ -175,10 +182,11 @@ SAGEMAKER_CONFIG_MODEL_PACKAGE = {
             # TODO - does SDK not support tags for this API?
             # TAGS: EXAMPLE_TAGS,
         },
-    }
+    },
 }
 
 SAGEMAKER_CONFIG_FEATURE_GROUP = {
+    SCHEMA_VERSION: "1.0",
     SAGEMAKER: {
         FEATURE_GROUP: {
             OFFLINE_STORE_CONFIG: {
@@ -194,10 +202,11 @@ SAGEMAKER_CONFIG_FEATURE_GROUP = {
             ROLE_ARN: "arn:aws:iam::111111111111:role/ConfigRole",
             TAGS: [{KEY: "some-tag", VALUE: "value-for-tag"}],
         },
-    }
+    },
 }
 
 SAGEMAKER_CONFIG_PROCESSING_JOB = {
+    SCHEMA_VERSION: "1.0",
     SAGEMAKER: {
         PROCESSING_JOB: {
             NETWORK_CONFIG: {
@@ -227,10 +236,11 @@ SAGEMAKER_CONFIG_PROCESSING_JOB = {
             ROLE_ARN: "arn:aws:iam::111111111111:role/ConfigRole",
             TAGS: [{KEY: "some-tag", VALUE: "value-for-tag"}],
         },
-    }
+    },
 }
 
 SAGEMAKER_CONFIG_TRAINING_JOB = {
+    SCHEMA_VERSION: "1.0",
     SAGEMAKER: {
         TRAINING_JOB: {
             ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION: True,
@@ -245,6 +255,7 @@ SAGEMAKER_CONFIG_TRAINING_JOB = {
 }
 
 SAGEMAKER_CONFIG_TRANSFORM_JOB = {
+    SCHEMA_VERSION: "1.0",
     SAGEMAKER: {
         TRANSFORM_JOB: {
             DATA_CAPTURE_CONFIG: {KMS_KEY_ID: "jobKmsKeyId"},
@@ -252,10 +263,11 @@ SAGEMAKER_CONFIG_TRANSFORM_JOB = {
             TRANSFORM_RESOURCES: {VOLUME_KMS_KEY_ID: "volumeKmsKeyId"},
             TAGS: [{KEY: "some-tag", VALUE: "value-for-tag"}],
         }
-    }
+    },
 }
 
 SAGEMAKER_CONFIG_MODEL = {
+    SCHEMA_VERSION: "1.0",
     SAGEMAKER: {
         MODEL: {
             ENABLE_NETWORK_ISOLATION: True,
@@ -263,5 +275,5 @@ SAGEMAKER_CONFIG_MODEL = {
             VPC_CONFIG: {SUBNETS: ["subnets-123"], SECURITY_GROUP_IDS: ["sg-123"]},
             TAGS: [{KEY: "some-tag", VALUE: "value-for-tag"}],
         },
-    }
+    },
 }

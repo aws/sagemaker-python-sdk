@@ -239,7 +239,7 @@ def sagemaker_session():
     sms.upload_data = Mock(return_value=OUTPUT_PATH)
 
     # For tests which doesn't verify config file injection, operate with empty config
-    sms.sagemaker_config.config = {}
+    sms.sagemaker_config = {}
     return sms
 
 
@@ -366,13 +366,13 @@ def test_default_value_of_enable_network_isolation(sagemaker_session):
     assert framework.enable_network_isolation() is False
 
 
-def test_framework_initialization_with_sagemaker_config_injection(sagemaker_config_session):
+def test_framework_initialization_with_sagemaker_config_injection(sagemaker_session):
 
-    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_TRAINING_JOB
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
 
     framework = DummyFramework(
         entry_point=SCRIPT_PATH,
-        sagemaker_session=sagemaker_config_session,
+        sagemaker_session=sagemaker_session,
         instance_groups=[
             InstanceGroup("group1", "ml.c4.xlarge", 1),
             InstanceGroup("group2", "ml.m4.xlarge", 2),
@@ -409,9 +409,9 @@ def test_framework_initialization_with_sagemaker_config_injection(sagemaker_conf
     assert framework.subnets == expected_subnets
 
 
-def test_estimator_initialization_with_sagemaker_config_injection(sagemaker_config_session):
+def test_estimator_initialization_with_sagemaker_config_injection(sagemaker_session):
 
-    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_TRAINING_JOB
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
 
     estimator = Estimator(
         image_uri="some-image",
@@ -419,7 +419,7 @@ def test_estimator_initialization_with_sagemaker_config_injection(sagemaker_conf
             InstanceGroup("group1", "ml.c4.xlarge", 1),
             InstanceGroup("group2", "ml.p3.16xlarge", 2),
         ],
-        sagemaker_session=sagemaker_config_session,
+        sagemaker_session=sagemaker_session,
         base_job_name="base_job_name",
     )
     expected_volume_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
@@ -1778,8 +1778,8 @@ def test_local_code_location():
         local_mode=True,
         spec=sagemaker.local.LocalSession,
     )
-    sms.sagemaker_config = Mock()
-    sms.sagemaker_config.config = {}
+
+    sms.sagemaker_config = {}
     t = DummyFramework(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -3742,13 +3742,13 @@ def test_register_under_pipeline_session(pipeline_session):
 def test_local_mode(session_class, local_session_class):
     local_session = Mock(spec=sagemaker.local.LocalSession)
     local_session.local_mode = True
-    local_session.sagemaker_config = Mock()
-    local_session.sagemaker_config.config = {}
+
+    local_session.sagemaker_config = {}
 
     session = Mock()
     session.local_mode = False
-    session.sagemaker_config = Mock()
-    session.sagemaker_config.config = {}
+
+    session.sagemaker_config = {}
 
     local_session_class.return_value = local_session
     session_class.return_value = session
@@ -3774,8 +3774,8 @@ def test_local_mode_file_output_path(local_session_class):
     local_session = Mock(spec=sagemaker.local.LocalSession)
     local_session.local_mode = True
     local_session_class.return_value = local_session
-    local_session.sagemaker_config = Mock()
-    local_session.sagemaker_config.config = {}
+
+    local_session.sagemaker_config = {}
 
     e = Estimator(IMAGE_URI, ROLE, INSTANCE_COUNT, "local", output_path="file:///tmp/model/")
     assert e.output_path == "file:///tmp/model/"
@@ -4002,8 +4002,8 @@ def test_estimator_local_mode_error(sagemaker_session):
 
 
 def test_estimator_local_mode_ok(sagemaker_local_session):
-    sagemaker_local_session.sagemaker_config = Mock()
-    sagemaker_local_session.sagemaker_config.config = {}
+
+    sagemaker_local_session.sagemaker_config = {}
     # When using instance local with a session which is not LocalSession we should error out
     Estimator(
         image_uri="some-image",

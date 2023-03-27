@@ -417,7 +417,7 @@ def sagemaker_session(sagemaker_client):
         name="_append_sagemaker_config_tags", side_effect=lambda tags, config_path_to_tags: tags
     )
     # For tests which doesn't verify config file injection, operate with empty config
-    session_mock.sagemaker_config.config = {}
+    session_mock.sagemaker_config = {}
     return session_mock
 
 

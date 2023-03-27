@@ -68,7 +68,7 @@ def sagemaker_session():
     session.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
     session.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
     # For tests which doesn't verify config file injection, operate with empty config
-    session.sagemaker_config.config = {}
+    session.sagemaker_config = {}
     return session
 
 

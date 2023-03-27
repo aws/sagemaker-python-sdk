@@ -47,7 +47,7 @@ def sagemaker_session_mock():
     session_mock.default_bucket = Mock(name="default_bucket", return_value="s3_bucket")
     session_mock.local_mode = False
     # For tests which doesn't verify config file injection, operate with empty config
-    session_mock.sagemaker_config.config = {}
+    session_mock.sagemaker_config = {}
     session_mock._append_sagemaker_config_tags = Mock(
         name="_append_sagemaker_config_tags", side_effect=lambda tags, config_path_to_tags: tags
     )
@@ -71,7 +71,7 @@ def test_pipeline_create_and_update_without_role_arn(sagemaker_session_mock):
 
 def test_pipeline_create_and_update_with_config_injection(sagemaker_session_mock):
     # For tests which doesn't verify config file injection, operate with empty config
-    sagemaker_session_mock.sagemaker_config.config = {
+    sagemaker_session_mock.sagemaker_config = {
         "SageMaker": {"Pipeline": {"RoleArn": "ConfigRoleArn"}}
     }
     sagemaker_session_mock.sagemaker_client.describe_pipeline.return_value = {

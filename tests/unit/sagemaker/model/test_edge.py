@@ -32,7 +32,7 @@ DESCRIBE_EDGE_PACKAGING_JOB_RESPONSE = {
 def sagemaker_session():
     session = Mock(boto_region_name=REGION)
     # For tests which doesn't verify config file injection, operate with empty config
-    session.sagemaker_config.config = {}
+    session.sagemaker_config = {}
     return session
 
 

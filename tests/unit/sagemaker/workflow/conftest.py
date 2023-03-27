@@ -65,6 +65,6 @@ def pipeline_session(mock_boto_session, mock_client):
         default_bucket=BUCKET,
     )
     # For tests which doesn't verify config file injection, operate with empty config
-    pipeline_session.sagemaker_config = Mock()
-    pipeline_session.sagemaker_config.config = {}
+
+    pipeline_session.sagemaker_config = {}
     return pipeline_session

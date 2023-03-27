@@ -24,7 +24,7 @@ import os
 from typing import List
 import boto3
 import yaml
-from jsonschema import validate
+import jsonschema
 from platformdirs import site_config_dir, user_config_dir
 from botocore.utils import merge_dicts
 from six.moves.urllib.parse import urlparse
@@ -51,87 +51,65 @@ _DEFAULT_S3_RESOURCE = _BOTO_SESSION.resource("s3")
 S3_PREFIX = "s3://"
 
 
-class SageMakerConfig(object):
-    """A class that encapsulates the configuration for the SageMaker Python SDK.
+def fetch_sagemaker_config(
+    additional_config_paths: List[str] = None, s3_resource=_DEFAULT_S3_RESOURCE
+) -> dict:
+    """Helper method that loads config files and merges them.
 
-    This class is used to define default values provided by the user.
+    By default, this method first searches for config files in the default locations
+    defined by the SDK.
 
-    This class is integrated with sagemaker.session.Session. Users of the SageMaker Python SDK
-    have the ability to pass a SageMakerConfig object to sagemaker.session.Session. If a
-    SageMakerConfig object is not provided by the user, then sagemaker.session.Session
-    creates its own SageMakerConfig object.
+    Users can override the default admin and user config file paths using the
+    SAGEMAKER_ADMIN_CONFIG_OVERRIDE and SAGEMAKER_USER_CONFIG_OVERRIDE environment variables,
+    respectively.
 
-    Note: After sagemaker.session.Session is initialized, it operates with the configuration
-    values defined at that instant. If you modify the configuration files or file paths after
-    sagemaker.session.Session is initialized, those changes are not reflected in
-    sagemaker.session.Session. To incorporate the changes in the configuration files,
-    initialize sagemaker.session.Session again.
+    Additional config file paths can also be provided as a parameter.
+
+    This method then:
+    * Loads each config file, whether it is Amazon S3 or the local file system.
+    * Validates the schema of the config files.
+    * Merges the files in the same order.
+
+    This method throws exceptions in the following cases:
+    * jsonschema.exceptions.ValidationError: Schema validation fails for one or more config
+    files.
+    * RuntimeError: The method is unable to retrieve the list of all S3 files with the
+    same prefix or is unable to retrieve the file.
+    * ValueError: There are no S3 files with the prefix when an S3 URI is provided.
+    * ValueError: There is no config.yaml file in the S3 bucket when an S3 URI is provided.
+    * ValueError: A file doesn't exist in a path that was specified by the user as part of an
+    environment variable or additional configuration file path. This doesn't include the default
+    config file locations.
+
+    Args:
+        additional_config_paths: List of config file paths.
+            These paths can be one of the following. In the case of a directory, this method
+            searches for a config.yaml file in that directory. This method does not perform a
+            recursive search of folders in that directory.
+            * Local file path
+            * Local directory path
+            * S3 URI of the config file
+            * S3 URI of the directory containing the config file
+            Note: S3 URI follows the format s3://<bucket>/<Key prefix>
+        s3_resource (boto3.resource("s3")): The Boto3 S3 resource. This is used to fetch
+        config files from S3. If it is not provided, this method creates a default S3 resource
+        See :py:meth:boto3.session.Session.resource. This argument is not needed if the
+        config files are present in the local file system.
+
     """
-
-    def __init__(self, additional_config_paths: List[str] = None, s3_resource=_DEFAULT_S3_RESOURCE):
-        """Initializes the SageMakerConfig object.
-
-        By default, this method first searches for config files in the default locations
-        defined by the SDK.
-
-        Users can override the default admin and user config file paths using the
-        SAGEMAKER_ADMIN_CONFIG_OVERRIDE and SAGEMAKER_USER_CONFIG_OVERRIDE environment variables,
-        respectively.
-
-        Additional config file paths can also be provided as a constructor parameter.
-
-        This method then:
-        * Loads each config file, whether it is Amazon S3 or the local file system.
-        * Validates the schema of the config files.
-        * Merges the files in the same order.
-
-        This method throws exceptions in the following cases:
-        * jsonschema.exceptions.ValidationError: Schema validation fails for one or more config
-        files.
-        * RuntimeError: The method is unable to retrieve the list of all S3 files with the
-        same prefix or is unable to retrieve the file.
-        * ValueError: There are no S3 files with the prefix when an S3 URI is provided.
-        * ValueError: There is no config.yaml file in the S3 bucket when an S3 URI is provided.
-        * ValueError: A file doesn't exist in a path that was specified by the user as part of an
-        environment variable or additional configuration file path. This doesn't include the default
-        config file locations.
-
-        Args:
-            additional_config_paths: List of config file paths.
-                These paths can be one of the following. In the case of a directory, this method
-                searches for a config.yaml file in that directory. This method does not perform a
-                recursive search of folders in that directory.
-                * Local file path
-                * Local directory path
-                * S3 URI of the config file
-                * S3 URI of the directory containing the config file
-                Note: S3 URI follows the format s3://<bucket>/<Key prefix>
-            s3_resource (boto3.resource("s3")): The Boto3 S3 resource. This is used to fetch
-            config files from S3. If it is not provided, this method creates a default S3 resource
-            See :py:meth:boto3.session.Session.resource. This argument is not needed if the
-            config files are present in the local file system.
-
-        """
-        default_config_path = os.getenv(
-            ENV_VARIABLE_ADMIN_CONFIG_OVERRIDE, _DEFAULT_ADMIN_CONFIG_FILE_PATH
-        )
-        user_config_path = os.getenv(
-            ENV_VARIABLE_USER_CONFIG_OVERRIDE, _DEFAULT_USER_CONFIG_FILE_PATH
-        )
-        self.config_paths = [default_config_path, user_config_path]
-        if additional_config_paths:
-            self.config_paths += additional_config_paths
-        self.config_paths = list(filter(lambda item: item is not None, self.config_paths))
-        self.config = _load_config_files(self.config_paths, s3_resource)
-
-
-def _load_config_files(file_paths: List[str], s3_resource_for_config) -> dict:
-    """Placeholder docstring"""
+    default_config_path = os.getenv(
+        ENV_VARIABLE_ADMIN_CONFIG_OVERRIDE, _DEFAULT_ADMIN_CONFIG_FILE_PATH
+    )
+    user_config_path = os.getenv(ENV_VARIABLE_USER_CONFIG_OVERRIDE, _DEFAULT_USER_CONFIG_FILE_PATH)
+    config_paths = [default_config_path, user_config_path]
+    if additional_config_paths:
+        config_paths += additional_config_paths
+    config_paths = list(filter(lambda item: item is not None, config_paths))
     merged_config = {}
-    for file_path in file_paths:
+    for file_path in config_paths:
         config_from_file = {}
         if file_path.startswith(S3_PREFIX):
-            config_from_file = _load_config_from_s3(file_path, s3_resource_for_config)
+            config_from_file = _load_config_from_s3(file_path, s3_resource)
         else:
             try:
                 config_from_file = _load_config_from_file(file_path)
@@ -145,9 +123,22 @@ def _load_config_files(file_paths: List[str], s3_resource_for_config) -> dict:
                     # Exceptions.
                     raise
         if config_from_file:
-            validate(config_from_file, SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA)
+            validate_sagemaker_config(config_from_file)
             merge_dicts(merged_config, config_from_file)
     return merged_config
+
+
+def validate_sagemaker_config(sagemaker_config: dict = None):
+    """Helper method that validates whether the schema of a given dictionary.
+
+    This method will validate whether the dictionary adheres to the schema
+    defined at `~sagemaker.config.config_schema.SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA`
+
+    Args:
+        sagemaker_config: A dictionary containing default values for the
+                SageMaker Python SDK. (default: None).
+    """
+    jsonschema.validate(sagemaker_config, SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA)
 
 
 def _load_config_from_file(file_path: str) -> dict:

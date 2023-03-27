@@ -75,7 +75,7 @@ def sagemaker_session():
         name="describe_training_job", return_value=returned_job_description
     )
     # For tests which doesn't verify config file injection, operate with empty config
-    sms.sagemaker_config.config = {}
+    sms.sagemaker_config = {}
     return sms
 
 

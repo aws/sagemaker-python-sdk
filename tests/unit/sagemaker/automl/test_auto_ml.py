@@ -274,7 +274,7 @@ def sagemaker_session():
     sms.list_candidates = Mock(name="list_candidates", return_value={"Candidates": []})
     sms.sagemaker_client.list_tags = Mock(name="list_tags", return_value=LIST_TAGS_RESULT)
     # For tests which doesn't verify config file injection, operate with empty config
-    sms.sagemaker_config.config = {}
+    sms.sagemaker_config = {}
     return sms
 
 
@@ -297,12 +297,12 @@ def test_auto_ml_without_role_parameter(sagemaker_session):
         )
 
 
-def test_framework_initialization_with_sagemaker_config_injection(sagemaker_config_session):
-    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_AUTO_ML
+def test_framework_initialization_with_sagemaker_config_injection(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_AUTO_ML
 
     auto_ml = AutoML(
         target_attribute_name=TARGET_ATTRIBUTE_NAME,
-        sagemaker_session=sagemaker_config_session,
+        sagemaker_session=sagemaker_session,
     )
 
     expected_volume_kms_key_id = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoML"]["AutoMLJobConfig"][
@@ -835,23 +835,21 @@ def test_deploy_optional_args(candidate_estimator, sagemaker_session, candidate_
 
 
 def test_candidate_estimator_fit_initialization_with_sagemaker_config_injection(
-    sagemaker_config_session,
+    sagemaker_session,
 ):
 
-    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_TRAINING_JOB
-    sagemaker_config_session.train = Mock()
-    sagemaker_config_session.transform = Mock()
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
+    sagemaker_session.train = Mock()
+    sagemaker_session.transform = Mock()
 
     desc_training_job_response = copy.deepcopy(TRAINING_JOB)
     del desc_training_job_response["VpcConfig"]
     del desc_training_job_response["OutputDataConfig"]["KmsKeyId"]
 
-    sagemaker_config_session.sagemaker_client.describe_training_job = Mock(
+    sagemaker_session.sagemaker_client.describe_training_job = Mock(
         name="describe_training_job", return_value=desc_training_job_response
     )
-    candidate_estimator = CandidateEstimator(
-        CANDIDATE_DICT, sagemaker_session=sagemaker_config_session
-    )
+    candidate_estimator = CandidateEstimator(CANDIDATE_DICT, sagemaker_session=sagemaker_session)
     candidate_estimator._check_all_job_finished = Mock(
         name="_check_all_job_finished", return_value=True
     )
@@ -865,7 +863,7 @@ def test_candidate_estimator_fit_initialization_with_sagemaker_config_injection(
         "TrainingJob"
     ]["EnableInterContainerTrafficEncryption"]
 
-    for train_call in sagemaker_config_session.train.call_args_list:
+    for train_call in sagemaker_session.train.call_args_list:
         train_args = train_call.kwargs
         assert train_args["vpc_config"] == expected_vpc_config
         assert train_args["resource_config"]["VolumeKmsKeyId"] == expected_volume_kms_key_id

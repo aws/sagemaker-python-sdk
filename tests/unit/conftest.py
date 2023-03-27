@@ -14,15 +14,10 @@ from __future__ import absolute_import
 
 
 import pytest
-from jsonschema.validators import validate
-from mock.mock import MagicMock
 
 import sagemaker
 
 from mock import Mock, PropertyMock
-
-from sagemaker.config import SageMakerConfig
-from sagemaker.config.config_schema import SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA, SCHEMA_VERSION
 
 _ROLE = "DummyRole"
 _REGION = "us-west-2"
@@ -72,50 +67,3 @@ def sagemaker_session(boto_session, client):
         sagemaker_metrics_client=client,
     )
     return session
-
-
-@pytest.fixture()
-def sagemaker_config_session():
-    """
-    Returns: a sagemaker.Session to use for tests of injection of default parameters from the
-    sagemaker_config.
-
-    This session has a custom SageMakerConfig that allows us to set the sagemaker_config.config
-    dict manually. This allows us to test in unit tests without tight coupling to the exact
-    sagemaker_config related helpers/utils/methods used. (And those helpers/utils/methods should
-    have their own separate and specific unit tests.)
-
-    An alternative would be to mock each call to a sagemaker_config-related method, but that would
-    be harder to maintain/update over time, and be less readable.
-    """
-
-    class SageMakerConfigWithSetter(SageMakerConfig):
-        """
-        Version of SageMakerConfig that allows the config to be set
-        """
-
-        def __init__(self):
-            self._config = {}
-            # no need to call super
-
-        @property
-        def config(self) -> dict:
-            return self._config
-
-        @config.setter
-        def config(self, new_config):
-            """Validates and sets a new config."""
-            # Add schema version if not already there since that is required
-            if SCHEMA_VERSION not in new_config:
-                new_config[SCHEMA_VERSION] = "1.0"
-            # Validate to make sure unit tests are not accidentally testing with a wrong config
-            validate(new_config, SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA)
-            self._config = new_config
-
-    boto_mock = MagicMock(name="boto_session", region_name="us-west-2")
-    session_with_custom_sagemaker_config = sagemaker.Session(
-        boto_session=boto_mock,
-        sagemaker_client=MagicMock(),
-        sagemaker_config=SageMakerConfigWithSetter(),
-    )
-    return session_with_custom_sagemaker_config

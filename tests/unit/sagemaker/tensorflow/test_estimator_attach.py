@@ -43,7 +43,7 @@ def sagemaker_session():
     session.sagemaker_client.describe_training_job = Mock(return_value=describe)
     session.sagemaker_client.list_tags = Mock(return_value=LIST_TAGS_RESULT)
     # For tests which doesn't verify config file injection, operate with empty config
-    session.sagemaker_config.config = {}
+    session.sagemaker_config = {}
     return session
 
 

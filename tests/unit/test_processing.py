@@ -85,7 +85,7 @@ def sagemaker_session():
     )
 
     # For tests which doesn't verify config file injection, operate with empty config
-    session_mock.sagemaker_config.config = {}
+    session_mock.sagemaker_config = {}
     return session_mock
 
 
@@ -111,7 +111,7 @@ def pipeline_session():
     session_mock.__class__ = PipelineSession
 
     # For tests which doesn't verify config file injection, operate with empty config
-    session_mock.sagemaker_config.config = {}
+    session_mock.sagemaker_config = {}
 
     return session_mock
 
@@ -646,17 +646,17 @@ def test_script_processor_without_role(exists_mock, isfile_mock, sagemaker_sessi
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
 def test_script_processor_with_sagemaker_config_injection(
-    exists_mock, isfile_mock, sagemaker_config_session
+    exists_mock, isfile_mock, sagemaker_session
 ):
-    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_PROCESSING_JOB
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_PROCESSING_JOB
 
-    sagemaker_config_session.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
-    sagemaker_config_session.upload_data = Mock(name="upload_data", return_value=MOCKED_S3_URI)
-    sagemaker_config_session.wait_for_processing_job = MagicMock(
+    sagemaker_session.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
+    sagemaker_session.upload_data = Mock(name="upload_data", return_value=MOCKED_S3_URI)
+    sagemaker_session.wait_for_processing_job = MagicMock(
         name="wait_for_processing_job", return_value=_get_describe_response_inputs_and_ouputs()
     )
-    sagemaker_config_session.process = Mock()
-    sagemaker_config_session.expand_role = Mock(name="expand_role", side_effect=lambda a: a)
+    sagemaker_session.process = Mock()
+    sagemaker_session.expand_role = Mock(name="expand_role", side_effect=lambda a: a)
 
     processor = ScriptProcessor(
         image_uri=CUSTOM_IMAGE_URI,
@@ -668,7 +668,7 @@ def test_script_processor_with_sagemaker_config_injection(
         base_job_name="my_sklearn_processor",
         env={"my_env_variable": "my_env_variable_value"},
         tags=[{"Key": "my-tag", "Value": "my-tag-value"}],
-        sagemaker_session=sagemaker_config_session,
+        sagemaker_session=sagemaker_session,
     )
     processor.run(
         code="/local/path/to/processing_code.py",
@@ -707,7 +707,7 @@ def test_script_processor_with_sagemaker_config_injection(
         "EnableInterContainerTrafficEncryption"
     ] = expected_enable_inter_containter_traffic_encryption
 
-    sagemaker_config_session.process.assert_called_with(**expected_args)
+    sagemaker_session.process.assert_called_with(**expected_args)
     assert "my_job_name" in processor._current_job_name
 
 

@@ -95,7 +95,7 @@ def sagemaker_session():
     )
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     # For tests which doesn't verify config file injection, operate with empty config
-    sms.sagemaker_config.config = {}
+    sms.sagemaker_config = {}
     return sms
 
 

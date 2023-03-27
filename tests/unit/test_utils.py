@@ -107,7 +107,8 @@ def test_get_nested_value():
     assert sagemaker.utils.get_nested_value(dictionary, []) is None
 
 
-def test_update_list_of_dicts_with_values_from_config():
+@patch("jsonschema.validate")
+def test_update_list_of_dicts_with_values_from_config(mock_json_schema_validation):
     input_list = [{"a": 1, "b": 2}]
     input_config_list = [
         {
@@ -117,8 +118,8 @@ def test_update_list_of_dicts_with_values_from_config():
     ]
     # Using short form for sagemaker_session
     ss = MagicMock()
-    ss.sagemaker_config = Mock()
-    ss.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
     config_path = "DUMMY.CONFIG.PATH"
     # happy case - both inputs and config have same number of elements
     update_list_of_dicts_with_values_from_config(input_list, config_path, sagemaker_session=ss)
@@ -134,7 +135,7 @@ def test_update_list_of_dicts_with_values_from_config():
             "c": 3,
         }
     ]
-    ss.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
     update_list_of_dicts_with_values_from_config(input_list, config_path, sagemaker_session=ss)
     assert input_list == [
         {"a": 1, "b": 2, "c": 3},
@@ -149,7 +150,7 @@ def test_update_list_of_dicts_with_values_from_config():
         },
         {"a": 5, "b": 6},
     ]
-    ss.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
     update_list_of_dicts_with_values_from_config(input_list, config_path, sagemaker_session=ss)
     assert input_list == [{"a": 1, "b": 2, "c": 3}]
     # Testing required parameters. If required parameters are not present, don't do the merge
@@ -160,7 +161,7 @@ def test_update_list_of_dicts_with_values_from_config():
             "c": 3,
         },
     ]
-    ss.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
     update_list_of_dicts_with_values_from_config(
         input_list, config_path, required_key_paths=["d"], sagemaker_session=ss
     )
@@ -178,7 +179,7 @@ def test_update_list_of_dicts_with_values_from_config():
             "b": 8,
         },
     ]
-    ss.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
     update_list_of_dicts_with_values_from_config(
         input_list, config_path, required_key_paths=["c"], sagemaker_session=ss
     )
@@ -198,7 +199,7 @@ def test_update_list_of_dicts_with_values_from_config():
             "d": 8,  # c is present in the original list and d is present in this list.
         },
     ]
-    ss.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
     update_list_of_dicts_with_values_from_config(
         input_list, config_path, union_key_paths=[["c", "d"]], sagemaker_session=ss
     )
@@ -218,7 +219,7 @@ def test_update_list_of_dicts_with_values_from_config():
             "d": 8,
         },
     ]
-    ss.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
     update_list_of_dicts_with_values_from_config(
         input_list, config_path, union_key_paths=[["c", "e"], ["d", "e"]], sagemaker_session=ss
     )
@@ -238,7 +239,7 @@ def test_update_list_of_dicts_with_values_from_config():
             "d": 8,
         },
     ]
-    ss.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
     update_list_of_dicts_with_values_from_config(
         input_list, config_path, union_key_paths=[["d", "e"], ["c", "e"]], sagemaker_session=ss
     )
@@ -259,7 +260,7 @@ def test_update_list_of_dicts_with_values_from_config():
             "d": 8,
         },
     ]
-    ss.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
     update_list_of_dicts_with_values_from_config(
         input_list,
         config_path,
@@ -281,7 +282,7 @@ def test_update_list_of_dicts_with_values_from_config():
             "g": 8,
         },
     ]
-    ss.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
     update_list_of_dicts_with_values_from_config(
         input_list,
         config_path,
@@ -1177,20 +1178,22 @@ def test_retry_with_backoff(patched_sleep):
 def test_resolve_value_from_config():
     # using a shorter name for inside the test
     sagemaker_session = MagicMock()
-    sagemaker_session.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": "CONFIG_VALUE"}}}
+    sagemaker_session.sagemaker_config = {"SchemaVersion": "1.0"}
+    config_key_path = "SageMaker.EndpointConfig.KmsKeyId"
+    sagemaker_session.sagemaker_config.update(
+        {"SageMaker": {"EndpointConfig": {"KmsKeyId": "CONFIG_VALUE"}}}
+    )
 
     # direct_input should be respected
     assert (
-        resolve_value_from_config("INPUT", "DUMMY.CONFIG.PATH", "DEFAULT_VALUE", sagemaker_session)
+        resolve_value_from_config("INPUT", config_key_path, "DEFAULT_VALUE", sagemaker_session)
         == "INPUT"
     )
 
-    assert (
-        resolve_value_from_config("INPUT", "DUMMY.CONFIG.PATH", None, sagemaker_session) == "INPUT"
-    )
+    assert resolve_value_from_config("INPUT", config_key_path, None, sagemaker_session) == "INPUT"
 
     assert (
-        resolve_value_from_config("INPUT", "DUMMY.CONFIG.INVALID_PATH", None, sagemaker_session)
+        resolve_value_from_config("INPUT", "SageMaker.EndpointConfig.Tags", None, sagemaker_session)
         == "INPUT"
     )
 
@@ -1201,41 +1204,33 @@ def test_resolve_value_from_config():
 
     assert (
         resolve_value_from_config(
-            None, "DUMMY.CONFIG.INVALID_PATH", "DEFAULT_VALUE", sagemaker_session
+            None, "SageMaker.EndpointConfig.Tags", "DEFAULT_VALUE", sagemaker_session
         )
         == "DEFAULT_VALUE"
     )
 
     assert (
-        resolve_value_from_config(None, "DUMMY.CONFIG.PATH", "DEFAULT_VALUE", sagemaker_session)
+        resolve_value_from_config(None, config_key_path, "DEFAULT_VALUE", sagemaker_session)
         == "CONFIG_VALUE"
     )
 
     assert resolve_value_from_config(None, None, None, sagemaker_session) is None
 
     # Different falsy direct_inputs
-    assert resolve_value_from_config("", "DUMMY.CONFIG.PATH", None, sagemaker_session) == ""
+    assert resolve_value_from_config("", config_key_path, None, sagemaker_session) == ""
 
-    assert resolve_value_from_config([], "DUMMY.CONFIG.PATH", None, sagemaker_session) == []
+    assert resolve_value_from_config([], config_key_path, None, sagemaker_session) == []
 
-    assert resolve_value_from_config(False, "DUMMY.CONFIG.PATH", None, sagemaker_session) is False
+    assert resolve_value_from_config(False, config_key_path, None, sagemaker_session) is False
 
-    assert resolve_value_from_config({}, "DUMMY.CONFIG.PATH", None, sagemaker_session) == {}
+    assert resolve_value_from_config({}, config_key_path, None, sagemaker_session) == {}
 
     # Different falsy config_values
-    sagemaker_session.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": ""}}}
-    assert resolve_value_from_config(None, "DUMMY.CONFIG.PATH", None, sagemaker_session) == ""
-
-    sagemaker_session.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": []}}}
-    assert resolve_value_from_config(None, "DUMMY.CONFIG.PATH", None, sagemaker_session) == []
-
-    sagemaker_session.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": False}}}
-    assert resolve_value_from_config(None, "DUMMY.CONFIG.PATH", None, sagemaker_session) is False
-
-    sagemaker_session.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": {}}}}
-    assert resolve_value_from_config(None, "DUMMY.CONFIG.PATH", None, sagemaker_session) == {}
+    sagemaker_session.sagemaker_config.update({"SageMaker": {"EndpointConfig": {"KmsKeyId": ""}}})
+    assert resolve_value_from_config(None, config_key_path, None, sagemaker_session) == ""
 
 
+@patch("jsonschema.validate")
 @pytest.mark.parametrize(
     "existing_value, config_value, default_value",
     [
@@ -1245,7 +1240,9 @@ def test_resolve_value_from_config():
         (0, 1, 2),
     ],
 )
-def test_resolve_class_attribute_from_config(existing_value, config_value, default_value):
+def test_resolve_class_attribute_from_config(
+    mock_validate, existing_value, config_value, default_value
+):
     # using a shorter name for inside the test
     ss = MagicMock()
 
@@ -1265,8 +1262,8 @@ def test_resolve_class_attribute_from_config(existing_value, config_value, defau
     dummy_config_path = "DUMMY.CONFIG.PATH"
 
     # with an existing config value
-    ss.sagemaker_config = Mock()
-    ss.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": config_value}}}
+
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": config_value}}}
 
     # instance exists and has value; config has value
     test_instance = TestClass(test_attribute=existing_value, extra="EXTRA_VALUE")
@@ -1312,7 +1309,7 @@ def test_resolve_class_attribute_from_config(existing_value, config_value, defau
     )
 
     # without an existing config value
-    ss.sagemaker_config.config = {"DUMMY": {"CONFIG": {"SOMEOTHERPATH": config_value}}}
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"SOMEOTHERPATH": config_value}}}
     # instance exists but doesnt have value; config doesnt have value
     test_instance = TestClass(extra="EXTRA_VALUE")
     assert resolve_class_attribute_from_config(
@@ -1351,7 +1348,8 @@ def test_resolve_class_attribute_from_config(existing_value, config_value, defau
     ) == TestClass(test_attribute=default_value, extra=None)
 
 
-def test_resolve_nested_dict_value_from_config():
+@patch("jsonschema.validate")
+def test_resolve_nested_dict_value_from_config(mock_validate):
     # using a shorter name for inside the test
     ss = MagicMock()
 
@@ -1373,8 +1371,8 @@ def test_resolve_nested_dict_value_from_config():
     ) == {"local": {"region_name": "us-west-2", "port": "123"}}
 
     # happy case: return dict with config_value when it wasnt set in dict or was None
-    ss.sagemaker_config = Mock()
-    ss.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": "CONFIG_VALUE"}}}
+
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": "CONFIG_VALUE"}}}
     assert resolve_nested_dict_value_from_config(
         {"local": {"port": "123"}},
         ["local", "region_name"],
@@ -1437,7 +1435,7 @@ def test_resolve_nested_dict_value_from_config():
     )
 
     # without an existing config value
-    ss.sagemaker_config.config = {"DUMMY": {"CONFIG": {"ANOTHER_PATH": "CONFIG_VALUE"}}}
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"ANOTHER_PATH": "CONFIG_VALUE"}}}
 
     # happy case: return dict with default_value when it wasnt set in dict and in config
     assert resolve_nested_dict_value_from_config(

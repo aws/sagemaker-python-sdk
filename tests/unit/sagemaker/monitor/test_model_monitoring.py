@@ -464,7 +464,7 @@ def sagemaker_session():
     session_mock.expand_role.return_value = ROLE
 
     # For tests which doesn't verify config file injection, operate with empty config
-    session_mock.sagemaker_config.config = {}
+    session_mock.sagemaker_config = {}
     session_mock._append_sagemaker_config_tags = Mock(
         name="_append_sagemaker_config_tags", side_effect=lambda tags, config_path_to_tags: tags
     )
@@ -875,13 +875,13 @@ def _test_data_quality_batch_transform_monitor_create_schedule(
 
 def test_data_quality_batch_transform_monitor_create_schedule_with_sagemaker_config_injection(
     data_quality_monitor,
-    sagemaker_config_session,
+    sagemaker_session,
 ):
 
-    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_MONITORING_SCHEDULE
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_MONITORING_SCHEDULE
 
-    sagemaker_config_session.sagemaker_client.create_monitoring_schedule = Mock()
-    data_quality_monitor.sagemaker_session = sagemaker_config_session
+    sagemaker_session.sagemaker_client.create_monitoring_schedule = Mock()
+    data_quality_monitor.sagemaker_session = sagemaker_session
 
     # for batch transform input
     data_quality_monitor.create_monitoring_schedule(
@@ -902,7 +902,7 @@ def test_data_quality_batch_transform_monitor_create_schedule_with_sagemaker_con
         "MonitoringSchedule"
     ]["Tags"][0]
 
-    sagemaker_config_session.sagemaker_client.create_monitoring_schedule.assert_called_with(
+    sagemaker_session.sagemaker_client.create_monitoring_schedule.assert_called_with(
         MonitoringScheduleName=SCHEDULE_NAME,
         MonitoringScheduleConfig={
             "MonitoringJobDefinitionName": data_quality_monitor.job_definition_name,

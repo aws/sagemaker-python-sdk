@@ -262,14 +262,14 @@ def test_process(boto_session):
     session.sagemaker_client.create_processing_job.assert_called_with(**expected_request)
 
 
-def test_create_process_with_sagemaker_config_injection(sagemaker_config_session):
+def test_create_process_with_sagemaker_config_injection(sagemaker_session):
     processing_job_config = copy.deepcopy(SAGEMAKER_CONFIG_PROCESSING_JOB)
     # deleting RedshiftDatasetDefinition. API can take either RedshiftDatasetDefinition or
     # AthenaDatasetDefinition
     del processing_job_config["SageMaker"]["ProcessingJob"]["ProcessingInputs"][0][
         "DatasetDefinition"
     ]["RedshiftDatasetDefinition"]
-    sagemaker_config_session.sagemaker_config.config = processing_job_config
+    sagemaker_session.sagemaker_config = processing_job_config
 
     processing_inputs = [
         {
@@ -331,7 +331,7 @@ def test_create_process_with_sagemaker_config_injection(sagemaker_config_session
         "environment": {"my_env_variable": 20},
         "experiment_config": {"ExperimentName": "AnExperiment"},
     }
-    sagemaker_config_session.process(**process_request_args)
+    sagemaker_session.process(**process_request_args)
     expected_volume_kms_key_id = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"][
         "ProcessingResources"
     ]["ClusterConfig"]["VolumeKmsKeyId"]
@@ -377,9 +377,7 @@ def test_create_process_with_sagemaker_config_injection(sagemaker_config_session
         "VolumeKmsKeyId"
     ] = expected_volume_kms_key_id
 
-    sagemaker_config_session.sagemaker_client.create_processing_job.assert_called_with(
-        **expected_request
-    )
+    sagemaker_session.sagemaker_client.create_processing_job.assert_called_with(**expected_request)
 
 
 def mock_exists(filepath_to_mock, exists_result):
@@ -1539,8 +1537,8 @@ def test_stop_tuning_job_client_error(sagemaker_session):
     )
 
 
-def test_train_with_sagemaker_config_injection(sagemaker_config_session):
-    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_TRAINING_JOB
+def test_train_with_sagemaker_config_injection(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
 
     in_config = [
         {
@@ -1573,7 +1571,7 @@ def test_train_with_sagemaker_config_injection(sagemaker_config_session):
         },
     }
 
-    sagemaker_config_session.train(
+    sagemaker_session.train(
         image_uri=IMAGE,
         input_mode="File",
         input_config=in_config,
@@ -1592,7 +1590,7 @@ def test_train_with_sagemaker_config_injection(sagemaker_config_session):
         training_image_config=TRAINING_IMAGE_CONFIG,
     )
 
-    _, _, actual_train_args = sagemaker_config_session.sagemaker_client.method_calls[0]
+    _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
 
     expected_volume_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
         "ResourceConfig"
@@ -1714,9 +1712,9 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
     )
 
 
-def test_create_transform_job_with_sagemaker_config_injection(sagemaker_config_session):
+def test_create_transform_job_with_sagemaker_config_injection(sagemaker_session):
     # Config to test injection for
-    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_TRANSFORM_JOB
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRANSFORM_JOB
 
     model_name = "my-model"
     in_config = {
@@ -1761,7 +1759,7 @@ def test_create_transform_job_with_sagemaker_config_injection(sagemaker_config_s
     assert "VolumeKmsKeyId" not in resource_config
 
     # injection should happen during this method
-    sagemaker_config_session.transform(
+    sagemaker_session.transform(
         job_name=JOB_NAME,
         model_name=model_name,
         strategy=None,
@@ -1778,7 +1776,7 @@ def test_create_transform_job_with_sagemaker_config_injection(sagemaker_config_s
         batch_data_capture_config=data_capture_config,
     )
 
-    _, _, actual_args = sagemaker_config_session.sagemaker_client.method_calls[0]
+    _, _, actual_args = sagemaker_session.sagemaker_client.method_calls[0]
     assert actual_args == expected_args
 
 
@@ -2114,14 +2112,14 @@ PRIMARY_CONTAINER = {
 }
 
 
-def test_create_model_with_sagemaker_config_injection(sagemaker_config_session):
+def test_create_model_with_sagemaker_config_injection(sagemaker_session):
 
-    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_MODEL
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_MODEL
 
-    sagemaker_config_session.expand_role = Mock(
+    sagemaker_session.expand_role = Mock(
         name="expand_role", side_effect=lambda role_name: role_name
     )
-    model = sagemaker_config_session.create_model(
+    model = sagemaker_session.create_model(
         MODEL_NAME,
         container_defs=PRIMARY_CONTAINER,
     )
@@ -2132,7 +2130,7 @@ def test_create_model_with_sagemaker_config_injection(sagemaker_config_session):
     expected_vpc_config = SAGEMAKER_CONFIG_MODEL["SageMaker"]["Model"]["VpcConfig"]
     expected_tags = SAGEMAKER_CONFIG_MODEL["SageMaker"]["Model"]["Tags"]
     assert model == MODEL_NAME
-    sagemaker_config_session.sagemaker_client.create_model.assert_called_with(
+    sagemaker_session.sagemaker_client.create_model.assert_called_with(
         ExecutionRoleArn=expected_role_arn,
         ModelName=MODEL_NAME,
         PrimaryContainer=PRIMARY_CONTAINER,
@@ -2310,12 +2308,12 @@ def test_create_model_from_job_with_tags(sagemaker_session):
     )
 
 
-def test_create_edge_packaging_with_sagemaker_config_injection(sagemaker_config_session):
-    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB
+def test_create_edge_packaging_with_sagemaker_config_injection(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB
 
     output_config = {"S3OutputLocation": S3_OUTPUT}
 
-    sagemaker_config_session.package_model_for_edge(
+    sagemaker_session.package_model_for_edge(
         output_config,
     )
     expected_role_arn = SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB["SageMaker"]["EdgePackagingJob"][
@@ -2325,7 +2323,7 @@ def test_create_edge_packaging_with_sagemaker_config_injection(sagemaker_config_
         "OutputConfig"
     ]["KmsKeyId"]
     expected_tags = SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB["SageMaker"]["EdgePackagingJob"]["Tags"]
-    sagemaker_config_session.sagemaker_client.create_edge_packaging_job.assert_called_with(
+    sagemaker_session.sagemaker_client.create_edge_packaging_job.assert_called_with(
         RoleArn=expected_role_arn,  # provided from config
         OutputConfig={
             "S3OutputLocation": S3_OUTPUT,  # provided as param
@@ -2339,12 +2337,12 @@ def test_create_edge_packaging_with_sagemaker_config_injection(sagemaker_config_
     )
 
 
-def test_create_monitoring_schedule_with_sagemaker_config_injection(sagemaker_config_session):
-    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_MONITORING_SCHEDULE
+def test_create_monitoring_schedule_with_sagemaker_config_injection(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_MONITORING_SCHEDULE
 
     monitoring_output_config = {"MonitoringOutputs": [{"S3Output": {"S3Uri": S3_OUTPUT}}]}
 
-    sagemaker_config_session.create_monitoring_schedule(
+    sagemaker_session.create_monitoring_schedule(
         JOB_NAME,
         schedule_expression=None,
         statistics_s3_uri=None,
@@ -2383,7 +2381,7 @@ def test_create_monitoring_schedule_with_sagemaker_config_injection(sagemaker_co
     ]["MonitoringSchedule"]["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["NetworkConfig"][
         "EnableInterContainerTrafficEncryption"
     ]
-    sagemaker_config_session.sagemaker_client.create_monitoring_schedule.assert_called_with(
+    sagemaker_session.sagemaker_client.create_monitoring_schedule.assert_called_with(
         MonitoringScheduleName=JOB_NAME,
         MonitoringScheduleConfig={
             "MonitoringJobDefinition": {
@@ -2419,10 +2417,10 @@ def test_create_monitoring_schedule_with_sagemaker_config_injection(sagemaker_co
     )
 
 
-def test_compile_with_sagemaker_config_injection(sagemaker_config_session):
-    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_COMPILATION_JOB
+def test_compile_with_sagemaker_config_injection(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_COMPILATION_JOB
 
-    sagemaker_config_session.compile_model(
+    sagemaker_session.compile_model(
         input_model_config={},
         output_model_config={"S3OutputLocation": "s3://test"},
         job_name="TestJob",
@@ -2435,7 +2433,7 @@ def test_compile_with_sagemaker_config_injection(sagemaker_config_session):
         "VpcConfig"
     ]
     expected_tags = SAGEMAKER_CONFIG_COMPILATION_JOB["SageMaker"]["CompilationJob"]["Tags"]
-    sagemaker_config_session.sagemaker_client.create_compilation_job.assert_called_with(
+    sagemaker_session.sagemaker_client.create_compilation_job.assert_called_with(
         InputConfig={},
         OutputConfig={"S3OutputLocation": "s3://test", "KmsKeyId": expected_kms_key_id},
         RoleArn=expected_role_arn,
@@ -2508,13 +2506,13 @@ def test_endpoint_from_production_variants(sagemaker_session):
     )
 
 
-def test_create_endpoint_config_with_sagemaker_config_injection(sagemaker_config_session):
-    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_ENDPOINT_CONFIG
+def test_create_endpoint_config_with_sagemaker_config_injection(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_ENDPOINT_CONFIG
 
     data_capture_config_dict = {"DestinationS3Uri": "s3://test"}
 
     # This method does not support ASYNC_INFERENCE_CONFIG or multiple PRODUCTION_VARIANTS
-    sagemaker_config_session.create_endpoint_config(
+    sagemaker_session.create_endpoint_config(
         "endpoint-test",
         "simple-model",
         1,
@@ -2529,7 +2527,7 @@ def test_create_endpoint_config_with_sagemaker_config_injection(sagemaker_config
     ]
     expected_tags = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"]["EndpointConfig"]["Tags"]
 
-    sagemaker_config_session.sagemaker_client.create_endpoint_config.assert_called_with(
+    sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
         EndpointConfigName="endpoint-test",
         ProductionVariants=[
             {
@@ -2550,9 +2548,9 @@ def test_create_endpoint_config_with_sagemaker_config_injection(sagemaker_config
 
 
 def test_create_endpoint_config_from_existing_with_sagemaker_config_injection(
-    sagemaker_config_session,
+    sagemaker_session,
 ):
-    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_ENDPOINT_CONFIG
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_ENDPOINT_CONFIG
 
     pvs = [
         sagemaker.production_variant("A", "ml.p2.xlarge"),
@@ -2564,14 +2562,14 @@ def test_create_endpoint_config_from_existing_with_sagemaker_config_injection(
     existing_endpoint_arn = "arn:aws:sagemaker:us-west-2:123412341234:endpoint-config/foo"
     existing_endpoint_name = "foo"
     new_endpoint_name = "new-foo"
-    sagemaker_config_session.sagemaker_client.describe_endpoint_config.return_value = {
+    sagemaker_session.sagemaker_client.describe_endpoint_config.return_value = {
         "ProductionVariants": [sagemaker.production_variant("A", "ml.m4.xlarge")],
         "EndpointConfigArn": existing_endpoint_arn,
         "AsyncInferenceConfig": {},
     }
-    sagemaker_config_session.sagemaker_client.list_tags.return_value = {"Tags": []}
+    sagemaker_session.sagemaker_client.list_tags.return_value = {"Tags": []}
 
-    sagemaker_config_session.create_endpoint_config_from_existing(
+    sagemaker_session.create_endpoint_config_from_existing(
         existing_endpoint_name, new_endpoint_name, new_production_variants=pvs
     )
 
@@ -2586,7 +2584,7 @@ def test_create_endpoint_config_from_existing_with_sagemaker_config_injection(
     ]
     expected_tags = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"]["EndpointConfig"]["Tags"]
 
-    sagemaker_config_session.sagemaker_client.create_endpoint_config.assert_called_with(
+    sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
         EndpointConfigName=new_endpoint_name,
         ProductionVariants=[
             {
@@ -2609,11 +2607,11 @@ def test_create_endpoint_config_from_existing_with_sagemaker_config_injection(
 
 
 def test_endpoint_from_production_variants_with_sagemaker_config_injection(
-    sagemaker_config_session,
+    sagemaker_session,
 ):
-    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_ENDPOINT_CONFIG
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_ENDPOINT_CONFIG
 
-    sagemaker_config_session.sagemaker_client.describe_endpoint = Mock(
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(
         return_value={"EndpointStatus": "InService"}
     )
     pvs = [
@@ -2623,7 +2621,7 @@ def test_endpoint_from_production_variants_with_sagemaker_config_injection(
     ]
     # Add DestinationS3Uri to only one production variant
     pvs[0]["CoreDumpConfig"] = {"DestinationS3Uri": "s3://test"}
-    sagemaker_config_session.endpoint_from_production_variants(
+    sagemaker_session.endpoint_from_production_variants(
         "some-endpoint",
         pvs,
         data_capture_config_dict={},
@@ -2655,7 +2653,7 @@ def test_endpoint_from_production_variants_with_sagemaker_config_injection(
         "DestinationS3Uri": "s3://test",
         "KmsKeyId": expected_production_variant_0_kms_key_id,
     }
-    sagemaker_config_session.sagemaker_client.create_endpoint_config.assert_called_with(
+    sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
         EndpointConfigName="some-endpoint",
         ProductionVariants=expected_pvs,
         Tags=expected_tags,  # from config
@@ -2663,7 +2661,7 @@ def test_endpoint_from_production_variants_with_sagemaker_config_injection(
         AsyncInferenceConfig=expected_async_inference_config_dict,
         DataCaptureConfig={"KmsKeyId": expected_data_capture_kms_key_id},
     )
-    sagemaker_config_session.sagemaker_client.create_endpoint.assert_called_with(
+    sagemaker_session.sagemaker_client.create_endpoint.assert_called_with(
         EndpointConfigName="some-endpoint",
         EndpointName="some-endpoint",
         Tags=expected_tags,  # from config
@@ -3163,8 +3161,8 @@ def test_auto_ml_pack_to_request(sagemaker_session):
     )
 
 
-def test_create_auto_ml_with_sagemaker_config_injection(sagemaker_config_session):
-    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_AUTO_ML
+def test_create_auto_ml_with_sagemaker_config_injection(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_AUTO_ML
 
     input_config = [
         {
@@ -3184,9 +3182,7 @@ def test_create_auto_ml_with_sagemaker_config_injection(sagemaker_config_session
     }
 
     job_name = JOB_NAME
-    sagemaker_config_session.auto_ml(
-        input_config, output_config, auto_ml_job_config, job_name=job_name
-    )
+    sagemaker_session.auto_ml(input_config, output_config, auto_ml_job_config, job_name=job_name)
     expected_call_args = copy.deepcopy(DEFAULT_EXPECTED_AUTO_ML_JOB_ARGS)
     expected_volume_kms_key_id = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoML"]["AutoMLJobConfig"][
         "SecurityConfig"
@@ -3211,7 +3207,7 @@ def test_create_auto_ml_with_sagemaker_config_injection(sagemaker_config_session
     expected_call_args["AutoMLJobConfig"]["SecurityConfig"][
         "VolumeKmsKeyId"
     ] = expected_volume_kms_key_id
-    sagemaker_config_session.sagemaker_client.create_auto_ml_job.assert_called_with(
+    sagemaker_session.sagemaker_client.create_auto_ml_job.assert_called_with(
         AutoMLJobName=expected_call_args["AutoMLJobName"],
         InputDataConfig=expected_call_args["InputDataConfig"],
         OutputDataConfig=expected_call_args["OutputDataConfig"],
@@ -3419,8 +3415,8 @@ def test_create_model_package_from_containers_without_model_package_group_name(
         )
 
 
-def test_create_model_package_with_sagemaker_config_injection(sagemaker_config_session):
-    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_MODEL_PACKAGE
+def test_create_model_package_with_sagemaker_config_injection(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_MODEL_PACKAGE
 
     model_package_name = "sagemaker-model-package"
     containers = ["dummy-container"]
@@ -3463,7 +3459,7 @@ def test_create_model_package_with_sagemaker_config_injection(sagemaker_config_s
     domain = "COMPUTER_VISION"
     task = "IMAGE_CLASSIFICATION"
     sample_payload_url = "s3://test-bucket/model"
-    sagemaker_config_session.create_model_package_from_containers(
+    sagemaker_session.create_model_package_from_containers(
         containers=containers,
         content_types=content_types,
         response_types=response_types,
@@ -3522,9 +3518,7 @@ def test_create_model_package_with_sagemaker_config_injection(sagemaker_config_s
         "TransformOutput"
     ]["KmsKeyId"] = expected_kms_key_id
 
-    sagemaker_config_session.sagemaker_client.create_model_package.assert_called_with(
-        **expected_args
-    )
+    sagemaker_session.sagemaker_client.create_model_package.assert_called_with(**expected_args)
 
 
 def test_create_model_package_from_containers_all_args(sagemaker_session):
@@ -3736,12 +3730,12 @@ def feature_group_dummy_definitions():
 
 
 def test_feature_group_create_with_sagemaker_config_injection(
-    sagemaker_config_session, feature_group_dummy_definitions
+    sagemaker_session, feature_group_dummy_definitions
 ):
 
-    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_FEATURE_GROUP
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_FEATURE_GROUP
 
-    sagemaker_config_session.create_feature_group(
+    sagemaker_session.create_feature_group(
         feature_group_name="MyFeatureGroup",
         record_identifier_name="feature1",
         event_time_feature_name="feature2",
@@ -3771,9 +3765,7 @@ def test_feature_group_create_with_sagemaker_config_injection(
         },
         "Tags": expected_tags,
     }
-    sagemaker_config_session.sagemaker_client.create_feature_group.assert_called_with(
-        **expected_request
-    )
+    sagemaker_session.sagemaker_client.create_feature_group.assert_called_with(**expected_request)
 
 
 def test_feature_group_create(sagemaker_session, feature_group_dummy_definitions):
@@ -4535,11 +4527,13 @@ def test_append_sagemaker_config_tags(sagemaker_session):
         {"Key": "tagkey2", "Value": "tagvalue2"},
         {"Key": "tagkey3", "Value": "tagvalue3"},
     ]
+    sagemaker_session.sagemaker_config = {"SchemaVersion": "1.0"}
+    sagemaker_session.sagemaker_config.update(
+        {"SageMaker": {"ProcessingJob": {"Tags": config_tag_value}}}
+    )
+    config_key_path = "SageMaker.ProcessingJob.Tags"
 
-    sagemaker_session.sagemaker_config = Mock()
-    sagemaker_session.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": config_tag_value}}}
-
-    base_case = sagemaker_session._append_sagemaker_config_tags(tags_base, "DUMMY.CONFIG.PATH")
+    base_case = sagemaker_session._append_sagemaker_config_tags(tags_base, config_key_path)
     assert sort(base_case) == sort(
         [
             {"Key": "tagkey1", "Value": "tagvalue1"},
@@ -4551,7 +4545,7 @@ def test_append_sagemaker_config_tags(sagemaker_session):
     )
 
     duplicate_case = sagemaker_session._append_sagemaker_config_tags(
-        tags_duplicate, "DUMMY.CONFIG.PATH"
+        tags_duplicate, config_key_path
     )
     assert sort(duplicate_case) == sort(
         [
@@ -4561,7 +4555,7 @@ def test_append_sagemaker_config_tags(sagemaker_session):
         ]
     )
 
-    none_case = sagemaker_session._append_sagemaker_config_tags(tags_none, "DUMMY.CONFIG.PATH")
+    none_case = sagemaker_session._append_sagemaker_config_tags(tags_none, config_key_path)
     assert sort(none_case) == sort(
         [
             {"Key": "tagkey1", "Value": "tagvalue1"},
@@ -4570,7 +4564,7 @@ def test_append_sagemaker_config_tags(sagemaker_session):
         ]
     )
 
-    empty_case = sagemaker_session._append_sagemaker_config_tags(tags_empty, "DUMMY.CONFIG.PATH")
+    empty_case = sagemaker_session._append_sagemaker_config_tags(tags_empty, config_key_path)
     assert sort(empty_case) == sort(
         [
             {"Key": "tagkey1", "Value": "tagvalue1"},
@@ -4579,12 +4573,10 @@ def test_append_sagemaker_config_tags(sagemaker_session):
         ]
     )
 
-    sagemaker_session.sagemaker_config.config = {
-        "DUMMY": {"CONFIG": {"OTHER_PATH": config_tag_value}}
-    }
-    config_tags_none = sagemaker_session._append_sagemaker_config_tags(
-        tags_base, "DUMMY.CONFIG.PATH"
+    sagemaker_session.sagemaker_config.update(
+        {"SageMaker": {"TrainingJob": {"Tags": config_tag_value}}}
     )
+    config_tags_none = sagemaker_session._append_sagemaker_config_tags(tags_base, config_key_path)
     assert sort(config_tags_none) == sort(
         [
             {"Key": "tagkey4", "Value": "000"},
@@ -4592,7 +4584,9 @@ def test_append_sagemaker_config_tags(sagemaker_session):
         ]
     )
 
-    sagemaker_session.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": config_tag_value}}}
+    sagemaker_session.sagemaker_config.update(
+        {"SageMaker": {"ProcessingJob": {"Tags": config_tag_value}}}
+    )
     config_tags_empty = sagemaker_session._append_sagemaker_config_tags(
         tags_base, "DUMMY.CONFIG.PATH"
     )

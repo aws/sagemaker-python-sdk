@@ -51,7 +51,7 @@ def sagemaker_session():
     session_mock.download_data = Mock(name="download_data")
     session_mock.expand_role.return_value = ROLE
     # For tests which doesn't verify config file injection, operate with empty config
-    session_mock.sagemaker_config.config = {}
+    session_mock.sagemaker_config = {}
     return session_mock
 
 

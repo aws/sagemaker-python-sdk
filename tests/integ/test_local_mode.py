@@ -23,7 +23,6 @@ import tempfile
 import stopit
 
 import tests.integ.lock as lock
-from sagemaker.config import SageMakerConfig
 from tests.integ import DATA_DIR
 from mock import Mock, ANY
 
@@ -59,14 +58,7 @@ class LocalNoS3Session(LocalSession):
     def __init__(self):
         super(LocalSession, self).__init__()
 
-    def _initialize(
-        self,
-        boto_session,
-        sagemaker_client,
-        sagemaker_runtime_client,
-        sagemaker_config: SageMakerConfig = None,
-        **kwargs
-    ):
+    def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client, **kwargs):
         self.boto_session = boto3.Session(region_name=DEFAULT_REGION)
         if self.config is None:
             self.config = {"local": {"local_code": True, "region_name": DEFAULT_REGION}}
@@ -76,11 +68,7 @@ class LocalNoS3Session(LocalSession):
         self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)
         self.local_mode = True
 
-        self.sagemaker_config = sagemaker_config or (
-            SageMakerConfig()
-            if "sagemaker_config" not in kwargs
-            else kwargs.get("sagemaker_config")
-        )
+        self.sagemaker_config = kwargs.get("sagemaker_config", None)
 
 
 class LocalPipelineNoS3Session(LocalPipelineSession):
@@ -91,14 +79,7 @@ class LocalPipelineNoS3Session(LocalPipelineSession):
     def __init__(self):
         super(LocalPipelineSession, self).__init__()
 
-    def _initialize(
-        self,
-        boto_session,
-        sagemaker_client,
-        sagemaker_runtime_client,
-        sagemaker_config: SageMakerConfig = None,
-        **kwargs
-    ):
+    def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client, **kwargs):
         self.boto_session = boto3.Session(region_name=DEFAULT_REGION)
         if self.config is None:
             self.config = {"local": {"local_code": True, "region_name": DEFAULT_REGION}}
@@ -108,11 +89,7 @@ class LocalPipelineNoS3Session(LocalPipelineSession):
         self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)
         self.local_mode = True
 
-        self.sagemaker_config = sagemaker_config or (
-            SageMakerConfig()
-            if "sagemaker_config" not in kwargs
-            else kwargs.get("sagemaker_config")
-        )
+        self.sagemaker_config = kwargs.get("sagemaker_config", None)
 
 
 @pytest.fixture(scope="module")

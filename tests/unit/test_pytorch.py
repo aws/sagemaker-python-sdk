@@ -84,7 +84,7 @@ def fixture_sagemaker_session():
     session.expand_role = Mock(name="expand_role", return_value=ROLE)
 
     # For tests which doesn't verify config file injection, operate with empty config
-    session.sagemaker_config.config = {}
+    session.sagemaker_config = {}
     return session
 
 

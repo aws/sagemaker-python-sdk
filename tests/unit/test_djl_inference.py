@@ -58,8 +58,8 @@ def sagemaker_session():
     )
     session.default_bucket = Mock(name="default_bucket", return_valie=BUCKET)
     # For tests which doesn't verify config file injection, operate with empty config
-    session.sagemaker_config = Mock()
-    session.sagemaker_config.config = {}
+
+    session.sagemaker_config = {}
     return session
 
 

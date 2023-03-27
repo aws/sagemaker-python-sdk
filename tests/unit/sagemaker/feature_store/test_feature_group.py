@@ -54,7 +54,7 @@ def s3_uri():
 @pytest.fixture
 def sagemaker_session_mock():
     sagemaker_session_mock = Mock()
-    sagemaker_session_mock.sagemaker_config.config = {}
+    sagemaker_session_mock.sagemaker_config = {}
     return sagemaker_session_mock
 
 
@@ -106,13 +106,13 @@ def test_feature_group_create_without_role(
 
 
 def test_feature_store_create_with_config_injection(
-    sagemaker_config_session, role_arn, feature_group_dummy_definitions, s3_uri
+    sagemaker_session, role_arn, feature_group_dummy_definitions, s3_uri
 ):
 
-    sagemaker_config_session.sagemaker_config.config = SAGEMAKER_CONFIG_FEATURE_GROUP
-    sagemaker_config_session.create_feature_group = Mock()
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_FEATURE_GROUP
+    sagemaker_session.create_feature_group = Mock()
 
-    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_config_session)
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session)
     feature_group.feature_definitions = feature_group_dummy_definitions
     feature_group.create(
         s3_uri=s3_uri,
@@ -127,7 +127,7 @@ def test_feature_store_create_with_config_injection(
     expected_online_store_kms_key_id = SAGEMAKER_CONFIG_FEATURE_GROUP["SageMaker"]["FeatureGroup"][
         "OnlineStoreConfig"
     ]["SecurityConfig"]["KmsKeyId"]
-    sagemaker_config_session.create_feature_group.assert_called_with(
+    sagemaker_session.create_feature_group.assert_called_with(
         feature_group_name="MyFeatureGroup",
         record_identifier_name="feature1",
         event_time_feature_name="feature2",

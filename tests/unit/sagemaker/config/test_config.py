@@ -17,7 +17,7 @@ import pytest
 import yaml
 from mock import Mock, MagicMock
 
-from sagemaker.config.config import SageMakerConfig
+from sagemaker.config.config import fetch_sagemaker_config
 from jsonschema import exceptions
 from yaml.constructor import ConstructorError
 
@@ -37,14 +37,14 @@ def expected_merged_config(get_data_dir):
 
 
 def test_config_when_default_config_file_and_user_config_file_is_not_found():
-    assert SageMakerConfig().config == {}
+    assert fetch_sagemaker_config() == {}
 
 
 def test_config_when_overriden_default_config_file_is_not_found(get_data_dir):
     fake_config_file_path = os.path.join(get_data_dir, "config-not-found.yaml")
     os.environ["SAGEMAKER_ADMIN_CONFIG_OVERRIDE"] = fake_config_file_path
     with pytest.raises(ValueError):
-        SageMakerConfig()
+        fetch_sagemaker_config()
     del os.environ["SAGEMAKER_ADMIN_CONFIG_OVERRIDE"]
 
 
@@ -55,14 +55,14 @@ def test_invalid_config_file_which_has_python_code(get_data_dir):
     # PyYAML will throw exceptions for yaml.safe_load. SageMaker Config is using
     # yaml.safe_load internally
     with pytest.raises(ConstructorError) as exception_info:
-        SageMakerConfig(additional_config_paths=[invalid_config_file_path])
+        fetch_sagemaker_config(additional_config_paths=[invalid_config_file_path])
     assert "python/object/apply:eval" in str(exception_info.value)
 
 
 def test_config_when_additional_config_file_path_is_not_found(get_data_dir):
     fake_config_file_path = os.path.join(get_data_dir, "config-not-found.yaml")
     with pytest.raises(ValueError):
-        SageMakerConfig(additional_config_paths=[fake_config_file_path])
+        fetch_sagemaker_config(additional_config_paths=[fake_config_file_path])
 
 
 def test_config_factory_when_override_user_config_file_is_not_found(get_data_dir):
@@ -71,7 +71,7 @@ def test_config_factory_when_override_user_config_file_is_not_found(get_data_dir
     )
     os.environ["SAGEMAKER_USER_CONFIG_OVERRIDE"] = fake_additional_override_config_file_path
     with pytest.raises(ValueError):
-        SageMakerConfig()
+        fetch_sagemaker_config()
     del os.environ["SAGEMAKER_USER_CONFIG_OVERRIDE"]
 
 
@@ -79,7 +79,7 @@ def test_default_config_file_with_invalid_schema(get_data_dir):
     config_file_path = os.path.join(get_data_dir, "invalid_config_file.yaml")
     os.environ["SAGEMAKER_ADMIN_CONFIG_OVERRIDE"] = config_file_path
     with pytest.raises(exceptions.ValidationError):
-        SageMakerConfig()
+        fetch_sagemaker_config()
     del os.environ["SAGEMAKER_ADMIN_CONFIG_OVERRIDE"]
 
 
@@ -90,7 +90,7 @@ def test_default_config_file_when_directory_is_provided_as_the_path(
     expected_config = base_config_with_schema
     expected_config["SageMaker"] = valid_config_with_all_the_scopes
     os.environ["SAGEMAKER_ADMIN_CONFIG_OVERRIDE"] = get_data_dir
-    assert expected_config == SageMakerConfig().config
+    assert expected_config == fetch_sagemaker_config()
     del os.environ["SAGEMAKER_ADMIN_CONFIG_OVERRIDE"]
 
 
@@ -100,7 +100,7 @@ def test_additional_config_paths_when_directory_is_provided(
     # This will try to load config.yaml file from that directory if present.
     expected_config = base_config_with_schema
     expected_config["SageMaker"] = valid_config_with_all_the_scopes
-    assert expected_config == SageMakerConfig(additional_config_paths=[get_data_dir]).config
+    assert expected_config == fetch_sagemaker_config(additional_config_paths=[get_data_dir])
 
 
 def test_default_config_file_when_path_is_provided_as_environment_variable(
@@ -110,7 +110,7 @@ def test_default_config_file_when_path_is_provided_as_environment_variable(
     # This will try to load config.yaml file from that directory if present.
     expected_config = base_config_with_schema
     expected_config["SageMaker"] = valid_config_with_all_the_scopes
-    assert expected_config == SageMakerConfig().config
+    assert expected_config == fetch_sagemaker_config()
     del os.environ["SAGEMAKER_ADMIN_CONFIG_OVERRIDE"]
 
 
@@ -123,7 +123,7 @@ def test_merge_behavior_when_additional_config_file_path_is_not_found(
     )
     os.environ["SAGEMAKER_ADMIN_CONFIG_OVERRIDE"] = valid_config_file_path
     with pytest.raises(ValueError):
-        SageMakerConfig(additional_config_paths=[fake_additional_override_config_file_path])
+        fetch_sagemaker_config(additional_config_paths=[fake_additional_override_config_file_path])
     del os.environ["SAGEMAKER_ADMIN_CONFIG_OVERRIDE"]
 
 
@@ -133,12 +133,11 @@ def test_merge_behavior(get_data_dir, expected_merged_config):
         get_data_dir, "sample_additional_config_for_merge.yaml"
     )
     os.environ["SAGEMAKER_ADMIN_CONFIG_OVERRIDE"] = valid_config_file_path
-    assert (
-        expected_merged_config
-        == SageMakerConfig(additional_config_paths=[additional_override_config_file_path]).config
+    assert expected_merged_config == fetch_sagemaker_config(
+        additional_config_paths=[additional_override_config_file_path]
     )
     os.environ["SAGEMAKER_USER_CONFIG_OVERRIDE"] = additional_override_config_file_path
-    assert expected_merged_config == SageMakerConfig().config
+    assert expected_merged_config == fetch_sagemaker_config()
     del os.environ["SAGEMAKER_ADMIN_CONFIG_OVERRIDE"]
     del os.environ["SAGEMAKER_USER_CONFIG_OVERRIDE"]
 
@@ -161,11 +160,8 @@ def test_s3_config_file(
     config_file_s3_uri = "s3://{}/{}".format(config_file_bucket, config_file_s3_prefix)
     expected_config = base_config_with_schema
     expected_config["SageMaker"] = valid_config_with_all_the_scopes
-    assert (
-        expected_config
-        == SageMakerConfig(
-            additional_config_paths=[config_file_s3_uri], s3_resource=s3_resource_mock
-        ).config
+    assert expected_config == fetch_sagemaker_config(
+        additional_config_paths=[config_file_s3_uri], s3_resource=s3_resource_mock
     )
 
 
@@ -178,7 +174,9 @@ def test_config_factory_when_default_s3_config_file_is_not_found(s3_resource_moc
     ).all.return_value = []
     config_file_s3_uri = "s3://{}/{}".format(config_file_bucket, config_file_s3_prefix)
     with pytest.raises(ValueError):
-        SageMakerConfig(additional_config_paths=[config_file_s3_uri], s3_resource=s3_resource_mock)
+        fetch_sagemaker_config(
+            additional_config_paths=[config_file_s3_uri], s3_resource=s3_resource_mock
+        )
 
 
 def test_s3_config_file_when_uri_provided_corresponds_to_a_path(
@@ -206,11 +204,8 @@ def test_s3_config_file_when_uri_provided_corresponds_to_a_path(
     config_file_s3_uri = "s3://{}/{}".format(config_file_bucket, config_file_s3_prefix)
     expected_config = base_config_with_schema
     expected_config["SageMaker"] = valid_config_with_all_the_scopes
-    assert (
-        expected_config
-        == SageMakerConfig(
-            additional_config_paths=[config_file_s3_uri], s3_resource=s3_resource_mock
-        ).config
+    assert expected_config == fetch_sagemaker_config(
+        additional_config_paths=[config_file_s3_uri], s3_resource=s3_resource_mock
     )
 
 
@@ -236,11 +231,8 @@ def test_merge_of_s3_default_config_file_and_regular_config_file(
         get_data_dir, "sample_additional_config_for_merge.yaml"
     )
     os.environ["SAGEMAKER_ADMIN_CONFIG_OVERRIDE"] = config_file_s3_uri
-    assert (
-        expected_merged_config
-        == SageMakerConfig(
-            additional_config_paths=[additional_override_config_file_path],
-            s3_resource=s3_resource_mock,
-        ).config
+    assert expected_merged_config == fetch_sagemaker_config(
+        additional_config_paths=[additional_override_config_file_path],
+        s3_resource=s3_resource_mock,
     )
     del os.environ["SAGEMAKER_ADMIN_CONFIG_OVERRIDE"]
