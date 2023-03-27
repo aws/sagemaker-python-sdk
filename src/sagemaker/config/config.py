@@ -181,16 +181,11 @@ def _get_inferred_s3_uri(s3_uri, s3_resource_for_config):
     """Placeholder docstring"""
     parsed_url = urlparse(s3_uri)
     bucket, key_prefix = parsed_url.netloc, parsed_url.path.lstrip("/")
-    try:
-        s3_bucket = s3_resource_for_config.Bucket(name=bucket)
-        s3_objects = s3_bucket.objects.filter(Prefix=key_prefix).all()
-        s3_files_with_same_prefix = [
-            "{}{}/{}".format(S3_PREFIX, bucket, s3_object.key) for s3_object in s3_objects
-        ]
-    except Exception as e:  # pylint: disable=W0703
-        # if customers didn't provide us with a valid S3 File/insufficient read permission,
-        # We will fail hard.
-        raise RuntimeError(f"Unable to read from S3 with URI: {s3_uri} due to {e}")
+    s3_bucket = s3_resource_for_config.Bucket(name=bucket)
+    s3_objects = s3_bucket.objects.filter(Prefix=key_prefix).all()
+    s3_files_with_same_prefix = [
+        "{}{}/{}".format(S3_PREFIX, bucket, s3_object.key) for s3_object in s3_objects
+    ]
     if len(s3_files_with_same_prefix) == 0:
         # Customer provided us with an incorrect s3 path.
         raise ValueError("Provide a valid S3 path instead of {}".format(s3_uri))
