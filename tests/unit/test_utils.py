@@ -226,6 +226,73 @@ def test_update_list_of_dicts_with_values_from_config():
         {"a": 1, "b": 2, "c": 3},
         {"a": 5, "c": 6, "d": 8},
     ]
+    # Same happy case with different order of items in union_key_paths
+    input_list = [{"a": 1, "b": 2}, {"a": 5, "c": 6}]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "c": 3,
+        },
+        {
+            "a": 7,  # This should not be used. Use values from Input.
+            "d": 8,
+        },
+    ]
+    ss.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    update_list_of_dicts_with_values_from_config(
+        input_list, config_path, union_key_paths=[["d", "e"], ["c", "e"]], sagemaker_session=ss
+    )
+    assert input_list == [
+        {"a": 1, "b": 2, "c": 3},
+        {"a": 5, "c": 6, "d": 8},
+    ]
+    # Testing the combination of union parameter and required parameter. i.e. A parameter is both
+    # required and part of Union.
+    input_list = [{"a": 1, "b": 2}, {"a": 5, "c": 6}]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "c": 3,
+        },
+        {
+            "a": 7,  # This should not be used. Use values from Input.
+            "d": 8,
+        },
+    ]
+    ss.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    update_list_of_dicts_with_values_from_config(
+        input_list,
+        config_path,
+        required_key_paths=["e"],
+        union_key_paths=[["d", "e"], ["c", "e"]],
+        sagemaker_session=ss,
+    )
+    # No merge should happen since 'e' is not present, even though union is obeyed.
+    assert input_list == [{"a": 1, "b": 2}, {"a": 5, "c": 6}]
+    # Same test but the required parameter is present.
+    input_list = [{"a": 1, "e": 2}, {"a": 5, "e": 6}]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "f": 3,
+        },
+        {
+            "a": 7,  # This should not be used. Use values from Input.
+            "g": 8,
+        },
+    ]
+    ss.sagemaker_config.config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    update_list_of_dicts_with_values_from_config(
+        input_list,
+        config_path,
+        required_key_paths=["e"],
+        union_key_paths=[["d", "e"], ["c", "e"]],
+        sagemaker_session=ss,
+    )
+    assert input_list == [
+        {"a": 1, "e": 2, "f": 3},
+        {"a": 5, "e": 6, "g": 8},
+    ]
 
 
 def test_set_nested_value():

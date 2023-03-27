@@ -52,20 +52,20 @@ S3_PREFIX = "s3://"
 
 
 class SageMakerConfig(object):
-    """SageMakerConfig class encapsulates the Config for SageMaker Python SDK.
+    """A class that encapsulates the configuration for the SageMaker Python SDK.
 
-    Usages:
-    This class will be integrated with sagemaker.session.Session. Users of SageMaker Python SDK
-    will have the ability to pass a SageMakerConfig object to sagemaker.session.Session. If
-    SageMakerConfig object is not provided by the user, then sagemaker.session.Session will
-    create its own SageMakerConfig object.
+    This class is used to define default values provided by the user.
 
-    Note: Once sagemaker.session.Session is initialized, it will operate with the configuration
-    values at that instant. If the users wish to alter config files/file paths after
-    sagemaker.session.Session is initialized, then that will not be reflected in
-    sagemaker.session.Session. They would have to re-initialize sagemaker.session.Session to
-    pick the latest changes.
+    This class is integrated with sagemaker.session.Session. Users of the SageMaker Python SDK
+    have the ability to pass a SageMakerConfig object to sagemaker.session.Session. If a
+    SageMakerConfig object is not provided by the user, then sagemaker.session.Session
+    creates its own SageMakerConfig object.
 
+    Note: After sagemaker.session.Session is initialized, it operates with the configuration
+    values defined at that instant. If you modify the configuration files or file paths after
+    sagemaker.session.Session is initialized, those changes are not reflected in
+    sagemaker.session.Session. To incorporate the changes in the configuration files,
+    initialize sagemaker.session.Session again.
     """
 
     def __init__(self, additional_config_paths: List[str] = None, s3_resource=_DEFAULT_S3_RESOURCE):
