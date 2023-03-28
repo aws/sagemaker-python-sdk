@@ -132,8 +132,10 @@ def load_sagemaker_config(
 
 
 def validate_sagemaker_config(sagemaker_config: dict = None):
-    """Validates whether a given dictionary adheres to the schema defined at
-       ``sagemaker.config.config_schema.SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA``
+    """Validates whether a given dictionary adheres to the schema.
+
+    The schema is defined at
+    ``sagemaker.config.config_schema.SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA``.
 
     Args:
         sagemaker_config: A dictionary containing default values for the
