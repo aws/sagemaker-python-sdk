@@ -92,7 +92,8 @@ fi
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 LIFECYCLE_CONFIG_NAME="install-python-sdk-$COMMIT_ID"
 
-python setup.py sdist
+python -m pip install build
+python -m build --sdist
 
 aws s3 --region us-west-2 cp ./dist/sagemaker-*.tar.gz s3://sagemaker-python-sdk-$ACCOUNT_ID/notebook_test/sagemaker-$COMMIT_ID.tar.gz
 aws s3 cp s3://sagemaker-python-sdk-cli-$ACCOUNT_ID/mead-nb-test.tar.gz mead-nb-test.tar.gz
