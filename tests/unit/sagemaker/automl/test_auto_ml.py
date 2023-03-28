@@ -305,18 +305,18 @@ def test_framework_initialization_with_sagemaker_config_injection(sagemaker_sess
         sagemaker_session=sagemaker_session,
     )
 
-    expected_volume_kms_key_id = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoML"]["AutoMLJobConfig"][
-        "SecurityConfig"
-    ]["VolumeKmsKeyId"]
-    expected_role_arn = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoML"]["RoleArn"]
-    expected_kms_key_id = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoML"]["OutputDataConfig"][
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoMLJob"][
+        "AutoMLJobConfig"
+    ]["SecurityConfig"]["VolumeKmsKeyId"]
+    expected_role_arn = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoMLJob"]["RoleArn"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoMLJob"]["OutputDataConfig"][
         "KmsKeyId"
     ]
-    expected_vpc_config = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoML"]["AutoMLJobConfig"][
+    expected_vpc_config = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoMLJob"]["AutoMLJobConfig"][
         "SecurityConfig"
     ]["VpcConfig"]
     expected_enable_inter_container_traffic_encryption = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"][
-        "AutoML"
+        "AutoMLJob"
     ]["AutoMLJobConfig"]["SecurityConfig"]["EnableInterContainerTrafficEncryption"]
     assert auto_ml.role == expected_role_arn
     assert auto_ml.output_kms_key == expected_kms_key_id

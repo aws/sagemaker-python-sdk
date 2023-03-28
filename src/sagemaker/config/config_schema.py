@@ -67,7 +67,7 @@ MODEL_PACKAGE = "ModelPackage"
 MODEL = "Model"
 MONITORING_SCHEDULE = "MonitoringSchedule"
 ENDPOINT_CONFIG = "EndpointConfig"
-AUTO_ML = "AutoML"
+AUTO_ML_JOB = "AutoMLJob"
 COMPILATION_JOB = "CompilationJob"
 CUSTOM_PARAMETERS = "CustomParameters"
 PIPELINE = "Pipeline"
@@ -136,16 +136,16 @@ FEATURE_GROUP_OFFLINE_STORE_KMS_KEY_ID_PATH = _simple_path(
 FEATURE_GROUP_ONLINE_STORE_KMS_KEY_ID_PATH = _simple_path(
     FEATURE_GROUP_ONLINE_STORE_CONFIG_PATH, SECURITY_CONFIG, KMS_KEY_ID
 )
-AUTO_ML_OUTPUT_CONFIG_PATH = _simple_path(SAGEMAKER, AUTO_ML, OUTPUT_DATA_CONFIG)
-AUTO_ML_KMS_KEY_ID_PATH = _simple_path(SAGEMAKER, AUTO_ML, OUTPUT_DATA_CONFIG, KMS_KEY_ID)
+AUTO_ML_OUTPUT_CONFIG_PATH = _simple_path(SAGEMAKER, AUTO_ML_JOB, OUTPUT_DATA_CONFIG)
+AUTO_ML_KMS_KEY_ID_PATH = _simple_path(SAGEMAKER, AUTO_ML_JOB, OUTPUT_DATA_CONFIG, KMS_KEY_ID)
 AUTO_ML_VOLUME_KMS_KEY_ID_PATH = _simple_path(
-    SAGEMAKER, AUTO_ML, AUTO_ML_JOB_CONFIG, SECURITY_CONFIG, VOLUME_KMS_KEY_ID
+    SAGEMAKER, AUTO_ML_JOB, AUTO_ML_JOB_CONFIG, SECURITY_CONFIG, VOLUME_KMS_KEY_ID
 )
-AUTO_ML_ROLE_ARN_PATH = _simple_path(SAGEMAKER, AUTO_ML, ROLE_ARN)
+AUTO_ML_ROLE_ARN_PATH = _simple_path(SAGEMAKER, AUTO_ML_JOB, ROLE_ARN)
 AUTO_ML_VPC_CONFIG_PATH = _simple_path(
-    SAGEMAKER, AUTO_ML, AUTO_ML_JOB_CONFIG, SECURITY_CONFIG, VPC_CONFIG
+    SAGEMAKER, AUTO_ML_JOB, AUTO_ML_JOB_CONFIG, SECURITY_CONFIG, VPC_CONFIG
 )
-AUTO_ML_JOB_CONFIG_PATH = _simple_path(SAGEMAKER, AUTO_ML, AUTO_ML_JOB_CONFIG)
+AUTO_ML_JOB_CONFIG_PATH = _simple_path(SAGEMAKER, AUTO_ML_JOB, AUTO_ML_JOB_CONFIG)
 MONITORING_JOB_DEFINITION_PREFIX = _simple_path(
     SAGEMAKER, MONITORING_SCHEDULE, MONITORING_SCHEDULE_CONFIG, MONITORING_JOB_DEFINITION
 )
@@ -233,7 +233,7 @@ MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION_PATH = _simple_path(
 )
 AUTO_ML_INTER_CONTAINER_ENCRYPTION_PATH = _simple_path(
     SAGEMAKER,
-    AUTO_ML,
+    AUTO_ML_JOB,
     AUTO_ML_JOB_CONFIG,
     SECURITY_CONFIG,
     ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION,
@@ -256,9 +256,23 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
             # Schema for IAM Role. This includes a Regex validator.
             TYPE: "string",
             "pattern": r"^arn:aws[a-z\-]*:iam::\d{12}:role/?[a-zA-Z_0-9+=,.@\-_/]+$",
+            "minLength": 20,
+            "maxLength": 2048,
         },
-        "securityGroupId": {TYPE: "string", "pattern": r"[-0-9a-zA-Z]+"},
-        "subnet": {TYPE: "string", "pattern": r"[-0-9a-zA-Z]+"},
+        "kmsKeyId": {
+            TYPE: "string",
+            "maxLength": 2048,
+        },
+        "securityGroupId": {
+            TYPE: "string",
+            "pattern": r"[-0-9a-zA-Z]+",
+            "maxLength": 32,
+        },
+        "subnet": {
+            TYPE: "string",
+            "pattern": r"[-0-9a-zA-Z]+",
+            "maxLength": 32,
+        },
         "vpcConfig": {
             # Schema for VPC Configs.
             # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference
@@ -269,8 +283,15 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                 SECURITY_GROUP_IDS: {
                     TYPE: "array",
                     "items": {"$ref": "#/definitions/securityGroupId"},
+                    "minItems": 1,
+                    "maxItems": 5,
                 },
-                SUBNETS: {TYPE: "array", "items": {"$ref": "#/definitions/subnet"}},
+                SUBNETS: {
+                    TYPE: "array",
+                    "items": {"$ref": "#/definitions/subnet"},
+                    "minItems": 1,
+                    "maxItems": 16,
+                },
             },
         },
         "productionVariant": {
@@ -280,7 +301,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                 CORE_DUMP_CONFIG: {
                     TYPE: OBJECT,
                     ADDITIONAL_PROPERTIES: False,
-                    PROPERTIES: {KMS_KEY_ID: {TYPE: "string"}},
+                    PROPERTIES: {KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"}},
                 }
             },
         },
@@ -295,12 +316,12 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                         TRANSFORM_OUTPUT: {
                             TYPE: OBJECT,
                             ADDITIONAL_PROPERTIES: False,
-                            PROPERTIES: {KMS_KEY_ID: {TYPE: "string"}},
+                            PROPERTIES: {KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"}},
                         },
                         TRANSFORM_RESOURCES: {
                             TYPE: OBJECT,
                             ADDITIONAL_PROPERTIES: False,
-                            PROPERTIES: {VOLUME_KMS_KEY_ID: {TYPE: "string"}},
+                            PROPERTIES: {VOLUME_KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"}},
                         },
                     },
                 }
@@ -317,19 +338,13 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                         ATHENA_DATASET_DEFINITION: {
                             TYPE: OBJECT,
                             ADDITIONAL_PROPERTIES: False,
-                            PROPERTIES: {
-                                KMS_KEY_ID: {
-                                    TYPE: "string",
-                                }
-                            },
+                            PROPERTIES: {KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"}},
                         },
                         REDSHIFT_DATASET_DEFINITION: {
                             TYPE: OBJECT,
                             ADDITIONAL_PROPERTIES: False,
                             PROPERTIES: {
-                                KMS_KEY_ID: {
-                                    TYPE: "string",
-                                },
+                                KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"},
                                 CLUSTER_ROLE_ARN: {"$ref": "#/definitions/roleArn"},
                             },
                         },
@@ -362,7 +377,6 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
             "minItems": 0,
             "maxItems": 50,
         },
-        SUBNETS: {TYPE: "array", "items": {"$ref": "#/definitions/subnet"}},
     },
     PROPERTIES: {
         SCHEMA_VERSION: {
@@ -409,7 +423,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                 S3_STORAGE_CONFIG: {
                                     TYPE: OBJECT,
                                     ADDITIONAL_PROPERTIES: False,
-                                    PROPERTIES: {KMS_KEY_ID: {TYPE: "string"}},
+                                    PROPERTIES: {KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"}},
                                 }
                             },
                         },
@@ -420,7 +434,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                 SECURITY_CONFIG: {
                                     TYPE: OBJECT,
                                     ADDITIONAL_PROPERTIES: False,
-                                    PROPERTIES: {KMS_KEY_ID: {TYPE: "string"}},
+                                    PROPERTIES: {KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"}},
                                 }
                             },
                         },
@@ -445,7 +459,9 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                         MONITORING_OUTPUT_CONFIG: {
                                             TYPE: OBJECT,
                                             ADDITIONAL_PROPERTIES: False,
-                                            PROPERTIES: {KMS_KEY_ID: {TYPE: "string"}},
+                                            PROPERTIES: {
+                                                KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"}
+                                            },
                                         },
                                         MONITORING_RESOURCES: {
                                             TYPE: OBJECT,
@@ -455,7 +471,9 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                                     TYPE: OBJECT,
                                                     ADDITIONAL_PROPERTIES: False,
                                                     PROPERTIES: {
-                                                        VOLUME_KMS_KEY_ID: {TYPE: "string"}
+                                                        VOLUME_KMS_KEY_ID: {
+                                                            "$ref": "#/definitions/kmsKeyId"
+                                                        }
                                                     },
                                                 }
                                             },
@@ -482,8 +500,6 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                 # Endpoint Config
                 # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateEndpointConfig.html
                 # Note: there is a separate API for creating Endpoints.
-                # That will be added later to schema once we start
-                # supporting other parameters such as Tags
                 ENDPOINT_CONFIG: {
                     TYPE: OBJECT,
                     ADDITIONAL_PROPERTIES: False,
@@ -495,16 +511,16 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                 OUTPUT_CONFIG: {
                                     TYPE: OBJECT,
                                     ADDITIONAL_PROPERTIES: False,
-                                    PROPERTIES: {KMS_KEY_ID: {TYPE: "string"}},
+                                    PROPERTIES: {KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"}},
                                 }
                             },
                         },
                         DATA_CAPTURE_CONFIG: {
                             TYPE: OBJECT,
                             ADDITIONAL_PROPERTIES: False,
-                            PROPERTIES: {KMS_KEY_ID: {TYPE: "string"}},
+                            PROPERTIES: {KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"}},
                         },
-                        KMS_KEY_ID: {TYPE: "string"},
+                        KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"},
                         PRODUCTION_VARIANTS: {
                             TYPE: "array",
                             "items": {"$ref": "#/definitions/productionVariant"},
@@ -514,7 +530,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                 },
                 # Auto ML
                 # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateAutoMLJob.html
-                AUTO_ML: {
+                AUTO_ML_JOB: {
                     TYPE: OBJECT,
                     ADDITIONAL_PROPERTIES: False,
                     PROPERTIES: {
@@ -529,9 +545,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                         ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION: {
                                             TYPE: "boolean"
                                         },
-                                        VOLUME_KMS_KEY_ID: {
-                                            TYPE: "string",
-                                        },
+                                        VOLUME_KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"},
                                         VPC_CONFIG: {"$ref": "#/definitions/vpcConfig"},
                                     },
                                 }
@@ -540,7 +554,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                         OUTPUT_DATA_CONFIG: {
                             TYPE: OBJECT,
                             ADDITIONAL_PROPERTIES: False,
-                            PROPERTIES: {KMS_KEY_ID: {TYPE: "string"}},
+                            PROPERTIES: {KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"}},
                         },
                         ROLE_ARN: {"$ref": "#/definitions/roleArn"},
                         TAGS: {"$ref": "#/definitions/tags"},
@@ -555,17 +569,17 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                         DATA_CAPTURE_CONFIG: {
                             TYPE: OBJECT,
                             ADDITIONAL_PROPERTIES: False,
-                            PROPERTIES: {KMS_KEY_ID: {TYPE: "string"}},
+                            PROPERTIES: {KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"}},
                         },
                         TRANSFORM_OUTPUT: {
                             TYPE: OBJECT,
                             ADDITIONAL_PROPERTIES: False,
-                            PROPERTIES: {KMS_KEY_ID: {TYPE: "string"}},
+                            PROPERTIES: {KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"}},
                         },
                         TRANSFORM_RESOURCES: {
                             TYPE: OBJECT,
                             ADDITIONAL_PROPERTIES: False,
-                            PROPERTIES: {VOLUME_KMS_KEY_ID: {TYPE: "string"}},
+                            PROPERTIES: {VOLUME_KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"}},
                         },
                         TAGS: {"$ref": "#/definitions/tags"},
                     },
@@ -580,7 +594,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                         OUTPUT_CONFIG: {
                             TYPE: OBJECT,
                             ADDITIONAL_PROPERTIES: False,
-                            PROPERTIES: {KMS_KEY_ID: {TYPE: "string"}},
+                            PROPERTIES: {KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"}},
                         },
                         ROLE_ARN: {"$ref": "#/definitions/roleArn"},
                         VPC_CONFIG: {"$ref": "#/definitions/vpcConfig"},
@@ -651,11 +665,13 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                         PROCESSING_INPUTS: {
                             TYPE: "array",
                             "items": {"$ref": "#/definitions/processingInput"},
+                            "minItems": 0,
+                            "maxItems": 10,
                         },
                         PROCESSING_OUTPUT_CONFIG: {
                             TYPE: OBJECT,
                             ADDITIONAL_PROPERTIES: False,
-                            PROPERTIES: {KMS_KEY_ID: {TYPE: "string"}},
+                            PROPERTIES: {KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"}},
                         },
                         PROCESSING_RESOURCES: {
                             TYPE: OBJECT,
@@ -664,7 +680,9 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                 CLUSTER_CONFIG: {
                                     TYPE: OBJECT,
                                     ADDITIONAL_PROPERTIES: False,
-                                    PROPERTIES: {VOLUME_KMS_KEY_ID: {TYPE: "string"}},
+                                    PROPERTIES: {
+                                        VOLUME_KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"}
+                                    },
                                 }
                             },
                         },
@@ -683,12 +701,12 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                         OUTPUT_DATA_CONFIG: {
                             TYPE: OBJECT,
                             ADDITIONAL_PROPERTIES: False,
-                            PROPERTIES: {KMS_KEY_ID: {TYPE: "string"}},
+                            PROPERTIES: {KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"}},
                         },
                         RESOURCE_CONFIG: {
                             TYPE: OBJECT,
                             ADDITIONAL_PROPERTIES: False,
-                            PROPERTIES: {VOLUME_KMS_KEY_ID: {TYPE: "string"}},
+                            PROPERTIES: {VOLUME_KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"}},
                         },
                         ROLE_ARN: {"$ref": "#/definitions/roleArn"},
                         VPC_CONFIG: {"$ref": "#/definitions/vpcConfig"},
@@ -704,7 +722,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                         OUTPUT_CONFIG: {
                             TYPE: OBJECT,
                             ADDITIONAL_PROPERTIES: False,
-                            PROPERTIES: {KMS_KEY_ID: {TYPE: "string"}},
+                            PROPERTIES: {KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"}},
                         },
                         ROLE_ARN: {"$ref": "#/definitions/roleArn"},
                         TAGS: {"$ref": "#/definitions/tags"},

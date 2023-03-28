@@ -59,7 +59,7 @@ from sagemaker.config import (
     AUTO_ML_ROLE_ARN_PATH,
     AUTO_ML_OUTPUT_CONFIG_PATH,
     AUTO_ML_JOB_CONFIG_PATH,
-    AUTO_ML,
+    AUTO_ML_JOB,
     COMPILATION_JOB_ROLE_ARN_PATH,
     COMPILATION_JOB_OUTPUT_CONFIG_PATH,
     COMPILATION_JOB_VPC_CONFIG_PATH,
@@ -1213,9 +1213,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
         # or neither, but not both
         union_key_paths_for_dataset_definition = [
             [
+                "DatasetDefinition",
+                "S3Input",
+            ],
+            [
                 "DatasetDefinition.AthenaDatasetDefinition",
                 "DatasetDefinition.RedshiftDatasetDefinition",
-            ]
+            ],
         ]
         update_list_of_dicts_with_values_from_config(
             inputs,
@@ -2193,7 +2197,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             auto_ml_job_request["ProblemType"] = problem_type
 
         tags = _append_project_tags(tags)
-        tags = self._append_sagemaker_config_tags(tags, "{}.{}.{}".format(SAGEMAKER, AUTO_ML, TAGS))
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, AUTO_ML_JOB, TAGS)
+        )
         if tags is not None:
             auto_ml_job_request["Tags"] = tags
 

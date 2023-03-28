@@ -80,7 +80,7 @@ def test_valid_transform_job_schema(base_config_with_schema, valid_transform_job
 
 
 def test_valid_automl_schema(base_config_with_schema, valid_automl_config):
-    _validate_config(base_config_with_schema, {"AutoML": valid_automl_config})
+    _validate_config(base_config_with_schema, {"AutoMLJob": valid_automl_config})
 
 
 def test_valid_endpoint_config_schema(base_config_with_schema, valid_endpointconfig_config):

@@ -183,7 +183,7 @@ def valid_config_with_all_the_scopes(
         "FeatureGroup": valid_feature_group_config,
         "MonitoringSchedule": valid_monitoring_schedule_config,
         "EndpointConfig": valid_endpointconfig_config,
-        "AutoML": valid_automl_config,
+        "AutoMLJob": valid_automl_config,
         "TransformJob": valid_transform_job_config,
         "CompilationJob": valid_compilation_job_config,
         "Pipeline": valid_pipeline_config,

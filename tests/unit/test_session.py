@@ -274,14 +274,7 @@ def test_create_process_with_sagemaker_config_injection(sagemaker_session):
     processing_inputs = [
         {
             "InputName": "input-1",
-            "S3Input": {
-                "S3Uri": "mocked_s3_uri_from_upload_data",
-                "LocalPath": "/container/path/",
-                "S3DataType": "Archive",
-                "S3InputMode": "File",
-                "S3DataDistributionType": "FullyReplicated",
-                "S3CompressionType": "None",
-            },
+            # No S3Input because the API expects only one of S3Input or DatasetDefinition
             "DatasetDefinition": {
                 "AthenaDatasetDefinition": {},
             },
@@ -3184,19 +3177,19 @@ def test_create_auto_ml_with_sagemaker_config_injection(sagemaker_session):
     job_name = JOB_NAME
     sagemaker_session.auto_ml(input_config, output_config, auto_ml_job_config, job_name=job_name)
     expected_call_args = copy.deepcopy(DEFAULT_EXPECTED_AUTO_ML_JOB_ARGS)
-    expected_volume_kms_key_id = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoML"]["AutoMLJobConfig"][
-        "SecurityConfig"
-    ]["VolumeKmsKeyId"]
-    expected_role_arn = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoML"]["RoleArn"]
-    expected_kms_key_id = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoML"]["OutputDataConfig"][
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoMLJob"][
+        "AutoMLJobConfig"
+    ]["SecurityConfig"]["VolumeKmsKeyId"]
+    expected_role_arn = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoMLJob"]["RoleArn"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoMLJob"]["OutputDataConfig"][
         "KmsKeyId"
     ]
-    expected_vpc_config = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoML"]["AutoMLJobConfig"][
+    expected_vpc_config = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoMLJob"]["AutoMLJobConfig"][
         "SecurityConfig"
     ]["VpcConfig"]
-    expected_tags = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoML"]["Tags"]
+    expected_tags = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoMLJob"]["Tags"]
     expected_enable_inter_container_traffic_encryption = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"][
-        "AutoML"
+        "AutoMLJob"
     ]["AutoMLJobConfig"]["SecurityConfig"]["EnableInterContainerTrafficEncryption"]
     expected_call_args["OutputDataConfig"]["KmsKeyId"] = expected_kms_key_id
     expected_call_args["RoleArn"] = expected_role_arn
