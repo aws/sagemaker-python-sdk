@@ -60,8 +60,8 @@ def load_sagemaker_config(
     defined by the SDK.
 
     Users can override the default admin and user config file paths using the
-    ``SAGEMAKER_ADMIN_CONFIG_OVERRIDE`` and ``SAGEMAKER_USER_CONFIG_OVERRIDE`` environment variables,
-    respectively.
+    ``SAGEMAKER_ADMIN_CONFIG_OVERRIDE`` and ``SAGEMAKER_USER_CONFIG_OVERRIDE`` environment
+    variables, respectively.
 
     Additional config file paths can also be provided as a parameter.
 
@@ -71,13 +71,16 @@ def load_sagemaker_config(
         * Merges the files in the same order.
 
     This method throws exceptions in the following cases:
-        * ``jsonschema.exceptions.ValidationError``: Schema validation fails for one or more config files.
-        * ``RuntimeError``: The method is unable to retrieve the list of all S3 files with the same prefix or is unable to retrieve the file.
+        * ``jsonschema.exceptions.ValidationError``: Schema validation fails for one or more
+          config files.
+        * ``RuntimeError``: The method is unable to retrieve the list of all S3 files with the
+          same prefix or is unable to retrieve the file.
         * ``ValueError``: There are no S3 files with the prefix when an S3 URI is provided.
-        * ``ValueError``: There is no config.yaml file in the S3 bucket when an S3 URI is provided.
-        * ``ValueError``: A file doesn't exist in a path that was specified by the user as part of an
-          environment variable or additional configuration file path. This doesn't include the default
-          config file locations.
+        * ``ValueError``: There is no config.yaml file in the S3 bucket when an S3 URI is
+          provided.
+        * ``ValueError``: A file doesn't exist in a path that was specified by the user as
+          part of an environment variable or additional configuration file path. This doesn't
+          include the default config file locations.
 
     Args:
         additional_config_paths: List of config file paths.
@@ -128,7 +131,8 @@ def load_sagemaker_config(
 
 
 def validate_sagemaker_config(sagemaker_config: dict = None):
-    """Validates whether a given dictionary adheres to the schema defined at ``sagemaker.config.config_schema.SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA``
+    """Validates whether a given dictionary adheres to the schema defined at 
+       ``sagemaker.config.config_schema.SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA``
 
     Args:
         sagemaker_config: A dictionary containing default values for the
