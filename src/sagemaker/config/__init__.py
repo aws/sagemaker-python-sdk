@@ -13,7 +13,7 @@
 """This module configures the default values for SageMaker Python SDK."""
 
 from __future__ import absolute_import
-from sagemaker.config.config import fetch_sagemaker_config, validate_sagemaker_config  # noqa: F401
+from sagemaker.config.config import load_sagemaker_config, validate_sagemaker_config  # noqa: F401
 from sagemaker.config.config_schema import (  # noqa: F401
     KEY,
     TRAINING_JOB,

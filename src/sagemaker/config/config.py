@@ -51,7 +51,7 @@ _DEFAULT_S3_RESOURCE = _BOTO_SESSION.resource("s3")
 S3_PREFIX = "s3://"
 
 
-def fetch_sagemaker_config(
+def load_sagemaker_config(
     additional_config_paths: List[str] = None, s3_resource=_DEFAULT_S3_RESOURCE
 ) -> dict:
     """Helper method that loads config files and merges them.

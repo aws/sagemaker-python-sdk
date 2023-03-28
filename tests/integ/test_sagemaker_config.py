@@ -27,7 +27,7 @@ from sagemaker import (
     Predictor,
     Session,
 )
-from sagemaker.config import fetch_sagemaker_config
+from sagemaker.config import load_sagemaker_config
 from sagemaker.model_monitor import DataCaptureConfig
 from sagemaker.s3 import S3Uploader
 from sagemaker.sparkml import SparkMLModel
@@ -144,7 +144,7 @@ def sagemaker_session_with_dynamically_generated_sagemaker_config(
         sagemaker_client=sagemaker_client,
         sagemaker_runtime_client=runtime_client,
         sagemaker_metrics_client=metrics_client,
-        sagemaker_config=fetch_sagemaker_config([dynamic_sagemaker_config_yaml_path]),
+        sagemaker_config=load_sagemaker_config([dynamic_sagemaker_config_yaml_path]),
     )
 
     return session
@@ -173,7 +173,7 @@ def test_config_download_from_s3_and_merge(
     )
 
     # The thing being tested.
-    sagemaker_config = fetch_sagemaker_config(
+    sagemaker_config = load_sagemaker_config(
         additional_config_paths=[s3_uri_config_1, config_file_2_local_path]
     )
 
