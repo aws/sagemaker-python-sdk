@@ -96,7 +96,8 @@ def load_sagemaker_config(
             Note: S3 URI follows the format ``s3://<bucket>/<Key prefix>``
         s3_resource (boto3.resource("s3")): The Boto3 S3 resource. This is used to fetch
             config files from S3. If it is not provided, this method creates a default S3 resource.
-            See `Boto3 Session documentation <https://boto3.amazonaws.com/v1/documentation/api/latest/reference/core/session.html#boto3.session.Session.resource>`__.
+            See `Boto3 Session documentation <https://boto3.amazonaws.com/v1/documentation/api\
+            /latest/reference/core/session.html#boto3.session.Session.resource>`__.
             This argument is not needed if the config files are present in the local file system.
     """
     default_config_path = os.getenv(
@@ -131,7 +132,7 @@ def load_sagemaker_config(
 
 
 def validate_sagemaker_config(sagemaker_config: dict = None):
-    """Validates whether a given dictionary adheres to the schema defined at 
+    """Validates whether a given dictionary adheres to the schema defined at
        ``sagemaker.config.config_schema.SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA``
 
     Args:
