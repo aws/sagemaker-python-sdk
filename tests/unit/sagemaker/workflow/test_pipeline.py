@@ -71,8 +71,10 @@ def test_pipeline_create_and_update_without_role_arn(sagemaker_session_mock):
 
 def test_pipeline_create_and_update_with_config_injection(sagemaker_session_mock):
     # For tests which doesn't verify config file injection, operate with empty config
+    pipeline_role_arn = "arn:aws:iam::111111111111:role/ConfigRole"
     sagemaker_session_mock.sagemaker_config = {
-        "SageMaker": {"Pipeline": {"RoleArn": "ConfigRoleArn"}}
+        "SchemaVersion": "1.0",
+        "SageMaker": {"Pipeline": {"RoleArn": pipeline_role_arn}},
     }
     sagemaker_session_mock.sagemaker_client.describe_pipeline.return_value = {
         "PipelineArn": "pipeline-arn"
@@ -85,15 +87,21 @@ def test_pipeline_create_and_update_with_config_injection(sagemaker_session_mock
     )
     pipeline.create()
     sagemaker_session_mock.sagemaker_client.create_pipeline.assert_called_with(
-        PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn="ConfigRoleArn"
+        PipelineName="MyPipeline",
+        PipelineDefinition=pipeline.definition(),
+        RoleArn=pipeline_role_arn,
     )
     pipeline.update()
     sagemaker_session_mock.sagemaker_client.update_pipeline.assert_called_with(
-        PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn="ConfigRoleArn"
+        PipelineName="MyPipeline",
+        PipelineDefinition=pipeline.definition(),
+        RoleArn=pipeline_role_arn,
     )
     pipeline.upsert()
     assert sagemaker_session_mock.sagemaker_client.update_pipeline.called_with(
-        PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn="ConfigRoleArn"
+        PipelineName="MyPipeline",
+        PipelineDefinition=pipeline.definition(),
+        RoleArn=pipeline_role_arn,
     )
 
 
@@ -129,6 +137,7 @@ def test_pipeline_create_with_parallelism_config(sagemaker_session_mock, role_ar
 
 @patch("sagemaker.s3.S3Uploader.upload_string_as_file_body")
 def test_large_pipeline_create(sagemaker_session_mock, role_arn):
+    sagemaker_session_mock.sagemaker_config = {}
     parameter = ParameterString("MyStr")
     pipeline = Pipeline(
         name="MyPipeline",
@@ -151,6 +160,7 @@ def test_large_pipeline_create(sagemaker_session_mock, role_arn):
 
 
 def test_pipeline_update(sagemaker_session_mock, role_arn):
+    sagemaker_session_mock.sagemaker_config = {}
     pipeline = Pipeline(
         name="MyPipeline",
         parameters=[],
@@ -201,6 +211,7 @@ def test_pipeline_update_with_parallelism_config(sagemaker_session_mock, role_ar
 
 @patch("sagemaker.s3.S3Uploader.upload_string_as_file_body")
 def test_large_pipeline_update(sagemaker_session_mock, role_arn):
+    sagemaker_session_mock.sagemaker_config = {}
     parameter = ParameterString("MyStr")
     pipeline = Pipeline(
         name="MyPipeline",

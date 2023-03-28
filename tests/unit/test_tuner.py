@@ -1722,6 +1722,7 @@ def test_tags_prefixes_jumpstart_models(
         s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
     )
     sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
 
     sagemaker_session.sagemaker_client.describe_training_job.return_value = {
         "AlgorithmSpecification": {
@@ -1850,6 +1851,7 @@ def test_no_tags_prefixes_non_jumpstart_models(
         s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
     )
     sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
 
     sagemaker_session.sagemaker_client.describe_training_job.return_value = {
         "AlgorithmSpecification": {

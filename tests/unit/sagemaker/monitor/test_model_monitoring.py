@@ -877,8 +877,14 @@ def test_data_quality_batch_transform_monitor_create_schedule_with_sagemaker_con
     data_quality_monitor,
     sagemaker_session,
 ):
+    from sagemaker.utils import get_config_value
 
     sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_MONITORING_SCHEDULE
+    sagemaker_session._append_sagemaker_config_tags = Mock(
+        name="_append_sagemaker_config_tags",
+        side_effect=lambda tags, config_path_to_tags: tags
+        + get_config_value(config_path_to_tags, SAGEMAKER_CONFIG_MONITORING_SCHEDULE),
+    )
 
     sagemaker_session.sagemaker_client.create_monitoring_schedule = Mock()
     data_quality_monitor.sagemaker_session = sagemaker_session

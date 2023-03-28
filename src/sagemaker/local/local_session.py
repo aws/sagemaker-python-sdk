@@ -682,8 +682,9 @@ class LocalSession(Session):
             self.s3_resource = boto_session.resource("s3", endpoint_url=self.s3_endpoint_url)
             self.s3_client = boto_session.client("s3", endpoint_url=self.s3_endpoint_url)
             self.sagemaker_config = (
-                sagemaker_config if sagemaker_config else fetch_sagemaker_config(
-                    s3_resource=self.s3_resource)
+                sagemaker_config
+                if sagemaker_config
+                else fetch_sagemaker_config(s3_resource=self.s3_resource)
             )
         else:
             self.sagemaker_config = (

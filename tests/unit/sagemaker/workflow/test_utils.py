@@ -226,9 +226,11 @@ def test_inject_repack_script_s3(estimator, tmp, fake_s3):
     model_data = Properties(step_name="MyStep", shape_name="DescribeModelOutput")
     entry_point = "inference.py"
     source_dir_path = "s3://fake/location"
+    session_mock = fake_s3.sagemaker_session
+    session_mock.sagemaker_config = {}
     step = _RepackModelStep(
         name="MyRepackModelStep",
-        sagemaker_session=fake_s3.sagemaker_session,
+        sagemaker_session=session_mock,
         role=estimator.role,
         image_uri="foo",
         model_data=model_data,

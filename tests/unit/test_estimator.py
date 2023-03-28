@@ -913,6 +913,7 @@ def test_framework_with_no_default_profiler_in_unsupported_region(region):
         s3_resource=None,
         settings=SessionSettings(),
     )
+    sms.sagemaker_config = {}
     f = DummyFramework(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -943,6 +944,7 @@ def test_framework_with_debugger_config_set_up_in_unsupported_region(region):
             s3_resource=None,
             settings=SessionSettings(),
         )
+        sms.sagemaker_config = {}
         f = DummyFramework(
             entry_point=SCRIPT_PATH,
             role=ROLE,
@@ -970,6 +972,7 @@ def test_framework_enable_profiling_in_unsupported_region(region):
             s3_resource=None,
             settings=SessionSettings(),
         )
+        sms.sagemaker_config = {}
         f = DummyFramework(
             entry_point=SCRIPT_PATH,
             role=ROLE,
@@ -997,6 +1000,7 @@ def test_framework_update_profiling_in_unsupported_region(region):
             s3_resource=None,
             settings=SessionSettings(),
         )
+        sms.sagemaker_config = {}
         f = DummyFramework(
             entry_point=SCRIPT_PATH,
             role=ROLE,
@@ -1024,6 +1028,7 @@ def test_framework_disable_profiling_in_unsupported_region(region):
             s3_resource=None,
             settings=SessionSettings(),
         )
+        sms.sagemaker_config = {}
         f = DummyFramework(
             entry_point=SCRIPT_PATH,
             role=ROLE,
@@ -4129,6 +4134,7 @@ def test_script_mode_estimator_same_calls_as_framework(
         s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
     )
     sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
 
     script_uri = "s3://codebucket/someprefix/sourcedir.tar.gz"
 
@@ -4197,6 +4203,7 @@ def test_script_mode_estimator_tags_jumpstart_estimators_and_models(
         s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
     )
     sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
 
     instance_type = "ml.p2.xlarge"
     instance_count = 1
@@ -4269,6 +4276,7 @@ def test_script_mode_estimator_tags_jumpstart_models(
         s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
     )
     sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
 
     instance_type = "ml.p2.xlarge"
     instance_count = 1
@@ -4328,6 +4336,7 @@ def test_script_mode_estimator_tags_jumpstart_models_with_no_estimator_js_tags(
         s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
     )
     sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
 
     instance_type = "ml.p2.xlarge"
     instance_count = 1
@@ -4385,6 +4394,7 @@ def test_all_framework_estimators_add_jumpstart_tags(
     patched_repack_model, patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
 ):
     sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
     sagemaker_session.sagemaker_client.describe_training_job.return_value = {
         "ModelArtifacts": {"S3ModelArtifacts": "some-uri"}
     }
@@ -4464,6 +4474,7 @@ def test_script_mode_estimator_uses_jumpstart_base_name_with_js_models(
         s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
     )
     sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
 
     instance_type = "ml.p2.xlarge"
     instance_count = 1
@@ -4523,6 +4534,7 @@ def test_all_framework_estimators_add_jumpstart_base_name(
     patched_repack_model, patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
 ):
     sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
     sagemaker_session.sagemaker_client.describe_training_job.return_value = {
         "ModelArtifacts": {"S3ModelArtifacts": "some-uri"}
     }
@@ -4673,6 +4685,7 @@ def test_script_mode_estimator_escapes_hyperparameters_as_json(
         s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
     )
     sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
 
     instance_type = "ml.p2.xlarge"
     instance_count = 1
@@ -4721,6 +4734,7 @@ def test_estimator_local_download_dir(
         s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
     )
     sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
 
     local_download_dir = "some/download/dir"
 
