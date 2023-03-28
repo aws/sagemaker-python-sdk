@@ -268,6 +268,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self.local_mode = False
         if sagemaker_config:
             validate_sagemaker_config(sagemaker_config)
+            self.sagemaker_config = sagemaker_config
         else:
             if self.s3_resource is None:
                 s3 = self.boto_session.resource("s3", region_name=self.boto_region_name)
