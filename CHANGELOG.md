@@ -4,7 +4,7 @@
 
 ### Features
 
- * Support for SageMaker Intelligent Defaults
+ * Support for SageMaker SDK Defaults
 
 ### Bug Fixes and Other Changes
 
