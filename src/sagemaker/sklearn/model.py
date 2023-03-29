@@ -78,8 +78,8 @@ class SKLearnModel(FrameworkModel):
     def __init__(
         self,
         model_data: Union[str, PipelineVariable],
-        role: str,
-        entry_point: str,
+        role: Optional[str] = None,
+        entry_point: Optional[str] = None,
         framework_version: Optional[str] = None,
         py_version: str = "py3",
         image_uri: Optional[Union[str, PipelineVariable]] = None,

@@ -109,7 +109,8 @@ def sagemaker_session():
         s3_resource=None,
     )
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
-
+    # For tests which doesn't verify config file injection, operate with empty config
+    sms.sagemaker_config = {}
     return sms
 
 
@@ -325,6 +326,8 @@ def test_create_sagemaker_model_generates_model_name_each_time(
 @patch("sagemaker.session.Session")
 @patch("sagemaker.local.LocalSession")
 def test_create_sagemaker_model_creates_correct_session(local_session, session):
+    local_session.return_value.sagemaker_config = {}
+    session.return_value.sagemaker_config = {}
     model = Model(MODEL_IMAGE, MODEL_DATA)
     model._create_sagemaker_model("local")
     assert model.sagemaker_session == local_session.return_value
@@ -432,6 +435,8 @@ def test_model_create_transformer_base_name(sagemaker_session):
 @patch("sagemaker.session.Session")
 @patch("sagemaker.local.LocalSession")
 def test_transformer_creates_correct_session(local_session, session):
+    local_session.return_value.sagemaker_config = {}
+    session.return_value.sagemaker_config = {}
     model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=None)
     transformer = model.transformer(instance_count=1, instance_type="local")
     assert model.sagemaker_session == local_session.return_value

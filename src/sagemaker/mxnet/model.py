@@ -84,8 +84,8 @@ class MXNetModel(FrameworkModel):
     def __init__(
         self,
         model_data: Union[str, PipelineVariable],
-        role: str,
-        entry_point: str,
+        role: Optional[str] = None,
+        entry_point: Optional[str] = None,
         framework_version: str = _LOWEST_MMS_VERSION,
         py_version: Optional[str] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,

@@ -40,6 +40,9 @@ def sagemaker_session():
         settings=SessionSettings(),
     )
     session_mock.expand_role.return_value = ROLE
+
+    # For tests which doesn't verify config file injection, operate with empty config
+    session_mock.sagemaker_config = {}
     return session_mock
 
 

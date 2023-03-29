@@ -34,9 +34,9 @@ class HuggingFaceProcessor(FrameworkProcessor):
 
     def __init__(
         self,
-        role: str,
-        instance_count: Union[int, PipelineVariable],
-        instance_type: Union[str, PipelineVariable],
+        role: Optional[Union[str, PipelineVariable]] = None,
+        instance_count: Union[int, PipelineVariable] = None,
+        instance_type: Union[str, PipelineVariable] = None,
         transformers_version: Optional[str] = None,
         tensorflow_version: Optional[str] = None,
         pytorch_version: Optional[str] = None,
