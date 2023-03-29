@@ -3660,6 +3660,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         tags=None,
         kms_key=None,
         data_capture_config_dict=None,
+        explainer_config_dict=None,
         volume_size=None,
         model_data_download_timeout=None,
         container_startup_health_check_timeout=None,
@@ -3686,6 +3687,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 attached to the instance hosting the endpoint.
             data_capture_config_dict (dict): Specifies configuration related to Endpoint data
                 capture for use with Amazon SageMaker Model Monitoring. Default: None.
+            explainer_config_dict (dict): Specifies configuration to enable explainers.
+                Default: None.
             volume_size (int): The size, in GB, of the ML storage volume attached to individual
                 inference instance associated with the production variant. Currenly only Amazon EBS
                 gp2 storage volumes are supported.
@@ -3751,6 +3754,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             )
             request["DataCaptureConfig"] = inferred_data_capture_config_dict
 
+        if explainer_config_dict is not None:
+            request["ExplainerConfig"] = explainer_config_dict
+
         self.sagemaker_client.create_endpoint_config(**request)
         return name
 
@@ -3761,6 +3767,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         new_tags=None,
         new_kms_key=None,
         new_data_capture_config_dict=None,
+        new_explainer_config_dict=None,
         new_production_variants=None,
     ):
         """Create an Amazon SageMaker endpoint configuration from an existing one.
@@ -3785,6 +3792,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             new_data_capture_config_dict (dict): Specifies configuration related to Endpoint data
                 capture for use with Amazon SageMaker Model Monitoring (default: None).
                 If not specified, the data capture configuration of the existing
+                endpoint configuration is used.
+            new_explainer_config_dict (dict): Specifies configuration to enable explainers.
+                (default: None). If not specified, the explainer configuration of the existing
                 endpoint configuration is used.
             new_production_variants (list[dict]): The configuration for which model(s) to host and
                 the resources to deploy for hosting the model(s). If not specified,
@@ -3855,6 +3865,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 sagemaker_session=self,
             )
             request["AsyncInferenceConfig"] = inferred_async_inference_config_dict
+
+        request_explainer_config_dict = (
+            new_explainer_config_dict or existing_endpoint_config_desc.get("ExplainerConfig", None)
+        )
+
+        if request_explainer_config_dict is not None:
+            request["ExplainerConfig"] = request_explainer_config_dict
 
         self.sagemaker_client.create_endpoint_config(**request)
 
@@ -4372,6 +4389,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         wait=True,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
+        explainer_config_dict=None,
     ):
         """Create an SageMaker ``Endpoint`` from a list of production variants.
 
@@ -4388,6 +4406,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 capture for use with Amazon SageMaker Model Monitoring. Default: None.
             async_inference_config_dict (dict) : specifies configuration related to async endpoint.
                 Use this configuration when trying to create async endpoint and make async inference
+                (default: None)
+            explainer_config_dict (dict) : specifies configuration related to explainer.
+                Use this configuration when trying to use online explainability.
                 (default: None)
         Returns:
             str: The name of the created ``Endpoint``.
@@ -4422,6 +4443,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 sagemaker_session=self,
             )
             config_options["AsyncInferenceConfig"] = inferred_async_inference_config_dict
+        if explainer_config_dict is not None:
+            config_options["ExplainerConfig"] = explainer_config_dict
 
         LOGGER.info("Creating endpoint-config with name %s", name)
         self.sagemaker_client.create_endpoint_config(**config_options)
