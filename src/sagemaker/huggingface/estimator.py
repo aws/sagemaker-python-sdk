@@ -213,10 +213,15 @@ class HuggingFace(Framework):
 
         self._validate_args(image_uri=image_uri)
 
+        if "enable_sagemaker_metrics" not in kwargs:
+            kwargs["enable_sagemaker_metrics"] = True
+
+        kwargs["py_version"] = self.py_version
+
+        super(HuggingFace, self).__init__(entry_point, source_dir, hyperparameters, image_uri=image_uri, **kwargs)
+
         self.base_framework_name = "tensorflow" if tensorflow_version is not None else "pytorch"
-        self.base_framework_version = (
-            tensorflow_version if tensorflow_version is not None else pytorch_version
-        )
+        self.base_framework_version = tensorflow_version if tensorflow_version is not None else pytorch_version
 
         if distribution is not None:
             distribution = validate_distribution(
@@ -230,15 +235,6 @@ class HuggingFace(Framework):
             )
 
         self.distribution = distribution or {}
-
-        if "enable_sagemaker_metrics" not in kwargs:
-            kwargs["enable_sagemaker_metrics"] = True
-
-        kwargs["py_version"] = self.py_version
-
-        super(HuggingFace, self).__init__(
-            entry_point, source_dir, hyperparameters, image_uri=image_uri, **kwargs
-        )
 
         if compiler_config is not None:
             if not isinstance(compiler_config, TrainingCompilerConfig):
@@ -324,18 +320,12 @@ class HuggingFace(Framework):
     def hyperparameters(self):
         """Return hyperparameters used by your custom PyTorch code during model training."""
         hyperparameters = super(HuggingFace, self).hyperparameters()
-        additional_hyperparameters = self._huggingface_distribution_configuration(
-            distribution=self.distribution
-        )
-        hyperparameters.update(
-            EstimatorBase._json_encode_hyperparameters(additional_hyperparameters)
-        )
+        additional_hyperparameters = self._huggingface_distribution_configuration(distribution=self.distribution)
+        hyperparameters.update(EstimatorBase._json_encode_hyperparameters(additional_hyperparameters))
 
         if self.compiler_config:
             training_compiler_hyperparameters = self.compiler_config._to_hyperparameter_dict()
-            hyperparameters.update(
-                EstimatorBase._json_encode_hyperparameters(training_compiler_hyperparameters)
-            )
+            hyperparameters.update(EstimatorBase._json_encode_hyperparameters(training_compiler_hyperparameters))
 
         return hyperparameters
 
@@ -445,9 +435,7 @@ class HuggingFace(Framework):
 
         if framework != cls._framework_name:
             raise ValueError(
-                "Training job: {} didn't use image for requested framework".format(
-                    job_details["TrainingJobName"]
-                )
+                "Training job: {} didn't use image for requested framework".format(job_details["TrainingJobName"])
             )
 
         return init_params
