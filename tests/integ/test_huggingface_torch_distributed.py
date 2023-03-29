@@ -24,7 +24,7 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 @pytest.mark.skip(
     reason="Disabling until the launch of SM Trainium containers" "This test should be re-enabled later."
 )
-def test_torch_distributed_trn1_pt_mnist(
+def test_huggingface_torch_distributed_g5_glue(
     sagemaker_session,
     huggingface_training_latest_version,
     huggingface_training_pytorch_latest_version,
