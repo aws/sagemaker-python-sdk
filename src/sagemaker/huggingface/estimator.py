@@ -220,6 +220,9 @@ class HuggingFace(Framework):
 
         super(HuggingFace, self).__init__(entry_point, source_dir, hyperparameters, image_uri=image_uri, **kwargs)
 
+        if "entry_point" not in kwargs:
+            kwargs["entry_point"] = entry_point
+
         self.base_framework_name = "tensorflow" if tensorflow_version is not None else "pytorch"
         self.base_framework_version = tensorflow_version if tensorflow_version is not None else pytorch_version
 
