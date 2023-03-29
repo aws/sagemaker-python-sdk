@@ -12,6 +12,10 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import io
+import contextlib
+import datetime
+
 from packaging.version import Version
 
 from sagemaker import image_uris
@@ -89,6 +93,42 @@ def _test_image_uris(
         assert expected == uri
 
 
+def _test_end_of_support_messaging(
+    framework,
+    fw_version,
+    py_version,
+    scope,
+    accelerator_type=None
+):
+    base_args = {
+        "framework": framework,
+        "version": fw_version,
+        "py_version": py_version,
+        "image_scope": scope,
+    }
+
+    config = image_uris._config_for_framework_and_scope(framework=framework, image_scope=scope, accelerator_type=accelerator_type)
+    end_of_support = config.get("end_of_support")
+    expected_warning_message = image_uris._get_end_of_support_warn_message(end_of_support, framework, fw_version)
+
+    TYPES_AND_PROCESSORS = INSTANCE_TYPES_AND_PROCESSORS
+    if framework == "pytorch" and Version(fw_version) >= Version("1.13"):
+        """Handle P2 deprecation"""
+        TYPES_AND_PROCESSORS = RENEWED_PYTORCH_INSTANCE_TYPES_AND_PROCESSORS
+
+    for instance_type, _processor in TYPES_AND_PROCESSORS:
+        retrieve_io = io.StringIO()
+        with contextlib.redirect_stderr(retrieve_io):
+            _uri = image_uris.retrieve(region=REGION, instance_type=instance_type, **base_args)
+        assert expected_warning_message in retrieve_io.getvalue()
+
+    for region in SAGEMAKER_ALTERNATE_REGION_ACCOUNTS.keys():
+        retrieve_io = io.StringIO()
+        with contextlib.redirect_stderr(retrieve_io):
+            _uri = image_uris.retrieve(region=region, instance_type="ml.c4.xlarge", **base_args)
+        assert expected_warning_message in retrieve_io.getvalue()
+
+
 def test_chainer(chainer_version, chainer_py_version):
     expected_fn_args = {
         "chainer_version": chainer_version,
@@ -122,14 +162,24 @@ def test_tensorflow_training(tensorflow_training_version, tensorflow_training_py
         "tf_training_version": tensorflow_training_version,
         "py_version": tensorflow_training_py_version,
     }
+    
+    framework = "tensorflow"
+    scope = "training"
 
     _test_image_uris(
-        "tensorflow",
+        framework,
         tensorflow_training_version,
         tensorflow_training_py_version,
-        "training",
+        scope,
         _expected_tf_training_uri,
         expected_fn_args,
+    )
+
+    _test_end_of_support_messaging(
+        framework=framework,
+        fw_version=tensorflow_training_version,
+        py_version=tensorflow_training_py_version,
+        scope=scope,
     )
 
 
@@ -155,13 +205,23 @@ def _expected_tf_training_uri(tf_training_version, py_version, processor="cpu", 
 
 
 def test_tensorflow_inference(tensorflow_inference_version, tensorflow_inference_py_version):
+    framework = "tensorflow"
+    scope = "inference"
+
     _test_image_uris(
-        "tensorflow",
+        framework,
         tensorflow_inference_version,
         tensorflow_inference_py_version,
-        "inference",
+        scope,
         _expected_tf_inference_uri,
         {"tf_inference_version": tensorflow_inference_version},
+    )
+
+    _test_end_of_support_messaging(
+        framework=framework,
+        fw_version=tensorflow_inference_version,
+        py_version=tensorflow_inference_py_version,
+        scope=scope,
     )
 
 
@@ -222,14 +282,23 @@ def test_mxnet_training(mxnet_training_version, mxnet_training_py_version):
         "mxnet_version": mxnet_training_version,
         "py_version": mxnet_training_py_version,
     }
+    framework = "mxnet"
+    scope = "training"
 
     _test_image_uris(
-        "mxnet",
+        framework,
         mxnet_training_version,
         mxnet_training_py_version,
-        "training",
+        scope,
         _expected_mxnet_training_uri,
         expected_fn_args,
+    )
+
+    _test_end_of_support_messaging(
+        framework=framework,
+        fw_version=mxnet_training_version,
+        py_version=mxnet_training_py_version,
+        scope=scope,
     )
 
 
@@ -258,13 +327,23 @@ def test_mxnet_inference(mxnet_inference_version, mxnet_inference_py_version):
         "py_version": mxnet_inference_py_version,
     }
 
+    framework = "mxnet"
+    scope = "inference"
+
     _test_image_uris(
-        "mxnet",
+        framework,
         mxnet_inference_version,
         mxnet_inference_py_version,
-        "inference",
+        scope,
         _expected_mxnet_inference_uri,
         expected_fn_args,
+    )
+
+    _test_end_of_support_messaging(
+        framework=framework,
+        fw_version=mxnet_inference_version,
+        py_version=mxnet_inference_py_version,
+        scope=scope,
     )
 
 
@@ -319,16 +398,25 @@ def _expected_mxnet_inference_uri(
 
 
 def test_pytorch_training(pytorch_training_version, pytorch_training_py_version):
+    framework = "pytorch"
+    scope = "training"
+
     _test_image_uris(
-        "pytorch",
+        framework,
         pytorch_training_version,
         pytorch_training_py_version,
-        "training",
+        scope,
         _expected_pytorch_training_uri,
         {
             "pytorch_version": pytorch_training_version,
             "py_version": pytorch_training_py_version,
         },
+    )
+    _test_end_of_support_messaging(
+        framework=framework,
+        fw_version=pytorch_training_version,
+        py_version=pytorch_training_py_version,
+        scope=scope,
     )
 
 
@@ -350,16 +438,26 @@ def _expected_pytorch_training_uri(pytorch_version, py_version, processor="cpu",
 
 
 def test_pytorch_inference(pytorch_inference_version, pytorch_inference_py_version):
+    framework = "pytorch"
+    scope = "inference"
+
     _test_image_uris(
-        "pytorch",
+        framework,
         pytorch_inference_version,
         pytorch_inference_py_version,
-        "inference",
+        scope,
         _expected_pytorch_inference_uri,
         {
             "pytorch_version": pytorch_inference_version,
             "py_version": pytorch_inference_py_version,
         },
+    )
+
+    _test_end_of_support_messaging(
+        framework=framework,
+        fw_version=pytorch_inference_version,
+        py_version=pytorch_inference_py_version,
+        scope=scope,
     )
 
 
