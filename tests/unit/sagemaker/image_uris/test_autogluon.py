@@ -57,6 +57,8 @@ VERSIONS = [
     "0.6.1",
     "0.6",
     "0.6.2",
+    "0.7.0",
+    "0.7",
 ]
 
 SCOPES = ["training", "inference"]
@@ -68,7 +70,12 @@ PROCESSORS = ["cpu", "gpu"]
 @pytest.mark.parametrize("processor", PROCESSORS)
 def test_valid_uris_training(version, scope, processor):
     instance_type = "ml.c4.xlarge" if processor == "cpu" else "ml.p2.xlarge"
-    py_version = "py37" if version == "0.3.1" else "py38"
+    if version == "0.3.1":
+        py_version = "py37"
+    elif version < "0.7":
+        py_version = "py38"
+    else:
+        py_version = "py39"
     if (
         scope == "inference"
         and processor == "gpu"

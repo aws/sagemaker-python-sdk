@@ -80,7 +80,8 @@ def sagemaker_session():
         name="sagemaker_session", boto_session=boto_mock, s3_client=None, s3_resource=None
     )
     mock_session.expand_role = Mock(name="expand_role", return_value=ROLE)
-
+    # For tests which doesn't verify config file injection, operate with empty config
+    mock_session.sagemaker_config = {}
     return mock_session
 
 

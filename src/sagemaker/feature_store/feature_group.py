@@ -41,7 +41,12 @@ import boto3
 from botocore.config import Config
 from pathos.multiprocessing import ProcessingPool
 
-from sagemaker import Session
+from sagemaker.config import (
+    FEATURE_GROUP_ROLE_ARN_PATH,
+    FEATURE_GROUP_OFFLINE_STORE_KMS_KEY_ID_PATH,
+    FEATURE_GROUP_ONLINE_STORE_KMS_KEY_ID_PATH,
+)
+from sagemaker.session import Session
 from sagemaker.feature_store.feature_definition import (
     FeatureDefinition,
     FeatureTypeEnum,
@@ -56,6 +61,7 @@ from sagemaker.feature_store.inputs import (
     FeatureParameter,
     TableFormatEnum,
 )
+from sagemaker.utils import resolve_value_from_config
 
 logger = logging.getLogger(__name__)
 
@@ -513,7 +519,7 @@ class FeatureGroup:
         s3_uri: Union[str, bool],
         record_identifier_name: str,
         event_time_feature_name: str,
-        role_arn: str,
+        role_arn: str = None,
         online_store_kms_key_id: str = None,
         enable_online_store: bool = False,
         offline_store_kms_key_id: str = None,
@@ -531,9 +537,9 @@ class FeatureGroup:
             record_identifier_name (str): name of the record identifier feature.
             event_time_feature_name (str): name of the event time feature.
             role_arn (str): ARN of the role used to call CreateFeatureGroup.
-            online_store_kms_key_id (str): KMS key id for online store (default: None).
+            online_store_kms_key_id (str): KMS key ARN for online store (default: None).
             enable_online_store (bool): whether to enable online store or not (default: False).
-            offline_store_kms_key_id (str): KMS key id for offline store (default: None).
+            offline_store_kms_key_id (str): KMS key ARN for offline store (default: None).
                 If a KMS encryption key is not specified, SageMaker encrypts all data at
                 rest using the default AWS KMS key. By defining your bucket-level key for
                 SSE, you can reduce the cost of AWS KMS requests.
@@ -552,6 +558,25 @@ class FeatureGroup:
         Returns:
             Response dict from service.
         """
+        role_arn = resolve_value_from_config(
+            role_arn, FEATURE_GROUP_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
+        )
+        offline_store_kms_key_id = resolve_value_from_config(
+            offline_store_kms_key_id,
+            FEATURE_GROUP_OFFLINE_STORE_KMS_KEY_ID_PATH,
+            sagemaker_session=self.sagemaker_session,
+        )
+        online_store_kms_key_id = resolve_value_from_config(
+            online_store_kms_key_id,
+            FEATURE_GROUP_ONLINE_STORE_KMS_KEY_ID_PATH,
+            sagemaker_session=self.sagemaker_session,
+        )
+        if not role_arn:
+            # Originally IAM role was a required parameter.
+            # Now we marked that as Optional because we can fetch it from SageMakerConfig,
+            # Because of marking that parameter as optional, we should validate if it is None, even
+            # after fetching the config.
+            raise ValueError("An AWS IAM role is required to create a Feature Group.")
         create_feature_store_args = dict(
             feature_group_name=self.name,
             record_identifier_name=record_identifier_name,

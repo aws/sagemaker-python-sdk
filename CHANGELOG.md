@@ -1,5 +1,56 @@
 # Changelog
 
+## v2.142.0 (2023-03-27)
+
+### Features
+
+ * combined model + script artifact
+
+## v2.141.0 (2023-03-24)
+
+### Features
+
+ * AutoGluon 0.7.0 image_uris update
+ * Add DJL FasterTransformer image uris
+ * EMR step runtime role support
+ * locations for EMR configuration and Spark dependencies
+ * Adding support for 1P Algorithms in ZAZ, ZRH, HYD, MEL
+
+### Documentation Changes
+
+ * Update FeatureGroup kms key id documentation
+
+## v2.140.1 (2023-03-21)
+
+### Bug Fixes and Other Changes
+
+ * Fix cross account register model
+ * Handle instance support for Hugging Face tests
+ * Upgrade apache-airflow-providers-amazon version
+ * build(deps): bump apache-airflow from 2.4.1 to 2.5.1
+ * Mark test_create_model_package test for xfail
+ * Disable module-not-measured warnings to avoid clutter in build logs
+
+## v2.140.0 (2023-03-17)
+
+### Features
+
+ * SDK changes for TRCOMP support
+
+### Bug Fixes and Other Changes
+
+ * [Feature - Hugging Face] Update Transformers 4.26 - PyTorch 1.13.1 Image uri
+
+## v2.139.0 (2023-03-15)
+
+### Features
+
+ * Add XGBoost framework 1.7-1 version
+
+### Bug Fixes and Other Changes
+
+ * Fix image_uris.retrieve() function to return ValueError when framework is not allowed for an instance_type
+
 ## v2.138.0 (2023-03-13)
 
 ### Features

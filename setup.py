@@ -59,6 +59,9 @@ required_packages = [
     "pandas",
     "pathos",
     "schema",
+    "PyYAML==5.4.1",
+    "jsonschema",
+    "platformdirs",
 ]
 
 # Specific use case dependencies

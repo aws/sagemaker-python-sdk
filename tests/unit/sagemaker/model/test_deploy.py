@@ -67,7 +67,10 @@ BASE_PRODUCTION_VARIANT = {
 
 @pytest.fixture
 def sagemaker_session():
-    return Mock()
+    session = Mock()
+    # For tests which doesn't verify config file injection, operate with empty config
+    session.sagemaker_config = {}
+    return session
 
 
 @patch("sagemaker.production_variant")
@@ -165,6 +168,7 @@ def test_deploy_accelerator_type(
 @patch("sagemaker.model.Model._create_sagemaker_model", Mock())
 @patch("sagemaker.production_variant", return_value=BASE_PRODUCTION_VARIANT)
 def test_deploy_endpoint_name(sagemaker_session):
+    sagemaker_session.sagemaker_config = {}
     model = Model(MODEL_IMAGE, MODEL_DATA, role=ROLE, sagemaker_session=sagemaker_session)
 
     endpoint_name = "blah"
@@ -368,6 +372,7 @@ def test_deploy_async_inference(production_variant, name_from_base, sagemaker_se
 @patch("sagemaker.model.Model._create_sagemaker_model")
 @patch("sagemaker.production_variant")
 def test_deploy_serverless_inference(production_variant, create_sagemaker_model, sagemaker_session):
+    sagemaker_session.sagemaker_config = {}
     model = Model(
         MODEL_IMAGE, MODEL_DATA, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
     )
@@ -436,6 +441,8 @@ def test_deploy_wrong_serverless_config(sagemaker_session):
 @patch("sagemaker.session.Session")
 @patch("sagemaker.local.LocalSession")
 def test_deploy_creates_correct_session(local_session, session):
+    local_session.return_value.sagemaker_config = {}
+    session.return_value.sagemaker_config = {}
     # We expect a LocalSession when deploying to instance_type = 'local'
     model = Model(MODEL_IMAGE, MODEL_DATA, role=ROLE)
     model.deploy(endpoint_name="blah", instance_type="local", initial_instance_count=1)
