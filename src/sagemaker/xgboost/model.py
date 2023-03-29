@@ -77,9 +77,9 @@ class XGBoostModel(FrameworkModel):
     def __init__(
         self,
         model_data: Union[str, PipelineVariable],
-        role: str,
-        entry_point: str,
-        framework_version: str,
+        role: str = None,
+        entry_point: str = None,
+        framework_version: str = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         py_version: str = "py3",
         predictor_cls: callable = XGBoostPredictor,

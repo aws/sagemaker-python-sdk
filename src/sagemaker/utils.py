@@ -14,7 +14,9 @@
 from __future__ import absolute_import
 
 import contextlib
+import copy
 import errno
+import inspect
 import logging
 import os
 import random
@@ -27,13 +29,15 @@ import json
 import abc
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from importlib import import_module
 import botocore
+from botocore.utils import merge_dicts
 from six.moves.urllib import parse
 
 from sagemaker import deprecations
+from sagemaker.config import validate_sagemaker_config
 from sagemaker.session_settings import SessionSettings
 from sagemaker.workflow import is_pipeline_variable, is_pipeline_parameter_string
 
@@ -174,6 +178,70 @@ def get_config_value(key_path, config):
             return None
 
     return current_section
+
+
+def get_nested_value(dictionary: dict, nested_keys: List[str]):
+    """Returns a nested value from the given dictionary, and None if none present.
+
+    Raises
+        ValueError if the dictionary structure does not match the nested_keys
+    """
+    if (
+        dictionary is not None
+        and isinstance(dictionary, dict)
+        and nested_keys is not None
+        and len(nested_keys) > 0
+    ):
+
+        current_section = dictionary
+
+        for key in nested_keys[:-1]:
+            current_section = current_section.get(key, None)
+            if current_section is None:
+                # means the full path of nested_keys doesnt exist in the dictionary
+                # or the value was set to None
+                return None
+            if not isinstance(current_section, dict):
+                raise ValueError(
+                    "Unexpected structure of dictionary.",
+                    "Expected value of type dict at key '{}' but got '{}' for dict '{}'".format(
+                        key, current_section, dictionary
+                    ),
+                )
+        return current_section.get(nested_keys[-1], None)
+
+    return None
+
+
+def set_nested_value(dictionary: dict, nested_keys: List[str], value_to_set: object):
+    """Sets a nested value in a dictionary.
+
+    This sets a nested value inside the given dictionary and returns the new dictionary. Note: if
+    provided an unintended list of nested keys, this can overwrite an unexpected part of the dict.
+    Recommended to use after a check with get_nested_value first
+    """
+
+    if dictionary is None:
+        dictionary = {}
+
+    if (
+        dictionary is not None
+        and isinstance(dictionary, dict)
+        and nested_keys is not None
+        and len(nested_keys) > 0
+    ):
+        current_section = dictionary
+        for key in nested_keys[:-1]:
+            if (
+                key not in current_section
+                or current_section[key] is None
+                or not isinstance(current_section[key], dict)
+            ):
+                current_section[key] = {}
+            current_section = current_section[key]
+
+        current_section[nested_keys[-1]] = value_to_set
+    return dictionary
 
 
 def get_short_version(framework_version):
@@ -966,3 +1034,375 @@ def check_and_get_run_experiment_config(experiment_config: Optional[dict] = None
         return experiment_config
 
     return run_obj.experiment_config if run_obj else None
+
+
+def resolve_value_from_config(
+    direct_input=None,
+    config_path: str = None,
+    default_value=None,
+    sagemaker_session=None,
+):
+    """Decides which value for the caller to use.
+
+    Note: This method incorporates information from the sagemaker config.
+
+    Uses this order of prioritization:
+    1. direct_input
+    2. config value
+    3. default_value
+    4. None
+
+    Args:
+        direct_input: The value that the caller of this method starts with. Usually this is an
+        input to the caller's class or method.
+        config_path (str): A string denoting the path used to lookup the value in the
+        sagemaker config.
+        default_value: The value used if not present elsewhere.
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session object, used for
+        SageMaker interactions (default: None).
+
+    Returns:
+        The value that should be used by the caller
+    """
+    config_value = (
+        get_sagemaker_config_value(sagemaker_session, config_path) if config_path else None
+    )
+    _print_message_on_sagemaker_config_usage(direct_input, config_value, config_path)
+
+    if direct_input is not None:
+        return direct_input
+
+    if config_value is not None:
+        return config_value
+
+    return default_value
+
+
+def get_sagemaker_config_value(sagemaker_session, key):
+    """Returns the value that corresponds to the provided key from the configuration file.
+
+    Args:
+        key: Key Path of the config file entry.
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session object, used for
+        SageMaker interactions.
+
+    Returns:
+        object: The corresponding default value in the configuration file.
+    """
+    if not sagemaker_session:
+        return None
+    if sagemaker_session.sagemaker_config:
+        validate_sagemaker_config(sagemaker_session.sagemaker_config)
+    config_value = get_config_value(key, sagemaker_session.sagemaker_config)
+    # Copy the value so any modifications to the output will not modify the source config
+    return copy.deepcopy(config_value)
+
+
+def _print_message_on_sagemaker_config_usage(direct_input, config_value, config_path: str):
+    """Informs the SDK user whether a config value was present and automatically substituted
+
+    Args:
+        direct_input: The value that is used if no default values exist. Usually,
+        this is user-provided input to a Class or to a session.py method, or None if no input
+        was provided.
+        config_value: The value fetched from sagemaker_config. This is usually the value that
+        will be used if direct_input is None.
+        config_path: A string denoting the path of keys that point to the config value in the
+        sagemaker_config.
+
+    Returns:
+        None. Prints information.
+    """
+
+    if config_value is not None:
+
+        if direct_input is not None and config_value != direct_input:
+            # Sagemaker Config had a value defined that is NOT going to be used
+            # and the config value has not already been applied earlier
+            print(
+                "[Sagemaker Config - skipped value]\n",
+                "config key = {}\n".format(config_path),
+                "config value = {}\n".format(config_value),
+                "specified value that will be used = {}\n".format(direct_input),
+            )
+
+        elif direct_input is None:
+            # Sagemaker Config value is going to be used
+            print(
+                "[Sagemaker Config - applied value]\n",
+                "config key = {}\n".format(config_path),
+                "config value that will be used = {}\n".format(config_value),
+            )
+
+    # There is no print statement needed if nothing was specified in the config and nothing is
+    # being automatically applied
+
+
+def resolve_class_attribute_from_config(
+    clazz: Optional[type],
+    instance: Optional[object],
+    attribute: str,
+    config_path: str,
+    default_value=None,
+    sagemaker_session=None,
+):
+    """Utility method that merges config values to data classes.
+
+    Takes an instance of a class and, if not already set, sets the instance's attribute to a
+    value fetched from the sagemaker_config or the default_value.
+
+    Uses this order of prioritization to determine what the value of the attribute should be:
+    1. current value of attribute
+    2. config value
+    3. default_value
+    4. does not set it
+
+    Args:
+        clazz (Optional[type]): Class of 'instance'. Used to generate a new instance if the
+               instance is None. If None is provided here, no new object will be created
+               if 'instance' doesnt exist. Note: if provided, the constructor should set default
+               values to None; Otherwise, the constructor's non-None default will be left
+               as-is even if a config value was defined.
+        instance (Optional[object]): instance of the Class 'clazz' that has an attribute
+                 of 'attribute' to set
+        attribute (str): attribute of the instance to set if not already set
+        config_path (str): a string denoting the path to use to lookup the config value in the
+                           sagemaker config
+        default_value: the value to use if not present elsewhere
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session object, used for
+                SageMaker interactions (default: None).
+
+    Returns:
+        The updated class instance that should be used by the caller instead of the
+        'instance' parameter that was passed in.
+    """
+    config_value = get_sagemaker_config_value(sagemaker_session, config_path)
+
+    if config_value is None and default_value is None:
+        # return instance unmodified. Could be None or populated
+        return instance
+
+    if instance is None:
+        if clazz is None or not inspect.isclass(clazz):
+            return instance
+        # construct a new instance if the instance does not exist
+        instance = clazz()
+
+    if not hasattr(instance, attribute):
+        raise TypeError(
+            "Unexpected structure of object.",
+            "Expected attribute {} to be present inside instance {} of class {}".format(
+                attribute, instance, clazz
+            ),
+        )
+
+    current_value = getattr(instance, attribute)
+    if current_value is None:
+        # only set value if object does not already have a value set
+        if config_value is not None:
+            setattr(instance, attribute, config_value)
+        elif default_value is not None:
+            setattr(instance, attribute, default_value)
+
+    _print_message_on_sagemaker_config_usage(current_value, config_value, config_path)
+
+    return instance
+
+
+def resolve_nested_dict_value_from_config(
+    dictionary: dict,
+    nested_keys: List[str],
+    config_path: str,
+    default_value: object = None,
+    sagemaker_session=None,
+):
+    """Utility method that sets the value of a key path in a nested dictionary .
+
+    This method takes a dictionary and, if not already set, sets the value for the provided
+    list of nested keys to the value fetched from the sagemaker_config or the default_value.
+
+    Uses this order of prioritization to determine what the value of the attribute should be:
+    (1) current value of nested key, (2) config value, (3) default_value, (4) does not set it
+
+    Args:
+        dictionary: The dict to update.
+        nested_keys: The paths of keys where the value should be checked and set if needed.
+        config_path (str): A string denoting the path used to find the config value in the
+        sagemaker config.
+        default_value: The value to use if not present elsewhere.
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session object, used for
+            SageMaker interactions (default: None).
+
+    Returns:
+        The updated dictionary that should be used by the caller instead of the
+        'dictionary' parameter that was passed in.
+    """
+    config_value = get_sagemaker_config_value(sagemaker_session, config_path)
+
+    if config_value is None and default_value is None:
+        # if there is nothing to set, return early. And there is no need to traverse through
+        # the dictionary or add nested dicts to it
+        return dictionary
+
+    try:
+        current_nested_value = get_nested_value(dictionary, nested_keys)
+    except ValueError as e:
+        logging.error("Failed to check dictionary for applying sagemaker config: %s", e)
+        return dictionary
+
+    if current_nested_value is None:
+        # only set value if not already set
+        if config_value is not None:
+            dictionary = set_nested_value(dictionary, nested_keys, config_value)
+        elif default_value is not None:
+            dictionary = set_nested_value(dictionary, nested_keys, default_value)
+
+    _print_message_on_sagemaker_config_usage(current_nested_value, config_value, config_path)
+
+    return dictionary
+
+
+def update_list_of_dicts_with_values_from_config(
+    input_list,
+    config_key_path,
+    required_key_paths: List[str] = None,
+    union_key_paths: List[List[str]] = None,
+    sagemaker_session=None,
+):
+    """Updates a list of dictionaries with missing values that are present in Config.
+
+    In some cases, config file might introduce new parameters which requires certain other
+    parameters to be provided as part of the input list. Without those parameters, the underlying
+    service will throw an exception. This method provides the capability to specify required key
+    paths.
+
+    In some other cases, config file might introduce new parameters but the service API requires
+    either an existing parameter or the new parameter that was supplied by config but not both
+
+    Args:
+        input_list: The input list that was provided as a method parameter.
+        config_key_path: The Key Path in the Config file that corresponds to the input_list
+        parameter.
+        required_key_paths (List[str]): List of required key paths that should be verified in the
+        merged output. If a required key path is missing, we will not perform the merge for that
+        item.
+        union_key_paths (List[List[str]]): List of List of Key paths for which we need to verify
+        whether exactly zero/one of the parameters exist.
+        For example: If the resultant dictionary can have either 'X1' or 'X2' as parameter or
+        neither but not both, then pass [['X1', 'X2']]
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session object, used for
+            SageMaker interactions (default: None).
+
+    Returns:
+        No output. In place merge happens.
+    """
+    if not input_list:
+        return
+    inputs_copy = copy.deepcopy(input_list)
+    inputs_from_config = get_sagemaker_config_value(sagemaker_session, config_key_path) or []
+    unmodified_inputs_from_config = copy.deepcopy(inputs_from_config)
+
+    for i in range(min(len(input_list), len(inputs_from_config))):
+        dict_from_inputs = input_list[i]
+        dict_from_config = inputs_from_config[i]
+        merge_dicts(dict_from_config, dict_from_inputs)
+        # Check if required key paths are present in merged dict (dict_from_config)
+        required_key_path_check_passed = _validate_required_paths_in_a_dict(
+            dict_from_config, required_key_paths
+        )
+        if not required_key_path_check_passed:
+            # Don't do the merge, config is introducing a new parameter which needs a
+            # corresponding required parameter.
+            continue
+        union_key_path_check_passed = _validate_union_key_paths_in_a_dict(
+            dict_from_config, union_key_paths
+        )
+        if not union_key_path_check_passed:
+            # Don't do the merge, Union parameters are not obeyed.
+            continue
+        input_list[i] = dict_from_config
+
+    if unmodified_inputs_from_config:
+        print(
+            "[Sagemaker Config - applied value]\n",
+            "config key = {}\n".format(config_key_path),
+            "config value = {}\n".format(unmodified_inputs_from_config),
+            "source value = {}\n".format(inputs_copy),
+            "combined value that will be used = {}\n".format(input_list),
+        )
+
+
+def _validate_required_paths_in_a_dict(source_dict, required_key_paths: List[str] = None) -> bool:
+    """Placeholder docstring"""
+    if not required_key_paths:
+        return True
+    for required_key_path in required_key_paths:
+        if get_config_value(required_key_path, source_dict) is None:
+            return False
+    return True
+
+
+def _validate_union_key_paths_in_a_dict(
+    source_dict, union_key_paths: List[List[str]] = None
+) -> bool:
+    """Placeholder docstring"""
+    if not union_key_paths:
+        return True
+    for union_key_path in union_key_paths:
+        union_parameter_present = False
+        for key_path in union_key_path:
+            if get_config_value(key_path, source_dict):
+                if union_parameter_present:
+                    return False
+                union_parameter_present = True
+    return True
+
+
+def update_nested_dictionary_with_values_from_config(
+    source_dict, config_key_path, sagemaker_session=None
+) -> dict:
+    """Updates a nested dictionary with missing values that are present in Config.
+
+    Args:
+        source_dict: The input nested dictionary that was provided as method parameter.
+        config_key_path: The Key Path in the Config file which corresponds to this
+        source_dict parameter.
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session object, used for
+            SageMaker interactions (default: None).
+
+    Returns:
+        dict: The merged nested dictionary that is updated with missing values that are present
+        in the Config file.
+    """
+    inferred_config_dict = get_sagemaker_config_value(sagemaker_session, config_key_path) or {}
+    original_config_dict_value = copy.deepcopy(inferred_config_dict)
+    merge_dicts(inferred_config_dict, source_dict or {})
+
+    if original_config_dict_value == {}:
+        # The config value is empty. That means either
+        # (1) inferred_config_dict equals source_dict, or
+        # (2) if source_dict was None, inferred_config_dict equals {}
+        # We should return whatever source_dict was to be safe. Because if for example,
+        # a VpcConfig is set to {} instead of None, some boto calls will fail due to
+        # ParamValidationError (because a VpcConfig was specified but required parameters for
+        # the VpcConfig were missing.)
+
+        # Don't need to print because no config value was used or defined
+        return source_dict
+
+    if source_dict == inferred_config_dict:
+        # We didn't use any values from the config, but we should print if any of the config
+        # values were defined
+        _print_message_on_sagemaker_config_usage(
+            source_dict, original_config_dict_value, config_key_path
+        )
+    else:
+        # Something from the config was merged in
+        print(
+            "[Sagemaker Config - applied value]\n",
+            "config key = {}\n".format(config_key_path),
+            "config value = {}\n".format(original_config_dict_value),
+            "source value = {}\n".format(source_dict),
+            "combined value that will be used = {}\n".format(inferred_config_dict),
+        )
+    return inferred_config_dict

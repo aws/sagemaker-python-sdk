@@ -40,6 +40,7 @@ from sagemaker.model_monitor.monitoring_alert import (
 
 from sagemaker.network import NetworkConfig
 from sagemaker.model_monitor.dataset_format import MonitoringDatasetFormat, DatasetFormat
+from tests.unit import SAGEMAKER_CONFIG_MONITORING_SCHEDULE
 
 REGION = "us-west-2"
 BUCKET_NAME = "mybucket"
@@ -461,6 +462,12 @@ def sagemaker_session():
         },
     )
     session_mock.expand_role.return_value = ROLE
+
+    # For tests which doesn't verify config file injection, operate with empty config
+    session_mock.sagemaker_config = {}
+    session_mock._append_sagemaker_config_tags = Mock(
+        name="_append_sagemaker_config_tags", side_effect=lambda tags, config_path_to_tags: tags
+    )
     return session_mock
 
 
@@ -863,6 +870,56 @@ def _test_data_quality_batch_transform_monitor_create_schedule(
             "ScheduleConfig": {"ScheduleExpression": CRON_HOURLY},
         },
         Tags=TAGS,
+    )
+
+
+def test_data_quality_batch_transform_monitor_create_schedule_with_sagemaker_config_injection(
+    data_quality_monitor,
+    sagemaker_session,
+):
+    from sagemaker.utils import get_config_value
+
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_MONITORING_SCHEDULE
+    sagemaker_session._append_sagemaker_config_tags = Mock(
+        name="_append_sagemaker_config_tags",
+        side_effect=lambda tags, config_path_to_tags: tags
+        + get_config_value(config_path_to_tags, SAGEMAKER_CONFIG_MONITORING_SCHEDULE),
+    )
+
+    sagemaker_session.sagemaker_client.create_monitoring_schedule = Mock()
+    data_quality_monitor.sagemaker_session = sagemaker_session
+
+    # for batch transform input
+    data_quality_monitor.create_monitoring_schedule(
+        batch_transform_input=BatchTransformInput(
+            data_captured_destination_s3_uri=DATA_CAPTURED_S3_URI,
+            destination=SCHEDULE_DESTINATION,
+            dataset_format=MonitoringDatasetFormat.csv(header=False),
+        ),
+        record_preprocessor_script=PREPROCESSOR_URI,
+        post_analytics_processor_script=POSTPROCESSOR_URI,
+        output_s3_uri=OUTPUT_S3_URI,
+        constraints=CONSTRAINTS,
+        statistics=STATISTICS,
+        monitor_schedule_name=SCHEDULE_NAME,
+        schedule_cron_expression=CRON_HOURLY,
+    )
+    expected_tags_from_config = SAGEMAKER_CONFIG_MONITORING_SCHEDULE["SageMaker"][
+        "MonitoringSchedule"
+    ]["Tags"][0]
+
+    sagemaker_session.sagemaker_client.create_monitoring_schedule.assert_called_with(
+        MonitoringScheduleName=SCHEDULE_NAME,
+        MonitoringScheduleConfig={
+            "MonitoringJobDefinitionName": data_quality_monitor.job_definition_name,
+            "MonitoringType": "DataQuality",
+            "ScheduleConfig": {"ScheduleExpression": CRON_HOURLY},
+        },
+        # new tags appended from config
+        Tags=[
+            {"Key": "tag_key_1", "Value": "tag_value_1"},
+            expected_tags_from_config,
+        ],
     )
 
 

@@ -61,6 +61,7 @@ def sagemaker_session():
         settings=SessionSettings(),
     )
     session_mock.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
+    session_mock.sagemaker_config = {}
 
     return session_mock
 

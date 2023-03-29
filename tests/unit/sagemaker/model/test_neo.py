@@ -34,7 +34,10 @@ DESCRIBE_COMPILATION_JOB_RESPONSE = {
 
 @pytest.fixture
 def sagemaker_session():
-    return Mock(boto_region_name=REGION)
+    session = Mock(boto_region_name=REGION)
+    # For tests which doesn't verify config file injection, operate with empty config
+    session.sagemaker_config = {}
+    return session
 
 
 def _create_model(sagemaker_session=None):
@@ -167,6 +170,7 @@ def test_compile_model_for_cloud_tflite(sagemaker_session):
 @patch("sagemaker.session.Session")
 def test_compile_creates_session(session):
     session.return_value.boto_region_name = REGION
+    session.return_value.sagemaker_config = {}
 
     model = _create_model()
     model.compile(
@@ -310,6 +314,7 @@ def test_compile_with_framework_version_16(sagemaker_session):
 @patch("sagemaker.session.Session")
 def test_compile_with_pytorch_neo_in_ml_inf(session):
     session.return_value.boto_region_name = REGION
+    session.return_value.sagemaker_config = {}
 
     model = _create_model()
     model.compile(
@@ -333,6 +338,7 @@ def test_compile_with_pytorch_neo_in_ml_inf(session):
 @patch("sagemaker.session.Session")
 def test_compile_with_tensorflow_neo_in_ml_inf(session):
     session.return_value.boto_region_name = REGION
+    session.return_value.sagemaker_config = {}
 
     model = _create_model()
     model.compile(

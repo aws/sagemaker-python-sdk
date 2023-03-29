@@ -94,9 +94,9 @@ class _SparkProcessorBase(ScriptProcessor):
 
     def __init__(
         self,
-        role,
-        instance_type,
-        instance_count,
+        role=None,
+        instance_type=None,
+        instance_count=None,
         framework_version=None,
         py_version=None,
         container_version=None,
