@@ -108,8 +108,15 @@ def _test_end_of_support_messaging(
     }
 
     config = image_uris._config_for_framework_and_scope(framework=framework, image_scope=scope, accelerator_type=accelerator_type)
-    end_of_support = config.get("end_of_support")
-    expected_warning_message = image_uris._get_end_of_support_warn_message(end_of_support, framework, fw_version)
+    version_support = config.get("version_support")
+    aliases = config.get("version_aliases")
+
+    if version_support:
+        for v, _ in version_support.items():
+            # Version in version_support MUST be in an aliased value
+            assert v in aliases.values()
+
+    expected_warning_message = image_uris._get_end_of_support_warn_message(fw_version, config, framework)
 
     TYPES_AND_PROCESSORS = INSTANCE_TYPES_AND_PROCESSORS
     if framework == "pytorch" and Version(fw_version) >= Version("1.13"):
@@ -122,7 +129,7 @@ def _test_end_of_support_messaging(
             _uri = image_uris.retrieve(region=REGION, instance_type=instance_type, **base_args)
         assert expected_warning_message in retrieve_io.getvalue()
 
-    for region in SAGEMAKER_ALTERNATE_REGION_ACCOUNTS.keys():
+    for region in DLC_ALTERNATE_REGION_ACCOUNTS:
         retrieve_io = io.StringIO()
         with contextlib.redirect_stderr(retrieve_io):
             _uri = image_uris.retrieve(region=region, instance_type="ml.c4.xlarge", **base_args)
@@ -523,9 +530,18 @@ def _sagemaker_or_dlc_account(repo, region):
 
 
 def test_end_of_support():
-    end_of_support = "2021-06-21T00:00:00.0Z"
+    config = {
+        "version_aliases": {
+            "1.6": "1.6.0"
+        },
+        "version_support": {
+            "1.6.0": {
+                "end_of_support": "2021-06-21T00:00:00.0Z"
+            }
+        }
+    }
     dlc_support_policy = "https://aws.amazon.com/releasenotes/dlc-support-policy/"
-    warn_message = image_uris._get_end_of_support_warn_message(end_of_support=end_of_support, framework="pytorch", version="1.6.0")
+    warn_message = image_uris._get_end_of_support_warn_message(config=config, framework="pytorch", version="1.6.0")
 
     assert warn_message == (
         f"The pytorch 1.6.0 DLC has reached end of support. " 

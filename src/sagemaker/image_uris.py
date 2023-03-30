@@ -447,39 +447,65 @@ def _validate_accelerator_type(accelerator_type):
         )
 
 
-def _get_end_of_support_warn_message(end_of_support, framework, version):
+def _get_end_of_support_warn_message(version, config, framework):
     """
     Get end of support warning message if needed.
 
     Args:
-        end_of_support (str): json datetime string
-        framework (str): ML framework
         version (str): ML framework version
+        config (dict): config json loaded into python dictionary
+        framework (str): ML framework
 
     Returns:
         str: Warning message if version is nearing or out of support, else empty string
     """
+    version_support = config.get("version_support")
+    aliases = config.get("version_aliases")
+
+    # If version_support and version_aliases are not implemented, do not return warning message
+    if not (version_support and aliases):
+        return ""
+
+    dlc_support_policy = "https://aws.amazon.com/releasenotes/dlc-support-policy/"
+
+    end_of_support_msg = (
+        f"The {framework} {version} DLC has reached end of support. "
+        f"Please choose a supported version from our support policy - {dlc_support_policy}."
+    )
+
+    long_version = version
+    if version in aliases:
+        long_version = aliases[version]
+
+    # If we have version support, but the long version is not in it, assume this is out of support
+    if not version_support.get(long_version):
+        return end_of_support_msg
+
+    end_of_support = version_support[long_version].get("end_of_support")
+
+    # If no end of support specified, assume there is indefinite support
     if not end_of_support:
         return ""
-    dlc_support_policy = "https://aws.amazon.com/releasenotes/dlc-support-policy/"
+
     # Convert json object to UTC timezone string
-    end_of_support_dt = datetime.datetime.strptime(
-        end_of_support, '%Y-%m-%dT%H:%M:%S.%fZ'
-        ).replace(tzinfo=None).astimezone(tz=datetime.timezone.utc)
+    end_of_support_dt = (
+        datetime.datetime.strptime(end_of_support, "%Y-%m-%dT%H:%M:%S.%fZ")
+        .replace(tzinfo=None)
+        .astimezone(tz=datetime.timezone.utc)
+    )
     # Ensure that the version is still supported
     current_dt = datetime.datetime.now(datetime.timezone.utc)
     time_delt_days = (end_of_support_dt - current_dt).days
     if current_dt >= end_of_support_dt:
-        return (
-            f"The {framework} {version} DLC has reached end of support. " 
-            f"Please choose a supported version from our support policy - {dlc_support_policy}."
-            )
+        return end_of_support_msg
     if time_delt_days <= 60:
         return (
             f"The {framework} {version} DLC is approaching end of support, "
             f"and patching will stop on {end_of_support_dt.strftime('%Y-%m-%d %Z')}. "
             f"Please choose a supported version from our support policy - {dlc_support_policy}."
-            )
+        )
+
+    # Version is still well in support window, do not warn
     return ""
 
 
@@ -487,8 +513,6 @@ def _validate_version_and_set_if_needed(version, config, framework):
     """Checks if the framework/algorithm version is one of the supported versions."""
     available_versions = list(config["versions"].keys())
     aliased_versions = list(config.get("version_aliases", {}).keys())
-
-
 
     if len(available_versions) == 1 and version not in aliased_versions:
         log_message = "Defaulting to the only supported framework/algorithm version: {}.".format(
@@ -503,12 +527,8 @@ def _validate_version_and_set_if_needed(version, config, framework):
 
     _validate_arg(version, available_versions + aliased_versions, "{} version".format(framework))
 
-    # For DLCs, warn if image is out of support
-    long_version = version
-    if version in aliased_versions:
-        long_version = config["version_aliases"][version]
-    end_of_support = config["versions"][long_version].get("end_of_support")
-    end_of_support_warning = _get_end_of_support_warn_message(end_of_support, framework, version)
+    # For DLCs, warn if image is out of support. Use aliased version to grab information about the latest
+    end_of_support_warning = _get_end_of_support_warn_message(version, config, framework)
     if end_of_support_warning:
         logger.warning(end_of_support_warning)
 
