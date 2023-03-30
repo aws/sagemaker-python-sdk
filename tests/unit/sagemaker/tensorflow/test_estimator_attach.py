@@ -42,6 +42,8 @@ def sagemaker_session():
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
     session.sagemaker_client.describe_training_job = Mock(return_value=describe)
     session.sagemaker_client.list_tags = Mock(return_value=LIST_TAGS_RESULT)
+    # For tests which doesn't verify config file injection, operate with empty config
+    session.sagemaker_config = {}
     return session
 
 

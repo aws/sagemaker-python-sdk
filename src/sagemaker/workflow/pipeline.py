@@ -25,8 +25,9 @@ from botocore.exceptions import ClientError
 
 from sagemaker import s3
 from sagemaker._studio import _append_project_tags
+from sagemaker.config import PIPELINE_ROLE_ARN_PATH, PIPELINE_TAGS_PATH
 from sagemaker.session import Session
-from sagemaker.utils import retry_with_backoff
+from sagemaker.utils import resolve_value_from_config, retry_with_backoff
 from sagemaker.workflow.callback_step import CallbackOutput, CallbackStep
 from sagemaker.workflow.lambda_step import LambdaOutput, LambdaStep
 from sagemaker.workflow.entities import (
@@ -108,7 +109,7 @@ class Pipeline(Entity):
 
     def create(
         self,
-        role_arn: str,
+        role_arn: str = None,
         description: str = None,
         tags: List[Dict[str, str]] = None,
         parallelism_config: ParallelismConfiguration = None,
@@ -127,11 +128,21 @@ class Pipeline(Entity):
         Returns:
             A response dict from the service.
         """
+        role_arn = resolve_value_from_config(
+            role_arn, PIPELINE_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
+        )
+        if not role_arn:
+            # Originally IAM role was a required parameter.
+            # Now we marked that as Optional because we can fetch it from SageMakerConfig
+            # Because of marking that parameter as optional, we should validate if it is None, even
+            # after fetching the config.
+            raise ValueError("An AWS IAM role is required to create a Pipeline.")
         if self.sagemaker_session.local_mode:
             if parallelism_config:
                 logger.warning("Pipeline parallelism config is not supported in the local mode.")
             return self.sagemaker_session.sagemaker_client.create_pipeline(self, description)
         tags = _append_project_tags(tags)
+        tags = self.sagemaker_session._append_sagemaker_config_tags(tags, PIPELINE_TAGS_PATH)
         kwargs = self._create_args(role_arn, description, parallelism_config)
         update_args(
             kwargs,
@@ -195,7 +206,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
 
     def update(
         self,
-        role_arn: str,
+        role_arn: str = None,
         description: str = None,
         parallelism_config: ParallelismConfiguration = None,
     ) -> Dict[str, Any]:
@@ -211,6 +222,15 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         Returns:
             A response dict from the service.
         """
+        role_arn = resolve_value_from_config(
+            role_arn, PIPELINE_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
+        )
+        if not role_arn:
+            # Originally IAM role was a required parameter.
+            # Now we marked that as Optional because we can fetch it from SageMakerConfig
+            # Because of marking that parameter as optional, we should validate if it is None, even
+            # after fetching the config.
+            raise ValueError("An AWS IAM role is required to update a Pipeline.")
         if self.sagemaker_session.local_mode:
             if parallelism_config:
                 logger.warning("Pipeline parallelism config is not supported in the local mode.")
@@ -224,7 +244,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
 
     def upsert(
         self,
-        role_arn: str,
+        role_arn: str = None,
         description: str = None,
         tags: List[Dict[str, str]] = None,
         parallelism_config: ParallelismConfiguration = None,
@@ -242,6 +262,15 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         Returns:
             response dict from service
         """
+        role_arn = resolve_value_from_config(
+            role_arn, PIPELINE_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
+        )
+        if not role_arn:
+            # Originally IAM role was a required parameter.
+            # Now we marked that as Optional because we can fetch it from SageMakerConfig
+            # Because of marking that parameter as optional, we should validate if it is None, even
+            # after fetching the config.
+            raise ValueError("An AWS IAM role is required to create or update a Pipeline.")
         try:
             response = self.create(role_arn, description, tags, parallelism_config)
         except ClientError as ce:

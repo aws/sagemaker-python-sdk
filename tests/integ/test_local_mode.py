@@ -68,6 +68,8 @@ class LocalNoS3Session(LocalSession):
         self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)
         self.local_mode = True
 
+        self.sagemaker_config = kwargs.get("sagemaker_config", None)
+
 
 class LocalPipelineNoS3Session(LocalPipelineSession):
     """
@@ -86,6 +88,8 @@ class LocalPipelineNoS3Session(LocalPipelineSession):
         self.sagemaker_client = LocalSagemakerClient(self)
         self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)
         self.local_mode = True
+
+        self.sagemaker_config = kwargs.get("sagemaker_config", None)
 
 
 @pytest.fixture(scope="module")

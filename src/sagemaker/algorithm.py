@@ -46,7 +46,7 @@ class AlgorithmEstimator(EstimatorBase):
     def __init__(
         self,
         algorithm_arn: str,
-        role: str,
+        role: str = None,
         instance_count: Optional[Union[int, PipelineVariable]] = None,
         instance_type: Optional[Union[str, PipelineVariable]] = None,
         volume_size: Union[int, PipelineVariable] = 30,

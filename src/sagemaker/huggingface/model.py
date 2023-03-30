@@ -106,7 +106,7 @@ class HuggingFaceModel(FrameworkModel):
 
     def __init__(
         self,
-        role: str,
+        role: Optional[str] = None,
         model_data: Optional[Union[str, PipelineVariable]] = None,
         entry_point: Optional[str] = None,
         transformers_version: Optional[str] = None,
