@@ -471,14 +471,14 @@ def _get_end_of_support_warn_message(end_of_support, framework, version):
     time_delt_days = (end_of_support_dt - current_dt).days
     if current_dt >= end_of_support_dt:
         return (
-            f"Unsupported DLC {framework} version: {version}." 
-            f"Please choose a supported version from our support policy - {dlc_support_policy}"
+            f"The {framework} {version} DLC has reached end of support. " 
+            f"Please choose a supported version from our support policy - {dlc_support_policy}."
             )
     if time_delt_days <= 60:
         return (
             f"The {framework} {version} DLC is approaching end of support, "
-            f"and patching will stop on {end_of_support}. "
-            f"Please choose a supported version from our support policy - {dlc_support_policy}"
+            f"and patching will stop on {end_of_support_dt.strftime('%Y-%m-%d %Z')}. "
+            f"Please choose a supported version from our support policy - {dlc_support_policy}."
             )
     return ""
 
@@ -487,6 +487,8 @@ def _validate_version_and_set_if_needed(version, config, framework):
     """Checks if the framework/algorithm version is one of the supported versions."""
     available_versions = list(config["versions"].keys())
     aliased_versions = list(config.get("version_aliases", {}).keys())
+
+
 
     if len(available_versions) == 1 and version not in aliased_versions:
         log_message = "Defaulting to the only supported framework/algorithm version: {}.".format(
@@ -502,10 +504,14 @@ def _validate_version_and_set_if_needed(version, config, framework):
     _validate_arg(version, available_versions + aliased_versions, "{} version".format(framework))
 
     # For DLCs, warn if image is out of support
-    end_of_support = config.get("end_of_support")
+    long_version = version
+    if version in aliased_versions:
+        long_version = config["version_aliases"][version]
+    end_of_support = config["versions"][long_version].get("end_of_support")
     end_of_support_warning = _get_end_of_support_warn_message(end_of_support, framework, version)
     if end_of_support_warning:
         logger.warning(end_of_support_warning)
+
     return version
 
 

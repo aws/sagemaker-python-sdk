@@ -528,6 +528,6 @@ def test_end_of_support():
     warn_message = image_uris._get_end_of_support_warn_message(end_of_support=end_of_support, framework="pytorch", version="1.6.0")
 
     assert warn_message == (
-        f"Unsupported DLC pytorch version: 1.6.0" 
-        f"Please choose a supported version from our support policy - {dlc_support_policy}"
+        f"The pytorch 1.6.0 DLC has reached end of support. " 
+        f"Please choose a supported version from our support policy - {dlc_support_policy}."
         )
