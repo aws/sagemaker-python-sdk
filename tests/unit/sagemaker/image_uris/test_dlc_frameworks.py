@@ -520,3 +520,14 @@ def _sagemaker_or_dlc_account(repo, region):
         )
     else:
         return DLC_ACCOUNT if region == REGION else DLC_ALTERNATE_REGION_ACCOUNTS[region]
+
+
+def test_end_of_support():
+    end_of_support = "2021-06-21T00:00:00.0Z"
+    dlc_support_policy = "https://aws.amazon.com/releasenotes/dlc-support-policy/"
+    warn_message = image_uris._get_end_of_support_warn_message(end_of_support=end_of_support, framework="pytorch", version="1.6.0")
+
+    assert warn_message == (
+        f"Unsupported DLC pytorch version: 1.6.0" 
+        f"Please choose a supported version from our support policy - {dlc_support_policy}"
+        )
