@@ -559,6 +559,7 @@ class TuningJobCompletionCriteriaConfig(object):
         """
         completion_criteria_config = {}
         if self.max_number_of_training_jobs_not_improving is not None:
+            completion_criteria_config[BEST_OBJECTIVE_NOT_IMPROVING] = {}
             completion_criteria_config[BEST_OBJECTIVE_NOT_IMPROVING][
                 MAX_NUMBER_OF_TRAINING_JOBS_NOT_IMPROVING
             ] = self.max_number_of_training_jobs_not_improving
@@ -569,6 +570,7 @@ class TuningJobCompletionCriteriaConfig(object):
             ] = self.target_objective_metric_value
 
         if self.complete_on_convergence is not None:
+            completion_criteria_config[CONVERGENCE_DETECTED] = {}
             completion_criteria_config[CONVERGENCE_DETECTED][COMPLETE_ON_CONVERGENCE_DETECTED] = (
                 "Enabled" if self.complete_on_convergence else "Disabled"
             )
