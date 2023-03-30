@@ -164,7 +164,9 @@ def retrieve(
         config = _config_for_framework_and_scope(_framework, final_image_scope, accelerator_type)
 
     original_version = version
-    version = _validate_version_and_set_if_needed(version, config, framework)
+    version = _validate_version_and_set_if_needed(
+        version, config, framework, image_scope, base_framework_version
+    )
     version_config = config["versions"][_version_for_config(version, config)]
 
     if framework == HUGGING_FACE_FRAMEWORK:
@@ -199,9 +201,8 @@ def retrieve(
         container_version = sdk_version + "-" + container_version
 
     if framework == HUGGING_FACE_FRAMEWORK:
-        pt_or_tf_version = (
-            re.compile("^(pytorch|tensorflow)(.*)$").match(base_framework_version).group(2)
-        )
+        hf_base_fw_regex = _get_hf_base_framework_version_regex()
+        pt_or_tf_version = hf_base_fw_regex.match(base_framework_version).group(2)
         _version = original_version
 
         if repo in [
@@ -253,6 +254,10 @@ def retrieve(
         repo += ":{}".format(tag)
 
     return ECR_URI_TEMPLATE.format(registry=registry, hostname=hostname, repository=repo)
+
+
+def _get_hf_base_framework_version_regex():
+    return re.compile("^(pytorch|tensorflow)(.*)$")
 
 
 def _get_instance_type_family(instance_type):
@@ -509,7 +514,7 @@ def _get_end_of_support_warn_message(version, config, framework):
     return ""
 
 
-def _validate_version_and_set_if_needed(version, config, framework):
+def _validate_version_and_set_if_needed(version, config, framework, scope, base_framework_version):
     """Checks if the framework/algorithm version is one of the supported versions."""
     available_versions = list(config["versions"].keys())
     aliased_versions = list(config.get("version_aliases", {}).keys())
@@ -527,8 +532,21 @@ def _validate_version_and_set_if_needed(version, config, framework):
 
     _validate_arg(version, available_versions + aliased_versions, "{} version".format(framework))
 
-    # For DLCs, warn if image is out of support. Use aliased version to grab information about the latest
-    end_of_support_warning = _get_end_of_support_warn_message(version, config, framework)
+    # For DLCs, warn if image is out of support.
+    eos_version, eos_config, eos_framework = version, config, framework
+
+    # Default to underlying base framework for HF, except for neuron which has its own policies.
+    inf_or_trn = "inf" in config.get("processors", []) or "trn" in config.get("processors", [])
+    if framework == HUGGING_FACE_FRAMEWORK and base_framework_version and not inf_or_trn:
+        hf_base_fw_regex = _get_hf_base_framework_version_regex()
+        hf_match = hf_base_fw_regex.search(base_framework_version)
+        if hf_match:
+            eos_framework = hf_match.group(1)
+            eos_version = hf_match.group(2)
+            eos_config = _config_for_framework_and_scope(eos_framework, scope)
+    end_of_support_warning = _get_end_of_support_warn_message(
+        eos_version, eos_config, eos_framework
+    )
     if end_of_support_warning:
         logger.warning(end_of_support_warning)
 

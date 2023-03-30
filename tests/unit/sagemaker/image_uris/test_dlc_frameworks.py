@@ -14,7 +14,6 @@ from __future__ import absolute_import
 
 import io
 import contextlib
-import datetime
 
 from packaging.version import Version
 
@@ -93,13 +92,7 @@ def _test_image_uris(
         assert expected == uri
 
 
-def _test_end_of_support_messaging(
-    framework,
-    fw_version,
-    py_version,
-    scope,
-    accelerator_type=None
-):
+def _test_end_of_support_messaging(framework, fw_version, py_version, scope, accelerator_type=None):
     base_args = {
         "framework": framework,
         "version": fw_version,
@@ -107,7 +100,9 @@ def _test_end_of_support_messaging(
         "image_scope": scope,
     }
 
-    config = image_uris._config_for_framework_and_scope(framework=framework, image_scope=scope, accelerator_type=accelerator_type)
+    config = image_uris._config_for_framework_and_scope(
+        framework=framework, image_scope=scope, accelerator_type=accelerator_type
+    )
     version_support = config.get("version_support")
     aliases = config.get("version_aliases")
 
@@ -116,7 +111,9 @@ def _test_end_of_support_messaging(
             # Version in version_support MUST be in an aliased value
             assert v in aliases.values()
 
-    expected_warning_message = image_uris._get_end_of_support_warn_message(fw_version, config, framework)
+    expected_warning_message = image_uris._get_end_of_support_warn_message(
+        fw_version, config, framework
+    )
 
     TYPES_AND_PROCESSORS = INSTANCE_TYPES_AND_PROCESSORS
     if framework == "pytorch" and Version(fw_version) >= Version("1.13"):
@@ -169,7 +166,7 @@ def test_tensorflow_training(tensorflow_training_version, tensorflow_training_py
         "tf_training_version": tensorflow_training_version,
         "py_version": tensorflow_training_py_version,
     }
-    
+
     framework = "tensorflow"
     scope = "training"
 
@@ -531,19 +528,15 @@ def _sagemaker_or_dlc_account(repo, region):
 
 def test_end_of_support():
     config = {
-        "version_aliases": {
-            "1.6": "1.6.0"
-        },
-        "version_support": {
-            "1.6.0": {
-                "end_of_support": "2021-06-21T00:00:00.0Z"
-            }
-        }
+        "version_aliases": {"1.6": "1.6.0"},
+        "version_support": {"1.6.0": {"end_of_support": "2021-06-21T00:00:00.0Z"}},
     }
     dlc_support_policy = "https://aws.amazon.com/releasenotes/dlc-support-policy/"
-    warn_message = image_uris._get_end_of_support_warn_message(config=config, framework="pytorch", version="1.6.0")
+    warn_message = image_uris._get_end_of_support_warn_message(
+        config=config, framework="pytorch", version="1.6.0"
+    )
 
     assert warn_message == (
-        f"The pytorch 1.6.0 DLC has reached end of support. " 
+        f"The pytorch 1.6.0 DLC has reached end of support. "
         f"Please choose a supported version from our support policy - {dlc_support_policy}."
-        )
+    )
