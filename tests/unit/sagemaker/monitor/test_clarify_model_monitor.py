@@ -413,6 +413,11 @@ def sagemaker_session(sagemaker_client):
     )
     session_mock.download_data = Mock(name="download_data")
     session_mock.expand_role.return_value = ROLE_ARN
+    session_mock._append_sagemaker_config_tags = Mock(
+        name="_append_sagemaker_config_tags", side_effect=lambda tags, config_path_to_tags: tags
+    )
+    # For tests which doesn't verify config file injection, operate with empty config
+    session_mock.sagemaker_config = {}
     return session_mock
 
 

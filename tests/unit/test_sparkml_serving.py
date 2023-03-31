@@ -46,6 +46,7 @@ def sagemaker_session():
     sms.boto_region_name = REGION
     sms.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
     sms.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+    sms.sagemaker_config = {}
     return sms
 
 

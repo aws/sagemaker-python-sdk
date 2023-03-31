@@ -145,7 +145,7 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
 
     def __init__(
         self,
-        role: str,
+        role: Optional[Union[str, PipelineVariable]] = None,
         instance_count: Optional[Union[int, PipelineVariable]] = None,
         instance_type: Optional[Union[str, PipelineVariable]] = None,
         predictor_type: Optional[str] = None,
@@ -499,7 +499,7 @@ class LinearLearnerModel(Model):
     def __init__(
         self,
         model_data: Union[str, PipelineVariable],
-        role: str,
+        role: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
         **kwargs
     ):

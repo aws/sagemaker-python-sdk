@@ -1,0 +1,9 @@
+SchemaVersion: '1.0'
+SageMaker:
+  FeatureGroup:
+    OnlineStoreConfig:
+      SecurityConfig:
+        KmsKeyId: 'kmskeyid1'
+    OfflineStoreConfig:
+      S3StorageConfig:
+        KmsKeyId: 'kmskeyid2'

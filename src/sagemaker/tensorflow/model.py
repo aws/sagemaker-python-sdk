@@ -131,7 +131,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
     def __init__(
         self,
         model_data: Union[str, PipelineVariable],
-        role: str,
+        role: str = None,
         entry_point: Optional[str] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         framework_version: Optional[str] = None,

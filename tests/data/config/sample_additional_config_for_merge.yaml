@@ -1,0 +1,7 @@
+SchemaVersion: '1.0'
+SageMaker:
+  FeatureGroup:
+    OnlineStoreConfig:
+      SecurityConfig:
+        KmsKeyId: 'kmskeyid3'
+    RoleArn: 'arn:aws:iam::555555555555:role/additionalConfigRole'

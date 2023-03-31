@@ -715,6 +715,7 @@ def sagemaker_session():
     )
     session_mock.download_data = Mock(name="download_data")
     session_mock.expand_role.return_value = "arn:aws:iam::012345678901:role/SageMakerRole"
+    session_mock.sagemaker_config = {}
     return session_mock
 
 

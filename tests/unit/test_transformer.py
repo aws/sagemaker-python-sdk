@@ -18,7 +18,9 @@ from mock import MagicMock, Mock, patch, PropertyMock
 from sagemaker.transformer import _TransformJob, Transformer
 from sagemaker.workflow.pipeline_context import PipelineSession, _PipelineConfig
 from sagemaker.inputs import BatchDataCaptureConfig
+
 from tests.integ import test_local_mode
+from tests.unit import SAGEMAKER_CONFIG_TRANSFORM_JOB
 
 ROLE = "DummyRole"
 REGION = "us-west-2"
@@ -63,7 +65,10 @@ def mock_create_tar_file():
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name="boto_session")
-    return Mock(name="sagemaker_session", boto_session=boto_mock, local_mode=False)
+    session = Mock(name="sagemaker_session", boto_session=boto_mock, local_mode=False)
+    # For tests which doesn't verify config file injection, operate with empty config
+    session.sagemaker_config = {}
+    return session
 
 
 @pytest.fixture()
@@ -94,6 +99,86 @@ def transformer(sagemaker_session):
         output_path=OUTPUT_PATH,
         sagemaker_session=sagemaker_session,
         volume_kms_key=KMS_KEY_ID,
+    )
+
+
+@patch("sagemaker.transformer._TransformJob.start_new")
+def test_transform_with_sagemaker_config_injection(start_new_job, sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRANSFORM_JOB
+
+    transformer = Transformer(
+        MODEL_NAME,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+    )
+    # volume kms key and output kms key are inserted from the config
+    assert (
+        transformer.volume_kms_key
+        == SAGEMAKER_CONFIG_TRANSFORM_JOB["SageMaker"]["TransformJob"]["TransformResources"][
+            "VolumeKmsKeyId"
+        ]
+    )
+    assert (
+        transformer.output_kms_key
+        == SAGEMAKER_CONFIG_TRANSFORM_JOB["SageMaker"]["TransformJob"]["TransformOutput"][
+            "KmsKeyId"
+        ]
+    )
+
+    content_type = "text/csv"
+    compression = "Gzip"
+    split = "Line"
+    input_filter = "$.feature"
+    output_filter = "$['sagemaker_output', 'id']"
+    join_source = "Input"
+    experiment_config = {
+        "ExperimentName": "exp",
+        "TrialName": "t",
+        "TrialComponentDisplayName": "tc",
+    }
+    model_client_config = {"InvocationsTimeoutInSeconds": 60, "InvocationsMaxRetries": 2}
+    batch_data_capture_config = BatchDataCaptureConfig(
+        destination_s3_uri=OUTPUT_PATH, generate_inference_id=False
+    )
+    transformer.transform(
+        DATA,
+        S3_DATA_TYPE,
+        content_type=content_type,
+        compression_type=compression,
+        split_type=split,
+        job_name=JOB_NAME,
+        input_filter=input_filter,
+        output_filter=output_filter,
+        join_source=join_source,
+        experiment_config=experiment_config,
+        model_client_config=model_client_config,
+        batch_data_capture_config=batch_data_capture_config,
+    )
+
+    assert transformer._current_job_name == JOB_NAME
+    assert transformer.output_path == OUTPUT_PATH
+    start_new_job.assert_called_once_with(
+        transformer,
+        DATA,
+        S3_DATA_TYPE,
+        content_type,
+        compression,
+        split,
+        input_filter,
+        output_filter,
+        join_source,
+        experiment_config,
+        model_client_config,
+        batch_data_capture_config,
+    )
+    # KmsKeyId in BatchDataCapture will be inserted from the config
+    assert (
+        batch_data_capture_config.kms_key_id
+        == SAGEMAKER_CONFIG_TRANSFORM_JOB["SageMaker"]["TransformJob"]["DataCaptureConfig"][
+            "KmsKeyId"
+        ]
     )
 
 

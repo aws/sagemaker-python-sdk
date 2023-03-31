@@ -235,6 +235,11 @@ class TensorFlow(Framework):
                 compiler_config.validate(self)
         self.compiler_config = compiler_config
 
+        if "profiler_config" in kwargs:
+            fw.profiler_config_deprecation_warning(
+                kwargs["profiler_config"], image_uri, self._framework_name, framework_version
+            )
+
     def _validate_args(self, py_version):
         """Placeholder docstring"""
 
