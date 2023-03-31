@@ -153,7 +153,7 @@ class Object2Vec(AmazonAlgorithmEstimatorBase):
 
     def __init__(
         self,
-        role: str,
+        role: Optional[Union[str, PipelineVariable]] = None,
         instance_count: Optional[Union[int, PipelineVariable]] = None,
         instance_type: Optional[Union[str, PipelineVariable]] = None,
         epochs: Optional[int] = None,
@@ -361,7 +361,7 @@ class Object2VecModel(Model):
     def __init__(
         self,
         model_data: Union[str, PipelineVariable],
-        role: str,
+        role: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
         **kwargs
     ):

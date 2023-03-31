@@ -40,7 +40,7 @@ class ClarifyModelMonitor(mm.ModelMonitor):
 
     def __init__(
         self,
-        role,
+        role=None,
         instance_count=1,
         instance_type="ml.m5.xlarge",
         volume_size_in_gb=30,

@@ -183,6 +183,7 @@ def sagemaker_session():
 
     session.create_inference_recommendations_job.return_value = IR_JOB_NAME
     session.wait_for_inference_recommendations_job.return_value = IR_SAMPLE_INFERENCE_RESPONSE
+    session.sagemaker_config = {}
 
     return session
 
