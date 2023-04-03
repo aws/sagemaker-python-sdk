@@ -57,6 +57,9 @@ def sagemaker_session():
         endpoint_from_production_variants=Mock(name="endpoint_from_production_variants"),
     )
     session.default_bucket = Mock(name="default_bucket", return_valie=BUCKET)
+    # For tests which doesn't verify config file injection, operate with empty config
+
+    session.sagemaker_config = {}
     return session
 
 

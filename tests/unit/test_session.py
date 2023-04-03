@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import copy
 import datetime
 import io
 import logging
@@ -36,6 +37,19 @@ from sagemaker.session import (
 )
 from sagemaker.tuner import WarmStartConfig, WarmStartTypes
 from sagemaker.inputs import BatchDataCaptureConfig
+from tests.unit import (
+    SAGEMAKER_CONFIG_MONITORING_SCHEDULE,
+    SAGEMAKER_CONFIG_COMPILATION_JOB,
+    SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB,
+    SAGEMAKER_CONFIG_ENDPOINT_CONFIG,
+    SAGEMAKER_CONFIG_AUTO_ML,
+    SAGEMAKER_CONFIG_MODEL_PACKAGE,
+    SAGEMAKER_CONFIG_FEATURE_GROUP,
+    SAGEMAKER_CONFIG_PROCESSING_JOB,
+    SAGEMAKER_CONFIG_TRAINING_JOB,
+    SAGEMAKER_CONFIG_TRANSFORM_JOB,
+    SAGEMAKER_CONFIG_MODEL,
+)
 
 STATIC_HPs = {"feature_dim": "784"}
 
@@ -246,6 +260,117 @@ def test_process(boto_session):
     }
 
     session.sagemaker_client.create_processing_job.assert_called_with(**expected_request)
+
+
+def test_create_process_with_sagemaker_config_injection(sagemaker_session):
+    processing_job_config = copy.deepcopy(SAGEMAKER_CONFIG_PROCESSING_JOB)
+    # deleting RedshiftDatasetDefinition. API can take either RedshiftDatasetDefinition or
+    # AthenaDatasetDefinition
+    del processing_job_config["SageMaker"]["ProcessingJob"]["ProcessingInputs"][0][
+        "DatasetDefinition"
+    ]["RedshiftDatasetDefinition"]
+    sagemaker_session.sagemaker_config = processing_job_config
+
+    processing_inputs = [
+        {
+            "InputName": "input-1",
+            # No S3Input because the API expects only one of S3Input or DatasetDefinition
+            "DatasetDefinition": {
+                "AthenaDatasetDefinition": {},
+            },
+        }
+    ]
+    output_config = {
+        "Outputs": [
+            {
+                "OutputName": "output-1",
+                "S3Output": {
+                    "S3Uri": "s3://mybucket/current_job_name/output",
+                    "LocalPath": "/data/output",
+                    "S3UploadMode": "Continuous",
+                },
+            },
+            {
+                "OutputName": "my_output",
+                "S3Output": {
+                    "S3Uri": "s3://uri/",
+                    "LocalPath": "/container/path/",
+                    "S3UploadMode": "Continuous",
+                },
+            },
+        ],
+    }
+    job_name = ("current_job_name",)
+    resource_config = {
+        "ClusterConfig": {
+            "InstanceType": "ml.m4.xlarge",
+            "InstanceCount": 1,
+            "VolumeSizeInGB": 100,
+        }
+    }
+    app_specification = {
+        "ImageUri": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3",
+        "ContainerArguments": ["--drop-columns", "'SelfEmployed'"],
+        "ContainerEntrypoint": ["python3", "/code/source/sklearn_transformer.py"],
+    }
+
+    process_request_args = {
+        "inputs": processing_inputs,
+        "output_config": output_config,
+        "job_name": job_name,
+        "resources": resource_config,
+        "stopping_condition": {"MaxRuntimeInSeconds": 3600},
+        "app_specification": app_specification,
+        "environment": {"my_env_variable": 20},
+        "experiment_config": {"ExperimentName": "AnExperiment"},
+    }
+    sagemaker_session.process(**process_request_args)
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"][
+        "ProcessingResources"
+    ]["ClusterConfig"]["VolumeKmsKeyId"]
+    expected_output_kms_key_id = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"][
+        "ProcessingOutputConfig"
+    ]["KmsKeyId"]
+    expected_tags = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"]["Tags"]
+    expected_role_arn = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"]["RoleArn"]
+    expected_vpc_config = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"][
+        "NetworkConfig"
+    ]["VpcConfig"]
+    expected_enable_network_isolation = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"][
+        "ProcessingJob"
+    ]["NetworkConfig"]["EnableNetworkIsolation"]
+    expected_enable_inter_containter_traffic_encryption = SAGEMAKER_CONFIG_PROCESSING_JOB[
+        "SageMaker"
+    ]["ProcessingJob"]["NetworkConfig"]["EnableInterContainerTrafficEncryption"]
+
+    expected_request = copy.deepcopy(
+        {
+            "ProcessingJobName": job_name,
+            "ProcessingResources": resource_config,
+            "AppSpecification": app_specification,
+            "RoleArn": expected_role_arn,
+            "ProcessingInputs": processing_inputs,
+            "ProcessingOutputConfig": output_config,
+            "Environment": {"my_env_variable": 20},
+            "NetworkConfig": {
+                "VpcConfig": expected_vpc_config,
+                "EnableNetworkIsolation": expected_enable_network_isolation,
+                "EnableInterContainerTrafficEncryption": expected_enable_inter_containter_traffic_encryption,
+            },
+            "StoppingCondition": {"MaxRuntimeInSeconds": 3600},
+            "Tags": expected_tags,
+            "ExperimentConfig": {"ExperimentName": "AnExperiment"},
+        }
+    )
+    expected_request["ProcessingInputs"][0]["DatasetDefinition"] = processing_job_config[
+        "SageMaker"
+    ]["ProcessingJob"]["ProcessingInputs"][0]["DatasetDefinition"]
+    expected_request["ProcessingOutputConfig"]["KmsKeyId"] = expected_output_kms_key_id
+    expected_request["ProcessingResources"]["ClusterConfig"][
+        "VolumeKmsKeyId"
+    ] = expected_volume_kms_key_id
+
+    sagemaker_session.sagemaker_client.create_processing_job.assert_called_with(**expected_request)
 
 
 def mock_exists(filepath_to_mock, exists_result):
@@ -717,7 +842,7 @@ ACCELERATOR_TYPE = "ml.eia.medium"
 MAX_SIZE = 30
 MAX_TIME = 3 * 60 * 60
 JOB_NAME = "jobname"
-TAGS = [{"Name": "some-tag", "Value": "value-for-tag"}]
+TAGS = [{"Key": "some-tag", "Value": "value-for-tag"}]
 VPC_CONFIG = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
 METRIC_DEFINITONS = [{"Name": "validation-rmse", "Regex": "validation-rmse=(\\d+)"}]
 EXPERIMENT_CONFIG = {
@@ -820,6 +945,7 @@ def sagemaker_session():
     }
     ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=MagicMock())
     ims.expand_role = Mock(return_value=EXPANDED_ROLE)
+
     return ims
 
 
@@ -1404,6 +1530,108 @@ def test_stop_tuning_job_client_error(sagemaker_session):
     )
 
 
+def test_train_with_sagemaker_config_injection(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
+
+    in_config = [
+        {
+            "ChannelName": "training",
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataDistributionType": "FullyReplicated",
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": S3_INPUT_URI,
+                }
+            },
+        }
+    ]
+
+    out_config = {"S3OutputPath": S3_OUTPUT}
+
+    resource_config = {
+        "InstanceCount": INSTANCE_COUNT,
+        "InstanceType": INSTANCE_TYPE,
+        "VolumeSizeInGB": MAX_SIZE,
+    }
+
+    stop_cond = {"MaxRuntimeInSeconds": MAX_TIME}
+    RETRY_STRATEGY = {"MaximumRetryAttempts": 2}
+    hyperparameters = {"foo": "bar"}
+    TRAINING_IMAGE_CONFIG = {
+        "TrainingRepositoryAccessMode": "Vpc",
+        "TrainingRepositoryAuthConfig": {
+            "TrainingRepositoryCredentialsProviderArn": "arn:aws:lambda:us-west-2:1234567897:function:test"
+        },
+    }
+
+    sagemaker_session.train(
+        image_uri=IMAGE,
+        input_mode="File",
+        input_config=in_config,
+        job_name=JOB_NAME,
+        output_config=out_config,
+        resource_config=resource_config,
+        hyperparameters=hyperparameters,
+        stop_condition=stop_cond,
+        metric_definitions=METRIC_DEFINITONS,
+        use_spot_instances=True,
+        checkpoint_s3_uri="s3://mybucket/checkpoints/",
+        checkpoint_local_path="/tmp/checkpoints",
+        enable_sagemaker_metrics=True,
+        environment=ENV_INPUT,
+        retry_strategy=RETRY_STRATEGY,
+        training_image_config=TRAINING_IMAGE_CONFIG,
+    )
+
+    _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
+
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "ResourceConfig"
+    ]["VolumeKmsKeyId"]
+    expected_role_arn = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["RoleArn"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "OutputDataConfig"
+    ]["KmsKeyId"]
+    expected_vpc_config = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["VpcConfig"]
+    expected_enable_network_isolation = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "EnableNetworkIsolation"
+    ]
+    expected_enable_inter_container_traffic_encryption = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"][
+        "TrainingJob"
+    ]["EnableInterContainerTrafficEncryption"]
+    expected_tags = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["Tags"]
+
+    assert actual_train_args["VpcConfig"] == expected_vpc_config
+    assert actual_train_args["HyperParameters"] == hyperparameters
+    assert actual_train_args["Tags"] == expected_tags
+    assert actual_train_args["AlgorithmSpecification"]["MetricDefinitions"] == METRIC_DEFINITONS
+    assert actual_train_args["AlgorithmSpecification"]["EnableSageMakerMetricsTimeSeries"] is True
+    assert (
+        actual_train_args["EnableInterContainerTrafficEncryption"]
+        == expected_enable_inter_container_traffic_encryption
+    )
+    assert actual_train_args["EnableNetworkIsolation"] == expected_enable_network_isolation
+    assert actual_train_args["EnableManagedSpotTraining"] is True
+    assert actual_train_args["CheckpointConfig"]["S3Uri"] == "s3://mybucket/checkpoints/"
+    assert actual_train_args["CheckpointConfig"]["LocalPath"] == "/tmp/checkpoints"
+    assert actual_train_args["Environment"] == ENV_INPUT
+    assert actual_train_args["RetryStrategy"] == RETRY_STRATEGY
+    assert (
+        actual_train_args["AlgorithmSpecification"]["TrainingImageConfig"] == TRAINING_IMAGE_CONFIG
+    )
+    assert actual_train_args["RoleArn"] == expected_role_arn
+    assert actual_train_args["ResourceConfig"] == {
+        "InstanceCount": INSTANCE_COUNT,
+        "InstanceType": INSTANCE_TYPE,
+        "VolumeSizeInGB": MAX_SIZE,
+        "VolumeKmsKeyId": expected_volume_kms_key_id,
+    }
+    assert actual_train_args["OutputDataConfig"] == {
+        "S3OutputPath": S3_OUTPUT,
+        "KmsKeyId": expected_kms_key_id,
+    }
+
+
 def test_train_pack_to_request_with_optional_params(sagemaker_session):
     in_config = [
         {
@@ -1475,6 +1703,74 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
     assert (
         actual_train_args["AlgorithmSpecification"]["TrainingImageConfig"] == TRAINING_IMAGE_CONFIG
     )
+
+
+def test_create_transform_job_with_sagemaker_config_injection(sagemaker_session):
+    # Config to test injection for
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRANSFORM_JOB
+
+    model_name = "my-model"
+    in_config = {
+        "CompressionType": "None",
+        "ContentType": "text/csv",
+        "SplitType": "None",
+        "DataSource": {"S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": S3_INPUT_URI}},
+    }
+    out_config = {"S3OutputPath": S3_OUTPUT}
+    resource_config = {"InstanceCount": INSTANCE_COUNT, "InstanceType": INSTANCE_TYPE}
+    data_processing = {"OutputFilter": "$", "InputFilter": "$", "JoinSource": "Input"}
+    data_capture_config = BatchDataCaptureConfig(destination_s3_uri="s3://test")
+
+    # important to deepcopy, otherwise the original dicts are modified when we add expected params
+    expected_args = copy.deepcopy(
+        {
+            "TransformJobName": JOB_NAME,
+            "ModelName": model_name,
+            "TransformInput": in_config,
+            "TransformOutput": out_config,
+            "TransformResources": resource_config,
+            "DataProcessing": data_processing,
+            "DataCaptureConfig": data_capture_config._to_request_dict(),
+            "Tags": TAGS,
+        }
+    )
+    # The following parameters should be fetched from config
+    expected_tags = SAGEMAKER_CONFIG_TRANSFORM_JOB["SageMaker"]["TransformJob"]["Tags"]
+    expected_args["DataCaptureConfig"]["KmsKeyId"] = SAGEMAKER_CONFIG_TRANSFORM_JOB["SageMaker"][
+        "TransformJob"
+    ]["DataCaptureConfig"]["KmsKeyId"]
+    expected_args["TransformOutput"]["KmsKeyId"] = SAGEMAKER_CONFIG_TRANSFORM_JOB["SageMaker"][
+        "TransformJob"
+    ]["TransformOutput"]["KmsKeyId"]
+    expected_args["TransformResources"]["VolumeKmsKeyId"] = SAGEMAKER_CONFIG_TRANSFORM_JOB[
+        "SageMaker"
+    ]["TransformJob"]["TransformResources"]["VolumeKmsKeyId"]
+
+    # make sure the original dicts were not modified before config injection
+    assert "KmsKeyId" not in in_config
+    assert "KmsKeyId" not in out_config
+    assert "VolumeKmsKeyId" not in resource_config
+
+    # injection should happen during this method
+    sagemaker_session.transform(
+        job_name=JOB_NAME,
+        model_name=model_name,
+        strategy=None,
+        max_concurrent_transforms=None,
+        max_payload=None,
+        env=None,
+        input_config=in_config,
+        output_config=out_config,
+        resource_config=resource_config,
+        experiment_config=None,
+        model_client_config=None,
+        tags=expected_tags,
+        data_processing=data_processing,
+        batch_data_capture_config=data_capture_config,
+    )
+
+    _, _, actual_args = sagemaker_session.sagemaker_client.method_calls[0]
+    assert actual_args == expected_args
 
 
 def test_transform_pack_to_request(sagemaker_session):
@@ -1809,6 +2105,34 @@ PRIMARY_CONTAINER = {
 }
 
 
+def test_create_model_with_sagemaker_config_injection(sagemaker_session):
+
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_MODEL
+
+    sagemaker_session.expand_role = Mock(
+        name="expand_role", side_effect=lambda role_name: role_name
+    )
+    model = sagemaker_session.create_model(
+        MODEL_NAME,
+        container_defs=PRIMARY_CONTAINER,
+    )
+    expected_role_arn = SAGEMAKER_CONFIG_MODEL["SageMaker"]["Model"]["ExecutionRoleArn"]
+    expected_enable_network_isolation = SAGEMAKER_CONFIG_MODEL["SageMaker"]["Model"][
+        "EnableNetworkIsolation"
+    ]
+    expected_vpc_config = SAGEMAKER_CONFIG_MODEL["SageMaker"]["Model"]["VpcConfig"]
+    expected_tags = SAGEMAKER_CONFIG_MODEL["SageMaker"]["Model"]["Tags"]
+    assert model == MODEL_NAME
+    sagemaker_session.sagemaker_client.create_model.assert_called_with(
+        ExecutionRoleArn=expected_role_arn,
+        ModelName=MODEL_NAME,
+        PrimaryContainer=PRIMARY_CONTAINER,
+        VpcConfig=expected_vpc_config,
+        EnableNetworkIsolation=expected_enable_network_isolation,
+        Tags=expected_tags,
+    )
+
+
 @patch("sagemaker.session._expand_container_def", return_value=PRIMARY_CONTAINER)
 def test_create_model(expand_container_def, sagemaker_session):
     model = sagemaker_session.create_model(MODEL_NAME, ROLE, PRIMARY_CONTAINER)
@@ -1977,6 +2301,142 @@ def test_create_model_from_job_with_tags(sagemaker_session):
     )
 
 
+def test_create_edge_packaging_with_sagemaker_config_injection(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB
+
+    output_config = {"S3OutputLocation": S3_OUTPUT}
+
+    sagemaker_session.package_model_for_edge(
+        output_config,
+    )
+    expected_role_arn = SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB["SageMaker"]["EdgePackagingJob"][
+        "RoleArn"
+    ]
+    expected_kms_key_id = SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB["SageMaker"]["EdgePackagingJob"][
+        "OutputConfig"
+    ]["KmsKeyId"]
+    expected_tags = SAGEMAKER_CONFIG_EDGE_PACKAGING_JOB["SageMaker"]["EdgePackagingJob"]["Tags"]
+    sagemaker_session.sagemaker_client.create_edge_packaging_job.assert_called_with(
+        RoleArn=expected_role_arn,  # provided from config
+        OutputConfig={
+            "S3OutputLocation": S3_OUTPUT,  # provided as param
+            "KmsKeyId": expected_kms_key_id,  # fetched from config
+        },
+        ModelName=None,
+        ModelVersion=None,
+        EdgePackagingJobName=None,
+        CompilationJobName=None,
+        Tags=expected_tags,
+    )
+
+
+def test_create_monitoring_schedule_with_sagemaker_config_injection(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_MONITORING_SCHEDULE
+
+    monitoring_output_config = {"MonitoringOutputs": [{"S3Output": {"S3Uri": S3_OUTPUT}}]}
+
+    sagemaker_session.create_monitoring_schedule(
+        JOB_NAME,
+        schedule_expression=None,
+        statistics_s3_uri=None,
+        constraints_s3_uri=None,
+        monitoring_inputs=[],
+        monitoring_output_config=monitoring_output_config,
+        instance_count=1,
+        instance_type="ml.m4.xlarge",
+        volume_size_in_gb=4,
+        image_uri="someimageuri",
+        network_config={"VpcConfig": {"SecurityGroupIds": ["sg-asparam"]}},
+    )
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_MONITORING_SCHEDULE["SageMaker"][
+        "MonitoringSchedule"
+    ]["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["MonitoringResources"][
+        "ClusterConfig"
+    ][
+        "VolumeKmsKeyId"
+    ]
+    expected_role_arn = SAGEMAKER_CONFIG_MONITORING_SCHEDULE["SageMaker"]["MonitoringSchedule"][
+        "MonitoringScheduleConfig"
+    ]["MonitoringJobDefinition"]["RoleArn"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_MONITORING_SCHEDULE["SageMaker"]["MonitoringSchedule"][
+        "MonitoringScheduleConfig"
+    ]["MonitoringJobDefinition"]["MonitoringOutputConfig"]["KmsKeyId"]
+    expected_subnets = SAGEMAKER_CONFIG_MONITORING_SCHEDULE["SageMaker"]["MonitoringSchedule"][
+        "MonitoringScheduleConfig"
+    ]["MonitoringJobDefinition"]["NetworkConfig"]["VpcConfig"]["Subnets"]
+    expected_enable_network_isolation = SAGEMAKER_CONFIG_MONITORING_SCHEDULE["SageMaker"][
+        "MonitoringSchedule"
+    ]["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["NetworkConfig"][
+        "EnableNetworkIsolation"
+    ]
+    expected_enable_inter_container_traffic_encryption = SAGEMAKER_CONFIG_MONITORING_SCHEDULE[
+        "SageMaker"
+    ]["MonitoringSchedule"]["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["NetworkConfig"][
+        "EnableInterContainerTrafficEncryption"
+    ]
+    sagemaker_session.sagemaker_client.create_monitoring_schedule.assert_called_with(
+        MonitoringScheduleName=JOB_NAME,
+        MonitoringScheduleConfig={
+            "MonitoringJobDefinition": {
+                "MonitoringInputs": [],
+                "MonitoringResources": {
+                    "ClusterConfig": {
+                        "InstanceCount": 1,  # provided as param
+                        "InstanceType": "ml.m4.xlarge",  # provided as param
+                        "VolumeSizeInGB": 4,  # provided as param
+                        "VolumeKmsKeyId": expected_volume_kms_key_id,  # Fetched from config
+                    }
+                },
+                "MonitoringAppSpecification": {"ImageUri": "someimageuri"},  # provided as param
+                "RoleArn": expected_role_arn,  # Fetched from config
+                "MonitoringOutputConfig": {
+                    "MonitoringOutputs": [  # provided as param
+                        {"S3Output": {"S3Uri": "s3://sagemaker-123/output/jobname"}}
+                    ],
+                    "KmsKeyId": expected_kms_key_id,  # fetched from config
+                },
+                "NetworkConfig": {
+                    "VpcConfig": {
+                        "Subnets": expected_subnets,  # fetched from config
+                        "SecurityGroupIds": ["sg-asparam"],  # provided as param
+                    },
+                    # The following are fetched from config
+                    "EnableNetworkIsolation": expected_enable_network_isolation,
+                    "EnableInterContainerTrafficEncryption": expected_enable_inter_container_traffic_encryption,
+                },
+            },
+        },
+        Tags=TAGS,  # fetched from config
+    )
+
+
+def test_compile_with_sagemaker_config_injection(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_COMPILATION_JOB
+
+    sagemaker_session.compile_model(
+        input_model_config={},
+        output_model_config={"S3OutputLocation": "s3://test"},
+        job_name="TestJob",
+    )
+    expected_role_arn = SAGEMAKER_CONFIG_COMPILATION_JOB["SageMaker"]["CompilationJob"]["RoleArn"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_COMPILATION_JOB["SageMaker"]["CompilationJob"][
+        "OutputConfig"
+    ]["KmsKeyId"]
+    expected_vpc_config = SAGEMAKER_CONFIG_COMPILATION_JOB["SageMaker"]["CompilationJob"][
+        "VpcConfig"
+    ]
+    expected_tags = SAGEMAKER_CONFIG_COMPILATION_JOB["SageMaker"]["CompilationJob"]["Tags"]
+    sagemaker_session.sagemaker_client.create_compilation_job.assert_called_with(
+        InputConfig={},
+        OutputConfig={"S3OutputLocation": "s3://test", "KmsKeyId": expected_kms_key_id},
+        RoleArn=expected_role_arn,
+        StoppingCondition=None,
+        CompilationJobName="TestJob",
+        VpcConfig=expected_vpc_config,
+        Tags=expected_tags,
+    )
+
+
 def test_create_model_from_job_with_image(sagemaker_session):
     ims = sagemaker_session
     ims.sagemaker_client.describe_training_job.return_value = COMPLETED_DESCRIBE_JOB_RESULT
@@ -2036,6 +2496,168 @@ def test_endpoint_from_production_variants(sagemaker_session):
     )
     sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
         EndpointConfigName="some-endpoint", ProductionVariants=pvs
+    )
+
+
+def test_create_endpoint_config_with_sagemaker_config_injection(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_ENDPOINT_CONFIG
+
+    data_capture_config_dict = {"DestinationS3Uri": "s3://test"}
+
+    # This method does not support ASYNC_INFERENCE_CONFIG or multiple PRODUCTION_VARIANTS
+    sagemaker_session.create_endpoint_config(
+        "endpoint-test",
+        "simple-model",
+        1,
+        "local",
+        data_capture_config_dict=data_capture_config_dict,
+    )
+    expected_data_capture_kms_key_id = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"][
+        "EndpointConfig"
+    ]["DataCaptureConfig"]["KmsKeyId"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"]["EndpointConfig"][
+        "KmsKeyId"
+    ]
+    expected_tags = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"]["EndpointConfig"]["Tags"]
+
+    sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
+        EndpointConfigName="endpoint-test",
+        ProductionVariants=[
+            {
+                "ModelName": "simple-model",
+                "VariantName": "AllTraffic",
+                "InitialVariantWeight": 1,
+                "InitialInstanceCount": 1,
+                "InstanceType": "local",
+            }
+        ],
+        DataCaptureConfig={
+            "DestinationS3Uri": "s3://test",
+            "KmsKeyId": expected_data_capture_kms_key_id,
+        },
+        KmsKeyId=expected_kms_key_id,
+        Tags=expected_tags,
+    )
+
+
+def test_create_endpoint_config_from_existing_with_sagemaker_config_injection(
+    sagemaker_session,
+):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_ENDPOINT_CONFIG
+
+    pvs = [
+        sagemaker.production_variant("A", "ml.p2.xlarge"),
+        sagemaker.production_variant("B", "ml.p2.xlarge"),
+        sagemaker.production_variant("C", "ml.p2.xlarge"),
+    ]
+    # Add DestinationS3Uri to only one production variant
+    pvs[0]["CoreDumpConfig"] = {"DestinationS3Uri": "s3://test"}
+    existing_endpoint_arn = "arn:aws:sagemaker:us-west-2:123412341234:endpoint-config/foo"
+    existing_endpoint_name = "foo"
+    new_endpoint_name = "new-foo"
+    sagemaker_session.sagemaker_client.describe_endpoint_config.return_value = {
+        "ProductionVariants": [sagemaker.production_variant("A", "ml.m4.xlarge")],
+        "EndpointConfigArn": existing_endpoint_arn,
+        "AsyncInferenceConfig": {},
+    }
+    sagemaker_session.sagemaker_client.list_tags.return_value = {"Tags": []}
+
+    sagemaker_session.create_endpoint_config_from_existing(
+        existing_endpoint_name, new_endpoint_name, new_production_variants=pvs
+    )
+
+    expected_production_variant_0_kms_key_id = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"][
+        "EndpointConfig"
+    ]["ProductionVariants"][0]["CoreDumpConfig"]["KmsKeyId"]
+    expected_inference_kms_key_id = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"]["EndpointConfig"][
+        "AsyncInferenceConfig"
+    ]["OutputConfig"]["KmsKeyId"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"]["EndpointConfig"][
+        "KmsKeyId"
+    ]
+    expected_tags = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"]["EndpointConfig"]["Tags"]
+
+    sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
+        EndpointConfigName=new_endpoint_name,
+        ProductionVariants=[
+            {
+                "CoreDumpConfig": {
+                    "KmsKeyId": expected_production_variant_0_kms_key_id,
+                    "DestinationS3Uri": pvs[0]["CoreDumpConfig"]["DestinationS3Uri"],
+                },
+                **sagemaker.production_variant("A", "ml.p2.xlarge"),
+            },
+            {
+                # Merge shouldn't happen because input for this index doesn't have DestinationS3Uri
+                **sagemaker.production_variant("B", "ml.p2.xlarge"),
+            },
+            sagemaker.production_variant("C", "ml.p2.xlarge"),
+        ],
+        KmsKeyId=expected_kms_key_id,  # from config
+        Tags=expected_tags,  # from config
+        AsyncInferenceConfig={"OutputConfig": {"KmsKeyId": expected_inference_kms_key_id}},
+    )
+
+
+def test_endpoint_from_production_variants_with_sagemaker_config_injection(
+    sagemaker_session,
+):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_ENDPOINT_CONFIG
+
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(
+        return_value={"EndpointStatus": "InService"}
+    )
+    pvs = [
+        sagemaker.production_variant("A", "ml.p2.xlarge"),
+        sagemaker.production_variant("B", "ml.p2.xlarge"),
+        sagemaker.production_variant("C", "ml.p2.xlarge"),
+    ]
+    # Add DestinationS3Uri to only one production variant
+    pvs[0]["CoreDumpConfig"] = {"DestinationS3Uri": "s3://test"}
+    sagemaker_session.endpoint_from_production_variants(
+        "some-endpoint",
+        pvs,
+        data_capture_config_dict={},
+        async_inference_config_dict=AsyncInferenceConfig()._to_request_dict(),
+    )
+    expected_data_capture_kms_key_id = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"][
+        "EndpointConfig"
+    ]["DataCaptureConfig"]["KmsKeyId"]
+    expected_inference_kms_key_id = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"]["EndpointConfig"][
+        "AsyncInferenceConfig"
+    ]["OutputConfig"]["KmsKeyId"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"]["EndpointConfig"][
+        "KmsKeyId"
+    ]
+    expected_tags = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"]["EndpointConfig"]["Tags"]
+
+    expected_async_inference_config_dict = AsyncInferenceConfig()._to_request_dict()
+    expected_async_inference_config_dict["OutputConfig"]["KmsKeyId"] = expected_inference_kms_key_id
+    expected_pvs = [
+        sagemaker.production_variant("A", "ml.p2.xlarge"),
+        sagemaker.production_variant("B", "ml.p2.xlarge"),
+        sagemaker.production_variant("C", "ml.p2.xlarge"),
+    ]
+    # Add DestinationS3Uri, KmsKeyId to only one production variant
+    expected_production_variant_0_kms_key_id = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"][
+        "EndpointConfig"
+    ]["ProductionVariants"][0]["CoreDumpConfig"]["KmsKeyId"]
+    expected_pvs[0]["CoreDumpConfig"] = {
+        "DestinationS3Uri": "s3://test",
+        "KmsKeyId": expected_production_variant_0_kms_key_id,
+    }
+    sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
+        EndpointConfigName="some-endpoint",
+        ProductionVariants=expected_pvs,
+        Tags=expected_tags,  # from config
+        KmsKeyId=expected_kms_key_id,  # from config
+        AsyncInferenceConfig=expected_async_inference_config_dict,
+        DataCaptureConfig={"KmsKeyId": expected_data_capture_kms_key_id},
+    )
+    sagemaker_session.sagemaker_client.create_endpoint.assert_called_with(
+        EndpointConfigName="some-endpoint",
+        EndpointName="some-endpoint",
+        Tags=expected_tags,  # from config
     )
 
 
@@ -2158,7 +2780,7 @@ def test_endpoint_from_production_variants_with_async_config(sagemaker_session):
     sagemaker_session.endpoint_from_production_variants(
         "some-endpoint",
         pvs,
-        async_inference_config_dict=AsyncInferenceConfig,
+        async_inference_config_dict=AsyncInferenceConfig()._to_request_dict(),
     )
     sagemaker_session.sagemaker_client.create_endpoint.assert_called_with(
         EndpointConfigName="some-endpoint", EndpointName="some-endpoint", Tags=[]
@@ -2166,7 +2788,7 @@ def test_endpoint_from_production_variants_with_async_config(sagemaker_session):
     sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
         EndpointConfigName="some-endpoint",
         ProductionVariants=pvs,
-        AsyncInferenceConfig=AsyncInferenceConfig,
+        AsyncInferenceConfig=AsyncInferenceConfig()._to_request_dict(),
     )
 
 
@@ -2522,11 +3144,70 @@ def test_auto_ml_pack_to_request(sagemaker_session):
     role = EXPANDED_ROLE
 
     sagemaker_session.auto_ml(input_config, output_config, auto_ml_job_config, role, job_name)
+    sagemaker_session.sagemaker_client.create_auto_ml_job.assert_called_with(
+        AutoMLJobName=DEFAULT_EXPECTED_AUTO_ML_JOB_ARGS["AutoMLJobName"],
+        InputDataConfig=DEFAULT_EXPECTED_AUTO_ML_JOB_ARGS["InputDataConfig"],
+        OutputDataConfig=DEFAULT_EXPECTED_AUTO_ML_JOB_ARGS["OutputDataConfig"],
+        AutoMLJobConfig=DEFAULT_EXPECTED_AUTO_ML_JOB_ARGS["AutoMLJobConfig"],
+        RoleArn=DEFAULT_EXPECTED_AUTO_ML_JOB_ARGS["RoleArn"],
+        GenerateCandidateDefinitionsOnly=False,
+    )
 
-    assert sagemaker_session.sagemaker_client.method_calls[0] == (
-        "create_auto_ml_job",
-        (),
-        DEFAULT_EXPECTED_AUTO_ML_JOB_ARGS,
+
+def test_create_auto_ml_with_sagemaker_config_injection(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_AUTO_ML
+
+    input_config = [
+        {
+            "DataSource": {"S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": S3_INPUT_URI}},
+            "TargetAttributeName": "y",
+        }
+    ]
+
+    output_config = {"S3OutputPath": S3_OUTPUT}
+
+    auto_ml_job_config = {
+        "CompletionCriteria": {
+            "MaxCandidates": 10,
+            "MaxAutoMLJobRuntimeInSeconds": 36000,
+            "MaxRuntimePerTrainingJobInSeconds": 3600 * 2,
+        }
+    }
+
+    job_name = JOB_NAME
+    sagemaker_session.auto_ml(input_config, output_config, auto_ml_job_config, job_name=job_name)
+    expected_call_args = copy.deepcopy(DEFAULT_EXPECTED_AUTO_ML_JOB_ARGS)
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoMLJob"][
+        "AutoMLJobConfig"
+    ]["SecurityConfig"]["VolumeKmsKeyId"]
+    expected_role_arn = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoMLJob"]["RoleArn"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoMLJob"]["OutputDataConfig"][
+        "KmsKeyId"
+    ]
+    expected_vpc_config = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoMLJob"]["AutoMLJobConfig"][
+        "SecurityConfig"
+    ]["VpcConfig"]
+    expected_tags = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoMLJob"]["Tags"]
+    expected_enable_inter_container_traffic_encryption = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"][
+        "AutoMLJob"
+    ]["AutoMLJobConfig"]["SecurityConfig"]["EnableInterContainerTrafficEncryption"]
+    expected_call_args["OutputDataConfig"]["KmsKeyId"] = expected_kms_key_id
+    expected_call_args["RoleArn"] = expected_role_arn
+    expected_call_args["AutoMLJobConfig"]["SecurityConfig"] = {
+        "EnableInterContainerTrafficEncryption": expected_enable_inter_container_traffic_encryption
+    }
+    expected_call_args["AutoMLJobConfig"]["SecurityConfig"]["VpcConfig"] = expected_vpc_config
+    expected_call_args["AutoMLJobConfig"]["SecurityConfig"][
+        "VolumeKmsKeyId"
+    ] = expected_volume_kms_key_id
+    sagemaker_session.sagemaker_client.create_auto_ml_job.assert_called_with(
+        AutoMLJobName=expected_call_args["AutoMLJobName"],
+        InputDataConfig=expected_call_args["InputDataConfig"],
+        OutputDataConfig=expected_call_args["OutputDataConfig"],
+        AutoMLJobConfig=expected_call_args["AutoMLJobConfig"],
+        RoleArn=expected_call_args["RoleArn"],
+        GenerateCandidateDefinitionsOnly=False,
+        Tags=expected_tags,
     )
 
 
@@ -2725,6 +3406,112 @@ def test_create_model_package_from_containers_without_model_package_group_name(
             "inference_inferences and transform_instances "
             "must be provided if model_package_group_name is not present." == str(error)
         )
+
+
+def test_create_model_package_with_sagemaker_config_injection(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_MODEL_PACKAGE
+
+    model_package_name = "sagemaker-model-package"
+    containers = ["dummy-container"]
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarget"]
+    model_metrics = {
+        "Bias": {
+            "ContentType": "content-type",
+            "S3Uri": "s3://...",
+        }
+    }
+    drift_check_baselines = {
+        "Bias": {
+            "ConfigFile": {
+                "ContentType": "content-type",
+                "S3Uri": "s3://...",
+            }
+        }
+    }
+    validation_profiles = [
+        {
+            "ProfileName": "profileName",
+            "TransformJobDefinition": {"TransformOutput": {"S3OutputPath": "s3://test"}},
+        }
+    ]
+    validation_specification = {"ValidationProfiles": validation_profiles}
+
+    metadata_properties = {
+        "CommitId": "test-commit-id",
+        "Repository": "test-repository",
+        "GeneratedBy": "sagemaker-python-sdk",
+        "ProjectId": "unit-test",
+    }
+    marketplace_cert = (True,)
+    approval_status = ("Approved",)
+    description = "description"
+    customer_metadata_properties = {"key1": "value1"}
+    domain = "COMPUTER_VISION"
+    task = "IMAGE_CLASSIFICATION"
+    sample_payload_url = "s3://test-bucket/model"
+    sagemaker_session.create_model_package_from_containers(
+        containers=containers,
+        content_types=content_types,
+        response_types=response_types,
+        inference_instances=inference_instances,
+        transform_instances=transform_instances,
+        model_package_name=model_package_name,
+        model_metrics=model_metrics,
+        metadata_properties=metadata_properties,
+        marketplace_cert=marketplace_cert,
+        approval_status=approval_status,
+        description=description,
+        drift_check_baselines=drift_check_baselines,
+        customer_metadata_properties=customer_metadata_properties,
+        domain=domain,
+        sample_payload_url=sample_payload_url,
+        task=task,
+        validation_specification=validation_specification,
+    )
+    expected_kms_key_id = SAGEMAKER_CONFIG_MODEL_PACKAGE["SageMaker"]["ModelPackage"][
+        "ValidationSpecification"
+    ]["ValidationProfiles"][0]["TransformJobDefinition"]["TransformOutput"]["KmsKeyId"]
+    expected_role_arn = SAGEMAKER_CONFIG_MODEL_PACKAGE["SageMaker"]["ModelPackage"][
+        "ValidationSpecification"
+    ]["ValidationRole"]
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_MODEL_PACKAGE["SageMaker"]["ModelPackage"][
+        "ValidationSpecification"
+    ]["ValidationProfiles"][0]["TransformJobDefinition"]["TransformResources"]["VolumeKmsKeyId"]
+    expected_args = copy.deepcopy(
+        {
+            "ModelPackageName": model_package_name,
+            "InferenceSpecification": {
+                "Containers": containers,
+                "SupportedContentTypes": content_types,
+                "SupportedResponseMIMETypes": response_types,
+                "SupportedRealtimeInferenceInstanceTypes": inference_instances,
+                "SupportedTransformInstanceTypes": transform_instances,
+            },
+            "ModelPackageDescription": description,
+            "ModelMetrics": model_metrics,
+            "MetadataProperties": metadata_properties,
+            "CertifyForMarketplace": marketplace_cert,
+            "ModelApprovalStatus": approval_status,
+            "DriftCheckBaselines": drift_check_baselines,
+            "CustomerMetadataProperties": customer_metadata_properties,
+            "Domain": domain,
+            "SamplePayloadUrl": sample_payload_url,
+            "Task": task,
+            "ValidationSpecification": validation_specification,
+        }
+    )
+    expected_args["ValidationSpecification"]["ValidationRole"] = expected_role_arn
+    expected_args["ValidationSpecification"]["ValidationProfiles"][0]["TransformJobDefinition"][
+        "TransformResources"
+    ]["VolumeKmsKeyId"] = expected_volume_kms_key_id
+    expected_args["ValidationSpecification"]["ValidationProfiles"][0]["TransformJobDefinition"][
+        "TransformOutput"
+    ]["KmsKeyId"] = expected_kms_key_id
+
+    sagemaker_session.sagemaker_client.create_model_package.assert_called_with(**expected_args)
 
 
 def test_create_model_package_from_containers_all_args(sagemaker_session):
@@ -2933,6 +3720,45 @@ def test_create_model_package_from_containers_with_one_instance_types(
 @pytest.fixture
 def feature_group_dummy_definitions():
     return [{"FeatureName": "feature1", "FeatureType": "String"}]
+
+
+def test_feature_group_create_with_sagemaker_config_injection(
+    sagemaker_session, feature_group_dummy_definitions
+):
+
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_FEATURE_GROUP
+
+    sagemaker_session.create_feature_group(
+        feature_group_name="MyFeatureGroup",
+        record_identifier_name="feature1",
+        event_time_feature_name="feature2",
+        feature_definitions=feature_group_dummy_definitions,
+        offline_store_config={"S3StorageConfig": {"S3Uri": "s3://test"}},
+    )
+    expected_offline_store_kms_key_id = SAGEMAKER_CONFIG_FEATURE_GROUP["SageMaker"]["FeatureGroup"][
+        "OfflineStoreConfig"
+    ]["S3StorageConfig"]["KmsKeyId"]
+    expected_role_arn = SAGEMAKER_CONFIG_FEATURE_GROUP["SageMaker"]["FeatureGroup"]["RoleArn"]
+    expected_online_store_kms_key_id = SAGEMAKER_CONFIG_FEATURE_GROUP["SageMaker"]["FeatureGroup"][
+        "OnlineStoreConfig"
+    ]["SecurityConfig"]["KmsKeyId"]
+    expected_tags = SAGEMAKER_CONFIG_FEATURE_GROUP["SageMaker"]["FeatureGroup"]["Tags"]
+    expected_request = {
+        "FeatureGroupName": "MyFeatureGroup",
+        "RecordIdentifierFeatureName": "feature1",
+        "EventTimeFeatureName": "feature2",
+        "FeatureDefinitions": feature_group_dummy_definitions,
+        "RoleArn": expected_role_arn,
+        "OnlineStoreConfig": {
+            "SecurityConfig": {"KmsKeyId": expected_online_store_kms_key_id},
+            "EnableOnlineStore": True,
+        },
+        "OfflineStoreConfig": {
+            "S3StorageConfig": {"KmsKeyId": expected_offline_store_kms_key_id, "S3Uri": "s3://test"}
+        },
+        "Tags": expected_tags,
+    }
+    sagemaker_session.sagemaker_client.create_feature_group.assert_called_with(**expected_request)
 
 
 def test_feature_group_create(sagemaker_session, feature_group_dummy_definitions):
@@ -3671,3 +4497,95 @@ def test_wait_for_inference_recommendations_job_invalid_log_level(sagemaker_sess
         )
 
     assert "log_level must be either Quiet or Verbose" in str(error)
+
+
+def test_append_sagemaker_config_tags(sagemaker_session):
+    tags_base = [
+        {"Key": "tagkey4", "Value": "000"},
+        {"Key": "tagkey5", "Value": "000"},
+    ]
+    tags_duplicate = [
+        {"Key": "tagkey1", "Value": "000"},
+        {"Key": "tagkey2", "Value": "000"},
+    ]
+    tags_none = None
+    tags_empty = []
+
+    # Helper to sort the lists so that the test is not dependent on order
+    def sort(tags):
+        return tags.sort(key=lambda tag: tag["Key"])
+
+    config_tag_value = [
+        {"Key": "tagkey1", "Value": "tagvalue1"},
+        {"Key": "tagkey2", "Value": "tagvalue2"},
+        {"Key": "tagkey3", "Value": "tagvalue3"},
+    ]
+    sagemaker_session.sagemaker_config = {"SchemaVersion": "1.0"}
+    sagemaker_session.sagemaker_config.update(
+        {"SageMaker": {"ProcessingJob": {"Tags": config_tag_value}}}
+    )
+    config_key_path = "SageMaker.ProcessingJob.Tags"
+
+    base_case = sagemaker_session._append_sagemaker_config_tags(tags_base, config_key_path)
+    assert sort(base_case) == sort(
+        [
+            {"Key": "tagkey1", "Value": "tagvalue1"},
+            {"Key": "tagkey2", "Value": "tagvalue2"},
+            {"Key": "tagkey3", "Value": "tagvalue3"},
+            {"Key": "tagkey4", "Value": "000"},
+            {"Key": "tagkey5", "Value": "000"},
+        ]
+    )
+
+    duplicate_case = sagemaker_session._append_sagemaker_config_tags(
+        tags_duplicate, config_key_path
+    )
+    assert sort(duplicate_case) == sort(
+        [
+            {"Key": "tagkey1", "Value": "000"},
+            {"Key": "tagkey2", "Value": "000"},
+            {"Key": "tagkey3", "Value": "tagvalue3"},
+        ]
+    )
+
+    none_case = sagemaker_session._append_sagemaker_config_tags(tags_none, config_key_path)
+    assert sort(none_case) == sort(
+        [
+            {"Key": "tagkey1", "Value": "tagvalue1"},
+            {"Key": "tagkey2", "Value": "tagvalue2"},
+            {"Key": "tagkey3", "Value": "tagvalue3"},
+        ]
+    )
+
+    empty_case = sagemaker_session._append_sagemaker_config_tags(tags_empty, config_key_path)
+    assert sort(empty_case) == sort(
+        [
+            {"Key": "tagkey1", "Value": "tagvalue1"},
+            {"Key": "tagkey2", "Value": "tagvalue2"},
+            {"Key": "tagkey3", "Value": "tagvalue3"},
+        ]
+    )
+
+    sagemaker_session.sagemaker_config.update(
+        {"SageMaker": {"TrainingJob": {"Tags": config_tag_value}}}
+    )
+    config_tags_none = sagemaker_session._append_sagemaker_config_tags(tags_base, config_key_path)
+    assert sort(config_tags_none) == sort(
+        [
+            {"Key": "tagkey4", "Value": "000"},
+            {"Key": "tagkey5", "Value": "000"},
+        ]
+    )
+
+    sagemaker_session.sagemaker_config.update(
+        {"SageMaker": {"ProcessingJob": {"Tags": config_tag_value}}}
+    )
+    config_tags_empty = sagemaker_session._append_sagemaker_config_tags(
+        tags_base, "DUMMY.CONFIG.PATH"
+    )
+    assert sort(config_tags_empty) == sort(
+        [
+            {"Key": "tagkey4", "Value": "000"},
+            {"Key": "tagkey5", "Value": "000"},
+        ]
+    )

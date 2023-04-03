@@ -1,0 +1,3 @@
+SchemaVersion: '1.0'
+CustomParameters:
+  TestCode: !!python/object/apply:eval ["[x ** 2 for x in [1, 2, 3]]"]

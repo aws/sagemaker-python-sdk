@@ -12,11 +12,17 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import os
 import pytest
 import re
 import time
+import warnings
+from packaging import version
 
-
+from sagemaker import image_uris
+import sagemaker.fw_utils as fw
+from sagemaker.pytorch import PyTorch
+from sagemaker.tensorflow import TensorFlow
 from sagemaker.debugger.profiler_config import ProfilerConfig, FrameworkProfile
 
 from sagemaker.debugger.metrics_config import (
@@ -643,3 +649,162 @@ def test_validation():
 
     with pytest.raises(AssertionError, match=ErrorMessages.INVALID_CPROFILE_TIMER.value):
         PythonProfilingConfig(cprofile_timer="bad_cprofile_timer")
+
+
+DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
+SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
+INSTANCE_COUNT = 1
+INSTANCE_TYPE = "ml.p3.2xlarge"
+ROLE = "Dummy"
+REGION = "us-west-2"
+
+
+def _check_framework_profile_deprecation_warning(framework_version, framework_name, warn_list):
+    """Check the collected warnings for a framework fromfile DeprecationWarning"""
+
+    thresh = version.parse("2.12") if framework_name == "tensorflow" else version.parse("2.0")
+    actual = version.parse(framework_version)
+
+    if actual >= thresh:
+        # should find a Framework profiling deprecation warning
+        for w in warn_list:
+            if issubclass(w.category, DeprecationWarning):
+                if "Framework profiling" in str(w.message):
+                    return
+        assert 0  # Should have found a deprecation and exited above
+
+
+def test_create_pytorch_estimator_with_framework_profile(
+    sagemaker_session,
+    pytorch_inference_version,
+    pytorch_inference_py_version,
+    default_framework_profile,
+):
+    profiler_config = ProfilerConfig(framework_profile_params=default_framework_profile)
+
+    with warnings.catch_warnings(record=True) as warn_list:
+        warnings.simplefilter("always")
+        framework_version = pytorch_inference_version
+        pytorch = PyTorch(
+            entry_point=SCRIPT_PATH,
+            framework_version=framework_version,
+            py_version=pytorch_inference_py_version,
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
+            base_job_name="job",
+            profiler_config=profiler_config,
+        )
+
+        _check_framework_profile_deprecation_warning(
+            framework_version, pytorch._framework_name, warn_list
+        )
+
+
+def test_create_pytorch_estimator_w_image_with_framework_profile(
+    sagemaker_session,
+    pytorch_inference_version,
+    pytorch_inference_py_version,
+    gpu_pytorch_instance_type,
+    default_framework_profile,
+):
+    image_uri = image_uris.retrieve(
+        "pytorch",
+        REGION,
+        version=pytorch_inference_version,
+        py_version=pytorch_inference_py_version,
+        instance_type=gpu_pytorch_instance_type,
+        image_scope="inference",
+    )
+
+    profiler_config = ProfilerConfig(framework_profile_params=default_framework_profile)
+
+    with warnings.catch_warnings(record=True) as warn_list:
+        warnings.simplefilter("always")
+        pytorch = PyTorch(
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            instance_count=INSTANCE_COUNT,
+            instance_type=gpu_pytorch_instance_type,
+            image_uri=image_uri,
+            profiler_config=profiler_config,
+        )
+
+        framework_version = None
+        _, _, image_tag, _ = fw.framework_name_from_image(image_uri)
+
+        if image_tag is not None:
+            framework_version = fw.framework_version_from_tag(image_tag)
+
+        if framework_version is not None:
+            _check_framework_profile_deprecation_warning(
+                framework_version, pytorch._framework_name, warn_list
+            )
+
+
+def test_create_tf_estimator_with_framework_profile_212(
+    sagemaker_session,
+    default_framework_profile,
+):
+    profiler_config = ProfilerConfig(framework_profile_params=default_framework_profile)
+
+    with warnings.catch_warnings(record=True) as warn_list:
+        warnings.simplefilter("always")
+        framework_version = "2.12"
+        tf = TensorFlow(
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            framework_version=framework_version,
+            py_version="py39",
+            sagemaker_session=sagemaker_session,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
+            profiler_config=profiler_config,
+        )
+
+        _check_framework_profile_deprecation_warning(
+            framework_version, tf._framework_name, warn_list
+        )
+
+
+def test_create_tf_estimator_w_image_with_framework_profile(
+    sagemaker_session,
+    tensorflow_inference_version,
+    tensorflow_inference_py_version,
+    default_framework_profile,
+):
+    image_uri = image_uris.retrieve(
+        "tensorflow",
+        REGION,
+        version=tensorflow_inference_version,
+        py_version=tensorflow_inference_py_version,
+        instance_type=INSTANCE_TYPE,
+        image_scope="inference",
+    )
+
+    profiler_config = ProfilerConfig(framework_profile_params=default_framework_profile)
+
+    with warnings.catch_warnings(record=True) as warn_list:
+        warnings.simplefilter("always")
+        tf = TensorFlow(
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
+            image_uri=image_uri,
+            profiler_config=profiler_config,
+        )
+
+        framework_version = None
+        _, _, image_tag, _ = fw.framework_name_from_image(image_uri)
+
+        if image_tag is not None:
+            framework_version = fw.framework_version_from_tag(image_tag)
+
+        if framework_version is not None:
+            _check_framework_profile_deprecation_warning(
+                framework_version, tf._framework_name, warn_list
+            )

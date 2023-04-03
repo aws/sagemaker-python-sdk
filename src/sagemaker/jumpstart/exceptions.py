@@ -16,8 +16,13 @@ from typing import List, Optional
 
 from sagemaker.jumpstart.constants import JumpStartScriptScope
 
+NO_AVAILABLE_INSTANCES_ERROR_MSG = (
+    "No instances available in {region} that can support model id '{model_id}'. "
+    "Please try another region."
+)
 
-class JumpStartHyperparametersError(Exception):
+
+class JumpStartHyperparametersError(ValueError):
     """Exception raised for bad hyperparameters of a JumpStart model."""
 
     def __init__(
@@ -29,7 +34,7 @@ class JumpStartHyperparametersError(Exception):
         super().__init__(self.message)
 
 
-class VulnerableJumpStartModelError(Exception):
+class VulnerableJumpStartModelError(ValueError):
     """Exception raised when trying to access a JumpStart model specs flagged as vulnerable.
 
     Raise this exception only if the scope of attributes accessed in the specifications have
@@ -61,7 +66,7 @@ class VulnerableJumpStartModelError(Exception):
             self.message = message
         else:
             if None in [model_id, version, vulnerabilities, scope]:
-                raise ValueError(
+                raise RuntimeError(
                     "Must specify `model_id`, `version`, `vulnerabilities`, " "and scope arguments."
                 )
             if scope == JumpStartScriptScope.INFERENCE:
@@ -87,7 +92,7 @@ class VulnerableJumpStartModelError(Exception):
         super().__init__(self.message)
 
 
-class DeprecatedJumpStartModelError(Exception):
+class DeprecatedJumpStartModelError(ValueError):
     """Exception raised when trying to access a JumpStart model deprecated specifications.
 
     A deprecated specification for a JumpStart model does not mean the whole model is
@@ -107,7 +112,7 @@ class DeprecatedJumpStartModelError(Exception):
             self.message = message
         else:
             if None in [model_id, version]:
-                raise ValueError("Must specify `model_id` and `version` arguments.")
+                raise RuntimeError("Must specify `model_id` and `version` arguments.")
             self.message = (
                 f"Version '{version}' of JumpStart model '{model_id}' is deprecated. "
                 "Please try targetting a higher version of the model."
