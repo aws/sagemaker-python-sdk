@@ -13,7 +13,14 @@
 from __future__ import absolute_import
 import os
 
-from sagemaker import hyperparameters, metric_definitions, image_uris, model_uris, script_uris
+from sagemaker import (
+    hyperparameters,
+    instance_types,
+    metric_definitions,
+    image_uris,
+    model_uris,
+    script_uris,
+)
 from sagemaker.estimator import Estimator
 from sagemaker.jumpstart.constants import (
     INFERENCE_ENTRY_POINT_SCRIPT_NAME,
@@ -36,8 +43,13 @@ from tests.integ.sagemaker.jumpstart.utils import (
 def test_jumpstart_transfer_learning_estimator_class(setup):
 
     model_id, model_version = "huggingface-spc-bert-base-cased", "1.2.3"
-    training_instance_type = "ml.p3.2xlarge"
-    inference_instance_type = "ml.p2.xlarge"
+
+    inference_instance_type = instance_types.retrieve_default(
+        model_id=model_id, model_version=model_version, scope="inference"
+    )
+    training_instance_type = instance_types.retrieve_default(
+        model_id=model_id, model_version=model_version, scope="training"
+    )
     instance_count = 1
 
     print("Starting training...")
