@@ -1205,9 +1205,9 @@ class SageMakerClarifyProcessor(Processor):
 
     def __init__(
         self,
-        role: str,
-        instance_count: int,
-        instance_type: str,
+        role: Optional[str] = None,
+        instance_count: int = None,
+        instance_type: str = None,
         volume_size_in_gb: int = 30,
         volume_kms_key: Optional[str] = None,
         output_kms_key: Optional[str] = None,
