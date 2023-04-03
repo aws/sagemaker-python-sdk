@@ -429,7 +429,7 @@ def create_tar_file(source_files, target=None):
 def _tmpdir(suffix="", prefix="tmp", directory=None):
     """Create a temporary directory with a context manager.
 
-    The file is deleted when the context exits.
+    The file is deleted when the context exits, even when there's an exception.
     The prefix, suffix, and dir arguments are the same as for mkstemp().
 
     Args:
@@ -449,8 +449,10 @@ def _tmpdir(suffix="", prefix="tmp", directory=None):
             f"directory does not exist: '{directory}'"
         )
     tmp = tempfile.mkdtemp(suffix=suffix, prefix=prefix, dir=directory)
-    yield tmp
-    shutil.rmtree(tmp)
+    try:
+        yield tmp
+    finally:
+        shutil.rmtree(tmp)
 
 
 def repack_model(
