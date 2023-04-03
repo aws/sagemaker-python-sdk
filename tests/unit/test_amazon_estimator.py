@@ -74,6 +74,8 @@ def sagemaker_session():
     sms.sagemaker_client.describe_training_job = Mock(
         name="describe_training_job", return_value=returned_job_description
     )
+    # For tests which doesn't verify config file injection, operate with empty config
+    sms.sagemaker_config = {}
     return sms
 
 

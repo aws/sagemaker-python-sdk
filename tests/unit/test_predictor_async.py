@@ -52,7 +52,6 @@ def empty_sagemaker_session():
             "OutputLocation": ASYNC_OUTPUT_LOCATION,
         },
     )
-
     response_body = Mock("body")
     response_body.read = Mock("read", return_value=RETURN_VALUE)
     response_body.close = Mock("close", return_value=None)

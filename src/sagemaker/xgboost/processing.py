@@ -34,9 +34,9 @@ class XGBoostProcessor(FrameworkProcessor):
     def __init__(
         self,
         framework_version: str,  # New arg
-        role: str,
-        instance_count: Union[int, PipelineVariable],
-        instance_type: Union[str, PipelineVariable],
+        role: str = None,
+        instance_count: Union[int, PipelineVariable] = None,
+        instance_type: Union[str, PipelineVariable] = None,
         py_version: str = "py3",  # New kwarg
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         command: Optional[List[str]] = None,

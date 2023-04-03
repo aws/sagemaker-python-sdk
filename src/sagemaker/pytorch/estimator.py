@@ -25,6 +25,7 @@ from sagemaker.fw_utils import (
     python_deprecation_warning,
     validate_version_or_image_args,
     validate_distribution,
+    profiler_config_deprecation_warning,
 )
 from sagemaker.pytorch import defaults
 from sagemaker.pytorch.model import PyTorchModel
@@ -297,6 +298,11 @@ class PyTorch(Framework):
                 "https://docs.aws.amazon.com/sagemaker/latest/dg/training-compiler-enable.html."
             )
         self.compiler_config = compiler_config
+
+        if "profiler_config" in kwargs:
+            profiler_config_deprecation_warning(
+                kwargs["profiler_config"], image_uri, self._framework_name, framework_version
+            )
 
     def _pytorch_distribution_configuration(self, distribution):
         """Returns a dict of distribution config for PyTorch training

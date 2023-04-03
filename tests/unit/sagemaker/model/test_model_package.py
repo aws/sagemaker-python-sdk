@@ -59,7 +59,8 @@ def sagemaker_session():
     session.sagemaker_client.describe_model_package = Mock(
         return_value=DESCRIBE_MODEL_PACKAGE_RESPONSE
     )
-
+    # For tests which doesn't verify config file injection, operate with empty config
+    session.sagemaker_config = {}
     return session
 
 
