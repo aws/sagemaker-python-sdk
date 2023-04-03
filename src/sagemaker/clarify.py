@@ -2094,9 +2094,7 @@ def _upload_analysis_config(analysis_config_file, s3_output_path, sagemaker_sess
 
 
 class ProcessingOutputHandler:
-    """Handles the parameters sent in SagemakerProcessor.Processingoutput based on the dataset
-    type in analysis_config.
-    """
+    """Class to handle the parameters for SagemakerProcessor.Processingoutput"""
 
     class S3UploadMode(Enum):
         """Enum values for different uplaod modes to s3 bucket"""
@@ -2106,8 +2104,13 @@ class ProcessingOutputHandler:
 
     @classmethod
     def get_s3_upload_mode(cls, analysis_config: Dict[str, Any]) -> str:
-        """
-        returns the s3_upload mode based on the shap_config values
+        """Fetches s3_upload mode based on the shap_config values
+
+        Args:
+            analysis_config (dict): dict Config following the analysis_config.json format
+
+        Returns:
+            The s3_upload_mode type for the processing output.
         """
         dataset_type = analysis_config["dataset_type"]
         return (
