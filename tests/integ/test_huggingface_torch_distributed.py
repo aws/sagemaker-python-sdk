@@ -14,16 +14,12 @@ from __future__ import absolute_import
 
 import os
 import pytest
-import sagemaker.utils
 from sagemaker.huggingface import HuggingFace
 from tests.integ import timeout
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
-from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
-@pytest.mark.skip(
-    reason="Disabling until the launch of SM Trainium containers" "This test should be re-enabled later."
-)
+@pytest.mark.release
 def test_huggingface_torch_distributed_g5_glue(
     sagemaker_session,
     huggingface_training_latest_version,
