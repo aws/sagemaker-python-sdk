@@ -28,7 +28,7 @@ def test_jumpstart_combined_artifacts(patched_get_model_specs):
 
     uri = script_uris.retrieve(
         region="us-west-2",
-        script_scope="inference",
+        script_scope="training",
         model_id=model_id_combined_script_artifact,
         model_version="*",
     )
