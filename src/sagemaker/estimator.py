@@ -1378,6 +1378,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         model_data_download_timeout=None,
         container_startup_health_check_timeout=None,
         inference_recommendation_id=None,
+        explainer_config=None,
         **kwargs,
     ):
         """Deploy the trained model to an Amazon SageMaker endpoint.
@@ -1458,6 +1459,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             inference_recommendation_id (str): The recommendation id which specifies the
                 recommendation you picked from inference recommendation job results and
                 would like to deploy the model and endpoint with recommended parameters.
+            explainer_config (sagemaker.explainer.ExplainerConfig): Specifies online explainability
+                configuration for use with Amazon SageMaker Clarify. (default: None)
             **kwargs: Passed to invocation of ``create_model()``.
                 Implementations may customize ``create_model()`` to accept
                 ``**kwargs`` to customize model creation during deploy.
@@ -1516,6 +1519,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             data_capture_config=data_capture_config,
             serverless_inference_config=serverless_inference_config,
             async_inference_config=async_inference_config,
+            explainer_config=explainer_config,
             volume_size=volume_size,
             model_data_download_timeout=model_data_download_timeout,
             container_startup_health_check_timeout=container_startup_health_check_timeout,

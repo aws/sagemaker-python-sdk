@@ -21,6 +21,7 @@ import sagemaker
 from sagemaker.model import Model
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.serverless import ServerlessInferenceConfig
+from sagemaker.explainer import ExplainerConfig
 from tests.unit.sagemaker.inference_recommender.constants import (
     DESCRIBE_COMPILATION_JOB_RESPONSE,
     DESCRIBE_MODEL_PACKAGE_RESPONSE,
@@ -63,6 +64,9 @@ BASE_PRODUCTION_VARIANT = {
     "VariantName": "AllTraffic",
     "InitialVariantWeight": 1,
 }
+
+SHAP_BASELINE = '1,2,3,"good product"'
+CSV_MIME_TYPE = "text/csv"
 
 
 @pytest.fixture
@@ -117,6 +121,7 @@ def test_deploy(name_from_base, prepare_container_def, production_variant, sagem
         tags=None,
         kms_key=None,
         wait=True,
+        explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
     )
@@ -160,6 +165,7 @@ def test_deploy_accelerator_type(
         tags=None,
         kms_key=None,
         wait=True,
+        explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
     )
@@ -185,6 +191,7 @@ def test_deploy_endpoint_name(sagemaker_session):
         tags=None,
         kms_key=None,
         wait=True,
+        explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
     )
@@ -259,6 +266,7 @@ def test_deploy_tags(create_sagemaker_model, production_variant, name_from_base,
         tags=tags,
         kms_key=None,
         wait=True,
+        explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
     )
@@ -281,6 +289,7 @@ def test_deploy_kms_key(production_variant, name_from_base, sagemaker_session):
         tags=None,
         kms_key=key,
         wait=True,
+        explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
     )
@@ -302,6 +311,7 @@ def test_deploy_async(production_variant, name_from_base, sagemaker_session):
         tags=None,
         kms_key=None,
         wait=False,
+        explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
     )
@@ -331,9 +341,55 @@ def test_deploy_data_capture_config(production_variant, name_from_base, sagemake
         tags=None,
         kms_key=None,
         wait=True,
+        explainer_config_dict=None,
         data_capture_config_dict=data_capture_config_dict,
         async_inference_config_dict=None,
     )
+
+
+@patch("sagemaker.model.Model._create_sagemaker_model", Mock())
+@patch("sagemaker.utils.name_from_base", return_value=ENDPOINT_NAME)
+@patch("sagemaker.production_variant", return_value=BASE_PRODUCTION_VARIANT)
+def test_deploy_explainer_config(production_variant, name_from_base, sagemaker_session):
+    model = Model(
+        MODEL_IMAGE, MODEL_DATA, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
+    )
+
+    mock_clarify_explainer_config = Mock()
+    mock_clarify_explainer_config_dict = {
+        "EnableExplanations": "`true`",
+    }
+    mock_clarify_explainer_config._to_request_dict.return_value = mock_clarify_explainer_config_dict
+    explainer_config = ExplainerConfig(clarify_explainer_config=mock_clarify_explainer_config)
+    explainer_config_dict = {"ClarifyExplainerConfig": mock_clarify_explainer_config_dict}
+
+    model.deploy(
+        instance_type=INSTANCE_TYPE,
+        initial_instance_count=INSTANCE_COUNT,
+        explainer_config=explainer_config,
+    )
+
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        name=ENDPOINT_NAME,
+        production_variants=[BASE_PRODUCTION_VARIANT],
+        tags=None,
+        kms_key=None,
+        wait=True,
+        explainer_config_dict=explainer_config_dict,
+        data_capture_config_dict=None,
+        async_inference_config_dict=None,
+    )
+
+
+def test_deploy_wrong_explainer_config(sagemaker_session):
+    model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session, role=ROLE)
+
+    with pytest.raises(ValueError, match="explainer_config needs to be a ExplainerConfig object"):
+        model.deploy(
+            instance_type=INSTANCE_TYPE,
+            initial_instance_count=INSTANCE_COUNT,
+            explainer_config={},
+        )
 
 
 @patch("sagemaker.model.Model._create_sagemaker_model", Mock())
@@ -363,6 +419,7 @@ def test_deploy_async_inference(production_variant, name_from_base, sagemaker_se
         tags=None,
         kms_key=None,
         wait=True,
+        explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=async_inference_config_dict,
     )
@@ -408,6 +465,7 @@ def test_deploy_serverless_inference(production_variant, create_sagemaker_model,
         tags=None,
         kms_key=None,
         wait=True,
+        explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
     )
@@ -744,6 +802,7 @@ def test_deploy_customized_volume_size_and_timeout(
         tags=None,
         kms_key=None,
         wait=True,
+        explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
     )
