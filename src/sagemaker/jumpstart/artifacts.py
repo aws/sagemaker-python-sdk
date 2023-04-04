@@ -293,7 +293,6 @@ def _retrieve_script_uri(
 
     if script_scope == JumpStartScriptScope.INFERENCE:
         model_script_key = model_specs.hosting_script_key
-
     elif script_scope == JumpStartScriptScope.TRAINING:
         model_script_key = (
             getattr(model_specs, "training_prepacked_script_key") or model_specs.training_script_key
