@@ -60,6 +60,7 @@ from sagemaker.feature_store.inputs import (
     FeatureValue,
     FeatureParameter,
     TableFormatEnum,
+    DeletionModeEnum,
 )
 from sagemaker.utils import resolve_value_from_config
 
@@ -785,6 +786,7 @@ class FeatureGroup:
         self,
         record_identifier_value_as_string: str,
         event_time: str,
+        deletion_mode: DeletionModeEnum = DeletionModeEnum.SOFT_DELETE,
     ):
         """Delete a single record from a FeatureGroup.
 
@@ -793,11 +795,15 @@ class FeatureGroup:
                 a String representing the value of the record identifier.
             event_time (String):
                 a timestamp format String indicating when the deletion event occurred.
+            deletion_mode (DeletionModeEnum):
+                deletion mode for deleting record. (default: DetectionModeEnum.SOFT_DELETE)
         """
+
         return self.sagemaker_session.delete_record(
             feature_group_name=self.name,
             record_identifier_value_as_string=record_identifier_value_as_string,
             event_time=event_time,
+            deletion_mode=deletion_mode.value,
         )
 
     def ingest(
