@@ -29,7 +29,7 @@
                     "us-west-2": "306415355426",
                     "us-gov-west-1": "598674086554"
                 },
-                "repository": "cr-clarify-processing"
+                "repository": "sagemaker-clarify-processing"
             }
         }
     }
