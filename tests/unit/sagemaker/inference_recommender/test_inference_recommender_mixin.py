@@ -650,7 +650,8 @@ def test_deploy_right_size_serverless_override(sagemaker_session, default_right_
 def test_deploy_right_size_async_override(sagemaker_session, default_right_sized_model):
     default_right_sized_model.name = MODEL_NAME
     async_inference_config = AsyncInferenceConfig(
-        output_path="s3://some-path", failure_path="s3://some-failure-path")
+        output_path="s3://some-path", failure_path="s3://some-failure-path"
+    )
     default_right_sized_model.deploy(
         instance_type="ml.c5.2xlarge",
         initial_instance_count=1,
@@ -664,8 +665,12 @@ def test_deploy_right_size_async_override(sagemaker_session, default_right_sized
         kms_key=None,
         wait=True,
         data_capture_config_dict=None,
-        async_inference_config_dict={"OutputConfig": {"S3OutputPath": "s3://some-path",
-         "S3FailurePath": "s3://some-failure-path"}},
+        async_inference_config_dict={
+            "OutputConfig": {
+                "S3OutputPath": "s3://some-path",
+                "S3FailurePath": "s3://some-failure-path",
+            }
+        },
         explainer_config_dict=None,
     )
 

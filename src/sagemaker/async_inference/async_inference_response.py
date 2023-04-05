@@ -108,7 +108,5 @@ class AsyncInferenceResponse(object):
                         raise ObjectNotExistedError(
                             message="Inference could still be running", output_path=output_path
                         )
-                    else:
-                        raise UnexpectedClientError(message=ex.response["Error"]["Message"])
-            else:
-                raise UnexpectedClientError(message=e.response["Error"]["Message"])
+                    raise UnexpectedClientError(message=ex.response["Error"]["Message"])
+            raise UnexpectedClientError(message=e.response["Error"]["Message"])
