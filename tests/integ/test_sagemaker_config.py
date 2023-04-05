@@ -172,10 +172,19 @@ def test_config_download_from_s3_and_merge(
         sagemaker_session=sagemaker_session,
     )
 
+    # Set env variable so load_sagemaker_config can construct an S3 resource in the right region
+    previous_env_value = os.getenv("AWS_DEFAULT_REGION")
+    os.environ["AWS_DEFAULT_REGION"] = sagemaker_session.boto_session.region_name
+
     # The thing being tested.
     sagemaker_config = load_sagemaker_config(
         additional_config_paths=[s3_uri_config_1, config_file_2_local_path]
     )
+
+    # Reset the env variable to what it was before (if it was set before)
+    os.unsetenv("AWS_DEFAULT_REGION")
+    if previous_env_value is not None:
+        os.environ["AWS_DEFAULT_REGION"] = previous_env_value
 
     assert sagemaker_config == expected_merged_config
 
