@@ -215,6 +215,7 @@ class InferenceRecommenderMixin:
         accelerator_type = kwargs["accelerator_type"]
         async_inference_config = kwargs["async_inference_config"]
         serverless_inference_config = kwargs["serverless_inference_config"]
+        explainer_config = kwargs["explainer_config"]
         inference_recommendation_id = kwargs["inference_recommendation_id"]
         inference_recommender_job_results = kwargs["inference_recommender_job_results"]
         if inference_recommendation_id is not None:
@@ -225,6 +226,7 @@ class InferenceRecommenderMixin:
                 async_inference_config=async_inference_config,
                 serverless_inference_config=serverless_inference_config,
                 inference_recommendation_id=inference_recommendation_id,
+                explainer_config=explainer_config,
             )
         elif inference_recommender_job_results is not None:
             inference_recommendation = self._update_params_for_right_size(
@@ -233,6 +235,7 @@ class InferenceRecommenderMixin:
                 accelerator_type,
                 serverless_inference_config,
                 async_inference_config,
+                explainer_config,
             )
         return inference_recommendation or (instance_type, initial_instance_count)
 
@@ -243,6 +246,7 @@ class InferenceRecommenderMixin:
         accelerator_type=None,
         serverless_inference_config=None,
         async_inference_config=None,
+        explainer_config=None,
     ):
         """Validates that Inference Recommendation parameters can be used in `model.deploy()`
 
@@ -262,6 +266,8 @@ class InferenceRecommenderMixin:
                 whether serverless_inference_config has been passed into `model.deploy()`.
             async_inference_config (sagemaker.model_monitor.AsyncInferenceConfig):
                 whether async_inference_config has been passed into `model.deploy()`.
+            explainer_config (sagemaker.explainer.ExplainerConfig): whether explainer_config
+                has been passed into `model.deploy()`.
 
         Returns:
             (string, int) or None: Top instance_type and associated initial_instance_count
@@ -285,6 +291,11 @@ class InferenceRecommenderMixin:
                 "serverless_inference_config is specified. Overriding right_size() recommendations."
             )
             return None
+        if explainer_config:
+            LOGGER.warning(
+                "explainer_config is specified. Overriding right_size() recommendations."
+            )
+            return None
 
         instance_type = self.inference_recommendations[0]["EndpointConfiguration"]["InstanceType"]
         initial_instance_count = self.inference_recommendations[0]["EndpointConfiguration"][
@@ -300,6 +311,7 @@ class InferenceRecommenderMixin:
         async_inference_config,
         serverless_inference_config,
         inference_recommendation_id,
+        explainer_config,
     ):
         """Update parameters with inference recommendation results.
 
@@ -332,6 +344,8 @@ class InferenceRecommenderMixin:
                 the recommendation you picked from inference recommendation job
                 results and would like to deploy the model and endpoint with
                 recommended parameters.
+            explainer_config (sagemaker.explainer.ExplainerConfig): Specifies online explainability
+                configuration for use with Amazon SageMaker Clarify. Default: None.
         Raises:
             ValueError: If arguments combination check failed in these circumstances:
                 - If only one of instance type or instance count specified or
@@ -367,6 +381,8 @@ class InferenceRecommenderMixin:
             raise ValueError(
                 "serverless_inference_config is not compatible with inference_recommendation_id."
             )
+        if explainer_config is not None:
+            raise ValueError("explainer_config is not compatible with inference_recommendation_id.")
 
         # Validate recommendation id
         if not re.match(r"[a-zA-Z0-9](-*[a-zA-Z0-9]){0,63}\/\w{8}$", inference_recommendation_id):

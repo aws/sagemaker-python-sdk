@@ -297,6 +297,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "default_training_instance_type",
         "supported_training_instance_types",
         "metrics",
+        "training_prepacked_script_key",
         "hosting_prepacked_artifact_key",
     ]
 
@@ -347,6 +348,9 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
             "supported_training_instance_types"
         )
         self.metrics: Optional[List[Dict[str, str]]] = json_obj.get("metrics", None)
+        self.training_prepacked_script_key: Optional[str] = json_obj.get(
+            "training_prepacked_script_key", None
+        )
         self.hosting_prepacked_artifact_key: Optional[str] = json_obj.get(
             "hosting_prepacked_artifact_key", None
         )

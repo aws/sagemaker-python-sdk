@@ -245,7 +245,7 @@ def _retrieve_model_uri(
 def _retrieve_script_uri(
     model_id: str,
     model_version: str,
-    script_scope: Optional[str],
+    script_scope: Optional[str] = None,
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
@@ -294,7 +294,9 @@ def _retrieve_script_uri(
     if script_scope == JumpStartScriptScope.INFERENCE:
         model_script_key = model_specs.hosting_script_key
     elif script_scope == JumpStartScriptScope.TRAINING:
-        model_script_key = model_specs.training_script_key
+        model_script_key = (
+            getattr(model_specs, "training_prepacked_script_key") or model_specs.training_script_key
+        )
 
     bucket = os.environ.get(
         ENV_VARIABLE_JUMPSTART_SCRIPT_ARTIFACT_BUCKET_OVERRIDE
