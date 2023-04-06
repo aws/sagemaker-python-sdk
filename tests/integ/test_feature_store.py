@@ -207,9 +207,10 @@ def test_create_feature_store_online_only(
             event_time_feature_name="feature3",
             role_arn=role,
             enable_online_store=True,
+            tags=[{"Key": "key1", "Value": "value1"}],
         )
         _wait_for_feature_group_create(feature_group)
-
+        assert feature_group.list_tags() == [{"Key": "key1", "Value": "value1"}]
     assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
 
 
@@ -520,6 +521,10 @@ def test_feature_metadata(
         print(describe_feature_metadata)
         assert description == describe_feature_metadata.get("Description")
         assert 2 == len(describe_feature_metadata.get("Parameters"))
+        assert [
+            {"Key": "key1", "Value": "value1"},
+            {"Key": "key2", "Value": "value2"},
+        ] == feature_group.list_parameters_for_feature_metadata(feature_name=feature_name)
 
         parameter_removals = ["key1"]
         feature_group.update_feature_metadata(
@@ -530,6 +535,9 @@ def test_feature_metadata(
         )
         assert description == describe_feature_metadata.get("Description")
         assert 1 == len(describe_feature_metadata.get("Parameters"))
+        assert [
+            {"Key": "key2", "Value": "value2"}
+        ] == feature_group.list_parameters_for_feature_metadata(feature_name=feature_name)
 
 
 def test_search(feature_store_session, role, feature_group_name, pandas_data_frame):
