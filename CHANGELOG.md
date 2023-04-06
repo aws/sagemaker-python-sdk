@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.145.0 (2023-04-06)
+
+### Features
+
+ * add support for async inline error notifications
+ * Add methods for feature group to list feature metadata parameters and tags
+ * Support huggingface hub model_id for DJL Models
+
+### Bug Fixes and Other Changes
+
+ * load_sagemaker_config should lazy initialize a default S3 resource
+
 ## v2.144.0 (2023-04-05)
 
 ### Features
