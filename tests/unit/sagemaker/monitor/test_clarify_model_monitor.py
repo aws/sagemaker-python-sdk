@@ -365,6 +365,7 @@ SHAP_USE_LOGIT = True
 MODEL_NAME = "xgboost-model"
 ACCEPT_TYPE = "text/csv"
 CONTENT_TYPE = "application/jsonlines"
+JSONLINES_CONTENT_TEMPLATE = '{"instances":$features}'
 EXPLAINABILITY_ANALYSIS_CONFIG = {
     "headers": ANALYSIS_CONFIG_HEADERS_OF_FEATURES,
     "methods": {
@@ -382,6 +383,7 @@ EXPLAINABILITY_ANALYSIS_CONFIG = {
         "initial_instance_count": INSTANCE_COUNT,
         "accept_type": ACCEPT_TYPE,
         "content_type": CONTENT_TYPE,
+        "content_template": JSONLINES_CONTENT_TEMPLATE,
     },
 }
 EXPLAINABILITY_ANALYSIS_CONFIG_WITH_LABEL_HEADERS = copy.deepcopy(EXPLAINABILITY_ANALYSIS_CONFIG)
@@ -489,6 +491,7 @@ def model_config():
         instance_count=INSTANCE_COUNT,
         content_type=CONTENT_TYPE,
         accept_type=ACCEPT_TYPE,
+        content_template=JSONLINES_CONTENT_TEMPLATE,
     )
 
 
