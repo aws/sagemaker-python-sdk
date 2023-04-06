@@ -10,7 +10,12 @@ Configure the Debugger-specific parameters when constructing
 a SageMaker estimator to gain visibility and insights
 into your training job.
 
+.. contents::
+
 .. currentmodule:: sagemaker.debugger
+
+Debugger Rule APIs
+~~~~~~~~~~~~~~~~~~
 
 .. autoclass:: get_rule_container_image_uri
     :show-inheritance:
@@ -44,6 +49,9 @@ into your training job.
     :show-inheritance:
     :inherited-members:
 
+Debugger Configuration APIs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 .. autoclass:: CollectionConfig
     :show-inheritance:
 
@@ -55,6 +63,21 @@ into your training job.
 
 .. autoclass:: ProfilerConfig
     :show-inheritance:
+
+Debugger Configuration APIs for Framework Profiling (Deprecated)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. warning::
+
+  SageMaker Debugger deprecates the framework profiling feature starting from TensorFlow 2.11 and PyTorch 2.0. You can still use the feature in the previous versions of the frameworks and SDKs as follows.
+
+  * SageMaker Python SDK <= v2.130.0
+  * PyTorch >= v1.6.0, < v2.0
+  * TensorFlow >= v2.3.1, < v2.11
+
+  With the deprecation, SageMaker Debugger discontinues support for the APIs below this note.
+
+  See also `Amazon SageMaker Debugger Release Notes: March 16, 2023 <https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-release-notes.html#debugger-release-notes-20230315>`_.
 
 .. autoclass:: FrameworkProfile
     :show-inheritance:

@@ -1,5 +1,24 @@
 # Changelog
 
+## v2.144.0 (2023-04-05)
+
+### Features
+
+ * support create Clarify explainer enabled endpoint for Clarify Online Explainability
+ * Combined inference and training script artifact
+ * jumpstart instance types
+ * Deprecation warning for framework profiling for TF 2.12 and on, PT 2.0 and on
+
+### Bug Fixes and Other Changes
+
+ * always delete temporary directory even during exception
+ * Fixes the completion_criteria_config dict in the to_input_req method
+ * Update CHANGELOG.md
+
+### Documentation Changes
+
+ * Update SageMaker Debugger doc
+
 ## v2.143.0 (2023-03-29)
 
 ### Features

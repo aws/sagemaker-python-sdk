@@ -27,6 +27,7 @@ from .common import _raise_unexpected_client_error
 import sagemaker
 from sagemaker import TrainingInput, Session, get_execution_role, exceptions
 from sagemaker.async_inference import AsyncInferenceConfig
+from sagemaker.explainer import ExplainerConfig
 from sagemaker.session import (
     _tuning_job_status,
     _transform_job_status,
@@ -2671,6 +2672,21 @@ def test_create_endpoint_config_with_tags(sagemaker_session):
     )
 
 
+def test_create_endpoint_config_with_explainer_config(sagemaker_session):
+    explainer_config = ExplainerConfig
+
+    sagemaker_session.create_endpoint_config(
+        "endpoint-test", "simple-model", 1, "local", explainer_config_dict=explainer_config
+    )
+
+    sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
+        EndpointConfigName="endpoint-test",
+        ProductionVariants=ANY,
+        Tags=ANY,
+        ExplainerConfig=explainer_config,
+    )
+
+
 def test_endpoint_from_production_variants_with_tags(sagemaker_session):
     ims = sagemaker_session
     ims.sagemaker_client.describe_endpoint = Mock(return_value={"EndpointStatus": "InService"})
@@ -2792,6 +2808,32 @@ def test_endpoint_from_production_variants_with_async_config(sagemaker_session):
     )
 
 
+def test_endpoint_from_production_variants_with_clarify_explainer_config(sagemaker_session):
+    ims = sagemaker_session
+    ims.sagemaker_client.describe_endpoint = Mock(return_value={"EndpointStatus": "InService"})
+    pvs = [
+        sagemaker.production_variant("A", "ml.p2.xlarge"),
+        sagemaker.production_variant("B", "p299.4096xlarge"),
+    ]
+    ex = ClientError(
+        {"Error": {"Code": "ValidationException", "Message": "Could not find your thing"}}, "b"
+    )
+    ims.sagemaker_client.describe_endpoint_config = Mock(side_effect=ex)
+    sagemaker_session.endpoint_from_production_variants(
+        "some-endpoint",
+        pvs,
+        explainer_config_dict=ExplainerConfig,
+    )
+    sagemaker_session.sagemaker_client.create_endpoint.assert_called_with(
+        EndpointConfigName="some-endpoint", EndpointName="some-endpoint", Tags=[]
+    )
+    sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
+        EndpointConfigName="some-endpoint",
+        ProductionVariants=pvs,
+        ExplainerConfig=ExplainerConfig,
+    )
+
+
 def test_update_endpoint_succeed(sagemaker_session):
     sagemaker_session.sagemaker_client.describe_endpoint = Mock(
         return_value={"EndpointStatus": "InService"}
@@ -2855,6 +2897,39 @@ def test_create_endpoint_config_from_existing(sagemaker_session):
     )
     sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
         EndpointConfigName=new_endpoint_name, ProductionVariants=pvs, KmsKeyId=kms_key
+    )
+
+
+def test_create_endpoint_config_from_existing_with_explainer_config(sagemaker_session):
+    pvs = [sagemaker.production_variant("A", "ml.m4.xlarge")]
+    tags = [{"Key": "aws:cloudformation:stackname", "Value": "this-tag-should-be-ignored"}]
+    existing_endpoint_arn = "arn:aws:sagemaker:us-west-2:123412341234:endpoint-config/foo"
+    kms_key = "kms"
+    existing_explainer_config = ExplainerConfig
+    sagemaker_session.sagemaker_client.describe_endpoint_config.return_value = {
+        "Tags": tags,
+        "ProductionVariants": pvs,
+        "EndpointConfigArn": existing_endpoint_arn,
+        "KmsKeyId": kms_key,
+        "ExplainerConfig": existing_explainer_config,
+    }
+    sagemaker_session.sagemaker_client.list_tags.return_value = {"Tags": tags}
+
+    existing_endpoint_name = "foo"
+    new_endpoint_name = "new-foo"
+    sagemaker_session.create_endpoint_config_from_existing(
+        existing_endpoint_name, new_endpoint_name
+    )
+
+    sagemaker_session.sagemaker_client.describe_endpoint_config.assert_called_with(
+        EndpointConfigName=existing_endpoint_name
+    )
+
+    sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
+        EndpointConfigName=new_endpoint_name,
+        ProductionVariants=pvs,
+        KmsKeyId=kms_key,
+        ExplainerConfig=existing_explainer_config,
     )
 
 

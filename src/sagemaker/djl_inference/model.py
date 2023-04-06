@@ -16,6 +16,9 @@ from __future__ import absolute_import
 import json
 import logging
 import os.path
+import urllib.request
+from json import JSONDecodeError
+from urllib.error import HTTPError, URLError
 from enum import Enum
 from typing import Optional, Union, Dict, Any
 
@@ -134,10 +137,10 @@ def _read_existing_serving_properties(directory: str):
 
 def _get_model_config_properties_from_s3(model_s3_uri: str):
     """Placeholder docstring"""
+
     s3_files = s3.S3Downloader.list(model_s3_uri)
-    valid_config_files = ["config.json", "model_index.json"]
     model_config = None
-    for config in valid_config_files:
+    for config in defaults.VALID_MODEL_CONFIG_FILES:
         config_file = os.path.join(model_s3_uri, config)
         if config_file in s3_files:
             model_config = json.loads(s3.S3Downloader.read_file(config_file))
@@ -151,26 +154,53 @@ def _get_model_config_properties_from_s3(model_s3_uri: str):
     return model_config
 
 
+def _get_model_config_properties_from_hf(model_id: str):
+    """Placeholder docstring"""
+
+    config_url_prefix = f"https://huggingface.co/{model_id}/raw/main/"
+    model_config = None
+    for config in defaults.VALID_MODEL_CONFIG_FILES:
+        config_file_url = config_url_prefix + config
+        try:
+            with urllib.request.urlopen(config_file_url) as response:
+                model_config = json.load(response)
+                break
+        except (HTTPError, URLError, TimeoutError, JSONDecodeError) as e:
+            logger.warning(
+                "Exception encountered while trying to read config file %s. " "Details: %s",
+                config_file_url,
+                e,
+            )
+    if not model_config:
+        raise ValueError(
+            f"Did not find a config.json or model_index.json file in huggingface hub for "
+            f"{model_id}. Please make sure a config.json exists (or model_index.json for Stable "
+            f"Diffusion Models) for this model in the huggingface hub"
+        )
+    return model_config
+
+
 class DJLModel(FrameworkModel):
     """A DJL SageMaker ``Model`` that can be deployed to a SageMaker ``Endpoint``."""
 
     def __new__(
         cls,
-        model_s3_uri: str,
+        model_id: str,
         *args,
         **kwargs,
     ):  # pylint: disable=W0613
         """Create a specific subclass of DJLModel for a given engine"""
 
-        if not model_s3_uri.startswith("s3://"):
-            raise ValueError("DJLModel only supports loading model artifacts from s3")
-        if model_s3_uri.endswith("tar.gz"):
+        if model_id.endswith("tar.gz"):
             raise ValueError(
                 "DJLModel does not support model artifacts in tar.gz format."
                 "Please store the model in uncompressed format and provide the s3 uri of the "
                 "containing folder"
             )
-        model_config = _get_model_config_properties_from_s3(model_s3_uri)
+        if model_id.startswith("s3://"):
+            model_config = _get_model_config_properties_from_s3(model_id)
+        else:
+            model_config = _get_model_config_properties_from_hf(model_id)
         if model_config.get("_class_name") == "StableDiffusionPipeline":
             model_type = defaults.STABLE_DIFFUSION_MODEL_TYPE
             num_heads = 0
@@ -196,7 +226,7 @@ class DJLModel(FrameworkModel):
 
     def __init__(
         self,
-        model_s3_uri: str,
+        model_id: str,
         role: str,
         djl_version: Optional[str] = None,
         task: Optional[str] = None,
@@ -216,8 +246,9 @@ class DJLModel(FrameworkModel):
         """Initialize a DJLModel.
 
         Args:
-            model_s3_uri (str): The Amazon S3 location containing the uncompressed model
-                artifacts. The model artifacts are expected to be in HuggingFace pre-trained model
+            model_id (str): This is either the HuggingFace Hub model_id, or the Amazon S3 location
+                containing the uncompressed model artifacts (i.e. not a tar.gz file).
+                The model artifacts are expected to be in HuggingFace pre-trained model
                 format (i.e. model should be loadable from the huggingface transformers
                 from_pretrained api, and should also include tokenizer configs if applicable).
             role (str): An AWS IAM role specified with either the name or full ARN. The Amazon
@@ -285,13 +316,13 @@ class DJLModel(FrameworkModel):
         if kwargs.get("model_data"):
             logger.warning(
                 "DJLModels do not use model_data parameter. model_data parameter will be ignored."
-                "You only need to set model_S3_uri and ensure it points to uncompressed model "
-                "artifacts."
+                "You only need to set model_id and ensure it points to uncompressed model "
+                "artifacts in s3, or a valid HuggingFace Hub model_id."
             )
         super(DJLModel, self).__init__(
             None, image_uri, role, entry_point, predictor_cls=predictor_cls, **kwargs
         )
-        self.model_s3_uri = model_s3_uri
+        self.model_id = model_id
         self.djl_version = djl_version
         self.task = task
         self.data_type = data_type
@@ -529,7 +560,10 @@ class DJLModel(FrameworkModel):
             serving_properties = {}
         serving_properties["engine"] = self.engine.value[0]  # pylint: disable=E1101
         serving_properties["option.entryPoint"] = self.engine.value[1]  # pylint: disable=E1101
-        serving_properties["option.s3url"] = self.model_s3_uri
+        if self.model_id.startswith("s3://"):
+            serving_properties["option.s3url"] = self.model_id
+        else:
+            serving_properties["option.model_id"] = self.model_id
         if self.number_of_partitions:
             serving_properties["option.tensor_parallel_degree"] = self.number_of_partitions
         if self.entry_point:
@@ -593,7 +627,7 @@ class DeepSpeedModel(DJLModel):
 
     def __init__(
         self,
-        model_s3_uri: str,
+        model_id: str,
         role: str,
         tensor_parallel_degree: Optional[int] = None,
         max_tokens: Optional[int] = None,
@@ -606,11 +640,11 @@ class DeepSpeedModel(DJLModel):
         """Initialize a DeepSpeedModel
 
         Args:
-            model_s3_uri (str): The Amazon S3 location containing the uncompressed model
-                artifacts. The model artifacts are expected to be in HuggingFace pre-trained model
+            model_id (str): This is either the HuggingFace Hub model_id, or the Amazon S3 location
+                containing the uncompressed model artifacts (i.e. not a tar.gz file).
+                The model artifacts are expected to be in HuggingFace pre-trained model
                 format (i.e. model should be loadable from the huggingface transformers
-                from_pretrained
-                api, and should also include tokenizer configs if applicable).
+                from_pretrained api, and should also include tokenizer configs if applicable).
             role (str): An AWS IAM role specified with either the name or full ARN. The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker
                 endpoints use this role to access model artifacts. After the endpoint is created,
@@ -647,7 +681,7 @@ class DeepSpeedModel(DJLModel):
         """
 
         super(DeepSpeedModel, self).__init__(
-            model_s3_uri,
+            model_id,
             role,
             **kwargs,
         )
@@ -710,7 +744,7 @@ class HuggingFaceAccelerateModel(DJLModel):
 
     def __init__(
         self,
-        model_s3_uri: str,
+        model_id: str,
         role: str,
         number_of_partitions: Optional[int] = None,
         device_id: Optional[int] = None,
@@ -722,11 +756,11 @@ class HuggingFaceAccelerateModel(DJLModel):
         """Initialize a HuggingFaceAccelerateModel.
 
         Args:
-            model_s3_uri (str): The Amazon S3 location containing the uncompressed model
-                artifacts. The model artifacts are expected to be in HuggingFace pre-trained model
+            model_id (str): This is either the HuggingFace Hub model_id, or the Amazon S3 location
+                containing the uncompressed model artifacts (i.e. not a tar.gz file).
+                The model artifacts are expected to be in HuggingFace pre-trained model
                 format (i.e. model should be loadable from the huggingface transformers
-                from_pretrained
-                method).
+                from_pretrained api, and should also include tokenizer configs if applicable).
             role (str): An AWS IAM role specified with either the name or full ARN. The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker
                 endpoints use this role to access model artifacts. After the endpoint is created,
@@ -760,7 +794,7 @@ class HuggingFaceAccelerateModel(DJLModel):
         """
 
         super(HuggingFaceAccelerateModel, self).__init__(
-            model_s3_uri,
+            model_id,
             role,
             number_of_partitions=number_of_partitions,
             **kwargs,
