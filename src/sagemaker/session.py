@@ -266,15 +266,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
         prepend_user_agent(self.sagemaker_metrics_client)
 
         self.local_mode = False
+
         if sagemaker_config:
             validate_sagemaker_config(sagemaker_config)
             self.sagemaker_config = sagemaker_config
         else:
-            if self.s3_resource is None:
-                s3 = self.boto_session.resource("s3", region_name=self.boto_region_name)
-            else:
-                s3 = self.s3_resource
-            self.sagemaker_config = load_sagemaker_config(s3_resource=s3)
+            # self.s3_resource might be None. If it is None, load_sagemaker_config will
+            # create a default S3 resource, but only if it needs to fetch from S3
+            self.sagemaker_config = load_sagemaker_config(s3_resource=self.s3_resource)
 
     @property
     def boto_region_name(self):
