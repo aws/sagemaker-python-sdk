@@ -1,5 +1,36 @@
 # Changelog
 
+## v2.145.0 (2023-04-06)
+
+### Features
+
+ * add support for async inline error notifications
+ * Add methods for feature group to list feature metadata parameters and tags
+ * Support huggingface hub model_id for DJL Models
+
+### Bug Fixes and Other Changes
+
+ * load_sagemaker_config should lazy initialize a default S3 resource
+
+## v2.144.0 (2023-04-05)
+
+### Features
+
+ * support create Clarify explainer enabled endpoint for Clarify Online Explainability
+ * Combined inference and training script artifact
+ * jumpstart instance types
+ * Deprecation warning for framework profiling for TF 2.12 and on, PT 2.0 and on
+
+### Bug Fixes and Other Changes
+
+ * always delete temporary directory even during exception
+ * Fixes the completion_criteria_config dict in the to_input_req method
+ * Update CHANGELOG.md
+
+### Documentation Changes
+
+ * Update SageMaker Debugger doc
+
 ## v2.143.0 (2023-03-29)
 
 ### Features

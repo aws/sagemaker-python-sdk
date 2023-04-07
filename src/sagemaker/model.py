@@ -42,6 +42,7 @@ from sagemaker.session import Session
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.deprecations import removed_kwargs
 from sagemaker.drift_check_baselines import DriftCheckBaselines
+from sagemaker.explainer import ExplainerConfig
 from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.predictor import PredictorBase
 from sagemaker.serverless import ServerlessInferenceConfig
@@ -1080,6 +1081,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         model_data_download_timeout=None,
         container_startup_health_check_timeout=None,
         inference_recommendation_id=None,
+        explainer_config=None,
         **kwargs,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
@@ -1158,6 +1160,8 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             inference_recommendation_id (str): The recommendation id which specifies the
                 recommendation you picked from inference recommendation job results and
                 would like to deploy the model and endpoint with recommended parameters.
+            explainer_config (sagemaker.explainer.ExplainerConfig): Specifies online explainability
+                configuration for use with Amazon SageMaker Clarify. Default: None.
         Raises:
              ValueError: If arguments combination check failed in these circumstances:
                 - If no role is specified or
@@ -1204,6 +1208,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 accelerator_type=accelerator_type,
                 async_inference_config=async_inference_config,
                 serverless_inference_config=serverless_inference_config,
+                explainer_config=explainer_config,
                 inference_recommendation_id=inference_recommendation_id,
                 inference_recommender_job_results=self.inference_recommender_job_results,
             )
@@ -1211,6 +1216,10 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         is_async = async_inference_config is not None
         if is_async and not isinstance(async_inference_config, AsyncInferenceConfig):
             raise ValueError("async_inference_config needs to be a AsyncInferenceConfig object")
+
+        is_explainer_enabled = explainer_config is not None
+        if is_explainer_enabled and not isinstance(explainer_config, ExplainerConfig):
+            raise ValueError("explainer_config needs to be a ExplainerConfig object")
 
         is_serverless = serverless_inference_config is not None
         if not is_serverless and not (instance_type and initial_instance_count):
@@ -1268,7 +1277,10 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
 
         async_inference_config_dict = None
         if is_async:
-            if async_inference_config.output_path is None:
+            if (
+                async_inference_config.output_path is None
+                or async_inference_config.failure_path is None
+            ):
                 async_inference_config = self._build_default_async_inference_config(
                     async_inference_config
                 )
@@ -1279,6 +1291,10 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             )
             async_inference_config_dict = async_inference_config._to_request_dict()
 
+        explainer_config_dict = None
+        if is_explainer_enabled:
+            explainer_config_dict = explainer_config._to_request_dict()
+
         self.sagemaker_session.endpoint_from_production_variants(
             name=self.endpoint_name,
             production_variants=[production_variant],
@@ -1286,6 +1302,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             kms_key=kms_key,
             wait=wait,
             data_capture_config_dict=data_capture_config_dict,
+            explainer_config_dict=explainer_config_dict,
             async_inference_config_dict=async_inference_config_dict,
         )
 
@@ -1302,11 +1319,19 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
 
     def _build_default_async_inference_config(self, async_inference_config):
         """Build default async inference config and return ``AsyncInferenceConfig``"""
-        async_output_folder = unique_name_from_base(self.name)
-        async_output_s3uri = "s3://{}/async-endpoint-outputs/{}".format(
-            self.sagemaker_session.default_bucket(), async_output_folder
-        )
-        async_inference_config.output_path = async_output_s3uri
+        unique_folder = unique_name_from_base(self.name)
+        if async_inference_config.output_path is None:
+            async_output_s3uri = "s3://{}/async-endpoint-outputs/{}".format(
+                self.sagemaker_session.default_bucket(), unique_folder
+            )
+            async_inference_config.output_path = async_output_s3uri
+
+        if async_inference_config.failure_path is None:
+            async_failure_s3uri = "s3://{}/async-endpoint-failures/{}".format(
+                self.sagemaker_session.default_bucket(), unique_folder
+            )
+            async_inference_config.failure_path = async_failure_s3uri
+
         return async_inference_config
 
     def transformer(

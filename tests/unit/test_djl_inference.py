@@ -15,8 +15,10 @@ from __future__ import absolute_import
 import logging
 
 import json
+from json import JSONDecodeError
+
 import pytest
-from mock import Mock
+from mock import Mock, MagicMock
 from mock import patch, mock_open
 
 from sagemaker.djl_inference import (
@@ -31,6 +33,7 @@ from sagemaker.session_settings import SessionSettings
 
 VALID_UNCOMPRESSED_MODEL_DATA = "s3://mybucket/model"
 INVALID_UNCOMPRESSED_MODEL_DATA = "s3://mybucket/model.tar.gz"
+HF_MODEL_ID = "hf_hub_model_id"
 ENTRY_POINT = "entrypoint.py"
 SOURCE_DIR = "source_dir/"
 ENV = {"ENV_VAR": "env_value"}
@@ -73,12 +76,60 @@ def test_create_model_invalid_s3_uri():
         "DJLModel does not support model artifacts in tar.gz"
     )
 
-    with pytest.raises(ValueError) as invalid_s3_data:
+
+@patch("urllib.request.urlopen")
+def test_create_model_valid_hf_hub_model_id(
+    mock_urlopen,
+    sagemaker_session,
+):
+    model_config = {
+        "model_type": "opt",
+        "num_attention_heads": 4,
+    }
+
+    cm = MagicMock()
+    cm.getcode.return_value = 200
+    cm.read.return_value = json.dumps(model_config).encode("utf-8")
+    cm.__enter__.return_value = cm
+    mock_urlopen.return_value = cm
+    model = DJLModel(
+        HF_MODEL_ID,
+        ROLE,
+        sagemaker_session=sagemaker_session,
+        number_of_partitions=4,
+    )
+    assert model.engine == DJLServingEngineEntryPointDefaults.DEEPSPEED
+    expected_url = f"https://huggingface.co/{HF_MODEL_ID}/raw/main/config.json"
+    mock_urlopen.assert_any_call(expected_url)
+
+    serving_properties = model.generate_serving_properties()
+    assert serving_properties["option.model_id"] == HF_MODEL_ID
+    assert "option.s3url" not in serving_properties
+
+
+@patch("json.load")
+@patch("urllib.request.urlopen")
+def test_create_model_invalid_hf_hub_model_id(
+    mock_urlopen,
+    json_load,
+    sagemaker_session,
+):
+    expected_url = f"https://huggingface.co/{HF_MODEL_ID}/raw/main/config.json"
+    with pytest.raises(ValueError) as invalid_model_id:
+        cm = MagicMock()
+        cm.__enter__.return_value = cm
+        mock_urlopen.return_value = cm
+        json_load.side_effect = JSONDecodeError("", "", 0)
         _ = DJLModel(
-            SOURCE_DIR,
+            HF_MODEL_ID,
             ROLE,
+            sagemaker_session=sagemaker_session,
+            number_of_partitions=4,
         )
-    assert str(invalid_s3_data.value).startswith("DJLModel only supports loading model artifacts")
+        mock_urlopen.assert_any_call(expected_url)
+    assert str(invalid_model_id.value).startswith(
+        "Did not find a config.json or model_index.json file in huggingface hub"
+    )
 
 
 @patch("sagemaker.s3.S3Downloader.read_file")

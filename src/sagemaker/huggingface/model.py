@@ -210,6 +210,7 @@ class HuggingFaceModel(FrameworkModel):
         model_data_download_timeout=None,
         container_startup_health_check_timeout=None,
         inference_recommendation_id=None,
+        explainer_config=None,
         **kwargs,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
@@ -286,6 +287,8 @@ class HuggingFaceModel(FrameworkModel):
             inference_recommendation_id (str): The recommendation id which specifies the
                 recommendation you picked from inference recommendation job results and
                 would like to deploy the model and endpoint with recommended parameters.
+            explainer_config (sagemaker.explainer.ExplainerConfig): Specifies online explainability
+                configuration for use with Amazon SageMaker Clarify. (default: None)
         Raises:
              ValueError: If arguments combination check failed in these circumstances:
                 - If no role is specified or
@@ -322,6 +325,7 @@ class HuggingFaceModel(FrameworkModel):
             model_data_download_timeout=model_data_download_timeout,
             container_startup_health_check_timeout=container_startup_health_check_timeout,
             inference_recommendation_id=inference_recommendation_id,
+            explainer_config=explainer_config,
         )
 
     def register(

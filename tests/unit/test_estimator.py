@@ -2913,6 +2913,7 @@ def test_fit_deploy_tags_in_estimator(name_from_base, sagemaker_session):
         wait=True,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
+        explainer_config_dict=None,
     )
 
     sagemaker_session.create_model.assert_called_with(
@@ -2963,6 +2964,7 @@ def test_fit_deploy_tags(name_from_base, sagemaker_session):
         wait=True,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
+        explainer_config_dict=None,
     )
 
     sagemaker_session.create_model.assert_called_with(
@@ -3267,11 +3269,14 @@ def test_generic_to_deploy_async(sagemaker_session):
 
     e.fit()
     s3_output_path = "s3://some-s3-path"
+    s3_failure_path = "s3://some-s3-failures-path"
 
     predictor_async = e.deploy(
         INSTANCE_COUNT,
         INSTANCE_TYPE,
-        async_inference_config=AsyncInferenceConfig(output_path=s3_output_path),
+        async_inference_config=AsyncInferenceConfig(
+            output_path=s3_output_path, failure_path=s3_failure_path
+        ),
     )
 
     sagemaker_session.create_model.assert_called_once()
@@ -3310,6 +3315,12 @@ def test_generic_to_deploy_bad_arguments_combination(sagemaker_session):
         match="serverless_inference_config needs to be a ServerlessInferenceConfig object",
     ):
         e.deploy(serverless_inference_config={})
+
+    with pytest.raises(
+        ValueError,
+        match="explainer_config needs to be a ExplainerConfig object",
+    ):
+        e.deploy(explainer_config={})
 
 
 def test_generic_to_deploy_network_isolation(sagemaker_session):
@@ -3367,6 +3378,7 @@ def test_generic_to_deploy_kms(create_model, sagemaker_session):
         model_data_download_timeout=None,
         container_startup_health_check_timeout=None,
         inference_recommendation_id=None,
+        explainer_config=None,
     )
 
 
@@ -3553,6 +3565,7 @@ def test_deploy_with_customized_volume_size_timeout(create_model, sagemaker_sess
         model_data_download_timeout=model_data_download_timeout_sec,
         container_startup_health_check_timeout=startup_health_check_timeout_sec,
         inference_recommendation_id=None,
+        explainer_config=None,
     )
 
 

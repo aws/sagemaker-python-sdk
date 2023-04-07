@@ -77,3 +77,12 @@ class AutoMLStepInvalidModeError(Exception):
         msg = self.fmt.format(**kwargs)
         Exception.__init__(self, msg)
         self.kwargs = kwargs
+
+
+class AsyncInferenceModelError(AsyncInferenceError):
+    """Raised when model returns errors for failed requests"""
+
+    fmt = "Model returned error: {message} "
+
+    def __init__(self, message):
+        super().__init__(message=message)
