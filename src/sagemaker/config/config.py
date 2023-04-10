@@ -43,17 +43,10 @@ _DEFAULT_USER_CONFIG_FILE_PATH = os.path.join(user_config_dir(_APP_NAME), "confi
 ENV_VARIABLE_ADMIN_CONFIG_OVERRIDE = "SAGEMAKER_ADMIN_CONFIG_OVERRIDE"
 ENV_VARIABLE_USER_CONFIG_OVERRIDE = "SAGEMAKER_USER_CONFIG_OVERRIDE"
 
-_BOTO_SESSION = boto3.DEFAULT_SESSION or boto3.Session()
-# The default Boto3 S3 Resource. This is constructed from the default Boto3 session. This will be
-# used to fetch SageMakerConfig from S3. Users can override this by passing their own S3 Resource
-# as the constructor parameter for SageMakerConfig.
-_DEFAULT_S3_RESOURCE = _BOTO_SESSION.resource("s3")
 S3_PREFIX = "s3://"
 
 
-def load_sagemaker_config(
-    additional_config_paths: List[str] = None, s3_resource=_DEFAULT_S3_RESOURCE
-) -> dict:
+def load_sagemaker_config(additional_config_paths: List[str] = None, s3_resource=None) -> dict:
     """Loads config files and merges them.
 
     By default, this method first searches for config files in the default locations
@@ -95,8 +88,9 @@ def load_sagemaker_config(
 
             Note: S3 URI follows the format ``s3://<bucket>/<Key prefix>``
         s3_resource (boto3.resource("s3")): The Boto3 S3 resource. This is used to fetch
-            config files from S3. If it is not provided, this method creates a default S3 resource.
-            See `Boto3 Session documentation <https://boto3.amazonaws.com/v1/documentation/api\
+            config files from S3. If it is not provided but config files are present in S3,
+            this method creates a default S3 resource. See `Boto3 Session documentation
+            <https://boto3.amazonaws.com/v1/documentation/api\
             /latest/reference/core/session.html#boto3.session.Session.resource>`__.
             This argument is not needed if the config files are present in the local file system.
     """
@@ -161,7 +155,15 @@ def _load_config_from_file(file_path: str) -> dict:
 def _load_config_from_s3(s3_uri, s3_resource_for_config) -> dict:
     """Placeholder docstring"""
     if not s3_resource_for_config:
-        raise RuntimeError("No S3 client found. Provide a S3 client to load the config file.")
+        # Constructing a default Boto3 S3 Resource from a default Boto3 session.
+        boto_session = boto3.DEFAULT_SESSION or boto3.Session()
+        boto_region_name = boto_session.region_name
+        if boto_region_name is None:
+            raise ValueError(
+                "Must setup local AWS configuration with a region supported by SageMaker."
+            )
+        s3_resource_for_config = boto_session.resource("s3", region_name=boto_region_name)
+
     logger.debug("Fetching config file from the S3 URI: %s", s3_uri)
     inferred_s3_uri = _get_inferred_s3_uri(s3_uri, s3_resource_for_config)
     parsed_url = urlparse(inferred_s3_uri)

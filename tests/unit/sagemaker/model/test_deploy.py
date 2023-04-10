@@ -396,15 +396,19 @@ def test_deploy_wrong_explainer_config(sagemaker_session):
 @patch("sagemaker.utils.name_from_base", return_value=ENDPOINT_NAME)
 @patch("sagemaker.production_variant", return_value=BASE_PRODUCTION_VARIANT)
 def test_deploy_async_inference(production_variant, name_from_base, sagemaker_session):
+    S3_OUTPUT_PATH = "s3://some-output-path"
+    S3_FAILURE_PATH = "s3://some-failure-path"
+
     model = Model(
         MODEL_IMAGE, MODEL_DATA, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
     )
 
-    async_inference_config = AsyncInferenceConfig(output_path="s3://some-path")
+    async_inference_config = AsyncInferenceConfig(
+        output_path=S3_OUTPUT_PATH, failure_path=S3_FAILURE_PATH
+    )
+
     async_inference_config_dict = {
-        "OutputConfig": {
-            "S3OutputPath": "s3://some-path",
-        },
+        "OutputConfig": {"S3OutputPath": S3_OUTPUT_PATH, "S3FailurePath": S3_FAILURE_PATH},
     }
 
     model.deploy(

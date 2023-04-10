@@ -674,22 +674,19 @@ class LocalSession(Session):
         self.sagemaker_client = LocalSagemakerClient(self)
         self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)
         self.local_mode = True
-        sagemaker_config = kwargs.get("sagemaker_config", None)
-        if sagemaker_config:
-            validate_sagemaker_config(sagemaker_config)
 
         if self.s3_endpoint_url is not None:
             self.s3_resource = boto_session.resource("s3", endpoint_url=self.s3_endpoint_url)
             self.s3_client = boto_session.client("s3", endpoint_url=self.s3_endpoint_url)
-            self.sagemaker_config = (
-                sagemaker_config
-                if sagemaker_config
-                else load_sagemaker_config(s3_resource=self.s3_resource)
-            )
+
+        sagemaker_config = kwargs.get("sagemaker_config", None)
+        if sagemaker_config:
+            validate_sagemaker_config(sagemaker_config)
+            self.sagemaker_config = sagemaker_config
         else:
-            self.sagemaker_config = (
-                sagemaker_config if sagemaker_config else load_sagemaker_config()
-            )
+            # self.s3_resource might be None. If it is None, load_sagemaker_config will
+            # create a default S3 resource, but only if it needs to fetch from S3
+            self.sagemaker_config = load_sagemaker_config(s3_resource=self.s3_resource)
 
         sagemaker_config_file = os.path.join(os.path.expanduser("~"), ".sagemaker", "config.yaml")
         if os.path.exists(sagemaker_config_file):

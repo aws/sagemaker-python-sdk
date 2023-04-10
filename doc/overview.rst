@@ -1164,7 +1164,8 @@ More information about SageMaker Asynchronous Inference can be found in the `AWS
 
 To deploy asynchronous inference endpoint, you will need to create a ``AsyncInferenceConfig`` object.
 If you create ``AsyncInferenceConfig`` without specifying its arguments, the default ``S3OutputPath`` will
-be ``s3://sagemaker-{REGION}-{ACCOUNTID}/async-endpoint-outputs/{UNIQUE-JOB-NAME}``. (example shown below):
+be ``s3://sagemaker-{REGION}-{ACCOUNTID}/async-endpoint-outputs/{UNIQUE-JOB-NAME}``, ``S3FailurePath`` will
+be ``s3://sagemaker-{REGION}-{ACCOUNTID}/async-endpoint-failures/{UNIQUE-JOB-NAME}`` (example shown below):
 
 .. code:: python
 
@@ -1174,18 +1175,21 @@ be ``s3://sagemaker-{REGION}-{ACCOUNTID}/async-endpoint-outputs/{UNIQUE-JOB-NAME
     async_config = AsyncInferenceConfig()
 
 Or you can specify configurations in ``AsyncInferenceConfig`` as you like. All of those configuration parameters
-are optional but if you don’t specify the ``output_path``, Amazon SageMaker will use the default ``S3OutputPath``
+are optional but if you don’t specify the ``output_path`` or ``failure_path``, Amazon SageMaker will use the
+default ``S3OutputPath`` or ``S3FailurePath``
 mentioned above (example shown below):
 
 .. code:: python
 
-    # Specify S3OutputPath, MaxConcurrentInvocationsPerInstance and NotificationConfig in the async config object
+    # Specify S3OutputPath, S3FailurePath, MaxConcurrentInvocationsPerInstance and NotificationConfig
+    # in the async config object
     async_config = AsyncInferenceConfig(
         output_path="s3://{s3_bucket}/{bucket_prefix}/output",
         max_concurrent_invocations_per_instance=10,
         notification_config = {
             "SuccessTopic": "arn:aws:sns:aws-region:account-id:topic-name",
             "ErrorTopic": "arn:aws:sns:aws-region:account-id:topic-name",
+            "IncludeInferenceResponseIn": ["SUCCESS_NOTIFICATION_TOPIC","ERROR_NOTIFICATION_TOPIC"],
         }
     )
 
