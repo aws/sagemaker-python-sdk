@@ -47,6 +47,7 @@ ALLOWED_INSTANCE_FAMILIES = {
     "ml.g4dn",
     "ml.g5",
     "ml.p3",
+    "ml.p3dn",
     "ml.p4",
     "ml.p4d",
     "ml.p4de",
