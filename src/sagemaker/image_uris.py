@@ -373,9 +373,13 @@ def _validate_instance_deprecation(framework, instance_type, version):
         framework == "pytorch"
         and _get_instance_type_family(instance_type) == "p2"
         and Version(version) >= Version("1.13")
+    ) or (
+        framework == "tensorflow"
+        and _get_instance_type_family(instance_type) == "p2"
+        and Version(version) >= Version("2.12")
     ):
         raise ValueError(
-            "P2 instances have been deprecated for sagemaker jobs with PyTorch 1.13 and above. "
+            "P2 instances have been deprecated for sagemaker jobs starting PyTorch 1.13 and TensorFlow 2.12"
             "For information about supported instance types please refer to "
             "https://aws.amazon.com/sagemaker/pricing/"
         )
