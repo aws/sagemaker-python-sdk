@@ -282,6 +282,7 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
                 in (
                     "text/csv",
                     "application/jsonlines",
+                    "application/json",
                     "image/jpeg",
                     "image/png",
                     "application/x-npy",
@@ -296,6 +297,7 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
             SchemaOptional("probability"): Or(str, int),
             SchemaOptional("label_headers"): [Or(str, int)],
             SchemaOptional("content_template"): Or(str, {str: str}),
+            SchemaOptional("record_template"): str,
             SchemaOptional("custom_attributes"): str,
         },
     }
@@ -583,6 +585,7 @@ class ModelConfig:
         accept_type: Optional[str] = None,
         content_type: Optional[str] = None,
         content_template: Optional[str] = None,
+        record_template: Optional[str] = None,
         custom_attributes: Optional[str] = None,
         accelerator_type: Optional[str] = None,
         endpoint_name_prefix: Optional[str] = None,
@@ -609,14 +612,80 @@ class ModelConfig:
                 ``"application/jsonlines"`` for JSON Lines, and ``"application/json"`` for JSON.
                 Default is the same as ``content_type``.
             content_type (str): The model input format to be used for getting inferences with the
-                shadow endpoint. Valid values are ``"text/csv"`` for CSV and
-                ``"application/jsonlines"`` for JSON Lines. Default is the same as
-                ``dataset_format``.
+                shadow endpoint. Valid values are ``"text/csv"`` for CSV,
+                ``"application/jsonlines"`` for JSON Lines, and ``"application/json"`` for JSON.
+                Default is the same as ``dataset_format``.
             content_template (str): A template string to be used to construct the model input from
-                dataset instances. It is only used when ``model_content_type`` is
-                ``"application/jsonlines"``. The template should have one and only one placeholder,
-                ``"features"``, which will be replaced by a features list to form the model
-                inference input.
+                dataset instances. It is only used, and required, when ``model_content_type`` is
+                ``"application/jsonlines"`` or ``"application/json"``. When ``model_content_type``
+                is ``application/jsonlines``, the template should have one and only one
+                placeholder, ``$features``, which will be replaced by a features list for each
+                record to form the model inference input.  When ``model_content_type`` is
+                ``application/json``, the template can have either placeholder ``$record``, which
+                will be replaced by a single record templated by ``record_template`` and only a
+                single record at a time will be sent to the model, or placeholder ``$records``,
+                which will be replaced by a list of records, each templated by ``record_template``.
+            record_template (str): A template string to be used to construct each record of the
+                model input from dataset instances.  It is only used, and required, when
+                ``model_content_type`` is ``"application/json"``.
+                The template string may contain one of the following:
+
+                * Placeholder ``$features`` that will be substituted by the array of feature values
+                  and/or an optional placeholder ``$feature_names`` that will be substituted by the
+                  array of feature names.
+                * Exactly one placeholder ``$features_kvp`` that will be substituted by the
+                  key-value pairs of feature name and feature value.
+                * Or for each feature, if "A" is the feature name in the ``headers`` configuration,
+                  then placeholder syntax ``"${A}"`` (the double-quotes are part of the
+                  placeholder) will be substituted by the feature value.
+
+                ``record_template`` will be used in conjunction with ``content_template`` to
+                construct the model input.
+
+                **Examples:**
+
+                Given:
+
+                * ``headers``: ``["A", "B"]``
+                * ``features``: ``[[0, 1], [3, 4]]``
+
+                Example model input 1::
+
+                    {
+                        "instances": [[0, 1], [3, 4]],
+                        "feature_names": ["A", "B"]
+                    }
+
+                content_template and record_template to construct above:
+
+                * ``content_template``: ``"{\"instances\": $records}"``
+                * ``record_template``: ``"$features"``
+
+                Example model input 2::
+
+                    [
+                        { "A": 0, "B": 1 },
+                        { "A": 3, "B": 4 },
+                    ]
+
+                content_template and record_template to construct above:
+
+                * ``content_template``: ``"$records"``
+                * ``record_template``: ``"$features_kvp"``
+
+                Or, alternatively:
+
+                * ``content_template``: ``"$records"``
+                * ``record_template``: ``"{\"A\": \"${A}\", \"B\": \"${B}\"}"``
+
+                Example model input 3 (single record only)::
+
+                    { "A": 0, "B": 1 }
+
+                content_template and record_template to construct above:
+
+                * ``content_template``: ``"$record"``
+                * ``record_template``: ``"$features_kvp"``
             custom_attributes (str): Provides additional information about a request for an
                 inference submitted to a model hosted at an Amazon SageMaker endpoint. The
                 information is an opaque value that is forwarded verbatim. You could use this
@@ -687,6 +756,7 @@ class ModelConfig:
             if content_type not in [
                 "text/csv",
                 "application/jsonlines",
+                "application/json",
                 "image/jpeg",
                 "image/jpg",
                 "image/png",
@@ -696,14 +766,32 @@ class ModelConfig:
                     f"Invalid content_type {content_type}."
                     f" Please choose text/csv or application/jsonlines."
                 )
+            if content_type == "application/jsonlines":
+                if content_template is None:
+                    raise ValueError(
+                        f"content_template field is required for content_type {content_type}"
+                    )
+                if "$features" not in content_template:
+                    raise ValueError(
+                        f"Invalid content_template {content_template}."
+                        f" Please include a placeholder $features."
+                    )
+            if content_type == "application/json":
+                if content_template is None or record_template is None:
+                    raise ValueError(
+                        f"content_template and record_template are required for content_type "
+                        f"{content_type}"
+                    )
+                if "$record" not in content_template:
+                    raise ValueError(
+                        f"Invalid content_template {content_template}."
+                        f" Please include either placeholder $records or $record."
+                    )
             self.predictor_config["content_type"] = content_type
         if content_template is not None:
-            if "$features" not in content_template:
-                raise ValueError(
-                    f"Invalid content_template {content_template}."
-                    f" Please include a placeholder $features."
-                )
             self.predictor_config["content_template"] = content_template
+        if record_template is not None:
+            self.predictor_config["record_template"] = record_template
         _set(custom_attributes, "custom_attributes", self.predictor_config)
         _set(accelerator_type, "accelerator_type", self.predictor_config)
         _set(target_model, "target_model", self.predictor_config)
