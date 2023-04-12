@@ -19,6 +19,7 @@ import abc
 import codecs
 import io
 import json
+from typing import List
 
 import numpy as np
 from six import with_metaclass
@@ -322,3 +323,99 @@ class JSONLinesDeserializer(SimpleBaseDeserializer):
             return [json.loads(line) for line in lines]
         finally:
             stream.close()
+
+
+def retrieve(
+    region=None,
+    model_id=None,
+    model_version=None,
+    tolerate_vulnerable_model: bool = False,
+    tolerate_deprecated_model: bool = False,
+) -> List[BaseDeserializer]:
+    """Retrieves the supported deserializers for the model matching the given arguments.
+
+    Args:
+        region (str): The AWS Region for which to retrieve the supported deserializers.
+            Defaults to ``None``.
+        model_id (str): The model ID of the model for which to
+            retrieve the supported deserializers. (Default: None).
+        model_version (str): The version of the model for which to retrieve the
+            supported deserializers. (Default: None).
+        tolerate_vulnerable_model (bool): True if vulnerable versions of model
+            specifications should be tolerated (exception not raised). If False, raises an
+            exception if the script used by this version of the model has dependencies with known
+            security vulnerabilities. (Default: False).
+        tolerate_deprecated_model (bool): True if deprecated models should be tolerated
+            (exception not raised). False if these models should raise an exception.
+            (Default: False).
+    Returns:
+        List[BaseDeserializer]: The supported deserializers to use for the model.
+
+    Raises:
+        ValueError: If the combination of arguments specified is not supported.
+    """
+
+    # avoid circular imports
+    from sagemaker.jumpstart.artifacts import _retrieve_supported_deserializers
+    from sagemaker.jumpstart import utils as jumpstart_utils
+
+    if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
+        raise ValueError(
+            "Must specify `model_id` and `model_version` when retrieving deserializers."
+        )
+
+    return _retrieve_supported_deserializers(
+        model_id,
+        model_version,
+        region,
+        tolerate_vulnerable_model,
+        tolerate_deprecated_model,
+    )
+
+
+def retrieve_default(
+    region=None,
+    model_id=None,
+    model_version=None,
+    tolerate_vulnerable_model: bool = False,
+    tolerate_deprecated_model: bool = False,
+) -> BaseDeserializer:
+    """Retrieves the default deserializer for the model matching the given arguments.
+
+    Args:
+        region (str): The AWS Region for which to retrieve the default deserializer.
+            Defaults to ``None``.
+        model_id (str): The model ID of the model for which to
+            retrieve the default deserializer. (Default: None).
+        model_version (str): The version of the model for which to retrieve the
+            default deserializer. (Default: None).
+        tolerate_vulnerable_model (bool): True if vulnerable versions of model
+            specifications should be tolerated (exception not raised). If False, raises an
+            exception if the script used by this version of the model has dependencies with known
+            security vulnerabilities. (Default: False).
+        tolerate_deprecated_model (bool): True if deprecated models should be tolerated
+            (exception not raised). False if these models should raise an exception.
+            (Default: False).
+    Returns:
+        BaseDeserializer: The default deserializer to use for the model.
+
+    Raises:
+        ValueError: If the combination of arguments specified is not supported.
+    """
+
+    # avoid circular imports
+    from sagemaker.jumpstart.artifacts import _retrieve_default_deserializer
+    from sagemaker.jumpstart import utils as jumpstart_utils
+
+    if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
+        raise ValueError(
+            "Must specify `model_id` and `model_version` when retrieving deserializers."
+        )
+
+    return _retrieve_default_deserializer(
+        model_id,
+        model_version,
+        region,
+        tolerate_vulnerable_model,
+        tolerate_deprecated_model,
+    )

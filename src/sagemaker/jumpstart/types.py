@@ -267,6 +267,42 @@ class JumpStartEnvironmentVariable(JumpStartDataHolderType):
         return json_obj
 
 
+class JumpStartPredictorSpecs(JumpStartDataHolderType):
+    """Data class for JumpStart Predictor specs."""
+
+    __slots__ = [
+        "default_content_type",
+        "supported_content_types",
+        "default_accept_type",
+        "supported_accept_types",
+    ]
+
+    def __init__(self, spec: Dict[str, Any]):
+        """Initializes a JumpStartPredictorSpecs object from its json representation.
+
+        Args:
+            spec (Dict[str, Any]): Dictionary representation of predictor specs.
+        """
+        self.from_json(spec)
+
+    def from_json(self, json_obj: Dict[str, Any]) -> None:
+        """Sets fields in object based on json.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of predictor specs.
+        """
+
+        self.default_content_type = json_obj["default_content_type"]
+        self.supported_content_types = json_obj["supported_content_types"]
+        self.default_accept_type = json_obj["default_accept_type"]
+        self.supported_accept_types = json_obj["supported_accept_types"]
+
+    def to_json(self) -> Dict[str, Any]:
+        """Returns json representation of JumpStartPredictorSpecs object."""
+        json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
+        return json_obj
+
+
 class JumpStartModelSpecs(JumpStartDataHolderType):
     """Data class JumpStart model specs."""
 
@@ -299,6 +335,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "metrics",
         "training_prepacked_script_key",
         "hosting_prepacked_artifact_key",
+        "predictor_specs",
     ]
 
     def __init__(self, spec: Dict[str, Any]):
@@ -353,6 +390,11 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         )
         self.hosting_prepacked_artifact_key: Optional[str] = json_obj.get(
             "hosting_prepacked_artifact_key", None
+        )
+        self.predictor_specs: Optional[JumpStartPredictorSpecs] = (
+            JumpStartPredictorSpecs(json_obj["predictor_specs"])
+            if "predictor_specs" in json_obj
+            else None
         )
 
         if self.training_supported:
