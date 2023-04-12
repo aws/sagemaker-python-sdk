@@ -15,14 +15,10 @@
 from __future__ import absolute_import
 
 from typing import Optional
-from sagemaker.jumpstart.artifacts import (
-    _retrieve_default_accept_type,
-    _retrieve_default_content_type,
-    _retrieve_default_serializer,
-    _retrieve_default_deserializer,
-)
+
 from sagemaker.predictor import Predictor
 from sagemaker.session import Session
+from sagemaker import content_types, accept_types, serializers, deserializers
 
 
 class JumpStartPredictor(Predictor):
@@ -48,14 +44,14 @@ class JumpStartPredictor(Predictor):
                 "Must supply endpoint name and model id as input to JumpStart Predictor!"
             )
 
-        serializer = _retrieve_default_serializer(
+        serializer = serializers.retrieve_default(
             model_id=model_id,
             model_version=model_version,
             region=region,
             tolerate_vulnerable_model=tolerate_vulnerable_model,
             tolerate_deprecated_model=tolerate_deprecated_model,
         )
-        deserializer = _retrieve_default_deserializer(
+        deserializer = deserializers.retrieve_default(
             model_id=model_id,
             model_version=model_version,
             region=region,
@@ -79,7 +75,7 @@ class JumpStartPredictor(Predictor):
     @property
     def content_type(self) -> str:
         """The MIME type of the data sent to the inference endpoint."""
-        return _retrieve_default_content_type(
+        return content_types.retrieve_default(
             model_id=self.model_id,
             model_version=self.model_version,
             region=self.region,
@@ -90,7 +86,7 @@ class JumpStartPredictor(Predictor):
     @property
     def accept(self) -> str:
         """The content type that is expected from the inference endpoint."""
-        return _retrieve_default_accept_type(
+        return accept_types.retrieve_default(
             model_id=self.model_id,
             model_version=self.model_version,
             region=self.region,
