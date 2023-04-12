@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This module is for SageMaker content types."""
+"""This module is for SageMaker accept types."""
 from __future__ import absolute_import
 from typing import List
 
@@ -24,15 +24,15 @@ def retrieve(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
 ) -> List[str]:
-    """Retrieves the supported content types for the model matching the given arguments.
+    """Retrieves the supported accept types for the model matching the given arguments.
 
     Args:
-        region (str): The AWS Region for which to retrieve the supported content types.
+        region (str): The AWS Region for which to retrieve the supported accept types.
             Defaults to ``None``.
         model_id (str): The model ID of the model for which to
-            retrieve the supported content types. (Default: None).
+            retrieve the supported accept types. (Default: None).
         model_version (str): The version of the model for which to retrieve the
-            supported content types. (Default: None).
+            supported accept types. (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known
@@ -41,17 +41,17 @@ def retrieve(
             (exception not raised). False if these models should raise an exception.
             (Default: False).
     Returns:
-        list: The supported content types to use for the model.
+        list: The supported accept types to use for the model.
 
     Raises:
         ValueError: If the combination of arguments specified is not supported.
     """
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
         raise ValueError(
-            "Must specify `model_id` and `model_version` when retrieving content types."
+            "Must specify `model_id` and `model_version` when retrieving accept types."
         )
 
-    return artifacts._retrieve_supported_content_types(
+    return artifacts._retrieve_supported_accept_types(
         model_id,
         model_version,
         region,
@@ -67,15 +67,15 @@ def retrieve_default(
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
 ) -> str:
-    """Retrieves the default content type for the model matching the given arguments.
+    """Retrieves the default accept type for the model matching the given arguments.
 
     Args:
-        region (str): The AWS Region for which to retrieve the default content type.
+        region (str): The AWS Region for which to retrieve the default accept type.
             Defaults to ``None``.
         model_id (str): The model ID of the model for which to
-            retrieve the default content type. (Default: None).
+            retrieve the default accept type. (Default: None).
         model_version (str): The version of the model for which to retrieve the
-            default content type. (Default: None).
+            default accept type. (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known
@@ -84,26 +84,20 @@ def retrieve_default(
             (exception not raised). False if these models should raise an exception.
             (Default: False).
     Returns:
-        str: The default content type to use for the model.
+        str: The default accept type to use for the model.
 
     Raises:
         ValueError: If the combination of arguments specified is not supported.
     """
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
         raise ValueError(
-            "Must specify `model_id` and `model_version` when retrieving content types."
+            "Must specify `model_id` and `model_version` when retrieving accept types."
         )
 
-    return artifacts._retrieve_default_content_type(
+    return artifacts._retrieve_default_accept_type(
         model_id,
         model_version,
         region,
         tolerate_vulnerable_model,
         tolerate_deprecated_model,
     )
-
-
-CONTENT_TYPE_JSON = "application/json"
-CONTENT_TYPE_CSV = "text/csv"
-CONTENT_TYPE_OCTET_STREAM = "application/octet-stream"
-CONTENT_TYPE_NPY = "application/x-npy"

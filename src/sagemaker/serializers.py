@@ -15,6 +15,7 @@ from __future__ import absolute_import
 
 import abc
 from collections.abc import Iterable
+from typing import List
 import csv
 import io
 import json
@@ -390,3 +391,93 @@ class DataSerializer(SimpleBaseSerializer):
             return data
 
         raise ValueError(f"Object of type {type(data)} is not Data serializable.")
+
+
+def retrieve(
+    region=None,
+    model_id=None,
+    model_version=None,
+    tolerate_vulnerable_model: bool = False,
+    tolerate_deprecated_model: bool = False,
+) -> List[SimpleBaseSerializer]:
+    """Retrieves the supported serializers for the model matching the given arguments.
+
+    Args:
+        region (str): The AWS Region for which to retrieve the supported serializers.
+            Defaults to ``None``.
+        model_id (str): The model ID of the model for which to
+            retrieve the supported serializers. (Default: None).
+        model_version (str): The version of the model for which to retrieve the
+            supported serializers. (Default: None).
+        tolerate_vulnerable_model (bool): True if vulnerable versions of model
+            specifications should be tolerated (exception not raised). If False, raises an
+            exception if the script used by this version of the model has dependencies with known
+            security vulnerabilities. (Default: False).
+        tolerate_deprecated_model (bool): True if deprecated models should be tolerated
+            (exception not raised). False if these models should raise an exception.
+            (Default: False).
+    Returns:
+        List[SimpleBaseSerializer]: The supported serializers to use for the model.
+
+    Raises:
+        ValueError: If the combination of arguments specified is not supported.
+    """
+
+    # avoid circular imports
+    from sagemaker.jumpstart import artifacts, utils as jumpstart_utils
+
+    if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
+        raise ValueError("Must specify `model_id` and `model_version` when retrieving serializers.")
+
+    return artifacts._retrieve_supported_serializers(
+        model_id,
+        model_version,
+        region,
+        tolerate_vulnerable_model,
+        tolerate_deprecated_model,
+    )
+
+
+def retrieve_default(
+    region=None,
+    model_id=None,
+    model_version=None,
+    tolerate_vulnerable_model: bool = False,
+    tolerate_deprecated_model: bool = False,
+) -> SimpleBaseSerializer:
+    """Retrieves the default serializer for the model matching the given arguments.
+
+    Args:
+        region (str): The AWS Region for which to retrieve the default serializer.
+            Defaults to ``None``.
+        model_id (str): The model ID of the model for which to
+            retrieve the default serializer. (Default: None).
+        model_version (str): The version of the model for which to retrieve the
+            default serializer. (Default: None).
+        tolerate_vulnerable_model (bool): True if vulnerable versions of model
+            specifications should be tolerated (exception not raised). If False, raises an
+            exception if the script used by this version of the model has dependencies with known
+            security vulnerabilities. (Default: False).
+        tolerate_deprecated_model (bool): True if deprecated models should be tolerated
+            (exception not raised). False if these models should raise an exception.
+            (Default: False).
+    Returns:
+        SimpleBaseSerializer: The default serializer to use for the model.
+
+    Raises:
+        ValueError: If the combination of arguments specified is not supported.
+    """
+
+    # avoid circular imports
+    from sagemaker.jumpstart import artifacts, utils as jumpstart_utils
+
+    if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
+        raise ValueError("Must specify `model_id` and `model_version` when retrieving serializers.")
+
+    return artifacts._retrieve_default_serializer(
+        model_id,
+        model_version,
+        region,
+        tolerate_vulnerable_model,
+        tolerate_deprecated_model,
+    )

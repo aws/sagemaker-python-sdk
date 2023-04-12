@@ -105,3 +105,35 @@ class KwargUseCase(str, Enum):
 
     # https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/estimator.py#L1128
     ESTIMATOR_FIT = "estimator.fit"
+
+
+class SerializerType(str, Enum):
+    """Enum class for serializers associated with JumpStart models."""
+
+    TEXT = "text"
+    JSON = "json"
+    CSV = "csv"
+    RAW_BYTES = "raw_bytes"
+
+
+class DeserializerType(str, Enum):
+    """Enum class for deserializers associated with JumpStart models."""
+
+    JSON = "json"
+
+
+class MIMEType(str, Enum):
+    """Enum class for MIME types associated with JumpStart models."""
+
+    X_IMAGE = "application/x-image"
+    LIST_TEXT = "application/list-text"
+    X_TEXT = "application/x-text"
+    JSON = "application/json"
+    CSV = "text/csv"
+    WAV = "audio/wav"
+
+    @staticmethod
+    def from_suffixed_type(mime_type_with_suffix: str) -> "MIMEType":
+        """Removes suffix from type and instantiates enum."""
+        base_type, _, _ = mime_type_with_suffix.partition(";")
+        return MIMEType(base_type)

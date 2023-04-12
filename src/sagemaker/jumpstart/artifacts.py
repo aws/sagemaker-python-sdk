@@ -486,6 +486,127 @@ def _retrieve_kwargs(
     raise ValueError(f"Unsupported kwarg use case: {use_case}")
 
 
+def _retrieve_default_environment_variables(
+    model_id: str,
+    model_version: str,
+    region: Optional[str] = None,
+    tolerate_vulnerable_model: bool = False,
+    tolerate_deprecated_model: bool = False,
+    use_case: EnvVariableUseCase = EnvVariableUseCase.AWS_SDK,
+) -> Dict[str, str]:
+    """Retrieves the inference environment variables for the model matching the given arguments.
+
+    Args:
+        model_id (str): JumpStart model ID of the JumpStart model for which to
+            retrieve the default environment variables.
+        model_version (str): Version of the JumpStart model for which to retrieve the
+            default environment variables.
+        region (Optional[str]): Region for which to retrieve default environment variables.
+            (Default: None).
+        tolerate_vulnerable_model (bool): True if vulnerable versions of model
+            specifications should be tolerated (exception not raised). If False, raises an
+            exception if the script used by this version of the model has dependencies with known
+            security vulnerabilities. (Default: False).
+        tolerate_deprecated_model (bool): True if deprecated versions of model
+            specifications should be tolerated (exception not raised). If False, raises
+            an exception if the version of the model is deprecated. (Default: False).
+        use_case (EnvVariableUseCase): The use case for the environment variables. The
+            `Model` class of the SageMaker Python SDK inserts environment variables that would be
+            required when making the low-level AWS API call.
+            (Default: EnvVariableUseCase.AWS_SDK).
+
+    Returns:
+        dict: the inference environment variables to use for the model.
+    """
+
+    if region is None:
+        region = JUMPSTART_DEFAULT_REGION_NAME
+
+    model_specs = verify_model_region_and_return_specs(
+        model_id=model_id,
+        version=model_version,
+        scope=JumpStartScriptScope.INFERENCE,
+        region=region,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
+        tolerate_deprecated_model=tolerate_deprecated_model,
+    )
+
+    default_environment_variables: Dict[str, str] = {}
+    for environment_variable in model_specs.inference_environment_variables:
+        if use_case == EnvVariableUseCase.AWS_SDK or (
+            use_case == EnvVariableUseCase.SAGEMAKER_PYTHON_SDK
+            and environment_variable.required_for_model_class is True
+        ):
+            default_environment_variables[environment_variable.name] = str(
+                environment_variable.default
+            )
+    return default_environment_variables
+
+
+def _retrieve_kwargs(
+    model_id: str,
+    model_version: str,
+    use_case: KwargUseCase,
+    region: Optional[str] = None,
+    tolerate_vulnerable_model: bool = False,
+    tolerate_deprecated_model: bool = False,
+) -> dict:
+    """Retrieves kwargs for `Model`, `Estimator, `Estimator.fit`, and `Model.deploy`.
+
+    Args:
+        model_id (str): JumpStart model ID of the JumpStart model for which to
+            retrieve the kwargs.
+        model_version (str): Version of the JumpStart model for which to retrieve the
+            kwargs.
+        use_case (KwargUseCase): The use case for which to retrieve kwargs.
+        region (Optional[str]): Region for which to retrieve kwargs.
+            (Default: None).
+        tolerate_vulnerable_model (bool): True if vulnerable versions of model
+            specifications should be tolerated (exception not raised). If False, raises an
+            exception if the script used by this version of the model has dependencies with known
+            security vulnerabilities. (Default: False).
+        tolerate_deprecated_model (bool): True if deprecated versions of model
+            specifications should be tolerated (exception not raised). If False, raises
+            an exception if the version of the model is deprecated. (Default: False).
+
+    Returns:
+        dict: the kwargs to use for the use case.
+    """
+
+    if region is None:
+        region = JUMPSTART_DEFAULT_REGION_NAME
+
+    if use_case in {KwargUseCase.MODEL, KwargUseCase.MODEL_DEPLOY}:
+        scope = JumpStartScriptScope.INFERENCE
+    elif use_case in {KwargUseCase.ESTIMATOR, KwargUseCase.ESTIMATOR_FIT}:
+        scope = JumpStartScriptScope.TRAINING
+    else:
+        raise ValueError(f"Unsupported kwarg use case: {use_case}")
+
+    model_specs = verify_model_region_and_return_specs(
+        model_id=model_id,
+        version=model_version,
+        scope=scope,
+        region=region,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
+        tolerate_deprecated_model=tolerate_deprecated_model,
+    )
+
+    if use_case == KwargUseCase.MODEL:
+        return model_specs.model_kwargs
+
+    if use_case == KwargUseCase.MODEL_DEPLOY:
+        return model_specs.deploy_kwargs
+
+    if use_case == KwargUseCase.ESTIMATOR:
+        return model_specs.estimator_kwargs
+
+    if use_case == KwargUseCase.ESTIMATOR_FIT:
+        return model_specs.fit_kwargs
+
+    raise ValueError(f"Unsupported kwarg use case: {use_case}")
+
+
 def _retrieve_default_instance_type(
     model_id: str,
     model_version: str,
