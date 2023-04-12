@@ -147,7 +147,6 @@ class Collection(object):
 
             if error_code == "BadRequestException" and "group already exists" in message:
                 raise ValueError("Collection with the given name already exists")
-
             self._check_access_error(err=e)
             raise
 
@@ -337,3 +336,127 @@ class Collection(object):
         return {
             "moved_success": model_group,
         }
+
+    def _convert_tag_collection_response(self, tag_collections: List[str]):
+        """Converts collection response from tag api to collection list response
+
+        Args:
+            tag_collections List[dict]: Collections list response from tag api
+        """
+        collection_details = []
+        for collection in tag_collections:
+            collection_arn = collection["ResourceARN"]
+            collection_name = collection_arn.split("group/")[1]
+            collection_details.append(
+                {
+                    "Name": collection_name,
+                    "Arn": collection_arn,
+                    "Type": "Collection",
+                }
+            )
+        return collection_details
+
+    def _convert_group_resource_response(
+        self, group_resource_details: List[dict], is_model_group: bool = False
+    ):
+        """Converts collection response from resource group api to collection list response
+
+        Args:
+            group_resource_details (List[dict]): Collections list response from resource group api
+            is_model_group (bool): If the reponse is of collection or model group type
+        """
+        collection_details = []
+        if group_resource_details["Resources"]:
+            for resource_group in group_resource_details["Resources"]:
+                collection_arn = resource_group["Identifier"]["ResourceArn"]
+                collection_name = collection_arn.split("group/")[1]
+                collection_details.append(
+                    {
+                        "Name": collection_name,
+                        "Arn": collection_arn,
+                        "Type": resource_group["Identifier"]["ResourceType"]
+                        if is_model_group
+                        else "Collection",
+                    }
+                )
+        return collection_details
+
+    def _get_full_list_resource(self, collection_name, collection_filter):
+        """Iterating to the full resource group list and returns appended paginated response
+
+        Args:
+            collection_name (str): Name of the collection to get the details
+            collection_filter (dict): Filter details to be passed to get the resource list
+
+        """
+        list_group_response = self.sagemaker_session.list_group_resources(
+            group=collection_name, filters=collection_filter
+        )
+        next_token = list_group_response.get("NextToken")
+        while next_token is not None:
+
+            paginated_group_response = self.sagemaker_session.list_group_resources(
+                group=collection_name,
+                filters=collection_filter,
+                next_token=next_token,
+            )
+            list_group_response["Resources"] = (
+                list_group_response["Resources"] + paginated_group_response["Resources"]
+            )
+            list_group_response["ResourceIdentifiers"] = (
+                list_group_response["ResourceIdentifiers"]
+                + paginated_group_response["ResourceIdentifiers"]
+            )
+            next_token = paginated_group_response.get("NextToken")
+
+        return list_group_response
+
+    def list_collection(self, collection_name: str = None):
+        """To all list the collections and content of the collections
+
+        In case there is no collection_name, it lists all the collections on the root level
+
+        Args:
+            collection_name (str): The name of the collection to list the contents of
+        """
+        collection_content = []
+        if collection_name is None:
+            tag_filters = [
+                {
+                    "Key": "sagemaker:collection-path:root",
+                    "Values": ["true"],
+                },
+            ]
+            resource_type_filters = ["resource-groups:group"]
+            tag_collections = self.sagemaker_session.get_tagging_resources(
+                tag_filters=tag_filters, resource_type_filters=resource_type_filters
+            )
+
+            return self._convert_tag_collection_response(tag_collections)
+
+        collection_filter = [
+            {
+                "Name": "resource-type",
+                "Values": ["AWS::ResourceGroups::Group"],
+            },
+        ]
+        list_group_response = self._get_full_list_resource(
+            collection_name=collection_name, collection_filter=collection_filter
+        )
+        collection_content = self._convert_group_resource_response(list_group_response)
+
+        collection_filter = [
+            {
+                "Name": "resource-type",
+                "Values": ["AWS::SageMaker::ModelPackageGroup"],
+            },
+        ]
+        list_group_response = self._get_full_list_resource(
+            collection_name=collection_name, collection_filter=collection_filter
+        )
+
+        collection_content = collection_content + self._convert_group_resource_response(
+            list_group_response, True
+        )
+
+        return collection_content

@@ -166,3 +166,33 @@ def test_move_model_groups_in_collection_success(sagemaker_session):
     sagemaker_session.sagemaker_client.delete_model_package_group(
         ModelPackageGroupName=model_group_name
     )
+
+
+def test_list_collection_success(sagemaker_session):
+    model_group_name = unique_name_from_base("test-model-group")
+    sagemaker_session.sagemaker_client.create_model_package_group(
+        ModelPackageGroupName=model_group_name
+    )
+    collection = Collection(sagemaker_session)
+    collection_name = unique_name_from_base("test-collection")
+    collection.create(collection_name)
+    model_groups = []
+    model_groups.append(model_group_name)
+    collection.add_model_groups(collection_name=collection_name, model_groups=model_groups)
+    child_collection_name = unique_name_from_base("test-collection")
+    collection.create(parent_collection_name=collection_name, collection_name=child_collection_name)
+    root_collections = collection.list_collection()
+    is_collection_found = False
+    for root_collection in root_collections:
+        if root_collection["Name"] == collection_name:
+            is_collection_found = True
+    assert is_collection_found
+
+    collection_content = collection.list_collection(collection_name)
+    assert len(collection_content) == 2
+
+    collection.remove_model_groups(collection_name=collection_name, model_groups=model_groups)
+    collection.delete([child_collection_name, collection_name])
+    sagemaker_session.sagemaker_client.delete_model_package_group(
+        ModelPackageGroupName=model_group_name
+    )
