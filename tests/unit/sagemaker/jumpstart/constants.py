@@ -1647,6 +1647,12 @@ BASE_SPEC = {
         "encrypt_inter_container_traffic": True,
     },
     "fit_kwargs": {"some-estimator-fit-key": "some-estimator-fit-value"},
+    "predictor_specs": {
+        "supported_content_types": ["application/x-image"],
+        "supported_accept_types": ["application/json;verbose", "application/json"],
+        "default_content_type": "application/x-image",
+        "default_accept_type": "application/json",
+    },
 }
 
 BASE_HEADER = {

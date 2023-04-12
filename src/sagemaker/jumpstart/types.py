@@ -280,7 +280,7 @@ class JumpStartPredictorSpecs(JumpStartDataHolderType):
         "supported_accept_types",
     ]
 
-    def __init__(self, spec: Dict[str, Any]):
+    def __init__(self, spec: Optional[Dict[str, Any]]):
         """Initializes a JumpStartPredictorSpecs object from its json representation.
 
         Args:
@@ -288,12 +288,15 @@ class JumpStartPredictorSpecs(JumpStartDataHolderType):
         """
         self.from_json(spec)
 
-    def from_json(self, json_obj: Dict[str, Any]) -> None:
+    def from_json(self, json_obj: Optional[Dict[str, Any]]) -> None:
         """Sets fields in object based on json.
 
         Args:
             json_obj (Dict[str, Any]): Dictionary representation of predictor specs.
         """
+
+        if json_obj is None:
+            return
 
         self.default_content_type = json_obj["default_content_type"]
         self.supported_content_types = json_obj["supported_content_types"]
