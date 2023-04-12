@@ -380,8 +380,8 @@ def test_set_nested_value():
 
 
 def test_get_short_version():
-    assert sagemaker.utils.get_short_version("1.13.1") == "1.13"
-    assert sagemaker.utils.get_short_version("1.13") == "1.13"
+    assert sagemaker.utils.get_short_version("2.0.0") == "2.0"
+    assert sagemaker.utils.get_short_version("2.0") == "2.0"
 
 
 def test_deferred_error():

@@ -135,6 +135,7 @@ SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
         "1.12.0",
         "1.12.1",
         "1.13.1",
+        "2.0.0",
     ],
 }
 
@@ -148,6 +149,7 @@ PYTORCHDDP_SUPPORTED_FRAMEWORK_VERSIONS = [
     "1.12.0",
     "1.12.1",
     "1.13.1",
+    "2.0.0",
 ]
 
 
@@ -161,6 +163,7 @@ TRAINIUM_SUPPORTED_TORCH_DISTRIBUTED_FRAMEWORK_VERSIONS = [
     "1.12.0",
     "1.12.1",
     "1.13.1",
+    "2.0.0",
 ]
 
 SMDISTRIBUTED_SUPPORTED_STRATEGIES = ["dataparallel", "modelparallel"]
