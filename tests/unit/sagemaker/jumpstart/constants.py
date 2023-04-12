@@ -1622,6 +1622,12 @@ BASE_SPEC = {
         "ml.c5.2xlarge",
     ],
     "metrics": [{"Regex": "val_accuracy: ([0-9\\.]+)", "Name": "pytorch-ic:val-accuracy"}],
+    "predictor_specs": {
+        "supported_content_types": ["application/x-image"],
+        "supported_accept_types": ["application/json;verbose", "application/json"],
+        "default_content_type": "application/x-image",
+        "default_accept_type": "application/json",
+    },
 }
 
 BASE_HEADER = {
