@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import datetime
 import json
 import os
+import time
 
 import pytest
 
@@ -244,6 +245,12 @@ def test_run_from_local_and_train_job_and_all_exp_cfg_match(
                 old_end_time=old_end_time,
                 sagemaker_session=sagemaker_session,
             )
+
+            # the above estimator has wait=True but the job TC could still be receiving updates
+            # after wait is complete resulting in run TC being updated, then when the above with
+            # statement is exited another update trial component call is made _sometimes_
+            # resulting in a ConflictException
+            time.sleep(3)
 
         _check_tc_status_when_exiting(
             trial_component_name=run._trial_component.trial_component_name,

@@ -15,6 +15,8 @@ from __future__ import absolute_import
 
 STABLE_DIFFUSION_MODEL_TYPE = "stable-diffusion"
 
+VALID_MODEL_CONFIG_FILES = ["config.json", "model_index.json"]
+
 DEEPSPEED_RECOMMENDED_ARCHITECTURES = {
     "bloom",
     "opt",

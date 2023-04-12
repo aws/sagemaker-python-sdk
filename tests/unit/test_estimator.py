@@ -3269,11 +3269,14 @@ def test_generic_to_deploy_async(sagemaker_session):
 
     e.fit()
     s3_output_path = "s3://some-s3-path"
+    s3_failure_path = "s3://some-s3-failures-path"
 
     predictor_async = e.deploy(
         INSTANCE_COUNT,
         INSTANCE_TYPE,
-        async_inference_config=AsyncInferenceConfig(output_path=s3_output_path),
+        async_inference_config=AsyncInferenceConfig(
+            output_path=s3_output_path, failure_path=s3_failure_path
+        ),
     )
 
     sagemaker_session.create_model.assert_called_once()
