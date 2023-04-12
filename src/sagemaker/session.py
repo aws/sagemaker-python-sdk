@@ -205,6 +205,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self.s3_resource = None
         self.s3_client = None
         self.resource_groups_client = None
+        self.resource_group_tagging_client = None
         self.config = None
         self.lambda_client = None
         self.settings = settings
@@ -3962,7 +3963,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         LOGGER.info("Deleting model with name: %s", model_name)
         self.sagemaker_client.delete_model(ModelName=model_name)
 
-    def list_group_resources(self, group, filters):
+    def list_group_resources(self, group, filters, next_token: str = ""):
         """To list group resources with given filters
 
         Args:
@@ -3972,7 +3973,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self.resource_groups_client = self.resource_groups_client or self.boto_session.client(
             "resource-groups"
         )
-        return self.resource_groups_client.list_group_resources(Group=group, Filters=filters)
+        return self.resource_groups_client.list_group_resources(
+            Group=group, Filters=filters, NextToken=next_token
+        )
 
     def delete_resource_group(self, group):
         """To delete a resource group
@@ -3995,6 +3998,39 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "resource-groups"
         )
         return self.resource_groups_client.get_group_query(Group=group)
+
+    def get_tagging_resources(self, tag_filters, resource_type_filters):
+        """To list the complete resources for a particular resource group tag
+
+        tag_filters: filters for the tag
+        resource_type_filters: resource filter for the tag
+        """
+        self.resource_group_tagging_client = (
+            self.resource_group_tagging_client
+            or self.boto_session.client("resourcegroupstaggingapi")
+        )
+        resource_list = []
+
+        try:
+            resource_tag_response = self.resource_group_tagging_client.get_resources(
+                TagFilters=tag_filters, ResourceTypeFilters=resource_type_filters
+            )
+
+            resource_list = resource_list + resource_tag_response["ResourceTagMappingList"]
+
+            next_token = resource_tag_response.get("PaginationToken")
+            while next_token is not None and next_token != "":
+                resource_tag_response = self.resource_group_tagging_client.get_resources(
+                    TagFilters=tag_filters,
+                    ResourceTypeFilters=resource_type_filters,
+                    NextToken=next_token,
+                )
+                resource_list = resource_list + resource_tag_response["ResourceTagMappingList"]
+                next_token = resource_tag_response.get("PaginationToken")
+
+            return resource_list
+        except ClientError as error:
+            raise error
 
     def create_group(self, name, resource_query, tags):
         """To create a AWS Resource Group
