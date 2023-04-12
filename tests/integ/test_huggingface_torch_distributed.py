@@ -19,7 +19,6 @@ from tests.integ import timeout
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 
 
-@pytest.mark.release
 def test_huggingface_torch_distributed_g5_glue(
     sagemaker_session,
     huggingface_training_latest_version,
