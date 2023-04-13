@@ -386,6 +386,10 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
                     json_obj[att] = cur_val
         return json_obj
 
+    def supports_prepacked_inference(self):
+        """Returns True if the model has a prepacked inference artifact."""
+        return getattr(self, "hosting_prepacked_artifact_key", None) is not None
+
 
 class JumpStartVersionedModelId(JumpStartDataHolderType):
     """Data class for versioned model IDs."""

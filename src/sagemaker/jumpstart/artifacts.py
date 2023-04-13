@@ -571,3 +571,46 @@ def _retrieve_default_training_metric_definitions(
     )
 
     return deepcopy(model_specs.metrics) if model_specs.metrics else None
+
+
+def _model_supports_prepacked_inference(
+    model_id: str,
+    model_version: str,
+    region: Optional[str],
+    tolerate_vulnerable_model: bool = False,
+    tolerate_deprecated_model: bool = False,
+) -> bool:
+    """Returns True if the model supports prepacked inference.
+
+    Args:
+        model_id (str): JumpStart model ID of the JumpStart model for which to
+            retrieve the support status for prepacked inference.
+        model_version (str): Version of the JumpStart model for which to retrieve the
+            support status for prepacked inference.
+        region (Optional[str]): Region for which to retrieve default training metric
+            definitions.
+        tolerate_vulnerable_model (bool): True if vulnerable versions of model
+            specifications should be tolerated (exception not raised). If False, raises an
+            exception if the script used by this version of the model has dependencies with known
+            security vulnerabilities. (Default: False).
+        tolerate_deprecated_model (bool): True if deprecated versions of model
+            specifications should be tolerated (exception not raised). If False, raises
+            an exception if the version of the model is deprecated. (Default: False).
+
+    Returns:
+        bool: the support status for prepacked inference.
+    """
+
+    if region is None:
+        region = JUMPSTART_DEFAULT_REGION_NAME
+
+    model_specs = verify_model_region_and_return_specs(
+        model_id=model_id,
+        version=model_version,
+        scope=JumpStartScriptScope.TRAINING,
+        region=region,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
+        tolerate_deprecated_model=tolerate_deprecated_model,
+    )
+
+    return model_specs.supports_prepacked_inference()

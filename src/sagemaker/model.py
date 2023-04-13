@@ -117,6 +117,8 @@ class Model(ModelBase, InferenceRecommenderMixin):
         container_log_level: Union[int, PipelineVariable] = logging.INFO,
         dependencies: Optional[List[str]] = None,
         git_config: Optional[Dict[str, str]] = None,
+        model_id: Optional[str] = None,
+        model_version: Optional[str] = None,
     ):
         """Initialize an SageMaker ``Model``.
 
@@ -276,6 +278,8 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 authentication if they are provided. If they are not provided,
                 the SageMaker Python SDK attempts to use either the CodeCommit
                 credential helper or local credential storage for authentication.
+            model_id (str): JumpStart model id to be used for creating a `Predictor`.
+            model_version (str): JumpStart model version to be used for creating a `Predictor`.
 
         """
         self.model_data = model_data
@@ -324,6 +328,8 @@ class Model(ModelBase, InferenceRecommenderMixin):
             self.dependencies = updates["dependencies"]
         self.uploaded_code = None
         self.repacked_model_data = None
+        self.model_id = model_id
+        self.model_version = model_version
 
     @runnable_by_pipeline
     def register(
@@ -1307,7 +1313,19 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         )
 
         if self.predictor_cls:
-            predictor = self.predictor_cls(self.endpoint_name, self.sagemaker_session)
+
+            predictor_cls_kwargs = {
+                "endpoint_name": self.endpoint_name,
+                "sagemaker_session": self.sagemaker_session,
+            }
+
+            if self.model_id is not None:
+                predictor_cls_kwargs.update({"model_id": self.model_id})
+
+            if self.model_version is not None:
+                predictor_cls_kwargs.update({"model_version": self.model_version})
+
+            predictor = self.predictor_cls(**predictor_cls_kwargs)
             if serializer:
                 predictor.serializer = serializer
             if deserializer:
