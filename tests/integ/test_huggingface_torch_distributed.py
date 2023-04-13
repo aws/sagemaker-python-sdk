@@ -14,8 +14,7 @@ from __future__ import absolute_import
 
 import os
 from sagemaker.huggingface import HuggingFace
-from tests.integ import timeout
-from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES, timeout
 
 
 def test_huggingface_torch_distributed_g5_glue(
@@ -24,7 +23,7 @@ def test_huggingface_torch_distributed_g5_glue(
     huggingface_training_pytorch_latest_version,
     huggingface_pytorch_latest_training_py_version,
 ):
-    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+    with timeout.timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, "huggingface")
         estimator = HuggingFace(
             py_version=huggingface_pytorch_latest_training_py_version,
