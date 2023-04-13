@@ -460,7 +460,7 @@ def _retrieve_kwargs(
     elif use_case in {KwargUseCase.ESTIMATOR, KwargUseCase.ESTIMATOR_FIT}:
         scope = JumpStartScriptScope.TRAINING
     else:
-        raise ValueError(f"Supported kwarg use case: {use_case}")
+        raise ValueError(f"Unsupported kwarg use case: {use_case}")
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
@@ -483,7 +483,7 @@ def _retrieve_kwargs(
     if use_case == KwargUseCase.ESTIMATOR_FIT:
         return model_specs.fit_kwargs
 
-    raise ValueError(f"Supported kwarg use case: {use_case}")
+    raise ValueError(f"Unsupported kwarg use case: {use_case}")
 
 
 def _retrieve_default_instance_type(
