@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.146.0 (2023-04-13)
+
+### Features
+
+ * Add support for JSON model inputs for Clarify Processor
+
+### Bug Fixes and Other Changes
+
+ * Feature/list collection
+ * improve reliability of Run integration test
+ * Add a comment that smdataparallel lib excludes tf 2.12 support
+
+### Documentation Changes
+
+ * Update reference to load run method in documentation
+
 ## v2.145.0 (2023-04-06)
 
 ### Features
