@@ -19,6 +19,7 @@ from typing import Optional
 from sagemaker.predictor import Predictor
 from sagemaker.session import Session
 from sagemaker import content_types, accept_types, serializers, deserializers
+from sagemaker.jumpstart.enums import MIMEType
 
 
 class JumpStartPredictor(Predictor):
@@ -73,7 +74,7 @@ class JumpStartPredictor(Predictor):
         self.tolerate_deprecated_model = tolerate_deprecated_model
 
     @property
-    def content_type(self) -> str:
+    def content_type(self) -> MIMEType:
         """The MIME type of the data sent to the inference endpoint."""
         return content_types.retrieve_default(
             model_id=self.model_id,
@@ -84,7 +85,7 @@ class JumpStartPredictor(Predictor):
         )
 
     @property
-    def accept(self) -> str:
+    def accept(self) -> MIMEType:
         """The content type that is expected from the inference endpoint."""
         return accept_types.retrieve_default(
             model_id=self.model_id,

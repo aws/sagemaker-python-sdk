@@ -12,15 +12,15 @@
 # language governing permissions and limitations under the License.
 """This module is for SageMaker content types."""
 from __future__ import absolute_import
-from typing import List
+from typing import List, Optional
 
 from sagemaker.jumpstart import artifacts, utils as jumpstart_utils
 
 
 def retrieve(
-    region=None,
-    model_id=None,
-    model_version=None,
+    region: Optional[str] = None,
+    model_id: Optional[str] = None,
+    model_version: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
 ) -> List[str]:
@@ -61,9 +61,9 @@ def retrieve(
 
 
 def retrieve_default(
-    region=None,
-    model_id=None,
-    model_version=None,
+    region: Optional[str] = None,
+    model_id: Optional[str] = None,
+    model_version: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
 ) -> str:

@@ -15,7 +15,7 @@
 from __future__ import absolute_import
 
 import logging
-from typing import Dict
+from typing import Dict, Optional
 
 from sagemaker.jumpstart import utils as jumpstart_utils
 from sagemaker.jumpstart import artifacts
@@ -24,9 +24,9 @@ logger = logging.getLogger(__name__)
 
 
 def retrieve_default(
-    region=None,
-    model_id=None,
-    model_version=None,
+    region: Optional[str] = None,
+    model_id: Optional[str] = None,
+    model_version: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
 ) -> Dict[str, str]:

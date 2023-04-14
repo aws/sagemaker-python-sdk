@@ -15,7 +15,7 @@ from __future__ import absolute_import
 
 import abc
 from collections.abc import Iterable
-from typing import List
+from typing import List, Optional
 import csv
 import io
 import json
@@ -394,9 +394,9 @@ class DataSerializer(SimpleBaseSerializer):
 
 
 def retrieve(
-    region=None,
-    model_id=None,
-    model_version=None,
+    region: Optional[str] = None,
+    model_id: Optional[str] = None,
+    model_version: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
 ) -> List[SimpleBaseSerializer]:
@@ -429,7 +429,7 @@ def retrieve(
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
         raise ValueError("Must specify `model_id` and `model_version` when retrieving serializers.")
 
-    return artifacts._retrieve_supported_serializers(
+    return artifacts._retrieve_serializer_options(
         model_id,
         model_version,
         region,
@@ -439,9 +439,9 @@ def retrieve(
 
 
 def retrieve_default(
-    region=None,
-    model_id=None,
-    model_version=None,
+    region: Optional[str] = None,
+    model_id: Optional[str] = None,
+    model_version: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
 ) -> SimpleBaseSerializer:

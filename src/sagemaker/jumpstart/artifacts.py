@@ -694,7 +694,7 @@ def _retrieve_default_serializer(
     return _retrieve_serializer_from_content_type(MIMEType.from_suffixed_type(default_content_type))
 
 
-def _retrieve_supported_deserializers(
+def _retrieve_deserializer_options(
     model_id: str,
     model_version: str,
     region: Optional[str],
@@ -738,7 +738,7 @@ def _retrieve_supported_deserializers(
     )
 
 
-def _retrieve_supported_serializers(
+def _retrieve_serializer_options(
     model_id: str,
     model_version: str,
     region: Optional[str],

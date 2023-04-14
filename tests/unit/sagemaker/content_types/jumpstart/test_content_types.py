@@ -23,7 +23,7 @@ from tests.unit.sagemaker.jumpstart.utils import get_special_model_spec
 
 @patch("sagemaker.jumpstart.artifacts.verify_model_region_and_return_specs")
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-def test_jumpstart_content_types(
+def test_jumpstart_default_content_types(
     patched_get_model_specs, patched_verify_model_region_and_return_specs
 ):
 
@@ -44,7 +44,18 @@ def test_jumpstart_content_types(
         region=region, model_id=model_id, version=model_version
     )
 
-    patched_get_model_specs.reset_mock()
+
+@patch("sagemaker.jumpstart.artifacts.verify_model_region_and_return_specs")
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+def test_jumpstart_supported_content_types(
+    patched_get_model_specs, patched_verify_model_region_and_return_specs
+):
+
+    patched_verify_model_region_and_return_specs.side_effect = verify_model_region_and_return_specs
+    patched_get_model_specs.side_effect = get_special_model_spec
+
+    model_id, model_version = "predictor-specs-model", "*"
+    region = "us-west-2"
 
     supported_content_types = content_types.retrieve(
         region=region,
