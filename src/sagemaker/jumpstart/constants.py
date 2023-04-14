@@ -26,8 +26,8 @@ from sagemaker.serializers import (
     BaseSerializer,
     CSVSerializer,
     DataSerializer,
+    IdentitySerializer,
     JSONSerializer,
-    SimpleBaseSerializer,
 )
 
 
@@ -162,12 +162,12 @@ ACCEPT_TYPE_TO_DESERIALIZER_TYPE_MAP: Dict[MIMEType, DeserializerType] = {
 }
 
 SERIALIZER_TYPE_TO_CLASS_MAP: Dict[SerializerType, BaseSerializer] = {
-    SerializerType.RAW_BYTES: DataSerializer,
-    SerializerType.JSON: JSONSerializer,
-    SerializerType.TEXT: SimpleBaseSerializer,
-    SerializerType.CSV: CSVSerializer,
+    SerializerType.RAW_BYTES: DataSerializer(),
+    SerializerType.JSON: JSONSerializer(),
+    SerializerType.TEXT: IdentitySerializer(),
+    SerializerType.CSV: CSVSerializer(),
 }
 
 DESERIALIZER_TYPE_TO_CLASS_MAP: Dict[DeserializerType, BaseDeserializer] = {
-    DeserializerType.JSON: JSONDeserializer,
+    DeserializerType.JSON: JSONDeserializer(),
 }

@@ -7,7 +7,7 @@ from sagemaker.jumpstart.predictor import JumpStartPredictor
 
 
 from sagemaker.jumpstart.utils import verify_model_region_and_return_specs
-from sagemaker.serializers import SimpleBaseSerializer
+from sagemaker.serializers import IdentitySerializer
 from tests.unit.sagemaker.jumpstart.utils import (
     get_special_model_spec,
 )
@@ -28,7 +28,7 @@ def test_list_jumpstart_scripts(
     predictor = JumpStartPredictor(endpoint_name="blah", model_id=model_id)
 
     assert predictor.content_type == MIMEType.X_TEXT
-    assert predictor.serializer == SimpleBaseSerializer
+    assert isinstance(predictor.serializer, IdentitySerializer)
 
-    assert predictor.deserializer == JSONDeserializer
+    assert isinstance(predictor.deserializer, JSONDeserializer)
     assert predictor.accept == MIMEType.JSON

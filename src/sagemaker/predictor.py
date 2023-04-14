@@ -182,10 +182,14 @@ class Predictor(PredictorBase):
             args["EndpointName"] = self.endpoint_name
 
         if "ContentType" not in args:
-            args["ContentType"] = self.content_type
+            args["ContentType"] = (
+                self.content_type
+                if isinstance(self.content_type, str)
+                else ", ".join(self.content_type)
+            )
 
         if "Accept" not in args:
-            args["Accept"] = ", ".join(self.accept)
+            args["Accept"] = self.accept if isinstance(self.accept, str) else ", ".join(self.accept)
 
         if target_model:
             args["TargetModel"] = target_model

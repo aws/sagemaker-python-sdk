@@ -20,6 +20,7 @@ import csv
 import io
 import json
 import numpy as np
+from pandas import DataFrame
 from six import with_metaclass
 
 from sagemaker.utils import DeferredError
@@ -100,13 +101,16 @@ class CSVSerializer(SimpleBaseSerializer):
 
         Args:
             data (object): Data to be serialized. Can be a NumPy array, list,
-                file, or buffer.
+                file, Pandas DataFrame, or buffer.
 
         Returns:
             str: The data serialized as a CSV-formatted string.
         """
         if hasattr(data, "read"):
             return data.read()
+
+        if isinstance(data, DataFrame):
+            return data.to_csv(header=False, index=False)
 
         is_mutable_sequence_like = self._is_sequence_like(data) and hasattr(data, "__setitem__")
         has_multiple_rows = len(data) > 0 and self._is_sequence_like(data[0])

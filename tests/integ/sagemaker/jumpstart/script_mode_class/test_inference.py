@@ -15,6 +15,7 @@ import os
 
 from sagemaker import image_uris, instance_types, model_uris, script_uris
 from sagemaker.jumpstart.constants import INFERENCE_ENTRY_POINT_SCRIPT_NAME
+from sagemaker.jumpstart.predictor import JumpStartPredictor
 from sagemaker.model import Model
 from tests.integ.sagemaker.jumpstart.constants import (
     ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID,
@@ -22,7 +23,6 @@ from tests.integ.sagemaker.jumpstart.constants import (
     InferenceTabularDataname,
 )
 from tests.integ.sagemaker.jumpstart.utils import (
-    EndpointInvoker,
     download_inference_assets,
     get_sm_session,
     get_tabular_data,
@@ -73,13 +73,13 @@ def test_jumpstart_inference_model_class(setup):
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
     )
 
-    endpoint_invoker = EndpointInvoker(
-        endpoint_name=model.endpoint_name,
+    predictor = JumpStartPredictor(
+        endpoint_name=model.endpoint_name, model_id=model_id, model_version=model_version
     )
 
     download_inference_assets()
     ground_truth_label, features = get_tabular_data(InferenceTabularDataname.MULTICLASS)
 
-    response = endpoint_invoker.invoke_tabular_endpoint(features)
+    response = predictor.predict(features)
 
     assert response is not None
