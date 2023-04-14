@@ -887,6 +887,9 @@ class _Volume(object):
 
         self.container_dir = container_dir if container_dir else "/opt/ml/input/data/" + channel
         self.host_dir = host_dir
+        if platform.system() == "Linux": 
+            # Support mounting volumes in SELinux enabled hosts
+            self.container_dir += ":Z"
         if platform.system() == "Darwin" and host_dir.startswith("/var"):
             self.host_dir = os.path.join("/private", host_dir)
 
