@@ -39,7 +39,7 @@ IR_SKLEARN_PAYLOAD = os.path.join(IR_DIR, "sklearn-payload.tar.gz")
 IR_SKLEARN_DATA = os.path.join(IR_DIR, "sample.csv")
 IR_SKLEARN_CONTENT_TYPE = ["text/csv"]
 IR_SKLEARN_FRAMEWORK = "SAGEMAKER-SCIKIT-LEARN"
-IR_SKLEARN_FRAMEWORK_VERSION = "0.20.0"
+IR_SKLEARN_FRAMEWORK_VERSION = "1.0-1"
 
 
 def retry_and_back_off(right_size_fn):
