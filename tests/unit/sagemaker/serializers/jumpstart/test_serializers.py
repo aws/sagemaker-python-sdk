@@ -46,12 +46,12 @@ def test_jumpstart_serializers(
 
     patched_get_model_specs.reset_mock()
 
-    supported_serializers = serializers.retrieve(
+    serializer_options = serializers.retrieve(
         region=region,
         model_id=model_id,
         model_version=model_version,
     )
-    assert supported_serializers == [
+    assert serializer_options == [
         serializers.SimpleBaseSerializer,
     ]
 

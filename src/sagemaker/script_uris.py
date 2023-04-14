@@ -15,6 +15,7 @@
 from __future__ import absolute_import
 
 import logging
+from typing import Optional
 
 from sagemaker.jumpstart import utils as jumpstart_utils
 from sagemaker.jumpstart import artifacts
@@ -23,10 +24,10 @@ logger = logging.getLogger(__name__)
 
 
 def retrieve(
-    region=None,
-    model_id=None,
-    model_version=None,
-    script_scope=None,
+    region: Optional[str] = None,
+    model_id: Optional[str] = None,
+    model_version: Optional[str] = None,
+    script_scope: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
 ) -> str:

@@ -46,12 +46,12 @@ def test_jumpstart_deserializers(
 
     patched_get_model_specs.reset_mock()
 
-    supported_deserializers = deserializers.retrieve(
+    deserializer_options = deserializers.retrieve(
         region=region,
         model_id=model_id,
         model_version=model_version,
     )
-    assert supported_deserializers == [
+    assert deserializer_options == [
         deserializers.JSONDeserializer,
     ]
 

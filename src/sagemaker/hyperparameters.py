@@ -26,10 +26,10 @@ logger = logging.getLogger(__name__)
 
 
 def retrieve_default(
-    region=None,
-    model_id=None,
-    model_version=None,
-    include_container_hyperparameters=False,
+    region: Optional[str] = None,
+    model_id: Optional[str] = None,
+    model_version: Optional[str] = None,
+    include_container_hyperparameters: bool = False,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
 ) -> Dict[str, str]:
