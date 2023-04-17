@@ -414,7 +414,7 @@ def _retrieve_default_environment_variables(
     for environment_variable in model_specs.inference_environment_variables:
         if use_case == EnvVariableUseCase.CREATE_MODEL_API or (
             use_case == EnvVariableUseCase.SAGEMAKER_SDK
-            and environment_variable.required_for_sdk is True
+            and environment_variable.required_for_model_class is True
         ):
             default_environment_variables[environment_variable.name] = str(
                 environment_variable.default

@@ -14,6 +14,7 @@ from __future__ import absolute_import
 import os
 
 from sagemaker import (
+    environment_variables,
     hyperparameters,
     instance_types,
     metric_definitions,
@@ -22,11 +23,13 @@ from sagemaker import (
     script_uris,
 )
 from sagemaker.estimator import Estimator
+from sagemaker.jumpstart.artifacts import _retrieve_kwargs
 from sagemaker.jumpstart.constants import (
     INFERENCE_ENTRY_POINT_SCRIPT_NAME,
     JUMPSTART_DEFAULT_REGION_NAME,
     TRAINING_ENTRY_POINT_SCRIPT_NAME,
 )
+from sagemaker.jumpstart.enums import EnvVariableUseCase, KwargUseCase
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 from sagemaker.predictor import Predictor
 from tests.integ.sagemaker.jumpstart.constants import (
@@ -83,6 +86,10 @@ def test_jumpstart_transfer_learning_estimator_class(setup):
         model_version=model_version,
     )
 
+    estimator_kwargs = _retrieve_kwargs(
+        model_id=model_id, model_version=model_version, use_case=KwargUseCase.ESTIMATOR
+    )
+
     estimator = Estimator(
         image_uri=image_uri,
         source_dir=script_uri,
@@ -96,13 +103,19 @@ def test_jumpstart_transfer_learning_estimator_class(setup):
         instance_count=instance_count,
         instance_type=training_instance_type,
         metric_definitions=default_metric_definitions,
+        **estimator_kwargs,
+    )
+
+    fit_kwargs = _retrieve_kwargs(
+        model_id=model_id, model_version=model_version, use_case=KwargUseCase.ESTIMATOR_FIT
     )
 
     estimator.fit(
         {
             "training": f"s3://{get_jumpstart_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)}/"
             f"{get_training_dataset_for_model_and_version(model_id, model_version)}",
-        }
+        },
+        **fit_kwargs,
     )
 
     print("Starting inference...")
@@ -124,6 +137,13 @@ def test_jumpstart_transfer_learning_estimator_class(setup):
         model_id=model_id, model_version=model_version, model_scope="inference"
     )
 
+    env = environment_variables.retrieve_default(
+        model_id=model_id, model_version=model_version, use_case=EnvVariableUseCase.SAGEMAKER_SDK
+    )
+    model_kwargs = _retrieve_kwargs(
+        model_id=model_id, model_version=model_version, use_case=KwargUseCase.MODEL
+    )
+
     predictor: Predictor = estimator.deploy(
         initial_instance_count=instance_count,
         instance_type=inference_instance_type,
@@ -131,6 +151,8 @@ def test_jumpstart_transfer_learning_estimator_class(setup):
         image_uri=image_uri,
         source_dir=script_uri,
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+        env=env,
+        **model_kwargs,
     )
 
     endpoint_invoker = EndpointInvoker(
