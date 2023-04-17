@@ -40,7 +40,7 @@ def test_save(experiment_obj):
 
 
 def test_save_load(experiment_obj, sagemaker_session):
-    experiment_obj_two = experiment._Experiment.load(
+    experiment_obj_two = experiment.Experiment.load(
         experiment_name=experiment_obj.experiment_name, sagemaker_session=sagemaker_session
     )
     assert experiment_obj.experiment_name == experiment_obj_two.experiment_name
@@ -49,7 +49,7 @@ def test_save_load(experiment_obj, sagemaker_session):
     experiment_obj.description = name()
     experiment_obj.display_name = name()
     experiment_obj.save()
-    experiment_obj_three = experiment._Experiment.load(
+    experiment_obj_three = experiment.Experiment.load(
         experiment_name=experiment_obj.experiment_name, sagemaker_session=sagemaker_session
     )
     assert experiment_obj.description == experiment_obj_three.description

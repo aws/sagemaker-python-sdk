@@ -21,7 +21,7 @@ from sagemaker.exceptions import UnexpectedStatusException
 
 from botocore.exceptions import ClientError
 from sagemaker import Session
-from sagemaker.experiments.experiment import _Experiment
+from sagemaker.experiments.experiment import Experiment
 from sagemaker.experiments.run import Run
 from sagemaker.remote_function.client import (
     remote,
@@ -98,11 +98,9 @@ def run_obj(sagemaker_session):
     client.update_trial_component.return_value = {}
     client.associate_trial_component.return_value = {}
     with patch(
-        "sagemaker.experiments.run._Experiment._load_or_create",
+        "sagemaker.experiments.run.Experiment._load_or_create",
         MagicMock(
-            return_value=_Experiment(
-                experiment_name="test-exp", sagemaker_session=sagemaker_session
-            )
+            return_value=Experiment(experiment_name="test-exp", sagemaker_session=sagemaker_session)
         ),
     ):
         with patch(
