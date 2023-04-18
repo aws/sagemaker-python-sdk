@@ -84,9 +84,9 @@ class EnvVariableUseCase(str, Enum):
     # See: https://docs.aws.amazon.com/sagemaker/latest/APIReference/Welcome.html
     AWS_SDK = "aws_sdk"
 
-    # These environment variables are required when using SageMaker Python SDK classes such as 
+    # These environment variables are required when using SageMaker Python SDK classes such as
     # `sagemaker.model.Model` and `sagemaker.estimator.Estimator` to launch jobs.
-    # These environment variables are a subset of the environment variables required for the 
+    # These environment variables are a subset of the environment variables required for the
     # low-level API call, since the SDK implementation adds defaults many environment variables.
     SAGEMAKER_PYTHON_SDK = "sagemaker_python_sdk"
 
