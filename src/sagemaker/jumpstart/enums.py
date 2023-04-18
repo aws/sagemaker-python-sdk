@@ -80,20 +80,19 @@ class JumpStartTag(str, Enum):
 class EnvVariableUseCase(str, Enum):
     """Enum class for the different use cases for hosting environment variables."""
 
-    # These environment variables are required when calling
-    # the low-level `SageMaker.CreateModel` API.
-    # See: https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateModel.html
-    CREATE_MODEL_API = "create_model_api"
+    # These environment variables are required when calling the low-level AWS API.
+    # See: https://docs.aws.amazon.com/sagemaker/latest/APIReference/Welcome.html
+    AWS_SDK = "aws_sdk"
 
-    # These environment variables are required when using the `sagemaker.model.Model`
-    # class of the SageMaker Python SDK library. These environment variables are a subset
-    # of the environment variables required for the low-level API call, since the `Model`
-    # class implementation adds defaults for the environment variables.
-    SAGEMAKER_SDK = "sagemaker_sdk"
+    # These environment variables are required when using SageMaker Python SDK classes such as 
+    # `sagemaker.model.Model` and `sagemaker.estimator.Estimator` to launch jobs.
+    # These environment variables are a subset of the environment variables required for the 
+    # low-level API call, since the SDK implementation adds defaults many environment variables.
+    SAGEMAKER_PYTHON_SDK = "sagemaker_python_sdk"
 
 
 class KwargUseCase(str, Enum):
-    """Enum class for the different use cases for getting JumpStart model kwargs."""
+    """Enum class for the different use cases for getting JumpStart kwargs."""
 
     # https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/model.py#L101
     MODEL = "model"

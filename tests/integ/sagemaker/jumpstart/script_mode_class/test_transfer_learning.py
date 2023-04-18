@@ -138,7 +138,9 @@ def test_jumpstart_transfer_learning_estimator_class(setup):
     )
 
     env = environment_variables.retrieve_default(
-        model_id=model_id, model_version=model_version, use_case=EnvVariableUseCase.SAGEMAKER_SDK
+        model_id=model_id,
+        model_version=model_version,
+        use_case=EnvVariableUseCase.SAGEMAKER_PYTHON_SDK,
     )
     model_kwargs = _retrieve_kwargs(
         model_id=model_id, model_version=model_version, use_case=KwargUseCase.MODEL

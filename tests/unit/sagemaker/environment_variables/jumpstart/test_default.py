@@ -107,7 +107,7 @@ def test_jumpstart_sdk_environment_variables(patched_get_model_specs):
         region=region,
         model_id=model_id,
         model_version="*",
-        use_case=EnvVariableUseCase.SAGEMAKER_SDK,
+        use_case=EnvVariableUseCase.SAGEMAKER_PYTHON_SDK,
     )
     assert vars == {
         "ENDPOINT_SERVER_TIMEOUT": "3600",
@@ -125,7 +125,7 @@ def test_jumpstart_sdk_environment_variables(patched_get_model_specs):
         region=region,
         model_id=model_id,
         model_version="1.*",
-        use_case=EnvVariableUseCase.SAGEMAKER_SDK,
+        use_case=EnvVariableUseCase.SAGEMAKER_PYTHON_SDK,
     )
     assert vars == {
         "ENDPOINT_SERVER_TIMEOUT": "3600",
@@ -144,7 +144,7 @@ def test_jumpstart_sdk_environment_variables(patched_get_model_specs):
             region=region,
             model_id="blah",
             model_version="*",
-            use_case=EnvVariableUseCase.SAGEMAKER_SDK,
+            use_case=EnvVariableUseCase.SAGEMAKER_PYTHON_SDK,
         )
 
     with pytest.raises(ValueError):
@@ -152,17 +152,17 @@ def test_jumpstart_sdk_environment_variables(patched_get_model_specs):
             region="mars-south-1",
             model_id=model_id,
             model_version="*",
-            use_case=EnvVariableUseCase.SAGEMAKER_SDK,
+            use_case=EnvVariableUseCase.SAGEMAKER_PYTHON_SDK,
         )
 
     with pytest.raises(ValueError):
         environment_variables.retrieve_default(
             model_version="*",
-            use_case=EnvVariableUseCase.SAGEMAKER_SDK,
+            use_case=EnvVariableUseCase.SAGEMAKER_PYTHON_SDK,
         )
 
     with pytest.raises(ValueError):
         environment_variables.retrieve_default(
             model_id=model_id,
-            use_case=EnvVariableUseCase.SAGEMAKER_SDK,
+            use_case=EnvVariableUseCase.SAGEMAKER_PYTHON_SDK,
         )

@@ -371,8 +371,8 @@ def _retrieve_default_environment_variables(
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-    use_case: EnvVariableUseCase = EnvVariableUseCase.CREATE_MODEL_API,
-):
+    use_case: EnvVariableUseCase = EnvVariableUseCase.AWS_SDK,
+) -> Dict[str, str]:
     """Retrieves the inference environment variables for the model matching the given arguments.
 
     Args:
@@ -391,8 +391,8 @@ def _retrieve_default_environment_variables(
             an exception if the version of the model is deprecated. (Default: False).
         use_case (EnvVariableUseCase): The use case for the environment variables. The
             `Model` class of the SageMaker Python SDK inserts environment variables that would be
-            required when making the low-level `SageMaker.CreateModel` API call.
-            (Default: EnvVariableUseCase.CREATE_MODEL_API).
+            required when making the low-level AWS API call.
+            (Default: EnvVariableUseCase.AWS_SDK).
 
     Returns:
         dict: the inference environment variables to use for the model.
@@ -412,8 +412,8 @@ def _retrieve_default_environment_variables(
 
     default_environment_variables: Dict[str, str] = {}
     for environment_variable in model_specs.inference_environment_variables:
-        if use_case == EnvVariableUseCase.CREATE_MODEL_API or (
-            use_case == EnvVariableUseCase.SAGEMAKER_SDK
+        if use_case == EnvVariableUseCase.AWS_SDK or (
+            use_case == EnvVariableUseCase.SAGEMAKER_PYTHON_SDK
             and environment_variable.required_for_model_class is True
         ):
             default_environment_variables[environment_variable.name] = str(
@@ -429,7 +429,7 @@ def _retrieve_kwargs(
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-):
+) -> dict:
     """Retrieves kwargs for `Model`, `Estimator, `Estimator.fit`, and `Model.deploy`.
 
     Args:

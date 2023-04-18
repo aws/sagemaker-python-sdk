@@ -30,7 +30,7 @@ def retrieve_default(
     model_version=None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-    use_case: EnvVariableUseCase = EnvVariableUseCase.CREATE_MODEL_API,
+    use_case: EnvVariableUseCase = EnvVariableUseCase.AWS_SDK,
 ) -> Dict[str, str]:
     """Retrieves the default container environment variables for the model matching the arguments.
 
@@ -50,8 +50,8 @@ def retrieve_default(
             (Default: False).
         use_case (EnvVariableUseCase): The use case for the environment variables. The
             `Model` class of the SageMaker Python SDK inserts environment variables
-            that would be requiredwhen making the low-level `SageMaker.CreateModel` API call.
-            (Default: EnvVariableUseCase.CREATE_MODEL_API).
+            that would be requiredwhen making the low-level AWS API call.
+            (Default: EnvVariableUseCase.AWS_SDK).
     Returns:
         dict: The variables to use for the model.
 
