@@ -75,3 +75,33 @@ class JumpStartTag(str, Enum):
     INFERENCE_SCRIPT_URI = "aws-jumpstart-inference-script-uri"
     TRAINING_MODEL_URI = "aws-jumpstart-training-model-uri"
     TRAINING_SCRIPT_URI = "aws-jumpstart-training-script-uri"
+
+
+class EnvVariableUseCase(str, Enum):
+    """Enum class for the different use cases for hosting environment variables."""
+
+    # These environment variables are required when calling the low-level AWS API.
+    # See: https://docs.aws.amazon.com/sagemaker/latest/APIReference/Welcome.html
+    AWS_SDK = "aws_sdk"
+
+    # These environment variables are required when using SageMaker Python SDK classes such as
+    # `sagemaker.model.Model` and `sagemaker.estimator.Estimator` to launch jobs.
+    # These environment variables are a subset of the environment variables required for the
+    # low-level API call, since the SDK implementation adds defaults many environment variables.
+    SAGEMAKER_PYTHON_SDK = "sagemaker_python_sdk"
+
+
+class KwargUseCase(str, Enum):
+    """Enum class for the different use cases for getting JumpStart kwargs."""
+
+    # https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/model.py#L101
+    MODEL = "model"
+
+    # https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/model.py#L1066
+    MODEL_DEPLOY = "model.deploy"
+
+    # https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/estimator.py#L2376
+    ESTIMATOR = "estimator"
+
+    # https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/estimator.py#L1128
+    ESTIMATOR_FIT = "estimator.fit"

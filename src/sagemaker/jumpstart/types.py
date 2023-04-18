@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 """This module stores types related to SageMaker JumpStart."""
 from __future__ import absolute_import
+from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
@@ -239,6 +240,7 @@ class JumpStartEnvironmentVariable(JumpStartDataHolderType):
         "type",
         "default",
         "scope",
+        "required_for_model_class",
     ]
 
     def __init__(self, spec: Dict[str, Any]):
@@ -260,6 +262,7 @@ class JumpStartEnvironmentVariable(JumpStartDataHolderType):
         self.type = json_obj["type"]
         self.default = json_obj["default"]
         self.scope = json_obj["scope"]
+        self.required_for_model_class: bool = json_obj.get("required_for_model_class", False)
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartEnvironmentVariable object."""
@@ -299,6 +302,10 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "metrics",
         "training_prepacked_script_key",
         "hosting_prepacked_artifact_key",
+        "model_kwargs",
+        "deploy_kwargs",
+        "estimator_kwargs",
+        "fit_kwargs",
     ]
 
     def __init__(self, spec: Dict[str, Any]):
@@ -354,6 +361,8 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         self.hosting_prepacked_artifact_key: Optional[str] = json_obj.get(
             "hosting_prepacked_artifact_key", None
         )
+        self.model_kwargs = deepcopy(json_obj.get("model_kwargs", {}))
+        self.deploy_kwargs = deepcopy(json_obj.get("deploy_kwargs", {}))
 
         if self.training_supported:
             self.training_ecr_specs: JumpStartECRSpecs = JumpStartECRSpecs(
@@ -366,6 +375,8 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
                 self.hyperparameters = [
                     JumpStartHyperparameter(hyperparameter) for hyperparameter in hyperparameters
                 ]
+            self.estimator_kwargs = deepcopy(json_obj.get("estimator_kwargs", {}))
+            self.fit_kwargs = deepcopy(json_obj.get("fit_kwargs", {}))
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartModelSpecs object."""

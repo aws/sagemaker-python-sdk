@@ -17,6 +17,7 @@ from mock.mock import patch
 import pytest
 
 from sagemaker import environment_variables
+from sagemaker.jumpstart.enums import EnvVariableUseCase
 
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
 
@@ -39,6 +40,7 @@ def test_jumpstart_default_environment_variables(patched_get_model_specs):
         "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
         "SAGEMAKER_ENV": "1",
         "SAGEMAKER_MODEL_SERVER_TIMEOUT": "3600",
+        "ENDPOINT_SERVER_TIMEOUT": "3600",
         "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
         "SAGEMAKER_PROGRAM": "inference.py",
         "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
@@ -58,6 +60,7 @@ def test_jumpstart_default_environment_variables(patched_get_model_specs):
         "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
         "SAGEMAKER_ENV": "1",
         "SAGEMAKER_MODEL_SERVER_TIMEOUT": "3600",
+        "ENDPOINT_SERVER_TIMEOUT": "3600",
         "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
         "SAGEMAKER_PROGRAM": "inference.py",
         "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
@@ -89,4 +92,77 @@ def test_jumpstart_default_environment_variables(patched_get_model_specs):
     with pytest.raises(ValueError):
         environment_variables.retrieve_default(
             model_id=model_id,
+        )
+
+
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+def test_jumpstart_sdk_environment_variables(patched_get_model_specs):
+
+    patched_get_model_specs.side_effect = get_spec_from_base_spec
+
+    model_id = "pytorch-eqa-bert-base-cased"
+    region = "us-west-2"
+
+    vars = environment_variables.retrieve_default(
+        region=region,
+        model_id=model_id,
+        model_version="*",
+        use_case=EnvVariableUseCase.SAGEMAKER_PYTHON_SDK,
+    )
+    assert vars == {
+        "ENDPOINT_SERVER_TIMEOUT": "3600",
+        "MODEL_CACHE_ROOT": "/opt/ml/model",
+        "SAGEMAKER_ENV": "1",
+        "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+        "SAGEMAKER_PROGRAM": "inference.py",
+    }
+
+    patched_get_model_specs.assert_called_once_with(region=region, model_id=model_id, version="*")
+
+    patched_get_model_specs.reset_mock()
+
+    vars = environment_variables.retrieve_default(
+        region=region,
+        model_id=model_id,
+        model_version="1.*",
+        use_case=EnvVariableUseCase.SAGEMAKER_PYTHON_SDK,
+    )
+    assert vars == {
+        "ENDPOINT_SERVER_TIMEOUT": "3600",
+        "MODEL_CACHE_ROOT": "/opt/ml/model",
+        "SAGEMAKER_ENV": "1",
+        "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
+        "SAGEMAKER_PROGRAM": "inference.py",
+    }
+
+    patched_get_model_specs.assert_called_once_with(region=region, model_id=model_id, version="1.*")
+
+    patched_get_model_specs.reset_mock()
+
+    with pytest.raises(KeyError):
+        environment_variables.retrieve_default(
+            region=region,
+            model_id="blah",
+            model_version="*",
+            use_case=EnvVariableUseCase.SAGEMAKER_PYTHON_SDK,
+        )
+
+    with pytest.raises(ValueError):
+        environment_variables.retrieve_default(
+            region="mars-south-1",
+            model_id=model_id,
+            model_version="*",
+            use_case=EnvVariableUseCase.SAGEMAKER_PYTHON_SDK,
+        )
+
+    with pytest.raises(ValueError):
+        environment_variables.retrieve_default(
+            model_version="*",
+            use_case=EnvVariableUseCase.SAGEMAKER_PYTHON_SDK,
+        )
+
+    with pytest.raises(ValueError):
+        environment_variables.retrieve_default(
+            model_id=model_id,
+            use_case=EnvVariableUseCase.SAGEMAKER_PYTHON_SDK,
         )

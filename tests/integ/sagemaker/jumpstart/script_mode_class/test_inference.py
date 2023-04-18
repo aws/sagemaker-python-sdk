@@ -13,8 +13,10 @@
 from __future__ import absolute_import
 import os
 
-from sagemaker import image_uris, instance_types, model_uris, script_uris
+from sagemaker import image_uris, instance_types, model_uris, script_uris, environment_variables
 from sagemaker.jumpstart.constants import INFERENCE_ENTRY_POINT_SCRIPT_NAME
+from sagemaker.jumpstart.artifacts import _retrieve_kwargs
+from sagemaker.jumpstart.enums import EnvVariableUseCase, KwargUseCase
 from sagemaker.model import Model
 from tests.integ.sagemaker.jumpstart.constants import (
     ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID,
@@ -57,6 +59,15 @@ def test_jumpstart_inference_model_class(setup):
         model_id=model_id, model_version=model_version, model_scope="inference"
     )
 
+    env = environment_variables.retrieve_default(
+        model_id=model_id,
+        model_version=model_version,
+        use_case=EnvVariableUseCase.SAGEMAKER_PYTHON_SDK,
+    )
+    model_kwargs = _retrieve_kwargs(
+        model_id=model_id, model_version=model_version, use_case=KwargUseCase.MODEL
+    )
+
     model = Model(
         image_uri=image_uri,
         model_data=model_uri,
@@ -65,12 +76,19 @@ def test_jumpstart_inference_model_class(setup):
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
         enable_network_isolation=True,
+        env=env,
+        **model_kwargs,
+    )
+
+    deploy_kwargs = _retrieve_kwargs(
+        model_id=model_id, model_version=model_version, use_case=KwargUseCase.MODEL_DEPLOY
     )
 
     model.deploy(
         initial_instance_count=instance_count,
         instance_type=instance_type,
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+        **deploy_kwargs,
     )
 
     endpoint_invoker = EndpointInvoker(
