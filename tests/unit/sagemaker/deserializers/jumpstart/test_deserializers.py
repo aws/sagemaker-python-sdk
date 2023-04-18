@@ -15,7 +15,7 @@ from __future__ import absolute_import
 
 from mock.mock import patch
 
-from sagemaker import deserializers
+from sagemaker import base_deserializers, deserializers
 from sagemaker.jumpstart.utils import verify_model_region_and_return_specs
 
 from tests.unit.sagemaker.jumpstart.utils import get_special_model_spec
@@ -38,7 +38,7 @@ def test_jumpstart_deserializers(
         model_id=model_id,
         model_version=model_version,
     )
-    assert default_deserializer == deserializers.JSONDeserializer
+    assert isinstance(default_deserializer, base_deserializers.JSONDeserializer)
 
     patched_get_model_specs.assert_called_once_with(
         region=region, model_id=model_id, version=model_version
@@ -51,9 +51,14 @@ def test_jumpstart_deserializers(
         model_id=model_id,
         model_version=model_version,
     )
-    assert deserializer_options == [
-        deserializers.JSONDeserializer,
-    ]
+
+    assert len(deserializer_options) == 1
+    assert all(
+        [
+            isinstance(deserializer, base_deserializers.JSONDeserializer)
+            for deserializer in deserializer_options
+        ]
+    )
 
     patched_get_model_specs.assert_called_once_with(
         region=region, model_id=model_id, version=model_version

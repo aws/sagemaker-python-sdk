@@ -16,7 +16,7 @@ from copy import deepcopy
 import os
 from typing import Dict, List, Optional
 from sagemaker import image_uris
-from sagemaker.deserializers import BaseDeserializer
+from sagemaker.base_deserializers import BaseDeserializer
 from sagemaker.jumpstart.exceptions import NO_AVAILABLE_INSTANCES_ERROR_MSG
 from sagemaker.jumpstart.constants import (
     DESERIALIZER_TYPE_TO_CLASS_MAP,
@@ -37,7 +37,7 @@ from sagemaker.jumpstart.utils import (
     get_jumpstart_content_bucket,
     verify_model_region_and_return_specs,
 )
-from sagemaker.serializers import (
+from sagemaker.base_serializers import (
     BaseSerializer,
 )
 

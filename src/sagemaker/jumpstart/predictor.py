@@ -15,10 +15,14 @@
 from __future__ import absolute_import
 
 from typing import Optional
+from sagemaker.jumpstart.artifacts import (
+    _retrieve_default_deserializer,
+    _retrieve_default_serializer,
+)
 
 from sagemaker.predictor import Predictor
 from sagemaker.session import Session
-from sagemaker import content_types, accept_types, serializers, deserializers
+from sagemaker import content_types, accept_types
 from sagemaker.jumpstart.enums import MIMEType
 
 
@@ -45,14 +49,14 @@ class JumpStartPredictor(Predictor):
                 "Must supply endpoint name and model id as input to JumpStart Predictor!"
             )
 
-        serializer = serializers.retrieve_default(
+        serializer = _retrieve_default_serializer(
             model_id=model_id,
             model_version=model_version,
             region=region,
             tolerate_vulnerable_model=tolerate_vulnerable_model,
             tolerate_deprecated_model=tolerate_deprecated_model,
         )
-        deserializer = deserializers.retrieve_default(
+        deserializer = _retrieve_default_deserializer(
             model_id=model_id,
             model_version=model_version,
             region=region,
