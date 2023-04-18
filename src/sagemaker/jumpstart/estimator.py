@@ -19,6 +19,7 @@ from sagemaker.session import Session
 
 class JumpStartEstimator(Estimator):
     """JumpStartEstimator class.
+
     This class sets defaults based on the model id and version.
     """
 

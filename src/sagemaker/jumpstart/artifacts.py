@@ -605,7 +605,7 @@ def _model_supports_prepacked_inference(
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
         version=model_version,
-        scope=JumpStartScriptScope.TRAINING,
+        scope=JumpStartScriptScope.INFERENCE,
         region=region,
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,

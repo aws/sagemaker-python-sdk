@@ -1,75 +1,87 @@
 from copy import deepcopy
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 from sagemaker import environment_variables, image_uris, instance_types, model_uris, script_uris
 from sagemaker.jumpstart.artifacts import _model_supports_prepacked_inference
-from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
+from sagemaker.jumpstart.constants import (
+    INFERENCE_ENTRY_POINT_SCRIPT_NAME,
+    JUMPSTART_DEFAULT_REGION_NAME,
+)
 from sagemaker.jumpstart.utils import update_dict_if_key_not_present
 from sagemaker.model import Model
+from sagemaker.predictor import Predictor
 from sagemaker.session import Session
 
 
 class JumpStartModel(Model):
     """JumpStartModel class.
+
     This class sets defaults based on the model id and version.
     """
 
     def __init__(
         self,
+        ############## ▼ args unique to JumpStartModel ▼ ##############
         model_id: str,
         model_version: Optional[str] = "*",
         instance_type: Optional[str] = None,
         region: Optional[str] = JUMPSTART_DEFAULT_REGION_NAME,
-        kwargs_for_base_model_class: dict = {},
+        ############## ▲ args unique to JumpStartModel ▲ ##############
+        ############## ▼ args passed to base Model class ▼ ##############
+        image_uri: Optional[str] = None,
+        model_uri: Optional[str] = None,
+        script_uri: Optional[str] = None,
+        entry_point: Optional[str] = None,
+        env: Optional[Dict[str, str]] = None,
+        predictor_cls: Predictor = "JumpStartPredictor",
+        **kwargs,
+        ############## ▲ args passed to base Model class ▲ ##############
     ):
+
         self.model_id = model_id
         self.model_version = model_version
-        self.kwargs_for_base_model_class = deepcopy(kwargs_for_base_model_class)
+        self.kwargs_for_base_model_class = deepcopy(kwargs)
 
         self.instance_type = instance_type or instance_types.retrieve_default(
             region=region, model_id=model_id, model_version=model_version
         )
 
-        self.kwargs_for_base_model_class = update_dict_if_key_not_present(
-            self.kwargs_for_base_model_class,
-            "image_uri",
-            image_uris.retrieve(
-                region=None,
-                framework=None,
-                image_scope="inference",
-                model_id=model_id,
-                model_version=model_version,
-                instance_type=self.instance_type,
-            ),
+        self.kwargs_for_base_model_class["model_id"] = model_id
+        self.kwargs_for_base_model_class["model_version"] = model_version
+
+        self.kwargs_for_base_model_class["predictor_cls"] = predictor_cls
+
+        self.kwargs_for_base_model_class["image_uri"] = image_uri or image_uris.retrieve(
+            region=None,
+            framework=None,
+            image_scope="inference",
+            model_id=model_id,
+            model_version=model_version,
+            instance_type=self.instance_type,
         )
 
-        self.kwargs_for_base_model_class = update_dict_if_key_not_present(
-            self.kwargs_for_base_model_class,
-            "model_uri",
-            model_uris.retrieve(
-                script_scope="inference",
-                model_id=model_id,
-                model_version=model_version,
-            ),
+        self.kwargs_for_base_model_class["model_uri"] = model_uri or model_uris.retrieve(
+            model_scope="inference",
+            model_id=model_id,
+            model_version=model_version,
         )
 
         if not _model_supports_prepacked_inference(
             model_id=model_id, model_version=model_version, region=region
         ):
-            self.kwargs_for_base_model_class = update_dict_if_key_not_present(
-                self.kwargs_for_base_model_class,
-                "script_uri",
-                script_uris.retrieve(
-                    script_scope="inference",
-                    model_id=model_id,
-                    model_version=model_version,
-                ),
+            self.kwargs_for_base_model_class["script_uri"] = script_uri or script_uris.retrieve(
+                script_scope="inference",
+                model_id=model_id,
+                model_version=model_version,
+            )
+            self.kwargs_for_base_model_class["entry_point"] = (
+                entry_point or INFERENCE_ENTRY_POINT_SCRIPT_NAME
             )
 
         extra_env_vars = environment_variables.retrieve_default(
             region=region, model_id=model_id, model_version=model_version
         )
 
-        curr_env_vars = self.kwargs_for_base_model_class.get("env", {})
+        curr_env_vars = env or {}
         new_env_vars = deepcopy(curr_env_vars)
 
         for key, value in extra_env_vars:
@@ -96,15 +108,6 @@ class JumpStartModel(Model):
             )
 
         self.kwargs_for_base_model_class = new_kwargs_for_base_model_class
-
-        self.kwargs_for_base_model_class["model_id"] = model_id
-        self.kwargs_for_base_model_class["model_version"] = model_version
-
-        # self.kwargs_for_base_model_class = update_dict_if_key_not_present(
-        #     self.kwargs_for_base_model_class,
-        #     "predictor_cls",
-        #     JumpStartPredictor,
-        # )
 
         super(Model, self).__init__(**self.kwargs_for_base_model_class)
 
