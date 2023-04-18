@@ -5196,6 +5196,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         feature_group_name: str,
         record_identifier_value_as_string: str,
         event_time: str,
+        deletion_mode: str = None,
     ):
         """Deletes a single record from the FeatureGroup.
 
@@ -5203,11 +5204,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
             feature_group_name (str): name of the FeatureGroup.
             record_identifier_value_as_string (str): name of the record identifier.
             event_time (str): a timestamp indicating when the deletion event occurred.
+            deletion_mode: (str): deletion mode for deleting record.
         """
         return self.sagemaker_featurestore_runtime_client.delete_record(
             FeatureGroupName=feature_group_name,
             RecordIdentifierValueAsString=record_identifier_value_as_string,
             EventTime=event_time,
+            DeletionMode=deletion_mode,
         )
 
     def get_record(
