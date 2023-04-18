@@ -204,6 +204,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self._default_bucket_name_override = default_bucket
         self.s3_resource = None
         self.s3_client = None
+        self.resource_groups_client = None
+        self.resource_group_tagging_client = None
         self.config = None
         self.lambda_client = None
         self.settings = settings
@@ -3961,6 +3963,92 @@ class Session(object):  # pylint: disable=too-many-public-methods
         LOGGER.info("Deleting model with name: %s", model_name)
         self.sagemaker_client.delete_model(ModelName=model_name)
 
+    def list_group_resources(self, group, filters, next_token: str = ""):
+        """To list group resources with given filters
+
+        Args:
+            group (str): The name or the ARN of the group.
+            filters (list): Filters that needs to be applied to the list operation.
+        """
+        self.resource_groups_client = self.resource_groups_client or self.boto_session.client(
+            "resource-groups"
+        )
+        return self.resource_groups_client.list_group_resources(
+            Group=group, Filters=filters, NextToken=next_token
+        )
+
+    def delete_resource_group(self, group):
+        """To delete a resource group
+
+        Args:
+            group (str): The name or the ARN of the resource group to delete.
+        """
+        self.resource_groups_client = self.resource_groups_client or self.boto_session.client(
+            "resource-groups"
+        )
+        return self.resource_groups_client.delete_group(Group=group)
+
+    def get_resource_group_query(self, group):
+        """To get the group query for an AWS Resource Group
+
+        Args:
+            group (str): The name or the ARN of the resource group to query.
+        """
+        self.resource_groups_client = self.resource_groups_client or self.boto_session.client(
+            "resource-groups"
+        )
+        return self.resource_groups_client.get_group_query(Group=group)
+
+    def get_tagging_resources(self, tag_filters, resource_type_filters):
+        """To list the complete resources for a particular resource group tag
+
+        tag_filters: filters for the tag
+        resource_type_filters: resource filter for the tag
+        """
+        self.resource_group_tagging_client = (
+            self.resource_group_tagging_client
+            or self.boto_session.client("resourcegroupstaggingapi")
+        )
+        resource_list = []
+
+        try:
+            resource_tag_response = self.resource_group_tagging_client.get_resources(
+                TagFilters=tag_filters, ResourceTypeFilters=resource_type_filters
+            )
+
+            resource_list = resource_list + resource_tag_response["ResourceTagMappingList"]
+
+            next_token = resource_tag_response.get("PaginationToken")
+            while next_token is not None and next_token != "":
+                resource_tag_response = self.resource_group_tagging_client.get_resources(
+                    TagFilters=tag_filters,
+                    ResourceTypeFilters=resource_type_filters,
+                    NextToken=next_token,
+                )
+                resource_list = resource_list + resource_tag_response["ResourceTagMappingList"]
+                next_token = resource_tag_response.get("PaginationToken")
+
+            return resource_list
+        except ClientError as error:
+            raise error
+
+    def create_group(self, name, resource_query, tags):
+        """To create a AWS Resource Group
+
+        Args:
+            name (str): The name of the group, which is also the identifier of the group.
+            resource_query (str): The resource query that determines
+                which AWS resources are members of this group
+            tags (dict): The Tags to be attached to the Resource Group
+        """
+        self.resource_groups_client = self.resource_groups_client or self.boto_session.client(
+            "resource-groups"
+        )
+
+        return self.resource_groups_client.create_group(
+            Name=name, ResourceQuery=resource_query, Tags=tags
+        )
+
     def list_tags(self, resource_arn, max_results=50):
         """List the tags given an Amazon Resource Name.
 
@@ -5108,6 +5196,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         feature_group_name: str,
         record_identifier_value_as_string: str,
         event_time: str,
+        deletion_mode: str = None,
     ):
         """Deletes a single record from the FeatureGroup.
 
@@ -5115,11 +5204,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
             feature_group_name (str): name of the FeatureGroup.
             record_identifier_value_as_string (str): name of the record identifier.
             event_time (str): a timestamp indicating when the deletion event occurred.
+            deletion_mode: (str): deletion mode for deleting record.
         """
         return self.sagemaker_featurestore_runtime_client.delete_record(
             FeatureGroupName=feature_group_name,
             RecordIdentifierValueAsString=record_identifier_value_as_string,
             EventTime=event_time,
+            DeletionMode=deletion_mode,
         )
 
     def get_record(
