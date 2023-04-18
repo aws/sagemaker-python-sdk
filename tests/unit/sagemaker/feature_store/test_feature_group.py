@@ -31,7 +31,7 @@ from sagemaker.feature_store.feature_group import (
     AthenaQuery,
     IngestionError,
 )
-from sagemaker.feature_store.inputs import FeatureParameter
+from sagemaker.feature_store.inputs import FeatureParameter, DeletionModeEnum
 
 from tests.unit import SAGEMAKER_CONFIG_FEATURE_GROUP
 
@@ -296,6 +296,41 @@ def test_delete_record(sagemaker_session_mock):
         feature_group_name="MyFeatureGroup",
         record_identifier_value_as_string=record_identifier_value_as_string,
         event_time=event_time,
+        deletion_mode=DeletionModeEnum.SOFT_DELETE.value,
+    )
+
+
+def test_soft_delete_record(sagemaker_session_mock):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    record_identifier_value_as_string = "1.0"
+    event_time = "2022-09-14"
+    feature_group.delete_record(
+        record_identifier_value_as_string=record_identifier_value_as_string,
+        event_time=event_time,
+        deletion_mode=DeletionModeEnum.SOFT_DELETE,
+    )
+    sagemaker_session_mock.delete_record.assert_called_with(
+        feature_group_name="MyFeatureGroup",
+        record_identifier_value_as_string=record_identifier_value_as_string,
+        event_time=event_time,
+        deletion_mode=DeletionModeEnum.SOFT_DELETE.value,
+    )
+
+
+def test_hard_delete_record(sagemaker_session_mock):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    record_identifier_value_as_string = "1.0"
+    event_time = "2022-09-14"
+    feature_group.delete_record(
+        record_identifier_value_as_string=record_identifier_value_as_string,
+        event_time=event_time,
+        deletion_mode=DeletionModeEnum.HARD_DELETE,
+    )
+    sagemaker_session_mock.delete_record.assert_called_with(
+        feature_group_name="MyFeatureGroup",
+        record_identifier_value_as_string=record_identifier_value_as_string,
+        event_time=event_time,
+        deletion_mode=DeletionModeEnum.HARD_DELETE.value,
     )
 
 
