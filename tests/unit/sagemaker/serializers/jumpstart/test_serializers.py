@@ -15,7 +15,7 @@ from __future__ import absolute_import
 
 from mock.mock import patch
 
-from sagemaker import serializers
+from sagemaker import base_serializers, serializers
 from sagemaker.jumpstart.utils import verify_model_region_and_return_specs
 
 from tests.unit.sagemaker.jumpstart.utils import get_special_model_spec
@@ -38,7 +38,7 @@ def test_jumpstart_serializers(
         model_id=model_id,
         model_version=model_version,
     )
-    assert default_serializer == serializers.SimpleBaseSerializer
+    assert isinstance(default_serializer, base_serializers.IdentitySerializer)
 
     patched_get_model_specs.assert_called_once_with(
         region=region, model_id=model_id, version=model_version
@@ -51,9 +51,13 @@ def test_jumpstart_serializers(
         model_id=model_id,
         model_version=model_version,
     )
-    assert serializer_options == [
-        serializers.SimpleBaseSerializer,
-    ]
+    assert len(serializer_options) == 1
+    assert all(
+        [
+            isinstance(serializer, base_serializers.IdentitySerializer)
+            for serializer in serializer_options
+        ]
+    )
 
     patched_get_model_specs.assert_called_once_with(
         region=region, model_id=model_id, version=model_version

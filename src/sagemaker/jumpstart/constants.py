@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 from typing import Dict, Set
 import boto3
-from sagemaker.deserializers import BaseDeserializer, JSONDeserializer
+from sagemaker.base_deserializers import BaseDeserializer, JSONDeserializer
 from sagemaker.jumpstart.enums import (
     JumpStartScriptScope,
     SerializerType,
@@ -22,7 +22,7 @@ from sagemaker.jumpstart.enums import (
     MIMEType,
 )
 from sagemaker.jumpstart.types import JumpStartLaunchedRegionInfo
-from sagemaker.serializers import (
+from sagemaker.base_serializers import (
     BaseSerializer,
     CSVSerializer,
     DataSerializer,

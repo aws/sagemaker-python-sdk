@@ -16,6 +16,7 @@ from copy import deepcopy
 import os
 from typing import Dict, List, Optional
 from sagemaker import image_uris
+from sagemaker.base_deserializers import BaseDeserializer
 from sagemaker.jumpstart.exceptions import NO_AVAILABLE_INSTANCES_ERROR_MSG
 from sagemaker.jumpstart.constants import (
     ENV_VARIABLE_JUMPSTART_MODEL_ARTIFACT_BUCKET_OVERRIDE,
@@ -32,6 +33,9 @@ from sagemaker.jumpstart.enums import (
 from sagemaker.jumpstart.utils import (
     get_jumpstart_content_bucket,
     verify_model_region_and_return_specs,
+)
+from sagemaker.base_serializers import (
+    BaseSerializer,
 )
 
 
