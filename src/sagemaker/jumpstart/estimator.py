@@ -1,7 +1,22 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
+"""This module stores JumpStart implementation of Estimator class."""
+from __future__ import absolute_import
+
+
 from copy import deepcopy
 from typing import Any, Optional
 from sagemaker import (
-    environment_variables,
     hyperparameters,
     image_uris,
     instance_types,
@@ -9,12 +24,10 @@ from sagemaker import (
     model_uris,
     script_uris,
 )
-from sagemaker.jumpstart.artifacts import _model_supports_prepacked_inference
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.utils import update_dict_if_key_not_present
 from sagemaker.model import Estimator
-from sagemaker.session import Session
 
 
 class JumpStartEstimator(Estimator):
