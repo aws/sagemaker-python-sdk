@@ -32,9 +32,9 @@ class SKLearnProcessor(ScriptProcessor):
     def __init__(
         self,
         framework_version: str,  # New arg
-        role: str,
-        instance_count: Union[int, PipelineVariable],
-        instance_type: Union[str, PipelineVariable],
+        role: Optional[Union[str, PipelineVariable]] = None,
+        instance_count: Union[int, PipelineVariable] = None,
+        instance_type: Union[str, PipelineVariable] = None,
         command: Optional[List[str]] = None,
         volume_size_in_gb: Union[int, PipelineVariable] = 30,
         volume_kms_key: Optional[Union[str, PipelineVariable]] = None,

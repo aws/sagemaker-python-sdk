@@ -64,6 +64,15 @@ def deprecation_warn(name, date, msg=None):
     _warn(f"{name} will be deprecated on {date}.{msg}")
 
 
+def deprecation_warn_base(msg):
+    """Raise a warning for soon to be deprecated feature in sagemaker>=2
+
+    Args:
+        msg (str): the warning message.
+    """
+    _warn(msg)
+
+
 def deprecation_warning(date, msg=None):
     """Decorator for raising deprecation warning for a feature in sagemaker>=2
 

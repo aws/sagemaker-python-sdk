@@ -1,5 +1,190 @@
 # Changelog
 
+## v2.147.0 (2023-04-18)
+
+### Features
+
+ * support different types of deletion mode
+
+## v2.146.1 (2023-04-17)
+
+### Bug Fixes and Other Changes
+
+ * skip failing tests temporarily
+ * Added ml.p4d and ml.p4de as supported instances for DeepSpeed
+
+### Documentation Changes
+
+ * Add Model Registry Model Collection
+
+## v2.146.0 (2023-04-13)
+
+### Features
+
+ * Add support for JSON model inputs for Clarify Processor
+
+### Bug Fixes and Other Changes
+
+ * Feature/list collection
+ * improve reliability of Run integration test
+ * Add a comment that smdataparallel lib excludes tf 2.12 support
+
+### Documentation Changes
+
+ * Update reference to load run method in documentation
+
+## v2.145.0 (2023-04-06)
+
+### Features
+
+ * add support for async inline error notifications
+ * Add methods for feature group to list feature metadata parameters and tags
+ * Support huggingface hub model_id for DJL Models
+
+### Bug Fixes and Other Changes
+
+ * load_sagemaker_config should lazy initialize a default S3 resource
+
+## v2.144.0 (2023-04-05)
+
+### Features
+
+ * support create Clarify explainer enabled endpoint for Clarify Online Explainability
+ * Combined inference and training script artifact
+ * jumpstart instance types
+ * Deprecation warning for framework profiling for TF 2.12 and on, PT 2.0 and on
+
+### Bug Fixes and Other Changes
+
+ * always delete temporary directory even during exception
+ * Fixes the completion_criteria_config dict in the to_input_req method
+ * Update CHANGELOG.md
+
+### Documentation Changes
+
+ * Update SageMaker Debugger doc
+
+## v2.143.0 (2023-03-29)
+
+### Features
+
+ * Support for SageMaker SDK Defaults
+
+### Bug Fixes and Other Changes
+
+ * update feature store offline s3 path used in tests
+
+## v2.142.0 (2023-03-27)
+
+### Features
+
+ * combined model + script artifact
+
+## v2.141.0 (2023-03-24)
+
+### Features
+
+ * AutoGluon 0.7.0 image_uris update
+ * Add DJL FasterTransformer image uris
+ * EMR step runtime role support
+ * locations for EMR configuration and Spark dependencies
+ * Adding support for 1P Algorithms in ZAZ, ZRH, HYD, MEL
+
+### Documentation Changes
+
+ * Update FeatureGroup kms key id documentation
+
+## v2.140.1 (2023-03-21)
+
+### Bug Fixes and Other Changes
+
+ * Fix cross account register model
+ * Handle instance support for Hugging Face tests
+ * Upgrade apache-airflow-providers-amazon version
+ * build(deps): bump apache-airflow from 2.4.1 to 2.5.1
+ * Mark test_create_model_package test for xfail
+ * Disable module-not-measured warnings to avoid clutter in build logs
+
+## v2.140.0 (2023-03-17)
+
+### Features
+
+ * SDK changes for TRCOMP support
+
+### Bug Fixes and Other Changes
+
+ * [Feature - Hugging Face] Update Transformers 4.26 - PyTorch 1.13.1 Image uri
+
+## v2.139.0 (2023-03-15)
+
+### Features
+
+ * Add XGBoost framework 1.7-1 version
+
+### Bug Fixes and Other Changes
+
+ * Fix image_uris.retrieve() function to return ValueError when framework is not allowed for an instance_type
+
+## v2.138.0 (2023-03-13)
+
+### Features
+
+ * Jumpstart training metrics
+
+### Bug Fixes and Other Changes
+
+ * Add new region support for MX, PT, TF on SM Training
+
+## v2.137.0 (2023-03-10)
+
+### Features
+
+ * support JSON for input dataset and model output
+
+### Bug Fixes and Other Changes
+
+ * Wait on describe for tag propagation
+ * Extracted profile_name directly from sagemaker.Session if None
+ * Avoid double encoding to JSON in InferenceRecommenderMixin
+ * RepackStep must use the same KMS key as the Model
+
+## v2.136.0 (2023-03-09)
+
+### Features
+
+ * with_feature_group [feature_store]
+ * Djl Large Model Support
+ * Decouple model.right_size() from model registry
+
+### Bug Fixes and Other Changes
+
+ * Fix integration test error in test_default_right_size_and_deploy_unregistered_base_model
+ * Add djl 0.21.0 dlc images
+
+### Documentation Changes
+
+ * Torchrun gpu support documentation change
+
+## v2.135.1.post0 (2023-03-02)
+
+### Documentation Changes
+
+ * update feature store dataset builder docs
+
+## v2.135.1 (2023-03-01)
+
+### Bug Fixes and Other Changes
+
+ * Revert back to stable apache-airflow-providers-amazon from 7.2.1 to 4.0.0.
+ * Typo in graviton algos
+ * build(deps): bump apache-airflow-providers-amazon from 4.0.0 to 7.2.1 in /requirements/extras
+ * Support cloning private repo using ssh key
+ * Create a default SageMaker Session inside FeatureGroup class
+
+### Documentation Changes
+
+ * fix typo in README
+
 ## v2.135.0 (2023-02-23)
 
 ### Features

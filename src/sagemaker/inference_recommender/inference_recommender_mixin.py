@@ -38,7 +38,7 @@ class Phase:
     """
 
     def __init__(self, duration_in_seconds: int, initial_number_of_users: int, spawn_rate: int):
-        """Initialze a `Phase`"""
+        """Initialize a `Phase`"""
         self.to_json = {
             "DurationInSeconds": duration_in_seconds,
             "InitialNumberOfUsers": initial_number_of_users,
@@ -53,7 +53,7 @@ class ModelLatencyThreshold:
     """
 
     def __init__(self, percentile: str, value_in_milliseconds: int):
-        """Initialze a `ModelLatencyThreshold`"""
+        """Initialize a `ModelLatencyThreshold`"""
         self.to_json = {"Percentile": percentile, "ValueInMilliseconds": value_in_milliseconds}
 
 
@@ -78,6 +78,12 @@ class InferenceRecommenderMixin:
         log_level: Optional[str] = "Verbose",
     ):
         """Recommends an instance type for a SageMaker or BYOC model.
+
+        Create a SageMaker ``Model`` or use a registered ``ModelPackage``,
+        to start an Inference Recommender job.
+
+        The name of the created model is accessible in the ``name`` field of
+        this ``Model`` after right_size returns.
 
         Args:
             sample_payload_url (str): The S3 path where the sample payload is stored.
@@ -119,8 +125,6 @@ class InferenceRecommenderMixin:
             sagemaker.model.Model: A SageMaker ``Model`` object. See
             :func:`~sagemaker.model.Model` for full details.
         """
-        if not isinstance(self, sagemaker.model.ModelPackage):
-            raise ValueError("right_size() is currently only supported with a registered model")
 
         if not framework and self._framework():
             framework = INFERENCE_RECOMMENDER_FRAMEWORK_MAPPING.get(self._framework(), framework)
@@ -149,12 +153,36 @@ class InferenceRecommenderMixin:
 
         self._init_sagemaker_session_if_does_not_exist()
 
+        if isinstance(self, sagemaker.model.Model) and not isinstance(
+            self, sagemaker.model.ModelPackage
+        ):
+            primary_container_def = self.prepare_container_def()
+            if not self.name:
+                self._ensure_base_name_if_needed(
+                    image_uri=primary_container_def["Image"],
+                    script_uri=self.source_dir,
+                    model_uri=self.model_data,
+                )
+                self._set_model_name_if_needed()
+
+            create_model_args = dict(
+                name=self.name,
+                role=self.role,
+                container_defs=None,
+                primary_container=primary_container_def,
+                vpc_config=self.vpc_config,
+                enable_network_isolation=self.enable_network_isolation(),
+            )
+            LOGGER.warning("Attempting to create new model with name %s", self.name)
+            self.sagemaker_session.create_model(**create_model_args)
+
         ret_name = self.sagemaker_session.create_inference_recommendations_job(
             role=self.role,
             job_name=job_name,
             job_type=job_type,
             job_duration_in_seconds=job_duration_in_seconds,
-            model_package_version_arn=self.model_package_arn,
+            model_name=self.name,
+            model_package_version_arn=getattr(self, "model_package_arn", None),
             framework=framework,
             framework_version=framework_version,
             sample_payload_url=sample_payload_url,
@@ -187,6 +215,7 @@ class InferenceRecommenderMixin:
         accelerator_type = kwargs["accelerator_type"]
         async_inference_config = kwargs["async_inference_config"]
         serverless_inference_config = kwargs["serverless_inference_config"]
+        explainer_config = kwargs["explainer_config"]
         inference_recommendation_id = kwargs["inference_recommendation_id"]
         inference_recommender_job_results = kwargs["inference_recommender_job_results"]
         if inference_recommendation_id is not None:
@@ -197,6 +226,7 @@ class InferenceRecommenderMixin:
                 async_inference_config=async_inference_config,
                 serverless_inference_config=serverless_inference_config,
                 inference_recommendation_id=inference_recommendation_id,
+                explainer_config=explainer_config,
             )
         elif inference_recommender_job_results is not None:
             inference_recommendation = self._update_params_for_right_size(
@@ -205,6 +235,7 @@ class InferenceRecommenderMixin:
                 accelerator_type,
                 serverless_inference_config,
                 async_inference_config,
+                explainer_config,
             )
         return inference_recommendation or (instance_type, initial_instance_count)
 
@@ -215,6 +246,7 @@ class InferenceRecommenderMixin:
         accelerator_type=None,
         serverless_inference_config=None,
         async_inference_config=None,
+        explainer_config=None,
     ):
         """Validates that Inference Recommendation parameters can be used in `model.deploy()`
 
@@ -234,6 +266,8 @@ class InferenceRecommenderMixin:
                 whether serverless_inference_config has been passed into `model.deploy()`.
             async_inference_config (sagemaker.model_monitor.AsyncInferenceConfig):
                 whether async_inference_config has been passed into `model.deploy()`.
+            explainer_config (sagemaker.explainer.ExplainerConfig): whether explainer_config
+                has been passed into `model.deploy()`.
 
         Returns:
             (string, int) or None: Top instance_type and associated initial_instance_count
@@ -257,6 +291,11 @@ class InferenceRecommenderMixin:
                 "serverless_inference_config is specified. Overriding right_size() recommendations."
             )
             return None
+        if explainer_config:
+            LOGGER.warning(
+                "explainer_config is specified. Overriding right_size() recommendations."
+            )
+            return None
 
         instance_type = self.inference_recommendations[0]["EndpointConfiguration"]["InstanceType"]
         initial_instance_count = self.inference_recommendations[0]["EndpointConfiguration"][
@@ -272,6 +311,7 @@ class InferenceRecommenderMixin:
         async_inference_config,
         serverless_inference_config,
         inference_recommendation_id,
+        explainer_config,
     ):
         """Update parameters with inference recommendation results.
 
@@ -304,6 +344,8 @@ class InferenceRecommenderMixin:
                 the recommendation you picked from inference recommendation job
                 results and would like to deploy the model and endpoint with
                 recommended parameters.
+            explainer_config (sagemaker.explainer.ExplainerConfig): Specifies online explainability
+                configuration for use with Amazon SageMaker Clarify. Default: None.
         Raises:
             ValueError: If arguments combination check failed in these circumstances:
                 - If only one of instance type or instance count specified or
@@ -339,6 +381,8 @@ class InferenceRecommenderMixin:
             raise ValueError(
                 "serverless_inference_config is not compatible with inference_recommendation_id."
             )
+        if explainer_config is not None:
+            raise ValueError("explainer_config is not compatible with inference_recommendation_id.")
 
         # Validate recommendation id
         if not re.match(r"[a-zA-Z0-9](-*[a-zA-Z0-9]){0,63}\/\w{8}$", inference_recommendation_id):
@@ -435,11 +479,9 @@ class InferenceRecommenderMixin:
             parameter_range.pop("instance_types")
 
             for instance_type in instance_types:
-                parameter_ranges = []
-                for name, param in parameter_range.items():
-                    as_json = param.as_json_range(name)
-                    as_json["Value"] = as_json.pop("Values")
-                    parameter_ranges.append(as_json)
+                parameter_ranges = [
+                    {"Name": name, "Value": param.values} for name, param in parameter_range.items()
+                ]
                 endpoint_configurations_to_json.append(
                     {
                         "EnvironmentParameterRanges": {

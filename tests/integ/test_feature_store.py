@@ -33,9 +33,14 @@ from sagemaker.feature_store.inputs import (
     Filter,
     ResourceEnum,
     Identifier,
+    DeletionModeEnum,
+)
+from sagemaker.feature_store.dataset_builder import (
+    JoinTypeEnum,
 )
 from sagemaker.session import get_execution_role, Session
 from tests.integ.timeout import timeout
+from urllib.parse import urlparse
 
 BUCKET_POLICY = {
     "Version": "2012-10-17",
@@ -159,6 +164,15 @@ def pandas_data_frame_without_string():
 
 
 @pytest.fixture
+def historic_record():
+    return [
+        FeatureValue(feature_name="feature1", value_as_string="10.0"),
+        FeatureValue(feature_name="feature2", value_as_string="7"),
+        FeatureValue(feature_name="feature3", value_as_string="2020-10-29T03:43:21Z"),
+    ]
+
+
+@pytest.fixture
 def record():
     return [
         FeatureValue(feature_name="feature1", value_as_string="10.0"),
@@ -203,9 +217,10 @@ def test_create_feature_store_online_only(
             event_time_feature_name="feature3",
             role_arn=role,
             enable_online_store=True,
+            tags=[{"Key": "key1", "Value": "value1"}],
         )
         _wait_for_feature_group_create(feature_group)
-
+        assert feature_group.list_tags() == [{"Key": "key1", "Value": "value1"}]
     assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
 
 
@@ -393,7 +408,7 @@ def test_get_and_batch_get_record(
             assert feature["FeatureName"] is not removed_feature_name
 
 
-def test_delete_record(
+def test_soft_delete_record(
     feature_store_session,
     role,
     feature_group_name,
@@ -430,6 +445,55 @@ def test_delete_record(
             record_identifier_value_as_string=record_identifier_value_as_string,
         )
         assert retrieved_record is None
+
+
+def test_hard_delete_record(
+    feature_store_session,
+    role,
+    feature_group_name,
+    pandas_data_frame,
+    historic_record,
+    record,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+
+    record_identifier_value_as_string = record[0].value_as_string
+    historic_record_identifier_value_as_string = historic_record[0].value_as_string
+    with cleanup_feature_group(feature_group):
+        feature_group.create(
+            s3_uri=False,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+        )
+        _wait_for_feature_group_create(feature_group)
+        # Ingest data
+        feature_group.put_record(record=record)
+        # Retrieve data
+        retrieved_record = feature_group.get_record(
+            record_identifier_value_as_string=record_identifier_value_as_string,
+        )
+        assert retrieved_record is not None
+        # Delete data
+        feature_group.delete_record(
+            record_identifier_value_as_string=record_identifier_value_as_string,
+            event_time=datetime.datetime.now().replace(microsecond=0).isoformat() + "Z",
+            deletion_mode=DeletionModeEnum.HARD_DELETE,
+        )
+        # Retrieve data
+        retrieved_record = feature_group.get_record(
+            record_identifier_value_as_string=record_identifier_value_as_string,
+        )
+        assert retrieved_record is None
+        # Ingest data
+        feature_group.put_record(historic_record)
+        # Retrieve data
+        retrieved_record = feature_group.get_record(
+            record_identifier_value_as_string=historic_record_identifier_value_as_string,
+        )
+        assert retrieved_record is not None
 
 
 def test_update_feature_group(
@@ -516,6 +580,10 @@ def test_feature_metadata(
         print(describe_feature_metadata)
         assert description == describe_feature_metadata.get("Description")
         assert 2 == len(describe_feature_metadata.get("Parameters"))
+        assert [
+            {"Key": "key1", "Value": "value1"},
+            {"Key": "key2", "Value": "value2"},
+        ] == feature_group.list_parameters_for_feature_metadata(feature_name=feature_name)
 
         parameter_removals = ["key1"]
         feature_group.update_feature_metadata(
@@ -526,6 +594,9 @@ def test_feature_metadata(
         )
         assert description == describe_feature_metadata.get("Description")
         assert 1 == len(describe_feature_metadata.get("Parameters"))
+        assert [
+            {"Key": "key2", "Value": "value2"}
+        ] == feature_group.list_parameters_for_feature_metadata(feature_name=feature_name)
 
 
 def test_search(feature_store_session, role, feature_group_name, pandas_data_frame):
@@ -632,8 +703,8 @@ def test_create_dataset_with_feature_group_base(
         )
 
         with timeout(minutes=10) and cleanup_offline_store(
-            base_table_name, feature_store_session
-        ) and cleanup_offline_store(feature_group_table_name, feature_store_session):
+            base, feature_store_session
+        ) and cleanup_offline_store(feature_group, feature_store_session):
             feature_store = FeatureStore(sagemaker_session=feature_store_session)
             df, query_string = (
                 feature_store.create_dataset(base=base, output_path=offline_store_s3_uri)
@@ -660,7 +731,7 @@ def test_create_dataset_with_feature_group_base(
 
             assert sorted_df.equals(expect_df)
             assert (
-                query_string
+                query_string.strip()
                 == "WITH fg_base AS (WITH table_base AS (\n"
                 + "SELECT *\n"
                 + "FROM (\n"
@@ -787,6 +858,193 @@ def test_create_dataset_with_feature_group_base(
             )
 
 
+def test_create_dataset_with_feature_group_base_with_additional_params(
+    feature_store_session,
+    region_name,
+    role,
+    base_name,
+    feature_group_name,
+    offline_store_s3_uri,
+    base_dataframe,
+    feature_group_dataframe,
+):
+    base = FeatureGroup(name=base_name, sagemaker_session=feature_store_session)
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    with cleanup_feature_group(base), cleanup_feature_group(feature_group):
+        _create_feature_group_and_ingest_data(
+            base, base_dataframe, offline_store_s3_uri, "base_id", "base_time", role
+        )
+        _create_feature_group_and_ingest_data(
+            feature_group, feature_group_dataframe, offline_store_s3_uri, "fg_id", "fg_time", role
+        )
+        base_table_name = _get_athena_table_name_after_data_replication(
+            feature_store_session, base, offline_store_s3_uri
+        )
+        feature_group_table_name = _get_athena_table_name_after_data_replication(
+            feature_store_session, feature_group, offline_store_s3_uri
+        )
+
+        with timeout(minutes=10) and cleanup_offline_store(
+            base, feature_store_session
+        ) and cleanup_offline_store(feature_group, feature_store_session):
+            feature_store = FeatureStore(sagemaker_session=feature_store_session)
+            df, query_string = (
+                feature_store.create_dataset(base=base, output_path=offline_store_s3_uri)
+                .with_number_of_recent_records_by_record_identifier(4)
+                .with_feature_group(
+                    feature_group,
+                    target_feature_name_in_base="base_time",
+                    feature_name_in_target="fg_time",
+                    join_type=JoinTypeEnum.FULL_JOIN,
+                )
+                .to_dataframe()
+            )
+            sorted_df = df.sort_values(by=list(df.columns)).reset_index(drop=True)
+            merged_df = base_dataframe.merge(
+                feature_group_dataframe, left_on="base_time", right_on="fg_time", how="outer"
+            )
+
+            expect_df = merged_df.sort_values(by=list(merged_df.columns)).reset_index(drop=True)
+
+            expect_df.rename(
+                columns={
+                    "fg_id": "fg_id.1",
+                    "fg_time": "fg_time.1",
+                    "fg_feature_1": "fg_feature_1.1",
+                    "fg_feature_2": "fg_feature_2.1",
+                },
+                inplace=True,
+            )
+
+            assert sorted_df.equals(expect_df)
+            assert (
+                query_string.strip()
+                == "WITH fg_base AS (WITH table_base AS (\n"
+                + "SELECT *\n"
+                + "FROM (\n"
+                + "SELECT *, row_number() OVER (\n"
+                + 'PARTITION BY origin_base."base_id", origin_base."base_time"\n'
+                + 'ORDER BY origin_base."api_invocation_time" DESC, origin_base."write_time" DESC\n'
+                + ") AS dedup_row_base\n"
+                + f'FROM "sagemaker_featurestore"."{base_table_name}" origin_base\n'
+                + ")\n"
+                + "WHERE dedup_row_base = 1\n"
+                + "),\n"
+                + "deleted_base AS (\n"
+                + "SELECT *\n"
+                + "FROM (\n"
+                + "SELECT *, row_number() OVER (\n"
+                + 'PARTITION BY origin_base."base_id"\n'
+                + 'ORDER BY origin_base."base_time" DESC,'
+                ' origin_base."api_invocation_time" DESC,'
+                ' origin_base."write_time" DESC\n'
+                + ") AS deleted_row_base\n"
+                + f'FROM "sagemaker_featurestore"."{base_table_name}" origin_base\n'
+                + "WHERE is_deleted\n"
+                + ")\n"
+                + "WHERE deleted_row_base = 1\n"
+                + ")\n"
+                + 'SELECT table_base."base_id", table_base."base_time",'
+                ' table_base."base_feature_1", table_base."base_feature_2"\n'
+                + "FROM (\n"
+                + 'SELECT table_base."base_id", table_base."base_time",'
+                ' table_base."base_feature_1", table_base."base_feature_2",'
+                ' table_base."write_time"\n'
+                + "FROM table_base\n"
+                + "LEFT JOIN deleted_base\n"
+                + 'ON table_base."base_id" = deleted_base."base_id"\n'
+                + 'WHERE deleted_base."base_id" IS NULL\n'
+                + "UNION ALL\n"
+                + 'SELECT table_base."base_id", table_base."base_time",'
+                ' table_base."base_feature_1", table_base."base_feature_2",'
+                ' table_base."write_time"\n'
+                + "FROM deleted_base\n"
+                + "JOIN table_base\n"
+                + 'ON table_base."base_id" = deleted_base."base_id"\n'
+                + "AND (\n"
+                + 'table_base."base_time" > deleted_base."base_time"\n'
+                + 'OR (table_base."base_time" = deleted_base."base_time" AND'
+                ' table_base."api_invocation_time" >'
+                ' deleted_base."api_invocation_time")\n'
+                + 'OR (table_base."base_time" = deleted_base."base_time" AND'
+                ' table_base."api_invocation_time" ='
+                ' deleted_base."api_invocation_time" AND'
+                ' table_base."write_time" > deleted_base."write_time")\n'
+                + ")\n"
+                + ") AS table_base\n"
+                + "),\n"
+                + "fg_0 AS (WITH table_0 AS (\n"
+                + "SELECT *\n"
+                + "FROM (\n"
+                + "SELECT *, row_number() OVER (\n"
+                + 'PARTITION BY origin_0."fg_id", origin_0."fg_time"\n'
+                + 'ORDER BY origin_0."api_invocation_time" DESC, origin_0."write_time" DESC\n'
+                + ") AS dedup_row_0\n"
+                + f'FROM "sagemaker_featurestore"."{feature_group_table_name}" origin_0\n'
+                + ")\n"
+                + "WHERE dedup_row_0 = 1\n"
+                + "),\n"
+                + "deleted_0 AS (\n"
+                + "SELECT *\n"
+                + "FROM (\n"
+                + "SELECT *, row_number() OVER (\n"
+                + 'PARTITION BY origin_0."fg_id"\n'
+                + 'ORDER BY origin_0."fg_time" DESC, origin_0."api_invocation_time" DESC,'
+                ' origin_0."write_time" DESC\n'
+                + ") AS deleted_row_0\n"
+                + f'FROM "sagemaker_featurestore"."{feature_group_table_name}" origin_0\n'
+                + "WHERE is_deleted\n"
+                + ")\n"
+                + "WHERE deleted_row_0 = 1\n"
+                + ")\n"
+                + 'SELECT table_0."fg_id", table_0."fg_time", table_0."fg_feature_1",'
+                ' table_0."fg_feature_2"\n'
+                + "FROM (\n"
+                + 'SELECT table_0."fg_id", table_0."fg_time",'
+                ' table_0."fg_feature_1", table_0."fg_feature_2",'
+                ' table_0."write_time"\n'
+                + "FROM table_0\n"
+                + "LEFT JOIN deleted_0\n"
+                + 'ON table_0."fg_id" = deleted_0."fg_id"\n'
+                + 'WHERE deleted_0."fg_id" IS NULL\n'
+                + "UNION ALL\n"
+                + 'SELECT table_0."fg_id", table_0."fg_time",'
+                ' table_0."fg_feature_1", table_0."fg_feature_2",'
+                ' table_0."write_time"\n'
+                + "FROM deleted_0\n"
+                + "JOIN table_0\n"
+                + 'ON table_0."fg_id" = deleted_0."fg_id"\n'
+                + "AND (\n"
+                + 'table_0."fg_time" > deleted_0."fg_time"\n'
+                + 'OR (table_0."fg_time" = deleted_0."fg_time" AND'
+                ' table_0."api_invocation_time" >'
+                ' deleted_0."api_invocation_time")\n'
+                + 'OR (table_0."fg_time" = deleted_0."fg_time" AND'
+                ' table_0."api_invocation_time" ='
+                ' deleted_0."api_invocation_time" AND table_0."write_time" >'
+                ' deleted_0."write_time")\n'
+                + ")\n"
+                + ") AS table_0\n"
+                + ")\n"
+                + "SELECT base_id, base_time, base_feature_1, base_feature_2,"
+                ' "fg_id.1", "fg_time.1", "fg_feature_1.1",'
+                ' "fg_feature_2.1"\n' + "FROM (\n" + "SELECT fg_base.base_id, fg_base.base_time,"
+                " fg_base.base_feature_1, fg_base.base_feature_2,"
+                ' fg_0."fg_id" as "fg_id.1", fg_0."fg_time" as "fg_time.1",'
+                ' fg_0."fg_feature_1" as "fg_feature_1.1",'
+                ' fg_0."fg_feature_2" as "fg_feature_2.1", row_number()'
+                " OVER (\n"
+                + 'PARTITION BY fg_base."base_id"\n'
+                + 'ORDER BY fg_base."base_time" DESC, fg_0."fg_time" DESC\n'
+                + ") AS row_recent\n"
+                + "FROM fg_base\n"
+                + "FULL JOIN fg_0\n"
+                + 'ON fg_base."base_time" = fg_0."fg_time"\n'
+                + ")\n"
+                + "WHERE row_recent <= 4"
+            )
+
+
 def _create_feature_group_and_ingest_data(
     feature_group: FeatureGroup,
     dataframe: DataFrame,
@@ -878,25 +1136,29 @@ def cleanup_feature_group(feature_group: FeatureGroup):
 
 
 @contextmanager
-def cleanup_offline_store(table_name: str, feature_store_session: Session):
+def cleanup_offline_store(feature_group: FeatureGroup, feature_store_session: Session):
     try:
         yield
     finally:
+        feature_group_metadata = feature_group.describe()
+        feature_group_name = feature_group_metadata["FeatureGroupName"]
         try:
+            s3_uri = feature_group_metadata["OfflineStoreConfig"]["S3StorageConfig"][
+                "ResolvedOutputS3Uri"
+            ]
+            parsed_uri = urlparse(s3_uri)
+            bucket_name, prefix = parsed_uri.netloc, parsed_uri.path
+            prefix = prefix.strip("/")
+            prefix = prefix[:-5] if prefix.endswith("/data") else prefix
             region_name = feature_store_session.boto_session.region_name
             s3_client = feature_store_session.boto_session.client(
                 service_name="s3", region_name=region_name
             )
-            account_id = feature_store_session.account_id()
-            bucket_name = f"sagemaker-test-featurestore-{region_name}-{account_id}"
-            response = s3_client.list_objects_v2(
-                Bucket=bucket_name,
-                Prefix=f"{account_id}/sagemaker/{region_name}/offline-store/{table_name}/",
-            )
+            response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=prefix)
             files_in_folder = response["Contents"]
             files_to_delete = []
             for f in files_in_folder:
                 files_to_delete.append({"Key": f["Key"]})
             s3_client.delete_objects(Bucket=bucket_name, Delete={"Objects": files_to_delete})
-        except Exception:
-            raise RuntimeError(f"Failed to delete data under {table_name}")
+        except Exception as e:
+            raise RuntimeError(f"Failed to delete data for feature_group {feature_group_name}", e)

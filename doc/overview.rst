@@ -1164,7 +1164,8 @@ More information about SageMaker Asynchronous Inference can be found in the `AWS
 
 To deploy asynchronous inference endpoint, you will need to create a ``AsyncInferenceConfig`` object.
 If you create ``AsyncInferenceConfig`` without specifying its arguments, the default ``S3OutputPath`` will
-be ``s3://sagemaker-{REGION}-{ACCOUNTID}/async-endpoint-outputs/{UNIQUE-JOB-NAME}``. (example shown below):
+be ``s3://sagemaker-{REGION}-{ACCOUNTID}/async-endpoint-outputs/{UNIQUE-JOB-NAME}``, ``S3FailurePath`` will
+be ``s3://sagemaker-{REGION}-{ACCOUNTID}/async-endpoint-failures/{UNIQUE-JOB-NAME}`` (example shown below):
 
 .. code:: python
 
@@ -1174,18 +1175,21 @@ be ``s3://sagemaker-{REGION}-{ACCOUNTID}/async-endpoint-outputs/{UNIQUE-JOB-NAME
     async_config = AsyncInferenceConfig()
 
 Or you can specify configurations in ``AsyncInferenceConfig`` as you like. All of those configuration parameters
-are optional but if you don’t specify the ``output_path``, Amazon SageMaker will use the default ``S3OutputPath``
+are optional but if you don’t specify the ``output_path`` or ``failure_path``, Amazon SageMaker will use the
+default ``S3OutputPath`` or ``S3FailurePath``
 mentioned above (example shown below):
 
 .. code:: python
 
-    # Specify S3OutputPath, MaxConcurrentInvocationsPerInstance and NotificationConfig in the async config object
+    # Specify S3OutputPath, S3FailurePath, MaxConcurrentInvocationsPerInstance and NotificationConfig
+    # in the async config object
     async_config = AsyncInferenceConfig(
         output_path="s3://{s3_bucket}/{bucket_prefix}/output",
         max_concurrent_invocations_per_instance=10,
         notification_config = {
             "SuccessTopic": "arn:aws:sns:aws-region:account-id:topic-name",
             "ErrorTopic": "arn:aws:sns:aws-region:account-id:topic-name",
+            "IncludeInferenceResponseIn": ["SUCCESS_NOTIFICATION_TOPIC","ERROR_NOTIFICATION_TOPIC"],
         }
     )
 
@@ -1836,6 +1840,578 @@ You can use Amazon SageMaker Processing with "Processors" to perform data proces
 
     amazon_sagemaker_processing
 
+************************************************************
+Configuring and using defaults with the SageMaker Python SDK
+************************************************************
+
+The Amazon SageMaker Python SDK supports the setting of default
+values for AWS infrastructure primitive types. After administrators configure
+these defaults, they are automatically passed when SageMaker Python
+SDK calls supported APIs. Amazon SageMaker APIs and primitives may
+not have a direct correspondence to the SageMaker Python SDK
+abstractions that you are using. The parameters you specify are
+automatically passed when the SageMaker Python SDK makes calls to the
+API on your behalf. With the use of defaults, developers can use the
+SageMaker Python SDK without having to specify infrastructure
+parameters.
+
+Configuration file structure
+============================
+
+The SageMaker Python SDK uses YAML configuration files to define the
+default values that are automatically passed to APIs. Admins can
+create these configuration files and populate them with default
+values defined for their desired API parameters. Your configuration
+file should adhere to the structure outlined in the following sample
+config file. This config outlines some of the parameters that you can
+set default values for. For the full schema, see ``sagemaker.config.config_schema.SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA``.
+
+::
+
+    SchemaVersion: '1.0'
+    CustomParameters:
+      AnyStringKey: 'AnyStringValue'
+    SageMaker:
+      FeatureGroup:
+        # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateFeatureGroup.html
+        OnlineStoreConfig:
+          SecurityConfig:
+            KmsKeyId: 'kmskeyid1'
+        OfflineStoreConfig:
+          S3StorageConfig:
+            KmsKeyId: 'kmskeyid2'
+        RoleArn: 'arn:aws:iam::555555555555:role/IMRole'
+        Tags:
+        - Key: 'tag_key'
+          Value: 'tag_value'
+      MonitoringSchedule:
+      # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateMonitoringSchedule.html
+        MonitoringScheduleConfig:
+          MonitoringJobDefinition:
+            MonitoringOutputConfig:
+              KmsKeyId: 'kmskeyid3'
+            MonitoringResources:
+              ClusterConfig:
+                VolumeKmsKeyId: 'volumekmskeyid1'
+            NetworkConfig:
+              EnableNetworkIsolation: true
+              VpcConfig:
+                SecurityGroupIds:
+                  - 'sg123'
+                Subnets:
+                  - 'subnet-1234'
+            RoleArn: 'arn:aws:iam::555555555555:role/IMRole'
+        Tags:
+        - Key: 'tag_key'
+          Value: 'tag_value'
+      EndpointConfig:
+      # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateEndpointConfig.html
+        AsyncInferenceConfig:
+          OutputConfig:
+            KmsKeyId: 'kmskeyid4'
+        DataCaptureConfig:
+          KmsKeyId: 'kmskeyid5'
+        KmsKeyId: 'kmskeyid6'
+        Tags:
+        - Key: 'tag_key'
+          Value: 'tag_value'
+      AutoMLJob:
+      # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateAutoMLJob.html
+        AutoMLJobConfig:
+          SecurityConfig:
+            VolumeKmsKeyId: 'volumekmskeyid2'
+            VpcConfig:
+              SecurityGroupIds:
+                - 'sg123'
+              Subnets:
+                - 'subnet-1234'
+        OutputDataConfig:
+          KmsKeyId: 'kmskeyid7'
+        RoleArn: 'arn:aws:iam::555555555555:role/IMRole'
+        Tags:
+        - Key: 'tag_key'
+          Value: 'tag_value'
+      TransformJob:
+      # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateTransformJob.html
+        DataCaptureConfig:
+          KmsKeyId: 'kmskeyid8'
+        TransformOutput:
+          KmsKeyId: 'kmskeyid9'
+        TransformResources:
+          VolumeKmsKeyId: 'volumekmskeyid3'
+      CompilationJob:
+      # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateCompilationJob.html
+        OutputConfig:
+          # Currently not supported by the SageMaker Python SDK
+          KmsKeyId: 'kmskeyid10'
+        RoleArn: 'arn:aws:iam::555555555555:role/IMRole'
+        # Currently not supported by the SageMaker Python SDK
+        VpcConfig:
+          SecurityGroupIds:
+            - 'sg123'
+          Subnets:
+            - 'subnet-1234'
+        Tags:
+        - Key: 'tag_key'
+          Value: 'tag_value'
+      Pipeline:
+      # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreatePipeline.html
+        RoleArn: 'arn:aws:iam::555555555555:role/IMRole'
+        Tags:
+        - Key: 'tag_key'
+          Value: 'tag_value'
+      Model:
+      # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateModel.html
+        EnableNetworkIsolation: true
+        ExecutionRoleArn: 'arn:aws:iam::555555555555:role/IMRole'
+        VpcConfig:
+          SecurityGroupIds:
+            - 'sg123'
+          Subnets:
+            - 'subnet-1234'
+        Tags:
+        - Key: 'tag_key'
+          Value: 'tag_value'
+      ProcessingJob:
+      # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateProcessingJob.html
+        NetworkConfig:
+          EnableNetworkIsolation: true
+          VpcConfig:
+            SecurityGroupIds:
+              - 'sg123'
+            Subnets:
+              - 'subnet-1234'
+        ProcessingInputs:
+          - DatasetDefinition:
+              AthenaDatasetDefinition:
+                KmsKeyId: 'kmskeyid11'
+              RedshiftDatasetDefinition:
+                KmsKeyId: 'kmskeyid12'
+                ClusterRoleArn: 'arn:aws:iam::555555555555:role/IMRole'
+        ProcessingOutputConfig:
+          KmsKeyId: 'kmskeyid13'
+        ProcessingResources:
+          ClusterConfig:
+            VolumeKmsKeyId: 'volumekmskeyid4'
+        RoleArn: 'arn:aws:iam::555555555555:role/IMRole'
+        Tags:
+        - Key: 'tag_key'
+          Value: 'tag_value'
+      TrainingJob:
+      # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateTrainingJob.html
+        EnableNetworkIsolation: true
+        OutputDataConfig:
+          KmsKeyId: 'kmskeyid14'
+        ResourceConfig:
+          VolumeKmsKeyId: 'volumekmskeyid5'
+        RoleArn: 'arn:aws:iam::555555555555:role/IMRole'
+        VpcConfig:
+          SecurityGroupIds:
+            - 'sg123'
+          Subnets:
+            - 'subnet-1234'
+        Tags:
+        - Key: 'tag_key'
+          Value: 'tag_value'
+      EdgePackagingJob:
+      # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateEdgePackagingJob.html
+        OutputConfig:
+          KmsKeyId: 'kmskeyid15'
+        RoleArn: 'arn:aws:iam::555555555555:role/IMRole'
+        Tags:
+        - Key: 'tag_key'
+          Value: 'tag_value'
+
+Configuration file locations
+============================
+
+The SageMaker Python SDK searches for configuration files at two
+locations based on the platform that you are using. You can also
+modify the default locations by overriding them using environment
+variables. The following sections give information about these
+configuration file locations.
+
+Default configuration file location
+-----------------------------------
+
+By default, the SageMaker Python SDK uses two configuration files.
+One for the admin and one for the user. Using the admin config file,
+admins can define a set of default values. Users can use the user
+configuration file to override values set in the admin configuration
+file, as well as set other default parameter values. Users can also
+set additional configuration file locations. For more information
+about setting additional configuration file locations, see `Specify additional configuration files`_.
+
+The location of your default configuration paths depends on the
+platform that you’re using the SageMaker Python SDK on. These default
+locations are relative to the environment that you are using the
+SageMaker Python SDK on.
+
+The following code block returns the default locations of your admin
+and user configuration files. These commands must be run from the
+environment that you’re using the SageMaker Python SDK in.
+
+Note: The directories returned by these commands may not exist. In
+that case, you must create these directories with the required
+permissions.
+
+.. code:: python
+
+    import os
+    from platformdirs import site_config_dir, user_config_dir
+
+    #Prints the location of the admin config file
+    print(os.path.join(site_config_dir("sagemaker"), "config.yaml"))
+
+    #Prints the location of the user config file
+    print(os.path.join(user_config_dir("sagemaker"), "config.yaml"))
+
+Default Notebook instances locations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The following code sample lists the default locations of the
+configuration files when using the SageMaker Python SDK on Amazon
+SageMaker Notebook instances.
+
+.. code:: python
+
+    #Location of the admin config file
+    /etc/xdg/sagemaker/config.yaml
+
+    #Location of the user config file
+    /home/ec2-user/.config/sagemaker/config.yaml
+
+Default Studio notebook locations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The following code sample lists the default locations of the
+configuration files when using the SageMaker Python SDK on Amazon
+SageMaker Studio notebooks.
+
+.. code:: python
+
+    #Location of the admin config file
+    /etc/xdg/sagemaker/config.yaml
+
+    #Location of the user config file
+    /root/.config/sagemaker/config.yaml
+
+Override the configuration file location
+----------------------------------------
+
+To change the default configuration file locations used by the
+SageMaker Python SDK, set one or both of the following environment
+variables from the environment where you are using the SageMaker
+Python SDK. When you modify these environment variables, the
+SageMaker Python SDK searches for configuration files in the
+locations that you specify instead of the default configuration file
+locations.
+
+-  ``SAGEMAKER_ADMIN_CONFIG_OVERRIDE`` overrides the default
+   location where the SageMaker Python SDK searches for the admin
+   config.
+-  ``SAGEMAKER_USER_CONFIG_OVERRIDE`` overrides the default
+   location where the SageMaker Python SDK searches for the user
+   config.
+
+Using these environment variables, you can set the config location to
+either a local config location or a config location in an Amazon S3
+bucket. If a directory is provided as the path, the SageMaker Python
+SDK searches for the ``config.yaml`` file in that directory.
+The SageMaker Python SDK does not do any recursive searches for the
+file.
+
+The following options are available if the config is saved locally.
+
+-  Local file path:   ``<path-to-config>/config.yaml``
+-  Path of the directory containing the config file :
+   ``<path-to-config>/``
+
+The following options are available if the config is saved on Amazon
+S3.
+
+-  S3 URI of the config file: ``s3://<my-bucket>/<path-to-config>/config.yaml``
+-  S3 URI of the directory containing the config file: ``s3://<my-bucket>/<path-to-config>/``
+
+For example, the following example sets the default user
+configuration location to a local directory from within a Jupyter
+notebook environment.
+
+.. code:: python
+
+    import os
+    os.environ["SAGEMAKER_USER_CONFIG_OVERRIDE"] = "<path-to-config>"
+
+If you’re using Studio or a Notebook instance, you can automatically
+set this value for all instances with a lifecycle configuration
+script. For more information about lifecycle configuration scripts,
+see `Use Lifecycle Configurations with Amazon SageMaker
+Studio <https://docs.aws.amazon.com/sagemaker/latest/dg/studio-lcc.html>`__.
+
+Supported APIs and parameters
+=============================
+
+The following sections give information about the APIs and parameters
+that the SageMaker Python SDK supports setting defaults for. To set
+defaults for these parameters, create key/value pairs in your
+configuration file as shown in `Configuration file structure`_.
+For the full schema, see ``sagemaker.config.config_schema.SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA``.
+
+List of parameters supported
+----------------------------
+
+In the supported APIs, only parameters for the following primitive
+types support setting defaults with a configuration file.
+
+-  AWS IAM Role ARNs
+-  Enable network isolation
+-  Amazon VPC subnets and security groups
+-  AWS KMS key IDs
+-  Tags
+-  Enable inter-container traffic encryption
+
+List of APIs supported
+----------------------
+
+Default values for the supported parameters of these APIs apply to
+all create and update calls for that API. For example, if a supported
+parameter is set for ``TrainingJob``, then the parameter is used for
+all ``CreateTrainingJob`` and ``UpdateTrainingJob`` API calls.
+The parameter is not used in any other API calls unless it is
+specified for that API as well. However, the default value passed for
+the ``TrainingJob`` API is present for any artifacts generated by that
+API, so any subsequent calls that use these artifacts will also use
+the value.
+
+The following groups of APIs support setting defaults with a
+configuration file.
+
+-  Feature Group: ``CreateFeatureGroup``, ``UpdateFeatureGroup``
+-  Monitoring Schedule: ``CreateMonitoringSchedule``, ``UpdateMonitoringSchedule``
+-  Endpoint Config: ``CreateEndpointConfig``, ``UpdateEndpointConfig``
+-  Auto ML: ``CreateAutoMLJob``, ``UpdateAutoMLJob``
+-  Transform Job: ``CreateTransformJob``, ``UpdateTransformJob``
+-  Compilation Job: ``CreateCompilationJob``, ``UpdateCompilationJob``
+-  Pipeline: ``CreatePipeline``, ``UpdatePipeline``
+-  Model: ``CreateModel``, ``UpdateModel``
+-  Model Package: ``CreateModelPackage``, ``UpdateModelPackage``
+-  Processing Jobs: ``CreateProcessingJob``, ``UpdateProcessingJob``
+-  Training Job: ``CreateTrainingJob``, ``UpdateTrainingJob``
+-  Edge Packaging Job: ``CreateEdgePackagingJob``, ``UpdateEdgePackagingJob``
+
+Hyperparameter Tuning Job: Supported indirectly via ``TrainingJob`` API. While this API is not directly supported, it includes the training job definition as a parameter.
+If you provide defaults for this parameter as part of the ``TrainingJob`` API, these defaults are also used for Hyperparameter Tuning Job.
+
+Configuration file resolution
+=============================
+
+To create a consistent experience when using defaults with multiple
+configuration files, the SageMaker Python SDK merges all of the
+configuration files into a single configuration dictionary that defines all
+of the default values set in the environment. The configuration files
+for defaults are loaded and merged during the initialization of
+the ``Session`` object. To access the configuration files, the user
+must have read access to any local paths set and read access to any
+S3 URIs that are set. These permissions can be set using the IAM role
+or other AWS credentials for the user.
+
+If a configuration dictionary is not specified during ``Session``
+initialization, the ``Session`` automatically calls ``load_sagemaker_config()`` to load, merge, and validate configuration files from
+the default locations.
+
+If a configuration dictionary is specified, the ``Session`` uses the supplied dictionary.
+
+The following sections gives information about how the merging of
+configuration files happens.
+
+Default configuration files
+---------------------------
+
+The ``load_sagemaker_config()`` method first checks the default location of the
+admin config file. If one is found, it serves as the basis for
+further merging. If a config file is not found, then the merged
+config dictionary is empty. The ``load_sagemaker_config()`` method then checks the default
+location for the user config file. If a config file is found, then
+the values are merged on top of the existing configuration dictionary. This
+means that the values specified in the user config override the
+corresponding values specified in the admin config file. If there is not an
+existing entry for a user config value in the existing configuration dictionary, then a new
+entry is added.
+
+Specify additional configuration files
+--------------------------------------
+
+In addition to the default locations for your admin and user config
+files, you can also specify other locations for configuration files.
+To specify these additional config locations, pass a list of these additional locations as part of the
+``load_sagemaker_config()`` call and pass the resulting dictionary
+to any ``Session`` objects you create as shown in the
+following code sample. These additional configuration file
+locations are checked in the order specified in the ``load_sagemaker_config()`` call. When a configuration file is found, it is merged on top of
+the existing configuration dictionary. All of the values specified in the
+first additional config override the corresponding values in the
+default configs. Subsequent additional configuration files are merged
+on top of the existing configuration dictionary using the same method.
+
+If you are building a dictionary with custom configuration file locations, we recommend that you
+use ``load_sagemaker_config()`` and ``validate_sagemaker_config()`` iteratively to verify the construction
+of your dictionary before you pass it to a ``Session`` object.
+
+.. code:: python
+
+   from sagemaker.session import Session
+   from sagemaker.config import load_sagemaker_config, validate_sagemaker_config
+
+   # Create a configuration dictionary manually
+   custom_sagemaker_config = load_sagemaker_config(
+        additional_config_paths=[
+           'path1',
+           'path2',
+           'path3'
+       ]
+   )
+
+   # Then validate that the dictionary adheres to the configuration schema
+   validate_sagemaker_config(custom_sagemaker_config)
+
+   # Then initialize the Session object with the configuration dictionary
+   sm_session = Session(
+       sagemaker_config = custom_sagemaker_config
+   )
+
+Tags
+----
+
+Any tags specified in the configuration dictionary are appended to the set
+of tags set by the SageMaker Python SDK and specified by the user.
+Each of the tags in the combined list must have a unique key or the
+API call fails. If a user provides a tag with the same name as a tag
+in the configuration dictionary, the user tag is used and the config tag is
+skipped. This behavior applies to all config keys that follow
+the ``SageMaker.*.Tags`` pattern.
+
+Object Arrays
+-------------
+
+For the following keys, the configuration file may contain an array
+of elements, where each element contains one or more values. When a
+configuration file is merged with an existing configuration dictionary and
+both contain a value for these keys, the elements in the array
+defined in the existing configuration dictionary are overridden in order.
+If there are more elements in the array being merged than in the
+existing configuration dictionary, then the size of the array is increased.
+
+-  ``SageMaker.EndpointConfig.ProductionVariants``
+-  ``SageMaker.ModelPackage.ValidationSpecification.ValidationProfiles``
+-  ``SageMaker.ProcessingJob.ProcessingInputs``
+
+When a user passes values for these keys, the behavior depends on the
+size of the array. If values are not explicitly defined inside the
+user input array but are defined inside the config array, then those values from the config array are added to the user array. If the user input array
+contains more elements than the config array, the extra elements of
+the user input array are not substituted with values from the config.
+Alternatively, if the config array contains more elements than the
+user input array, the extra elements of the config array are not
+used.
+
+View the merged configuration dict
+----------------------------------
+
+When the SageMaker Python SDK creates your ``Session``, it merges
+together the config files found at the default locations and the
+additional locations specified in the ``load_sagemaker_config()`` call. In this
+process, a new config dictionary is created that aggregates the defaults in all
+of the config files. To see the full merged config, inspect the
+config of the session object as follows.
+
+.. code:: python
+
+   session=Session()
+   session.sagemaker_config
+
+Inherit default values from the configuration file
+==================================================
+
+After the ``Session`` is created, if a value for a supported parameter is
+present in the merged configuration dictionary and the user does not pass
+that parameter as part of a SageMaker Python SDK method,
+the SageMaker Python SDK automatically passes the corresponding value
+from the configuration dictionary as part of the API call. If a user
+explicitly passes a value for a parameter that supports default
+values, the SageMaker Python SDK overrides the value present in the
+merged configuration dictionary and uses the value passed by the user
+instead.
+
+Reference values from config
+----------------------------
+
+You can manually reference values from the merged configuration dictionary
+using the corresponding key. This makes it possible to pass these
+defaults values to an AWS SDK for Python (Boto3) request using the SageMaker Python
+SDK. To reference a value from the configuration dictionary, pass the
+corresponding key as follows.
+
+.. code:: python
+
+   from sagemaker.session import Session
+   from sagemaker.utils import get_sagemaker_config_value
+   session=Session()
+
+   # Option 1
+   get_sagemaker_config_value(session, "key1.key2")
+   # Option 2
+   session.sagemaker_config["key1"]["key2"]
+
+You can also specify custom parameters as part of the
+``CustomParameters`` section in a configuration file by setting key and
+value pairs as shown in the `Configuration file structure`_.
+Values set in ``CustomParameters`` are not automatically used. You can
+only use these values by manually referencing them with the
+corresponding key.
+
+For example, the following code block references the ``VPCConfig`` parameter
+specified as part of the ``Model`` API in the configuration file and sets
+a variable with that value. It also references the ``JobName`` value
+specified as part of ``CustomParameters``.
+
+.. code:: python
+
+   from sagemaker.session import Session
+   from sagemaker.utils import get_sagemaker_config_value
+   session = Session(<session values>)
+
+   vpc_config_option_1 = get_sagemaker_config_value(session, "SageMaker.Model.VpcConfig")
+   vpc_config_option_2 = session.sagemaker_config["SageMaker"]["Model"]["VpcConfig"]
+
+   custom_param_option_1 = get_sagemaker_config_value(session, "CustomParameters.JobName")
+   custom_param_option_2 = session.sagemaker_config["CustomParameters"]["JobName"]
+
+Debug default values
+--------------------
+
+When a default value is being used as part of an API call, the
+SageMaker Python SDK prints out information about the default value,
+the configuration dictionary that it came from, the keys that are being
+looked at, and whether they are used or skipped. To get information,
+enable Boto3 debug logging that shows the HTTP request info.
+
+To turn on this logging, run the following commands in the
+environment where you’re using the SageMaker PySDK.
+
+.. code:: python
+
+   import boto3
+   import logging
+   boto3.set_stream_logger(name='botocore.endpoint', level=logging.DEBUG)
+
+The following log lines offer the most relevant information,
+specifically the contents of ``'body': b'{...}`` .
+
+::
+
+   <TIMESTAMP> botocore.endpoint [DEBUG] Making request for OperationModel(name=<OPERATION_NAME>) with params: {'url_path': ...,
+   'query_string': ..., 'method': 'POST', 'headers': {...}, 'body': b'{...}', 'url': 'https://api.sagemaker.us-west-2.amazonaws.com/',
+   'context': {...}}
 
 ***
 FAQ

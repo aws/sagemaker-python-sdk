@@ -13,7 +13,7 @@
 from __future__ import absolute_import
 import os
 
-from sagemaker import image_uris, model_uris, script_uris
+from sagemaker import image_uris, instance_types, model_uris, script_uris
 from sagemaker.jumpstart.constants import INFERENCE_ENTRY_POINT_SCRIPT_NAME
 from sagemaker.model import Model
 from tests.integ.sagemaker.jumpstart.constants import (
@@ -31,8 +31,12 @@ from tests.integ.sagemaker.jumpstart.utils import (
 
 def test_jumpstart_inference_model_class(setup):
 
-    model_id, model_version = "catboost-classification-model", "1.0.0"
-    instance_type, instance_count = "ml.m5.xlarge", 1
+    model_id, model_version = "catboost-classification-model", "1.2.7"
+
+    instance_type = instance_types.retrieve_default(
+        model_id=model_id, model_version=model_version, scope="inference"
+    )
+    instance_count = 1
 
     print("Starting inference...")
 

@@ -17,9 +17,11 @@ import copy
 import pytest
 from mock import Mock, patch
 from sagemaker import AutoML, AutoMLJob, AutoMLInput, CandidateEstimator, PipelineModel
+
 from sagemaker.predictor import Predictor
 from sagemaker.session_settings import SessionSettings
 from sagemaker.workflow.functions import Join
+from tests.unit import SAGEMAKER_CONFIG_AUTO_ML, SAGEMAKER_CONFIG_TRAINING_JOB
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -271,6 +273,8 @@ def sagemaker_session():
     )
     sms.list_candidates = Mock(name="list_candidates", return_value={"Candidates": []})
     sms.sagemaker_client.list_tags = Mock(name="list_tags", return_value=LIST_TAGS_RESULT)
+    # For tests which doesn't verify config file injection, operate with empty config
+    sms.sagemaker_config = {}
     return sms
 
 
@@ -283,6 +287,45 @@ def candidate_mock(sagemaker_session):
         sagemaker_session=sagemaker_session,
     )
     return candidate
+
+
+def test_auto_ml_without_role_parameter(sagemaker_session):
+    with pytest.raises(ValueError):
+        AutoML(
+            target_attribute_name=TARGET_ATTRIBUTE_NAME,
+            sagemaker_session=sagemaker_session,
+        )
+
+
+def test_framework_initialization_with_sagemaker_config_injection(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_AUTO_ML
+
+    auto_ml = AutoML(
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
+    )
+
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoMLJob"][
+        "AutoMLJobConfig"
+    ]["SecurityConfig"]["VolumeKmsKeyId"]
+    expected_role_arn = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoMLJob"]["RoleArn"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoMLJob"]["OutputDataConfig"][
+        "KmsKeyId"
+    ]
+    expected_vpc_config = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"]["AutoMLJob"]["AutoMLJobConfig"][
+        "SecurityConfig"
+    ]["VpcConfig"]
+    expected_enable_inter_container_traffic_encryption = SAGEMAKER_CONFIG_AUTO_ML["SageMaker"][
+        "AutoMLJob"
+    ]["AutoMLJobConfig"]["SecurityConfig"]["EnableInterContainerTrafficEncryption"]
+    assert auto_ml.role == expected_role_arn
+    assert auto_ml.output_kms_key == expected_kms_key_id
+    assert auto_ml.volume_kms_key == expected_volume_kms_key_id
+    assert auto_ml.vpc_config == expected_vpc_config
+    assert (
+        auto_ml.encrypt_inter_container_traffic
+        == expected_enable_inter_container_traffic_encryption
+    )
 
 
 def test_auto_ml_default_channel_name(sagemaker_session):
@@ -789,6 +832,45 @@ def test_deploy_optional_args(candidate_estimator, sagemaker_session, candidate_
         tags=TAGS,
         wait=False,
     )
+
+
+def test_candidate_estimator_fit_initialization_with_sagemaker_config_injection(
+    sagemaker_session,
+):
+
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
+    sagemaker_session.train = Mock()
+    sagemaker_session.transform = Mock()
+
+    desc_training_job_response = copy.deepcopy(TRAINING_JOB)
+    del desc_training_job_response["VpcConfig"]
+    del desc_training_job_response["OutputDataConfig"]["KmsKeyId"]
+
+    sagemaker_session.sagemaker_client.describe_training_job = Mock(
+        name="describe_training_job", return_value=desc_training_job_response
+    )
+    candidate_estimator = CandidateEstimator(CANDIDATE_DICT, sagemaker_session=sagemaker_session)
+    candidate_estimator._check_all_job_finished = Mock(
+        name="_check_all_job_finished", return_value=True
+    )
+    inputs = DEFAULT_S3_INPUT_DATA
+    candidate_estimator.fit(inputs)
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "ResourceConfig"
+    ]["VolumeKmsKeyId"]
+    expected_vpc_config = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["VpcConfig"]
+    expected_enable_inter_container_traffic_encryption = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"][
+        "TrainingJob"
+    ]["EnableInterContainerTrafficEncryption"]
+
+    for train_call in sagemaker_session.train.call_args_list:
+        train_args = train_call.kwargs
+        assert train_args["vpc_config"] == expected_vpc_config
+        assert train_args["resource_config"]["VolumeKmsKeyId"] == expected_volume_kms_key_id
+        assert (
+            train_args["encrypt_inter_container_traffic"]
+            == expected_enable_inter_container_traffic_encryption
+        )
 
 
 def test_candidate_estimator_get_steps(sagemaker_session):

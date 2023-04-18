@@ -94,9 +94,9 @@ class _SparkProcessorBase(ScriptProcessor):
 
     def __init__(
         self,
-        role,
-        instance_type,
-        instance_count,
+        role=None,
+        instance_type=None,
+        instance_count=None,
         framework_version=None,
         py_version=None,
         container_version=None,
@@ -104,6 +104,8 @@ class _SparkProcessorBase(ScriptProcessor):
         volume_size_in_gb=30,
         volume_kms_key=None,
         output_kms_key=None,
+        configuration_location: Optional[str] = None,
+        dependency_location: Optional[str] = None,
         max_runtime_in_seconds=None,
         base_job_name=None,
         sagemaker_session=None,
@@ -134,6 +136,12 @@ class _SparkProcessorBase(ScriptProcessor):
             volume_kms_key (str): A KMS key for the processing
                 volume.
             output_kms_key (str): The KMS key id for all ProcessingOutputs.
+            configuration_location (str): The S3 prefix URI where the user-provided EMR
+                application configuration will be uploaded (default: None). If not specified,
+                the default ``configuration location`` is 's3://{sagemaker-default-bucket}'.
+            dependency_location (str): The S3 prefix URI where Spark dependencies will be
+                uploaded (default: None). If not specified, the default ``dependency location``
+                is 's3://{sagemaker-default-bucket}'.
             max_runtime_in_seconds (int): Timeout in seconds.
                 After this amount of time Amazon SageMaker terminates the job
                 regardless of its current status.
@@ -150,6 +158,8 @@ class _SparkProcessorBase(ScriptProcessor):
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
         """
+        self.configuration_location = configuration_location
+        self.dependency_location = dependency_location
         self.history_server = None
         self._spark_event_logs_s3_uri = None
 
@@ -413,19 +423,27 @@ class _SparkProcessorBase(ScriptProcessor):
         """
         from sagemaker.workflow.utilities import _pipeline_config
 
+        if self.configuration_location:
+            if self.configuration_location.endswith("/"):
+                s3_prefix_uri = self.configuration_location[:-1]
+            else:
+                s3_prefix_uri = self.configuration_location
+        else:
+            s3_prefix_uri = f"s3://{self.sagemaker_session.default_bucket()}"
+
         serialized_configuration = BytesIO(json.dumps(configuration).encode("utf-8"))
 
         if _pipeline_config and _pipeline_config.config_hash:
             s3_uri = (
-                f"s3://{self.sagemaker_session.default_bucket()}/{_pipeline_config.pipeline_name}/"
-                f"{_pipeline_config.step_name}/input/"
-                f"{self._conf_container_input_name}/{_pipeline_config.config_hash}/"
+                f"{s3_prefix_uri}/{_pipeline_config.pipeline_name}/{_pipeline_config.step_name}/"
+                f"input/{self._conf_container_input_name}/{_pipeline_config.config_hash}/"
                 f"{self._conf_file_name}"
             )
         else:
             s3_uri = (
-                f"s3://{self.sagemaker_session.default_bucket()}/{self._current_job_name}/"
-                f"input/{self._conf_container_input_name}/{self._conf_file_name}"
+                f"{s3_prefix_uri}/{self._current_job_name}/"
+                f"input/{self._conf_container_input_name}/"
+                f"{self._conf_file_name}"
             )
 
         S3Uploader.upload_string_as_file_body(
@@ -447,7 +465,7 @@ class _SparkProcessorBase(ScriptProcessor):
         This prepared list of paths is provided as `spark-submit` options.
         The submit_deps list may include a combination of S3 URIs and local paths.
         Any S3 URIs are appended to the `spark-submit` option value without modification.
-        Any local file paths are copied to a temp directory, uploaded to a default S3 URI,
+        Any local file paths are copied to a temp directory, uploaded to ``dependency location``,
         and included as a ProcessingInput channel to provide as local files to the SageMaker
         Spark container.
 
@@ -500,16 +518,22 @@ class _SparkProcessorBase(ScriptProcessor):
             if os.listdir(tmpdir):
                 from sagemaker.workflow.utilities import _pipeline_config
 
+                if self.dependency_location:
+                    if self.dependency_location.endswith("/"):
+                        s3_prefix_uri = self.dependency_location[:-1]
+                    else:
+                        s3_prefix_uri = self.dependency_location
+                else:
+                    s3_prefix_uri = f"s3://{self.sagemaker_session.default_bucket()}"
+
                 if _pipeline_config and _pipeline_config.code_hash:
                     input_channel_s3_uri = (
-                        f"s3://{self.sagemaker_session.default_bucket()}"
-                        f"/{_pipeline_config.pipeline_name}/code/{_pipeline_config.code_hash}"
-                        f"/{input_channel_name}"
+                        f"{s3_prefix_uri}/{_pipeline_config.pipeline_name}/"
+                        f"code/{_pipeline_config.code_hash}/{input_channel_name}"
                     )
                 else:
                     input_channel_s3_uri = (
-                        f"s3://{self.sagemaker_session.default_bucket()}"
-                        f"/{self._current_job_name}/input/{input_channel_name}"
+                        f"{s3_prefix_uri}/{self._current_job_name}/input/{input_channel_name}"
                     )
                 logger.info(
                     "Uploading dependencies from tmpdir %s to S3 %s", tmpdir, input_channel_s3_uri
@@ -719,6 +743,8 @@ class PySparkProcessor(_SparkProcessorBase):
         volume_size_in_gb: Union[int, PipelineVariable] = 30,
         volume_kms_key: Optional[Union[str, PipelineVariable]] = None,
         output_kms_key: Optional[Union[str, PipelineVariable]] = None,
+        configuration_location: Optional[str] = None,
+        dependency_location: Optional[str] = None,
         max_runtime_in_seconds: Optional[Union[int, PipelineVariable]] = None,
         base_job_name: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
@@ -749,6 +775,12 @@ class PySparkProcessor(_SparkProcessorBase):
             volume_kms_key (str or PipelineVariable): A KMS key for the processing
                 volume.
             output_kms_key (str or PipelineVariable): The KMS key id for all ProcessingOutputs.
+            configuration_location (str): The S3 prefix URI where the user-provided EMR
+                application configuration will be uploaded (default: None). If not specified,
+                the default ``configuration location`` is 's3://{sagemaker-default-bucket}'.
+            dependency_location (str): The S3 prefix URI where Spark dependencies will be
+                uploaded (default: None). If not specified, the default ``dependency location``
+                is 's3://{sagemaker-default-bucket}'.
             max_runtime_in_seconds (int or PipelineVariable): Timeout in seconds.
                 After this amount of time Amazon SageMaker terminates the job
                 regardless of its current status.
@@ -779,6 +811,8 @@ class PySparkProcessor(_SparkProcessorBase):
             volume_size_in_gb=volume_size_in_gb,
             volume_kms_key=volume_kms_key,
             output_kms_key=output_kms_key,
+            configuration_location=configuration_location,
+            dependency_location=dependency_location,
             max_runtime_in_seconds=max_runtime_in_seconds,
             base_job_name=base_job_name,
             sagemaker_session=sagemaker_session,
@@ -986,6 +1020,8 @@ class SparkJarProcessor(_SparkProcessorBase):
         volume_size_in_gb: Union[int, PipelineVariable] = 30,
         volume_kms_key: Optional[Union[str, PipelineVariable]] = None,
         output_kms_key: Optional[Union[str, PipelineVariable]] = None,
+        configuration_location: Optional[str] = None,
+        dependency_location: Optional[str] = None,
         max_runtime_in_seconds: Optional[Union[int, PipelineVariable]] = None,
         base_job_name: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
@@ -1016,6 +1052,12 @@ class SparkJarProcessor(_SparkProcessorBase):
             volume_kms_key (str or PipelineVariable): A KMS key for the processing
                 volume.
             output_kms_key (str or PipelineVariable): The KMS key id for all ProcessingOutputs.
+            configuration_location (str): The S3 prefix URI where the user-provided EMR
+                application configuration will be uploaded (default: None). If not specified,
+                the default ``configuration location`` is 's3://{sagemaker-default-bucket}'.
+            dependency_location (str): The S3 prefix URI where Spark dependencies will be
+                uploaded (default: None). If not specified, the default ``dependency location``
+                is 's3://{sagemaker-default-bucket}'.
             max_runtime_in_seconds (int or PipelineVariable): Timeout in seconds.
                 After this amount of time Amazon SageMaker terminates the job
                 regardless of its current status.
@@ -1046,6 +1088,8 @@ class SparkJarProcessor(_SparkProcessorBase):
             volume_size_in_gb=volume_size_in_gb,
             volume_kms_key=volume_kms_key,
             output_kms_key=output_kms_key,
+            configuration_location=configuration_location,
+            dependency_location=dependency_location,
             max_runtime_in_seconds=max_runtime_in_seconds,
             base_job_name=base_job_name,
             sagemaker_session=sagemaker_session,

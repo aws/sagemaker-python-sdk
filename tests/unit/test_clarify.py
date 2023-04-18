@@ -42,38 +42,56 @@ def test_uri():
     assert "306415355426.dkr.ecr.us-west-2.amazonaws.com/sagemaker-clarify-processing:1.0" == uri
 
 
-def test_data_config():
+@pytest.mark.parametrize(
+    ("dataset_type", "features", "excluded_columns", "predicted_label"),
+    [
+        ("text/csv", None, ["F4"], "Predicted Label"),
+        ("application/jsonlines", None, ["F4"], "Predicted Label"),
+        ("application/json", "[*].[F1,F2,F3]", ["F4"], "Predicted Label"),
+        ("application/x-parquet", None, ["F4"], "Predicted Label"),
+    ],
+)
+def test_data_config(dataset_type, features, excluded_columns, predicted_label):
     # facets in input dataset
     s3_data_input_path = "s3://path/to/input.csv"
     s3_output_path = "s3://path/to/output"
     label_name = "Label"
-    headers = [
-        "Label",
-        "F1",
-        "F2",
-        "F3",
-        "F4",
-    ]
-    dataset_type = "text/csv"
+    headers = ["Label", "F1", "F2", "F3", "F4", "Predicted Label"]
     data_config = DataConfig(
         s3_data_input_path=s3_data_input_path,
         s3_output_path=s3_output_path,
+        features=features,
         label=label_name,
         headers=headers,
         dataset_type=dataset_type,
+        excluded_columns=excluded_columns,
+        predicted_label=predicted_label,
     )
 
     expected_config = {
-        "dataset_type": "text/csv",
+        "dataset_type": dataset_type,
         "headers": headers,
         "label": "Label",
     }
+    if features:
+        expected_config["features"] = features
+    if excluded_columns:
+        expected_config["excluded_columns"] = excluded_columns
+    if predicted_label:
+        expected_config["predicted_label"] = predicted_label
 
     assert expected_config == data_config.get_config()
     assert s3_data_input_path == data_config.s3_data_input_path
     assert s3_output_path == data_config.s3_output_path
     assert "None" == data_config.s3_compression_type
     assert "FullyReplicated" == data_config.s3_data_distribution_type
+
+
+def test_data_config_with_separate_facet_dataset():
+    s3_data_input_path = "s3://path/to/input.csv"
+    s3_output_path = "s3://path/to/output"
+    label_name = "Label"
+    headers = ["Label", "F1", "F2", "F3", "F4"]
 
     # facets NOT in input dataset
     joinsource = 5
@@ -89,7 +107,7 @@ def test_data_config():
         s3_output_path=s3_output_path,
         label=label_name,
         headers=headers,
-        dataset_type=dataset_type,
+        dataset_type="text/csv",
         joinsource=joinsource,
         facet_dataset_uri=facet_dataset_uri,
         facet_headers=facet_headers,
@@ -126,7 +144,7 @@ def test_data_config():
         s3_output_path=s3_output_path,
         label=label_name,
         headers=headers,
-        dataset_type=dataset_type,
+        dataset_type="text/csv",
         joinsource=joinsource,
         excluded_columns=excluded_columns,
     )
@@ -158,7 +176,7 @@ def test_invalid_data_config():
         DataConfig(
             s3_data_input_path="s3://bucket/inputpath",
             s3_output_path="s3://bucket/outputpath",
-            dataset_type="application/x-parquet",
+            dataset_type="application/x-image",
             predicted_label="label",
         )
     error_msg = r"^The parameter 'excluded_columns' is not supported for dataset_type"
@@ -186,6 +204,28 @@ def test_invalid_data_config():
             dataset_type="application/jsonlines",
             predicted_label_dataset_uri="pred_dataset/URI",
             predicted_label_headers="prediction",
+        )
+
+
+# features JMESPath is required for JSON dataset types
+def test_json_type_data_config_missing_features():
+    # facets in input dataset
+    s3_data_input_path = "s3://path/to/input.csv"
+    s3_output_path = "s3://path/to/output"
+    label_name = "Label"
+    headers = ["Label", "F1", "F2", "F3", "F4", "Predicted Label"]
+    with pytest.raises(
+        ValueError, match="features JMESPath is required for application/json dataset_type"
+    ):
+        DataConfig(
+            s3_data_input_path=s3_data_input_path,
+            s3_output_path=s3_output_path,
+            features=None,
+            label=label_name,
+            headers=headers,
+            dataset_type="application/json",
+            excluded_columns=["F4"],
+            predicted_label="Predicted Label",
         )
 
 
@@ -344,21 +384,47 @@ def test_facet_of_bias_config(facet_name, facet_values_or_threshold, expected_re
     assert bias_config.get_config() == expected_config
 
 
-def test_model_config():
+@pytest.mark.parametrize(
+    ("content_type", "accept_type"),
+    [
+        # All the combinations of content_type and accept_type should be acceptable
+        ("text/csv", "text/csv"),
+        ("application/jsonlines", "application/jsonlines"),
+        ("text/csv", "application/json"),
+        ("application/jsonlines", "application/json"),
+        ("application/jsonlines", "text/csv"),
+        ("application/json", "application/json"),
+        ("application/json", "application/jsonlines"),
+        ("application/json", "text/csv"),
+        ("image/jpeg", "text/csv"),
+        ("image/jpg", "text/csv"),
+        ("image/png", "text/csv"),
+        ("application/x-npy", "text/csv"),
+    ],
+)
+def test_valid_model_config(content_type, accept_type):
     model_name = "xgboost-model"
     instance_type = "ml.c5.xlarge"
     instance_count = 1
-    accept_type = "text/csv"
-    content_type = "application/jsonlines"
     custom_attributes = "c000b4f9-df62-4c85-a0bf-7c525f9104a4"
     target_model = "target_model_name"
     accelerator_type = "ml.eia1.medium"
+    content_template = (
+        '{"instances":$features}'
+        if content_type == "application/jsonlines"
+        else "$records"
+        if content_type == "application/json"
+        else None
+    )
+    record_template = "$features_kvp" if content_type == "application/json" else None
     model_config = ModelConfig(
         model_name=model_name,
         instance_type=instance_type,
         instance_count=instance_count,
         accept_type=accept_type,
         content_type=content_type,
+        content_template=content_template,
+        record_template=record_template,
         custom_attributes=custom_attributes,
         accelerator_type=accelerator_type,
         target_model=target_model,
@@ -373,21 +439,79 @@ def test_model_config():
         "accelerator_type": accelerator_type,
         "target_model": target_model,
     }
+    if content_template is not None:
+        expected_config["content_template"] = content_template
+    if record_template is not None:
+        expected_config["record_template"] = record_template
     assert expected_config == model_config.get_predictor_config()
 
 
-def test_invalid_model_config():
-    with pytest.raises(ValueError) as error:
+@pytest.mark.parametrize(
+    ("error", "content_type", "accept_type", "content_template", "record_template"),
+    [
+        (
+            "Invalid accept_type invalid_accept_type. Please choose text/csv or application/jsonlines.",
+            "text/csv",
+            "invalid_accept_type",
+            None,
+            None,
+        ),
+        (
+            "Invalid content_type invalid_content_type. Please choose text/csv or application/jsonlines.",
+            "invalid_content_type",
+            "text/csv",
+            None,
+            None,
+        ),
+        (
+            "content_template field is required for content_type",
+            "application/jsonlines",
+            "text/csv",
+            None,
+            None,
+        ),
+        (
+            "content_template and record_template are required for content_type",
+            "application/json",
+            "text/csv",
+            None,
+            None,
+        ),
+        (
+            "content_template and record_template are required for content_type",
+            "application/json",
+            "text/csv",
+            "$records",
+            None,
+        ),
+        (
+            r"Invalid content_template invalid_content_template. Please include a placeholder \$features.",
+            "application/jsonlines",
+            "text/csv",
+            "invalid_content_template",
+            None,
+        ),
+        (
+            r"Invalid content_template invalid_content_template. Please include either placeholder "
+            r"\$records or \$record.",
+            "application/json",
+            "text/csv",
+            "invalid_content_template",
+            "$features",
+        ),
+    ],
+)
+def test_invalid_model_config(error, content_type, accept_type, content_template, record_template):
+    with pytest.raises(ValueError, match=error):
         ModelConfig(
             model_name="xgboost-model",
             instance_type="ml.c5.xlarge",
             instance_count=1,
-            accept_type="invalid_accept_type",
+            content_type=content_type,
+            accept_type=accept_type,
+            content_template=content_template,
+            record_template=record_template,
         )
-    assert (
-        "Invalid accept_type invalid_accept_type. Please choose text/csv or application/jsonlines."
-        in str(error.value)
-    )
 
 
 def test_invalid_model_config_with_bad_endpoint_name_prefix():
@@ -660,6 +784,7 @@ def sagemaker_session():
     )
     session_mock.download_data = Mock(name="download_data")
     session_mock.expand_role.return_value = "arn:aws:iam::012345678901:role/SageMakerRole"
+    session_mock.sagemaker_config = {}
     return session_mock
 
 
