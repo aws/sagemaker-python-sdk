@@ -23,6 +23,8 @@ import tempfile
 import stopit
 
 import tests.integ.lock as lock
+from sagemaker.config import SESSION_S3_BUCKET_PATH
+from sagemaker.utils import resolve_value_from_config
 from tests.integ import DATA_DIR
 from mock import Mock, ANY
 
@@ -70,6 +72,13 @@ class LocalNoS3Session(LocalSession):
 
         self.sagemaker_config = kwargs.get("sagemaker_config", None)
 
+        # after sagemaker_config initialization, update self._default_bucket_name_override if needed
+        self._default_bucket_name_override = resolve_value_from_config(
+            direct_input=self._default_bucket_name_override,
+            config_path=SESSION_S3_BUCKET_PATH,
+            sagemaker_session=self,
+        )
+
 
 class LocalPipelineNoS3Session(LocalPipelineSession):
     """
@@ -90,6 +99,13 @@ class LocalPipelineNoS3Session(LocalPipelineSession):
         self.local_mode = True
 
         self.sagemaker_config = kwargs.get("sagemaker_config", None)
+
+        # after sagemaker_config initialization, update self._default_bucket_name_override if needed
+        self._default_bucket_name_override = resolve_value_from_config(
+            direct_input=self._default_bucket_name_override,
+            config_path=SESSION_S3_BUCKET_PATH,
+            sagemaker_session=self,
+        )
 
 
 @pytest.fixture(scope="module")

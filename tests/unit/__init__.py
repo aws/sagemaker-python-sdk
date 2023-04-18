@@ -70,11 +70,27 @@ from sagemaker.config import (
     MODEL,
     ASYNC_INFERENCE_CONFIG,
     SCHEMA_VERSION,
+    PYTHON_SDK,
+    MODULES,
+    S3_BUCKET,
+    SESSION,
 )
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 PY_VERSION = "py3"
 
+SAGEMAKER_CONFIG_SESSION = {
+    SCHEMA_VERSION: "1.0",
+    SAGEMAKER: {
+        PYTHON_SDK: {
+            MODULES: {
+                SESSION: {
+                    S3_BUCKET: "sagemaker-config-session-s3-bucket",
+                },
+            },
+        },
+    },
+}
 
 SAGEMAKER_CONFIG_MONITORING_SCHEDULE = {
     SCHEMA_VERSION: "1.0",

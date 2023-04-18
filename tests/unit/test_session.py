@@ -50,6 +50,7 @@ from tests.unit import (
     SAGEMAKER_CONFIG_TRAINING_JOB,
     SAGEMAKER_CONFIG_TRANSFORM_JOB,
     SAGEMAKER_CONFIG_MODEL,
+    SAGEMAKER_CONFIG_SESSION,
 )
 
 STATIC_HPs = {"feature_dim": "784"}
@@ -372,6 +373,46 @@ def test_create_process_with_sagemaker_config_injection(sagemaker_session):
     ] = expected_volume_kms_key_id
 
     sagemaker_session.sagemaker_client.create_processing_job.assert_called_with(**expected_request)
+
+
+def test_default_bucket_with_sagemaker_config(boto_session, client):
+    # common kwargs for Session objects
+    session_kwargs = {
+        "boto_session": boto_session,
+        "sagemaker_client": client,
+        "sagemaker_runtime_client": client,
+        "sagemaker_metrics_client": client,
+    }
+
+    # Case 1: Use bucket from sagemaker_config
+    session_with_config_bucket = Session(
+        default_bucket=None,
+        sagemaker_config=SAGEMAKER_CONFIG_SESSION,
+        **session_kwargs,
+    )
+    assert (
+        session_with_config_bucket.default_bucket()
+        == SAGEMAKER_CONFIG_SESSION["SageMaker"]["PythonSDK"]["Modules"]["Session"]["S3Bucket"]
+    )
+
+    # Case 2: Use bucket from user input to Session (even if sagemaker_config has a bucket)
+    session_with_user_bucket = Session(
+        default_bucket="default-bucket",
+        sagemaker_config=SAGEMAKER_CONFIG_SESSION,
+        **session_kwargs,
+    )
+    assert session_with_user_bucket.default_bucket() == "default-bucket"
+
+    # Case 3: Use default bucket of SDK
+    session_with_sdk_bucket = Session(
+        default_bucket=None,
+        sagemaker_config=None,
+        **session_kwargs,
+    )
+    session_with_sdk_bucket.boto_session.client.return_value = Mock(
+        get_caller_identity=Mock(return_value={"Account": "111111111"})
+    )
+    assert session_with_sdk_bucket.default_bucket() == "sagemaker-us-west-2-111111111"
 
 
 def mock_exists(filepath_to_mock, exists_result):
@@ -2159,7 +2200,6 @@ PRIMARY_CONTAINER = {
 
 
 def test_create_model_with_sagemaker_config_injection(sagemaker_session):
-
     sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_MODEL
 
     sagemaker_session.expand_role = Mock(
@@ -3859,7 +3899,6 @@ def feature_group_dummy_definitions():
 def test_feature_group_create_with_sagemaker_config_injection(
     sagemaker_session, feature_group_dummy_definitions
 ):
-
     sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_FEATURE_GROUP
 
     sagemaker_session.create_feature_group(

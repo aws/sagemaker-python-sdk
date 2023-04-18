@@ -21,7 +21,11 @@ from datetime import datetime
 import boto3
 from botocore.exceptions import ClientError
 
-from sagemaker.config import load_sagemaker_config, validate_sagemaker_config
+from sagemaker.config import (
+    load_sagemaker_config,
+    validate_sagemaker_config,
+    SESSION_S3_BUCKET_PATH,
+)
 from sagemaker.local.image import _SageMakerContainer
 from sagemaker.local.utils import get_docker_host
 from sagemaker.local.entities import (
@@ -34,7 +38,7 @@ from sagemaker.local.entities import (
     _LocalPipeline,
 )
 from sagemaker.session import Session
-from sagemaker.utils import get_config_value, _module_import_error
+from sagemaker.utils import get_config_value, _module_import_error, resolve_value_from_config
 
 logger = logging.getLogger(__name__)
 
@@ -700,15 +704,22 @@ class LocalSession(Session):
             # create a default S3 resource, but only if it needs to fetch from S3
             self.sagemaker_config = load_sagemaker_config(s3_resource=self.s3_resource)
 
-        sagemaker_config_file = os.path.join(os.path.expanduser("~"), ".sagemaker", "config.yaml")
-        if os.path.exists(sagemaker_config_file):
+        # after sagemaker_config initialization, update self._default_bucket_name_override if needed
+        self._default_bucket_name_override = resolve_value_from_config(
+            direct_input=self._default_bucket_name_override,
+            config_path=SESSION_S3_BUCKET_PATH,
+            sagemaker_session=self,
+        )
+
+        local_mode_config_file = os.path.join(os.path.expanduser("~"), ".sagemaker", "config.yaml")
+        if os.path.exists(local_mode_config_file):
             try:
                 import yaml
             except ImportError as e:
                 logger.error(_module_import_error("yaml", "Local mode", "local"))
                 raise e
 
-            self.config = yaml.safe_load(open(sagemaker_config_file, "r"))
+            self.config = yaml.safe_load(open(local_mode_config_file, "r"))
             if self._disable_local_code and "local" in self.config:
                 self.config["local"]["local_code"] = False
 

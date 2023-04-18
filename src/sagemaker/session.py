@@ -92,6 +92,7 @@ from sagemaker.config import (
     FEATURE_GROUP_ROLE_ARN_PATH,
     FEATURE_GROUP_ONLINE_STORE_CONFIG_PATH,
     FEATURE_GROUP_OFFLINE_STORE_CONFIG_PATH,
+    SESSION_S3_BUCKET_PATH,
 )
 from sagemaker.deprecations import deprecated_class
 from sagemaker.inputs import ShuffleConfig, TrainingInput, BatchDataCaptureConfig
@@ -180,7 +181,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             default_bucket (str): The default Amazon S3 bucket to be used by this session.
                 This will be created the next time an Amazon S3 bucket is needed (by calling
                 :func:`default_bucket`).
-                If not provided, a default bucket will be created based on the following format:
+                If not provided, it will be fetched from the sagemaker_config. If not configured
+                there either, a default bucket will be created based on the following format:
                 "sagemaker-{region}-{aws-account-id}".
                 Example: "sagemaker-my-custom-bucket".
             settings (sagemaker.session_settings.SessionSettings): Optional. Set of optional
@@ -200,8 +202,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 :func:`~sagemaker.config.load_sagemaker_config` and then be provided to the
                 Session.
         """
+
+        # sagemaker_config is validated and initialized inside :func:`_initialize`,
+        # so if default_bucket is None and the sagemaker_config has a default S3 bucket configured,
+        # _default_bucket_name_override will be set again inside :func:`_initialize`.
         self._default_bucket = None
         self._default_bucket_name_override = default_bucket
+
         self.s3_resource = None
         self.s3_client = None
         self.resource_groups_client = None
@@ -279,6 +286,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
             # self.s3_resource might be None. If it is None, load_sagemaker_config will
             # create a default S3 resource, but only if it needs to fetch from S3
             self.sagemaker_config = load_sagemaker_config(s3_resource=self.s3_resource)
+
+        # after sagemaker_config initialization, update self._default_bucket_name_override if needed
+        self._default_bucket_name_override = resolve_value_from_config(
+            direct_input=self._default_bucket_name_override,
+            config_path=SESSION_S3_BUCKET_PATH,
+            sagemaker_session=self,
+        )
 
     @property
     def boto_region_name(self):
@@ -484,7 +498,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         This function will create the s3 bucket if it does not exist.
 
         Returns:
-            str: The name of the default bucket, which is of the form:
+            str: The name of the default bucket. If the name was not explicitly specified through
+            the Session or sagemaker_config, the bucket will take the form:
                 ``sagemaker-{region}-{AWS account ID}``.
         """
 

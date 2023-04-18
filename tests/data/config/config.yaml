@@ -1,5 +1,9 @@
 SchemaVersion: '1.0'
 SageMaker:
+  PythonSDK:
+    Modules:
+      Session:
+        S3Bucket: 'sagemaker-python-sdk-test-bucket'
   FeatureGroup:
     OnlineStoreConfig:
       SecurityConfig:

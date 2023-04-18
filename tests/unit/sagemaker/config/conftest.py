@@ -38,6 +38,13 @@ def valid_tags():
 
 
 @pytest.fixture()
+def valid_session_config():
+    return {
+        "S3Bucket": "sagemaker-python-sdk-test-bucket",
+    }
+
+
+@pytest.fixture()
 def valid_feature_group_config(valid_iam_role_arn):
     security_storage_config = {"KmsKeyId": "kmskeyid1"}
     s3_storage_config = {"KmsKeyId": "kmskeyid2"}
@@ -191,6 +198,7 @@ def valid_remote_function_config(valid_iam_role_arn, valid_tags, valid_vpc_confi
 
 @pytest.fixture()
 def valid_config_with_all_the_scopes(
+    valid_session_config,
     valid_feature_group_config,
     valid_monitoring_schedule_config,
     valid_endpointconfig_config,
@@ -206,6 +214,11 @@ def valid_config_with_all_the_scopes(
     valid_remote_function_config,
 ):
     return {
+        "PythonSDK": {
+            "Modules": {
+                "Session": valid_session_config,
+            }
+        },
         "FeatureGroup": valid_feature_group_config,
         "MonitoringSchedule": valid_monitoring_schedule_config,
         "EndpointConfig": valid_endpointconfig_config,

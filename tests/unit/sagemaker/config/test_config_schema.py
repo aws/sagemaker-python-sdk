@@ -199,3 +199,37 @@ def test_invalid_s3uri_schema(base_config_with_schema):
     config["SageMaker"] = {"PythonSDK": {"Modules": {"RemoteFunction": {"S3RootUri": "bad_regex"}}}}
     with pytest.raises(exceptions.ValidationError):
         validate(config, SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA)
+
+@pytest.mark.parametrize(
+    "bucket_name",
+    [
+        "docexamplebucket1",
+        "log-delivery-march-2020",
+        "my-hosted-content",
+        "docexamplewebsite.com",
+        "www.docexamplewebsite.com",
+        "my.example.s3.bucket",
+    ],
+)
+def test_session_s3_bucket_schema(base_config_with_schema, bucket_name):
+    config = {"PythonSDK": {"Modules": {"Session": {"S3Bucket": bucket_name}}}}
+    _validate_config(base_config_with_schema, config)
+
+
+@pytest.mark.parametrize(
+    "invalid_bucket_name",
+    [
+        "ab",
+        "this-is-sixty-four-characters-total-which-is-one-above-the-limit",
+        "UPPERCASE-LETTERS",
+        "special_characters",
+        "special-characters@",
+        ".dot-at-the-beginning",
+        "-dash-at-the-beginning",
+        "dot-at-the-end.",
+        "dash-at-the-end-",
+    ],
+)
+def test_invalid_session_s3_bucket_schema(base_config_with_schema, invalid_bucket_name):
+    with pytest.raises(exceptions.ValidationError):
+        test_session_s3_bucket_schema(base_config_with_schema, invalid_bucket_name)
