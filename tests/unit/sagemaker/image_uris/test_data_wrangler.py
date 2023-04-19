@@ -12,6 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import pytest
+
 from sagemaker import image_uris
 from tests.unit.sagemaker.image_uris import expected_uris
 
@@ -39,9 +41,12 @@ DATA_WRANGLER_ACCOUNTS = {
     "cn-north-1": "245909111842",
     "cn-northwest-1": "249157047649",
 }
+VERSIONS = ["1.x", "2.x"]
 
 
-def test_data_wrangler_ecr_uri():
+def test_data_wrangler_ecr_uri_default_version():
+    # Added so we could introduce version '2.x' without breaking any workflows that previously
+    # relied on implicit '1.x' (the only listed version)
     for region in DATA_WRANGLER_ACCOUNTS.keys():
         actual_uri = image_uris.retrieve("data-wrangler", region=region)
         expected_uri = expected_uris.algo_uri(
@@ -49,5 +54,18 @@ def test_data_wrangler_ecr_uri():
             DATA_WRANGLER_ACCOUNTS[region],
             region,
             version="1.x",
+        )
+        assert expected_uri == actual_uri
+
+
+@pytest.mark.parametrize("version", VERSIONS)
+def test_data_wrangler_ecr_uri(version):
+    for region in DATA_WRANGLER_ACCOUNTS.keys():
+        actual_uri = image_uris.retrieve("data-wrangler", region=region, version=version)
+        expected_uri = expected_uris.algo_uri(
+            "sagemaker-data-wrangler-container",
+            DATA_WRANGLER_ACCOUNTS[region],
+            region,
+            version=version,
         )
         assert expected_uri == actual_uri

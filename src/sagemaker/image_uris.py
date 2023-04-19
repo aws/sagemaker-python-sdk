@@ -462,6 +462,13 @@ def _validate_version_and_set_if_needed(version, config, framework):
 
         return available_versions[0]
 
+    if version is None and framework == "data-wrangler":
+        logger.warning(
+            "Defaulting unspecified Data Wrangler version to '1.x' for backward compatibility. "
+            "Consider specifying version='2.x' or newer."
+        )
+        version = "1.x"
+
     _validate_arg(version, available_versions + aliased_versions, "{} version".format(framework))
     return version
 
