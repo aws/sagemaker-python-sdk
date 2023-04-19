@@ -433,6 +433,7 @@ class ModelMonitor(object):
         network_config=None,
         role=None,
         image_uri=None,
+        batch_transform_input=None,
     ):
         """Updates the existing monitoring schedule.
 
@@ -475,13 +476,28 @@ class ModelMonitor(object):
             role (str): An AWS IAM role name or ARN. The Amazon SageMaker jobs use this role.
             image_uri (str): The uri of the image to use for the jobs started by
                 the Monitor.
+            batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to
+                run the monitoring schedule on the batch transform (default: None)
 
         """
         monitoring_inputs = None
+
+        if (batch_transform_input is not None) and (endpoint_input is not None):
+            message = (
+                "Cannot update both batch_transform_input and endpoint_input to update an "
+                "Amazon Model Monitoring Schedule. "
+                "Please provide atmost one of the above required inputs"
+            )
+            _LOGGER.error(message)
+            raise ValueError(message)
+
         if endpoint_input is not None:
             monitoring_inputs = [
                 self._normalize_endpoint_input(endpoint_input=endpoint_input)._to_request_dict()
             ]
+
+        elif batch_transform_input is not None:
+            monitoring_inputs = [batch_transform_input._to_request_dict()]
 
         monitoring_output_config = None
         if output is not None:
@@ -1895,6 +1911,7 @@ class DefaultModelMonitor(ModelMonitor):
         network_config=None,
         enable_cloudwatch_metrics=None,
         role=None,
+        batch_transform_input=None,
     ):
         """Updates the existing monitoring schedule.
 
@@ -1936,8 +1953,20 @@ class DefaultModelMonitor(ModelMonitor):
             enable_cloudwatch_metrics (bool): Whether to publish cloudwatch metrics as part of
                 the baselining or monitoring jobs.
             role (str): An AWS IAM role name or ARN. The Amazon SageMaker jobs use this role.
+            batch_transform_input (sagemaker.model_monitor.BatchTransformInput): Inputs to
+                run the monitoring schedule on the batch transform (default: None)
 
         """
+
+        if (batch_transform_input is not None) and (endpoint_input is not None):
+            message = (
+                "Cannot update both batch_transform_input and endpoint_input to update an "
+                "Amazon Model Monitoring Schedule. "
+                "Please provide atmost one of the above required inputs"
+            )
+            _LOGGER.error(message)
+            raise ValueError(message)
+
         # check if this schedule is in v2 format and update as per v2 format if it is
         if self.job_definition_name is not None:
             self._update_data_quality_monitoring_schedule(
@@ -1958,12 +1987,16 @@ class DefaultModelMonitor(ModelMonitor):
                 network_config=network_config,
                 enable_cloudwatch_metrics=enable_cloudwatch_metrics,
                 role=role,
+                batch_transform_input=batch_transform_input,
             )
             return
 
         monitoring_inputs = None
         if endpoint_input is not None:
             monitoring_inputs = [self._normalize_endpoint_input(endpoint_input)._to_request_dict()]
+
+        elif batch_transform_input is not None:
+            monitoring_inputs = [batch_transform_input._to_request_dict()]
 
         record_preprocessor_script_s3_uri = None
         if record_preprocessor_script is not None:
@@ -3021,6 +3054,15 @@ class ModelQualityMonitor(ModelMonitor):
         if len(valid_args) == 1 and schedule_cron_expression is not None:
             self._update_monitoring_schedule(self.job_definition_name, schedule_cron_expression)
             return
+
+        if (batch_transform_input is not None) and (endpoint_input is not None):
+            message = (
+                "Cannot update both batch_transform_input and endpoint_input to update an "
+                "Amazon Model Monitoring Schedule. "
+                "Please provide atmost one of the above required inputs"
+            )
+            _LOGGER.error(message)
+            raise ValueError(message)
 
         # Need to update schedule with a new job definition
         job_desc = self.sagemaker_session.sagemaker_client.describe_model_quality_job_definition(

@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.147.0 (2023-04-18)
+
+### Features
+
+ * support different types of deletion mode
+
 ## v2.146.1 (2023-04-17)
 
 ### Bug Fixes and Other Changes
