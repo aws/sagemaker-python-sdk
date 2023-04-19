@@ -164,6 +164,23 @@ def test_numpy_deserializer_from_npy_object_array_with_allow_pickle_false():
         numpy_deserializer.deserialize(stream, "application/x-npy")
 
 
+def test_numpy_deserializer_from_npz(numpy_deserializer):
+    arrays = {
+        "alpha": np.ones((2, 3)),
+        "beta": np.zeros((3, 2)),
+    }
+    stream = io.BytesIO()
+    np.savez_compressed(stream, **arrays)
+    stream.seek(0)
+
+    result = numpy_deserializer.deserialize(stream, "application/x-npz")
+
+    assert isinstance(result, np.lib.npyio.NpzFile)
+    assert set(arrays.keys()) == set(result.keys())
+    for key, arr in arrays.items():
+        assert np.array_equal(arr, result[key])
+
+
 @pytest.fixture
 def json_deserializer():
     return JSONDeserializer()
