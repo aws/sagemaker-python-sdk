@@ -733,9 +733,9 @@ class PySparkProcessor(_SparkProcessorBase):
 
     def __init__(
         self,
-        role: str,
-        instance_type: Union[str, PipelineVariable],
-        instance_count: Union[int, PipelineVariable],
+        role: str = None,
+        instance_type: Union[str, PipelineVariable] = None,
+        instance_count: Union[int, PipelineVariable] = None,
         framework_version: Optional[str] = None,
         py_version: Optional[str] = None,
         container_version: Optional[str] = None,
@@ -1010,9 +1010,9 @@ class SparkJarProcessor(_SparkProcessorBase):
 
     def __init__(
         self,
-        role: str,
-        instance_type: Union[str, PipelineVariable],
-        instance_count: Union[int, PipelineVariable],
+        role: str = None,
+        instance_type: Union[str, PipelineVariable] = None,
+        instance_count: Union[int, PipelineVariable] = None,
         framework_version: Optional[str] = None,
         py_version: Optional[str] = None,
         container_version: Optional[str] = None,
