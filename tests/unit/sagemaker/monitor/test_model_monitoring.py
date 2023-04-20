@@ -1836,3 +1836,47 @@ def test_model_monitor_with_arguments(
         role_arn=ROLE,
         tags=TAGS,
     )
+
+
+def test_update_model_monitor_error_with_endpoint_and_batch(
+    model_monitor_arguments,
+    data_quality_monitor,
+    endpoint_input=EndpointInput(
+        endpoint_name=ENDPOINT_NAME,
+        destination=ENDPOINT_INPUT_LOCAL_PATH,
+        start_time_offset=START_TIME_OFFSET,
+        end_time_offset=END_TIME_OFFSET,
+        features_attribute=FEATURES_ATTRIBUTE,
+        inference_attribute=INFERENCE_ATTRIBUTE,
+        probability_attribute=PROBABILITY_ATTRIBUTE,
+        probability_threshold_attribute=PROBABILITY_THRESHOLD_ATTRIBUTE,
+    ),
+    batch_transform_input=BatchTransformInput(
+        data_captured_destination_s3_uri=DATA_CAPTURED_S3_URI,
+        destination=SCHEDULE_DESTINATION,
+        dataset_format=MonitoringDatasetFormat.csv(header=False),
+    ),
+):
+    try:
+        model_monitor_arguments.update_monitoring_schedule(
+            schedule_cron_expression=CRON_HOURLY,
+            endpoint_input=endpoint_input,
+            arguments=ARGUMENTS,
+            output=MonitoringOutput(source="/opt/ml/processing/output", destination=OUTPUT_S3_URI),
+            batch_transform_input=batch_transform_input,
+        )
+    except ValueError as error:
+        assert "Cannot update both batch_transform_input and endpoint_input to update an" in str(
+            error
+        )
+
+    try:
+        data_quality_monitor.update_monitoring_schedule(
+            schedule_cron_expression=CRON_HOURLY,
+            endpoint_input=endpoint_input,
+            batch_transform_input=batch_transform_input,
+        )
+    except ValueError as error:
+        assert "Cannot update both batch_transform_input and endpoint_input to update an" in str(
+            error
+        )

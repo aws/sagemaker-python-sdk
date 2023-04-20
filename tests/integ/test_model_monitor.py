@@ -281,7 +281,6 @@ def updated_output_kms_key(sagemaker_session):
     tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
     reason="ModelMonitoring is not yet supported in this region.",
 )
-@pytest.mark.release
 def test_default_monitoring_batch_transform_schedule_name(
     sagemaker_session, output_kms_key, volume_kms_key
 ):
@@ -359,7 +358,6 @@ def test_default_monitoring_batch_transform_schedule_name(
     tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
     reason="ModelMonitoring is not yet supported in this region.",
 )
-@pytest.mark.release
 def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_with_customizations(
     sagemaker_session, output_kms_key, volume_kms_key, predictor
 ):
@@ -1852,3 +1850,195 @@ def _verify_default_monitoring_schedule_with_batch_transform(
         )
     else:
         assert network_config is None
+
+
+def test_default_update_monitoring_batch_transform(
+    sagemaker_session, output_kms_key, volume_kms_key
+):
+    my_default_monitor = DefaultModelMonitor(
+        role=ROLE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        volume_size_in_gb=VOLUME_SIZE_IN_GB,
+        volume_kms_key=volume_kms_key,
+        output_kms_key=output_kms_key,
+        max_runtime_in_seconds=MAX_RUNTIME_IN_SECONDS,
+        sagemaker_session=sagemaker_session,
+        env=ENVIRONMENT,
+        tags=TAGS,
+        network_config=NETWORK_CONFIG,
+    )
+
+    output_s3_uri = os.path.join(
+        "s3://",
+        sagemaker_session.default_bucket(),
+        "integ-test-monitoring-output-bucket",
+        str(uuid.uuid4()),
+    )
+
+    data_captured_destination_s3_uri = os.path.join(
+        "s3://",
+        sagemaker_session.default_bucket(),
+        "sagemaker-serving-batch-transform",
+        str(uuid.uuid4()),
+    )
+
+    batch_transform_input = BatchTransformInput(
+        data_captured_destination_s3_uri=data_captured_destination_s3_uri,
+        destination="/opt/ml/processing/output",
+        dataset_format=MonitoringDatasetFormat.csv(header=False),
+    )
+
+    statistics = Statistics.from_file_path(
+        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json"),
+        sagemaker_session=sagemaker_session,
+    )
+
+    constraints = Constraints.from_file_path(
+        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json"),
+        sagemaker_session=sagemaker_session,
+    )
+
+    my_default_monitor.create_monitoring_schedule(
+        batch_transform_input=batch_transform_input,
+        output_s3_uri=output_s3_uri,
+        statistics=statistics,
+        constraints=constraints,
+        schedule_cron_expression=HOURLY_CRON_EXPRESSION,
+        enable_cloudwatch_metrics=ENABLE_CLOUDWATCH_METRICS,
+    )
+
+    _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
+
+    data_captured_destination_s3_uri = os.path.join(
+        "s3://",
+        sagemaker_session.default_bucket(),
+        "sagemaker-tensorflow-serving-batch-transform",
+        str(uuid.uuid4()),
+    )
+
+    batch_transform_input = BatchTransformInput(
+        data_captured_destination_s3_uri=data_captured_destination_s3_uri,
+        destination="/opt/ml/processing/output",
+        dataset_format=MonitoringDatasetFormat.csv(header=False),
+    )
+
+    my_default_monitor.update_monitoring_schedule(
+        batch_transform_input=batch_transform_input,
+    )
+
+    _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
+
+    schedule_description = my_default_monitor.describe_schedule()
+
+    _verify_default_monitoring_schedule_with_batch_transform(
+        sagemaker_session=sagemaker_session,
+        schedule_description=schedule_description,
+        cron_expression=HOURLY_CRON_EXPRESSION,
+        statistics=statistics,
+        constraints=constraints,
+        output_kms_key=output_kms_key,
+        volume_kms_key=volume_kms_key,
+        network_config=NETWORK_CONFIG,
+    )
+
+    my_default_monitor.stop_monitoring_schedule()
+    my_default_monitor.delete_monitoring_schedule()
+
+
+def test_byoc_monitoring_schedule_name_update_batch(
+    sagemaker_session, output_kms_key, volume_kms_key
+):
+    byoc_env = ENVIRONMENT.copy()
+    byoc_env["dataset_format"] = json.dumps(DatasetFormat.csv(header=False))
+    byoc_env["dataset_source"] = "/opt/ml/processing/input/baseline_dataset_input"
+    byoc_env["output_path"] = os.path.join("/opt/ml/processing/output")
+    byoc_env["publish_cloudwatch_metrics"] = "Disabled"
+
+    my_byoc_monitor = ModelMonitor(
+        role=ROLE,
+        image_uri=DefaultModelMonitor._get_default_image_uri(
+            sagemaker_session.boto_session.region_name
+        ),
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        volume_size_in_gb=VOLUME_SIZE_IN_GB,
+        volume_kms_key=volume_kms_key,
+        output_kms_key=output_kms_key,
+        max_runtime_in_seconds=MAX_RUNTIME_IN_SECONDS,
+        sagemaker_session=sagemaker_session,
+        env=byoc_env,
+        tags=TAGS,
+        network_config=NETWORK_CONFIG,
+    )
+
+    output_s3_uri = os.path.join(
+        "s3://",
+        sagemaker_session.default_bucket(),
+        "integ-test-monitoring-output-bucket",
+        str(uuid.uuid4()),
+    )
+
+    statistics = Statistics.from_file_path(
+        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json"),
+        sagemaker_session=sagemaker_session,
+    )
+
+    constraints = Constraints.from_file_path(
+        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json"),
+        sagemaker_session=sagemaker_session,
+    )
+
+    data_captured_destination_s3_uri = os.path.join(
+        "s3://",
+        sagemaker_session.default_bucket(),
+        "sagemaker-serving-batch-transform",
+        str(uuid.uuid4()),
+    )
+
+    batch_transform_input = BatchTransformInput(
+        data_captured_destination_s3_uri=data_captured_destination_s3_uri,
+        destination="/opt/ml/processing/output",
+        dataset_format=MonitoringDatasetFormat.csv(header=False),
+    )
+
+    my_byoc_monitor.create_monitoring_schedule(
+        endpoint_input=batch_transform_input,
+        output=MonitoringOutput(source="/opt/ml/processing/output", destination=output_s3_uri),
+        statistics=statistics,
+        constraints=constraints,
+        schedule_cron_expression=HOURLY_CRON_EXPRESSION,
+    )
+
+    _wait_for_schedule_changes_to_apply(monitor=my_byoc_monitor)
+
+    data_captured_destination_s3_uri = os.path.join(
+        "s3://",
+        sagemaker_session.default_bucket(),
+        "sagemaker-tensorflow-serving-batch-transform",
+        str(uuid.uuid4()),
+    )
+
+    batch_transform_input = BatchTransformInput(
+        data_captured_destination_s3_uri=data_captured_destination_s3_uri,
+        destination="/opt/ml/processing/output",
+        dataset_format=MonitoringDatasetFormat.csv(header=False),
+    )
+
+    my_byoc_monitor.update_monitoring_schedule(
+        batch_transform_input=batch_transform_input,
+    )
+
+    _wait_for_schedule_changes_to_apply(monitor=my_byoc_monitor)
+
+    schedule_description = my_byoc_monitor.describe_schedule()
+
+    assert (
+        data_captured_destination_s3_uri
+        == schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "MonitoringInputs"
+        ][0]["BatchTransformInput"]["DataCapturedDestinationS3Uri"]
+    )
+
+    my_byoc_monitor.stop_monitoring_schedule()
+    my_byoc_monitor.delete_monitoring_schedule()
