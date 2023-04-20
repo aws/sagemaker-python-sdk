@@ -665,6 +665,7 @@ def _model_supports_prepacked_inference(
     tolerate_deprecated_model: bool = False,
 ) -> bool:
     """Returns True if the model supports prepacked inference.
+
     Args:
         model_id (str): JumpStart model ID of the JumpStart model for which to
             retrieve the support status for prepacked inference.

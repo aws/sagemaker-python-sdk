@@ -523,10 +523,9 @@ class JumpStartKwargs(JumpStartDataHolderType):
         kwargs_dict = {}
         for field in self.__slots__:
             if field not in self.SERIALIZATION_EXCLUSION_SET:
-                if field != "kwargs":
+                att_value = getattr(self, field)
+                if att_value is not None:
                     kwargs_dict[field] = getattr(self, field)
-                else:
-                    kwargs_dict.update(getattr(self, field))
         return kwargs_dict
 
 
@@ -544,7 +543,17 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "entry_point",
         "env",
         "predictor_cls",
-        "kwargs",
+        "role",
+        "name",
+        "vpc_config",
+        "sagemaker_session",
+        "enable_network_isolation",
+        "model_kms_key",
+        "image_config",
+        "code_location",
+        "container_log_level",
+        "dependencies",
+        "git_config",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {"instance_type", "region"}
@@ -553,15 +562,25 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         self,
         model_id: str,
         model_version: Optional[str] = None,
-        instance_type: Optional[str] = None,
         region: Optional[str] = None,
-        image_uri: Optional[str] = None,
-        model_data: Optional[str] = None,
+        instance_type: Optional[str] = None,
+        image_uri: Optional[Union[str, Any]] = None,
+        model_data: Optional[Union[str, Any]] = None,
+        role: Optional[str] = None,
+        predictor_cls: Optional[callable] = None,
+        env: Optional[Dict[str, Union[str, Any]]] = None,
+        name: Optional[str] = None,
+        vpc_config: Optional[Dict[str, List[Union[str, Any]]]] = None,
+        sagemaker_session: Optional[Any] = None,
+        enable_network_isolation: Union[bool, Any] = None,
+        model_kms_key: Optional[str] = None,
+        image_config: Optional[Dict[str, Union[str, Any]]] = None,
         source_dir: Optional[str] = None,
+        code_location: Optional[str] = None,
         entry_point: Optional[str] = None,
-        env: Optional[Dict[str, str]] = None,
-        predictor_cls: Optional[Any] = None,
-        kwargs: Optional[dict] = None,
+        container_log_level: Optional[Union[int, Any]] = None,
+        dependencies: Optional[List[str]] = None,
+        git_config: Optional[Dict[str, str]] = None,
     ) -> None:
         """Instantiates JumpStartModelInitKwargs object."""
 
@@ -575,7 +594,17 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         self.entry_point = entry_point
         self.env = env
         self.predictor_cls = predictor_cls
-        self.kwargs = kwargs.copy() if kwargs is not None else {}
+        self.role = role
+        self.name = name
+        self.vpc_config = vpc_config
+        self.sagemaker_session = sagemaker_session
+        self.enable_network_isolation = enable_network_isolation
+        self.model_kms_key = model_kms_key
+        self.image_config = image_config
+        self.code_location = code_location
+        self.container_log_level = container_log_level
+        self.dependencies = dependencies
+        self.git_config = git_config
 
 
 class JumpStartModelDeployKwargs(JumpStartKwargs):
@@ -584,19 +613,48 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
     __slots__ = [
         "model_id",
         "model_version",
-        "instance_type",
         "initial_instance_count",
-        "kwargs",
+        "instance_type",
+        "region",
+        "serializer",
+        "deserializer",
+        "accelerator_type",
+        "endpoint_name",
+        "tags",
+        "kms_key",
+        "wait",
+        "data_capture_config",
+        "async_inference_config",
+        "serverless_inference_config",
+        "volume_size",
+        "model_data_download_timeout",
+        "container_startup_health_check_timeout",
+        "inference_recommendation_id",
+        "explainer_config",
     ]
 
     def __init__(
         self,
         model_id: str,
         model_version: Optional[str] = None,
+        region: Optional[str] = None,
         initial_instance_count: Optional[int] = None,
         instance_type: Optional[str] = None,
-        region: Optional[str] = None,
-        kwargs: Optional[dict] = None,
+        serializer: Optional[Any] = None,
+        deserializer: Optional[Any] = None,
+        accelerator_type: Optional[str] = None,
+        endpoint_name: Optional[str] = None,
+        tags: List[Dict[str, str]] = None,
+        kms_key: Optional[str] = None,
+        wait: Optional[bool] = None,
+        data_capture_config: Optional[Any] = None,
+        async_inference_config: Optional[Any] = None,
+        serverless_inference_config: Optional[Any] = None,
+        volume_size: Optional[int] = None,
+        model_data_download_timeout: Optional[int] = None,
+        container_startup_health_check_timeout: Optional[int] = None,
+        inference_recommendation_id: Optional[str] = None,
+        explainer_config: Optional[Any] = None,
     ) -> None:
         """Instantiates JumpStartModelDeployKwargs object."""
 
@@ -605,7 +663,21 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.initial_instance_count = initial_instance_count
         self.instance_type = instance_type
         self.region = region
-        self.kwargs = kwargs.copy() if kwargs is not None else {}
+        self.serializer = serializer
+        self.deserializer = deserializer
+        self.accelerator_type = accelerator_type
+        self.endpoint_name = endpoint_name
+        self.tags = tags
+        self.kms_key = kms_key
+        self.wait = wait
+        self.data_capture_config = data_capture_config
+        self.async_inference_config = async_inference_config
+        self.serverless_inference_config = serverless_inference_config
+        self.volume_size = volume_size
+        self.model_data_download_timeout = model_data_download_timeout
+        self.container_startup_health_check_timeout = container_startup_health_check_timeout
+        self.inference_recommendation_id = inference_recommendation_id
+        self.explainer_config = explainer_config
 
 
 class JumpStartEstimatorInitKwargs(JumpStartKwargs):
@@ -623,7 +695,41 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "entry_point",
         "hyperparameters",
         "metric_definitions",
-        "kwargs",
+        "role",
+        "keep_alive_period_in_seconds",
+        "volume_size",
+        "volume_kms_key",
+        "max_run",
+        "input_mode",
+        "output_path",
+        "output_kms_key",
+        "base_job_name",
+        "sagemaker_session",
+        "tags",
+        "subnets",
+        "security_group_ids",
+        "model_channel_name",
+        "encrypt_inter_container_traffic",
+        "use_spot_instances",
+        "max_wait",
+        "checkpoint_s3_uri",
+        "checkpoint_local_path",
+        "enable_network_isolation",
+        "rules",
+        "debugger_hook_config",
+        "tensorboard_output_config",
+        "enable_sagemaker_metrics",
+        "profiler_config",
+        "disable_profiler",
+        "environment",
+        "max_retry_attempts",
+        "git_config",
+        "container_log_level",
+        "code_location",
+        "dependencies",
+        "instance_groups",
+        "training_repository_access_mode",
+        "training_repository_credentials_provider_arn",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {"region"}
@@ -632,16 +738,50 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self,
         model_id: str,
         model_version: Optional[str] = None,
-        instance_type: Optional[str] = None,
-        instance_count: Optional[int] = None,
         region: Optional[str] = None,
-        image_uri: Optional[str] = None,
+        image_uri: Optional[Union[str, Any]] = None,
+        role: Optional[str] = None,
+        instance_count: Optional[Union[int, Any]] = None,
+        instance_type: Optional[Union[str, Any]] = None,
+        keep_alive_period_in_seconds: Optional[Union[int, Any]] = None,
+        volume_size: Optional[Union[int, Any]] = None,
+        volume_kms_key: Optional[Union[str, Any]] = None,
+        max_run: Optional[Union[int, Any]] = None,
+        input_mode: Optional[Union[str, Any]] = None,
+        output_path: Optional[Union[str, Any]] = None,
+        output_kms_key: Optional[Union[str, Any]] = None,
+        base_job_name: Optional[str] = None,
+        sagemaker_session: Optional[Any] = None,
+        hyperparameters: Optional[Dict[str, Union[str, Any]]] = None,
+        tags: Optional[List[Dict[str, Union[str, Any]]]] = None,
+        subnets: Optional[List[Union[str, Any]]] = None,
+        security_group_ids: Optional[List[Union[str, Any]]] = None,
         model_uri: Optional[str] = None,
-        source_dir: Optional[str] = None,
-        entry_point: Optional[str] = None,
-        hyperparameters: Optional[Dict[str, Any]] = None,
-        metric_definitions: Optional[List[Dict[str, str]]] = None,
-        kwargs: Optional[dict] = None,
+        model_channel_name: Optional[Union[str, Any]] = None,
+        metric_definitions: Optional[List[Dict[str, Union[str, Any]]]] = None,
+        encrypt_inter_container_traffic: Union[bool, Any] = None,
+        use_spot_instances: Optional[Union[bool, Any]] = None,
+        max_wait: Optional[Union[int, Any]] = None,
+        checkpoint_s3_uri: Optional[Union[str, Any]] = None,
+        checkpoint_local_path: Optional[Union[str, Any]] = None,
+        enable_network_isolation: Union[bool, Any] = None,
+        rules: Optional[List[Any]] = None,
+        debugger_hook_config: Optional[Union[Any, bool]] = None,
+        tensorboard_output_config: Optional[Any] = None,
+        enable_sagemaker_metrics: Optional[Union[bool, Any]] = None,
+        profiler_config: Optional[Any] = None,
+        disable_profiler: Optional[bool] = None,
+        environment: Optional[Dict[str, Union[str, Any]]] = None,
+        max_retry_attempts: Optional[Union[int, Any]] = None,
+        source_dir: Optional[Union[str, Any]] = None,
+        git_config: Optional[Dict[str, str]] = None,
+        container_log_level: Optional[Union[int, Any]] = None,
+        code_location: Optional[str] = None,
+        entry_point: Optional[Union[str, Any]] = None,
+        dependencies: Optional[List[str]] = None,
+        instance_groups: Optional[List[Any]] = None,
+        training_repository_access_mode: Optional[Union[str, Any]] = None,
+        training_repository_credentials_provider_arn: Optional[Union[str, Any]] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -656,7 +796,43 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.entry_point = entry_point
         self.hyperparameters = hyperparameters
         self.metric_definitions = metric_definitions
-        self.kwargs = kwargs.copy() if kwargs is not None else {}
+        self.role = role
+        self.keep_alive_period_in_seconds = keep_alive_period_in_seconds
+        self.volume_size = volume_size
+        self.volume_kms_key = volume_kms_key
+        self.max_run = max_run
+        self.input_mode = input_mode
+        self.output_path = output_path
+        self.output_kms_key = output_kms_key
+        self.base_job_name = base_job_name
+        self.sagemaker_session = sagemaker_session
+        self.tags = tags
+        self.subnets = subnets
+        self.security_group_ids = security_group_ids
+        self.model_channel_name = model_channel_name
+        self.encrypt_inter_container_traffic = encrypt_inter_container_traffic
+        self.use_spot_instances = use_spot_instances
+        self.max_wait = max_wait
+        self.checkpoint_s3_uri = checkpoint_s3_uri
+        self.checkpoint_local_path = checkpoint_local_path
+        self.enable_network_isolation = enable_network_isolation
+        self.rules = rules
+        self.debugger_hook_config = debugger_hook_config
+        self.tensorboard_output_config = tensorboard_output_config
+        self.enable_sagemaker_metrics = enable_sagemaker_metrics
+        self.profiler_config = profiler_config
+        self.disable_profiler = disable_profiler
+        self.environment = environment
+        self.max_retry_attempts = max_retry_attempts
+        self.git_config = git_config
+        self.container_log_level = container_log_level
+        self.code_location = code_location
+        self.dependencies = dependencies
+        self.instance_groups = instance_groups
+        self.training_repository_access_mode = training_repository_access_mode
+        self.training_repository_credentials_provider_arn = (
+            training_repository_credentials_provider_arn
+        )
 
 
 class JumpStartEstimatorFitKwargs(JumpStartKwargs):
@@ -665,17 +841,17 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
     __slots__ = [
         "model_id",
         "model_version",
-        "instance_type",
-        "instance_count",
         "region",
-        "kwargs",
+        "inputs",
+        "wait",
+        "logs",
+        "job_name",
+        "experiment_config",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
         "model_id",
         "model_version",
-        "instance_type",
-        "instance_count",
         "region",
     }
 
@@ -683,19 +859,23 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         self,
         model_id: str,
         model_version: Optional[str] = None,
-        instance_type: Optional[str] = None,
-        instance_count: Optional[int] = None,
         region: Optional[str] = None,
-        kwargs: Optional[Dict[str, Any]] = None,
+        inputs: Optional[Union[str, Dict, Any, Any]] = None,
+        wait: Optional[bool] = None,
+        logs: Optional[str] = None,
+        job_name: Optional[str] = None,
+        experiment_config: Optional[Dict[str, str]] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
         self.model_id = model_id
         self.model_version = model_version
-        self.instance_type = instance_type
-        self.instance_count = instance_count
         self.region = region
-        self.kwargs = kwargs.copy() if kwargs is not None else {}
+        self.inputs = inputs
+        self.wait = wait
+        self.logs = logs
+        self.job_name = job_name
+        self.experiment_config = experiment_config
 
 
 class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
@@ -712,7 +892,32 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         "entry_point",
         "env",
         "predictor_cls",
-        "kwargs",
+        "serializer",
+        "deserializer",
+        "accelerator_type",
+        "endpoint_name",
+        "tags",
+        "kms_key",
+        "wait",
+        "data_capture_config",
+        "async_inference_config",
+        "serverless_inference_config",
+        "volume_size",
+        "model_data_download_timeout",
+        "container_startup_health_check_timeout",
+        "inference_recommendation_id",
+        "explainer_config",
+        "role",
+        "name",
+        "vpc_config",
+        "sagemaker_session",
+        "enable_network_isolation",
+        "model_kms_key",
+        "image_config",
+        "code_location",
+        "container_log_level",
+        "dependencies",
+        "git_config",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {"region"}
@@ -721,15 +926,40 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         self,
         model_id: str,
         model_version: Optional[str] = None,
-        instance_type: Optional[str] = None,
-        initial_instance_count: Optional[int] = None,
         region: Optional[str] = None,
-        image_uri: Optional[str] = None,
+        initial_instance_count: Optional[int] = None,
+        instance_type: Optional[str] = None,
+        serializer: Optional[Any] = None,
+        deserializer: Optional[Any] = None,
+        accelerator_type: Optional[str] = None,
+        endpoint_name: Optional[str] = None,
+        tags: List[Dict[str, str]] = None,
+        kms_key: Optional[str] = None,
+        wait: Optional[bool] = None,
+        data_capture_config: Optional[Any] = None,
+        async_inference_config: Optional[Any] = None,
+        serverless_inference_config: Optional[Any] = None,
+        volume_size: Optional[int] = None,
+        model_data_download_timeout: Optional[int] = None,
+        container_startup_health_check_timeout: Optional[int] = None,
+        inference_recommendation_id: Optional[str] = None,
+        explainer_config: Optional[Any] = None,
+        image_uri: Optional[Union[str, Any]] = None,
+        role: Optional[str] = None,
+        predictor_cls: Optional[callable] = None,
+        env: Optional[Dict[str, Union[str, Any]]] = None,
+        name: Optional[str] = None,
+        vpc_config: Optional[Dict[str, List[Union[str, Any]]]] = None,
+        sagemaker_session: Optional[Any] = None,
+        enable_network_isolation: Union[bool, Any] = None,
+        model_kms_key: Optional[str] = None,
+        image_config: Optional[Dict[str, Union[str, Any]]] = None,
         source_dir: Optional[str] = None,
+        code_location: Optional[str] = None,
         entry_point: Optional[str] = None,
-        env: Optional[dict] = None,
-        kwargs: Optional[dict] = None,
-        predictor_cls: Optional[Any] = None,
+        container_log_level: Optional[Union[int, Any]] = None,
+        dependencies: Optional[List[str]] = None,
+        git_config: Optional[Dict[str, str]] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -743,4 +973,29 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         self.entry_point = entry_point
         self.env = env
         self.predictor_cls = predictor_cls
-        self.kwargs = kwargs.copy() if kwargs is not None else {}
+        self.serializer = serializer
+        self.deserializer = deserializer
+        self.accelerator_type = accelerator_type
+        self.endpoint_name = endpoint_name
+        self.tags = tags
+        self.kms_key = kms_key
+        self.wait = wait
+        self.data_capture_config = data_capture_config
+        self.async_inference_config = async_inference_config
+        self.serverless_inference_config = serverless_inference_config
+        self.volume_size = volume_size
+        self.model_data_download_timeout = model_data_download_timeout
+        self.container_startup_health_check_timeout = container_startup_health_check_timeout
+        self.inference_recommendation_id = inference_recommendation_id
+        self.explainer_config = explainer_config
+        self.role = role
+        self.name = name
+        self.vpc_config = vpc_config
+        self.sagemaker_session = sagemaker_session
+        self.enable_network_isolation = enable_network_isolation
+        self.model_kms_key = model_kms_key
+        self.image_config = image_config
+        self.code_location = code_location
+        self.container_log_level = container_log_level
+        self.dependencies = dependencies
+        self.git_config = git_config

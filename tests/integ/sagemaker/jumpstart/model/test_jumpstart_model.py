@@ -26,7 +26,7 @@ from tests.integ.sagemaker.jumpstart.utils import (
 )
 
 
-def test_jumpstart_model(setup):
+def test_non_prepacked_jumpstart_model(setup):
 
     model_id = "catboost-classification-model"
 
@@ -44,5 +44,24 @@ def test_jumpstart_model(setup):
     ground_truth_label, features = get_tabular_data(InferenceTabularDataname.MULTICLASS)
 
     response = predictor.predict(features)
+
+    assert response is not None
+
+
+def test_prepacked_jumpstart_model(setup):
+
+    model_id = "huggingface-txt2img-conflictx-complex-lineart"
+
+    model = JumpStartModel(
+        model_id=model_id,
+        role=get_sm_session().get_caller_identity_arn(),
+        sagemaker_session=get_sm_session(),
+    )
+
+    predictor = model.deploy(
+        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+    )
+
+    response = predictor.predict({"prompt": "hello world!"})
 
     assert response is not None

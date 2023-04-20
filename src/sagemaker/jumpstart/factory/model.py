@@ -14,8 +14,12 @@
 from __future__ import absolute_import
 
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Union
 from sagemaker import environment_variables, image_uris, instance_types, model_uris, script_uris
+from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
+from sagemaker.base_deserializers import BaseDeserializer
+from sagemaker.base_serializers import BaseSerializer
+from sagemaker.explainer.explainer_config import ExplainerConfig
 from sagemaker.jumpstart.artifacts import _model_supports_prepacked_inference, _retrieve_kwargs
 from sagemaker.jumpstart.constants import (
     INFERENCE_ENTRY_POINT_SCRIPT_NAME,
@@ -25,14 +29,25 @@ from sagemaker.jumpstart.enums import EnvVariableUseCase, JumpStartScriptScope, 
 from sagemaker.jumpstart.predictor import JumpStartPredictor
 from sagemaker.jumpstart.types import JumpStartModelDeployKwargs, JumpStartModelInitKwargs
 from sagemaker.jumpstart.utils import update_dict_if_key_not_present
+from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
 
-from sagemaker.predictor import Predictor
+from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
+from sagemaker.session import Session, get_execution_role
+from sagemaker.workflow.entities import PipelineVariable
 
 
 def _add_region_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
     """Sets region kwargs based on default or override, returns full kwargs."""
 
     kwargs.region = kwargs.region or JUMPSTART_DEFAULT_REGION_NAME
+
+    return kwargs
+
+
+def _add_role_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
+    """Sets role based on default or override, returns full kwargs."""
+
+    kwargs.role = kwargs.role or get_execution_role()
 
     return kwargs
 
@@ -171,14 +186,8 @@ def _add_extra_model_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelI
     )
 
     for key, value in model_kwargs_to_add.items():
-        if hasattr(kwargs, key) and getattr(kwargs, key) is None:
+        if getattr(kwargs, key) is None:
             setattr(kwargs, key, value)
-        else:
-            update_dict_if_key_not_present(
-                kwargs.kwargs,
-                key,
-                value,
-            )
 
     return kwargs
 
@@ -203,14 +212,8 @@ def _add_deploy_extra_kwargs(kwargs: JumpStartModelInitKwargs) -> Dict[str, Any]
     )
 
     for key, value in deploy_kwargs_to_add.items():
-        if hasattr(kwargs, key) and getattr(kwargs, key) is None:
+        if getattr(kwargs, key) is None:
             setattr(kwargs, key, value)
-        else:
-            update_dict_if_key_not_present(
-                kwargs.kwargs,
-                key,
-                value,
-            )
 
     return kwargs
 
@@ -221,17 +224,45 @@ def get_deploy_kwargs(
     region: Optional[str] = None,
     initial_instance_count: Optional[int] = None,
     instance_type: Optional[str] = None,
-    kwargs: Optional[Dict[str, Any]] = None,
+    serializer: Optional[BaseSerializer] = None,
+    deserializer: Optional[BaseDeserializer] = None,
+    accelerator_type: Optional[str] = None,
+    endpoint_name: Optional[str] = None,
+    tags: List[Dict[str, str]] = None,
+    kms_key: Optional[str] = None,
+    wait: Optional[bool] = None,
+    data_capture_config: Optional[DataCaptureConfig] = None,
+    async_inference_config: Optional[AsyncInferenceConfig] = None,
+    serverless_inference_config: Optional[ServerlessInferenceConfig] = None,
+    volume_size: Optional[int] = None,
+    model_data_download_timeout: Optional[int] = None,
+    container_startup_health_check_timeout: Optional[int] = None,
+    inference_recommendation_id: Optional[str] = None,
+    explainer_config: Optional[ExplainerConfig] = None,
 ) -> JumpStartModelDeployKwargs:
     """Returns kwargs required to call `deploy` on `sagemaker.estimator.Model` object."""
 
     deploy_kwargs: JumpStartModelDeployKwargs = JumpStartModelDeployKwargs(
-        initial_instance_count=initial_instance_count,
-        instance_type=instance_type,
         model_id=model_id,
         model_version=model_version,
         region=region,
-        kwargs=kwargs,
+        initial_instance_count=initial_instance_count,
+        instance_type=instance_type,
+        serializer=serializer,
+        deserializer=deserializer,
+        accelerator_type=accelerator_type,
+        endpoint_name=endpoint_name,
+        tags=tags,
+        kms_key=kms_key,
+        wait=wait,
+        data_capture_config=data_capture_config,
+        async_inference_config=async_inference_config,
+        serverless_inference_config=serverless_inference_config,
+        volume_size=volume_size,
+        model_data_download_timeout=model_data_download_timeout,
+        container_startup_health_check_timeout=container_startup_health_check_timeout,
+        inference_recommendation_id=inference_recommendation_id,
+        explainer_config=explainer_config,
     )
 
     deploy_kwargs = _add_model_version_to_kwargs(kwargs=deploy_kwargs)
@@ -253,13 +284,23 @@ def get_init_kwargs(
     model_version: Optional[str] = None,
     instance_type: Optional[str] = None,
     region: Optional[str] = None,
-    image_uri: Optional[str] = None,
-    model_data: Optional[str] = None,
+    image_uri: Optional[Union[str, PipelineVariable]] = None,
+    model_data: Optional[Union[str, PipelineVariable]] = None,
+    role: Optional[str] = None,
+    predictor_cls: Optional[callable] = None,
+    env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+    name: Optional[str] = None,
+    vpc_config: Optional[Dict[str, List[Union[str, PipelineVariable]]]] = None,
+    sagemaker_session: Optional[Session] = None,
+    enable_network_isolation: Union[bool, PipelineVariable] = None,
+    model_kms_key: Optional[str] = None,
+    image_config: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
     source_dir: Optional[str] = None,
+    code_location: Optional[str] = None,
     entry_point: Optional[str] = None,
-    env: Optional[Dict[str, str]] = None,
-    predictor_cls: Optional[Predictor] = None,
-    kwargs: Optional[Dict[str, Any]] = None,
+    container_log_level: Optional[Union[int, PipelineVariable]] = None,
+    dependencies: Optional[List[str]] = None,
+    git_config: Optional[Dict[str, str]] = None,
 ) -> JumpStartModelInitKwargs:
     """Returns kwargs required to instantiate `sagemaker.estimator.Model` object."""
 
@@ -274,7 +315,17 @@ def get_init_kwargs(
         entry_point=entry_point,
         env=env,
         predictor_cls=predictor_cls,
-        kwargs=kwargs,
+        role=role,
+        name=name,
+        vpc_config=vpc_config,
+        sagemaker_session=sagemaker_session,
+        enable_network_isolation=enable_network_isolation,
+        model_kms_key=model_kms_key,
+        image_config=image_config,
+        code_location=code_location,
+        container_log_level=container_log_level,
+        dependencies=dependencies,
+        git_config=git_config,
     )
 
     model_init_kwargs = _add_model_version_to_kwargs(kwargs=model_init_kwargs)
@@ -295,5 +346,6 @@ def get_init_kwargs(
     model_init_kwargs = _add_env_to_kwargs(kwargs=model_init_kwargs)
     model_init_kwargs = _add_predictor_cls_to_kwargs(kwargs=model_init_kwargs)
     model_init_kwargs = _add_extra_model_kwargs(kwargs=model_init_kwargs)
+    model_init_kwargs = _add_role_to_kwargs(kwargs=model_init_kwargs)
 
     return model_init_kwargs

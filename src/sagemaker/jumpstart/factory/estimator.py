@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional, Union
 from sagemaker import (
     hyperparameters as hyperparameters_utils,
     image_uris,
@@ -23,6 +23,15 @@ from sagemaker import (
     model_uris,
     script_uris,
 )
+from sagemaker import session
+from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
+from sagemaker.base_deserializers import BaseDeserializer
+from sagemaker.base_serializers import BaseSerializer
+from sagemaker.debugger.debugger import DebuggerHookConfig, RuleBase, TensorBoardOutputConfig
+from sagemaker.debugger.profiler_config import ProfilerConfig
+from sagemaker.explainer.explainer_config import ExplainerConfig
+from sagemaker.inputs import FileSystemInput, TrainingInput
+from sagemaker.instance_group import InstanceGroup
 from sagemaker.jumpstart.artifacts import _retrieve_kwargs
 from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_REGION_NAME,
@@ -35,40 +44,113 @@ from sagemaker.jumpstart.types import (
     JumpStartEstimatorFitKwargs,
     JumpStartEstimatorInitKwargs,
     JumpStartKwargs,
+    JumpStartModelDeployKwargs,
+    JumpStartModelInitKwargs,
 )
 from sagemaker.jumpstart.utils import update_dict_if_key_not_present
-from sagemaker.predictor import Predictor
+from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
+from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
+from sagemaker.session import get_execution_role
+from sagemaker.workflow.entities import PipelineVariable
 
 
 def get_init_kwargs(
     model_id: str,
     model_version: Optional[str] = None,
-    instance_type: Optional[str] = None,
-    instance_count: Optional[int] = None,
     region: Optional[str] = None,
-    image_uri: Optional[str] = None,
+    image_uri: Optional[Union[str, PipelineVariable]] = None,
+    role: Optional[str] = None,
+    instance_count: Optional[Union[int, PipelineVariable]] = None,
+    instance_type: Optional[Union[str, PipelineVariable]] = None,
+    keep_alive_period_in_seconds: Optional[Union[int, PipelineVariable]] = None,
+    volume_size: Optional[Union[int, PipelineVariable]] = None,
+    volume_kms_key: Optional[Union[str, PipelineVariable]] = None,
+    max_run: Optional[Union[int, PipelineVariable]] = None,
+    input_mode: Optional[Union[str, PipelineVariable]] = None,
+    output_path: Optional[Union[str, PipelineVariable]] = None,
+    output_kms_key: Optional[Union[str, PipelineVariable]] = None,
+    base_job_name: Optional[str] = None,
+    sagemaker_session: Optional[session.Session] = None,
+    hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+    tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+    subnets: Optional[List[Union[str, PipelineVariable]]] = None,
+    security_group_ids: Optional[List[Union[str, PipelineVariable]]] = None,
     model_uri: Optional[str] = None,
-    source_dir: Optional[str] = None,
-    entry_point: Optional[str] = None,
-    hyperparameters: Optional[dict] = None,
-    metric_definitions: Optional[List[dict]] = None,
-    kwargs: Optional[dict] = None,
+    model_channel_name: Optional[Union[str, PipelineVariable]] = None,
+    metric_definitions: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
+    encrypt_inter_container_traffic: Union[bool, PipelineVariable] = None,
+    use_spot_instances: Optional[Union[bool, PipelineVariable]] = None,
+    max_wait: Optional[Union[int, PipelineVariable]] = None,
+    checkpoint_s3_uri: Optional[Union[str, PipelineVariable]] = None,
+    checkpoint_local_path: Optional[Union[str, PipelineVariable]] = None,
+    enable_network_isolation: Union[bool, PipelineVariable] = None,
+    rules: Optional[List[RuleBase]] = None,
+    debugger_hook_config: Optional[Union[DebuggerHookConfig, bool]] = None,
+    tensorboard_output_config: Optional[TensorBoardOutputConfig] = None,
+    enable_sagemaker_metrics: Optional[Union[bool, PipelineVariable]] = None,
+    profiler_config: Optional[ProfilerConfig] = None,
+    disable_profiler: Optional[bool] = None,
+    environment: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+    max_retry_attempts: Optional[Union[int, PipelineVariable]] = None,
+    source_dir: Optional[Union[str, PipelineVariable]] = None,
+    git_config: Optional[Dict[str, str]] = None,
+    container_log_level: Optional[Union[int, PipelineVariable]] = None,
+    code_location: Optional[str] = None,
+    entry_point: Optional[Union[str, PipelineVariable]] = None,
+    dependencies: Optional[List[str]] = None,
+    instance_groups: Optional[List[InstanceGroup]] = None,
+    training_repository_access_mode: Optional[Union[str, PipelineVariable]] = None,
+    training_repository_credentials_provider_arn: Optional[Union[str, PipelineVariable]] = None,
 ) -> JumpStartEstimatorInitKwargs:
     """Returns kwargs required to instantiate `sagemaker.estimator.Estimator` object."""
 
     estimator_init_kwargs: JumpStartEstimatorInitKwargs = JumpStartEstimatorInitKwargs(
         model_id=model_id,
         model_version=model_version,
-        instance_type=instance_type,
+        role=role,
         region=region,
-        image_uri=image_uri,
-        model_uri=model_uri,
-        source_dir=source_dir,
-        entry_point=entry_point,
         instance_count=instance_count,
-        hyperparameters=hyperparameters,
+        instance_type=instance_type,
+        keep_alive_period_in_seconds=keep_alive_period_in_seconds,
+        volume_size=volume_size,
+        volume_kms_key=volume_kms_key,
+        max_run=max_run,
+        input_mode=input_mode,
+        output_path=output_path,
+        output_kms_key=output_kms_key,
+        base_job_name=base_job_name,
+        sagemaker_session=sagemaker_session,
+        tags=tags,
+        subnets=subnets,
+        security_group_ids=security_group_ids,
+        model_uri=model_uri,
+        model_channel_name=model_channel_name,
         metric_definitions=metric_definitions,
-        kwargs=kwargs,
+        encrypt_inter_container_traffic=encrypt_inter_container_traffic,
+        use_spot_instances=use_spot_instances,
+        max_wait=max_wait,
+        checkpoint_s3_uri=checkpoint_s3_uri,
+        checkpoint_local_path=checkpoint_local_path,
+        rules=rules,
+        debugger_hook_config=debugger_hook_config,
+        tensorboard_output_config=tensorboard_output_config,
+        enable_sagemaker_metrics=enable_sagemaker_metrics,
+        enable_network_isolation=enable_network_isolation,
+        profiler_config=profiler_config,
+        disable_profiler=disable_profiler,
+        environment=environment,
+        max_retry_attempts=max_retry_attempts,
+        source_dir=source_dir,
+        git_config=git_config,
+        hyperparameters=hyperparameters,
+        container_log_level=container_log_level,
+        code_location=code_location,
+        entry_point=entry_point,
+        dependencies=dependencies,
+        instance_groups=instance_groups,
+        training_repository_access_mode=training_repository_access_mode,
+        training_repository_credentials_provider_arn=training_repository_credentials_provider_arn,
+        image_uri=image_uri,
     )
 
     estimator_init_kwargs = _add_model_version_to_kwargs(estimator_init_kwargs)
@@ -81,32 +163,36 @@ def get_init_kwargs(
     estimator_init_kwargs = _add_hyperparameters_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_metric_definitions_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_estimator_extra_kwargs(estimator_init_kwargs)
+    estimator_init_kwargs = _add_role_to_kwargs(estimator_init_kwargs)
 
     return estimator_init_kwargs
 
 
 def get_fit_kwargs(
     model_id: str,
-    model_version: Optional[str],
-    instance_type: Optional[str],
-    instance_count: Optional[int],
-    region: Optional[str],
-    kwargs: Any,
+    model_version: Optional[str] = None,
+    region: Optional[str] = None,
+    inputs: Optional[Union[str, Dict, TrainingInput, FileSystemInput]] = None,
+    wait: Optional[bool] = None,
+    logs: Optional[str] = None,
+    job_name: Optional[str] = None,
+    experiment_config: Optional[Dict[str, str]] = None,
 ) -> JumpStartEstimatorFitKwargs:
     """Returns kwargs required call `fit` on `sagemaker.estimator.Estimator` object."""
 
     estimator_fit_kwargs: JumpStartEstimatorFitKwargs = JumpStartEstimatorFitKwargs(
         model_id=model_id,
         model_version=model_version,
-        instance_type=instance_type,
         region=region,
-        instance_count=instance_count,
-        kwargs=kwargs,
+        inputs=inputs,
+        wait=wait,
+        logs=logs,
+        job_name=job_name,
+        experiment_config=experiment_config,
     )
 
     estimator_fit_kwargs = _add_model_version_to_kwargs(estimator_fit_kwargs)
     estimator_fit_kwargs = _add_region_to_kwargs(estimator_fit_kwargs)
-    estimator_fit_kwargs = _add_instance_type_and_count_to_kwargs(estimator_fit_kwargs)
     estimator_fit_kwargs = _add_fit_extra_kwargs(estimator_fit_kwargs)
 
     return estimator_fit_kwargs
@@ -114,56 +200,132 @@ def get_fit_kwargs(
 
 def get_deploy_kwargs(
     model_id: str,
-    model_version: Optional[str],
+    model_version: Optional[str] = None,
     region: Optional[str] = None,
-    image_uri: Optional[str] = None,
-    source_dir: Optional[str] = None,
-    entry_point: Optional[str] = None,
-    env: Optional[Dict[str, str]] = None,
-    predictor_cls: Optional[Predictor] = None,
     initial_instance_count: Optional[int] = None,
     instance_type: Optional[str] = None,
-    kwargs: Optional[Dict[str, Any]] = None,
+    serializer: Optional[BaseSerializer] = None,
+    deserializer: Optional[BaseDeserializer] = None,
+    accelerator_type: Optional[str] = None,
+    endpoint_name: Optional[str] = None,
+    tags: List[Dict[str, str]] = None,
+    kms_key: Optional[str] = None,
+    wait: Optional[bool] = None,
+    data_capture_config: Optional[DataCaptureConfig] = None,
+    async_inference_config: Optional[AsyncInferenceConfig] = None,
+    serverless_inference_config: Optional[ServerlessInferenceConfig] = None,
+    volume_size: Optional[int] = None,
+    model_data_download_timeout: Optional[int] = None,
+    container_startup_health_check_timeout: Optional[int] = None,
+    inference_recommendation_id: Optional[str] = None,
+    explainer_config: Optional[ExplainerConfig] = None,
+    image_uri: Optional[Union[str, PipelineVariable]] = None,
+    model_data: Optional[Union[str, PipelineVariable]] = None,
+    role: Optional[str] = None,
+    predictor_cls: Optional[callable] = None,
+    env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+    name: Optional[str] = None,
+    vpc_config: Optional[Dict[str, List[Union[str, PipelineVariable]]]] = None,
+    sagemaker_session: Optional[session.Session] = None,
+    enable_network_isolation: Union[bool, PipelineVariable] = None,
+    model_kms_key: Optional[str] = None,
+    image_config: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+    source_dir: Optional[str] = None,
+    code_location: Optional[str] = None,
+    entry_point: Optional[str] = None,
+    container_log_level: Optional[Union[int, PipelineVariable]] = None,
+    dependencies: Optional[List[str]] = None,
+    git_config: Optional[Dict[str, str]] = None,
 ) -> JumpStartEstimatorDeployKwargs:
     """Returns kwargs required to call `deploy` on `sagemaker.estimator.Estimator` object."""
 
-    model_deploy_kwargs = model.get_deploy_kwargs(
+    model_deploy_kwargs: JumpStartModelDeployKwargs = model.get_deploy_kwargs(
         model_id=model_id,
         model_version=model_version,
         region=region,
         initial_instance_count=initial_instance_count,
         instance_type=instance_type,
-        kwargs=kwargs,
+        serializer=serializer,
+        deserializer=deserializer,
+        accelerator_type=accelerator_type,
+        endpoint_name=endpoint_name,
+        tags=tags,
+        kms_key=kms_key,
+        wait=wait,
+        data_capture_config=data_capture_config,
+        async_inference_config=async_inference_config,
+        serverless_inference_config=serverless_inference_config,
+        volume_size=volume_size,
+        model_data_download_timeout=model_data_download_timeout,
+        container_startup_health_check_timeout=container_startup_health_check_timeout,
+        inference_recommendation_id=inference_recommendation_id,
+        explainer_config=explainer_config,
     )
 
-    model_init_kwargs = model.get_init_kwargs(
+    model_init_kwargs: JumpStartModelInitKwargs = model.get_init_kwargs(
         model_id=model_id,
+        model_from_estimator=True,
         model_version=model_version,
-        region=region,
         instance_type=instance_type,
+        region=region,
         image_uri=image_uri,
+        model_data=model_data,
         source_dir=source_dir,
         entry_point=entry_point,
         env=env,
         predictor_cls=predictor_cls,
-        model_from_estimator=True,
-        kwargs=kwargs,
+        role=role,
+        name=name,
+        vpc_config=vpc_config,
+        sagemaker_session=sagemaker_session,
+        enable_network_isolation=enable_network_isolation,
+        model_kms_key=model_kms_key,
+        image_config=image_config,
+        code_location=code_location,
+        container_log_level=container_log_level,
+        dependencies=dependencies,
+        git_config=git_config,
     )
 
-    all_extra_kwargs = {**model_deploy_kwargs.kwargs, **model_init_kwargs.kwargs}
-
     estimator_fit_kwargs: JumpStartEstimatorDeployKwargs = JumpStartEstimatorDeployKwargs(
-        kwargs=all_extra_kwargs,
-        model_id=model_id,
+        model_id=model_init_kwargs.model_id,
         model_version=model_init_kwargs.model_version,
-        region=model_init_kwargs.region,
-        initial_instance_count=model_deploy_kwargs.initial_instance_count,
         instance_type=model_init_kwargs.instance_type,
+        initial_instance_count=model_deploy_kwargs.initial_instance_count,
+        region=model_init_kwargs.region,
         image_uri=model_init_kwargs.image_uri,
         source_dir=model_init_kwargs.source_dir,
         entry_point=model_init_kwargs.entry_point,
         env=model_init_kwargs.env,
         predictor_cls=model_init_kwargs.predictor_cls,
+        serializer=model_deploy_kwargs.serializer,
+        deserializer=model_deploy_kwargs.deserializer,
+        accelerator_type=model_deploy_kwargs.accelerator_type,
+        endpoint_name=model_deploy_kwargs.endpoint_name,
+        tags=model_deploy_kwargs.tags,
+        kms_key=model_deploy_kwargs.kms_key,
+        wait=model_deploy_kwargs.wait,
+        data_capture_config=model_deploy_kwargs.data_capture_config,
+        async_inference_config=model_deploy_kwargs.async_inference_config,
+        serverless_inference_config=model_deploy_kwargs.serverless_inference_config,
+        volume_size=model_deploy_kwargs.volume_size,
+        model_data_download_timeout=model_deploy_kwargs.model_data_download_timeout,
+        container_startup_health_check_timeout=(
+            model_deploy_kwargs.container_startup_health_check_timeout
+        ),
+        inference_recommendation_id=model_deploy_kwargs.inference_recommendation_id,
+        explainer_config=model_deploy_kwargs.explainer_config,
+        role=model_init_kwargs.role,
+        name=model_init_kwargs.name,
+        vpc_config=model_init_kwargs.vpc_config,
+        sagemaker_session=model_init_kwargs.sagemaker_session,
+        enable_network_isolation=model_init_kwargs.enable_network_isolation,
+        model_kms_key=model_init_kwargs.model_kms_key,
+        image_config=model_init_kwargs.image_config,
+        code_location=model_init_kwargs.code_location,
+        container_log_level=model_init_kwargs.container_log_level,
+        dependencies=model_init_kwargs.dependencies,
+        git_config=model_init_kwargs.git_config,
     )
 
     return estimator_fit_kwargs
@@ -183,7 +345,17 @@ def _add_model_version_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
     return kwargs
 
 
-def _add_instance_type_and_count_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
+def _add_role_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartEstimatorInitKwargs:
+    """Sets role based on default or override, returns full kwargs."""
+
+    kwargs.role = kwargs.role or get_execution_role()
+
+    return kwargs
+
+
+def _add_instance_type_and_count_to_kwargs(
+    kwargs: JumpStartEstimatorInitKwargs,
+) -> JumpStartEstimatorInitKwargs:
     """Sets instance type and count in kwargs based on default or override, returns full kwargs."""
 
     kwargs.instance_type = kwargs.instance_type or instance_types.retrieve_default(
@@ -198,7 +370,7 @@ def _add_instance_type_and_count_to_kwargs(kwargs: JumpStartKwargs) -> JumpStart
     return kwargs
 
 
-def _add_image_uri_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
+def _add_image_uri_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartEstimatorInitKwargs:
     """Sets image uri in kwargs based on default or override, returns full kwargs."""
 
     kwargs.image_uri = kwargs.image_uri or image_uris.retrieve(
@@ -213,7 +385,7 @@ def _add_image_uri_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
     return kwargs
 
 
-def _add_model_uri_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
+def _add_model_uri_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartEstimatorInitKwargs:
     """Sets model uri in kwargs based on default or override, returns full kwargs."""
 
     kwargs.model_uri = kwargs.model_uri or model_uris.retrieve(
@@ -225,7 +397,7 @@ def _add_model_uri_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
     return kwargs
 
 
-def _add_source_dir_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
+def _add_source_dir_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartEstimatorInitKwargs:
     """Sets source dir in kwargs based on default or override, returns full kwargs."""
 
     kwargs.source_dir = kwargs.source_dir or script_uris.retrieve(
@@ -237,7 +409,9 @@ def _add_source_dir_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
     return kwargs
 
 
-def _add_entry_point_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
+def _add_entry_point_to_kwargs(
+    kwargs: JumpStartEstimatorInitKwargs,
+) -> JumpStartEstimatorInitKwargs:
     """Sets entry point in kwargs based on default or override, returns full kwargs."""
 
     kwargs.entry_point = kwargs.entry_point or TRAINING_ENTRY_POINT_SCRIPT_NAME
@@ -245,7 +419,9 @@ def _add_entry_point_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
     return kwargs
 
 
-def _add_hyperparameters_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
+def _add_hyperparameters_to_kwargs(
+    kwargs: JumpStartEstimatorInitKwargs,
+) -> JumpStartEstimatorInitKwargs:
     """Sets hyperparameters in kwargs based on default or override, returns full kwargs."""
 
     kwargs.hyperparameters = (
@@ -269,7 +445,9 @@ def _add_hyperparameters_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
     return kwargs
 
 
-def _add_metric_definitions_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
+def _add_metric_definitions_to_kwargs(
+    kwargs: JumpStartEstimatorInitKwargs,
+) -> JumpStartEstimatorInitKwargs:
     """Sets metric definitions in kwargs based on default or override, returns full kwargs."""
 
     kwargs.metric_definitions = (
@@ -292,7 +470,9 @@ def _add_metric_definitions_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwarg
     return kwargs
 
 
-def _add_estimator_extra_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
+def _add_estimator_extra_kwargs(
+    kwargs: JumpStartEstimatorInitKwargs,
+) -> JumpStartEstimatorInitKwargs:
     """Sets extra kwargs based on default or override, returns full kwargs."""
 
     estimator_kwargs_to_add = _retrieve_kwargs(
@@ -303,19 +483,13 @@ def _add_estimator_extra_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
     )
 
     for key, value in estimator_kwargs_to_add.items():
-        if hasattr(kwargs, key) and getattr(kwargs, key) is None:
+        if getattr(kwargs, key) is None:
             setattr(kwargs, key, value)
-        else:
-            update_dict_if_key_not_present(
-                kwargs.kwargs,
-                key,
-                value,
-            )
 
     return kwargs
 
 
-def _add_fit_extra_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
+def _add_fit_extra_kwargs(kwargs: JumpStartEstimatorFitKwargs) -> JumpStartEstimatorFitKwargs:
     """Sets extra kwargs based on default or override, returns full kwargs."""
 
     fit_kwargs_to_add = _retrieve_kwargs(
@@ -326,13 +500,7 @@ def _add_fit_extra_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
     )
 
     for key, value in fit_kwargs_to_add.items():
-        if hasattr(kwargs, key) and getattr(kwargs, key) is None:
+        if getattr(kwargs, key) is None:
             setattr(kwargs, key, value)
-        else:
-            update_dict_if_key_not_present(
-                kwargs.kwargs,
-                key,
-                value,
-            )
 
     return kwargs

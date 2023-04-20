@@ -14,10 +14,18 @@
 
 from __future__ import absolute_import
 
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Union
+from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
+from sagemaker.base_deserializers import BaseDeserializer
+from sagemaker.base_serializers import BaseSerializer
+from sagemaker.explainer.explainer_config import ExplainerConfig
 from sagemaker.jumpstart.factory.model import get_deploy_kwargs, get_init_kwargs
 from sagemaker.model import Model
-from sagemaker.predictor import Predictor, PredictorBase
+from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
+from sagemaker.predictor import PredictorBase
+from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
+from sagemaker.session import Session
+from sagemaker.workflow.entities import PipelineVariable
 
 
 class JumpStartModel(Model):
@@ -30,15 +38,25 @@ class JumpStartModel(Model):
         self,
         model_id: str,
         model_version: Optional[str] = None,
-        instance_type: Optional[str] = None,
         region: Optional[str] = None,
-        image_uri: Optional[str] = None,
-        model_data: Optional[str] = None,
+        instance_type: Optional[str] = None,
+        image_uri: Optional[Union[str, PipelineVariable]] = None,
+        model_data: Optional[Union[str, PipelineVariable]] = None,
+        role: Optional[str] = None,
+        predictor_cls: Optional[callable] = None,
+        env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
+        name: Optional[str] = None,
+        vpc_config: Optional[Dict[str, List[Union[str, PipelineVariable]]]] = None,
+        sagemaker_session: Optional[Session] = None,
+        enable_network_isolation: Union[bool, PipelineVariable] = None,
+        model_kms_key: Optional[str] = None,
+        image_config: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         source_dir: Optional[str] = None,
+        code_location: Optional[str] = None,
         entry_point: Optional[str] = None,
-        env: Optional[Dict[str, str]] = None,
-        predictor_cls: Optional[Predictor] = None,
-        **kwargs,
+        container_log_level: Optional[Union[int, PipelineVariable]] = None,
+        dependencies: Optional[List[str]] = None,
+        git_config: Optional[Dict[str, str]] = None,
     ):
 
         model_init_kwargs = get_init_kwargs(
@@ -53,7 +71,17 @@ class JumpStartModel(Model):
             entry_point=entry_point,
             env=env,
             predictor_cls=predictor_cls,
-            kwargs=kwargs,
+            role=role,
+            name=name,
+            vpc_config=vpc_config,
+            sagemaker_session=sagemaker_session,
+            enable_network_isolation=enable_network_isolation,
+            model_kms_key=model_kms_key,
+            image_config=image_config,
+            code_location=code_location,
+            container_log_level=container_log_level,
+            dependencies=dependencies,
+            git_config=git_config,
         )
 
         self.model_id = model_init_kwargs.model_id
@@ -67,15 +95,44 @@ class JumpStartModel(Model):
         self,
         initial_instance_count: Optional[int] = None,
         instance_type: Optional[str] = None,
-        **kwargs,
+        serializer: Optional[BaseSerializer] = None,
+        deserializer: Optional[BaseDeserializer] = None,
+        accelerator_type: Optional[str] = None,
+        endpoint_name: Optional[str] = None,
+        tags: List[Dict[str, str]] = None,
+        kms_key: Optional[str] = None,
+        wait: Optional[bool] = None,
+        data_capture_config: Optional[DataCaptureConfig] = None,
+        async_inference_config: Optional[AsyncInferenceConfig] = None,
+        serverless_inference_config: Optional[ServerlessInferenceConfig] = None,
+        volume_size: Optional[int] = None,
+        model_data_download_timeout: Optional[int] = None,
+        container_startup_health_check_timeout: Optional[int] = None,
+        inference_recommendation_id: Optional[str] = None,
+        explainer_config: Optional[ExplainerConfig] = None,
     ) -> PredictorBase:
+        """Creates endpoint by calling base Model class `deploy` method."""
 
         deploy_kwargs = get_deploy_kwargs(
             model_id=self.model_id,
             model_version=self.model_version,
             region=self.region,
             initial_instance_count=initial_instance_count,
-            instance_type=instance_type or self.instance_type,
-            kwargs=kwargs,
+            instance_type=instance_type,
+            serializer=serializer,
+            deserializer=deserializer,
+            accelerator_type=accelerator_type,
+            endpoint_name=endpoint_name,
+            tags=tags,
+            kms_key=kms_key,
+            wait=wait,
+            data_capture_config=data_capture_config,
+            async_inference_config=async_inference_config,
+            serverless_inference_config=serverless_inference_config,
+            volume_size=volume_size,
+            model_data_download_timeout=model_data_download_timeout,
+            container_startup_health_check_timeout=container_startup_health_check_timeout,
+            inference_recommendation_id=inference_recommendation_id,
+            explainer_config=explainer_config,
         )
         return super(JumpStartModel, self).deploy(**deploy_kwargs.to_kwargs_dict())
