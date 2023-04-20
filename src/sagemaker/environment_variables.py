@@ -50,7 +50,7 @@ def retrieve_default(
             (Default: False).
         use_case (EnvVariableUseCase): The use case for the environment variables. The
             `Model` class of the SageMaker Python SDK inserts environment variables
-            that would be requiredwhen making the low-level AWS API call.
+            that would be required when making the low-level AWS API call.
             (Default: EnvVariableUseCase.AWS_SDK).
     Returns:
         dict: The variables to use for the model.

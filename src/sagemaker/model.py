@@ -38,6 +38,7 @@ from sagemaker.config import (
     MODEL_EXECUTION_ROLE_ARN_PATH,
     ENDPOINT_CONFIG_ASYNC_KMS_KEY_ID_PATH,
 )
+from sagemaker.jumpstart.predictor import JumpStartPredictor
 from sagemaker.session import Session
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.deprecations import removed_kwargs
@@ -1313,18 +1314,16 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         )
 
         if self.predictor_cls:
-            predictor_cls_kwargs = {
-                "endpoint_name": self.endpoint_name,
-                "sagemaker_session": self.sagemaker_session,
-            }
-
-            if self.model_id is not None:
-                predictor_cls_kwargs.update({"model_id": self.model_id})
-
-            if self.model_version is not None:
-                predictor_cls_kwargs.update({"model_version": self.model_version})
-
-            predictor = self.predictor_cls(**predictor_cls_kwargs)
+            if self.predictor_cls == JumpStartPredictor:
+                predictor_cls_kwargs = {
+                    "endpoint_name": self.endpoint_name,
+                    "sagemaker_session": self.sagemaker_session,
+                    "model_id": self.model_id,
+                    "model_version": self.model_version,
+                }
+                predictor = self.predictor_cls(**predictor_cls_kwargs)
+            else:
+                predictor = self.predictor_cls(self.endpoint_name, self.sagemaker_session)
             if serializer:
                 predictor.serializer = serializer
             if deserializer:

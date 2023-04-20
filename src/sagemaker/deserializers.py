@@ -14,9 +14,13 @@
 from __future__ import absolute_import
 
 
-from typing import Any, List, Optional
+from typing import List, Optional
 
+# base_deserializers was renamed from deserializers, so this import
+# is for backwards compatibility.
 from sagemaker.base_deserializers import *  # noqa: F403, F401 # pylint: disable=W0614,W0401
+
+from sagemaker.base_deserializers import BaseDeserializer
 
 from sagemaker.jumpstart import artifacts, utils as jumpstart_utils
 
@@ -27,7 +31,7 @@ def retrieve(
     model_version: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-) -> List[Any]:
+) -> List[BaseDeserializer]:
     """Retrieves the supported deserializers for the model matching the given arguments.
 
     Args:
@@ -71,7 +75,7 @@ def retrieve_default(
     model_version: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-) -> Any:
+) -> BaseDeserializer:
     """Retrieves the default deserializer for the model matching the given arguments.
 
     Args:

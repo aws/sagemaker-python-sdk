@@ -14,20 +14,14 @@
 from __future__ import absolute_import
 
 
-from copy import deepcopy
-from typing import Any, Optional
-from sagemaker import (
-    hyperparameters,
-    image_uris,
-    instance_types,
-    metric_definitions,
-    model_uris,
-    script_uris,
-)
-from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
-from sagemaker.jumpstart.enums import JumpStartScriptScope
-from sagemaker.jumpstart.utils import update_dict_if_key_not_present
-from sagemaker.model import Estimator
+from typing import Dict, List, Optional
+
+from sagemaker.estimator import Estimator
+
+from sagemaker.jumpstart.factory.estimator import get_deploy_kwargs, get_fit_kwargs, get_init_kwargs
+
+
+from sagemaker.predictor import Predictor
 
 
 class JumpStartEstimator(Estimator):
@@ -39,128 +33,78 @@ class JumpStartEstimator(Estimator):
     def __init__(
         self,
         model_id: str,
-        model_version: Optional[str] = "*",
-        region: Optional[str] = JUMPSTART_DEFAULT_REGION_NAME,
-        kwargs_for_base_estimator_class: dict = {},
+        model_version: Optional[str] = None,
+        instance_type: Optional[str] = None,
+        instance_count: Optional[int] = None,
+        region: Optional[str] = None,
+        image_uri: Optional[str] = None,
+        model_uri: Optional[str] = None,
+        source_dir: Optional[str] = None,
+        entry_point: Optional[str] = None,
+        hyperparameters: Optional[dict] = None,
+        metric_definitions: Optional[List[dict]] = None,
+        **kwargs,
     ):
-        self.model_id = model_id
-        self.model_version = model_version
-        self.kwargs_for_base_estimator_class = deepcopy(kwargs_for_base_estimator_class)
-
-        self.kwargs_for_base_estimator_class = update_dict_if_key_not_present(
-            self.kwargs_for_base_estimator_class,
-            "image_uri",
-            image_uris.retrieve(
-                region=None,
-                framework=None,
-                image_scope="training",
-                model_id=model_id,
-                model_version=model_version,
-                instance_type=self.instance_type,
-            ),
+        estimator_init_kwargs = get_init_kwargs(
+            model_id=model_id,
+            model_version=model_version,
+            instance_type=instance_type,
+            instance_count=instance_count,
+            region=region,
+            image_uri=image_uri,
+            model_uri=model_uri,
+            source_dir=source_dir,
+            entry_point=entry_point,
+            hyperparameters=hyperparameters,
+            metric_definitions=metric_definitions,
+            kwargs=kwargs,
         )
 
-        self.kwargs_for_base_estimator_class = update_dict_if_key_not_present(
-            self.kwargs_for_base_estimator_class,
-            "model_uri",
-            model_uris.retrieve(
-                script_scope=JumpStartScriptScope.TRAINING,
-                model_id=model_id,
-                model_version=model_version,
-            ),
-        )
+        self.model_id = estimator_init_kwargs.model_id
+        self.model_version = estimator_init_kwargs.model_version
+        self.instance_type = estimator_init_kwargs.instance_type
+        self.instance_count = estimator_init_kwargs.instance_count
+        self.region = estimator_init_kwargs.region
 
-        self.kwargs_for_base_estimator_class = update_dict_if_key_not_present(
-            self.kwargs_for_base_estimator_class,
-            "script_uri",
-            script_uris.retrieve(
-                script_scope=JumpStartScriptScope.TRAINING,
-                model_id=model_id,
-                model_version=model_version,
-            ),
-        )
-
-        default_hyperparameters = hyperparameters.retrieve_default(
-            region=region, model_id=model_id, model_version=model_version
-        )
-
-        curr_hyperparameters = self.kwargs_for_base_estimator_class.get("hyperparameters", {})
-        new_hyperparameters = deepcopy(curr_hyperparameters)
-
-        for key, value in default_hyperparameters:
-            new_hyperparameters = update_dict_if_key_not_present(
-                new_hyperparameters,
-                key,
-                value,
-            )
-
-        if new_hyperparameters == {}:
-            new_hyperparameters = None
-
-        self.kwargs_for_base_estimator_class["hyperparameters"] = new_hyperparameters
-
-        default_metric_definitions = metric_definitions.retrieve_default(
-            region=region, model_id=model_id, model_version=model_version
-        )
-
-        curr_metric_definitions = self.kwargs_for_base_estimator_class.get("metric_definitions", [])
-        new_metric_definitions = deepcopy(curr_metric_definitions)
-
-        for metric_definition in default_metric_definitions:
-            if metric_definition["Name"] not in [
-                definition["Name"] for definition in new_metric_definitions
-            ]:
-                new_metric_definitions.append(metric_definition)
-
-        if new_metric_definitions == []:
-            new_metric_definitions = None
-
-        self.kwargs_for_base_estimator_class["metric_definitions"] = new_metric_definitions
-
-        # estimator_kwargs_to_add = _retrieve_kwargs(model_id=model_id, model_version=model_version, region=region)
-        estimator_kwargs_to_add = {}
-
-        new_kwargs_for_base_estimator_class = deepcopy(self.kwargs_for_base_estimator_class)
-        for key, value in estimator_kwargs_to_add:
-            new_kwargs_for_base_estimator_class = update_dict_if_key_not_present(
-                new_kwargs_for_base_estimator_class,
-                key,
-                value,
-            )
-
-        self.kwargs_for_base_estimator_class = new_kwargs_for_base_estimator_class
-
-        self.kwargs_for_base_estimator_class["model_id"] = model_id
-        self.kwargs_for_base_estimator_class["model_version"] = model_version
-
-        # self.kwargs_for_base_estimator_class = update_dict_if_key_not_present(
-        #     self.kwargs_for_base_estimator_class,
-        #     "predictor_cls",
-        #     JumpStartPredictor,
-        # )
-
-        self.kwargs_for_base_estimator_class = update_dict_if_key_not_present(
-            self.kwargs_for_base_estimator_class, "instance_count", 1
-        )
-        self.kwargs_for_base_estimator_class = update_dict_if_key_not_present(
-            self.kwargs_for_base_estimator_class,
-            "instance_type",
-            instance_types.retrieve_default(
-                region=region, model_id=model_id, model_version=model_version
-            ),
-        )
-
-        super(Estimator, self).__init__(**self.kwargs_for_base_estimator_class)
-
-    @staticmethod
-    def _update_dict_if_key_not_present(
-        dict_to_update: dict, key_to_add: Any, value_to_add: Any
-    ) -> dict:
-        if key_to_add not in dict_to_update:
-            dict_to_update[key_to_add] = value_to_add
-
-        return dict_to_update
+        super(JumpStartEstimator, self).__init__(**estimator_init_kwargs.to_kwargs_dict())
 
     def fit(self, *largs, **kwargs) -> None:
 
-        return super(Estimator, self).fit(*largs, **kwargs)
+        estimator_fit_kwargs = get_fit_kwargs(
+            model_id=self.model_id,
+            model_version=self.model_version,
+            instance_type=self.instance_type,
+            instance_count=self.instance_count,
+            region=self.region,
+            kwargs=kwargs,
+        )
+
+        return super(JumpStartEstimator, self).fit(*largs, **estimator_fit_kwargs.to_kwargs_dict())
+
+    def deploy(
+        self,
+        image_uri: Optional[str] = None,
+        source_dir: Optional[str] = None,
+        entry_point: Optional[str] = None,
+        env: Optional[Dict[str, str]] = None,
+        predictor_cls: Optional[Predictor] = None,
+        initial_instance_count: Optional[int] = None,
+        instance_type: Optional[str] = None,
+        **kwargs,
+    ) -> None:
+
+        estimator_deploy_kwargs = get_deploy_kwargs(
+            model_id=self.model_id,
+            model_version=self.model_version,
+            instance_type=instance_type,
+            initial_instance_count=initial_instance_count,
+            region=self.region,
+            image_uri=image_uri,
+            source_dir=source_dir,
+            entry_point=entry_point,
+            env=env,
+            predictor_cls=predictor_cls,
+            kwargs=kwargs,
+        )
+
+        return super(JumpStartEstimator, self).deploy(**estimator_deploy_kwargs.to_kwargs_dict())

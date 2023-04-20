@@ -511,3 +511,236 @@ class JumpStartCachedS3ContentValue(JumpStartDataHolderType):
         """
         self.formatted_content = formatted_content
         self.md5_hash = md5_hash
+
+
+class JumpStartKwargs(JumpStartDataHolderType):
+    """Data class for JumpStart object kwargs."""
+
+    SERIALIZATION_EXCLUSION_SET = {}
+
+    def to_kwargs_dict(self):
+        """Serializes object to dictionary to be used for kwargs for method arguments."""
+        kwargs_dict = {}
+        for field in self.__slots__:
+            if field not in self.SERIALIZATION_EXCLUSION_SET:
+                if field != "kwargs":
+                    kwargs_dict[field] = getattr(self, field)
+                else:
+                    kwargs_dict.update(getattr(self, field))
+        return kwargs_dict
+
+
+class JumpStartModelInitKwargs(JumpStartKwargs):
+    """Data class for the inputs to `JumpStartModel.__init__` method."""
+
+    __slots__ = [
+        "model_id",
+        "model_version",
+        "instance_type",
+        "region",
+        "image_uri",
+        "model_data",
+        "source_dir",
+        "entry_point",
+        "env",
+        "predictor_cls",
+        "kwargs",
+    ]
+
+    SERIALIZATION_EXCLUSION_SET = {"instance_type", "region"}
+
+    def __init__(
+        self,
+        model_id: str,
+        model_version: Optional[str] = None,
+        instance_type: Optional[str] = None,
+        region: Optional[str] = None,
+        image_uri: Optional[str] = None,
+        model_data: Optional[str] = None,
+        source_dir: Optional[str] = None,
+        entry_point: Optional[str] = None,
+        env: Optional[Dict[str, str]] = None,
+        predictor_cls: Optional[Any] = None,
+        kwargs: Optional[dict] = None,
+    ) -> None:
+        """Instantiates JumpStartModelInitKwargs object."""
+
+        self.model_id = model_id
+        self.model_version = model_version
+        self.instance_type = instance_type
+        self.region = region
+        self.image_uri = image_uri
+        self.model_data = model_data
+        self.source_dir = source_dir
+        self.entry_point = entry_point
+        self.env = env
+        self.predictor_cls = predictor_cls
+        self.kwargs = kwargs.copy() if kwargs is not None else {}
+
+
+class JumpStartModelDeployKwargs(JumpStartKwargs):
+    """Data class for the inputs to `JumpStartModel.deploy` method."""
+
+    __slots__ = [
+        "model_id",
+        "model_version",
+        "instance_type",
+        "initial_instance_count",
+        "kwargs",
+    ]
+
+    def __init__(
+        self,
+        model_id: str,
+        model_version: Optional[str] = None,
+        initial_instance_count: Optional[int] = None,
+        instance_type: Optional[str] = None,
+        region: Optional[str] = None,
+        kwargs: Optional[dict] = None,
+    ) -> None:
+        """Instantiates JumpStartModelDeployKwargs object."""
+
+        self.model_id = model_id
+        self.model_version = model_version
+        self.initial_instance_count = initial_instance_count
+        self.instance_type = instance_type
+        self.region = region
+        self.kwargs = kwargs.copy() if kwargs is not None else {}
+
+
+class JumpStartEstimatorInitKwargs(JumpStartKwargs):
+    """Data class for the inputs to `JumpStartEstimator.__init__` method."""
+
+    __slots__ = [
+        "model_id",
+        "model_version",
+        "instance_type",
+        "instance_count",
+        "region",
+        "image_uri",
+        "model_uri",
+        "source_dir",
+        "entry_point",
+        "hyperparameters",
+        "metric_definitions",
+        "kwargs",
+    ]
+
+    SERIALIZATION_EXCLUSION_SET = {"region"}
+
+    def __init__(
+        self,
+        model_id: str,
+        model_version: Optional[str] = None,
+        instance_type: Optional[str] = None,
+        instance_count: Optional[int] = None,
+        region: Optional[str] = None,
+        image_uri: Optional[str] = None,
+        model_uri: Optional[str] = None,
+        source_dir: Optional[str] = None,
+        entry_point: Optional[str] = None,
+        hyperparameters: Optional[Dict[str, Any]] = None,
+        metric_definitions: Optional[List[Dict[str, str]]] = None,
+        kwargs: Optional[dict] = None,
+    ) -> None:
+        """Instantiates JumpStartEstimatorInitKwargs object."""
+
+        self.model_id = model_id
+        self.model_version = model_version
+        self.instance_type = instance_type
+        self.instance_count = instance_count
+        self.region = region
+        self.image_uri = image_uri
+        self.model_uri = model_uri
+        self.source_dir = source_dir
+        self.entry_point = entry_point
+        self.hyperparameters = hyperparameters
+        self.metric_definitions = metric_definitions
+        self.kwargs = kwargs.copy() if kwargs is not None else {}
+
+
+class JumpStartEstimatorFitKwargs(JumpStartKwargs):
+    """Data class for the inputs to `JumpStartEstimator.fit` method."""
+
+    __slots__ = [
+        "model_id",
+        "model_version",
+        "instance_type",
+        "instance_count",
+        "region",
+        "kwargs",
+    ]
+
+    SERIALIZATION_EXCLUSION_SET = {
+        "model_id",
+        "model_version",
+        "instance_type",
+        "instance_count",
+        "region",
+    }
+
+    def __init__(
+        self,
+        model_id: str,
+        model_version: Optional[str] = None,
+        instance_type: Optional[str] = None,
+        instance_count: Optional[int] = None,
+        region: Optional[str] = None,
+        kwargs: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Instantiates JumpStartEstimatorInitKwargs object."""
+
+        self.model_id = model_id
+        self.model_version = model_version
+        self.instance_type = instance_type
+        self.instance_count = instance_count
+        self.region = region
+        self.kwargs = kwargs.copy() if kwargs is not None else {}
+
+
+class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
+    """Data class for the inputs to `JumpStartEstimator.deploy` method."""
+
+    __slots__ = [
+        "model_id",
+        "model_version",
+        "instance_type",
+        "initial_instance_count",
+        "region",
+        "image_uri",
+        "source_dir",
+        "entry_point",
+        "env",
+        "predictor_cls",
+        "kwargs",
+    ]
+
+    SERIALIZATION_EXCLUSION_SET = {"region"}
+
+    def __init__(
+        self,
+        model_id: str,
+        model_version: Optional[str] = None,
+        instance_type: Optional[str] = None,
+        initial_instance_count: Optional[int] = None,
+        region: Optional[str] = None,
+        image_uri: Optional[str] = None,
+        source_dir: Optional[str] = None,
+        entry_point: Optional[str] = None,
+        env: Optional[dict] = None,
+        kwargs: Optional[dict] = None,
+        predictor_cls: Optional[Any] = None,
+    ) -> None:
+        """Instantiates JumpStartEstimatorInitKwargs object."""
+
+        self.model_id = model_id
+        self.model_version = model_version
+        self.instance_type = instance_type
+        self.initial_instance_count = initial_instance_count
+        self.region = region
+        self.image_uri = image_uri
+        self.source_dir = source_dir
+        self.entry_point = entry_point
+        self.env = env
+        self.predictor_cls = predictor_cls
+        self.kwargs = kwargs.copy() if kwargs is not None else {}

@@ -13,9 +13,14 @@
 """Implements methods for serializing data for an inference endpoint."""
 from __future__ import absolute_import
 
-from typing import Any, List, Optional
+from typing import List, Optional
 
+# base_serializers was renamed from serializers, so this import
+# is for backwards compatibility.
 from sagemaker.base_serializers import *  # noqa: F403, F401 # pylint: disable=W0614,W0401
+
+
+from sagemaker.base_serializers import BaseSerializer
 
 from sagemaker.jumpstart import artifacts, utils as jumpstart_utils
 
@@ -26,7 +31,7 @@ def retrieve(
     model_version: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-) -> List[Any]:
+) -> List[BaseSerializer]:
     """Retrieves the supported serializers for the model matching the given arguments.
 
     Args:
@@ -68,7 +73,7 @@ def retrieve_default(
     model_version: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-) -> Any:
+) -> BaseSerializer:
     """Retrieves the default serializer for the model matching the given arguments.
 
     Args:
