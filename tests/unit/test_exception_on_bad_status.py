@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import pytest
 from mock import Mock, MagicMock
 import sagemaker
+from sagemaker.session import _check_job_status
 
 EXPANDED_ROLE = "arn:aws:iam::111111111111:role/ExpandedRole"
 REGION = "us-west-2"
@@ -59,10 +60,7 @@ def test_raise_when_failed_created_package():
 def test_does_not_raise_when_correct_job_status():
     try:
         job = Mock()
-        sagemaker_session = get_sagemaker_session(returns_status="Stopped")
-        sagemaker_session._check_job_status(
-            job, {"TransformationJobStatus": "Stopped"}, "TransformationJobStatus"
-        )
+        _check_job_status(job, {"TransformationJobStatus": "Stopped"}, "TransformationJobStatus")
     except sagemaker.exceptions.UnexpectedStatusException:
         pytest.fail("UnexpectedStatusException was thrown while it should not")
 
@@ -70,10 +68,7 @@ def test_does_not_raise_when_correct_job_status():
 def test_does_raise_when_incorrect_job_status():
     try:
         job = Mock()
-        sagemaker_session = get_sagemaker_session(returns_status="Failed")
-        sagemaker_session._check_job_status(
-            job, {"TransformationJobStatus": "Failed"}, "TransformationJobStatus"
-        )
+        _check_job_status(job, {"TransformationJobStatus": "Failed"}, "TransformationJobStatus")
         assert (
             False
         ), "sagemaker.exceptions.UnexpectedStatusException should have been raised but was not"
@@ -87,8 +82,7 @@ def test_does_raise_when_incorrect_job_status():
 def test_does_raise_capacity_error_when_incorrect_job_status():
     try:
         job = Mock()
-        sagemaker_session = get_sagemaker_session(returns_status="Failed")
-        sagemaker_session._check_job_status(
+        _check_job_status(
             job,
             {
                 "TransformationJobStatus": "Failed",

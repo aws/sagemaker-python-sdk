@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.148.0 (2023-04-20)
+
+### Features
+
+ * [huggingface] Add `torch.distributed` support for Trainium and `torchrun`
+ * Add PyTorch 2.0 to SDK
+
+### Bug Fixes and Other Changes
+
+ * updating batch transform job in monitoring schedule
+
+## v2.147.0 (2023-04-18)
+
+### Features
+
+ * support different types of deletion mode
+
 ## v2.146.1 (2023-04-17)
 
 ### Bug Fixes and Other Changes

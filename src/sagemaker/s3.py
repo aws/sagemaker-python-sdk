@@ -15,7 +15,9 @@ from __future__ import print_function, absolute_import
 
 import pathlib
 import logging
+import io
 
+from typing import Union
 from six.moves.urllib.parse import urlparse
 from sagemaker.session import Session
 
@@ -72,7 +74,7 @@ class S3Uploader(object):
             kms_key (str): The KMS key to use to encrypt the files.
             sagemaker_session (sagemaker.session.Session): Session object which
                 manages interactions with Amazon SageMaker APIs and any other
-                AWS services needed. If not specified, the estimator creates one
+                AWS services needed. If not specified, one is created
                 using the default AWS configuration chain.
 
         Returns:
@@ -92,7 +94,9 @@ class S3Uploader(object):
         )
 
     @staticmethod
-    def upload_string_as_file_body(body, desired_s3_uri=None, kms_key=None, sagemaker_session=None):
+    def upload_string_as_file_body(
+        body: str, desired_s3_uri=None, kms_key=None, sagemaker_session=None
+    ):
         """Static method that uploads a given file or directory to S3.
 
         Args:
@@ -105,10 +109,11 @@ class S3Uploader(object):
                 using the default AWS configuration chain.
 
         Returns:
-            str: The S3 uri of the uploaded file(s).
+            str: The S3 uri of the uploaded file.
 
         """
         sagemaker_session = sagemaker_session or Session()
+
         bucket, key = parse_s3_url(desired_s3_uri)
 
         sagemaker_session.upload_string_as_file_body(
@@ -116,6 +121,39 @@ class S3Uploader(object):
         )
 
         return desired_s3_uri
+
+    @staticmethod
+    def upload_bytes(b: Union[bytes, io.BytesIO], s3_uri, kms_key=None, sagemaker_session=None):
+        """Static method that uploads a given file or directory to S3.
+
+        Args:
+            b (bytes or io.BytesIO): bytes.
+            s3_uri (str): The S3 uri to upload to.
+            kms_key (str): The KMS key to use to encrypt the files.
+            sagemaker_session (sagemaker.session.Session): Session object which
+                manages interactions with Amazon SageMaker APIs and any other
+                AWS services needed. If not specified, one is created
+                using the default AWS configuration chain.
+
+        Returns:
+            str: The S3 uri of the uploaded file.
+
+        """
+        sagemaker_session = sagemaker_session or Session()
+
+        bucket, object_key = parse_s3_url(s3_uri)
+
+        if kms_key is not None:
+            extra_args = {"SSEKMSKeyId": kms_key, "ServerSideEncryption": "aws:kms"}
+        else:
+            extra_args = None
+
+        b = b if isinstance(b, io.BytesIO) else io.BytesIO(b)
+        sagemaker_session.s3_resource.Bucket(bucket).upload_fileobj(
+            b, object_key, ExtraArgs=extra_args
+        )
+
+        return s3_uri
 
 
 class S3Downloader(object):
@@ -131,8 +169,11 @@ class S3Downloader(object):
             kms_key (str): The KMS key to use to decrypt the files.
             sagemaker_session (sagemaker.session.Session): Session object which
                 manages interactions with Amazon SageMaker APIs and any other
-                AWS services needed. If not specified, the estimator creates one
+                AWS services needed. If not specified, one is created
                 using the default AWS configuration chain.
+
+        Returns:
+            list[str]: List of local paths of downloaded files
         """
         sagemaker_session = sagemaker_session or Session()
         bucket, key_prefix = parse_s3_url(url=s3_uri)
@@ -141,28 +182,52 @@ class S3Downloader(object):
         else:
             extra_args = None
 
-        sagemaker_session.download_data(
+        return sagemaker_session.download_data(
             path=local_path, bucket=bucket, key_prefix=key_prefix, extra_args=extra_args
         )
 
     @staticmethod
-    def read_file(s3_uri, sagemaker_session=None):
-        """Static method that returns the contents of an s3 uri file body as a string.
+    def read_file(s3_uri, sagemaker_session=None) -> str:
+        """Static method that returns the contents of a s3 uri file body as a string.
 
         Args:
             s3_uri (str): An S3 uri that refers to a single file.
             sagemaker_session (sagemaker.session.Session): Session object which
                 manages interactions with Amazon SageMaker APIs and any other
-                AWS services needed. If not specified, the estimator creates one
+                AWS services needed. If not specified, one is created
                 using the default AWS configuration chain.
 
         Returns:
             str: The body of the file.
         """
         sagemaker_session = sagemaker_session or Session()
-        bucket, key_prefix = parse_s3_url(url=s3_uri)
 
-        return sagemaker_session.read_s3_file(bucket=bucket, key_prefix=key_prefix)
+        bucket, object_key = parse_s3_url(url=s3_uri)
+
+        return sagemaker_session.read_s3_file(bucket=bucket, key_prefix=object_key)
+
+    @staticmethod
+    def read_bytes(s3_uri, sagemaker_session=None) -> bytes:
+        """Static method that returns the contents of a s3 object as bytes.
+
+        Args:
+            s3_uri (str): An S3 uri that refers to a s3 object.
+            sagemaker_session (sagemaker.session.Session): Session object which
+                manages interactions with Amazon SageMaker APIs and any other
+                AWS services needed. If not specified, one is created
+                using the default AWS configuration chain.
+
+        Returns:
+            bytes: The body of the file.
+        """
+        sagemaker_session = sagemaker_session or Session()
+
+        bucket, object_key = parse_s3_url(s3_uri)
+
+        bytes_io = io.BytesIO()
+        sagemaker_session.s3_resource.Bucket(bucket).download_fileobj(object_key, bytes_io)
+        bytes_io.seek(0)
+        return bytes_io.read()
 
     @staticmethod
     def list(s3_uri, sagemaker_session=None):
@@ -172,7 +237,7 @@ class S3Downloader(object):
             s3_uri (str): The S3 base uri to list objects in.
             sagemaker_session (sagemaker.session.Session): Session object which
                 manages interactions with Amazon SageMaker APIs and any other
-                AWS services needed. If not specified, the estimator creates one
+                AWS services needed. If not specified, one is created
                 using the default AWS configuration chain.
 
         Returns:
