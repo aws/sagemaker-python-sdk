@@ -165,3 +165,24 @@ def patched_retrieval_function(
         )
 
     raise ValueError(f"Bad value for filetype: {filetype}")
+
+
+def overwrite_dictionary(
+    base_dictionary: dict,
+    dictionary_with_overwrites: dict,
+) -> dict:
+
+    for key, value in dictionary_with_overwrites.items():
+
+        if key in base_dictionary:
+            base_dictionary_entry = base_dictionary[key]
+            if isinstance(base_dictionary_entry, list):
+                assert isinstance(value, list)
+                value += base_dictionary_entry
+            if isinstance(base_dictionary_entry, dict):
+                assert isinstance(value, dict)
+                value.update(base_dictionary_entry)
+
+        base_dictionary[key] = value
+
+    return base_dictionary
