@@ -95,6 +95,12 @@ def test_valid_monitoring_schedule_schema(
     )
 
 
+def test_valid_remote_function_schema(base_config_with_schema, valid_remote_function_config):
+    _validate_config(
+        base_config_with_schema, {"PythonSDK": {"Modules": valid_remote_function_config}}
+    )
+
+
 def test_tags_with_invalid_schema(base_config_with_schema, valid_edge_packaging_config):
     edge_packaging_config = valid_edge_packaging_config.copy()
     edge_packaging_config["Tags"] = [{"Key": "somekey"}]
@@ -183,5 +189,13 @@ def test_invalid_custom_parameters_schema(base_config_with_schema):
         validate(config, SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA)
 
     config["CustomParameters"] = {"custom_key": {"custom_key": "custom_value"}}
+    with pytest.raises(exceptions.ValidationError):
+        validate(config, SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA)
+
+
+def test_invalid_s3uri_schema(base_config_with_schema):
+    config = base_config_with_schema
+
+    config["SageMaker"] = {"PythonSDK": {"Modules": {"RemoteFunction": {"S3RootUri": "bad_regex"}}}}
     with pytest.raises(exceptions.ValidationError):
         validate(config, SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA)

@@ -44,6 +44,17 @@ MONITORING_JOB_DEFINITION = "MonitoringJobDefinition"
 SAGEMAKER = "SageMaker"
 PYTHON_SDK = "PythonSDK"
 MODULES = "Modules"
+REMOTE_FUNCTION = "RemoteFunction"
+DEPENDENCIES = "Dependencies"
+PRE_EXECUTION_SCRIPT = "PreExecutionScript"
+PRE_EXECUTION_COMMANDS = "PreExecutionCommands"
+ENVIRONMENT_VARIABLES = "EnvironmentVariables"
+IMAGE_URI = "ImageUri"
+INCLUDE_LOCAL_WORKDIR = "IncludeLocalWorkDir"
+INSTANCE_TYPE = "InstanceType"
+S3_KMS_KEY_ID = "S3KmsKeyId"
+S3_ROOT_URI = "S3RootUri"
+JOB_CONDA_ENV = "JobCondaEnvironment"
 OFFLINE_STORE_CONFIG = "OfflineStoreConfig"
 ONLINE_STORE_CONFIG = "OnlineStoreConfig"
 S3_STORAGE_CONFIG = "S3StorageConfig"
@@ -221,6 +232,49 @@ MODEL_PACKAGE_VALIDATION_PROFILES_PATH = _simple_path(
     SAGEMAKER, MODEL_PACKAGE, VALIDATION_SPECIFICATION, VALIDATION_PROFILES
 )
 
+REMOTE_FUNCTION_DEPENDENCIES = _simple_path(
+    SAGEMAKER, PYTHON_SDK, MODULES, REMOTE_FUNCTION, DEPENDENCIES
+)
+REMOTE_FUNCTION_PRE_EXECUTION_COMMANDS = _simple_path(
+    SAGEMAKER, PYTHON_SDK, MODULES, REMOTE_FUNCTION, PRE_EXECUTION_COMMANDS
+)
+REMOTE_FUNCTION_PRE_EXECUTION_SCRIPT = _simple_path(
+    SAGEMAKER, PYTHON_SDK, MODULES, REMOTE_FUNCTION, PRE_EXECUTION_SCRIPT
+)
+REMOTE_FUNCTION_ENVIRONMENT_VARIABLES = _simple_path(
+    SAGEMAKER, PYTHON_SDK, MODULES, REMOTE_FUNCTION, ENVIRONMENT_VARIABLES
+)
+REMOTE_FUNCTION_IMAGE_URI = _simple_path(SAGEMAKER, PYTHON_SDK, MODULES, REMOTE_FUNCTION, IMAGE_URI)
+REMOTE_FUNCTION_INCLUDE_LOCAL_WORKDIR = _simple_path(
+    SAGEMAKER, PYTHON_SDK, MODULES, REMOTE_FUNCTION, INCLUDE_LOCAL_WORKDIR
+)
+REMOTE_FUNCTION_INSTANCE_TYPE = _simple_path(
+    SAGEMAKER, PYTHON_SDK, MODULES, REMOTE_FUNCTION, INSTANCE_TYPE
+)
+REMOTE_FUNCTION_JOB_CONDA_ENV = _simple_path(
+    SAGEMAKER, PYTHON_SDK, MODULES, REMOTE_FUNCTION, JOB_CONDA_ENV
+)
+REMOTE_FUNCTION_ROLE_ARN = _simple_path(SAGEMAKER, PYTHON_SDK, MODULES, REMOTE_FUNCTION, ROLE_ARN)
+REMOTE_FUNCTION_S3_KMS_KEY_ID = _simple_path(
+    SAGEMAKER, PYTHON_SDK, MODULES, REMOTE_FUNCTION, S3_KMS_KEY_ID
+)
+REMOTE_FUNCTION_S3_ROOT_URI = _simple_path(
+    SAGEMAKER, PYTHON_SDK, MODULES, REMOTE_FUNCTION, S3_ROOT_URI
+)
+REMOTE_FUNCTION_TAGS = _simple_path(SAGEMAKER, PYTHON_SDK, MODULES, REMOTE_FUNCTION, TAGS)
+REMOTE_FUNCTION_VOLUME_KMS_KEY_ID = _simple_path(
+    SAGEMAKER, PYTHON_SDK, MODULES, REMOTE_FUNCTION, VOLUME_KMS_KEY_ID
+)
+REMOTE_FUNCTION_VPC_CONFIG_SUBNETS = _simple_path(
+    SAGEMAKER, PYTHON_SDK, MODULES, REMOTE_FUNCTION, VPC_CONFIG, SUBNETS
+)
+REMOTE_FUNCTION_VPC_CONFIG_SECURITY_GROUP_IDS = _simple_path(
+    SAGEMAKER, PYTHON_SDK, MODULES, REMOTE_FUNCTION, VPC_CONFIG, SECURITY_GROUP_IDS
+)
+REMOTE_FUNCTION_ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION = _simple_path(
+    SAGEMAKER, PYTHON_SDK, MODULES, REMOTE_FUNCTION, ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION
+)
+
 # Paths for reference elsewhere in the SDK.
 # Names include the schema version since the paths could change with other schema versions
 MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION_PATH = _simple_path(
@@ -244,7 +298,6 @@ PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION_PATH = _simple_path(
 TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH = _simple_path(
     SAGEMAKER, TRAINING_JOB, ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION
 )
-
 
 SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -377,6 +430,23 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
             "minItems": 0,
             "maxItems": 50,
         },
+        # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateTrainingJob.html#sagemaker-CreateTrainingJob-request-Environment
+        "environmentVariables": {
+            TYPE: OBJECT,
+            ADDITIONAL_PROPERTIES: False,
+            PATTERN_PROPERTIES: {
+                r"([a-zA-Z_][a-zA-Z0-9_]*){1,512}": {
+                    TYPE: "string",
+                    "pattern": r"[\S\s]*",
+                    "maxLength": 512,
+                }
+            },
+            "maxProperties": 48,
+        },
+        # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_S3DataSource.html#sagemaker-Type-S3DataSource-S3Uri
+        "s3Uri": {TYPE: "string", "pattern": "^(https|s3)://([^/]+)/?(.*)$", "maxLength": 1024},
+        # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_AlgorithmSpecification.html#sagemaker-Type-AlgorithmSpecification-ContainerEntrypoint
+        "preExecutionCommand": {TYPE: "string", "pattern": r".*"},
     },
     PROPERTIES: {
         SCHEMA_VERSION: {
@@ -406,6 +476,36 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                             # Any SageMaker Python SDK specific configuration will be added here.
                             TYPE: OBJECT,
                             ADDITIONAL_PROPERTIES: False,
+                            PROPERTIES: {
+                                REMOTE_FUNCTION: {
+                                    TYPE: OBJECT,
+                                    ADDITIONAL_PROPERTIES: False,
+                                    PROPERTIES: {
+                                        DEPENDENCIES: {TYPE: "string"},
+                                        PRE_EXECUTION_COMMANDS: {
+                                            TYPE: "array",
+                                            "items": {"$ref": "#/definitions/preExecutionCommand"},
+                                        },
+                                        PRE_EXECUTION_SCRIPT: {TYPE: "string"},
+                                        ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION: {
+                                            TYPE: "boolean"
+                                        },
+                                        ENVIRONMENT_VARIABLES: {
+                                            "$ref": "#/definitions/environmentVariables"
+                                        },
+                                        IMAGE_URI: {TYPE: "string"},
+                                        INCLUDE_LOCAL_WORKDIR: {TYPE: "boolean"},
+                                        INSTANCE_TYPE: {TYPE: "string"},
+                                        JOB_CONDA_ENV: {TYPE: "string"},
+                                        ROLE_ARN: {"$ref": "#/definitions/roleArn"},
+                                        S3_KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"},
+                                        S3_ROOT_URI: {"$ref": "#/definitions/s3Uri"},
+                                        TAGS: {"$ref": "#/definitions/tags"},
+                                        VOLUME_KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"},
+                                        VPC_CONFIG: {"$ref": "#/definitions/vpcConfig"},
+                                    },
+                                }
+                            },
                         }
                     },
                 },
