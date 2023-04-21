@@ -36,7 +36,7 @@ class JumpStartPredictor(Predictor):
     def __init__(
         self,
         endpoint_name: str = None,
-        sagemaker_session: Session = Session(),
+        sagemaker_session: Optional[Session] = None,
         model_id: str = None,
         model_version: str = "*",
         region: Optional[str] = None,
