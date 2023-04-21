@@ -633,6 +633,8 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "explainer_config",
     ]
 
+    SERIALIZATION_EXCLUSION_SET = {"model_id", "model_version", "region"}
+
     def __init__(
         self,
         model_id: str,

@@ -454,8 +454,11 @@ def _add_metric_definitions_to_kwargs(
         kwargs.metric_definitions.copy() if kwargs.metric_definitions is not None else []
     )
 
-    default_metric_definitions = metric_definitions_utils.retrieve_default(
-        region=kwargs.region, model_id=kwargs.model_id, model_version=kwargs.model_version
+    default_metric_definitions = (
+        metric_definitions_utils.retrieve_default(
+            region=kwargs.region, model_id=kwargs.model_id, model_version=kwargs.model_version
+        )
+        or []
     )
 
     for metric_definition in default_metric_definitions:
