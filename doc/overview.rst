@@ -2027,7 +2027,7 @@ set default values for. For the full schema, see ``sagemaker.config.config_schem
             Dependencies: 'path/to/requirements.txt'
             EnableInterContainerTrafficEncryption: true
             EnvironmentVariables: {'EnvVarKey': 'EnvVarValue'}
-            ImageUri: '366666666666.dkr.ecr.us-west-2.amazonaws.com/my-image:latest'
+            ImageUri: '555555555555.dkr.ecr.us-west-2.amazonaws.com/my-image:latest'
             IncludeLocalWorkDir: true
             InstanceType: 'ml.m5.large'
             JobCondaEnvironment: 'your_conda_env'
@@ -2035,7 +2035,7 @@ set default values for. For the full schema, see ``sagemaker.config.config_schem
               - 'command_1'
               - 'command_2'
             PreExecutionScript: 'path/to/script.sh'
-            RoleArn: 'arn:aws:iam::366666666666:role/MyRole'
+            RoleArn: 'arn:aws:iam::555555555555:role/MyRole'
             S3KmsKeyId: 'yourkmskeyid'
             S3RootUri: 's3://my-bucket/my-project'
             VpcConfig:
@@ -2044,7 +2044,8 @@ set default values for. For the full schema, see ``sagemaker.config.config_schem
               Subnets:
                 - 'subnet-1234'
             Tags:
-              - {'Key': 'yourTagKey', 'Value': 'yourTagValue'}
+              - Key: 'tag_key'
+                Value: 'tag_value'
             VolumeKmsKeyId: 'yourkmskeyid'
 
 Configuration file locations
@@ -2440,7 +2441,7 @@ specifically the contents of ``'body': b'{...}`` .
 
    <TIMESTAMP> botocore.endpoint [DEBUG] Making request for OperationModel(name=<OPERATION_NAME>) with params: {'url_path': ...,
    'query_string': ..., 'method': 'POST', 'headers': {...}, 'body': b'{...}', 'url': 'https://api.sagemaker.us-west-2.amazonaws.com/',
-   'context': {...}}cd
+   'context': {...}}
 
 
 ************************************************************

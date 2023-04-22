@@ -84,7 +84,7 @@ def remote(
 ):
     """Decorator for running the annotated function as a SageMaker training job.
 
-    This decorator wraps the annotated code and runs it is a new SageMaker job synchronously
+    This decorator wraps the annotated code and runs it as a new SageMaker job synchronously
     with the provided runtime settings.
 
     Unless mentioned otherwise, the decorator first looks up the value from the SageMaker
@@ -187,8 +187,7 @@ def remote(
         instance_count (int): The number of instance to use. Defaults to 1.
 
         instance_type (str): The Amazon Elastic Compute Cloud (EC2) instance type to use to run
-          the SageMaker job. Valid values include ml.c4.xlarge. If not provided, ValueError is
-          thrown.
+          the SageMaker job. e.g. ml.c4.xlarge. If not provided, ValueError is thrown.
 
         job_conda_env (str): The name of the conda environment to activate during job's runtime.
           Defaults to ``None``.
@@ -204,12 +203,12 @@ def remote(
           latency than over using SageMaker managed warm pools alone by caching the package source
           downloaded in the previous runs.
 
-        max_retry_attempts (int): The max number of times the job is retried after an on
-          ```InternalServerFailure``` Error. Defaults to 1.
+        max_retry_attempts (int): The max number of times the job is retried on
+          ```InternalServerFailure``` Error from SageMaker service. Defaults to 1.
 
         max_runtime_in_seconds (int): The upper limit in seconds to be used for training. After
           this specified amount of time, SageMaker terminates the job regardless of its current
-          status. The max_run_duration time defaults to 1 day or (86400 seconds).
+          status. Defaults to 1 day or (86400 seconds).
 
         role (str): The IAM role (either name or full ARN) used to run your SageMaker training
           job. Defaults to:
@@ -220,7 +219,7 @@ def remote(
 
         s3_kms_key (str): The key used to encrypt the input and output data. Default to ``None``.
 
-        s3_root_uri (str): The root S3 folder to which where the code archives and data are
+        s3_root_uri (str): The root S3 folder to which the code archives and data are
           uploaded to. Defaults to ``s3://<sagemaker-default-bucket>``.
 
         sagemaker_session (sagemaker.session.Session): The underlying SageMaker session to which
@@ -577,8 +576,7 @@ class RemoteExecutor(object):
             instance_count (int): The number of instance to use. Defaults to 1.
 
             instance_type (str): The Amazon Elastic Compute Cloud (EC2) instance type to use to run
-              the SageMaker job. Valid values include ml.c4.xlarge. If not provided, ValueError is
-              thrown.
+              the SageMaker job. e.g. ml.c4.xlarge. If not provided, ValueError is thrown.
 
             job_conda_env (str): The name of the conda environment to activate during job's runtime.
               Defaults to ``None``.
@@ -596,12 +594,12 @@ class RemoteExecutor(object):
 
             max_parallel_jobs (int): Maximum number of jobs that run in parallel. Defaults to 1.
 
-            max_retry_attempts (int): The max number of times the job is retried after an on
-              ```InternalServerFailure``` Error. Defaults to 1.
+            max_retry_attempts (int): The max number of times the job is retried on
+              ```InternalServerFailure``` Error from SageMaker service. Defaults to 1.
 
             max_runtime_in_seconds (int): The upper limit in seconds to be used for training. After
               this specified amount of time, SageMaker terminates the job regardless of its current
-              status. The max_run_duration time defaults to 1 day or (86400 seconds).
+              status. Defaults to 1 day or (86400 seconds).
 
             role (str): The IAM role (either name or full ARN) used to run your SageMaker training
               job. Defaults to:
@@ -613,7 +611,7 @@ class RemoteExecutor(object):
             s3_kms_key (str): The key used to encrypt the input and output data.
               Default to ``None``.
 
-            s3_root_uri (str): The root S3 folder to which where the code archives and data are
+            s3_root_uri (str): The root S3 folder to which the code archives and data are
               uploaded to. Defaults to ``s3://<sagemaker-default-bucket>``.
 
             sagemaker_session (sagemaker.session.Session): The underlying SageMaker session to which
@@ -1011,7 +1009,7 @@ class Future(object):
         will block until the job is completed.
 
         Args:
-            timeout (int): Timeout in seconds to wait for until the job is to completed before it is
+            timeout (int): Timeout in seconds to wait for until the job is completed before it is
               stopped. Defaults to ``None``.
 
         Returns: None
