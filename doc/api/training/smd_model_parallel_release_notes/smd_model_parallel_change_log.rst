@@ -28,7 +28,8 @@ SageMaker Distributed Model Parallel 1.15.0 Release Notes
   ``smp.save_checkpoint`` with ``partial=False``. 
   Before, full checkpoints needed to be created by merging partial checkpoint 
   files after training finishes. 
-* ``DistributedTransformer`` now supports the ALiBi position embeddings. 
+* `DistributedTransformer <https://sagemaker.readthedocs.io/en/stable/api/training/smp_versions/latest/smd_model_parallel_pytorch_tensor_parallel.html#smdistributed.modelparallel.torch.nn.DistributedTransformerLayer>`_ 
+  now supports the ALiBi position embeddings. 
   When using DistributedTransformer, you can set the ``use_alibi`` parameter 
   to ``True`` to use the Triton-based flash attention kernels. This helps 
   evaluate sequences longer than those used for training.
