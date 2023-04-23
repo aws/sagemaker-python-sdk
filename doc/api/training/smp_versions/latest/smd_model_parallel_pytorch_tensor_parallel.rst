@@ -301,7 +301,19 @@ Tensor Parallelism Module APIs
          ``post_layernorm`` must be ``True``.
       -  ``post_layernorm``: If ``True``, inserts layer normalization at
          the output. At least one of ``pre_layernorm`` and
-         ``post_layernorm`` must be ``True``.
+         ``post_layernorm`` must be ``True``. (Available from 
+         the SageMaker model parallelism library v1.15.0.)
+      -  ``use_alibi`` (bool, default False): Activates Attention with 
+         Linear Biases (ALiBi) for attention computation.
+         ALiBi facilitates efficient extrapolation on input sequences 
+         and thus improves training efficiency. 
+         The library enables ALiBi by using the `Triton 
+         flash attention kernel
+         <https://github.com/HazyResearch/flash-attention>`_.
+         Refer to https://arxiv.org/abs/2108.12409 for more 
+         details on the technique.
+         (Available from 
+         the SageMaker model parallelism library v1.15.0.)
 
    -  **Methods:**
 
