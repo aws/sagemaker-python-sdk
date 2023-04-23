@@ -314,7 +314,7 @@ Tensor Parallelism Module APIs
          (Available from
          the SageMaker model parallelism library v1.15.0.)
       -  ``alibi_bias_max`` (int, default 8): Defines the ALiBi base
-      	 value for mask generation. (Available from
+         value for mask generation. (Available from
          the SageMaker model parallelism library v1.15.0.)
 
    -  **Methods:**
