@@ -49,21 +49,32 @@ SageMaker Distributed Model Parallel 1.15.0 Release Notes
 
 This version passed benchmark testing and is migrated to the following AWS Deep Learning Containers (DLC):
 
-- SageMaker training container for PyTorch v1.13.1
+- SageMaker training container for PyTorch v2.0.0
 
   .. code::
 
-    763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.13.1-gpu-py39-cu117-ubuntu20.04-sagemaker
+    763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-training:2.0.0-gpu-py310-cu118-ubuntu20.04-sagemaker
 
+- SageMaker training container for PyTorch v1.13.1
+  
+  .. code::
+  
+    763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-training:1.13.1-gpu-py39-cu117-ubuntu20.04-sagemaker
 
 Binary file of this version of the library for `custom container
 <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-sm-sdk.html#model-parallel-bring-your-own-container>`_ users:
 
-- For PyTorch 1.13.1
+- For PyTorch v2.0.0
+
+  .. code::
+    
+    https://sagemaker-distributed-model-parallel.s3.us-west-2.amazonaws.com/pytorch-2.0.0/build-artifacts/2023-04-14-20-14/smdistributed_modelparallel-1.15.0-cp310-cp310-linux_x86_64.whl
+
+- For PyTorch v1.13.1
 
   .. code::
 
-    https://sagemaker-distributed-model-parallel.s3.us-west-2.amazonaws.com/pytorch-1.13.1/build-artifacts/2023-01-19-18-35/smdistributed_modelparallel-1.14.0-cp39-cp39-linux_x86_64.whl
+    https://sagemaker-distributed-model-parallel.s3.us-west-2.amazonaws.com/pytorch-1.13.1/build-artifacts/2023-04-17-15-49/smdistributed_modelparallel-1.15.0-cp39-cp39-linux_x86_64.whl
 
 ----
 
