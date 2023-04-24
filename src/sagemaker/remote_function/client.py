@@ -198,8 +198,8 @@ def remote(
           infrastructure after the completion of a training job, also known as SageMaker managed
           warm pools. The use of warmpools reduces the latency time spent to provision new
           resources. The default value for ``keep_alive_period_in_seconds`` is 0.
-          NOTE: Additional charges associated with warm pools may apply. Using this parameter will
-          also activate a new Persistent Cache feature, which will further reduce job start up
+          NOTE: Additional charges associated with warm pools may apply. Using this parameter also
+          activates a new pesistent cache feature, which will further reduce job start up
           latency than over using SageMaker managed warm pools alone by caching the package source
           downloaded in the previous runs.
 
@@ -587,9 +587,9 @@ class RemoteExecutor(object):
               provisioned infrastructure after the completion of a training job, also known as
               SageMaker managed warm pools. The use of warmpools reduces the latency time spent to
               provision new resources. The default value for ``keep_alive_period_in_seconds`` is 0.
-              Additional charges associated with warm pools may apply. Using this parameter will
-              also activate a new persistent cache feature, which will further reduce job start up
-              latency than over using SageMaker managed warm pools alone by caching the package
+              NOTE: Additional charges associated with warm pools may apply. Using this parameter
+              also activates a new pesistent cache feature, which will further reduce job start
+              up latency than over using SageMaker managed warm pools alone by caching the package
               source downloaded in the previous runs.
 
             max_parallel_jobs (int): Maximum number of jobs that run in parallel. Defaults to 1.
