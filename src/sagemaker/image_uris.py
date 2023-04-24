@@ -369,16 +369,15 @@ def _config_for_framework_and_scope(framework, image_scope, accelerator_type=Non
 
 def _validate_instance_deprecation(framework, instance_type, version):
     """Check if instance type is deprecated for a certain framework with a certain version"""
-    if (
-        framework == "pytorch"
-        and _get_instance_type_family(instance_type) == "p2"
-        and Version(version) >= Version("1.13")
-    ):
-        raise ValueError(
-            "P2 instances have been deprecated for sagemaker jobs with PyTorch 1.13 and above. "
-            "For information about supported instance types please refer to "
-            "https://aws.amazon.com/sagemaker/pricing/"
-        )
+    if _get_instance_type_family(instance_type) == "p2":
+        if (framework == "pytorch" and Version(version) >= Version("1.13")) or (
+            framework == "tensorflow" and Version(version) >= Version("2.12")
+        ):
+            raise ValueError(
+                "P2 instances have been deprecated for sagemaker jobs starting PyTorch 1.13 and TensorFlow 2.12"
+                "For information about supported instance types please refer to "
+                "https://aws.amazon.com/sagemaker/pricing/"
+            )
 
 
 def _validate_for_suppported_frameworks_and_instance_type(framework, instance_type):
