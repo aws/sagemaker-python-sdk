@@ -64,8 +64,6 @@ class EstimatorTest(unittest.TestCase):
         )
 
         mock_estimator_init.assert_called_once_with(
-            model_id="js-trainable-model",
-            model_version="*",
             instance_type="ml.p3.2xlarge",
             instance_count=1,
             image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/autogluon-training:0.4.3-gpu-py38",
@@ -105,6 +103,9 @@ class EstimatorTest(unittest.TestCase):
             model_id="js-trainable-model",
             model_version="*",
             instance_type="ml.p2.xlarge",
+            tolerate_vulnerable_model=False,
+            tolerate_deprecated_model=False,
+            region=self.region,
             initial_instance_count=1,
             image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/autogluon-inference:0.4.3-gpu-py38",
             source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/autogluon/"
@@ -150,8 +151,6 @@ class EstimatorTest(unittest.TestCase):
         )
 
         mock_estimator_init.assert_called_once_with(
-            model_id="js-trainable-model-prepacked",
-            model_version="*",
             instance_type="ml.p3.16xlarge",
             instance_count=1,
             image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training:1.10.2"
@@ -203,6 +202,9 @@ class EstimatorTest(unittest.TestCase):
             },
             predictor_cls=JumpStartPredictor,
             role=self.execution_role,
+            region=self.region,
+            tolerate_deprecated_model=False,
+            tolerate_vulnerable_model=False,
         )
 
     def test_estimator_use_kwargs(self):
@@ -324,13 +326,14 @@ class EstimatorTest(unittest.TestCase):
 
         estimator = JumpStartEstimator(
             model_id=model_id,
+            tolerate_deprecated_model=True,
+            tolerate_vulnerable_model=True,
+            region=self.region,
             **init_kwargs,
         )
 
         expected_init_kwargs = overwrite_dictionary(
             {
-                "model_id": "js-trainable-model",
-                "model_version": "*",
                 "instance_type": "ml.p3.2xlarge",
                 "instance_count": 1,
                 "image_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/autogluon-training:0.4.3-gpu-py38",
@@ -376,6 +379,9 @@ class EstimatorTest(unittest.TestCase):
             {
                 "model_id": "js-trainable-model",
                 "model_version": "*",
+                "region": self.region,
+                "tolerate_deprecated_model": True,
+                "tolerate_vulnerable_model": True,
                 "instance_type": "ml.p2.xlarge",
                 "initial_instance_count": 1,
                 "image_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/autogluon-inference:0.4.3-gpu-py38",

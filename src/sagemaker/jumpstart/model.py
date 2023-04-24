@@ -41,6 +41,8 @@ class JumpStartModel(Model):
         self,
         model_id: str,
         model_version: Optional[str] = None,
+        tolerate_vulnerable_model: Optional[bool] = None,
+        tolerate_deprecated_model: Optional[bool] = None,
         region: Optional[str] = None,
         instance_type: Optional[str] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
@@ -67,6 +69,8 @@ class JumpStartModel(Model):
             model_from_estimator=False,
             model_version=model_version,
             instance_type=instance_type,
+            tolerate_vulnerable_model=tolerate_vulnerable_model,
+            tolerate_deprecated_model=tolerate_deprecated_model,
             region=region,
             image_uri=image_uri,
             model_data=model_data,
@@ -90,6 +94,8 @@ class JumpStartModel(Model):
         self.model_id = model_init_kwargs.model_id
         self.model_version = model_init_kwargs.model_version
         self.instance_type = model_init_kwargs.instance_type
+        self.tolerate_vulnerable_model = model_init_kwargs.tolerate_vulnerable_model
+        self.tolerate_deprecated_model = model_init_kwargs.tolerate_deprecated_model
         self.region = model_init_kwargs.region
 
         super(JumpStartModel, self).__init__(**model_init_kwargs.to_kwargs_dict())
@@ -120,6 +126,8 @@ class JumpStartModel(Model):
             model_id=self.model_id,
             model_version=self.model_version,
             region=self.region,
+            tolerate_deprecated_model=self.tolerate_deprecated_model,
+            tolerate_vulnerable_model=self.tolerate_vulnerable_model,
             initial_instance_count=initial_instance_count,
             instance_type=instance_type,
             serializer=serializer,

@@ -62,6 +62,17 @@ def _add_model_version_to_kwargs(
     return kwargs
 
 
+def _add_vulnerable_and_deprecated_status_to_kwargs(
+    kwargs: JumpStartModelInitKwargs,
+) -> JumpStartModelInitKwargs:
+    """Sets deprecated and vulnerability check status, returns full kwargs."""
+
+    kwargs.tolerate_deprecated_model = kwargs.tolerate_deprecated_model or False
+    kwargs.tolerate_vulnerable_model = kwargs.tolerate_vulnerable_model or False
+
+    return kwargs
+
+
 def _add_instance_type_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
     """Sets instance type based on default or override, returns full kwargs."""
 
@@ -70,6 +81,8 @@ def _add_instance_type_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartM
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
         scope=JumpStartScriptScope.INFERENCE,
+        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
     )
 
     return kwargs
@@ -85,6 +98,8 @@ def _add_image_uri_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModel
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
         instance_type=kwargs.instance_type,
+        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
     )
 
     return kwargs
@@ -100,6 +115,8 @@ def _add_model_data_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartMode
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
         region=kwargs.region,
+        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
     )
 
     return kwargs
@@ -114,12 +131,16 @@ def _add_source_dir_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartMode
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
         region=kwargs.region,
+        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
     ):
         source_dir = source_dir or script_uris.retrieve(
             script_scope=JumpStartScriptScope.INFERENCE,
             model_id=kwargs.model_id,
             model_version=kwargs.model_version,
             region=kwargs.region,
+            tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+            tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
         )
 
     kwargs.source_dir = source_dir
@@ -158,6 +179,8 @@ def _add_env_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKw
         model_version=kwargs.model_version,
         region=kwargs.region,
         use_case=EnvVariableUseCase.SAGEMAKER_PYTHON_SDK,
+        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
     )
 
     for key, value in extra_env_vars.items():
@@ -239,6 +262,8 @@ def get_deploy_kwargs(
     container_startup_health_check_timeout: Optional[int] = None,
     inference_recommendation_id: Optional[str] = None,
     explainer_config: Optional[ExplainerConfig] = None,
+    tolerate_vulnerable_model: Optional[bool] = None,
+    tolerate_deprecated_model: Optional[bool] = None,
 ) -> JumpStartModelDeployKwargs:
     """Returns kwargs required to call `deploy` on `sagemaker.estimator.Model` object."""
 
@@ -263,6 +288,8 @@ def get_deploy_kwargs(
         container_startup_health_check_timeout=container_startup_health_check_timeout,
         inference_recommendation_id=inference_recommendation_id,
         explainer_config=explainer_config,
+        tolerate_deprecated_model=tolerate_deprecated_model,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
     )
 
     deploy_kwargs = _add_model_version_to_kwargs(kwargs=deploy_kwargs)
@@ -282,6 +309,8 @@ def get_init_kwargs(
     model_id: str,
     model_from_estimator: bool = False,
     model_version: Optional[str] = None,
+    tolerate_vulnerable_model: Optional[bool] = None,
+    tolerate_deprecated_model: Optional[bool] = None,
     instance_type: Optional[str] = None,
     region: Optional[str] = None,
     image_uri: Optional[Union[str, PipelineVariable]] = None,
@@ -326,9 +355,13 @@ def get_init_kwargs(
         container_log_level=container_log_level,
         dependencies=dependencies,
         git_config=git_config,
+        tolerate_deprecated_model=tolerate_deprecated_model,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
     )
 
     model_init_kwargs = _add_model_version_to_kwargs(kwargs=model_init_kwargs)
+
+    model_init_kwargs = _add_vulnerable_and_deprecated_status_to_kwargs(kwargs=model_init_kwargs)
 
     model_init_kwargs = _add_region_to_kwargs(kwargs=model_init_kwargs)
     model_init_kwargs = _add_instance_type_to_kwargs(

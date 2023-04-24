@@ -48,6 +48,8 @@ class JumpStartEstimator(Estimator):
         self,
         model_id: str,
         model_version: Optional[str] = None,
+        tolerate_vulnerable_model: Optional[bool] = None,
+        tolerate_deprecated_model: Optional[bool] = None,
         region: Optional[str] = None,
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         role: Optional[str] = None,
@@ -96,6 +98,8 @@ class JumpStartEstimator(Estimator):
         estimator_init_kwargs = get_init_kwargs(
             model_id=model_id,
             model_version=model_version,
+            tolerate_vulnerable_model=tolerate_vulnerable_model,
+            tolerate_deprecated_model=tolerate_deprecated_model,
             role=role,
             region=region,
             instance_count=instance_count,
@@ -147,6 +151,8 @@ class JumpStartEstimator(Estimator):
         self.model_id = estimator_init_kwargs.model_id
         self.model_version = estimator_init_kwargs.model_version
         self.instance_type = estimator_init_kwargs.instance_type
+        self.tolerate_deprecated_model = estimator_init_kwargs.tolerate_deprecated_model
+        self.tolerate_vulnerable_model = estimator_init_kwargs.tolerate_vulnerable_model
         self.instance_count = estimator_init_kwargs.instance_count
         self.region = estimator_init_kwargs.region
 
@@ -171,6 +177,8 @@ class JumpStartEstimator(Estimator):
             logs=logs,
             job_name=job_name,
             experiment_config=experiment_config,
+            tolerate_vulnerable_model=self.tolerate_vulnerable_model,
+            tolerate_deprecated_model=self.tolerate_deprecated_model,
         )
 
         logger.info(  # pylint: disable=W1203
@@ -224,6 +232,8 @@ class JumpStartEstimator(Estimator):
             model_id=self.model_id,
             model_version=self.model_version,
             region=self.region,
+            tolerate_vulnerable_model=self.tolerate_vulnerable_model,
+            tolerate_deprecated_model=self.tolerate_deprecated_model,
             initial_instance_count=initial_instance_count,
             instance_type=instance_type,
             serializer=serializer,

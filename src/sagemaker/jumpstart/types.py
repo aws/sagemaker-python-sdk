@@ -536,6 +536,8 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "model_id",
         "model_version",
         "instance_type",
+        "tolerate_vulnerable_model",
+        "tolerate_deprecated_model",
         "region",
         "image_uri",
         "model_data",
@@ -556,7 +558,9 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         "git_config",
     ]
 
-    SERIALIZATION_EXCLUSION_SET = {"instance_type", "region"}
+    SERIALIZATION_EXCLUSION_SET = {
+        "instance_type",
+    }
 
     def __init__(
         self,
@@ -581,6 +585,8 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         container_log_level: Optional[Union[int, Any]] = None,
         dependencies: Optional[List[str]] = None,
         git_config: Optional[Dict[str, str]] = None,
+        tolerate_vulnerable_model: Optional[bool] = None,
+        tolerate_deprecated_model: Optional[bool] = None,
     ) -> None:
         """Instantiates JumpStartModelInitKwargs object."""
 
@@ -605,6 +611,8 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
         self.container_log_level = container_log_level
         self.dependencies = dependencies
         self.git_config = git_config
+        self.tolerate_deprecated_model = tolerate_deprecated_model
+        self.tolerate_vulnerable_model = tolerate_vulnerable_model
 
 
 class JumpStartModelDeployKwargs(JumpStartKwargs):
@@ -631,9 +639,17 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         "container_startup_health_check_timeout",
         "inference_recommendation_id",
         "explainer_config",
+        "tolerate_vulnerable_model",
+        "tolerate_deprecated_model",
     ]
 
-    SERIALIZATION_EXCLUSION_SET = {"model_id", "model_version", "region"}
+    SERIALIZATION_EXCLUSION_SET = {
+        "model_id",
+        "model_version",
+        "region",
+        "tolerate_deprecated_model",
+        "tolerate_vulnerable_model",
+    }
 
     def __init__(
         self,
@@ -657,6 +673,8 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         container_startup_health_check_timeout: Optional[int] = None,
         inference_recommendation_id: Optional[str] = None,
         explainer_config: Optional[Any] = None,
+        tolerate_deprecated_model: Optional[bool] = None,
+        tolerate_vulnerable_model: Optional[bool] = None,
     ) -> None:
         """Instantiates JumpStartModelDeployKwargs object."""
 
@@ -680,6 +698,8 @@ class JumpStartModelDeployKwargs(JumpStartKwargs):
         self.container_startup_health_check_timeout = container_startup_health_check_timeout
         self.inference_recommendation_id = inference_recommendation_id
         self.explainer_config = explainer_config
+        self.tolerate_vulnerable_model = tolerate_vulnerable_model
+        self.tolerate_deprecated_model = tolerate_deprecated_model
 
 
 class JumpStartEstimatorInitKwargs(JumpStartKwargs):
@@ -732,9 +752,17 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "instance_groups",
         "training_repository_access_mode",
         "training_repository_credentials_provider_arn",
+        "tolerate_deprecated_model",
+        "tolerate_vulnerable_model",
     ]
 
-    SERIALIZATION_EXCLUSION_SET = {"region"}
+    SERIALIZATION_EXCLUSION_SET = {
+        "region",
+        "tolerate_deprecated_model",
+        "tolerate_vulnerable_model",
+        "model_id",
+        "model_version",
+    }
 
     def __init__(
         self,
@@ -784,6 +812,8 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         instance_groups: Optional[List[Any]] = None,
         training_repository_access_mode: Optional[Union[str, Any]] = None,
         training_repository_credentials_provider_arn: Optional[Union[str, Any]] = None,
+        tolerate_vulnerable_model: Optional[bool] = None,
+        tolerate_deprecated_model: Optional[bool] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -835,6 +865,8 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.training_repository_credentials_provider_arn = (
             training_repository_credentials_provider_arn
         )
+        self.tolerate_vulnerable_model = tolerate_vulnerable_model
+        self.tolerate_deprecated_model = tolerate_deprecated_model
 
 
 class JumpStartEstimatorFitKwargs(JumpStartKwargs):
@@ -849,12 +881,16 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         "logs",
         "job_name",
         "experiment_config",
+        "tolerate_deprecated_model",
+        "tolerate_vulnerable_model",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
         "model_id",
         "model_version",
         "region",
+        "tolerate_deprecated_model",
+        "tolerate_vulnerable_model",
     }
 
     def __init__(
@@ -867,6 +903,8 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         logs: Optional[str] = None,
         job_name: Optional[str] = None,
         experiment_config: Optional[Dict[str, str]] = None,
+        tolerate_deprecated_model: Optional[bool] = None,
+        tolerate_vulnerable_model: Optional[bool] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -878,6 +916,8 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         self.logs = logs
         self.job_name = job_name
         self.experiment_config = experiment_config
+        self.tolerate_deprecated_model = tolerate_deprecated_model
+        self.tolerate_vulnerable_model = tolerate_vulnerable_model
 
 
 class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
@@ -920,9 +960,11 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         "container_log_level",
         "dependencies",
         "git_config",
+        "tolerate_deprecated_model",
+        "tolerate_vulnerable_model",
     ]
 
-    SERIALIZATION_EXCLUSION_SET = {"region"}
+    SERIALIZATION_EXCLUSION_SET = {}
 
     def __init__(
         self,
@@ -962,6 +1004,8 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         container_log_level: Optional[Union[int, Any]] = None,
         dependencies: Optional[List[str]] = None,
         git_config: Optional[Dict[str, str]] = None,
+        tolerate_deprecated_model: Optional[bool] = None,
+        tolerate_vulnerable_model: Optional[bool] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -1001,3 +1045,5 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         self.container_log_level = container_log_level
         self.dependencies = dependencies
         self.git_config = git_config
+        self.tolerate_deprecated_model = tolerate_deprecated_model
+        self.tolerate_vulnerable_model = tolerate_vulnerable_model
