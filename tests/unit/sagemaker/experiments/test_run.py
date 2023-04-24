@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 import datetime
 import unittest
+import cloudpickle
 from math import inf, nan
 from unittest.mock import patch, Mock, MagicMock
 
@@ -48,6 +49,8 @@ from tests.unit.sagemaker.experiments.helpers import (
     mock_tc_load_or_create_func,
     TEST_EXP_NAME,
     TEST_RUN_NAME,
+    TEST_EXP_DISPLAY_NAME,
+    TEST_RUN_DISPLAY_NAME,
 )
 
 
@@ -338,6 +341,34 @@ def test_run_load_in_sm_transform_job(mock_run_env, sagemaker_session):
         pass
 
     client.describe_transform_job.assert_called_once_with(TransformJobName=job_name)
+
+
+@patch(
+    "sagemaker.experiments.run._Experiment._load_or_create",
+    MagicMock(return_value=_Experiment(experiment_name=TEST_EXP_NAME)),
+)
+@patch(
+    "sagemaker.experiments.run._Trial._load_or_create",
+    MagicMock(side_effect=mock_trial_load_or_create_func),
+)
+@patch.object(_Trial, "add_trial_component", MagicMock(return_value=None))
+@patch(
+    "sagemaker.experiments.run._TrialComponent._load_or_create",
+    MagicMock(side_effect=mock_tc_load_or_create_func),
+)
+@patch.object(_TrialComponent, "save")
+def test_run_object_serialize_deserialize(mock_tc_save, sagemaker_session):
+    run_obj = Run(
+        experiment_name=TEST_EXP_NAME,
+        run_name=TEST_RUN_NAME,
+        experiment_display_name=TEST_EXP_DISPLAY_NAME,
+        run_display_name=TEST_RUN_DISPLAY_NAME,
+        sagemaker_session=sagemaker_session,
+    )
+    with pytest.raises(
+        NotImplementedError, match="Instance of Run type is not allowed to be pickled."
+    ):
+        cloudpickle.dumps(run_obj)
 
 
 def test_log_parameter_outside_run_context(run_obj):

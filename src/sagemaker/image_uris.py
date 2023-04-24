@@ -667,3 +667,29 @@ def get_training_image_uri(
         container_version=container_version,
         training_compiler_config=compiler_config,
     )
+
+
+def get_base_python_image_uri(region, py_version="310") -> str:
+    """Retrieves the image URI for base python image.
+
+    Args:
+        region (str): The AWS region to use for image URI.
+        py_version (str): The python version to use for the image. Can be 310 or 38
+        Default to 310
+
+    Returns:
+        str: The image URI string.
+    """
+
+    framework = "sagemaker-base-python"
+    version = "1.0"
+    hostname = utils._botocore_resolver().construct_endpoint("ecr", region)["hostname"]
+    config = config_for_framework(framework)
+    version_config = config["versions"][_version_for_config(version, config)]
+
+    registry = _registry_from_region(region, version_config["registries"])
+
+    repo = version_config["repository"] + "-" + py_version
+    repo_and_tag = repo + ":" + version
+
+    return ECR_URI_TEMPLATE.format(registry=registry, hostname=hostname, repository=repo_and_tag)
