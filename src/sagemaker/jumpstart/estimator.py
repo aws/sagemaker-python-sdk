@@ -175,7 +175,7 @@ class JumpStartEstimator(Estimator):
 
         logger.info(  # pylint: disable=W1203
             f"Creating SageMaker Training Job for {estimator_fit_kwargs.model_id}. "
-            f"Provisioning {estimator_fit_kwargs.instance_type} instance in "
+            f"Provisioning {self.instance_type} instance in "
             f"{estimator_fit_kwargs.region}."
         )
 
