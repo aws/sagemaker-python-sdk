@@ -26,7 +26,7 @@ import re
 import tempfile
 from abc import ABC, abstractmethod
 from typing import List, Union, Dict, Optional, Any
-
+from enum import Enum
 from schema import Schema, And, Use, Or, Optional as SchemaOptional, Regex
 
 from sagemaker import image_uris, s3, utils
@@ -302,6 +302,16 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
         },
     }
 )
+
+
+class DatasetType(Enum):
+    """Enum to store different dataset types supported in the Analysis config file"""
+
+    TEXTCSV = "text/csv"
+    JSONLINES = "application/jsonlines"
+    JSON = "application/json"
+    PARQUET = "application/x-parquet"
+    IMAGE = "application/x-image"
 
 
 class DataConfig:
@@ -1451,7 +1461,7 @@ class SageMakerClarifyProcessor(Processor):
                 source=self._CLARIFY_OUTPUT,
                 destination=data_config.s3_output_path,
                 output_name="analysis_result",
-                s3_upload_mode="EndOfJob",
+                s3_upload_mode=ProcessingOutputHandler.get_s3_upload_mode(analysis_config),
             )
 
             return super().run(
@@ -2169,6 +2179,33 @@ def _upload_analysis_config(analysis_config_file, s3_output_path, sagemaker_sess
         sagemaker_session=sagemaker_session,
         kms_key=kms_key,
     )
+
+
+class ProcessingOutputHandler:
+    """Class to handle the parameters for SagemakerProcessor.Processingoutput"""
+
+    class S3UploadMode(Enum):
+        """Enum values for different uplaod modes to s3 bucket"""
+
+        CONTINUOUS = "Continuous"
+        ENDOFJOB = "EndOfJob"
+
+    @classmethod
+    def get_s3_upload_mode(cls, analysis_config: Dict[str, Any]) -> str:
+        """Fetches s3_upload mode based on the shap_config values
+
+        Args:
+            analysis_config (dict): dict Config following the analysis_config.json format
+
+        Returns:
+            The s3_upload_mode type for the processing output.
+        """
+        dataset_type = analysis_config["dataset_type"]
+        return (
+            ProcessingOutputHandler.S3UploadMode.CONTINUOUS.value
+            if dataset_type == DatasetType.IMAGE.value
+            else ProcessingOutputHandler.S3UploadMode.ENDOFJOB.value
+        )
 
 
 def _set(value, key, dictionary):
