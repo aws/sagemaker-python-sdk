@@ -2448,7 +2448,7 @@ specifically the contents of ``'body': b'{...}`` .
 Run Machine Learning code on SageMaker using remote function
 ************************************************************
 
-You can seamlessly integrate your local machine language (ML) code to run in a Amazon SageMaker Training job by wrapping
+You can integrate your local machine language (ML) code to run in a Amazon SageMaker Training job by wrapping
 your code inside a @remote decorator as shown in the following code example.
 
 .. code-block:: python

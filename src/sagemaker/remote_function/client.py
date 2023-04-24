@@ -132,7 +132,7 @@ def remote(
               in the system path.
 
           * The parameter dependencies is set to auto_capture. SageMaker will automatically
-            generate a env_snapshot.yml corresponding to the current active conda environment’s
+            generate an env_snapshot.yml corresponding to the current active conda environment’s
             snapshot. You do not need to provide a dependencies file. The following conditions
             apply:
 
@@ -173,9 +173,9 @@ def remote(
           Amazon Elastic Container Registry (ECR). Defaults to the following based on where the SDK
           is running:
 
-            * For SageMaker Studio notebook cases, the image used as the kernel image for the
+            * For users on SageMaker Studio notebooks, the image used as the kernel image for the
               notebook is used.
-            * For other cases, it is resolved to base python image with the same python version
+            * For other users, it is resolved to base python image with the same python version
               as the environment running the local code.
 
           If no compatible image is found, a ValueError is thrown.
@@ -184,7 +184,7 @@ def remote(
           local directories. Set to ``True`` if the remote function code imports local modules and
           methods that are not available via PyPI or conda. Default value is ``False``.
 
-        instance_count (int): The number of instance to use. Defaults to 1.
+        instance_count (int): The number of instances to use. Defaults to 1.
 
         instance_type (str): The Amazon Elastic Compute Cloud (EC2) instance type to use to run
           the SageMaker job. e.g. ml.c4.xlarge. If not provided, ValueError is thrown.
@@ -199,7 +199,7 @@ def remote(
           warm pools. The use of warmpools reduces the latency time spent to provision new
           resources. The default value for ``keep_alive_period_in_seconds`` is 0.
           NOTE: Additional charges associated with warm pools may apply. Using this parameter will
-          also activate a new persistent cache feature, which will further reduce job start up
+          also activate a new Persistent Cache feature, which will further reduce job start up
           latency than over using SageMaker managed warm pools alone by caching the package source
           downloaded in the previous runs.
 
@@ -521,7 +521,7 @@ class RemoteExecutor(object):
                 in the system path.
 
             * The parameter dependencies is set to auto_capture. SageMaker will automatically
-                generate a env_snapshot.yml corresponding to the current active conda environment’s
+                generate an env_snapshot.yml corresponding to the current active conda environment’s
                 snapshot. You do not need to provide a dependencies file. The following conditions
                 apply:
 
@@ -562,9 +562,9 @@ class RemoteExecutor(object):
               Amazon Elastic Container Registry (ECR). Defaults to the following based on where the
               SDK is running:
 
-              * For SageMaker Studio notebook cases, the image used as the kernel image for the
-                notebook is used.
-              * For other cases, it is resolved to base python image with the same python
+              * For users on SageMaker Studio notebooks, the image used as the kernel image for
+                the notebook is used.
+              * For other users, it is resolved to base python image with the same python
                 version as the environment running the local code.
 
               If no compatible image is found, a ValueError is thrown.
@@ -573,7 +573,7 @@ class RemoteExecutor(object):
               local directories. Set to ``True`` if the remote function code imports local modules
               and methods that are not available via PyPI or conda. Default value is ``False``.
 
-            instance_count (int): The number of instance to use. Defaults to 1.
+            instance_count (int): The number of instances to use. Defaults to 1.
 
             instance_type (str): The Amazon Elastic Compute Cloud (EC2) instance type to use to run
               the SageMaker job. e.g. ml.c4.xlarge. If not provided, ValueError is thrown.
@@ -820,7 +820,7 @@ class RemoteExecutor(object):
 class Future(object):
     """Class representing a reference to a SageMaker job result.
 
-    Reference to the SageMaker job created as a result of the remote function execution. The job may
+    Reference to the SageMaker job created as a result of the remote function run. The job may
     or may not have finished running.
     """
 
@@ -931,7 +931,7 @@ class Future(object):
               default.
 
         Returns:
-            The Python object returned by the remote function execution.
+            The Python object returned by the remote function.
         """
         try:
             self.wait(timeout)
@@ -1004,12 +1004,12 @@ class Future(object):
     ) -> None:
         """Wait for the underlying SageMaker job to complete.
 
-        This method waits for the SageMaker job created as a result of the remote function execution
+        This method waits for the SageMaker job created as a result of the remote function run
         to complete for up to the timeout value (if specified). If timeout is ``None``, this method
         will block until the job is completed.
 
         Args:
-            timeout (int): Timeout in seconds to wait for until the job is completed before it is
+            timeout (int): Timeout in seconds to wait until the job is completed before it is
               stopped. Defaults to ``None``.
 
         Returns: None
@@ -1029,7 +1029,7 @@ class Future(object):
         early if it is already in progress.
 
         Returns: ``True`` if the underlying SageMaker job created as a result of the remote function
-          execution is cancelled.
+          run is cancelled.
         """
         with self._condition:
             if self._state == _FINISHED:
@@ -1073,9 +1073,9 @@ def get_future(job_name, sagemaker_session=None):
 
     Args:
         job_name (str): name of the underlying SageMaker job created as a result of the remote
-          function execution.
+          function run.
 
-        sagemaker_session (sagemaker.session.Session): A session object which manages interactions
+        sagemaker_session (sagemaker.session.Session): A session object that manages interactions
           with Amazon SageMaker APIs and any other AWS services needed.
 
     Returns:
@@ -1094,8 +1094,8 @@ def list_futures(job_name_prefix, sagemaker_session=None):
 
     Args:
         job_name_prefix (str): A prefix used to identify the SageMaker jobs associated with remote
-          function execution.
-        sagemaker_session (sagemaker.session.Session): A session object which manages interactions
+          function run.
+        sagemaker_session (sagemaker.session.Session): A session object that manages interactions
           with Amazon SageMaker APIs and any other AWS services needed.
 
     Yields:
