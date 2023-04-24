@@ -98,7 +98,7 @@ def remote(
 
         dependencies (str): Either the path to a dependencies file or the reserved keyword
           ``auto_capture``. Defaults to ``None``.
-          If dependencies is provided, the value must be one of the following:
+          If ``dependencies`` is provided, the value must be one of the following:
 
           * A path to a conda environment.yml file. The following conditions apply.
 
@@ -128,7 +128,7 @@ def remote(
               ``SAGEMAKER_JOB_CONDA_ENV`` must already exist in the image.
             * If none of the above conditions are met, conda is not used. Dependencies are
               installed at the system level, without any virtual environment, and the function
-              annotated with the remote decorator is invoked using the python runtime available
+              annotated with the remote decorator is invoked using the Python runtime available
               in the system path.
 
           * The parameter dependencies is set to auto_capture. SageMaker will automatically
@@ -187,7 +187,7 @@ def remote(
         instance_count (int): The number of instances to use. Defaults to 1.
 
         instance_type (str): The Amazon Elastic Compute Cloud (EC2) instance type to use to run
-          the SageMaker job. e.g. ml.c4.xlarge. If not provided, ValueError is thrown.
+          the SageMaker job. e.g. ml.c4.xlarge. If not provided, a ValueError is thrown.
 
         job_conda_env (str): The name of the conda environment to activate during job's runtime.
           Defaults to ``None``.
@@ -475,7 +475,7 @@ class RemoteExecutor(object):
     ):
         """Constructor for RemoteExecutor
 
-        Unless mentioned otherwise, the construcutor first looks up the value from the SageMaker
+        Unless mentioned otherwise, the constructor first looks up the value from the SageMaker
         configuration file. If no value is specified in the configuration file or no configuration
         file is found, the constructor selects the default as specified below. For more
         information, see `Configuring and using defaults with the SageMaker Python SDK
@@ -487,7 +487,7 @@ class RemoteExecutor(object):
 
             dependencies (str): Either the path to a dependencies file or the reserved keyword
               ``auto_capture``. Defaults to ``None``.
-              If dependencies is provided, the value must be one of the following:
+              If ``dependencies`` is provided, the value must be one of the following:
 
             * A path to a conda environment.yml file. The following conditions apply.
 
@@ -517,7 +517,7 @@ class RemoteExecutor(object):
                 ``SAGEMAKER_JOB_CONDA_ENV`` must already exist in the image.
               * If none of the above conditions are met, conda is not used. Dependencies are
                 installed at the system level, without any virtual environment, and the function
-                annotated with the remote decorator is invoked using the python runtime available
+                annotated with the remote decorator is invoked using the Python runtime available
                 in the system path.
 
             * The parameter dependencies is set to auto_capture. SageMaker will automatically
@@ -576,7 +576,7 @@ class RemoteExecutor(object):
             instance_count (int): The number of instances to use. Defaults to 1.
 
             instance_type (str): The Amazon Elastic Compute Cloud (EC2) instance type to use to run
-              the SageMaker job. e.g. ml.c4.xlarge. If not provided, ValueError is thrown.
+              the SageMaker job. e.g. ml.c4.xlarge. If not provided, a ValueError is thrown.
 
             job_conda_env (str): The name of the conda environment to activate during job's runtime.
               Defaults to ``None``.
