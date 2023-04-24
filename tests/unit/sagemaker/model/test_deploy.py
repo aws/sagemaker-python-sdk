@@ -67,11 +67,15 @@ BASE_PRODUCTION_VARIANT = {
 
 SHAP_BASELINE = '1,2,3,"good product"'
 CSV_MIME_TYPE = "text/csv"
+BUCKET_NAME = "mybucket"
 
 
 @pytest.fixture
 def sagemaker_session():
-    session = Mock()
+    session = Mock(
+        default_bucket_prefix=None,
+    )
+    session.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     # For tests which doesn't verify config file injection, operate with empty config
     session.sagemaker_config = {}
     return session

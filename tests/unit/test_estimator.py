@@ -55,10 +55,16 @@ from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.tensorflow.estimator import TensorFlow
 from sagemaker.predictor_async import AsyncPredictor
 from sagemaker.transformer import Transformer
+from sagemaker.workflow.execution_variables import ExecutionVariable
 from sagemaker.workflow.parameters import ParameterString, ParameterBoolean
 from sagemaker.workflow.pipeline_context import PipelineSession, _PipelineConfig
 from sagemaker.xgboost.estimator import XGBoost
-from tests.unit import SAGEMAKER_CONFIG_TRAINING_JOB
+from tests.unit import (
+    SAGEMAKER_CONFIG_TRAINING_JOB,
+    _test_default_bucket_and_prefix_combinations,
+    DEFAULT_S3_BUCKET_NAME,
+    DEFAULT_S3_OBJECT_KEY_PREFIX_NAME,
+)
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -228,6 +234,7 @@ def sagemaker_session():
         s3_client=None,
         s3_resource=None,
         settings=SessionSettings(),
+        default_bucket_prefix=None,
     )
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     sms.sagemaker_client.describe_training_job = Mock(
@@ -4399,7 +4406,6 @@ def test_script_mode_estimator_tags_jumpstart_models_with_no_estimator_js_tags(
     ]
 
 
-@patch("time.time", return_value=TIME)
 @patch("sagemaker.estimator.tar_and_upload_dir")
 @patch("sagemaker.model.Model._upload_code")
 @patch("sagemaker.utils.repack_model")
@@ -4539,7 +4545,6 @@ def test_script_mode_estimator_uses_jumpstart_base_name_with_js_models(
     )
 
 
-@patch("time.time", return_value=TIME)
 @patch("sagemaker.estimator.tar_and_upload_dir")
 @patch("sagemaker.model.Model._upload_code")
 @patch("sagemaker.utils.repack_model")
@@ -4777,3 +4782,215 @@ def test_estimator_local_download_dir(
         patched_tar_and_upload_dir.call_args_list[0][1]["settings"].local_download_dir
         == local_download_dir
     )
+
+
+@pytest.mark.parametrize(
+    "input_key_prefix, input_current_job_name, input_pipeline_config, output_code_s3_prefix",
+    [
+        (
+            "my/prefix",
+            "job-name",
+            MOCKED_PIPELINE_CONFIG,
+            "my/prefix/test-pipeline/code/code-hash-0123456789",
+        ),
+        ("my/prefix", "job-name", None, "my/prefix/job-name/source"),
+        ("", "job-name", MOCKED_PIPELINE_CONFIG, "test-pipeline/code/code-hash-0123456789"),
+        ("", "job-name", None, "job-name/source"),
+        (None, "job-name", MOCKED_PIPELINE_CONFIG, "test-pipeline/code/code-hash-0123456789"),
+        (None, "job-name", None, "job-name/source"),
+        (None, None, MOCKED_PIPELINE_CONFIG, "test-pipeline/code/code-hash-0123456789"),
+        (None, None, None, "source"),
+    ],
+)
+def test_assign_s3_prefix(
+    sagemaker_session,
+    input_key_prefix,
+    input_current_job_name,
+    input_pipeline_config,
+    output_code_s3_prefix,
+):
+
+    with patch("sagemaker.workflow.utilities._pipeline_config", input_pipeline_config):
+        framework = DummyFramework(
+            "my_script.py",
+            role="DummyRole",
+            sagemaker_session=sagemaker_session,
+        )
+        framework._current_job_name = input_current_job_name
+        assert framework._assign_s3_prefix(input_key_prefix) == output_code_s3_prefix
+
+
+@patch("sagemaker.estimator._TrainingJob.start_new")
+@patch("sagemaker.estimator.tar_and_upload_dir")
+def test_output_path_default_bucket_and_prefix_combinations(start_new, tar_and_upload_dir):
+    def with_user_input(sess):
+        framework = DummyFramework(
+            "my_script.py",
+            role="DummyRole",
+            sagemaker_session=sess,
+            output_path="s3://test",
+        )
+        framework.fit(None, job_name=JOB_NAME, wait=False, logs=True)
+        start_new.assert_called()  # just to make sure this is patched with a mock
+        tar_and_upload_dir.assert_called()  # just to make sure this is patched with a mock
+        return framework.output_path
+
+    def without_user_input(sess):
+        framework = DummyFramework(
+            "my_script.py",
+            role="DummyRole",
+            sagemaker_session=sess,
+        )
+        framework.fit(None, job_name=JOB_NAME, wait=False, logs=True)
+        start_new.assert_called()  # just to make sure this is patched with a mock
+        tar_and_upload_dir.assert_called()  # just to make sure this is patched with a mock
+        return framework.output_path
+
+    actual, expected = _test_default_bucket_and_prefix_combinations(
+        function_with_user_input=with_user_input,
+        function_without_user_input=without_user_input,
+        expected__without_user_input__with_default_bucket_and_default_prefix=(
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/"
+        ),
+        expected__without_user_input__with_default_bucket_only=f"s3://{DEFAULT_S3_BUCKET_NAME}/",
+        expected__with_user_input__with_default_bucket_and_prefix="s3://test",
+        expected__with_user_input__with_default_bucket_only="s3://test",
+    )
+    assert actual == expected
+
+
+@patch("sagemaker.estimator.tar_and_upload_dir")
+@pytest.mark.parametrize(
+    (
+        "output_path, code_location,"
+        "expected__without_user_input__with_default_bucket_and_default_prefix, "
+        "expected__without_user_input__with_default_bucket_only, "
+        "expected__with_user_input__with_default_bucket_and_prefix, "
+        "expected__with_user_input__with_default_bucket_only"
+    ),
+    [
+        # Group of not-None output_bucket
+        (
+            "s3://output-bucket/output-prefix/output-prefix2",
+            "s3://code-bucket/code-prefix/code-prefix2",
+            (DEFAULT_S3_BUCKET_NAME, f"{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/{JOB_NAME}/source"),
+            (DEFAULT_S3_BUCKET_NAME, f"{JOB_NAME}/source"),
+            ("code-bucket", f"code-prefix/code-prefix2/{JOB_NAME}/source"),
+            ("code-bucket", f"code-prefix/code-prefix2/{JOB_NAME}/source"),
+        ),
+        (
+            "s3://output-bucket/output-prefix/output-prefix2",
+            None,
+            (DEFAULT_S3_BUCKET_NAME, f"{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/{JOB_NAME}/source"),
+            (DEFAULT_S3_BUCKET_NAME, f"{JOB_NAME}/source"),
+            ("output-bucket", f"{JOB_NAME}/source"),
+            ("output-bucket", f"{JOB_NAME}/source"),
+        ),
+        # Group of None output_bucket
+        (
+            None,
+            "s3://code-bucket/code-prefix/code-prefix2",
+            (DEFAULT_S3_BUCKET_NAME, f"{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/{JOB_NAME}/source"),
+            (DEFAULT_S3_BUCKET_NAME, f"{JOB_NAME}/source"),
+            ("code-bucket", f"code-prefix/code-prefix2/{JOB_NAME}/source"),
+            ("code-bucket", f"code-prefix/code-prefix2/{JOB_NAME}/source"),
+        ),
+        (
+            None,
+            None,
+            (DEFAULT_S3_BUCKET_NAME, f"{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/{JOB_NAME}/source"),
+            (DEFAULT_S3_BUCKET_NAME, f"{JOB_NAME}/source"),
+            (DEFAULT_S3_BUCKET_NAME, f"{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/{JOB_NAME}/source"),
+            (DEFAULT_S3_BUCKET_NAME, f"{JOB_NAME}/source"),
+        ),
+        # Group of PipelineVariable output_bucket
+        (
+            ExecutionVariable("output_path"),
+            "s3://code-bucket/code-prefix/code-prefix2",
+            (DEFAULT_S3_BUCKET_NAME, f"{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/{JOB_NAME}/source"),
+            (DEFAULT_S3_BUCKET_NAME, f"{JOB_NAME}/source"),
+            ("code-bucket", f"code-prefix/code-prefix2/{JOB_NAME}/source"),
+            ("code-bucket", f"code-prefix/code-prefix2/{JOB_NAME}/source"),
+        ),
+        (
+            ExecutionVariable("output_path"),
+            None,
+            (DEFAULT_S3_BUCKET_NAME, f"{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/{JOB_NAME}/source"),
+            (DEFAULT_S3_BUCKET_NAME, f"{JOB_NAME}/source"),
+            (DEFAULT_S3_BUCKET_NAME, f"{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/{JOB_NAME}/source"),
+            (DEFAULT_S3_BUCKET_NAME, f"{JOB_NAME}/source"),
+        ),
+        # Group of file output_bucket
+        (
+            "file://output-bucket/output-prefix/output-prefix2",
+            "s3://code-bucket/code-prefix/code-prefix2",
+            (DEFAULT_S3_BUCKET_NAME, f"{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/{JOB_NAME}/source"),
+            (DEFAULT_S3_BUCKET_NAME, f"{JOB_NAME}/source"),
+            ("code-bucket", f"code-prefix/code-prefix2/{JOB_NAME}/source"),
+            ("code-bucket", f"code-prefix/code-prefix2/{JOB_NAME}/source"),
+        ),
+        (
+            "file://output-bucket/output-prefix/output-prefix2",
+            None,
+            (DEFAULT_S3_BUCKET_NAME, f"{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/{JOB_NAME}/source"),
+            (DEFAULT_S3_BUCKET_NAME, f"{JOB_NAME}/source"),
+            (DEFAULT_S3_BUCKET_NAME, f"{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/{JOB_NAME}/source"),
+            (DEFAULT_S3_BUCKET_NAME, f"{JOB_NAME}/source"),
+        ),
+    ],
+)
+def test_stage_user_code_in_s3_default_bucket_and_prefix_combinations(
+    tar_and_upload_dir,
+    output_path,
+    code_location,
+    expected__without_user_input__with_default_bucket_and_default_prefix,
+    expected__without_user_input__with_default_bucket_only,
+    expected__with_user_input__with_default_bucket_and_prefix,
+    expected__with_user_input__with_default_bucket_only,
+):
+    def with_user_input(sess):
+        framework = DummyFramework(
+            "my_script.py",
+            role="DummyRole",
+            sagemaker_session=sess,
+        )
+
+        if output_path is not None:
+            framework.output_path = output_path
+        if code_location is not None:
+            framework.code_location = code_location
+
+        # this method calls _stage_user_code_in_s3()
+        framework._prepare_for_training(job_name=JOB_NAME)
+        kwargs = tar_and_upload_dir.call_args.kwargs
+        return kwargs["bucket"], kwargs["s3_key_prefix"]
+
+    def without_user_input(sess):
+        framework = DummyFramework(
+            "my_script.py",
+            role="DummyRole",
+            sagemaker_session=sess,
+        )
+
+        # this method calls _stage_user_code_in_s3()
+        framework._prepare_for_training(job_name=JOB_NAME)
+        kwargs = tar_and_upload_dir.call_args.kwargs
+        return kwargs["bucket"], kwargs["s3_key_prefix"]
+
+    actual, expected = _test_default_bucket_and_prefix_combinations(
+        function_with_user_input=with_user_input,
+        function_without_user_input=without_user_input,
+        expected__without_user_input__with_default_bucket_and_default_prefix=(
+            expected__without_user_input__with_default_bucket_and_default_prefix
+        ),
+        expected__without_user_input__with_default_bucket_only=(
+            expected__without_user_input__with_default_bucket_only
+        ),
+        expected__with_user_input__with_default_bucket_and_prefix=(
+            expected__with_user_input__with_default_bucket_and_prefix
+        ),
+        expected__with_user_input__with_default_bucket_only=(
+            expected__with_user_input__with_default_bucket_only
+        ),
+    )
+    assert actual == expected

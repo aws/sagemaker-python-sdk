@@ -60,6 +60,7 @@ def sagemaker_session():
         s3_client=None,
         s3_resource=None,
         settings=SessionSettings(),
+        default_bucket_prefix=None,
     )
     sms.boto_region_name = REGION
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)

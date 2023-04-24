@@ -508,13 +508,13 @@ def test_single_transformer_multiple_jobs(
     with timeout_and_delete_model_with_transformer(
         transformer, sagemaker_session, minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES
     ):
-        assert transformer.output_path == "s3://{}/{}".format(
-            sagemaker_session.default_bucket(), job_name
+        assert transformer.output_path == "s3://{}/{}/{}".format(
+            sagemaker_session.default_bucket(), sagemaker_session.default_bucket_prefix, job_name
         )
         job_name = unique_name_from_base("test-mxnet-transform")
         transformer.transform(mxnet_transform_input, content_type="text/csv", job_name=job_name)
-        assert transformer.output_path == "s3://{}/{}".format(
-            sagemaker_session.default_bucket(), job_name
+        assert transformer.output_path == "s3://{}/{}/{}".format(
+            sagemaker_session.default_bucket(), sagemaker_session.default_bucket_prefix, job_name
         )
 
 

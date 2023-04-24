@@ -97,7 +97,8 @@ def test_valid_monitoring_schedule_schema(
 
 def test_valid_remote_function_schema(base_config_with_schema, valid_remote_function_config):
     _validate_config(
-        base_config_with_schema, {"PythonSDK": {"Modules": valid_remote_function_config}}
+        base_config_with_schema,
+        {"PythonSDK": {"Modules": {"RemoteFunction": valid_remote_function_config}}},
     )
 
 
@@ -200,6 +201,7 @@ def test_invalid_s3uri_schema(base_config_with_schema):
     with pytest.raises(exceptions.ValidationError):
         validate(config, SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA)
 
+
 @pytest.mark.parametrize(
     "bucket_name",
     [
@@ -212,7 +214,7 @@ def test_invalid_s3uri_schema(base_config_with_schema):
     ],
 )
 def test_session_s3_bucket_schema(base_config_with_schema, bucket_name):
-    config = {"PythonSDK": {"Modules": {"Session": {"S3Bucket": bucket_name}}}}
+    config = {"PythonSDK": {"Modules": {"Session": {"SessionDefaultS3Bucket": bucket_name}}}}
     _validate_config(base_config_with_schema, config)
 
 
@@ -233,3 +235,42 @@ def test_session_s3_bucket_schema(base_config_with_schema, bucket_name):
 def test_invalid_session_s3_bucket_schema(base_config_with_schema, invalid_bucket_name):
     with pytest.raises(exceptions.ValidationError):
         test_session_s3_bucket_schema(base_config_with_schema, invalid_bucket_name)
+
+
+@pytest.mark.parametrize(
+    "prefix_name",
+    [
+        "S3suggested/chars/0123/abc/ABC/!/-/_/./*/'/(/)",
+        "/slash/at/the/beginning",
+        "multiple/slashes//////in///the///middle/",
+        "Other/chars/&/$/@/=/;/:/+   /,/?",
+        "a",
+        # samples from https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-keys.html
+        "Development/Projects.xls",
+        "Finance/statement1.pdf",
+        "Private/taxdocument.pdf",
+        "s3-dg.pdf",
+        "4my-organization",
+        "my.great_photos-2014/jan/myvacation.jpg",
+        "videos/2014/birthday/video1.wmv",
+    ],
+)
+def test_session_s3_object_key_prefix_schema(base_config_with_schema, prefix_name):
+    config = {
+        "PythonSDK": {"Modules": {"Session": {"SessionDefaultS3ObjectKeyPrefix": prefix_name}}}
+    }
+    _validate_config(base_config_with_schema, config)
+
+
+@pytest.mark.parametrize(
+    "invalid_prefix_name",
+    [
+        "",
+        "too_many_chars_above_1024_" + ("a" * 1000),
+        1000,
+        True,
+    ],
+)
+def test_invalid_session_s3_object_key_prefix_schema(base_config_with_schema, invalid_prefix_name):
+    with pytest.raises(exceptions.ValidationError):
+        test_session_s3_object_key_prefix_schema(base_config_with_schema, invalid_prefix_name)

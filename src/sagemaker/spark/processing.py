@@ -34,7 +34,7 @@ from copy import copy
 
 from typing import Union, List, Dict, Optional
 
-from sagemaker import image_uris
+from sagemaker import image_uris, s3
 from sagemaker.local.image import _ecr_login_if_needed, _pull_image
 from sagemaker.processing import ProcessingInput, ProcessingOutput, ScriptProcessor
 from sagemaker.s3 import S3Uploader
@@ -429,7 +429,11 @@ class _SparkProcessorBase(ScriptProcessor):
             else:
                 s3_prefix_uri = self.configuration_location
         else:
-            s3_prefix_uri = f"s3://{self.sagemaker_session.default_bucket()}"
+            s3_prefix_uri = s3.s3_path_join(
+                "s3://",
+                self.sagemaker_session.default_bucket(),
+                self.sagemaker_session.default_bucket_prefix,
+            )
 
         serialized_configuration = BytesIO(json.dumps(configuration).encode("utf-8"))
 
@@ -524,7 +528,11 @@ class _SparkProcessorBase(ScriptProcessor):
                     else:
                         s3_prefix_uri = self.dependency_location
                 else:
-                    s3_prefix_uri = f"s3://{self.sagemaker_session.default_bucket()}"
+                    s3_prefix_uri = s3.s3_path_join(
+                        "s3://",
+                        self.sagemaker_session.default_bucket(),
+                        self.sagemaker_session.default_bucket_prefix,
+                    )
 
                 if _pipeline_config and _pipeline_config.code_hash:
                     input_channel_s3_uri = (

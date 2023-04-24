@@ -180,7 +180,10 @@ IR_SERVERLESS_PRODUCTION_VARIANTS = [
 
 @pytest.fixture()
 def sagemaker_session():
-    session = MagicMock(boto_region_name=REGION)
+    session = MagicMock(
+        boto_region_name=REGION,
+        default_bucket_prefix=None,
+    )
 
     session.create_inference_recommendations_job.return_value = IR_JOB_NAME
     session.wait_for_inference_recommendations_job.return_value = IR_SAMPLE_INFERENCE_RESPONSE

@@ -14,6 +14,8 @@ from __future__ import absolute_import
 
 import os
 
+from mock.mock import Mock
+
 from sagemaker.config import (
     SAGEMAKER,
     MONITORING_SCHEDULE,
@@ -72,12 +74,15 @@ from sagemaker.config import (
     SCHEMA_VERSION,
     PYTHON_SDK,
     MODULES,
-    S3_BUCKET,
+    SESSION_DEFAULT_S3_BUCKET,
+    SESSION_DEFAULT_S3_OBJECT_KEY_PREFIX,
     SESSION,
 )
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 PY_VERSION = "py3"
+DEFAULT_S3_BUCKET_NAME = "sagemaker-config-session-s3-bucket"
+DEFAULT_S3_OBJECT_KEY_PREFIX_NAME = "test-prefix"
 
 SAGEMAKER_CONFIG_SESSION = {
     SCHEMA_VERSION: "1.0",
@@ -85,7 +90,8 @@ SAGEMAKER_CONFIG_SESSION = {
         PYTHON_SDK: {
             MODULES: {
                 SESSION: {
-                    S3_BUCKET: "sagemaker-config-session-s3-bucket",
+                    SESSION_DEFAULT_S3_BUCKET: "sagemaker-config-session-s3-bucket",
+                    SESSION_DEFAULT_S3_OBJECT_KEY_PREFIX: "test-prefix",
                 },
             },
         },
@@ -293,3 +299,63 @@ SAGEMAKER_CONFIG_MODEL = {
         },
     },
 }
+
+
+def _test_default_bucket_and_prefix_combinations(
+    function_with_user_input=None,
+    function_without_user_input=None,
+    expected__without_user_input__with_default_bucket_and_default_prefix=None,
+    expected__without_user_input__with_default_bucket_only=None,
+    expected__with_user_input__with_default_bucket_and_prefix=None,
+    expected__with_user_input__with_default_bucket_only=None,
+    session_with_bucket_and_prefix=Mock(
+        name="sagemaker_session",
+        sagemaker_config={},
+        default_bucket=Mock(name="default_bucket", return_value=DEFAULT_S3_BUCKET_NAME),
+        default_bucket_prefix=DEFAULT_S3_OBJECT_KEY_PREFIX_NAME,
+        config=None,
+    ),
+    session_with_bucket_and_no_prefix=Mock(
+        name="sagemaker_session",
+        sagemaker_config={},
+        default_bucket_prefix=None,
+        default_bucket=Mock(name="default_bucket", return_value=DEFAULT_S3_BUCKET_NAME),
+        config=None,
+    ),
+):
+    """
+    Helper to test the different possible scenarios of how S3 params will be generated.
+
+    Possible scenarios:
+        1. User provided their own input, so (in most cases) there is no need to use default params
+        2. User did not provide input. Session has a default_bucket_prefix set
+        2. User did not provide input. Session does NOT have a default_bucket_prefix set
+    """
+
+    actual_values = []
+    expected_values = []
+
+    # With Default Bucket and Default Prefix
+    if expected__without_user_input__with_default_bucket_and_default_prefix:
+        actual_values.append(function_without_user_input(session_with_bucket_and_prefix))
+        expected_values.append(expected__without_user_input__with_default_bucket_and_default_prefix)
+
+    # With Default Bucket and no Default Prefix
+    if expected__without_user_input__with_default_bucket_only:
+        actual_values.append(function_without_user_input(session_with_bucket_and_no_prefix))
+        expected_values.append(expected__without_user_input__with_default_bucket_only)
+
+    # With user input & With Default Bucket and Default Prefix
+    if expected__with_user_input__with_default_bucket_and_prefix:
+        actual_values.append(function_with_user_input(session_with_bucket_and_prefix))
+        expected_values.append(expected__with_user_input__with_default_bucket_and_prefix)
+
+    # With user input & With Default Bucket and no Default Prefix
+    if expected__with_user_input__with_default_bucket_only:
+        actual_values.append(function_with_user_input(session_with_bucket_and_no_prefix))
+        expected_values.append(expected__with_user_input__with_default_bucket_only)
+
+    # It is better to put assert statements in the caller function rather than within here.
+    # (If we put Asserts inside of this function, the info logged is not very debuggable. It just
+    # says that the Assert failed, and doesn't show the difference.)
+    return actual_values, expected_values

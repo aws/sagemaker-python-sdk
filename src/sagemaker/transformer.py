@@ -19,6 +19,8 @@ import copy
 import time
 
 from botocore import exceptions
+
+from sagemaker import s3
 from sagemaker.config import (
     TRANSFORM_OUTPUT_KMS_KEY_ID_PATH,
     TRANSFORM_JOB_KMS_KEY_ID_PATH,
@@ -260,14 +262,22 @@ class Transformer(object):
                     values=[
                         "s3:/",
                         self.sagemaker_session.default_bucket(),
+                        *(
+                            [self.sagemaker_session.default_bucket_prefix]
+                            if self.sagemaker_session.default_bucket_prefix
+                            else []
+                        ),
                         _pipeline_config.pipeline_name,
                         ExecutionVariables.PIPELINE_EXECUTION_ID,
                         _pipeline_config.step_name,
                     ],
                 )
             else:
-                self.output_path = "s3://{}/{}".format(
-                    self.sagemaker_session.default_bucket(), self._current_job_name
+                self.output_path = s3.s3_path_join(
+                    "s3://",
+                    self.sagemaker_session.default_bucket(),
+                    self.sagemaker_session.default_bucket_prefix,
+                    self._current_job_name,
                 )
             self._reset_output_path = True
 
