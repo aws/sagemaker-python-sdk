@@ -92,7 +92,10 @@ def test_jumpstart_inference_model_class(setup):
     )
 
     predictor = JumpStartPredictor(
-        endpoint_name=model.endpoint_name, model_id=model_id, model_version=model_version
+        endpoint_name=model.endpoint_name,
+        model_id=model_id,
+        model_version=model_version,
+        sagemaker_session=get_sm_session(),
     )
 
     download_inference_assets()

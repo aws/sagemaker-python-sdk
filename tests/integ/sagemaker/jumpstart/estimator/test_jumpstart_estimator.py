@@ -46,7 +46,8 @@ def test_jumpstart_estimator(setup):
     )
 
     predictor = estimator.deploy(
-        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}]
+        tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+        sagemaker_session=get_sm_session(),
     )
 
     response = predictor.predict(["hello", "world"])
