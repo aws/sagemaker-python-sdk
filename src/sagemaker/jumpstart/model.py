@@ -13,6 +13,7 @@
 """This module stores JumpStart implementation of Model class."""
 
 from __future__ import absolute_import
+import logging
 
 from typing import Dict, List, Optional, Union
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
@@ -26,6 +27,8 @@ from sagemaker.predictor import PredictorBase
 from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
 from sagemaker.session import Session
 from sagemaker.workflow.entities import PipelineVariable
+
+logger = logging.getLogger(__name__)
 
 
 class JumpStartModel(Model):
@@ -134,5 +137,10 @@ class JumpStartModel(Model):
             container_startup_health_check_timeout=container_startup_health_check_timeout,
             inference_recommendation_id=inference_recommendation_id,
             explainer_config=explainer_config,
+        )
+
+        logger.info(  # pylint: disable=W1203
+            f"Creating SageMaker Hosting endpoint for {self.model_id}. "
+            f"Provisioning {deploy_kwargs.instance_type} instance in {deploy_kwargs.region}."
         )
         return super(JumpStartModel, self).deploy(**deploy_kwargs.to_kwargs_dict())

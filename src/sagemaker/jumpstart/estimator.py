@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 """This module stores JumpStart implementation of Estimator class."""
 from __future__ import absolute_import
+import logging
 
 
 from typing import Dict, List, Optional, Union
@@ -33,6 +34,8 @@ from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
 
 from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
 from sagemaker.workflow.entities import PipelineVariable
+
+logger = logging.getLogger(__name__)
 
 
 class JumpStartEstimator(Estimator):
@@ -170,6 +173,12 @@ class JumpStartEstimator(Estimator):
             experiment_config=experiment_config,
         )
 
+        logger.info(  # pylint: disable=W1203
+            f"Creating SageMaker Training Job for {estimator_fit_kwargs.model_id}. "
+            f"Provisioning {estimator_fit_kwargs.instance_type} instance in "
+            f"{estimator_fit_kwargs.region}."
+        )
+
         return super(JumpStartEstimator, self).fit(**estimator_fit_kwargs.to_kwargs_dict())
 
     def deploy(
@@ -249,6 +258,11 @@ class JumpStartEstimator(Estimator):
             container_log_level=container_log_level,
             dependencies=dependencies,
             git_config=git_config,
+        )
+
+        logger.info(  # pylint: disable=W1203
+            f"Creating SageMaker Hosting endpoint for {self.model_id}. Provisioning "
+            f"{estimator_deploy_kwargs.instance_type} instance in {estimator_deploy_kwargs.region}."
         )
 
         return super(JumpStartEstimator, self).deploy(**estimator_deploy_kwargs.to_kwargs_dict())

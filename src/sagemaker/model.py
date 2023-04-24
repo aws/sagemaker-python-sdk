@@ -618,6 +618,13 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                     s3_prefix=repacked_model_data, script_name=os.path.basename(self.entry_point)
                 )
 
+            LOGGER.info(  # pylint: disable=W1203
+                f"Repacking model artifact ({self.model_data}), script artifact "
+                f"({self.source_dir}), and dependencies ({self.dependencies}) "
+                f"into single tar.gz file located at {repacked_model_data}. "
+                "This may take some time depending on model size..."
+            )
+
             utils.repack_model(
                 inference_script=self.entry_point,
                 source_directory=self.source_dir,
