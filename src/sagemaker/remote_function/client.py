@@ -82,49 +82,173 @@ def remote(
     volume_size: int = 30,
     encrypt_inter_container_traffic: bool = None,
 ):
-    """Function that starts a new SageMaker job synchronously with overridden runtime settings.
+    """Decorator for running the annotated function as a SageMaker training job.
+
+    This decorator wraps the annotated code and runs it as a new SageMaker job synchronously
+    with the provided runtime settings.
+
+    Unless mentioned otherwise, the decorator first looks up the value from the SageMaker
+    configuration file. If no value is specified in the configuration file or no configuration file
+    is found, the decorator selects the default as specified below. For more information, see
+    `Configuring and using defaults with the SageMaker Python SDK <https://sagemaker.readthedocs.io/
+    en/stable/overview.html#configuring-and-using-defaults-with-the-sagemaker-python-sdk>`_.
 
     Args:
-        _func (Optional): Python function to be executed on the SageMaker job runtime environment.
-        dependencies (str): Path to dependencies file or a reserved keyword
-            ``auto_capture``. Defaults to None.
+        _func (Optional): A Python function to run as a SageMaker training job.
+
+        dependencies (str): Either the path to a dependencies file or the reserved keyword
+          ``auto_capture``. Defaults to ``None``.
+          If ``dependencies`` is provided, the value must be one of the following:
+
+          * A path to a conda environment.yml file. The following conditions apply.
+
+            * If job_conda_env is set, then the conda environment is updated by installing
+              dependencies from the yaml file and the function is invoked within that
+              conda environment. For this to succeed, the specified conda environment must
+              already exist in the image.
+            * If the environment variable ``SAGEMAKER_JOB_CONDA_ENV`` is set in the image, then the
+              conda environment is updated by installing dependencies from the yaml file and the
+              function is invoked within that conda environment. For this to succeed, the
+              conda environment name must already be set in ``SAGEMAKER_JOB_CONDA_ENV``, and
+              ``SAGEMAKER_JOB_CONDA_ENV`` must already exist in the image.
+            * If none of the previous conditions are met, a new conda environment named
+              ``sagemaker-runtime-env`` is created and the function annotated with the remote
+              decorator is invoked in that conda environment.
+
+          * A path to a requirements.txt file. The following conditions apply.
+
+            * If ``job_conda_env`` is set in the remote decorator, dependencies are installed
+              within that conda environment and the function annotated with the remote decorator
+              is invoked in the same conda environment. For this to succeed, the specified
+              conda environment must already exist in the image.
+            * If an environment variable ``SAGEMAKER_JOB_CONDA_ENV`` is set in the image,
+              dependencies are installed within that conda environment and the function annotated
+              with the remote decorator is invoked in the same. For this to succeed, the conda
+              environment name must already be set in ``SAGEMAKER_JOB_CONDA_ENV``, and
+              ``SAGEMAKER_JOB_CONDA_ENV`` must already exist in the image.
+            * If none of the above conditions are met, conda is not used. Dependencies are
+              installed at the system level, without any virtual environment, and the function
+              annotated with the remote decorator is invoked using the Python runtime available
+              in the system path.
+
+          * The parameter dependencies is set to auto_capture. SageMaker will automatically
+            generate an env_snapshot.yml corresponding to the current active conda environment’s
+            snapshot. You do not need to provide a dependencies file. The following conditions
+            apply:
+
+            * You must run the remote function within an active conda environment.
+            * When installing the dependencies on the training job, the same conditions as when
+              dependencies is set to a path to a conda environment file apply. These conditions are
+              as follows:
+
+              * If job_conda_env is set, then the conda environment is updated by installing
+                dependencies from the yaml file and the function is invoked within that
+                conda environment. For this to succeed, the specified conda environment must
+                already exist in the image.
+              * If the environment variable ``SAGEMAKER_JOB_CONDA_ENV`` is set in the image, then
+                the conda environment is updated by installing dependencies from the yaml file
+                and the function is invoked within that conda environment. For this to
+                succeed, the conda environment name must already be set in
+                ``SAGEMAKER_JOB_CONDA_ENV``, and ``SAGEMAKER_JOB_CONDA_ENV`` must already exist
+                in the image.
+              * If none of the previous conditions are met, a new conda environment with name
+                ``sagemaker-runtime-env`` is created and the function annotated with the
+                remote decorator is invoked in that conda environment.
+
+          * ``None``. SageMaker will assume that there are no dependencies to install while
+            executing the remote annotated function in the training job.
+
         pre_execution_commands (List[str]): List of commands to be executed prior to executing
-            remote function. Only one of ``pre_execution_commands`` or ``pre_execution_script``
-            can be specified at the same time. Defaults to None.
+          remote function. Only one of ``pre_execution_commands`` or ``pre_execution_script``
+          can be specified at the same time. Defaults to None.
+
         pre_execution_script (str): Path to script file to be executed prior to executing
-            remote function. Only one of ``pre_execution_commands`` or ``pre_execution_script``
-            can be specified at the same time. Defaults to None.
-        environment_variables (Dict): environment variables
-        image_uri (str): Docker image URI on ECR.
-        include_local_workdir (bool): Set to ``True`` if the remote function code imports local
-        modules and methods that are not available via PyPI or conda. Default value is ``False``.
-        instance_count (int): Number of instance to use. Default is 1.
-        instance_type (str): EC2 instance type.
-        job_conda_env (str): Name of the conda environment to activate during execution of the job.
-            Default is None.
-        job_name_prefix (str): Prefix used to identify the underlying sagemaker job.
-        keep_alive_period_in_seconds (int): The duration of time in seconds to retain configured
-            resources in a warm pool for subsequent training jobs. Default is 0.
-        max_retry_attempts (int): Max number of times the job is retried on InternalServerFailure.
-            Default is 1.
-        max_runtime_in_seconds (int): Timeout in seconds for training.  After this amount of time
-            Amazon SageMaker terminates the job regardless of its current status.
-            Default is 86400 seconds (1 day).
-        role (str): IAM role used for SageMaker execution.
-        s3_kms_key (str): The encryption key used for storing serialized data.
-        s3_root_uri (str): The root S3 folder where the code archives and data are uploaded to.
-        sagemaker_session (sagemaker.session.Session): The underlying SageMaker session which
-            AWS service calls are delegated to (default: None). If not provided, one is created
-            with default AWS configuration chain.
-        security_group_ids (List[str]): List of security group IDs.
-        subnets (List[str]): List of subnet IDs.
-        tags (List[Tuple[str, str]]): List of tags attached to the job.
-        volume_kms_key (str): KMS key used for encrypting EBS volume attached to the training
-            instance.
-        volume_size (int): Size in GB of the storage volume to use for storing input and output
-            data. Default is 30.
-        encrypt_inter_container_traffic (bool): Specifies whether traffic between training
-            containers is encrypted for the training job. (default: ``False``).
+          remote function. Only one of ``pre_execution_commands`` or ``pre_execution_script``
+          can be specified at the same time. Defaults to None.
+
+        environment_variables (Dict): The environment variables used inside the decorator function.
+          Defaults to ``None``.
+
+        image_uri (str): The universal resource identifier (URI) location of a Docker image on
+          Amazon Elastic Container Registry (ECR). Defaults to the following based on where the SDK
+          is running:
+
+            * For users on SageMaker Studio notebooks, the image used as the kernel image for the
+              notebook is used.
+            * For other users, it is resolved to base python image with the same python version
+              as the environment running the local code.
+
+          If no compatible image is found, a ValueError is thrown.
+
+        include_local_workdir (bool): A flag to indicate that the remote function should include
+          local directories. Set to ``True`` if the remote function code imports local modules and
+          methods that are not available via PyPI or conda. Default value is ``False``.
+
+        instance_count (int): The number of instances to use. Defaults to 1.
+
+        instance_type (str): The Amazon Elastic Compute Cloud (EC2) instance type to use to run
+          the SageMaker job. e.g. ml.c4.xlarge. If not provided, a ValueError is thrown.
+
+        job_conda_env (str): The name of the conda environment to activate during job's runtime.
+          Defaults to ``None``.
+
+        job_name_prefix (str): The prefix used used to create the underlying SageMaker job.
+
+        keep_alive_period_in_seconds (int): The duration in seconds to retain and reuse provisioned
+          infrastructure after the completion of a training job, also known as SageMaker managed
+          warm pools. The use of warmpools reduces the latency time spent to provision new
+          resources. The default value for ``keep_alive_period_in_seconds`` is 0.
+          NOTE: Additional charges associated with warm pools may apply. Using this parameter also
+          activates a new pesistent cache feature, which will further reduce job start up
+          latency than over using SageMaker managed warm pools alone by caching the package source
+          downloaded in the previous runs.
+
+        max_retry_attempts (int): The max number of times the job is retried on
+          ```InternalServerFailure``` Error from SageMaker service. Defaults to 1.
+
+        max_runtime_in_seconds (int): The upper limit in seconds to be used for training. After
+          this specified amount of time, SageMaker terminates the job regardless of its current
+          status. Defaults to 1 day or (86400 seconds).
+
+        role (str): The IAM role (either name or full ARN) used to run your SageMaker training
+          job. Defaults to:
+
+          * the SageMaker default IAM role if the SDK is running in SageMaker Notebooks or
+            SageMaker Studio Notebooks.
+          * if not above, a ValueError is be thrown.
+
+        s3_kms_key (str): The key used to encrypt the input and output data. Default to ``None``.
+
+        s3_root_uri (str): The root S3 folder to which the code archives and data are
+          uploaded to. Defaults to ``s3://<sagemaker-default-bucket>``.
+
+        sagemaker_session (sagemaker.session.Session): The underlying SageMaker session to which
+          SageMaker service calls are delegated to (default: None). If not provided, one is created
+          using a default configuration chain.
+
+        security_group_ids (List[str): A list of security group IDs. Defaults to ``None`` and the
+          training job is created without VPC config.
+
+        subnets (List[str): A list of subnet IDs. Defaults to ``None`` and the job is created
+          without VPC config.
+
+        tags (List[Tuple[str, str]): A list of tags attached to the job. Defaults to ``None`` and
+          the training job is created without tags.
+
+        volume_kms_key (str): An Amazon Key Management Service (KMS) key used to encrypt an
+          Amazon Elastic Block Storage (EBS) volume attached to the training instance. Defaults to
+          ``None``.
+
+        volume_size (int): The size in GB of the storage volume for storing input and output data
+          during training. Defaults to ``30``.
+
+        encrypt_inter_container_traffic (bool): A flag that specifies whether traffic between
+          training containers is encrypted for the training job. Defaults to ``False``.
+
+        enable_network_isolation (bool): A flag that specifies whether container will run in
+          network isolation mode. Defaults to ``False``. Network isolation mode restricts the
+          container access to outside networks (such as the Internet). The container does not
+          make any inbound or outbound network calls. Also known as Internet-free mode.
     """
 
     def _remote(func):
@@ -349,55 +473,174 @@ class RemoteExecutor(object):
         volume_size: int = 30,
         encrypt_inter_container_traffic: bool = None,
     ):
-        """Initiates a ``RemoteExecutor`` instance.
+        """Constructor for RemoteExecutor
+
+        Unless mentioned otherwise, the constructor first looks up the value from the SageMaker
+        configuration file. If no value is specified in the configuration file or no configuration
+        file is found, the constructor selects the default as specified below. For more
+        information, see `Configuring and using defaults with the SageMaker Python SDK
+        <https://sagemaker.readthedocs.io/en/stable/overview.html
+        #configuring-and-using-defaults-with-the-sagemaker-python-sdk>`_.
 
         Args:
-            dependencies (str): Path to dependencies file or a reserved keyword
-                ``auto_capture``. Defaults to None.
+            _func (Optional): A Python function to run as a SageMaker training job.
+
+            dependencies (str): Either the path to a dependencies file or the reserved keyword
+              ``auto_capture``. Defaults to ``None``.
+              If ``dependencies`` is provided, the value must be one of the following:
+
+            * A path to a conda environment.yml file. The following conditions apply.
+
+              * If job_conda_env is set, then the conda environment is updated by installing
+                dependencies from the yaml file and the function is invoked within that
+                conda environment. For this to succeed, the specified conda environment must
+                already exist in the image.
+              * If the environment variable ``SAGEMAKER_JOB_CONDA_ENV`` is set in the image, then
+                the conda environment is updated by installing dependencies from the yaml file and
+                the function is invoked within that conda environment. For this to succeed, the
+                conda environment name must already be set in ``SAGEMAKER_JOB_CONDA_ENV``, and
+                ``SAGEMAKER_JOB_CONDA_ENV`` must already exist in the image.
+              * If none of the previous conditions are met, a new conda environment named
+                ``sagemaker-runtime-env`` is created and the function annotated with the remote
+                decorator is invoked in that conda environment.
+
+            * A path to a requirements.txt file. The following conditions apply.
+
+              * If ``job_conda_env`` is set in the remote decorator, dependencies are installed
+                within that conda environment and the function annotated with the remote decorator
+                is invoked in the same conda environment. For this to succeed, the specified
+                conda environment must already exist in the image.
+              * If an environment variable ``SAGEMAKER_JOB_CONDA_ENV`` is set in the image,
+                dependencies are installed within that conda environment and the function annotated
+                with the remote decorator is invoked in the same. For this to succeed, the
+                conda environment name must already be set in ``SAGEMAKER_JOB_CONDA_ENV``, and
+                ``SAGEMAKER_JOB_CONDA_ENV`` must already exist in the image.
+              * If none of the above conditions are met, conda is not used. Dependencies are
+                installed at the system level, without any virtual environment, and the function
+                annotated with the remote decorator is invoked using the Python runtime available
+                in the system path.
+
+            * The parameter dependencies is set to auto_capture. SageMaker will automatically
+                generate an env_snapshot.yml corresponding to the current active conda environment’s
+                snapshot. You do not need to provide a dependencies file. The following conditions
+                apply:
+
+              * You must run the remote function within an active conda environment.
+              * When installing the dependencies on the training job, the same conditions as when
+                dependencies is set to a path to a conda environment file apply. These conditions
+                are as follows:
+
+                  * If job_conda_env is set, then the conda environment is updated by installing
+                    dependencies from the yaml file and the function is invoked within that
+                    conda environment. For this to succeed, the specified conda environment must
+                    already exist in the image.
+                  * If the environment variable ``SAGEMAKER_JOB_CONDA_ENV`` is set in the image,
+                    then the conda environment is updated by installing dependencies from the yaml
+                    file and the function is invoked within that conda environment. For this to
+                    succeed, the conda environment name must already be set in
+                    ``SAGEMAKER_JOB_CONDA_ENV``, and ``SAGEMAKER_JOB_CONDA_ENV`` must already exist
+                    in the image.
+                  * If none of the previous conditions are met, a new conda environment with name
+                    ``sagemaker-runtime-env`` is created and the function annotated with the
+                    remote decorator is invoked in that conda environment.
+
+              * ``None``. SageMaker will assume that there are no dependencies to install while
+                executing the remote annotated function in the training job.
+
             pre_execution_commands (List[str]): List of commands to be executed prior to executing
-                remote function. Only one of ``pre_execution_commands`` or ``pre_execution_script``
-                can be specified at the same time. Defaults to None.
+              remote function. Only one of ``pre_execution_commands`` or ``pre_execution_script``
+              can be specified at the same time. Defaults to None.
+
             pre_execution_script (str): Path to script file to be executed prior to executing
-                remote function. Only one of ``pre_execution_commands`` or ``pre_execution_script``
-                can be specified at the same time. Defaults to None.
-            environment_variables (Dict): Environment variables passed to the underlying sagemaker
-                job. Defaults to None
-            image_uri (str): Docker image URI on ECR. Defaults to base Python image.
-            include_local_workdir (bool): Set to ``True`` if the remote function code imports local
-                modules and methods that are not available via PyPI or conda. Default value is
-                ``False``.
-            instance_count (int): Number of instance to use. Defaults to 1.
-            instance_type (str): EC2 instance type.
-            job_conda_env (str): Name of the conda environment to activate during execution
-                of the job. Default is None.
-            job_name_prefix (str): Prefix used to identify the underlying sagemaker job.
-            keep_alive_period_in_seconds (int): The duration of time in seconds to retain configured
-                resources in a warm pool for subsequent training jobs. Defaults to 0.
-            max_parallel_jobs (int): Maximal number of jobs that run in parallel. Default to 1.
-            max_retry_attempts (int): Max number of times the job is retried on
-                InternalServerFailure.Defaults to 1.
-            max_runtime_in_seconds (int): Timeout in seconds for training.  After this amount of
-                time Amazon SageMaker terminates the job regardless of its current status.
-                Defaults to 86400 seconds (1 day).
-            role (str): IAM role used for SageMaker execution. Defaults to SageMaker default
-                execution role.
-            s3_kms_key (str): The encryption key used for storing serialized data. Defaults to S3
-                managed key.
-            s3_root_uri (str): The root S3 folder where the code archives and data are uploaded to.
-                This parameter is autogenerated using information regarding the image uri if not
-                provided.
-            sagemaker_session (sagemaker.session.Session): The underlying SageMaker session which
-                AWS service calls are delegated to (default: None). If not provided, one is created
-                with default AWS configuration chain.
-            security_group_ids (List[str]): List of security group IDs. Defaults to None.
-            subnets (List[str]): List of subnet IDs. Defaults to None.
-            tags (List[Tuple[str, str]]): List of tags attached to the job. Defaults to None.
-            volume_kms_key (str): KMS key used for encrypting EBS volume attached to the training
-                instance.
-            volume_size (int): Size in GB of the storage volume to use for storing input and output
-                data. Defaults to 30.
-            encrypt_inter_container_traffic (bool): Specifies whether traffic between training
-                containers is encrypted for the training job. (default: ``False``).
+              remote function. Only one of ``pre_execution_commands`` or ``pre_execution_script``
+              can be specified at the same time. Defaults to None.
+
+            environment_variables (Dict): The environment variables used inside the decorator
+              function. Defaults to ``None``.
+
+            image_uri (str): The universal resource identifier (URI) location of a Docker image on
+              Amazon Elastic Container Registry (ECR). Defaults to the following based on where the
+              SDK is running:
+
+              * For users on SageMaker Studio notebooks, the image used as the kernel image for
+                the notebook is used.
+              * For other users, it is resolved to base python image with the same python
+                version as the environment running the local code.
+
+              If no compatible image is found, a ValueError is thrown.
+
+            include_local_workdir (bool): A flag to indicate that the remote function should include
+              local directories. Set to ``True`` if the remote function code imports local modules
+              and methods that are not available via PyPI or conda. Default value is ``False``.
+
+            instance_count (int): The number of instances to use. Defaults to 1.
+
+            instance_type (str): The Amazon Elastic Compute Cloud (EC2) instance type to use to run
+              the SageMaker job. e.g. ml.c4.xlarge. If not provided, a ValueError is thrown.
+
+            job_conda_env (str): The name of the conda environment to activate during job's runtime.
+              Defaults to ``None``.
+
+            job_name_prefix (str): The prefix used used to create the underlying SageMaker job.
+
+            keep_alive_period_in_seconds (int): The duration in seconds to retain and reuse
+              provisioned infrastructure after the completion of a training job, also known as
+              SageMaker managed warm pools. The use of warmpools reduces the latency time spent to
+              provision new resources. The default value for ``keep_alive_period_in_seconds`` is 0.
+              NOTE: Additional charges associated with warm pools may apply. Using this parameter
+              also activates a new pesistent cache feature, which will further reduce job start
+              up latency than over using SageMaker managed warm pools alone by caching the package
+              source downloaded in the previous runs.
+
+            max_parallel_jobs (int): Maximum number of jobs that run in parallel. Defaults to 1.
+
+            max_retry_attempts (int): The max number of times the job is retried on
+              ```InternalServerFailure``` Error from SageMaker service. Defaults to 1.
+
+            max_runtime_in_seconds (int): The upper limit in seconds to be used for training. After
+              this specified amount of time, SageMaker terminates the job regardless of its current
+              status. Defaults to 1 day or (86400 seconds).
+
+            role (str): The IAM role (either name or full ARN) used to run your SageMaker training
+              job. Defaults to:
+
+              * the SageMaker default IAM role if the SDK is running in SageMaker Notebooks or
+                SageMaker Studio Notebooks.
+              * if not above, a ValueError is be thrown.
+
+            s3_kms_key (str): The key used to encrypt the input and output data.
+              Default to ``None``.
+
+            s3_root_uri (str): The root S3 folder to which the code archives and data are
+              uploaded to. Defaults to ``s3://<sagemaker-default-bucket>``.
+
+            sagemaker_session (sagemaker.session.Session): The underlying SageMaker session to which
+              SageMaker service calls are delegated to (default: None). If not provided, one is
+              created using a default configuration chain.
+
+            security_group_ids (List[str): A list of security group IDs. Defaults to ``None`` and
+              the training job is created without VPC config.
+
+            subnets (List[str): A list of subnet IDs. Defaults to ``None`` and the job is
+              created without VPC config.
+
+            tags (List[Tuple[str, str]): A list of tags attached to the job. Defaults to ``None``
+              and the training job is created without tags.
+
+            volume_kms_key (str): An Amazon Key Management Service (KMS) key used to encrypt an
+              Amazon Elastic Block Storage (EBS) volume attached to the training instance.
+              Defaults to ``None``.
+
+            volume_size (int): The size in GB of the storage volume for storing input and output
+              data during training. Defaults to ``30``.
+
+            encrypt_inter_container_traffic (bool): A flag that specifies whether traffic between
+              training containers is encrypted for the training job. Defaults to ``False``.
+
+            enable_network_isolation (bool): A flag that specifies whether container will run in
+              network isolation mode. Defaults to ``False``. Network isolation mode restricts the
+              container access to outside networks (such as the Internet). The container does not
+              make any inbound or outbound network calls. Also known as Internet-free mode.
         """
         self.max_parallel_jobs = max_parallel_jobs
 
@@ -575,9 +818,10 @@ class RemoteExecutor(object):
 
 
 class Future(object):
-    """Class representing a reference to a sagemaker job result.
+    """Class representing a reference to a SageMaker job result.
 
-    The sagemaker job represented may or may not have finished running.
+    Reference to the SageMaker job created as a result of the remote function run. The job may
+    or may not have finished running.
     """
 
     def __init__(self):
@@ -657,7 +901,7 @@ class Future(object):
         """Start and record the newly created job in the future object.
 
         The job is recorded if one is successfully started. Otherwise, the exception is
-        recorded. The state update will be broadcast to other waiting threads.
+        recorded. The state update is broadcast to other waiting threads.
         """
         with self._condition:
             if self._state in [_PENDING]:
@@ -676,16 +920,18 @@ class Future(object):
             return None
 
     def result(self, timeout: float = None) -> Any:
-        """Returns the function result.
+        """Returns the SageMaker job result.
 
-        This method blocks on the sagemaker job completing for up to the timeout value (if
-        specified). If timeout is ``None``, this method will block until the job is completed.
+        This method waits for the SageMaker job created from the remote function execution to
+        complete for up to the timeout value (if specified). If timeout is ``None``,
+        this method will wait until the SageMaker job completes.
+
         Args:
             timeout (float): Timeout in seconds to wait until the job is completed. ``None`` by
-                default.
+              default.
 
         Returns:
-            The Python object returned by the function
+            The Python object returned by the remote function.
         """
         try:
             self.wait(timeout)
@@ -756,13 +1002,15 @@ class Future(object):
         self,
         timeout: int = None,
     ) -> None:
-        """Wait for the underlying sagemaker job to complete.
+        """Wait for the underlying SageMaker job to complete.
 
-        This method blocks on the sagemaker job completing for up to the timeout value (if
-        specified). If timeout is ``None``, this method will block until the job is completed.
+        This method waits for the SageMaker job created as a result of the remote function run
+        to complete for up to the timeout value (if specified). If timeout is ``None``, this method
+        will block until the job is completed.
+
         Args:
-            timeout (int): Timeout in seconds to wait until the job is completed. ``None`` by
-                default.
+            timeout (int): Timeout in seconds to wait until the job is completed before it is
+              stopped. Defaults to ``None``.
 
         Returns: None
         """
@@ -777,10 +1025,11 @@ class Future(object):
     def cancel(self):
         """Cancel the function execution.
 
-        It prevents the SageMaker job being created or stops the underlying sagemaker job early
-        if it is already in progress.
+        This method prevents the SageMaker job being created or stops the underlying SageMaker job
+        early if it is already in progress.
 
-        Returns: ``True`` if the underlying sagemaker job is cancelled.
+        Returns: ``True`` if the underlying SageMaker job created as a result of the remote function
+          run is cancelled.
         """
         with self._condition:
             if self._state == _FINISHED:
@@ -823,10 +1072,11 @@ def get_future(job_name, sagemaker_session=None):
     """Get a future object with information about a job with the given job_name.
 
     Args:
-        job_name (str): name of the underlying SageMaker job.
-        sagemaker_session (sagemaker.session.Session): Session object which
-             manages interactions with Amazon SageMaker APIs and any other
-             AWS services needed.
+        job_name (str): name of the underlying SageMaker job created as a result of the remote
+          function run.
+
+        sagemaker_session (sagemaker.session.Session): A session object that manages interactions
+          with Amazon SageMaker APIs and any other AWS services needed.
 
     Returns:
         A `sagemaker.remote_function.client.Future` instance.
@@ -843,10 +1093,10 @@ def list_futures(job_name_prefix, sagemaker_session=None):
     """Generates Future objects with information about jobs with given job_name_prefix.
 
     Args:
-        job_name_prefix (str): prefix used to identify relevant SageMaker jobs.
-        sagemaker_session (sagemaker.session.Session): Session object which
-             manages interactions with Amazon SageMaker APIs and any other
-             AWS services needed.
+        job_name_prefix (str): A prefix used to identify the SageMaker jobs associated with remote
+          function run.
+        sagemaker_session (sagemaker.session.Session): A session object that manages interactions
+          with Amazon SageMaker APIs and any other AWS services needed.
 
     Yields:
         A `sagemaker.remote_function.client.Future` instance.
