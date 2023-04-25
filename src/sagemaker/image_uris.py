@@ -36,6 +36,7 @@ XGBOOST_FRAMEWORK = "xgboost"
 SKLEARN_FRAMEWORK = "sklearn"
 TRAINIUM_ALLOWED_FRAMEWORKS = "pytorch"
 INFERENCE_GRAVITON = "inference_graviton"
+DATA_WRANGLER_FRAMEWORK = "data-wrangler"
 
 
 @override_pipeline_parameter_var
@@ -460,6 +461,9 @@ def _validate_version_and_set_if_needed(version, config, framework):
             logger.info(log_message)
 
         return available_versions[0]
+
+    if version is None and framework in [DATA_WRANGLER_FRAMEWORK]:
+        version = _get_latest_versions(available_versions)
 
     _validate_arg(version, available_versions + aliased_versions, "{} version".format(framework))
     return version
