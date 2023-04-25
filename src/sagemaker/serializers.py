@@ -15,8 +15,8 @@ from __future__ import absolute_import
 
 from typing import List, Optional
 
-# base_serializers was renamed from serializers, so this import
-# is for backwards compatibility.
+# base_predictor was refactored from predictor.
+# this import ensures backward compatibility.
 from sagemaker.base_serializers import *  # noqa: F403, F401 # pylint: disable=W0614,W0401
 
 

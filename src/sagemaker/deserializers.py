@@ -16,8 +16,8 @@ from __future__ import absolute_import
 
 from typing import List, Optional
 
-# base_deserializers was renamed from deserializers, so this import
-# is for backwards compatibility.
+# base_deserializers was refactored from deserializers.
+# this import ensures backward compatibility.
 from sagemaker.base_deserializers import *  # noqa: F403, F401 # pylint: disable=W0614,W0401
 
 from sagemaker.base_deserializers import BaseDeserializer

@@ -425,7 +425,7 @@ def verify_model_region_and_return_specs(
 def update_dict_if_key_not_present(
     dict_to_update: dict, key_to_add: Any, value_to_add: Any
 ) -> dict:
-    """If a key is not present in the dict, add the new (key, value) pair, otherwise return dict."""
+    """If a key is not present in the dict, add the new (key, value) pair, and return dict."""
     if key_to_add not in dict_to_update:
         dict_to_update[key_to_add] = value_to_add
 

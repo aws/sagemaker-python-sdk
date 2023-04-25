@@ -22,8 +22,8 @@ from sagemaker.session import Session
 
 from sagemaker.base_predictor import Predictor
 
-# base_predictor was renamed from predictor, so this import
-# is for backwards compatibility.
+# base_predictor was refactored from predictor.
+# this import ensures backward compatibility.
 from sagemaker.base_predictor import *  # noqa: F403, F401 # pylint: disable=W0614,W0401
 
 
