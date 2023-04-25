@@ -8,7 +8,7 @@ Remote function classes and methods specification
 .. automethod:: sagemaker.remote_function.client.remote
 
 
-RemoteExcutor
+RemoteExecutor
 -------------
 
 .. autoclass:: sagemaker.remote_function.RemoteExecutor
