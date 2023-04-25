@@ -65,7 +65,7 @@ def test_hvd_gpu(
         and kwargs["instance_type"] == "ml.p2.xlarge"
     ):
         pytest.skip(
-            f"P2 instances have been deprecated for sagemaker jobs starting TensorFlow 2.12"
+            "P2 instances have been deprecated for sagemaker jobs starting TensorFlow 2.12"
         )
 
     _create_and_fit_estimator(
