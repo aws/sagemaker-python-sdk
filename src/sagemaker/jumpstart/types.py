@@ -560,6 +560,11 @@ class JumpStartModelInitKwargs(JumpStartKwargs):
 
     SERIALIZATION_EXCLUSION_SET = {
         "instance_type",
+        "model_id",
+        "model_version",
+        "tolerate_vulnerable_model",
+        "tolerate_deprecated_model",
+        "region",
     }
 
     def __init__(
@@ -964,7 +969,13 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         "tolerate_vulnerable_model",
     ]
 
-    SERIALIZATION_EXCLUSION_SET = {}
+    SERIALIZATION_EXCLUSION_SET = {
+        "tolerate_vulnerable_model",
+        "tolerate_deprecated_model",
+        "region",
+        "model_id",
+        "model_version",
+    }
 
     def __init__(
         self,

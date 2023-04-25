@@ -540,6 +540,8 @@ def _add_estimator_extra_kwargs(
         model_version=kwargs.model_version,
         region=kwargs.region,
         use_case=KwargUseCase.ESTIMATOR,
+        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
     )
 
     for key, value in estimator_kwargs_to_add.items():
@@ -557,6 +559,8 @@ def _add_fit_extra_kwargs(kwargs: JumpStartEstimatorFitKwargs) -> JumpStartEstim
         model_version=kwargs.model_version,
         region=kwargs.region,
         use_case=KwargUseCase.ESTIMATOR_FIT,
+        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
     )
 
     for key, value in fit_kwargs_to_add.items():

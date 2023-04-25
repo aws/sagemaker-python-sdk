@@ -14,6 +14,7 @@ from __future__ import absolute_import
 from typing import Optional
 from unittest import mock
 import unittest
+import pytest
 
 from sagemaker.jumpstart.model import JumpStartModel
 from sagemaker.predictor import Predictor
@@ -49,11 +50,6 @@ class ModelTest(unittest.TestCase):
         )
 
         mock_model_init.assert_called_once_with(
-            model_id="js-trainable-model",
-            model_version="*",
-            region=self.region,
-            tolerate_vulnerable_model=False,
-            tolerate_deprecated_model=False,
             image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/"
             "autogluon-inference:0.4.3-gpu-py38",
             model_data="s3://jumpstart-cache-prod-us-west-2/autogluon-infer/"
@@ -101,11 +97,6 @@ class ModelTest(unittest.TestCase):
         )
 
         mock_model_init.assert_called_once_with(
-            model_id="js-model-class-model-prepacked",
-            model_version="*",
-            region=self.region,
-            tolerate_vulnerable_model=False,
-            tolerate_deprecated_model=False,
             image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:"
             "1.10.2-transformers4.17.0-gpu-py38-cu113-ubuntu20.04",
             model_data="s3://jumpstart-cache-prod-us-west-2/huggingface-infer/prepack/"
@@ -127,12 +118,59 @@ class ModelTest(unittest.TestCase):
             initial_instance_count=1, instance_type="ml.p3.2xlarge"
         )
 
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.Model.__init__")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.model.get_execution_role")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_deprecated(
+        self,
+        mock_get_execution_role: mock.Mock,
+        mock_model_deploy: mock.Mock,
+        mock_model_init: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+    ):
+        model_id, _ = "deprecated_model", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_get_execution_role.return_value = self.execution_role
+
+        with pytest.raises(ValueError):
+            JumpStartModel(
+                model_id=model_id,
+            )
+
+        JumpStartModel(model_id=model_id, tolerate_deprecated_model=True).deploy()
+
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.Model.__init__")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.model.get_execution_role")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_vulnerable(
+        self,
+        mock_get_execution_role: mock.Mock,
+        mock_model_deploy: mock.Mock,
+        mock_model_init: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+    ):
+        model_id, _ = "vulnerable_model", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_get_execution_role.return_value = self.execution_role
+
+        with pytest.raises(ValueError):
+            JumpStartModel(
+                model_id=model_id,
+            )
+
+        JumpStartModel(model_id=model_id, tolerate_vulnerable_model=True).deploy()
+
     def test_model_use_kwargs(self):
 
         all_init_kwargs_used = {
-            "tolerate_deprecated_model": True,
-            "tolerate_vulnerable_model": True,
-            "region": self.region,
             "image_uri": "Union[str, PipelineVariable]",
             "model_data": "Optional[Union[str, PipelineVariable]]",
             "role": "Optional[str] = None",
@@ -211,8 +249,6 @@ class ModelTest(unittest.TestCase):
 
         expected_init_kwargs = overwrite_dictionary(
             {
-                "model_id": "js-model-class-model-prepacked",
-                "model_version": "*",
                 "image_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:"
                 "1.10.2-transformers4.17.0-gpu-py38-cu113-ubuntu20.04",
                 "model_data": "s3://jumpstart-cache-prod-us-west-2/huggingface-infer/prepack/"

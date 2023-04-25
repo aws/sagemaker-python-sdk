@@ -23,7 +23,7 @@ from sagemaker.jumpstart.constants import (
     JUMPSTART_RESOURCE_BASE_NAME,
     JumpStartScriptScope,
 )
-from sagemaker.jumpstart.enums import JumpStartTag
+from sagemaker.jumpstart.enums import JumpStartTag, MIMEType
 from sagemaker.jumpstart.exceptions import (
     DeprecatedJumpStartModelError,
     VulnerableJumpStartModelError,
@@ -895,3 +895,14 @@ def test_get_jumpstart_base_name_if_jumpstart_model():
         + ["s3://not-jumpstart-bucket/some-key-2" for _ in range(random.randint(1, 10))]
     )
     assert JUMPSTART_RESOURCE_BASE_NAME == utils.get_jumpstart_base_name_if_jumpstart_model(*uris)
+
+
+def test_mime_type_enum_from_str():
+    mime_types = {elt.value for elt in MIMEType}
+
+    suffixes = {"", "; ", ";fsdfsdfsdfsd", ";;;;;", ";sdfsafd;fdasfs;"}
+
+    for mime_type in mime_types:
+        for suffix in suffixes:
+            mime_type_with_suffix = mime_type + suffix
+            assert MIMEType.from_suffixed_type(mime_type_with_suffix) == mime_type

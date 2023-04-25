@@ -16,6 +16,7 @@ from __future__ import print_function, absolute_import
 from typing import Optional
 
 from sagemaker.jumpstart.factory.model import get_default_predictor
+from sagemaker.jumpstart.utils import is_jumpstart_model_input
 
 from sagemaker.session import Session
 
@@ -60,6 +61,12 @@ def retrieve_default(
     Raises:
         ValueError: If the combination of arguments specified is not supported.
     """
+
+    if not is_jumpstart_model_input(model_id, model_version):
+        raise ValueError(
+            "Must specify `model_id` and `model_version` when retrieving default predictor."
+        )
+
     predictor = Predictor(endpoint_name=endpoint_name, sagemaker_session=sagemaker_session)
 
     return get_default_predictor(

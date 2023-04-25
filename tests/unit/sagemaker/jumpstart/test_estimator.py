@@ -15,6 +15,8 @@ from typing import Optional
 from unittest import mock
 import unittest
 
+import pytest
+
 from sagemaker.debugger.profiler_config import ProfilerConfig
 from sagemaker.instance_group import InstanceGroup
 
@@ -100,12 +102,7 @@ class EstimatorTest(unittest.TestCase):
         estimator.deploy()
 
         mock_estimator_deploy.assert_called_once_with(
-            model_id="js-trainable-model",
-            model_version="*",
             instance_type="ml.p2.xlarge",
-            tolerate_vulnerable_model=False,
-            tolerate_deprecated_model=False,
-            region=self.region,
             initial_instance_count=1,
             image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/autogluon-inference:0.4.3-gpu-py38",
             source_dir="s3://jumpstart-cache-prod-us-west-2/source-directory-tarballs/autogluon/"
@@ -187,8 +184,6 @@ class EstimatorTest(unittest.TestCase):
         estimator.deploy()
 
         mock_estimator_deploy.assert_called_once_with(
-            model_id="js-trainable-model-prepacked",
-            model_version="*",
             instance_type="ml.g5.xlarge",
             initial_instance_count=1,
             image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:"
@@ -202,10 +197,79 @@ class EstimatorTest(unittest.TestCase):
             },
             predictor_cls=Predictor,
             role=self.execution_role,
-            region=self.region,
-            tolerate_deprecated_model=False,
-            tolerate_vulnerable_model=False,
         )
+
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.get_execution_role")
+    @mock.patch("sagemaker.jumpstart.factory.model.get_execution_role")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_deprecated(
+        self,
+        mock_get_execution_role_model: mock.Mock,
+        mock_get_execution_role_estimator: mock.Mock,
+        mock_estimator_deploy: mock.Mock,
+        mock_estimator_fit: mock.Mock,
+        mock_estimator_init: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+    ):
+        model_id, _ = "deprecated_model", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_get_execution_role_model.return_value = self.execution_role
+        mock_get_execution_role_estimator.return_value = self.execution_role
+
+        with pytest.raises(ValueError):
+            JumpStartEstimator(
+                model_id=model_id,
+            )
+
+        channels = {
+            "training": f"s3://{get_jumpstart_content_bucket(self.region)}/"
+            f"some-training-dataset-doesn't-matter",
+        }
+
+        JumpStartEstimator(model_id=model_id, tolerate_deprecated_model=True).fit(channels).deploy()
+
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.get_execution_role")
+    @mock.patch("sagemaker.jumpstart.factory.model.get_execution_role")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_vulnerable(
+        self,
+        mock_get_execution_role_model: mock.Mock,
+        mock_get_execution_role_estimator: mock.Mock,
+        mock_estimator_deploy: mock.Mock,
+        mock_estimator_fit: mock.Mock,
+        mock_estimator_init: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+    ):
+        model_id, _ = "vulnerable_model", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_get_execution_role_model.return_value = self.execution_role
+        mock_get_execution_role_estimator.return_value = self.execution_role
+
+        with pytest.raises(ValueError):
+            JumpStartEstimator(
+                model_id=model_id,
+            )
+
+        channels = {
+            "training": f"s3://{get_jumpstart_content_bucket(self.region)}/"
+            f"some-training-dataset-doesn't-matter",
+        }
+
+        JumpStartEstimator(model_id=model_id, tolerate_vulnerable_model=True).fit(channels).deploy()
 
     def test_estimator_use_kwargs(self):
 
@@ -377,11 +441,6 @@ class EstimatorTest(unittest.TestCase):
 
         expected_deploy_kwargs = overwrite_dictionary(
             {
-                "model_id": "js-trainable-model",
-                "model_version": "*",
-                "region": self.region,
-                "tolerate_deprecated_model": True,
-                "tolerate_vulnerable_model": True,
                 "instance_type": "ml.p2.xlarge",
                 "initial_instance_count": 1,
                 "image_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/autogluon-inference:0.4.3-gpu-py38",

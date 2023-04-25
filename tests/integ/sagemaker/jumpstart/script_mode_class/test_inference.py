@@ -17,7 +17,7 @@ from sagemaker import image_uris, instance_types, model_uris, script_uris, envir
 from sagemaker.jumpstart.constants import INFERENCE_ENTRY_POINT_SCRIPT_NAME
 from sagemaker.jumpstart.artifacts import _retrieve_kwargs
 from sagemaker.jumpstart.enums import EnvVariableUseCase, KwargUseCase
-from sagemaker.jumpstart.predictor import JumpStartPredictor
+from sagemaker import predictor
 from sagemaker.model import Model
 from tests.integ.sagemaker.jumpstart.constants import (
     ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID,
@@ -91,7 +91,7 @@ def test_jumpstart_inference_model_class(setup):
         **deploy_kwargs,
     )
 
-    predictor = JumpStartPredictor(
+    js_predictor = predictor.retrieve_default(
         endpoint_name=model.endpoint_name,
         model_id=model_id,
         model_version=model_version,
@@ -101,6 +101,6 @@ def test_jumpstart_inference_model_class(setup):
     download_inference_assets()
     ground_truth_label, features = get_tabular_data(InferenceTabularDataname.MULTICLASS)
 
-    response = predictor.predict(features)
+    response = js_predictor.predict(features)
 
     assert response is not None

@@ -219,6 +219,8 @@ def _add_entry_point_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartMod
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
         region=kwargs.region,
+        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
     ):
 
         entry_point = entry_point or INFERENCE_ENTRY_POINT_SCRIPT_NAME
@@ -268,6 +270,8 @@ def _add_extra_model_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelI
         model_version=kwargs.model_version,
         region=kwargs.region,
         use_case=KwargUseCase.MODEL,
+        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
     )
 
     for key, value in model_kwargs_to_add.items():
@@ -294,6 +298,8 @@ def _add_deploy_extra_kwargs(kwargs: JumpStartModelInitKwargs) -> Dict[str, Any]
         model_version=kwargs.model_version,
         region=kwargs.region,
         use_case=KwargUseCase.MODEL_DEPLOY,
+        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
     )
 
     for key, value in deploy_kwargs_to_add.items():

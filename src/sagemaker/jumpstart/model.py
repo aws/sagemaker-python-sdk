@@ -308,7 +308,6 @@ class JumpStartModel(Model):
     ) -> PredictorBase:
         """Creates endpoint by calling base ``Model`` class `deploy` method.
 
-
         Create a SageMaker ``Model`` and ``EndpointConfig``, and deploy an
         ``Endpoint`` from this ``Model``.
 

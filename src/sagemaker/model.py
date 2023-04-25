@@ -277,7 +277,6 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 the SageMaker Python SDK attempts to use either the CodeCommit
                 credential helper or local credential storage for authentication.
 
-
         """
         self.model_data = model_data
         self.image_uri = image_uri
