@@ -1052,7 +1052,7 @@ class Future(object):
         with self._condition:
             return self._state == _RUNNING
 
-    def cancelled(self):
+    def cancelled(self) -> bool:
         """
         Returns:
             ``True`` if the underlying sagemaker job was cancelled. ``False``, otherwise.
@@ -1060,7 +1060,7 @@ class Future(object):
         with self._condition:
             return self._state == _CANCELLED
 
-    def done(self):
+    def done(self) -> bool:
         """
         Returns:
             ``True`` if the underlying sagemaker job finished running.
@@ -1079,7 +1079,7 @@ class Future(object):
             return False
 
 
-def get_future(job_name, sagemaker_session=None):
+def get_future(job_name, sagemaker_session=None) -> Future:
     """Get a future object with information about a job with the given job_name.
 
     Args:
