@@ -20,7 +20,11 @@ from sagemaker.async_inference.async_inference_config import AsyncInferenceConfi
 from sagemaker.base_deserializers import BaseDeserializer
 from sagemaker.base_serializers import BaseSerializer
 from sagemaker.explainer.explainer_config import ExplainerConfig
-from sagemaker.jumpstart.factory.model import get_deploy_kwargs, get_init_kwargs
+from sagemaker.jumpstart.factory.model import (
+    get_default_predictor,
+    get_deploy_kwargs,
+    get_init_kwargs,
+)
 from sagemaker.model import Model
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
 from sagemaker.predictor import PredictorBase
@@ -408,4 +412,15 @@ class JumpStartModel(Model):
             explainer_config=explainer_config,
         )
 
-        return super(JumpStartModel, self).deploy(**deploy_kwargs.to_kwargs_dict())
+        predictor = super(JumpStartModel, self).deploy(**deploy_kwargs.to_kwargs_dict())
+
+        predictor_with_defaults = get_default_predictor(
+            predictor=predictor,
+            model_id=self.model_id,
+            model_version=self.model_version,
+            region=self.region,
+            tolerate_deprecated_model=self.tolerate_deprecated_model,
+            tolerate_vulnerable_model=self.tolerate_vulnerable_model,
+        )
+
+        return predictor_with_defaults

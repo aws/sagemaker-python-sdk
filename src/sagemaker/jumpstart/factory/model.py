@@ -27,16 +27,67 @@ from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_REGION_NAME,
 )
 from sagemaker.jumpstart.enums import EnvVariableUseCase, JumpStartScriptScope, KwargUseCase
-from sagemaker.jumpstart.predictor import JumpStartPredictor
 from sagemaker.jumpstart.types import JumpStartModelDeployKwargs, JumpStartModelInitKwargs
 from sagemaker.jumpstart.utils import update_dict_if_key_not_present
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
+from sagemaker.base_predictor import Predictor
+from sagemaker import accept_types, content_types, serializers, deserializers
 
 from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
 from sagemaker.session import Session, get_execution_role
 from sagemaker.workflow.entities import PipelineVariable
 
 logger = logging.getLogger("sagemaker")
+
+
+def get_default_predictor(
+    predictor: Predictor,
+    model_id: str,
+    model_version: str,
+    region: str,
+    tolerate_vulnerable_model: bool,
+    tolerate_deprecated_model: bool,
+) -> Predictor:
+    """Converts predictor returned from ``Model.deploy()`` into a JumpStart-specific one.
+
+    If the predictor is a custom predictor class, honor the user setting and do not mutate.
+    If the predictor is a base-class predictor, set model-specific defaults.
+    """
+
+    # if there's a non-default predictor, do not mutate -- return as is
+    if not isinstance(predictor, Predictor):
+        return predictor
+
+    predictor.serializer = serializers.retrieve_default(
+        model_id=model_id,
+        model_version=model_version,
+        region=region,
+        tolerate_deprecated_model=tolerate_deprecated_model,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
+    )
+    predictor.deserializer = deserializers.retrieve_default(
+        model_id=model_id,
+        model_version=model_version,
+        region=region,
+        tolerate_deprecated_model=tolerate_deprecated_model,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
+    )
+    predictor.accept = accept_types.retrieve_default(
+        model_id=model_id,
+        model_version=model_version,
+        region=region,
+        tolerate_deprecated_model=tolerate_deprecated_model,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
+    )
+    predictor.content_type = content_types.retrieve_default(
+        model_id=model_id,
+        model_version=model_version,
+        region=region,
+        tolerate_deprecated_model=tolerate_deprecated_model,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
+    )
+
+    return predictor
 
 
 def _add_region_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
@@ -229,7 +280,7 @@ def _add_extra_model_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelI
 def _add_predictor_cls_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
     """Sets predictor class kwargs based on on default or override, returns full kwargs."""
 
-    predictor_cls = kwargs.predictor_cls or JumpStartPredictor
+    predictor_cls = kwargs.predictor_cls or Predictor
 
     kwargs.predictor_cls = predictor_cls
     return kwargs

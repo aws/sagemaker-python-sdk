@@ -16,8 +16,8 @@ from unittest import mock
 import unittest
 
 from sagemaker.jumpstart.model import JumpStartModel
+from sagemaker.predictor import Predictor
 
-from sagemaker.jumpstart.predictor import JumpStartPredictor
 from tests.unit.sagemaker.jumpstart.utils import get_special_model_spec, overwrite_dictionary
 
 
@@ -68,7 +68,7 @@ class ModelTest(unittest.TestCase):
                 "SAGEMAKER_ENV": "1",
                 "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
             },
-            predictor_cls=JumpStartPredictor,
+            predictor_cls=Predictor,
             role=self.execution_role,
         )
 
@@ -117,7 +117,7 @@ class ModelTest(unittest.TestCase):
                 "SAGEMAKER_ENV": "1",
                 "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
             },
-            predictor_cls=JumpStartPredictor,
+            predictor_cls=Predictor,
             role=self.execution_role,
         )
 
@@ -136,7 +136,7 @@ class ModelTest(unittest.TestCase):
             "image_uri": "Union[str, PipelineVariable]",
             "model_data": "Optional[Union[str, PipelineVariable]]",
             "role": "Optional[str] = None",
-            "predictor_cls": JumpStartPredictor,
+            "predictor_cls": Predictor,
             "env": {"1": 4},
             "name": "Optional[str] = None",
             "vpc_config": {"dsfsfs": "dfsfsd"},
@@ -224,7 +224,7 @@ class ModelTest(unittest.TestCase):
                     "SAGEMAKER_ENV": "1",
                     "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
                 },
-                "predictor_cls": JumpStartPredictor,
+                "predictor_cls": Predictor,
                 "role": self.execution_role,
             },
             init_kwargs,

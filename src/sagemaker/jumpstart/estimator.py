@@ -29,7 +29,9 @@ from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.instance_group import InstanceGroup
 
 from sagemaker.jumpstart.factory.estimator import get_deploy_kwargs, get_fit_kwargs, get_init_kwargs
+from sagemaker.jumpstart.factory.model import get_default_predictor
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
+from sagemaker.predictor import PredictorBase
 
 
 from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
@@ -652,7 +654,7 @@ class JumpStartEstimator(Estimator):
         container_log_level: Optional[Union[int, PipelineVariable]] = None,
         dependencies: Optional[List[str]] = None,
         git_config: Optional[Dict[str, str]] = None,
-    ) -> None:
+    ) -> PredictorBase:
         """Creates endpoint from training job.
 
         Calls base ``Estimator`` class ``deploy`` method.
@@ -929,4 +931,17 @@ class JumpStartEstimator(Estimator):
             git_config=git_config,
         )
 
-        return super(JumpStartEstimator, self).deploy(**estimator_deploy_kwargs.to_kwargs_dict())
+        predictor = super(JumpStartEstimator, self).deploy(
+            **estimator_deploy_kwargs.to_kwargs_dict()
+        )
+
+        predictor_with_defaults = get_default_predictor(
+            predictor=predictor,
+            model_id=self.model_id,
+            model_version=self.model_version,
+            region=self.region,
+            tolerate_deprecated_model=self.tolerate_deprecated_model,
+            tolerate_vulnerable_model=self.tolerate_vulnerable_model,
+        )
+
+        return predictor_with_defaults

@@ -20,9 +20,9 @@ from sagemaker.instance_group import InstanceGroup
 
 from sagemaker.jumpstart.estimator import JumpStartEstimator
 
-from sagemaker.jumpstart.predictor import JumpStartPredictor
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 from tests.integ.sagemaker.jumpstart.utils import get_training_dataset_for_model_and_version
+from sagemaker.predictor import Predictor
 from sagemaker.session import Session
 from tests.unit.sagemaker.jumpstart.utils import (
     get_special_model_spec,
@@ -118,7 +118,7 @@ class EstimatorTest(unittest.TestCase):
                 "SAGEMAKER_ENV": "1",
                 "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
             },
-            predictor_cls=JumpStartPredictor,
+            predictor_cls=Predictor,
             role=self.execution_role,
         )
 
@@ -200,7 +200,7 @@ class EstimatorTest(unittest.TestCase):
                 "SAGEMAKER_ENV": "1",
                 "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
             },
-            predictor_cls=JumpStartPredictor,
+            predictor_cls=Predictor,
             role=self.execution_role,
             region=self.region,
             tolerate_deprecated_model=False,
@@ -395,7 +395,7 @@ class EstimatorTest(unittest.TestCase):
                     "SAGEMAKER_ENV": "1",
                     "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
                 },
-                "predictor_cls": JumpStartPredictor,
+                "predictor_cls": Predictor,
                 "role": self.execution_role,
             },
             deploy_kwargs,

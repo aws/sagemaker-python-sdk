@@ -38,8 +38,6 @@ from sagemaker.config import (
     MODEL_EXECUTION_ROLE_ARN_PATH,
     ENDPOINT_CONFIG_ASYNC_KMS_KEY_ID_PATH,
 )
-from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
-from sagemaker.jumpstart.predictor import JumpStartPredictor
 from sagemaker.session import Session
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.deprecations import removed_kwargs
@@ -119,11 +117,6 @@ class Model(ModelBase, InferenceRecommenderMixin):
         container_log_level: Union[int, PipelineVariable] = logging.INFO,
         dependencies: Optional[List[str]] = None,
         git_config: Optional[Dict[str, str]] = None,
-        model_id: Optional[str] = None,
-        model_version: Optional[str] = None,
-        region: Optional[str] = JUMPSTART_DEFAULT_REGION_NAME,
-        tolerate_deprecated_model: Optional[bool] = False,
-        tolerate_vulnerable_model: Optional[bool] = False,
     ):
         """Initialize an SageMaker ``Model``.
 
@@ -283,17 +276,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 authentication if they are provided. If they are not provided,
                 the SageMaker Python SDK attempts to use either the CodeCommit
                 credential helper or local credential storage for authentication.
-            model_id (str): JumpStart model id to be used for creating a `Predictor`.
-            model_version (str): JumpStart model version to be used for creating a `Predictor`.
-            region (str): AWS region to use when launching `JumpStartPredictor`.
-                (Default: JUMPSTART_DEFAULT_REGION_NAME).
-            tolerate_vulnerable_model (bool): True if vulnerable versions of JumpStart model
-                specifications should be tolerated (exception not raised). If False, raises an
-                exception if the script used by this version of the model has dependencies with
-                known security vulnerabilities. (Default: False).
-            tolerate_deprecated_model (bool): True if deprecated JumpStart models should be
-                tolerated (exception not raised). False if these models should raise an
-                 exception. (Default: False).
+
 
         """
         self.model_data = model_data
@@ -342,11 +325,6 @@ class Model(ModelBase, InferenceRecommenderMixin):
             self.dependencies = updates["dependencies"]
         self.uploaded_code = None
         self.repacked_model_data = None
-        self.model_id = model_id
-        self.model_version = model_version
-        self.region = region
-        self.tolerate_deprecated_model = tolerate_deprecated_model
-        self.tolerate_vulnerable_model = tolerate_vulnerable_model
 
     @runnable_by_pipeline
     def register(
@@ -1337,19 +1315,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
         )
 
         if self.predictor_cls:
-            if self.predictor_cls == JumpStartPredictor:
-                predictor_cls_kwargs = {
-                    "endpoint_name": self.endpoint_name,
-                    "sagemaker_session": self.sagemaker_session,
-                    "model_id": self.model_id,
-                    "model_version": self.model_version,
-                    "region": self.region,
-                    "tolerate_vulnerable_model": self.tolerate_vulnerable_model,
-                    "tolerate_deprecated_model": self.tolerate_deprecated_model,
-                }
-                predictor = self.predictor_cls(**predictor_cls_kwargs)
-            else:
-                predictor = self.predictor_cls(self.endpoint_name, self.sagemaker_session)
+            predictor = self.predictor_cls(self.endpoint_name, self.sagemaker_session)
             if serializer:
                 predictor.serializer = serializer
             if deserializer:
