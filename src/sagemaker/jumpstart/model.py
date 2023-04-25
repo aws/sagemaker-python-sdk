@@ -408,8 +408,4 @@ class JumpStartModel(Model):
             explainer_config=explainer_config,
         )
 
-        logger.info(  # pylint: disable=W1203
-            f"Creating SageMaker Hosting endpoint for {self.model_id}. "
-            f"Provisioning {deploy_kwargs.instance_type} instance in {deploy_kwargs.region}."
-        )
         return super(JumpStartModel, self).deploy(**deploy_kwargs.to_kwargs_dict())

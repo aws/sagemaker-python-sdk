@@ -46,7 +46,7 @@ def test_jumpstart_deserializers(
 
     patched_get_model_specs.reset_mock()
 
-    deserializer_options = deserializers.retrieve(
+    deserializer_options = deserializers.retrieve_options(
         region=region,
         model_id=model_id,
         model_version=model_version,

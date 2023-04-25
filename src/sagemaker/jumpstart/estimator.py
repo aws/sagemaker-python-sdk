@@ -615,12 +615,6 @@ class JumpStartEstimator(Estimator):
             tolerate_deprecated_model=self.tolerate_deprecated_model,
         )
 
-        logger.info(  # pylint: disable=W1203
-            f"Creating SageMaker Training Job for {estimator_fit_kwargs.model_id}. "
-            f"Provisioning {self.instance_type} instance in "
-            f"{estimator_fit_kwargs.region}."
-        )
-
         return super(JumpStartEstimator, self).fit(**estimator_fit_kwargs.to_kwargs_dict())
 
     def deploy(
@@ -933,11 +927,6 @@ class JumpStartEstimator(Estimator):
             container_log_level=container_log_level,
             dependencies=dependencies,
             git_config=git_config,
-        )
-
-        logger.info(  # pylint: disable=W1203
-            f"Creating SageMaker Hosting endpoint for {self.model_id}. Provisioning "
-            f"{estimator_deploy_kwargs.instance_type} instance in {estimator_deploy_kwargs.region}."
         )
 
         return super(JumpStartEstimator, self).deploy(**estimator_deploy_kwargs.to_kwargs_dict())

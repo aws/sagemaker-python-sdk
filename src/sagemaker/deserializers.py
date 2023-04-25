@@ -25,7 +25,7 @@ from sagemaker.base_deserializers import BaseDeserializer
 from sagemaker.jumpstart import artifacts, utils as jumpstart_utils
 
 
-def retrieve(
+def retrieve_options(
     region: Optional[str] = None,
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,

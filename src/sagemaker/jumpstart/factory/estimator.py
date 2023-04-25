@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 """This module stores JumpStart Estimator factory methods."""
 from __future__ import absolute_import
+import logging
 
 
 from typing import Dict, List, Optional, Union
@@ -52,6 +53,8 @@ from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
 from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
 from sagemaker.session import get_execution_role
 from sagemaker.workflow.entities import PipelineVariable
+
+logger = logging.getLogger("sagemaker")
 
 
 def get_init_kwargs(
@@ -373,6 +376,8 @@ def _add_instance_type_and_count_to_kwargs(
 ) -> JumpStartEstimatorInitKwargs:
     """Sets instance type and count in kwargs based on default or override, returns full kwargs."""
 
+    orig_instance_type, orig_instance_count = kwargs.instance_type, kwargs.instance_count
+
     kwargs.instance_type = kwargs.instance_type or instance_types.retrieve_default(
         region=kwargs.region,
         model_id=kwargs.model_id,
@@ -383,6 +388,16 @@ def _add_instance_type_and_count_to_kwargs(
     )
 
     kwargs.instance_count = kwargs.instance_count or 1
+
+    if orig_instance_type is None:
+        logger.info(  # pylint: disable=W1203
+            f"No instance type selected for training job. Defaulting to {kwargs.instance_type}."
+        )
+
+    if orig_instance_count is None:
+        logger.info(  # pylint: disable=W1203
+            f"No instance count selected for training job. Defaulting to {kwargs.instance_count}."
+        )
 
     return kwargs
 

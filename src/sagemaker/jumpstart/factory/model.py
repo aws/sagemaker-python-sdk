@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 """This module stores JumpStart Model factory methods."""
 from __future__ import absolute_import
+import logging
 
 
 from typing import Any, Dict, List, Optional, Union
@@ -34,6 +35,8 @@ from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
 from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
 from sagemaker.session import Session, get_execution_role
 from sagemaker.workflow.entities import PipelineVariable
+
+logger = logging.getLogger("sagemaker")
 
 
 def _add_region_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
@@ -76,6 +79,8 @@ def _add_vulnerable_and_deprecated_status_to_kwargs(
 def _add_instance_type_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
     """Sets instance type based on default or override, returns full kwargs."""
 
+    orig_instance_type = kwargs.instance_type
+
     kwargs.instance_type = kwargs.instance_type or instance_types.retrieve_default(
         region=kwargs.region,
         model_id=kwargs.model_id,
@@ -84,6 +89,12 @@ def _add_instance_type_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartM
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
     )
+
+    if orig_instance_type is None:
+        logger.info(  # pylint: disable=W1203
+            "No instance type selected for inference hosting endpoint. "
+            f"Defaulting to {kwargs.instance_type}."
+        )
 
     return kwargs
 
@@ -298,7 +309,15 @@ def get_deploy_kwargs(
         kwargs=deploy_kwargs,
     )
 
+    orig_instance_count = deploy_kwargs.initial_instance_count
+
     deploy_kwargs.initial_instance_count = initial_instance_count or 1
+
+    if orig_instance_count is None:
+        logger.info(  # pylint: disable=W1203
+            "No instance count selected for inference hosting endpoint. "
+            f"Defaulting to {deploy_kwargs.initial_instance_count}."
+        )
 
     deploy_kwargs = _add_deploy_extra_kwargs(kwargs=deploy_kwargs)
 

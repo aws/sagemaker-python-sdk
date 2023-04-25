@@ -46,7 +46,7 @@ def test_jumpstart_serializers(
 
     patched_get_model_specs.reset_mock()
 
-    serializer_options = serializers.retrieve(
+    serializer_options = serializers.retrieve_options(
         region=region,
         model_id=model_id,
         model_version=model_version,

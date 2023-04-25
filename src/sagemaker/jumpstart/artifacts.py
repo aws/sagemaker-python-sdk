@@ -467,7 +467,7 @@ def _retrieve_kwargs(
     elif use_case in {KwargUseCase.ESTIMATOR, KwargUseCase.ESTIMATOR_FIT}:
         scope = JumpStartScriptScope.TRAINING
     else:
-        raise ValueError(f"Unsupported kwarg use case: {use_case}")
+        raise ValueError(f"Unsupported named-argument use case: {use_case}")
 
     model_specs = verify_model_region_and_return_specs(
         model_id=model_id,
@@ -490,7 +490,7 @@ def _retrieve_kwargs(
     if use_case == KwargUseCase.ESTIMATOR_FIT:
         return model_specs.fit_kwargs
 
-    raise ValueError(f"Unsupported kwarg use case: {use_case}")
+    raise ValueError(f"Unsupported named-argument use case: {use_case}")
 
 
 def _retrieve_default_instance_type(
@@ -671,8 +671,8 @@ def _model_supports_prepacked_inference(
             retrieve the support status for prepacked inference.
         model_version (str): Version of the JumpStart model for which to retrieve the
             support status for prepacked inference.
-        region (Optional[str]): Region for which to retrieve default training metric
-            definitions.
+        region (Optional[str]): Region for which to retrieve the
+            support status for prepacked inference.
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known
@@ -702,37 +702,37 @@ def _model_supports_prepacked_inference(
 def _retrieve_serializer_from_content_type(
     content_type: MIMEType,
 ) -> BaseDeserializer:
-    """Returns serializer class to use for content type."""
+    """Returns serializer object to use for content type."""
 
     serializer_type = CONTENT_TYPE_TO_SERIALIZER_TYPE_MAP.get(content_type)
 
     if serializer_type is None:
         raise RuntimeError(f"Unrecognized content type: {content_type}")
 
-    serializer_class = SERIALIZER_TYPE_TO_CLASS_MAP.get(serializer_type)
+    serializer_handle = SERIALIZER_TYPE_TO_CLASS_MAP.get(serializer_type)
 
-    if serializer_class is None:
+    if serializer_handle is None:
         raise RuntimeError(f"Unrecognized serializer type: {serializer_type}")
 
-    return serializer_class
+    return serializer_handle.__call__()
 
 
 def _retrieve_deserializer_from_accept_type(
     accept_type: MIMEType,
 ) -> BaseDeserializer:
-    """Returns deserializer class to use for accept type."""
+    """Returns deserializer object to use for accept type."""
 
     deserializer_type = ACCEPT_TYPE_TO_DESERIALIZER_TYPE_MAP.get(accept_type)
 
     if deserializer_type is None:
         raise RuntimeError(f"Unrecognized accept type: {accept_type}")
 
-    deserializer_class = DESERIALIZER_TYPE_TO_CLASS_MAP.get(deserializer_type)
+    deserializer_handle = DESERIALIZER_TYPE_TO_CLASS_MAP.get(deserializer_type)
 
-    if deserializer_class is None:
-        raise RuntimeError(f"Unrecognized deserializer type: {deserializer_class}")
+    if deserializer_handle is None:
+        raise RuntimeError(f"Unrecognized deserializer type: {deserializer_type}")
 
-    return deserializer_class
+    return deserializer_handle.__call__()
 
 
 def _retrieve_default_deserializer(
@@ -825,8 +825,7 @@ def _retrieve_deserializer_options(
             retrieve the supported deserializers.
         model_version (str): Version of the JumpStart model for which to retrieve the
             supported deserializers.
-        region (Optional[str]): Region for which to retrieve default training metric
-            definitions.
+        region (Optional[str]): Region for which to retrieve deserializer options.
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known
@@ -847,12 +846,21 @@ def _retrieve_deserializer_options(
         tolerate_deprecated_model=tolerate_deprecated_model,
     )
 
-    return list(
-        {
-            _retrieve_deserializer_from_accept_type(MIMEType.from_suffixed_type(accept_type))
-            for accept_type in supported_accept_types
-        }
-    )
+    seen_classes = set()
+
+    deserializers_with_duplicates = [
+        _retrieve_deserializer_from_accept_type(MIMEType.from_suffixed_type(accept_type))
+        for accept_type in supported_accept_types
+    ]
+
+    deserializers = []
+
+    for deserializer in deserializers_with_duplicates:
+        if type(deserializer) not in seen_classes:
+            seen_classes.add(type(deserializer))
+            deserializers.append(deserializer)
+
+    return deserializers
 
 
 def _retrieve_serializer_options(
@@ -869,8 +877,7 @@ def _retrieve_serializer_options(
             retrieve the supported serializers.
         model_version (str): Version of the JumpStart model for which to retrieve the
             supported serializers.
-        region (Optional[str]): Region for which to retrieve default training metric
-            definitions.
+        region (Optional[str]): Region for which to retrieve serializer options.
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known
@@ -891,12 +898,21 @@ def _retrieve_serializer_options(
         tolerate_deprecated_model=tolerate_deprecated_model,
     )
 
-    return list(
-        {
-            _retrieve_serializer_from_content_type(MIMEType.from_suffixed_type(content_type))
-            for content_type in supported_content_types
-        }
-    )
+    seen_classes = set()
+
+    serializers_with_duplicates = [
+        _retrieve_serializer_from_content_type(MIMEType.from_suffixed_type(content_type))
+        for content_type in supported_content_types
+    ]
+
+    serializers = []
+
+    for serializer in serializers_with_duplicates:
+        if type(serializer) not in seen_classes:
+            seen_classes.add(type(serializer))
+            serializers.append(serializer)
+
+    return serializers
 
 
 def _retrieve_default_content_type(
@@ -1000,8 +1016,7 @@ def _retrieve_supported_accept_types(
             retrieve the supported accept types.
         model_version (str): Version of the JumpStart model for which to retrieve the
             supported accept types.
-        region (Optional[str]): Region for which to retrieve default training metric
-            definitions.
+        region (Optional[str]): Region for which to retrieve accept type options.
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known
@@ -1045,8 +1060,7 @@ def _retrieve_supported_content_types(
             retrieve the supported content types.
         model_version (str): Version of the JumpStart model for which to retrieve the
             supported content types.
-        region (Optional[str]): Region for which to retrieve default training metric
-            definitions.
+        region (Optional[str]): Region for which to retrieve content type options.
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
             specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known

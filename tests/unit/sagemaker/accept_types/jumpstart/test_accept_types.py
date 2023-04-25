@@ -57,7 +57,7 @@ def test_jumpstart_supported_accept_types(
     model_id, model_version = "predictor-specs-model", "*"
     region = "us-west-2"
 
-    supported_accept_types = accept_types.retrieve(
+    supported_accept_types = accept_types.retrieve_options(
         region=region,
         model_id=model_id,
         model_version=model_version,
