@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.149.0 (2023-04-25)
+
+### Features
+
+ * Support TF2.12 SageMaker DLC
+
+### Bug Fixes and Other Changes
+
+ * update the doc for Join function
+ * change s3UploadMode of sagemaker clarify processing output for computer vision jobs.
+
+### Documentation Changes
+
+ * Add Remote Function updates
+
 ## v2.148.0 (2023-04-20)
 
 ### Features
