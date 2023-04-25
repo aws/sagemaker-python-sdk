@@ -61,9 +61,7 @@ def test_framework_processing_job_with_deps(
         Version(tensorflow_training_latest_version) >= Version("2.12")
         and kwargs["instance_type"] == "ml.p2.xlarge"
     ):
-        pytest.skip(
-            "P2 instances have been deprecated for sagemaker jobs starting TensorFlow 2.12"
-        )
+        pytest.skip("P2 instances have been deprecated for sagemaker jobs starting TensorFlow 2.12")
 
     with timeout.timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         code_path = os.path.join(DATA_DIR, "dummy_code_bundle_with_reqs")
@@ -200,9 +198,7 @@ def test_mwms_gpu(
         Version(tensorflow_training_latest_version) >= Version("2.12")
         and kwargs["instance_type"] == "ml.p2.xlarge"
     ):
-        pytest.skip(
-            "P2 instances have been deprecated for sagemaker jobs starting TensorFlow 2.12"
-        )
+        pytest.skip("P2 instances have been deprecated for sagemaker jobs starting TensorFlow 2.12")
 
     instance_count = 2
     estimator = TensorFlow(
@@ -264,9 +260,7 @@ def test_mnist_distributed_gpu(
         Version(tensorflow_training_latest_version) >= Version("2.12")
         and kwargs["instance_type"] == "ml.p2.xlarge"
     ):
-        pytest.skip(
-            "P2 instances have been deprecated for sagemaker jobs starting TensorFlow 2.12"
-        )
+        pytest.skip("P2 instances have been deprecated for sagemaker jobs starting TensorFlow 2.12")
 
     _create_and_fit_estimator(
         sagemaker_session,
