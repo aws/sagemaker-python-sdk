@@ -249,7 +249,7 @@ def test_predict_call_with_multiple_accept_types():
     assert kwargs == expected_request_args
 
 
-@patch("sagemaker.predictor.name_from_base")
+@patch("sagemaker.base_predictor.name_from_base")
 def test_update_endpoint_no_args(name_from_base):
     new_endpoint_config_name = "new-endpoint-config"
     name_from_base.return_value = new_endpoint_config_name
@@ -279,8 +279,8 @@ def test_update_endpoint_no_args(name_from_base):
     )
 
 
-@patch("sagemaker.predictor.production_variant")
-@patch("sagemaker.predictor.name_from_base")
+@patch("sagemaker.base_predictor.production_variant")
+@patch("sagemaker.base_predictor.name_from_base")
 def test_update_endpoint_all_args(name_from_base, production_variant):
     new_endpoint_config_name = "new-endpoint-config"
     name_from_base.return_value = new_endpoint_config_name
@@ -332,8 +332,8 @@ def test_update_endpoint_all_args(name_from_base, production_variant):
     )
 
 
-@patch("sagemaker.predictor.production_variant")
-@patch("sagemaker.predictor.name_from_base")
+@patch("sagemaker.base_predictor.production_variant")
+@patch("sagemaker.base_predictor.name_from_base")
 def test_update_endpoint_instance_type_and_count(name_from_base, production_variant):
     new_endpoint_config_name = "new-endpoint-config"
     name_from_base.return_value = new_endpoint_config_name
