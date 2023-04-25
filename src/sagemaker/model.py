@@ -293,7 +293,7 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 known security vulnerabilities. (Default: False).
             tolerate_deprecated_model (bool): True if deprecated JumpStart models should be
                 tolerated (exception not raised). False if these models should raise an
-                 exception (Default: False).
+                 exception. (Default: False).
 
         """
         self.model_data = model_data
