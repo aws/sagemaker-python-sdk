@@ -57,8 +57,10 @@ EXPERIMENT_CONFIG = {
 
 @pytest.fixture(scope="module", autouse=True)
 def skip_if_incompatible(tensorflow_training_version, request):
-    if version.parse(tensorflow_training_version) < version.parse("2.9"):
-        pytest.skip("Training Compiler only supports TF >= 2.9")
+    if version.parse(tensorflow_training_version) >= version.parse("2.12") or version.parse(
+        tensorflow_training_version
+    ) < version.parse("2.9"):
+        pytest.skip("Training Compiler only supports TF >= 2.9 and < 2.12")
 
 
 @pytest.fixture(scope="module")

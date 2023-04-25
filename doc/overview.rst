@@ -2021,6 +2021,32 @@ set default values for. For the full schema, see ``sagemaker.config.config_schem
         Tags:
         - Key: 'tag_key'
           Value: 'tag_value'
+      PythonSDK:
+        Modules:
+          RemoteFunction:
+            Dependencies: 'path/to/requirements.txt'
+            EnableInterContainerTrafficEncryption: true
+            EnvironmentVariables: {'EnvVarKey': 'EnvVarValue'}
+            ImageUri: '555555555555.dkr.ecr.us-west-2.amazonaws.com/my-image:latest'
+            IncludeLocalWorkDir: true
+            InstanceType: 'ml.m5.large'
+            JobCondaEnvironment: 'your_conda_env'
+            PreExecutionCommands:
+              - 'command_1'
+              - 'command_2'
+            PreExecutionScript: 'path/to/script.sh'
+            RoleArn: 'arn:aws:iam::555555555555:role/MyRole'
+            S3KmsKeyId: 'yourkmskeyid'
+            S3RootUri: 's3://my-bucket/my-project'
+            VpcConfig:
+              SecurityGroupIds:
+                - 'sg123'
+              Subnets:
+                - 'subnet-1234'
+            Tags:
+              - Key: 'tag_key'
+                Value: 'tag_value'
+            VolumeKmsKeyId: 'yourkmskeyid'
 
 Configuration file locations
 ============================
@@ -2170,8 +2196,8 @@ types support setting defaults with a configuration file.
 -  Tags
 -  Enable inter-container traffic encryption
 
-List of APIs supported
-----------------------
+List of APIs and SDK capabilities supported
+-------------------------------------------
 
 Default values for the supported parameters of these APIs apply to
 all create and update calls for that API. For example, if a supported
@@ -2201,6 +2227,10 @@ configuration file.
 
 Hyperparameter Tuning Job: Supported indirectly via ``TrainingJob`` API. While this API is not directly supported, it includes the training job definition as a parameter.
 If you provide defaults for this parameter as part of the ``TrainingJob`` API, these defaults are also used for Hyperparameter Tuning Job.
+
+The following goups of SDK capabilities support defaults with a configuration file.
+
+-  Remote Function ``@remote decorator``, ``RemoteExecutor```
 
 Configuration file resolution
 =============================
@@ -2412,6 +2442,45 @@ specifically the contents of ``'body': b'{...}`` .
    <TIMESTAMP> botocore.endpoint [DEBUG] Making request for OperationModel(name=<OPERATION_NAME>) with params: {'url_path': ...,
    'query_string': ..., 'method': 'POST', 'headers': {...}, 'body': b'{...}', 'url': 'https://api.sagemaker.us-west-2.amazonaws.com/',
    'context': {...}}
+
+
+************************************************************
+Run Machine Learning code on SageMaker using remote function
+************************************************************
+
+You can integrate your local machine language (ML) code to run in a Amazon SageMaker Training job by wrapping
+your code inside a @remote decorator as shown in the following code example.
+
+.. code-block:: python
+
+    from sagemaker.remote_function import remote
+    import numpy as np
+
+    @remote(instance_type="ml.m5.large")
+    def matrix_multiply(a, b):
+        return np.matmul(a, b)
+
+    a = np.array([[1, 0],
+                 [0, 1]])
+    b = np.array([1, 2])
+
+    assert (matrix_multiply(a, b) == np.array([1,2])).all()
+
+The SageMaker Python SDK will automatically translate your existing workspace environment and any associated data
+processing code and datasets into a SageMaker Training job that runs on the SageMaker Training platform.
+You can also activate a persistent cache feature, which will further reduce job start up latency by caching previously
+downloaded dependency packages. This reduction in job latency is greater than the reduction in latency from using
+SageMaker managed warm pools alone. The following sections show you how to wrap your local ML code and tailor your
+experience for your use case including customizing your environment and integrating with SageMaker Experiments.
+
+See the `Run your local code as a SageMaker Training job <https://docs.aws.amazon.com/sagemaker/latest/dg/train-remote-decorator.html>`__ for detailed developer guide.
+
+Follow is the API specification for methods and classes related to remote function feature.
+
+.. toctree::
+    :maxdepth: 1
+
+    remote_function/sagemaker.remote_function.rst
 
 ***
 FAQ
