@@ -87,7 +87,7 @@ def remote(
     This decorator wraps the annotated code and runs it as a new SageMaker job synchronously
     with the provided runtime settings.
 
-    In case a parameter value is not set, the decorator first looks up the value from the SageMaker
+    If a parameter value is not set, the decorator first looks up the value from the SageMaker
     configuration file. If no value is specified in the configuration file or no configuration file
     is found, the decorator selects the default as specified below. For more information, see
     `Configuring and using defaults with the SageMaker Python SDK <https://sagemaker.readthedocs.io/
@@ -475,7 +475,7 @@ class RemoteExecutor(object):
     ):
         """Constructor for RemoteExecutor
 
-        In case a parameter value is not set, the constructor first looks up the value from the
+        If a parameter value is not set, the constructor first looks up the value from the
         SageMaker configuration file. If no value is specified in the configuration file or
         no configuration file is found, the constructor selects the default as specified below.
         For more information, see `Configuring and using defaults with the SageMaker Python SDK
@@ -1045,28 +1045,28 @@ class Future(object):
             return True
 
     def running(self) -> bool:
-        """Check if the underlying sagemaker job is running.
+        """Check if the underlying SageMaker job is running.
 
         Returns:
-            ``True`` if the underlying sagemaker job is still running. ``False``, otherwise.
+            ``True`` if the underlying SageMaker job is still running. ``False``, otherwise.
         """
         with self._condition:
             return self._state == _RUNNING
 
     def cancelled(self) -> bool:
-        """Check if the underlying sagemaker job was cancelled.
+        """Check if the underlying SageMaker job was cancelled.
 
         Returns:
-            ``True`` if the underlying sagemaker job was cancelled. ``False``, otherwise.
+            ``True`` if the underlying SageMaker job was cancelled. ``False``, otherwise.
         """
         with self._condition:
             return self._state == _CANCELLED
 
     def done(self) -> bool:
-        """Check if the underlying sagemaker job is finished.
+        """Check if the underlying SageMaker job is finished.
 
         Returns:
-            ``True`` if the underlying sagemaker job finished running. ``False``, otherwise.
+            ``True`` if the underlying SageMaker job finished running. ``False``, otherwise.
         """
         with self._condition:
             if self._state == _RUNNING and self._job.describe()["TrainingJobStatus"] in [
