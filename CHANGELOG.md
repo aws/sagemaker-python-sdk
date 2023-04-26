@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.150.0 (2023-04-26)
+
+### Features
+
+ * Introduce TensorBoard app class
+
+### Bug Fixes and Other Changes
+
+ * Update data wrangler images
+
 ## v2.149.0 (2023-04-25)
 
 ### Features
