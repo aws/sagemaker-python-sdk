@@ -1045,15 +1045,17 @@ class Future(object):
             return True
 
     def running(self) -> bool:
-        """
+        """Check if the underlying sagemaker job is running.
+
         Returns:
-            ``True`` if the underlying sagemaker job is still running.
+            ``True`` if the underlying sagemaker job is still running. ``False``, otherwise.
         """
         with self._condition:
             return self._state == _RUNNING
 
     def cancelled(self) -> bool:
-        """
+        """Check if the underlying sagemaker job was cancelled.
+
         Returns:
             ``True`` if the underlying sagemaker job was cancelled. ``False``, otherwise.
         """
@@ -1061,9 +1063,10 @@ class Future(object):
             return self._state == _CANCELLED
 
     def done(self) -> bool:
-        """
+        """Check if the underlying sagemaker job is finished.
+
         Returns:
-            ``True`` if the underlying sagemaker job finished running.
+            ``True`` if the underlying sagemaker job finished running. ``False``, otherwise.
         """
         with self._condition:
             if self._state == _RUNNING and self._job.describe()["TrainingJobStatus"] in [
