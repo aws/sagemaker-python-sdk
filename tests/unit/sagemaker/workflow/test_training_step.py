@@ -801,3 +801,41 @@ def test_insert_wrong_step_args_into_training_step(inputs, pipeline_session):
         )
 
     assert "The step_args of TrainingStep must be obtained from estimator.fit()" in str(error.value)
+
+
+def test_training_step_estimator_with_extra_job_args(pipeline_session, training_input):
+    estimator = Estimator(
+        role=ROLE,
+        instance_count=1,
+        instance_type=INSTANCE_TYPE,
+        sagemaker_session=pipeline_session,
+        image_uri=IMAGE_URI,
+    )
+
+    step_args = estimator.fit(inputs=training_input)
+
+    ignored_train_input = f"s3://{BUCKET}/my-training-input-to-be-ignored"
+    step = TrainingStep(
+        name="MyTrainingStep",
+        step_args=step_args,
+        description="TrainingStep description",
+        display_name="MyTrainingStep",
+        inputs=ignored_train_input,
+    )
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[step],
+        sagemaker_session=pipeline_session,
+    )
+    step_args = get_step_args_helper(step_args, "Training")
+    pipeline_def = pipeline.definition()
+    step_def = json.loads(pipeline_def)["Steps"][0]
+    assert step_def == {
+        "Name": "MyTrainingStep",
+        "Description": "TrainingStep description",
+        "DisplayName": "MyTrainingStep",
+        "Type": "Training",
+        "Arguments": step_args,
+    }
+    assert ignored_train_input not in pipeline_def

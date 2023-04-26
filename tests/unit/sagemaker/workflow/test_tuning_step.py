@@ -301,3 +301,70 @@ def test_insert_wrong_step_args_into_tuning_step(inputs, pipeline_session):
         )
 
     assert "The step_args of TuningStep must be obtained from tuner.fit()" in str(error.value)
+
+
+def test_tuning_step_with_extra_job_args(pipeline_session, entry_point):
+    pytorch_estimator = PyTorch(
+        entry_point=entry_point,
+        role=ROLE,
+        framework_version="1.5.0",
+        py_version="py3",
+        instance_count=1,
+        instance_type="ml.m5.xlarge",
+        sagemaker_session=pipeline_session,
+        enable_sagemaker_metrics=True,
+        max_retry_attempts=3,
+    )
+
+    hyperparameter_ranges = {
+        "batch-size": IntegerParameter(64, 128),
+    }
+
+    tuner = HyperparameterTuner(
+        estimator=pytorch_estimator,
+        objective_metric_name="test:acc",
+        objective_type="Maximize",
+        hyperparameter_ranges=hyperparameter_ranges,
+        metric_definitions=[{"Name": "test:acc", "Regex": "Overall test accuracy: (.*?);"}],
+        max_jobs=2,
+        max_parallel_jobs=2,
+    )
+
+    step_args = tuner.fit(inputs=TrainingInput(s3_data="s3://my-bucket/my-training-input"))
+
+    ignored_input = "s3://my-bucket/my-input-to-be-ignored"
+    step = TuningStep(
+        name="MyTuningStep",
+        step_args=step_args,
+        inputs=ignored_input,
+    )
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[step],
+        sagemaker_session=pipeline_session,
+    )
+
+    step_args = get_step_args_helper(step_args, "HyperParameterTuning")
+    pipeline_def = pipeline.definition()
+    step_def = json.loads(pipeline_def)["Steps"][0]
+
+    # delete sagemaker_job_name b/c of timestamp collision
+    del step_args["TrainingJobDefinition"]["StaticHyperParameters"]["sagemaker_job_name"]
+    del step_def["Arguments"]["TrainingJobDefinition"]["StaticHyperParameters"][
+        "sagemaker_job_name"
+    ]
+
+    # delete S3 path assertions for now because job name is included with timestamp. These will be re-enabled after
+    # caching improvements phase 2.
+    del step_args["TrainingJobDefinition"]["StaticHyperParameters"]["sagemaker_submit_directory"]
+    del step_def["Arguments"]["TrainingJobDefinition"]["StaticHyperParameters"][
+        "sagemaker_submit_directory"
+    ]
+
+    assert step_def == {
+        "Name": "MyTuningStep",
+        "Type": "Tuning",
+        "Arguments": step_args,
+    }
+    assert ignored_input not in pipeline_def

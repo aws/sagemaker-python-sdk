@@ -287,3 +287,47 @@ def test_insert_wrong_step_args_into_transform_step(inputs, pipeline_session):
     assert "The step_args of TransformStep must be obtained from transformer.transform()" in str(
         error.value
     )
+
+
+def test_transform_step_with_extra_job_args(pipeline_session):
+    transformer = Transformer(
+        model_name="my_model",
+        instance_type="ml.m5.xlarge",
+        instance_count=1,
+        output_path="s3://my-bucket/my-output-path",
+        sagemaker_session=pipeline_session,
+    )
+    transform_inputs = TransformInput(data="s3://my-bucket/my-data")
+
+    step_args = transformer.transform(
+        data=transform_inputs.data,
+        data_type=transform_inputs.data_type,
+        content_type=transform_inputs.content_type,
+        compression_type=transform_inputs.compression_type,
+        split_type=transform_inputs.split_type,
+        input_filter=transform_inputs.input_filter,
+        output_filter=transform_inputs.output_filter,
+        join_source=transform_inputs.join_source,
+        model_client_config=transform_inputs.model_client_config,
+    )
+
+    ignored_data_path = "s3://my-bucket/my-data-to-be-ignored"
+    step = TransformStep(
+        name="MyTransformStep", step_args=step_args, inputs=TransformInput(data=ignored_data_path)
+    )
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[step],
+        sagemaker_session=pipeline_session,
+    )
+
+    step_args = get_step_args_helper(step_args, "Transform")
+    pipeline_def = pipeline.definition()
+    step_def = json.loads(pipeline_def)["Steps"][0]
+    assert step_def == {
+        "Name": "MyTransformStep",
+        "Type": "Transform",
+        "Arguments": step_args,
+    }
+    assert ignored_data_path not in pipeline_def

@@ -1115,3 +1115,44 @@ def test_processor_with_role_as_pipeline_parameter(
 
     step_def = json.loads(pipeline.definition())["Steps"][0]
     assert step_def["Arguments"]["RoleArn"] == {"Get": f"Parameters.{_PARAM_ROLE_NAME}"}
+
+
+def test_processing_step_with_extra_job_args(pipeline_session, processing_input):
+    processor = Processor(
+        image_uri=IMAGE_URI,
+        role=ROLE,
+        instance_count=1,
+        instance_type=INSTANCE_TYPE,
+        sagemaker_session=pipeline_session,
+    )
+
+    step_args = processor.run(inputs=processing_input)
+
+    ignored_code = f"s3://{BUCKET}/my-code-to-be-ignored"
+    ignored_kms_key = "ignored_kms_key"
+    step = ProcessingStep(
+        name="MyProcessingStep",
+        step_args=step_args,
+        description="ProcessingStep description",
+        display_name="MyProcessingStep",
+        code=ignored_code,
+        kms_key=ignored_kms_key,
+    )
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[step],
+        sagemaker_session=pipeline_session,
+    )
+    step_args = get_step_args_helper(step_args, "Processing")
+    pipeline_def = pipeline.definition()
+    step_def = json.loads(pipeline_def)["Steps"][0]
+    assert step_def == {
+        "Name": "MyProcessingStep",
+        "Description": "ProcessingStep description",
+        "DisplayName": "MyProcessingStep",
+        "Type": "Processing",
+        "Arguments": step_args,
+    }
+    assert ignored_code not in pipeline_def
+    assert ignored_kms_key not in pipeline_def

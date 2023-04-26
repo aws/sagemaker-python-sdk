@@ -363,8 +363,8 @@ def override_pipeline_parameter_var(func):
     We should remove this decorator after the grace period.
     """
     warning_msg_template = (
-        "The input argument %s of function (%s) is a pipeline variable (%s), which is not allowed. "
-        "The default_value of this Parameter object will be used to override it. "
+        "The input argument %s of function (%s) is a pipeline variable (%s), which will not work. "
+        "Thus the default_value of this Parameter object will be used to override it. "
         "Please make sure the default_value is valid."
     )
 

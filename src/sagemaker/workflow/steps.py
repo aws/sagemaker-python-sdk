@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import abc
+import logging
 import warnings
 
 from enum import Enum
@@ -53,6 +54,14 @@ from sagemaker.workflow.retry import RetryPolicy
 
 if TYPE_CHECKING:
     from sagemaker.workflow.step_collections import StepCollection
+
+logger = logging.getLogger(__name__)
+
+JOB_ARG_IGNORE_WARN_MSG_TEMPLATE = (
+    "The job specific arguments (%s) supplied to the step will be ignored, "
+    "because `step_args` is presented. These job specific arguments should be supplied "
+    "in %s to generate the `step_args`."
+)
 
 
 class StepTypeEnum(Enum, metaclass=DefaultEnumMeta):
@@ -424,6 +433,9 @@ class TrainingStep(ConfigurableRetryStep):
                 error_message="The step_args of TrainingStep must be obtained from estimator.fit().",
             )
 
+            if inputs:
+                logger.warning(JOB_ARG_IGNORE_WARN_MSG_TEMPLATE, "`inputs`", "estimator.fit()")
+
         self.step_args = step_args
         self.estimator = estimator
         self.inputs = inputs
@@ -680,6 +692,11 @@ class TransformStep(ConfigurableRetryStep):
                 "from transformer.transform().",
             )
 
+            if inputs:
+                logger.warning(
+                    JOB_ARG_IGNORE_WARN_MSG_TEMPLATE, "`inputs`", "transformer.transform()"
+                )
+
         self.step_args = step_args
         self.transformer = transformer
         self.inputs = inputs
@@ -816,6 +833,13 @@ class ProcessingStep(ConfigurableRetryStep):
                 expected_caller={Session.process.__name__},
                 error_message="The step_args of ProcessingStep must be obtained from processor.run().",
             )
+
+            if job_arguments or inputs or outputs or code or kms_key:
+                logger.warning(
+                    JOB_ARG_IGNORE_WARN_MSG_TEMPLATE,
+                    "`job_arguments`, `inputs`, `outputs`, `code` and `kms_key`",
+                    "processor.run()",
+                )
 
         self.step_args = step_args
         self.processor = processor
@@ -996,6 +1020,9 @@ class TuningStep(ConfigurableRetryStep):
                 expected_caller={Session.create_tuning_job.__name__},
                 error_message="The step_args of TuningStep must be obtained from tuner.fit().",
             )
+
+            if inputs:
+                logger.warning(JOB_ARG_IGNORE_WARN_MSG_TEMPLATE, "`inputs`", "tuner.fit()")
 
         self.step_args = step_args
         self.tuner = tuner
