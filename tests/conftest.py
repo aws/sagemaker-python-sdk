@@ -52,6 +52,7 @@ NO_P3_REGIONS = [
     "me-south-1",
     "sa-east-1",
     "us-west-1",
+    "ap-south-1",  # no p3 availability
 ]
 
 NO_T2_REGIONS = ["eu-north-1", "ap-east-1", "me-south-1"]
