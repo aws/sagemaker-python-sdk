@@ -9,7 +9,7 @@ Remote function classes and methods specification
 
 
 RemoteExecutor
--------------
+--------------
 
 .. autoclass:: sagemaker.remote_function.RemoteExecutor
     :members:
