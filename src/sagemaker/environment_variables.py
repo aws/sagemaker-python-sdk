@@ -19,7 +19,6 @@ from typing import Dict, Optional
 
 from sagemaker.jumpstart import utils as jumpstart_utils
 from sagemaker.jumpstart import artifacts
-from sagemaker.jumpstart.enums import EnvVariableUseCase
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +29,7 @@ def retrieve_default(
     model_version: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-    use_case: EnvVariableUseCase = EnvVariableUseCase.AWS_SDK,
+    include_aws_sdk_env_vars: bool = True,
 ) -> Dict[str, str]:
     """Retrieves the default container environment variables for the model matching the arguments.
 
@@ -48,10 +47,10 @@ def retrieve_default(
         tolerate_deprecated_model (bool): True if deprecated models should be tolerated
             (exception not raised). False if these models should raise an exception.
             (Default: False).
-        use_case (EnvVariableUseCase): The use case for the environment variables. The
-            `Model` class of the SageMaker Python SDK inserts environment variables
-            that would be required when making the low-level AWS API call.
-            (Default: EnvVariableUseCase.AWS_SDK).
+        include_aws_sdk_env_vars (bool): True if environment variables for low-level AWS API call
+            should be included. The `Model` class of the SageMaker Python SDK inserts environment
+            variables that would be required when making the low-level AWS API call.
+            (Default: True).
     Returns:
         dict: The variables to use for the model.
 
@@ -69,5 +68,5 @@ def retrieve_default(
         region,
         tolerate_vulnerable_model,
         tolerate_deprecated_model,
-        use_case,
+        include_aws_sdk_env_vars,
     )

@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 """This module stores constants related to SageMaker JumpStart."""
 from __future__ import absolute_import
-from typing import Callable, Dict, Set
+from typing import Dict, Set, Type
 import boto3
 from sagemaker.base_deserializers import BaseDeserializer, JSONDeserializer
 from sagemaker.jumpstart.enums import (
@@ -161,13 +161,13 @@ ACCEPT_TYPE_TO_DESERIALIZER_TYPE_MAP: Dict[MIMEType, DeserializerType] = {
     MIMEType.JSON: DeserializerType.JSON,
 }
 
-SERIALIZER_TYPE_TO_CLASS_MAP: Dict[SerializerType, Callable[[], BaseSerializer]] = {
+SERIALIZER_TYPE_TO_CLASS_MAP: Dict[SerializerType, Type[BaseSerializer]] = {
     SerializerType.RAW_BYTES: DataSerializer,
     SerializerType.JSON: JSONSerializer,
     SerializerType.TEXT: IdentitySerializer,
     SerializerType.CSV: CSVSerializer,
 }
 
-DESERIALIZER_TYPE_TO_CLASS_MAP: Dict[DeserializerType, Callable[[], BaseDeserializer]] = {
+DESERIALIZER_TYPE_TO_CLASS_MAP: Dict[DeserializerType, Type[BaseDeserializer]] = {
     DeserializerType.JSON: JSONDeserializer,
 }

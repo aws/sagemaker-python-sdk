@@ -26,7 +26,7 @@ from sagemaker.jumpstart.constants import (
     INFERENCE_ENTRY_POINT_SCRIPT_NAME,
     JUMPSTART_DEFAULT_REGION_NAME,
 )
-from sagemaker.jumpstart.enums import EnvVariableUseCase, JumpStartScriptScope, KwargUseCase
+from sagemaker.jumpstart.enums import JumpStartScriptScope, KwargUseCase
 from sagemaker.jumpstart.types import JumpStartModelDeployKwargs, JumpStartModelInitKwargs
 from sagemaker.jumpstart.utils import update_dict_if_key_not_present
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
@@ -55,7 +55,7 @@ def get_default_predictor(
     """
 
     # if there's a non-default predictor, do not mutate -- return as is
-    if not isinstance(predictor, Predictor):
+    if type(predictor) != Predictor: # pylint: disable=C0123
         return predictor
 
     predictor.serializer = serializers.retrieve_default(
@@ -242,7 +242,7 @@ def _add_env_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKw
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
         region=kwargs.region,
-        use_case=EnvVariableUseCase.SAGEMAKER_PYTHON_SDK,
+        include_aws_sdk_env_vars=False,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
     )
@@ -366,15 +366,7 @@ def get_deploy_kwargs(
         kwargs=deploy_kwargs,
     )
 
-    orig_instance_count = deploy_kwargs.initial_instance_count
-
     deploy_kwargs.initial_instance_count = initial_instance_count or 1
-
-    if orig_instance_count is None:
-        logger.info(  # pylint: disable=W1203
-            "No instance count selected for inference hosting endpoint. "
-            f"Defaulting to {deploy_kwargs.initial_instance_count}."
-        )
 
     deploy_kwargs = _add_deploy_extra_kwargs(kwargs=deploy_kwargs)
 

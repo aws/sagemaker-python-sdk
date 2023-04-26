@@ -117,6 +117,7 @@ class EstimatorTest(unittest.TestCase):
             },
             predictor_cls=Predictor,
             role=self.execution_role,
+            wait=True,
         )
 
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -197,6 +198,7 @@ class EstimatorTest(unittest.TestCase):
             },
             predictor_cls=Predictor,
             role=self.execution_role,
+            wait=True,
         )
 
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")

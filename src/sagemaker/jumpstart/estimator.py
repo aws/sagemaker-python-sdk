@@ -629,7 +629,7 @@ class JumpStartEstimator(Estimator):
         endpoint_name: Optional[str] = None,
         tags: List[Dict[str, str]] = None,
         kms_key: Optional[str] = None,
-        wait: Optional[bool] = None,
+        wait: Optional[bool] = True,
         data_capture_config: Optional[DataCaptureConfig] = None,
         async_inference_config: Optional[AsyncInferenceConfig] = None,
         serverless_inference_config: Optional[ServerlessInferenceConfig] = None,
@@ -698,7 +698,7 @@ class JumpStartEstimator(Estimator):
                 data on the storage volume attached to the instance hosting the
                 endpoint. (Default: None).
             wait (Optional[bool]): Whether the call should wait until the deployment of
-                this model completes. (Default: None).
+                this model completes. (Default: True).
             data_capture_config (Optional[sagemaker.model_monitor.DataCaptureConfig]): Specifies
                 configuration related to Endpoint data capture for use with
                 Amazon SageMaker Model Monitoring. (Default: None).

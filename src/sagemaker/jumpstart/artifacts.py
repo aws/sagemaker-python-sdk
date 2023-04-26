@@ -29,7 +29,6 @@ from sagemaker.jumpstart.constants import (
     SERIALIZER_TYPE_TO_CLASS_MAP,
 )
 from sagemaker.jumpstart.enums import (
-    EnvVariableUseCase,
     JumpStartScriptScope,
     KwargUseCase,
     MIMEType,
@@ -378,7 +377,7 @@ def _retrieve_default_environment_variables(
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
-    use_case: EnvVariableUseCase = EnvVariableUseCase.AWS_SDK,
+    include_aws_sdk_env_vars: bool = True,
 ) -> Dict[str, str]:
     """Retrieves the inference environment variables for the model matching the given arguments.
 
@@ -396,10 +395,10 @@ def _retrieve_default_environment_variables(
         tolerate_deprecated_model (bool): True if deprecated versions of model
             specifications should be tolerated (exception not raised). If False, raises
             an exception if the version of the model is deprecated. (Default: False).
-        use_case (EnvVariableUseCase): The use case for the environment variables. The
-            `Model` class of the SageMaker Python SDK inserts environment variables that would be
-            required when making the low-level AWS API call.
-            (Default: EnvVariableUseCase.AWS_SDK).
+        include_aws_sdk_env_vars (bool): True if environment variables for low-level AWS API call
+            should be included. The `Model` class of the SageMaker Python SDK inserts environment
+            variables that would be required when making the low-level AWS API call.
+            (Default: True).
 
     Returns:
         dict: the inference environment variables to use for the model.
@@ -419,9 +418,8 @@ def _retrieve_default_environment_variables(
 
     default_environment_variables: Dict[str, str] = {}
     for environment_variable in model_specs.inference_environment_variables:
-        if use_case == EnvVariableUseCase.AWS_SDK or (
-            use_case == EnvVariableUseCase.SAGEMAKER_PYTHON_SDK
-            and environment_variable.required_for_model_class is True
+        if include_aws_sdk_env_vars or (
+            not include_aws_sdk_env_vars and environment_variable.required_for_model_class is True
         ):
             default_environment_variables[environment_variable.name] = str(
                 environment_variable.default

@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 from copy import deepcopy
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Set, Union
 
 
 class JumpStartDataHolderType:
@@ -442,7 +442,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
                     json_obj[att] = cur_val
         return json_obj
 
-    def supports_prepacked_inference(self):
+    def supports_prepacked_inference(self) -> bool:
         """Returns True if the model has a prepacked inference artifact."""
         return getattr(self, "hosting_prepacked_artifact_key", None) is not None
 
@@ -516,7 +516,7 @@ class JumpStartCachedS3ContentValue(JumpStartDataHolderType):
 class JumpStartKwargs(JumpStartDataHolderType):
     """Data class for JumpStart object kwargs."""
 
-    SERIALIZATION_EXCLUSION_SET = {}
+    SERIALIZATION_EXCLUSION_SET: Set[str] = set()
 
     def to_kwargs_dict(self):
         """Serializes object to dictionary to be used for kwargs for method arguments."""

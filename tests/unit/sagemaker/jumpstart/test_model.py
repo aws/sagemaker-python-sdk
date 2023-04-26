@@ -71,7 +71,9 @@ class ModelTest(unittest.TestCase):
         model.deploy()
 
         mock_model_deploy.assert_called_once_with(
-            initial_instance_count=1, instance_type="ml.p2.xlarge"
+            initial_instance_count=1,
+            instance_type="ml.p2.xlarge",
+            wait=True,
         )
 
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -115,7 +117,9 @@ class ModelTest(unittest.TestCase):
         model.deploy()
 
         mock_model_deploy.assert_called_once_with(
-            initial_instance_count=1, instance_type="ml.p3.2xlarge"
+            initial_instance_count=1,
+            instance_type="ml.p3.2xlarge",
+            wait=True,
         )
 
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
