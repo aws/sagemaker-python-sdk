@@ -14,9 +14,9 @@ from tests.unit.sagemaker.jumpstart.utils import (
 )
 
 
-@patch("sagemaker.jumpstart.artifacts.verify_model_region_and_return_specs")
+@patch("sagemaker.jumpstart.utils.verify_model_region_and_return_specs")
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-def test_list_jumpstart_scripts(
+def test_jumpstart_predictor_support(
     patched_get_model_specs, patched_verify_model_region_and_return_specs
 ):
 
