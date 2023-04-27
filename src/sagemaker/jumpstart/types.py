@@ -976,6 +976,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         "region",
         "model_id",
         "model_version",
+        "sagemaker_session",
     }
 
     def __init__(

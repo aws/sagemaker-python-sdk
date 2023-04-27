@@ -17,7 +17,7 @@ import unittest
 from mock.mock import patch
 
 from sagemaker.jumpstart import artifacts
-from sagemaker.jumpstart.enums import KwargUseCase
+from sagemaker.jumpstart.enums import _KwargUseCase
 
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
 
@@ -36,7 +36,7 @@ class RetrieveKwargsTest(unittest.TestCase):
             region=self.region,
             model_id=self.model_id,
             model_version=self.model_version,
-            use_case=KwargUseCase.MODEL,
+            use_case=_KwargUseCase.MODEL,
         )
 
         assert kwargs == {"some-model-kwarg-key": "some-model-kwarg-value"}
@@ -49,7 +49,7 @@ class RetrieveKwargsTest(unittest.TestCase):
             region=self.region,
             model_id=self.model_id,
             model_version=self.model_version,
-            use_case=KwargUseCase.ESTIMATOR,
+            use_case=_KwargUseCase.ESTIMATOR,
         )
 
         assert kwargs == {"encrypt_inter_container_traffic": True}
@@ -62,7 +62,7 @@ class RetrieveKwargsTest(unittest.TestCase):
             region=self.region,
             model_id=self.model_id,
             model_version=self.model_version,
-            use_case=KwargUseCase.MODEL_DEPLOY,
+            use_case=_KwargUseCase.MODEL_DEPLOY,
         )
 
         assert kwargs == {"some-model-deploy-kwarg-key": "some-model-deploy-kwarg-value"}
@@ -75,7 +75,7 @@ class RetrieveKwargsTest(unittest.TestCase):
             region=self.region,
             model_id=self.model_id,
             model_version=self.model_version,
-            use_case=KwargUseCase.ESTIMATOR_FIT,
+            use_case=_KwargUseCase.ESTIMATOR_FIT,
         )
 
         assert kwargs == {"some-estimator-fit-key": "some-estimator-fit-value"}

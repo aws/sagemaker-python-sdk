@@ -103,7 +103,7 @@ class EstimatorTest(unittest.TestCase):
 
         estimator.fit(channels)
 
-        mock_estimator_fit.assert_called_once_with(inputs=channels)
+        mock_estimator_fit.assert_called_once_with(inputs=channels, wait=True)
 
         estimator.deploy()
 
@@ -124,7 +124,6 @@ class EstimatorTest(unittest.TestCase):
             predictor_cls=Predictor,
             role=execution_role,
             wait=True,
-            sagemaker_session=sagemaker_session,
         )
 
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
@@ -188,7 +187,7 @@ class EstimatorTest(unittest.TestCase):
 
         estimator.fit(channels)
 
-        mock_estimator_fit.assert_called_once_with(inputs=channels)
+        mock_estimator_fit.assert_called_once_with(inputs=channels, wait=True)
 
         estimator.deploy()
 
@@ -207,7 +206,6 @@ class EstimatorTest(unittest.TestCase):
             predictor_cls=Predictor,
             role=execution_role,
             wait=True,
-            sagemaker_session=sagemaker_session,
         )
 
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -429,7 +427,7 @@ class EstimatorTest(unittest.TestCase):
             f"{get_training_dataset_for_model_and_version(model_id, model_version)}",
         }
 
-        expected_fit_kwargs = overwrite_dictionary({"inputs": channels}, fit_kwargs)
+        expected_fit_kwargs = overwrite_dictionary({"inputs": channels, "wait": True}, fit_kwargs)
 
         estimator.fit(**expected_fit_kwargs)
 
@@ -454,7 +452,6 @@ class EstimatorTest(unittest.TestCase):
                 },
                 "predictor_cls": Predictor,
                 "role": execution_role,
-                "sagemaker_session": sagemaker_session,
             },
             deploy_kwargs,
         )

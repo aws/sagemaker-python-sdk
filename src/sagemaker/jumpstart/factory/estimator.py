@@ -38,7 +38,7 @@ from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_REGION_NAME,
     TRAINING_ENTRY_POINT_SCRIPT_NAME,
 )
-from sagemaker.jumpstart.enums import JumpStartScriptScope, KwargUseCase
+from sagemaker.jumpstart.enums import JumpStartScriptScope, _KwargUseCase
 from sagemaker.jumpstart.factory import model
 from sagemaker.jumpstart.types import (
     JumpStartEstimatorDeployKwargs,
@@ -549,7 +549,7 @@ def _add_estimator_extra_kwargs(
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
         region=kwargs.region,
-        use_case=KwargUseCase.ESTIMATOR,
+        use_case=_KwargUseCase.ESTIMATOR,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
     )
@@ -573,7 +573,7 @@ def _add_fit_extra_kwargs(kwargs: JumpStartEstimatorFitKwargs) -> JumpStartEstim
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
         region=kwargs.region,
-        use_case=KwargUseCase.ESTIMATOR_FIT,
+        use_case=_KwargUseCase.ESTIMATOR_FIT,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
     )

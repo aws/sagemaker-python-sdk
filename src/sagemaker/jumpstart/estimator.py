@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 class JumpStartEstimator(Estimator):
     """JumpStartEstimator class.
 
-    This class sets defaults based on the model id and version.
+    This class sets defaults based on the model ID and version.
     """
 
     def __init__(
@@ -101,12 +101,12 @@ class JumpStartEstimator(Estimator):
 
         This method sets model-specific defaults for the ``Estimator.__init__`` method.
 
-        Only model id is required to instantiate this class, however any field can be overriden.
+        Only model ID is required to instantiate this class, however any field can be overriden.
         Any field set to ``None`` does not get passed to the parent class method.
 
 
         Args:
-            model_id (str): JumpStart model id to use with model.
+            model_id (str): JumpStart model ID to use with model.
             model_version (Optional[str]): Version for JumpStart model to use (Default: None).
             tolerate_vulnerable_model (Optional[bool]): True if vulnerable versions of model
                 specifications should be tolerated (exception not raised). If False, raises an
@@ -548,7 +548,7 @@ class JumpStartEstimator(Estimator):
     def fit(
         self,
         inputs: Optional[Union[str, Dict, TrainingInput, FileSystemInput]] = None,
-        wait: Optional[bool] = None,
+        wait: Optional[bool] = True,
         logs: Optional[str] = None,
         job_name: Optional[str] = None,
         experiment_config: Optional[Dict[str, str]] = None,
@@ -579,7 +579,7 @@ class JumpStartEstimator(Estimator):
 
                 (Default: None).
             wait (Optional[bool]): Whether the call should wait until the job completes.
-                (Default: None).
+                (Default: True).
             logs (Optional[List[str]]): A list of strings specifying which logs to print. Acceptable
                 strings are "All", "None", "Training", or "Rules". To maintain backwards
                 compatibility, boolean values are also accepted and converted to strings.

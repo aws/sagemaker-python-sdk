@@ -17,7 +17,7 @@ from typing import List, Optional
 from sagemaker.jumpstart.constants import JumpStartScriptScope
 
 NO_AVAILABLE_INSTANCES_ERROR_MSG = (
-    "No instances available in {region} that can support model id '{model_id}'. "
+    "No instances available in {region} that can support model ID '{model_id}'. "
     "Please try another region."
 )
 

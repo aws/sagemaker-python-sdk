@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 from copy import deepcopy
 import os
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set, Type
 from sagemaker import image_uris
 from sagemaker.base_deserializers import BaseDeserializer
 from sagemaker.base_serializers import BaseSerializer
@@ -30,7 +30,7 @@ from sagemaker.jumpstart.constants import (
 )
 from sagemaker.jumpstart.enums import (
     JumpStartScriptScope,
-    KwargUseCase,
+    _KwargUseCase,
     MIMEType,
     ModelFramework,
     VariableScope,
@@ -430,7 +430,7 @@ def _retrieve_default_environment_variables(
 def _retrieve_kwargs(
     model_id: str,
     model_version: str,
-    use_case: KwargUseCase,
+    use_case: _KwargUseCase,
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
@@ -442,7 +442,7 @@ def _retrieve_kwargs(
             retrieve the kwargs.
         model_version (str): Version of the JumpStart model for which to retrieve the
             kwargs.
-        use_case (KwargUseCase): The use case for which to retrieve kwargs.
+        use_case (_KwargUseCase): The use case for which to retrieve kwargs.
         region (Optional[str]): Region for which to retrieve kwargs.
             (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
@@ -460,9 +460,9 @@ def _retrieve_kwargs(
     if region is None:
         region = JUMPSTART_DEFAULT_REGION_NAME
 
-    if use_case in {KwargUseCase.MODEL, KwargUseCase.MODEL_DEPLOY}:
+    if use_case in {_KwargUseCase.MODEL, _KwargUseCase.MODEL_DEPLOY}:
         scope = JumpStartScriptScope.INFERENCE
-    elif use_case in {KwargUseCase.ESTIMATOR, KwargUseCase.ESTIMATOR_FIT}:
+    elif use_case in {_KwargUseCase.ESTIMATOR, _KwargUseCase.ESTIMATOR_FIT}:
         scope = JumpStartScriptScope.TRAINING
     else:
         raise ValueError(f"Unsupported named-argument use case: {use_case}")
@@ -476,16 +476,16 @@ def _retrieve_kwargs(
         tolerate_deprecated_model=tolerate_deprecated_model,
     )
 
-    if use_case == KwargUseCase.MODEL:
+    if use_case == _KwargUseCase.MODEL:
         return model_specs.model_kwargs
 
-    if use_case == KwargUseCase.MODEL_DEPLOY:
+    if use_case == _KwargUseCase.MODEL_DEPLOY:
         return model_specs.deploy_kwargs
 
-    if use_case == KwargUseCase.ESTIMATOR:
+    if use_case == _KwargUseCase.ESTIMATOR:
         return model_specs.estimator_kwargs
 
-    if use_case == KwargUseCase.ESTIMATOR_FIT:
+    if use_case == _KwargUseCase.ESTIMATOR_FIT:
         return model_specs.fit_kwargs
 
     raise ValueError(f"Unsupported named-argument use case: {use_case}")
@@ -844,14 +844,14 @@ def _retrieve_deserializer_options(
         tolerate_deprecated_model=tolerate_deprecated_model,
     )
 
-    seen_classes = set()
+    seen_classes: Set[Type] = set()
 
-    deserializers_with_duplicates = [
+    deserializers_with_duplicates: List[BaseDeserializer] = [
         _retrieve_deserializer_from_accept_type(MIMEType.from_suffixed_type(accept_type))
         for accept_type in supported_accept_types
     ]
 
-    deserializers = []
+    deserializers: List[BaseDeserializer] = []
 
     for deserializer in deserializers_with_duplicates:
         if type(deserializer) not in seen_classes:
@@ -896,14 +896,14 @@ def _retrieve_serializer_options(
         tolerate_deprecated_model=tolerate_deprecated_model,
     )
 
-    seen_classes = set()
+    seen_classes: Set[Type] = set()
 
-    serializers_with_duplicates = [
+    serializers_with_duplicates: List[BaseSerializer] = [
         _retrieve_serializer_from_content_type(MIMEType.from_suffixed_type(content_type))
         for content_type in supported_content_types
     ]
 
-    serializers = []
+    serializers: List[BaseSerializer] = []
 
     for serializer in serializers_with_duplicates:
         if type(serializer) not in seen_classes:

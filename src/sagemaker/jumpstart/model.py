@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 class JumpStartModel(Model):
     """JumpStartModel class.
 
-    This class sets defaults based on the model id and version.
+    This class sets defaults based on the model ID and version.
     """
 
     def __init__(
@@ -71,12 +71,12 @@ class JumpStartModel(Model):
 
         This method sets model-specific defaults for the ``Model.__init__`` method.
 
-        Only model id is required to instantiate this class, however any field can be overriden.
+        Only model ID is required to instantiate this class, however any field can be overriden.
 
         Any field set to ``None`` does not get passed to the parent class method.
 
         Args:
-            model_id (str): JumpStart model id to use with model.
+            model_id (str): JumpStart model ID to use with model.
             model_version (Optional[str]): Version for JumpStart model to use (Default: None).
             tolerate_vulnerable_model (Optional[bool]): True if vulnerable versions of model
                 specifications should be tolerated (exception not raised). If False, raises an
