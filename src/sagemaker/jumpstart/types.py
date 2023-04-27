@@ -896,6 +896,7 @@ class JumpStartEstimatorFitKwargs(JumpStartKwargs):
         "region",
         "tolerate_deprecated_model",
         "tolerate_vulnerable_model",
+        "sagemaker_session",
     }
 
     def __init__(
