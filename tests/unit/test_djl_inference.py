@@ -147,7 +147,7 @@ def test_create_model_automatic_engine_selection(mock_s3_list, mock_read_file, s
         sagemaker_session=sagemaker_session,
         number_of_partitions=4,
     )
-    assert hf_model.engine == DJLServingEngineEntryPointDefaults.HUGGINGFACE_ACCELERATE
+    assert hf_model.engine == DJLServingEngineEntryPointDefaults.FASTER_TRANSFORMER
 
     hf_model_config = {
         "model_type": "gpt2",
@@ -199,20 +199,6 @@ def test_create_deepspeed_model(mock_s3_list, mock_read_file, sagemaker_session)
         tensor_parallel_degree=4,
     )
     assert ds_model.engine == DJLServingEngineEntryPointDefaults.DEEPSPEED
-
-    ds_model_config = {
-        "model_type": "t5",
-        "n_head": 12,
-    }
-    mock_read_file.return_value = json.dumps(ds_model_config)
-    with pytest.raises(ValueError) as invalid_model_type:
-        _ = DeepSpeedModel(
-            VALID_UNCOMPRESSED_MODEL_DATA,
-            ROLE,
-            sagemaker_session=sagemaker_session,
-            tensor_parallel_degree=1,
-        )
-    assert str(invalid_model_type.value).startswith("t5 is not supported by DeepSpeed")
 
     ds_model_config = {
         "model_type": "opt",

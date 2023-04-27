@@ -23,7 +23,7 @@ With the SageMaker Python SDK, you can use DJL Serving to host models that have 
 These can either be models you have trained/fine-tuned yourself, or models available publicly from the HuggingFace Hub.
 DJL Serving in the SageMaker Python SDK supports hosting models for the popular HuggingFace NLP tasks, as well as Stable Diffusion.
 
-You can either deploy your model using DeepSpeed or HuggingFace Accelerate, or let DJL Serving determine the best backend based on your model architecture and configuration.
+You can either deploy your model using DeepSpeed, FasterTransformer, or HuggingFace Accelerate, or let DJL Serving determine the best backend based on your model architecture and configuration.
 
 .. code:: python
 
@@ -63,11 +63,23 @@ If you want to use a specific backend, then you can create an instance of the co
         number_of_partitions=2, # number of gpus to partition the model across
     )
 
+    # Create a model using the FasterTransformer backend
+
+    fastertransformer_model = FasterTransformerModel(
+        "s3://my_bucket/my_saved_model_artifacts/", # This can also be a HuggingFace Hub model id
+        "my_sagemaker_role",
+        data_type="fp16",
+        task="text-generation",
+        tensor_parallel_degree=2, # number of gpus to partition the model across
+    )
+
     # Deploy the model to an Amazon SageMaker Endpoint and get a Predictor
     deepspeed_predictor = deepspeed_model.deploy("ml.g5.12xlarge",
                                                  initial_instance_count=1)
     hf_accelerate_predictor = hf_accelerate_model.deploy("ml.g5.12xlarge",
                                                          initial_instance_count=1)
+    fastertransformer_predictor = fastertransformer_model.deploy("ml.g5.12xlarge",
+                                                                 initial_instance_count=1)
 
 Regardless of which way you choose to create your model, a ``Predictor`` object is returned. You can use this ``Predictor``
 to do inference on the endpoint hosting your DJLModel.

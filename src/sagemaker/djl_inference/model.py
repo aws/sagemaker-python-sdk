@@ -52,6 +52,7 @@ class DJLServingEngineEntryPointDefaults(Enum):
     DEEPSPEED = ("DeepSpeed", "djl_python.deepspeed")
     HUGGINGFACE_ACCELERATE = ("Python", "djl_python.huggingface")
     STABLE_DIFFUSION = ("DeepSpeed", "djl_python.stable-diffusion")
+    FASTER_TRANSFORMER = ("FasterTransformer", "djl_python.fastertransformer")
 
 
 class DJLPredictor(Predictor):
@@ -93,12 +94,14 @@ class DJLPredictor(Predictor):
 def _determine_engine_for_model(model_type: str, num_partitions: int, num_heads: int):
     """Placeholder docstring"""
 
-    # Tensor Parallelism with DeepSpeed is only possible if attention heads can be split evenly
+    # Tensor Parallelism is only possible if attention heads can be split evenly
     # across devices
     if num_heads is not None and num_partitions is not None and num_heads % num_partitions:
         return HuggingFaceAccelerateModel
     if model_type in defaults.DEEPSPEED_RECOMMENDED_ARCHITECTURES:
         return DeepSpeedModel
+    if model_type in defaults.FASTER_TRANSFORMER_RECOMMENDED_ARCHITECTURES:
+        return FasterTransformerModel
     return HuggingFaceAccelerateModel
 
 
@@ -106,16 +109,18 @@ def _validate_engine_for_model_type(cls, model_type: str, num_partitions: int, n
     """Placeholder docstring"""
 
     if cls == DeepSpeedModel:
-        if model_type not in defaults.DEEPSPEED_SUPPORTED_ARCHITECTURES:
-            raise ValueError(
-                f"{model_type} is not supported by DeepSpeed. "
-                f"Supported model_types are {defaults.DEEPSPEED_SUPPORTED_ARCHITECTURES}"
-            )
         if num_heads is not None and num_partitions is not None and num_heads % num_partitions:
             raise ValueError(
                 "The number of attention heads is not evenly divisible by the number of partitions."
                 "Please set the number of partitions such that the number of attention heads can be"
                 "evenly split across the partitions."
+            )
+    if cls == FasterTransformerModel:
+        if model_type not in defaults.FASTER_TRANSFORMER_SUPPORTED_ARCHITECTURES:
+            raise ValueError(
+                f"The model architecture {model_type} is currently not supported by "
+                f"FasterTransformer. Please use a different engine, or use the DJLModel"
+                f"to let SageMaker pick a recommended engine for this model."
             )
     return cls
 
@@ -223,6 +228,8 @@ class DJLModel(FrameworkModel):
             instance.engine = DJLServingEngineEntryPointDefaults.STABLE_DIFFUSION
         elif isinstance(instance, DeepSpeedModel):
             instance.engine = DJLServingEngineEntryPointDefaults.DEEPSPEED
+        elif isinstance(instance, FasterTransformerModel):
+            instance.engine = DJLServingEngineEntryPointDefaults.FASTER_TRANSFORMER
         else:
             instance.engine = DJLServingEngineEntryPointDefaults.HUGGINGFACE_ACCELERATE
         return instance
@@ -849,3 +856,64 @@ class HuggingFaceAccelerateModel(DJLModel):
             serving_properties["option.dtype"] = "auto"
             serving_properties.pop("option.load_in_8bit", None)
         return serving_properties
+
+
+class FasterTransformerModel(DJLModel):
+    """A DJL FasterTransformer SageMaker ``Model``
+
+    This can be deployed to a SageMaker ``Endpoint``.
+    """
+
+    _framework_name = "djl-fastertransformer"
+
+    def __init__(
+        self,
+        model_id: str,
+        role: str,
+        tensor_parallel_degree: Optional[int] = None,
+        **kwargs,
+    ):
+        """Initialize a FasterTransformerModel.
+
+        Args:
+            model_id (str): This is either the HuggingFace Hub model_id, or the Amazon S3 location
+                containing the uncompressed model artifacts (i.e. not a tar.gz file).
+                The model artifacts are expected to be in HuggingFace pre-trained model
+                format (i.e. model should be loadable from the huggingface transformers
+                from_pretrained api, and should also include tokenizer configs if applicable).
+            role (str): An AWS IAM role specified with either the name or full ARN. The Amazon
+                SageMaker training jobs and APIs that create Amazon SageMaker
+                endpoints use this role to access model artifacts. After the endpoint is created,
+                the inference code
+                might use the IAM role, if it needs to access an AWS resource.
+            tensor_parllel_degree (int): The number of gpus to shard a single instance of the
+                 model across via tensor_parallelism. This should be set to greater than 1 if the
+                 size of the model is larger than the memory available on a single GPU on the
+                 instance. Defaults to None. If not set, no tensor parallel sharding is done.
+            **kwargs: Keyword arguments passed to the superclasses
+                :class:`~sagemaker.djl_inference.DJLModel`,
+                :class:`~sagemaker.model.FrameworkModel`, and
+                :class:`~sagemaker.model.Model`
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.djl_inference.DJLModel`,
+            :class:`~sagemaker.model.FrameworkModel`, and
+            :class:`~sagemaker.model.Model`.
+        """
+
+        super(FasterTransformerModel, self).__init__(
+            model_id,
+            role,
+            **kwargs,
+        )
+        if self.number_of_partitions and tensor_parallel_degree:
+            logger.warning(
+                "Both number_of_partitions and tensor_parallel_degree have been set for "
+                "FasterTransformerModel."
+                "These mean the same thing for FasterTransformerModel. Please only set "
+                "tensor_parallel_degree."
+                "number_of_partitions will be ignored"
+            )
+        self.number_of_partitions = tensor_parallel_degree or self.number_of_partitions
