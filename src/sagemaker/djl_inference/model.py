@@ -135,15 +135,17 @@ def _read_existing_serving_properties(directory: str):
     return properties
 
 
-def _get_model_config_properties_from_s3(model_s3_uri: str):
+def _get_model_config_properties_from_s3(model_s3_uri: str, sagemaker_session: Session):
     """Placeholder docstring"""
 
-    s3_files = s3.S3Downloader.list(model_s3_uri)
+    s3_files = s3.S3Downloader.list(model_s3_uri, sagemaker_session=sagemaker_session)
     model_config = None
     for config in defaults.VALID_MODEL_CONFIG_FILES:
         config_file = os.path.join(model_s3_uri, config)
         if config_file in s3_files:
-            model_config = json.loads(s3.S3Downloader.read_file(config_file))
+            model_config = json.loads(
+                s3.S3Downloader.read_file(config_file, sagemaker_session=sagemaker_session)
+            )
             break
     if not model_config:
         raise ValueError(
@@ -198,7 +200,8 @@ class DJLModel(FrameworkModel):
                 "containing folder"
             )
         if model_id.startswith("s3://"):
-            model_config = _get_model_config_properties_from_s3(model_id)
+            sagemaker_session = kwargs.get("sagemaker_session")
+            model_config = _get_model_config_properties_from_s3(model_id, sagemaker_session)
         else:
             model_config = _get_model_config_properties_from_hf(model_id)
         if model_config.get("_class_name") == "StableDiffusionPipeline":
