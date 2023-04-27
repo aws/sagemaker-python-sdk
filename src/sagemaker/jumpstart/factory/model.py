@@ -28,13 +28,17 @@ from sagemaker.jumpstart.constants import (
 )
 from sagemaker.jumpstart.enums import JumpStartScriptScope, KwargUseCase
 from sagemaker.jumpstart.types import JumpStartModelDeployKwargs, JumpStartModelInitKwargs
-from sagemaker.jumpstart.utils import update_dict_if_key_not_present
+from sagemaker.jumpstart.utils import (
+    update_dict_if_key_not_present,
+    resolve_model_intelligent_default_field,
+)
+
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
 from sagemaker.base_predictor import Predictor
 from sagemaker import accept_types, content_types, serializers, deserializers
 
 from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
-from sagemaker.session import Session, get_execution_role
+from sagemaker.session import Session
 from sagemaker.workflow.entities import PipelineVariable
 
 logger = logging.getLogger("sagemaker")
@@ -55,7 +59,7 @@ def get_default_predictor(
     """
 
     # if there's a non-default predictor, do not mutate -- return as is
-    if type(predictor) != Predictor: # pylint: disable=C0123
+    if type(predictor) != Predictor:  # pylint: disable=C0123
         return predictor
 
     predictor.serializer = serializers.retrieve_default(
@@ -98,10 +102,20 @@ def _add_region_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelIni
     return kwargs
 
 
+def _add_sagemaker_session_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
+    """Sets session in kwargs based on default or override, returns full kwargs."""
+    kwargs.sagemaker_session = kwargs.sagemaker_session or Session()
+    return kwargs
+
+
 def _add_role_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
     """Sets role based on default or override, returns full kwargs."""
 
-    kwargs.role = kwargs.role or get_execution_role()
+    kwargs.role = resolve_model_intelligent_default_field(
+        field_name="role",
+        field_val=kwargs.role,
+        sagemaker_session=kwargs.sagemaker_session,
+    )
 
     return kwargs
 
@@ -276,7 +290,12 @@ def _add_extra_model_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelI
 
     for key, value in model_kwargs_to_add.items():
         if getattr(kwargs, key) is None:
-            setattr(kwargs, key, value)
+            resolved_value = resolve_model_intelligent_default_field(
+                field_name=key,
+                field_val=value,
+                sagemaker_session=kwargs.sagemaker_session,
+            )
+            setattr(kwargs, key, resolved_value)
 
     return kwargs
 
@@ -432,6 +451,7 @@ def get_init_kwargs(
     model_init_kwargs = _add_vulnerable_and_deprecated_status_to_kwargs(kwargs=model_init_kwargs)
 
     model_init_kwargs = _add_region_to_kwargs(kwargs=model_init_kwargs)
+    model_init_kwargs = _add_sagemaker_session_to_kwargs(kwargs=model_init_kwargs)
     model_init_kwargs = _add_instance_type_to_kwargs(
         kwargs=model_init_kwargs,
     )

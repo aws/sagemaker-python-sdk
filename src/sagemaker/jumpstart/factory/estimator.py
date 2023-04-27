@@ -24,7 +24,7 @@ from sagemaker import (
     model_uris,
     script_uris,
 )
-from sagemaker import session
+from sagemaker.session import Session
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.base_deserializers import BaseDeserializer
 from sagemaker.base_serializers import BaseSerializer
@@ -48,10 +48,14 @@ from sagemaker.jumpstart.types import (
     JumpStartModelDeployKwargs,
     JumpStartModelInitKwargs,
 )
-from sagemaker.jumpstart.utils import update_dict_if_key_not_present
+from sagemaker.jumpstart.utils import (
+    update_dict_if_key_not_present,
+    resolve_estimator_intelligent_default_field,
+)
+
+
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
 from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
-from sagemaker.session import get_execution_role
 from sagemaker.workflow.entities import PipelineVariable
 
 logger = logging.getLogger("sagemaker")
@@ -75,7 +79,7 @@ def get_init_kwargs(
     output_path: Optional[Union[str, PipelineVariable]] = None,
     output_kms_key: Optional[Union[str, PipelineVariable]] = None,
     base_job_name: Optional[str] = None,
-    sagemaker_session: Optional[session.Session] = None,
+    sagemaker_session: Optional[Session] = None,
     hyperparameters: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
     tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
     subnets: Optional[List[Union[str, PipelineVariable]]] = None,
@@ -163,6 +167,7 @@ def get_init_kwargs(
     estimator_init_kwargs = _add_model_version_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_vulnerable_and_deprecated_status_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_region_to_kwargs(estimator_init_kwargs)
+    estimator_init_kwargs = _add_sagemaker_session_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_instance_type_and_count_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_image_uri_to_kwargs(estimator_init_kwargs)
     estimator_init_kwargs = _add_model_uri_to_kwargs(estimator_init_kwargs)
@@ -237,7 +242,7 @@ def get_deploy_kwargs(
     env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
     name: Optional[str] = None,
     vpc_config: Optional[Dict[str, List[Union[str, PipelineVariable]]]] = None,
-    sagemaker_session: Optional[session.Session] = None,
+    sagemaker_session: Optional[Session] = None,
     enable_network_isolation: Union[bool, PipelineVariable] = None,
     model_kms_key: Optional[str] = None,
     image_config: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
@@ -355,6 +360,12 @@ def _add_region_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
     return kwargs
 
 
+def _add_sagemaker_session_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
+    """Sets session in kwargs based on default or override, returns full kwargs."""
+    kwargs.sagemaker_session = kwargs.sagemaker_session or Session()
+    return kwargs
+
+
 def _add_model_version_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
     """Sets model version in kwargs based on default or override, returns full kwargs."""
 
@@ -366,7 +377,11 @@ def _add_model_version_to_kwargs(kwargs: JumpStartKwargs) -> JumpStartKwargs:
 def _add_role_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartEstimatorInitKwargs:
     """Sets role based on default or override, returns full kwargs."""
 
-    kwargs.role = kwargs.role or get_execution_role()
+    kwargs.role = resolve_estimator_intelligent_default_field(
+        field_name="role",
+        field_val=kwargs.role,
+        sagemaker_session=kwargs.sagemaker_session,
+    )
 
     return kwargs
 
@@ -541,7 +556,12 @@ def _add_estimator_extra_kwargs(
 
     for key, value in estimator_kwargs_to_add.items():
         if getattr(kwargs, key) is None:
-            setattr(kwargs, key, value)
+            resolved_value = resolve_estimator_intelligent_default_field(
+                field_name=key,
+                field_val=value,
+                sagemaker_session=kwargs.sagemaker_session,
+            )
+            setattr(kwargs, key, resolved_value)
 
     return kwargs
 

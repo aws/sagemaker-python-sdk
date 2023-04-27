@@ -14,16 +14,19 @@ from __future__ import absolute_import
 from typing import Optional
 from unittest import mock
 import unittest
+from inspect import signature
 
 import pytest
 
 from sagemaker.debugger.profiler_config import ProfilerConfig
+from sagemaker.estimator import Estimator
 from sagemaker.instance_group import InstanceGroup
 
 from sagemaker.jumpstart.estimator import JumpStartEstimator
 
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 from tests.integ.sagemaker.jumpstart.utils import get_training_dataset_for_model_and_version
+from sagemaker.model import Model
 from sagemaker.predictor import Predictor
 from sagemaker.session import Session
 from tests.unit.sagemaker.jumpstart.utils import (
@@ -36,30 +39,35 @@ class EstimatorTest(unittest.TestCase):
 
     execution_role = "fake role! do not use!"
     region = "us-west-2"
+    sagemaker_session = Session()
 
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
-    @mock.patch("sagemaker.jumpstart.factory.estimator.get_execution_role")
-    @mock.patch("sagemaker.jumpstart.factory.model.get_execution_role")
+    @mock.patch("sagemaker.jumpstart.utils.get_execution_role")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_non_prepacked(
         self,
-        mock_get_execution_role_model: mock.Mock,
-        mock_get_execution_role_estimator: mock.Mock,
+        mock_get_execution_role: mock.Mock,
         mock_estimator_deploy: mock.Mock,
         mock_estimator_fit: mock.Mock,
         mock_estimator_init: mock.Mock,
         mock_get_model_specs: mock.Mock,
+        mock_session_estimator: mock.Mock,
+        mock_session_model: mock.Mock,
     ):
         model_id, model_version = "js-trainable-model", "*"
 
         mock_get_model_specs.side_effect = get_special_model_spec
 
-        mock_get_execution_role_model.return_value = self.execution_role
-        mock_get_execution_role_estimator.return_value = self.execution_role
+        mock_get_execution_role.return_value = self.execution_role
+
+        mock_session_estimator.return_value = self.sagemaker_session
+        mock_session_model.return_value = self.sagemaker_session
 
         estimator = JumpStartEstimator(
             model_id=model_id,
@@ -88,6 +96,7 @@ class EstimatorTest(unittest.TestCase):
             },
             role=self.execution_role,
             encrypt_inter_container_traffic=True,
+            sagemaker_session=self.sagemaker_session,
         )
 
         channels = {
@@ -118,31 +127,36 @@ class EstimatorTest(unittest.TestCase):
             predictor_cls=Predictor,
             role=self.execution_role,
             wait=True,
+            sagemaker_session=self.sagemaker_session,
         )
 
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
-    @mock.patch("sagemaker.jumpstart.factory.estimator.get_execution_role")
-    @mock.patch("sagemaker.jumpstart.factory.model.get_execution_role")
+    @mock.patch("sagemaker.jumpstart.utils.get_execution_role")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_prepacked(
         self,
-        mock_get_execution_role_model: mock.Mock,
-        mock_get_execution_role_estimator: mock.Mock,
+        mock_get_execution_role: mock.Mock,
         mock_estimator_deploy: mock.Mock,
         mock_estimator_fit: mock.Mock,
         mock_estimator_init: mock.Mock,
         mock_get_model_specs: mock.Mock,
+        mock_session_estimator: mock.Mock,
+        mock_session_model: mock.Mock,
     ):
         model_id, _ = "js-trainable-model-prepacked", "*"
 
         mock_get_model_specs.side_effect = get_special_model_spec
 
-        mock_get_execution_role_model.return_value = self.execution_role
-        mock_get_execution_role_estimator.return_value = self.execution_role
+        mock_get_execution_role.return_value = self.execution_role
+
+        mock_session_estimator.return_value = self.sagemaker_session
+        mock_session_model.return_value = self.sagemaker_session
 
         estimator = JumpStartEstimator(
             model_id=model_id,
@@ -171,6 +185,7 @@ class EstimatorTest(unittest.TestCase):
             ],
             role=self.execution_role,
             encrypt_inter_container_traffic=False,
+            sagemaker_session=self.sagemaker_session,
         )
 
         channels = {
@@ -199,20 +214,19 @@ class EstimatorTest(unittest.TestCase):
             predictor_cls=Predictor,
             role=self.execution_role,
             wait=True,
+            sagemaker_session=self.sagemaker_session,
         )
 
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
-    @mock.patch("sagemaker.jumpstart.factory.estimator.get_execution_role")
-    @mock.patch("sagemaker.jumpstart.factory.model.get_execution_role")
+    @mock.patch("sagemaker.jumpstart.utils.get_execution_role")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_deprecated(
         self,
-        mock_get_execution_role_model: mock.Mock,
-        mock_get_execution_role_estimator: mock.Mock,
+        mock_get_execution_role: mock.Mock,
         mock_estimator_deploy: mock.Mock,
         mock_estimator_fit: mock.Mock,
         mock_estimator_init: mock.Mock,
@@ -222,8 +236,7 @@ class EstimatorTest(unittest.TestCase):
 
         mock_get_model_specs.side_effect = get_special_model_spec
 
-        mock_get_execution_role_model.return_value = self.execution_role
-        mock_get_execution_role_estimator.return_value = self.execution_role
+        mock_get_execution_role.return_value = self.execution_role
 
         with pytest.raises(ValueError):
             JumpStartEstimator(
@@ -241,14 +254,12 @@ class EstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
-    @mock.patch("sagemaker.jumpstart.factory.estimator.get_execution_role")
-    @mock.patch("sagemaker.jumpstart.factory.model.get_execution_role")
+    @mock.patch("sagemaker.jumpstart.utils.get_execution_role")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_vulnerable(
         self,
-        mock_get_execution_role_model: mock.Mock,
-        mock_get_execution_role_estimator: mock.Mock,
+        mock_get_execution_role: mock.Mock,
         mock_estimator_deploy: mock.Mock,
         mock_estimator_fit: mock.Mock,
         mock_estimator_init: mock.Mock,
@@ -258,8 +269,7 @@ class EstimatorTest(unittest.TestCase):
 
         mock_get_model_specs.side_effect = get_special_model_spec
 
-        mock_get_execution_role_model.return_value = self.execution_role
-        mock_get_execution_role_estimator.return_value = self.execution_role
+        mock_get_execution_role.return_value = self.execution_role
 
         with pytest.raises(ValueError):
             JumpStartEstimator(
@@ -353,22 +363,24 @@ class EstimatorTest(unittest.TestCase):
             deploy_kwargs=all_deploy_kwargs_used,
         )
 
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
-    @mock.patch("sagemaker.jumpstart.factory.estimator.get_execution_role")
-    @mock.patch("sagemaker.jumpstart.factory.model.get_execution_role")
+    @mock.patch("sagemaker.jumpstart.utils.get_execution_role")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def evaluate_estimator_workflow_with_kwargs(
         self,
-        mock_get_execution_role_model: mock.Mock,
-        mock_get_execution_role_estimator: mock.Mock,
+        mock_get_execution_role: mock.Mock,
         mock_estimator_deploy: mock.Mock,
         mock_estimator_fit: mock.Mock,
         mock_estimator_init: mock.Mock,
         mock_get_model_specs: mock.Mock,
+        mock_session_estimator: mock.Mock,
+        mock_session_model: mock.Mock,
         init_kwargs: Optional[dict] = None,
         fit_kwargs: Optional[dict] = None,
         deploy_kwargs: Optional[dict] = None,
@@ -387,8 +399,10 @@ class EstimatorTest(unittest.TestCase):
 
         mock_get_model_specs.side_effect = get_special_model_spec
 
-        mock_get_execution_role_model.return_value = self.execution_role
-        mock_get_execution_role_estimator.return_value = self.execution_role
+        mock_get_execution_role.return_value = self.execution_role
+
+        mock_session_estimator.return_value = self.sagemaker_session
+        mock_session_model.return_value = self.sagemaker_session
 
         estimator = JumpStartEstimator(
             model_id=model_id,
@@ -422,6 +436,7 @@ class EstimatorTest(unittest.TestCase):
                 },
                 "role": self.execution_role,
                 "encrypt_inter_container_traffic": True,
+                "sagemaker_session": self.sagemaker_session,
             },
             init_kwargs,
         )
@@ -458,8 +473,46 @@ class EstimatorTest(unittest.TestCase):
                 },
                 "predictor_cls": Predictor,
                 "role": self.execution_role,
+                "sagemaker_session": self.sagemaker_session,
             },
             deploy_kwargs,
         )
 
         mock_estimator_deploy.assert_called_once_with(**expected_deploy_kwargs)
+
+    def test_jumpstart_estimator_kwargs_match_parent_class(self):
+        parent_class_init = Estimator.__init__
+        parent_class_init_args = set(signature(parent_class_init).parameters.keys())
+
+        js_class_init = JumpStartEstimator.__init__
+        js_class_init_args = set(signature(js_class_init).parameters.keys())
+
+        assert js_class_init_args - parent_class_init_args == {
+            "model_id",
+            "model_version",
+            "region",
+            "tolerate_vulnerable_model",
+            "tolerate_deprecated_model",
+        }
+
+        parent_class_fit = Estimator.fit
+        parent_class_fit_args = set(signature(parent_class_fit).parameters.keys())
+
+        js_class_fit = JumpStartEstimator.fit
+        js_class_fit_args = set(signature(js_class_fit).parameters.keys())
+
+        assert js_class_fit_args - parent_class_fit_args == set()
+
+        model_class_init = Model.__init__
+        model_class_init_args = set(signature(model_class_init).parameters.keys())
+
+        parent_class_deploy = Estimator.deploy
+        parent_class_deploy_args = set(signature(parent_class_deploy).parameters.keys())
+
+        js_class_deploy = JumpStartEstimator.deploy
+        js_class_deploy_args = set(signature(js_class_deploy).parameters.keys())
+
+        assert js_class_deploy_args - parent_class_deploy_args == model_class_init_args - {
+            "model_data",
+            "self",
+        }

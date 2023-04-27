@@ -11,13 +11,16 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+from inspect import signature
 from typing import Optional
 from unittest import mock
 import unittest
 import pytest
 
 from sagemaker.jumpstart.model import JumpStartModel
+from sagemaker.model import Model
 from sagemaker.predictor import Predictor
+from sagemaker.session import Session
 
 from tests.unit.sagemaker.jumpstart.utils import get_special_model_spec, overwrite_dictionary
 
@@ -26,11 +29,13 @@ class ModelTest(unittest.TestCase):
 
     execution_role = "fake role! do not use!"
     region = "us-west-2"
+    sagemaker_session = Session()
 
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
-    @mock.patch("sagemaker.jumpstart.factory.model.get_execution_role")
+    @mock.patch("sagemaker.jumpstart.utils.get_execution_role")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_non_prepacked(
         self,
@@ -38,12 +43,15 @@ class ModelTest(unittest.TestCase):
         mock_model_deploy: mock.Mock,
         mock_model_init: mock.Mock,
         mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
     ):
         model_id, _ = "js-trainable-model", "*"
 
         mock_get_model_specs.side_effect = get_special_model_spec
 
         mock_get_execution_role.return_value = self.execution_role
+
+        mock_session.return_value = self.sagemaker_session
 
         model = JumpStartModel(
             model_id=model_id,
@@ -66,6 +74,7 @@ class ModelTest(unittest.TestCase):
             },
             predictor_cls=Predictor,
             role=self.execution_role,
+            sagemaker_session=self.sagemaker_session,
         )
 
         model.deploy()
@@ -76,10 +85,11 @@ class ModelTest(unittest.TestCase):
             wait=True,
         )
 
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
-    @mock.patch("sagemaker.jumpstart.factory.model.get_execution_role")
+    @mock.patch("sagemaker.jumpstart.utils.get_execution_role")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_prepacked(
         self,
@@ -87,10 +97,13 @@ class ModelTest(unittest.TestCase):
         mock_model_deploy: mock.Mock,
         mock_model_init: mock.Mock,
         mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
     ):
         model_id, _ = "js-model-class-model-prepacked", "*"
 
         mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session.return_value = self.sagemaker_session
 
         mock_get_execution_role.return_value = self.execution_role
 
@@ -112,6 +125,7 @@ class ModelTest(unittest.TestCase):
             },
             predictor_cls=Predictor,
             role=self.execution_role,
+            sagemaker_session=self.sagemaker_session,
         )
 
         model.deploy()
@@ -125,7 +139,7 @@ class ModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
-    @mock.patch("sagemaker.jumpstart.factory.model.get_execution_role")
+    @mock.patch("sagemaker.jumpstart.utils.get_execution_role")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_deprecated(
         self,
@@ -150,7 +164,7 @@ class ModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
-    @mock.patch("sagemaker.jumpstart.factory.model.get_execution_role")
+    @mock.patch("sagemaker.jumpstart.utils.get_execution_role")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_vulnerable(
         self,
@@ -182,7 +196,6 @@ class ModelTest(unittest.TestCase):
             "env": {"1": 4},
             "name": "Optional[str] = None",
             "vpc_config": {"dsfsfs": "dfsfsd"},
-            "sagemaker_session": "Optional[Session] = None",
             "enable_network_isolation": True,
             "model_kms_key": "Optional[str] = None",
             "image_config": {"s": "sd"},
@@ -219,20 +232,24 @@ class ModelTest(unittest.TestCase):
             deploy_kwargs=all_deploy_kwargs_used,
         )
 
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
-    @mock.patch("sagemaker.jumpstart.factory.model.get_execution_role")
+    @mock.patch("sagemaker.jumpstart.utils.get_execution_role")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def evaluate_model_workflow_with_kwargs(
         self,
-        mock_get_execution_role_model: mock.Mock,
+        mock_get_execution_role: mock.Mock,
         mock_model_deploy: mock.Mock,
         mock_model_init: mock.Mock,
         mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
         init_kwargs: Optional[dict] = None,
         deploy_kwargs: Optional[dict] = None,
     ):
+
+        mock_session.return_value = self.sagemaker_session
 
         if init_kwargs is None:
             init_kwargs = {}
@@ -244,7 +261,7 @@ class ModelTest(unittest.TestCase):
 
         mock_get_model_specs.side_effect = get_special_model_spec
 
-        mock_get_execution_role_model.return_value = self.execution_role
+        mock_get_execution_role.return_value = self.execution_role
 
         model = JumpStartModel(
             model_id=model_id,
@@ -266,6 +283,7 @@ class ModelTest(unittest.TestCase):
                 },
                 "predictor_cls": Predictor,
                 "role": self.execution_role,
+                "sagemaker_session": self.sagemaker_session,
             },
             init_kwargs,
         )
@@ -279,3 +297,27 @@ class ModelTest(unittest.TestCase):
         )
 
         mock_model_deploy.assert_called_once_with(**expected_deploy_kwargs)
+
+    def test_jumpstart_model_kwargs_match_parent_class(self):
+        parent_class_init = Model.__init__
+        parent_class_init_args = set(signature(parent_class_init).parameters.keys())
+
+        js_class_init = JumpStartModel.__init__
+        js_class_init_args = set(signature(js_class_init).parameters.keys())
+
+        assert js_class_init_args - parent_class_init_args == {
+            "model_id",
+            "model_version",
+            "region",
+            "tolerate_vulnerable_model",
+            "tolerate_deprecated_model",
+            "instance_type",
+        }
+
+        parent_class_deploy = Model.deploy
+        parent_class_deploy_args = set(signature(parent_class_deploy).parameters.keys())
+
+        js_class_deploy = JumpStartModel.deploy
+        js_class_deploy_args = set(signature(js_class_deploy).parameters.keys())
+
+        assert js_class_deploy_args - parent_class_deploy_args == set()

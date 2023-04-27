@@ -18,6 +18,13 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 from packaging.version import Version
 import sagemaker
+from sagemaker.config.config_schema import (
+    MODEL_ENABLE_NETWORK_ISOLATION_PATH,
+    MODEL_EXECUTION_ROLE_ARN_PATH,
+    TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+    TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
+    TRAINING_JOB_ROLE_ARN_PATH,
+)
 from sagemaker.jumpstart import constants, enums
 from sagemaker.jumpstart import accessors
 from sagemaker.s3 import parse_s3_url
@@ -30,6 +37,8 @@ from sagemaker.jumpstart.types import (
     JumpStartModelSpecs,
     JumpStartVersionedModelId,
 )
+from sagemaker.session import Session, get_execution_role
+from sagemaker.utils import resolve_value_from_config
 from sagemaker.workflow import is_pipeline_variable
 
 LOGGER = logging.getLogger(__name__)
@@ -430,3 +439,81 @@ def update_dict_if_key_not_present(
         dict_to_update[key_to_add] = value_to_add
 
     return dict_to_update
+
+
+def resolve_model_intelligent_default_field(
+    field_name: str, field_val: Optional[Any], sagemaker_session: Session
+) -> Any:
+    """Given a field name, checks if there are intelligent defaults to set.
+
+    For the role field, which is customer-supplied, we allow ``field_val`` to take precedence
+    over intelligent defaults. For all other fields, intelligent defaults takes precedence
+    over the JumpStart default fields.
+    """
+
+    # We allow customers to define a role which takes precedence
+    # over intelligent defaults
+    if field_name == "role":
+        return resolve_value_from_config(
+            direct_input=field_val,
+            config_path=MODEL_EXECUTION_ROLE_ARN_PATH,
+            default_value=get_execution_role(),
+            sagemaker_session=sagemaker_session,
+        )
+
+    # JumpStart Models have certain default field values. We want
+    # intelligent defaults to take priority over the model-specific defaults.
+    if field_name == "enable_network_isolation":
+        resolved_val = resolve_value_from_config(
+            direct_input=None,
+            config_path=MODEL_ENABLE_NETWORK_ISOLATION_PATH,
+            sagemaker_session=sagemaker_session,
+        )
+        return resolved_val if resolved_val is not None else field_val
+
+    # field is not covered by intelligent defaults so return as is
+    return field_val
+
+
+def resolve_estimator_intelligent_default_field(
+    field_name: str, field_val: Optional[Any], sagemaker_session: Session
+) -> Any:
+    """Given a field name, checks if there are intelligent defaults to set.
+
+    For the role field, which is customer-supplied, we allow ``field_val`` to take precedence
+    over intelligent defaults. For all other fields, intelligent defaults takes precedence
+    over the JumpStart default fields.
+    """
+
+    # We allow customers to define a role which takes precedence
+    # over intelligent defaults
+    if field_name == "role":
+        return resolve_value_from_config(
+            direct_input=field_val,
+            config_path=TRAINING_JOB_ROLE_ARN_PATH,
+            default_value=get_execution_role(),
+            sagemaker_session=sagemaker_session,
+        )
+
+    # JumpStart Estimators have certain default field values. We want
+    # intelligent defaults to take priority over the model-specific defaults.
+    if field_name == "enable_network_isolation":
+
+        resolved_val = resolve_value_from_config(
+            direct_input=None,
+            config_path=TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+            sagemaker_session=sagemaker_session,
+        )
+        return resolved_val if resolved_val is not None else field_val
+
+    if field_name == "encrypt_inter_container_traffic":
+
+        resolved_val = resolve_value_from_config(
+            direct_input=None,
+            config_path=TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
+            sagemaker_session=sagemaker_session,
+        )
+        return resolved_val if resolved_val is not None else field_val
+
+    # field is not covered by intelligent defaults so return as is
+    return field_val
