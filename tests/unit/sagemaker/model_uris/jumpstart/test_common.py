@@ -22,7 +22,7 @@ from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
 from sagemaker.jumpstart import constants as sagemaker_constants
 
 
-@patch("sagemaker.jumpstart.artifacts.verify_model_region_and_return_specs")
+@patch("sagemaker.jumpstart.artifacts.model_uris.verify_model_region_and_return_specs")
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 def test_jumpstart_common_model_uri(
     patched_get_model_specs, patched_verify_model_region_and_return_specs
@@ -129,7 +129,7 @@ def test_jumpstart_common_model_uri(
         )
 
 
-@patch("sagemaker.jumpstart.artifacts.verify_model_region_and_return_specs")
+@patch("sagemaker.jumpstart.artifacts.model_uris.verify_model_region_and_return_specs")
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 @patch.dict(
     "sagemaker.jumpstart.cache.os.environ",
