@@ -523,3 +523,73 @@ def test_deploy_model_no_local_code(
         mock_container_def.assert_called_once_with(
             IMAGE_URI, model_data_url="s3prefix", env=expected_env
         )
+
+
+@patch("sagemaker.image_uris.retrieve", return_value=IMAGE_URI)
+@patch("shutil.rmtree")
+@patch("sagemaker.utils.base_name_from_image")
+@patch("tempfile.mkdtemp")
+@patch("sagemaker.container_def")
+@patch("sagemaker.utils._tmpdir")
+@patch("sagemaker.utils._create_or_update_code_dir")
+@patch("os.mkdir")
+@patch("os.path.exists")
+@patch("sagemaker.s3.S3Downloader.read_file")
+@patch("sagemaker.s3.S3Downloader.list")
+@patch("sagemaker.s3.S3Uploader.upload")
+@patch("sagemaker.estimator.Estimator.fit")
+@patch("sagemaker.fw_utils.model_code_key_prefix")
+def test_partition(
+    mock_model_key_prefix,
+    mock_estimator_fit,
+    mock_upload,
+    mock_s3_list,
+    mock_read_file,
+    mock_path_exists,
+    mock_mkdir,
+    mock_create_code_dir,
+    mock_tmpdir,
+    mock_container_def,
+    mock_mktmp,
+    mock_name_from_base,
+    mock_shutil_rmtree,
+    mock_imguri_retrieve,
+    sagemaker_session,
+):
+    mock_s3_list.return_value = [VALID_UNCOMPRESSED_MODEL_DATA + "/config.json"]
+    model_config = {
+        "model_type": "bloom",
+        "n_heads": 120,
+    }
+    mock_read_file.return_value = json.dumps(model_config)
+    model = DJLModel(
+        VALID_UNCOMPRESSED_MODEL_DATA,
+        ROLE,
+        sagemaker_session=sagemaker_session,
+        number_of_partitions=4,
+        data_type="fp16",
+        container_log_level=logging.DEBUG,
+        env=ENV,
+    )
+
+    assert model.image_uri is None
+    mock_path_exists.side_effect = [True, False, True]
+    mock_mktmp.return_value = "/tmp/dir"
+    expected_env = {"ENV_VAR": "env_value", "SERVING_OPTS": '"-Dai.djl.logging.level=debug"'}
+    mock_upload.return_value = "s3prefix"
+
+    s3_output_uri = f"s3://{BUCKET}/partitions/"
+    mock_model_key_prefix.return_value = "s3prefix"
+    with patch("builtins.open", mock_open()) as fake_serving_properties:
+        model.partition(GPU_INSTANCE, s3_output_uri)
+
+        mock_mktmp.assert_called_once_with(prefix="tmp", suffix="", dir=None)
+        mock_mkdir.assert_called()
+        assert fake_serving_properties.call_count == 2
+        fake_serving_properties.assert_any_call("/tmp/dir/code/serving.properties", "w+")
+        fake_serving_properties.assert_any_call("/tmp/dir/code/serving.properties", "r")
+        mock_container_def.assert_called_once_with(
+            IMAGE_URI, model_data_url="s3prefix", env=expected_env
+        )
+
+        assert model.model_id == f"{s3_output_uri}/s3prefix/aot-partitioned-checkpoints"
