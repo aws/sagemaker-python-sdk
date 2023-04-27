@@ -187,6 +187,10 @@ def test_create_lambda_happycase1(sagemaker_session):
         Code=code,
         Timeout=120,
         MemorySize=128,
+        Architectures=None,
+        VpcConfig=None,
+        Environment=None,
+        Layers=None,
     )
 
 
@@ -212,6 +216,45 @@ def test_create_lambda_happycase2(sagemaker_session):
         Code=code,
         Timeout=120,
         MemorySize=128,
+        Architectures=None,
+        VpcConfig=None,
+        Environment=None,
+        Layers=None,
+    )
+
+
+@patch("sagemaker.lambda_helper._zip_lambda_code", return_value=ZIPPED_CODE)
+def test_create_lambda_happycase3(sagemaker_session):
+    lambda_obj = lambda_helper.Lambda(
+        function_name=FUNCTION_NAME,
+        execution_role_arn=EXECUTION_ROLE,
+        script=SCRIPT,
+        handler=HANDLER,
+        session=sagemaker_session,
+        architectures=["x86_64"],
+        environment={"Name": "my-test-lambda"},
+        vpc_config={
+            "SubnetIds": ["test-subnet-1"],
+            "SecurityGroupIds": ["sec-group-1"],
+        },
+        layers=["my-test-layer-1", "my-test-layer-2"],
+    )
+
+    lambda_obj.create()
+    code = {"ZipFile": ZIPPED_CODE}
+
+    sagemaker_session.lambda_client.create_function.assert_called_with(
+        FunctionName=FUNCTION_NAME,
+        Runtime="python3.8",
+        Handler=HANDLER,
+        Role=EXECUTION_ROLE,
+        Code=code,
+        Timeout=120,
+        MemorySize=128,
+        Architectures=["x86_64"],
+        VpcConfig={"SubnetIds": ["test-subnet-1"], "SecurityGroupIds": ["sec-group-1"]},
+        Environment={"Name": "my-test-lambda"},
+        Layers=["my-test-layer-1", "my-test-layer-2"],
     )
 
 
@@ -241,7 +284,12 @@ def test_create_lambda_client_error(sagemaker_session):
         session=sagemaker_session,
     )
     sagemaker_session.lambda_client.create_function.side_effect = ClientError(
-        {"Error": {"Code": "ResourceConflictException", "Message": "Function already exists"}},
+        {
+            "Error": {
+                "Code": "ResourceConflictException",
+                "Message": "Function already exists",
+            }
+        },
         "CreateFunction",
     )
 
@@ -264,7 +312,9 @@ def test_update_lambda_happycase1(sagemaker_session):
     lambda_obj.update()
 
     sagemaker_session.lambda_client.update_function_code.assert_called_with(
-        FunctionName=FUNCTION_NAME, ZipFile=ZIPPED_CODE
+        FunctionName=FUNCTION_NAME,
+        ZipFile=ZIPPED_CODE,
+        Architectures=None,
     )
 
 
@@ -282,7 +332,35 @@ def test_update_lambda_happycase2(sagemaker_session):
     lambda_obj.update()
 
     sagemaker_session.lambda_client.update_function_code.assert_called_with(
-        FunctionName=LAMBDA_ARN, S3Bucket=S3_BUCKET, S3Key=S3_KEY
+        FunctionName=LAMBDA_ARN,
+        S3Bucket=S3_BUCKET,
+        S3Key=S3_KEY,
+        Architectures=None,
+    )
+
+
+@patch("sagemaker.lambda_helper._zip_lambda_code", return_value=ZIPPED_CODE)
+def test_update_lambda_happycase3(sagemaker_session):
+    lambda_obj = lambda_helper.Lambda(
+        function_name=FUNCTION_NAME,
+        execution_role_arn=EXECUTION_ROLE,
+        script=SCRIPT,
+        handler=HANDLER,
+        session=sagemaker_session,
+        architectures=["x86_64"],
+        environment={"Name": "my-test-lambda"},
+        vpc_config={
+            "SubnetIds": ["test-subnet-1"],
+            "SecurityGroupIds": ["sec-group-1"],
+        },
+    )
+
+    lambda_obj.update()
+
+    sagemaker_session.lambda_client.update_function_code.assert_called_with(
+        FunctionName=FUNCTION_NAME,
+        ZipFile=ZIPPED_CODE,
+        Architectures=["x86_64"],
     )
 
 
@@ -302,6 +380,7 @@ def test_update_lambda_s3bucket_not_provided(s3_upload, sagemaker_session):
         FunctionName=LAMBDA_ARN,
         S3Bucket=sagemaker_session.default_bucket(),
         S3Key=s3_upload.return_value,
+        Architectures=None,
     )
 
 
@@ -346,6 +425,10 @@ def test_upsert_lambda_happycase1(sagemaker_session):
         Code=code,
         Timeout=120,
         MemorySize=128,
+        Architectures=None,
+        VpcConfig=None,
+        Environment=None,
+        Layers=None,
     )
 
 
@@ -360,14 +443,19 @@ def test_upsert_lambda_happycase2(sagemaker_session):
     )
 
     sagemaker_session.lambda_client.create_function.side_effect = ClientError(
-        {"Error": {"Code": "ResourceConflictException", "Message": "Lambda already exists"}},
+        {
+            "Error": {
+                "Code": "ResourceConflictException",
+                "Message": "Lambda already exists",
+            }
+        },
         "CreateFunction",
     )
 
     lambda_obj.upsert()
 
     sagemaker_session.lambda_client.update_function_code.assert_called_once_with(
-        FunctionName=FUNCTION_NAME, ZipFile=ZIPPED_CODE
+        FunctionName=FUNCTION_NAME, ZipFile=ZIPPED_CODE, Architectures=None
     )
 
 
@@ -382,12 +470,22 @@ def test_upsert_lambda_client_error(sagemaker_session):
     )
 
     sagemaker_session.lambda_client.create_function.side_effect = ClientError(
-        {"Error": {"Code": "ResourceConflictException", "Message": "Lambda already exists"}},
+        {
+            "Error": {
+                "Code": "ResourceConflictException",
+                "Message": "Lambda already exists",
+            }
+        },
         "CreateFunction",
     )
 
     sagemaker_session.lambda_client.update_function_code.side_effect = ClientError(
-        {"Error": {"Code": "ResourceConflictException", "Message": "Cannot update code"}},
+        {
+            "Error": {
+                "Code": "ResourceConflictException",
+                "Message": "Cannot update code",
+            }
+        },
         "UpdateFunctionCode",
     )
 
@@ -410,7 +508,8 @@ def test_invoke_lambda_client_error(sagemaker_session):
     lambda_obj = lambda_helper.Lambda(function_arn=LAMBDA_ARN, session=sagemaker_session)
 
     sagemaker_session.lambda_client.invoke.side_effect = ClientError(
-        {"Error": {"Code": "InvalidCodeException", "Message": "invoke failed"}}, "Invoke"
+        {"Error": {"Code": "InvalidCodeException", "Message": "invoke failed"}},
+        "Invoke",
     )
     with pytest.raises(ValueError) as error:
         lambda_obj.invoke()
