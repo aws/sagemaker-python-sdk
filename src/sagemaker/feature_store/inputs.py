@@ -369,3 +369,13 @@ class Identifier(Config):
             RecordIdentifiersValueAsString=self.record_identifiers_value_as_string,
             FeatureNames=None if not self.feature_names else self.feature_names,
         )
+
+
+class DeletionModeEnum(Enum):
+    """Enum of deletion modes.
+
+    The deletion mode for deleting records can be SoftDelete or HardDelete.
+    """
+
+    SOFT_DELETE = "SoftDelete"
+    HARD_DELETE = "HardDelete"

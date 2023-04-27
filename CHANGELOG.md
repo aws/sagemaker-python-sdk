@@ -1,5 +1,74 @@
 # Changelog
 
+## v2.150.0 (2023-04-26)
+
+### Features
+
+ * Introduce TensorBoard app class
+
+### Bug Fixes and Other Changes
+
+ * Update data wrangler images
+
+## v2.149.0 (2023-04-25)
+
+### Features
+
+ * Support TF2.12 SageMaker DLC
+
+### Bug Fixes and Other Changes
+
+ * update the doc for Join function
+ * change s3UploadMode of sagemaker clarify processing output for computer vision jobs.
+
+### Documentation Changes
+
+ * Add Remote Function updates
+
+## v2.148.0 (2023-04-20)
+
+### Features
+
+ * [huggingface] Add `torch.distributed` support for Trainium and `torchrun`
+ * Add PyTorch 2.0 to SDK
+
+### Bug Fixes and Other Changes
+
+ * updating batch transform job in monitoring schedule
+
+## v2.147.0 (2023-04-18)
+
+### Features
+
+ * support different types of deletion mode
+
+## v2.146.1 (2023-04-17)
+
+### Bug Fixes and Other Changes
+
+ * skip failing tests temporarily
+ * Added ml.p4d and ml.p4de as supported instances for DeepSpeed
+
+### Documentation Changes
+
+ * Add Model Registry Model Collection
+
+## v2.146.0 (2023-04-13)
+
+### Features
+
+ * Add support for JSON model inputs for Clarify Processor
+
+### Bug Fixes and Other Changes
+
+ * Feature/list collection
+ * improve reliability of Run integration test
+ * Add a comment that smdataparallel lib excludes tf 2.12 support
+
+### Documentation Changes
+
+ * Update reference to load run method in documentation
+
 ## v2.145.0 (2023-04-06)
 
 ### Features

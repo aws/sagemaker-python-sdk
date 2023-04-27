@@ -224,8 +224,10 @@ def test_tensorflow(
     """
     Test the TensorFlow estimator
     """
-    if version.parse(tensorflow_training_latest_version) < version.parse("2.9"):
-        pytest.skip("Training Compiler only supports TF >= 2.9")
+    if version.parse(tensorflow_training_latest_version) >= version.parse("2.12") or version.parse(
+        tensorflow_training_latest_version
+    ) < version.parse("2.9"):
+        pytest.skip("Training Compiler only supports TF >= 2.9 and < 2.12")
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         epochs = 10
         batch = 256

@@ -204,6 +204,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self._default_bucket_name_override = default_bucket
         self.s3_resource = None
         self.s3_client = None
+        self.resource_groups_client = None
+        self.resource_group_tagging_client = None
         self.config = None
         self.lambda_client = None
         self.settings = settings
@@ -264,6 +266,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         else:
             self.sagemaker_metrics_client = self.boto_session.client("sagemaker-metrics")
         prepend_user_agent(self.sagemaker_metrics_client)
+
+        self.s3_client = self.boto_session.client("s3", region_name=self.boto_region_name)
+        self.s3_resource = self.boto_session.resource("s3", region_name=self.boto_region_name)
 
         self.local_mode = False
 
@@ -384,6 +389,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 download operation. Please refer to the ExtraArgs parameter in the boto3
                 documentation here:
                 https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-example-download-file.html
+
+        Returns:
+            list[str]: List of local paths of downloaded files
         """
         # Initialize the S3 client.
         if self.s3_client is None:
@@ -403,7 +411,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
             if next_token != "":
                 request_parameters.update({"ContinuationToken": next_token})
             response = s3.list_objects_v2(**request_parameters)
-            contents = response.get("Contents")
+            contents = response.get("Contents", None)
+            if not contents:
+                LOGGER.info(
+                    "Nothing to download from bucket: %s, key_prefix: %s.", bucket, key_prefix
+                )
+                return []
             # For each object, save its key or directory.
             for s3_object in contents:
                 key = s3_object.get("Key")
@@ -412,6 +425,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         # For each object key, create the directory on the local machine if needed, and then
         # download the file.
+        downloaded_paths = []
         for key in keys:
             tail_s3_uri_path = os.path.basename(key)
             if not os.path.splitext(key_prefix)[1]:
@@ -422,6 +436,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             s3.download_file(
                 Bucket=bucket, Key=key, Filename=destination_path, ExtraArgs=extra_args
             )
+            downloaded_paths.append(destination_path)
+        return downloaded_paths
 
     def read_s3_file(self, bucket, key_prefix):
         """Read a single file from S3.
@@ -479,10 +495,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         default_bucket = self._default_bucket_name_override
         if not default_bucket:
-            account = self.boto_session.client(
-                "sts", region_name=region, endpoint_url=sts_regional_endpoint(region)
-            ).get_caller_identity()["Account"]
-            default_bucket = "sagemaker-{}-{}".format(region, account)
+            default_bucket = generate_default_sagemaker_bucket_name(self.boto_session)
 
         self._create_s3_bucket_if_it_does_not_exist(bucket_name=default_bucket, region=region)
 
@@ -2278,7 +2291,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             exceptions.UnexpectedStatusException: If the auto ml job fails.
         """
         desc = _wait_until(lambda: _auto_ml_job_status(self.sagemaker_client, job), poll)
-        self._check_job_status(job, desc, "AutoMLJobStatus")
+        _check_job_status(job, desc, "AutoMLJobStatus")
         return desc
 
     def logs_for_auto_ml_job(  # noqa: C901 - suppress complexity warning for this method
@@ -2304,7 +2317,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         description = _wait_until(lambda: self.describe_auto_ml_job(job_name), poll)
 
         instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
-            self, description, job="AutoML"
+            self.boto_session, description, job="AutoML"
         )
 
         state = _get_initial_job_state(description, "AutoMLJobStatus", wait)
@@ -2359,7 +2372,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     state = LogState.JOB_COMPLETE
 
         if wait:
-            self._check_job_status(job_name, description, "AutoMLJobStatus")
+            _check_job_status(job_name, description, "AutoMLJobStatus")
             if dot:
                 print()
 
@@ -3961,6 +3974,92 @@ class Session(object):  # pylint: disable=too-many-public-methods
         LOGGER.info("Deleting model with name: %s", model_name)
         self.sagemaker_client.delete_model(ModelName=model_name)
 
+    def list_group_resources(self, group, filters, next_token: str = ""):
+        """To list group resources with given filters
+
+        Args:
+            group (str): The name or the ARN of the group.
+            filters (list): Filters that needs to be applied to the list operation.
+        """
+        self.resource_groups_client = self.resource_groups_client or self.boto_session.client(
+            "resource-groups"
+        )
+        return self.resource_groups_client.list_group_resources(
+            Group=group, Filters=filters, NextToken=next_token
+        )
+
+    def delete_resource_group(self, group):
+        """To delete a resource group
+
+        Args:
+            group (str): The name or the ARN of the resource group to delete.
+        """
+        self.resource_groups_client = self.resource_groups_client or self.boto_session.client(
+            "resource-groups"
+        )
+        return self.resource_groups_client.delete_group(Group=group)
+
+    def get_resource_group_query(self, group):
+        """To get the group query for an AWS Resource Group
+
+        Args:
+            group (str): The name or the ARN of the resource group to query.
+        """
+        self.resource_groups_client = self.resource_groups_client or self.boto_session.client(
+            "resource-groups"
+        )
+        return self.resource_groups_client.get_group_query(Group=group)
+
+    def get_tagging_resources(self, tag_filters, resource_type_filters):
+        """To list the complete resources for a particular resource group tag
+
+        tag_filters: filters for the tag
+        resource_type_filters: resource filter for the tag
+        """
+        self.resource_group_tagging_client = (
+            self.resource_group_tagging_client
+            or self.boto_session.client("resourcegroupstaggingapi")
+        )
+        resource_list = []
+
+        try:
+            resource_tag_response = self.resource_group_tagging_client.get_resources(
+                TagFilters=tag_filters, ResourceTypeFilters=resource_type_filters
+            )
+
+            resource_list = resource_list + resource_tag_response["ResourceTagMappingList"]
+
+            next_token = resource_tag_response.get("PaginationToken")
+            while next_token is not None and next_token != "":
+                resource_tag_response = self.resource_group_tagging_client.get_resources(
+                    TagFilters=tag_filters,
+                    ResourceTypeFilters=resource_type_filters,
+                    NextToken=next_token,
+                )
+                resource_list = resource_list + resource_tag_response["ResourceTagMappingList"]
+                next_token = resource_tag_response.get("PaginationToken")
+
+            return resource_list
+        except ClientError as error:
+            raise error
+
+    def create_group(self, name, resource_query, tags):
+        """To create a AWS Resource Group
+
+        Args:
+            name (str): The name of the group, which is also the identifier of the group.
+            resource_query (str): The resource query that determines
+                which AWS resources are members of this group
+            tags (dict): The Tags to be attached to the Resource Group
+        """
+        self.resource_groups_client = self.resource_groups_client or self.boto_session.client(
+            "resource-groups"
+        )
+
+        return self.resource_groups_client.create_group(
+            Name=name, ResourceQuery=resource_query, Tags=tags
+        )
+
     def list_tags(self, resource_arn, max_results=50):
         """List the tags given an Amazon Resource Name.
 
@@ -4011,7 +4110,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         desc = _wait_until_training_done(
             lambda last_desc: _train_done(self.sagemaker_client, job, last_desc), None, poll
         )
-        self._check_job_status(job, desc, "TrainingJobStatus")
+        _check_job_status(job, desc, "TrainingJobStatus")
         return desc
 
     def wait_for_processing_job(self, job, poll=5):
@@ -4029,7 +4128,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             exceptions.UnexpectedStatusException: If the processing job fails.
         """
         desc = _wait_until(lambda: _processing_job_status(self.sagemaker_client, job), poll)
-        self._check_job_status(job, desc, "ProcessingJobStatus")
+        _check_job_status(job, desc, "ProcessingJobStatus")
         return desc
 
     def wait_for_compilation_job(self, job, poll=5):
@@ -4047,7 +4146,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             exceptions.UnexpectedStatusException: If the compilation job fails.
         """
         desc = _wait_until(lambda: _compilation_job_status(self.sagemaker_client, job), poll)
-        self._check_job_status(job, desc, "CompilationJobStatus")
+        _check_job_status(job, desc, "CompilationJobStatus")
         return desc
 
     def wait_for_edge_packaging_job(self, job, poll=5):
@@ -4065,7 +4164,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             exceptions.UnexpectedStatusException: If the edge packaging job fails.
         """
         desc = _wait_until(lambda: _edge_packaging_job_status(self.sagemaker_client, job), poll)
-        self._check_job_status(job, desc, "EdgePackagingJobStatus")
+        _check_job_status(job, desc, "EdgePackagingJobStatus")
         return desc
 
     def wait_for_tuning_job(self, job, poll=5):
@@ -4083,7 +4182,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             exceptions.UnexpectedStatusException: If the hyperparameter tuning job fails.
         """
         desc = _wait_until(lambda: _tuning_job_status(self.sagemaker_client, job), poll)
-        self._check_job_status(job, desc, "HyperParameterTuningJobStatus")
+        _check_job_status(job, desc, "HyperParameterTuningJobStatus")
         return desc
 
     def describe_transform_job(self, job_name):
@@ -4112,7 +4211,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             exceptions.UnexpectedStatusException: If the transform job fails.
         """
         desc = _wait_until(lambda: _transform_job_status(self.sagemaker_client, job), poll)
-        self._check_job_status(job, desc, "TransformJobStatus")
+        _check_job_status(job, desc, "TransformJobStatus")
         return desc
 
     def stop_transform_job(self, name):
@@ -4135,48 +4234,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
             else:
                 LOGGER.error("Error occurred while attempting to stop transform job: %s.", name)
                 raise
-
-    def _check_job_status(self, job, desc, status_key_name):
-        """Check to see if the job completed successfully.
-
-        If not, construct and raise a exceptions. (UnexpectedStatusException).
-
-        Args:
-            job (str): The name of the job to check.
-            desc (dict[str, str]): The result of ``describe_training_job()``.
-            status_key_name (str): Status key name to check for.
-
-        Raises:
-            exceptions.CapacityError: If the training job fails with CapacityError.
-            exceptions.UnexpectedStatusException: If the training job fails.
-        """
-        status = desc[status_key_name]
-        # If the status is capital case, then convert it to Camel case
-        status = _STATUS_CODE_TABLE.get(status, status)
-
-        if status == "Stopped":
-            LOGGER.warning(
-                "Job ended with status 'Stopped' rather than 'Completed'. "
-                "This could mean the job timed out or stopped early for some other reason: "
-                "Consider checking whether it completed as you expect."
-            )
-        elif status != "Completed":
-            reason = desc.get("FailureReason", "(No reason provided)")
-            job_type = status_key_name.replace("JobStatus", " job")
-            message = "Error for {job_type} {job_name}: {status}. Reason: {reason}".format(
-                job_type=job_type, job_name=job, status=status, reason=reason
-            )
-            if "CapacityError" in str(reason):
-                raise exceptions.CapacityError(
-                    message=message,
-                    allowed_statuses=["Completed", "Stopped"],
-                    actual_status=status,
-                )
-            raise exceptions.UnexpectedStatusException(
-                message=message,
-                allowed_statuses=["Completed", "Stopped"],
-                actual_status=status,
-            )
 
     def wait_for_endpoint(self, endpoint, poll=30):
         """Wait for an Amazon SageMaker endpoint deployment to complete.
@@ -4547,9 +4604,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         return role
 
-    def logs_for_job(  # noqa: C901 - suppress complexity warning for this method
-        self, job_name, wait=False, poll=10, log_type="All"
-    ):
+    def logs_for_job(self, job_name, wait=False, poll=10, log_type="All", timeout=None):
         """Display logs for a given training job, optionally tailing them until job is complete.
 
         If the output is a tty or a Jupyter cell, it will be color-coded
@@ -4561,124 +4616,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 (default: False).
             poll (int): The interval in seconds between polling for new log entries and job
                 completion (default: 5).
-
+            log_type ([str]): A list of strings specifying which logs to print. Acceptable
+                strings are "All", "None", "Training", or "Rules". To maintain backwards
+                compatibility, boolean values are also accepted and converted to strings.
+            timeout (int): Timeout in seconds to wait until the job is completed. ``None`` by
+                default.
         Raises:
             exceptions.CapacityError: If the training job fails with CapacityError.
             exceptions.UnexpectedStatusException: If waiting and the training job fails.
         """
-
-        description = _wait_until(lambda: self.describe_training_job(job_name), poll)
-        print(secondary_training_status_message(description, None), end="")
-
-        instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
-            self, description, job="Training"
-        )
-
-        state = _get_initial_job_state(description, "TrainingJobStatus", wait)
-
-        # The loop below implements a state machine that alternates between checking the job status
-        # and reading whatever is available in the logs at this point. Note, that if we were
-        # called with wait == False, we never check the job status.
-        #
-        # If wait == TRUE and job is not completed, the initial state is TAILING
-        # If wait == FALSE, the initial state is COMPLETE (doesn't matter if the job really is
-        # complete).
-        #
-        # The state table:
-        #
-        # STATE               ACTIONS                        CONDITION             NEW STATE
-        # ----------------    ----------------               -----------------     ----------------
-        # TAILING             Read logs, Pause, Get status   Job complete          JOB_COMPLETE
-        #                                                    Else                  TAILING
-        # JOB_COMPLETE        Read logs, Pause               Any                   COMPLETE
-        # COMPLETE            Read logs, Exit                                      N/A
-        #
-        # Notes:
-        # - The JOB_COMPLETE state forces us to do an extra pause and read any items that got to
-        #   Cloudwatch after the job was marked complete.
-        last_describe_job_call = time.time()
-        last_description = description
-        last_debug_rule_statuses = None
-        last_profiler_rule_statuses = None
-
-        while True:
-            _flush_log_streams(
-                stream_names,
-                instance_count,
-                client,
-                log_group,
-                job_name,
-                positions,
-                dot,
-                color_wrap,
-            )
-            if state == LogState.COMPLETE:
-                break
-
-            time.sleep(poll)
-
-            if state == LogState.JOB_COMPLETE:
-                state = LogState.COMPLETE
-            elif time.time() - last_describe_job_call >= 30:
-                description = self.sagemaker_client.describe_training_job(TrainingJobName=job_name)
-                last_describe_job_call = time.time()
-
-                if secondary_training_status_changed(description, last_description):
-                    print()
-                    print(secondary_training_status_message(description, last_description), end="")
-                    last_description = description
-
-                status = description["TrainingJobStatus"]
-
-                if status in ("Completed", "Failed", "Stopped"):
-                    print()
-                    state = LogState.JOB_COMPLETE
-
-                # Print prettified logs related to the status of SageMaker Debugger rules.
-                debug_rule_statuses = description.get("DebugRuleEvaluationStatuses", {})
-                if (
-                    debug_rule_statuses
-                    and _rule_statuses_changed(debug_rule_statuses, last_debug_rule_statuses)
-                    and (log_type in {"All", "Rules"})
-                ):
-                    for status in debug_rule_statuses:
-                        rule_log = (
-                            f"{status['RuleConfigurationName']}: {status['RuleEvaluationStatus']}"
-                        )
-                        print(rule_log)
-
-                    last_debug_rule_statuses = debug_rule_statuses
-
-                # Print prettified logs related to the status of SageMaker Profiler rules.
-                profiler_rule_statuses = description.get("ProfilerRuleEvaluationStatuses", {})
-                if (
-                    profiler_rule_statuses
-                    and _rule_statuses_changed(profiler_rule_statuses, last_profiler_rule_statuses)
-                    and (log_type in {"All", "Rules"})
-                ):
-                    for status in profiler_rule_statuses:
-                        rule_log = (
-                            f"{status['RuleConfigurationName']}: {status['RuleEvaluationStatus']}"
-                        )
-                        print(rule_log)
-
-                    last_profiler_rule_statuses = profiler_rule_statuses
-
-        if wait:
-            self._check_job_status(job_name, description, "TrainingJobStatus")
-            if dot:
-                print()
-            # Customers are not billed for hardware provisioning, so billable time is less than
-            # total time
-            training_time = description.get("TrainingTimeInSeconds")
-            billable_time = description.get("BillableTimeInSeconds")
-            if training_time is not None:
-                print("Training seconds:", training_time * instance_count)
-            if billable_time is not None:
-                print("Billable seconds:", billable_time * instance_count)
-                if description.get("EnableManagedSpotTraining"):
-                    saving = (1 - float(billable_time) / training_time) * 100
-                    print("Managed Spot Training savings: {:.1f}%".format(saving))
+        _logs_for_job(self.boto_session, job_name, wait, poll, log_type, timeout)
 
     def logs_for_processing_job(self, job_name, wait=False, poll=10):
         """Display logs for a given processing job, optionally tailing them until the is complete.
@@ -4697,7 +4644,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         description = _wait_until(lambda: self.describe_processing_job(job_name), poll)
 
         instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
-            self, description, job="Processing"
+            self.boto_session, description, job="Processing"
         )
 
         state = _get_initial_job_state(description, "ProcessingJobStatus", wait)
@@ -4754,7 +4701,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     state = LogState.JOB_COMPLETE
 
         if wait:
-            self._check_job_status(job_name, description, "ProcessingJobStatus")
+            _check_job_status(job_name, description, "ProcessingJobStatus")
             if dot:
                 print()
 
@@ -4778,7 +4725,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         description = _wait_until(lambda: self.describe_transform_job(job_name), poll)
 
         instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
-            self, description, job="Transform"
+            self.boto_session, description, job="Transform"
         )
 
         state = _get_initial_job_state(description, "TransformJobStatus", wait)
@@ -4835,7 +4782,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     state = LogState.JOB_COMPLETE
 
         if wait:
-            self._check_job_status(job_name, description, "TransformJobStatus")
+            _check_job_status(job_name, description, "TransformJobStatus")
             if dot:
                 print()
 
@@ -5108,6 +5055,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         feature_group_name: str,
         record_identifier_value_as_string: str,
         event_time: str,
+        deletion_mode: str = None,
     ):
         """Deletes a single record from the FeatureGroup.
 
@@ -5115,11 +5063,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
             feature_group_name (str): name of the FeatureGroup.
             record_identifier_value_as_string (str): name of the record identifier.
             event_time (str): a timestamp indicating when the deletion event occurred.
+            deletion_mode: (str): deletion mode for deleting record.
         """
         return self.sagemaker_featurestore_runtime_client.delete_record(
             FeatureGroupName=feature_group_name,
             RecordIdentifierValueAsString=record_identifier_value_as_string,
             EventTime=event_time,
+            DeletionMode=deletion_mode,
         )
 
     def get_record(
@@ -5524,7 +5474,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         else:
             raise ValueError("log_level must be either Quiet or Verbose")
         desc = _describe_inference_recommendations_job_status(self.sagemaker_client, job_name)
-        self._check_job_status(job_name, desc, "Status")
+        _check_job_status(job_name, desc, "Status")
         return desc
 
 
@@ -5920,6 +5870,19 @@ def get_execution_role(sagemaker_session=None):
         "SageMaker execution role"
     )
     raise ValueError(message.format(arn))
+
+
+def generate_default_sagemaker_bucket_name(boto_session):
+    """Generates a name for the default sagemaker S3 bucket.
+
+    Args:
+        boto_session (boto3.session.Session): The underlying Boto3 session which AWS service
+    """
+    region = boto_session.region_name
+    account = boto_session.client(
+        "sts", region_name=region, endpoint_url=sts_regional_endpoint(region)
+    ).get_caller_identity()["Account"]
+    return "sagemaker-{}-{}".format(region, account)
 
 
 def _deployment_entity_exists(describe_fn):
@@ -6392,7 +6355,199 @@ def _rule_statuses_changed(current_statuses, last_statuses):
     return False
 
 
-def _logs_init(sagemaker_session, description, job):
+def _logs_for_job(  # noqa: C901 - suppress complexity warning for this method
+    boto_session, job_name, wait=False, poll=10, log_type="All", timeout=None
+):
+    """Display logs for a given training job, optionally tailing them until job is complete.
+
+    If the output is a tty or a Jupyter cell, it will be color-coded
+    based on which instance the log entry is from.
+
+    Args:
+        boto_session (boto3.session.Session): The underlying Boto3 session which AWS service
+                calls are delegated to (default: None). If not provided, one is created with
+                default AWS configuration chain.
+        job_name (str): Name of the training job to display the logs for.
+        wait (bool): Whether to keep looking for new log entries until the job completes
+            (default: False).
+        poll (int): The interval in seconds between polling for new log entries and job
+            completion (default: 5).
+        log_type ([str]): A list of strings specifying which logs to print. Acceptable
+            strings are "All", "None", "Training", or "Rules". To maintain backwards
+            compatibility, boolean values are also accepted and converted to strings.
+        timeout (int): Timeout in seconds to wait until the job is completed. ``None`` by
+            default.
+    Returns:
+        Last call to sagemaker DescribeTrainingJob
+    Raises:
+        exceptions.CapacityError: If the training job fails with CapacityError.
+        exceptions.UnexpectedStatusException: If waiting and the training job fails.
+    """
+    sagemaker_client = boto_session.client("sagemaker")
+    request_end_time = time.time() + timeout if timeout else None
+    description = sagemaker_client.describe_training_job(TrainingJobName=job_name)
+    print(secondary_training_status_message(description, None), end="")
+
+    instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
+        boto_session, description, job="Training"
+    )
+
+    state = _get_initial_job_state(description, "TrainingJobStatus", wait)
+
+    # The loop below implements a state machine that alternates between checking the job status
+    # and reading whatever is available in the logs at this point. Note, that if we were
+    # called with wait == False, we never check the job status.
+    #
+    # If wait == TRUE and job is not completed, the initial state is TAILING
+    # If wait == FALSE, the initial state is COMPLETE (doesn't matter if the job really is
+    # complete).
+    #
+    # The state table:
+    #
+    # STATE               ACTIONS                        CONDITION             NEW STATE
+    # ----------------    ----------------               -----------------     ----------------
+    # TAILING             Read logs, Pause, Get status   Job complete          JOB_COMPLETE
+    #                                                    Else                  TAILING
+    # JOB_COMPLETE        Read logs, Pause               Any                   COMPLETE
+    # COMPLETE            Read logs, Exit                                      N/A
+    #
+    # Notes:
+    # - The JOB_COMPLETE state forces us to do an extra pause and read any items that got to
+    #   Cloudwatch after the job was marked complete.
+    last_describe_job_call = time.time()
+    last_description = description
+    last_debug_rule_statuses = None
+    last_profiler_rule_statuses = None
+
+    while True:
+        _flush_log_streams(
+            stream_names,
+            instance_count,
+            client,
+            log_group,
+            job_name,
+            positions,
+            dot,
+            color_wrap,
+        )
+        if timeout and time.time() > request_end_time:
+            print("Timeout Exceeded. {} seconds elapsed.".format(timeout))
+            break
+
+        if state == LogState.COMPLETE:
+            break
+
+        time.sleep(poll)
+
+        if state == LogState.JOB_COMPLETE:
+            state = LogState.COMPLETE
+        elif time.time() - last_describe_job_call >= 30:
+            description = sagemaker_client.describe_training_job(TrainingJobName=job_name)
+            last_describe_job_call = time.time()
+
+            if secondary_training_status_changed(description, last_description):
+                print()
+                print(secondary_training_status_message(description, last_description), end="")
+                last_description = description
+
+            status = description["TrainingJobStatus"]
+
+            if status in ("Completed", "Failed", "Stopped"):
+                print()
+                state = LogState.JOB_COMPLETE
+
+            # Print prettified logs related to the status of SageMaker Debugger rules.
+            debug_rule_statuses = description.get("DebugRuleEvaluationStatuses", {})
+            if (
+                debug_rule_statuses
+                and _rule_statuses_changed(debug_rule_statuses, last_debug_rule_statuses)
+                and (log_type in {"All", "Rules"})
+            ):
+                for status in debug_rule_statuses:
+                    rule_log = (
+                        f"{status['RuleConfigurationName']}: {status['RuleEvaluationStatus']}"
+                    )
+                    print(rule_log)
+
+                last_debug_rule_statuses = debug_rule_statuses
+
+            # Print prettified logs related to the status of SageMaker Profiler rules.
+            profiler_rule_statuses = description.get("ProfilerRuleEvaluationStatuses", {})
+            if (
+                profiler_rule_statuses
+                and _rule_statuses_changed(profiler_rule_statuses, last_profiler_rule_statuses)
+                and (log_type in {"All", "Rules"})
+            ):
+                for status in profiler_rule_statuses:
+                    rule_log = (
+                        f"{status['RuleConfigurationName']}: {status['RuleEvaluationStatus']}"
+                    )
+                    print(rule_log)
+
+                last_profiler_rule_statuses = profiler_rule_statuses
+
+    if wait:
+        _check_job_status(job_name, description, "TrainingJobStatus")
+        if dot:
+            print()
+        # Customers are not billed for hardware provisioning, so billable time is less than
+        # total time
+        training_time = description.get("TrainingTimeInSeconds")
+        billable_time = description.get("BillableTimeInSeconds")
+        if training_time is not None:
+            print("Training seconds:", training_time * instance_count)
+        if billable_time is not None:
+            print("Billable seconds:", billable_time * instance_count)
+            if description.get("EnableManagedSpotTraining"):
+                saving = (1 - float(billable_time) / training_time) * 100
+                print("Managed Spot Training savings: {:.1f}%".format(saving))
+    return last_description
+
+
+def _check_job_status(job, desc, status_key_name):
+    """Check to see if the job completed successfully.
+
+    If not, construct and raise a exceptions. (UnexpectedStatusException).
+
+    Args:
+        job (str): The name of the job to check.
+        desc (dict[str, str]): The result of ``describe_training_job()``.
+        status_key_name (str): Status key name to check for.
+
+    Raises:
+        exceptions.CapacityError: If the training job fails with CapacityError.
+        exceptions.UnexpectedStatusException: If the training job fails.
+    """
+    status = desc[status_key_name]
+    # If the status is capital case, then convert it to Camel case
+    status = _STATUS_CODE_TABLE.get(status, status)
+
+    if status == "Stopped":
+        LOGGER.warning(
+            "Job ended with status 'Stopped' rather than 'Completed'. "
+            "This could mean the job timed out or stopped early for some other reason: "
+            "Consider checking whether it completed as you expect."
+        )
+    elif status != "Completed":
+        reason = desc.get("FailureReason", "(No reason provided)")
+        job_type = status_key_name.replace("JobStatus", " job")
+        message = "Error for {job_type} {job_name}: {status}. Reason: {reason}".format(
+            job_type=job_type, job_name=job, status=status, reason=reason
+        )
+        if "CapacityError" in str(reason):
+            raise exceptions.CapacityError(
+                message=message,
+                allowed_statuses=["Completed", "Stopped"],
+                actual_status=status,
+            )
+        raise exceptions.UnexpectedStatusException(
+            message=message,
+            allowed_statuses=["Completed", "Stopped"],
+            actual_status=status,
+        )
+
+
+def _logs_init(boto_session, description, job):
     """Placeholder docstring"""
     if job == "Training":
         if "InstanceGroups" in description["ResourceConfig"]:
@@ -6414,7 +6569,7 @@ def _logs_init(sagemaker_session, description, job):
     # Increase retries allowed (from default of 4), as we don't want waiting for a training job
     # to be interrupted by a transient exception.
     config = botocore.config.Config(retries={"max_attempts": 15})
-    client = sagemaker_session.boto_session.client("logs", config=config)
+    client = boto_session.client("logs", config=config)
     log_group = "/aws/sagemaker/" + job + "Jobs"
 
     dot = False

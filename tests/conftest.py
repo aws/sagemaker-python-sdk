@@ -52,10 +52,7 @@ NO_P3_REGIONS = [
     "me-south-1",
     "sa-east-1",
     "us-west-1",
-    "ap-northeast-1",  # it has p3, but not enough
-    "ap-south-1",
-    "ap-northeast-2",  # it has p3, but not enough
-    "us-east-2",  # it has p3, but not enough
+    "ap-south-1",  # no p3 availability
 ]
 
 NO_T2_REGIONS = ["eu-north-1", "ap-east-1", "me-south-1"]
@@ -243,7 +240,9 @@ def mxnet_eia_latest_py_version():
 
 @pytest.fixture(scope="module", params=["py2", "py3"])
 def pytorch_training_py_version(pytorch_training_version, request):
-    if Version(pytorch_training_version) >= Version("1.13"):
+    if Version(pytorch_training_version) >= Version("2.0"):
+        return "py310"
+    elif Version(pytorch_training_version) >= Version("1.13"):
         return "py39"
     elif Version(pytorch_training_version) >= Version("1.9"):
         return "py38"
@@ -255,7 +254,9 @@ def pytorch_training_py_version(pytorch_training_version, request):
 
 @pytest.fixture(scope="module", params=["py2", "py3"])
 def pytorch_inference_py_version(pytorch_inference_version, request):
-    if Version(pytorch_inference_version) >= Version("1.13"):
+    if Version(pytorch_inference_version) >= Version("2.0"):
+        return "py310"
+    elif Version(pytorch_inference_version) >= Version("1.13"):
         return "py39"
     elif Version(pytorch_inference_version) >= Version("1.9"):
         return "py38"
@@ -489,7 +490,9 @@ def _tf_py_version(tf_version, request):
         return "py37"
     if Version("2.6") <= version < Version("2.8"):
         return "py38"
-    return "py39"
+    if Version("2.8") <= version < Version("2.12"):
+        return "py39"
+    return "py310"
 
 
 @pytest.fixture(scope="module")

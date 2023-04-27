@@ -49,6 +49,7 @@ def read_requirements(filename):
 required_packages = [
     "attrs>=20.3.0,<23",
     "boto3>=1.26.28,<2.0",
+    "cloudpickle==2.2.1",
     "google-pasta",
     "numpy>=1.9.0,<2.0",
     "protobuf>=3.1,<4.0",
@@ -62,6 +63,7 @@ required_packages = [
     "PyYAML==5.4.1",
     "jsonschema",
     "platformdirs",
+    "tblib==1.7.0",
 ]
 
 # Specific use case dependencies

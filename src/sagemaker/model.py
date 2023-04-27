@@ -574,6 +574,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 script=self.entry_point,
                 directory=self.source_dir,
                 dependencies=self.dependencies,
+                kms_key=self.model_kms_key,
                 settings=self.sagemaker_session.settings,
             )
 

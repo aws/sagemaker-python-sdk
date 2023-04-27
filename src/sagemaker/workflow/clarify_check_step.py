@@ -29,6 +29,7 @@ from sagemaker.clarify import (
     ModelConfig,
     ModelPredictedLabelConfig,
     SHAPConfig,
+    ProcessingOutputHandler,
     _upload_analysis_config,
     SageMakerClarifyProcessor,
     _set,
@@ -391,7 +392,7 @@ class ClarifyCheckStep(Step):
                 source=SageMakerClarifyProcessor._CLARIFY_OUTPUT,
                 destination=data_config.s3_output_path,
                 output_name="analysis_result",
-                s3_upload_mode="EndOfJob",
+                s3_upload_mode=ProcessingOutputHandler.get_s3_upload_mode(analysis_config),
             )
         return dict(config_input=config_input, data_input=data_input, result_output=result_output)
 

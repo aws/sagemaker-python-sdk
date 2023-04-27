@@ -32,7 +32,10 @@ class Join(PipelineVariable):
         bucket = ParameterString('bucket', default_value='my-bucket')
 
         TrainingInput(
-            s3_data=Join(on='/', ['s3:/', bucket, ExecutionVariables.PIPELINE_EXECUTION_ID]),
+            s3_data=Join(
+                on='/',
+                values=['s3:/', bucket, ExecutionVariables.PIPELINE_EXECUTION_ID]
+            ),
             content_type="text/csv")
 
     Attributes:

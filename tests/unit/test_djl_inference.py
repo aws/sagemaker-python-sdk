@@ -174,6 +174,9 @@ def test_create_model_automatic_engine_selection(mock_s3_list, mock_read_file, s
             sagemaker_session=sagemaker_session,
             number_of_partitions=2,
         )
+        mock_s3_list.assert_any_call(
+            VALID_UNCOMPRESSED_MODEL_DATA, sagemaker_session=sagemaker_session
+        )
         if model_type == defaults.STABLE_DIFFUSION_MODEL_TYPE:
             assert ds_model.engine == DJLServingEngineEntryPointDefaults.STABLE_DIFFUSION
         else:
