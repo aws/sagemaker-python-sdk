@@ -37,7 +37,7 @@ from sagemaker.jumpstart.types import (
     JumpStartModelSpecs,
     JumpStartVersionedModelId,
 )
-from sagemaker.session import Session, get_execution_role
+from sagemaker.session import Session
 from sagemaker.utils import resolve_value_from_config
 from sagemaker.workflow import is_pipeline_variable
 
@@ -457,7 +457,7 @@ def resolve_model_intelligent_default_field(
         return resolve_value_from_config(
             direct_input=field_val,
             config_path=MODEL_EXECUTION_ROLE_ARN_PATH,
-            default_value=get_execution_role(),
+            default_value=sagemaker_session.get_caller_identity_arn(),
             sagemaker_session=sagemaker_session,
         )
 
@@ -491,7 +491,7 @@ def resolve_estimator_intelligent_default_field(
         return resolve_value_from_config(
             direct_input=field_val,
             config_path=TRAINING_JOB_ROLE_ARN_PATH,
-            default_value=get_execution_role(),
+            default_value=sagemaker_session.get_caller_identity_arn(),
             sagemaker_session=sagemaker_session,
         )
 
