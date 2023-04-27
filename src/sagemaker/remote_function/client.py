@@ -87,7 +87,7 @@ def remote(
     This decorator wraps the annotated code and runs it as a new SageMaker job synchronously
     with the provided runtime settings.
 
-    Unless mentioned otherwise, the decorator first looks up the value from the SageMaker
+    If a parameter value is not set, the decorator first looks up the value from the SageMaker
     configuration file. If no value is specified in the configuration file or no configuration file
     is found, the decorator selects the default as specified below. For more information, see
     `Configuring and using defaults with the SageMaker Python SDK <https://sagemaker.readthedocs.io/
@@ -131,7 +131,7 @@ def remote(
               annotated with the remote decorator is invoked using the Python runtime available
               in the system path.
 
-          * The parameter dependencies is set to auto_capture. SageMaker will automatically
+          * The parameter dependencies is set to ``auto_capture``. SageMaker will automatically
             generate an env_snapshot.yml corresponding to the current active conda environment’s
             snapshot. You do not need to provide a dependencies file. The following conditions
             apply:
@@ -204,7 +204,7 @@ def remote(
           downloaded in the previous runs.
 
         max_retry_attempts (int): The max number of times the job is retried on
-          ```InternalServerFailure``` Error from SageMaker service. Defaults to 1.
+          ``InternalServerFailure`` Error from SageMaker service. Defaults to 1.
 
         max_runtime_in_seconds (int): The upper limit in seconds to be used for training. After
           this specified amount of time, SageMaker terminates the job regardless of its current
@@ -475,10 +475,10 @@ class RemoteExecutor(object):
     ):
         """Constructor for RemoteExecutor
 
-        Unless mentioned otherwise, the constructor first looks up the value from the SageMaker
-        configuration file. If no value is specified in the configuration file or no configuration
-        file is found, the constructor selects the default as specified below. For more
-        information, see `Configuring and using defaults with the SageMaker Python SDK
+        If a parameter value is not set, the constructor first looks up the value from the
+        SageMaker configuration file. If no value is specified in the configuration file or
+        no configuration file is found, the constructor selects the default as specified below.
+        For more information, see `Configuring and using defaults with the SageMaker Python SDK
         <https://sagemaker.readthedocs.io/en/stable/overview.html
         #configuring-and-using-defaults-with-the-sagemaker-python-sdk>`_.
 
@@ -520,7 +520,7 @@ class RemoteExecutor(object):
                 annotated with the remote decorator is invoked using the Python runtime available
                 in the system path.
 
-            * The parameter dependencies is set to auto_capture. SageMaker will automatically
+            * The parameter dependencies is set to ``auto_capture``. SageMaker will automatically
                 generate an env_snapshot.yml corresponding to the current active conda environment’s
                 snapshot. You do not need to provide a dependencies file. The following conditions
                 apply:
@@ -595,7 +595,7 @@ class RemoteExecutor(object):
             max_parallel_jobs (int): Maximum number of jobs that run in parallel. Defaults to 1.
 
             max_retry_attempts (int): The max number of times the job is retried on
-              ```InternalServerFailure``` Error from SageMaker service. Defaults to 1.
+              ``InternalServerFailure`` Error from SageMaker service. Defaults to 1.
 
             max_runtime_in_seconds (int): The upper limit in seconds to be used for training. After
               this specified amount of time, SageMaker terminates the job regardless of its current
@@ -1012,7 +1012,8 @@ class Future(object):
             timeout (int): Timeout in seconds to wait until the job is completed before it is
               stopped. Defaults to ``None``.
 
-        Returns: None
+        Returns:
+            None
         """
 
         with self._condition:
@@ -1022,14 +1023,15 @@ class Future(object):
             if self._state == _RUNNING:
                 self._job.wait(timeout=timeout)
 
-    def cancel(self):
+    def cancel(self) -> bool:
         """Cancel the function execution.
 
         This method prevents the SageMaker job being created or stops the underlying SageMaker job
         early if it is already in progress.
 
-        Returns: ``True`` if the underlying SageMaker job created as a result of the remote function
-          run is cancelled.
+        Returns:
+            ``True`` if the underlying SageMaker job created as a result of the remote function
+            run is cancelled.
         """
         with self._condition:
             if self._state == _FINISHED:
@@ -1042,18 +1044,30 @@ class Future(object):
             self._state = _CANCELLED
             return True
 
-    def running(self):
-        """Returns ``True`` if the underlying sagemaker job is still running."""
+    def running(self) -> bool:
+        """Check if the underlying SageMaker job is running.
+
+        Returns:
+            ``True`` if the underlying SageMaker job is still running. ``False``, otherwise.
+        """
         with self._condition:
             return self._state == _RUNNING
 
-    def cancelled(self):
-        """Returns ``True`` if the underlying sagemaker job was cancelled. ``False``, otherwise."""
+    def cancelled(self) -> bool:
+        """Check if the underlying SageMaker job was cancelled.
+
+        Returns:
+            ``True`` if the underlying SageMaker job was cancelled. ``False``, otherwise.
+        """
         with self._condition:
             return self._state == _CANCELLED
 
-    def done(self):
-        """Returns ``True`` if the underlying sagemaker job finished running."""
+    def done(self) -> bool:
+        """Check if the underlying SageMaker job is finished.
+
+        Returns:
+            ``True`` if the underlying SageMaker job finished running. ``False``, otherwise.
+        """
         with self._condition:
             if self._state == _RUNNING and self._job.describe()["TrainingJobStatus"] in [
                 "Completed",
@@ -1068,7 +1082,7 @@ class Future(object):
             return False
 
 
-def get_future(job_name, sagemaker_session=None):
+def get_future(job_name, sagemaker_session=None) -> Future:
     """Get a future object with information about a job with the given job_name.
 
     Args:
