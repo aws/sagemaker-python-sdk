@@ -1,5 +1,24 @@
 # Changelog
 
+## v2.151.0 (2023-04-27)
+
+### Features
+
+ * Update Transformers 4.26 - TensorFlow 2.11.0 Image URI
+ * Add Extra Parameters to Lambda Function Wrapper
+
+### Bug Fixes and Other Changes
+
+ * Add kms key support for Model registration
+ * Enable inference recommender slow tests
+ * Pass sagemaker session to downstream s3 calls
+ * Add ap-south-1 to no p3 regions
+ * skip test for p2 instance for TF2.12 and above
+
+### Documentation Changes
+
+ * Fix minor misses from the remote function doc release
+
 ## v2.150.0 (2023-04-26)
 
 ### Features
