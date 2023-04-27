@@ -633,7 +633,10 @@ class Run(object):
         Returns:
             str: The name of the Run object supplied by a user.
         """
-        return trial_component_name.replace("{}{}".format(experiment_name, DELIMITER), "", 1)
+        # TODO: we should revert the lower casting once backend fix reaches prod
+        return trial_component_name.replace(
+            "{}{}".format(experiment_name.lower(), DELIMITER), "", 1
+        )
 
     @staticmethod
     def _append_run_tc_label_to_tags(tags: Optional[List[Dict[str, str]]] = None) -> list:
@@ -869,6 +872,8 @@ def list_runs(
     Returns:
         list: A list of ``Run`` objects.
     """
+
+    # all trial components retrieved by default
     tc_summaries = _TrialComponent.list(
         experiment_name=experiment_name,
         created_before=created_before,
