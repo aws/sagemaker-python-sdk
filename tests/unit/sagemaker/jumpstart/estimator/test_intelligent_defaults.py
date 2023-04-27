@@ -32,6 +32,7 @@ from tests.unit.sagemaker.jumpstart.utils import get_special_model_spec
 execution_role = "fake role! do not use!"
 region = "us-west-2"
 sagemaker_session = Session()
+sagemaker_session.get_caller_identity_arn = lambda: execution_role
 
 override_role = "asdfjkl;"
 override_enable_network_isolation = random.choice([True, False])
@@ -80,11 +81,9 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-    @mock.patch("sagemaker.jumpstart.utils.get_execution_role")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_no_arg_overwrites_no_kwarg_collisions_yes_config(
         self,
-        mock_get_execution_role: mock.Mock,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_resolve_value_from_config: mock.Mock,
@@ -102,8 +101,6 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         mock_resolve_value_from_config.side_effect = resolve_value_from_config
         mock_get_model_specs.side_effect = get_special_model_spec
-
-        mock_get_execution_role.return_value = execution_role
 
         mock_session.return_value = sagemaker_session
 
@@ -132,11 +129,9 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-    @mock.patch("sagemaker.jumpstart.utils.get_execution_role")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_no_arg_overwrites_yes_kwarg_collisions_yes_config(
         self,
-        mock_get_execution_role: mock.Mock,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_resolve_value_from_config: mock.Mock,
@@ -158,8 +153,6 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         mock_resolve_value_from_config.side_effect = resolve_value_from_config
         mock_get_model_specs.side_effect = get_special_model_spec
-
-        mock_get_execution_role.return_value = execution_role
 
         mock_session.return_value = sagemaker_session
 
@@ -204,11 +197,9 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-    @mock.patch("sagemaker.jumpstart.utils.get_execution_role")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_yes_arg_overwrites_yes_kwarg_collisions_yes_config(
         self,
-        mock_get_execution_role: mock.Mock,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_resolve_value_from_config: mock.Mock,
@@ -230,8 +221,6 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         mock_resolve_value_from_config.side_effect = resolve_value_from_config
         mock_get_model_specs.side_effect = get_special_model_spec
-
-        mock_get_execution_role.return_value = execution_role
 
         mock_session.return_value = sagemaker_session
 
@@ -287,11 +276,9 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-    @mock.patch("sagemaker.jumpstart.utils.get_execution_role")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_yes_arg_overwrites_no_kwarg_collisions_yes_config(
         self,
-        mock_get_execution_role: mock.Mock,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_resolve_value_from_config: mock.Mock,
@@ -310,8 +297,6 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         mock_resolve_value_from_config.side_effect = resolve_value_from_config
         mock_get_model_specs.side_effect = get_special_model_spec
-
-        mock_get_execution_role.return_value = execution_role
 
         mock_session.return_value = sagemaker_session
 
@@ -354,6 +339,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
             override_inference_enable_network_isolation,
         )
 
+    @mock.patch("sagemaker.session.Session.get_caller_identity_arn")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
     @mock.patch("sagemaker.jumpstart.factory.estimator._retrieve_kwargs")
@@ -361,11 +347,9 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-    @mock.patch("sagemaker.jumpstart.utils.get_execution_role")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_no_arg_overwrites_no_kwarg_collisions_no_config(
         self,
-        mock_get_execution_role: mock.Mock,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_resolve_value_from_config: mock.Mock,
@@ -373,9 +357,12 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
         mock_retrieve_kwargs: mock.Mock,
         mock_estimator_init: mock.Mock,
         mock_estimator_deploy: mock.Mock,
+        mock_get_caller_identity_arn: mock.Mock,
     ):
 
         model_id, _ = "js-trainable-model", "*"
+
+        mock_get_caller_identity_arn.return_value = execution_role
 
         mock_retrieve_kwargs.return_value = {}
 
@@ -383,8 +370,6 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         mock_resolve_value_from_config.side_effect = resolve_value_from_config
         mock_get_model_specs.side_effect = get_special_model_spec
-
-        mock_get_execution_role.return_value = execution_role
 
         mock_session.return_value = sagemaker_session
 
@@ -405,6 +390,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         assert "enable_network_isolation" not in mock_estimator_deploy.call_args[1]
 
+    @mock.patch("sagemaker.session.Session.get_caller_identity_arn")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
     @mock.patch("sagemaker.jumpstart.factory.model._retrieve_kwargs")
@@ -413,11 +399,9 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-    @mock.patch("sagemaker.jumpstart.utils.get_execution_role")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_no_arg_overwrites_yes_kwarg_collisions_no_config(
         self,
-        mock_get_execution_role: mock.Mock,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_resolve_value_from_config: mock.Mock,
@@ -426,8 +410,10 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
         mock_model_retrieve_kwargs: mock.Mock,
         mock_estimator_init: mock.Mock,
         mock_estimator_deploy: mock.Mock,
+        mock_get_caller_identity_arn: mock.Mock,
     ):
 
+        mock_get_caller_identity_arn.return_value = execution_role
         model_id, _ = "js-trainable-model", "*"
 
         mock_retrieve_kwargs.return_value = {
@@ -439,8 +425,6 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         mock_resolve_value_from_config.side_effect = resolve_value_from_config
         mock_get_model_specs.side_effect = get_special_model_spec
-
-        mock_get_execution_role.return_value = execution_role
 
         mock_session.return_value = sagemaker_session
 
@@ -485,11 +469,9 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-    @mock.patch("sagemaker.jumpstart.utils.get_execution_role")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_yes_arg_overwrites_yes_kwarg_collisions_no_config(
         self,
-        mock_get_execution_role: mock.Mock,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_resolve_value_from_config: mock.Mock,
@@ -511,8 +493,6 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         mock_resolve_value_from_config.side_effect = resolve_value_from_config
         mock_get_model_specs.side_effect = get_special_model_spec
-
-        mock_get_execution_role.return_value = execution_role
 
         mock_session.return_value = sagemaker_session
 
@@ -564,11 +544,9 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-    @mock.patch("sagemaker.jumpstart.utils.get_execution_role")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_yes_arg_overwrites_no_kwarg_collisions_no_config(
         self,
-        mock_get_execution_role: mock.Mock,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_resolve_value_from_config: mock.Mock,
@@ -586,8 +564,6 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         mock_resolve_value_from_config.side_effect = resolve_value_from_config
         mock_get_model_specs.side_effect = get_special_model_spec
-
-        mock_get_execution_role.return_value = execution_role
 
         mock_session.return_value = sagemaker_session
 

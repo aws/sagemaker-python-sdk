@@ -29,6 +29,7 @@ from tests.unit.sagemaker.jumpstart.utils import get_special_model_spec
 execution_role = "fake role! do not use!"
 region = "us-west-2"
 sagemaker_session = Session()
+sagemaker_session.get_caller_identity_arn = lambda: execution_role
 
 override_role = "fdsfsdfs"
 override_enable_network_isolation = random.choice([True, False])
@@ -63,11 +64,9 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-    @mock.patch("sagemaker.jumpstart.utils.get_execution_role")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_no_arg_overwrites_no_kwarg_collisions_yes_config(
         self,
-        mock_get_execution_role: mock.Mock,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_resolve_value_from_config: mock.Mock,
@@ -83,8 +82,6 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
 
         mock_resolve_value_from_config.side_effect = resolve_value_from_config
         mock_get_model_specs.side_effect = get_special_model_spec
-
-        mock_get_execution_role.return_value = execution_role
 
         mock_session.return_value = sagemaker_session
 
@@ -104,11 +101,9 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-    @mock.patch("sagemaker.jumpstart.utils.get_execution_role")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_all_arg_overwrites_no_kwarg_collisions_yes_config(
         self,
-        mock_get_execution_role: mock.Mock,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_resolve_value_from_config: mock.Mock,
@@ -124,8 +119,6 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
 
         mock_resolve_value_from_config.side_effect = resolve_value_from_config
         mock_get_model_specs.side_effect = get_special_model_spec
-
-        mock_get_execution_role.return_value = execution_role
 
         mock_session.return_value = sagemaker_session
 
@@ -149,11 +142,9 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-    @mock.patch("sagemaker.jumpstart.utils.get_execution_role")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_no_arg_overwrites_all_kwarg_collisions_yes_config(
         self,
-        mock_get_execution_role: mock.Mock,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_resolve_value_from_config: mock.Mock,
@@ -171,8 +162,6 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
 
         mock_resolve_value_from_config.side_effect = resolve_value_from_config
         mock_get_model_specs.side_effect = get_special_model_spec
-
-        mock_get_execution_role.return_value = execution_role
 
         mock_session.return_value = sagemaker_session
 
@@ -194,11 +183,9 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-    @mock.patch("sagemaker.jumpstart.utils.get_execution_role")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_yes_arg_overwrites_all_kwarg_collisions_yes_config(
         self,
-        mock_get_execution_role: mock.Mock,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_resolve_value_from_config: mock.Mock,
@@ -216,8 +203,6 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
 
         mock_resolve_value_from_config.side_effect = resolve_value_from_config
         mock_get_model_specs.side_effect = get_special_model_spec
-
-        mock_get_execution_role.return_value = execution_role
 
         mock_session.return_value = sagemaker_session
 
@@ -241,11 +226,9 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-    @mock.patch("sagemaker.jumpstart.utils.get_execution_role")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_no_arg_overwrites_all_kwarg_collisions_no_config(
         self,
-        mock_get_execution_role: mock.Mock,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_resolve_value_from_config: mock.Mock,
@@ -263,8 +246,6 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
 
         mock_resolve_value_from_config.side_effect = resolve_value_from_config
         mock_get_model_specs.side_effect = get_special_model_spec
-
-        mock_get_execution_role.return_value = execution_role
 
         mock_session.return_value = sagemaker_session
 
@@ -286,11 +267,9 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-    @mock.patch("sagemaker.jumpstart.utils.get_execution_role")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_yes_arg_overwrites_all_kwarg_collisions_no_config(
         self,
-        mock_get_execution_role: mock.Mock,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_resolve_value_from_config: mock.Mock,
@@ -308,8 +287,6 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
 
         mock_resolve_value_from_config.side_effect = resolve_value_from_config
         mock_get_model_specs.side_effect = get_special_model_spec
-
-        mock_get_execution_role.return_value = execution_role
 
         mock_session.return_value = sagemaker_session
 
@@ -333,11 +310,9 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-    @mock.patch("sagemaker.jumpstart.utils.get_execution_role")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_no_arg_overwrites_no_kwarg_collisions_no_config(
         self,
-        mock_get_execution_role: mock.Mock,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_resolve_value_from_config: mock.Mock,
@@ -353,8 +328,6 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
 
         mock_resolve_value_from_config.side_effect = resolve_value_from_config
         mock_get_model_specs.side_effect = get_special_model_spec
-
-        mock_get_execution_role.return_value = execution_role
 
         mock_session.return_value = sagemaker_session
 
@@ -373,11 +346,9 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-    @mock.patch("sagemaker.jumpstart.utils.get_execution_role")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
     def test_yes_arg_overwrites_no_kwarg_collisions_no_config(
         self,
-        mock_get_execution_role: mock.Mock,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_resolve_value_from_config: mock.Mock,
@@ -393,8 +364,6 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
 
         mock_resolve_value_from_config.side_effect = resolve_value_from_config
         mock_get_model_specs.side_effect = get_special_model_spec
-
-        mock_get_execution_role.return_value = execution_role
 
         mock_session.return_value = sagemaker_session
 
