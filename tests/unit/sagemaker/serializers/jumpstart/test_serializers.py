@@ -23,7 +23,7 @@ from tests.unit.sagemaker.jumpstart.utils import get_special_model_spec
 
 @patch("sagemaker.jumpstart.artifacts.predictors.verify_model_region_and_return_specs")
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
-def test_jumpstart_serializers(
+def test_jumpstart_default_serializers(
     patched_get_model_specs, patched_verify_model_region_and_return_specs
 ):
 
@@ -45,6 +45,19 @@ def test_jumpstart_serializers(
     )
 
     patched_get_model_specs.reset_mock()
+
+
+@patch("sagemaker.jumpstart.artifacts.predictors.verify_model_region_and_return_specs")
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+def test_jumpstart_serializer_options(
+    patched_get_model_specs, patched_verify_model_region_and_return_specs
+):
+
+    patched_verify_model_region_and_return_specs.side_effect = verify_model_region_and_return_specs
+    patched_get_model_specs.side_effect = get_special_model_spec
+
+    model_id, model_version = "predictor-specs-model", "*"
+    region = "us-west-2"
 
     serializer_options = serializers.retrieve_options(
         region=region,

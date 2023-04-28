@@ -71,9 +71,7 @@ def _retrieve_default_environment_variables(
 
     default_environment_variables: Dict[str, str] = {}
     for environment_variable in model_specs.inference_environment_variables:
-        if include_aws_sdk_env_vars or (
-            not include_aws_sdk_env_vars and environment_variable.required_for_model_class is True
-        ):
+        if include_aws_sdk_env_vars or environment_variable.required_for_model_class:
             default_environment_variables[environment_variable.name] = str(
                 environment_variable.default
             )

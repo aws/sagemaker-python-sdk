@@ -65,7 +65,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
-    def test_no_arg_overwrites_no_kwarg_collisions_yes_config(
+    def test_without_arg_overwrites_without_kwarg_collisions_with_config(
         self,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
@@ -102,7 +102,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
-    def test_all_arg_overwrites_no_kwarg_collisions_yes_config(
+    def test_all_arg_overwrites_without_kwarg_collisions_with_config(
         self,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
@@ -143,7 +143,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
-    def test_no_arg_overwrites_all_kwarg_collisions_yes_config(
+    def test_without_arg_overwrites_all_kwarg_collisions_with_config(
         self,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
@@ -184,7 +184,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
-    def test_yes_arg_overwrites_all_kwarg_collisions_yes_config(
+    def test_with_arg_overwrites_all_kwarg_collisions_with_config(
         self,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
@@ -227,7 +227,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
-    def test_no_arg_overwrites_all_kwarg_collisions_no_config(
+    def test_without_arg_overwrites_all_kwarg_collisions_without_config(
         self,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
@@ -268,7 +268,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
-    def test_yes_arg_overwrites_all_kwarg_collisions_no_config(
+    def test_with_arg_overwrites_all_kwarg_collisions_without_config(
         self,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
@@ -311,7 +311,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
-    def test_no_arg_overwrites_no_kwarg_collisions_no_config(
+    def test_without_arg_overwrites_without_kwarg_collisions_without_config(
         self,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
@@ -347,7 +347,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
-    def test_yes_arg_overwrites_no_kwarg_collisions_no_config(
+    def test_with_arg_overwrites_without_kwarg_collisions_without_config(
         self,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,

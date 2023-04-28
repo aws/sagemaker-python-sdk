@@ -82,7 +82,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
-    def test_no_arg_overwrites_no_kwarg_collisions_yes_config(
+    def test_without_arg_overwrites_without_kwarg_collisions_with_config(
         self,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
@@ -130,7 +130,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
-    def test_no_arg_overwrites_yes_kwarg_collisions_yes_config(
+    def test_without_arg_overwrites_with_kwarg_collisions_with_config(
         self,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
@@ -197,7 +197,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
-    def test_yes_arg_overwrites_yes_kwarg_collisions_yes_config(
+    def test_with_arg_overwrites_with_kwarg_collisions_with_config(
         self,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
@@ -223,17 +223,15 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         mock_session.return_value = sagemaker_session
 
-        mock_override_role = "dsfsdfs"
-
         estimator = JumpStartEstimator(
             model_id=model_id,
-            role=mock_override_role,
+            role=override_role,
             enable_network_isolation=override_enable_network_isolation,
             encrypt_inter_container_traffic=override_encrypt_inter_container_traffic,
         )
 
         self.assertEquals(mock_get_sagemaker_config_value.call_count, 1)
-        self.assertEquals(mock_estimator_init.call_args[1].get("role"), mock_override_role)
+        self.assertEquals(mock_estimator_init.call_args[1].get("role"), override_role)
         self.assertEquals(
             mock_estimator_init.call_args[1].get("enable_network_isolation"),
             override_enable_network_isolation,
@@ -275,7 +273,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
-    def test_yes_arg_overwrites_no_kwarg_collisions_yes_config(
+    def test_with_arg_overwrites_without_kwarg_collisions_with_config(
         self,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
@@ -298,17 +296,15 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         mock_session.return_value = sagemaker_session
 
-        mock_override_role = "dsfsdfs"
-
         estimator = JumpStartEstimator(
             model_id=model_id,
-            role=mock_override_role,
+            role=override_role,
             enable_network_isolation=override_enable_network_isolation,
             encrypt_inter_container_traffic=override_encrypt_inter_container_traffic,
         )
 
         self.assertEquals(mock_get_sagemaker_config_value.call_count, 1)
-        self.assertEquals(mock_estimator_init.call_args[1].get("role"), mock_override_role)
+        self.assertEquals(mock_estimator_init.call_args[1].get("role"), override_role)
         self.assertEquals(
             mock_estimator_init.call_args[1].get("enable_network_isolation"),
             override_enable_network_isolation,
@@ -346,7 +342,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
-    def test_no_arg_overwrites_no_kwarg_collisions_no_config(
+    def test_without_arg_overwrites_without_kwarg_collisions_without_config(
         self,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
@@ -398,7 +394,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
-    def test_no_arg_overwrites_yes_kwarg_collisions_no_config(
+    def test_without_arg_overwrites_with_kwarg_collisions_without_config(
         self,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
@@ -465,7 +461,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
-    def test_yes_arg_overwrites_yes_kwarg_collisions_no_config(
+    def test_with_arg_overwrites_with_kwarg_collisions_without_config(
         self,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
@@ -491,17 +487,15 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         mock_session.return_value = sagemaker_session
 
-        mock_override_role = "dsfsdfs"
-
         estimator = JumpStartEstimator(
             model_id=model_id,
-            role=mock_override_role,
+            role=override_role,
             enable_network_isolation=override_enable_network_isolation,
             encrypt_inter_container_traffic=override_encrypt_inter_container_traffic,
         )
 
         self.assertEquals(mock_get_sagemaker_config_value.call_count, 1)
-        self.assertEquals(mock_estimator_init.call_args[1].get("role"), mock_override_role)
+        self.assertEquals(mock_estimator_init.call_args[1].get("role"), override_role)
         self.assertEquals(
             mock_estimator_init.call_args[1].get("enable_network_isolation"),
             override_enable_network_isolation,
@@ -537,7 +531,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
-    def test_yes_arg_overwrites_no_kwarg_collisions_no_config(
+    def test_with_arg_overwrites_without_kwarg_collisions_without_config(
         self,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
