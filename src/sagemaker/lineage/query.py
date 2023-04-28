@@ -18,7 +18,8 @@ from enum import Enum
 from typing import Optional, Union, List, Dict
 import re
 
-from sagemaker.lineage._utils import get_resource_name_from_arn, get_module
+from sagemaker.utils import get_module
+from sagemaker.lineage._utils import get_resource_name_from_arn
 
 
 class LineageEntityEnum(Enum):
