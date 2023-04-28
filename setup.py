@@ -64,6 +64,7 @@ required_packages = [
     "jsonschema",
     "platformdirs",
     "tblib==1.7.0",
+    "pyvis==0.2.1",
 ]
 
 # Specific use case dependencies
