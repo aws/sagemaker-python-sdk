@@ -43,12 +43,16 @@ ACCOUNTS = {
 }
 DJL_DEEPSPEED_VERSIONS = ["0.21.0", "0.20.0", "0.19.0"]
 DJL_FASTERTRANSFORMER_VERSIONS = ["0.21.0"]
+DJL_NEURONX_VERSIONS = ["0.22.1"]
 DJL_VERSIONS_TO_FRAMEWORK = {
     "0.19.0": {"djl-deepspeed": "deepspeed0.7.3-cu113"},
     "0.20.0": {"djl-deepspeed": "deepspeed0.7.5-cu116"},
     "0.21.0": {
         "djl-deepspeed": "deepspeed0.8.0-cu117",
         "djl-fastertransformer": "fastertransformer5.3.0-cu117",
+    },
+    "0.22.1": {
+        "djl-neuronx": "neuronx-sdk2.9.0",
     },
 }
 
@@ -63,6 +67,12 @@ def test_djl_deepspeed(region, version):
 @pytest.mark.parametrize("version", DJL_FASTERTRANSFORMER_VERSIONS)
 def test_djl_fastertransformer(region, version):
     _test_djl_uris(region, version, "djl-fastertransformer")
+
+
+@pytest.mark.parametrize("region", ACCOUNTS.keys())
+@pytest.mark.parametrize("version", DJL_NEURONX_VERSIONS)
+def test_djl_neuronx(region, version):
+    _test_djl_uris(region, version, "djl-neuronx")
 
 
 def _test_djl_uris(region, version, djl_framework):
