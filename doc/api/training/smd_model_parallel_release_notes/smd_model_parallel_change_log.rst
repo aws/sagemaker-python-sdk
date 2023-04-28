@@ -3,18 +3,18 @@ Release Notes
 #############
 
 New features, bug fixes, and improvements are regularly made to the SageMaker
-distributed model parallelism library.
+model parallelism library.
 
 
 SageMaker Distributed Model Parallel 1.15.0 Release Notes
 =========================================================
 
-*Date: Apr. 25. 2023*
+*Date: Apr. 27. 2023*
 
 **Currency Updates**
 
 * Added support for PyTorch v2.0.0.
-  However, the library does not support ``torch.compile`` at this release.
+  Note that the library does not support ``torch.compile`` in this release.
 
 **New Features**
 
