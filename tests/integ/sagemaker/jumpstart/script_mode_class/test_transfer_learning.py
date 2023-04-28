@@ -23,13 +23,16 @@ from sagemaker import (
     script_uris,
 )
 from sagemaker.estimator import Estimator
-from sagemaker.jumpstart.artifacts import _retrieve_kwargs
+from sagemaker.jumpstart.artifacts import (
+    _retrieve_estimator_init_kwargs,
+    _retrieve_estimator_fit_kwargs,
+)
+from sagemaker.jumpstart.artifacts.kwargs import _retrieve_model_init_kwargs
 from sagemaker.jumpstart.constants import (
     INFERENCE_ENTRY_POINT_SCRIPT_NAME,
     JUMPSTART_DEFAULT_REGION_NAME,
     TRAINING_ENTRY_POINT_SCRIPT_NAME,
 )
-from sagemaker.jumpstart.enums import _KwargUseCase
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 from sagemaker.predictor import Predictor
 from tests.integ.sagemaker.jumpstart.constants import (
@@ -86,8 +89,9 @@ def test_jumpstart_transfer_learning_estimator_class(setup):
         model_version=model_version,
     )
 
-    estimator_kwargs = _retrieve_kwargs(
-        model_id=model_id, model_version=model_version, use_case=_KwargUseCase.ESTIMATOR
+    estimator_kwargs = _retrieve_estimator_init_kwargs(
+        model_id=model_id,
+        model_version=model_version,
     )
 
     estimator = Estimator(
@@ -106,8 +110,9 @@ def test_jumpstart_transfer_learning_estimator_class(setup):
         **estimator_kwargs,
     )
 
-    fit_kwargs = _retrieve_kwargs(
-        model_id=model_id, model_version=model_version, use_case=_KwargUseCase.ESTIMATOR_FIT
+    fit_kwargs = _retrieve_estimator_fit_kwargs(
+        model_id=model_id,
+        model_version=model_version,
     )
 
     estimator.fit(
@@ -142,8 +147,9 @@ def test_jumpstart_transfer_learning_estimator_class(setup):
         model_version=model_version,
         include_aws_sdk_env_vars=False,
     )
-    model_kwargs = _retrieve_kwargs(
-        model_id=model_id, model_version=model_version, use_case=_KwargUseCase.MODEL
+    model_kwargs = _retrieve_model_init_kwargs(
+        model_id=model_id,
+        model_version=model_version,
     )
 
     predictor: Predictor = estimator.deploy(

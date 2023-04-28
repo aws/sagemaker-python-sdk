@@ -21,7 +21,12 @@ from sagemaker.jumpstart.artifacts.hyperparameters import (  # noqa: F401
 from sagemaker.jumpstart.artifacts.environment_variables import (  # noqa: F401
     _retrieve_default_environment_variables,
 )
-from sagemaker.jumpstart.artifacts.kwargs import _retrieve_kwargs  # noqa: F401
+from sagemaker.jumpstart.artifacts.kwargs import (  # noqa: F401
+    _retrieve_model_init_kwargs,
+    _retrieve_model_deploy_kwargs,
+    _retrieve_estimator_init_kwargs,
+    _retrieve_estimator_fit_kwargs,
+)
 from sagemaker.jumpstart.artifacts.instance_types import (  # noqa: F401
     _retrieve_default_instance_type,
     _retrieve_instance_types,

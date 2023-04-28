@@ -76,7 +76,7 @@ def config_value_impl(sagemaker_session: Session, config_path: str):
 class IntelligentDefaultsEstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
-    @mock.patch("sagemaker.jumpstart.factory.estimator._retrieve_kwargs")
+    @mock.patch("sagemaker.jumpstart.factory.estimator._retrieve_estimator_init_kwargs")
     @mock.patch("sagemaker.utils.get_sagemaker_config_value")
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
@@ -123,8 +123,8 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
-    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_kwargs")
-    @mock.patch("sagemaker.jumpstart.factory.estimator._retrieve_kwargs")
+    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
+    @mock.patch("sagemaker.jumpstart.factory.estimator._retrieve_estimator_init_kwargs")
     @mock.patch("sagemaker.utils.get_sagemaker_config_value")
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
@@ -172,7 +172,6 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
         )
 
         mock_model_retrieve_kwargs.side_effect = [
-            {},
             {
                 "enable_network_isolation": metadata_inference_enable_network_isolation,
             },
@@ -191,8 +190,8 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
-    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_kwargs")
-    @mock.patch("sagemaker.jumpstart.factory.estimator._retrieve_kwargs")
+    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
+    @mock.patch("sagemaker.jumpstart.factory.estimator._retrieve_estimator_init_kwargs")
     @mock.patch("sagemaker.utils.get_sagemaker_config_value")
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
@@ -245,7 +244,6 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
         )
 
         mock_model_retrieve_kwargs.side_effect = [
-            {},
             {
                 "enable_network_isolation": metadata_inference_enable_network_isolation,
             },
@@ -270,8 +268,8 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
-    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_kwargs")
-    @mock.patch("sagemaker.jumpstart.factory.estimator._retrieve_kwargs")
+    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
+    @mock.patch("sagemaker.jumpstart.factory.estimator._retrieve_estimator_init_kwargs")
     @mock.patch("sagemaker.utils.get_sagemaker_config_value")
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
@@ -342,7 +340,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.session.Session.get_caller_identity_arn")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
-    @mock.patch("sagemaker.jumpstart.factory.estimator._retrieve_kwargs")
+    @mock.patch("sagemaker.jumpstart.factory.estimator._retrieve_estimator_init_kwargs")
     @mock.patch("sagemaker.utils.get_sagemaker_config_value")
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
@@ -393,8 +391,8 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.session.Session.get_caller_identity_arn")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
-    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_kwargs")
-    @mock.patch("sagemaker.jumpstart.factory.estimator._retrieve_kwargs")
+    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
+    @mock.patch("sagemaker.jumpstart.factory.estimator._retrieve_estimator_init_kwargs")
     @mock.patch("sagemaker.utils.get_sagemaker_config_value")
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
@@ -443,12 +441,9 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
             metadata_intercontainer_encryption,
         )
 
-        mock_model_retrieve_kwargs.side_effect = [
-            {},
-            {
-                "enable_network_isolation": metadata_inference_enable_network_isolation,
-            },
-        ]
+        mock_model_retrieve_kwargs.return_value = {
+            "enable_network_isolation": metadata_inference_enable_network_isolation,
+        }
 
         estimator.deploy()
 
@@ -463,8 +458,8 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
-    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_kwargs")
-    @mock.patch("sagemaker.jumpstart.factory.estimator._retrieve_kwargs")
+    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
+    @mock.patch("sagemaker.jumpstart.factory.estimator._retrieve_estimator_init_kwargs")
     @mock.patch("sagemaker.utils.get_sagemaker_config_value")
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
@@ -516,12 +511,9 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
             override_encrypt_inter_container_traffic,
         )
 
-        mock_model_retrieve_kwargs.side_effect = [
-            {},
-            {
-                "enable_network_isolation": metadata_inference_enable_network_isolation,
-            },
-        ]
+        mock_model_retrieve_kwargs.return_value = {
+            "enable_network_isolation": metadata_inference_enable_network_isolation,
+        }
 
         estimator.deploy(
             role=override_inference_role,
@@ -539,7 +531,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
-    @mock.patch("sagemaker.jumpstart.factory.estimator._retrieve_kwargs")
+    @mock.patch("sagemaker.jumpstart.factory.estimator._retrieve_estimator_init_kwargs")
     @mock.patch("sagemaker.utils.get_sagemaker_config_value")
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")

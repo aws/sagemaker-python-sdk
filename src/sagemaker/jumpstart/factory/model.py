@@ -21,12 +21,16 @@ from sagemaker.async_inference.async_inference_config import AsyncInferenceConfi
 from sagemaker.base_deserializers import BaseDeserializer
 from sagemaker.base_serializers import BaseSerializer
 from sagemaker.explainer.explainer_config import ExplainerConfig
-from sagemaker.jumpstart.artifacts import _model_supports_prepacked_inference, _retrieve_kwargs
+from sagemaker.jumpstart.artifacts import (
+    _model_supports_prepacked_inference,
+    _retrieve_model_init_kwargs,
+    _retrieve_model_deploy_kwargs,
+)
 from sagemaker.jumpstart.constants import (
     INFERENCE_ENTRY_POINT_SCRIPT_NAME,
     JUMPSTART_DEFAULT_REGION_NAME,
 )
-from sagemaker.jumpstart.enums import JumpStartScriptScope, _KwargUseCase
+from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.types import JumpStartModelDeployKwargs, JumpStartModelInitKwargs
 from sagemaker.jumpstart.utils import (
     update_dict_if_key_not_present,
@@ -279,11 +283,10 @@ def _add_env_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKw
 def _add_extra_model_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
     """Sets extra kwargs based on default or override, returns full kwargs."""
 
-    model_kwargs_to_add = _retrieve_kwargs(
+    model_kwargs_to_add = _retrieve_model_init_kwargs(
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
         region=kwargs.region,
-        use_case=_KwargUseCase.MODEL,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
     )
@@ -312,11 +315,10 @@ def _add_predictor_cls_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartM
 def _add_deploy_extra_kwargs(kwargs: JumpStartModelInitKwargs) -> Dict[str, Any]:
     """Sets extra kwargs based on default or override, returns full kwargs."""
 
-    deploy_kwargs_to_add = _retrieve_kwargs(
+    deploy_kwargs_to_add = _retrieve_model_deploy_kwargs(
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
         region=kwargs.region,
-        use_case=_KwargUseCase.MODEL_DEPLOY,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
     )

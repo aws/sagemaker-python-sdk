@@ -15,8 +15,7 @@ import os
 
 from sagemaker import image_uris, instance_types, model_uris, script_uris, environment_variables
 from sagemaker.jumpstart.constants import INFERENCE_ENTRY_POINT_SCRIPT_NAME
-from sagemaker.jumpstart.artifacts import _retrieve_kwargs
-from sagemaker.jumpstart.enums import _KwargUseCase
+from sagemaker.jumpstart.artifacts import _retrieve_model_init_kwargs, _retrieve_model_deploy_kwargs
 from sagemaker import predictor
 from sagemaker.model import Model
 from tests.integ.sagemaker.jumpstart.constants import (
@@ -64,8 +63,9 @@ def test_jumpstart_inference_model_class(setup):
         model_version=model_version,
         include_aws_sdk_env_vars=False,
     )
-    model_kwargs = _retrieve_kwargs(
-        model_id=model_id, model_version=model_version, use_case=_KwargUseCase.MODEL
+    model_kwargs = _retrieve_model_init_kwargs(
+        model_id=model_id,
+        model_version=model_version,
     )
 
     model = Model(
@@ -80,8 +80,9 @@ def test_jumpstart_inference_model_class(setup):
         **model_kwargs,
     )
 
-    deploy_kwargs = _retrieve_kwargs(
-        model_id=model_id, model_version=model_version, use_case=_KwargUseCase.MODEL_DEPLOY
+    deploy_kwargs = _retrieve_model_deploy_kwargs(
+        model_id=model_id,
+        model_version=model_version,
     )
 
     model.deploy(

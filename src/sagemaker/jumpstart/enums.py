@@ -107,19 +107,3 @@ class MIMEType(str, Enum):
         """Removes suffix from type and instantiates enum."""
         base_type, _, _ = mime_type_with_suffix.partition(";")
         return MIMEType(base_type)
-
-
-class _KwargUseCase(str, Enum):
-    """Enum class for the different use cases for getting JumpStart kwargs."""
-
-    # https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/model.py#L101
-    MODEL = "model"
-
-    # https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/model.py#L1066
-    MODEL_DEPLOY = "model.deploy"
-
-    # https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/estimator.py#L2376
-    ESTIMATOR = "estimator"
-
-    # https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/estimator.py#L1128
-    ESTIMATOR_FIT = "estimator.fit"

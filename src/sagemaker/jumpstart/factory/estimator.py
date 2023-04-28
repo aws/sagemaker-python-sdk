@@ -33,12 +33,15 @@ from sagemaker.debugger.profiler_config import ProfilerConfig
 from sagemaker.explainer.explainer_config import ExplainerConfig
 from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.instance_group import InstanceGroup
-from sagemaker.jumpstart.artifacts import _retrieve_kwargs
+from sagemaker.jumpstart.artifacts import (
+    _retrieve_estimator_init_kwargs,
+    _retrieve_estimator_fit_kwargs,
+)
 from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_REGION_NAME,
     TRAINING_ENTRY_POINT_SCRIPT_NAME,
 )
-from sagemaker.jumpstart.enums import JumpStartScriptScope, _KwargUseCase
+from sagemaker.jumpstart.enums import JumpStartScriptScope
 from sagemaker.jumpstart.factory import model
 from sagemaker.jumpstart.types import (
     JumpStartEstimatorDeployKwargs,
@@ -545,11 +548,10 @@ def _add_estimator_extra_kwargs(
 ) -> JumpStartEstimatorInitKwargs:
     """Sets extra kwargs based on default or override, returns full kwargs."""
 
-    estimator_kwargs_to_add = _retrieve_kwargs(
+    estimator_kwargs_to_add = _retrieve_estimator_init_kwargs(
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
         region=kwargs.region,
-        use_case=_KwargUseCase.ESTIMATOR,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
     )
@@ -569,11 +571,10 @@ def _add_estimator_extra_kwargs(
 def _add_fit_extra_kwargs(kwargs: JumpStartEstimatorFitKwargs) -> JumpStartEstimatorFitKwargs:
     """Sets extra kwargs based on default or override, returns full kwargs."""
 
-    fit_kwargs_to_add = _retrieve_kwargs(
+    fit_kwargs_to_add = _retrieve_estimator_fit_kwargs(
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
         region=kwargs.region,
-        use_case=_KwargUseCase.ESTIMATOR_FIT,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
     )

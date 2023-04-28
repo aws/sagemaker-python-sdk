@@ -59,7 +59,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
     sagemaker_session = Session()
 
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
-    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_kwargs")
+    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
     @mock.patch("sagemaker.utils.get_sagemaker_config_value")
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
@@ -96,7 +96,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         assert "enable_network_isolation" not in mock_model_init.call_args[1]
 
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
-    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_kwargs")
+    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
     @mock.patch("sagemaker.utils.get_sagemaker_config_value")
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
@@ -137,7 +137,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         )
 
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
-    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_kwargs")
+    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
     @mock.patch("sagemaker.utils.get_sagemaker_config_value")
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
@@ -178,7 +178,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         )
 
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
-    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_kwargs")
+    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
     @mock.patch("sagemaker.utils.get_sagemaker_config_value")
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
@@ -221,7 +221,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         )
 
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
-    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_kwargs")
+    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
     @mock.patch("sagemaker.utils.get_sagemaker_config_value")
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
@@ -262,7 +262,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         )
 
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
-    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_kwargs")
+    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
     @mock.patch("sagemaker.utils.get_sagemaker_config_value")
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
@@ -305,7 +305,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         )
 
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
-    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_kwargs")
+    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
     @mock.patch("sagemaker.utils.get_sagemaker_config_value")
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
@@ -341,7 +341,7 @@ class IntelligentDefaultsModelTest(unittest.TestCase):
         assert "enable_network_isolation" not in mock_model_init.call_args[1]
 
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
-    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_kwargs")
+    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
     @mock.patch("sagemaker.utils.get_sagemaker_config_value")
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
