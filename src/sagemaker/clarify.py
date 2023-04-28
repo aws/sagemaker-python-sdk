@@ -94,6 +94,8 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
                             {object: object},
                         )
                     ],
+                    # Arbitrary JSON object as baseline
+                    {object: object},
                 ),
                 SchemaOptional("num_clusters"): int,
                 SchemaOptional("use_logit"): bool,
@@ -1211,7 +1213,7 @@ class SHAPConfig(ExplainabilityConfig):
 
     def __init__(
         self,
-        baseline: Optional[Union[str, List]] = None,
+        baseline: Optional[Union[str, List, Dict]] = None,
         num_samples: Optional[int] = None,
         agg_method: Optional[str] = None,
         use_logit: bool = False,
@@ -1224,7 +1226,7 @@ class SHAPConfig(ExplainabilityConfig):
         """Initializes config for SHAP analysis.
 
         Args:
-            baseline (None or str or list): `Baseline dataset <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-feature-attribute-shap-baselines.html>`_
+            baseline (None or str or list or dict): `Baseline dataset <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-feature-attribute-shap-baselines.html>`_
                 for the Kernel SHAP algorithm, accepted in the form of:
                 S3 object URI, a list of rows (with at least one element),
                 or None (for no input baseline). The baseline dataset must have the same format
