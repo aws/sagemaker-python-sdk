@@ -40,7 +40,7 @@ class ClarifyModelMonitor(mm.ModelMonitor):
 
     def __init__(
         self,
-        role,
+        role=None,
         instance_count=1,
         instance_type="ml.m5.xlarge",
         volume_size_in_gb=30,
@@ -842,8 +842,8 @@ class BiasAnalysisConfig:
             bias_config (sagemaker.clarify.BiasConfig): Config object related to bias
                 configurations.
             headers (list[str]): A list of column names in the input dataset.
-            label (str): Target attribute for the model required by bias metrics.
-                Specified as column name or index for CSV dataset, or as JSONPath for JSONLines.
+            label (str): Target attribute for the model required by bias metrics. Specified as
+                column name or index for CSV dataset, or as JMESPath expression for JSONLines.
         """
         self.analysis_config = bias_config.get_config()
         if headers is not None:
@@ -889,9 +889,10 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
             model_config (:class:`~sagemaker.clarify.ModelConfig`): Config of the model and its
                 endpoint to be created.
             model_scores (int or str or :class:`~sagemaker.clarify.ModelPredictedLabelConfig`):
-                Index or JSONPath to locate the predicted scores in the model output. This is not
-                required if the model output is a single score. Alternatively, it can be an instance
-                of ModelPredictedLabelConfig to provide more parameters like label_headers.
+                Index or JMESPath expression to locate the predicted scores in the model output.
+                This is not required if the model output is a single score. Alternatively,
+                it can be an instance of ModelPredictedLabelConfig to provide more parameters
+                like label_headers.
             wait (bool): Whether the call should wait until the job completes (default: False).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when wait is True (default: False).
@@ -1302,12 +1303,12 @@ class ClarifyBaseliningConfig:
         Args:
             analysis_config (BiasAnalysisConfig or ExplainabilityAnalysisConfig): analysis config
                 from configurations of the baselining job.
-            features_attribute (str): JSONpath to locate features in predictor request payload.
-                Only required when predictor content type is JSONlines.
-            inference_attribute (str): Index, header or JSONpath to locate predicted label in
-                predictor response payload.
-            probability_attribute (str): Index or JSONpath location in the model output for
-                probabilities or scores to be used for explainability.
+            features_attribute (str): JMESPath expression to locate features in predictor request
+                payload. Only required when predictor content type is JSONlines.
+            inference_attribute (str): Index, header or JMESPath expression to locate predicted
+                label in predictor response payload.
+            probability_attribute (str): Index or JMESPath expression to locate probabilities or
+                scores in the model output for computing feature attribution.
             probability_threshold_attribute (float): Value to indicate the threshold to select
                 the binary label in the case of binary classification. Default is 0.5.
         """

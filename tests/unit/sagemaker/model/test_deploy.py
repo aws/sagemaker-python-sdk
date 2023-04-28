@@ -21,6 +21,29 @@ import sagemaker
 from sagemaker.model import Model
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.serverless import ServerlessInferenceConfig
+from sagemaker.explainer import ExplainerConfig
+from tests.unit.sagemaker.inference_recommender.constants import (
+    DESCRIBE_COMPILATION_JOB_RESPONSE,
+    DESCRIBE_MODEL_PACKAGE_RESPONSE,
+    DESCRIBE_MODEL_RESPONSE,
+    INVALID_RECOMMENDATION_ID,
+    IR_COMPILATION_JOB_NAME,
+    IR_ENV,
+    IR_IMAGE,
+    IR_MODEL_DATA,
+    IR_MODEL_NAME,
+    IR_MODEL_PACKAGE_VERSION_ARN,
+    IR_COMPILATION_IMAGE,
+    IR_COMPILATION_MODEL_DATA,
+    RECOMMENDATION_ID,
+    NOT_EXISTED_RECOMMENDATION_ID,
+)
+from tests.unit.sagemaker.inference_recommender.constructs import (
+    create_inference_recommendations_job_default_with_model_name,
+    create_inference_recommendations_job_default_with_model_name_and_compilation,
+    create_inference_recommendations_job_default_with_model_package_arn,
+    create_inference_recommendations_job_default_with_model_package_arn_and_compilation,
+)
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -31,6 +54,7 @@ ENDPOINT_NAME = "endpoint-{}".format(TIMESTAMP)
 ACCELERATOR_TYPE = "ml.eia.medium"
 INSTANCE_COUNT = 2
 INSTANCE_TYPE = "ml.c4.4xlarge"
+INFERENCE_RECOMMENDATION_ID = "ir-job/6ab0ff22"
 ROLE = "some-role"
 
 BASE_PRODUCTION_VARIANT = {
@@ -41,10 +65,16 @@ BASE_PRODUCTION_VARIANT = {
     "InitialVariantWeight": 1,
 }
 
+SHAP_BASELINE = '1,2,3,"good product"'
+CSV_MIME_TYPE = "text/csv"
+
 
 @pytest.fixture
 def sagemaker_session():
-    return Mock()
+    session = Mock()
+    # For tests which doesn't verify config file injection, operate with empty config
+    session.sagemaker_config = {}
+    return session
 
 
 @patch("sagemaker.production_variant")
@@ -91,6 +121,7 @@ def test_deploy(name_from_base, prepare_container_def, production_variant, sagem
         tags=None,
         kms_key=None,
         wait=True,
+        explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
     )
@@ -134,6 +165,7 @@ def test_deploy_accelerator_type(
         tags=None,
         kms_key=None,
         wait=True,
+        explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
     )
@@ -142,6 +174,7 @@ def test_deploy_accelerator_type(
 @patch("sagemaker.model.Model._create_sagemaker_model", Mock())
 @patch("sagemaker.production_variant", return_value=BASE_PRODUCTION_VARIANT)
 def test_deploy_endpoint_name(sagemaker_session):
+    sagemaker_session.sagemaker_config = {}
     model = Model(MODEL_IMAGE, MODEL_DATA, role=ROLE, sagemaker_session=sagemaker_session)
 
     endpoint_name = "blah"
@@ -158,6 +191,7 @@ def test_deploy_endpoint_name(sagemaker_session):
         tags=None,
         kms_key=None,
         wait=True,
+        explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
     )
@@ -232,6 +266,7 @@ def test_deploy_tags(create_sagemaker_model, production_variant, name_from_base,
         tags=tags,
         kms_key=None,
         wait=True,
+        explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
     )
@@ -254,6 +289,7 @@ def test_deploy_kms_key(production_variant, name_from_base, sagemaker_session):
         tags=None,
         kms_key=key,
         wait=True,
+        explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
     )
@@ -275,6 +311,7 @@ def test_deploy_async(production_variant, name_from_base, sagemaker_session):
         tags=None,
         kms_key=None,
         wait=False,
+        explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
     )
@@ -304,6 +341,7 @@ def test_deploy_data_capture_config(production_variant, name_from_base, sagemake
         tags=None,
         kms_key=None,
         wait=True,
+        explainer_config_dict=None,
         data_capture_config_dict=data_capture_config_dict,
         async_inference_config_dict=None,
     )
@@ -312,16 +350,65 @@ def test_deploy_data_capture_config(production_variant, name_from_base, sagemake
 @patch("sagemaker.model.Model._create_sagemaker_model", Mock())
 @patch("sagemaker.utils.name_from_base", return_value=ENDPOINT_NAME)
 @patch("sagemaker.production_variant", return_value=BASE_PRODUCTION_VARIANT)
-def test_deploy_async_inference(production_variant, name_from_base, sagemaker_session):
+def test_deploy_explainer_config(production_variant, name_from_base, sagemaker_session):
     model = Model(
         MODEL_IMAGE, MODEL_DATA, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
     )
 
-    async_inference_config = AsyncInferenceConfig(output_path="s3://some-path")
+    mock_clarify_explainer_config = Mock()
+    mock_clarify_explainer_config_dict = {
+        "EnableExplanations": "`true`",
+    }
+    mock_clarify_explainer_config._to_request_dict.return_value = mock_clarify_explainer_config_dict
+    explainer_config = ExplainerConfig(clarify_explainer_config=mock_clarify_explainer_config)
+    explainer_config_dict = {"ClarifyExplainerConfig": mock_clarify_explainer_config_dict}
+
+    model.deploy(
+        instance_type=INSTANCE_TYPE,
+        initial_instance_count=INSTANCE_COUNT,
+        explainer_config=explainer_config,
+    )
+
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        name=ENDPOINT_NAME,
+        production_variants=[BASE_PRODUCTION_VARIANT],
+        tags=None,
+        kms_key=None,
+        wait=True,
+        explainer_config_dict=explainer_config_dict,
+        data_capture_config_dict=None,
+        async_inference_config_dict=None,
+    )
+
+
+def test_deploy_wrong_explainer_config(sagemaker_session):
+    model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session, role=ROLE)
+
+    with pytest.raises(ValueError, match="explainer_config needs to be a ExplainerConfig object"):
+        model.deploy(
+            instance_type=INSTANCE_TYPE,
+            initial_instance_count=INSTANCE_COUNT,
+            explainer_config={},
+        )
+
+
+@patch("sagemaker.model.Model._create_sagemaker_model", Mock())
+@patch("sagemaker.utils.name_from_base", return_value=ENDPOINT_NAME)
+@patch("sagemaker.production_variant", return_value=BASE_PRODUCTION_VARIANT)
+def test_deploy_async_inference(production_variant, name_from_base, sagemaker_session):
+    S3_OUTPUT_PATH = "s3://some-output-path"
+    S3_FAILURE_PATH = "s3://some-failure-path"
+
+    model = Model(
+        MODEL_IMAGE, MODEL_DATA, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
+    )
+
+    async_inference_config = AsyncInferenceConfig(
+        output_path=S3_OUTPUT_PATH, failure_path=S3_FAILURE_PATH
+    )
+
     async_inference_config_dict = {
-        "OutputConfig": {
-            "S3OutputPath": "s3://some-path",
-        },
+        "OutputConfig": {"S3OutputPath": S3_OUTPUT_PATH, "S3FailurePath": S3_FAILURE_PATH},
     }
 
     model.deploy(
@@ -336,6 +423,7 @@ def test_deploy_async_inference(production_variant, name_from_base, sagemaker_se
         tags=None,
         kms_key=None,
         wait=True,
+        explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=async_inference_config_dict,
     )
@@ -345,6 +433,7 @@ def test_deploy_async_inference(production_variant, name_from_base, sagemaker_se
 @patch("sagemaker.model.Model._create_sagemaker_model")
 @patch("sagemaker.production_variant")
 def test_deploy_serverless_inference(production_variant, create_sagemaker_model, sagemaker_session):
+    sagemaker_session.sagemaker_config = {}
     model = Model(
         MODEL_IMAGE, MODEL_DATA, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
     )
@@ -380,6 +469,7 @@ def test_deploy_serverless_inference(production_variant, create_sagemaker_model,
         tags=None,
         kms_key=None,
         wait=True,
+        explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
     )
@@ -413,6 +503,8 @@ def test_deploy_wrong_serverless_config(sagemaker_session):
 @patch("sagemaker.session.Session")
 @patch("sagemaker.local.LocalSession")
 def test_deploy_creates_correct_session(local_session, session):
+    local_session.return_value.sagemaker_config = {}
+    session.return_value.sagemaker_config = {}
     # We expect a LocalSession when deploying to instance_type = 'local'
     model = Model(MODEL_IMAGE, MODEL_DATA, role=ROLE)
     model.deploy(endpoint_name="blah", instance_type="local", initial_instance_count=1)
@@ -443,6 +535,171 @@ def test_deploy_wrong_async_inferenc_config(sagemaker_session):
             instance_type=INSTANCE_TYPE,
             initial_instance_count=INSTANCE_COUNT,
             async_inference_config={},
+        )
+
+
+def test_deploy_ir_with_incompatible_parameters(sagemaker_session):
+    model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session, role=ROLE)
+
+    with pytest.raises(
+        ValueError,
+        match="Please either do not specify instance_type and initial_instance_count"
+        "since they are in recommendation, or specify both of them if you want"
+        "to override the recommendation.",
+    ):
+        model.deploy(
+            instance_type=INSTANCE_TYPE,
+            inference_recommendation_id=INFERENCE_RECOMMENDATION_ID,
+        )
+
+    with pytest.raises(
+        ValueError,
+        match="Please either do not specify instance_type and initial_instance_count"
+        "since they are in recommendation, or specify both of them if you want"
+        "to override the recommendation.",
+    ):
+        model.deploy(
+            initial_instance_count=INSTANCE_COUNT,
+            inference_recommendation_id=INFERENCE_RECOMMENDATION_ID,
+        )
+
+    with pytest.raises(
+        ValueError, match="accelerator_type is not compatible with inference_recommendation_id"
+    ):
+        model.deploy(
+            accelerator_type=ACCELERATOR_TYPE,
+            inference_recommendation_id=INFERENCE_RECOMMENDATION_ID,
+        )
+
+    with pytest.raises(
+        ValueError,
+        match="async_inference_config is not compatible with inference_recommendation_id",
+    ):
+        model.deploy(
+            async_inference_config=AsyncInferenceConfig(),
+            inference_recommendation_id=INFERENCE_RECOMMENDATION_ID,
+        )
+
+    with pytest.raises(
+        ValueError,
+        match="serverless_inference_config is not compatible with inference_recommendation_id",
+    ):
+        model.deploy(
+            serverless_inference_config=ServerlessInferenceConfig(),
+            inference_recommendation_id=INFERENCE_RECOMMENDATION_ID,
+        )
+
+
+def test_deploy_with_wrong_recommendation_id(sagemaker_session):
+    model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session, role=ROLE)
+
+    with pytest.raises(ValueError, match="Inference Recommendation id is not valid"):
+        model.deploy(
+            inference_recommendation_id=INVALID_RECOMMENDATION_ID,
+        )
+
+
+def mock_describe_model_package(ModelPackageName):
+    if ModelPackageName == IR_MODEL_PACKAGE_VERSION_ARN:
+        return DESCRIBE_MODEL_PACKAGE_RESPONSE
+
+
+def test_deploy_with_recommendation_id_with_model_pkg_arn(sagemaker_session):
+    sagemaker_session.sagemaker_client.describe_inference_recommendations_job.return_value = (
+        create_inference_recommendations_job_default_with_model_package_arn()
+    )
+    sagemaker_session.sagemaker_client.describe_model_package.side_effect = (
+        mock_describe_model_package
+    )
+
+    model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session, role=ROLE)
+
+    model.deploy(
+        inference_recommendation_id=RECOMMENDATION_ID,
+    )
+
+    assert model.model_data == IR_MODEL_DATA
+    assert model.image_uri == IR_IMAGE
+    assert model.env == IR_ENV
+
+
+def test_deploy_with_recommendation_id_with_model_name(sagemaker_session):
+    def mock_describe_model(ModelName):
+        if ModelName == IR_MODEL_NAME:
+            return DESCRIBE_MODEL_RESPONSE
+
+    sagemaker_session.sagemaker_client.describe_inference_recommendations_job.return_value = (
+        create_inference_recommendations_job_default_with_model_name()
+    )
+    sagemaker_session.sagemaker_client.describe_model.side_effect = mock_describe_model
+
+    model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session, role=ROLE)
+
+    model.deploy(
+        inference_recommendation_id=RECOMMENDATION_ID,
+    )
+
+    assert model.model_data == IR_MODEL_DATA
+    assert model.image_uri == IR_IMAGE
+    assert model.env == IR_ENV
+
+
+def test_deploy_with_recommendation_id_with_model_pkg_arn_and_compilation(sagemaker_session):
+    sagemaker_session.sagemaker_client.describe_inference_recommendations_job.return_value = (
+        create_inference_recommendations_job_default_with_model_package_arn_and_compilation()
+    )
+    sagemaker_session.sagemaker_client.describe_model_package.side_effect = (
+        mock_describe_model_package
+    )
+
+    model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session, role=ROLE)
+
+    model.deploy(
+        inference_recommendation_id=RECOMMENDATION_ID,
+    )
+
+    assert model.model_data == IR_COMPILATION_MODEL_DATA
+    assert model.image_uri == IR_COMPILATION_IMAGE
+
+
+def test_deploy_with_recommendation_id_with_model_name_and_compilation(sagemaker_session):
+    def mock_describe_compilation_job(CompilationJobName):
+        if CompilationJobName == IR_COMPILATION_JOB_NAME:
+            return DESCRIBE_COMPILATION_JOB_RESPONSE
+
+    sagemaker_session.sagemaker_client.describe_inference_recommendations_job.return_value = (
+        create_inference_recommendations_job_default_with_model_name_and_compilation()
+    )
+    sagemaker_session.sagemaker_client.describe_compilation_job.side_effect = (
+        mock_describe_compilation_job
+    )
+
+    model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session, role=ROLE)
+
+    model.deploy(
+        inference_recommendation_id=RECOMMENDATION_ID,
+    )
+
+    assert model.model_data == IR_COMPILATION_MODEL_DATA
+    assert model.image_uri == IR_COMPILATION_IMAGE
+
+
+def test_deploy_with_not_existed_recommendation_id(sagemaker_session):
+    sagemaker_session.sagemaker_client.describe_inference_recommendations_job.return_value = (
+        create_inference_recommendations_job_default_with_model_name_and_compilation()
+    )
+    sagemaker_session.sagemaker_client.describe_compilation_job.return_value = (
+        DESCRIBE_COMPILATION_JOB_RESPONSE
+    )
+
+    model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session, role=ROLE)
+
+    with pytest.raises(
+        ValueError,
+        match="inference_recommendation_id does not exist in InferenceRecommendations list",
+    ):
+        model.deploy(
+            inference_recommendation_id=NOT_EXISTED_RECOMMENDATION_ID,
         )
 
 
@@ -549,6 +806,7 @@ def test_deploy_customized_volume_size_and_timeout(
         tags=None,
         kms_key=None,
         wait=True,
+        explainer_config_dict=None,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
     )

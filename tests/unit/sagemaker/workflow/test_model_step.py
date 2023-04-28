@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import json
 import os
 
-from mock import Mock, PropertyMock, patch
+from mock import patch
 
 import pytest
 
@@ -43,7 +43,6 @@ from sagemaker.workflow.model_step import (
 )
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
 from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
-from sagemaker.workflow.pipeline_context import PipelineSession
 from sagemaker.workflow.retry import (
     StepRetryPolicy,
     StepExceptionTypeEnum,
@@ -55,12 +54,7 @@ from sagemaker.lambda_helper import Lambda
 from sagemaker.workflow.lambda_step import LambdaStep, LambdaOutput, LambdaOutputTypeEnum
 from tests.unit import DATA_DIR
 from tests.unit.sagemaker.workflow.helpers import CustomStep, ordered
-
-_IMAGE_URI = "fakeimage"
-_REGION = "us-west-2"
-_BUCKET = "my-bucket"
-_ROLE = "DummyRole"
-_INSTANCE_TYPE = "ml.m4.xlarge"
+from tests.unit.sagemaker.workflow.conftest import BUCKET, ROLE, IMAGE_URI, INSTANCE_TYPE
 
 _SAGEMAKER_PROGRAM = SCRIPT_PARAM_NAME.upper()
 _SAGEMAKER_SUBMIT_DIRECTORY = DIR_PARAM_NAME.upper()
@@ -69,58 +63,8 @@ _DIR_NAME = "/opt/ml/model/code"
 _XGBOOST_PATH = os.path.join(DATA_DIR, "xgboost_abalone")
 _TENSORFLOW_PATH = os.path.join(DATA_DIR, "tfs/tfs-test-entrypoint-and-dependencies")
 _REPACK_OUTPUT_KEY_PREFIX = "code-output"
-_MODEL_CODE_LOCATION = f"s3://{_BUCKET}/{_REPACK_OUTPUT_KEY_PREFIX}"
+_MODEL_CODE_LOCATION = f"s3://{BUCKET}/{_REPACK_OUTPUT_KEY_PREFIX}"
 _MODEL_CODE_LOCATION_TRAILING_SLASH = _MODEL_CODE_LOCATION + "/"
-
-
-@pytest.fixture
-def client():
-    """Mock client.
-
-    Considerations when appropriate:
-
-        * utilize botocore.stub.Stubber
-        * separate runtime client from client
-    """
-    client_mock = Mock()
-    client_mock._client_config.user_agent = (
-        "Boto3/1.14.24 Python/3.8.5 Linux/5.4.0-42-generic Botocore/1.17.24 Resource"
-    )
-    return client_mock
-
-
-@pytest.fixture
-def boto_session(client):
-    role_mock = Mock()
-    type(role_mock).arn = PropertyMock(return_value=_ROLE)
-
-    resource_mock = Mock()
-    resource_mock.Role.return_value = role_mock
-
-    session_mock = Mock(region_name=_REGION)
-    session_mock.resource.return_value = resource_mock
-    session_mock.client.return_value = client
-
-    return session_mock
-
-
-@pytest.fixture
-def pipeline_session(boto_session, client):
-    return PipelineSession(
-        boto_session=boto_session,
-        sagemaker_client=client,
-        default_bucket=_BUCKET,
-    )
-
-
-@pytest.fixture
-def sagemaker_session(boto_session, client):
-    return Session(
-        boto_session=boto_session,
-        sagemaker_client=client,
-        sagemaker_runtime_client=client,
-        default_bucket=_BUCKET,
-    )
 
 
 @pytest.fixture
@@ -132,12 +76,12 @@ def model_data_param():
 def model(pipeline_session, model_data_param):
     return Model(
         name="MyModel",
-        image_uri=_IMAGE_URI,
+        image_uri=IMAGE_URI,
         model_data=model_data_param,
         sagemaker_session=pipeline_session,
         entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
         source_dir=f"{DATA_DIR}",
-        role=_ROLE,
+        role=ROLE,
     )
 
 
@@ -212,7 +156,7 @@ def test_register_model_with_runtime_repack(pipeline_session, model_data_param, 
             assert arguments["ModelApprovalStatus"] == "PendingManualApproval"
             assert len(arguments["InferenceSpecification"]["Containers"]) == 1
             container = arguments["InferenceSpecification"]["Containers"][0]
-            assert container["Image"] == _IMAGE_URI
+            assert container["Image"] == IMAGE_URI
             assert container["ModelDataUrl"] == {
                 "Get": f"Steps.{expected_repack_step_name}.ModelArtifacts.S3ModelArtifacts"
             }
@@ -291,7 +235,7 @@ def test_create_model_with_runtime_repack(pipeline_session, model_data_param, mo
             assert step["Name"] == f"MyModelStep-{_CREATE_MODEL_NAME_BASE}"
             arguments = step["Arguments"]
             container = arguments["PrimaryContainer"]
-            assert container["Image"] == _IMAGE_URI
+            assert container["Image"] == IMAGE_URI
             assert container["ModelDataUrl"] == {
                 "Get": f"Steps.{expected_repack_step_name}.ModelArtifacts.S3ModelArtifacts"
             }
@@ -322,13 +266,13 @@ def test_create_pipeline_model_with_runtime_repack(pipeline_session, model_data_
     sparkml_model = SparkMLModel(
         name="MySparkMLModel",
         model_data=model_data_param,
-        role=_ROLE,
+        role=ROLE,
         sagemaker_session=pipeline_session,
         env={"SAGEMAKER_DEFAULT_INVOCATIONS_ACCEPT": "text/csv"},
     )
     # The model need to runtime repack
     ppl_model = PipelineModel(
-        models=[sparkml_model, model], role=_ROLE, sagemaker_session=pipeline_session
+        models=[sparkml_model, model], role=ROLE, sagemaker_session=pipeline_session
     )
     step_args = ppl_model.create(
         instance_type="c4.4xlarge",
@@ -388,7 +332,7 @@ def test_create_pipeline_model_with_runtime_repack(pipeline_session, model_data_
             assert containers[0]["ModelDataUrl"] == {"Get": "Parameters.ModelData"}
             assert containers[1]["Environment"][_SAGEMAKER_PROGRAM] == _SCRIPT_NAME
             assert containers[1]["Environment"][_SAGEMAKER_SUBMIT_DIRECTORY] == _DIR_NAME
-            assert containers[1]["Image"] == _IMAGE_URI
+            assert containers[1]["Image"] == IMAGE_URI
             assert containers[1]["ModelDataUrl"] == {
                 "Get": f"Steps.{expected_repack_step_name}.ModelArtifacts.S3ModelArtifacts"
             }
@@ -417,23 +361,23 @@ def test_register_pipeline_model_with_runtime_repack(pipeline_session, model_dat
     # The model no need to runtime repack, since source_dir is missing
     sparkml_model = SparkMLModel(
         model_data=model_data_param,
-        role=_ROLE,
+        role=ROLE,
         sagemaker_session=pipeline_session,
         env={"SAGEMAKER_DEFAULT_INVOCATIONS_ACCEPT": "text/csv"},
         entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
     )
     # The model need to runtime repack
     model = Model(
-        image_uri=_IMAGE_URI,
+        image_uri=IMAGE_URI,
         model_data=model_data_param,
         sagemaker_session=pipeline_session,
         entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
         source_dir=f"{DATA_DIR}",
-        role=_ROLE,
+        role=ROLE,
         env={"k": "v"},
     )
     model = PipelineModel(
-        models=[sparkml_model, model], role=_ROLE, sagemaker_session=pipeline_session
+        models=[sparkml_model, model], role=ROLE, sagemaker_session=pipeline_session
     )
     step_args = model.register(
         content_types=["text/csv"],
@@ -484,7 +428,7 @@ def test_register_pipeline_model_with_runtime_repack(pipeline_session, model_dat
             assert containers[0]["ModelDataUrl"] == {"Get": "Parameters.ModelData"}
             assert containers[0]["Environment"][_SAGEMAKER_PROGRAM] == _SCRIPT_NAME
             assert "s3://" in containers[0]["Environment"][_SAGEMAKER_SUBMIT_DIRECTORY]
-            assert containers[1]["Image"] == _IMAGE_URI
+            assert containers[1]["Image"] == IMAGE_URI
             assert containers[1]["ModelDataUrl"] == {
                 "Get": f"Steps.{expected_repack_step_name}.ModelArtifacts.S3ModelArtifacts"
             }
@@ -512,11 +456,11 @@ def test_register_model_without_repack(pipeline_session):
     model_name = "MyModel"
     model = Model(
         name=model_name,
-        image_uri=_IMAGE_URI,
+        image_uri=IMAGE_URI,
         model_data=model_data,
         entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
         sagemaker_session=pipeline_session,
-        role=_ROLE,
+        role=ROLE,
     )
     step_args = model.register(
         content_types=["text/csv"],
@@ -542,12 +486,12 @@ def test_register_model_without_repack(pipeline_session):
     assert arguments["ModelApprovalStatus"] == "PendingManualApproval"
     containers = arguments["InferenceSpecification"]["Containers"]
     assert len(containers) == 1
-    assert containers[0]["Image"] == _IMAGE_URI
+    assert containers[0]["Image"] == IMAGE_URI
     assert containers[0]["ModelDataUrl"] == {"Get": "Parameters.ModelData"}
     assert containers[0]["Environment"][_SAGEMAKER_PROGRAM] == _SCRIPT_NAME
     assert (
         containers[0]["Environment"][_SAGEMAKER_SUBMIT_DIRECTORY]
-        == f"s3://{_BUCKET}/{model_name}/sourcedir.tar.gz"
+        == f"s3://{BUCKET}/{model_name}/sourcedir.tar.gz"
     )
     adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
     assert ordered(adjacency_list) == ordered({"MyModelStep-RegisterModel": []})
@@ -559,12 +503,12 @@ def test_create_model_with_compile_time_repack(mock_repack, pipeline_session):
     model_name = "MyModel"
     model = Model(
         name=model_name,
-        image_uri=_IMAGE_URI,
-        model_data=f"s3://{_BUCKET}/model.tar.gz",
+        image_uri=IMAGE_URI,
+        model_data=f"s3://{BUCKET}/model.tar.gz",
         sagemaker_session=pipeline_session,
         entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
         source_dir=f"{DATA_DIR}",
-        role=_ROLE,
+        role=ROLE,
     )
     step_args = model.create(
         instance_type="c4.4xlarge",
@@ -580,9 +524,9 @@ def test_create_model_with_compile_time_repack(mock_repack, pipeline_session):
     assert len(step_dsl_list) == 2
     assert step_dsl_list[0]["Name"] == "MyModelStep-CreateModel"
     arguments = step_dsl_list[0]["Arguments"]
-    assert arguments["PrimaryContainer"]["Image"] == _IMAGE_URI
+    assert arguments["PrimaryContainer"]["Image"] == IMAGE_URI
     assert (
-        arguments["PrimaryContainer"]["ModelDataUrl"] == f"s3://{_BUCKET}/{model_name}/model.tar.gz"
+        arguments["PrimaryContainer"]["ModelDataUrl"] == f"s3://{BUCKET}/{model_name}/model.tar.gz"
     )
     assert arguments["PrimaryContainer"]["Environment"][_SAGEMAKER_PROGRAM] == _SCRIPT_NAME
     assert arguments["PrimaryContainer"]["Environment"][_SAGEMAKER_SUBMIT_DIRECTORY] == _DIR_NAME
@@ -662,7 +606,7 @@ def test_conditional_model_create_and_regis(
             assert arguments["ModelApprovalStatus"] == "PendingManualApproval"
             assert len(arguments["InferenceSpecification"]["Containers"]) == 1
             container = arguments["InferenceSpecification"]["Containers"][0]
-            assert container["Image"] == _IMAGE_URI
+            assert container["Image"] == IMAGE_URI
             assert container["ModelDataUrl"] == {
                 "Get": f"Steps.{expected_repack_step_name}.ModelArtifacts.S3ModelArtifacts"
             }
@@ -672,7 +616,7 @@ def test_conditional_model_create_and_regis(
             assert step["Name"] == f"MyModelStepCreate-{_CREATE_MODEL_NAME_BASE}"
             arguments = step["Arguments"]
             container = arguments["PrimaryContainer"]
-            assert container["Image"] == _IMAGE_URI
+            assert container["Image"] == IMAGE_URI
             assert container["ModelDataUrl"] == {"Get": "Parameters.ModelData"}
             assert not container.get("Environment", {})
         else:
@@ -698,9 +642,9 @@ def test_conditional_model_create_and_regis(
             SKLearnModel(
                 name="MySKModel",
                 model_data="dummy_model_data",
-                image_uri=_IMAGE_URI,
+                image_uri=IMAGE_URI,
                 entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
-                role=_ROLE,
+                role=ROLE,
                 enable_network_isolation=True,
                 code_location=_MODEL_CODE_LOCATION_TRAILING_SLASH,
             ),
@@ -711,9 +655,9 @@ def test_conditional_model_create_and_regis(
                 name="MYXGBoostModel",
                 model_data="dummy_model_data",
                 framework_version="1.11.0",
-                image_uri=_IMAGE_URI,
+                image_uri=IMAGE_URI,
                 entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
-                role=_ROLE,
+                role=ROLE,
                 enable_network_isolation=False,
             ),
             1,
@@ -722,9 +666,9 @@ def test_conditional_model_create_and_regis(
             PyTorchModel(
                 name="MyPyTorchModel",
                 model_data="dummy_model_data",
-                image_uri=_IMAGE_URI,
+                image_uri=IMAGE_URI,
                 entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
-                role=_ROLE,
+                role=ROLE,
                 framework_version="1.5.0",
                 code_location=_MODEL_CODE_LOCATION_TRAILING_SLASH,
             ),
@@ -734,9 +678,9 @@ def test_conditional_model_create_and_regis(
             MXNetModel(
                 name="MyMXNetModel",
                 model_data="dummy_model_data",
-                image_uri=_IMAGE_URI,
+                image_uri=IMAGE_URI,
                 entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
-                role=_ROLE,
+                role=ROLE,
                 framework_version="1.2.0",
             ),
             1,
@@ -745,9 +689,9 @@ def test_conditional_model_create_and_regis(
             HuggingFaceModel(
                 name="MyHuggingFaceModel",
                 model_data="dummy_model_data",
-                image_uri=_IMAGE_URI,
+                image_uri=IMAGE_URI,
                 entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
-                role=_ROLE,
+                role=ROLE,
             ),
             2,
         ),
@@ -755,9 +699,9 @@ def test_conditional_model_create_and_regis(
             TensorFlowModel(
                 name="MyTensorFlowModel",
                 model_data="dummy_model_data",
-                image_uri=_IMAGE_URI,
+                image_uri=IMAGE_URI,
                 entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
-                role=_ROLE,
+                role=ROLE,
                 code_location=_MODEL_CODE_LOCATION_TRAILING_SLASH,
             ),
             2,
@@ -766,9 +710,9 @@ def test_conditional_model_create_and_regis(
             ChainerModel(
                 name="MyChainerModel",
                 model_data="dummy_model_data",
-                image_uri=_IMAGE_URI,
+                image_uri=IMAGE_URI,
                 entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
-                role=_ROLE,
+                role=ROLE,
             ),
             1,
         ),
@@ -789,7 +733,7 @@ def test_create_model_among_different_model_types(test_input, pipeline_session, 
                 )
             else:
                 assert steps[0]["Arguments"]["OutputDataConfig"]["S3OutputPath"] == (
-                    f"s3://{_BUCKET}/{model.name}"
+                    f"s3://{BUCKET}/{model.name}"
                 )
 
     model, expected_step_num = test_input
@@ -828,7 +772,7 @@ def test_create_model_among_different_model_types(test_input, pipeline_session, 
             XGBoostModel(
                 model_data="dummy_model_step",
                 framework_version="1.3-1",
-                role=_ROLE,
+                role=ROLE,
                 entry_point=os.path.join(_XGBOOST_PATH, "inference.py"),
                 enable_network_isolation=True,
             ),
@@ -845,7 +789,7 @@ def test_create_model_among_different_model_types(test_input, pipeline_session, 
             XGBoostModel(
                 model_data="dummy_model_step",
                 framework_version="1.3-1",
-                role=_ROLE,
+                role=ROLE,
                 entry_point=os.path.join(_XGBOOST_PATH, "inference.py"),
             ),
             {
@@ -861,7 +805,7 @@ def test_create_model_among_different_model_types(test_input, pipeline_session, 
             XGBoostModel(
                 model_data="dummy_model_step",
                 framework_version="1.3-1",
-                role=_ROLE,
+                role=ROLE,
                 entry_point=None,
             ),
             {
@@ -876,9 +820,8 @@ def test_create_model_among_different_model_types(test_input, pipeline_session, 
         (
             TensorFlowModel(
                 model_data="dummy_model_step",
-                role=_ROLE,
-                image_uri=_IMAGE_URI,
-                sagemaker_session=pipeline_session,
+                role=ROLE,
+                image_uri=IMAGE_URI,
                 entry_point=os.path.join(_TENSORFLOW_PATH, "inference.py"),
             ),
             {
@@ -893,9 +836,8 @@ def test_create_model_among_different_model_types(test_input, pipeline_session, 
         (
             TensorFlowModel(
                 model_data="dummy_model_step",
-                role=_ROLE,
-                image_uri=_IMAGE_URI,
-                sagemaker_session=pipeline_session,
+                role=ROLE,
+                image_uri=IMAGE_URI,
             ),
             {
                 "expected_step_num": 1,
@@ -941,7 +883,7 @@ def test_request_compare_of_register_model_under_different_sessions(
     _verify_register_model_container_definition(regis_step_arg, expect, dict)
 
     # Get create model package request under Session
-    model.model_data = f"s3://{_BUCKET}"
+    model.model_data = f"s3://{BUCKET}"
     model.sagemaker_session = sagemaker_session
     with patch.object(
         Session, "_intercept_create_request", return_value=dict(ModelPackageArn="arn:aws")
@@ -996,7 +938,7 @@ def test_model_step_with_lambda_property_reference(pipeline_session):
         model_data=lambda_step.properties.Outputs["model_artifact"],
         sagemaker_session=pipeline_session,
         entry_point=f"{DATA_DIR}/{_SCRIPT_NAME}",
-        role=_ROLE,
+        role=ROLE,
     )
 
     step_create_model = ModelStep(name="mymodelstep", step_args=model.create())
@@ -1030,10 +972,10 @@ def test_model_step_with_lambda_property_reference(pipeline_session):
     [
         (
             Processor(
-                image_uri=_IMAGE_URI,
-                role=_ROLE,
+                image_uri=IMAGE_URI,
+                role=ROLE,
                 instance_count=1,
-                instance_type=_INSTANCE_TYPE,
+                instance_type=INSTANCE_TYPE,
             ),
             dict(target_fun="run", func_args={}),
         ),
@@ -1052,10 +994,10 @@ def test_model_step_with_lambda_property_reference(pipeline_session):
         (
             HyperparameterTuner(
                 estimator=Estimator(
-                    role=_ROLE,
+                    role=ROLE,
                     instance_count=1,
-                    instance_type=_INSTANCE_TYPE,
-                    image_uri=_IMAGE_URI,
+                    instance_type=INSTANCE_TYPE,
+                    image_uri=IMAGE_URI,
                 ),
                 objective_metric_name="test:acc",
                 hyperparameter_ranges={"batch-size": IntegerParameter(64, 128)},
@@ -1064,10 +1006,10 @@ def test_model_step_with_lambda_property_reference(pipeline_session):
         ),
         (
             Estimator(
-                role=_ROLE,
+                role=ROLE,
                 instance_count=1,
-                instance_type=_INSTANCE_TYPE,
-                image_uri=_IMAGE_URI,
+                instance_type=INSTANCE_TYPE,
+                image_uri=IMAGE_URI,
             ),
             dict(target_fun="fit", func_args={}),
         ),
@@ -1128,3 +1070,31 @@ def test_pass_in_wrong_type_of_retry_policies(pipeline_session, model):
             ),
         )
     assert "SageMakerJobStepRetryPolicy is not allowed for a create/registe" in str(error.value)
+
+
+def test_register_model_step_with_model_package_name(pipeline_session):
+    model = Model(
+        name="MyModel",
+        image_uri="my-image",
+        model_data="s3://",
+        sagemaker_session=pipeline_session,
+    )
+    step_args = model.register(
+        content_types=["text/csv"],
+        response_types=["text/csv"],
+        inference_instances=["ml.t2.medium", "ml.m5.xlarge"],
+        transform_instances=["ml.m5.xlarge"],
+        model_package_name="model-pkg-name-will-be-popped-out",
+    )
+    regis_model_step = ModelStep(
+        name="MyModelStep",
+        step_args=step_args,
+    )
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[regis_model_step],
+        sagemaker_session=pipeline_session,
+    )
+    steps = json.loads(pipeline.definition())["Steps"]
+    assert len(steps) == 1
+    assert "ModelPackageName" not in steps[0]["Arguments"]

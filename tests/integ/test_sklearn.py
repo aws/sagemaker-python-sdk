@@ -20,7 +20,7 @@ import numpy
 
 from sagemaker.serverless import ServerlessInferenceConfig
 from sagemaker.sklearn import SKLearn, SKLearnModel, SKLearnProcessor
-from sagemaker.utils import sagemaker_timestamp, unique_name_from_base
+from sagemaker.utils import unique_name_from_base
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
@@ -119,7 +119,7 @@ def test_training_with_network_isolation(
     "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
 )
 def test_attach_deploy(sklearn_training_job, sagemaker_session, cpu_instance_type):
-    endpoint_name = "test-sklearn-attach-deploy-{}".format(sagemaker_timestamp())
+    endpoint_name = unique_name_from_base("test-sklearn-attach-deploy")
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         estimator = SKLearn.attach(sklearn_training_job, sagemaker_session=sagemaker_session)
@@ -138,7 +138,7 @@ def test_deploy_model(
     sklearn_latest_version,
     sklearn_latest_py_version,
 ):
-    endpoint_name = "test-sklearn-deploy-model-{}".format(sagemaker_timestamp())
+    endpoint_name = unique_name_from_base("test-sklearn-deploy-model")
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         desc = sagemaker_session.sagemaker_client.describe_training_job(
             TrainingJobName=sklearn_training_job
@@ -162,7 +162,7 @@ def test_deploy_model_with_serverless_inference_config(
     sklearn_latest_version,
     sklearn_latest_py_version,
 ):
-    endpoint_name = "test-sklearn-deploy-model-serverless-{}".format(sagemaker_timestamp())
+    endpoint_name = unique_name_from_base("test-sklearn-deploy-model-serverless")
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         desc = sagemaker_session.sagemaker_client.describe_training_job(
             TrainingJobName=sklearn_training_job
@@ -192,7 +192,7 @@ def test_async_fit(
     sklearn_latest_version,
     sklearn_latest_py_version,
 ):
-    endpoint_name = "test-sklearn-attach-deploy-{}".format(sagemaker_timestamp())
+    endpoint_name = unique_name_from_base("test-sklearn-attach-deploy")
 
     with timeout(minutes=5):
         training_job_name = _run_mnist_training_job(

@@ -22,9 +22,9 @@ import shutil
 from contextlib import contextmanager
 import pytest
 
-from botocore.exceptions import WaiterError
 import pandas as pd
 
+from tests.integ.sagemaker.workflow.helpers import wait_pipeline_execution
 from tests.integ.s3_utils import extract_files_from_s3
 from sagemaker.workflow.model_step import (
     ModelStep,
@@ -588,10 +588,7 @@ def test_one_step_ingestion_pipeline(
             response = execution.describe()
             assert response["PipelineArn"] == create_arn
 
-            try:
-                execution.wait(delay=60, max_attempts=10)
-            except WaiterError:
-                pass
+            wait_pipeline_execution(execution=execution, delay=60, max_attempts=10)
 
             execution_steps = execution.list_steps()
 
@@ -1119,10 +1116,7 @@ def test_model_registration_with_tuning_model(
             rf"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
-        try:
-            execution.wait(delay=30, max_attempts=60)
-        except WaiterError:
-            pass
+        wait_pipeline_execution(execution=execution)
         execution_steps = execution.list_steps()
 
         for step in execution_steps:
@@ -1168,7 +1162,13 @@ def _verify_repack_output(repack_step_dict, sagemaker_session):
 
 
 def test_caching_behavior(
-    pipeline_session, role, cpu_instance_type, pipeline_name, script_dir, athena_dataset_definition
+    pipeline_session,
+    role,
+    cpu_instance_type,
+    pipeline_name,
+    script_dir,
+    athena_dataset_definition,
+    region_name,
 ):
     default_bucket = pipeline_session.default_bucket()
     data_path = os.path.join(DATA_DIR, "workflow")
@@ -1263,8 +1263,6 @@ def test_caching_behavior(
         # create pipeline
         pipeline.create(role)
         definition = json.loads(pipeline.definition())
-        # delete profiler config for assertions as it will contain a timestamp
-        del definition["Steps"][1]["Arguments"]["ProfilerRuleConfigurations"]
 
         # verify input path
         expected_abalone_input_path = f"{pipeline_name}/{step_process.name}" f"/input/abalone_data"
@@ -1289,7 +1287,6 @@ def test_caching_behavior(
 
         # verify no changes
         definition2 = json.loads(pipeline.definition())
-        del definition2["Steps"][1]["Arguments"]["ProfilerRuleConfigurations"]
         assert definition == definition2
 
         # add dummy file to source_dir
@@ -1300,7 +1297,6 @@ def test_caching_behavior(
 
         # verify changes
         definition3 = json.loads(pipeline.definition())
-        del definition3["Steps"][1]["Arguments"]["ProfilerRuleConfigurations"]
         assert definition != definition3
 
     finally:

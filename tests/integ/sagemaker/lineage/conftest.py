@@ -27,6 +27,7 @@ from sagemaker.lineage import (
     artifact,
 )
 from sagemaker.model import ModelPackage
+from sagemaker.utils import retry_with_backoff
 from tests.integ.sagemaker.workflow.test_workflow import (
     test_end_to_end_pipeline_successful_execution,
 )
@@ -44,7 +45,7 @@ from sagemaker.lineage.query import (
 )
 from sagemaker.lineage.lineage_trial_component import LineageTrialComponent
 
-from tests.integ.sagemaker.lineage.helpers import name, names, retry
+from tests.integ.sagemaker.lineage.helpers import name, names
 
 SLEEP_TIME_SECONDS = 1
 SLEEP_TIME_TWO_SECONDS = 2
@@ -401,7 +402,7 @@ def model_obj(sagemaker_session):
 
     yield model
     time.sleep(SLEEP_TIME_SECONDS)
-    retry(lambda: model.delete(disassociate=True), num_attempts=4)
+    retry_with_backoff(lambda: model.delete(disassociate=True), num_attempts=4)
 
 
 @pytest.fixture

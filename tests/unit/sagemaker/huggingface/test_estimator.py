@@ -20,6 +20,8 @@ import pytest
 from mock import MagicMock, Mock, patch
 
 from sagemaker.huggingface import HuggingFace, HuggingFaceModel
+from sagemaker.session_settings import SessionSettings
+
 
 from .huggingface_utils import get_full_gpu_image_uri, GPU_INSTANCE_TYPE, REGION
 
@@ -48,6 +50,7 @@ EXPERIMENT_CONFIG = {
     "ExperimentName": "exp",
     "TrialName": "trial",
     "TrialComponentDisplayName": "tc",
+    "RunName": "rn",
 }
 
 
@@ -62,6 +65,7 @@ def fixture_sagemaker_session():
         local_mode=False,
         s3_resource=None,
         s3_client=None,
+        settings=SessionSettings(),
     )
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
@@ -71,6 +75,8 @@ def fixture_sagemaker_session():
     session.sagemaker_client.list_tags = Mock(return_value=LIST_TAGS_RESULT)
     session.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     session.expand_role = Mock(name="expand_role", return_value=ROLE)
+    # For tests which doesn't verify config file injection, operate with empty config
+    session.sagemaker_config = {}
     return session
 
 
@@ -142,14 +148,8 @@ def _create_train_job(version, base_framework_version):
             "CollectionConfigurations": [],
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
-        "profiler_rule_configs": [
-            {
-                "RuleConfigurationName": "ProfilerReport-1510006209",
-                "RuleEvaluatorImage": "503895931360.dkr.ecr.us-east-1.amazonaws.com/sagemaker-debugger-rules:latest",
-                "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
-            }
-        ],
         "profiler_config": {
+            "DisableProfiler": False,
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
     }

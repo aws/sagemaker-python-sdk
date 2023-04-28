@@ -1,0 +1,14 @@
+SchemaVersion: '1.0'
+SageMaker:
+  FeatureGroup:
+    OnlineStoreConfig:
+      SecurityConfig:
+        # Present in the additional override as well as default config.
+        # Pick the additional config value.
+        KmsKeyId: 'kmskeyid3'
+    OfflineStoreConfig:
+      S3StorageConfig:
+        # Present only in the default config
+        KmsKeyId: 'kmskeyid2'
+    # Present only in the additional config
+    RoleArn: 'arn:aws:iam::555555555555:role/additionalConfigRole'

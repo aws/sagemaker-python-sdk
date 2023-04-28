@@ -40,10 +40,11 @@ ACCOUNTS = {
     "us-east-2": "257758044811",
     "us-gov-west-1": "414596584902",
     "us-iso-east-1": "833128469047",
+    "us-isob-east-1": "281123927165",
     "us-west-1": "746614075791",
     "us-west-2": "246618743249",
 }
-VERSIONS = ["2.2", "2.4"]
+VERSIONS = ["2.2", "2.4", "3.3"]
 
 
 @pytest.mark.parametrize("version", VERSIONS)

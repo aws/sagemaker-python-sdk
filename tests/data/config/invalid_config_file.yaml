@@ -1,0 +1,11 @@
+SchemaVersion: '1.0'
+SageMaker:
+  FeatureGroup:
+    OfflineStoreConfig:
+      S3StorageConfig:
+        KmsKeyId: 'mykmskeyid'
+    OnlineStoreConfig:
+      SecurityConfig:
+        KmsKeyId: 'myotherKmsKeyId'
+    # Role ARN is invalid
+    RoleArn: 'arn:aws123:iam::366:role/IMRole'

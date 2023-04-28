@@ -14,11 +14,14 @@ from __future__ import absolute_import
 
 import copy
 import time
+from typing import Union
 
+import sagemaker
 import pytest
 from mock import Mock, MagicMock
 
 from sagemaker.model_monitor import (
+    ModelMonitor,
     Constraints,
     CronExpressionGenerator,
     DefaultModelMonitor,
@@ -26,10 +29,18 @@ from sagemaker.model_monitor import (
     BatchTransformInput,
     ModelQualityMonitor,
     Statistics,
+    MonitoringOutput,
+)
+from sagemaker.model_monitor.monitoring_alert import (
+    MonitoringAlertSummary,
+    MonitoringAlertHistorySummary,
+    MonitoringAlertActions,
+    ModelDashboardIndicatorAction,
 )
 
 from sagemaker.network import NetworkConfig
 from sagemaker.model_monitor.dataset_format import MonitoringDatasetFormat, DatasetFormat
+from tests.unit import SAGEMAKER_CONFIG_MONITORING_SCHEDULE
 
 REGION = "us-west-2"
 BUCKET_NAME = "mybucket"
@@ -56,7 +67,7 @@ ENABLE_CLOUDWATCH_METRICS = True
 PROBLEM_TYPE = "Regression"
 GROUND_TRUTH_ATTRIBUTE = "TestAttribute"
 
-
+CRON_DAILY = CronExpressionGenerator.daily()
 BASELINING_JOB_NAME = "baselining-job"
 BASELINE_DATASET_PATH = "/my/local/path/baseline.csv"
 PREPROCESSOR_PATH = "/my/local/path/preprocessor.py"
@@ -75,7 +86,9 @@ INTER_CONTAINER_ENCRYPTION_EXCEPTION_MSG = (
 MONITORING_SCHEDULE_DESC = {
     "MonitoringScheduleArn": "arn:aws:monitoring-schedule",
     "MonitoringScheduleName": "my-monitoring-schedule",
+    "MonitoringScheduleStatus": "Completed",
     "MonitoringScheduleConfig": {
+        "ScheduleExpression": CRON_DAILY,
         "MonitoringJobDefinition": {
             "MonitoringOutputConfig": {},
             "MonitoringResources": {
@@ -92,7 +105,7 @@ MONITORING_SCHEDULE_DESC = {
                 ],
             },
             "RoleArn": ROLE,
-        }
+        },
     },
     "EndpointName": "my-endpoint",
 }
@@ -123,6 +136,7 @@ PREPROCESSOR_URI = "s3://my_bucket/preprocessor.py"
 POSTPROCESSOR_URI = "s3://my_bucket/postprocessor.py"
 DATA_CAPTURED_S3_URI = "s3://my-bucket/batch-fraud-detection/on-schedule-monitoring/in/"
 DATASET_FORMAT = MonitoringDatasetFormat.csv(header=False)
+ARGUMENTS = ["test-argument"]
 JOB_OUTPUT_CONFIG = {
     "MonitoringOutputs": [
         {
@@ -273,7 +287,6 @@ NEW_NETWORK_CONFIG = NetworkConfig(
     security_group_ids=NEW_SECURITY_GROUP_IDS,
     subnets=NEW_SUBNETS,
 )
-CRON_DAILY = CronExpressionGenerator.daily()
 NEW_ENDPOINT_NAME = "new-endpoint"
 NEW_GROUND_TRUTH_S3_URI = "s3://bucket/monitoring_captured/groundtruth"
 NEW_START_TIME_OFFSET = "-PT2H"
@@ -363,6 +376,20 @@ NEW_MODEL_QUALITY_JOB_INPUT = {
     },
     "GroundTruthS3Input": {"S3Uri": NEW_GROUND_TRUTH_S3_URI},
 }
+MODEL_QUALITY_MONITOR_JOB_INPUT = {
+    "EndpointInput": {
+        "EndpointName": ENDPOINT_NAME,
+        "LocalPath": ENDPOINT_INPUT_LOCAL_PATH,
+        "S3InputMode": S3_INPUT_MODE,
+        "S3DataDistributionType": S3_DATA_DISTRIBUTION_TYPE,
+        "StartTimeOffset": START_TIME_OFFSET,
+        "EndTimeOffset": END_TIME_OFFSET,
+        "FeaturesAttribute": FEATURES_ATTRIBUTE,
+        "InferenceAttribute": INFERENCE_ATTRIBUTE,
+        "ProbabilityAttribute": PROBABILITY_ATTRIBUTE,
+        "ProbabilityThresholdAttribute": PROBABILITY_THRESHOLD_ATTRIBUTE,
+    },
+}
 NEW_MODEL_QUALITY_JOB_DEFINITION = {
     "ModelQualityAppSpecification": NEW_MODEL_QUALITY_APP_SPECIFICATION,
     "ModelQualityJobInput": NEW_MODEL_QUALITY_JOB_INPUT,
@@ -372,6 +399,28 @@ NEW_MODEL_QUALITY_JOB_DEFINITION = {
     "ModelQualityBaselineConfig": NEW_MODEL_QUALITY_BASELINE_CONFIG,
     "NetworkConfig": NEW_NETWORK_CONFIG._to_request_dict(),
     "StoppingCondition": NEW_STOP_CONDITION,
+}
+
+# For alert API
+MONITORING_ALERT_SUMMARY = {
+    "MonitoringAlertName": "alert-name",
+    "CreationTime": "2022-10-04T13:00:00Z",
+    "LastModifiedTime": "2022-10-04T13:00:00Z",
+    "AlertStatus": "InAlert",
+    "DatapointsToAlert": 1,
+    "EvaluationPeriod": 1,
+    "Actions": {
+        "ModelDashboardIndicator": {
+            "Enabled": True,
+        }
+    },
+}
+
+MONITORING_ALERT_HISTORY_SUMMARY = {
+    "MonitoringScheduleName": "schedule-name",
+    "MonitoringAlertName": "alert-name",
+    "CreationTime": "2022-10-04T13:00:00Z",
+    "AlertStatus": "Ok",
 }
 
 
@@ -394,7 +443,31 @@ def sagemaker_session():
     session_mock.describe_monitoring_schedule = Mock(
         name="describe_monitoring_schedule", return_value=MONITORING_SCHEDULE_DESC
     )
+    session_mock.list_monitoring_alerts = Mock(
+        name="list_monitoring_alerts",
+        return_value={
+            "MonitoringAlertSummaries": [
+                MONITORING_ALERT_SUMMARY,
+            ],
+            "NextToken": "next-token",
+        },
+    )
+    session_mock.list_monitoring_alert_history = Mock(
+        nam="list_monitoring_alert_history",
+        return_value={
+            "MonitoringAlertHistory": [
+                MONITORING_ALERT_HISTORY_SUMMARY,
+            ],
+            "NextToken": "next-token",
+        },
+    )
     session_mock.expand_role.return_value = ROLE
+
+    # For tests which doesn't verify config file injection, operate with empty config
+    session_mock.sagemaker_config = {}
+    session_mock._append_sagemaker_config_tags = Mock(
+        name="_append_sagemaker_config_tags", side_effect=lambda tags, config_path_to_tags: tags
+    )
     return session_mock
 
 
@@ -431,6 +504,25 @@ def data_quality_monitor(sagemaker_session):
         env=ENVIRONMENT,
         tags=TAGS,
         network_config=NETWORK_CONFIG,
+    )
+
+
+@pytest.fixture()
+def model_monitor_arguments(sagemaker_session):
+    return ModelMonitor(
+        role=ROLE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        volume_size_in_gb=VOLUME_SIZE_IN_GB,
+        volume_kms_key=VOLUME_KMS_KEY,
+        output_kms_key=OUTPUT_KMS_KEY,
+        max_runtime_in_seconds=MAX_RUNTIME_IN_SECONDS,
+        base_job_name=BASE_JOB_NAME,
+        sagemaker_session=sagemaker_session,
+        env=ENVIRONMENT,
+        tags=TAGS,
+        network_config=NETWORK_CONFIG,
+        image_uri=DefaultModelMonitor._get_default_image_uri(REGION),
     )
 
 
@@ -523,6 +615,37 @@ def test_data_quality_monitor(data_quality_monitor, sagemaker_session):
     _test_data_quality_monitor_update_schedule(
         data_quality_monitor=data_quality_monitor,
         sagemaker_session=sagemaker_session,
+    )
+
+    # update monitoring alert
+    _test_monitor_update_alert(
+        quality_monitor=data_quality_monitor,
+        sagemaker_session=sagemaker_session,
+        alert_name="my-alert",
+        data_points_to_alert=3,
+        eval_period=10,
+    )
+
+    # list monitoring alerts
+    _test_list_monitoring_alerts(
+        quality_monitor=data_quality_monitor,
+        sagemaker_session=sagemaker_session,
+        next_token="next-token",
+        max_results=100,
+    )
+
+    # list monitoring alert history
+    _test_list_monitoring_alert_history(
+        quality_monitor=data_quality_monitor,
+        sagemaker_session=sagemaker_session,
+        monitoring_alert_name="my-alert",
+        sort_by="CreationTime",
+        sort_order="Descending",
+        status_equals="Ok",
+        creation_time_before="before",
+        creation_time_after="after",
+        next_token="next-token",
+        max_results=100,
     )
 
     # delete schedule
@@ -750,6 +873,56 @@ def _test_data_quality_batch_transform_monitor_create_schedule(
     )
 
 
+def test_data_quality_batch_transform_monitor_create_schedule_with_sagemaker_config_injection(
+    data_quality_monitor,
+    sagemaker_session,
+):
+    from sagemaker.utils import get_config_value
+
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_MONITORING_SCHEDULE
+    sagemaker_session._append_sagemaker_config_tags = Mock(
+        name="_append_sagemaker_config_tags",
+        side_effect=lambda tags, config_path_to_tags: tags
+        + get_config_value(config_path_to_tags, SAGEMAKER_CONFIG_MONITORING_SCHEDULE),
+    )
+
+    sagemaker_session.sagemaker_client.create_monitoring_schedule = Mock()
+    data_quality_monitor.sagemaker_session = sagemaker_session
+
+    # for batch transform input
+    data_quality_monitor.create_monitoring_schedule(
+        batch_transform_input=BatchTransformInput(
+            data_captured_destination_s3_uri=DATA_CAPTURED_S3_URI,
+            destination=SCHEDULE_DESTINATION,
+            dataset_format=MonitoringDatasetFormat.csv(header=False),
+        ),
+        record_preprocessor_script=PREPROCESSOR_URI,
+        post_analytics_processor_script=POSTPROCESSOR_URI,
+        output_s3_uri=OUTPUT_S3_URI,
+        constraints=CONSTRAINTS,
+        statistics=STATISTICS,
+        monitor_schedule_name=SCHEDULE_NAME,
+        schedule_cron_expression=CRON_HOURLY,
+    )
+    expected_tags_from_config = SAGEMAKER_CONFIG_MONITORING_SCHEDULE["SageMaker"][
+        "MonitoringSchedule"
+    ]["Tags"][0]
+
+    sagemaker_session.sagemaker_client.create_monitoring_schedule.assert_called_with(
+        MonitoringScheduleName=SCHEDULE_NAME,
+        MonitoringScheduleConfig={
+            "MonitoringJobDefinitionName": data_quality_monitor.job_definition_name,
+            "MonitoringType": "DataQuality",
+            "ScheduleConfig": {"ScheduleExpression": CRON_HOURLY},
+        },
+        # new tags appended from config
+        Tags=[
+            {"Key": "tag_key_1", "Value": "tag_value_1"},
+            expected_tags_from_config,
+        ],
+    )
+
+
 def _test_data_quality_monitor_update_schedule(data_quality_monitor, sagemaker_session):
     # update schedule
     sagemaker_session.describe_monitoring_schedule = MagicMock()
@@ -778,6 +951,7 @@ def _test_data_quality_monitor_update_schedule(data_quality_monitor, sagemaker_s
     )
     sagemaker_session.sagemaker_client.create_data_quality_job_definition = Mock()
     sagemaker_session.expand_role = Mock(return_value=NEW_ROLE_ARN)
+    sagemaker_session.describe_monitoring_schedule = Mock(return_value=MONITORING_SCHEDULE_DESC)
     old_job_definition_name = data_quality_monitor.job_definition_name
     data_quality_monitor.update_monitoring_schedule(role=NEW_ROLE_ARN)
     expected_arguments = {
@@ -942,6 +1116,105 @@ def _test_data_quality_monitor_delete_schedule(data_quality_monitor, sagemaker_s
     )
 
 
+def _test_monitor_update_alert(
+    quality_monitor: ModelMonitor,
+    sagemaker_session: sagemaker.session.Session,
+    alert_name: str,
+    data_points_to_alert: int,
+    eval_period: int,
+):
+    quality_monitor.update_monitoring_alert(
+        monitoring_alert_name=alert_name,
+        data_points_to_alert=data_points_to_alert,
+        evaluation_period=eval_period,
+    )
+
+    sagemaker_session.update_monitoring_alert.assert_called_with(
+        monitoring_schedule_name=quality_monitor.monitoring_schedule_name,
+        monitoring_alert_name=alert_name,
+        data_points_to_alert=data_points_to_alert,
+        evaluation_period=eval_period,
+    )
+
+
+def _test_list_monitoring_alerts(
+    quality_monitor: Union[DefaultModelMonitor, ModelQualityMonitor],
+    sagemaker_session: sagemaker.session.Session,
+    next_token: str,
+    max_results: int,
+):
+    alerts, next_token = quality_monitor.list_monitoring_alerts(
+        next_token=next_token,
+        max_results=max_results,
+    )
+
+    sagemaker_session.list_monitoring_alerts.assert_called_with(
+        monitoring_schedule_name=quality_monitor.monitoring_schedule_name,
+        next_token=next_token,
+        max_results=max_results,
+    )
+
+    assert len(alerts) == 1
+    assert next_token == "next-token"
+    assert alerts[0] == MonitoringAlertSummary(
+        alert_name=MONITORING_ALERT_SUMMARY["MonitoringAlertName"],
+        creation_time=MONITORING_ALERT_SUMMARY["CreationTime"],
+        last_modified_time=MONITORING_ALERT_SUMMARY["LastModifiedTime"],
+        alert_status=MONITORING_ALERT_SUMMARY["AlertStatus"],
+        data_points_to_alert=MONITORING_ALERT_SUMMARY["DatapointsToAlert"],
+        evaluation_period=MONITORING_ALERT_SUMMARY["EvaluationPeriod"],
+        actions=MonitoringAlertActions(
+            model_dashboard_indicator=ModelDashboardIndicatorAction(
+                enabled=MONITORING_ALERT_SUMMARY["Actions"]["ModelDashboardIndicator"]["Enabled"]
+            )
+        ),
+    )
+
+
+def _test_list_monitoring_alert_history(
+    quality_monitor: Union[DefaultModelMonitor, ModelQualityMonitor],
+    sagemaker_session: sagemaker.session.Session,
+    monitoring_alert_name: str,
+    sort_by: str,
+    sort_order: str,
+    next_token: str,
+    max_results: int,
+    creation_time_before: str,
+    creation_time_after: str,
+    status_equals: str,
+):
+    alert_history, next_token = quality_monitor.list_monitoring_alert_history(
+        monitoring_alert_name=monitoring_alert_name,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        creation_time_before=creation_time_before,
+        creation_time_after=creation_time_after,
+        status_equals=status_equals,
+        next_token=next_token,
+        max_results=max_results,
+    )
+
+    sagemaker_session.list_monitoring_alert_history.assert_called_with(
+        monitoring_schedule_name=quality_monitor.monitoring_schedule_name,
+        monitoring_alert_name=monitoring_alert_name,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        next_token=next_token,
+        max_results=max_results,
+        status_equals=status_equals,
+        creation_time_before=creation_time_before,
+        creation_time_after=creation_time_after,
+    )
+
+    assert len(alert_history) == 1
+    assert next_token == "next-token"
+    assert alert_history[0] == MonitoringAlertHistorySummary(
+        alert_name=MONITORING_ALERT_HISTORY_SUMMARY["MonitoringAlertName"],
+        creation_time=MONITORING_ALERT_HISTORY_SUMMARY["CreationTime"],
+        alert_status=MONITORING_ALERT_HISTORY_SUMMARY["AlertStatus"],
+    )
+
+
 def test_model_quality_monitor_suggest_baseline(sagemaker_session, model_quality_monitor):
     model_quality_monitor.suggest_baseline(
         baseline_dataset=BASELINE_DATASET_PATH,
@@ -986,6 +1259,37 @@ def test_model_quality_monitor(model_quality_monitor, sagemaker_session):
     _test_model_quality_monitor_update_schedule(
         model_quality_monitor=model_quality_monitor,
         sagemaker_session=sagemaker_session,
+    )
+
+    # update monitoring alert
+    _test_monitor_update_alert(
+        quality_monitor=model_quality_monitor,
+        sagemaker_session=sagemaker_session,
+        alert_name="my-alert",
+        data_points_to_alert=3,
+        eval_period=10,
+    )
+
+    # list monitoring alerts
+    _test_list_monitoring_alerts(
+        quality_monitor=model_quality_monitor,
+        sagemaker_session=sagemaker_session,
+        next_token="next-token",
+        max_results=100,
+    )
+
+    # list monitoring alert history
+    _test_list_monitoring_alert_history(
+        quality_monitor=model_quality_monitor,
+        sagemaker_session=sagemaker_session,
+        monitoring_alert_name="my-alert",
+        sort_by="CreationTime",
+        sort_order="Descending",
+        status_equals="Ok",
+        creation_time_before="before",
+        creation_time_after="after",
+        next_token="next-token",
+        max_results=100,
     )
 
     # delete schedule
@@ -1481,3 +1785,98 @@ def test_batch_transform_and_endpoint_input_simultaneous_failure(
         )
     except Exception as e:
         assert "Need to have either batch_transform_input or endpoint_input" in str(e)
+
+
+def test_model_monitor_with_arguments(
+    model_monitor_arguments,
+    sagemaker_session,
+    constraints=None,
+    statistics=None,
+    endpoint_input=EndpointInput(
+        endpoint_name=ENDPOINT_NAME,
+        destination=ENDPOINT_INPUT_LOCAL_PATH,
+        start_time_offset=START_TIME_OFFSET,
+        end_time_offset=END_TIME_OFFSET,
+        features_attribute=FEATURES_ATTRIBUTE,
+        inference_attribute=INFERENCE_ATTRIBUTE,
+        probability_attribute=PROBABILITY_ATTRIBUTE,
+        probability_threshold_attribute=PROBABILITY_THRESHOLD_ATTRIBUTE,
+    ),
+):
+    # for batch transform input
+    model_monitor_arguments.create_monitoring_schedule(
+        constraints=constraints,
+        statistics=statistics,
+        monitor_schedule_name=SCHEDULE_NAME,
+        schedule_cron_expression=CRON_HOURLY,
+        endpoint_input=endpoint_input,
+        arguments=ARGUMENTS,
+        output=MonitoringOutput(source="/opt/ml/processing/output", destination=OUTPUT_S3_URI),
+    )
+
+    sagemaker_session.create_monitoring_schedule.assert_called_with(
+        monitoring_schedule_name="schedule",
+        schedule_expression="cron(0 * ? * * *)",
+        statistics_s3_uri=None,
+        constraints_s3_uri=None,
+        monitoring_inputs=[MODEL_QUALITY_MONITOR_JOB_INPUT],
+        monitoring_output_config=JOB_OUTPUT_CONFIG,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        volume_size_in_gb=VOLUME_SIZE_IN_GB,
+        volume_kms_key=VOLUME_KMS_KEY,
+        image_uri=DEFAULT_IMAGE_URI,
+        entrypoint=None,
+        arguments=ARGUMENTS,
+        record_preprocessor_source_uri=None,
+        post_analytics_processor_source_uri=None,
+        max_runtime_in_seconds=3,
+        environment=ENVIRONMENT,
+        network_config=NETWORK_CONFIG._to_request_dict(),
+        role_arn=ROLE,
+        tags=TAGS,
+    )
+
+
+def test_update_model_monitor_error_with_endpoint_and_batch(
+    model_monitor_arguments,
+    data_quality_monitor,
+    endpoint_input=EndpointInput(
+        endpoint_name=ENDPOINT_NAME,
+        destination=ENDPOINT_INPUT_LOCAL_PATH,
+        start_time_offset=START_TIME_OFFSET,
+        end_time_offset=END_TIME_OFFSET,
+        features_attribute=FEATURES_ATTRIBUTE,
+        inference_attribute=INFERENCE_ATTRIBUTE,
+        probability_attribute=PROBABILITY_ATTRIBUTE,
+        probability_threshold_attribute=PROBABILITY_THRESHOLD_ATTRIBUTE,
+    ),
+    batch_transform_input=BatchTransformInput(
+        data_captured_destination_s3_uri=DATA_CAPTURED_S3_URI,
+        destination=SCHEDULE_DESTINATION,
+        dataset_format=MonitoringDatasetFormat.csv(header=False),
+    ),
+):
+    try:
+        model_monitor_arguments.update_monitoring_schedule(
+            schedule_cron_expression=CRON_HOURLY,
+            endpoint_input=endpoint_input,
+            arguments=ARGUMENTS,
+            output=MonitoringOutput(source="/opt/ml/processing/output", destination=OUTPUT_S3_URI),
+            batch_transform_input=batch_transform_input,
+        )
+    except ValueError as error:
+        assert "Cannot update both batch_transform_input and endpoint_input to update an" in str(
+            error
+        )
+
+    try:
+        data_quality_monitor.update_monitoring_schedule(
+            schedule_cron_expression=CRON_HOURLY,
+            endpoint_input=endpoint_input,
+            batch_transform_input=batch_transform_input,
+        )
+    except ValueError as error:
+        assert "Cannot update both batch_transform_input and endpoint_input to update an" in str(
+            error
+        )

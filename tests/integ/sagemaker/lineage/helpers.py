@@ -15,7 +15,6 @@ from __future__ import absolute_import
 
 import uuid
 from datetime import datetime
-import time
 
 
 def name():
@@ -31,19 +30,6 @@ def names():
         )
         for i in range(3)
     ]
-
-
-def retry(callable, num_attempts=8):
-    assert num_attempts >= 1
-    for i in range(num_attempts):
-        try:
-            return callable()
-        except Exception as ex:
-            if i == num_attempts - 1:
-                raise ex
-            print("Retrying", ex)
-            time.sleep(2**i)
-    assert False, "logic error in retry"
 
 
 def traverse_graph_back(start_arn, sagemaker_session):

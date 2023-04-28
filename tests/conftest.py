@@ -22,7 +22,7 @@ import tests.integ
 from botocore.config import Config
 from packaging.version import Version
 
-from sagemaker import Session, image_uris, utils
+from sagemaker import Session, image_uris, utils, get_execution_role
 from sagemaker.local import LocalSession
 from sagemaker.workflow.pipeline_context import PipelineSession, LocalPipelineSession
 
@@ -46,17 +46,13 @@ NO_P3_REGIONS = [
     "ca-central-1",  # it has p3, but not enough
     "eu-central-1",  # it has p3, but not enough
     "eu-north-1",
-    "eu-west-1",  # it has p3, but not enough
     "eu-west-2",  # it has p3, but not enough
     "eu-west-3",
     "eu-south-1",
     "me-south-1",
     "sa-east-1",
     "us-west-1",
-    "ap-northeast-1",  # it has p3, but not enough
-    "ap-south-1",
-    "ap-northeast-2",  # it has p3, but not enough
-    "us-east-2",  # it has p3, but not enough
+    "ap-south-1",  # no p3 availability
 ]
 
 NO_T2_REGIONS = ["eu-north-1", "ap-east-1", "me-south-1"]
@@ -73,6 +69,7 @@ FRAMEWORKS_FOR_GENERATED_VERSION_FIXTURES = (
     "neo_pytorch",
     "neo_tensorflow",
     "pytorch",
+    "pytorch_training_compiler",
     "ray_pytorch",
     "ray_tensorflow",
     "sklearn",
@@ -85,11 +82,14 @@ FRAMEWORKS_FOR_GENERATED_VERSION_FIXTURES = (
     "huggingface_training_compiler",
 )
 
+PYTORCH_RENEWED_GPU = "ml.g4dn.xlarge"
+
 
 def pytest_addoption(parser):
     parser.addoption("--sagemaker-client-config", action="store", default=None)
     parser.addoption("--sagemaker-runtime-config", action="store", default=None)
     parser.addoption("--boto-config", action="store", default=None)
+    parser.addoption("--sagemaker-metrics-config", action="store", default=None)
 
 
 def pytest_configure(config):
@@ -113,6 +113,12 @@ def sagemaker_runtime_config(request):
 
 
 @pytest.fixture(scope="session")
+def sagemaker_metrics_config(request):
+    config = request.config.getoption("--sagemaker-metrics-config")
+    return json.loads(config) if config else None
+
+
+@pytest.fixture(scope="session")
 def boto_session(request):
     config = request.config.getoption("--boto-config")
     if config:
@@ -132,7 +138,9 @@ def region(boto_session):
 
 
 @pytest.fixture(scope="session")
-def sagemaker_session(sagemaker_client_config, sagemaker_runtime_config, boto_session):
+def sagemaker_session(
+    sagemaker_client_config, sagemaker_runtime_config, boto_session, sagemaker_metrics_config
+):
     sagemaker_client_config.setdefault("config", Config(retries=dict(max_attempts=10)))
     sagemaker_client = (
         boto_session.client("sagemaker", **sagemaker_client_config)
@@ -144,11 +152,18 @@ def sagemaker_session(sagemaker_client_config, sagemaker_runtime_config, boto_se
         if sagemaker_runtime_config
         else None
     )
+    metrics_client = (
+        boto_session.client("sagemaker-metrics", **sagemaker_metrics_config)
+        if sagemaker_metrics_config
+        else None
+    )
 
     return Session(
         boto_session=boto_session,
         sagemaker_client=sagemaker_client,
         sagemaker_runtime_client=runtime_client,
+        sagemaker_metrics_client=metrics_client,
+        sagemaker_config={},
     )
 
 
@@ -165,6 +180,11 @@ def pipeline_session(boto_session):
 @pytest.fixture(scope="session")
 def local_pipeline_session(boto_session):
     return LocalPipelineSession(boto_session=boto_session)
+
+
+@pytest.fixture(scope="session")
+def execution_role(sagemaker_session):
+    return get_execution_role(sagemaker_session)
 
 
 @pytest.fixture(scope="module")
@@ -220,22 +240,30 @@ def mxnet_eia_latest_py_version():
 
 @pytest.fixture(scope="module", params=["py2", "py3"])
 def pytorch_training_py_version(pytorch_training_version, request):
-    if Version(pytorch_training_version) < Version("1.5.0"):
-        return request.param
+    if Version(pytorch_training_version) >= Version("2.0"):
+        return "py310"
+    elif Version(pytorch_training_version) >= Version("1.13"):
+        return "py39"
     elif Version(pytorch_training_version) >= Version("1.9"):
         return "py38"
-    else:
+    elif Version(pytorch_training_version) >= Version("1.5.0"):
         return "py3"
+    else:
+        return request.param
 
 
 @pytest.fixture(scope="module", params=["py2", "py3"])
 def pytorch_inference_py_version(pytorch_inference_version, request):
-    if Version(pytorch_inference_version) < Version("1.4.0"):
-        return request.param
+    if Version(pytorch_inference_version) >= Version("2.0"):
+        return "py310"
+    elif Version(pytorch_inference_version) >= Version("1.13"):
+        return "py39"
     elif Version(pytorch_inference_version) >= Version("1.9"):
         return "py38"
-    else:
+    elif Version(pytorch_inference_version) >= Version("1.4.0"):
         return "py3"
+    else:
+        return request.param
 
 
 @pytest.fixture(scope="module")
@@ -247,11 +275,18 @@ def huggingface_pytorch_training_version(huggingface_training_version):
 
 @pytest.fixture(scope="module")
 def huggingface_pytorch_training_py_version(huggingface_pytorch_training_version):
-    return "py38" if Version(huggingface_pytorch_training_version) >= Version("1.9") else "py36"
+    if Version(huggingface_pytorch_training_version) >= Version("1.13"):
+        return "py39"
+    elif Version(huggingface_pytorch_training_version) >= Version("1.9"):
+        return "py38"
+    else:
+        return "py36"
 
 
 @pytest.fixture(scope="module")
-def huggingface_training_compiler_pytorch_version(huggingface_training_compiler_version):
+def huggingface_training_compiler_pytorch_version(
+    huggingface_training_compiler_version,
+):
     versions = _huggingface_base_fm_version(
         huggingface_training_compiler_version, "pytorch", "huggingface_training_compiler"
     )
@@ -264,7 +299,9 @@ def huggingface_training_compiler_pytorch_version(huggingface_training_compiler_
 
 
 @pytest.fixture(scope="module")
-def huggingface_training_compiler_tensorflow_version(huggingface_training_compiler_version):
+def huggingface_training_compiler_tensorflow_version(
+    huggingface_training_compiler_version,
+):
     versions = _huggingface_base_fm_version(
         huggingface_training_compiler_version, "tensorflow", "huggingface_training_compiler"
     )
@@ -288,24 +325,44 @@ def huggingface_training_compiler_tensorflow_py_version(
 
 
 @pytest.fixture(scope="module")
-def huggingface_training_compiler_pytorch_py_version(huggingface_training_compiler_pytorch_version):
+def huggingface_training_compiler_pytorch_py_version(
+    huggingface_training_compiler_pytorch_version,
+):
     return "py38"
 
 
 @pytest.fixture(scope="module")
-def huggingface_pytorch_latest_training_py_version(huggingface_training_pytorch_latest_version):
-    return (
-        "py38" if Version(huggingface_training_pytorch_latest_version) >= Version("1.9") else "py36"
-    )
+def huggingface_pytorch_latest_training_py_version(
+    huggingface_training_pytorch_latest_version,
+):
+    if Version(huggingface_training_pytorch_latest_version) >= Version("1.13"):
+        return "py39"
+    elif Version(huggingface_training_pytorch_latest_version) >= Version("1.9"):
+        return "py38"
+    else:
+        return "py36"
 
 
 @pytest.fixture(scope="module")
-def huggingface_pytorch_latest_inference_py_version(huggingface_inference_pytorch_latest_version):
-    return (
-        "py38"
-        if Version(huggingface_inference_pytorch_latest_version) >= Version("1.9")
-        else "py36"
-    )
+def pytorch_training_compiler_py_version(
+    pytorch_training_compiler_version,
+):
+    return "py39" if Version(pytorch_training_compiler_version) > Version("1.12") else "py38"
+
+
+# TODO: Create a fixture to get the latest py version from TRCOMP image_uri.
+
+
+@pytest.fixture(scope="module")
+def huggingface_pytorch_latest_inference_py_version(
+    huggingface_inference_pytorch_latest_version,
+):
+    if Version(huggingface_inference_pytorch_latest_version) >= Version("1.13"):
+        return "py39"
+    elif Version(huggingface_inference_pytorch_latest_version) >= Version("1.9"):
+        return "py38"
+    else:
+        return "py36"
 
 
 @pytest.fixture(scope="module")
@@ -433,7 +490,9 @@ def _tf_py_version(tf_version, request):
         return "py37"
     if Version("2.6") <= version < Version("2.8"):
         return "py38"
-    return "py39"
+    if Version("2.8") <= version < Version("2.12"):
+        return "py39"
+    return "py310"
 
 
 @pytest.fixture(scope="module")
@@ -506,6 +565,28 @@ def gpu_instance_type(sagemaker_session, request):
     region = sagemaker_session.boto_session.region_name
     if region in NO_P3_REGIONS:
         return "ml.p2.xlarge"
+    else:
+        return "ml.p3.2xlarge"
+
+
+@pytest.fixture()
+def gpu_pytorch_instance_type(sagemaker_session, request):
+    fw_version = None
+    for pytorch_version_fixture in [
+        "pytorch_inference_version",
+        "huggingface_training_pytorch_latest_version",
+        "huggingface_inference_pytorch_latest_version",
+    ]:
+        if pytorch_version_fixture in request.fixturenames:
+            fw_version = request.getfixturevalue(pytorch_version_fixture)
+    if fw_version is None:
+        fw_version = request.param
+    region = sagemaker_session.boto_session.region_name
+    if region in NO_P3_REGIONS:
+        if Version(fw_version) >= Version("1.13"):
+            return PYTORCH_RENEWED_GPU
+        else:
+            return "ml.p2.xlarge"
     else:
         return "ml.p3.2xlarge"
 

@@ -41,7 +41,12 @@ import boto3
 from botocore.config import Config
 from pathos.multiprocessing import ProcessingPool
 
-from sagemaker import Session
+from sagemaker.config import (
+    FEATURE_GROUP_ROLE_ARN_PATH,
+    FEATURE_GROUP_OFFLINE_STORE_KMS_KEY_ID_PATH,
+    FEATURE_GROUP_ONLINE_STORE_KMS_KEY_ID_PATH,
+)
+from sagemaker.session import Session
 from sagemaker.feature_store.feature_definition import (
     FeatureDefinition,
     FeatureTypeEnum,
@@ -54,7 +59,10 @@ from sagemaker.feature_store.inputs import (
     DataCatalogConfig,
     FeatureValue,
     FeatureParameter,
+    TableFormatEnum,
+    DeletionModeEnum,
 )
+from sagemaker.utils import resolve_value_from_config
 
 logger = logging.getLogger(__name__)
 
@@ -164,6 +172,7 @@ class IngestionManagerPandas:
         feature_group_name (str): name of the Feature Group.
         sagemaker_fs_runtime_client_config (Config): instance of the Config class
             for boto calls.
+        sagemaker_session (Session): session instance to perform boto calls.
         data_frame (DataFrame): pandas DataFrame to be ingested to the given feature group.
         max_workers (int): number of threads to create.
         max_processes (int): number of processes to create. Each process spawns
@@ -173,7 +182,8 @@ class IngestionManagerPandas:
     """
 
     feature_group_name: str = attr.ib()
-    sagemaker_fs_runtime_client_config: Config = attr.ib()
+    sagemaker_fs_runtime_client_config: Config = attr.ib(default=None)
+    sagemaker_session: Session = attr.ib(default=None)
     max_workers: int = attr.ib(default=1)
     max_processes: int = attr.ib(default=1)
     profile_name: str = attr.ib(default=None)
@@ -209,29 +219,20 @@ class IngestionManagerPandas:
         if "max_attempts" not in retry_config and "total_max_attempts" not in retry_config:
             client_config = copy.deepcopy(client_config)
             client_config.retries = {"max_attempts": 10, "mode": "standard"}
-        sagemaker_featurestore_runtime_client = boto3.Session(profile_name=profile_name).client(
+        sagemaker_fs_runtime_client = boto3.Session(profile_name=profile_name).client(
             service_name="sagemaker-featurestore-runtime", config=client_config
         )
 
         logger.info("Started ingesting index %d to %d", start_index, end_index)
         failed_rows = list()
         for row in data_frame[start_index:end_index].itertuples():
-            record = [
-                FeatureValue(
-                    feature_name=data_frame.columns[index - 1],
-                    value_as_string=str(row[index]),
-                )
-                for index in range(1, len(row))
-                if pd.notna(row[index])
-            ]
-            try:
-                sagemaker_featurestore_runtime_client.put_record(
-                    FeatureGroupName=feature_group_name,
-                    Record=[value.to_dict() for value in record],
-                )
-            except Exception as e:  # pylint: disable=broad-except
-                logger.error("Failed to ingest row %d: %s", row[0], e)
-                failed_rows.append(row[0])
+            IngestionManagerPandas._ingest_row(
+                data_frame=data_frame,
+                row=row,
+                feature_group_name=feature_group_name,
+                sagemaker_fs_runtime_client=sagemaker_fs_runtime_client,
+                failed_rows=failed_rows,
+            )
         return failed_rows
 
     @property
@@ -266,6 +267,69 @@ class IngestionManagerPandas:
         self._failed_indices = [
             failed_index for failed_indices in results for failed_index in failed_indices
         ]
+
+        if len(self._failed_indices) > 0:
+            raise IngestionError(
+                self._failed_indices,
+                f"Failed to ingest some data into FeatureGroup {self.feature_group_name}",
+            )
+
+    @staticmethod
+    def _ingest_row(
+        data_frame: DataFrame,
+        row: int,
+        feature_group_name: str,
+        sagemaker_fs_runtime_client: Session,
+        failed_rows: List[int],
+    ):
+        """Ingest a single Dataframe row into FeatureStore.
+
+        Args:
+            data_frame (DataFrame): source DataFrame to be ingested.
+            row (int): current row that is being ingested
+            feature_group_name (str): name of the Feature Group.
+            sagemaker_featurestore_runtime_client (Session): session instance to perform boto calls.
+            failed_rows (List[int]): list of indices from the data frame for which ingestion failed.
+
+
+        Returns:
+            int of row indices that failed to be ingested.
+        """
+        record = [
+            FeatureValue(
+                feature_name=data_frame.columns[index - 1],
+                value_as_string=str(row[index]),
+            )
+            for index in range(1, len(row))
+            if pd.notna(row[index])
+        ]
+        try:
+            sagemaker_fs_runtime_client.put_record(
+                FeatureGroupName=feature_group_name,
+                Record=[value.to_dict() for value in record],
+            )
+        except Exception as e:  # pylint: disable=broad-except
+            logger.error("Failed to ingest row %d: %s", row[0], e)
+            failed_rows.append(row[0])
+
+    def _run_single_process_single_thread(self, data_frame: DataFrame):
+        """Ingest a utilizing single process and single thread.
+
+        Args:
+            data_frame (DataFrame): source DataFrame to be ingested.
+        """
+        logger.info("Started ingesting index %d to %d")
+        failed_rows = list()
+        sagemaker_fs_runtime_client = self.sagemaker_session.sagemaker_featurestore_runtime_client
+        for row in data_frame.itertuples():
+            IngestionManagerPandas._ingest_row(
+                data_frame=data_frame,
+                row=row,
+                feature_group_name=self.feature_group_name,
+                sagemaker_fs_runtime_client=sagemaker_fs_runtime_client,
+                failed_rows=failed_rows,
+            )
+        self._failed_indices = failed_rows
 
         if len(self._failed_indices) > 0:
             raise IngestionError(
@@ -364,12 +428,10 @@ class IngestionManagerPandas:
         failed_indices = list()
         for future in as_completed(futures, timeout=timeout):
             start, end = futures[future]
-            result = future.result()
-            if result:
-                logger.error("Failed to ingest row %d to %d", start, end)
-            else:
+            failed_rows = future.result()
+            if not failed_rows:
                 logger.info("Successfully ingested row %d to %d", start, end)
-            failed_indices += result
+            failed_indices += failed_rows
 
         executor.shutdown(wait=False)
 
@@ -384,7 +446,10 @@ class IngestionManagerPandas:
             timeout (Union[int, float]): ``concurrent.futures.TimeoutError`` will be raised
                 if timeout is reached.
         """
-        self._run_multi_process(data_frame=data_frame, wait=wait, timeout=timeout)
+        if self.max_workers == 1 and self.max_processes == 1 and self.profile_name is None:
+            self._run_single_process_single_thread(data_frame=data_frame)
+        else:
+            self._run_multi_process(data_frame=data_frame, wait=wait, timeout=timeout)
 
 
 class IngestionError(Exception):
@@ -415,11 +480,12 @@ class FeatureGroup:
     Attributes:
         name (str): name of the FeatureGroup instance.
         sagemaker_session (Session): session instance to perform boto calls.
+            If None, a new Session will be created.
         feature_definitions (Sequence[FeatureDefinition]): list of FeatureDefinitions.
     """
 
     name: str = attr.ib(factory=str)
-    sagemaker_session: Session = attr.ib(default=Session)
+    sagemaker_session: Session = attr.ib(factory=Session)
     feature_definitions: Sequence[FeatureDefinition] = attr.ib(factory=list)
 
     _INTEGER_TYPES = [
@@ -434,13 +500,14 @@ class FeatureGroup:
         "uint64",
     ]
     _FLOAT_TYPES = ["float_", "float16", "float32", "float64"]
-    _DTYPE_TO_FEATURE_DEFINITION_CLS_MAP: Dict[str, FeatureTypeEnum] = {
+    DTYPE_TO_FEATURE_DEFINITION_CLS_MAP: Dict[str, FeatureTypeEnum] = {
         type: FeatureTypeEnum.INTEGRAL for type in _INTEGER_TYPES
     }
-    _DTYPE_TO_FEATURE_DEFINITION_CLS_MAP.update(
+    DTYPE_TO_FEATURE_DEFINITION_CLS_MAP.update(
         {type: FeatureTypeEnum.FRACTIONAL for type in _FLOAT_TYPES}
     )
-    _DTYPE_TO_FEATURE_DEFINITION_CLS_MAP["string"] = FeatureTypeEnum.STRING
+    DTYPE_TO_FEATURE_DEFINITION_CLS_MAP["string"] = FeatureTypeEnum.STRING
+    DTYPE_TO_FEATURE_DEFINITION_CLS_MAP["object"] = FeatureTypeEnum.STRING
 
     _FEATURE_TYPE_TO_DDL_DATA_TYPE_MAP = {
         FeatureTypeEnum.INTEGRAL.value: "INT",
@@ -453,7 +520,7 @@ class FeatureGroup:
         s3_uri: Union[str, bool],
         record_identifier_name: str,
         event_time_feature_name: str,
-        role_arn: str,
+        role_arn: str = None,
         online_store_kms_key_id: str = None,
         enable_online_store: bool = False,
         offline_store_kms_key_id: str = None,
@@ -461,6 +528,7 @@ class FeatureGroup:
         data_catalog_config: DataCatalogConfig = None,
         description: str = None,
         tags: List[Dict[str, str]] = None,
+        table_format: TableFormatEnum = None,
     ) -> Dict[str, Any]:
         """Create a SageMaker FeatureStore FeatureGroup.
 
@@ -470,9 +538,9 @@ class FeatureGroup:
             record_identifier_name (str): name of the record identifier feature.
             event_time_feature_name (str): name of the event time feature.
             role_arn (str): ARN of the role used to call CreateFeatureGroup.
-            online_store_kms_key_id (str): KMS key id for online store.
-            enable_online_store (bool): whether to enable online store or not.
-            offline_store_kms_key_id (str): KMS key id for offline store.
+            online_store_kms_key_id (str): KMS key ARN for online store (default: None).
+            enable_online_store (bool): whether to enable online store or not (default: False).
+            offline_store_kms_key_id (str): KMS key ARN for offline store (default: None).
                 If a KMS encryption key is not specified, SageMaker encrypts all data at
                 rest using the default AWS KMS key. By defining your bucket-level key for
                 SSE, you can reduce the cost of AWS KMS requests.
@@ -480,14 +548,36 @@ class FeatureGroup:
                 `Bucket Key
                 <https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-key.html>`_
                 in the Amazon S3 User Guide.
-            disable_glue_table_creation (bool): whether to turn off Glue table creation no not.
-            data_catalog_config (DataCatalogConfig): configuration for Metadata store.
-            description (str): description of the FeatureGroup.
-            tags (List[Dict[str, str]]): list of tags for labeling a FeatureGroup.
+            disable_glue_table_creation (bool): whether to turn off Glue table creation
+                or not (default: False).
+            data_catalog_config (DataCatalogConfig): configuration for
+                Metadata store (default: None).
+            description (str): description of the FeatureGroup (default: None).
+            tags (List[Dict[str, str]]): list of tags for labeling a FeatureGroup (default: None).
+            table_format (TableFormatEnum): format of the offline store table (default: None).
 
         Returns:
             Response dict from service.
         """
+        role_arn = resolve_value_from_config(
+            role_arn, FEATURE_GROUP_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
+        )
+        offline_store_kms_key_id = resolve_value_from_config(
+            offline_store_kms_key_id,
+            FEATURE_GROUP_OFFLINE_STORE_KMS_KEY_ID_PATH,
+            sagemaker_session=self.sagemaker_session,
+        )
+        online_store_kms_key_id = resolve_value_from_config(
+            online_store_kms_key_id,
+            FEATURE_GROUP_ONLINE_STORE_KMS_KEY_ID_PATH,
+            sagemaker_session=self.sagemaker_session,
+        )
+        if not role_arn:
+            # Originally IAM role was a required parameter.
+            # Now we marked that as Optional because we can fetch it from SageMakerConfig,
+            # Because of marking that parameter as optional, we should validate if it is None, even
+            # after fetching the config.
+            raise ValueError("An AWS IAM role is required to create a Feature Group.")
         create_feature_store_args = dict(
             feature_group_name=self.name,
             record_identifier_name=record_identifier_name,
@@ -518,6 +608,7 @@ class FeatureGroup:
                 s3_storage_config=s3_storage_config,
                 disable_glue_table_creation=disable_glue_table_creation,
                 data_catalog_config=data_catalog_config,
+                table_format=table_format,
             )
             create_feature_store_args.update(
                 {"offline_store_config": offline_store_config.to_dict()}
@@ -600,6 +691,32 @@ class FeatureGroup:
             feature_group_name=self.name, feature_name=feature_name
         )
 
+    def list_tags(self) -> Sequence[Dict[str, str]]:
+        """List all tags for a feature group.
+
+        Returns:
+            list of key, value pair of the tags.
+        """
+
+        feature_group_arn = self.sagemaker_session.describe_feature_group(
+            feature_group_name=self.name
+        ).get("FeatureGroupArn")
+
+        return self.sagemaker_session.list_tags(resource_arn=feature_group_arn)
+
+    def list_parameters_for_feature_metadata(self, feature_name: str) -> Sequence[Dict[str, str]]:
+        """List all parameters for a feature metadata.
+
+        Args:
+            feature_name (str): name of the feature.
+        Returns:
+            list of key, value pair of the parameters.
+        """
+
+        return self.sagemaker_session.describe_feature_metadata(
+            feature_group_name=self.name, feature_name=feature_name
+        ).get("Parameters")
+
     def load_feature_definitions(
         self,
         data_frame: DataFrame,
@@ -623,7 +740,7 @@ class FeatureGroup:
         """
         feature_definitions = []
         for column in data_frame:
-            feature_type = self._DTYPE_TO_FEATURE_DEFINITION_CLS_MAP.get(
+            feature_type = self.DTYPE_TO_FEATURE_DEFINITION_CLS_MAP.get(
                 str(data_frame[column].dtype), None
             )
             if feature_type:
@@ -638,6 +755,23 @@ class FeatureGroup:
         self.feature_definitions = feature_definitions
         return self.feature_definitions
 
+    def get_record(
+        self, record_identifier_value_as_string: str, feature_names: Sequence[str] = None
+    ) -> Sequence[Dict[str, str]]:
+        """Get a single record in a FeatureGroup
+
+        Args:
+            record_identifier_value_as_string (String):
+                a String representing the value of the record identifier.
+            feature_names (Sequence[String]):
+                a list of Strings representing feature names.
+        """
+        return self.sagemaker_session.get_record(
+            record_identifier_value_as_string=record_identifier_value_as_string,
+            feature_group_name=self.name,
+            feature_names=feature_names,
+        ).get("Record")
+
     def put_record(self, record: Sequence[FeatureValue]):
         """Put a single record in the FeatureGroup.
 
@@ -646,6 +780,30 @@ class FeatureGroup:
         """
         return self.sagemaker_session.put_record(
             feature_group_name=self.name, record=[value.to_dict() for value in record]
+        )
+
+    def delete_record(
+        self,
+        record_identifier_value_as_string: str,
+        event_time: str,
+        deletion_mode: DeletionModeEnum = DeletionModeEnum.SOFT_DELETE,
+    ):
+        """Delete a single record from a FeatureGroup.
+
+        Args:
+            record_identifier_value_as_string (String):
+                a String representing the value of the record identifier.
+            event_time (String):
+                a timestamp format String indicating when the deletion event occurred.
+            deletion_mode (DeletionModeEnum):
+                deletion mode for deleting record. (default: DetectionModeEnum.SOFT_DELETE)
+        """
+
+        return self.sagemaker_session.delete_record(
+            feature_group_name=self.name,
+            record_identifier_value_as_string=record_identifier_value_as_string,
+            event_time=event_time,
+            deletion_mode=deletion_mode.value,
         )
 
     def ingest(
@@ -659,20 +817,25 @@ class FeatureGroup:
     ) -> IngestionManagerPandas:
         """Ingest the content of a pandas DataFrame to feature store.
 
-        ``max_worker`` number of thread will be created to work on different partitions of
-        the ``data_frame`` in parallel.
+        ``max_worker`` the number of threads created to work on different partitions of the
+        ``data_frame`` in parallel.
 
-        ``max_processes`` number of processes will be created to work on different partitions
-        of the ``data_frame`` in parallel, each with ``max_worker`` threads.
+        ``max_processes`` the number of processes will be created to work on different
+        partitions of the ``data_frame`` in parallel, each with ``max_worker`` threads.
 
-        The ingest function will attempt to ingest all records in the data frame. If ``wait``
-        is True, then an exception is thrown after all records have been processed. If ``wait``
-        is False, then a later call to the returned instance IngestionManagerPandas' ``wait()``
-        function will throw an exception.
+        The ingest function attempts to ingest all records in the data frame. SageMaker
+        Feature Store throws an exception if it fails to ingest any records.
 
-        Zero based indices of rows that failed to be ingested can be found in the exception.
-        They can also be found from the IngestionManagerPandas' ``failed_rows`` function after
-        the exception is thrown.
+        If ``wait`` is ``True``, Feature Store runs the ``ingest`` function synchronously.
+        You receive an ``IngestionError`` if there are any records that can't be ingested.
+        If ``wait`` is ``False``, Feature Store runs the ``ingest`` function asynchronously.
+
+        Instead of setting ``wait`` to ``True`` in the ``ingest`` function, you can invoke
+        the ``wait`` function on the returned instance of ``IngestionManagerPandas`` to run
+        the ``ingest`` function synchronously.
+
+        To access the rows that failed to ingest, set ``wait`` to ``False``. The
+        ``IngestionError.failed_rows`` object saves all of the rows that failed to ingest.
 
         `profile_name` argument is an optional one. It will use the default credential if None is
         passed. This `profile_name` is used in the sagemaker_featurestore_runtime client only. See
@@ -699,8 +862,12 @@ class FeatureGroup:
         if max_workers <= 0:
             raise RuntimeError("max_workers must be greater than 0.")
 
+        if profile_name is None and self.sagemaker_session.boto_session.profile_name != "default":
+            profile_name = self.sagemaker_session.boto_session.profile_name
+
         manager = IngestionManagerPandas(
             feature_group_name=self.name,
+            sagemaker_session=self.sagemaker_session,
             sagemaker_fs_runtime_client_config=self.sagemaker_session.sagemaker_featurestore_runtime_client.meta.config,
             max_workers=max_workers,
             max_processes=max_processes,

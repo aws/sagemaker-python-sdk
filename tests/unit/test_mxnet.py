@@ -28,6 +28,7 @@ from sagemaker.model_metrics import FileSource, MetricsSource, ModelMetrics
 from sagemaker.mxnet import defaults
 from sagemaker.mxnet import MXNet
 from sagemaker.mxnet import MXNetPredictor, MXNetModel
+from sagemaker.session_settings import SessionSettings
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_NAME = "dummy_script.py"
@@ -62,6 +63,7 @@ EXPERIMENT_CONFIG = {
     "ExperimentName": "exp",
     "TrialName": "trial",
     "TrialComponentDisplayName": "tc",
+    "RunName": "rn",
 }
 
 MODEL_PKG_RESPONSE = {"ModelPackageArn": "arn:model-pkg-arn"}
@@ -82,6 +84,7 @@ def sagemaker_session():
         local_mode=False,
         s3_resource=None,
         s3_client=None,
+        settings=SessionSettings(),
     )
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
@@ -97,6 +100,9 @@ def sagemaker_session():
     session.wait_for_compilation_job = Mock(return_value=describe_compilation)
     session.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     session.expand_role = Mock(name="expand_role", return_value=ROLE)
+
+    # For tests which doesn't verify config file injection, operate with empty config
+    session.sagemaker_config = {}
     return session
 
 
@@ -159,14 +165,8 @@ def _get_train_args(job_name):
             "CollectionConfigurations": [],
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
-        "profiler_rule_configs": [
-            {
-                "RuleConfigurationName": "ProfilerReport-1510006209",
-                "RuleEvaluatorImage": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.4.0-cpu-py3",
-                "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
-            }
-        ],
         "profiler_config": {
+            "DisableProfiler": False,
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
     }

@@ -42,7 +42,6 @@ from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.sklearn import SKLearn
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.utils import sagemaker_timestamp
-from sagemaker.workflow import airflow as sm_airflow
 from sagemaker.xgboost import XGBoost
 from tests.integ import datasets, DATA_DIR
 from tests.integ.record_set import prepare_record_set_from_local_files
@@ -54,16 +53,22 @@ for _ in retries(
     seconds_to_sleep=6,
 ):
     try:
-        from airflow import utils
+        import sagemaker.workflow.airflow as sm_airflow
+        import airflow.utils as utils
         from airflow import DAG
-        from airflow.providers.amazon.aws.operators.sagemaker import SageMakerTrainingOperator
-        from airflow.providers.amazon.aws.operators.sagemaker_transform import (
+        from airflow.providers.amazon.aws.operators.sagemaker import (
+            SageMakerTrainingOperator,
             SageMakerTransformOperator,
         )
 
         break
     except ParsingError:
         pass
+    except ValueError as ve:
+        if "Unable to configure formatter" in str(ve):
+            print(f"Received: {ve}")
+        else:
+            raise ve
 
 PYTORCH_MNIST_DIR = os.path.join(DATA_DIR, "pytorch_mnist")
 PYTORCH_MNIST_SCRIPT = os.path.join(PYTORCH_MNIST_DIR, "mnist.py")

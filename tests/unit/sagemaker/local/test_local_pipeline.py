@@ -135,16 +135,24 @@ def boto_session(client):
 
 @pytest.fixture
 def pipeline_session(boto_session, client):
-    return PipelineSession(
+    pipeline_session_mock = PipelineSession(
         boto_session=boto_session,
         sagemaker_client=client,
         default_bucket=BUCKET,
     )
+    # For tests which doesn't verify config file injection, operate with empty config
+
+    pipeline_session.sagemaker_config = {}
+    return pipeline_session_mock
 
 
 @pytest.fixture()
 def local_sagemaker_session(boto_session):
-    return LocalSession(boto_session=boto_session, default_bucket="my-bucket")
+    local_session_mock = LocalSession(boto_session=boto_session, default_bucket="my-bucket")
+    # For tests which doesn't verify config file injection, operate with empty config
+
+    local_session_mock.sagemaker_config = {}
+    return local_session_mock
 
 
 @pytest.fixture

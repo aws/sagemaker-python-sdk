@@ -18,6 +18,7 @@ import logging
 import os
 import re
 from typing import Optional
+from packaging.version import Version
 
 from sagemaker import utils
 from sagemaker.jumpstart.utils import is_jumpstart_model_input
@@ -34,6 +35,8 @@ HUGGING_FACE_FRAMEWORK = "huggingface"
 XGBOOST_FRAMEWORK = "xgboost"
 SKLEARN_FRAMEWORK = "sklearn"
 TRAINIUM_ALLOWED_FRAMEWORKS = "pytorch"
+INFERENCE_GRAVITON = "inference_graviton"
+DATA_WRANGLER_FRAMEWORK = "data-wrangler"
 
 
 @override_pipeline_parameter_var
@@ -75,8 +78,8 @@ def retrieve(
         accelerator_type (str): Elastic Inference accelerator type. For more, see
             https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html.
         image_scope (str): The image type, i.e. what it is used for.
-            Valid values: "training", "inference", "eia". If ``accelerator_type`` is set,
-            ``image_scope`` is ignored.
+            Valid values: "training", "inference", "inference_graviton", "eia".
+            If ``accelerator_type`` is set, ``image_scope`` is ignored.
         container_version (str): the version of docker image.
             Ideally the value of parameter should be created inside the framework.
             For custom use, see the list of supported container versions:
@@ -145,9 +148,10 @@ def retrieve(
             tolerate_deprecated_model,
         )
 
-    if training_compiler_config and (framework == HUGGING_FACE_FRAMEWORK):
+    if training_compiler_config and (framework in [HUGGING_FACE_FRAMEWORK, "pytorch"]):
+        final_image_scope = image_scope
         config = _config_for_framework_and_scope(
-            framework + "-training-compiler", image_scope, accelerator_type
+            framework + "-training-compiler", final_image_scope, accelerator_type
         )
     else:
         _framework = framework
@@ -230,10 +234,12 @@ def retrieve(
 
     if repo == f"{framework}-inference-graviton":
         container_version = f"{container_version}-sagemaker"
+    _validate_instance_deprecation(framework, instance_type, version)
 
     tag = _get_image_tag(
         container_version,
         distribution,
+        final_image_scope,
         framework,
         inference_tool,
         instance_type,
@@ -266,6 +272,7 @@ def _get_instance_type_family(instance_type):
 def _get_image_tag(
     container_version,
     distribution,
+    final_image_scope,
     framework,
     inference_tool,
     instance_type,
@@ -276,20 +283,29 @@ def _get_image_tag(
 ):
     """Return image tag based on framework, container, and compute configuration(s)."""
     instance_type_family = _get_instance_type_family(instance_type)
-    if (
-        framework in (XGBOOST_FRAMEWORK, SKLEARN_FRAMEWORK)
-        and instance_type_family in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
-    ):
-        version_to_arm64_tag_mapping = {
-            "xgboost": {
-                "1.5-1": "1.5-1-arm64",
-                "1.3-1": "1.3-1-arm64",
-            },
-            "sklearn": {
-                "1.0-1": "1.0-1-arm64-cpu-py3",
-            },
-        }
-        tag = version_to_arm64_tag_mapping[framework][version]
+    if framework in (XGBOOST_FRAMEWORK, SKLEARN_FRAMEWORK):
+        if instance_type_family and final_image_scope == INFERENCE_GRAVITON:
+            _validate_arg(
+                instance_type_family,
+                GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY,
+                "instance type",
+            )
+        if (
+            instance_type_family in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
+            or final_image_scope == INFERENCE_GRAVITON
+        ):
+            version_to_arm64_tag_mapping = {
+                "xgboost": {
+                    "1.5-1": "1.5-1-arm64",
+                    "1.3-1": "1.3-1-arm64",
+                },
+                "sklearn": {
+                    "1.0-1": "1.0-1-arm64-cpu-py3",
+                },
+            }
+            tag = version_to_arm64_tag_mapping[framework][version]
+        else:
+            tag = _format_tag(tag_prefix, processor, py_version, container_version, inference_tool)
     else:
         tag = _format_tag(tag_prefix, processor, py_version, container_version, inference_tool)
 
@@ -352,14 +368,36 @@ def _config_for_framework_and_scope(framework, image_scope, accelerator_type=Non
     return config if "scope" in config else config[image_scope]
 
 
-def _validate_for_suppported_frameworks_and_instance_type(framework, instace_type):
+def _validate_instance_deprecation(framework, instance_type, version):
+    """Check if instance type is deprecated for a certain framework with a certain version"""
+    if _get_instance_type_family(instance_type) == "p2":
+        if (framework == "pytorch" and Version(version) >= Version("1.13")) or (
+            framework == "tensorflow" and Version(version) >= Version("2.12")
+        ):
+            raise ValueError(
+                "P2 instances have been deprecated for sagemaker jobs starting PyTorch 1.13 and TensorFlow 2.12"
+                "For information about supported instance types please refer to "
+                "https://aws.amazon.com/sagemaker/pricing/"
+            )
+
+
+def _validate_for_suppported_frameworks_and_instance_type(framework, instance_type):
     """Validate if framework is supported for the instance_type"""
+    # Validate for Trainium allowed frameworks
     if (
-        instace_type is not None
-        and "trn" in instace_type
+        instance_type is not None
+        and "trn" in instance_type
         and framework not in TRAINIUM_ALLOWED_FRAMEWORKS
     ):
-        _validate_framework(framework, TRAINIUM_ALLOWED_FRAMEWORKS, "framework")
+        _validate_framework(framework, TRAINIUM_ALLOWED_FRAMEWORKS, "framework", "Trainium")
+
+    # Validate for Graviton allowed frameowrks
+    if (
+        instance_type is not None
+        and _get_instance_type_family(instance_type) in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
+        and framework not in GRAVITON_ALLOWED_FRAMEWORKS
+    ):
+        _validate_framework(framework, GRAVITON_ALLOWED_FRAMEWORKS, "framework", "Graviton")
 
 
 def config_for_framework(framework):
@@ -375,7 +413,7 @@ def _get_final_image_scope(framework, instance_type, image_scope):
         framework in GRAVITON_ALLOWED_FRAMEWORKS
         and _get_instance_type_family(instance_type) in GRAVITON_ALLOWED_TARGET_INSTANCE_FAMILY
     ):
-        return "inference_graviton"
+        return INFERENCE_GRAVITON
     if image_scope is None and framework in (XGBOOST_FRAMEWORK, SKLEARN_FRAMEWORK):
         # Preserves backwards compatibility with XGB/SKLearn configs which no
         # longer define top-level "scope" keys after introducing support for
@@ -423,6 +461,9 @@ def _validate_version_and_set_if_needed(version, config, framework):
             logger.info(log_message)
 
         return available_versions[0]
+
+    if version is None and framework in [DATA_WRANGLER_FRAMEWORK]:
+        version = _get_latest_versions(available_versions)
 
     _validate_arg(version, available_versions + aliased_versions, "{} version".format(framework))
     return version
@@ -543,12 +584,12 @@ def _validate_arg(arg, available_options, arg_name):
         )
 
 
-def _validate_framework(framework, allowed_frameworks, arg_name):
+def _validate_framework(framework, allowed_frameworks, arg_name, hardware_name):
     """Checks if the framework is in the allowed frameworks, and raises a ``ValueError`` if not."""
     if framework not in allowed_frameworks:
         raise ValueError(
             f"Unsupported {arg_name}: {framework}. "
-            f"Supported {arg_name}(s) for trainium instances: {allowed_frameworks}."
+            f"Supported {arg_name}(s) for {hardware_name} instances: {allowed_frameworks}."
         )
 
 
@@ -625,3 +666,29 @@ def get_training_image_uri(
         container_version=container_version,
         training_compiler_config=compiler_config,
     )
+
+
+def get_base_python_image_uri(region, py_version="310") -> str:
+    """Retrieves the image URI for base python image.
+
+    Args:
+        region (str): The AWS region to use for image URI.
+        py_version (str): The python version to use for the image. Can be 310 or 38
+        Default to 310
+
+    Returns:
+        str: The image URI string.
+    """
+
+    framework = "sagemaker-base-python"
+    version = "1.0"
+    hostname = utils._botocore_resolver().construct_endpoint("ecr", region)["hostname"]
+    config = config_for_framework(framework)
+    version_config = config["versions"][_version_for_config(version, config)]
+
+    registry = _registry_from_region(region, version_config["registries"])
+
+    repo = version_config["repository"] + "-" + py_version
+    repo_and_tag = repo + ":" + version
+
+    return ECR_URI_TEMPLATE.format(registry=registry, hostname=hostname, repository=repo_and_tag)

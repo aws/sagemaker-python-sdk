@@ -106,7 +106,7 @@ class HuggingFaceModel(FrameworkModel):
 
     def __init__(
         self,
-        role: str,
+        role: Optional[str] = None,
         model_data: Optional[Union[str, PipelineVariable]] = None,
         entry_point: Optional[str] = None,
         transformers_version: Optional[str] = None,
@@ -209,6 +209,8 @@ class HuggingFaceModel(FrameworkModel):
         volume_size=None,
         model_data_download_timeout=None,
         container_startup_health_check_timeout=None,
+        inference_recommendation_id=None,
+        explainer_config=None,
         **kwargs,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
@@ -282,6 +284,11 @@ class HuggingFaceModel(FrameworkModel):
                 inference container to pass health check by SageMaker Hosting. For more information
                 about health check see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html#your-algorithms-inference-algo-ping-requests
+            inference_recommendation_id (str): The recommendation id which specifies the
+                recommendation you picked from inference recommendation job results and
+                would like to deploy the model and endpoint with recommended parameters.
+            explainer_config (sagemaker.explainer.ExplainerConfig): Specifies online explainability
+                configuration for use with Amazon SageMaker Clarify. (default: None)
         Raises:
              ValueError: If arguments combination check failed in these circumstances:
                 - If no role is specified or
@@ -317,6 +324,8 @@ class HuggingFaceModel(FrameworkModel):
             volume_size=volume_size,
             model_data_download_timeout=model_data_download_timeout,
             container_startup_health_check_timeout=container_startup_health_check_timeout,
+            inference_recommendation_id=inference_recommendation_id,
+            explainer_config=explainer_config,
         )
 
     def register(

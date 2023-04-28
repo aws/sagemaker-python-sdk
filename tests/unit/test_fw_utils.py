@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import inspect
+import json
 import os
 import tarfile
 from contextlib import contextmanager
@@ -42,7 +43,11 @@ def cd(path):
 def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name="us-west-2")
     session_mock = Mock(
-        name="sagemaker_session", boto_session=boto_mock, s3_client=None, s3_resource=None
+        name="sagemaker_session",
+        boto_session=boto_mock,
+        s3_client=None,
+        s3_resource=None,
+        settings=SessionSettings(),
     )
     session_mock.default_bucket = Mock(name="default_bucket", return_value="my-bucket")
     session_mock.expand_role = Mock(name="expand_role", return_value="my-role")
@@ -190,6 +195,43 @@ def test_validate_source_dir_file_not_in_dir():
     directory = "."
     with pytest.raises(ValueError):
         fw_utils.validate_source_dir(script, directory)
+
+
+def test_parse_mp_parameters_input_dict():
+    mp_parameters = {
+        "partitions": 1,
+        "tensor_parallel_degree": 2,
+        "microbatches": 1,
+        "optimize": "speed",
+        "pipeline": "interleaved",
+        "ddp": 1,
+        "auto_partition": False,
+        "default_partition": 0,
+    }
+    assert mp_parameters == fw_utils.parse_mp_parameters(mp_parameters)
+
+
+def test_parse_mp_parameters_input_str_json():
+    mp_parameters = {
+        "partitions": 1,
+        "tensor_parallel_degree": 2,
+        "microbatches": 1,
+        "optimize": "speed",
+        "pipeline": "interleaved",
+        "ddp": 1,
+        "auto_partition": False,
+        "default_partition": 0,
+    }
+    json_file_path = "./params.json"
+    with open(json_file_path, "x") as fp:
+        json.dump(mp_parameters, fp)
+    assert mp_parameters == fw_utils.parse_mp_parameters(json_file_path)
+    os.remove(json_file_path)
+
+
+def test_parse_mp_parameters_input_not_exit():
+    with pytest.raises(ValueError):
+        fw_utils.parse_mp_parameters(" !@#$%^&*()path probably in not there.!@#$%^&*()")
 
 
 def test_tar_and_upload_dir_not_s3(sagemaker_session):
@@ -579,6 +621,7 @@ def test_region_supports_debugger_feature_returns_true_for_supported_regions():
 
 def test_region_supports_debugger_feature_returns_false_for_unsupported_regions():
     assert fw_utils._region_supports_debugger("us-iso-east-1") is False
+    assert fw_utils._region_supports_debugger("us-isob-east-1") is False
     assert fw_utils._region_supports_debugger("ap-southeast-3") is False
     assert fw_utils._region_supports_debugger("ap-southeast-4") is False
     assert fw_utils._region_supports_debugger("eu-south-2") is False
@@ -845,10 +888,13 @@ def test_validate_smdataparallel_args_not_raises():
         ("ml.p3.16xlarge", "tensorflow", "2.7", "py38", smdataparallel_enabled),
         ("ml.p3.16xlarge", "tensorflow", "2.8.0", "py39", smdataparallel_enabled),
         ("ml.p3.16xlarge", "tensorflow", "2.8", "py39", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "tensorflow", "2.9.2", "py39", smdataparallel_enabled),
         ("ml.p3.16xlarge", "tensorflow", "2.9.1", "py39", smdataparallel_enabled),
         ("ml.p3.16xlarge", "tensorflow", "2.9", "py39", smdataparallel_enabled),
-        ("ml.p3.16xlarge", "tensorflow", "2.10.0", "py39", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "tensorflow", "2.10.1", "py39", smdataparallel_enabled),
         ("ml.p3.16xlarge", "tensorflow", "2.10", "py39", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "tensorflow", "2.11.0", "py39", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "tensorflow", "2.11", "py39", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.6.0", "py3", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.6", "py3", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.7.1", "py3", smdataparallel_enabled),
@@ -866,6 +912,8 @@ def test_validate_smdataparallel_args_not_raises():
         ("ml.p3.16xlarge", "pytorch", "1.12.0", "py38", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.12.1", "py38", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.12", "py38", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "pytorch", "1.13.1", "py39", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "pytorch", "2.0.0", "py310", smdataparallel_enabled),
         ("ml.p3.16xlarge", "tensorflow", "2.4.1", "py3", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "tensorflow", "2.4.1", "py37", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "tensorflow", "2.4.3", "py3", smdataparallel_enabled_custom_mpi),
@@ -877,13 +925,17 @@ def test_validate_smdataparallel_args_not_raises():
         ("ml.p3.16xlarge", "tensorflow", "2.7.1", "py38", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "tensorflow", "2.8.0", "py39", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "tensorflow", "2.9.1", "py39", smdataparallel_enabled_custom_mpi),
-        ("ml.p3.16xlarge", "tensorflow", "2.10.0", "py39", smdataparallel_enabled_custom_mpi),
+        ("ml.p3.16xlarge", "tensorflow", "2.9.2", "py39", smdataparallel_enabled_custom_mpi),
+        ("ml.p3.16xlarge", "tensorflow", "2.10.1", "py39", smdataparallel_enabled_custom_mpi),
+        ("ml.p3.16xlarge", "tensorflow", "2.11.0", "py39", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "pytorch", "1.8.0", "py3", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "pytorch", "1.9.1", "py38", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "pytorch", "1.10.2", "py38", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "pytorch", "1.11.0", "py38", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "pytorch", "1.12.0", "py38", smdataparallel_enabled_custom_mpi),
         ("ml.p3.16xlarge", "pytorch", "1.12.1", "py38", smdataparallel_enabled_custom_mpi),
+        ("ml.p3.16xlarge", "pytorch", "1.13.1", "py39", smdataparallel_enabled_custom_mpi),
+        ("ml.p3.16xlarge", "pytorch", "2.0.0", "py310", smdataparallel_enabled_custom_mpi),
     ]
     for instance_type, framework_name, framework_version, py_version, distribution in good_args:
         fw_utils._validate_smdataparallel_args(
@@ -955,15 +1007,14 @@ def test_validate_pytorchddp_raises():
 
 
 def test_validate_torch_distributed_not_raises():
-
-    # Case 1: Framework is PyTorch, but distribution is not torch_distributed
+    # Case 1: Framework is PyTorch, but torch_distributed is not enabled
     torch_distributed_disabled = {"torch_distributed": {"enabled": False}}
     fw_utils.validate_torch_distributed_distribution(
         instance_type="ml.trn1.2xlarge",
         distribution=torch_distributed_disabled,
         framework_version="1.11.0",
         py_version="py3",
-        image_uri="custom-container",
+        image_uri=None,
         entry_point="train.py",
     )
     # Case 2: Distribution is torch_distributed enabled, supported framework and py versions
@@ -977,7 +1028,23 @@ def test_validate_torch_distributed_not_raises():
             distribution=torch_distributed_enabled,
             framework_version=framework_version,
             py_version="py3",
-            image_uri="custom-container",
+            image_uri=None,
+            entry_point="train.py",
+        )
+
+    # Case 3: Distribution is torch_distributed enabled, supported framework and instances
+    torch_distributed_enabled = {"torch_distributed": {"enabled": True}}
+    torch_distributed_gpu_supported_fw_versions = [
+        "1.13.1",
+        "2.0.0",
+    ]
+    for framework_version in torch_distributed_gpu_supported_fw_versions:
+        fw_utils.validate_torch_distributed_distribution(
+            instance_type="ml.p3.8xlarge",
+            distribution=torch_distributed_enabled,
+            framework_version=framework_version,
+            py_version="py3",
+            image_uri=None,
             entry_point="train.py",
         )
 
@@ -1017,6 +1084,17 @@ def test_validate_torch_distributed_raises():
             entry_point="train.sh",
         )
 
+    # Case 4: Unsupported framework version for gpu instances
+    with pytest.raises(ValueError):
+        fw_utils.validate_torch_distributed_distribution(
+            instance_type="ml.p3.8xlarge",
+            distribution=torch_distributed_enabled,
+            framework_version="1.11.0",
+            py_version="py3",
+            image_uri=None,
+            entry_point="train.py",
+        )
+
 
 def test_validate_unsupported_distributions_trainium_raises():
     with pytest.raises(ValueError):
@@ -1052,3 +1130,57 @@ def test_instance_type_supports_profiler():
     assert fw_utils._instance_type_supports_profiler("ml.trn1.xlarge") is True
     assert fw_utils._instance_type_supports_profiler("ml.m4.xlarge") is False
     assert fw_utils._instance_type_supports_profiler("local") is False
+
+
+def test_is_gpu_instance():
+    gpu_instance_types = [
+        "ml.p3.2xlarge",
+        "ml.p3.8xlarge",
+        "ml.p3.16xlarge",
+        "ml.p3dn.24xlarge",
+        "ml.p4d.24xlarge",
+        "ml.p4de.24xlarge",
+        "ml.g4dn.xlarge",
+        "ml.g5.xlarge",
+        "ml.g5.48xlarge",
+        "local_gpu",
+    ]
+    non_gpu_instance_types = [
+        "ml.t3.xlarge",
+        "ml.m5.8xlarge",
+        "ml.m5d.16xlarge",
+        "ml.c5.9xlarge",
+        "ml.r5.8xlarge",
+    ]
+    for gpu_type in gpu_instance_types:
+        assert fw_utils._is_gpu_instance(gpu_type) is True
+    for non_gpu_type in non_gpu_instance_types:
+        assert fw_utils._is_gpu_instance(non_gpu_type) is False
+
+
+def test_is_trainium_instance():
+    trainium_instance_types = [
+        "ml.trn1.2xlarge",
+        "ml.trn1.32xlarge",
+    ]
+    non_trainum_instance_types = [
+        "ml.t3.xlarge",
+        "ml.m5.8xlarge",
+        "ml.m5d.16xlarge",
+        "ml.c5.9xlarge",
+        "ml.r5.8xlarge",
+        "ml.p3.2xlarge",
+        "ml.p3.8xlarge",
+        "ml.p3.16xlarge",
+        "ml.p3dn.24xlarge",
+        "ml.p4d.24xlarge",
+        "ml.p4de.24xlarge",
+        "ml.g4dn.xlarge",
+        "ml.g5.xlarge",
+        "ml.g5.48xlarge",
+        "local_gpu",
+    ]
+    for tr_type in trainium_instance_types:
+        assert fw_utils._is_trainium_instance(tr_type) is True
+    for non_tr_type in non_trainum_instance_types:
+        assert fw_utils._is_trainium_instance(non_tr_type) is False

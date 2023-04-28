@@ -21,6 +21,7 @@ from mock import Mock
 from mock import patch
 
 from sagemaker.fw_utils import UploadedCode
+from sagemaker.session_settings import SessionSettings
 from sagemaker.sklearn import SKLearn, SKLearnModel, SKLearnPredictor
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -51,6 +52,7 @@ EXPERIMENT_CONFIG = {
     "ExperimentName": "exp",
     "TrialName": "trial",
     "TrialComponentDisplayName": "tc",
+    "RunName": "rn",
 }
 
 
@@ -65,6 +67,7 @@ def sagemaker_session():
         local_mode=False,
         s3_resource=None,
         s3_client=None,
+        settings=SessionSettings(),
     )
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
@@ -74,6 +77,9 @@ def sagemaker_session():
     session.sagemaker_client.list_tags = Mock(return_value=LIST_TAGS_RESULT)
     session.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     session.expand_role = Mock(name="expand_role", return_value=ROLE)
+
+    # For tests which doesn't verify config file injection, operate with empty config
+    session.sagemaker_config = {}
     return session
 
 
@@ -139,14 +145,8 @@ def _create_train_job(version):
             "CollectionConfigurations": [],
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
-        "profiler_rule_configs": [
-            {
-                "RuleConfigurationName": "ProfilerReport-1510006209",
-                "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
-                "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
-            }
-        ],
         "profiler_config": {
+            "DisableProfiler": False,
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
     }

@@ -365,6 +365,7 @@ SHAP_USE_LOGIT = True
 MODEL_NAME = "xgboost-model"
 ACCEPT_TYPE = "text/csv"
 CONTENT_TYPE = "application/jsonlines"
+JSONLINES_CONTENT_TEMPLATE = '{"instances":$features}'
 EXPLAINABILITY_ANALYSIS_CONFIG = {
     "headers": ANALYSIS_CONFIG_HEADERS_OF_FEATURES,
     "methods": {
@@ -382,6 +383,7 @@ EXPLAINABILITY_ANALYSIS_CONFIG = {
         "initial_instance_count": INSTANCE_COUNT,
         "accept_type": ACCEPT_TYPE,
         "content_type": CONTENT_TYPE,
+        "content_template": JSONLINES_CONTENT_TEMPLATE,
     },
 }
 EXPLAINABILITY_ANALYSIS_CONFIG_WITH_LABEL_HEADERS = copy.deepcopy(EXPLAINABILITY_ANALYSIS_CONFIG)
@@ -413,6 +415,11 @@ def sagemaker_session(sagemaker_client):
     )
     session_mock.download_data = Mock(name="download_data")
     session_mock.expand_role.return_value = ROLE_ARN
+    session_mock._append_sagemaker_config_tags = Mock(
+        name="_append_sagemaker_config_tags", side_effect=lambda tags, config_path_to_tags: tags
+    )
+    # For tests which doesn't verify config file injection, operate with empty config
+    session_mock.sagemaker_config = {}
     return session_mock
 
 
@@ -484,6 +491,7 @@ def model_config():
         instance_count=INSTANCE_COUNT,
         content_type=CONTENT_TYPE,
         accept_type=ACCEPT_TYPE,
+        content_template=JSONLINES_CONTENT_TEMPLATE,
     )
 
 
