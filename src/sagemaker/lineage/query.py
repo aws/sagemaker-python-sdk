@@ -362,7 +362,7 @@ class PyvisVisualizer(object):
         with open(path, "w", encoding="utf8") as file:
             file.write(html)
 
-    def render(self, elements, path="lineage_graph_pyvis.html.html"):
+    def render(self, elements, path="lineage_graph_pyvis.html"):
         """Render graph for lineage query result.
 
         Args:
@@ -374,7 +374,8 @@ class PyvisVisualizer(object):
                     elements["edges"] contains list of tuples, each tuple represents an edge
                         format: (edge source arn, edge destination arn, edge association type)
 
-            path(optional): The path/filename of the rendered graph html file. (default path: "lineage_graph_pyvis.html.html")
+            path(optional): The path/filename of the rendered graph html file.
+                (default path: "lineage_graph_pyvis.html")
 
         Returns:
             display graph: The interactive visualization is presented as a static HTML file.
@@ -515,7 +516,7 @@ class LineageQueryResult(object):
         elements = {"nodes": verts, "edges": edges}
         return elements
 
-    def visualize(self, path: Optional[str] = "lineage_graph_pyvis.html.html"):
+    def visualize(self, path: Optional[str] = "lineage_graph_pyvis.html"):
         """Visualize lineage query result.
 
         Creates a PyvisVisualizer object to render network graph with Pyvis library.
@@ -524,7 +525,8 @@ class LineageQueryResult(object):
         PyvisVisualizer for rendering graph.
 
         Args:
-            path(optional): The path/filemname of the rendered graph html file. (default path: "lineage_graph_pyvis.html.html")
+            path(optional): The path/filename of the rendered graph html file.
+                (default path: "lineage_graph_pyvis.html")
 
         Returns:
             display graph: The interactive visualization is presented as a static HTML file.
