@@ -289,7 +289,7 @@ def get_deploy_kwargs(
         model_id=model_id,
         model_from_estimator=True,
         model_version=model_version,
-        instance_type=instance_type,
+        instance_type=model_deploy_kwargs.instance_type,  # prevent excess logging
         region=region,
         image_uri=image_uri,
         source_dir=source_dir,
