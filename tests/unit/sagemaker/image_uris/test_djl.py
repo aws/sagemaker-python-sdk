@@ -47,7 +47,7 @@ DJL_VERSIONS_TO_FRAMEWORK = {
     "0.19.0": {"djl-deepspeed": "deepspeed0.7.3-cu113"},
     "0.20.0": {"djl-deepspeed": "deepspeed0.7.5-cu116"},
     "0.21.0": {
-        "djl-deepspeed": "deepspeed0.8.0-cu117",
+        "djl-deepspeed": "deepspeed0.8.3-cu117",
         "djl-fastertransformer": "fastertransformer5.3.0-cu117",
     },
 }
