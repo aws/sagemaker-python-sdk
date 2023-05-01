@@ -15,8 +15,9 @@ from __future__ import absolute_import
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional, Union, List, Dict
-import re
+from typing import Any, Optional, Union, List, Dict
+from json import dumps
+from re import sub, search
 
 from sagemaker.utils import get_module
 from sagemaker.lineage._utils import get_resource_name_from_arn
@@ -235,7 +236,7 @@ class Vertex:
 class PyvisVisualizer(object):
     """Create object used for visualizing graph using Pyvis library."""
 
-    def __init__(self, graph_styles):
+    def __init__(self, graph_styles, pyvis_options: Optional[Dict[str, Any]] = None):
         """Init for PyvisVisualizer.
 
         Args:
@@ -260,7 +261,8 @@ class PyvisVisualizer(object):
                                 "symbol": "★", # shape symbol for legend
                             },
                         }
-
+            pyvis_options(optional): A dict containing PyVis options to customize visualization.
+                (see https://visjs.github.io/vis-network/docs/network/#options for supported fields)
         """
         # import visualization packages
         (
@@ -272,36 +274,29 @@ class PyvisVisualizer(object):
 
         self.graph_styles = graph_styles
 
-        # pyvis graph options
-        self._options = """
-            var options = {
-            "configure":{
-                "enabled": false
-            },
-            "layout": {
-                "hierarchical": {
-                    "enabled": true,
-                    "blockShifting": true,
-                    "direction": "LR",
-                    "sortMethod": "directed",
-                    "shakeTowards": "leaves"
-                }
-            },
-            "interaction": {
-                "multiselect": true,
-                "navigationButtons": true
-            },
-            "physics": {
-                "enabled": false,
-                "hierarchicalRepulsion": {
-                    "centralGravity": 0,
-                    "avoidOverlap": null
+        if pyvis_options is None:
+            # default pyvis graph options
+            pyvis_options = {
+                "configure": {"enabled": False},
+                "layout": {
+                    "hierarchical": {
+                        "enabled": True,
+                        "blockShifting": True,
+                        "direction": "LR",
+                        "sortMethod": "directed",
+                        "shakeTowards": "leaves",
+                    }
                 },
-                "minVelocity": 0.75,
-                "solver": "hierarchicalRepulsion"
+                "interaction": {"multiselect": True, "navigationButtons": True},
+                "physics": {
+                    "enabled": False,
+                    "hierarchicalRepulsion": {"centralGravity": 0, "avoidOverlap": None},
+                    "minVelocity": 0.75,
+                    "solver": "hierarchicalRepulsion",
+                },
             }
-        }
-        """
+        # A string representation of a Javascript-like object used to override pyvis options
+        self._pyvis_options = f"var options = {dumps(pyvis_options)}"
 
     def _import_visual_modules(self):
         """Import modules needed for visualization."""
@@ -382,14 +377,14 @@ class PyvisVisualizer(object):
 
         """
         net = self.Network(height="600px", width="82%", notebook=True, directed=True)
-        net.set_options(self._options)
+        net.set_options(self._pyvis_options)
 
         # add nodes to graph
         for arn, source, entity, is_start_arn in elements["nodes"]:
-            entity_text = re.sub(r"(\w)([A-Z])", r"\1 \2", entity)
-            source = re.sub(r"(\w)([A-Z])", r"\1 \2", source)
-            account_id = re.search(r":\d{12}:", arn)
-            name = re.search(r"\/.*", arn)
+            entity_text = sub(r"(\w)([A-Z])", r"\1 \2", entity)
+            source = sub(r"(\w)([A-Z])", r"\1 \2", source)
+            account_id = search(r":\d{12}:", arn)
+            name = search(r"\/.*", arn)
             node_info = (
                 "Entity: "
                 + entity_text
@@ -516,7 +511,11 @@ class LineageQueryResult(object):
         elements = {"nodes": verts, "edges": edges}
         return elements
 
-    def visualize(self, path: Optional[str] = "lineage_graph_pyvis.html"):
+    def visualize(
+        self,
+        path: Optional[str] = "lineage_graph_pyvis.html",
+        pyvis_options: Optional[Dict[str, Any]] = None,
+    ):
         """Visualize lineage query result.
 
         Creates a PyvisVisualizer object to render network graph with Pyvis library.
@@ -527,6 +526,8 @@ class LineageQueryResult(object):
         Args:
             path(optional): The path/filename of the rendered graph html file.
                 (default path: "lineage_graph_pyvis.html")
+            pyvis_options(optional): A dict containing PyVis options to customize visualization.
+                (see https://visjs.github.io/vis-network/docs/network/#options for supported fields)
 
         Returns:
             display graph: The interactive visualization is presented as a static HTML file.
@@ -561,7 +562,7 @@ class LineageQueryResult(object):
             },
         }
 
-        pyvis_vis = PyvisVisualizer(lineage_graph_styles)
+        pyvis_vis = PyvisVisualizer(lineage_graph_styles, pyvis_options)
         elements = self._get_visualization_elements()
         return pyvis_vis.render(elements=elements, path=path)
 
