@@ -32,6 +32,7 @@ sagemaker_session.get_caller_identity_arn = lambda: execution_role
 
 
 class ModelTest(unittest.TestCase):
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
@@ -43,7 +44,9 @@ class ModelTest(unittest.TestCase):
         mock_model_init: mock.Mock,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
     ):
+        mock_is_valid_model_id.return_value = True
         model_id, _ = "js-trainable-model", "*"
 
         mock_get_model_specs.side_effect = get_special_model_spec
@@ -82,6 +85,7 @@ class ModelTest(unittest.TestCase):
             wait=True,
         )
 
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
@@ -93,7 +97,10 @@ class ModelTest(unittest.TestCase):
         mock_model_init: mock.Mock,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
     ):
+        mock_is_valid_model_id.return_value = True
+
         model_id, _ = "js-model-class-model-prepacked", "*"
 
         mock_get_model_specs.side_effect = get_special_model_spec
@@ -129,6 +136,7 @@ class ModelTest(unittest.TestCase):
             wait=True,
         )
 
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
@@ -138,7 +146,10 @@ class ModelTest(unittest.TestCase):
         mock_model_deploy: mock.Mock,
         mock_model_init: mock.Mock,
         mock_get_model_specs: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
     ):
+        mock_is_valid_model_id.return_value = True
+
         model_id, _ = "deprecated_model", "*"
 
         mock_get_model_specs.side_effect = get_special_model_spec
@@ -150,6 +161,7 @@ class ModelTest(unittest.TestCase):
 
         JumpStartModel(model_id=model_id, tolerate_deprecated_model=True).deploy()
 
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
     @mock.patch("sagemaker.jumpstart.model.Model.deploy")
@@ -159,7 +171,10 @@ class ModelTest(unittest.TestCase):
         mock_model_deploy: mock.Mock,
         mock_model_init: mock.Mock,
         mock_get_model_specs: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
     ):
+        mock_is_valid_model_id.return_value = True
+
         model_id, _ = "vulnerable_model", "*"
 
         mock_get_model_specs.side_effect = get_special_model_spec
@@ -217,6 +232,7 @@ class ModelTest(unittest.TestCase):
             deploy_kwargs=all_deploy_kwargs_used,
         )
 
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")
@@ -228,9 +244,12 @@ class ModelTest(unittest.TestCase):
         mock_model_init: mock.Mock,
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
         init_kwargs: Optional[dict] = None,
         deploy_kwargs: Optional[dict] = None,
     ):
+
+        mock_is_valid_model_id.return_value = True
 
         mock_session.return_value = sagemaker_session
 
@@ -302,3 +321,19 @@ class ModelTest(unittest.TestCase):
         js_class_deploy_args = set(signature(js_class_deploy).parameters.keys())
 
         assert js_class_deploy_args - parent_class_deploy_args == set()
+
+    @mock.patch("sagemaker.jumpstart.model.get_init_kwargs")
+    @mock.patch("sagemaker.jumpstart.model.Model.__init__")
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    def test_is_valid_model_id(
+        self,
+        mock_is_valid_model_id: mock.Mock,
+        mock_init: mock.Mock,
+        mock_get_init_kwargs: mock.Mock,
+    ):
+        mock_is_valid_model_id.return_value = True
+        JumpStartModel(model_id="valid_model_id")
+
+        mock_is_valid_model_id.return_value = False
+        with pytest.raises(ValueError):
+            JumpStartModel(model_id="invalid_model_id")

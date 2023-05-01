@@ -114,7 +114,7 @@ def validate(
         )
 
     if model_id is None or model_version is None:
-        raise RuntimeError("Model id and version must both be non-None")
+        raise RuntimeError("Model ID and version must both be non-None")
 
     if hyperparameters is None:
         raise ValueError("Must specify hyperparameters.")

@@ -20,11 +20,15 @@ from sagemaker.async_inference.async_inference_config import AsyncInferenceConfi
 from sagemaker.base_deserializers import BaseDeserializer
 from sagemaker.base_serializers import BaseSerializer
 from sagemaker.explainer.explainer_config import ExplainerConfig
+from sagemaker.jumpstart.enums import JumpStartScriptScope
+from sagemaker.jumpstart.exceptions import INVALID_MODEL_ID_ERROR_MSG
 from sagemaker.jumpstart.factory.model import (
     get_default_predictor,
     get_deploy_kwargs,
     get_init_kwargs,
 )
+from sagemaker.jumpstart.notebook_utils import is_valid_model_id
+from sagemaker.jumpstart.utils import stringify_object
 from sagemaker.model import Model
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
 from sagemaker.predictor import PredictorBase
@@ -250,6 +254,9 @@ class JumpStartModel(Model):
                 (Default: None).
         """
 
+        if not is_valid_model_id(model_id=model_id, script=JumpStartScriptScope.INFERENCE):
+            raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
+
         model_init_kwargs = get_init_kwargs(
             model_id=model_id,
             model_from_estimator=False,
@@ -423,3 +430,7 @@ class JumpStartModel(Model):
         )
 
         return predictor_with_defaults
+
+    def __str__(self) -> str:
+        """Overriding str(*) method to make more human-readable."""
+        return stringify_object(self)

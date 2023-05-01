@@ -419,3 +419,16 @@ def get_model_url(
         region=region, model_id=model_id, version=model_version
     )
     return model_specs.url
+
+
+def is_valid_model_id(
+    model_id: str, script: JumpStartScriptScope = JumpStartScriptScope.INFERENCE
+) -> bool:
+    """Returns True if the model id is supported for the given script."""
+    if model_id in {None, ""}:
+        return False
+    if not isinstance(model_id, str):
+        return False
+    if script == JumpStartScriptScope.INFERENCE:
+        return model_id in list_jumpstart_models()
+    return model_id in list_jumpstart_models("training_supported is True")

@@ -14,11 +14,18 @@
 from __future__ import absolute_import
 from typing import List, Optional
 
-from sagemaker.jumpstart.constants import JumpStartScriptScope
+from sagemaker.jumpstart.constants import MODEL_ID_LIST_WEB_URL, JumpStartScriptScope
 
 NO_AVAILABLE_INSTANCES_ERROR_MSG = (
     "No instances available in {region} that can support model ID '{model_id}'. "
     "Please try another region."
+)
+
+INVALID_MODEL_ID_ERROR_MSG = (
+    "Invalid model ID: '{model_id}'. Please visit "
+    f"{MODEL_ID_LIST_WEB_URL} for list of supported model IDs. "
+    "The module `sagemaker.jumpstart.notebook_utils` contains utilities for "
+    "fetching model IDs."
 )
 
 

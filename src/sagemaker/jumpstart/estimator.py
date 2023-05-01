@@ -27,9 +27,13 @@ from sagemaker.estimator import Estimator
 from sagemaker.explainer.explainer_config import ExplainerConfig
 from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.instance_group import InstanceGroup
+from sagemaker.jumpstart.enums import JumpStartScriptScope
+from sagemaker.jumpstart.exceptions import INVALID_MODEL_ID_ERROR_MSG
 
 from sagemaker.jumpstart.factory.estimator import get_deploy_kwargs, get_fit_kwargs, get_init_kwargs
 from sagemaker.jumpstart.factory.model import get_default_predictor
+from sagemaker.jumpstart.notebook_utils import is_valid_model_id
+from sagemaker.jumpstart.utils import stringify_object
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
 from sagemaker.predictor import PredictorBase
 
@@ -481,6 +485,9 @@ class JumpStartEstimator(Estimator):
                 When it's set to None, SageMaker will not do authentication before pulling the image
                 in the private Docker registry. (Default: None).
         """
+
+        if not is_valid_model_id(model_id=model_id, script=JumpStartScriptScope.TRAINING):
+            raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
 
         estimator_init_kwargs = get_init_kwargs(
             model_id=model_id,
@@ -945,3 +952,7 @@ class JumpStartEstimator(Estimator):
         )
 
         return predictor_with_defaults
+
+    def __str__(self) -> str:
+        """Overriding str(*) method to make more human-readable."""
+        return stringify_object(self)

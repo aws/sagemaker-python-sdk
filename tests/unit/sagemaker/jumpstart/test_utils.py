@@ -19,6 +19,7 @@ from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.constants import (
     ENV_VARIABLE_JUMPSTART_CONTENT_BUCKET_OVERRIDE,
     JUMPSTART_BUCKET_NAME_SET,
+    JUMPSTART_DEFAULT_REGION_NAME,
     JUMPSTART_REGION_NAME_SET,
     JUMPSTART_RESOURCE_BASE_NAME,
     JumpStartScriptScope,
@@ -41,6 +42,13 @@ def test_get_jumpstart_content_bucket():
     assert bad_region not in JUMPSTART_REGION_NAME_SET
     with pytest.raises(ValueError):
         utils.get_jumpstart_content_bucket(bad_region)
+
+
+def test_get_jumpstart_content_bucket_no_args():
+    assert (
+        utils.get_jumpstart_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)
+        == utils.get_jumpstart_content_bucket()
+    )
 
 
 def test_get_jumpstart_content_bucket_override():
@@ -906,3 +914,16 @@ def test_mime_type_enum_from_str():
         for suffix in suffixes:
             mime_type_with_suffix = mime_type + suffix
             assert MIMEType.from_suffixed_type(mime_type_with_suffix) == mime_type
+
+
+def test_stringify_object():
+    class MyTestClass:
+        def __init__(self):
+            self.blah = "blah"
+            self.wtafigo = "eiifccreeeiuclkftdvttufbkhirtvvbhrieclghjiru"
+            self.none_field = None
+
+    assert (
+        utils.stringify_object(MyTestClass())
+        == "MyTestClass: {'blah': 'blah', 'wtafigo': 'eiifccreeeiuclkftdvttufbkhirtvvbhrieclghjiru'}"
+    )

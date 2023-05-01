@@ -64,7 +64,9 @@ def get_jumpstart_launched_regions_message() -> str:
     return f"JumpStart is available in {formatted_launched_regions_str} regions."
 
 
-def get_jumpstart_content_bucket(region: str) -> str:
+def get_jumpstart_content_bucket(
+    region: Optional[str] = constants.JUMPSTART_DEFAULT_REGION_NAME,
+) -> str:
     """Returns regionalized content bucket name for JumpStart.
 
     Raises:
@@ -517,3 +519,9 @@ def resolve_estimator_intelligent_default_field(
 
     # field is not covered by intelligent defaults so return as is
     return field_val
+
+
+def stringify_object(obj: Any) -> str:
+    """Returns string representation of object, returning only non-None fields."""
+    non_none_atts = {key: str(value) for key, value in obj.__dict__.items() if value is not None}
+    return f"{type(obj).__name__}: {non_none_atts}"
