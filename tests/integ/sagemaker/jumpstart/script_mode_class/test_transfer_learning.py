@@ -105,7 +105,6 @@ def test_jumpstart_transfer_learning_estimator_class(setup):
         entry_point=TRAINING_ENTRY_POINT_SCRIPT_NAME,
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
-        enable_network_isolation=True,
         hyperparameters=default_hyperparameters,
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         instance_count=instance_count,

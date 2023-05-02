@@ -81,6 +81,7 @@ class ModelTest(unittest.TestCase):
             predictor_cls=Predictor,
             role=execution_role,
             sagemaker_session=sagemaker_session,
+            enable_network_isolation=False,
         )
 
         model.deploy()
@@ -134,6 +135,7 @@ class ModelTest(unittest.TestCase):
             predictor_cls=Predictor,
             role=execution_role,
             sagemaker_session=sagemaker_session,
+            enable_network_isolation=False,
         )
 
         model.deploy()
@@ -298,6 +300,7 @@ class ModelTest(unittest.TestCase):
                 "predictor_cls": Predictor,
                 "role": execution_role,
                 "sagemaker_session": sagemaker_session,
+                "enable_network_isolation": False,
             },
             init_kwargs,
         )

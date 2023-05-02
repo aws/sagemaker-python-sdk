@@ -75,7 +75,6 @@ def test_jumpstart_inference_model_class(setup):
         entry_point=INFERENCE_ENTRY_POINT_SCRIPT_NAME,
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
-        enable_network_isolation=True,
         env=env,
         **model_kwargs,
     )

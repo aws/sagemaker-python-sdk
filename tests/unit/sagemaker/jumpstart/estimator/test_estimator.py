@@ -104,6 +104,7 @@ class EstimatorTest(unittest.TestCase):
             role=execution_role,
             encrypt_inter_container_traffic=True,
             sagemaker_session=sagemaker_session,
+            enable_network_isolation=False,
         )
 
         channels = {
@@ -134,6 +135,7 @@ class EstimatorTest(unittest.TestCase):
             predictor_cls=Predictor,
             role=execution_role,
             wait=True,
+            enable_network_isolation=False,
         )
 
     @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
@@ -194,6 +196,7 @@ class EstimatorTest(unittest.TestCase):
             role=execution_role,
             encrypt_inter_container_traffic=False,
             sagemaker_session=sagemaker_session,
+            enable_network_isolation=False,
         )
 
         channels = {
@@ -222,6 +225,7 @@ class EstimatorTest(unittest.TestCase):
             predictor_cls=Predictor,
             role=execution_role,
             wait=True,
+            enable_network_isolation=False,
         )
 
     @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
@@ -446,6 +450,7 @@ class EstimatorTest(unittest.TestCase):
                 "role": execution_role,
                 "encrypt_inter_container_traffic": True,
                 "sagemaker_session": sagemaker_session,
+                "enable_network_isolation": False,
             },
             init_kwargs,
         )
@@ -482,6 +487,7 @@ class EstimatorTest(unittest.TestCase):
                 },
                 "predictor_cls": Predictor,
                 "role": execution_role,
+                "enable_network_isolation": False,
             },
             deploy_kwargs,
         )

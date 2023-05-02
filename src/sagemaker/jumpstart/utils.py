@@ -523,5 +523,5 @@ def resolve_estimator_intelligent_default_field(
 
 def stringify_object(obj: Any) -> str:
     """Returns string representation of object, returning only non-None fields."""
-    non_none_atts = {key: str(value) for key, value in obj.__dict__.items() if value is not None}
-    return f"{type(obj).__name__}: {non_none_atts}"
+    non_none_atts = {key: value for key, value in obj.__dict__.items() if value is not None}
+    return f"{type(obj).__name__}: {str(non_none_atts)}"

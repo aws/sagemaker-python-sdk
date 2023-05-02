@@ -37,7 +37,10 @@ class RetrieveKwargsTest(unittest.TestCase):
             model_version=self.model_version,
         )
 
-        assert kwargs == {"some-model-kwarg-key": "some-model-kwarg-value"}
+        assert kwargs == {
+            "some-model-kwarg-key": "some-model-kwarg-value",
+            "enable_network_isolation": True,
+        }
 
     @patch("sagemaker.jumpstart.artifacts.kwargs.volume_size_supported")
     def test_estimator_kwargs(self, patched_volume_size_supported, patched_get_model_specs):
@@ -52,7 +55,10 @@ class RetrieveKwargsTest(unittest.TestCase):
             instance_type="blah",
         )
 
-        assert kwargs == {"encrypt_inter_container_traffic": True}
+        assert kwargs == {
+            "encrypt_inter_container_traffic": True,
+            "enable_network_isolation": False,
+        }
 
     @patch("sagemaker.jumpstart.artifacts.kwargs.volume_size_supported")
     def test_estimator_kwargs_with_volume_size(
@@ -69,7 +75,11 @@ class RetrieveKwargsTest(unittest.TestCase):
             instance_type="blah",
         )
 
-        assert kwargs == {"encrypt_inter_container_traffic": True, "volume_size": 456}
+        assert kwargs == {
+            "encrypt_inter_container_traffic": True,
+            "volume_size": 456,
+            "enable_network_isolation": False,
+        }
 
     @patch("sagemaker.jumpstart.artifacts.kwargs.volume_size_supported")
     def test_model_deploy_kwargs(self, patched_volume_size_supported, patched_get_model_specs):

@@ -2440,6 +2440,8 @@ BASE_SPEC = {
     },
     "inference_volume_size": 123,
     "training_volume_size": 456,
+    "inference_enable_network_isolation": True,
+    "training_enable_network_isolation": False,
 }
 
 BASE_HEADER = {

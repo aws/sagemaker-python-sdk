@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 """This module contains functions for obtaining JumpStart kwargs."""
 from __future__ import absolute_import
+from copy import deepcopy
 from typing import Optional
 from sagemaker.instance_types import volume_size_supported
 from sagemaker.jumpstart.constants import (
@@ -65,7 +66,12 @@ def _retrieve_model_init_kwargs(
         tolerate_deprecated_model=tolerate_deprecated_model,
     )
 
-    return model_specs.model_kwargs
+    kwargs = deepcopy(model_specs.model_kwargs)
+
+    if model_specs.inference_enable_network_isolation is not None:
+        kwargs.update({"enable_network_isolation": model_specs.inference_enable_network_isolation})
+
+    return kwargs
 
 
 def _retrieve_model_deploy_kwargs(
@@ -160,10 +166,15 @@ def _retrieve_estimator_init_kwargs(
         tolerate_deprecated_model=tolerate_deprecated_model,
     )
 
-    if volume_size_supported(instance_type) and model_specs.training_volume_size is not None:
-        return {**model_specs.estimator_kwargs, **{"volume_size": model_specs.training_volume_size}}
+    kwargs = deepcopy(model_specs.estimator_kwargs)
 
-    return model_specs.estimator_kwargs
+    if model_specs.training_enable_network_isolation is not None:
+        kwargs.update({"enable_network_isolation": model_specs.training_enable_network_isolation})
+
+    if volume_size_supported(instance_type) and model_specs.training_volume_size is not None:
+        kwargs.update({"volume_size": model_specs.training_volume_size})
+
+    return kwargs
 
 
 def _retrieve_estimator_fit_kwargs(

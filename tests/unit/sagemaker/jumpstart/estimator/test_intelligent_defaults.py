@@ -80,6 +80,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
+    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
     @mock.patch("sagemaker.jumpstart.factory.estimator._retrieve_estimator_init_kwargs")
     @mock.patch("sagemaker.utils.get_sagemaker_config_value")
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
@@ -93,6 +94,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
         mock_resolve_value_from_config: mock.Mock,
         mock_get_sagemaker_config_value: mock.Mock,
         mock_retrieve_kwargs: mock.Mock,
+        mock_retrieve_model_init_kwargs: mock.Mock,
         mock_estimator_init: mock.Mock,
         mock_estimator_deploy: mock.Mock,
         mock_is_valid_model_id: mock.Mock,
@@ -116,6 +118,8 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
         estimator = JumpStartEstimator(
             model_id=model_id,
         )
+
+        mock_retrieve_model_init_kwargs.return_value = {}
 
         self.assertEquals(mock_get_sagemaker_config_value.call_count, 1)
         self.assertEquals(mock_estimator_init.call_args[1].get("role"), config_role)
@@ -364,6 +368,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
     @mock.patch("sagemaker.session.Session.get_caller_identity_arn")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
+    @mock.patch("sagemaker.jumpstart.factory.model._retrieve_model_init_kwargs")
     @mock.patch("sagemaker.jumpstart.factory.estimator._retrieve_estimator_init_kwargs")
     @mock.patch("sagemaker.utils.get_sagemaker_config_value")
     @mock.patch("sagemaker.jumpstart.utils.resolve_value_from_config")
@@ -377,6 +382,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
         mock_resolve_value_from_config: mock.Mock,
         mock_get_sagemaker_config_value: mock.Mock,
         mock_retrieve_kwargs: mock.Mock,
+        mock_retrieve_model_init_kwargs: mock.Mock,
         mock_estimator_init: mock.Mock,
         mock_estimator_deploy: mock.Mock,
         mock_get_caller_identity_arn: mock.Mock,
@@ -410,6 +416,8 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
         assert "encrypt_inter_container_traffic" not in mock_estimator_init.call_args[1]
 
         estimator.deploy()
+
+        mock_retrieve_model_init_kwargs.return_value = {}
 
         self.assertEquals(mock_get_sagemaker_config_value.call_count, 2)
 
