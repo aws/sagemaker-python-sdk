@@ -54,12 +54,14 @@ def test_single_automl_step(pipeline_session):
     input_training = AutoMLInput(
         inputs="s3://bucket/data",
         target_attribute_name="target",
+        sample_weight_attribute_name="sampleWeight",
         compression="Gzip",
         channel_type="training",
     )
     input_validation = AutoMLInput(
         inputs="s3://bucket/validation_data",
         target_attribute_name="target",
+        sample_weight_attribute_name="sampleWeight",
         compression="Gzip",
         channel_type="validation",
     )
@@ -114,6 +116,7 @@ def test_single_automl_step(pipeline_session):
                         }
                     },
                     "TargetAttributeName": "target",
+                    "SampleWeightAttributeName": "sampleWeight",
                 },
                 {
                     "ChannelType": "validation",
@@ -125,6 +128,7 @@ def test_single_automl_step(pipeline_session):
                         }
                     },
                     "TargetAttributeName": "target",
+                    "SampleWeightAttributeName": "sampleWeight",
                 },
             ],
             "OutputDataConfig": {

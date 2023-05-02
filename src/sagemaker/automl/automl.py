@@ -45,6 +45,7 @@ class AutoMLInput(object):
         self,
         inputs,
         target_attribute_name,
+        sample_weight_attribute_name=None,
         compression=None,
         channel_type=None,
         content_type=None,
@@ -58,6 +59,8 @@ class AutoMLInput(object):
                 S3 location(s) where input data is stored.
             target_attribute_name (str, PipelineVariable):
                 the target attribute name for regression or classification.
+            sample_weight_attribute_name (str, PipelineVariable):
+                the name of the dataset column representing sample weights
             compression (str, PipelineVariable):
                 if training data is compressed, the compression type. The default value is None.
             channel_type (str, PipelineVariable): The channel type an enum to specify
@@ -70,6 +73,7 @@ class AutoMLInput(object):
         """
         self.inputs = inputs
         self.target_attribute_name = target_attribute_name
+        self.sample_weight_attribute_name = sample_weight_attribute_name
         self.compression = compression
         self.channel_type = channel_type
         self.content_type = content_type
@@ -96,6 +100,8 @@ class AutoMLInput(object):
                 input_entry["ContentType"] = self.content_type
             if self.s3_data_type is not None:
                 input_entry["DataSource"]["S3DataSource"]["S3DataType"] = self.s3_data_type
+            if self.sample_weight_attribute_name is not None:
+                input_entry["SampleWeightAttributeName"] = self.sample_weight_attribute_name
             auto_ml_input.append(input_entry)
         return auto_ml_input
 
@@ -107,6 +113,7 @@ class AutoML(object):
         self,
         role: Optional[str] = None,
         target_attribute_name: str = None,
+        sample_weight_attribute_name: str = None,
         output_kms_key: Optional[str] = None,
         output_path: Optional[str] = None,
         base_job_name: Optional[str] = None,
@@ -136,6 +143,8 @@ class AutoML(object):
             role (str): The ARN of the role that is used to create the job and access the data.
             target_attribute_name (str): The name of the target variable
                 in supervised learning.
+            sample_weight_attribute_name (str): The name of dataset column representing
+                sample weights.
             output_kms_key (str): The AWS KMS encryption key ID for output data configuration
             output_path (str): The Amazon S3 output path. Must be 128 characters or less.
             base_job_name (str): The name of AutoML job.
@@ -192,6 +201,7 @@ class AutoML(object):
         self.max_runtime_per_training_job_in_seconds = max_runtime_per_training_job_in_seconds
         self.total_job_runtime_in_seconds = total_job_runtime_in_seconds
         self.target_attribute_name = target_attribute_name
+        self.sample_weight_attribute_name = sample_weight_attribute_name
         self.job_objective = job_objective
         self.generate_candidate_definitions_only = generate_candidate_definitions_only
         self.tags = tags
@@ -296,6 +306,9 @@ class AutoML(object):
         amlj = AutoML(
             role=auto_ml_job_desc["RoleArn"],
             target_attribute_name=auto_ml_job_desc["InputDataConfig"][0]["TargetAttributeName"],
+            sample_weight_attribute_name=auto_ml_job_desc["InputDataConfig"][0][
+                "SampleWeightAttributeName"
+            ],
             output_kms_key=auto_ml_job_desc["OutputDataConfig"].get("KmsKeyId"),
             output_path=auto_ml_job_desc["OutputDataConfig"]["S3OutputPath"],
             base_job_name=auto_ml_job_name,
@@ -865,6 +878,7 @@ class AutoMLJob(_Job):
                 validate_uri,
                 auto_ml.compression_type,
                 auto_ml.target_attribute_name,
+                auto_ml.sample_weight_attribute_name,
                 auto_ml.content_type,
                 auto_ml.s3_data_type,
             )
@@ -930,6 +944,7 @@ class AutoMLJob(_Job):
         validate_uri=True,
         compression=None,
         target_attribute_name=None,
+        sample_weight_attribute_name=None,
         content_type=None,
         s3_data_type=None,
     ):
@@ -961,6 +976,8 @@ class AutoMLJob(_Job):
                 channel["ContentType"] = content_type
             if s3_data_type is not None:
                 channel["DataSource"]["S3DataSource"]["S3DataType"] = s3_data_type
+            if sample_weight_attribute_name is not None:
+                channel["SampleWeightAttributeName"] = sample_weight_attribute_name
             channels.append(channel)
         elif isinstance(inputs, list):
             for input_entry in inputs:
@@ -974,6 +991,8 @@ class AutoMLJob(_Job):
                     channel["ContentType"] = content_type
                 if s3_data_type is not None:
                     channel["DataSource"]["S3DataSource"]["S3DataType"] = s3_data_type
+                if sample_weight_attribute_name is not None:
+                    channel["SampleWeightAttributeName"] = sample_weight_attribute_name
                 channels.append(channel)
         else:
             msg = (

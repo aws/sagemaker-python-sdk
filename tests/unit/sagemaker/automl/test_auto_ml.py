@@ -34,6 +34,7 @@ INSTANCE_TYPE = "ml.c5.2xlarge"
 RESOURCE_POOLS = [{"InstanceType": INSTANCE_TYPE, "PoolSize": INSTANCE_COUNT}]
 ROLE = "DummyRole"
 TARGET_ATTRIBUTE_NAME = "target"
+SAMPLE_WEIGHT_ATTRIBUTE_NAME = "sampleWeight"
 REGION = "us-west-2"
 DEFAULT_S3_INPUT_DATA = "s3://{}/data".format(BUCKET_NAME)
 DEFAULT_S3_VALIDATION_DATA = "s3://{}/validation_data".format(BUCKET_NAME)
@@ -103,6 +104,7 @@ AUTO_ML_DESC_3 = {
                 }
             },
             "TargetAttributeName": "y",
+            "SampleWeightAttributeName": "sampleWeight",
         },
         {
             "ChannelType": "validation",
@@ -115,6 +117,7 @@ AUTO_ML_DESC_3 = {
                 }
             },
             "TargetAttributeName": "y",
+            "SampleWeightAttributeName": "sampleWeight",
         },
     ],
     "OutputDataConfig": {"KmsKeyId": "string", "S3OutputPath": "s3://output_prefix"},
@@ -360,12 +363,14 @@ def test_auto_ml_validation_channel_name(sagemaker_session):
     input_training = AutoMLInput(
         inputs=DEFAULT_S3_INPUT_DATA,
         target_attribute_name="target",
+        sample_weight_attribute_name="sampleWeight",
         compression="Gzip",
         channel_type="training",
     )
     input_validation = AutoMLInput(
         inputs=DEFAULT_S3_VALIDATION_DATA,
         target_attribute_name="target",
+        sample_weight_attribute_name="sampleWeight",
         compression="Gzip",
         channel_type="validation",
     )
@@ -384,6 +389,7 @@ def test_auto_ml_validation_channel_name(sagemaker_session):
                 }
             },
             "TargetAttributeName": TARGET_ATTRIBUTE_NAME,
+            "SampleWeightAttributeName": SAMPLE_WEIGHT_ATTRIBUTE_NAME,
         },
         {
             "ChannelType": "validation",
@@ -395,6 +401,7 @@ def test_auto_ml_validation_channel_name(sagemaker_session):
                 }
             },
             "TargetAttributeName": TARGET_ATTRIBUTE_NAME,
+            "SampleWeightAttributeName": SAMPLE_WEIGHT_ATTRIBUTE_NAME,
         },
     ]
 
@@ -617,7 +624,10 @@ def test_auto_ml_local_input(sagemaker_session):
 
 def test_auto_ml_input(sagemaker_session):
     inputs = AutoMLInput(
-        inputs=DEFAULT_S3_INPUT_DATA, target_attribute_name="target", compression="Gzip"
+        inputs=DEFAULT_S3_INPUT_DATA,
+        target_attribute_name="target",
+        sample_weight_attribute_name="sampleWeight",
+        compression="Gzip",
     )
     auto_ml = AutoML(
         role=ROLE,
@@ -636,6 +646,7 @@ def test_auto_ml_input(sagemaker_session):
                 }
             },
             "TargetAttributeName": TARGET_ATTRIBUTE_NAME,
+            "SampleWeightAttributeName": SAMPLE_WEIGHT_ATTRIBUTE_NAME,
         }
     ]
 
