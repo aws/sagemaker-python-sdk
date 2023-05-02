@@ -25,7 +25,8 @@ INVALID_MODEL_ID_ERROR_MSG = (
     "Invalid model ID: '{model_id}'. Please visit "
     f"{MODEL_ID_LIST_WEB_URL} for list of supported model IDs. "
     "The module `sagemaker.jumpstart.notebook_utils` contains utilities for "
-    "fetching model IDs."
+    "fetching model IDs. We recommend upgrading to the latest version of sagemaker "
+    "to get access to the most models."
 )
 
 

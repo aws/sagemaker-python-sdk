@@ -549,6 +549,7 @@ class JumpStartEstimator(Estimator):
         self.tolerate_vulnerable_model = estimator_init_kwargs.tolerate_vulnerable_model
         self.instance_count = estimator_init_kwargs.instance_count
         self.region = estimator_init_kwargs.region
+        self.orig_predictor_cls = None
 
         super(JumpStartEstimator, self).__init__(**estimator_init_kwargs.to_kwargs_dict())
 
@@ -897,6 +898,8 @@ class JumpStartEstimator(Estimator):
                 (Default: None).
         """
 
+        self.orig_predictor_cls = predictor_cls
+
         estimator_deploy_kwargs = get_deploy_kwargs(
             model_id=self.model_id,
             model_version=self.model_version,
@@ -942,16 +945,19 @@ class JumpStartEstimator(Estimator):
             **estimator_deploy_kwargs.to_kwargs_dict()
         )
 
-        predictor_with_defaults = get_default_predictor(
-            predictor=predictor,
-            model_id=self.model_id,
-            model_version=self.model_version,
-            region=self.region,
-            tolerate_deprecated_model=self.tolerate_deprecated_model,
-            tolerate_vulnerable_model=self.tolerate_vulnerable_model,
-        )
+        # If no predictor class was passed, add defaults to predictor
+        if self.orig_predictor_cls is None:
+            return get_default_predictor(
+                predictor=predictor,
+                model_id=self.model_id,
+                model_version=self.model_version,
+                region=self.region,
+                tolerate_deprecated_model=self.tolerate_deprecated_model,
+                tolerate_vulnerable_model=self.tolerate_vulnerable_model,
+            )
 
-        return predictor_with_defaults
+        # If a predictor class was passed, do not mutate predictor
+        return predictor
 
     def __str__(self) -> str:
         """Overriding str(*) method to make more human-readable."""

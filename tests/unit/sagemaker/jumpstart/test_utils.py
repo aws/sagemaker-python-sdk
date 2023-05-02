@@ -922,8 +922,12 @@ def test_stringify_object():
             self.blah = "blah"
             self.wtafigo = "eiifccreeeiuclkftdvttufbkhirtvvbhrieclghjiru"
             self.none_field = None
+            self.dict_field = {"my": "dict"}
+            self.list_field = ["1", 2, 3.0]
+            self.list_dict_field = [{"hello": {"world": {"hello"}}}]
 
-    assert (
-        utils.stringify_object(MyTestClass())
-        == "MyTestClass: {'blah': 'blah', 'wtafigo': 'eiifccreeeiuclkftdvttufbkhirtvvbhrieclghjiru'}"
+    assert utils.stringify_object(MyTestClass()) == (
+        """MyTestClass: {'blah': 'blah', 'wtafigo': 'eiifccreeeiuclkftdvttufbkhirtvvbhrieclghjiru',"""
+        """ 'dict_field': "{'my': 'dict'}", 'list_field': "['1', 2, 3.0]", 'list_dict_field': "[{'hello': """
+        """{'world': {'hello'}}}]"}"""
     )

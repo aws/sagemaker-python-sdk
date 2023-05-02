@@ -29,6 +29,10 @@ execution_role = "fake role! do not use!"
 region = "us-west-2"
 sagemaker_session = Session()
 sagemaker_session.get_caller_identity_arn = lambda: execution_role
+default_predictor = Predictor("blah", sagemaker_session)
+default_predictor_with_presets = Predictor(
+    "eiifccreeeiuihlrblivhchuefdckrluliilctfjgknk", sagemaker_session
+)
 
 
 class ModelTest(unittest.TestCase):
@@ -46,6 +50,8 @@ class ModelTest(unittest.TestCase):
         mock_session: mock.Mock,
         mock_is_valid_model_id: mock.Mock,
     ):
+        mock_model_deploy.return_value = default_predictor
+
         mock_is_valid_model_id.return_value = True
         model_id, _ = "js-trainable-model", "*"
 
@@ -99,6 +105,8 @@ class ModelTest(unittest.TestCase):
         mock_session: mock.Mock,
         mock_is_valid_model_id: mock.Mock,
     ):
+        mock_model_deploy.return_value = default_predictor
+
         mock_is_valid_model_id.return_value = True
 
         model_id, _ = "js-model-class-model-prepacked", "*"
@@ -148,6 +156,8 @@ class ModelTest(unittest.TestCase):
         mock_get_model_specs: mock.Mock,
         mock_is_valid_model_id: mock.Mock,
     ):
+        mock_model_deploy.return_value = default_predictor
+
         mock_is_valid_model_id.return_value = True
 
         model_id, _ = "deprecated_model", "*"
@@ -174,6 +184,8 @@ class ModelTest(unittest.TestCase):
         mock_is_valid_model_id: mock.Mock,
     ):
         mock_is_valid_model_id.return_value = True
+
+        mock_model_deploy.return_value = default_predictor
 
         model_id, _ = "vulnerable_model", "*"
 
@@ -248,6 +260,8 @@ class ModelTest(unittest.TestCase):
         init_kwargs: Optional[dict] = None,
         deploy_kwargs: Optional[dict] = None,
     ):
+
+        mock_model_deploy.return_value = default_predictor
 
         mock_is_valid_model_id.return_value = True
 
@@ -337,3 +351,84 @@ class ModelTest(unittest.TestCase):
         mock_is_valid_model_id.return_value = False
         with pytest.raises(ValueError):
             JumpStartModel(model_id="invalid_model_id")
+
+    @mock.patch("sagemaker.jumpstart.model.get_default_predictor")
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.Model.__init__")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_no_predictor_returns_default_predictor(
+        self,
+        mock_model_deploy: mock.Mock,
+        mock_model_init: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+        mock_get_default_predictor: mock.Mock,
+    ):
+        mock_get_default_predictor.return_value = default_predictor_with_presets
+
+        mock_model_deploy.return_value = default_predictor
+
+        mock_is_valid_model_id.return_value = True
+
+        model_id, _ = "js-model-class-model-prepacked", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session.return_value = sagemaker_session
+
+        model = JumpStartModel(
+            model_id=model_id,
+        )
+
+        predictor = model.deploy()
+
+        mock_get_default_predictor.assert_called_once_with(
+            predictor=default_predictor,
+            model_id=model_id,
+            model_version="*",
+            region=region,
+            tolerate_deprecated_model=False,
+            tolerate_vulnerable_model=False,
+        )
+        self.assertEqual(type(predictor), Predictor)
+        self.assertEqual(predictor, default_predictor_with_presets)
+
+    @mock.patch("sagemaker.jumpstart.model.get_default_predictor")
+    @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.model.Model.__init__")
+    @mock.patch("sagemaker.jumpstart.model.Model.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_yes_predictor_returns_default_predictor(
+        self,
+        mock_model_deploy: mock.Mock,
+        mock_model_init: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+        mock_get_default_predictor: mock.Mock,
+    ):
+        mock_get_default_predictor.return_value = default_predictor_with_presets
+
+        mock_model_deploy.return_value = default_predictor
+
+        mock_is_valid_model_id.return_value = True
+
+        model_id, _ = "js-model-class-model-prepacked", "*"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session.return_value = sagemaker_session
+
+        model = JumpStartModel(model_id=model_id, predictor_cls=Predictor)
+
+        predictor = model.deploy()
+
+        mock_get_default_predictor.assert_not_called()
+        self.assertEqual(type(predictor), Predictor)
+        self.assertEqual(predictor, default_predictor)

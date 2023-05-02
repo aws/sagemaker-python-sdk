@@ -14,6 +14,7 @@ from __future__ import absolute_import
 import random
 from unittest import mock
 import unittest
+from sagemaker.base_predictor import Predictor
 from sagemaker.config.config_schema import (
     MODEL_ENABLE_NETWORK_ISOLATION_PATH,
     MODEL_EXECUTION_ROLE_ARN_PATH,
@@ -33,6 +34,8 @@ execution_role = "fake role! do not use!"
 region = "us-west-2"
 sagemaker_session = Session()
 sagemaker_session.get_caller_identity_arn = lambda: execution_role
+default_predictor = Predictor("eiifccreeeiujigjjdfgiujrcibigckbtregvkjeurru", sagemaker_session)
+
 
 override_role = "asdfjkl;"
 override_enable_network_isolation = random.choice([True, False])
@@ -95,6 +98,8 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
         mock_is_valid_model_id: mock.Mock,
     ):
 
+        mock_estimator_deploy.return_value = default_predictor
+
         mock_is_valid_model_id.return_value = True
 
         model_id, _ = "js-trainable-model", "*"
@@ -147,6 +152,9 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
         mock_estimator_deploy: mock.Mock,
         mock_is_valid_model_id: mock.Mock,
     ):
+
+        mock_estimator_deploy.return_value = default_predictor
+
         mock_is_valid_model_id.return_value = True
 
         model_id, _ = "js-trainable-model", "*"
@@ -217,6 +225,8 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
         mock_estimator_deploy: mock.Mock,
         mock_is_valid_model_id: mock.Mock,
     ):
+
+        mock_estimator_deploy.return_value = default_predictor
 
         mock_is_valid_model_id.return_value = True
 
@@ -297,6 +307,9 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
         mock_estimator_deploy: mock.Mock,
         mock_is_valid_model_id: mock.Mock,
     ):
+
+        mock_estimator_deploy.return_value = default_predictor
+
         mock_is_valid_model_id.return_value = True
 
         model_id, _ = "js-trainable-model", "*"
@@ -369,6 +382,9 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
         mock_get_caller_identity_arn: mock.Mock,
         mock_is_valid_model_id: mock.Mock,
     ):
+
+        mock_estimator_deploy.return_value = default_predictor
+
         mock_is_valid_model_id.return_value = True
 
         model_id, _ = "js-trainable-model", "*"
@@ -425,6 +441,9 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
         mock_get_caller_identity_arn: mock.Mock,
         mock_is_valid_model_id: mock.Mock,
     ):
+
+        mock_estimator_deploy.return_value = default_predictor
+
         mock_is_valid_model_id.return_value = True
 
         mock_get_caller_identity_arn.return_value = execution_role
@@ -494,6 +513,8 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
         mock_estimator_deploy: mock.Mock,
         mock_is_valid_model_id: mock.Mock,
     ):
+        mock_estimator_deploy.return_value = default_predictor
+
         mock_is_valid_model_id.return_value = True
 
         model_id, _ = "js-trainable-model", "*"
@@ -566,6 +587,8 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
         mock_estimator_deploy: mock.Mock,
         mock_is_valid_model_id: mock.Mock,
     ):
+        mock_estimator_deploy.return_value = default_predictor
+
         mock_is_valid_model_id.return_value = True
 
         model_id, _ = "js-trainable-model", "*"

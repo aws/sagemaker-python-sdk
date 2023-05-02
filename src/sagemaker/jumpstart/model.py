@@ -284,6 +284,8 @@ class JumpStartModel(Model):
             git_config=git_config,
         )
 
+        self.orig_predictor_cls = predictor_cls
+
         self.model_id = model_init_kwargs.model_id
         self.model_version = model_init_kwargs.model_version
         self.instance_type = model_init_kwargs.instance_type
@@ -420,16 +422,19 @@ class JumpStartModel(Model):
 
         predictor = super(JumpStartModel, self).deploy(**deploy_kwargs.to_kwargs_dict())
 
-        predictor_with_defaults = get_default_predictor(
-            predictor=predictor,
-            model_id=self.model_id,
-            model_version=self.model_version,
-            region=self.region,
-            tolerate_deprecated_model=self.tolerate_deprecated_model,
-            tolerate_vulnerable_model=self.tolerate_vulnerable_model,
-        )
+        # If no predictor class was passed, add defaults to predictor
+        if self.orig_predictor_cls is None:
+            return get_default_predictor(
+                predictor=predictor,
+                model_id=self.model_id,
+                model_version=self.model_version,
+                region=self.region,
+                tolerate_deprecated_model=self.tolerate_deprecated_model,
+                tolerate_vulnerable_model=self.tolerate_vulnerable_model,
+            )
 
-        return predictor_with_defaults
+        # If a predictor class was passed, do not mutate predictor
+        return predictor
 
     def __str__(self) -> str:
         """Overriding str(*) method to make more human-readable."""

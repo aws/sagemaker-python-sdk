@@ -58,13 +58,16 @@ def get_default_predictor(
 ) -> Predictor:
     """Converts predictor returned from ``Model.deploy()`` into a JumpStart-specific one.
 
-    If the predictor is a custom predictor class, honor the user setting and do not mutate.
-    If the predictor is a base-class predictor, set model-specific defaults.
+    Raises:
+        RuntimeError: If a base-class predictor is not used.
     """
 
     # if there's a non-default predictor, do not mutate -- return as is
     if type(predictor) != Predictor:  # pylint: disable=C0123
-        return predictor
+        raise RuntimeError(
+            "Can only get default predictor from base Predictor class. "
+            f"Using Predictor class '{type(predictor).__name__}'."
+        )
 
     predictor.serializer = serializers.retrieve_default(
         model_id=model_id,

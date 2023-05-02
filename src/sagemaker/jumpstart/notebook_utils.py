@@ -424,7 +424,7 @@ def get_model_url(
 def is_valid_model_id(
     model_id: str, script: JumpStartScriptScope = JumpStartScriptScope.INFERENCE
 ) -> bool:
-    """Returns True if the model id is supported for the given script."""
+    """Returns True if the model ID is supported for the given script."""
     if model_id in {None, ""}:
         return False
     if not isinstance(model_id, str):
