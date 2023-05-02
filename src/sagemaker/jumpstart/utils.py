@@ -65,7 +65,7 @@ def get_jumpstart_launched_regions_message() -> str:
 
 
 def get_jumpstart_content_bucket(
-    region: Optional[str] = constants.JUMPSTART_DEFAULT_REGION_NAME,
+    region: str = constants.JUMPSTART_DEFAULT_REGION_NAME,
 ) -> str:
     """Returns regionalized content bucket name for JumpStart.
 

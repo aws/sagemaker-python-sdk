@@ -431,4 +431,6 @@ def is_valid_model_id(
         return False
     if script == JumpStartScriptScope.INFERENCE:
         return model_id in list_jumpstart_models()
-    return model_id in list_jumpstart_models("training_supported is True")
+    if script == JumpStartScriptScope.TRAINING:
+        return model_id in list_jumpstart_models("training_supported is True")
+    raise ValueError(f"Unsupported script: {script}")
