@@ -486,7 +486,9 @@ class JumpStartEstimator(Estimator):
                 in the private Docker registry. (Default: None).
         """
 
-        if not is_valid_model_id(model_id=model_id, script=JumpStartScriptScope.TRAINING):
+        if not is_valid_model_id(
+            model_id=model_id, model_version=model_version, script=JumpStartScriptScope.TRAINING
+        ):
             raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
 
         estimator_init_kwargs = get_init_kwargs(

@@ -25,7 +25,7 @@ from sagemaker.jumpstart.notebook_utils import (
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
-@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+@patch("sagemaker.jumpstart.notebook_utils.accessors.JumpStartModelsAccessor.get_model_specs")
 @patch("sagemaker.jumpstart.notebook_utils._generate_jumpstart_model_versions")
 def test_list_jumpstart_scripts(
     patched_generate_jumpstart_models: Mock,
@@ -679,8 +679,11 @@ def test_get_model_url(
 
 
 class TestIsValidModelId(TestCase):
+    @patch("sagemaker.jumpstart.notebook_utils.accessors.JumpStartModelsAccessor.get_model_specs")
     @patch("sagemaker.jumpstart.notebook_utils.list_jumpstart_models")
-    def test_is_valid_model_id_true(self, mock_list_jumpstart_models: Mock):
+    def test_is_valid_model_id_true(
+        self, mock_list_jumpstart_models: Mock, mock_get_model_specs: Mock
+    ):
         mock_list_jumpstart_models.return_value = ["ay", "bee", "see"]
         self.assertTrue(is_valid_model_id("bee"))
         mock_list_jumpstart_models.assert_called_once_with()
@@ -688,11 +691,19 @@ class TestIsValidModelId(TestCase):
         mock_list_jumpstart_models.reset_mock()
 
         mock_list_jumpstart_models.return_value = ["ay", "bee", "see"]
-        self.assertTrue(is_valid_model_id("bee", script=JumpStartScriptScope.TRAINING))
-        mock_list_jumpstart_models.assert_called_once_with("training_supported is True")
 
+        mock_get_model_specs.return_value = Mock(training_supported=True)
+        self.assertTrue(is_valid_model_id("bee", script=JumpStartScriptScope.TRAINING))
+        mock_list_jumpstart_models.assert_called_once_with()
+        mock_get_model_specs.assert_called_once_with(
+            region=JUMPSTART_DEFAULT_REGION_NAME, model_id="bee", version="*"
+        )
+
+    @patch("sagemaker.jumpstart.notebook_utils.accessors.JumpStartModelsAccessor.get_model_specs")
     @patch("sagemaker.jumpstart.notebook_utils.list_jumpstart_models")
-    def test_is_valid_model_id_false(self, mock_list_jumpstart_models: Mock):
+    def test_is_valid_model_id_false(
+        self, mock_list_jumpstart_models: Mock, mock_get_model_specs: Mock
+    ):
         mock_list_jumpstart_models.return_value = ["ay", "bee", "see"]
         self.assertFalse(is_valid_model_id("dee"))
         self.assertFalse(is_valid_model_id(""))
@@ -707,4 +718,10 @@ class TestIsValidModelId(TestCase):
         self.assertFalse(is_valid_model_id("", script=JumpStartScriptScope.TRAINING))
         self.assertFalse(is_valid_model_id(None, script=JumpStartScriptScope.TRAINING))
         self.assertFalse(is_valid_model_id(set(), script=JumpStartScriptScope.TRAINING))
-        mock_list_jumpstart_models.assert_has_calls(calls=[call("training_supported is True")])
+
+        mock_get_model_specs.return_value = Mock(training_supported=False)
+        self.assertFalse(is_valid_model_id("ay", script=JumpStartScriptScope.TRAINING))
+        mock_list_jumpstart_models.assert_has_calls(calls=[call()])
+        mock_get_model_specs.assert_called_once_with(
+            region=JUMPSTART_DEFAULT_REGION_NAME, model_id="ay", version="*"
+        )

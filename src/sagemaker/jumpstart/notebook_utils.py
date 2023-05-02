@@ -422,7 +422,9 @@ def get_model_url(
 
 
 def is_valid_model_id(
-    model_id: str, script: JumpStartScriptScope = JumpStartScriptScope.INFERENCE
+    model_id: str,
+    model_version: Optional[str] = None,
+    script: JumpStartScriptScope = JumpStartScriptScope.INFERENCE,
 ) -> bool:
     """Returns True if the model ID is supported for the given script."""
     if model_id in {None, ""}:
@@ -432,5 +434,12 @@ def is_valid_model_id(
     if script == JumpStartScriptScope.INFERENCE:
         return model_id in list_jumpstart_models()
     if script == JumpStartScriptScope.TRAINING:
-        return model_id in list_jumpstart_models("training_supported is True")
+        return (
+            model_id in list_jumpstart_models()
+            and accessors.JumpStartModelsAccessor.get_model_specs(
+                region=JUMPSTART_DEFAULT_REGION_NAME,
+                model_id=model_id,
+                version=model_version or "*",
+            ).training_supported
+        )
     raise ValueError(f"Unsupported script: {script}")

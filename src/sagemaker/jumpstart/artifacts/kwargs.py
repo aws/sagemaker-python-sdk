@@ -111,7 +111,7 @@ def _retrieve_model_deploy_kwargs(
         tolerate_deprecated_model=tolerate_deprecated_model,
     )
 
-    if volume_size_supported(instance_type):
+    if volume_size_supported(instance_type) and model_specs.inference_volume_size is not None:
         return {**model_specs.deploy_kwargs, **{"volume_size": model_specs.inference_volume_size}}
 
     return model_specs.deploy_kwargs
@@ -160,7 +160,7 @@ def _retrieve_estimator_init_kwargs(
         tolerate_deprecated_model=tolerate_deprecated_model,
     )
 
-    if volume_size_supported(instance_type):
+    if volume_size_supported(instance_type) and model_specs.training_volume_size is not None:
         return {**model_specs.estimator_kwargs, **{"volume_size": model_specs.training_volume_size}}
 
     return model_specs.estimator_kwargs

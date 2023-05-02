@@ -83,6 +83,7 @@ def test_jumpstart_inference_model_class(setup):
     deploy_kwargs = _retrieve_model_deploy_kwargs(
         model_id=model_id,
         model_version=model_version,
+        instance_type=instance_type,
     )
 
     model.deploy(

@@ -27,7 +27,10 @@ from sagemaker.jumpstart.artifacts import (
     _retrieve_estimator_init_kwargs,
     _retrieve_estimator_fit_kwargs,
 )
-from sagemaker.jumpstart.artifacts.kwargs import _retrieve_model_init_kwargs
+from sagemaker.jumpstart.artifacts.kwargs import (
+    _retrieve_model_deploy_kwargs,
+    _retrieve_model_init_kwargs,
+)
 from sagemaker.jumpstart.constants import (
     INFERENCE_ENTRY_POINT_SCRIPT_NAME,
     JUMPSTART_DEFAULT_REGION_NAME,
@@ -92,6 +95,7 @@ def test_jumpstart_transfer_learning_estimator_class(setup):
     estimator_kwargs = _retrieve_estimator_init_kwargs(
         model_id=model_id,
         model_version=model_version,
+        instance_type=training_instance_type,
     )
 
     estimator = Estimator(
@@ -152,6 +156,12 @@ def test_jumpstart_transfer_learning_estimator_class(setup):
         model_version=model_version,
     )
 
+    deploy_kwargs = _retrieve_model_deploy_kwargs(
+        model_id=model_id,
+        model_version=model_version,
+        instance_type=inference_instance_type,
+    )
+
     predictor: Predictor = estimator.deploy(
         initial_instance_count=instance_count,
         instance_type=inference_instance_type,
@@ -161,6 +171,7 @@ def test_jumpstart_transfer_learning_estimator_class(setup):
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         env=env,
         **model_kwargs,
+        **deploy_kwargs,
     )
 
     endpoint_invoker = EndpointInvoker(
