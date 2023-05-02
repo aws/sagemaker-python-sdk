@@ -2438,6 +2438,8 @@ BASE_SPEC = {
         "default_content_type": "application/x-image",
         "default_accept_type": "application/json",
     },
+    "inference_volume_size": 123,
+    "training_volume_size": 456,
 }
 
 BASE_HEADER = {

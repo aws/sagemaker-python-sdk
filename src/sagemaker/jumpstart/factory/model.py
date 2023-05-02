@@ -321,6 +321,7 @@ def _add_deploy_extra_kwargs(kwargs: JumpStartModelInitKwargs) -> Dict[str, Any]
     deploy_kwargs_to_add = _retrieve_model_deploy_kwargs(
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
+        instance_type=kwargs.instance_type,
         region=kwargs.region,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,

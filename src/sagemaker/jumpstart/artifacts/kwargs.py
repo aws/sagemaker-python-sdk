@@ -13,6 +13,7 @@
 """This module contains functions for obtaining JumpStart kwargs."""
 from __future__ import absolute_import
 from typing import Optional
+from sagemaker.instance_types import volume_size_supported
 from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_REGION_NAME,
 )
@@ -70,6 +71,7 @@ def _retrieve_model_init_kwargs(
 def _retrieve_model_deploy_kwargs(
     model_id: str,
     model_version: str,
+    instance_type: str,
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
@@ -81,6 +83,8 @@ def _retrieve_model_deploy_kwargs(
             retrieve the kwargs.
         model_version (str): Version of the JumpStart model for which to retrieve the
             kwargs.
+        instance_type (str): Instance type of the hosting endpoint, to determine if volume size
+            is supported.
         region (Optional[str]): Region for which to retrieve kwargs.
             (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
@@ -107,12 +111,16 @@ def _retrieve_model_deploy_kwargs(
         tolerate_deprecated_model=tolerate_deprecated_model,
     )
 
+    if volume_size_supported(instance_type):
+        return {**model_specs.deploy_kwargs, **{"volume_size": model_specs.inference_volume_size}}
+
     return model_specs.deploy_kwargs
 
 
 def _retrieve_estimator_init_kwargs(
     model_id: str,
     model_version: str,
+    instance_type: str,
     region: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
@@ -124,6 +132,8 @@ def _retrieve_estimator_init_kwargs(
             retrieve the kwargs.
         model_version (str): Version of the JumpStart model for which to retrieve the
             kwargs.
+        instance_type (str): Instance type of the training job, to determine if volume size is
+            supported.
         region (Optional[str]): Region for which to retrieve kwargs.
             (Default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model
@@ -149,6 +159,9 @@ def _retrieve_estimator_init_kwargs(
         tolerate_vulnerable_model=tolerate_vulnerable_model,
         tolerate_deprecated_model=tolerate_deprecated_model,
     )
+
+    if volume_size_supported(instance_type):
+        return {**model_specs.estimator_kwargs, **{"volume_size": model_specs.training_volume_size}}
 
     return model_specs.estimator_kwargs
 

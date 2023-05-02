@@ -346,6 +346,8 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "estimator_kwargs",
         "fit_kwargs",
         "predictor_specs",
+        "inference_volume_size",
+        "training_volume_size",
     ]
 
     def __init__(self, spec: Dict[str, Any]):
@@ -408,6 +410,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
             if "predictor_specs" in json_obj
             else None
         )
+        self.inference_volume_size: Optional[int] = json_obj.get("inference_volume_size")
 
         if self.training_supported:
             self.training_ecr_specs: JumpStartECRSpecs = JumpStartECRSpecs(
@@ -422,6 +425,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
                 ]
             self.estimator_kwargs = deepcopy(json_obj.get("estimator_kwargs", {}))
             self.fit_kwargs = deepcopy(json_obj.get("fit_kwargs", {}))
+            self.training_volume_size: Optional[int] = json_obj.get("training_volume_size")
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartModelSpecs object."""

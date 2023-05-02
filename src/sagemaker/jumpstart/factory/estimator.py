@@ -551,6 +551,7 @@ def _add_estimator_extra_kwargs(
     estimator_kwargs_to_add = _retrieve_estimator_init_kwargs(
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
+        instance_type=kwargs.instance_type,
         region=kwargs.region,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,

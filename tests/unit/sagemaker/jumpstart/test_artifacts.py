@@ -39,19 +39,42 @@ class RetrieveKwargsTest(unittest.TestCase):
 
         assert kwargs == {"some-model-kwarg-key": "some-model-kwarg-value"}
 
-    def test_estimator_kwargs(self, patched_get_model_specs):
+    @patch("sagemaker.jumpstart.artifacts.kwargs.volume_size_supported")
+    def test_estimator_kwargs(self, patched_volume_size_supported, patched_get_model_specs):
 
+        patched_volume_size_supported.return_value = False
         patched_get_model_specs.side_effect = get_spec_from_base_spec
 
         kwargs = artifacts._retrieve_estimator_init_kwargs(
             region=self.region,
             model_id=self.model_id,
             model_version=self.model_version,
+            instance_type="blah",
         )
 
         assert kwargs == {"encrypt_inter_container_traffic": True}
 
-    def test_model_deploy_kwargs(self, patched_get_model_specs):
+    @patch("sagemaker.jumpstart.artifacts.kwargs.volume_size_supported")
+    def test_estimator_kwargs_with_volume_size(
+        self, patched_volume_size_supported, patched_get_model_specs
+    ):
+
+        patched_volume_size_supported.return_value = True
+        patched_get_model_specs.side_effect = get_spec_from_base_spec
+
+        kwargs = artifacts._retrieve_estimator_init_kwargs(
+            region=self.region,
+            model_id=self.model_id,
+            model_version=self.model_version,
+            instance_type="blah",
+        )
+
+        assert kwargs == {"encrypt_inter_container_traffic": True, "volume_size": 456}
+
+    @patch("sagemaker.jumpstart.artifacts.kwargs.volume_size_supported")
+    def test_model_deploy_kwargs(self, patched_volume_size_supported, patched_get_model_specs):
+
+        patched_volume_size_supported.return_value = False
 
         patched_get_model_specs.side_effect = get_spec_from_base_spec
 
@@ -59,9 +82,31 @@ class RetrieveKwargsTest(unittest.TestCase):
             region=self.region,
             model_id=self.model_id,
             model_version=self.model_version,
+            instance_type="blah",
         )
 
         assert kwargs == {"some-model-deploy-kwarg-key": "some-model-deploy-kwarg-value"}
+
+    @patch("sagemaker.jumpstart.artifacts.kwargs.volume_size_supported")
+    def test_model_deploy_kwargs_with_volume_size(
+        self, patched_volume_size_supported, patched_get_model_specs
+    ):
+
+        patched_volume_size_supported.return_value = True
+
+        patched_get_model_specs.side_effect = get_spec_from_base_spec
+
+        kwargs = artifacts._retrieve_model_deploy_kwargs(
+            region=self.region,
+            model_id=self.model_id,
+            model_version=self.model_version,
+            instance_type="blah",
+        )
+
+        assert kwargs == {
+            "some-model-deploy-kwarg-key": "some-model-deploy-kwarg-value",
+            "volume_size": 123,
+        }
 
     def test_estimator_fit_kwargs(self, patched_get_model_specs):
 
