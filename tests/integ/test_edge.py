@@ -58,10 +58,7 @@ def mxnet_training_job(
         return mx.latest_training_job.name
 
 
-@pytest.mark.skipif(
-    test_region() not in EDGE_PACKAGING_SUPPORTED_REGIONS,
-    reason="Edge packaging isn't supported in that specific region.",
-)
+@pytest.mark.skip(reason="Edge has been deprecated. Skipping until feature team deprecates functionality.")
 def test_edge_packaging_job(mxnet_training_job, sagemaker_session):
     estimator = MXNet.attach(mxnet_training_job, sagemaker_session=sagemaker_session)
     model = estimator.compile_model(
