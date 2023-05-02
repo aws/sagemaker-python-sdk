@@ -1702,7 +1702,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         if "KeepAlivePeriodInSeconds" in job_details["ResourceConfig"]:
             init_params["keep_alive_period_in_seconds"] = job_details["ResourceConfig"][
-                "keepAlivePeriodInSeconds"
+                "KeepAlivePeriodInSeconds"
             ]
 
         has_hps = "HyperParameters" in job_details
