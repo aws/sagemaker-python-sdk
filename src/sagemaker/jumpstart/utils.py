@@ -444,7 +444,10 @@ def update_dict_if_key_not_present(
 
 
 def resolve_model_intelligent_default_field(
-    field_name: str, field_val: Optional[Any], sagemaker_session: Session
+    field_name: str,
+    field_val: Optional[Any],
+    sagemaker_session: Session,
+    default_value: Optional[str] = None,
 ) -> Any:
     """Given a field name, checks if there are intelligent defaults to set.
 
@@ -459,7 +462,7 @@ def resolve_model_intelligent_default_field(
         return resolve_value_from_config(
             direct_input=field_val,
             config_path=MODEL_EXECUTION_ROLE_ARN_PATH,
-            default_value=sagemaker_session.get_caller_identity_arn(),
+            default_value=default_value or sagemaker_session.get_caller_identity_arn(),
             sagemaker_session=sagemaker_session,
         )
 
@@ -470,6 +473,7 @@ def resolve_model_intelligent_default_field(
             direct_input=None,
             config_path=MODEL_ENABLE_NETWORK_ISOLATION_PATH,
             sagemaker_session=sagemaker_session,
+            default_value=default_value,
         )
         return resolved_val if resolved_val is not None else field_val
 
@@ -478,7 +482,10 @@ def resolve_model_intelligent_default_field(
 
 
 def resolve_estimator_intelligent_default_field(
-    field_name: str, field_val: Optional[Any], sagemaker_session: Session
+    field_name: str,
+    field_val: Optional[Any],
+    sagemaker_session: Session,
+    default_value: Optional[str] = None,
 ) -> Any:
     """Given a field name, checks if there are intelligent defaults to set.
 
@@ -493,7 +500,7 @@ def resolve_estimator_intelligent_default_field(
         return resolve_value_from_config(
             direct_input=field_val,
             config_path=TRAINING_JOB_ROLE_ARN_PATH,
-            default_value=sagemaker_session.get_caller_identity_arn(),
+            default_value=default_value or sagemaker_session.get_caller_identity_arn(),
             sagemaker_session=sagemaker_session,
         )
 
@@ -505,6 +512,7 @@ def resolve_estimator_intelligent_default_field(
             direct_input=None,
             config_path=TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
             sagemaker_session=sagemaker_session,
+            default_value=default_value,
         )
         return resolved_val if resolved_val is not None else field_val
 
@@ -514,6 +522,7 @@ def resolve_estimator_intelligent_default_field(
             direct_input=None,
             config_path=TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
             sagemaker_session=sagemaker_session,
+            default_value=default_value,
         )
         return resolved_val if resolved_val is not None else field_val
 

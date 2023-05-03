@@ -486,8 +486,8 @@ class EstimatorTest(unittest.TestCase):
                     "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
                 },
                 "predictor_cls": Predictor,
-                "role": execution_role,
-                "enable_network_isolation": False,
+                "role": init_kwargs["role"],
+                "enable_network_isolation": init_kwargs["enable_network_isolation"],
             },
             deploy_kwargs,
         )
@@ -655,6 +655,108 @@ class EstimatorTest(unittest.TestCase):
         mock_get_default_predictor.assert_not_called()
         self.assertEqual(type(predictor), Predictor)
         self.assertEqual(predictor, default_predictor)
+
+    @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.factory.estimator._model_supports_incremental_training")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.logger.warning")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_incremental_training_with_unsupported_model_logs_warning(
+        self,
+        mock_estimator_deploy: mock.Mock,
+        mock_estimator_fit: mock.Mock,
+        mock_estimator_init: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session_estimator: mock.Mock,
+        mock_session_model: mock.Mock,
+        mock_logger_warning: mock.Mock,
+        mock_supports_incremental_training: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+    ):
+        mock_is_valid_model_id.return_value = True
+
+        mock_estimator_deploy.return_value = default_predictor
+
+        model_id = "js-trainable-model"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session_estimator.return_value = sagemaker_session
+        mock_session_model.return_value = sagemaker_session
+
+        mock_supports_incremental_training.return_value = False
+
+        JumpStartEstimator(
+            model_id=model_id,
+            model_uri="some-weird-model-uri",
+        )
+
+        mock_logger_warning.assert_called_once_with(
+            f"'{model_id}' does not support incremental training but is being trained with non-default model artifact."
+        )
+        mock_supports_incremental_training.assert_called_once_with(
+            model_id=model_id,
+            model_version="*",
+            region=region,
+            tolerate_deprecated_model=False,
+            tolerate_vulnerable_model=False,
+        )
+
+    @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
+    @mock.patch("sagemaker.jumpstart.factory.estimator._model_supports_incremental_training")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.logger.warning")
+    @mock.patch("sagemaker.jumpstart.factory.model.Session")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.fit")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.deploy")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
+    @mock.patch("sagemaker.jumpstart.factory.model.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_incremental_training_with_supported_model_doesnt_log_warning(
+        self,
+        mock_estimator_deploy: mock.Mock,
+        mock_estimator_fit: mock.Mock,
+        mock_estimator_init: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session_estimator: mock.Mock,
+        mock_session_model: mock.Mock,
+        mock_logger_warning: mock.Mock,
+        mock_supports_incremental_training: mock.Mock,
+        mock_is_valid_model_id: mock.Mock,
+    ):
+        mock_is_valid_model_id.return_value = True
+
+        mock_estimator_deploy.return_value = default_predictor
+
+        model_id = "js-trainable-model"
+
+        mock_get_model_specs.side_effect = get_special_model_spec
+
+        mock_session_estimator.return_value = sagemaker_session
+        mock_session_model.return_value = sagemaker_session
+
+        mock_supports_incremental_training.return_value = True
+
+        JumpStartEstimator(
+            model_id=model_id,
+            model_uri="some-weird-model-uri",
+        )
+
+        mock_logger_warning.assert_not_called()
+        mock_supports_incremental_training.assert_called_once_with(
+            model_id=model_id,
+            model_version="*",
+            region=region,
+            tolerate_deprecated_model=False,
+            tolerate_vulnerable_model=False,
+        )
 
 
 def test_jumpstart_estimator_requires_model_id():

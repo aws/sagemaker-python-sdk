@@ -24,6 +24,7 @@ from sagemaker import (
     model_uris,
     script_uris,
 )
+from sagemaker.jumpstart.artifacts import _model_supports_incremental_training
 from sagemaker.session import Session
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.base_deserializers import BaseDeserializer
@@ -435,13 +436,31 @@ def _add_image_uri_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartE
 def _add_model_uri_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartEstimatorInitKwargs:
     """Sets model uri in kwargs based on default or override, returns full kwargs."""
 
-    kwargs.model_uri = kwargs.model_uri or model_uris.retrieve(
+    default_model_uri = model_uris.retrieve(
         model_scope=JumpStartScriptScope.TRAINING,
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
         tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
         tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
     )
+
+    if (
+        kwargs.model_uri is not None
+        and kwargs.model_uri != default_model_uri
+        and not _model_supports_incremental_training(
+            model_id=kwargs.model_id,
+            model_version=kwargs.model_version,
+            region=kwargs.region,
+            tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+            tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+        )
+    ):
+        logger.warning(  # pylint: disable=W1203
+            f"'{kwargs.model_id}' does not support incremental training but is being trained with"
+            " non-default model artifact."
+        )
+
+    kwargs.model_uri = kwargs.model_uri or default_model_uri
 
     return kwargs
 

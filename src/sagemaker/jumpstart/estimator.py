@@ -32,7 +32,10 @@ from sagemaker.jumpstart.exceptions import INVALID_MODEL_ID_ERROR_MSG
 
 from sagemaker.jumpstart.factory.estimator import get_deploy_kwargs, get_fit_kwargs, get_init_kwargs
 from sagemaker.jumpstart.factory.model import get_default_predictor
-from sagemaker.jumpstart.utils import is_valid_model_id
+from sagemaker.jumpstart.utils import (
+    is_valid_model_id,
+    resolve_model_intelligent_default_field,
+)
 from sagemaker.jumpstart.utils import stringify_object
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
 from sagemaker.predictor import PredictorBase
@@ -557,6 +560,9 @@ class JumpStartEstimator(Estimator):
         self.instance_count = estimator_init_kwargs.instance_count
         self.region = estimator_init_kwargs.region
         self.orig_predictor_cls = None
+        self.role = estimator_init_kwargs.role
+        self.sagemaker_session = estimator_init_kwargs.sagemaker_session
+        self._enable_network_isolation = estimator_init_kwargs.enable_network_isolation
 
         super(JumpStartEstimator, self).__init__(**estimator_init_kwargs.to_kwargs_dict())
 
@@ -906,6 +912,22 @@ class JumpStartEstimator(Estimator):
         """
 
         self.orig_predictor_cls = predictor_cls
+
+        sagemaker_session = sagemaker_session or self.sagemaker_session
+        role = resolve_model_intelligent_default_field(
+            field_name="role",
+            field_val=role,
+            sagemaker_session=sagemaker_session,
+            default_value=self.role,
+        )
+        enable_network_isolation = enable_network_isolation or (
+            resolve_model_intelligent_default_field(
+                field_name="enable_network_isolation",
+                field_val=None,
+                sagemaker_session=sagemaker_session,
+            )
+            or self.enable_network_isolation()
+        )
 
         estimator_deploy_kwargs = get_deploy_kwargs(
             model_id=self.model_id,

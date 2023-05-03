@@ -93,7 +93,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
         mock_session: mock.Mock,
         mock_resolve_value_from_config: mock.Mock,
         mock_get_sagemaker_config_value: mock.Mock,
-        mock_retrieve_kwargs: mock.Mock,
+        mock_retrieve_estimator_init_kwargs: mock.Mock,
         mock_retrieve_model_init_kwargs: mock.Mock,
         mock_estimator_init: mock.Mock,
         mock_estimator_deploy: mock.Mock,
@@ -106,7 +106,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         model_id, _ = "js-trainable-model", "*"
 
-        mock_retrieve_kwargs.return_value = {}
+        mock_retrieve_estimator_init_kwargs.return_value = {}
 
         mock_get_sagemaker_config_value.side_effect = config_value_impl
 
@@ -128,7 +128,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         estimator.deploy()
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 2)
+        self.assertEquals(mock_get_sagemaker_config_value.call_count, 4)
 
         self.assertEquals(mock_estimator_deploy.call_args[1].get("role"), config_inference_role)
 
@@ -198,7 +198,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         estimator.deploy()
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 5)
+        self.assertEquals(mock_get_sagemaker_config_value.call_count, 6)
 
         self.assertEquals(mock_estimator_deploy.call_args[1].get("role"), config_inference_role)
 
@@ -278,7 +278,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
             enable_network_isolation=override_inference_enable_network_isolation,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 2)
+        self.assertEquals(mock_get_sagemaker_config_value.call_count, 4)
 
         self.assertEquals(
             mock_estimator_deploy.call_args[1].get("role"), mock_inference_override_role
@@ -353,7 +353,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
             enable_network_isolation=override_inference_enable_network_isolation,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 2)
+        self.assertEquals(mock_get_sagemaker_config_value.call_count, 4)
 
         self.assertEquals(
             mock_estimator_deploy.call_args[1].get("role"), mock_inference_override_role
@@ -419,7 +419,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         mock_retrieve_model_init_kwargs.return_value = {}
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 2)
+        self.assertEquals(mock_get_sagemaker_config_value.call_count, 4)
 
         self.assertEquals(mock_estimator_deploy.call_args[1].get("role"), execution_role)
 
@@ -490,7 +490,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
 
         estimator.deploy()
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 5)
+        self.assertEquals(mock_get_sagemaker_config_value.call_count, 6)
 
         self.assertEquals(mock_estimator_deploy.call_args[1].get("role"), execution_role)
 
@@ -566,7 +566,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
             enable_network_isolation=override_inference_enable_network_isolation,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 2)
+        self.assertEquals(mock_get_sagemaker_config_value.call_count, 4)
 
         self.assertEquals(mock_estimator_deploy.call_args[1].get("role"), override_inference_role)
 
@@ -632,7 +632,7 @@ class IntelligentDefaultsEstimatorTest(unittest.TestCase):
             enable_network_isolation=override_enable_network_isolation,
         )
 
-        self.assertEquals(mock_get_sagemaker_config_value.call_count, 2)
+        self.assertEquals(mock_get_sagemaker_config_value.call_count, 4)
 
         self.assertEquals(mock_estimator_deploy.call_args[1].get("role"), override_inference_role)
 

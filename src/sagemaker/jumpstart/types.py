@@ -458,6 +458,10 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         """Returns True if the model has a prepacked inference artifact."""
         return getattr(self, "hosting_prepacked_artifact_key", None) is not None
 
+    def supports_incremental_training(self) -> bool:
+        """Returns True if the model supports incremental training."""
+        return self.incremental_training_supported
+
 
 class JumpStartVersionedModelId(JumpStartDataHolderType):
     """Data class for versioned model IDs."""
