@@ -52,7 +52,7 @@ class JumpStartEstimator(Estimator):
 
     def __init__(
         self,
-        model_id: str,
+        model_id: Optional[str] = None,
         model_version: Optional[str] = None,
         tolerate_vulnerable_model: Optional[bool] = None,
         tolerate_deprecated_model: Optional[bool] = None,
@@ -110,7 +110,9 @@ class JumpStartEstimator(Estimator):
 
 
         Args:
-            model_id (str): JumpStart model ID to use with model.
+            model_id (Optional[str]): JumpStart model ID to use. See
+                https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html
+                for list of model IDs.
             model_version (Optional[str]): Version for JumpStart model to use (Default: None).
             tolerate_vulnerable_model (Optional[bool]): True if vulnerable versions of model
                 specifications should be tolerated (exception not raised). If False, raises an

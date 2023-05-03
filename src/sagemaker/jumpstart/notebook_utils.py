@@ -422,7 +422,7 @@ def get_model_url(
 
 
 def is_valid_model_id(
-    model_id: str,
+    model_id: Optional[str],
     model_version: Optional[str] = None,
     script: JumpStartScriptScope = JumpStartScriptScope.INFERENCE,
 ) -> bool:

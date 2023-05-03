@@ -655,3 +655,8 @@ class EstimatorTest(unittest.TestCase):
         mock_get_default_predictor.assert_not_called()
         self.assertEqual(type(predictor), Predictor)
         self.assertEqual(predictor, default_predictor)
+
+
+def test_jumpstart_estimator_requires_model_id():
+    with pytest.raises(ValueError):
+        JumpStartEstimator()
