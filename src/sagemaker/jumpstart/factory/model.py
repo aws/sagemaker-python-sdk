@@ -26,12 +26,16 @@ from sagemaker.jumpstart.artifacts import (
     _retrieve_model_init_kwargs,
     _retrieve_model_deploy_kwargs,
 )
+from sagemaker.jumpstart.artifacts.resource_names import _retrieve_default_resource_name
 from sagemaker.jumpstart.constants import (
     INFERENCE_ENTRY_POINT_SCRIPT_NAME,
     JUMPSTART_DEFAULT_REGION_NAME,
 )
 from sagemaker.jumpstart.enums import JumpStartScriptScope
-from sagemaker.jumpstart.types import JumpStartModelDeployKwargs, JumpStartModelInitKwargs
+from sagemaker.jumpstart.types import (
+    JumpStartModelDeployKwargs,
+    JumpStartModelInitKwargs,
+)
 from sagemaker.jumpstart.utils import (
     update_dict_if_key_not_present,
     resolve_model_intelligent_default_field,
@@ -43,6 +47,7 @@ from sagemaker import accept_types, content_types, serializers, deserializers
 
 from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
 from sagemaker.session import Session
+from sagemaker.utils import name_from_base
 from sagemaker.workflow.entities import PipelineVariable
 
 logger = logging.getLogger("sagemaker")
@@ -307,11 +312,51 @@ def _add_extra_model_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelI
 
 
 def _add_predictor_cls_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
-    """Sets predictor class kwargs based on on default or override, returns full kwargs."""
+    """Sets predictor class based on default or override, returns full kwargs."""
 
     predictor_cls = kwargs.predictor_cls or Predictor
 
     kwargs.predictor_cls = predictor_cls
+    return kwargs
+
+
+def _add_endpoint_name_to_kwargs(
+    kwargs: Optional[JumpStartModelDeployKwargs],
+) -> JumpStartModelDeployKwargs:
+    """Sets resource name based on default or override, returns full kwargs."""
+
+    default_endpoint_name = _retrieve_default_resource_name(
+        model_id=kwargs.model_id,
+        model_version=kwargs.model_version,
+        region=kwargs.region,
+        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+    )
+
+    kwargs.endpoint_name = kwargs.endpoint_name or (
+        name_from_base(default_endpoint_name) if default_endpoint_name is not None else None
+    )
+
+    return kwargs
+
+
+def _add_model_name_to_kwargs(
+    kwargs: Optional[JumpStartModelInitKwargs],
+) -> JumpStartModelInitKwargs:
+    """Sets resource name based on default or override, returns full kwargs."""
+
+    default_model_name = _retrieve_default_resource_name(
+        model_id=kwargs.model_id,
+        model_version=kwargs.model_version,
+        region=kwargs.region,
+        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+    )
+
+    kwargs.name = kwargs.name or (
+        name_from_base(default_model_name) if default_model_name is not None else None
+    )
+
     return kwargs
 
 
@@ -387,6 +432,8 @@ def get_deploy_kwargs(
 
     deploy_kwargs = _add_model_version_to_kwargs(kwargs=deploy_kwargs)
 
+    deploy_kwargs = _add_endpoint_name_to_kwargs(kwargs=deploy_kwargs)
+
     deploy_kwargs = _add_instance_type_to_kwargs(
         kwargs=deploy_kwargs,
     )
@@ -458,6 +505,9 @@ def get_init_kwargs(
 
     model_init_kwargs = _add_region_to_kwargs(kwargs=model_init_kwargs)
     model_init_kwargs = _add_sagemaker_session_to_kwargs(kwargs=model_init_kwargs)
+
+    model_init_kwargs = _add_model_name_to_kwargs(kwargs=model_init_kwargs)
+
     model_init_kwargs = _add_instance_type_to_kwargs(
         kwargs=model_init_kwargs,
     )

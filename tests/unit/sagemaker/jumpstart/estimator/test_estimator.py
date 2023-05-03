@@ -47,6 +47,7 @@ default_predictor_with_presets = Predictor(
 
 
 class EstimatorTest(unittest.TestCase):
+    @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
@@ -65,8 +66,11 @@ class EstimatorTest(unittest.TestCase):
         mock_session_estimator: mock.Mock,
         mock_session_model: mock.Mock,
         mock_is_valid_model_id: mock.Mock,
+        mock_sagemaker_timestamp: mock.Mock,
     ):
         mock_is_valid_model_id.return_value = True
+
+        mock_sagemaker_timestamp.return_value = "9876"
 
         mock_estimator_deploy.return_value = default_predictor
 
@@ -115,7 +119,9 @@ class EstimatorTest(unittest.TestCase):
 
         estimator.fit(channels)
 
-        mock_estimator_fit.assert_called_once_with(inputs=channels, wait=True)
+        mock_estimator_fit.assert_called_once_with(
+            inputs=channels, wait=True, job_name="blahblahblah-9876"
+        )
 
         estimator.deploy()
 
@@ -137,6 +143,8 @@ class EstimatorTest(unittest.TestCase):
             role=execution_role,
             wait=True,
             enable_network_isolation=False,
+            name="blahblahblah-9876",
+            endpoint_name="blahblahblah-9876",
         )
 
     @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
@@ -375,6 +383,7 @@ class EstimatorTest(unittest.TestCase):
             deploy_kwargs=all_deploy_kwargs_used,
         )
 
+    @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
@@ -393,6 +402,7 @@ class EstimatorTest(unittest.TestCase):
         mock_session_estimator: mock.Mock,
         mock_session_model: mock.Mock,
         mock_is_valid_model_id: mock.Mock,
+        mock_timestamp: mock.Mock,
         init_kwargs: Optional[dict] = None,
         fit_kwargs: Optional[dict] = None,
         deploy_kwargs: Optional[dict] = None,
@@ -406,6 +416,8 @@ class EstimatorTest(unittest.TestCase):
 
         if deploy_kwargs is None:
             deploy_kwargs = {}
+
+        mock_timestamp.return_value = "1234"
 
         mock_estimator_deploy.return_value = default_predictor
 
@@ -463,7 +475,9 @@ class EstimatorTest(unittest.TestCase):
             f"{get_training_dataset_for_model_and_version(model_id, model_version)}",
         }
 
-        expected_fit_kwargs = overwrite_dictionary({"inputs": channels, "wait": True}, fit_kwargs)
+        expected_fit_kwargs = overwrite_dictionary(
+            {"inputs": channels, "wait": True, "job_name": "none of your business"}, fit_kwargs
+        )
 
         estimator.fit(**expected_fit_kwargs)
 
@@ -489,6 +503,8 @@ class EstimatorTest(unittest.TestCase):
                 "predictor_cls": Predictor,
                 "role": init_kwargs["role"],
                 "enable_network_isolation": False,
+                "name": "blahblahblah-1234",
+                "endpoint_name": "blahblahblah-1234",
             },
             deploy_kwargs,
         )
@@ -759,6 +775,7 @@ class EstimatorTest(unittest.TestCase):
             tolerate_vulnerable_model=False,
         )
 
+    @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
@@ -777,8 +794,11 @@ class EstimatorTest(unittest.TestCase):
         mock_session_estimator: mock.Mock,
         mock_session_model: mock.Mock,
         mock_is_valid_model_id: mock.Mock,
+        mock_sagemaker_timestamp: mock.Mock,
     ):
         mock_is_valid_model_id.return_value = True
+
+        mock_sagemaker_timestamp.return_value = "3456"
 
         mock_estimator_deploy.return_value = default_predictor
 
@@ -823,8 +843,11 @@ class EstimatorTest(unittest.TestCase):
             wait=True,
             role=mock_role,
             enable_network_isolation=False,
+            name="blahblahblah-3456",
+            endpoint_name="blahblahblah-3456",
         )
 
+    @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.estimator.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
@@ -843,8 +866,11 @@ class EstimatorTest(unittest.TestCase):
         mock_session_estimator: mock.Mock,
         mock_session_model: mock.Mock,
         mock_is_valid_model_id: mock.Mock,
+        mock_sagemaker_timestamp: mock.Mock,
     ):
         mock_is_valid_model_id.return_value = True
+
+        mock_sagemaker_timestamp.return_value = "3456"
 
         mock_estimator_deploy.return_value = default_predictor
 
@@ -891,6 +917,8 @@ class EstimatorTest(unittest.TestCase):
             wait=True,
             role=mock_role,
             enable_network_isolation=False,
+            name="blahblahblah-3456",
+            endpoint_name="blahblahblah-3456",
         )
 
 

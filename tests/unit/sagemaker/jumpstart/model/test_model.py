@@ -36,6 +36,7 @@ default_predictor_with_presets = Predictor(
 
 
 class ModelTest(unittest.TestCase):
+    @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")
     @mock.patch("sagemaker.jumpstart.factory.model.Session")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
@@ -49,8 +50,11 @@ class ModelTest(unittest.TestCase):
         mock_get_model_specs: mock.Mock,
         mock_session: mock.Mock,
         mock_is_valid_model_id: mock.Mock,
+        mock_sagemaker_timestamp: mock.Mock,
     ):
         mock_model_deploy.return_value = default_predictor
+
+        mock_sagemaker_timestamp.return_value = "7777"
 
         mock_is_valid_model_id.return_value = True
         model_id, _ = "js-trainable-model", "*"
@@ -82,6 +86,7 @@ class ModelTest(unittest.TestCase):
             role=execution_role,
             sagemaker_session=sagemaker_session,
             enable_network_isolation=False,
+            name="blahblahblah-7777",
         )
 
         model.deploy()
@@ -90,6 +95,7 @@ class ModelTest(unittest.TestCase):
             initial_instance_count=1,
             instance_type="ml.p2.xlarge",
             wait=True,
+            endpoint_name="blahblahblah-7777",
         )
 
     @mock.patch("sagemaker.jumpstart.model.is_valid_model_id")

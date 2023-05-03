@@ -350,6 +350,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "training_volume_size",
         "inference_enable_network_isolation",
         "training_enable_network_isolation",
+        "default_resource_name",
     ]
 
     def __init__(self, spec: Dict[str, Any]):
@@ -416,6 +417,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         self.inference_enable_network_isolation: bool = json_obj.get(
             "inference_enable_network_isolation", False
         )
+        self.default_resource_name: bool = json_obj.get("default_resource_name")
 
         if self.training_supported:
             self.training_ecr_specs: JumpStartECRSpecs = JumpStartECRSpecs(

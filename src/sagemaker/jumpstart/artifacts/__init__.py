@@ -12,6 +12,9 @@
 # language governing permissions and limitations under the License.
 """This module imports all JumpStart artifact functions from the respective sub-module."""
 from sagemaker.jumpstart.artifacts.prepack import _model_supports_prepacked_inference  # noqa: F401
+from sagemaker.jumpstart.artifacts.resource_names import (  # noqa: F401
+    _retrieve_default_resource_name,
+)
 from sagemaker.jumpstart.artifacts.incremental_training import (  # noqa: F401
     _model_supports_incremental_training,
 )

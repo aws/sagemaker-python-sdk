@@ -798,6 +798,7 @@ SPECIAL_MODEL_SPECS_DICT = {
             "default_content_type": "text/csv",
             "default_accept_type": "application/json",
         },
+        "default_resource_name": "blahblahblah",
     },
     "predictor-specs-model": {
         "model_id": "huggingface-text2text-flan-t5-xxl-fp16",
@@ -2442,6 +2443,7 @@ BASE_SPEC = {
     "training_volume_size": 456,
     "inference_enable_network_isolation": True,
     "training_enable_network_isolation": False,
+    "default_resource_name": "dfsdfsds",
 }
 
 BASE_HEADER = {

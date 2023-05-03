@@ -25,6 +25,7 @@ from sagemaker import (
     script_uris,
 )
 from sagemaker.jumpstart.artifacts import _model_supports_incremental_training
+from sagemaker.jumpstart.artifacts.resource_names import _retrieve_default_resource_name
 from sagemaker.session import Session
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.base_deserializers import BaseDeserializer
@@ -60,6 +61,7 @@ from sagemaker.jumpstart.utils import (
 
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
 from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
+from sagemaker.utils import name_from_base
 from sagemaker.workflow.entities import PipelineVariable
 
 logger = logging.getLogger("sagemaker")
@@ -214,6 +216,7 @@ def get_fit_kwargs(
 
     estimator_fit_kwargs = _add_model_version_to_kwargs(estimator_fit_kwargs)
     estimator_fit_kwargs = _add_region_to_kwargs(estimator_fit_kwargs)
+    estimator_fit_kwargs = _add_training_job_name_to_kwargs(estimator_fit_kwargs)
     estimator_fit_kwargs = _add_fit_extra_kwargs(estimator_fit_kwargs)
 
     return estimator_fit_kwargs
@@ -496,6 +499,26 @@ def _add_entry_point_to_kwargs(
     """Sets entry point in kwargs based on default or override, returns full kwargs."""
 
     kwargs.entry_point = kwargs.entry_point or TRAINING_ENTRY_POINT_SCRIPT_NAME
+
+    return kwargs
+
+
+def _add_training_job_name_to_kwargs(
+    kwargs: Optional[JumpStartEstimatorFitKwargs],
+) -> JumpStartEstimatorFitKwargs:
+    """Sets resource name based on default or override, returns full kwargs."""
+
+    default_training_job_name = _retrieve_default_resource_name(
+        model_id=kwargs.model_id,
+        model_version=kwargs.model_version,
+        region=kwargs.region,
+        tolerate_deprecated_model=kwargs.tolerate_deprecated_model,
+        tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
+    )
+
+    kwargs.job_name = kwargs.job_name or (
+        name_from_base(default_training_job_name) if default_training_job_name is not None else None
+    )
 
     return kwargs
 
