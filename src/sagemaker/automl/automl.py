@@ -45,11 +45,11 @@ class AutoMLInput(object):
         self,
         inputs,
         target_attribute_name,
-        sample_weight_attribute_name=None,
         compression=None,
         channel_type=None,
         content_type=None,
         s3_data_type=None,
+        sample_weight_attribute_name=None,
     ):
         """Convert an S3 Uri or a list of S3 Uri to an AutoMLInput object.
 
@@ -59,8 +59,6 @@ class AutoMLInput(object):
                 S3 location(s) where input data is stored.
             target_attribute_name (str, PipelineVariable):
                 the target attribute name for regression or classification.
-            sample_weight_attribute_name (str, PipelineVariable):
-                the name of the dataset column representing sample weights
             compression (str, PipelineVariable):
                 if training data is compressed, the compression type. The default value is None.
             channel_type (str, PipelineVariable): The channel type an enum to specify
@@ -70,14 +68,16 @@ class AutoMLInput(object):
                 The content type of the data from the input source.
             s3_data_type (str, PipelineVariable): The data type for S3 data source.
                 Valid values: ManifestFile or S3Prefix.
+            sample_weight_attribute_name (str, PipelineVariable):
+                the name of the dataset column representing sample weights    
         """
         self.inputs = inputs
         self.target_attribute_name = target_attribute_name
-        self.sample_weight_attribute_name = sample_weight_attribute_name
         self.compression = compression
         self.channel_type = channel_type
         self.content_type = content_type
         self.s3_data_type = s3_data_type
+        self.sample_weight_attribute_name = sample_weight_attribute_name
 
     def to_request_dict(self):
         """Generates a request dictionary using the parameters provided to the class."""
@@ -113,7 +113,6 @@ class AutoML(object):
         self,
         role: Optional[str] = None,
         target_attribute_name: str = None,
-        sample_weight_attribute_name: str = None,
         output_kms_key: Optional[str] = None,
         output_path: Optional[str] = None,
         base_job_name: Optional[str] = None,
@@ -136,6 +135,7 @@ class AutoML(object):
         mode: Optional[str] = None,
         auto_generate_endpoint_name: Optional[bool] = None,
         endpoint_name: Optional[str] = None,
+        sample_weight_attribute_name: str = None,
     ):
         """Initialize the an AutoML object.
 
@@ -143,8 +143,6 @@ class AutoML(object):
             role (str): The ARN of the role that is used to create the job and access the data.
             target_attribute_name (str): The name of the target variable
                 in supervised learning.
-            sample_weight_attribute_name (str): The name of dataset column representing
-                sample weights.
             output_kms_key (str): The AWS KMS encryption key ID for output data configuration
             output_path (str): The Amazon S3 output path. Must be 128 characters or less.
             base_job_name (str): The name of AutoML job.
@@ -188,6 +186,8 @@ class AutoML(object):
                 model deployment if the endpoint name is not generated automatically.
                 Specify the endpoint_name if and only if
                 auto_generate_endpoint_name is set to False
+            sample_weight_attribute_name (str): The name of dataset column representing
+                sample weights.
 
         Returns:
             AutoML object.
@@ -201,7 +201,6 @@ class AutoML(object):
         self.max_runtime_per_training_job_in_seconds = max_runtime_per_training_job_in_seconds
         self.total_job_runtime_in_seconds = total_job_runtime_in_seconds
         self.target_attribute_name = target_attribute_name
-        self.sample_weight_attribute_name = sample_weight_attribute_name
         self.job_objective = job_objective
         self.generate_candidate_definitions_only = generate_candidate_definitions_only
         self.tags = tags
@@ -244,6 +243,7 @@ class AutoML(object):
         )
 
         self._check_problem_type_and_job_objective(self.problem_type, self.job_objective)
+        self.sample_weight_attribute_name = sample_weight_attribute_name
 
     @runnable_by_pipeline
     def fit(self, inputs=None, wait=True, logs=True, job_name=None):
@@ -306,9 +306,6 @@ class AutoML(object):
         amlj = AutoML(
             role=auto_ml_job_desc["RoleArn"],
             target_attribute_name=auto_ml_job_desc["InputDataConfig"][0]["TargetAttributeName"],
-            sample_weight_attribute_name=auto_ml_job_desc["InputDataConfig"][0][
-                "SampleWeightAttributeName"
-            ],
             output_kms_key=auto_ml_job_desc["OutputDataConfig"].get("KmsKeyId"),
             output_path=auto_ml_job_desc["OutputDataConfig"]["S3OutputPath"],
             base_job_name=auto_ml_job_name,
@@ -355,6 +352,9 @@ class AutoML(object):
                 "AutoGenerateEndpointName", False
             ),
             endpoint_name=auto_ml_job_desc.get("ModelDeployConfig", {}).get("EndpointName"),
+            sample_weight_attribute_name=auto_ml_job_desc["InputDataConfig"][0][
+                "SampleWeightAttributeName"
+            ],
         )
         amlj.current_job_name = auto_ml_job_name
         amlj.latest_auto_ml_job = auto_ml_job_name  # pylint: disable=W0201
@@ -878,9 +878,9 @@ class AutoMLJob(_Job):
                 validate_uri,
                 auto_ml.compression_type,
                 auto_ml.target_attribute_name,
-                auto_ml.sample_weight_attribute_name,
                 auto_ml.content_type,
                 auto_ml.s3_data_type,
+                auto_ml.sample_weight_attribute_name,
             )
         output_config = _Job._prepare_output_config(auto_ml.output_path, auto_ml.output_kms_key)
 
@@ -944,9 +944,9 @@ class AutoMLJob(_Job):
         validate_uri=True,
         compression=None,
         target_attribute_name=None,
-        sample_weight_attribute_name=None,
         content_type=None,
         s3_data_type=None,
+        sample_weight_attribute_name=None,
     ):
         """Convert inputs to AutoML InputDataConfig.
 

@@ -363,9 +363,9 @@ def test_auto_ml_validation_channel_name(sagemaker_session):
     input_training = AutoMLInput(
         inputs=DEFAULT_S3_INPUT_DATA,
         target_attribute_name="target",
-        sample_weight_attribute_name="sampleWeight",
         compression="Gzip",
         channel_type="training",
+        sample_weight_attribute_name="sampleWeight",
     )
     input_validation = AutoMLInput(
         inputs=DEFAULT_S3_VALIDATION_DATA,
@@ -626,8 +626,8 @@ def test_auto_ml_input(sagemaker_session):
     inputs = AutoMLInput(
         inputs=DEFAULT_S3_INPUT_DATA,
         target_attribute_name="target",
-        sample_weight_attribute_name="sampleWeight",
         compression="Gzip",
+        sample_weight_attribute_name="sampleWeight",
     )
     auto_ml = AutoML(
         role=ROLE,

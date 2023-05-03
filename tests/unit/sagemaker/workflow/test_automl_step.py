@@ -54,16 +54,16 @@ def test_single_automl_step(pipeline_session):
     input_training = AutoMLInput(
         inputs="s3://bucket/data",
         target_attribute_name="target",
-        sample_weight_attribute_name="sampleWeight",
         compression="Gzip",
         channel_type="training",
+        sample_weight_attribute_name="sampleWeight",
     )
     input_validation = AutoMLInput(
         inputs="s3://bucket/validation_data",
         target_attribute_name="target",
-        sample_weight_attribute_name="sampleWeight",
         compression="Gzip",
         channel_type="validation",
+        sample_weight_attribute_name="sampleWeight",
     )
     inputs = [input_training, input_validation]
 
