@@ -26,7 +26,7 @@ from sagemaker.jumpstart.artifacts import (
     _retrieve_model_init_kwargs,
     _retrieve_model_deploy_kwargs,
 )
-from sagemaker.jumpstart.artifacts.resource_names import _retrieve_default_resource_name
+from sagemaker.jumpstart.artifacts.resource_names import _retrieve_resource_name_base
 from sagemaker.jumpstart.constants import (
     INFERENCE_ENTRY_POINT_SCRIPT_NAME,
     JUMPSTART_DEFAULT_REGION_NAME,
@@ -325,7 +325,7 @@ def _add_endpoint_name_to_kwargs(
 ) -> JumpStartModelDeployKwargs:
     """Sets resource name based on default or override, returns full kwargs."""
 
-    default_endpoint_name = _retrieve_default_resource_name(
+    default_endpoint_name = _retrieve_resource_name_base(
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
         region=kwargs.region,
@@ -345,7 +345,7 @@ def _add_model_name_to_kwargs(
 ) -> JumpStartModelInitKwargs:
     """Sets resource name based on default or override, returns full kwargs."""
 
-    default_model_name = _retrieve_default_resource_name(
+    default_model_name = _retrieve_resource_name_base(
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
         region=kwargs.region,

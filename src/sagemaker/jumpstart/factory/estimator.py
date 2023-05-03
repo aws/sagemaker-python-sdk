@@ -25,7 +25,7 @@ from sagemaker import (
     script_uris,
 )
 from sagemaker.jumpstart.artifacts import _model_supports_incremental_training
-from sagemaker.jumpstart.artifacts.resource_names import _retrieve_default_resource_name
+from sagemaker.jumpstart.artifacts.resource_names import _retrieve_resource_name_base
 from sagemaker.session import Session
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.base_deserializers import BaseDeserializer
@@ -508,7 +508,7 @@ def _add_training_job_name_to_kwargs(
 ) -> JumpStartEstimatorFitKwargs:
     """Sets resource name based on default or override, returns full kwargs."""
 
-    default_training_job_name = _retrieve_default_resource_name(
+    default_training_job_name = _retrieve_resource_name_base(
         model_id=kwargs.model_id,
         model_version=kwargs.model_version,
         region=kwargs.region,
