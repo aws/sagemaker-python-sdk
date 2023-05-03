@@ -27,7 +27,7 @@ from sagemaker.jumpstart.factory.model import (
     get_deploy_kwargs,
     get_init_kwargs,
 )
-from sagemaker.jumpstart.notebook_utils import is_valid_model_id
+from sagemaker.jumpstart.utils import is_valid_model_id
 from sagemaker.jumpstart.utils import stringify_object
 from sagemaker.model import Model
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
@@ -257,7 +257,10 @@ class JumpStartModel(Model):
         """
 
         if not is_valid_model_id(
-            model_id=model_id, model_version=model_version, script=JumpStartScriptScope.INFERENCE
+            model_id=model_id,
+            model_version=model_version,
+            region=region,
+            script=JumpStartScriptScope.INFERENCE,
         ):
             raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
 

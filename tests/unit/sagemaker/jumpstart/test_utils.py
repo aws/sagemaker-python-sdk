@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import os
+from unittest import TestCase
 from mock.mock import Mock, patch
 import pytest
 import random
@@ -933,3 +934,84 @@ def test_stringify_object():
     )
 
     assert utils.stringify_object(MyTestClass()).encode() == stringified_class
+
+
+class TestIsValidModelId(TestCase):
+    @patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor._get_manifest")
+    @patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor.get_model_specs")
+    def test_is_valid_model_id_true(
+        self,
+        mock_get_model_specs: Mock,
+        mock_get_manifest: Mock,
+    ):
+        mock_get_manifest.return_value = [
+            Mock(model_id="ay"),
+            Mock(model_id="bee"),
+            Mock(model_id="see"),
+        ]
+        self.assertTrue(utils.is_valid_model_id("bee"))
+        mock_get_manifest.assert_called_once_with(region=JUMPSTART_DEFAULT_REGION_NAME)
+        mock_get_model_specs.assert_not_called()
+
+        mock_get_manifest.reset_mock()
+        mock_get_model_specs.reset_mock()
+
+        mock_get_manifest.return_value = [
+            Mock(model_id="ay"),
+            Mock(model_id="bee"),
+            Mock(model_id="see"),
+        ]
+
+        mock_get_model_specs.return_value = Mock(training_supported=True)
+        self.assertTrue(utils.is_valid_model_id("bee", script=JumpStartScriptScope.TRAINING))
+        mock_get_manifest.assert_called_once_with(region=JUMPSTART_DEFAULT_REGION_NAME)
+        mock_get_model_specs.assert_called_once_with(
+            region=JUMPSTART_DEFAULT_REGION_NAME, model_id="bee", version="*"
+        )
+
+    @patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor._get_manifest")
+    @patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor.get_model_specs")
+    def test_is_valid_model_id_false(self, mock_get_model_specs: Mock, mock_get_manifest: Mock):
+        mock_get_manifest.return_value = [
+            Mock(model_id="ay"),
+            Mock(model_id="bee"),
+            Mock(model_id="see"),
+        ]
+        self.assertFalse(utils.is_valid_model_id("dee"))
+        self.assertFalse(utils.is_valid_model_id(""))
+        self.assertFalse(utils.is_valid_model_id(None))
+        self.assertFalse(utils.is_valid_model_id(set()))
+        mock_get_manifest.assert_called_once_with(region=JUMPSTART_DEFAULT_REGION_NAME)
+
+        mock_get_model_specs.assert_not_called()
+
+        mock_get_manifest.reset_mock()
+        mock_get_model_specs.reset_mock()
+
+        mock_get_manifest.return_value = [
+            Mock(model_id="ay"),
+            Mock(model_id="bee"),
+            Mock(model_id="see"),
+        ]
+        self.assertFalse(utils.is_valid_model_id("dee", script=JumpStartScriptScope.TRAINING))
+        mock_get_manifest.assert_called_once_with(region=JUMPSTART_DEFAULT_REGION_NAME)
+
+        mock_get_manifest.reset_mock()
+
+        self.assertFalse(utils.is_valid_model_id("dee", script=JumpStartScriptScope.TRAINING))
+        self.assertFalse(utils.is_valid_model_id("", script=JumpStartScriptScope.TRAINING))
+        self.assertFalse(utils.is_valid_model_id(None, script=JumpStartScriptScope.TRAINING))
+        self.assertFalse(utils.is_valid_model_id(set(), script=JumpStartScriptScope.TRAINING))
+
+        mock_get_model_specs.assert_not_called()
+        mock_get_manifest.assert_called_once_with(region=JUMPSTART_DEFAULT_REGION_NAME)
+
+        mock_get_manifest.reset_mock()
+        mock_get_model_specs.reset_mock()
+
+        mock_get_model_specs.return_value = Mock(training_supported=False)
+        self.assertFalse(utils.is_valid_model_id("ay", script=JumpStartScriptScope.TRAINING))
+        mock_get_manifest.assert_called_once_with(region=JUMPSTART_DEFAULT_REGION_NAME)
+        mock_get_model_specs.assert_called_once_with(
+            region=JUMPSTART_DEFAULT_REGION_NAME, model_id="ay", version="*"
+        )

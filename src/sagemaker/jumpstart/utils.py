@@ -525,3 +525,34 @@ def stringify_object(obj: Any) -> str:
     """Returns string representation of object, returning only non-None fields."""
     non_none_atts = {key: value for key, value in obj.__dict__.items() if value is not None}
     return f"{type(obj).__name__}: {str(non_none_atts)}"
+
+
+def is_valid_model_id(
+    model_id: Optional[str],
+    region: Optional[str] = None,
+    model_version: Optional[str] = None,
+    script: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
+) -> bool:
+    """Returns True if the model ID is supported for the given script."""
+    if model_id in {None, ""}:
+        return False
+    if not isinstance(model_id, str):
+        return False
+
+    region = region or constants.JUMPSTART_DEFAULT_REGION_NAME
+    model_version = model_version or "*"
+
+    models_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(region=region)
+    model_id_set = {model.model_id for model in models_manifest_list}
+    if script == enums.JumpStartScriptScope.INFERENCE:
+        return model_id in model_id_set
+    if script == enums.JumpStartScriptScope.TRAINING:
+        return (
+            model_id in model_id_set
+            and accessors.JumpStartModelsAccessor.get_model_specs(
+                region=region,
+                model_id=model_id,
+                version=model_version,
+            ).training_supported
+        )
+    raise ValueError(f"Unsupported script: {script}")

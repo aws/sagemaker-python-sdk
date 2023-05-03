@@ -32,7 +32,7 @@ from sagemaker.jumpstart.exceptions import INVALID_MODEL_ID_ERROR_MSG
 
 from sagemaker.jumpstart.factory.estimator import get_deploy_kwargs, get_fit_kwargs, get_init_kwargs
 from sagemaker.jumpstart.factory.model import get_default_predictor
-from sagemaker.jumpstart.notebook_utils import is_valid_model_id
+from sagemaker.jumpstart.utils import is_valid_model_id
 from sagemaker.jumpstart.utils import stringify_object
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
 from sagemaker.predictor import PredictorBase
@@ -489,7 +489,10 @@ class JumpStartEstimator(Estimator):
         """
 
         if not is_valid_model_id(
-            model_id=model_id, model_version=model_version, script=JumpStartScriptScope.TRAINING
+            model_id=model_id,
+            model_version=model_version,
+            region=region,
+            script=JumpStartScriptScope.TRAINING,
         ):
             raise ValueError(INVALID_MODEL_ID_ERROR_MSG.format(model_id=model_id))
 

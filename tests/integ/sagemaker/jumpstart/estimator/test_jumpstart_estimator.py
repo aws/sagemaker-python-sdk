@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import os
+import time
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 
 from sagemaker.jumpstart.estimator import JumpStartEstimator
@@ -25,6 +26,9 @@ from tests.integ.sagemaker.jumpstart.utils import (
 )
 
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
+
+
+MAX_INIT_TIME_SECONDS = 5
 
 
 def test_jumpstart_estimator(setup):
@@ -54,3 +58,20 @@ def test_jumpstart_estimator(setup):
     response = predictor.predict(["hello", "world"])
 
     assert response is not None
+
+
+def test_instatiating_estimator_not_too_slow(setup):
+
+    model_id = "xgboost-classification-model"
+
+    start_time = time.perf_counter()
+
+    JumpStartEstimator(
+        model_id=model_id,
+        role=get_sm_session().get_caller_identity_arn(),
+        sagemaker_session=get_sm_session(),
+    )
+
+    elapsed_time = time.perf_counter() - start_time
+
+    assert elapsed_time <= MAX_INIT_TIME_SECONDS

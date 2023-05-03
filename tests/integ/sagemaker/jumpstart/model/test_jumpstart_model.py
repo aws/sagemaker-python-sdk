@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import os
+import time
 
 from sagemaker.jumpstart.model import JumpStartModel
 from tests.integ.sagemaker.jumpstart.constants import (
@@ -24,6 +25,9 @@ from tests.integ.sagemaker.jumpstart.utils import (
     get_sm_session,
     get_tabular_data,
 )
+
+
+MAX_INIT_TIME_SECONDS = 5
 
 
 def test_non_prepacked_jumpstart_model(setup):
@@ -65,3 +69,20 @@ def test_prepacked_jumpstart_model(setup):
     response = predictor.predict({"prompt": "hello world!"})
 
     assert response is not None
+
+
+def test_instatiating_model_not_too_slow(setup):
+
+    model_id = "catboost-regression-model"
+
+    start_time = time.perf_counter()
+
+    JumpStartModel(
+        model_id=model_id,
+        role=get_sm_session().get_caller_identity_arn(),
+        sagemaker_session=get_sm_session(),
+    )
+
+    elapsed_time = time.perf_counter() - start_time
+
+    assert elapsed_time <= MAX_INIT_TIME_SECONDS
