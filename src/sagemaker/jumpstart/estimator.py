@@ -920,14 +920,6 @@ class JumpStartEstimator(Estimator):
             sagemaker_session=sagemaker_session,
             default_value=self.role,
         )
-        enable_network_isolation = enable_network_isolation or (
-            resolve_model_intelligent_default_field(
-                field_name="enable_network_isolation",
-                field_val=None,
-                sagemaker_session=sagemaker_session,
-            )
-            or self.enable_network_isolation()
-        )
 
         estimator_deploy_kwargs = get_deploy_kwargs(
             model_id=self.model_id,

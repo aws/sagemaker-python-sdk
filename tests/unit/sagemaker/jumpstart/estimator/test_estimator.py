@@ -487,7 +487,7 @@ class EstimatorTest(unittest.TestCase):
                 },
                 "predictor_cls": Predictor,
                 "role": init_kwargs["role"],
-                "enable_network_isolation": init_kwargs["enable_network_isolation"],
+                "enable_network_isolation": False,
             },
             deploy_kwargs,
         )
