@@ -168,9 +168,9 @@ def _add_instance_type_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartM
     )
 
     if orig_instance_type is None:
-        logger.info(  # pylint: disable=W1203
-            "No instance type selected for inference hosting endpoint. "
-            f"Defaulting to {kwargs.instance_type}."
+        logger.info(
+            "No instance type selected for inference hosting endpoint. Defaulting to %s.",
+            kwargs.instance_type,
         )
 
     return kwargs

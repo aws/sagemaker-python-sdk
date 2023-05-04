@@ -412,8 +412,8 @@ def _add_instance_type_and_count_to_kwargs(
     kwargs.instance_count = kwargs.instance_count or 1
 
     if orig_instance_type is None:
-        logger.info(  # pylint: disable=W1203
-            f"No instance type selected for training job. Defaulting to {kwargs.instance_type}."
+        logger.info(
+            "No instance type selected for training job. Defaulting to %s.", kwargs.instance_type
         )
 
     return kwargs
@@ -458,9 +458,10 @@ def _add_model_uri_to_kwargs(kwargs: JumpStartEstimatorInitKwargs) -> JumpStartE
             tolerate_vulnerable_model=kwargs.tolerate_vulnerable_model,
         )
     ):
-        logger.warning(  # pylint: disable=W1203
-            f"'{kwargs.model_id}' does not support incremental training but is being trained with"
-            " non-default model artifact."
+        logger.warning(
+            "'%s' does not support incremental training but is being trained with"
+            " non-default model artifact.",
+            kwargs.model_id,
         )
 
     kwargs.model_uri = kwargs.model_uri or default_model_uri

@@ -715,7 +715,8 @@ class EstimatorTest(unittest.TestCase):
         )
 
         mock_logger_warning.assert_called_once_with(
-            f"'{model_id}' does not support incremental training but is being trained with non-default model artifact."
+            "'%s' does not support incremental training but is being trained with non-default model artifact.",
+            model_id,
         )
         mock_supports_incremental_training.assert_called_once_with(
             model_id=model_id,
