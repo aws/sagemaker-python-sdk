@@ -31,7 +31,7 @@ You can either deploy your model using DeepSpeed or HuggingFace Accelerate, or l
     djl_model = DJLModel(
         "s3://my_bucket/my_saved_model_artifacts/", # This can also be a HuggingFace Hub model id
         "my_sagemaker_role",
-        data_type="fp16",
+        dtype="fp16",
         task="text-generation",
         number_of_partitions=2 # number of gpus to partition the model across
     )
@@ -48,7 +48,7 @@ If you want to use a specific backend, then you can create an instance of the co
     deepspeed_model = DeepSpeedModel(
         "s3://my_bucket/my_saved_model_artifacts/", # This can also be a HuggingFace Hub model id
         "my_sagemaker_role",
-        data_type="bf16",
+        dtype="bf16",
         task="text-generation",
         tensor_parallel_degree=2, # number of gpus to partition the model across using tensor parallelism
     )
@@ -58,7 +58,7 @@ If you want to use a specific backend, then you can create an instance of the co
     hf_accelerate_model = HuggingFaceAccelerateModel(
         "s3://my_bucket/my_saved_model_artifacts/", # This can also be a HuggingFace Hub model id
         "my_sagemaker_role",
-        data_type="fp16",
+        dtype="fp16",
         task="text-generation",
         number_of_partitions=2, # number of gpus to partition the model across
     )
@@ -109,7 +109,7 @@ For example, you can deploy the EleutherAI gpt-j-6B model like this:
     model = DJLModel(
         "EleutherAI/gpt-j-6B",
         "my_sagemaker_role",
-        data_type="fp16",
+        dtype="fp16",
         number_of_partitions=2
     )
 
@@ -142,7 +142,7 @@ You would then pass "s3://my_bucket/gpt-j-6B" as ``model_id`` to the ``DJLModel`
     model = DJLModel(
         "s3://my_bucket/gpt-j-6B",
         "my_sagemaker_role",
-        data_type="fp16",
+        dtype="fp16",
         number_of_partitions=2
     )
 
@@ -213,7 +213,7 @@ For more information about DJL Serving, see the `DJL Serving documentation. <htt
 SageMaker DJL Classes
 ***********************
 
-For information about the different DJL Serving related classes in the SageMaker Python SDK, see https://sagemaker.readthedocs.io/en/stable/sagemaker.djl_inference.html.
+For information about the different DJL Serving related classes in the SageMaker Python SDK, see https://sagemaker.readthedocs.io/en/stable/frameworks/djl/sagemaker.djl_inference.html.
 
 ********************************
 SageMaker DJL Serving Containers

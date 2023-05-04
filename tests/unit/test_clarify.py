@@ -563,14 +563,20 @@ def test_invalid_model_predicted_label_config():
     )
 
 
-def test_shap_config():
-    baseline = [
-        [
-            0.26124998927116394,
-            0.2824999988079071,
-            0.06875000149011612,
-        ]
-    ]
+@pytest.mark.parametrize(
+    "baseline",
+    [
+        ([[0.26124998927116394, 0.2824999988079071, 0.06875000149011612]]),
+        (
+            {
+                "instances": [
+                    {"features": [0.26124998927116394, 0.2824999988079071, 0.06875000149011612]}
+                ]
+            }
+        ),
+    ],
+)
+def test_valid_shap_config(baseline):
     num_samples = 100
     agg_method = "mean_sq"
     use_logit = True

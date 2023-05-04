@@ -89,7 +89,7 @@ def test_serialize_deserialize_lambda():
 
 @patch("sagemaker.s3.S3Uploader.upload_bytes", new=upload)
 @patch("sagemaker.s3.S3Downloader.read_bytes", new=read)
-@patch("sagemaker.experiments.run._Experiment")
+@patch("sagemaker.experiments.run.Experiment")
 @patch("sagemaker.experiments.run._Trial")
 @patch("sagemaker.experiments.run._TrialComponent._load_or_create", return_value=(Mock(), False))
 @patch("sagemaker.experiments.run._MetricsManager")
@@ -221,7 +221,7 @@ def test_serialize_deserialize_none():
 
 @patch("sagemaker.s3.S3Uploader.upload_bytes", new=upload)
 @patch("sagemaker.s3.S3Downloader.read_bytes", new=read)
-@patch("sagemaker.experiments.run._Experiment")
+@patch("sagemaker.experiments.run.Experiment")
 @patch("sagemaker.experiments.run._Trial")
 @patch("sagemaker.experiments.run._TrialComponent._load_or_create", return_value=(Mock(), False))
 @patch("sagemaker.experiments.run._MetricsManager")

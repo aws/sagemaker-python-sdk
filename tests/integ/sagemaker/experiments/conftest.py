@@ -46,7 +46,7 @@ def run_obj(sagemaker_session):
         yield run
         time.sleep(0.5)
     finally:
-        exp = experiment._Experiment.load(
+        exp = experiment.Experiment.load(
             experiment_name=run.experiment_name, sagemaker_session=sagemaker_session
         )
         exp._delete_all(action="--force")
@@ -71,7 +71,7 @@ def experiment_obj(sagemaker_session):
     description = "{}-{}".format("description", str(uuid.uuid4()))
     boto3.set_stream_logger("", logging.INFO)
     experiment_name = name()
-    experiment_obj = experiment._Experiment.create(
+    experiment_obj = experiment.Experiment.create(
         experiment_name=experiment_name,
         description=description,
         sagemaker_session=sagemaker_session,

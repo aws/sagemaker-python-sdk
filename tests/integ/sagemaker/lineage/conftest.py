@@ -19,6 +19,7 @@ import boto3
 import pytest
 import logging
 import uuid
+import json
 from sagemaker.lineage import (
     action,
     context,
@@ -892,3 +893,17 @@ def _deploy_static_endpoint(execution_arn, sagemaker_session):
             pass
         else:
             raise (e)
+
+
+@pytest.fixture
+def extract_data_from_html():
+    def _method(data):
+        start = data.find("[")
+        end = data.find("]")
+        res = data[start + 1 : end].split("}, ")
+        res = [i + "}" for i in res]
+        res[-1] = res[-1][:-1]
+        data_dict = [json.loads(i) for i in res]
+        return data_dict
+
+    return _method

@@ -254,7 +254,7 @@ class RuntimeEnvironmentManager:
     def _current_python_version(self):
         """Returns the current python version where program is running"""
 
-        return f"{sys.version_info.major}.{sys.version_info.minor}"
+        return f"{sys.version_info.major}.{sys.version_info.minor}".strip()
 
     def _validate_python_version(self, client_python_version: str, conda_env: str = None):
         """Validate the python version
@@ -266,10 +266,10 @@ class RuntimeEnvironmentManager:
             job_python_version = self._python_version_in_conda_env(conda_env)
         else:
             job_python_version = self._current_python_version()
-        if client_python_version != job_python_version:
+        if client_python_version.strip() != job_python_version.strip():
             raise RuntimeEnvironmentError(
-                f"Python version found in the container is {job_python_version} which "
-                f"does not match python version {client_python_version} on the local client . "
+                f"Python version found in the container is '{job_python_version}' which "
+                f"does not match python version '{client_python_version}' on the local client. "
                 f"Please make sure that the python version used in the training container "
                 f"is same as the local python version."
             )
