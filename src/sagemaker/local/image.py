@@ -352,6 +352,7 @@ class _SageMakerContainer(object):
         # Gather the artifacts from all nodes into artifacts/model and artifacts/output
         for host in self.hosts:
             volumes = compose_data["services"][str(host)]["volumes"]
+            volumes = [v[:-2] if v.endswith(":z") else v for v in volumes]
             for volume in volumes:
                 if re.search(r"^[A-Za-z]:", volume):
                     unit, host_dir, container_dir = volume.split(":")
