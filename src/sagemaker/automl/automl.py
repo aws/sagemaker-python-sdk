@@ -69,7 +69,7 @@ class AutoMLInput(object):
             s3_data_type (str, PipelineVariable): The data type for S3 data source.
                 Valid values: ManifestFile or S3Prefix.
             sample_weight_attribute_name (str, PipelineVariable):
-                the name of the dataset column representing sample weights    
+                the name of the dataset column representing sample weights
         """
         self.inputs = inputs
         self.target_attribute_name = target_attribute_name
@@ -352,9 +352,9 @@ class AutoML(object):
                 "AutoGenerateEndpointName", False
             ),
             endpoint_name=auto_ml_job_desc.get("ModelDeployConfig", {}).get("EndpointName"),
-            sample_weight_attribute_name=auto_ml_job_desc["InputDataConfig"][0][
-                "SampleWeightAttributeName"
-            ],
+            sample_weight_attribute_name=auto_ml_job_desc["InputDataConfig"][0].get(
+                "SampleWeightAttributeName", None
+            ),
         )
         amlj.current_job_name = auto_ml_job_name
         amlj.latest_auto_ml_job = auto_ml_job_name  # pylint: disable=W0201
