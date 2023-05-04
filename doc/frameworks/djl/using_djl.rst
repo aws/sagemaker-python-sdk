@@ -213,7 +213,7 @@ For more information about DJL Serving, see the `DJL Serving documentation. <htt
 SageMaker DJL Classes
 ***********************
 
-For information about the different DJL Serving related classes in the SageMaker Python SDK, see https://sagemaker.readthedocs.io/en/stable/sagemaker.djl_inference.html.
+For information about the different DJL Serving related classes in the SageMaker Python SDK, see https://sagemaker.readthedocs.io/en/stable/frameworks/djl/sagemaker.djl_inference.html.
 
 ********************************
 SageMaker DJL Serving Containers

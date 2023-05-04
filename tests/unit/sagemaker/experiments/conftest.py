@@ -18,7 +18,7 @@ from unittest.mock import patch, MagicMock, Mock
 import pytest
 
 from sagemaker import Session
-from sagemaker.experiments.experiment import _Experiment
+from sagemaker.experiments.experiment import Experiment
 from sagemaker.experiments.run import RUN_NAME_BASE
 from sagemaker.experiments import Run
 from tests.unit.sagemaker.experiments.helpers import (
@@ -57,9 +57,9 @@ def run_obj(sagemaker_session):
     client.update_trial_component.return_value = {}
     client.associate_trial_component.return_value = {}
     with patch(
-        "sagemaker.experiments.run._Experiment._load_or_create",
+        "sagemaker.experiments.run.Experiment._load_or_create",
         MagicMock(
-            return_value=_Experiment(
+            return_value=Experiment(
                 experiment_name=TEST_EXP_NAME, sagemaker_session=sagemaker_session
             )
         ),
