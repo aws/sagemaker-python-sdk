@@ -49,6 +49,9 @@ REGION_ENV_NAME = "AWS_REGION"
 TRAINING_JOB_NAME_ENV_NAME = "TRAINING_JOB_NAME"
 S3_ENDPOINT_URL_ENV_NAME = "S3_ENDPOINT_URL"
 
+# SELinux Enabled
+SELINUX_ENABLED = os.environ.get("SAGEMAKER_LOCAL_SELINUX_ENABLED", "False").lower() in ["1", "true", "yes"]
+
 logger = logging.getLogger(__name__)
 
 
@@ -887,13 +890,14 @@ class _Volume(object):
 
         self.container_dir = container_dir if container_dir else "/opt/ml/input/data/" + channel
         self.host_dir = host_dir
-        if platform.system() == "Linux": 
+        map_format = "{}:{}"
+        if platform.system() == "Linux" and SELINUX_ENABLED:
             # Support mounting shared volumes in SELinux enabled hosts
-            self.container_dir += ":z"
+            map_format += ":z"
         if platform.system() == "Darwin" and host_dir.startswith("/var"):
             self.host_dir = os.path.join("/private", host_dir)
 
-        self.map = "{}:{}".format(self.host_dir, self.container_dir)
+        self.map = map_format.format(self.host_dir, self.container_dir)
 
 
 def _stream_output(process):
