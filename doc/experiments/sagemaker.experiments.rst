@@ -11,6 +11,15 @@ Run
 
 .. automethod:: sagemaker.experiments.list_runs
 
+Experiment
+-------------
+
+.. autoclass:: sagemaker.experiments.Experiment
+    :members:
+
+Other
+-------------
+
 .. autoclass:: sagemaker.experiments.SortByType
     :members:
     :undoc-members:
