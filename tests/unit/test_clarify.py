@@ -30,6 +30,8 @@ from sagemaker.clarify import (
     TextConfig,
     ImageConfig,
     _AnalysisConfigGenerator,
+    DatasetType,
+    ProcessingOutputHandler,
 )
 
 JOB_NAME_PREFIX = "my-prefix"
@@ -561,14 +563,20 @@ def test_invalid_model_predicted_label_config():
     )
 
 
-def test_shap_config():
-    baseline = [
-        [
-            0.26124998927116394,
-            0.2824999988079071,
-            0.06875000149011612,
-        ]
-    ]
+@pytest.mark.parametrize(
+    "baseline",
+    [
+        ([[0.26124998927116394, 0.2824999988079071, 0.06875000149011612]]),
+        (
+            {
+                "instances": [
+                    {"features": [0.26124998927116394, 0.2824999988079071, 0.06875000149011612]}
+                ]
+            }
+        ),
+    ],
+)
+def test_valid_shap_config(baseline):
     num_samples = 100
     agg_method = "mean_sq"
     use_logit = True
@@ -1786,3 +1794,15 @@ def test_invalid_analysis_config(data_config, data_bias_config, model_config):
             pre_training_methods="all",
             post_training_methods="all",
         )
+
+
+class TestProcessingOutputHandler:
+    def test_get_s3_upload_mode_image(self):
+        analysis_config = {"dataset_type": DatasetType.IMAGE.value}
+        s3_upload_mode = ProcessingOutputHandler.get_s3_upload_mode(analysis_config)
+        assert s3_upload_mode == ProcessingOutputHandler.S3UploadMode.CONTINUOUS.value
+
+    def test_get_s3_upload_mode_text(self):
+        analysis_config = {"dataset_type": DatasetType.TEXTCSV.value}
+        s3_upload_mode = ProcessingOutputHandler.get_s3_upload_mode(analysis_config)
+        assert s3_upload_mode == ProcessingOutputHandler.S3UploadMode.ENDOFJOB.value

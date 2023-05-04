@@ -300,6 +300,7 @@ def test_retrieve_artifacts(LocalSession, tmpdir):
     output_tar_files = [m.name for m in tar.getmembers()]
     for f in expected_output:
         assert f in output_tar_files
+    tar.close()
 
 
 def test_stream_output():

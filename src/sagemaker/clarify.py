@@ -26,7 +26,7 @@ import re
 import tempfile
 from abc import ABC, abstractmethod
 from typing import List, Union, Dict, Optional, Any
-
+from enum import Enum
 from schema import Schema, And, Use, Or, Optional as SchemaOptional, Regex
 
 from sagemaker import image_uris, s3, utils
@@ -94,6 +94,8 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
                             {object: object},
                         )
                     ],
+                    # Arbitrary JSON object as baseline
+                    {object: object},
                 ),
                 SchemaOptional("num_clusters"): int,
                 SchemaOptional("use_logit"): bool,
@@ -302,6 +304,16 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
         },
     }
 )
+
+
+class DatasetType(Enum):
+    """Enum to store different dataset types supported in the Analysis config file"""
+
+    TEXTCSV = "text/csv"
+    JSONLINES = "application/jsonlines"
+    JSON = "application/json"
+    PARQUET = "application/x-parquet"
+    IMAGE = "application/x-image"
 
 
 class DataConfig:
@@ -1201,7 +1213,7 @@ class SHAPConfig(ExplainabilityConfig):
 
     def __init__(
         self,
-        baseline: Optional[Union[str, List]] = None,
+        baseline: Optional[Union[str, List, Dict]] = None,
         num_samples: Optional[int] = None,
         agg_method: Optional[str] = None,
         use_logit: bool = False,
@@ -1214,7 +1226,7 @@ class SHAPConfig(ExplainabilityConfig):
         """Initializes config for SHAP analysis.
 
         Args:
-            baseline (None or str or list): `Baseline dataset <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-feature-attribute-shap-baselines.html>`_
+            baseline (None or str or list or dict): `Baseline dataset <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-feature-attribute-shap-baselines.html>`_
                 for the Kernel SHAP algorithm, accepted in the form of:
                 S3 object URI, a list of rows (with at least one element),
                 or None (for no input baseline). The baseline dataset must have the same format
@@ -1451,7 +1463,7 @@ class SageMakerClarifyProcessor(Processor):
                 source=self._CLARIFY_OUTPUT,
                 destination=data_config.s3_output_path,
                 output_name="analysis_result",
-                s3_upload_mode="EndOfJob",
+                s3_upload_mode=ProcessingOutputHandler.get_s3_upload_mode(analysis_config),
             )
 
             return super().run(
@@ -2169,6 +2181,33 @@ def _upload_analysis_config(analysis_config_file, s3_output_path, sagemaker_sess
         sagemaker_session=sagemaker_session,
         kms_key=kms_key,
     )
+
+
+class ProcessingOutputHandler:
+    """Class to handle the parameters for SagemakerProcessor.Processingoutput"""
+
+    class S3UploadMode(Enum):
+        """Enum values for different uplaod modes to s3 bucket"""
+
+        CONTINUOUS = "Continuous"
+        ENDOFJOB = "EndOfJob"
+
+    @classmethod
+    def get_s3_upload_mode(cls, analysis_config: Dict[str, Any]) -> str:
+        """Fetches s3_upload mode based on the shap_config values
+
+        Args:
+            analysis_config (dict): dict Config following the analysis_config.json format
+
+        Returns:
+            The s3_upload_mode type for the processing output.
+        """
+        dataset_type = analysis_config["dataset_type"]
+        return (
+            ProcessingOutputHandler.S3UploadMode.CONTINUOUS.value
+            if dataset_type == DatasetType.IMAGE.value
+            else ProcessingOutputHandler.S3UploadMode.ENDOFJOB.value
+        )
 
 
 def _set(value, key, dictionary):

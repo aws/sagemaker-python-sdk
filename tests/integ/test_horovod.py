@@ -24,6 +24,8 @@ from tests.integ.utils import gpu_list, retry_with_instance_list
 from sagemaker.tensorflow import TensorFlow
 from tests.integ import timeout
 
+from packaging.version import Version
+
 horovod_dir = os.path.join(os.path.dirname(__file__), "..", "data", "horovod")
 
 
@@ -58,6 +60,12 @@ def test_hvd_gpu(
     tmpdir,
     **kwargs,
 ):
+    if (
+        Version(tensorflow_training_latest_version) >= Version("2.12")
+        and kwargs["instance_type"] == "ml.p2.xlarge"
+    ):
+        pytest.skip("P2 instances have been deprecated for sagemaker jobs starting TensorFlow 2.12")
+
     _create_and_fit_estimator(
         sagemaker_session,
         tensorflow_training_latest_version,

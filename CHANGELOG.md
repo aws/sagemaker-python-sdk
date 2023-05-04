@@ -1,5 +1,66 @@
 # Changelog
 
+## v2.151.0 (2023-04-27)
+
+### Features
+
+ * Update Transformers 4.26 - TensorFlow 2.11.0 Image URI
+ * Add Extra Parameters to Lambda Function Wrapper
+
+### Bug Fixes and Other Changes
+
+ * Add kms key support for Model registration
+ * Enable inference recommender slow tests
+ * Pass sagemaker session to downstream s3 calls
+ * Add ap-south-1 to no p3 regions
+ * skip test for p2 instance for TF2.12 and above
+
+### Documentation Changes
+
+ * Fix minor misses from the remote function doc release
+
+## v2.150.0 (2023-04-26)
+
+### Features
+
+ * Introduce TensorBoard app class
+
+### Bug Fixes and Other Changes
+
+ * Update data wrangler images
+
+## v2.149.0 (2023-04-25)
+
+### Features
+
+ * Support TF2.12 SageMaker DLC
+
+### Bug Fixes and Other Changes
+
+ * update the doc for Join function
+ * change s3UploadMode of sagemaker clarify processing output for computer vision jobs.
+
+### Documentation Changes
+
+ * Add Remote Function updates
+
+## v2.148.0 (2023-04-20)
+
+### Features
+
+ * [huggingface] Add `torch.distributed` support for Trainium and `torchrun`
+ * Add PyTorch 2.0 to SDK
+
+### Bug Fixes and Other Changes
+
+ * updating batch transform job in monitoring schedule
+
+## v2.147.0 (2023-04-18)
+
+### Features
+
+ * support different types of deletion mode
+
 ## v2.146.1 (2023-04-17)
 
 ### Bug Fixes and Other Changes
