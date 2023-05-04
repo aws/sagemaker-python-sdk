@@ -513,6 +513,7 @@ def test_train_local_code(get_data_source_instance, tmpdir, sagemaker_session):
             assert config["services"][h]["image"] == image
             assert config["services"][h]["command"] == "train"
             volumes = config["services"][h]["volumes"]
+            volumes = [v[:-2] if v.endswith(":z") else v for v in volumes]
             assert "%s:/opt/ml/code" % "/tmp/code" in volumes
             assert "%s:/opt/ml/shared" % shared_folder_path in volumes
 
@@ -564,6 +565,7 @@ def test_train_local_intermediate_output(get_data_source_instance, tmpdir, sagem
                 assert config["services"][h]["image"] == image
                 assert config["services"][h]["command"] == "train"
                 volumes = config["services"][h]["volumes"]
+                volumes = [v[:-2] if v.endswith(":z") else v for v in volumes]
                 assert "%s:/opt/ml/output/intermediate" % intermediate_folder_path in volumes
 
 
@@ -670,6 +672,7 @@ def test_serve_local_code(tmpdir, sagemaker_session):
                 assert config["services"][h]["command"] == "serve"
 
                 volumes = config["services"][h]["volumes"]
+                volumes = [v[:-2] if v.endswith(":z") else v for v in volumes]
                 assert "%s:/opt/ml/code" % "/tmp/code" in volumes
                 assert (
                     "SAGEMAKER_SUBMIT_DIRECTORY=/opt/ml/code"
