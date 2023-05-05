@@ -15,8 +15,11 @@ from __future__ import absolute_import
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional, Union, List, Dict
+from typing import Any, Optional, Union, List, Dict
+from json import dumps
+from re import sub, search
 
+from sagemaker.utils import get_module
 from sagemaker.lineage._utils import get_resource_name_from_arn
 
 
@@ -92,6 +95,32 @@ class Edge:
             and self.destination_arn == other.destination_arn
         )
 
+    def __str__(self):
+        """Define string representation of ``Edge``.
+
+        Format:
+            {
+                'source_arn': 'string',
+                'destination_arn': 'string',
+                'association_type': 'string'
+            }
+
+        """
+        return str(self.__dict__)
+
+    def __repr__(self):
+        """Define string representation of ``Edge``.
+
+        Format:
+            {
+                'source_arn': 'string',
+                'destination_arn': 'string',
+                'association_type': 'string'
+            }
+
+        """
+        return "\n\t" + str(self.__dict__)
+
 
 class Vertex:
     """A vertex for a lineage graph."""
@@ -129,6 +158,34 @@ class Vertex:
             and self.lineage_entity == other.lineage_entity
             and self.lineage_source == other.lineage_source
         )
+
+    def __str__(self):
+        """Define string representation of ``Vertex``.
+
+        Format:
+            {
+                'arn': 'string',
+                'lineage_entity': 'string',
+                'lineage_source': 'string',
+                '_session': <sagemaker.session.Session object>
+            }
+
+        """
+        return str(self.__dict__)
+
+    def __repr__(self):
+        """Define string representation of ``Vertex``.
+
+        Format:
+            {
+                'arn': 'string',
+                'lineage_entity': 'string',
+                'lineage_source': 'string',
+                '_session': <sagemaker.session.Session object>
+            }
+
+        """
+        return "\n\t" + str(self.__dict__)
 
     def to_lineage_object(self):
         """Convert the ``Vertex`` object to its corresponding lineage object.
@@ -176,6 +233,196 @@ class Vertex:
         return Artifact.load(artifact_arn=self.arn, sagemaker_session=self._session)
 
 
+class PyvisVisualizer(object):
+    """Create object used for visualizing graph using Pyvis library."""
+
+    def __init__(self, graph_styles, pyvis_options: Optional[Dict[str, Any]] = None):
+        """Init for PyvisVisualizer.
+
+        Args:
+            graph_styles: A dictionary that contains graph style for node and edges by their type.
+                Example: Display the nodes with different color by their lineage entity / different
+                    shape by start arn.
+                        lineage_graph_styles = {
+                            "TrialComponent": {
+                                "name": "Trial Component",
+                                "style": {"background-color": "#f6cf61"},
+                                "isShape": "False",
+                            },
+                            "Context": {
+                                "name": "Context",
+                                "style": {"background-color": "#ff9900"},
+                                "isShape": "False",
+                            },
+                            "StartArn": {
+                                "name": "StartArn",
+                                "style": {"shape": "star"},
+                                "isShape": "True",
+                                "symbol": "★", # shape symbol for legend
+                            },
+                        }
+            pyvis_options(optional): A dict containing PyVis options to customize visualization.
+                (see https://visjs.github.io/vis-network/docs/network/#options for supported fields)
+        """
+        # import visualization packages
+        (
+            self.Network,
+            self.Options,
+            self.IFrame,
+            self.BeautifulSoup,
+        ) = self._import_visual_modules()
+
+        self.graph_styles = graph_styles
+
+        if pyvis_options is None:
+            # default pyvis graph options
+            pyvis_options = {
+                "configure": {"enabled": False},
+                "layout": {
+                    "hierarchical": {
+                        "enabled": True,
+                        "blockShifting": True,
+                        "direction": "LR",
+                        "sortMethod": "directed",
+                        "shakeTowards": "leaves",
+                    }
+                },
+                "interaction": {"multiselect": True, "navigationButtons": True},
+                "physics": {
+                    "enabled": False,
+                    "hierarchicalRepulsion": {"centralGravity": 0, "avoidOverlap": None},
+                    "minVelocity": 0.75,
+                    "solver": "hierarchicalRepulsion",
+                },
+            }
+        # A string representation of a Javascript-like object used to override pyvis options
+        self._pyvis_options = f"var options = {dumps(pyvis_options)}"
+
+    def _import_visual_modules(self):
+        """Import modules needed for visualization."""
+        get_module("pyvis")
+        from pyvis.network import Network
+        from pyvis.options import Options
+        from IPython.display import IFrame
+
+        get_module("bs4")
+        from bs4 import BeautifulSoup
+
+        return Network, Options, IFrame, BeautifulSoup
+
+    def _node_color(self, entity):
+        """Return node color by background-color specified in graph styles."""
+        return self.graph_styles[entity]["style"]["background-color"]
+
+    def _get_legend_line(self, component_name):
+        """Generate lengend div line for each graph component in graph_styles."""
+        if self.graph_styles[component_name]["isShape"] == "False":
+            return '<div><div style="background-color: {color}; width: 1.6vw; height: 1.6vw;\
+                display: inline-block; font-size: 1.5vw; vertical-align: -0.2em;"></div>\
+                <div style="width: 0.3vw; height: 1.5vw; display: inline-block;"></div>\
+                <div style="display: inline-block; font-size: 1.5vw;">{name}</div></div>'.format(
+                color=self.graph_styles[component_name]["style"]["background-color"],
+                name=self.graph_styles[component_name]["name"],
+            )
+
+        return '<div style="background-color: #ffffff; width: 1.6vw; height: 1.6vw;\
+            display: inline-block; font-size: 0.9vw; vertical-align: -0.2em;">{shape}</div>\
+            <div style="width: 0.3vw; height: 1.5vw; display: inline-block;"></div>\
+            <div style="display: inline-block; font-size: 1.5vw;">{name}</div></div>'.format(
+            shape=self.graph_styles[component_name]["style"]["shape"],
+            name=self.graph_styles[component_name]["name"],
+        )
+
+    def _add_legend(self, path):
+        """Embed legend to html file generated by pyvis."""
+        f = open(path, "r")
+        content = self.BeautifulSoup(f, "html.parser")
+
+        legend = """
+            <div style="display: inline-block; font-size: 1vw; font-family: verdana;
+                vertical-align: top; padding: 1vw;">
+        """
+        # iterate through graph styles to get legend
+        for component in self.graph_styles.keys():
+            legend += self._get_legend_line(component_name=component)
+
+        legend += "</div>"
+
+        legend_div = self.BeautifulSoup(legend, "html.parser")
+
+        content.div.insert_after(legend_div)
+
+        html = content.prettify()
+
+        with open(path, "w", encoding="utf8") as file:
+            file.write(html)
+
+    def render(self, elements, path="lineage_graph_pyvis.html"):
+        """Render graph for lineage query result.
+
+        Args:
+            elements: A dictionary that contains the node and the edges of the graph.
+                Example:
+                    elements["nodes"] contains list of tuples, each tuple represents a node
+                        format: (node arn, node lineage source, node lineage entity,
+                            node is start arn)
+                    elements["edges"] contains list of tuples, each tuple represents an edge
+                        format: (edge source arn, edge destination arn, edge association type)
+
+            path(optional): The path/filename of the rendered graph html file.
+                (default path: "lineage_graph_pyvis.html")
+
+        Returns:
+            display graph: The interactive visualization is presented as a static HTML file.
+
+        """
+        net = self.Network(height="600px", width="82%", notebook=True, directed=True)
+        net.set_options(self._pyvis_options)
+
+        # add nodes to graph
+        for arn, source, entity, is_start_arn in elements["nodes"]:
+            entity_text = sub(r"(\w)([A-Z])", r"\1 \2", entity)
+            source = sub(r"(\w)([A-Z])", r"\1 \2", source)
+            account_id = search(r":\d{12}:", arn)
+            name = search(r"\/.*", arn)
+            node_info = (
+                "Entity: "
+                + entity_text
+                + "\nType: "
+                + source
+                + "\nAccount ID: "
+                + str(account_id.group()[1:-1])
+                + "\nName: "
+                + str(name.group()[1:])
+            )
+            if is_start_arn:  # startarn
+                net.add_node(
+                    arn,
+                    label=source,
+                    title=node_info,
+                    color=self._node_color(entity),
+                    shape="star",
+                    borderWidth=3,
+                )
+            else:
+                net.add_node(
+                    arn,
+                    label=source,
+                    title=node_info,
+                    color=self._node_color(entity),
+                    borderWidth=3,
+                )
+
+        # add edges to graph
+        for src, dest, asso_type in elements["edges"]:
+            net.add_edge(src, dest, title=asso_type, width=2)
+
+        net.write_html(path)
+        self._add_legend(path)
+
+        return self.IFrame(path, width="100%", height="600px")
+
+
 class LineageQueryResult(object):
     """A wrapper around the results of a lineage query."""
 
@@ -183,6 +430,7 @@ class LineageQueryResult(object):
         self,
         edges: List[Edge] = None,
         vertices: List[Vertex] = None,
+        startarn: List[str] = None,
     ):
         """Init for LineageQueryResult.
 
@@ -192,12 +440,131 @@ class LineageQueryResult(object):
         """
         self.edges = []
         self.vertices = []
+        self.startarn = []
 
         if edges is not None:
             self.edges = edges
 
         if vertices is not None:
             self.vertices = vertices
+
+        if startarn is not None:
+            self.startarn = startarn
+
+    def __str__(self):
+        """Define string representation of ``LineageQueryResult``.
+
+        Format:
+        {
+            'edges':[
+                {
+                    'source_arn': 'string',
+                    'destination_arn': 'string',
+                    'association_type': 'string'
+                },
+            ],
+
+            'vertices':[
+                {
+                    'arn': 'string',
+                    'lineage_entity': 'string',
+                    'lineage_source': 'string',
+                    '_session': <sagemaker.session.Session object>
+                },
+            ],
+
+            'startarn':['string', ...]
+        }
+
+        """
+        return (
+            "{"
+            + "\n\n".join("'{}': {},".format(key, val) for key, val in self.__dict__.items())
+            + "\n}"
+        )
+
+    def _covert_edges_to_tuples(self):
+        """Convert edges to tuple format for visualizer."""
+        edges = []
+        # get edge info in the form of (source, target, label)
+        for edge in self.edges:
+            edges.append((edge.source_arn, edge.destination_arn, edge.association_type))
+        return edges
+
+    def _covert_vertices_to_tuples(self):
+        """Convert vertices to tuple format for visualizer."""
+        verts = []
+        # get vertex info in the form of (id, label, class)
+        for vert in self.vertices:
+            if vert.arn in self.startarn:
+                # add "startarn" class to node if arn is a startarn
+                verts.append((vert.arn, vert.lineage_source, vert.lineage_entity, True))
+            else:
+                verts.append((vert.arn, vert.lineage_source, vert.lineage_entity, False))
+        return verts
+
+    def _get_visualization_elements(self):
+        """Get elements(nodes+edges) for visualization."""
+        verts = self._covert_vertices_to_tuples()
+        edges = self._covert_edges_to_tuples()
+
+        elements = {"nodes": verts, "edges": edges}
+        return elements
+
+    def visualize(
+        self,
+        path: Optional[str] = "lineage_graph_pyvis.html",
+        pyvis_options: Optional[Dict[str, Any]] = None,
+    ):
+        """Visualize lineage query result.
+
+        Creates a PyvisVisualizer object to render network graph with Pyvis library.
+        Pyvis library should be installed before using this method (run "pip install pyvis")
+        The elements(nodes & edges) are preprocessed in this method and sent to
+        PyvisVisualizer for rendering graph.
+
+        Args:
+            path(optional): The path/filename of the rendered graph html file.
+                (default path: "lineage_graph_pyvis.html")
+            pyvis_options(optional): A dict containing PyVis options to customize visualization.
+                (see https://visjs.github.io/vis-network/docs/network/#options for supported fields)
+
+        Returns:
+            display graph: The interactive visualization is presented as a static HTML file.
+        """
+        lineage_graph_styles = {
+            # nodes can have shape / color
+            "TrialComponent": {
+                "name": "Trial Component",
+                "style": {"background-color": "#f6cf61"},
+                "isShape": "False",
+            },
+            "Context": {
+                "name": "Context",
+                "style": {"background-color": "#ff9900"},
+                "isShape": "False",
+            },
+            "Action": {
+                "name": "Action",
+                "style": {"background-color": "#88c396"},
+                "isShape": "False",
+            },
+            "Artifact": {
+                "name": "Artifact",
+                "style": {"background-color": "#146eb4"},
+                "isShape": "False",
+            },
+            "StartArn": {
+                "name": "StartArn",
+                "style": {"shape": "star"},
+                "isShape": "True",
+                "symbol": "★",  # shape symbol for legend
+            },
+        }
+
+        pyvis_vis = PyvisVisualizer(lineage_graph_styles, pyvis_options)
+        elements = self._get_visualization_elements()
+        return pyvis_vis.render(elements=elements, path=path)
 
 
 class LineageFilter(object):
@@ -273,9 +640,8 @@ class LineageQuery(object):
             sagemaker_session=self._session,
         )
 
-    def _convert_api_response(self, response) -> LineageQueryResult:
+    def _convert_api_response(self, response, converted) -> LineageQueryResult:
         """Convert the lineage query API response to its Python representation."""
-        converted = LineageQueryResult()
         converted.edges = [self._get_edge(edge) for edge in response["Edges"]]
         converted.vertices = [self._get_vertex(vertex) for vertex in response["Vertices"]]
 
@@ -358,7 +724,9 @@ class LineageQuery(object):
             Filters=query_filter._to_request_dict() if query_filter else {},
             MaxDepth=max_depth,
         )
-        query_response = self._convert_api_response(query_response)
+        # create query result for startarn info
+        query_result = LineageQueryResult(startarn=start_arns)
+        query_response = self._convert_api_response(query_response, query_result)
         query_response = self._collapse_cross_account_artifacts(query_response)
 
         return query_response

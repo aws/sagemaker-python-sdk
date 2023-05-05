@@ -3175,6 +3175,7 @@ DEFAULT_EXPECTED_AUTO_ML_JOB_ARGS = {
         {
             "DataSource": {"S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": S3_INPUT_URI}},
             "TargetAttributeName": "y",
+            "SampleWeightAttributeName": "sampleWeight",
         }
     ],
     "OutputDataConfig": {"S3OutputPath": S3_OUTPUT},
@@ -3202,6 +3203,7 @@ COMPLETE_EXPECTED_AUTO_ML_JOB_ARGS = {
                 }
             },
             "TargetAttributeName": "y",
+            "SampleWeightAttributeName": "sampleWeight",
         },
         {
             "ChannelType": "validation",
@@ -3213,6 +3215,7 @@ COMPLETE_EXPECTED_AUTO_ML_JOB_ARGS = {
                 }
             },
             "TargetAttributeName": "y",
+            "SampleWeightAttributeName": "sampleWeight",
         },
     ],
     "OutputDataConfig": {"S3OutputPath": S3_OUTPUT},
@@ -3254,6 +3257,7 @@ def test_auto_ml_pack_to_request(sagemaker_session):
         {
             "DataSource": {"S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": S3_INPUT_URI}},
             "TargetAttributeName": "y",
+            "SampleWeightAttributeName": "sampleWeight",
         }
     ]
 
@@ -3288,6 +3292,7 @@ def test_create_auto_ml_with_sagemaker_config_injection(sagemaker_session):
         {
             "DataSource": {"S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": S3_INPUT_URI}},
             "TargetAttributeName": "y",
+            "SampleWeightAttributeName": "sampleWeight",
         }
     ]
 
@@ -3350,6 +3355,7 @@ def test_auto_ml_pack_to_request_with_optional_args(sagemaker_session):
                 }
             },
             "TargetAttributeName": "y",
+            "SampleWeightAttributeName": "sampleWeight",
         },
         {
             "ChannelType": "validation",
@@ -3361,6 +3367,7 @@ def test_auto_ml_pack_to_request_with_optional_args(sagemaker_session):
                 }
             },
             "TargetAttributeName": "y",
+            "SampleWeightAttributeName": "sampleWeight",
         },
     ]
 

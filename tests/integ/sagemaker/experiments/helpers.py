@@ -15,7 +15,7 @@ from __future__ import absolute_import
 from contextlib import contextmanager
 
 from sagemaker import utils
-from sagemaker.experiments.experiment import _Experiment
+from sagemaker.experiments.experiment import Experiment
 
 EXP_INTEG_TEST_NAME_PREFIX = "experiments-integ"
 
@@ -38,5 +38,5 @@ def cleanup_exp_resources(exp_names, sagemaker_session):
         yield
     finally:
         for exp_name in exp_names:
-            exp = _Experiment.load(experiment_name=exp_name, sagemaker_session=sagemaker_session)
+            exp = Experiment.load(experiment_name=exp_name, sagemaker_session=sagemaker_session)
             exp._delete_all(action="--force")

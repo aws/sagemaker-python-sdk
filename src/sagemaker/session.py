@@ -2100,7 +2100,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         Args:
             input_config (list[dict]): A list of Channel objects. Each channel contains "DataSource"
-                and "TargetAttributeName", "CompressionType" is an optional field.
+                and "TargetAttributeName", "CompressionType" and "SampleWeightAttributeName" are
+                optional fields.
             output_config (dict): The S3 URI where you want to store the training results and
                 optional KMS key ID.
             auto_ml_job_config (dict): A dict of AutoMLJob config, containing "StoppingCondition",
@@ -2167,7 +2168,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         Args:
             input_config (list[dict]): A list of Channel objects. Each channel contains "DataSource"
-                and "TargetAttributeName", "CompressionType" is an optional field.
+                and "TargetAttributeName", "CompressionType" and "SampleWeightAttributeName" are
+                optional fields.
             output_config (dict): The S3 URI where you want to store the training results and
                 optional KMS key ID.
             auto_ml_job_config (dict): A dict of AutoMLJob config, containing "StoppingCondition",

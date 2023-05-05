@@ -1,5 +1,30 @@
 # Changelog
 
+## v2.152.0 (2023-05-04)
+
+### Features
+
+ * add support for lineage visualization using pyvis
+ * Expose Experiment class publicly
+ * PyTorch 1.13 release
+
+### Bug Fixes and Other Changes
+
+ * Change data_type argument to dtype to keep consistent with D…
+ * Skip edge test
+ * make RemoteExecutor context manager non-blocking on pending futures
+ * Add inferentia2 DLC images for djl framework
+ * Fix typo in using_pytorch.rst
+ * Unable to attach estimator to training job when KeepAlivePeriodInSeconds specified
+ * update LMI container image
+ * Update Clarify SHAPConfig baseline to allow JSON structures
+
+### Documentation Changes
+
+ * Fix broken link in DJL SageMaker docs
+ * currency update for the SageMaker data parallelism lib
+ * SM model parallel library v1.15.0 release note
+
 ## v2.151.0 (2023-04-27)
 
 ### Features

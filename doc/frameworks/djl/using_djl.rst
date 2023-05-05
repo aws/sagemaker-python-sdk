@@ -23,7 +23,7 @@ With the SageMaker Python SDK, you can use DJL Serving to host models that have 
 These can either be models you have trained/fine-tuned yourself, or models available publicly from the HuggingFace Hub.
 DJL Serving in the SageMaker Python SDK supports hosting models for the popular HuggingFace NLP tasks, as well as Stable Diffusion.
 
-You can either deploy your model using DeepSpeed or HuggingFace Accelerate, or let DJL Serving determine the best backend based on your model architecture and configuration.
+You can either deploy your model using DeepSpeed, FasterTransformer, or HuggingFace Accelerate, or let DJL Serving determine the best backend based on your model architecture and configuration.
 
 .. code:: python
 
@@ -31,7 +31,7 @@ You can either deploy your model using DeepSpeed or HuggingFace Accelerate, or l
     djl_model = DJLModel(
         "s3://my_bucket/my_saved_model_artifacts/", # This can also be a HuggingFace Hub model id
         "my_sagemaker_role",
-        data_type="fp16",
+        dtype="fp16",
         task="text-generation",
         number_of_partitions=2 # number of gpus to partition the model across
     )
@@ -48,7 +48,7 @@ If you want to use a specific backend, then you can create an instance of the co
     deepspeed_model = DeepSpeedModel(
         "s3://my_bucket/my_saved_model_artifacts/", # This can also be a HuggingFace Hub model id
         "my_sagemaker_role",
-        data_type="bf16",
+        dtype="bf16",
         task="text-generation",
         tensor_parallel_degree=2, # number of gpus to partition the model across using tensor parallelism
     )
@@ -58,9 +58,19 @@ If you want to use a specific backend, then you can create an instance of the co
     hf_accelerate_model = HuggingFaceAccelerateModel(
         "s3://my_bucket/my_saved_model_artifacts/", # This can also be a HuggingFace Hub model id
         "my_sagemaker_role",
-        data_type="fp16",
+        dtype="fp16",
         task="text-generation",
         number_of_partitions=2, # number of gpus to partition the model across
+    )
+
+    # Create a model using the FasterTransformer backend
+
+    fastertransformer_model = FasterTransformerModel(
+        "s3://my_bucket/my_saved_model_artifacts/", # This can also be a HuggingFace Hub model id
+        "my_sagemaker_role",
+        data_type="fp16",
+        task="text-generation",
+        tensor_parallel_degree=2, # number of gpus to partition the model across
     )
 
     # Deploy the model to an Amazon SageMaker Endpoint and get a Predictor
@@ -68,6 +78,8 @@ If you want to use a specific backend, then you can create an instance of the co
                                                  initial_instance_count=1)
     hf_accelerate_predictor = hf_accelerate_model.deploy("ml.g5.12xlarge",
                                                          initial_instance_count=1)
+    fastertransformer_predictor = fastertransformer_model.deploy("ml.g5.12xlarge",
+                                                                 initial_instance_count=1)
 
 Regardless of which way you choose to create your model, a ``Predictor`` object is returned. You can use this ``Predictor``
 to do inference on the endpoint hosting your DJLModel.
@@ -109,7 +121,7 @@ For example, you can deploy the EleutherAI gpt-j-6B model like this:
     model = DJLModel(
         "EleutherAI/gpt-j-6B",
         "my_sagemaker_role",
-        data_type="fp16",
+        dtype="fp16",
         number_of_partitions=2
     )
 
@@ -142,7 +154,7 @@ You would then pass "s3://my_bucket/gpt-j-6B" as ``model_id`` to the ``DJLModel`
     model = DJLModel(
         "s3://my_bucket/gpt-j-6B",
         "my_sagemaker_role",
-        data_type="fp16",
+        dtype="fp16",
         number_of_partitions=2
     )
 
@@ -213,7 +225,7 @@ For more information about DJL Serving, see the `DJL Serving documentation. <htt
 SageMaker DJL Classes
 ***********************
 
-For information about the different DJL Serving related classes in the SageMaker Python SDK, see https://sagemaker.readthedocs.io/en/stable/sagemaker.djl_inference.html.
+For information about the different DJL Serving related classes in the SageMaker Python SDK, see https://sagemaker.readthedocs.io/en/stable/frameworks/djl/sagemaker.djl_inference.html.
 
 ********************************
 SageMaker DJL Serving Containers
