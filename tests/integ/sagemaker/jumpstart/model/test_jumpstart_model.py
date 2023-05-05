@@ -66,7 +66,7 @@ def test_prepacked_jumpstart_model(setup):
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
     )
 
-    response = predictor.predict({"prompt": "hello world!"})
+    response = predictor.predict("hello world!")
 
     assert response is not None
 
