@@ -185,9 +185,9 @@ class TransformInput(object):
             accept the default value ``$``. For more information on batch transform data processing, 
             input, join, and output, see 
             `Associate Prediction Results with Input Records 
-            <https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform-data-processing.html?`.
+            <https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform-data-processing.html?>`_.
             Valid values: ``$``. See `JSONPath Operators 
-            <https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform-data-processing.html#data-processing-operators>' 
+            <https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform-data-processing.html#data-processing-operators>`_ 
             for more options.
             (default: ``$``)
         output_filter (str): A JSONPath expression used to select a portion of the joined dataset to 
@@ -195,21 +195,23 @@ class TransformInput(object):
             entire input dataset in the output file, leave the default value, $. If you specify 
             indexes that aren't within the dimension size of the joined dataset, you get an error.
             Valid values: ``$``. See `JSONPath Operators 
-            <https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform-data-processing.html#data-processing-operators>' 
+            <https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform-data-processing.html#data-processing-operators>`_ 
             for more options.
             (default: ``$``)
             join_source (str): Specifies the source of the data to join with the transformed data. The 
             default value is ``None``, which specifies not to join the input with the transformed data. 
-            If you want the batch transform job to join the original input data with the transformed data, 
-            set to ``Input``. For more information on 
+            If you want the batch transform job to join the original input data with the transformed 
+            data, set to ``Input``. For more information on 
             Valid values: ``None``, ``Input``
             (default: None)
         model_client_config (dict): Configures the timeout and maximum number of retries for 
             processing a transform job invocation.
 
-                * ``'InvocationsTimeoutInSeconds'`` (int) - The timeout value in seconds for an invocation request. The default value is 600.
-                * ``'InvocationsMaxRetries'`` (int) - The maximum number of retries when invocation requests are failing.
-        (default: ``{'InvocationsTimeoutInSeconds'=600,'InvocationsMaxRetries'=3}``)
+                * ``'InvocationsTimeoutInSeconds'`` (int) - The timeout value in seconds for an 
+                    invocation request. The default value is 600.
+                * ``'InvocationsMaxRetries'`` (int) - The maximum number of retries when invocation 
+                    requests are failing.
+            (default: ``{'InvocationsTimeoutInSeconds'=600,'InvocationsMaxRetries'=3}``)
         batch_data_capture_config (dict): Specifies configuration related to batch transform job 
             data capture for use with Amazon SageMaker Model Monitoring.
             (default: None)
