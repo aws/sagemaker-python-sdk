@@ -18,9 +18,19 @@ from typing import List, Optional
 
 # base_deserializers was refactored from deserializers.
 # this import ensures backward compatibility.
-from sagemaker.base_deserializers import *  # noqa: F403, F401 # pylint: disable=W0614,W0401
-
-from sagemaker.base_deserializers import BaseDeserializer
+from sagemaker.base_deserializers import (  # noqa: F401 # pylint: disable=W0611
+    BaseDeserializer,
+    BytesDeserializer,
+    CSVDeserializer,
+    DeferredError,
+    JSONDeserializer,
+    JSONLinesDeserializer,
+    NumpyDeserializer,
+    PandasDeserializer,
+    SimpleBaseDeserializer,
+    StreamDeserializer,
+    StringDeserializer,
+)
 
 from sagemaker.jumpstart import artifacts, utils as jumpstart_utils
 
@@ -57,7 +67,7 @@ def retrieve_options(
 
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
         raise ValueError(
-            "Must specify `model_id` and `model_version` when retrieving deserializers."
+            "Must specify JumpStart `model_id` and `model_version` when retrieving deserializers."
         )
 
     return artifacts._retrieve_deserializer_options(
@@ -101,7 +111,7 @@ def retrieve_default(
 
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
         raise ValueError(
-            "Must specify `model_id` and `model_version` when retrieving deserializers."
+            "Must specify JumpStart `model_id` and `model_version` when retrieving deserializers."
         )
 
     return artifacts._retrieve_default_deserializer(

@@ -48,7 +48,7 @@ def retrieve_options(
     """
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
         raise ValueError(
-            "Must specify `model_id` and `model_version` when retrieving accept types."
+            "Must specify JumpStart `model_id` and `model_version` when retrieving accept types."
         )
 
     return artifacts._retrieve_supported_accept_types(
@@ -91,7 +91,7 @@ def retrieve_default(
     """
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
         raise ValueError(
-            "Must specify `model_id` and `model_version` when retrieving accept types."
+            "Must specify JumpStart `model_id` and `model_version` when retrieving accept types."
         )
 
     return artifacts._retrieve_default_accept_type(

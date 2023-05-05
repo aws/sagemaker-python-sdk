@@ -20,11 +20,14 @@ from sagemaker.jumpstart.utils import is_jumpstart_model_input
 
 from sagemaker.session import Session
 
-from sagemaker.base_predictor import Predictor
 
 # base_predictor was refactored from predictor.
 # this import ensures backward compatibility.
-from sagemaker.base_predictor import *  # noqa: F403, F401 # pylint: disable=W0614,W0401
+from sagemaker.base_predictor import (  # noqa: F401 # pylint: disable=W0611
+    Predictor,
+    PredictorBase,
+    RealTimePredictor,
+)
 
 
 def retrieve_default(
@@ -64,7 +67,8 @@ def retrieve_default(
 
     if not is_jumpstart_model_input(model_id, model_version):
         raise ValueError(
-            "Must specify `model_id` and `model_version` when retrieving default predictor."
+            "Must specify JumpStart `model_id` and `model_version` "
+            "when retrieving default predictor."
         )
 
     predictor = Predictor(endpoint_name=endpoint_name, sagemaker_session=sagemaker_session)

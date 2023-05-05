@@ -57,7 +57,7 @@ def retrieve_default(
     """
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
         raise ValueError(
-            "Must specify `model_id` and `model_version` when retrieving instance types."
+            "Must specify JumpStart `model_id` and `model_version` when retrieving instance types."
         )
 
     if scope is None:
@@ -105,7 +105,7 @@ def retrieve(
     """
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
         raise ValueError(
-            "Must specify `model_id` and `model_version` when retrieving instance types."
+            "Must specify JumpStart `model_id` and `model_version` when retrieving instance types."
         )
 
     if scope is None:

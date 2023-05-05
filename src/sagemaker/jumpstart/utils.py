@@ -165,7 +165,7 @@ def is_jumpstart_model_input(model_id: Optional[str], version: Optional[str]) ->
     if model_id is not None or version is not None:
         if model_id is None or version is None:
             raise ValueError(
-                "Must specify `model_id` and `model_version` when getting specs for "
+                "Must specify JumpStart `model_id` and `model_version` when getting specs for "
                 "JumpStart models."
             )
         return True

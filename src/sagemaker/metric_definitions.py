@@ -54,8 +54,8 @@ def retrieve_default(
     """
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
         raise ValueError(
-            "Must specify `model_id` and `model_version` when retrieving default training "
-            "metric definitions."
+            "Must specify JumpStart `model_id` and `model_version` "
+            "when retrieving default training metric definitions."
         )
 
     return artifacts._retrieve_default_training_metric_definitions(

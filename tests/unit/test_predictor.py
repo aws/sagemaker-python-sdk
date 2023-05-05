@@ -493,11 +493,11 @@ def test_endpoint_context_fail():
     assert not context
 
 
-@patch("sagemaker.predictor.ModelExplainabilityMonitor.attach")
-@patch("sagemaker.predictor.ModelBiasMonitor.attach")
-@patch("sagemaker.predictor.ModelQualityMonitor.attach")
-@patch("sagemaker.predictor.ModelMonitor.attach")
-@patch("sagemaker.predictor.DefaultModelMonitor.attach")
+@patch("sagemaker.base_predictor.ModelExplainabilityMonitor.attach")
+@patch("sagemaker.base_predictor.ModelBiasMonitor.attach")
+@patch("sagemaker.base_predictor.ModelQualityMonitor.attach")
+@patch("sagemaker.base_predictor.ModelMonitor.attach")
+@patch("sagemaker.base_predictor.DefaultModelMonitor.attach")
 def test_list_monitors(default_model_monitor_attach, *attach_methods):
     sagemaker_session = empty_sagemaker_session()
     sagemaker_session.list_monitoring_schedules = Mock(

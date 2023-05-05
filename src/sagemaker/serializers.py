@@ -15,12 +15,20 @@ from __future__ import absolute_import
 
 from typing import List, Optional
 
-# base_predictor was refactored from predictor.
+# base_serializers was refactored from serializers.
 # this import ensures backward compatibility.
-from sagemaker.base_serializers import *  # noqa: F403, F401 # pylint: disable=W0614,W0401
-
-
-from sagemaker.base_serializers import BaseSerializer
+from sagemaker.base_serializers import (  # noqa: F401 # pylint: disable=W0611
+    BaseSerializer,
+    CSVSerializer,
+    DataSerializer,
+    IdentitySerializer,
+    JSONLinesSerializer,
+    JSONSerializer,
+    LibSVMSerializer,
+    NumpySerializer,
+    SimpleBaseSerializer,
+    SparseMatrixSerializer,
+)
 
 from sagemaker.jumpstart import artifacts, utils as jumpstart_utils
 
@@ -56,7 +64,9 @@ def retrieve_options(
     """
 
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
-        raise ValueError("Must specify `model_id` and `model_version` when retrieving serializers.")
+        raise ValueError(
+            "Must specify JumpStart `model_id` and `model_version` when retrieving serializers."
+        )
 
     return artifacts._retrieve_serializer_options(
         model_id,
@@ -98,7 +108,9 @@ def retrieve_default(
     """
 
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
-        raise ValueError("Must specify `model_id` and `model_version` when retrieving serializers.")
+        raise ValueError(
+            "Must specify JumpStart `model_id` and `model_version` when retrieving serializers."
+        )
 
     return artifacts._retrieve_default_serializer(
         model_id,

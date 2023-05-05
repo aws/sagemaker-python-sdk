@@ -64,7 +64,7 @@ def retrieve_default(
     """
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
         raise ValueError(
-            "Must specify `model_id` and `model_version` when retrieving hyperparameters."
+            "Must specify JumpStart `model_id` and `model_version` when retrieving hyperparameters."
         )
 
     return artifacts._retrieve_default_hyperparameters(
@@ -110,7 +110,7 @@ def validate(
 
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
         raise ValueError(
-            "Must specify `model_id` and `model_version` when validating hyperparameters."
+            "Must specify JumpStart `model_id` and `model_version` when validating hyperparameters."
         )
 
     if model_id is None or model_version is None:

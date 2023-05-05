@@ -59,7 +59,8 @@ def retrieve_default(
     """
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
         raise ValueError(
-            "Must specify `model_id` and `model_version` when retrieving environment variables."
+            "Must specify JumpStart `model_id` and `model_version` "
+            "when retrieving environment variables."
         )
 
     return artifacts._retrieve_default_environment_variables(
