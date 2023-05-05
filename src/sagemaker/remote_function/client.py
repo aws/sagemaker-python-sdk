@@ -185,6 +185,7 @@ def remote(
           methods that are not available via PyPI or conda. Default value is ``False``.
 
         instance_count (int): The number of instances to use. Defaults to 1.
+          NOTE: Remote function does not support instance_count > 1
 
         instance_type (str): The Amazon Elastic Compute Cloud (EC2) instance type to use to run
           the SageMaker job. e.g. ml.c4.xlarge. If not provided, a ValueError is thrown.
@@ -254,6 +255,12 @@ def remote(
     def _remote(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
+
+            if instance_count > 1:
+                raise ValueError(
+                    "Remote function do not support training on multi instances. "
+                    + "Please provide instance_count = 1"
+                )
 
             RemoteExecutor._validate_submit_args(func, *args, **kwargs)
 
@@ -574,6 +581,7 @@ class RemoteExecutor(object):
               and methods that are not available via PyPI or conda. Default value is ``False``.
 
             instance_count (int): The number of instances to use. Defaults to 1.
+              NOTE: Remote function does not support instance_count > 1
 
             instance_type (str): The Amazon Elastic Compute Cloud (EC2) instance type to use to run
               the SageMaker job. e.g. ml.c4.xlarge. If not provided, a ValueError is thrown.
@@ -646,6 +654,12 @@ class RemoteExecutor(object):
 
         if self.max_parallel_jobs <= 0:
             raise ValueError("max_parallel_jobs must be greater than 0.")
+
+        if instance_count > 1:
+            raise ValueError(
+                "Remote function do not support training on multi instances. "
+                + "Please provide instance_count = 1"
+            )
 
         self.job_settings = _JobSettings(
             dependencies=dependencies,
