@@ -22,11 +22,11 @@ from sagemaker.experiments.trial import _Trial
 from sagemaker.experiments.trial_component import _TrialComponent
 
 
-class _Experiment(_base_types.Record):
+class Experiment(_base_types.Record):
     """An Amazon SageMaker experiment, which is a collection of related trials.
 
-    New experiments are created by calling `experiments.experiment._Experiment.create`.
-    Existing experiments can be reloaded by calling `experiments.experiment._Experiment.load`.
+    New experiments are created by calling `experiments.experiment.Experiment.create`.
+    Existing experiments can be reloaded by calling `experiments.experiment.Experiment.load`.
 
     Attributes:
         experiment_name (str): The name of the experiment. The name must be unique
@@ -73,7 +73,7 @@ class _Experiment(_base_types.Record):
 
     @classmethod
     def load(cls, experiment_name, sagemaker_session=None):
-        """Load an existing experiment and return an `_Experiment` object representing it.
+        """Load an existing experiment and return an `Experiment` object representing it.
 
         Args:
             experiment_name: (str): Name of the experiment
@@ -83,7 +83,7 @@ class _Experiment(_base_types.Record):
                 default AWS configuration chain.
 
         Returns:
-            experiments.experiment._Experiment: A SageMaker `_Experiment` object
+            experiments.experiment.Experiment: A SageMaker `Experiment` object
         """
         return cls._construct(
             cls._boto_load_method,
@@ -100,7 +100,7 @@ class _Experiment(_base_types.Record):
         tags=None,
         sagemaker_session=None,
     ):
-        """Create a new experiment in SageMaker and return an `_Experiment` object.
+        """Create a new experiment in SageMaker and return an `Experiment` object.
 
         Args:
             experiment_name: (str): Name of the experiment. Must be unique. Required.
@@ -115,7 +115,7 @@ class _Experiment(_base_types.Record):
                 (default: None).
 
         Returns:
-            experiments.experiment._Experiment: A SageMaker `_Experiment` object
+            experiments.experiment.Experiment: A SageMaker `Experiment` object
         """
         return cls._construct(
             cls._boto_create_method,
@@ -154,10 +154,10 @@ class _Experiment(_base_types.Record):
                 exist and a new experiment has to be created.
 
         Returns:
-            experiments.experiment._Experiment: A SageMaker `_Experiment` object
+            experiments.experiment.Experiment: A SageMaker `Experiment` object
         """
         try:
-            experiment = _Experiment.create(
+            experiment = Experiment.create(
                 experiment_name=experiment_name,
                 display_name=display_name,
                 description=description,
@@ -170,7 +170,7 @@ class _Experiment(_base_types.Record):
             if not (error_code == "ValidationException" and "already exists" in error_message):
                 raise ce
             # already exists
-            experiment = _Experiment.load(experiment_name, sagemaker_session)
+            experiment = Experiment.load(experiment_name, sagemaker_session)
         return experiment
 
     def list_trials(self, created_before=None, created_after=None, sort_by=None, sort_order=None):

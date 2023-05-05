@@ -233,7 +233,7 @@ class DJLModel(FrameworkModel):
         role: str,
         djl_version: Optional[str] = None,
         task: Optional[str] = None,
-        data_type: str = "fp32",
+        dtype: str = "fp32",
         number_of_partitions: Optional[int] = None,
         min_workers: Optional[int] = None,
         max_workers: Optional[int] = None,
@@ -264,7 +264,7 @@ class DJLModel(FrameworkModel):
             task (str): The HuggingFace/NLP task you want to launch this model for. Defaults to
                 None.
                 If not provided, the task will be inferred from the model architecture by DJL.
-            data_type (str): The data type to use for loading your model. Accepted values are
+            dtype (str): The data type to use for loading your model. Accepted values are
                 "fp32", "fp16", "bf16", "int8". Defaults to "fp32".
             number_of_partitions (int): The number of GPUs to partition the model across. The
                 partitioning strategy is determined by the selected backend. If DeepSpeed is
@@ -322,13 +322,20 @@ class DJLModel(FrameworkModel):
                 "You only need to set model_id and ensure it points to uncompressed model "
                 "artifacts in s3, or a valid HuggingFace Hub model_id."
             )
+        data_type = kwargs.pop("data_type", None)
+        if data_type:
+            logger.warning(
+                "data_type is being deprecated in favor of dtype. Please migrate use of data_type"
+                " to dtype. Support for data_type will be removed in a future release"
+            )
+            dtype = dtype or data_type
         super(DJLModel, self).__init__(
             None, image_uri, role, entry_point, predictor_cls=predictor_cls, **kwargs
         )
         self.model_id = model_id
         self.djl_version = djl_version
         self.task = task
-        self.data_type = data_type
+        self.dtype = dtype
         self.number_of_partitions = number_of_partitions
         self.min_workers = min_workers
         self.max_workers = max_workers
@@ -372,7 +379,7 @@ class DJLModel(FrameworkModel):
             "DJLModels do not currently support Batch Transform inference jobs"
         )
 
-    def right_size(self, checkpoint_data_type: str):
+    def right_size(self, **_):
         """Not implemented.
 
         DJLModels do not support SageMaker Inference Recommendation Jobs.
@@ -573,8 +580,8 @@ class DJLModel(FrameworkModel):
             serving_properties["option.entryPoint"] = self.entry_point
         if self.task:
             serving_properties["option.task"] = self.task
-        if self.data_type:
-            serving_properties["option.dtype"] = self.data_type
+        if self.dtype:
+            serving_properties["option.dtype"] = self.dtype
         if self.min_workers:
             serving_properties["minWorkers"] = self.min_workers
         if self.max_workers:
@@ -779,7 +786,7 @@ class HuggingFaceAccelerateModel(DJLModel):
                 None.
             load_in_8bit (bool): Whether to load the model in int8 precision using bits and bytes
                 quantization. This is only supported for select model architectures.
-                Defaults to False. If ``data_type`` is int8, then this is set to True.
+                Defaults to False. If ``dtype`` is int8, then this is set to True.
             low_cpu_mem_usage (bool): Whether to limit CPU memory usage to 1x model size during
                 model loading. This is an experimental feature in HuggingFace. This is useful when
                 loading multiple instances of your model in parallel. Defaults to False.
@@ -832,10 +839,10 @@ class HuggingFaceAccelerateModel(DJLModel):
         if self.device_map:
             serving_properties["option.device_map"] = self.device_map
         if self.load_in_8bit:
-            if self.data_type != "int8":
-                raise ValueError("Set data_type='int8' to use load_in_8bit")
+            if self.dtype != "int8":
+                raise ValueError("Set dtype='int8' to use load_in_8bit")
             serving_properties["option.load_in_8bit"] = self.load_in_8bit
-        if self.data_type == "int8":
+        if self.dtype == "int8":
             serving_properties["option.load_in_8bit"] = True
         if self.low_cpu_mem_usage:
             serving_properties["option.low_cpu_mem_usage"] = self.low_cpu_mem_usage
@@ -843,8 +850,8 @@ class HuggingFaceAccelerateModel(DJLModel):
         # TODO: This needs to be fixed when new dlc is published
         if (
             serving_properties["option.entryPoint"] == "djl_python.huggingface"
-            and self.data_type
-            and self.data_type != "auto"
+            and self.dtype
+            and self.dtype != "auto"
         ):
             serving_properties["option.dtype"] = "auto"
             serving_properties.pop("option.load_in_8bit", None)

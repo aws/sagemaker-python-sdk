@@ -32,7 +32,7 @@ def datetime_obj():
 def test_load(sagemaker_session):
     client = sagemaker_session.sagemaker_client
     client.describe_experiment.return_value = {"Description": "description-value"}
-    experiment_obj = experiment._Experiment.load(
+    experiment_obj = experiment.Experiment.load(
         experiment_name="name-value", sagemaker_session=sagemaker_session
     )
     assert experiment_obj.experiment_name == "name-value"
@@ -44,7 +44,7 @@ def test_load(sagemaker_session):
 def test_create(sagemaker_session):
     client = sagemaker_session.sagemaker_client
     client.create_experiment.return_value = {"Arn": "arn:aws:1234"}
-    experiment_obj = experiment._Experiment.create(
+    experiment_obj = experiment.Experiment.create(
         experiment_name="name-value", sagemaker_session=sagemaker_session
     )
     assert experiment_obj.experiment_name == "name-value"
@@ -55,7 +55,7 @@ def test_create_with_tags(sagemaker_session):
     client = sagemaker_session.sagemaker_client
     client.create_experiment.return_value = {"Arn": "arn:aws:1234"}
     tags = [{"Key": "foo", "Value": "bar"}]
-    experiment_obj = experiment._Experiment.create(
+    experiment_obj = experiment.Experiment.create(
         experiment_name="name-value", sagemaker_session=sagemaker_session, tags=tags
     )
     assert experiment_obj.experiment_name == "name-value"
@@ -64,7 +64,7 @@ def test_create_with_tags(sagemaker_session):
 
 def test_save(sagemaker_session):
     client = sagemaker_session.sagemaker_client
-    obj = experiment._Experiment(sagemaker_session, experiment_name="foo", description="bar")
+    obj = experiment.Experiment(sagemaker_session, experiment_name="foo", description="bar")
     client.update_experiment.return_value = {}
     obj.save()
     client.update_experiment.assert_called_with(ExperimentName="foo", Description="bar")
@@ -72,14 +72,14 @@ def test_save(sagemaker_session):
 
 def test_delete(sagemaker_session):
     client = sagemaker_session.sagemaker_client
-    obj = experiment._Experiment(sagemaker_session, experiment_name="foo", description="bar")
+    obj = experiment.Experiment(sagemaker_session, experiment_name="foo", description="bar")
     client.delete_experiment.return_value = {}
     obj.delete()
     client.delete_experiment.assert_called_with(ExperimentName="foo")
 
 
-@patch("sagemaker.experiments.experiment._Experiment.load")
-@patch("sagemaker.experiments.experiment._Experiment.create")
+@patch("sagemaker.experiments.experiment.Experiment.load")
+@patch("sagemaker.experiments.experiment.Experiment.create")
 def test_load_or_create_when_exist(mock_create, mock_load, sagemaker_session):
     exp_name = "exp_name"
     exists_error = botocore.exceptions.ClientError(
@@ -92,7 +92,7 @@ def test_load_or_create_when_exist(mock_create, mock_load, sagemaker_session):
         operation_name="foo",
     )
     mock_create.side_effect = exists_error
-    experiment._Experiment._load_or_create(
+    experiment.Experiment._load_or_create(
         experiment_name=exp_name, sagemaker_session=sagemaker_session
     )
     mock_create.assert_called_once_with(
@@ -105,12 +105,12 @@ def test_load_or_create_when_exist(mock_create, mock_load, sagemaker_session):
     mock_load.assert_called_once_with(exp_name, sagemaker_session)
 
 
-@patch("sagemaker.experiments.experiment._Experiment.load")
-@patch("sagemaker.experiments.experiment._Experiment.create")
+@patch("sagemaker.experiments.experiment.Experiment.load")
+@patch("sagemaker.experiments.experiment.Experiment.create")
 def test_load_or_create_when_not_exist(mock_create, mock_load):
     sagemaker_session = Session()
     exp_name = "exp_name"
-    experiment._Experiment._load_or_create(
+    experiment.Experiment._load_or_create(
         experiment_name=exp_name, sagemaker_session=sagemaker_session
     )
     mock_create.assert_called_once_with(
@@ -125,12 +125,12 @@ def test_load_or_create_when_not_exist(mock_create, mock_load):
 
 def test_list_trials_empty(sagemaker_session):
     sagemaker_session.sagemaker_client.list_trials.return_value = {"TrialSummaries": []}
-    experiment_obj = experiment._Experiment(sagemaker_session=sagemaker_session)
+    experiment_obj = experiment.Experiment(sagemaker_session=sagemaker_session)
     assert list(experiment_obj.list_trials()) == []
 
 
 def test_list_trials_single(sagemaker_session, datetime_obj):
-    experiment_obj = experiment._Experiment(sagemaker_session=sagemaker_session)
+    experiment_obj = experiment.Experiment(sagemaker_session=sagemaker_session)
     sagemaker_session.sagemaker_client.list_trials.return_value = {
         "TrialSummaries": [
             {"Name": "trial-foo", "CreationTime": datetime_obj, "LastModifiedTime": datetime_obj}
@@ -143,7 +143,7 @@ def test_list_trials_single(sagemaker_session, datetime_obj):
 
 
 def test_list_trials_two_values(sagemaker_session, datetime_obj):
-    experiment_obj = experiment._Experiment(sagemaker_session=sagemaker_session)
+    experiment_obj = experiment.Experiment(sagemaker_session=sagemaker_session)
     sagemaker_session.sagemaker_client.list_trials.return_value = {
         "TrialSummaries": [
             {"Name": "trial-foo-1", "CreationTime": datetime_obj, "LastModifiedTime": datetime_obj},
@@ -162,7 +162,7 @@ def test_list_trials_two_values(sagemaker_session, datetime_obj):
 
 
 def test_next_token(sagemaker_session, datetime_obj):
-    experiment_obj = experiment._Experiment(sagemaker_session)
+    experiment_obj = experiment.Experiment(sagemaker_session)
     client = sagemaker_session.sagemaker_client
     client.list_trials.side_effect = [
         {
@@ -211,7 +211,7 @@ def test_list_trials_call_args(sagemaker_session):
     client = sagemaker_session.sagemaker_client
     created_before = datetime.datetime(1999, 10, 12, 0, 0, 0)
     created_after = datetime.datetime(1990, 10, 12, 0, 0, 0)
-    experiment_obj = experiment._Experiment(sagemaker_session=sagemaker_session)
+    experiment_obj = experiment.Experiment(sagemaker_session=sagemaker_session)
     client.list_trials.return_value = {}
     assert [] == list(
         experiment_obj.list_trials(created_after=created_after, created_before=created_before)
@@ -220,7 +220,7 @@ def test_list_trials_call_args(sagemaker_session):
 
 
 def test_delete_all_with_incorrect_action_name(sagemaker_session):
-    obj = experiment._Experiment(sagemaker_session, experiment_name="foo", description="bar")
+    obj = experiment.Experiment(sagemaker_session, experiment_name="foo", description="bar")
     with pytest.raises(ValueError) as err:
         obj._delete_all(action="abc")
 
@@ -228,7 +228,7 @@ def test_delete_all_with_incorrect_action_name(sagemaker_session):
 
 
 def test_delete_all(sagemaker_session):
-    obj = experiment._Experiment(sagemaker_session, experiment_name="foo", description="bar")
+    obj = experiment.Experiment(sagemaker_session, experiment_name="foo", description="bar")
     client = sagemaker_session.sagemaker_client
     client.list_trials.return_value = {
         "TrialSummaries": [
@@ -310,7 +310,7 @@ def test_delete_all(sagemaker_session):
 
 
 def test_delete_all_fail(sagemaker_session):
-    obj = experiment._Experiment(sagemaker_session, experiment_name="foo", description="bar")
+    obj = experiment.Experiment(sagemaker_session, experiment_name="foo", description="bar")
     sagemaker_session.sagemaker_client.list_trials.side_effect = Exception
     with pytest.raises(Exception) as e:
         obj._delete_all(action="--force")

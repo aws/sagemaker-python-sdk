@@ -16,7 +16,7 @@ import pytest
 import random
 import string
 from mock import MagicMock, Mock, patch
-from sagemaker.experiments.experiment import _Experiment
+from sagemaker.experiments.experiment import Experiment
 from sagemaker.experiments.run import Run
 from sagemaker.experiments.trial import _Trial
 from sagemaker.experiments.trial_component import _TrialComponent
@@ -86,8 +86,8 @@ def test_save_and_load(s3_source_dir_download, s3_source_dir_upload, args, kwarg
 
 
 @patch(
-    "sagemaker.experiments.run._Experiment._load_or_create",
-    MagicMock(return_value=_Experiment(experiment_name=TEST_EXP_NAME)),
+    "sagemaker.experiments.run.Experiment._load_or_create",
+    MagicMock(return_value=Experiment(experiment_name=TEST_EXP_NAME)),
 )
 @patch(
     "sagemaker.experiments.run._Trial._load_or_create",
