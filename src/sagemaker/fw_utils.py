@@ -37,8 +37,8 @@ logger = logging.getLogger(__name__)
 
 _TAR_SOURCE_FILENAME = "source.tar.gz"
 
-UploadedCode = namedtuple("UserCode", ["s3_prefix", "script_name"])
-"""sagemaker.fw_utils.UserCode: An object containing the S3 prefix and script name.
+UploadedCode = namedtuple("UploadedCode", ["s3_prefix", "script_name"])
+"""sagemaker.fw_utils.UploadedCode: An object containing the S3 prefix and script name.
 This is for the source code used for the entry point with an ``Estimator``. It can be
 instantiated with positional or keyword arguments.
 """
@@ -398,7 +398,7 @@ def tar_and_upload_dir(
     kms_key=None,
     s3_resource=None,
     settings: Optional[SessionSettings] = None,
-):
+) -> UploadedCode:
     """Package source files and upload a compress tar file to S3.
 
     The S3 location will be ``s3://<bucket>/s3_key_prefix/sourcedir.tar.gz``.
@@ -429,7 +429,7 @@ def tar_and_upload_dir(
             of the SageMaker ``Session``, can be used to override the default encryption
             behavior (default: None).
     Returns:
-        sagemaker.fw_utils.UserCode: An object with the S3 bucket and key (S3 prefix) and
+        sagemaker.fw_utils.UploadedCode: An object with the S3 bucket and key (S3 prefix) and
             script name.
     """
     if directory and (is_pipeline_variable(directory) or directory.lower().startswith("s3://")):

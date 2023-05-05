@@ -556,7 +556,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.code_location = code_location
         self.entry_point = entry_point
         self.dependencies = dependencies or []
-        self.uploaded_code = None
+        self.uploaded_code: Optional[UploadedCode] = None
         self.tags = add_jumpstart_tags(
             tags=tags, training_model_uri=self.model_uri, training_script_uri=self.source_dir
         )
@@ -839,7 +839,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         self._hyperparameters.update(EstimatorBase._json_encode_hyperparameters(hyperparams))
 
-    def _stage_user_code_in_s3(self) -> str:
+    def _stage_user_code_in_s3(self) -> UploadedCode:
         """Uploads the user training script to S3 and returns the S3 URI.
 
         Returns: S3 URI
@@ -3135,7 +3135,7 @@ class Framework(EstimatorBase):
         self.git_config = git_config
         self.source_dir = source_dir
         self.dependencies = dependencies or []
-        self.uploaded_code = None
+        self.uploaded_code: Optional[UploadedCode] = None
 
         self.container_log_level = container_log_level
         self.code_location = code_location
