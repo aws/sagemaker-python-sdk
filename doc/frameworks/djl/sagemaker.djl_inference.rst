@@ -26,6 +26,14 @@ HuggingFaceAccelerateModel
     :undoc-members:
     :show-inheritance:
 
+FasterTransformerModel
+---------------------------
+
+.. autoclass:: sagemaker.djl_inference.model.FasterTransformerModel
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 DJLPredictor
 ---------------------------
 
