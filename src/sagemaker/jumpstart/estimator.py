@@ -663,7 +663,7 @@ class JumpStartEstimator(Estimator):
         role: Optional[str] = None,
         predictor_cls: Optional[callable] = None,
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
-        name: Optional[str] = None,
+        model_name: Optional[str] = None,
         vpc_config: Optional[Dict[str, List[Union[str, PipelineVariable]]]] = None,
         sagemaker_session: Optional[session.Session] = None,
         enable_network_isolation: Union[bool, PipelineVariable] = None,
@@ -675,6 +675,7 @@ class JumpStartEstimator(Estimator):
         container_log_level: Optional[Union[int, PipelineVariable]] = None,
         dependencies: Optional[List[str]] = None,
         git_config: Optional[Dict[str, str]] = None,
+        use_compiled_model: bool = False,
     ) -> PredictorBase:
         """Creates endpoint from training job.
 
@@ -766,7 +767,7 @@ class JumpStartEstimator(Estimator):
                 function on the created endpoint name. (Default: None).
             env (Optional[dict[str, str] or dict[str, PipelineVariable]]): Environment variables
                 to run with ``image_uri`` when hosted in SageMaker. (Default: None).
-            name (Optional[str]): The model name. If None, a default model name will be
+            model_name (Optional[str]): The model name. If None, a default model name will be
                 selected on each ``deploy``. (Default: None).
             vpc_config (Optional[Union[dict[str, list[str]],dict[str, list[PipelineVariable]]]]):
                 The VpcConfig set on the model (Default: None)
@@ -909,6 +910,8 @@ class JumpStartEstimator(Estimator):
                 the SageMaker Python SDK attempts to use either the CodeCommit
                 credential helper or local credential storage for authentication.
                 (Default: None).
+            use_compiled_model (bool): Flag to select whether to use compiled
+                (optimized) model. (Default: False).
         """
 
         self.orig_predictor_cls = predictor_cls
@@ -948,7 +951,7 @@ class JumpStartEstimator(Estimator):
             role=role,
             predictor_cls=predictor_cls,
             env=env,
-            name=name,
+            model_name=model_name,
             vpc_config=vpc_config,
             sagemaker_session=sagemaker_session,
             enable_network_isolation=enable_network_isolation,
@@ -960,6 +963,7 @@ class JumpStartEstimator(Estimator):
             container_log_level=container_log_level,
             dependencies=dependencies,
             git_config=git_config,
+            use_compiled_model=use_compiled_model,
         )
 
         predictor = super(JumpStartEstimator, self).deploy(

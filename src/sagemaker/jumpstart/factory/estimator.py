@@ -247,7 +247,6 @@ def get_deploy_kwargs(
     role: Optional[str] = None,
     predictor_cls: Optional[callable] = None,
     env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
-    name: Optional[str] = None,
     vpc_config: Optional[Dict[str, List[Union[str, PipelineVariable]]]] = None,
     sagemaker_session: Optional[Session] = None,
     enable_network_isolation: Union[bool, PipelineVariable] = None,
@@ -261,6 +260,8 @@ def get_deploy_kwargs(
     git_config: Optional[Dict[str, str]] = None,
     tolerate_deprecated_model: Optional[bool] = None,
     tolerate_vulnerable_model: Optional[bool] = None,
+    use_compiled_model: Optional[bool] = None,
+    model_name: Optional[str] = None,
 ) -> JumpStartEstimatorDeployKwargs:
     """Returns kwargs required to call `deploy` on `sagemaker.estimator.Estimator` object."""
 
@@ -301,7 +302,7 @@ def get_deploy_kwargs(
         env=env,
         predictor_cls=predictor_cls,
         role=role,
-        name=name,
+        name=model_name,
         vpc_config=vpc_config,
         sagemaker_session=sagemaker_session,
         enable_network_isolation=enable_network_isolation,
@@ -344,7 +345,7 @@ def get_deploy_kwargs(
         inference_recommendation_id=model_deploy_kwargs.inference_recommendation_id,
         explainer_config=model_deploy_kwargs.explainer_config,
         role=model_init_kwargs.role,
-        name=model_init_kwargs.name,
+        model_name=model_init_kwargs.name,
         vpc_config=model_init_kwargs.vpc_config,
         sagemaker_session=model_init_kwargs.sagemaker_session,
         enable_network_isolation=model_init_kwargs.enable_network_isolation,
@@ -356,6 +357,7 @@ def get_deploy_kwargs(
         git_config=model_init_kwargs.git_config,
         tolerate_vulnerable_model=model_init_kwargs.tolerate_vulnerable_model,
         tolerate_deprecated_model=model_init_kwargs.tolerate_deprecated_model,
+        use_compiled_model=use_compiled_model,
     )
 
     return estimator_deploy_kwargs

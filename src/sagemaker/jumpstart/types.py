@@ -974,7 +974,6 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         "inference_recommendation_id",
         "explainer_config",
         "role",
-        "name",
         "vpc_config",
         "sagemaker_session",
         "enable_network_isolation",
@@ -986,6 +985,8 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         "git_config",
         "tolerate_deprecated_model",
         "tolerate_vulnerable_model",
+        "model_name",
+        "use_compiled_model",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -1023,7 +1024,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         role: Optional[str] = None,
         predictor_cls: Optional[callable] = None,
         env: Optional[Dict[str, Union[str, Any]]] = None,
-        name: Optional[str] = None,
+        model_name: Optional[str] = None,
         vpc_config: Optional[Dict[str, List[Union[str, Any]]]] = None,
         sagemaker_session: Optional[Any] = None,
         enable_network_isolation: Union[bool, Any] = None,
@@ -1037,6 +1038,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         git_config: Optional[Dict[str, str]] = None,
         tolerate_deprecated_model: Optional[bool] = None,
         tolerate_vulnerable_model: Optional[bool] = None,
+        use_compiled_model: bool = False,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -1066,7 +1068,7 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         self.inference_recommendation_id = inference_recommendation_id
         self.explainer_config = explainer_config
         self.role = role
-        self.name = name
+        self.model_name = model_name
         self.vpc_config = vpc_config
         self.sagemaker_session = sagemaker_session
         self.enable_network_isolation = enable_network_isolation
@@ -1078,3 +1080,4 @@ class JumpStartEstimatorDeployKwargs(JumpStartKwargs):
         self.git_config = git_config
         self.tolerate_deprecated_model = tolerate_deprecated_model
         self.tolerate_vulnerable_model = tolerate_vulnerable_model
+        self.use_compiled_model = use_compiled_model

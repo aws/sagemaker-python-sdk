@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 from inspect import signature
-from typing import Optional
+from typing import Optional, Set
 from unittest import mock
 import unittest
 import pytest
@@ -322,6 +322,14 @@ class ModelTest(unittest.TestCase):
         mock_model_deploy.assert_called_once_with(**expected_deploy_kwargs)
 
     def test_jumpstart_model_kwargs_match_parent_class(self):
+
+        """If you add arguments to <Model constructor>, this test will fail.
+        Please add the new argument to the skip set below,
+        and cut a ticket sev-3 to JumpStart team: AWS > SageMaker > JumpStart"""
+
+        init_args_to_skip: Set[str] = set()
+        deploy_args_to_skip: Set[str] = set(["kwargs"])
+
         parent_class_init = Model.__init__
         parent_class_init_args = set(signature(parent_class_init).parameters.keys())
 
@@ -336,6 +344,7 @@ class ModelTest(unittest.TestCase):
             "tolerate_deprecated_model",
             "instance_type",
         }
+        assert parent_class_init_args - js_class_init_args == init_args_to_skip
 
         parent_class_deploy = Model.deploy
         parent_class_deploy_args = set(signature(parent_class_deploy).parameters.keys())
@@ -344,6 +353,7 @@ class ModelTest(unittest.TestCase):
         js_class_deploy_args = set(signature(js_class_deploy).parameters.keys())
 
         assert js_class_deploy_args - parent_class_deploy_args == set()
+        assert parent_class_deploy_args - js_class_deploy_args == deploy_args_to_skip
 
     @mock.patch("sagemaker.jumpstart.model.get_init_kwargs")
     @mock.patch("sagemaker.jumpstart.model.Model.__init__")

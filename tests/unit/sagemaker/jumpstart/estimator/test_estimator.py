@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import time
-from typing import Optional
+from typing import Optional, Set
 from unittest import mock
 import unittest
 from inspect import signature
@@ -142,8 +142,9 @@ class EstimatorTest(unittest.TestCase):
             predictor_cls=Predictor,
             role=execution_role,
             wait=True,
+            use_compiled_model=False,
             enable_network_isolation=False,
-            name="blahblahblah-9876",
+            model_name="blahblahblah-9876",
             endpoint_name="blahblahblah-9876",
         )
 
@@ -234,6 +235,7 @@ class EstimatorTest(unittest.TestCase):
             predictor_cls=Predictor,
             role=execution_role,
             wait=True,
+            use_compiled_model=False,
             enable_network_isolation=False,
         )
 
@@ -503,7 +505,8 @@ class EstimatorTest(unittest.TestCase):
                 "predictor_cls": Predictor,
                 "role": init_kwargs["role"],
                 "enable_network_isolation": False,
-                "name": "blahblahblah-1234",
+                "use_compiled_model": False,
+                "model_name": "blahblahblah-1234",
                 "endpoint_name": "blahblahblah-1234",
             },
             deploy_kwargs,
@@ -512,6 +515,15 @@ class EstimatorTest(unittest.TestCase):
         mock_estimator_deploy.assert_called_once_with(**expected_deploy_kwargs)
 
     def test_jumpstart_estimator_kwargs_match_parent_class(self):
+
+        """If you add arguments to <Estimator constructor>, this test will fail.
+        Please add the new argument to the skip set below,
+        and cut a ticket sev-3 to JumpStart team: AWS > SageMaker > JumpStart"""
+
+        init_args_to_skip: Set[str] = set(["kwargs"])
+        fit_args_to_skip: Set[str] = set()
+        deploy_args_to_skip: Set[str] = set(["kwargs"])
+
         parent_class_init = Estimator.__init__
         parent_class_init_args = set(signature(parent_class_init).parameters.keys())
 
@@ -525,6 +537,7 @@ class EstimatorTest(unittest.TestCase):
             "tolerate_vulnerable_model",
             "tolerate_deprecated_model",
         }
+        assert parent_class_init_args - js_class_init_args == init_args_to_skip
 
         parent_class_fit = Estimator.fit
         parent_class_fit_args = set(signature(parent_class_fit).parameters.keys())
@@ -533,6 +546,7 @@ class EstimatorTest(unittest.TestCase):
         js_class_fit_args = set(signature(js_class_fit).parameters.keys())
 
         assert js_class_fit_args - parent_class_fit_args == set()
+        assert parent_class_fit_args - js_class_fit_args == fit_args_to_skip
 
         model_class_init = Model.__init__
         model_class_init_args = set(signature(model_class_init).parameters.keys())
@@ -546,7 +560,9 @@ class EstimatorTest(unittest.TestCase):
         assert js_class_deploy_args - parent_class_deploy_args == model_class_init_args - {
             "model_data",
             "self",
+            "name",
         }
+        assert parent_class_deploy_args - js_class_deploy_args == deploy_args_to_skip
 
     @mock.patch("sagemaker.jumpstart.estimator.get_init_kwargs")
     @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
@@ -842,9 +858,10 @@ class EstimatorTest(unittest.TestCase):
             },
             predictor_cls=Predictor,
             wait=True,
+            use_compiled_model=False,
             role=mock_role,
             enable_network_isolation=False,
-            name="blahblahblah-3456",
+            model_name="blahblahblah-3456",
             endpoint_name="blahblahblah-3456",
         )
 
@@ -916,9 +933,10 @@ class EstimatorTest(unittest.TestCase):
             },
             predictor_cls=Predictor,
             wait=True,
+            use_compiled_model=False,
             role=mock_role,
             enable_network_isolation=False,
-            name="blahblahblah-3456",
+            model_name="blahblahblah-3456",
             endpoint_name="blahblahblah-3456",
         )
 
