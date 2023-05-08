@@ -788,7 +788,7 @@ def test_jumpstart_vulnerable_model(patched_get_model_specs):
     assert (
         "Version '*' of JumpStart model 'pytorch-eqa-bert-base-cased' has at least 1 "
         "vulnerable dependency in the inference script. "
-        "Please try targetting a higher version of the model or using a different model. "
+        "Please try targeting a higher version of the model or using a different model. "
         "List of vulnerabilities: some, vulnerability"
     ) == str(e.value.message)
 
@@ -827,7 +827,7 @@ def test_jumpstart_vulnerable_model(patched_get_model_specs):
     assert (
         "Version '*' of JumpStart model 'pytorch-eqa-bert-base-cased' has at least 1 "
         "vulnerable dependency in the training script. "
-        "Please try targetting a higher version of the model or using a different model. "
+        "Please try targeting a higher version of the model or using a different model. "
         "List of vulnerabilities: some, vulnerability"
     ) == str(e.value.message)
 
@@ -866,7 +866,7 @@ def test_jumpstart_deprecated_model(patched_get_model_specs):
             region="us-west-2",
         )
     assert "Version '*' of JumpStart model 'pytorch-eqa-bert-base-cased' is deprecated. "
-    "Please try targetting a higher version of the model or using a different model." == str(
+    "Please try targeting a higher version of the model or using a different model." == str(
         e.value.message
     )
 

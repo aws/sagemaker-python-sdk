@@ -542,7 +542,11 @@ def is_valid_model_id(
     model_version: Optional[str] = None,
     script: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
 ) -> bool:
-    """Returns True if the model ID is supported for the given script."""
+    """Returns True if the model ID is supported for the given script.
+
+    Raises:
+        ValueError: If the script is not supported by JumpStart.
+    """
     if model_id in {None, ""}:
         return False
     if not isinstance(model_id, str):

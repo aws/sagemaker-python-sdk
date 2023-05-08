@@ -354,7 +354,7 @@ class EstimatorTest(unittest.TestCase):
             "inputs": {"hello": "world"},
             "wait": True,
             "logs": "All",
-            "job_name": "none of your business",
+            "job_name": "none_of_your_business",
             "experiment_config": {"1": "2"},
         }
         all_deploy_kwargs_used = {
@@ -476,7 +476,7 @@ class EstimatorTest(unittest.TestCase):
         }
 
         expected_fit_kwargs = overwrite_dictionary(
-            {"inputs": channels, "wait": True, "job_name": "none of your business"}, fit_kwargs
+            {"inputs": channels, "wait": True, "job_name": "none_of_your_business"}, fit_kwargs
         )
 
         estimator.fit(**expected_fit_kwargs)
