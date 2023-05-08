@@ -373,6 +373,17 @@ def test_decorator_underlying_job_stopped_somehow(mock_start, mock_job_settings)
         square(5)
 
 
+def test_decorator_instance_count_greater_than_one():
+    @remote(image_uri=IMAGE, s3_root_uri=S3_URI, instance_count=2)
+    def square(x):
+        return x * x
+
+    with pytest.raises(
+        ValueError, match=r"Remote function do not support training on multi instances."
+    ):
+        square(5)
+
+
 @patch("sagemaker.remote_function.client._JobSettings")
 @patch("sagemaker.remote_function.client._Job.start")
 def test_decorator_underlying_job_timed_out(mock_start, mock_job_settings):
@@ -624,6 +635,14 @@ def test_executor_fails_to_start_job(mock_start, *args):
         future_1.result()
     future_2.wait()
     assert future_2.done()
+
+
+def test_executor_instance_count_greater_than_one():
+    with pytest.raises(
+        ValueError, match=r"Remote function do not support training on multi instances."
+    ):
+        with RemoteExecutor(max_parallel_jobs=1, s3_root_uri="s3://bucket/", instance_count=2) as e:
+            e.submit(job_function, 1, 2, c=3, d=4)
 
 
 @patch("sagemaker.remote_function.client._API_CALL_LIMIT", new=API_CALL_LIMIT)
