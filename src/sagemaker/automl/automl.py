@@ -49,6 +49,7 @@ class AutoMLInput(object):
         channel_type=None,
         content_type=None,
         s3_data_type=None,
+        sample_weight_attribute_name=None,
     ):
         """Convert an S3 Uri or a list of S3 Uri to an AutoMLInput object.
 
@@ -67,6 +68,8 @@ class AutoMLInput(object):
                 The content type of the data from the input source.
             s3_data_type (str, PipelineVariable): The data type for S3 data source.
                 Valid values: ManifestFile or S3Prefix.
+            sample_weight_attribute_name (str, PipelineVariable):
+                the name of the dataset column representing sample weights
         """
         self.inputs = inputs
         self.target_attribute_name = target_attribute_name
@@ -74,6 +77,7 @@ class AutoMLInput(object):
         self.channel_type = channel_type
         self.content_type = content_type
         self.s3_data_type = s3_data_type
+        self.sample_weight_attribute_name = sample_weight_attribute_name
 
     def to_request_dict(self):
         """Generates a request dictionary using the parameters provided to the class."""
@@ -96,6 +100,8 @@ class AutoMLInput(object):
                 input_entry["ContentType"] = self.content_type
             if self.s3_data_type is not None:
                 input_entry["DataSource"]["S3DataSource"]["S3DataType"] = self.s3_data_type
+            if self.sample_weight_attribute_name is not None:
+                input_entry["SampleWeightAttributeName"] = self.sample_weight_attribute_name
             auto_ml_input.append(input_entry)
         return auto_ml_input
 
@@ -129,6 +135,7 @@ class AutoML(object):
         mode: Optional[str] = None,
         auto_generate_endpoint_name: Optional[bool] = None,
         endpoint_name: Optional[str] = None,
+        sample_weight_attribute_name: str = None,
     ):
         """Initialize the an AutoML object.
 
@@ -179,6 +186,8 @@ class AutoML(object):
                 model deployment if the endpoint name is not generated automatically.
                 Specify the endpoint_name if and only if
                 auto_generate_endpoint_name is set to False
+            sample_weight_attribute_name (str): The name of dataset column representing
+                sample weights.
 
         Returns:
             AutoML object.
@@ -234,6 +243,7 @@ class AutoML(object):
         )
 
         self._check_problem_type_and_job_objective(self.problem_type, self.job_objective)
+        self.sample_weight_attribute_name = sample_weight_attribute_name
 
     @runnable_by_pipeline
     def fit(self, inputs=None, wait=True, logs=True, job_name=None):
@@ -342,6 +352,9 @@ class AutoML(object):
                 "AutoGenerateEndpointName", False
             ),
             endpoint_name=auto_ml_job_desc.get("ModelDeployConfig", {}).get("EndpointName"),
+            sample_weight_attribute_name=auto_ml_job_desc["InputDataConfig"][0].get(
+                "SampleWeightAttributeName", None
+            ),
         )
         amlj.current_job_name = auto_ml_job_name
         amlj.latest_auto_ml_job = auto_ml_job_name  # pylint: disable=W0201
@@ -867,6 +880,7 @@ class AutoMLJob(_Job):
                 auto_ml.target_attribute_name,
                 auto_ml.content_type,
                 auto_ml.s3_data_type,
+                auto_ml.sample_weight_attribute_name,
             )
         output_config = _Job._prepare_output_config(auto_ml.output_path, auto_ml.output_kms_key)
 
@@ -932,6 +946,7 @@ class AutoMLJob(_Job):
         target_attribute_name=None,
         content_type=None,
         s3_data_type=None,
+        sample_weight_attribute_name=None,
     ):
         """Convert inputs to AutoML InputDataConfig.
 
@@ -961,6 +976,8 @@ class AutoMLJob(_Job):
                 channel["ContentType"] = content_type
             if s3_data_type is not None:
                 channel["DataSource"]["S3DataSource"]["S3DataType"] = s3_data_type
+            if sample_weight_attribute_name is not None:
+                channel["SampleWeightAttributeName"] = sample_weight_attribute_name
             channels.append(channel)
         elif isinstance(inputs, list):
             for input_entry in inputs:
@@ -974,6 +991,8 @@ class AutoMLJob(_Job):
                     channel["ContentType"] = content_type
                 if s3_data_type is not None:
                     channel["DataSource"]["S3DataSource"]["S3DataType"] = s3_data_type
+                if sample_weight_attribute_name is not None:
+                    channel["SampleWeightAttributeName"] = sample_weight_attribute_name
                 channels.append(channel)
         else:
             msg = (

@@ -41,8 +41,8 @@ ACCOUNTS = {
     "us-west-1": "763104351884",
     "us-west-2": "763104351884",
 }
-DJL_DEEPSPEED_VERSIONS = ["0.21.0", "0.20.0", "0.19.0"]
-DJL_FASTERTRANSFORMER_VERSIONS = ["0.21.0"]
+DJL_DEEPSPEED_VERSIONS = ["0.22.1", "0.21.0", "0.20.0", "0.19.0"]
+DJL_FASTERTRANSFORMER_VERSIONS = ["0.22.1", "0.21.0"]
 DJL_NEURONX_VERSIONS = ["0.22.1"]
 DJL_VERSIONS_TO_FRAMEWORK = {
     "0.19.0": {"djl-deepspeed": "deepspeed0.7.3-cu113"},
@@ -52,6 +52,8 @@ DJL_VERSIONS_TO_FRAMEWORK = {
         "djl-fastertransformer": "fastertransformer5.3.0-cu117",
     },
     "0.22.1": {
+        "djl-deepspeed": "deepspeed0.8.3-cu118",
+        "djl-fastertransformer": "fastertransformer5.3.0-cu118",
         "djl-neuronx": "neuronx-sdk2.9.0",
     },
 }

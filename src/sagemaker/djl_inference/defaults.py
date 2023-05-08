@@ -30,17 +30,19 @@ DEEPSPEED_RECOMMENDED_ARCHITECTURES = {
     STABLE_DIFFUSION_MODEL_TYPE,
 }
 
-DEEPSPEED_SUPPORTED_ARCHITECTURES = {
+FASTER_TRANSFORMER_RECOMMENDED_ARCHITECTURES = {
+    "t5",
+}
+
+FASTER_TRANSFORMER_SUPPORTED_ARCHITECTURES = {
+    "bert",
+    "gpt2",
     "bloom",
     "opt",
-    "gpt_neox",
     "gptj",
+    "gpt_neox",
     "gpt_neo",
-    "gpt2",
-    "xlm-roberta",
-    "roberta",
-    "bert",
-    STABLE_DIFFUSION_MODEL_TYPE,
+    "t5",
 }
 
 ALLOWED_INSTANCE_FAMILIES = {
