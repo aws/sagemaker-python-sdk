@@ -36,6 +36,7 @@ from sagemaker.config import (
     TRAINING_JOB_KMS_KEY_ID_PATH,
     TRAINING_JOB_ROLE_ARN_PATH,
     TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+    TRAINING_JOB_ENVIRONMENT_PATH,
     TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
 )
 from sagemaker.debugger import (  # noqa: F401 # pylint: disable=unused-import
@@ -677,7 +678,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.profiler_config = profiler_config
         self.disable_profiler = disable_profiler
 
-        self.environment = environment
+        self.environment = resolve_value_from_config(
+            direct_input=environment,
+            config_path=TRAINING_JOB_ENVIRONMENT_PATH,
+            default_value=None,
+            sagemaker_session=self.sagemaker_session,
+        )
 
         self.max_retry_attempts = max_retry_attempts
 

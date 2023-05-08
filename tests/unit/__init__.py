@@ -77,6 +77,10 @@ from sagemaker.config import (
     DEFAULT_S3_BUCKET,
     DEFAULT_S3_OBJECT_KEY_PREFIX,
     SESSION,
+    ENVIRONMENT,
+    CONTAINERS,
+    PRIMARY_CONTAINER,
+    INFERENCE_SPECIFICATION,
 )
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -104,6 +108,7 @@ SAGEMAKER_CONFIG_MONITORING_SCHEDULE = {
         MONITORING_SCHEDULE: {
             MONITORING_SCHEDULE_CONFIG: {
                 MONITORING_JOB_DEFINITION: {
+                    ENVIRONMENT: {"configEnvVar1": "value1", "configEnvVar2": "value2"},
                     MONITORING_OUTPUT_CONFIG: {KMS_KEY_ID: "configKmsKeyId"},
                     MONITORING_RESOURCES: {
                         CLUSTER_CONFIG: {VOLUME_KMS_KEY_ID: "configVolumeKmsKeyId"},
@@ -190,10 +195,18 @@ SAGEMAKER_CONFIG_MODEL_PACKAGE = {
     SCHEMA_VERSION: "1.0",
     SAGEMAKER: {
         MODEL_PACKAGE: {
+            INFERENCE_SPECIFICATION: {
+                CONTAINERS: [
+                    {
+                        ENVIRONMENT: {"configEnvVar1": "value1", "configEnvVar2": "value2"},
+                    }
+                ],
+            },
             VALIDATION_SPECIFICATION: {
                 VALIDATION_PROFILES: [
                     {
                         TRANSFORM_JOB_DEFINITION: {
+                            ENVIRONMENT: {"configEnvVar1": "value1", "configEnvVar2": "value2"},
                             TRANSFORM_OUTPUT: {KMS_KEY_ID: "testKmsKeyId"},
                             TRANSFORM_RESOURCES: {VOLUME_KMS_KEY_ID: "testVolumeKmsKeyId"},
                         }
@@ -231,6 +244,7 @@ SAGEMAKER_CONFIG_PROCESSING_JOB = {
     SCHEMA_VERSION: "1.0",
     SAGEMAKER: {
         PROCESSING_JOB: {
+            ENVIRONMENT: {"configEnvVar1": "value1", "configEnvVar2": "value2"},
             NETWORK_CONFIG: {
                 ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION: False,
                 ENABLE_NETWORK_ISOLATION: True,
@@ -267,6 +281,7 @@ SAGEMAKER_CONFIG_TRAINING_JOB = {
         TRAINING_JOB: {
             ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION: True,
             ENABLE_NETWORK_ISOLATION: True,
+            ENVIRONMENT: {"configEnvVar1": "value1", "configEnvVar2": "value2"},
             OUTPUT_DATA_CONFIG: {KMS_KEY_ID: "TestKms"},
             RESOURCE_CONFIG: {VOLUME_KMS_KEY_ID: "volumekey"},
             ROLE_ARN: "arn:aws:iam::111111111111:role/ConfigRole",
@@ -281,6 +296,7 @@ SAGEMAKER_CONFIG_TRANSFORM_JOB = {
     SAGEMAKER: {
         TRANSFORM_JOB: {
             DATA_CAPTURE_CONFIG: {KMS_KEY_ID: "jobKmsKeyId"},
+            ENVIRONMENT: {"configEnvVar1": "value1", "configEnvVar2": "value2"},
             TRANSFORM_OUTPUT: {KMS_KEY_ID: "outputKmsKeyId"},
             TRANSFORM_RESOURCES: {VOLUME_KMS_KEY_ID: "volumeKmsKeyId"},
             TAGS: [{KEY: "some-tag", VALUE: "value-for-tag"}],
@@ -292,8 +308,31 @@ SAGEMAKER_CONFIG_MODEL = {
     SCHEMA_VERSION: "1.0",
     SAGEMAKER: {
         MODEL: {
+            CONTAINERS: [
+                {
+                    ENVIRONMENT: {"configEnvVar1": "value1", "configEnvVar2": "value2"},
+                },
+                {
+                    ENVIRONMENT: {"configEnvVar1": "value1", "configEnvVar2": "value2"},
+                },
+            ],
             ENABLE_NETWORK_ISOLATION: True,
             EXECUTION_ROLE_ARN: "arn:aws:iam::111111111111:role/ConfigRole",
+            VPC_CONFIG: {SUBNETS: ["subnets-123"], SECURITY_GROUP_IDS: ["sg-123"]},
+            TAGS: [{KEY: "some-tag", VALUE: "value-for-tag"}],
+        },
+    },
+}
+
+SAGEMAKER_CONFIG_MODEL_WITH_PRIMARY_CONTAINER = {
+    SCHEMA_VERSION: "1.0",
+    SAGEMAKER: {
+        MODEL: {
+            ENABLE_NETWORK_ISOLATION: True,
+            EXECUTION_ROLE_ARN: "arn:aws:iam::111111111111:role/ConfigRole",
+            PRIMARY_CONTAINER: {
+                ENVIRONMENT: {"configEnvVar1": "value1", "configEnvVar2": "value2"},
+            },
             VPC_CONFIG: {SUBNETS: ["subnets-123"], SECURITY_GROUP_IDS: ["sg-123"]},
             TAGS: [{KEY: "some-tag", VALUE: "value-for-tag"}],
         },

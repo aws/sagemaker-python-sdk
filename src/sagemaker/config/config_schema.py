@@ -92,6 +92,10 @@ ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION = "EnableInterContainerTrafficEncrypti
 SESSION = "Session"
 DEFAULT_S3_BUCKET = "DefaultS3Bucket"
 DEFAULT_S3_OBJECT_KEY_PREFIX = "DefaultS3ObjectKeyPrefix"
+ENVIRONMENT = "Environment"
+CONTAINERS = "Containers"
+PRIMARY_CONTAINER = "PrimaryContainer"
+INFERENCE_SPECIFICATION = "InferenceSpecification"
 
 
 def _simple_path(*args: str):
@@ -106,6 +110,7 @@ COMPILATION_JOB_KMS_KEY_ID_PATH = _simple_path(
 )
 COMPILATION_JOB_OUTPUT_CONFIG_PATH = _simple_path(SAGEMAKER, COMPILATION_JOB, OUTPUT_CONFIG)
 COMPILATION_JOB_ROLE_ARN_PATH = _simple_path(SAGEMAKER, COMPILATION_JOB, ROLE_ARN)
+TRAINING_JOB_ENVIRONMENT_PATH = _simple_path(SAGEMAKER, TRAINING_JOB, ENVIRONMENT)
 TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH = _simple_path(
     SAGEMAKER, TRAINING_JOB, ENABLE_NETWORK_ISOLATION
 )
@@ -164,6 +169,7 @@ AUTO_ML_JOB_CONFIG_PATH = _simple_path(SAGEMAKER, AUTO_ML_JOB, AUTO_ML_JOB_CONFI
 MONITORING_JOB_DEFINITION_PREFIX = _simple_path(
     SAGEMAKER, MONITORING_SCHEDULE, MONITORING_SCHEDULE_CONFIG, MONITORING_JOB_DEFINITION
 )
+MONITORING_JOB_ENVIRONMENT_PATH = _simple_path(MONITORING_JOB_DEFINITION_PREFIX, ENVIRONMENT)
 MONITORING_JOB_OUTPUT_KMS_KEY_ID_PATH = _simple_path(
     MONITORING_JOB_DEFINITION_PREFIX, MONITORING_OUTPUT_CONFIG, KMS_KEY_ID
 )
@@ -184,6 +190,7 @@ MONITORING_JOB_SUBNETS_PATH = _simple_path(MONITORING_JOB_VPC_CONFIG_PATH, SUBNE
 MONITORING_JOB_ROLE_ARN_PATH = _simple_path(MONITORING_JOB_DEFINITION_PREFIX, ROLE_ARN)
 PIPELINE_ROLE_ARN_PATH = _simple_path(SAGEMAKER, PIPELINE, ROLE_ARN)
 PIPELINE_TAGS_PATH = _simple_path(SAGEMAKER, PIPELINE, TAGS)
+TRANSFORM_JOB_ENVIRONMENT_PATH = _simple_path(SAGEMAKER, TRANSFORM_JOB, ENVIRONMENT)
 TRANSFORM_OUTPUT_KMS_KEY_ID_PATH = _simple_path(
     SAGEMAKER, TRANSFORM_JOB, TRANSFORM_OUTPUT, KMS_KEY_ID
 )
@@ -196,9 +203,12 @@ TRANSFORM_JOB_KMS_KEY_ID_PATH = _simple_path(
 TRANSFORM_JOB_VOLUME_KMS_KEY_ID_PATH = _simple_path(
     SAGEMAKER, TRANSFORM_JOB, TRANSFORM_RESOURCES, VOLUME_KMS_KEY_ID
 )
+MODEL_CONTAINERS_PATH = _simple_path(SAGEMAKER, MODEL, CONTAINERS)
 MODEL_VPC_CONFIG_PATH = _simple_path(SAGEMAKER, MODEL, VPC_CONFIG)
 MODEL_ENABLE_NETWORK_ISOLATION_PATH = _simple_path(SAGEMAKER, MODEL, ENABLE_NETWORK_ISOLATION)
 MODEL_EXECUTION_ROLE_ARN_PATH = _simple_path(SAGEMAKER, MODEL, EXECUTION_ROLE_ARN)
+MODEL_PRIMARY_CONTAINER_PATH = _simple_path(SAGEMAKER, MODEL, PRIMARY_CONTAINER)
+MODEL_PRIMARY_CONTAINER_ENVIRONMENT_PATH = _simple_path(MODEL_PRIMARY_CONTAINER_PATH, ENVIRONMENT)
 PROCESSING_JOB_ENABLE_NETWORK_ISOLATION_PATH = _simple_path(
     SAGEMAKER, PROCESSING_JOB, NETWORK_CONFIG, ENABLE_NETWORK_ISOLATION
 )
@@ -229,6 +239,9 @@ PROCESSING_JOB_VOLUME_KMS_KEY_ID_PATH = _simple_path(
     SAGEMAKER, PROCESSING_JOB, PROCESSING_RESOURCES, CLUSTER_CONFIG, VOLUME_KMS_KEY_ID
 )
 PROCESSING_JOB_ROLE_ARN_PATH = _simple_path(SAGEMAKER, PROCESSING_JOB, ROLE_ARN)
+MODEL_PACKAGE_INFERENCE_SPECIFICATION_CONTAINERS_PATH = _simple_path(
+    SAGEMAKER, MODEL_PACKAGE, INFERENCE_SPECIFICATION, CONTAINERS
+)
 MODEL_PACKAGE_VALIDATION_ROLE_PATH = _simple_path(
     SAGEMAKER, MODEL_PACKAGE, VALIDATION_SPECIFICATION, VALIDATION_ROLE
 )
@@ -292,6 +305,7 @@ AUTO_ML_INTER_CONTAINER_ENCRYPTION_PATH = _simple_path(
     SECURITY_CONFIG,
     ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION,
 )
+PROCESSING_JOB_ENVIRONMENT_PATH = _simple_path(SAGEMAKER, PROCESSING_JOB, ENVIRONMENT)
 PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION_PATH = _simple_path(
     SAGEMAKER, PROCESSING_JOB, NETWORK_CONFIG, ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION
 )
@@ -373,6 +387,9 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                     TYPE: OBJECT,
                     ADDITIONAL_PROPERTIES: False,
                     PROPERTIES: {
+                        ENVIRONMENT: {
+                            "$ref": "#/definitions/environment-Length10240-Properties16",
+                        },
                         TRANSFORM_OUTPUT: {
                             TYPE: OBJECT,
                             ADDITIONAL_PROPERTIES: False,
@@ -462,6 +479,94 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
             "pattern": r"^[a-z0-9][\.\-a-z0-9]{1,61}[a-z0-9]$",
             "minLength": 3,
             "maxLength": 63,
+        },
+        # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_MonitoringJobDefinition.html#sagemaker-Type-MonitoringJobDefinition-Environment
+        "environment-Length256-Properties50": {
+            TYPE: OBJECT,
+            ADDITIONAL_PROPERTIES: False,
+            PATTERN_PROPERTIES: {
+                r"([a-zA-Z_][a-zA-Z0-9_]*){1,256}": {
+                    TYPE: "string",
+                    "pattern": r"[\S\s]*",
+                    "maxLength": 256,
+                }
+            },
+            "maxProperties": 50,
+        },
+        # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateTransformJob.html#sagemaker-CreateTransformJob-request-Environment
+        "environment-Length10240-Properties16": {
+            TYPE: OBJECT,
+            ADDITIONAL_PROPERTIES: False,
+            PATTERN_PROPERTIES: {
+                r"[a-zA-Z_][a-zA-Z0-9_]{0,1023}": {
+                    TYPE: "string",
+                    "pattern": r"[\S\s]*",
+                    "maxLength": 10240,
+                }
+            },
+            "maxProperties": 16,
+        },
+        # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_ContainerDefinition.html#sagemaker-Type-ContainerDefinition-Environment
+        "environment-Length1024-Properties16": {
+            TYPE: OBJECT,
+            ADDITIONAL_PROPERTIES: False,
+            PATTERN_PROPERTIES: {
+                r"([a-zA-Z_][a-zA-Z0-9_]*){1,1024}": {
+                    TYPE: "string",
+                    "pattern": r"[\S\s]*",
+                    "maxLength": 1024,
+                }
+            },
+            "maxProperties": 16,
+        },
+        # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateProcessingJob.html#sagemaker-CreateProcessingJob-request-Environment
+        "environment-Length256-Properties100": {
+            TYPE: OBJECT,
+            ADDITIONAL_PROPERTIES: False,
+            PATTERN_PROPERTIES: {
+                r"([a-zA-Z_][a-zA-Z0-9_]*){1,256}": {
+                    TYPE: "string",
+                    "pattern": r"[\S\s]*",
+                    "maxLength": 256,
+                }
+            },
+            "maxProperties": 100,
+        },
+        # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateTrainingJob.html#sagemaker-CreateTrainingJob-request-Environment
+        "environment-Length512-Properties48": {
+            TYPE: OBJECT,
+            ADDITIONAL_PROPERTIES: False,
+            PATTERN_PROPERTIES: {
+                r"([a-zA-Z_][a-zA-Z0-9_]*){1,512}": {
+                    TYPE: "string",
+                    "pattern": r"[\S\s]*",
+                    "maxLength": 512,
+                }
+            },
+            "maxProperties": 48,
+        },
+        "container": {
+            TYPE: OBJECT,
+            ADDITIONAL_PROPERTIES: False,
+            PROPERTIES: {
+                ENVIRONMENT: {"$ref": "#/definitions/environment-Length1024-Properties16"},
+            },
+        },
+        "containers": {
+            TYPE: "array",
+            "items": {"$ref": "#/definitions/container"},
+            # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_ContainerDefinition.html
+            # According to the API docs, the array can have maximum of 15 items.
+            "minItems": 0,
+            "maxItems": 15,
+        },
+        "modelPackageContainers": {
+            TYPE: "array",
+            "items": {"$ref": "#/definitions/container"},
+            # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_ModelPackageContainerDefinition.html
+            # According to the API docs, the array can have minimum of 1 and maximum of 15 items.
+            "minItems": 1,
+            "maxItems": 15,
         },
     },
     PROPERTIES: {
@@ -595,6 +700,11 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                     TYPE: OBJECT,
                                     ADDITIONAL_PROPERTIES: False,
                                     PROPERTIES: {
+                                        ENVIRONMENT: {
+                                            "$ref": (
+                                                "#/definitions/environment-Length256-Properties50"
+                                            ),
+                                        },
                                         MONITORING_OUTPUT_CONFIG: {
                                             TYPE: OBJECT,
                                             ADDITIONAL_PROPERTIES: False,
@@ -710,6 +820,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                             ADDITIONAL_PROPERTIES: False,
                             PROPERTIES: {KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"}},
                         },
+                        ENVIRONMENT: {"$ref": "#/definitions/environment-Length10240-Properties16"},
                         TRANSFORM_OUTPUT: {
                             TYPE: OBJECT,
                             ADDITIONAL_PROPERTIES: False,
@@ -752,22 +863,38 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                 },
                 # Model
                 # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateModel.html
+                # Note: It is recommended that customers should use either of
+                # [Containers] or [PrimaryContainer] but not both
+                # Since SDK will throw a ValueError as both can't be passed in.
                 MODEL: {
                     TYPE: OBJECT,
                     ADDITIONAL_PROPERTIES: False,
                     PROPERTIES: {
+                        CONTAINERS: {"$ref": "#/definitions/containers"},
                         ENABLE_NETWORK_ISOLATION: {TYPE: "boolean"},
                         EXECUTION_ROLE_ARN: {"$ref": "#/definitions/roleArn"},
+                        PRIMARY_CONTAINER: {"$ref": "#/definitions/container"},
                         VPC_CONFIG: {"$ref": "#/definitions/vpcConfig"},
                         TAGS: {"$ref": "#/definitions/tags"},
                     },
                 },
                 # Model Package
-                # https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateModelPackage.html
+                # https://docs.aws.amazon.com/sagemaker/latest
+                # /APIReference/API_CreateModelPackage.html
+                # At present, we are not supporting [Environment] defaults for
+                # [AdditionalInfereceSpecifcations] Since this parameter is not supported
+                # in the SDK, we are not adding it to the config schema as well.
                 MODEL_PACKAGE: {
                     TYPE: OBJECT,
                     ADDITIONAL_PROPERTIES: False,
                     PROPERTIES: {
+                        INFERENCE_SPECIFICATION: {
+                            TYPE: OBJECT,
+                            ADDITIONAL_PROPERTIES: False,
+                            PROPERTIES: {
+                                CONTAINERS: {"$ref": "#/definitions/modelPackageContainers"}
+                            },
+                        },
                         VALIDATION_SPECIFICATION: {
                             TYPE: OBJECT,
                             ADDITIONAL_PROPERTIES: False,
@@ -792,6 +919,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                     TYPE: OBJECT,
                     ADDITIONAL_PROPERTIES: False,
                     PROPERTIES: {
+                        ENVIRONMENT: {"$ref": "#/definitions/environment-Length256-Properties100"},
                         NETWORK_CONFIG: {
                             TYPE: OBJECT,
                             ADDITIONAL_PROPERTIES: False,
@@ -837,6 +965,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                     PROPERTIES: {
                         ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION: {TYPE: "boolean"},
                         ENABLE_NETWORK_ISOLATION: {TYPE: "boolean"},
+                        ENVIRONMENT: {"$ref": "#/definitions/environment-Length512-Properties48"},
                         OUTPUT_DATA_CONFIG: {
                             TYPE: OBJECT,
                             ADDITIONAL_PROPERTIES: False,

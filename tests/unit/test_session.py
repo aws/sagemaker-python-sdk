@@ -38,6 +38,8 @@ from sagemaker.session import (
 )
 from sagemaker.tuner import WarmStartConfig, WarmStartTypes
 from sagemaker.inputs import BatchDataCaptureConfig
+from sagemaker.config import MODEL_CONTAINERS_PATH
+from sagemaker.utils import update_list_of_dicts_with_values_from_config
 from tests.unit import (
     SAGEMAKER_CONFIG_MONITORING_SCHEDULE,
     SAGEMAKER_CONFIG_COMPILATION_JOB,
@@ -50,6 +52,7 @@ from tests.unit import (
     SAGEMAKER_CONFIG_TRAINING_JOB,
     SAGEMAKER_CONFIG_TRANSFORM_JOB,
     SAGEMAKER_CONFIG_MODEL,
+    SAGEMAKER_CONFIG_MODEL_WITH_PRIMARY_CONTAINER,
     SAGEMAKER_CONFIG_SESSION,
     _test_default_bucket_and_prefix_combinations,
     DEFAULT_S3_OBJECT_KEY_PREFIX_NAME,
@@ -326,7 +329,6 @@ def test_create_process_with_sagemaker_config_injection(sagemaker_session):
         "resources": resource_config,
         "stopping_condition": {"MaxRuntimeInSeconds": 3600},
         "app_specification": app_specification,
-        "environment": {"my_env_variable": 20},
         "experiment_config": {"ExperimentName": "AnExperiment"},
     }
     sagemaker_session.process(**process_request_args)
@@ -347,6 +349,9 @@ def test_create_process_with_sagemaker_config_injection(sagemaker_session):
     expected_enable_inter_containter_traffic_encryption = SAGEMAKER_CONFIG_PROCESSING_JOB[
         "SageMaker"
     ]["ProcessingJob"]["NetworkConfig"]["EnableInterContainerTrafficEncryption"]
+    expected_environment = SAGEMAKER_CONFIG_PROCESSING_JOB["SageMaker"]["ProcessingJob"][
+        "Environment"
+    ]
 
     expected_request = copy.deepcopy(
         {
@@ -356,7 +361,7 @@ def test_create_process_with_sagemaker_config_injection(sagemaker_session):
             "RoleArn": expected_role_arn,
             "ProcessingInputs": processing_inputs,
             "ProcessingOutputConfig": output_config,
-            "Environment": {"my_env_variable": 20},
+            "Environment": expected_environment,
             "NetworkConfig": {
                 "VpcConfig": expected_vpc_config,
                 "EnableNetworkIsolation": expected_enable_network_isolation,
@@ -374,6 +379,7 @@ def test_create_process_with_sagemaker_config_injection(sagemaker_session):
     expected_request["ProcessingResources"]["ClusterConfig"][
         "VolumeKmsKeyId"
     ] = expected_volume_kms_key_id
+    expected_request["Environment"] = expected_environment
 
     sagemaker_session.sagemaker_client.create_processing_job.assert_called_with(**expected_request)
 
@@ -1664,7 +1670,6 @@ def test_train_with_sagemaker_config_injection(sagemaker_session):
         checkpoint_s3_uri="s3://mybucket/checkpoints/",
         checkpoint_local_path="/tmp/checkpoints",
         enable_sagemaker_metrics=True,
-        environment=ENV_INPUT,
         retry_strategy=RETRY_STRATEGY,
         training_image_config=TRAINING_IMAGE_CONFIG,
     )
@@ -1686,6 +1691,7 @@ def test_train_with_sagemaker_config_injection(sagemaker_session):
         "TrainingJob"
     ]["EnableInterContainerTrafficEncryption"]
     expected_tags = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["Tags"]
+    expected_environment = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["Environment"]
 
     assert actual_train_args["VpcConfig"] == expected_vpc_config
     assert actual_train_args["HyperParameters"] == hyperparameters
@@ -1700,7 +1706,7 @@ def test_train_with_sagemaker_config_injection(sagemaker_session):
     assert actual_train_args["EnableManagedSpotTraining"] is True
     assert actual_train_args["CheckpointConfig"]["S3Uri"] == "s3://mybucket/checkpoints/"
     assert actual_train_args["CheckpointConfig"]["LocalPath"] == "/tmp/checkpoints"
-    assert actual_train_args["Environment"] == ENV_INPUT
+    assert actual_train_args["Environment"] == expected_environment
     assert actual_train_args["RetryStrategy"] == RETRY_STRATEGY
     assert (
         actual_train_args["AlgorithmSpecification"]["TrainingImageConfig"] == TRAINING_IMAGE_CONFIG
@@ -1929,6 +1935,9 @@ def test_create_transform_job_with_sagemaker_config_injection(sagemaker_session)
     expected_args["TransformResources"]["VolumeKmsKeyId"] = SAGEMAKER_CONFIG_TRANSFORM_JOB[
         "SageMaker"
     ]["TransformJob"]["TransformResources"]["VolumeKmsKeyId"]
+    expected_args["Environment"] = SAGEMAKER_CONFIG_TRANSFORM_JOB["SageMaker"]["TransformJob"][
+        "Environment"
+    ]
 
     # make sure the original dicts were not modified before config injection
     assert "KmsKeyId" not in in_config
@@ -2334,6 +2343,19 @@ def test_logs_for_transform_job_full_lifecycle(time, cw, sagemaker_session_full_
 
 
 MODEL_NAME = "some-model"
+CONTAINERS = [
+    {
+        "Image": "mi-1",
+        "ModelDataUrl": "s3://bucket/model_1.tar.gz",
+        "Framework": "TENSORFLOW",
+        "FrameworkVersion": "2.9",
+        "NearestModelName": "resnet50",
+        "ModelInput": {
+            "DataInputConfig": '{"input_1":[1,224,224,3]}',
+        },
+    },
+    {"Image": "mi-2", "ModelDataUrl": "s3://bucket/model_2.tar.gz"},
+]
 PRIMARY_CONTAINER = {
     "Environment": {},
     "Image": IMAGE,
@@ -2341,7 +2363,40 @@ PRIMARY_CONTAINER = {
 }
 
 
-def test_create_model_with_sagemaker_config_injection(sagemaker_session):
+def test_create_model_with_sagemaker_config_injection_with_primary_container(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_MODEL_WITH_PRIMARY_CONTAINER
+
+    sagemaker_session.expand_role = Mock(
+        name="expand_role", side_effect=lambda role_name: role_name
+    )
+    model = sagemaker_session.create_model(
+        MODEL_NAME,
+    )
+    expected_role_arn = SAGEMAKER_CONFIG_MODEL_WITH_PRIMARY_CONTAINER["SageMaker"]["Model"][
+        "ExecutionRoleArn"
+    ]
+    expected_enable_network_isolation = SAGEMAKER_CONFIG_MODEL_WITH_PRIMARY_CONTAINER["SageMaker"][
+        "Model"
+    ]["EnableNetworkIsolation"]
+    expected_vpc_config = SAGEMAKER_CONFIG_MODEL_WITH_PRIMARY_CONTAINER["SageMaker"]["Model"][
+        "VpcConfig"
+    ]
+    expected_tags = SAGEMAKER_CONFIG_MODEL_WITH_PRIMARY_CONTAINER["SageMaker"]["Model"]["Tags"]
+    expected_primary_container = SAGEMAKER_CONFIG_MODEL_WITH_PRIMARY_CONTAINER["SageMaker"][
+        "Model"
+    ]["PrimaryContainer"]
+    assert model == MODEL_NAME
+    sagemaker_session.sagemaker_client.create_model.assert_called_with(
+        ModelName=MODEL_NAME,
+        ExecutionRoleArn=expected_role_arn,
+        PrimaryContainer=expected_primary_container,
+        Tags=expected_tags,
+        VpcConfig=expected_vpc_config,
+        EnableNetworkIsolation=expected_enable_network_isolation,
+    )
+
+
+def test_create_model_with_sagemaker_config_injection_with_container_defs(sagemaker_session):
     sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_MODEL
 
     sagemaker_session.expand_role = Mock(
@@ -2349,7 +2404,7 @@ def test_create_model_with_sagemaker_config_injection(sagemaker_session):
     )
     model = sagemaker_session.create_model(
         MODEL_NAME,
-        container_defs=PRIMARY_CONTAINER,
+        container_defs=CONTAINERS,
     )
     expected_role_arn = SAGEMAKER_CONFIG_MODEL["SageMaker"]["Model"]["ExecutionRoleArn"]
     expected_enable_network_isolation = SAGEMAKER_CONFIG_MODEL["SageMaker"]["Model"][
@@ -2357,14 +2412,18 @@ def test_create_model_with_sagemaker_config_injection(sagemaker_session):
     ]
     expected_vpc_config = SAGEMAKER_CONFIG_MODEL["SageMaker"]["Model"]["VpcConfig"]
     expected_tags = SAGEMAKER_CONFIG_MODEL["SageMaker"]["Model"]["Tags"]
+    update_list_of_dicts_with_values_from_config(
+        CONTAINERS, MODEL_CONTAINERS_PATH, sagemaker_session=sagemaker_session
+    )
+
     assert model == MODEL_NAME
     sagemaker_session.sagemaker_client.create_model.assert_called_with(
-        ExecutionRoleArn=expected_role_arn,
         ModelName=MODEL_NAME,
-        PrimaryContainer=PRIMARY_CONTAINER,
+        ExecutionRoleArn=expected_role_arn,
+        Containers=CONTAINERS,
+        Tags=expected_tags,
         VpcConfig=expected_vpc_config,
         EnableNetworkIsolation=expected_enable_network_isolation,
-        Tags=expected_tags,
     )
 
 
@@ -2416,22 +2475,6 @@ def test_create_model_with_both(expand_container_def, sagemaker_session):
             container_defs=PRIMARY_CONTAINER,
             primary_container=PRIMARY_CONTAINER,
         )
-
-
-CONTAINERS = [
-    {
-        "Environment": {"SAGEMAKER_DEFAULT_INVOCATIONS_ACCEPT": "application/json"},
-        "Image": "mi-1",
-        "ModelDataUrl": "s3://bucket/model_1.tar.gz",
-        "Framework": "TENSORFLOW",
-        "FrameworkVersion": "2.9",
-        "NearestModelName": "resnet50",
-        "ModelInput": {
-            "DataInputConfig": '{"input_1":[1,224,224,3]}',
-        },
-    },
-    {"Environment": {}, "Image": "mi-2", "ModelDataUrl": "s3://bucket/model_2.tar.gz"},
-]
 
 
 @patch("sagemaker.session._expand_container_def", return_value=PRIMARY_CONTAINER)
@@ -2609,10 +2652,14 @@ def test_create_monitoring_schedule_with_sagemaker_config_injection(sagemaker_se
     ]["MonitoringSchedule"]["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["NetworkConfig"][
         "EnableInterContainerTrafficEncryption"
     ]
+    expected_environment = SAGEMAKER_CONFIG_MONITORING_SCHEDULE["SageMaker"]["MonitoringSchedule"][
+        "MonitoringScheduleConfig"
+    ]["MonitoringJobDefinition"]["Environment"]
     sagemaker_session.sagemaker_client.create_monitoring_schedule.assert_called_with(
         MonitoringScheduleName=JOB_NAME,
         MonitoringScheduleConfig={
             "MonitoringJobDefinition": {
+                "Environment": expected_environment,
                 "MonitoringInputs": [],
                 "MonitoringResources": {
                     "ClusterConfig": {
@@ -4020,7 +4067,7 @@ def test_create_model_package_with_sagemaker_config_injection(sagemaker_session)
     sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_MODEL_PACKAGE
 
     model_package_name = "sagemaker-model-package"
-    containers = ["dummy-container"]
+    containers = [{"Image": "dummy-container"}]
     content_types = ["application/json"]
     response_types = ["application/json"]
     inference_instances = ["ml.m4.xlarge"]
@@ -4088,6 +4135,12 @@ def test_create_model_package_with_sagemaker_config_injection(sagemaker_session)
     expected_volume_kms_key_id = SAGEMAKER_CONFIG_MODEL_PACKAGE["SageMaker"]["ModelPackage"][
         "ValidationSpecification"
     ]["ValidationProfiles"][0]["TransformJobDefinition"]["TransformResources"]["VolumeKmsKeyId"]
+    expected_environment = SAGEMAKER_CONFIG_MODEL_PACKAGE["SageMaker"]["ModelPackage"][
+        "ValidationSpecification"
+    ]["ValidationProfiles"][0]["TransformJobDefinition"]["Environment"]
+    expected_containers_environment = SAGEMAKER_CONFIG_MODEL_PACKAGE["SageMaker"]["ModelPackage"][
+        "InferenceSpecification"
+    ]["Containers"][0]["Environment"]
     expected_args = copy.deepcopy(
         {
             "ModelPackageName": model_package_name,
@@ -4118,6 +4171,12 @@ def test_create_model_package_with_sagemaker_config_injection(sagemaker_session)
     expected_args["ValidationSpecification"]["ValidationProfiles"][0]["TransformJobDefinition"][
         "TransformOutput"
     ]["KmsKeyId"] = expected_kms_key_id
+    expected_args["ValidationSpecification"]["ValidationProfiles"][0]["TransformJobDefinition"][
+        "Environment"
+    ] = expected_environment
+    expected_args["InferenceSpecification"]["Containers"][0][
+        "Environment"
+    ] = expected_containers_environment
 
     sagemaker_session.sagemaker_client.create_model_package.assert_called_with(**expected_args)
 

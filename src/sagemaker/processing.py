@@ -38,6 +38,7 @@ from sagemaker.config import (
     PROCESSING_JOB_VOLUME_KMS_KEY_ID_PATH,
     PROCESSING_JOB_ROLE_ARN_PATH,
     PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
+    PROCESSING_JOB_ENVIRONMENT_PATH,
 )
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
@@ -136,7 +137,6 @@ class Processor(object):
         self.volume_size_in_gb = volume_size_in_gb
         self.max_runtime_in_seconds = max_runtime_in_seconds
         self.base_job_name = base_job_name
-        self.env = env
         self.tags = tags
 
         self.jobs = []
@@ -195,6 +195,10 @@ class Processor(object):
             # Because of marking that parameter as optional, we should validate if it is None, even
             # after fetching the config.
             raise ValueError("An AWS IAM role is required to create a Processing job.")
+
+        self.env = resolve_value_from_config(
+            env, PROCESSING_JOB_ENVIRONMENT_PATH, sagemaker_session=self.sagemaker_session
+        )
 
     @runnable_by_pipeline
     def run(

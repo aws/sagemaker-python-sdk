@@ -41,16 +41,19 @@ from sagemaker.config import (
     TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
     TRAINING_JOB_ROLE_ARN_PATH,
     TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+    TRAINING_JOB_ENVIRONMENT_PATH,
     TRAINING_JOB_VPC_CONFIG_PATH,
     TRAINING_JOB_OUTPUT_DATA_CONFIG_PATH,
     TRAINING_JOB_RESOURCE_CONFIG_PATH,
     PROCESSING_JOB_INPUTS_PATH,
     PROCESSING_JOB,
     PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
+    PROCESSING_JOB_ENVIRONMENT_PATH,
     PROCESSING_JOB_ROLE_ARN_PATH,
     PROCESSING_JOB_NETWORK_CONFIG_PATH,
     PROCESSING_OUTPUT_CONFIG_PATH,
     PROCESSING_JOB_PROCESSING_RESOURCES_PATH,
+    MONITORING_JOB_ENVIRONMENT_PATH,
     MONITORING_JOB_ROLE_ARN_PATH,
     MONITORING_JOB_VOLUME_KMS_KEY_ID_PATH,
     MONITORING_JOB_NETWORK_CONFIG_PATH,
@@ -69,17 +72,22 @@ from sagemaker.config import (
     EDGE_PACKAGING_OUTPUT_CONFIG_PATH,
     EDGE_PACKAGING_JOB,
     TRANSFORM_JOB,
+    TRANSFORM_JOB_ENVIRONMENT_PATH,
     TRANSFORM_JOB_KMS_KEY_ID_PATH,
     TRANSFORM_OUTPUT_KMS_KEY_ID_PATH,
     VOLUME_KMS_KEY_ID,
     TRANSFORM_JOB_VOLUME_KMS_KEY_ID_PATH,
     MODEL,
+    MODEL_CONTAINERS_PATH,
     MODEL_EXECUTION_ROLE_ARN_PATH,
     MODEL_ENABLE_NETWORK_ISOLATION_PATH,
+    MODEL_PRIMARY_CONTAINER_PATH,
+    MODEL_PRIMARY_CONTAINER_ENVIRONMENT_PATH,
     MODEL_VPC_CONFIG_PATH,
     MODEL_PACKAGE_VALIDATION_ROLE_PATH,
     VALIDATION_ROLE,
     VALIDATION_PROFILES,
+    MODEL_PACKAGE_INFERENCE_SPECIFICATION_CONTAINERS_PATH,
     MODEL_PACKAGE_VALIDATION_PROFILES_PATH,
     ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH,
     KMS_KEY_ID,
@@ -675,7 +683,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         enable_sagemaker_metrics=None,
         profiler_rule_configs=None,
         profiler_config=None,
-        environment=None,
+        environment: Optional[Dict[str, str]] = None,
         retry_strategy=None,
     ):
         """Create an Amazon SageMaker training job.
@@ -823,6 +831,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
             and "VolumeKmsKeyId" in inferred_resource_config
         ):
             del inferred_resource_config["VolumeKmsKeyId"]
+
+        environment = resolve_value_from_config(
+            direct_input=environment,
+            config_path=TRAINING_JOB_ENVIRONMENT_PATH,
+            default_value=None,
+            sagemaker_session=self,
+        )
         train_request = self._get_train_request(
             input_mode=input_mode,
             input_config=input_config,
@@ -1168,7 +1183,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         resources,
         stopping_condition,
         app_specification,
-        environment,
+        environment: Optional[Dict[str, str]] = None,
         network_config=None,
         role_arn=None,
         tags=None,
@@ -1253,6 +1268,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
         inferred_resources_config = update_nested_dictionary_with_values_from_config(
             resources, PROCESSING_JOB_PROCESSING_RESOURCES_PATH, sagemaker_session=self
+        )
+        environment = resolve_value_from_config(
+            direct_input=environment,
+            config_path=PROCESSING_JOB_ENVIRONMENT_PATH,
+            default_value=None,
+            sagemaker_session=self,
         )
         process_request = self._get_process_request(
             inputs=inputs,
@@ -1431,10 +1452,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
         inferred_network_config_from_config = update_nested_dictionary_with_values_from_config(
             network_config, MONITORING_JOB_NETWORK_CONFIG_PATH, sagemaker_session=self
         )
+        environment = resolve_value_from_config(
+            direct_input=environment,
+            config_path=MONITORING_JOB_ENVIRONMENT_PATH,
+            default_value=None,
+            sagemaker_session=self,
+        )
         monitoring_schedule_request = {
             "MonitoringScheduleName": monitoring_schedule_name,
             "MonitoringScheduleConfig": {
                 "MonitoringJobDefinition": {
+                    "Environment": environment,
                     "MonitoringInputs": monitoring_inputs,
                     "MonitoringResources": {
                         "ClusterConfig": {
@@ -3210,11 +3238,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
         strategy,
         max_concurrent_transforms,
         max_payload,
-        env,
         input_config,
         output_config,
         resource_config,
         experiment_config,
+        env: Optional[Dict[str, str]] = None,
         tags=None,
         data_processing=None,
         model_client_config=None,
@@ -3277,6 +3305,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
             TRANSFORM_JOB_VOLUME_KMS_KEY_ID_PATH,
             sagemaker_session=self,
         )
+        env = resolve_value_from_config(
+            direct_input=env,
+            config_path=TRANSFORM_JOB_ENVIRONMENT_PATH,
+            default_value=None,
+            sagemaker_session=self,
+        )
 
         transform_request = self._get_transform_request(
             job_name=job_name,
@@ -3313,6 +3347,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         tags=None,
     ):  # pylint: disable=redefined-outer-name
         """Placeholder docstring"""
+
         if container_defs and primary_container:
             raise ValueError("Both container_defs and primary_container can not be passed as input")
 
@@ -3327,9 +3362,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
         role = self.expand_role(role)
 
         if isinstance(container_defs, list):
+            update_list_of_dicts_with_values_from_config(
+                container_defs, MODEL_CONTAINERS_PATH, sagemaker_session=self
+            )
             container_definition = container_defs
         else:
             container_definition = _expand_container_def(container_defs)
+            container_definition = update_nested_dictionary_with_values_from_config(
+                container_definition, MODEL_PRIMARY_CONTAINER_PATH, sagemaker_session=self
+            )
 
         request = {"ModelName": name, "ExecutionRoleArn": role}
         if isinstance(container_definition, list):
@@ -3416,6 +3457,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
             default_value=False,
             sagemaker_session=self,
         )
+
+        # Due to ambuiguity in container_defs which accepts both a single
+        # container definition(dtype: dict) and a list of container definitions (dtype: list),
+        # we need to inject environment variables into the container_defs in the helper function
+        # _create_model_request.
         create_model_request = self._create_model_request(
             name=name,
             role=role,
@@ -3497,7 +3543,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
             default_value=False,
             sagemaker_session=self,
         )
-        env = env or {}
+        env = resolve_value_from_config(
+            env,
+            MODEL_PRIMARY_CONTAINER_ENVIRONMENT_PATH,
+            default_value={},
+            sagemaker_session=self,
+        )
         primary_container = container_def(
             image_uri or training_job["AlgorithmSpecification"]["TrainingImage"],
             model_data_url=model_data_url or training_job["ModelArtifacts"]["S3ModelArtifacts"],
@@ -3599,6 +3650,19 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 "IMAGE_CLASSIFICATION", "OBJECT_DETECTION", "TEXT_GENERATION", "IMAGE_SEGMENTATION",
                 "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
         """
+        if containers:
+            # Containers are provided. Now we can merge missing entries from config.
+            # If Containers are not provided, it is safe to ignore. This is because,
+            # if this object is provided to the API, then Image is required for Containers.
+            # That is not supported by the config now. So if we merge values from config,
+            # then API will throw an exception. In the future, when SageMaker Config starts
+            # supporting other parameters we can add that.
+            update_list_of_dicts_with_values_from_config(
+                containers,
+                MODEL_PACKAGE_INFERENCE_SPECIFICATION_CONTAINERS_PATH,
+                required_key_paths=["Image"],
+                sagemaker_session=self,
+            )
 
         if validation_specification:
             # ValidationSpecification is provided. Now we can merge missing entries from config.
