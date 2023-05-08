@@ -489,6 +489,9 @@ class JumpStartEstimator(Estimator):
                 private Docker registry where your training image is hosted (Default: None).
                 When it's set to None, SageMaker will not do authentication before pulling the image
                 in the private Docker registry. (Default: None).
+
+        Raises:
+            ValueError: If the model ID is not recognized by JumpStart.
         """
 
         if not is_valid_model_id(

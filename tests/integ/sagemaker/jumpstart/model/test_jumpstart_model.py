@@ -40,6 +40,7 @@ def test_non_prepacked_jumpstart_model(setup):
         sagemaker_session=get_sm_session(),
     )
 
+    # uses ml.m5.4xlarge instance
     predictor = model.deploy(
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
     )
@@ -62,6 +63,7 @@ def test_prepacked_jumpstart_model(setup):
         sagemaker_session=get_sm_session(),
     )
 
+    # uses ml.p3.2xlarge instance
     predictor = model.deploy(
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
     )

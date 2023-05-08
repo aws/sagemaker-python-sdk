@@ -43,6 +43,7 @@ def test_jumpstart_estimator(setup):
         max_run=259200,  # avoid exceeding resource limits
     )
 
+    # uses ml.p3.2xlarge instance
     estimator.fit(
         {
             "training": f"s3://{get_jumpstart_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)}/"
@@ -50,6 +51,7 @@ def test_jumpstart_estimator(setup):
         }
     )
 
+    # uses ml.p3.2xlarge instance
     predictor = estimator.deploy(
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         role=get_sm_session().get_caller_identity_arn(),

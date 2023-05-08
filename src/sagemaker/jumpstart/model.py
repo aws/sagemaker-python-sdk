@@ -254,6 +254,9 @@ class JumpStartModel(Model):
                 the SageMaker Python SDK attempts to use either the CodeCommit
                 credential helper or local credential storage for authentication.
                 (Default: None).
+
+        Raises:
+            ValueError: If the model ID is not recognized by JumpStart.
         """
 
         if not is_valid_model_id(
