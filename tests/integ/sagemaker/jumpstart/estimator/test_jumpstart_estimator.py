@@ -40,6 +40,7 @@ def test_jumpstart_estimator(setup):
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+        max_run=259200,  # avoid exceeding resource limits
     )
 
     estimator.fit(

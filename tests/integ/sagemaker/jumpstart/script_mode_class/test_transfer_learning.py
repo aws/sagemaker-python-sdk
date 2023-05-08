@@ -98,6 +98,10 @@ def test_jumpstart_transfer_learning_estimator_class(setup):
         instance_type=training_instance_type,
     )
 
+    # Avoid exceeding resource limits
+    if "max_run" in estimator_kwargs:
+        del estimator_kwargs["max_run"]
+
     estimator = Estimator(
         image_uri=image_uri,
         source_dir=script_uri,
