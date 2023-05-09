@@ -3,11 +3,168 @@ Release Notes
 #############
 
 New features, bug fixes, and improvements are regularly made to the SageMaker
-distributed model parallel library.
+model parallelism library.
+
+
+SageMaker Distributed Model Parallel 1.15.0 Release Notes
+=========================================================
+
+*Date: Apr. 27. 2023*
+
+**Currency Updates**
+
+* Added support for PyTorch v2.0.0.
+  Note that the library does not support ``torch.compile`` in this release.
+
+**New Features**
+
+* Using sharded data parallelism with tensor parallelism together is now
+  available for PyTorch 1.13.1. It allows you to train with smaller global batch
+  sizes while scaling up to large clusters. For more information, see `Sharded
+  data parallelism with tensor parallelism <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-sharded-data-parallelism.html#model-parallel-extended-features-pytorch-sharded-data-parallelism-with-tensor-parallelism>`_
+  in the *Amazon SageMaker Developer Guide*.
+* Added support for saving and loading full model checkpoints when using sharded
+  data parallelism. This is enabled by using the standard checkpointing API,
+  ``smp.save_checkpoint`` with ``partial=False``.
+  Before, full checkpoints needed to be created by merging partial checkpoint
+  files after training finishes.
+* `DistributedTransformer <https://sagemaker.readthedocs.io/en/stable/api/training/smp_versions/latest/smd_model_parallel_pytorch_tensor_parallel.html#smdistributed.modelparallel.torch.nn.DistributedTransformerLayer>`_
+  now supports the ALiBi position embeddings.
+  When using DistributedTransformer, you can set the ``use_alibi`` parameter
+  to ``True`` to use the Triton-based flash attention kernels. This helps
+  evaluate sequences longer than those used for training.
+
+**Bug Fixes**
+
+* When using tensor parallelism, parameters were initialized multiple times
+  unncessarily. This release fixed the multiple initialization of parameters
+  so that each parameter is initialized exactly once.
+  It not only saves time, but also ensures that the random generator behavior
+  is similar to the non-tensor parallelism case.
+
+**Known issues**
+
+* Model initialization might take longer with PyTorch 2.0 than that with PyTorch 1.13.
+
+**Migration to AWS Deep Learning Containers**
+
+This version passed benchmark testing and is migrated to the following AWS Deep Learning Containers (DLC):
+
+- SageMaker training container for PyTorch v2.0.0
+
+  .. code::
+
+    763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-training:2.0.0-gpu-py310-cu118-ubuntu20.04-sagemaker
+
+- SageMaker training container for PyTorch v1.13.1
+
+  .. code::
+
+    763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-training:1.13.1-gpu-py39-cu117-ubuntu20.04-sagemaker
+
+Binary file of this version of the library for `custom container
+<https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-sm-sdk.html#model-parallel-bring-your-own-container>`_ users:
+
+- For PyTorch v2.0.0
+
+  .. code::
+
+    https://sagemaker-distributed-model-parallel.s3.us-west-2.amazonaws.com/pytorch-2.0.0/build-artifacts/2023-04-14-20-14/smdistributed_modelparallel-1.15.0-cp310-cp310-linux_x86_64.whl
+
+- For PyTorch v1.13.1
+
+  .. code::
+
+    https://sagemaker-distributed-model-parallel.s3.us-west-2.amazonaws.com/pytorch-1.13.1/build-artifacts/2023-04-17-15-49/smdistributed_modelparallel-1.15.0-cp39-cp39-linux_x86_64.whl
+
+----
+
+Release History
+===============
+
+SageMaker Distributed Model Parallel 1.14.0 Release Notes
+---------------------------------------------------------
+
+*Date: Jan. 30. 2023*
+
+**Currency Updates**
+
+* Added support for PyTorch v1.13.1
+
+**Improvements**
+
+* Upgraded the flash-attention (https://github.com/HazyResearch/flash-attention) library to  v0.2.6.post1
+
+**Migration to AWS Deep Learning Containers**
+
+This version passed benchmark testing and is migrated to the following AWS Deep Learning Containers (DLC):
+
+- SageMaker training container for PyTorch v1.13.1
+
+  .. code::
+
+    763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.13.1-gpu-py39-cu117-ubuntu20.04-sagemaker
+
+
+Binary file of this version of the library for `custom container
+<https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-sm-sdk.html#model-parallel-bring-your-own-container>`_ users:
+
+- For PyTorch 1.13.1
+
+  .. code::
+
+    https://sagemaker-distributed-model-parallel.s3.us-west-2.amazonaws.com/pytorch-1.13.1/build-artifacts/2023-01-19-18-35/smdistributed_modelparallel-1.14.0-cp39-cp39-linux_x86_64.whl
+
+
+SageMaker Distributed Model Parallel 1.13.0 Release Notes
+---------------------------------------------------------
+
+*Date: Dec. 15. 2022*
+
+**New Features**
+
+* Sharded data parallelism now supports a new backend for collectives called *SMDDP Collectives*.
+  For supported scenarios, SMDDP Collectives are on by default for the AllGather operation.
+  For more information, see
+  `Sharded data parallelism with SMDDP Collectives
+  <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-sharded-data-parallelism.html#model-parallel-extended-features-pytorch-sharded-data-parallelism-smddp-collectives>`_
+  in the *Amazon SageMaker Developer Guide*.
+* Introduced FlashAttention for DistributedTransformer to improve memory usage and computational
+  performance of models such as GPT2, GPTNeo, GPTJ, GPTNeoX, BERT, and RoBERTa.
+
+**Bug Fixes**
+
+* Fixed initialization of ``lm_head`` in DistributedTransformer to use a provided range
+  for initialization, when weights are not tied with the embeddings.
+
+**Improvements**
+
+* When a module has no parameters, we have introduced an optimization to execute
+  such a module on the same rank as its parent during pipeline parallelism.
+
+**Migration to AWS Deep Learning Containers**
+
+This version passed benchmark testing and is migrated to the following AWS Deep Learning Containers (DLC):
+
+- SageMaker training container for PyTorch v1.12.1
+
+  .. code::
+
+    763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.12.1-gpu-py38-cu113-ubuntu20.04-sagemaker
+
+
+Binary file of this version of the library for `custom container
+<https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-sm-sdk.html#model-parallel-bring-your-own-container>`_ users:
+
+- For PyTorch 1.12.1
+
+  .. code::
+
+    https://sagemaker-distributed-model-parallel.s3.us-west-2.amazonaws.com/pytorch-1.12.1/build-artifacts/2022-12-08-21-34/smdistributed_modelparallel-1.13.0-cp38-cp38-linux_x86_64.whl
 
 
 SageMaker Distributed Model Parallel 1.11.0 Release Notes
-=========================================================
+---------------------------------------------------------
 
 *Date: August. 17. 2022*
 
@@ -42,11 +199,6 @@ Binary file of this version of the library for `custom container
   .. code::
 
     https://sagemaker-distributed-model-parallel.s3.us-west-2.amazonaws.com/pytorch-1.12.0/build-artifacts/2022-08-12-16-58/smdistributed_modelparallel-1.11.0-cp38-cp38-linux_x86_64.whl
-
-----
-
-Release History
-===============
 
 SageMaker Distributed Model Parallel 1.10.1 Release Notes
 ---------------------------------------------------------

@@ -30,16 +30,8 @@ from sagemaker.workflow.model_step import (
 )
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline import Pipeline, PipelineGraph
-from sagemaker.workflow.pipeline_context import PipelineSession
 from sagemaker.workflow.utilities import list_to_request
 from tests.unit import DATA_DIR
-
-import sagemaker
-
-from mock import (
-    Mock,
-    PropertyMock,
-)
 
 from sagemaker import PipelineModel
 from sagemaker.estimator import Estimator
@@ -59,65 +51,12 @@ from sagemaker.workflow.step_collections import (
 )
 from sagemaker.workflow.retry import StepRetryPolicy, StepExceptionTypeEnum
 from tests.unit.sagemaker.workflow.helpers import ordered, CustomStep
+from tests.unit.sagemaker.workflow.conftest import IMAGE_URI, ROLE, BUCKET, REGION
 
-REGION = "us-west-2"
-BUCKET = "my-bucket"
-IMAGE_URI = "fakeimage"
-ROLE = "DummyRole"
 MODEL_NAME = "gisele"
 MODEL_REPACKING_IMAGE_URI = (
     "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3"
 )
-
-
-@pytest.fixture
-def client():
-    """Mock client.
-
-    Considerations when appropriate:
-
-        * utilize botocore.stub.Stubber
-        * separate runtime client from client
-    """
-    client_mock = Mock()
-    client_mock._client_config.user_agent = (
-        "Boto3/1.14.24 Python/3.8.5 Linux/5.4.0-42-generic Botocore/1.17.24 Resource"
-    )
-    return client_mock
-
-
-@pytest.fixture
-def boto_session(client):
-    role_mock = Mock()
-    type(role_mock).arn = PropertyMock(return_value=ROLE)
-
-    resource_mock = Mock()
-    resource_mock.Role.return_value = role_mock
-
-    session_mock = Mock(region_name=REGION)
-    session_mock.resource.return_value = resource_mock
-    session_mock.client.return_value = client
-
-    return session_mock
-
-
-@pytest.fixture
-def sagemaker_session(boto_session, client):
-    return sagemaker.session.Session(
-        boto_session=boto_session,
-        sagemaker_client=client,
-        sagemaker_runtime_client=client,
-        default_bucket=BUCKET,
-    )
-
-
-@pytest.fixture
-def pipeline_session(boto_session, client):
-    return PipelineSession(
-        boto_session=boto_session,
-        sagemaker_client=client,
-        default_bucket=BUCKET,
-    )
 
 
 @pytest.fixture
@@ -796,6 +735,7 @@ def test_register_model_with_model_repack_with_estimator(
                         "CollectionConfigurations": [],
                         "S3OutputPath": f"s3://{BUCKET}/",
                     },
+                    "ProfilerConfig": {"DisableProfiler": True},
                     "HyperParameters": {
                         "inference_script": '"dummy_script.py"',
                         "dependencies": f'"{dummy_requirements}"',
@@ -923,6 +863,7 @@ def test_register_model_with_model_repack_with_model(model, model_metrics, drift
                         "CollectionConfigurations": [],
                         "S3OutputPath": f"s3://{BUCKET}/",
                     },
+                    "ProfilerConfig": {"DisableProfiler": True},
                     "HyperParameters": {
                         "inference_script": '"dummy_script.py"',
                         "model_archive": '"s3://my-bucket/model.tar.gz"',
@@ -1052,6 +993,7 @@ def test_register_model_with_model_repack_with_pipeline_model(
                         "CollectionConfigurations": [],
                         "S3OutputPath": f"s3://{BUCKET}/",
                     },
+                    "ProfilerConfig": {"DisableProfiler": True},
                     "HyperParameters": {
                         "dependencies": "null",
                         "inference_script": '"dummy_script.py"',
@@ -1243,6 +1185,7 @@ def test_estimator_transformer_with_model_repack_with_estimator(estimator):
                     "TrainingImage": "246618743249.dkr.ecr.us-west-2.amazonaws.com/"
                     + "sagemaker-scikit-learn:0.23-1-cpu-py3",
                 },
+                "ProfilerConfig": {"DisableProfiler": True},
                 "OutputDataConfig": {"S3OutputPath": "s3://my-bucket/"},
                 "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
                 "ResourceConfig": {

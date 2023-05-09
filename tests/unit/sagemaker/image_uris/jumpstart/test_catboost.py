@@ -24,6 +24,8 @@ from tests.unit.sagemaker.jumpstart.utils import get_prototype_model_spec
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 def test_jumpstart_catboost_image_uri(patched_get_model_specs, session):
+    # For tests which doesn't verify config file injection, operate with empty config
+    session.sagemaker_config = {}
 
     patched_get_model_specs.side_effect = get_prototype_model_spec
 

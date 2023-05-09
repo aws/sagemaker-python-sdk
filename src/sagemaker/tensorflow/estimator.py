@@ -137,6 +137,23 @@ class TensorFlow(Framework):
                         To find a complete list of parameters for SageMaker model parallelism,
                         see :ref:`sm-sdk-modelparallel-general`.
 
+                **To enable Multi Worker Mirrored Strategy:**
+
+                    .. code:: python
+
+                        {
+                            "multi_worker_mirrored_strategy": {
+                                "enabled": True
+                            }
+                        }
+
+                    This distribution strategy option is available for TensorFlow 2.9 and later in
+                    the SageMaker Python SDK v2.xx.yy and later.
+                    To learn more about the mirrored strategy for TensorFlow,
+                    see `TensorFlow Distributed Training
+                    <https://www.tensorflow.org/guide/distributed_training>`_
+                    in the *TensorFlow documentation*.
+
                 **To enable MPI:**
 
                     .. code:: python
@@ -217,6 +234,11 @@ class TensorFlow(Framework):
             if compiler_config:
                 compiler_config.validate(self)
         self.compiler_config = compiler_config
+
+        if "profiler_config" in kwargs:
+            fw.profiler_config_deprecation_warning(
+                kwargs["profiler_config"], image_uri, self._framework_name, framework_version
+            )
 
     def _validate_args(self, py_version):
         """Placeholder docstring"""

@@ -21,6 +21,7 @@ import sys
 import time
 import typing
 import warnings
+import uuid
 from typing import List, Dict, Any, Sequence, Optional
 
 import boto3
@@ -31,8 +32,67 @@ import six
 
 import sagemaker.logs
 from sagemaker import vpc_utils
-
 from sagemaker._studio import _append_project_tags
+from sagemaker.config import load_sagemaker_config, validate_sagemaker_config  # noqa: F401
+from sagemaker.config import (
+    KEY,
+    TRAINING_JOB,
+    TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
+    TRAINING_JOB_ROLE_ARN_PATH,
+    TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+    TRAINING_JOB_VPC_CONFIG_PATH,
+    TRAINING_JOB_OUTPUT_DATA_CONFIG_PATH,
+    TRAINING_JOB_RESOURCE_CONFIG_PATH,
+    PROCESSING_JOB_INPUTS_PATH,
+    PROCESSING_JOB,
+    PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
+    PROCESSING_JOB_ROLE_ARN_PATH,
+    PROCESSING_JOB_NETWORK_CONFIG_PATH,
+    PROCESSING_OUTPUT_CONFIG_PATH,
+    PROCESSING_JOB_PROCESSING_RESOURCES_PATH,
+    MONITORING_JOB_ROLE_ARN_PATH,
+    MONITORING_JOB_VOLUME_KMS_KEY_ID_PATH,
+    MONITORING_JOB_NETWORK_CONFIG_PATH,
+    MONITORING_JOB_OUTPUT_KMS_KEY_ID_PATH,
+    MONITORING_SCHEDULE,
+    MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION_PATH,
+    AUTO_ML_ROLE_ARN_PATH,
+    AUTO_ML_OUTPUT_CONFIG_PATH,
+    AUTO_ML_JOB_CONFIG_PATH,
+    AUTO_ML_JOB,
+    COMPILATION_JOB_ROLE_ARN_PATH,
+    COMPILATION_JOB_OUTPUT_CONFIG_PATH,
+    COMPILATION_JOB_VPC_CONFIG_PATH,
+    COMPILATION_JOB,
+    EDGE_PACKAGING_ROLE_ARN_PATH,
+    EDGE_PACKAGING_OUTPUT_CONFIG_PATH,
+    EDGE_PACKAGING_JOB,
+    TRANSFORM_JOB,
+    TRANSFORM_JOB_KMS_KEY_ID_PATH,
+    TRANSFORM_OUTPUT_KMS_KEY_ID_PATH,
+    VOLUME_KMS_KEY_ID,
+    TRANSFORM_JOB_VOLUME_KMS_KEY_ID_PATH,
+    MODEL,
+    MODEL_EXECUTION_ROLE_ARN_PATH,
+    MODEL_ENABLE_NETWORK_ISOLATION_PATH,
+    MODEL_VPC_CONFIG_PATH,
+    MODEL_PACKAGE_VALIDATION_ROLE_PATH,
+    VALIDATION_ROLE,
+    VALIDATION_PROFILES,
+    MODEL_PACKAGE_VALIDATION_PROFILES_PATH,
+    ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH,
+    KMS_KEY_ID,
+    ENDPOINT_CONFIG_KMS_KEY_ID_PATH,
+    ENDPOINT_CONFIG,
+    ENDPOINT_CONFIG_DATA_CAPTURE_PATH,
+    ENDPOINT_CONFIG_ASYNC_INFERENCE_PATH,
+    SAGEMAKER,
+    FEATURE_GROUP,
+    TAGS,
+    FEATURE_GROUP_ROLE_ARN_PATH,
+    FEATURE_GROUP_ONLINE_STORE_CONFIG_PATH,
+    FEATURE_GROUP_OFFLINE_STORE_CONFIG_PATH,
+)
 from sagemaker.deprecations import deprecated_class
 from sagemaker.inputs import ShuffleConfig, TrainingInput, BatchDataCaptureConfig
 from sagemaker.user_agent import prepend_user_agent
@@ -42,6 +102,12 @@ from sagemaker.utils import (
     secondary_training_status_message,
     sts_regional_endpoint,
     retries,
+    resolve_value_from_config,
+    get_sagemaker_config_value,
+    resolve_class_attribute_from_config,
+    resolve_nested_dict_value_from_config,
+    update_nested_dictionary_with_values_from_config,
+    update_list_of_dicts_with_values_from_config,
 )
 from sagemaker import exceptions
 from sagemaker.session_settings import SessionSettings
@@ -49,14 +115,15 @@ from sagemaker.session_settings import SessionSettings
 LOGGER = logging.getLogger("sagemaker")
 
 NOTEBOOK_METADATA_FILE = "/opt/ml/metadata/resource-metadata.json"
-
 _STATUS_CODE_TABLE = {
     "COMPLETED": "Completed",
     "INPROGRESS": "InProgress",
+    "IN_PROGRESS": "InProgress",
     "FAILED": "Failed",
     "STOPPED": "Stopped",
     "STOPPING": "Stopping",
     "STARTING": "Starting",
+    "PENDING": "Pending",
 }
 
 
@@ -89,6 +156,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         sagemaker_featurestore_runtime_client=None,
         default_bucket=None,
         settings=SessionSettings(),
+        sagemaker_metrics_client=None,
+        sagemaker_config: dict = None,
     ):
         """Initialize a SageMaker ``Session``.
 
@@ -116,11 +185,27 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 Example: "sagemaker-my-custom-bucket".
             settings (sagemaker.session_settings.SessionSettings): Optional. Set of optional
                 parameters to apply to the session.
+            sagemaker_metrics_client (boto3.SageMakerMetrics.Client):
+                Client which makes SageMaker Metrics related calls to Amazon SageMaker
+                (default: None). If not provided, one will be created using
+                this instance's ``boto_session``.
+            sagemaker_config (dict): A dictionary containing default values for the
+                SageMaker Python SDK. (default: None). The dictionary must adhere to the schema
+                defined at `~sagemaker.config.config_schema.SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA`.
+                If sagemaker_config is not provided and configuration files exist (at the default
+                paths for admins and users, or paths set through the environment variables
+                SAGEMAKER_ADMIN_CONFIG_OVERRIDE and SAGEMAKER_USER_CONFIG_OVERRIDE),
+                a new dictionary will be generated from those configuration files. Alternatively,
+                this dictionary can be generated by calling
+                :func:`~sagemaker.config.load_sagemaker_config` and then be provided to the
+                Session.
         """
         self._default_bucket = None
         self._default_bucket_name_override = default_bucket
         self.s3_resource = None
         self.s3_client = None
+        self.resource_groups_client = None
+        self.resource_group_tagging_client = None
         self.config = None
         self.lambda_client = None
         self.settings = settings
@@ -130,6 +215,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             sagemaker_client=sagemaker_client,
             sagemaker_runtime_client=sagemaker_runtime_client,
             sagemaker_featurestore_runtime_client=sagemaker_featurestore_runtime_client,
+            sagemaker_metrics_client=sagemaker_metrics_client,
+            sagemaker_config=sagemaker_config,
         )
 
     def _initialize(
@@ -138,6 +225,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         sagemaker_client,
         sagemaker_runtime_client,
         sagemaker_featurestore_runtime_client,
+        sagemaker_metrics_client,
+        sagemaker_config: dict = None,
     ):
         """Initialize this SageMaker Session.
 
@@ -172,7 +261,24 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 "sagemaker-featurestore-runtime"
             )
 
+        if sagemaker_metrics_client:
+            self.sagemaker_metrics_client = sagemaker_metrics_client
+        else:
+            self.sagemaker_metrics_client = self.boto_session.client("sagemaker-metrics")
+        prepend_user_agent(self.sagemaker_metrics_client)
+
+        self.s3_client = self.boto_session.client("s3", region_name=self.boto_region_name)
+        self.s3_resource = self.boto_session.resource("s3", region_name=self.boto_region_name)
+
         self.local_mode = False
+
+        if sagemaker_config:
+            validate_sagemaker_config(sagemaker_config)
+            self.sagemaker_config = sagemaker_config
+        else:
+            # self.s3_resource might be None. If it is None, load_sagemaker_config will
+            # create a default S3 resource, but only if it needs to fetch from S3
+            self.sagemaker_config = load_sagemaker_config(s3_resource=self.s3_resource)
 
     @property
     def boto_region_name(self):
@@ -283,6 +389,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 download operation. Please refer to the ExtraArgs parameter in the boto3
                 documentation here:
                 https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-example-download-file.html
+
+        Returns:
+            list[str]: List of local paths of downloaded files
         """
         # Initialize the S3 client.
         if self.s3_client is None:
@@ -302,7 +411,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
             if next_token != "":
                 request_parameters.update({"ContinuationToken": next_token})
             response = s3.list_objects_v2(**request_parameters)
-            contents = response.get("Contents")
+            contents = response.get("Contents", None)
+            if not contents:
+                LOGGER.info(
+                    "Nothing to download from bucket: %s, key_prefix: %s.", bucket, key_prefix
+                )
+                return []
             # For each object, save its key or directory.
             for s3_object in contents:
                 key = s3_object.get("Key")
@@ -311,8 +425,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         # For each object key, create the directory on the local machine if needed, and then
         # download the file.
+        downloaded_paths = []
         for key in keys:
-            tail_s3_uri_path = os.path.basename(key_prefix)
+            tail_s3_uri_path = os.path.basename(key)
             if not os.path.splitext(key_prefix)[1]:
                 tail_s3_uri_path = os.path.relpath(key, key_prefix)
             destination_path = os.path.join(path, tail_s3_uri_path)
@@ -321,6 +436,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             s3.download_file(
                 Bucket=bucket, Key=key, Filename=destination_path, ExtraArgs=extra_args
             )
+            downloaded_paths.append(destination_path)
+        return downloaded_paths
 
     def read_s3_file(self, bucket, key_prefix):
         """Read a single file from S3.
@@ -378,10 +495,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         default_bucket = self._default_bucket_name_override
         if not default_bucket:
-            account = self.boto_session.client(
-                "sts", region_name=region, endpoint_url=sts_regional_endpoint(region)
-            ).get_caller_identity()["Account"]
-            default_bucket = "sagemaker-{}-{}".format(region, account)
+            default_bucket = generate_default_sagemaker_bucket_name(self.boto_session)
 
         self._create_s3_bucket_if_it_does_not_exist(bucket_name=default_bucket, region=region)
 
@@ -457,23 +571,105 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 else:
                     raise
 
+    def _print_message_on_sagemaker_config_usage(
+        self, direct_input, config_value, config_path: str
+    ):
+        """Informs the SDK user whether a config value was present and automatically substituted
+
+        Args:
+            direct_input: the value that would be used if no sagemaker_config or default values
+                          existed. Usually this will be user-provided input to a Class or to a
+                          session.py method, or None if no input was provided.
+            config_value: the value fetched from sagemaker_config. This is usually the value that
+                          will be used if direct_input is None.
+            config_path: a string denoting the path of keys that point to the config value in the
+                         sagemaker_config
+
+        Returns:
+            No output (just prints information)
+        """
+
+        if config_value is not None:
+
+            if direct_input is not None and config_value != direct_input:
+                # Sagemaker Config had a value defined that is NOT going to be used
+                # and the config value has not already been applied earlier
+                print(
+                    "[Sagemaker Config - skipped value]\n",
+                    "config key = {}\n".format(config_path),
+                    "config value = {}\n".format(config_value),
+                    "specified value that will be used = {}\n".format(direct_input),
+                )
+
+            elif direct_input is None:
+                # Sagemaker Config value is going to be used
+                print(
+                    "[Sagemaker Config - applied value]\n",
+                    "config key = {}\n".format(config_path),
+                    "config value that will be used = {}\n".format(config_value),
+                )
+
+        # There is no print statement needed if nothing was specified in the config and nothing is
+        # being automatically applied
+
+    def _append_sagemaker_config_tags(self, tags: list, config_path_to_tags: str):
+        """Appends tags specified in the sagemaker_config to the given list of tags.
+
+        To minimize the chance of duplicate tags being applied, this is intended to be used
+        immediately before calls to sagemaker_client, rather than during initialization of
+        classes like EstimatorBase.
+
+        Args:
+            tags: The list of tags to append to.
+            config_path_to_tags: The path to look up tags in the config.
+
+        Returns:
+            A list of tags.
+        """
+        config_tags = get_sagemaker_config_value(self, config_path_to_tags)
+
+        if config_tags is None or len(config_tags) == 0:
+            return tags
+
+        all_tags = tags or []
+        for config_tag in config_tags:
+            config_tag_key = config_tag[KEY]
+            if not any(tag.get("Key", None) == config_tag_key for tag in all_tags):
+                # This check prevents new tags with duplicate keys from being added
+                # (to prevent API failure and/or overwriting of tags). If there is a conflict,
+                # the user-provided tag should take precedence over the config-provided tag.
+                # Note: this does not check user-provided tags for conflicts with other
+                # user-provided tags.
+                all_tags.append(config_tag)
+
+        print(
+            "[Sagemaker Config - applied value]\n",
+            "config key = {}\n".format(config_path_to_tags),
+            "config value = {}\n".format(config_tags),
+            "source value = {}\n".format(tags),
+            "combined value that will be used = {}\n".format(all_tags),
+        )
+
+        return all_tags
+
     def train(  # noqa: C901
         self,
         input_mode,
         input_config,
-        role,
-        job_name,
-        output_config,
-        resource_config,
-        vpc_config,
-        hyperparameters,
-        stop_condition,
-        tags,
-        metric_definitions,
-        enable_network_isolation=False,
+        role=None,
+        job_name=None,
+        output_config=None,
+        resource_config=None,
+        vpc_config=None,
+        hyperparameters=None,
+        stop_condition=None,
+        tags=None,
+        metric_definitions=None,
+        enable_network_isolation=None,
         image_uri=None,
+        training_image_config=None,
         algorithm_arn=None,
-        encrypt_inter_container_traffic=False,
+        encrypt_inter_container_traffic=None,
         use_spot_instances=False,
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
@@ -532,6 +728,28 @@ class Session(object):  # pylint: disable=too-many-public-methods
             enable_network_isolation (bool): Whether to request for the training job to run with
                 network isolation or not.
             image_uri (str): Docker image containing training code.
+            training_image_config(dict): Training image configuration.
+                Optionally, the dict can contain 'TrainingRepositoryAccessMode' and
+                'TrainingRepositoryCredentialsProviderArn' (under 'TrainingRepositoryAuthConfig').
+                For example,
+
+                .. code:: python
+
+                    training_image_config = {
+                        "TrainingRepositoryAccessMode": "Vpc",
+                        "TrainingRepositoryAuthConfig": {
+                            "TrainingRepositoryCredentialsProviderArn":
+                              "arn:aws:lambda:us-west-2:1234567890:function:test"
+                        },
+                    }
+
+                If TrainingRepositoryAccessMode is set to Vpc, the training image is accessed
+                through a private Docker registry in customer Vpc. If it's set to Platform or None,
+                the training image is accessed through ECR.
+                If TrainingRepositoryCredentialsProviderArn is provided, the credentials to
+                authenticate to the private Docker registry will be retrieved from this AWS Lambda
+                function. (default: ``None``). When it's set to None, SageMaker will not do
+                authentication before pulling the image in the private Docker registry.
             algorithm_arn (str): Algorithm Arn from Marketplace.
             encrypt_inter_container_traffic (bool): Specifies whether traffic between training
                 containers is encrypted for the training job (default: ``False``).
@@ -548,8 +766,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 checkpoints will be provided under `/opt/ml/checkpoints/`.
                 (default: ``None``).
             experiment_config (dict[str, str]): Experiment management configuration.
-                Optionally, the dict can contain three keys:
-                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                Optionally, the dict can contain four keys:
+                'ExperimentName', 'TrialName',  'TrialComponentDisplayName' and 'RunName'.
                 The behavior of setting these keys is as follows:
                 * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
                 automatically created and the job's Trial Component associated with the Trial.
@@ -558,6 +776,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 * If both `ExperimentName` and `TrialName` are not supplied the trial component
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
+                * `RunName` is used to record an experiment run.
             enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
                 Series. For more information see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
@@ -575,22 +794,49 @@ class Session(object):  # pylint: disable=too-many-public-methods
             str: ARN of the training job, if it is created.
         """
         tags = _append_project_tags(tags)
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, TRAINING_JOB, TAGS)
+        )
+
+        _encrypt_inter_container_traffic = resolve_value_from_config(
+            direct_input=encrypt_inter_container_traffic,
+            config_path=TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
+            default_value=False,
+            sagemaker_session=self,
+        )
+        role = resolve_value_from_config(role, TRAINING_JOB_ROLE_ARN_PATH, sagemaker_session=self)
+        enable_network_isolation = resolve_value_from_config(
+            direct_input=enable_network_isolation,
+            config_path=TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+            default_value=False,
+            sagemaker_session=self,
+        )
+        inferred_vpc_config = update_nested_dictionary_with_values_from_config(
+            vpc_config, TRAINING_JOB_VPC_CONFIG_PATH, sagemaker_session=self
+        )
+        inferred_output_config = update_nested_dictionary_with_values_from_config(
+            output_config, TRAINING_JOB_OUTPUT_DATA_CONFIG_PATH, sagemaker_session=self
+        )
+        inferred_resource_config = update_nested_dictionary_with_values_from_config(
+            resource_config, TRAINING_JOB_RESOURCE_CONFIG_PATH, sagemaker_session=self
+        )
         train_request = self._get_train_request(
             input_mode=input_mode,
             input_config=input_config,
             role=role,
             job_name=job_name,
-            output_config=output_config,
-            resource_config=resource_config,
-            vpc_config=vpc_config,
+            output_config=inferred_output_config,
+            resource_config=inferred_resource_config,
+            vpc_config=inferred_vpc_config,
             hyperparameters=hyperparameters,
             stop_condition=stop_condition,
             tags=tags,
             metric_definitions=metric_definitions,
             enable_network_isolation=enable_network_isolation,
             image_uri=image_uri,
+            training_image_config=training_image_config,
             algorithm_arn=algorithm_arn,
-            encrypt_inter_container_traffic=encrypt_inter_container_traffic,
+            encrypt_inter_container_traffic=_encrypt_inter_container_traffic,
             use_spot_instances=use_spot_instances,
             checkpoint_s3_uri=checkpoint_s3_uri,
             checkpoint_local_path=checkpoint_local_path,
@@ -627,6 +873,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         metric_definitions,
         enable_network_isolation=False,
         image_uri=None,
+        training_image_config=None,
         algorithm_arn=None,
         encrypt_inter_container_traffic=False,
         use_spot_instances=False,
@@ -687,6 +934,28 @@ class Session(object):  # pylint: disable=too-many-public-methods
             enable_network_isolation (bool): Whether to request for the training job to run with
                 network isolation or not.
             image_uri (str): Docker image containing training code.
+            training_image_config(dict): Training image configuration.
+                Optionally, the dict can contain 'TrainingRepositoryAccessMode' and
+                'TrainingRepositoryCredentialsProviderArn' (under 'TrainingRepositoryAuthConfig').
+                For example,
+
+                .. code:: python
+
+                    training_image_config = {
+                        "TrainingRepositoryAccessMode": "Vpc",
+                        "TrainingRepositoryAuthConfig": {
+                            "TrainingRepositoryCredentialsProviderArn":
+                              "arn:aws:lambda:us-west-2:1234567890:function:test"
+                        },
+                    }
+
+                If TrainingRepositoryAccessMode is set to Vpc, the training image is accessed
+                through a private Docker registry in customer Vpc. If it's set to Platform or None,
+                the training image is accessed through ECR.
+                If TrainingRepositoryCredentialsProviderArn is provided, the credentials to
+                authenticate to the private Docker registry will be retrieved from this AWS Lambda
+                function. (default: ``None``). When it's set to None, SageMaker will not do
+                authentication before pulling the image in the private Docker registry.
             algorithm_arn (str): Algorithm Arn from Marketplace.
             encrypt_inter_container_traffic (bool): Specifies whether traffic between training
                 containers is encrypted for the training job (default: ``False``).
@@ -703,8 +972,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 checkpoints will be provided under `/opt/ml/checkpoints/`.
                 (default: ``None``).
             experiment_config (dict[str, str]): Experiment management configuration.
-                Optionally, the dict can contain three keys:
-                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                Optionally, the dict can contain four keys:
+                'ExperimentName', 'TrialName', 'TrialComponentDisplayName' and 'RunName'.
                 The behavior of setting these keys is as follows:
                 * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
                 automatically created and the job's Trial Component associated with the Trial.
@@ -713,6 +982,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 * If both `ExperimentName` and `TrialName` are not supplied the trial component
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
+                * `RunName` is used to record an experiment run.
             enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
                 Series. For more information see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
@@ -749,6 +1019,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if image_uri is not None:
             train_request["AlgorithmSpecification"]["TrainingImage"] = image_uri
+
+        if training_image_config is not None:
+            train_request["AlgorithmSpecification"]["TrainingImageConfig"] = training_image_config
 
         if algorithm_arn is not None:
             train_request["AlgorithmSpecification"]["AlgorithmName"] = algorithm_arn
@@ -834,6 +1107,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 update the keep-alive period if the warm pool status is `Available`. No other fields
                 can be updated. (default: ``None``).
         """
+        # No injections from sagemaker_config because the UpdateTrainingJob API's resource_config
+        # object accepts fewer parameters than the CreateTrainingJob API, and none that the
+        # sagemaker_config currently supports
+
         update_training_job_request = self._get_update_training_job_request(
             job_name=job_name,
             profiler_rule_configs=profiler_rule_configs,
@@ -889,9 +1166,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         stopping_condition,
         app_specification,
         environment,
-        network_config,
-        role_arn,
-        tags,
+        network_config=None,
+        role_arn=None,
+        tags=None,
         experiment_config=None,
     ):
         """Create an Amazon SageMaker processing job.
@@ -934,15 +1211,55 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 * `TrialComponentDisplayName` is used for display in Studio.
         """
         tags = _append_project_tags(tags)
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, PROCESSING_JOB, TAGS)
+        )
+
+        network_config = resolve_nested_dict_value_from_config(
+            network_config,
+            ["EnableInterContainerTrafficEncryption"],
+            PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
+            sagemaker_session=self,
+        )
+        # Processing Input can either have AthenaDatasetDefinition or RedshiftDatasetDefinition
+        # or neither, but not both
+        union_key_paths_for_dataset_definition = [
+            [
+                "DatasetDefinition",
+                "S3Input",
+            ],
+            [
+                "DatasetDefinition.AthenaDatasetDefinition",
+                "DatasetDefinition.RedshiftDatasetDefinition",
+            ],
+        ]
+        update_list_of_dicts_with_values_from_config(
+            inputs,
+            PROCESSING_JOB_INPUTS_PATH,
+            union_key_paths=union_key_paths_for_dataset_definition,
+            sagemaker_session=self,
+        )
+        role_arn = resolve_value_from_config(
+            role_arn, PROCESSING_JOB_ROLE_ARN_PATH, sagemaker_session=self
+        )
+        inferred_network_config_from_config = update_nested_dictionary_with_values_from_config(
+            network_config, PROCESSING_JOB_NETWORK_CONFIG_PATH, sagemaker_session=self
+        )
+        inferred_output_config = update_nested_dictionary_with_values_from_config(
+            output_config, PROCESSING_OUTPUT_CONFIG_PATH, sagemaker_session=self
+        )
+        inferred_resources_config = update_nested_dictionary_with_values_from_config(
+            resources, PROCESSING_JOB_PROCESSING_RESOURCES_PATH, sagemaker_session=self
+        )
         process_request = self._get_process_request(
             inputs=inputs,
-            output_config=output_config,
+            output_config=inferred_output_config,
             job_name=job_name,
-            resources=resources,
+            resources=inferred_resources_config,
             stopping_condition=stopping_condition,
             app_specification=app_specification,
             environment=environment,
-            network_config=network_config,
+            network_config=inferred_network_config_from_config,
             role_arn=role_arn,
             tags=tags,
             experiment_config=experiment_config,
@@ -1052,17 +1369,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
         instance_count,
         instance_type,
         volume_size_in_gb,
-        volume_kms_key,
-        image_uri,
-        entrypoint,
-        arguments,
-        record_preprocessor_source_uri,
-        post_analytics_processor_source_uri,
-        max_runtime_in_seconds,
-        environment,
-        network_config,
-        role_arn,
-        tags,
+        volume_kms_key=None,
+        image_uri=None,
+        entrypoint=None,
+        arguments=None,
+        record_preprocessor_source_uri=None,
+        post_analytics_processor_source_uri=None,
+        max_runtime_in_seconds=None,
+        environment=None,
+        network_config=None,
+        role_arn=None,
+        tags=None,
     ):
         """Create an Amazon SageMaker monitoring schedule.
 
@@ -1102,6 +1419,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
             tags ([dict[str,str]]): A list of dictionaries containing key-value
                 pairs.
         """
+        role_arn = resolve_value_from_config(
+            role_arn, MONITORING_JOB_ROLE_ARN_PATH, sagemaker_session=self
+        )
+        volume_kms_key = resolve_value_from_config(
+            volume_kms_key, MONITORING_JOB_VOLUME_KMS_KEY_ID_PATH, sagemaker_session=self
+        )
+        inferred_network_config_from_config = update_nested_dictionary_with_values_from_config(
+            network_config, MONITORING_JOB_NETWORK_CONFIG_PATH, sagemaker_session=self
+        )
         monitoring_schedule_request = {
             "MonitoringScheduleName": monitoring_schedule_name,
             "MonitoringScheduleConfig": {
@@ -1126,6 +1452,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
             }
 
         if monitoring_output_config is not None:
+            kms_key_from_config = resolve_value_from_config(
+                config_path=MONITORING_JOB_OUTPUT_KMS_KEY_ID_PATH, sagemaker_session=self
+            )
+            if KMS_KEY_ID not in monitoring_output_config and kms_key_from_config:
+                monitoring_output_config[KMS_KEY_ID] = kms_key_from_config
             monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
                 "MonitoringOutputConfig"
             ] = monitoring_output_config
@@ -1180,12 +1511,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 "Environment"
             ] = environment
 
-        if network_config is not None:
+        if inferred_network_config_from_config is not None:
             monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
                 "NetworkConfig"
-            ] = network_config
+            ] = inferred_network_config_from_config
 
         tags = _append_project_tags(tags)
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, MONITORING_SCHEDULE, TAGS)
+        )
         if tags is not None:
             monitoring_schedule_request["Tags"] = tags
 
@@ -1460,10 +1794,18 @@ class Session(object):  # pylint: disable=too-many-public-methods
         existing_network_config = existing_desc["MonitoringScheduleConfig"][
             "MonitoringJobDefinition"
         ].get("NetworkConfig")
-        if network_config is not None or existing_network_config is not None:
+
+        _network_config = network_config or existing_network_config
+        _network_config = resolve_nested_dict_value_from_config(
+            _network_config,
+            ["EnableInterContainerTrafficEncryption"],
+            MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION_PATH,
+            sagemaker_session=self,
+        )
+        if _network_config is not None:
             monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
                 "NetworkConfig"
-            ] = (network_config or existing_network_config)
+            ] = _network_config
 
         LOGGER.info("Updating monitoring schedule with name: %s .", monitoring_schedule_name)
         LOGGER.debug(
@@ -1746,8 +2088,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         input_config,
         output_config,
         auto_ml_job_config,
-        role,
-        job_name,
+        role=None,
+        job_name=None,
         problem_type=None,
         job_objective=None,
         generate_candidate_definitions_only=False,
@@ -1758,7 +2100,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         Args:
             input_config (list[dict]): A list of Channel objects. Each channel contains "DataSource"
-                and "TargetAttributeName", "CompressionType" is an optional field.
+                and "TargetAttributeName", "CompressionType" and "SampleWeightAttributeName" are
+                optional fields.
             output_config (dict): The S3 URI where you want to store the training results and
                 optional KMS key ID.
             auto_ml_job_config (dict): A dict of AutoMLJob config, containing "StoppingCondition",
@@ -1780,10 +2123,18 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 for an automatic one-click Autopilot model deployment.
                 Contains "AutoGenerateEndpointName" and "EndpointName"
         """
+
+        role = resolve_value_from_config(role, AUTO_ML_ROLE_ARN_PATH, sagemaker_session=self)
+        inferred_output_config = update_nested_dictionary_with_values_from_config(
+            output_config, AUTO_ML_OUTPUT_CONFIG_PATH, sagemaker_session=self
+        )
+        inferred_automl_job_config = update_nested_dictionary_with_values_from_config(
+            auto_ml_job_config, AUTO_ML_JOB_CONFIG_PATH, sagemaker_session=self
+        )
         auto_ml_job_request = self._get_auto_ml_request(
             input_config=input_config,
-            output_config=output_config,
-            auto_ml_job_config=auto_ml_job_config,
+            output_config=inferred_output_config,
+            auto_ml_job_config=inferred_automl_job_config,
             role=role,
             job_name=job_name,
             problem_type=problem_type,
@@ -1817,7 +2168,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         Args:
             input_config (list[dict]): A list of Channel objects. Each channel contains "DataSource"
-                and "TargetAttributeName", "CompressionType" is an optional field.
+                and "TargetAttributeName", "CompressionType" and "SampleWeightAttributeName" are
+                optional fields.
             output_config (dict): The S3 URI where you want to store the training results and
                 optional KMS key ID.
             auto_ml_job_config (dict): A dict of AutoMLJob config, containing "StoppingCondition",
@@ -1859,6 +2211,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             auto_ml_job_request["ProblemType"] = problem_type
 
         tags = _append_project_tags(tags)
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, AUTO_ML_JOB, TAGS)
+        )
         if tags is not None:
             auto_ml_job_request["Tags"] = tags
 
@@ -1938,7 +2293,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             exceptions.UnexpectedStatusException: If the auto ml job fails.
         """
         desc = _wait_until(lambda: _auto_ml_job_status(self.sagemaker_client, job), poll)
-        self._check_job_status(job, desc, "AutoMLJobStatus")
+        _check_job_status(job, desc, "AutoMLJobStatus")
         return desc
 
     def logs_for_auto_ml_job(  # noqa: C901 - suppress complexity warning for this method
@@ -1961,10 +2316,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
             exceptions.UnexpectedStatusException: If waiting and auto ml job fails.
         """
 
-        description = self.sagemaker_client.describe_auto_ml_job(AutoMLJobName=job_name)
+        description = _wait_until(lambda: self.describe_auto_ml_job(job_name), poll)
 
         instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
-            self, description, job="AutoML"
+            self.boto_session, description, job="AutoML"
         )
 
         state = _get_initial_job_state(description, "AutoMLJobStatus", wait)
@@ -2019,12 +2374,18 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     state = LogState.JOB_COMPLETE
 
         if wait:
-            self._check_job_status(job_name, description, "AutoMLJobStatus")
+            _check_job_status(job_name, description, "AutoMLJobStatus")
             if dot:
                 print()
 
     def compile_model(
-        self, input_model_config, output_model_config, role, job_name, stop_condition, tags
+        self,
+        input_model_config,
+        output_model_config,
+        role=None,
+        job_name=None,
+        stop_condition=None,
+        tags=None,
     ):
         """Create an Amazon SageMaker Neo compilation job.
 
@@ -2045,15 +2406,29 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             str: ARN of the compile model job, if it is created.
         """
+        role = resolve_value_from_config(
+            role, COMPILATION_JOB_ROLE_ARN_PATH, sagemaker_session=self
+        )
+        inferred_output_model_config = update_nested_dictionary_with_values_from_config(
+            output_model_config, COMPILATION_JOB_OUTPUT_CONFIG_PATH, sagemaker_session=self
+        )
+        vpc_config = resolve_value_from_config(
+            config_path=COMPILATION_JOB_VPC_CONFIG_PATH, sagemaker_session=self
+        )
         compilation_job_request = {
             "InputConfig": input_model_config,
-            "OutputConfig": output_model_config,
+            "OutputConfig": inferred_output_model_config,
             "RoleArn": role,
             "StoppingCondition": stop_condition,
             "CompilationJobName": job_name,
         }
+        if vpc_config:
+            compilation_job_request["VpcConfig"] = vpc_config
 
         tags = _append_project_tags(tags)
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, COMPILATION_JOB, TAGS)
+        )
         if tags is not None:
             compilation_job_request["Tags"] = tags
 
@@ -2063,13 +2438,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
     def package_model_for_edge(
         self,
         output_model_config,
-        role,
-        job_name,
-        compilation_job_name,
-        model_name,
-        model_version,
-        resource_key,
-        tags,
+        role=None,
+        job_name=None,
+        compilation_job_name=None,
+        model_name=None,
+        model_version=None,
+        resource_key=None,
+        tags=None,
     ):
         """Create an Amazon SageMaker Edge packaging job.
 
@@ -2085,15 +2460,22 @@ class Session(object):  # pylint: disable=too-many-public-methods
             tags (list[dict]): List of tags for labeling a compile model job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
         """
+        role = resolve_value_from_config(role, EDGE_PACKAGING_ROLE_ARN_PATH, sagemaker_session=self)
+        inferred_output_model_config = update_nested_dictionary_with_values_from_config(
+            output_model_config, EDGE_PACKAGING_OUTPUT_CONFIG_PATH, sagemaker_session=self
+        )
         edge_packaging_job_request = {
-            "OutputConfig": output_model_config,
+            "OutputConfig": inferred_output_model_config,
             "RoleArn": role,
             "ModelName": model_name,
             "ModelVersion": model_version,
             "EdgePackagingJobName": job_name,
             "CompilationJobName": compilation_job_name,
         }
-
+        tags = _append_project_tags(tags)
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, EDGE_PACKAGING_JOB, TAGS)
+        )
         if tags is not None:
             edge_packaging_job_request["Tags"] = tags
         if resource_key is not None:
@@ -2121,6 +2503,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         stop_condition,
         tags,
         warm_start_config,
+        max_runtime_in_seconds=None,
+        strategy_config=None,
+        completion_criteria_config=None,
         enable_network_isolation=False,
         image_uri=None,
         algorithm_arn=None,
@@ -2130,12 +2515,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
         use_spot_instances=False,
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
+        random_seed=None,
+        environment=None,
+        hpo_resource_config=None,
     ):
         """Create an Amazon SageMaker hyperparameter tuning job.
 
         Args:
             job_name (str): Name of the tuning job being created.
             strategy (str): Strategy to be used for hyperparameter estimations.
+            strategy_config (dict): A configuration for the hyperparameter tuning
+                job optimisation strategy.
             objective_type (str): The type of the objective metric for evaluating training jobs.
                 This value can be either 'Minimize' or 'Maximize'.
             objective_metric_name (str): Name of the metric for evaluating training jobs.
@@ -2182,6 +2572,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             warm_start_config (dict): Configuration defining the type of warm start and
                 other required configurations.
+            max_runtime_in_seconds (int or PipelineVariable): The maximum time in seconds
+                that a training job launched by a hyperparameter tuning job can run.
+            completion_criteria_config (sagemaker.tuner.TuningJobCompletionCriteriaConfig): A
+                configuration for the completion criteria.
             early_stopping_type (str): Specifies whether early stopping is enabled for the job.
                 Can be either 'Auto' or 'Off'. If set to 'Off', early stopping will not be
                 attempted. If set to 'Auto', early stopping of some training jobs may happen, but
@@ -2208,6 +2602,27 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 started. If the path is unset then SageMaker assumes the
                 checkpoints will be provided under `/opt/ml/checkpoints/`.
                 (default: ``None``).
+            random_seed (int): An initial value used to initialize a pseudo-random number generator.
+                Setting a random seed will make the hyperparameter tuning search strategies to
+                produce more consistent configurations for the same tuning job. (default: ``None``).
+            environment (dict[str, str]) : Environment variables to be set for
+                use during training jobs (default: ``None``)
+            hpo_resource_config (dict): The configuration for the hyperparameter tuning resources,
+                including the compute instances and storage volumes, used for training jobs launched
+                by the tuning job, where you must specify either
+                instance_configs or instance_count + instance_type + volume_size:
+                * instance_count (int): Number of EC2 instances to use for training.
+                The key in resource_config is 'InstanceCount'.
+                * instance_type (str): Type of EC2 instance to use for training, for example,
+                'ml.c4.xlarge'. The key in resource_config is 'InstanceType'.
+                * volume_size (int or PipelineVariable): The volume size in GB of the data to be
+                processed for hyperparameter optimisation
+                * instance_configs (List[InstanceConfig]): A list containing the configuration(s)
+                for one or more resources for processing hyperparameter jobs. These resources
+                include compute instances and storage volumes to use in model training jobs.
+                * volume_kms_key_id: The AWS Key Management Service (AWS KMS) key
+                that Amazon SageMaker uses to encrypt data on the storage
+                volume attached to the ML compute instance(s) that run the training job.
         """
 
         tune_request = {
@@ -2216,10 +2631,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 strategy=strategy,
                 max_jobs=max_jobs,
                 max_parallel_jobs=max_parallel_jobs,
+                max_runtime_in_seconds=max_runtime_in_seconds,
                 objective_type=objective_type,
                 objective_metric_name=objective_metric_name,
                 parameter_ranges=parameter_ranges,
                 early_stopping_type=early_stopping_type,
+                random_seed=random_seed,
+                strategy_config=strategy_config,
+                completion_criteria_config=completion_criteria_config,
             ),
             "TrainingJobDefinition": self._map_training_config(
                 static_hyperparameters=static_hyperparameters,
@@ -2231,6 +2650,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 input_config=input_config,
                 output_config=output_config,
                 resource_config=resource_config,
+                hpo_resource_config=hpo_resource_config,
                 vpc_config=vpc_config,
                 stop_condition=stop_condition,
                 enable_network_isolation=enable_network_isolation,
@@ -2238,6 +2658,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 use_spot_instances=use_spot_instances,
                 checkpoint_s3_uri=checkpoint_s3_uri,
                 checkpoint_local_path=checkpoint_local_path,
+                environment=environment,
             ),
         }
 
@@ -2371,10 +2792,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
         strategy,
         max_jobs,
         max_parallel_jobs,
+        max_runtime_in_seconds=None,
         early_stopping_type="Off",
         objective_type=None,
         objective_metric_name=None,
         parameter_ranges=None,
+        random_seed=None,
+        strategy_config=None,
+        completion_criteria_config=None,
     ):
         """Construct tuning job configuration dictionary.
 
@@ -2383,6 +2808,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             max_jobs (int): Maximum total number of training jobs to start for the hyperparameter
                 tuning job.
             max_parallel_jobs (int): Maximum number of parallel training jobs to start.
+            max_runtime_in_seconds (int or PipelineVariable): The maximum time in seconds
+                that a training job launched by a hyperparameter tuning job can run.
             early_stopping_type (str): Specifies whether early stopping is enabled for the job.
                 Can be either 'Auto' or 'Off'. If set to 'Off', early stopping will not be
                 attempted. If set to 'Auto', early stopping of some training jobs may happen,
@@ -2392,6 +2819,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
             objective_metric_name (str): Name of the metric for evaluating training jobs.
             parameter_ranges (dict): Dictionary of parameter ranges. These parameter ranges can
                 be one of three types: Continuous, Integer, or Categorical.
+            random_seed (int): An initial value used to initialize a pseudo-random number generator.
+                Setting a random seed will make the hyperparameter tuning search strategies to
+                produce more consistent configurations for the same tuning job.
+            strategy_config (dict): A configuration for the hyperparameter tuning job optimisation
+                strategy.
+            completion_criteria_config (dict): A configuration
+                for the completion criteria.
 
         Returns:
             A dictionary of tuning job configuration. For format details, please refer to
@@ -2408,6 +2842,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "TrainingJobEarlyStoppingType": early_stopping_type,
         }
 
+        if max_runtime_in_seconds is not None:
+            tuning_config["ResourceLimits"]["MaxRuntimeInSeconds"] = max_runtime_in_seconds
+
+        if random_seed is not None:
+            tuning_config["RandomSeed"] = random_seed
+
         tuning_objective = cls._map_tuning_objective(objective_type, objective_metric_name)
         if tuning_objective is not None:
             tuning_config["HyperParameterTuningJobObjective"] = tuning_objective
@@ -2415,6 +2855,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if parameter_ranges is not None:
             tuning_config["ParameterRanges"] = parameter_ranges
 
+        if strategy_config is not None:
+            tuning_config["StrategyConfig"] = strategy_config
+
+        if completion_criteria_config is not None:
+            tuning_config["TuningJobCompletionCriteria"] = completion_criteria_config
         return tuning_config
 
     @classmethod
@@ -2452,9 +2897,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
         input_mode,
         role,
         output_config,
-        resource_config,
         stop_condition,
         input_config=None,
+        resource_config=None,
+        hpo_resource_config=None,
         metric_definitions=None,
         image_uri=None,
         algorithm_arn=None,
@@ -2469,6 +2915,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
         max_retry_attempts=None,
+        environment=None,
     ):
         """Construct a dictionary of training job configuration from the arguments.
 
@@ -2523,19 +2970,25 @@ class Session(object):  # pylint: disable=too-many-public-methods
             parameter_ranges (dict): Dictionary of parameter ranges. These parameter ranges can
                 be one of three types: Continuous, Integer, or Categorical.
             max_retry_attempts (int): The number of times to retry the job.
+            environment (dict[str, str]) : Environment variables to be set for
+                use during training jobs (default: ``None``)
 
         Returns:
             A dictionary of training job configuration. For format details, please refer to
             TrainingJobDefinition as described in
             https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_hyper_parameter_tuning_job
         """
+        if hpo_resource_config is not None:
+            resource_config_map = {"HyperParameterTuningResourceConfig": hpo_resource_config}
+        else:
+            resource_config_map = {"ResourceConfig": resource_config}
 
         training_job_definition = {
             "StaticHyperParameters": static_hyperparameters,
             "RoleArn": role,
             "OutputDataConfig": output_config,
-            "ResourceConfig": resource_config,
             "StoppingCondition": stop_condition,
+            **resource_config_map,
         }
 
         algorithm_spec = {"TrainingInputMode": input_mode}
@@ -2585,6 +3038,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if max_retry_attempts is not None:
             training_job_definition["RetryStrategy"] = {"MaximumRetryAttempts": max_retry_attempts}
+
+        if environment is not None:
+            training_job_definition["Environment"] = environment
         return training_job_definition
 
     def stop_tuning_job(self, name):
@@ -2718,8 +3174,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         output_config,
         resource_config,
         experiment_config,
-        tags,
-        data_processing,
+        tags=None,
+        data_processing=None,
         model_client_config=None,
         batch_data_capture_config: BatchDataCaptureConfig = None,
     ):
@@ -2761,6 +3217,26 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 specifies the configurations related to the batch data capture for the transform job
         """
         tags = _append_project_tags(tags)
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, TRANSFORM_JOB, TAGS)
+        )
+        batch_data_capture_config = resolve_class_attribute_from_config(
+            None,
+            batch_data_capture_config,
+            "kms_key_id",
+            TRANSFORM_JOB_KMS_KEY_ID_PATH,
+            sagemaker_session=self,
+        )
+        output_config = resolve_nested_dict_value_from_config(
+            output_config, [KMS_KEY_ID], TRANSFORM_OUTPUT_KMS_KEY_ID_PATH, sagemaker_session=self
+        )
+        resource_config = resolve_nested_dict_value_from_config(
+            resource_config,
+            [VOLUME_KMS_KEY_ID],
+            TRANSFORM_JOB_VOLUME_KMS_KEY_ID_PATH,
+            sagemaker_session=self,
+        )
+
         transform_request = self._get_transform_request(
             job_name=job_name,
             model_name=model_name,
@@ -2838,10 +3314,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
     def create_model(
         self,
         name,
-        role,
-        container_defs,
+        role=None,
+        container_defs=None,
         vpc_config=None,
-        enable_network_isolation=False,
+        enable_network_isolation=None,
         primary_container=None,
         tags=None,
     ):
@@ -2886,6 +3362,19 @@ class Session(object):  # pylint: disable=too-many-public-methods
             str: Name of the Amazon SageMaker ``Model`` created.
         """
         tags = _append_project_tags(tags)
+        tags = self._append_sagemaker_config_tags(tags, "{}.{}.{}".format(SAGEMAKER, MODEL, TAGS))
+        role = resolve_value_from_config(
+            role, MODEL_EXECUTION_ROLE_ARN_PATH, sagemaker_session=self
+        )
+        vpc_config = resolve_value_from_config(
+            vpc_config, MODEL_VPC_CONFIG_PATH, sagemaker_session=self
+        )
+        enable_network_isolation = resolve_value_from_config(
+            direct_input=enable_network_isolation,
+            config_path=MODEL_ENABLE_NETWORK_ISOLATION_PATH,
+            default_value=False,
+            sagemaker_session=self,
+        )
         create_model_request = self._create_model_request(
             name=name,
             role=role,
@@ -2923,7 +3412,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         image_uri=None,
         model_data_url=None,
         env=None,
-        enable_network_isolation=False,
+        enable_network_isolation=None,
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
         tags=None,
     ):
@@ -2958,6 +3447,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
         name = name or training_job_name
         role = role or training_job["RoleArn"]
+        role = resolve_value_from_config(
+            role, MODEL_EXECUTION_ROLE_ARN_PATH, training_job["RoleArn"], self
+        )
+        enable_network_isolation = resolve_value_from_config(
+            direct_input=enable_network_isolation,
+            config_path=MODEL_ENABLE_NETWORK_ISOLATION_PATH,
+            default_value=False,
+            sagemaker_session=self,
+        )
         env = env or {}
         primary_container = container_def(
             image_uri or training_job["AlgorithmSpecification"]["TrainingImage"],
@@ -2965,6 +3463,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             env=env,
         )
         vpc_config = _vpc_config_from_training_job(training_job, vpc_config_override)
+        vpc_config = resolve_value_from_config(
+            vpc_config, MODEL_VPC_CONFIG_PATH, sagemaker_session=self
+        )
         return self.create_model(
             name,
             role,
@@ -3058,6 +3559,27 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 "CLASSIFICATION", "REGRESSION", "OTHER" (default: None).
         """
 
+        if validation_specification:
+            # ValidationSpecification is provided. Now we can merge missing entries from config.
+            # If ValidationSpecification is not provided, it is safe to ignore. This is because,
+            # if this object is provided to the API, then both ValidationProfiles and ValidationRole
+            # are required and for ValidationProfile, ProfileName is a required parameter. That is
+            # not supported by the config now. So if we merge values from config, then API will
+            # throw an exception. In the future, when SageMaker Config starts supporting other
+            # parameters we can add that.
+            validation_role = resolve_value_from_config(
+                validation_specification.get(VALIDATION_ROLE, None),
+                MODEL_PACKAGE_VALIDATION_ROLE_PATH,
+                sagemaker_session=self,
+            )
+            validation_specification[VALIDATION_ROLE] = validation_role
+            validation_profiles = validation_specification.get(VALIDATION_PROFILES, [])
+            update_list_of_dicts_with_values_from_config(
+                validation_profiles,
+                MODEL_PACKAGE_VALIDATION_PROFILES_PATH,
+                required_key_paths=["ProfileName", "TransformJobDefinition"],
+                sagemaker_session=self,
+            )
         model_pkg_request = get_create_model_package_request(
             model_package_name,
             model_package_group_name,
@@ -3080,15 +3602,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
 
         def submit(request):
-            if model_package_group_name is not None:
-                try:
-                    self.sagemaker_client.describe_model_package_group(
+            if model_package_group_name is not None and not model_package_group_name.startswith(
+                "arn:"
+            ):
+                _create_resource(
+                    lambda: self.sagemaker_client.create_model_package_group(
                         ModelPackageGroupName=request["ModelPackageGroupName"]
                     )
-                except ClientError:
-                    self.sagemaker_client.create_model_package_group(
-                        ModelPackageGroupName=request["ModelPackageGroupName"]
-                    )
+                )
             return self.sagemaker_client.create_model_package(**request)
 
         return self._intercept_create_request(
@@ -3156,6 +3677,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         volume_size=None,
         model_data_download_timeout=None,
         container_startup_health_check_timeout=None,
+        explainer_config_dict=None,
     ):
         """Create an Amazon SageMaker endpoint configuration.
 
@@ -3189,6 +3711,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 inference container to pass health check by SageMaker Hosting. For more information
                 about health check see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html#your-algorithms-inference-algo-ping-requests
+            explainer_config_dict (dict): Specifies configuration to enable explainers.
+                Default: None.
 
         Example:
             >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]
@@ -3201,31 +3725,51 @@ class Session(object):  # pylint: disable=too-many-public-methods
         LOGGER.info("Creating endpoint-config with name %s", name)
 
         tags = tags or []
-
+        provided_production_variant = production_variant(
+            model_name,
+            instance_type,
+            initial_instance_count,
+            accelerator_type=accelerator_type,
+            volume_size=volume_size,
+            model_data_download_timeout=model_data_download_timeout,
+            container_startup_health_check_timeout=container_startup_health_check_timeout,
+        )
+        production_variants = [provided_production_variant]
+        # Currently we just inject CoreDumpConfig.KmsKeyId from the config for production variant.
+        # But if that parameter is injected, then CoreDumpConfig.DestinationS3Uri needs to be
+        # present.
+        # But SageMaker Python SDK doesn't support CoreDumpConfig.DestinationS3Uri.
+        update_list_of_dicts_with_values_from_config(
+            production_variants,
+            ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH,
+            required_key_paths=["CoreDumpConfig.DestinationS3Uri"],
+            sagemaker_session=self,
+        )
         request = {
             "EndpointConfigName": name,
-            "ProductionVariants": [
-                production_variant(
-                    model_name,
-                    instance_type,
-                    initial_instance_count,
-                    accelerator_type=accelerator_type,
-                    volume_size=volume_size,
-                    model_data_download_timeout=model_data_download_timeout,
-                    container_startup_health_check_timeout=container_startup_health_check_timeout,
-                )
-            ],
+            "ProductionVariants": production_variants,
         }
 
         tags = _append_project_tags(tags)
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT_CONFIG, TAGS)
+        )
         if tags is not None:
             request["Tags"] = tags
-
+        kms_key = resolve_value_from_config(
+            kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self
+        )
         if kms_key is not None:
             request["KmsKeyId"] = kms_key
 
         if data_capture_config_dict is not None:
-            request["DataCaptureConfig"] = data_capture_config_dict
+            inferred_data_capture_config_dict = update_nested_dictionary_with_values_from_config(
+                data_capture_config_dict, ENDPOINT_CONFIG_DATA_CAPTURE_PATH, sagemaker_session=self
+            )
+            request["DataCaptureConfig"] = inferred_data_capture_config_dict
+
+        if explainer_config_dict is not None:
+            request["ExplainerConfig"] = explainer_config_dict
 
         self.sagemaker_client.create_endpoint_config(**request)
         return name
@@ -3238,6 +3782,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         new_kms_key=None,
         new_data_capture_config_dict=None,
         new_production_variants=None,
+        new_explainer_config_dict=None,
     ):
         """Create an Amazon SageMaker endpoint configuration from an existing one.
 
@@ -3265,6 +3810,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             new_production_variants (list[dict]): The configuration for which model(s) to host and
                 the resources to deploy for hosting the model(s). If not specified,
                 the ``ProductionVariants`` of the existing endpoint configuration is used.
+            new_explainer_config_dict (dict): Specifies configuration to enable explainers.
+                (default: None). If not specified, the explainer configuration of the existing
+                endpoint configuration is used.
 
         Returns:
             str: Name of the endpoint point configuration created.
@@ -3279,26 +3827,65 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "EndpointConfigName": new_config_name,
         }
 
-        request["ProductionVariants"] = (
+        production_variants = (
             new_production_variants or existing_endpoint_config_desc["ProductionVariants"]
         )
+        update_list_of_dicts_with_values_from_config(
+            production_variants,
+            ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH,
+            required_key_paths=["CoreDumpConfig.DestinationS3Uri"],
+            sagemaker_session=self,
+        )
+        request["ProductionVariants"] = production_variants
 
         request_tags = new_tags or self.list_tags(
             existing_endpoint_config_desc["EndpointConfigArn"]
         )
         request_tags = _append_project_tags(request_tags)
+        request_tags = self._append_sagemaker_config_tags(
+            request_tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT_CONFIG, TAGS)
+        )
         if request_tags:
             request["Tags"] = request_tags
 
         if new_kms_key is not None or existing_endpoint_config_desc.get("KmsKeyId") is not None:
             request["KmsKeyId"] = new_kms_key or existing_endpoint_config_desc.get("KmsKeyId")
+        if KMS_KEY_ID not in request:
+            kms_key_from_config = resolve_value_from_config(
+                config_path=ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self
+            )
+            if kms_key_from_config:
+                request[KMS_KEY_ID] = kms_key_from_config
 
         request_data_capture_config_dict = (
             new_data_capture_config_dict or existing_endpoint_config_desc.get("DataCaptureConfig")
         )
 
         if request_data_capture_config_dict is not None:
-            request["DataCaptureConfig"] = request_data_capture_config_dict
+            inferred_data_capture_config_dict = update_nested_dictionary_with_values_from_config(
+                request_data_capture_config_dict,
+                ENDPOINT_CONFIG_DATA_CAPTURE_PATH,
+                sagemaker_session=self,
+            )
+            request["DataCaptureConfig"] = inferred_data_capture_config_dict
+
+        async_inference_config_dict = existing_endpoint_config_desc.get(
+            "AsyncInferenceConfig", None
+        )
+        if async_inference_config_dict is not None:
+            inferred_async_inference_config_dict = update_nested_dictionary_with_values_from_config(
+                async_inference_config_dict,
+                ENDPOINT_CONFIG_ASYNC_INFERENCE_PATH,
+                sagemaker_session=self,
+            )
+            request["AsyncInferenceConfig"] = inferred_async_inference_config_dict
+
+        request_explainer_config_dict = (
+            new_explainer_config_dict or existing_endpoint_config_desc.get("ExplainerConfig", None)
+        )
+
+        if request_explainer_config_dict is not None:
+            request["ExplainerConfig"] = request_explainer_config_dict
 
         self.sagemaker_client.create_endpoint_config(**request)
 
@@ -3389,6 +3976,92 @@ class Session(object):  # pylint: disable=too-many-public-methods
         LOGGER.info("Deleting model with name: %s", model_name)
         self.sagemaker_client.delete_model(ModelName=model_name)
 
+    def list_group_resources(self, group, filters, next_token: str = ""):
+        """To list group resources with given filters
+
+        Args:
+            group (str): The name or the ARN of the group.
+            filters (list): Filters that needs to be applied to the list operation.
+        """
+        self.resource_groups_client = self.resource_groups_client or self.boto_session.client(
+            "resource-groups"
+        )
+        return self.resource_groups_client.list_group_resources(
+            Group=group, Filters=filters, NextToken=next_token
+        )
+
+    def delete_resource_group(self, group):
+        """To delete a resource group
+
+        Args:
+            group (str): The name or the ARN of the resource group to delete.
+        """
+        self.resource_groups_client = self.resource_groups_client or self.boto_session.client(
+            "resource-groups"
+        )
+        return self.resource_groups_client.delete_group(Group=group)
+
+    def get_resource_group_query(self, group):
+        """To get the group query for an AWS Resource Group
+
+        Args:
+            group (str): The name or the ARN of the resource group to query.
+        """
+        self.resource_groups_client = self.resource_groups_client or self.boto_session.client(
+            "resource-groups"
+        )
+        return self.resource_groups_client.get_group_query(Group=group)
+
+    def get_tagging_resources(self, tag_filters, resource_type_filters):
+        """To list the complete resources for a particular resource group tag
+
+        tag_filters: filters for the tag
+        resource_type_filters: resource filter for the tag
+        """
+        self.resource_group_tagging_client = (
+            self.resource_group_tagging_client
+            or self.boto_session.client("resourcegroupstaggingapi")
+        )
+        resource_list = []
+
+        try:
+            resource_tag_response = self.resource_group_tagging_client.get_resources(
+                TagFilters=tag_filters, ResourceTypeFilters=resource_type_filters
+            )
+
+            resource_list = resource_list + resource_tag_response["ResourceTagMappingList"]
+
+            next_token = resource_tag_response.get("PaginationToken")
+            while next_token is not None and next_token != "":
+                resource_tag_response = self.resource_group_tagging_client.get_resources(
+                    TagFilters=tag_filters,
+                    ResourceTypeFilters=resource_type_filters,
+                    NextToken=next_token,
+                )
+                resource_list = resource_list + resource_tag_response["ResourceTagMappingList"]
+                next_token = resource_tag_response.get("PaginationToken")
+
+            return resource_list
+        except ClientError as error:
+            raise error
+
+    def create_group(self, name, resource_query, tags):
+        """To create a AWS Resource Group
+
+        Args:
+            name (str): The name of the group, which is also the identifier of the group.
+            resource_query (str): The resource query that determines
+                which AWS resources are members of this group
+            tags (dict): The Tags to be attached to the Resource Group
+        """
+        self.resource_groups_client = self.resource_groups_client or self.boto_session.client(
+            "resource-groups"
+        )
+
+        return self.resource_groups_client.create_group(
+            Name=name, ResourceQuery=resource_query, Tags=tags
+        )
+
     def list_tags(self, resource_arn, max_results=50):
         """List the tags given an Amazon Resource Name.
 
@@ -3439,7 +4112,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         desc = _wait_until_training_done(
             lambda last_desc: _train_done(self.sagemaker_client, job, last_desc), None, poll
         )
-        self._check_job_status(job, desc, "TrainingJobStatus")
+        _check_job_status(job, desc, "TrainingJobStatus")
         return desc
 
     def wait_for_processing_job(self, job, poll=5):
@@ -3457,7 +4130,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             exceptions.UnexpectedStatusException: If the processing job fails.
         """
         desc = _wait_until(lambda: _processing_job_status(self.sagemaker_client, job), poll)
-        self._check_job_status(job, desc, "ProcessingJobStatus")
+        _check_job_status(job, desc, "ProcessingJobStatus")
         return desc
 
     def wait_for_compilation_job(self, job, poll=5):
@@ -3475,7 +4148,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             exceptions.UnexpectedStatusException: If the compilation job fails.
         """
         desc = _wait_until(lambda: _compilation_job_status(self.sagemaker_client, job), poll)
-        self._check_job_status(job, desc, "CompilationJobStatus")
+        _check_job_status(job, desc, "CompilationJobStatus")
         return desc
 
     def wait_for_edge_packaging_job(self, job, poll=5):
@@ -3493,7 +4166,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             exceptions.UnexpectedStatusException: If the edge packaging job fails.
         """
         desc = _wait_until(lambda: _edge_packaging_job_status(self.sagemaker_client, job), poll)
-        self._check_job_status(job, desc, "EdgePackagingJobStatus")
+        _check_job_status(job, desc, "EdgePackagingJobStatus")
         return desc
 
     def wait_for_tuning_job(self, job, poll=5):
@@ -3511,7 +4184,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             exceptions.UnexpectedStatusException: If the hyperparameter tuning job fails.
         """
         desc = _wait_until(lambda: _tuning_job_status(self.sagemaker_client, job), poll)
-        self._check_job_status(job, desc, "HyperParameterTuningJobStatus")
+        _check_job_status(job, desc, "HyperParameterTuningJobStatus")
         return desc
 
     def describe_transform_job(self, job_name):
@@ -3540,7 +4213,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             exceptions.UnexpectedStatusException: If the transform job fails.
         """
         desc = _wait_until(lambda: _transform_job_status(self.sagemaker_client, job), poll)
-        self._check_job_status(job, desc, "TransformJobStatus")
+        _check_job_status(job, desc, "TransformJobStatus")
         return desc
 
     def stop_transform_job(self, name):
@@ -3563,48 +4236,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
             else:
                 LOGGER.error("Error occurred while attempting to stop transform job: %s.", name)
                 raise
-
-    def _check_job_status(self, job, desc, status_key_name):
-        """Check to see if the job completed successfully.
-
-        If not, construct and raise a exceptions. (UnexpectedStatusException).
-
-        Args:
-            job (str): The name of the job to check.
-            desc (dict[str, str]): The result of ``describe_training_job()``.
-            status_key_name (str): Status key name to check for.
-
-        Raises:
-            exceptions.CapacityError: If the training job fails with CapacityError.
-            exceptions.UnexpectedStatusException: If the training job fails.
-        """
-        status = desc[status_key_name]
-        # If the status is capital case, then convert it to Camel case
-        status = _STATUS_CODE_TABLE.get(status, status)
-
-        if status == "Stopped":
-            LOGGER.warning(
-                "Job ended with status 'Stopped' rather than 'Completed'. "
-                "This could mean the job timed out or stopped early for some other reason: "
-                "Consider checking whether it completed as you expect."
-            )
-        elif status != "Completed":
-            reason = desc.get("FailureReason", "(No reason provided)")
-            job_type = status_key_name.replace("JobStatus", " job")
-            message = "Error for {job_type} {job_name}: {status}. Reason: {reason}".format(
-                job_type=job_type, job_name=job, status=status, reason=reason
-            )
-            if "CapacityError" in str(reason):
-                raise exceptions.CapacityError(
-                    message=message,
-                    allowed_statuses=["Completed", "Stopped"],
-                    actual_status=status,
-                )
-            raise exceptions.UnexpectedStatusException(
-                message=message,
-                allowed_statuses=["Completed", "Stopped"],
-                actual_status=status,
-            )
 
     def wait_for_endpoint(self, endpoint, poll=30):
         """Wait for an Amazon SageMaker endpoint deployment to complete.
@@ -3771,33 +4402,22 @@ class Session(object):  # pylint: disable=too-many-public-methods
         name = name or name_from_image(image_uri)
         model_vpc_config = vpc_utils.sanitize(model_vpc_config)
 
-        if _deployment_entity_exists(
-            lambda: self.sagemaker_client.describe_endpoint(EndpointName=name)
-        ):
-            raise ValueError(
-                'Endpoint with name "{}" already exists; please pick a different name.'.format(name)
-            )
+        primary_container = container_def(
+            image_uri=image_uri,
+            model_data_url=model_s3_location,
+            env=model_environment_vars,
+        )
 
-        if not _deployment_entity_exists(
-            lambda: self.sagemaker_client.describe_model(ModelName=name)
-        ):
-            primary_container = container_def(
-                image_uri=image_uri,
-                model_data_url=model_s3_location,
-                env=model_environment_vars,
-            )
-            self.create_model(
-                name=name, role=role, container_defs=primary_container, vpc_config=model_vpc_config
-            )
+        self.create_model(
+            name=name, role=role, container_defs=primary_container, vpc_config=model_vpc_config
+        )
 
         data_capture_config_dict = None
         if data_capture_config is not None:
             data_capture_config_dict = data_capture_config._to_request_dict()
 
-        if not _deployment_entity_exists(
-            lambda: self.sagemaker_client.describe_endpoint_config(EndpointConfigName=name)
-        ):
-            self.create_endpoint_config(
+        _create_resource(
+            lambda: self.create_endpoint_config(
                 name=name,
                 model_name=name,
                 initial_instance_count=initial_instance_count,
@@ -3805,8 +4425,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 accelerator_type=accelerator_type,
                 data_capture_config_dict=data_capture_config_dict,
             )
+        )
 
-        self.create_endpoint(endpoint_name=name, config_name=name, wait=wait)
+        # to make change backwards compatible
+        response = _create_resource(
+            lambda: self.create_endpoint(endpoint_name=name, config_name=name, wait=wait)
+        )
+        if not response:
+            raise ValueError(
+                'Endpoint with name "{}" already exists; please pick a different name.'.format(name)
+            )
+
         return name
 
     def endpoint_from_production_variants(
@@ -3818,6 +4447,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         wait=True,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
+        explainer_config_dict=None,
     ):
         """Create an SageMaker ``Endpoint`` from a list of production variants.
 
@@ -3835,19 +4465,44 @@ class Session(object):  # pylint: disable=too-many-public-methods
             async_inference_config_dict (dict) : specifies configuration related to async endpoint.
                 Use this configuration when trying to create async endpoint and make async inference
                 (default: None)
+            explainer_config_dict (dict) : Specifies configuration related to explainer.
+                Use this configuration when trying to use online explainability.
+                (default: None)
         Returns:
             str: The name of the created ``Endpoint``.
         """
+        update_list_of_dicts_with_values_from_config(
+            production_variants,
+            ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH,
+            required_key_paths=["CoreDumpConfig.DestinationS3Uri"],
+            sagemaker_session=self,
+        )
         config_options = {"EndpointConfigName": name, "ProductionVariants": production_variants}
+        kms_key = resolve_value_from_config(
+            kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self
+        )
         tags = _append_project_tags(tags)
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT_CONFIG, TAGS)
+        )
         if tags:
             config_options["Tags"] = tags
         if kms_key:
             config_options["KmsKeyId"] = kms_key
         if data_capture_config_dict is not None:
-            config_options["DataCaptureConfig"] = data_capture_config_dict
+            inferred_data_capture_config_dict = update_nested_dictionary_with_values_from_config(
+                data_capture_config_dict, ENDPOINT_CONFIG_DATA_CAPTURE_PATH, sagemaker_session=self
+            )
+            config_options["DataCaptureConfig"] = inferred_data_capture_config_dict
         if async_inference_config_dict is not None:
-            config_options["AsyncInferenceConfig"] = async_inference_config_dict
+            inferred_async_inference_config_dict = update_nested_dictionary_with_values_from_config(
+                async_inference_config_dict,
+                ENDPOINT_CONFIG_ASYNC_INFERENCE_PATH,
+                sagemaker_session=self,
+            )
+            config_options["AsyncInferenceConfig"] = inferred_async_inference_config_dict
+        if explainer_config_dict is not None:
+            config_options["ExplainerConfig"] = explainer_config_dict
 
         LOGGER.info("Creating endpoint-config with name %s", name)
         self.sagemaker_client.create_endpoint_config(**config_options)
@@ -3951,9 +4606,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         return role
 
-    def logs_for_job(  # noqa: C901 - suppress complexity warning for this method
-        self, job_name, wait=False, poll=10, log_type="All"
-    ):
+    def logs_for_job(self, job_name, wait=False, poll=10, log_type="All", timeout=None):
         """Display logs for a given training job, optionally tailing them until job is complete.
 
         If the output is a tty or a Jupyter cell, it will be color-coded
@@ -3965,124 +4618,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 (default: False).
             poll (int): The interval in seconds between polling for new log entries and job
                 completion (default: 5).
-
+            log_type ([str]): A list of strings specifying which logs to print. Acceptable
+                strings are "All", "None", "Training", or "Rules". To maintain backwards
+                compatibility, boolean values are also accepted and converted to strings.
+            timeout (int): Timeout in seconds to wait until the job is completed. ``None`` by
+                default.
         Raises:
             exceptions.CapacityError: If the training job fails with CapacityError.
             exceptions.UnexpectedStatusException: If waiting and the training job fails.
         """
-
-        description = self.sagemaker_client.describe_training_job(TrainingJobName=job_name)
-        print(secondary_training_status_message(description, None), end="")
-
-        instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
-            self, description, job="Training"
-        )
-
-        state = _get_initial_job_state(description, "TrainingJobStatus", wait)
-
-        # The loop below implements a state machine that alternates between checking the job status
-        # and reading whatever is available in the logs at this point. Note, that if we were
-        # called with wait == False, we never check the job status.
-        #
-        # If wait == TRUE and job is not completed, the initial state is TAILING
-        # If wait == FALSE, the initial state is COMPLETE (doesn't matter if the job really is
-        # complete).
-        #
-        # The state table:
-        #
-        # STATE               ACTIONS                        CONDITION             NEW STATE
-        # ----------------    ----------------               -----------------     ----------------
-        # TAILING             Read logs, Pause, Get status   Job complete          JOB_COMPLETE
-        #                                                    Else                  TAILING
-        # JOB_COMPLETE        Read logs, Pause               Any                   COMPLETE
-        # COMPLETE            Read logs, Exit                                      N/A
-        #
-        # Notes:
-        # - The JOB_COMPLETE state forces us to do an extra pause and read any items that got to
-        #   Cloudwatch after the job was marked complete.
-        last_describe_job_call = time.time()
-        last_description = description
-        last_debug_rule_statuses = None
-        last_profiler_rule_statuses = None
-
-        while True:
-            _flush_log_streams(
-                stream_names,
-                instance_count,
-                client,
-                log_group,
-                job_name,
-                positions,
-                dot,
-                color_wrap,
-            )
-            if state == LogState.COMPLETE:
-                break
-
-            time.sleep(poll)
-
-            if state == LogState.JOB_COMPLETE:
-                state = LogState.COMPLETE
-            elif time.time() - last_describe_job_call >= 30:
-                description = self.sagemaker_client.describe_training_job(TrainingJobName=job_name)
-                last_describe_job_call = time.time()
-
-                if secondary_training_status_changed(description, last_description):
-                    print()
-                    print(secondary_training_status_message(description, last_description), end="")
-                    last_description = description
-
-                status = description["TrainingJobStatus"]
-
-                if status in ("Completed", "Failed", "Stopped"):
-                    print()
-                    state = LogState.JOB_COMPLETE
-
-                # Print prettified logs related to the status of SageMaker Debugger rules.
-                debug_rule_statuses = description.get("DebugRuleEvaluationStatuses", {})
-                if (
-                    debug_rule_statuses
-                    and _rule_statuses_changed(debug_rule_statuses, last_debug_rule_statuses)
-                    and (log_type in {"All", "Rules"})
-                ):
-                    for status in debug_rule_statuses:
-                        rule_log = (
-                            f"{status['RuleConfigurationName']}: {status['RuleEvaluationStatus']}"
-                        )
-                        print(rule_log)
-
-                    last_debug_rule_statuses = debug_rule_statuses
-
-                # Print prettified logs related to the status of SageMaker Profiler rules.
-                profiler_rule_statuses = description.get("ProfilerRuleEvaluationStatuses", {})
-                if (
-                    profiler_rule_statuses
-                    and _rule_statuses_changed(profiler_rule_statuses, last_profiler_rule_statuses)
-                    and (log_type in {"All", "Rules"})
-                ):
-                    for status in profiler_rule_statuses:
-                        rule_log = (
-                            f"{status['RuleConfigurationName']}: {status['RuleEvaluationStatus']}"
-                        )
-                        print(rule_log)
-
-                    last_profiler_rule_statuses = profiler_rule_statuses
-
-        if wait:
-            self._check_job_status(job_name, description, "TrainingJobStatus")
-            if dot:
-                print()
-            # Customers are not billed for hardware provisioning, so billable time is less than
-            # total time
-            training_time = description.get("TrainingTimeInSeconds")
-            billable_time = description.get("BillableTimeInSeconds")
-            if training_time is not None:
-                print("Training seconds:", training_time * instance_count)
-            if billable_time is not None:
-                print("Billable seconds:", billable_time * instance_count)
-                if description.get("EnableManagedSpotTraining"):
-                    saving = (1 - float(billable_time) / training_time) * 100
-                    print("Managed Spot Training savings: {:.1f}%".format(saving))
+        _logs_for_job(self.boto_session, job_name, wait, poll, log_type, timeout)
 
     def logs_for_processing_job(self, job_name, wait=False, poll=10):
         """Display logs for a given processing job, optionally tailing them until the is complete.
@@ -4098,10 +4643,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
             ValueError: If the processing job fails.
         """
 
-        description = self.sagemaker_client.describe_processing_job(ProcessingJobName=job_name)
+        description = _wait_until(lambda: self.describe_processing_job(job_name), poll)
 
         instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
-            self, description, job="Processing"
+            self.boto_session, description, job="Processing"
         )
 
         state = _get_initial_job_state(description, "ProcessingJobStatus", wait)
@@ -4158,7 +4703,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     state = LogState.JOB_COMPLETE
 
         if wait:
-            self._check_job_status(job_name, description, "ProcessingJobStatus")
+            _check_job_status(job_name, description, "ProcessingJobStatus")
             if dot:
                 print()
 
@@ -4179,10 +4724,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
             ValueError: If the transform job fails.
         """
 
-        description = self.sagemaker_client.describe_transform_job(TransformJobName=job_name)
+        description = _wait_until(lambda: self.describe_transform_job(job_name), poll)
 
         instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
-            self, description, job="Transform"
+            self.boto_session, description, job="Transform"
         )
 
         state = _get_initial_job_state(description, "TransformJobStatus", wait)
@@ -4239,7 +4784,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     state = LogState.JOB_COMPLETE
 
         if wait:
-            self._check_job_status(job_name, description, "TransformJobStatus")
+            _check_job_status(job_name, description, "TransformJobStatus")
             if dot:
                 print()
 
@@ -4257,7 +4802,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         record_identifier_name: str,
         event_time_feature_name: str,
         feature_definitions: Sequence[Dict[str, str]],
-        role_arn: str,
+        role_arn: str = None,
         online_store_config: Dict[str, str] = None,
         offline_store_config: Dict[str, str] = None,
         description: str = None,
@@ -4282,6 +4827,22 @@ class Session(object):  # pylint: disable=too-many-public-methods
             Response dict from service.
         """
         tags = _append_project_tags(tags)
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, FEATURE_GROUP, TAGS)
+        )
+        role_arn = resolve_value_from_config(
+            role_arn, FEATURE_GROUP_ROLE_ARN_PATH, sagemaker_session=self
+        )
+        inferred_online_store_from_config = update_nested_dictionary_with_values_from_config(
+            online_store_config, FEATURE_GROUP_ONLINE_STORE_CONFIG_PATH, sagemaker_session=self
+        )
+        if inferred_online_store_from_config is not None:
+            # OnlineStore should be handled differently because if you set KmsKeyId, then you
+            # need to set EnableOnlineStore key as well
+            inferred_online_store_from_config["EnableOnlineStore"] = True
+        inferred_offline_store_from_config = update_nested_dictionary_with_values_from_config(
+            offline_store_config, FEATURE_GROUP_OFFLINE_STORE_CONFIG_PATH, sagemaker_session=self
+        )
         kwargs = dict(
             FeatureGroupName=feature_group_name,
             RecordIdentifierFeatureName=record_identifier_name,
@@ -4291,8 +4852,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
         update_args(
             kwargs,
-            OnlineStoreConfig=online_store_config,
-            OfflineStoreConfig=offline_store_config,
+            OnlineStoreConfig=inferred_online_store_from_config,
+            OfflineStoreConfig=inferred_offline_store_from_config,
             Description=description,
             Tags=tags,
         )
@@ -4331,6 +4892,56 @@ class Session(object):  # pylint: disable=too-many-public-methods
         return self.sagemaker_client.update_feature_group(
             FeatureGroupName=feature_group_name, FeatureAdditions=feature_additions
         )
+
+    def list_feature_groups(
+        self,
+        name_contains,
+        feature_group_status_equals,
+        offline_store_status_equals,
+        creation_time_after,
+        creation_time_before,
+        sort_order,
+        sort_by,
+        max_results,
+        next_token,
+    ) -> Dict[str, Any]:
+        """List all FeatureGroups satisfying given filters.
+
+        Args:
+            name_contains (str): A string that partially matches one or more FeatureGroups' names.
+                Filters FeatureGroups by name.
+            feature_group_status_equals (str): A FeatureGroup status.
+                Filters FeatureGroups by FeatureGroup status.
+            offline_store_status_equals (str): An OfflineStore status.
+                Filters FeatureGroups by OfflineStore status.
+            creation_time_after (datetime.datetime): Use this parameter to search for FeatureGroups
+                created after a specific date and time.
+            creation_time_before (datetime.datetime): Use this parameter to search for FeatureGroups
+                created before a specific date and time.
+            sort_order (str): The order in which FeatureGroups are listed.
+            sort_by (str): The value on which the FeatureGroup list is sorted.
+            max_results (int): The maximum number of results returned by ListFeatureGroups.
+            next_token (str): A token to resume pagination of ListFeatureGroups results.
+        Returns:
+            Response dict from service.
+        """
+        list_feature_groups_args = {}
+
+        def check_object(key, value):
+            if value is not None:
+                list_feature_groups_args[key] = value
+
+        check_object("NameContains", name_contains)
+        check_object("FeatureGroupStatusEquals", feature_group_status_equals)
+        check_object("OfflineStoreStatusEquals", offline_store_status_equals)
+        check_object("CreationTimeAfter", creation_time_after)
+        check_object("CreationTimeBefore", creation_time_before)
+        check_object("SortOrder", sort_order)
+        check_object("SortBy", sort_by)
+        check_object("MaxResults", max_results)
+        check_object("NextToken", next_token)
+
+        return self.sagemaker_client.list_feature_groups(**list_feature_groups_args)
 
     def update_feature_metadata(
         self,
@@ -4382,6 +4993,48 @@ class Session(object):  # pylint: disable=too-many-public-methods
             FeatureGroupName=feature_group_name, FeatureName=feature_name
         )
 
+    def search(
+        self,
+        resource: str,
+        search_expression: Dict[str, any] = None,
+        sort_by: str = None,
+        sort_order: str = None,
+        next_token: str = None,
+        max_results: int = None,
+    ) -> Dict[str, Any]:
+        """Search for SageMaker resources satisfying given filters.
+
+        Args:
+            resource (str): The name of the Amazon SageMaker resource to search for.
+            search_expression (Dict[str, any]): A Boolean conditional statement. Resources must
+                satisfy this condition to be included in search results.
+            sort_by (str): The name of the resource property used to sort the ``SearchResults``.
+                The default is ``LastModifiedTime``.
+            sort_order (str): How ``SearchResults`` are ordered.
+                Valid values are ``Ascending`` or ``Descending``. The default is ``Descending``.
+                next_token (str): If more than ``MaxResults`` resources match the specified
+                ``SearchExpression``, the response includes a ``NextToken``. The ``NextToken`` can
+                be passed to the next ``SearchRequest`` to continue retrieving results.
+            max_results (int): The maximum number of results to return.
+
+        Returns:
+            Response dict from service.
+        """
+        search_args = {"Resource": resource}
+
+        if search_expression:
+            search_args["SearchExpression"] = search_expression
+        if sort_by:
+            search_args["SortBy"] = sort_by
+        if sort_order:
+            search_args["SortOrder"] = sort_order
+        if next_token:
+            search_args["NextToken"] = next_token
+        if max_results:
+            search_args["MaxResults"] = max_results
+
+        return self.sagemaker_client.search(**search_args)
+
     def put_record(
         self,
         feature_group_name: str,
@@ -4398,6 +5051,65 @@ class Session(object):  # pylint: disable=too-many-public-methods
             FeatureGroupName=feature_group_name,
             Record=record,
         )
+
+    def delete_record(
+        self,
+        feature_group_name: str,
+        record_identifier_value_as_string: str,
+        event_time: str,
+        deletion_mode: str = None,
+    ):
+        """Deletes a single record from the FeatureGroup.
+
+        Args:
+            feature_group_name (str): name of the FeatureGroup.
+            record_identifier_value_as_string (str): name of the record identifier.
+            event_time (str): a timestamp indicating when the deletion event occurred.
+            deletion_mode: (str): deletion mode for deleting record.
+        """
+        return self.sagemaker_featurestore_runtime_client.delete_record(
+            FeatureGroupName=feature_group_name,
+            RecordIdentifierValueAsString=record_identifier_value_as_string,
+            EventTime=event_time,
+            DeletionMode=deletion_mode,
+        )
+
+    def get_record(
+        self,
+        record_identifier_value_as_string: str,
+        feature_group_name: str,
+        feature_names: Sequence[str],
+    ) -> Dict[str, Sequence[Dict[str, str]]]:
+        """Gets a single record in the FeatureGroup.
+
+        Args:
+            record_identifier_value_as_string (str): name of the record identifier.
+            feature_group_name (str): name of the FeatureGroup.
+            feature_names (Sequence[str]): list of feature names.
+        """
+        get_record_args = {
+            "FeatureGroupName": feature_group_name,
+            "RecordIdentifierValueAsString": record_identifier_value_as_string,
+        }
+
+        if feature_names:
+            get_record_args["FeatureNames"] = feature_names
+
+        return self.sagemaker_featurestore_runtime_client.get_record(**get_record_args)
+
+    def batch_get_record(self, identifiers: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
+        """Gets a batch of record from FeatureStore.
+
+        Args:
+            identifiers (Sequence[Dict[str, Any]]): list of identifiers to uniquely identify records
+                in FeatureStore.
+
+        Returns:
+            Response dict from service.
+        """
+        batch_get_record_args = {"Identifiers": identifiers}
+
+        return self.sagemaker_featurestore_runtime_client.batch_get_record(**batch_get_record_args)
 
     def start_query_execution(
         self,
@@ -4508,7 +5220,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
         return sts_client.get_caller_identity()["Account"]
 
     def _intercept_create_request(
-        self, request: typing.Dict, create, func_name: str = None  # pylint: disable=unused-argument
+        self,
+        request: typing.Dict,
+        create,
+        func_name: str = None
+        # pylint: disable=unused-argument
     ):
         """This function intercepts the create job request.
 
@@ -4521,6 +5237,247 @@ class Session(object):  # pylint: disable=too-many-public-methods
             func_name (str): the name of the function needed intercepting
         """
         return create(request)
+
+    def _create_inference_recommendations_job_request(
+        self,
+        role: str,
+        job_name: str,
+        job_description: str,
+        framework: str,
+        sample_payload_url: str,
+        supported_content_types: List[str],
+        model_name: str = None,
+        model_package_version_arn: str = None,
+        job_duration_in_seconds: int = None,
+        job_type: str = "Default",
+        framework_version: str = None,
+        nearest_model_name: str = None,
+        supported_instance_types: List[str] = None,
+        endpoint_configurations: List[Dict[str, Any]] = None,
+        traffic_pattern: Dict[str, Any] = None,
+        stopping_conditions: Dict[str, Any] = None,
+        resource_limit: Dict[str, Any] = None,
+    ) -> Dict[str, Any]:
+        """Get request dictionary for CreateInferenceRecommendationsJob API.
+
+        Args:
+            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training
+                jobs and APIs that create Amazon SageMaker endpoints use this role to access
+                training data and model artifacts.
+                You must grant sufficient permissions to this role.
+            job_name (str): The name of the Inference Recommendations Job.
+            job_description (str): A description of the Inference Recommendations Job.
+            framework (str): The machine learning framework of the Image URI.
+            sample_payload_url (str): The S3 path where the sample payload is stored.
+            supported_content_types (List[str]): The supported MIME types for the input data.
+            model_name (str): Name of the Amazon SageMaker ``Model`` to be used.
+            model_package_version_arn (str): The Amazon Resource Name (ARN) of a
+                versioned model package.
+            job_duration_in_seconds (int): The maximum job duration that a job
+                can run for. Will be used for `Advanced` jobs.
+            job_type (str): The type of job being run. Must either be `Default` or `Advanced`.
+            framework_version (str): The framework version of the Image URI.
+            nearest_model_name (str): The name of a pre-trained machine learning model
+                benchmarked by Amazon SageMaker Inference Recommender that matches your model.
+            supported_instance_types (List[str]): A list of the instance types that are used
+                to generate inferences in real-time.
+            endpoint_configurations (List[Dict[str, any]]): Specifies the endpoint configurations
+                to use for a job. Will be used for `Advanced` jobs.
+            traffic_pattern (Dict[str, any]): Specifies the traffic pattern for the job.
+                Will be used for `Advanced` jobs.
+            stopping_conditions (Dict[str, any]): A set of conditions for stopping a
+                recommendation job.
+                If any of the conditions are met, the job is automatically stopped.
+                Will be used for `Advanced` jobs.
+            resource_limit (Dict[str, any]): Defines the resource limit for the job.
+                Will be used for `Advanced` jobs.
+        Returns:
+            Dict[str, Any]: request dictionary for the CreateInferenceRecommendationsJob API
+        """
+
+        containerConfig = {
+            "Domain": "MACHINE_LEARNING",
+            "Task": "OTHER",
+            "Framework": framework,
+            "PayloadConfig": {
+                "SamplePayloadUrl": sample_payload_url,
+                "SupportedContentTypes": supported_content_types,
+            },
+        }
+
+        if framework_version:
+            containerConfig["FrameworkVersion"] = framework_version
+        if nearest_model_name:
+            containerConfig["NearestModelName"] = nearest_model_name
+        if supported_instance_types:
+            containerConfig["SupportedInstanceTypes"] = supported_instance_types
+
+        request = {
+            "JobName": job_name,
+            "JobType": job_type,
+            "RoleArn": role,
+            "InputConfig": {
+                "ContainerConfig": containerConfig,
+            },
+        }
+
+        request.get("InputConfig").update(
+            {"ModelPackageVersionArn": model_package_version_arn}
+            if model_package_version_arn
+            else {"ModelName": model_name}
+        )
+
+        if job_description:
+            request["JobDescription"] = job_description
+        if job_duration_in_seconds:
+            request["InputConfig"]["JobDurationInSeconds"] = job_duration_in_seconds
+
+        if job_type == "Advanced":
+            if stopping_conditions:
+                request["StoppingConditions"] = stopping_conditions
+            if resource_limit:
+                request["InputConfig"]["ResourceLimit"] = resource_limit
+            if traffic_pattern:
+                request["InputConfig"]["TrafficPattern"] = traffic_pattern
+            if endpoint_configurations:
+                request["InputConfig"]["EndpointConfigurations"] = endpoint_configurations
+
+        return request
+
+    def create_inference_recommendations_job(
+        self,
+        role: str,
+        sample_payload_url: str,
+        supported_content_types: List[str],
+        job_name: str = None,
+        job_type: str = "Default",
+        model_name: str = None,
+        model_package_version_arn: str = None,
+        job_duration_in_seconds: int = None,
+        nearest_model_name: str = None,
+        supported_instance_types: List[str] = None,
+        framework: str = None,
+        framework_version: str = None,
+        endpoint_configurations: List[Dict[str, any]] = None,
+        traffic_pattern: Dict[str, any] = None,
+        stopping_conditions: Dict[str, any] = None,
+        resource_limit: Dict[str, any] = None,
+    ):
+        """Creates an Inference Recommendations Job
+
+        Args:
+            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training
+                jobs and APIs that create Amazon SageMaker endpoints use this role to access
+                training data and model artifacts.
+                You must grant sufficient permissions to this role.
+            sample_payload_url (str): The S3 path where the sample payload is stored.
+            supported_content_types (List[str]): The supported MIME types for the input data.
+            model_name (str): Name of the Amazon SageMaker ``Model`` to be used.
+            model_package_version_arn (str): The Amazon Resource Name (ARN) of a
+                versioned model package.
+            job_name (str): The name of the job being run.
+            job_type (str): The type of job being run. Must either be `Default` or `Advanced`.
+            job_duration_in_seconds (int): The maximum job duration that a job
+                can run for. Will be used for `Advanced` jobs.
+            nearest_model_name (str): The name of a pre-trained machine learning model
+                benchmarked by Amazon SageMaker Inference Recommender that matches your model.
+            supported_instance_types (List[str]): A list of the instance types that are used
+                to generate inferences in real-time.
+            framework (str): The machine learning framework of the Image URI.
+            framework_version (str): The framework version of the Image URI.
+            endpoint_configurations (List[Dict[str, any]]): Specifies the endpoint configurations
+                to use for a job. Will be used for `Advanced` jobs.
+            traffic_pattern (Dict[str, any]): Specifies the traffic pattern for the job.
+                Will be used for `Advanced` jobs.
+            stopping_conditions (Dict[str, any]): A set of conditions for stopping a
+                recommendation job.
+                If any of the conditions are met, the job is automatically stopped.
+                Will be used for `Advanced` jobs.
+            resource_limit (Dict[str, any]): Defines the resource limit for the job.
+                Will be used for `Advanced` jobs.
+        Returns:
+            str: The name of the job created. In the form of `SMPYTHONSDK-<timestamp>`
+        """
+
+        if model_name is None and model_package_version_arn is None:
+            raise ValueError("Please provide either model_name or model_package_version_arn.")
+
+        if model_name is not None and model_package_version_arn is not None:
+            raise ValueError("Please provide either model_name or model_package_version_arn.")
+
+        if not job_name:
+            unique_tail = uuid.uuid4()
+            job_name = "SMPYTHONSDK-" + str(unique_tail)
+        job_description = "#python-sdk-create"
+
+        create_inference_recommendations_job_request = (
+            self._create_inference_recommendations_job_request(
+                role=role,
+                model_name=model_name,
+                model_package_version_arn=model_package_version_arn,
+                job_name=job_name,
+                job_type=job_type,
+                job_duration_in_seconds=job_duration_in_seconds,
+                job_description=job_description,
+                framework=framework,
+                framework_version=framework_version,
+                nearest_model_name=nearest_model_name,
+                sample_payload_url=sample_payload_url,
+                supported_content_types=supported_content_types,
+                supported_instance_types=supported_instance_types,
+                endpoint_configurations=endpoint_configurations,
+                traffic_pattern=traffic_pattern,
+                stopping_conditions=stopping_conditions,
+                resource_limit=resource_limit,
+            )
+        )
+
+        def submit(request):
+            LOGGER.info("Creating Inference Recommendations job with name: %s", job_name)
+            LOGGER.debug("process request: %s", json.dumps(request, indent=4))
+            self.sagemaker_client.create_inference_recommendations_job(**request)
+
+        self._intercept_create_request(
+            create_inference_recommendations_job_request,
+            submit,
+            self.create_inference_recommendations_job.__name__,
+        )
+        return job_name
+
+    def wait_for_inference_recommendations_job(
+        self, job_name: str, poll: int = 120, log_level: str = "Verbose"
+    ) -> Dict[str, Any]:
+        """Wait for an Amazon SageMaker Inference Recommender job to complete.
+
+        Args:
+            job_name (str): Name of the Inference Recommender job to wait for.
+            poll (int): Polling interval in seconds (default: 120).
+            log_level (str): The level of verbosity for the logs.
+            Can be "Quiet" or "Verbose" (default: "Quiet").
+
+        Returns:
+            (dict): Return value from the ``DescribeInferenceRecommendationsJob`` API.
+
+        Raises:
+            exceptions.CapacityError: If the Inference Recommender job fails with CapacityError.
+            exceptions.UnexpectedStatusException: If the Inference Recommender job fails.
+        """
+        if log_level == "Quiet":
+            _wait_until(
+                lambda: _describe_inference_recommendations_job_status(
+                    self.sagemaker_client, job_name
+                ),
+                poll,
+            )
+        elif log_level == "Verbose":
+            _display_inference_recommendations_job_steps_status(
+                self, self.sagemaker_client, job_name
+            )
+        else:
+            raise ValueError("log_level must be either Quiet or Verbose")
+        desc = _describe_inference_recommendations_job_status(self.sagemaker_client, job_name)
+        _check_job_status(job_name, desc, "Status")
+        return desc
 
 
 def get_model_package_args(
@@ -4917,6 +5874,19 @@ def get_execution_role(sagemaker_session=None):
     raise ValueError(message.format(arn))
 
 
+def generate_default_sagemaker_bucket_name(boto_session):
+    """Generates a name for the default sagemaker S3 bucket.
+
+    Args:
+        boto_session (boto3.session.Session): The underlying Boto3 session which AWS service
+    """
+    region = boto_session.region_name
+    account = boto_session.client(
+        "sts", region_name=region, endpoint_url=sts_regional_endpoint(region)
+    ).get_caller_identity()["Account"]
+    return "sagemaker-{}-{}".format(region, account)
+
+
 def _deployment_entity_exists(describe_fn):
     """Placeholder docstring"""
     try:
@@ -4932,34 +5902,54 @@ def _deployment_entity_exists(describe_fn):
         return False
 
 
+def _create_resource(create_fn):
+    """Call create function and accepts/pass when resource already exists.
+
+    This is a helper function to use an existing resource if found when creating.
+
+    Args:
+        create_fn: Create resource function.
+
+    Returns:
+        (bool): True if new resource was created, False if resource already exists.
+    """
+    try:
+        create_fn()
+        # create function succeeded, resource does not exist already
+        return True
+    except ClientError as ce:
+        error_code = ce.response["Error"]["Code"]
+        error_message = ce.response["Error"]["Message"]
+        already_exists_exceptions = ["ValidationException", "ResourceInUse"]
+        already_exists_msg_patterns = ["Cannot create already existing", "already exists"]
+        if not (
+            error_code in already_exists_exceptions
+            and any(p in error_message for p in already_exists_msg_patterns)
+        ):
+            raise ce
+        # no new resource created as resource already exists
+        return False
+
+
 def _train_done(sagemaker_client, job_name, last_desc):
     """Placeholder docstring"""
     in_progress_statuses = ["InProgress", "Created"]
 
-    for _ in retries(
-        max_retry_count=10,  # 10*30 = 5min
-        exception_message_prefix="Waiting for schedule to leave 'Pending' status",
-        seconds_to_sleep=30,
-    ):
-        try:
-            desc = sagemaker_client.describe_training_job(TrainingJobName=job_name)
-            status = desc["TrainingJobStatus"]
+    desc = sagemaker_client.describe_training_job(TrainingJobName=job_name)
+    status = desc["TrainingJobStatus"]
 
-            if secondary_training_status_changed(desc, last_desc):
-                print()
-                print(secondary_training_status_message(desc, last_desc), end="")
-            else:
-                print(".", end="")
-            sys.stdout.flush()
+    if secondary_training_status_changed(desc, last_desc):
+        print()
+        print(secondary_training_status_message(desc, last_desc), end="")
+    else:
+        print(".", end="")
+    sys.stdout.flush()
 
-            if status in in_progress_statuses:
-                return desc, False
+    if status in in_progress_statuses:
+        return desc, False
 
-            print()
-            return desc, True
-        except botocore.exceptions.ClientError as err:
-            if err.response["Error"]["Code"] == "AccessDeniedException":
-                pass
+    print()
+    return desc, True
 
 
 def _processing_job_status(sagemaker_client, job_name):
@@ -5143,6 +6133,118 @@ def _create_model_package_status(sagemaker_client, model_package_name):
     return desc
 
 
+def _describe_inference_recommendations_job_status(sagemaker_client, job_name: str):
+    """Describes the status of a job and returns the job description.
+
+    Args:
+        sagemaker_client (boto3.client.sagemaker): A SageMaker client.
+        job_name (str): The name of the job.
+
+    Returns:
+        dict: The job description, or None if the job is still in progress.
+    """
+    inference_recommendations_job_status_codes = {
+        "PENDING": ".",
+        "IN_PROGRESS": ".",
+        "COMPLETED": "!",
+        "FAILED": "*",
+        "STOPPING": "_",
+        "STOPPED": "s",
+    }
+    in_progress_statuses = {"PENDING", "IN_PROGRESS", "STOPPING"}
+
+    desc = sagemaker_client.describe_inference_recommendations_job(JobName=job_name)
+    status = desc["Status"]
+
+    print(inference_recommendations_job_status_codes.get(status, "?"), end="", flush=True)
+
+    if status in in_progress_statuses:
+        return None
+
+    print("")
+    return desc
+
+
+def _display_inference_recommendations_job_steps_status(
+    sagemaker_session, sagemaker_client, job_name: str, poll: int = 60
+):
+    """Placeholder docstring"""
+    cloudwatch_client = sagemaker_session.boto_session.client("logs")
+    in_progress_statuses = {"PENDING", "IN_PROGRESS", "STOPPING"}
+    log_group_name = "/aws/sagemaker/InferenceRecommendationsJobs"
+    log_stream_name = job_name + "/execution"
+
+    initial_logs_batch = get_log_events_for_inference_recommender(
+        cloudwatch_client, log_group_name, log_stream_name
+    )
+    print(f"Retrieved logStream: {log_stream_name} from logGroup: {log_group_name}", flush=True)
+    events = initial_logs_batch["events"]
+    print(*[event["message"] for event in events], sep="\n", flush=True)
+
+    next_forward_token = initial_logs_batch["nextForwardToken"] if events else None
+    flush_remaining = True
+    while True:
+        logs_batch = (
+            cloudwatch_client.get_log_events(
+                logGroupName=log_group_name,
+                logStreamName=log_stream_name,
+                nextToken=next_forward_token,
+            )
+            if next_forward_token
+            else cloudwatch_client.get_log_events(
+                logGroupName=log_group_name, logStreamName=log_stream_name
+            )
+        )
+
+        events = logs_batch["events"]
+
+        desc = sagemaker_client.describe_inference_recommendations_job(JobName=job_name)
+        status = desc["Status"]
+
+        if not events:
+            if status in in_progress_statuses:
+                time.sleep(poll)
+                continue
+            if flush_remaining:
+                flush_remaining = False
+                time.sleep(poll)
+                continue
+
+        next_forward_token = logs_batch["nextForwardToken"]
+        print(*[event["message"] for event in events], sep="\n", flush=True)
+
+        if status not in in_progress_statuses:
+            break
+
+        time.sleep(poll)
+
+
+def get_log_events_for_inference_recommender(cw_client, log_group_name, log_stream_name):
+    """Retrieves log events from the specified CloudWatch log group and log stream.
+
+    Args:
+        cw_client (boto3.client): A boto3 CloudWatch client.
+        log_group_name (str): The name of the CloudWatch log group.
+        log_stream_name (str): The name of the CloudWatch log stream.
+
+    Returns:
+        (dict): A dictionary containing log events from CloudWatch log group and log stream.
+    """
+    print("Fetching logs from CloudWatch...", flush=True)
+    for _ in retries(
+        max_retry_count=30,  # 30*10 = 5min
+        exception_message_prefix="Waiting for cloudwatch stream to appear. ",
+        seconds_to_sleep=10,
+    ):
+        try:
+            return cw_client.get_log_events(
+                logGroupName=log_group_name, logStreamName=log_stream_name
+            )
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "ResourceNotFoundException":
+                pass
+
+
 def _deploy_done(sagemaker_client, endpoint_name):
     """Placeholder docstring"""
     hosting_status_codes = {
@@ -5167,19 +6269,54 @@ def _deploy_done(sagemaker_client, endpoint_name):
 
 def _wait_until_training_done(callable_fn, desc, poll=5):
     """Placeholder docstring"""
-    job_desc, finished = callable_fn(desc)
+    elapsed_time = 0
+    finished = None
+    job_desc = desc
     while not finished:
-        time.sleep(poll)
-        job_desc, finished = callable_fn(job_desc)
+        try:
+            elapsed_time += poll
+            time.sleep(poll)
+            job_desc, finished = callable_fn(job_desc)
+        except botocore.exceptions.ClientError as err:
+            # For initial 5 mins we accept/pass AccessDeniedException.
+            # The reason is to await tag propagation to avoid false AccessDenied claims for an
+            # access policy based on resource tags, The caveat here is for true AccessDenied
+            # cases the routine will fail after 5 mins
+            if err.response["Error"]["Code"] == "AccessDeniedException" and elapsed_time <= 300:
+                LOGGER.warning(
+                    "Received AccessDeniedException. This could mean the IAM role does not "
+                    "have the resource permissions, in which case please add resource access "
+                    "and retry. For cases where the role has tag based resource policy, "
+                    "continuing to wait for tag propagation.."
+                )
+                continue
+            raise err
     return job_desc
 
 
 def _wait_until(callable_fn, poll=5):
     """Placeholder docstring"""
-    result = callable_fn()
+    elapsed_time = 0
+    result = None
     while result is None:
-        time.sleep(poll)
-        result = callable_fn()
+        try:
+            elapsed_time += poll
+            time.sleep(poll)
+            result = callable_fn()
+        except botocore.exceptions.ClientError as err:
+            # For initial 5 mins we accept/pass AccessDeniedException.
+            # The reason is to await tag propagation to avoid false AccessDenied claims for an
+            # access policy based on resource tags, The caveat here is for true AccessDenied
+            # cases the routine will fail after 5 mins
+            if err.response["Error"]["Code"] == "AccessDeniedException" and elapsed_time <= 300:
+                LOGGER.warning(
+                    "Received AccessDeniedException. This could mean the IAM role does not "
+                    "have the resource permissions, in which case please add resource access "
+                    "and retry. For cases where the role has tag based resource policy, "
+                    "continuing to wait for tag propagation.."
+                )
+                continue
+            raise err
     return result
 
 
@@ -5220,7 +6357,199 @@ def _rule_statuses_changed(current_statuses, last_statuses):
     return False
 
 
-def _logs_init(sagemaker_session, description, job):
+def _logs_for_job(  # noqa: C901 - suppress complexity warning for this method
+    boto_session, job_name, wait=False, poll=10, log_type="All", timeout=None
+):
+    """Display logs for a given training job, optionally tailing them until job is complete.
+
+    If the output is a tty or a Jupyter cell, it will be color-coded
+    based on which instance the log entry is from.
+
+    Args:
+        boto_session (boto3.session.Session): The underlying Boto3 session which AWS service
+                calls are delegated to (default: None). If not provided, one is created with
+                default AWS configuration chain.
+        job_name (str): Name of the training job to display the logs for.
+        wait (bool): Whether to keep looking for new log entries until the job completes
+            (default: False).
+        poll (int): The interval in seconds between polling for new log entries and job
+            completion (default: 5).
+        log_type ([str]): A list of strings specifying which logs to print. Acceptable
+            strings are "All", "None", "Training", or "Rules". To maintain backwards
+            compatibility, boolean values are also accepted and converted to strings.
+        timeout (int): Timeout in seconds to wait until the job is completed. ``None`` by
+            default.
+    Returns:
+        Last call to sagemaker DescribeTrainingJob
+    Raises:
+        exceptions.CapacityError: If the training job fails with CapacityError.
+        exceptions.UnexpectedStatusException: If waiting and the training job fails.
+    """
+    sagemaker_client = boto_session.client("sagemaker")
+    request_end_time = time.time() + timeout if timeout else None
+    description = sagemaker_client.describe_training_job(TrainingJobName=job_name)
+    print(secondary_training_status_message(description, None), end="")
+
+    instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
+        boto_session, description, job="Training"
+    )
+
+    state = _get_initial_job_state(description, "TrainingJobStatus", wait)
+
+    # The loop below implements a state machine that alternates between checking the job status
+    # and reading whatever is available in the logs at this point. Note, that if we were
+    # called with wait == False, we never check the job status.
+    #
+    # If wait == TRUE and job is not completed, the initial state is TAILING
+    # If wait == FALSE, the initial state is COMPLETE (doesn't matter if the job really is
+    # complete).
+    #
+    # The state table:
+    #
+    # STATE               ACTIONS                        CONDITION             NEW STATE
+    # ----------------    ----------------               -----------------     ----------------
+    # TAILING             Read logs, Pause, Get status   Job complete          JOB_COMPLETE
+    #                                                    Else                  TAILING
+    # JOB_COMPLETE        Read logs, Pause               Any                   COMPLETE
+    # COMPLETE            Read logs, Exit                                      N/A
+    #
+    # Notes:
+    # - The JOB_COMPLETE state forces us to do an extra pause and read any items that got to
+    #   Cloudwatch after the job was marked complete.
+    last_describe_job_call = time.time()
+    last_description = description
+    last_debug_rule_statuses = None
+    last_profiler_rule_statuses = None
+
+    while True:
+        _flush_log_streams(
+            stream_names,
+            instance_count,
+            client,
+            log_group,
+            job_name,
+            positions,
+            dot,
+            color_wrap,
+        )
+        if timeout and time.time() > request_end_time:
+            print("Timeout Exceeded. {} seconds elapsed.".format(timeout))
+            break
+
+        if state == LogState.COMPLETE:
+            break
+
+        time.sleep(poll)
+
+        if state == LogState.JOB_COMPLETE:
+            state = LogState.COMPLETE
+        elif time.time() - last_describe_job_call >= 30:
+            description = sagemaker_client.describe_training_job(TrainingJobName=job_name)
+            last_describe_job_call = time.time()
+
+            if secondary_training_status_changed(description, last_description):
+                print()
+                print(secondary_training_status_message(description, last_description), end="")
+                last_description = description
+
+            status = description["TrainingJobStatus"]
+
+            if status in ("Completed", "Failed", "Stopped"):
+                print()
+                state = LogState.JOB_COMPLETE
+
+            # Print prettified logs related to the status of SageMaker Debugger rules.
+            debug_rule_statuses = description.get("DebugRuleEvaluationStatuses", {})
+            if (
+                debug_rule_statuses
+                and _rule_statuses_changed(debug_rule_statuses, last_debug_rule_statuses)
+                and (log_type in {"All", "Rules"})
+            ):
+                for status in debug_rule_statuses:
+                    rule_log = (
+                        f"{status['RuleConfigurationName']}: {status['RuleEvaluationStatus']}"
+                    )
+                    print(rule_log)
+
+                last_debug_rule_statuses = debug_rule_statuses
+
+            # Print prettified logs related to the status of SageMaker Profiler rules.
+            profiler_rule_statuses = description.get("ProfilerRuleEvaluationStatuses", {})
+            if (
+                profiler_rule_statuses
+                and _rule_statuses_changed(profiler_rule_statuses, last_profiler_rule_statuses)
+                and (log_type in {"All", "Rules"})
+            ):
+                for status in profiler_rule_statuses:
+                    rule_log = (
+                        f"{status['RuleConfigurationName']}: {status['RuleEvaluationStatus']}"
+                    )
+                    print(rule_log)
+
+                last_profiler_rule_statuses = profiler_rule_statuses
+
+    if wait:
+        _check_job_status(job_name, description, "TrainingJobStatus")
+        if dot:
+            print()
+        # Customers are not billed for hardware provisioning, so billable time is less than
+        # total time
+        training_time = description.get("TrainingTimeInSeconds")
+        billable_time = description.get("BillableTimeInSeconds")
+        if training_time is not None:
+            print("Training seconds:", training_time * instance_count)
+        if billable_time is not None:
+            print("Billable seconds:", billable_time * instance_count)
+            if description.get("EnableManagedSpotTraining"):
+                saving = (1 - float(billable_time) / training_time) * 100
+                print("Managed Spot Training savings: {:.1f}%".format(saving))
+    return last_description
+
+
+def _check_job_status(job, desc, status_key_name):
+    """Check to see if the job completed successfully.
+
+    If not, construct and raise a exceptions. (UnexpectedStatusException).
+
+    Args:
+        job (str): The name of the job to check.
+        desc (dict[str, str]): The result of ``describe_training_job()``.
+        status_key_name (str): Status key name to check for.
+
+    Raises:
+        exceptions.CapacityError: If the training job fails with CapacityError.
+        exceptions.UnexpectedStatusException: If the training job fails.
+    """
+    status = desc[status_key_name]
+    # If the status is capital case, then convert it to Camel case
+    status = _STATUS_CODE_TABLE.get(status, status)
+
+    if status == "Stopped":
+        LOGGER.warning(
+            "Job ended with status 'Stopped' rather than 'Completed'. "
+            "This could mean the job timed out or stopped early for some other reason: "
+            "Consider checking whether it completed as you expect."
+        )
+    elif status != "Completed":
+        reason = desc.get("FailureReason", "(No reason provided)")
+        job_type = status_key_name.replace("JobStatus", " job")
+        message = "Error for {job_type} {job_name}: {status}. Reason: {reason}".format(
+            job_type=job_type, job_name=job, status=status, reason=reason
+        )
+        if "CapacityError" in str(reason):
+            raise exceptions.CapacityError(
+                message=message,
+                allowed_statuses=["Completed", "Stopped"],
+                actual_status=status,
+            )
+        raise exceptions.UnexpectedStatusException(
+            message=message,
+            allowed_statuses=["Completed", "Stopped"],
+            actual_status=status,
+        )
+
+
+def _logs_init(boto_session, description, job):
     """Placeholder docstring"""
     if job == "Training":
         if "InstanceGroups" in description["ResourceConfig"]:
@@ -5242,7 +6571,7 @@ def _logs_init(sagemaker_session, description, job):
     # Increase retries allowed (from default of 4), as we don't want waiting for a training job
     # to be interrupted by a transient exception.
     config = botocore.config.Config(retries={"max_attempts": 15})
-    client = sagemaker_session.boto_session.client("logs", config=config)
+    client = boto_session.client("logs", config=config)
     log_group = "/aws/sagemaker/" + job + "Jobs"
 
     dot = False

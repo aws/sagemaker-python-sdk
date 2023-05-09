@@ -18,6 +18,7 @@ from mock import Mock, patch
 from sagemaker import image_uris
 from sagemaker.amazon.ipinsights import IPInsights, IPInsightsPredictor
 from sagemaker.amazon.amazon_estimator import RecordSet
+from sagemaker.session_settings import SessionSettings
 
 # Mocked training config
 ROLE = "myrole"
@@ -55,6 +56,7 @@ def sagemaker_session():
         region_name=REGION,
         config=None,
         local_mode=False,
+        settings=SessionSettings(),
     )
     sms.boto_region_name = REGION
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
@@ -63,7 +65,8 @@ def sagemaker_session():
     )
     sms.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
     sms.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
-
+    # For tests which doesn't verify config file injection, operate with empty config
+    sms.sagemaker_config = {}
     return sms
 
 

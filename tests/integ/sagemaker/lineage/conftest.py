@@ -19,6 +19,7 @@ import boto3
 import pytest
 import logging
 import uuid
+import json
 from sagemaker.lineage import (
     action,
     context,
@@ -26,6 +27,7 @@ from sagemaker.lineage import (
     artifact,
 )
 from sagemaker.model import ModelPackage
+from sagemaker.utils import retry_with_backoff
 from tests.integ.sagemaker.workflow.test_workflow import (
     test_end_to_end_pipeline_successful_execution,
 )
@@ -43,7 +45,7 @@ from sagemaker.lineage.query import (
 )
 from sagemaker.lineage.lineage_trial_component import LineageTrialComponent
 
-from tests.integ.sagemaker.lineage.helpers import name, names, retry
+from tests.integ.sagemaker.lineage.helpers import name, names
 
 SLEEP_TIME_SECONDS = 1
 SLEEP_TIME_TWO_SECONDS = 2
@@ -400,7 +402,7 @@ def model_obj(sagemaker_session):
 
     yield model
     time.sleep(SLEEP_TIME_SECONDS)
-    retry(lambda: model.delete(disassociate=True), num_attempts=4)
+    retry_with_backoff(lambda: model.delete(disassociate=True), num_attempts=4)
 
 
 @pytest.fixture
@@ -891,3 +893,17 @@ def _deploy_static_endpoint(execution_arn, sagemaker_session):
             pass
         else:
             raise (e)
+
+
+@pytest.fixture
+def extract_data_from_html():
+    def _method(data):
+        start = data.find("[")
+        end = data.find("]")
+        res = data[start + 1 : end].split("}, ")
+        res = [i + "}" for i in res]
+        res[-1] = res[-1][:-1]
+        data_dict = [json.loads(i) for i in res]
+        return data_dict
+
+    return _method

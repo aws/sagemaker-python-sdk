@@ -69,7 +69,11 @@ LIST_TAGS_RESULT = {"Tags": [{"Key": "key1", "Value": "value1"}]}
 ESTIMATOR_NAME = "estimator_name"
 ESTIMATOR_NAME_TWO = "estimator_name_two"
 
+ENV_INPUT = {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_val3"}
+
 SAGEMAKER_SESSION = Mock()
+# For tests which doesn't verify config file injection, operate with empty config
+SAGEMAKER_SESSION.sagemaker_config = {}
 
 ESTIMATOR = Estimator(
     IMAGE_NAME,
@@ -78,6 +82,7 @@ ESTIMATOR = Estimator(
     INSTANCE_TYPE,
     output_path="s3://bucket/prefix",
     sagemaker_session=SAGEMAKER_SESSION,
+    environment=ENV_INPUT,
 )
 ESTIMATOR_TWO = PCA(
     ROLE,
@@ -85,6 +90,7 @@ ESTIMATOR_TWO = PCA(
     INSTANCE_TYPE,
     NUM_COMPONENTS,
     sagemaker_session=SAGEMAKER_SESSION,
+    environment=ENV_INPUT,
 )
 
 WARM_START_CONFIG = WarmStartConfig(
@@ -93,7 +99,11 @@ WARM_START_CONFIG = WarmStartConfig(
 
 TUNING_JOB_DETAILS = {
     "HyperParameterTuningJobConfig": {
-        "ResourceLimits": {"MaxParallelTrainingJobs": 1, "MaxNumberOfTrainingJobs": 1},
+        "ResourceLimits": {
+            "MaxParallelTrainingJobs": 1,
+            "MaxNumberOfTrainingJobs": 1,
+            "MaxRuntimeInSeconds": 1,
+        },
         "HyperParameterTuningJobObjective": {
             "MetricName": OBJECTIVE_METRIC_NAME,
             "Type": "Minimize",
@@ -112,6 +122,12 @@ TUNING_JOB_DETAILS = {
             ],
         },
         "TrainingJobEarlyStoppingType": "Off",
+        "RandomSeed": 0,
+        "TuningJobCompletionCriteria": {
+            "BestObjectiveNotImproving": {"MaxNumberOfTrainingJobsNotImproving": 5},
+            "ConvergenceDetected": {"CompleteOnConvergence": "Enabled"},
+            "TargetObjectiveMetricValue": 0.42,
+        },
     },
     "HyperParameterTuningJobName": JOB_NAME,
     "TrainingJobDefinition": {
@@ -147,6 +163,7 @@ TUNING_JOB_DETAILS = {
         ],
         "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
         "OutputDataConfig": {"S3OutputPath": BUCKET_NAME},
+        "Environment": ENV_INPUT,
     },
     "TrainingJobCounters": {
         "ClientError": 0,
@@ -211,6 +228,7 @@ MULTI_ALGO_TUNING_JOB_DETAILS = {
             ],
             "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
             "OutputDataConfig": {"S3OutputPath": BUCKET_NAME},
+            "Environment": ENV_INPUT,
         },
         {
             "DefinitionName": ESTIMATOR_NAME_TWO,
@@ -251,6 +269,7 @@ MULTI_ALGO_TUNING_JOB_DETAILS = {
             ],
             "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
             "OutputDataConfig": {"S3OutputPath": BUCKET_NAME},
+            "Environment": ENV_INPUT,
         },
     ],
     "TrainingJobCounters": {
@@ -290,6 +309,7 @@ TRAINING_JOB_DESCRIPTION = {
     "OutputDataConfig": {"KmsKeyId": "", "S3OutputPath": "s3://place/output/neo"},
     "TrainingJobOutput": {"S3TrainingJobOutput": "s3://here/output.tar.gz"},
     "ModelArtifacts": {"S3ModelArtifacts": MODEL_DATA},
+    "Environment": ENV_INPUT,
 }
 
 ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}

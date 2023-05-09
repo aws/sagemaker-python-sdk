@@ -35,6 +35,7 @@ from sagemaker.tuner import (
     ContinuousParameter,
     CategoricalParameter,
     HyperparameterTuner,
+    InstanceConfig,
     WarmStartConfig,
     WarmStartTypes,
     create_transfer_learning_tuner,
@@ -97,6 +98,7 @@ def _tune_and_deploy(
     job_name=None,
     warm_start_config=None,
     early_stopping_type="Off",
+    instance_configs=None,
 ):
     tuner = _tune(
         kmeans_estimator,
@@ -105,6 +107,7 @@ def _tune_and_deploy(
         warm_start_config=warm_start_config,
         job_name=job_name,
         early_stopping_type=early_stopping_type,
+        instance_configs=instance_configs,
     )
     _deploy(kmeans_train_set, sagemaker_session, tuner, early_stopping_type, cpu_instance_type)
 
@@ -134,6 +137,7 @@ def _tune(
     max_jobs=2,
     max_parallel_jobs=2,
     early_stopping_type="Off",
+    instance_configs=None,
 ):
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
 
@@ -148,7 +152,7 @@ def _tune(
                 warm_start_config=warm_start_config,
                 early_stopping_type=early_stopping_type,
             )
-
+        tuner.override_resource_config(instance_configs=instance_configs)
         records = kmeans_estimator.record_set(kmeans_train_set[0][:100])
         test_record_set = kmeans_estimator.record_set(kmeans_train_set[0][:100], channel="test")
 
@@ -170,6 +174,24 @@ def test_tuning_kmeans(
         cpu_instance_type,
         hyperparameter_ranges=hyperparameter_ranges,
         job_name=job_name,
+    )
+
+
+def test_tuning_kmeans_with_instance_configs(
+    sagemaker_session, kmeans_train_set, kmeans_estimator, hyperparameter_ranges, cpu_instance_type
+):
+    job_name = unique_name_from_base("tst-fit")
+    _tune_and_deploy(
+        kmeans_estimator,
+        kmeans_train_set,
+        sagemaker_session,
+        cpu_instance_type,
+        hyperparameter_ranges=hyperparameter_ranges,
+        job_name=job_name,
+        instance_configs=[
+            InstanceConfig(instance_count=1, instance_type="ml.m4.2xlarge", volume_size=30),
+            InstanceConfig(instance_count=1, instance_type="ml.m4.xlarge", volume_size=30),
+        ],
     )
 
 

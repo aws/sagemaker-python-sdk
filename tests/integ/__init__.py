@@ -75,7 +75,6 @@ TRAINING_NO_P3_REGIONS = [
     "ca-central-1",  # it has p3, but not enough
     "eu-central-1",  # it has p3, but not enough
     "eu-north-1",
-    "eu-west-1",  # it has p3, but not enough
     "eu-west-2",  # it has p3, but not enough
     "eu-west-3",
     "eu-south-1",
@@ -158,7 +157,7 @@ EDGE_PACKAGING_SUPPORTED_REGIONS = [
     "ap-northeast-1",
     "eu-central-1",
 ]
-# TODO: SM Training Compiler team to add all supported regions.
+
 TRAINING_COMPILER_SUPPORTED_REGIONS = [
     "af-south-1",
     "ap-east-1",

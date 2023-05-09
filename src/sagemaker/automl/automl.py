@@ -19,9 +19,16 @@ from six import string_types
 
 from sagemaker import Model, PipelineModel
 from sagemaker.automl.candidate_estimator import CandidateEstimator
+from sagemaker.config import (
+    AUTO_ML_ROLE_ARN_PATH,
+    AUTO_ML_KMS_KEY_ID_PATH,
+    AUTO_ML_VPC_CONFIG_PATH,
+    AUTO_ML_VOLUME_KMS_KEY_ID_PATH,
+    AUTO_ML_INTER_CONTAINER_ENCRYPTION_PATH,
+)
 from sagemaker.job import _Job
 from sagemaker.session import Session
-from sagemaker.utils import name_from_base
+from sagemaker.utils import name_from_base, resolve_value_from_config
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.pipeline_context import runnable_by_pipeline
 
@@ -42,6 +49,7 @@ class AutoMLInput(object):
         channel_type=None,
         content_type=None,
         s3_data_type=None,
+        sample_weight_attribute_name=None,
     ):
         """Convert an S3 Uri or a list of S3 Uri to an AutoMLInput object.
 
@@ -60,6 +68,8 @@ class AutoMLInput(object):
                 The content type of the data from the input source.
             s3_data_type (str, PipelineVariable): The data type for S3 data source.
                 Valid values: ManifestFile or S3Prefix.
+            sample_weight_attribute_name (str, PipelineVariable):
+                the name of the dataset column representing sample weights
         """
         self.inputs = inputs
         self.target_attribute_name = target_attribute_name
@@ -67,6 +77,7 @@ class AutoMLInput(object):
         self.channel_type = channel_type
         self.content_type = content_type
         self.s3_data_type = s3_data_type
+        self.sample_weight_attribute_name = sample_weight_attribute_name
 
     def to_request_dict(self):
         """Generates a request dictionary using the parameters provided to the class."""
@@ -89,6 +100,8 @@ class AutoMLInput(object):
                 input_entry["ContentType"] = self.content_type
             if self.s3_data_type is not None:
                 input_entry["DataSource"]["S3DataSource"]["S3DataType"] = self.s3_data_type
+            if self.sample_weight_attribute_name is not None:
+                input_entry["SampleWeightAttributeName"] = self.sample_weight_attribute_name
             auto_ml_input.append(input_entry)
         return auto_ml_input
 
@@ -98,15 +111,15 @@ class AutoML(object):
 
     def __init__(
         self,
-        role: str,
-        target_attribute_name: str,
+        role: Optional[str] = None,
+        target_attribute_name: str = None,
         output_kms_key: Optional[str] = None,
         output_path: Optional[str] = None,
         base_job_name: Optional[str] = None,
         compression_type: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
         volume_kms_key: Optional[str] = None,
-        encrypt_inter_container_traffic: Optional[bool] = False,
+        encrypt_inter_container_traffic: Optional[bool] = None,
         vpc_config: Optional[Dict[str, List]] = None,
         problem_type: Optional[str] = None,
         max_candidates: Optional[int] = None,
@@ -122,6 +135,7 @@ class AutoML(object):
         mode: Optional[str] = None,
         auto_generate_endpoint_name: Optional[bool] = None,
         endpoint_name: Optional[str] = None,
+        sample_weight_attribute_name: str = None,
     ):
         """Initialize the an AutoML object.
 
@@ -172,18 +186,16 @@ class AutoML(object):
                 model deployment if the endpoint name is not generated automatically.
                 Specify the endpoint_name if and only if
                 auto_generate_endpoint_name is set to False
+            sample_weight_attribute_name (str): The name of dataset column representing
+                sample weights.
 
         Returns:
             AutoML object.
         """
-        self.role = role
-        self.output_kms_key = output_kms_key
         self.output_path = output_path
         self.base_job_name = base_job_name
         self.compression_type = compression_type
-        self.volume_kms_key = volume_kms_key
         self.encrypt_inter_container_traffic = encrypt_inter_container_traffic
-        self.vpc_config = vpc_config
         self.problem_type = problem_type
         self.max_candidate = max_candidates
         self.max_runtime_per_training_job_in_seconds = max_runtime_per_training_job_in_seconds
@@ -204,8 +216,34 @@ class AutoML(object):
         self._auto_ml_job_desc = None
         self._best_candidate = None
         self.sagemaker_session = sagemaker_session or Session()
+        self.vpc_config = resolve_value_from_config(
+            vpc_config, AUTO_ML_VPC_CONFIG_PATH, sagemaker_session=self.sagemaker_session
+        )
+        self.volume_kms_key = resolve_value_from_config(
+            volume_kms_key, AUTO_ML_VOLUME_KMS_KEY_ID_PATH, sagemaker_session=self.sagemaker_session
+        )
+        self.output_kms_key = resolve_value_from_config(
+            output_kms_key, AUTO_ML_KMS_KEY_ID_PATH, sagemaker_session=self.sagemaker_session
+        )
+        self.role = resolve_value_from_config(
+            role, AUTO_ML_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
+        )
+        if not self.role:
+            # Originally IAM role was a required parameter.
+            # Now we marked that as Optional because we can fetch it from SageMakerConfig
+            # Because of marking that parameter as optional, we should validate if it is None, even
+            # after fetching the config.
+            raise ValueError("An AWS IAM role is required to create an AutoML job.")
+
+        self.encrypt_inter_container_traffic = resolve_value_from_config(
+            direct_input=encrypt_inter_container_traffic,
+            config_path=AUTO_ML_INTER_CONTAINER_ENCRYPTION_PATH,
+            default_value=False,
+            sagemaker_session=self.sagemaker_session,
+        )
 
         self._check_problem_type_and_job_objective(self.problem_type, self.job_objective)
+        self.sample_weight_attribute_name = sample_weight_attribute_name
 
     @runnable_by_pipeline
     def fit(self, inputs=None, wait=True, logs=True, job_name=None):
@@ -276,6 +314,8 @@ class AutoML(object):
             volume_kms_key=auto_ml_job_desc.get("AutoMLJobConfig", {})
             .get("SecurityConfig", {})
             .get("VolumeKmsKeyId"),
+            # Do not override encrypt_inter_container_traffic from config because this info
+            # is pulled from an existing automl job
             encrypt_inter_container_traffic=auto_ml_job_desc.get("AutoMLJobConfig", {})
             .get("SecurityConfig", {})
             .get("EnableInterContainerTrafficEncryption", False),
@@ -312,6 +352,9 @@ class AutoML(object):
                 "AutoGenerateEndpointName", False
             ),
             endpoint_name=auto_ml_job_desc.get("ModelDeployConfig", {}).get("EndpointName"),
+            sample_weight_attribute_name=auto_ml_job_desc["InputDataConfig"][0].get(
+                "SampleWeightAttributeName", None
+            ),
         )
         amlj.current_job_name = auto_ml_job_name
         amlj.latest_auto_ml_job = auto_ml_job_name  # pylint: disable=W0201
@@ -837,6 +880,7 @@ class AutoMLJob(_Job):
                 auto_ml.target_attribute_name,
                 auto_ml.content_type,
                 auto_ml.s3_data_type,
+                auto_ml.sample_weight_attribute_name,
             )
         output_config = _Job._prepare_output_config(auto_ml.output_path, auto_ml.output_kms_key)
 
@@ -902,6 +946,7 @@ class AutoMLJob(_Job):
         target_attribute_name=None,
         content_type=None,
         s3_data_type=None,
+        sample_weight_attribute_name=None,
     ):
         """Convert inputs to AutoML InputDataConfig.
 
@@ -931,6 +976,8 @@ class AutoMLJob(_Job):
                 channel["ContentType"] = content_type
             if s3_data_type is not None:
                 channel["DataSource"]["S3DataSource"]["S3DataType"] = s3_data_type
+            if sample_weight_attribute_name is not None:
+                channel["SampleWeightAttributeName"] = sample_weight_attribute_name
             channels.append(channel)
         elif isinstance(inputs, list):
             for input_entry in inputs:
@@ -944,6 +991,8 @@ class AutoMLJob(_Job):
                     channel["ContentType"] = content_type
                 if s3_data_type is not None:
                     channel["DataSource"]["S3DataSource"]["S3DataType"] = s3_data_type
+                if sample_weight_attribute_name is not None:
+                    channel["SampleWeightAttributeName"] = sample_weight_attribute_name
                 channels.append(channel)
         else:
             msg = (

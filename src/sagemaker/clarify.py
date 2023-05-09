@@ -26,7 +26,7 @@ import re
 import tempfile
 from abc import ABC, abstractmethod
 from typing import List, Union, Dict, Optional, Any
-
+from enum import Enum
 from schema import Schema, And, Use, Or, Optional as SchemaOptional, Regex
 
 from sagemaker import image_uris, s3, utils
@@ -49,6 +49,7 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
             in (
                 "text/csv",
                 "application/jsonlines",
+                "application/json",
                 "application/sagemakercapturejson",
                 "application/x-parquet",
                 "application/x-image",
@@ -93,6 +94,8 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
                             {object: object},
                         )
                     ],
+                    # Arbitrary JSON object as baseline
+                    {object: object},
                 ),
                 SchemaOptional("num_clusters"): int,
                 SchemaOptional("use_logit"): bool,
@@ -281,8 +284,8 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
                 in (
                     "text/csv",
                     "application/jsonlines",
+                    "application/json",
                     "image/jpeg",
-                    "image/jpg",
                     "image/png",
                     "application/x-npy",
                 ),
@@ -296,10 +299,21 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
             SchemaOptional("probability"): Or(str, int),
             SchemaOptional("label_headers"): [Or(str, int)],
             SchemaOptional("content_template"): Or(str, {str: str}),
+            SchemaOptional("record_template"): str,
             SchemaOptional("custom_attributes"): str,
         },
     }
 )
+
+
+class DatasetType(Enum):
+    """Enum to store different dataset types supported in the Analysis config file"""
+
+    TEXTCSV = "text/csv"
+    JSONLINES = "application/jsonlines"
+    JSON = "application/json"
+    PARQUET = "application/x-parquet"
+    IMAGE = "application/x-image"
 
 
 class DataConfig:
@@ -312,7 +326,7 @@ class DataConfig:
         s3_analysis_config_output_path: Optional[str] = None,
         label: Optional[str] = None,
         headers: Optional[List[str]] = None,
-        features: Optional[List[str]] = None,
+        features: Optional[str] = None,
         dataset_type: str = "text/csv",
         s3_compression_type: str = "None",
         joinsource: Optional[Union[str, int]] = None,
@@ -331,13 +345,19 @@ class DataConfig:
             s3_analysis_config_output_path (str): S3 prefix to store the analysis config output.
                 If this field is None, then the ``s3_output_path`` will be used
                 to store the ``analysis_config`` output.
-            label (str): Target attribute of the model required by bias metrics.
-                Specified as column name or index for CSV dataset or as JSONPath for JSONLines.
+            label (str): Target attribute of the model required by bias metrics. Specified as
+                column name or index for CSV dataset or a JMESPath expression for JSON/JSON Lines.
                 *Required parameter* except for when the input dataset does not contain the label.
-            features (List[str]): JSONPath for locating the feature columns for bias metrics if the
-                dataset format is JSONLines.
+                Note: For JSON, the JMESPath query must result in a list of labels for each
+                sample.  For JSON Lines, it must result in the label for each line.
+                Only a single label per sample is supported at this time.
+            features (str): JMESPath expression to locate the feature values
+                if the dataset format is JSON/JSON Lines.
+                Note: For JSON, the JMESPath query must result in a 2-D list (or a matrix) of
+                feature values.  For JSON Lines, it must result in a 1-D list of features for each
+                line.
             dataset_type (str): Format of the dataset. Valid values are ``"text/csv"`` for CSV,
-                ``"application/jsonlines"`` for JSONLines, and
+                ``"application/jsonlines"`` for JSON Lines, ``"application/json"`` for JSON, and
                 ``"application/x-parquet"`` for Parquet.
             s3_compression_type (str): Valid options are "None" or ``"Gzip"``.
             joinsource (str or int): The name or index of the column in the dataset that
@@ -360,6 +380,7 @@ class DataConfig:
 
                 Clarify will not use the ``joinsource`` column and columns present in the facet
                 dataset when calling model inference APIs.
+                Note: this is only supported for ``"text/csv"`` dataset type.
             facet_headers (list[str]): List of column names in the facet dataset.
             predicted_label_dataset_uri (str): Dataset S3 prefix/object URI with predicted labels,
                 which are used directly for analysis instead of making model inference API calls.
@@ -369,11 +390,16 @@ class DataConfig:
                 * If the dataset and predicted label dataset are in multiple files (either one),
                   then an index column, ``joinsource``, is required to join the two datasets.
 
+                Note: this is only supported for ``"text/csv"`` dataset type.
             predicted_label_headers (list[str]): List of column names in the predicted label dataset
             predicted_label (str or int): Predicted label of the target attribute of the model
-                required for running bias analysis. Specified as column name or index for CSV data.
+                required for running bias analysis. Specified as column name or index for CSV data,
+                or a JMESPath expression for JSON/JSON Lines.
                 Clarify uses the predicted labels directly instead of making model inference API
                 calls.
+                Note: For JSON, the JMESPath query must result in a list of predicted labels for
+                each sample.  For JSON Lines, it must result in the predicted label for each line.
+                Only a single predicted label per sample is supported at this time.
             excluded_columns (list[int] or list[str]): A list of names or indices of the columns
                 which are to be excluded from making model inference API calls.
 
@@ -385,6 +411,7 @@ class DataConfig:
         if dataset_type not in [
             "text/csv",
             "application/jsonlines",
+            "application/json",
             "application/x-parquet",
             "application/x-image",
         ]:
@@ -392,8 +419,13 @@ class DataConfig:
                 f"Invalid dataset_type '{dataset_type}'."
                 f" Please check the API documentation for the supported dataset types."
             )
-        # parameters for analysis on datasets without facets are only supported for CSV datasets
-        if dataset_type != "text/csv":
+        # predicted_label and excluded_columns are only supported for tabular datasets
+        if dataset_type not in [
+            "text/csv",
+            "application/jsonlines",
+            "application/json",
+            "application/x-parquet",
+        ]:
             if predicted_label:
                 raise ValueError(
                     f"The parameter 'predicted_label' is not supported"
@@ -406,6 +438,8 @@ class DataConfig:
                     f" for dataset_type '{dataset_type}'."
                     f" Please check the API documentation for the supported dataset types."
                 )
+        # parameters for analysis on datasets without facets are only supported for CSV datasets
+        if dataset_type != "text/csv":
             if facet_dataset_uri or facet_headers:
                 raise ValueError(
                     f"The parameters 'facet_dataset_uri' and 'facet_headers'"
@@ -418,6 +452,9 @@ class DataConfig:
                     f" are not supported for dataset_type '{dataset_type}'."
                     f" Please check the API documentation for the supported dataset types."
                 )
+        # features JMESPath is required for JSON as we can't derive it ourselves
+        if dataset_type == "application/json" and features is None:
+            raise ValueError("features JMESPath is required for application/json dataset_type")
         self.s3_data_input_path = s3_data_input_path
         self.s3_output_path = s3_output_path
         self.s3_analysis_config_output_path = s3_analysis_config_output_path
@@ -550,6 +587,7 @@ class ModelConfig:
         accept_type: Optional[str] = None,
         content_type: Optional[str] = None,
         content_template: Optional[str] = None,
+        record_template: Optional[str] = None,
         custom_attributes: Optional[str] = None,
         accelerator_type: Optional[str] = None,
         endpoint_name_prefix: Optional[str] = None,
@@ -572,16 +610,84 @@ class ModelConfig:
                 Cannot be set when ``endpoint_name`` is set.
                 Must be set with ``instance_count``, ``model_name``
             accept_type (str): The model output format to be used for getting inferences with the
-                shadow endpoint. Valid values are ``"text/csv"`` for CSV and
-                ``"application/jsonlines"``. Default is the same as ``content_type``.
+                shadow endpoint. Valid values are ``"text/csv"`` for CSV,
+                ``"application/jsonlines"`` for JSON Lines, and ``"application/json"`` for JSON.
+                Default is the same as ``content_type``.
             content_type (str): The model input format to be used for getting inferences with the
-                shadow endpoint. Valid values are ``"text/csv"`` for CSV and
-                ``"application/jsonlines"``. Default is the same as ``dataset_format``.
+                shadow endpoint. Valid values are ``"text/csv"`` for CSV,
+                ``"application/jsonlines"`` for JSON Lines, and ``"application/json"`` for JSON.
+                Default is the same as ``dataset_format``.
             content_template (str): A template string to be used to construct the model input from
-                dataset instances. It is only used when ``model_content_type`` is
-                ``"application/jsonlines"``. The template should have one and only one placeholder,
-                ``"features"``, which will be replaced by a features list to form the model
-                inference input.
+                dataset instances. It is only used, and required, when ``model_content_type`` is
+                ``"application/jsonlines"`` or ``"application/json"``. When ``model_content_type``
+                is ``application/jsonlines``, the template should have one and only one
+                placeholder, ``$features``, which will be replaced by a features list for each
+                record to form the model inference input.  When ``model_content_type`` is
+                ``application/json``, the template can have either placeholder ``$record``, which
+                will be replaced by a single record templated by ``record_template`` and only a
+                single record at a time will be sent to the model, or placeholder ``$records``,
+                which will be replaced by a list of records, each templated by ``record_template``.
+            record_template (str): A template string to be used to construct each record of the
+                model input from dataset instances.  It is only used, and required, when
+                ``model_content_type`` is ``"application/json"``.
+                The template string may contain one of the following:
+
+                * Placeholder ``$features`` that will be substituted by the array of feature values
+                  and/or an optional placeholder ``$feature_names`` that will be substituted by the
+                  array of feature names.
+                * Exactly one placeholder ``$features_kvp`` that will be substituted by the
+                  key-value pairs of feature name and feature value.
+                * Or for each feature, if "A" is the feature name in the ``headers`` configuration,
+                  then placeholder syntax ``"${A}"`` (the double-quotes are part of the
+                  placeholder) will be substituted by the feature value.
+
+                ``record_template`` will be used in conjunction with ``content_template`` to
+                construct the model input.
+
+                **Examples:**
+
+                Given:
+
+                * ``headers``: ``["A", "B"]``
+                * ``features``: ``[[0, 1], [3, 4]]``
+
+                Example model input 1::
+
+                    {
+                        "instances": [[0, 1], [3, 4]],
+                        "feature_names": ["A", "B"]
+                    }
+
+                content_template and record_template to construct above:
+
+                * ``content_template``: ``"{\"instances\": $records}"``
+                * ``record_template``: ``"$features"``
+
+                Example model input 2::
+
+                    [
+                        { "A": 0, "B": 1 },
+                        { "A": 3, "B": 4 },
+                    ]
+
+                content_template and record_template to construct above:
+
+                * ``content_template``: ``"$records"``
+                * ``record_template``: ``"$features_kvp"``
+
+                Or, alternatively:
+
+                * ``content_template``: ``"$records"``
+                * ``record_template``: ``"{\"A\": \"${A}\", \"B\": \"${B}\"}"``
+
+                Example model input 3 (single record only)::
+
+                    { "A": 0, "B": 1 }
+
+                content_template and record_template to construct above:
+
+                * ``content_template``: ``"$record"``
+                * ``record_template``: ``"$features_kvp"``
             custom_attributes (str): Provides additional information about a request for an
                 inference submitted to a model hosted at an Amazon SageMaker endpoint. The
                 information is an opaque value that is forwarded verbatim. You could use this
@@ -642,7 +748,7 @@ class ModelConfig:
                 )
             self.predictor_config["endpoint_name_prefix"] = endpoint_name_prefix
         if accept_type is not None:
-            if accept_type not in ["text/csv", "application/jsonlines"]:
+            if accept_type not in ["text/csv", "application/jsonlines", "application/json"]:
                 raise ValueError(
                     f"Invalid accept_type {accept_type}."
                     f" Please choose text/csv or application/jsonlines."
@@ -652,6 +758,7 @@ class ModelConfig:
             if content_type not in [
                 "text/csv",
                 "application/jsonlines",
+                "application/json",
                 "image/jpeg",
                 "image/jpg",
                 "image/png",
@@ -661,14 +768,32 @@ class ModelConfig:
                     f"Invalid content_type {content_type}."
                     f" Please choose text/csv or application/jsonlines."
                 )
+            if content_type == "application/jsonlines":
+                if content_template is None:
+                    raise ValueError(
+                        f"content_template field is required for content_type {content_type}"
+                    )
+                if "$features" not in content_template:
+                    raise ValueError(
+                        f"Invalid content_template {content_template}."
+                        f" Please include a placeholder $features."
+                    )
+            if content_type == "application/json":
+                if content_template is None or record_template is None:
+                    raise ValueError(
+                        f"content_template and record_template are required for content_type "
+                        f"{content_type}"
+                    )
+                if "$record" not in content_template:
+                    raise ValueError(
+                        f"Invalid content_template {content_template}."
+                        f" Please include either placeholder $records or $record."
+                    )
             self.predictor_config["content_type"] = content_type
         if content_template is not None:
-            if "$features" not in content_template:
-                raise ValueError(
-                    f"Invalid content_template {content_template}."
-                    f" Please include a placeholder $features."
-                )
             self.predictor_config["content_template"] = content_template
+        if record_template is not None:
+            self.predictor_config["record_template"] = record_template
         _set(custom_attributes, "custom_attributes", self.predictor_config)
         _set(accelerator_type, "accelerator_type", self.predictor_config)
         _set(target_model, "target_model", self.predictor_config)
@@ -717,11 +842,11 @@ class ModelPredictedLabelConfig:
             ``label_headers=['cat','dog','fish']`` and infer the predicted label to be ``'fish'``.
 
         Args:
-            label (str or int): Index or JSONPath location in the model output for the prediction.
-                In case, this is a predicted label of the same type as the label in the dataset,
-                no further arguments need to be specified.
-            probability (str or int): Index or JSONPath location in the model output
-                for the predicted score(s).
+            label (str or int): Index or JMESPath expression to locate the prediction
+                in the model output. In case, this is a predicted label of the same type
+                as the label in the dataset, no further arguments need to be specified.
+            probability (str or int): Index or JMESPath expression to locate the predicted score(s)
+                in the model output.
             probability_threshold (float): An optional value for binary prediction tasks in which
                 the model returns a probability, to indicate the threshold to convert the
                 prediction to a boolean value. Default is ``0.5``.
@@ -1088,7 +1213,7 @@ class SHAPConfig(ExplainabilityConfig):
 
     def __init__(
         self,
-        baseline: Optional[Union[str, List]] = None,
+        baseline: Optional[Union[str, List, Dict]] = None,
         num_samples: Optional[int] = None,
         agg_method: Optional[str] = None,
         use_logit: bool = False,
@@ -1101,7 +1226,7 @@ class SHAPConfig(ExplainabilityConfig):
         """Initializes config for SHAP analysis.
 
         Args:
-            baseline (None or str or list): `Baseline dataset <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-feature-attribute-shap-baselines.html>`_
+            baseline (None or str or list or dict): `Baseline dataset <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-feature-attribute-shap-baselines.html>`_
                 for the Kernel SHAP algorithm, accepted in the form of:
                 S3 object URI, a list of rows (with at least one element),
                 or None (for no input baseline). The baseline dataset must have the same format
@@ -1180,9 +1305,9 @@ class SageMakerClarifyProcessor(Processor):
 
     def __init__(
         self,
-        role: str,
-        instance_count: int,
-        instance_type: str,
+        role: Optional[str] = None,
+        instance_count: int = None,
+        instance_type: str = None,
         volume_size_in_gb: int = 30,
         volume_kms_key: Optional[str] = None,
         output_kms_key: Optional[str] = None,
@@ -1338,7 +1463,7 @@ class SageMakerClarifyProcessor(Processor):
                 source=self._CLARIFY_OUTPUT,
                 destination=data_config.s3_output_path,
                 output_name="analysis_result",
-                s3_upload_mode="EndOfJob",
+                s3_upload_mode=ProcessingOutputHandler.get_s3_upload_mode(analysis_config),
             )
 
             return super().run(
@@ -1424,8 +1549,8 @@ class SageMakerClarifyProcessor(Processor):
         self,
         data_config: DataConfig,
         data_bias_config: BiasConfig,
-        model_config: ModelConfig,
-        model_predicted_label_config: ModelPredictedLabelConfig,
+        model_config: Optional[ModelConfig] = None,
+        model_predicted_label_config: Optional[ModelPredictedLabelConfig] = None,
         methods: Union[str, List[str]] = "all",
         wait: bool = True,
         logs: bool = True,
@@ -1445,7 +1570,8 @@ class SageMakerClarifyProcessor(Processor):
             data_config (:class:`~sagemaker.clarify.DataConfig`): Config of the input/output data.
             data_bias_config (:class:`~sagemaker.clarify.BiasConfig`): Config of sensitive groups.
             model_config (:class:`~sagemaker.clarify.ModelConfig`): Config of the model and its
-                endpoint to be created.
+                endpoint to be created. This is required unless``predicted_label_dataset_uri`` or
+                ``predicted_label`` is provided in ``data_config``.
             model_predicted_label_config (:class:`~sagemaker.clarify.ModelPredictedLabelConfig`):
                 Config of how to extract the predicted label from the model output.
             methods (str or list[str]): Selector of a subset of potential metrics:
@@ -1509,7 +1635,7 @@ class SageMakerClarifyProcessor(Processor):
         self,
         data_config: DataConfig,
         bias_config: BiasConfig,
-        model_config: ModelConfig,
+        model_config: Optional[ModelConfig] = None,
         model_predicted_label_config: Optional[ModelPredictedLabelConfig] = None,
         pre_training_methods: Union[str, List[str]] = "all",
         post_training_methods: Union[str, List[str]] = "all",
@@ -1530,7 +1656,8 @@ class SageMakerClarifyProcessor(Processor):
             data_config (:class:`~sagemaker.clarify.DataConfig`): Config of the input/output data.
             bias_config (:class:`~sagemaker.clarify.BiasConfig`): Config of sensitive groups.
             model_config (:class:`~sagemaker.clarify.ModelConfig`): Config of the model and its
-                endpoint to be created.
+                endpoint to be created. This is required unless``predicted_label_dataset_uri`` or
+                ``predicted_label`` is provided in ``data_config``.
             model_predicted_label_config (:class:`~sagemaker.clarify.ModelPredictedLabelConfig`):
                 Config of how to extract the predicted label from the model output.
             pre_training_methods (str or list[str]): Selector of a subset of potential metrics:
@@ -1646,9 +1773,9 @@ class SageMakerClarifyProcessor(Processor):
                 You can request multiple methods at once by passing in a list of
                 `~sagemaker.clarify.ExplainabilityConfig`.
             model_scores (int or str or :class:`~sagemaker.clarify.ModelPredictedLabelConfig`):
-                Index or JSONPath to locate the predicted scores in the model output. This is not
-                required if the model output is a single score. Alternatively, it can be an instance
-                of :class:`~sagemaker.clarify.SageMakerClarifyProcessor`
+                Index or JMESPath expression to locate the predicted scores in the model output.
+                This is not required if the model output is a single score. Alternatively,
+                it can be an instance of :class:`~sagemaker.clarify.SageMakerClarifyProcessor`
                 to provide more parameters like ``label_headers``.
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
@@ -1775,9 +1902,9 @@ class SageMakerClarifyProcessor(Processor):
                 str or
                 :class:`~sagemaker.clarify.ModelPredictedLabelConfig`
             ):
-                Index or JSONPath to locate the predicted scores in the model output. This is not
-                required if the model output is a single score. Alternatively, it can be an instance
-                of :class:`~sagemaker.clarify.SageMakerClarifyProcessor`
+                Index or JMESPath expression to locate the predicted scores in the model output.
+                This is not required if the model output is a single score. Alternatively,
+                it can be an instance of :class:`~sagemaker.clarify.SageMakerClarifyProcessor`
                 to provide more parameters like ``label_headers``.
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
@@ -1931,16 +2058,30 @@ class _AnalysisConfigGenerator:
     ):
         """Extends analysis config with predictor."""
         analysis_config = {**analysis_config}
-        analysis_config["predictor"] = model_config.get_predictor_config()
+        if isinstance(model_config, ModelConfig):
+            analysis_config["predictor"] = model_config.get_predictor_config()
+        else:
+            if "shap" in analysis_config["methods"] or "pdp" in analysis_config["methods"]:
+                raise ValueError(
+                    "model_config must be provided when explainability methods are selected."
+                )
+            if (
+                "predicted_label_dataset_uri" not in analysis_config
+                and "predicted_label" not in analysis_config
+            ):
+                raise ValueError(
+                    "model_config must be provided when `predicted_label_dataset_uri` or "
+                    "`predicted_label` are not provided in data_config."
+                )
         if isinstance(model_predicted_label_config, ModelPredictedLabelConfig):
             (
                 probability_threshold,
                 predictor_config,
             ) = model_predicted_label_config.get_predictor_config()
-            if predictor_config:
+            if predictor_config and "predictor" in analysis_config:
                 analysis_config["predictor"].update(predictor_config)
             _set(probability_threshold, "probability_threshold", analysis_config)
-        else:
+        elif "predictor" in analysis_config:
             _set(model_predicted_label_config, "label", analysis_config["predictor"])
         return analysis_config
 
@@ -2040,6 +2181,33 @@ def _upload_analysis_config(analysis_config_file, s3_output_path, sagemaker_sess
         sagemaker_session=sagemaker_session,
         kms_key=kms_key,
     )
+
+
+class ProcessingOutputHandler:
+    """Class to handle the parameters for SagemakerProcessor.Processingoutput"""
+
+    class S3UploadMode(Enum):
+        """Enum values for different uplaod modes to s3 bucket"""
+
+        CONTINUOUS = "Continuous"
+        ENDOFJOB = "EndOfJob"
+
+    @classmethod
+    def get_s3_upload_mode(cls, analysis_config: Dict[str, Any]) -> str:
+        """Fetches s3_upload mode based on the shap_config values
+
+        Args:
+            analysis_config (dict): dict Config following the analysis_config.json format
+
+        Returns:
+            The s3_upload_mode type for the processing output.
+        """
+        dataset_type = analysis_config["dataset_type"]
+        return (
+            ProcessingOutputHandler.S3UploadMode.CONTINUOUS.value
+            if dataset_type == DatasetType.IMAGE.value
+            else ProcessingOutputHandler.S3UploadMode.ENDOFJOB.value
+        )
 
 
 def _set(value, key, dictionary):

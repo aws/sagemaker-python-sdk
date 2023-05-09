@@ -29,7 +29,7 @@ bucket for storage. A prefixing scheme based on event time is used to store your
 from __future__ import absolute_import
 
 import abc
-from typing import Dict, Any
+from typing import Dict, Any, List
 from enum import Enum
 
 import attr
@@ -245,3 +245,137 @@ class FeatureParameter(Config):
             Key=self.key,
             Value=self.value,
         )
+
+
+class ResourceEnum(Enum):
+    """Enum of resources.
+
+    The data type of resource can be ``FeatureGroup`` or ``FeatureMetadata``.
+    """
+
+    def __str__(self):
+        """Override str method to return enum value."""
+        return str(self.value)
+
+    FEATURE_GROUP = "FeatureGroup"
+    FEATURE_METADATA = "FeatureMetadata"
+
+
+class SearchOperatorEnum(Enum):
+    """Enum of search operators.
+
+    The data type of search operator can be ``And`` or ``Or``.
+    """
+
+    def __str__(self):
+        """Override str method to return enum value."""
+        return str(self.value)
+
+    AND = "And"
+    OR = "Or"
+
+
+class SortOrderEnum(Enum):
+    """Enum of sort orders.
+
+    The data type of sort order can be ``Ascending`` or ``Descending``.
+    """
+
+    def __str__(self):
+        """Override str method to return enum value."""
+        return str(self.value)
+
+    ASCENDING = "Ascending"
+    DESCENDING = "Descending"
+
+
+class FilterOperatorEnum(Enum):
+    """Enum of filter operators.
+
+    The data type of filter operator can be ``Equals``, ``NotEquals``, ``GreaterThan``,
+    ``GreaterThanOrEqualTo``, ``LessThan``, ``LessThanOrEqualTo``, ``Contains``, ``Exists``,
+    ``NotExists``, or ``In``.
+    """
+
+    def __str__(self):
+        """Override str method to return enum value."""
+        return str(self.value)
+
+    EQUALS = "Equals"
+    NOT_EQUALS = "NotEquals"
+    GREATER_THAN = "GreaterThan"
+    GREATER_THAN_OR_EQUAL_TO = "GreaterThanOrEqualTo"
+    LESS_THAN = "LessThan"
+    LESS_THAN_OR_EQUAL_TO = "LessThanOrEqualTo"
+    CONTAINS = "Contains"
+    EXISTS = "Exists"
+    NOT_EXISTS = "NotExists"
+    IN = "In"
+
+
+@attr.s
+class Filter(Config):
+    """Filter for FeatureStore search.
+
+    Attributes:
+        name (str): A resource property name.
+        value (str): A value used with ``Name`` and ``Operator`` to determine which resources
+            satisfy the filter's condition.
+        operator (FilterOperatorEnum): A Boolean binary operator that is used to evaluate the
+        filter. If specify ``Value`` without ``Operator``, Amazon SageMaker uses ``Equals``
+        (default: None).
+    """
+
+    name: str = attr.ib()
+    value: str = attr.ib()
+    operator: FilterOperatorEnum = attr.ib(default=None)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Construct a dictionary based on the attributes provided.
+
+        Returns:
+            dict represents the attributes.
+        """
+        return Config.construct_dict(
+            Name=self.name,
+            Value=self.value,
+            Operator=None if not self.operator else str(self.operator),
+        )
+
+
+@attr.s
+class Identifier(Config):
+    """Identifier of batch get record API.
+
+    Attributes:
+        feature_group_name (str): name of a feature group.
+        record_identifiers_value_as_string (List[str]): string value of record identifier.
+        feature_names (List[str]): list of feature names (default: None).
+    """
+
+    feature_group_name: str = attr.ib()
+    record_identifiers_value_as_string: List[str] = attr.ib()
+    feature_names: List[str] = attr.ib(default=None)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Construct a dictionary based on the attributes provided.
+
+        Returns:
+            dict represents the attributes.
+        """
+
+        return Config.construct_dict(
+            FeatureGroupName=self.feature_group_name,
+            RecordIdentifiersValueAsString=self.record_identifiers_value_as_string,
+            FeatureNames=None if not self.feature_names else self.feature_names,
+        )
+
+
+class DeletionModeEnum(Enum):
+    """Enum of deletion modes.
+
+    The deletion mode for deleting records can be SoftDelete or HardDelete.
+    """
+
+    SOFT_DELETE = "SoftDelete"
+    HARD_DELETE = "HardDelete"

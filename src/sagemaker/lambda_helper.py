@@ -36,6 +36,9 @@ class Lambda:
         timeout: int = 120,
         memory_size: int = 128,
         runtime: str = "python3.8",
+        vpc_config: dict = None,
+        environment: dict = None,
+        layers: list = None,
     ):
         """Constructs a Lambda instance.
 
@@ -66,6 +69,9 @@ class Lambda:
             timeout (int): Timeout of the Lambda function in seconds. Default is 120 seconds.
             memory_size (int): Memory of the Lambda function in megabytes. Default is 128 MB.
             runtime (str): Runtime of the Lambda function. Default is set to python3.8.
+            vpc_config (dict): VPC to deploy the Lambda function to. Default is None.
+            environment (dict): Environment Variables for the Lambda function. Default is None.
+            layers (list): List of Lambda layers for the Lambda function. Default is None.
         """
         self.function_arn = function_arn
         self.function_name = function_name
@@ -78,6 +84,9 @@ class Lambda:
         self.timeout = timeout
         self.memory_size = memory_size
         self.runtime = runtime
+        self.vpc_config = vpc_config or {}
+        self.environment = environment or {}
+        self.layers = layers or []
 
         if function_arn is None and function_name is None:
             raise ValueError("Either function_arn or function_name must be provided.")
@@ -91,6 +100,10 @@ class Lambda:
                 raise ValueError("Provide either script or zipped_code_dir, not both.")
             if handler is None:
                 raise ValueError("Lambda handler must be provided.")
+
+        if function_arn is not None:
+            if zipped_code_dir and script:
+                raise ValueError("Provide either script or zipped_code_dir, not both.")
 
     def create(self):
         """Method to create a lambda function.
@@ -123,6 +136,9 @@ class Lambda:
                 Code=code,
                 Timeout=self.timeout,
                 MemorySize=self.memory_size,
+                VpcConfig=self.vpc_config,
+                Environment=self.environment,
+                Layers=self.layers,
             )
             return response
         except ClientError as e:
@@ -140,17 +156,29 @@ class Lambda:
             try:
                 if self.script is not None:
                     response = lambda_client.update_function_code(
-                        FunctionName=self.function_name, ZipFile=_zip_lambda_code(self.script)
+                        FunctionName=self.function_name or self.function_arn,
+                        ZipFile=_zip_lambda_code(self.script),
                     )
                 else:
+                    bucket = self.s3_bucket or self.session.default_bucket()
+                    # get function name to be used in S3 upload path
+                    if self.function_arn:
+                        versioned_function_name = self.function_arn.split("funtion:")[-1]
+                        if ":" in versioned_function_name:
+                            function_name_for_s3 = versioned_function_name.split(":")[0]
+                        else:
+                            function_name_for_s3 = versioned_function_name
+                    else:
+                        function_name_for_s3 = self.function_name
+
                     response = lambda_client.update_function_code(
                         FunctionName=(self.function_name or self.function_arn),
-                        S3Bucket=self.s3_bucket,
+                        S3Bucket=bucket,
                         S3Key=_upload_to_s3(
                             s3_client=_get_s3_client(self.session),
-                            function_name=self.function_name,
+                            function_name=function_name_for_s3,
                             zipped_code_dir=self.zipped_code_dir,
-                            s3_bucket=self.s3_bucket,
+                            s3_bucket=bucket,
                         ),
                     )
                 return response

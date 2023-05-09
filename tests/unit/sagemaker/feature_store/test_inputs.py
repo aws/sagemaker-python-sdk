@@ -21,6 +21,9 @@ from sagemaker.feature_store.inputs import (
     OfflineStoreConfig,
     FeatureParameter,
     TableFormatEnum,
+    Filter,
+    FilterOperatorEnum,
+    Identifier,
 )
 
 
@@ -116,3 +119,52 @@ def test_offline_data_store_config_with_iceberg_table_format():
 def test_feature_metadata():
     config = FeatureParameter(key="key", value="value")
     assert ordered(config.to_dict()) == ordered({"Key": "key", "Value": "value"})
+
+
+def test_filter():
+    filter = Filter(name="name", value="value", operator=FilterOperatorEnum.CONTAINS)
+    assert ordered(filter.to_dict()) == ordered(
+        {
+            "Name": "name",
+            "Value": "value",
+            "Operator": "Contains",
+        }
+    )
+
+
+def test_filter_with_none_operator():
+    filter = Filter(name="name", value="value", operator=None)
+    assert ordered(filter.to_dict()) == ordered(
+        {
+            "Name": "name",
+            "Value": "value",
+        }
+    )
+
+
+def test_identifier():
+    identifier = Identifier(
+        feature_group_name="name",
+        record_identifiers_value_as_string=["record_identifier"],
+        feature_names=["feature_1"],
+    )
+
+    assert ordered(identifier.to_dict()) == ordered(
+        {
+            "FeatureGroupName": "name",
+            "RecordIdentifiersValueAsString": ["record_identifier"],
+            "FeatureNames": ["feature_1"],
+        }
+    )
+
+
+def test_identifier_with_none_feature_names():
+    identifier = Identifier(
+        feature_group_name="name",
+        record_identifiers_value_as_string=["record_identifier"],
+        feature_names=None,
+    )
+
+    assert ordered(identifier.to_dict()) == ordered(
+        {"FeatureGroupName": "name", "RecordIdentifiersValueAsString": ["record_identifier"]}
+    )

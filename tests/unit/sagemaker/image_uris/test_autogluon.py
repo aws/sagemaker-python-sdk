@@ -37,12 +37,30 @@ ACCOUNTS = {
     "sa-east-1": "763104351884",
     "us-east-1": "763104351884",
     "us-east-2": "763104351884",
+    "us-gov-east-1": "446045086412",
     "us-gov-west-1": "442386744353",
     "us-iso-east-1": "886529160074",
+    "us-isob-east-1": "094389454867",
     "us-west-1": "763104351884",
     "us-west-2": "763104351884",
 }
-VERSIONS = ["0.3.1", "0.3.2", "0.4.0", "0.4.2", "0.4.3", "0.3", "0.4", "0.5.2", "0.5"]
+VERSIONS = [
+    "0.3.1",
+    "0.3.2",
+    "0.4.0",
+    "0.4.2",
+    "0.4.3",
+    "0.3",
+    "0.4",
+    "0.5.2",
+    "0.5",
+    "0.6.1",
+    "0.6",
+    "0.6.2",
+    "0.7.0",
+    "0.7",
+]
+
 SCOPES = ["training", "inference"]
 PROCESSORS = ["cpu", "gpu"]
 
@@ -52,7 +70,12 @@ PROCESSORS = ["cpu", "gpu"]
 @pytest.mark.parametrize("processor", PROCESSORS)
 def test_valid_uris_training(version, scope, processor):
     instance_type = "ml.c4.xlarge" if processor == "cpu" else "ml.p2.xlarge"
-    py_version = "py37" if version == "0.3.1" else "py38"
+    if version == "0.3.1":
+        py_version = "py37"
+    elif version < "0.7":
+        py_version = "py38"
+    else:
+        py_version = "py39"
     if (
         scope == "inference"
         and processor == "gpu"

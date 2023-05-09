@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 class TrainingCompilerConfig(BaseConfig):
     """The SageMaker Training Compiler configuration class."""
 
-    SUPPORTED_INSTANCE_CLASS_PREFIXES = ["p3", "g4dn", "p4d", "g5"]
+    SUPPORTED_INSTANCE_CLASS_PREFIXES = ["p3", "p3dn", "g4dn", "p4d", "g5"]
     SUPPORTED_INSTANCE_TYPES_WITH_EFA = [
         "ml.g4dn.8xlarge",
         "ml.g4dn.12xlarge",
@@ -87,10 +87,7 @@ class TrainingCompilerConfig(BaseConfig):
         super(TrainingCompilerConfig, self).__init__(enabled=enabled, debug=debug)
 
     @classmethod
-    def validate(
-        cls,
-        estimator,
-    ):
+    def validate(cls, estimator):
         """Checks if SageMaker Training Compiler is configured correctly.
 
         Args:
@@ -104,6 +101,17 @@ class TrainingCompilerConfig(BaseConfig):
         """
 
         super(TrainingCompilerConfig, cls).validate(estimator)
+
+        if estimator.pytorch_version:
+            if (Version(estimator.pytorch_version) in SpecifierSet("< 1.9")) or (
+                Version(estimator.pytorch_version) in SpecifierSet("> 1.11")
+            ):
+                error_helper_string = (
+                    "SageMaker Training Compiler is only supported "
+                    "with HuggingFace PyTorch 1.9-1.11. "
+                    "Received pytorch_version={} which is unsupported."
+                )
+                raise ValueError(error_helper_string.format(estimator.pytorch_version))
 
         if estimator.image_uri:
             error_helper_string = (

@@ -16,23 +16,40 @@ which is used for Amazon SageMaker Processing Jobs. These jobs let users perform
 data pre-processing, post-processing, feature engineering, data validation, and model evaluation,
 and interpretation on Amazon SageMaker.
 """
-from __future__ import print_function, absolute_import
+from __future__ import absolute_import
 
 import os
 import pathlib
 import logging
 from textwrap import dedent
 from typing import Dict, List, Optional, Union
+from copy import copy
 
 import attr
 
 from six.moves.urllib.parse import urlparse
 from six.moves.urllib.request import url2pathname
 from sagemaker import s3
+from sagemaker.config import (
+    PROCESSING_JOB_KMS_KEY_ID_PATH,
+    PROCESSING_JOB_SECURITY_GROUP_IDS_PATH,
+    PROCESSING_JOB_SUBNETS_PATH,
+    PROCESSING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+    PROCESSING_JOB_VOLUME_KMS_KEY_ID_PATH,
+    PROCESSING_JOB_ROLE_ARN_PATH,
+    PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
+)
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
 from sagemaker.network import NetworkConfig
-from sagemaker.utils import base_name_from_image, get_config_value, name_from_base
+from sagemaker.utils import (
+    base_name_from_image,
+    get_config_value,
+    name_from_base,
+    check_and_get_run_experiment_config,
+    resolve_value_from_config,
+    resolve_class_attribute_from_config,
+)
 from sagemaker.session import Session
 from sagemaker.workflow import is_pipeline_variable
 from sagemaker.workflow.functions import Join
@@ -53,10 +70,10 @@ class Processor(object):
 
     def __init__(
         self,
-        role: str,
-        image_uri: Union[str, PipelineVariable],
-        instance_count: Union[int, PipelineVariable],
-        instance_type: Union[str, PipelineVariable],
+        role: str = None,
+        image_uri: Union[str, PipelineVariable] = None,
+        instance_count: Union[int, PipelineVariable] = None,
+        instance_type: Union[str, PipelineVariable] = None,
         entrypoint: Optional[List[Union[str, PipelineVariable]]] = None,
         volume_size_in_gb: Union[int, PipelineVariable] = 30,
         volume_kms_key: Optional[Union[str, PipelineVariable]] = None,
@@ -73,7 +90,7 @@ class Processor(object):
         The ``Processor`` handles Amazon SageMaker Processing tasks.
 
         Args:
-            role (str): An AWS IAM role name or ARN. Amazon SageMaker Processing
+            role (str or PipelineVariable): An AWS IAM role name or ARN. Amazon SageMaker Processing
                 uses this role to access AWS resources, such as
                 data stored in Amazon S3.
             image_uri (str or PipelineVariable): The URI of the Docker image to use for the
@@ -112,19 +129,15 @@ class Processor(object):
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
         """
-        self.role = role
         self.image_uri = image_uri
         self.instance_count = instance_count
         self.instance_type = instance_type
         self.entrypoint = entrypoint
         self.volume_size_in_gb = volume_size_in_gb
-        self.volume_kms_key = volume_kms_key
-        self.output_kms_key = output_kms_key
         self.max_runtime_in_seconds = max_runtime_in_seconds
         self.base_job_name = base_job_name
         self.env = env
         self.tags = tags
-        self.network_config = network_config
 
         self.jobs = []
         self.latest_job = None
@@ -137,6 +150,51 @@ class Processor(object):
                 sagemaker_session = LocalSession(disable_local_code=True)
 
         self.sagemaker_session = sagemaker_session or Session()
+        self.output_kms_key = resolve_value_from_config(
+            output_kms_key, PROCESSING_JOB_KMS_KEY_ID_PATH, sagemaker_session=self.sagemaker_session
+        )
+        self.volume_kms_key = resolve_value_from_config(
+            volume_kms_key,
+            PROCESSING_JOB_VOLUME_KMS_KEY_ID_PATH,
+            sagemaker_session=self.sagemaker_session,
+        )
+        self.network_config = resolve_class_attribute_from_config(
+            NetworkConfig,
+            network_config,
+            "subnets",
+            PROCESSING_JOB_SUBNETS_PATH,
+            sagemaker_session=self.sagemaker_session,
+        )
+        self.network_config = resolve_class_attribute_from_config(
+            NetworkConfig,
+            self.network_config,
+            "security_group_ids",
+            PROCESSING_JOB_SECURITY_GROUP_IDS_PATH,
+            sagemaker_session=self.sagemaker_session,
+        )
+        self.network_config = resolve_class_attribute_from_config(
+            NetworkConfig,
+            self.network_config,
+            "enable_network_isolation",
+            PROCESSING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+            sagemaker_session=self.sagemaker_session,
+        )
+        self.network_config = resolve_class_attribute_from_config(
+            NetworkConfig,
+            self.network_config,
+            "encrypt_inter_container_traffic",
+            PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
+            sagemaker_session=self.sagemaker_session,
+        )
+        self.role = resolve_value_from_config(
+            role, PROCESSING_JOB_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
+        )
+        if not self.role:
+            # Originally IAM role was a required parameter.
+            # Now we marked that as Optional because we can fetch it from SageMakerConfig
+            # Because of marking that parameter as optional, we should validate if it is None, even
+            # after fetching the config.
+            raise ValueError("An AWS IAM role is required to create a Processing job.")
 
     @runnable_by_pipeline
     def run(
@@ -202,6 +260,7 @@ class Processor(object):
             outputs=outputs,
         )
 
+        experiment_config = check_and_get_run_experiment_config(experiment_config)
         self.latest_job = ProcessingJob.start_new(
             processor=self,
             inputs=normalized_inputs,
@@ -431,11 +490,11 @@ class ScriptProcessor(Processor):
 
     def __init__(
         self,
-        role: str,
-        image_uri: Union[str, PipelineVariable],
-        command: List[str],
-        instance_count: Union[int, PipelineVariable],
-        instance_type: Union[str, PipelineVariable],
+        role: Optional[Union[str, PipelineVariable]] = None,
+        image_uri: Union[str, PipelineVariable] = None,
+        command: List[str] = None,
+        instance_count: Union[int, PipelineVariable] = None,
+        instance_type: Union[str, PipelineVariable] = None,
         volume_size_in_gb: Union[int, PipelineVariable] = 30,
         volume_kms_key: Optional[Union[str, PipelineVariable]] = None,
         output_kms_key: Optional[Union[str, PipelineVariable]] = None,
@@ -453,7 +512,7 @@ class ScriptProcessor(Processor):
         run as part of the Processing Job.
 
         Args:
-            role (str): An AWS IAM role name or ARN. Amazon SageMaker Processing
+            role (str or PipelineVariable): An AWS IAM role name or ARN. Amazon SageMaker Processing
                 uses this role to access AWS resources, such as
                 data stored in Amazon S3.
             image_uri (str or PipelineVariable): The URI of the Docker image to use for the
@@ -604,6 +663,7 @@ class ScriptProcessor(Processor):
             kms_key=kms_key,
         )
 
+        experiment_config = check_and_get_run_experiment_config(experiment_config)
         self.latest_job = ProcessingJob.start_new(
             processor=self,
             inputs=normalized_inputs,
@@ -832,11 +892,10 @@ class ProcessingJob(_Job):
         """
         process_args = cls._get_process_args(processor, inputs, outputs, experiment_config)
 
-        # Print the job name and the user's inputs and outputs as lists of dictionaries.
-        print()
-        print("Job Name: ", process_args["job_name"])
-        print("Inputs: ", process_args["inputs"])
-        print("Outputs: ", process_args["output_config"]["Outputs"])
+        # Log the job name and the user's inputs and outputs as lists of dictionaries.
+        logger.debug("Job Name: %s", process_args["job_name"])
+        logger.debug("Inputs: %s", process_args["inputs"])
+        logger.debug("Outputs: %s", process_args["output_config"]["Outputs"])
 
         # Call sagemaker_session.process using the arguments dictionary.
         processor.sagemaker_session.process(**process_args)
@@ -923,7 +982,11 @@ class ProcessingJob(_Job):
         else:
             process_request_args["network_config"] = None
 
-        process_request_args["role_arn"] = processor.sagemaker_session.expand_role(processor.role)
+        process_request_args["role_arn"] = (
+            processor.role
+            if is_pipeline_variable(processor.role)
+            else processor.sagemaker_session.expand_role(processor.role)
+        )
 
         process_request_args["tags"] = processor.tags
 
@@ -1350,9 +1413,9 @@ class FrameworkProcessor(ScriptProcessor):
         self,
         estimator_cls: type,
         framework_version: str,
-        role: str,
-        instance_count: Union[int, PipelineVariable],
-        instance_type: Union[str, PipelineVariable],
+        role: Optional[Union[str, PipelineVariable]] = None,
+        instance_count: Union[int, PipelineVariable] = None,
+        instance_type: Union[str, PipelineVariable] = None,
         py_version: str = "py3",
         image_uri: Optional[Union[str, PipelineVariable]] = None,
         command: Optional[List[str]] = None,
@@ -1378,8 +1441,9 @@ class FrameworkProcessor(ScriptProcessor):
                 estimator
             framework_version (str): The version of the framework. Value is ignored when
                 ``image_uri`` is provided.
-            role (str): An AWS IAM role name or ARN. Amazon SageMaker Processing uses
-                this role to access AWS resources, such as data stored in Amazon S3.
+            role (str or PipelineVariable): An AWS IAM role name or ARN. Amazon SageMaker
+                Processing uses this role to access AWS resources, such as data stored
+                in Amazon S3.
             instance_count (int or PipelineVariable): The number of instances to run a
                 processing job with.
             instance_type (str or PipelineVariable): The type of EC2 instance to use for
@@ -1587,13 +1651,13 @@ class FrameworkProcessor(ScriptProcessor):
                 framework script to run.Path (absolute or relative) to the local
                 Python source file which should be executed as the entry point
                 to training. When `code` is an S3 URI, ignore `source_dir`,
-                `dependencies, and `git_config`. If ``source_dir`` is specified,
+                `dependencies`, and `git_config`. If ``source_dir`` is specified,
                 then ``code`` must point to a file located at the root of ``source_dir``.
             source_dir (str): Path (absolute, relative or an S3 URI) to a directory
                 with any other processing source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
-                point to a tar.gz file. Structure within this directory are preserved
-                when processing on Amazon SageMaker (default: None).
+                point to a file named `sourcedir.tar.gz`. Structure within this directory
+                are preserved when processing on Amazon SageMaker (default: None).
             dependencies (list[str]): A list of paths to directories (absolute
                 or relative) with any additional libraries that will be exported
                 to the container (default: []). The library folders will be
@@ -1730,20 +1794,17 @@ class FrameworkProcessor(ScriptProcessor):
                 "sagemaker_session unspecified when creating your Processor to have one set up "
                 "automatically."
             )
+        if "/sourcedir.tar.gz" in estimator.uploaded_code.s3_prefix:
+            # Upload the bootstrapping code as s3://.../jobname/source/runproc.sh.
+            entrypoint_s3_uri = estimator.uploaded_code.s3_prefix.replace(
+                "sourcedir.tar.gz",
+                "runproc.sh",
+            )
+        else:
+            raise RuntimeError("S3 source_dir file must be named `sourcedir.tar.gz.`")
 
-        # Upload the bootstrapping code as s3://.../jobname/source/runproc.sh.
-        entrypoint_s3_uri = estimator.uploaded_code.s3_prefix.replace(
-            "sourcedir.tar.gz",
-            "runproc.sh",
-        )
         script = estimator.uploaded_code.script_name
-        s3_runproc_sh = S3Uploader.upload_string_as_file_body(
-            self._generate_framework_script(script),
-            desired_s3_uri=entrypoint_s3_uri,
-            kms_key=kms_key,
-            sagemaker_session=self.sagemaker_session,
-        )
-        logger.info("runproc.sh uploaded to %s", s3_runproc_sh)
+        s3_runproc_sh = self._create_and_upload_runproc(script, kms_key, entrypoint_s3_uri)
 
         return s3_runproc_sh, inputs, job_name
 
@@ -1827,14 +1888,17 @@ class FrameworkProcessor(ScriptProcessor):
         #   a7399455f5386d83ddc5cb15c0db00c04bd518ec/src/sagemaker/processing.py#L425-L426
         if inputs is None:
             inputs = []
-        inputs.append(
+
+        # make a shallow copy of user inputs
+        patched_inputs = copy(inputs)
+        patched_inputs.append(
             ProcessingInput(
                 input_name="code",
                 source=s3_payload,
                 destination="/opt/ml/processing/input/code/",
             )
         )
-        return inputs
+        return patched_inputs
 
     def _set_entrypoint(self, command, user_script_name):
         """Framework processor override for setting processing job entrypoint.
@@ -1850,3 +1914,42 @@ class FrameworkProcessor(ScriptProcessor):
             )
         )
         self.entrypoint = self.framework_entrypoint_command + [user_script_location]
+
+    def _create_and_upload_runproc(self, user_script, kms_key, entrypoint_s3_uri):
+        """Create runproc shell script and upload to S3 bucket.
+
+        If leveraging a pipeline session with optimized S3 artifact paths,
+        the runproc.sh file is hashed and uploaded to a separate S3 location.
+
+
+        Args:
+            user_script (str): Relative path to ```code``` in the source bundle
+                - e.g. 'process.py'.
+            kms_key (str): THe kms key used for encryption.
+            entrypoint_s3_uri (str): The S3 upload path for the runproc script.
+        """
+        from sagemaker.workflow.utilities import _pipeline_config, hash_object
+
+        if _pipeline_config and _pipeline_config.pipeline_name:
+            runproc_file_str = self._generate_framework_script(user_script)
+            runproc_file_hash = hash_object(runproc_file_str)
+            s3_uri = (
+                f"s3://{self.sagemaker_session.default_bucket()}/{_pipeline_config.pipeline_name}/"
+                f"code/{runproc_file_hash}/runproc.sh"
+            )
+            s3_runproc_sh = S3Uploader.upload_string_as_file_body(
+                runproc_file_str,
+                desired_s3_uri=s3_uri,
+                kms_key=kms_key,
+                sagemaker_session=self.sagemaker_session,
+            )
+        else:
+            s3_runproc_sh = S3Uploader.upload_string_as_file_body(
+                self._generate_framework_script(user_script),
+                desired_s3_uri=entrypoint_s3_uri,
+                kms_key=kms_key,
+                sagemaker_session=self.sagemaker_session,
+            )
+        logger.info("runproc.sh uploaded to %s", s3_runproc_sh)
+
+        return s3_runproc_sh

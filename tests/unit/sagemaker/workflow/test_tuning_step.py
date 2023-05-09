@@ -14,14 +14,12 @@ from __future__ import absolute_import
 
 import os
 import json
-from mock import Mock, PropertyMock
 import pytest
 import warnings
 
 from sagemaker import Model, Processor
 from sagemaker.estimator import Estimator
 from sagemaker.transformer import Transformer
-from sagemaker.workflow.pipeline_context import PipelineSession
 
 from sagemaker.workflow.steps import TuningStep
 from sagemaker.inputs import TrainingInput
@@ -34,50 +32,7 @@ from sagemaker.pytorch.estimator import PyTorch
 
 from tests.unit import DATA_DIR
 from tests.unit.sagemaker.workflow.helpers import get_step_args_helper
-
-REGION = "us-west-2"
-BUCKET = "my-bucket"
-ROLE = "DummyRole"
-IMAGE_URI = "fakeimage"
-INSTANCE_TYPE = "ml.m4.xlarge"
-
-
-@pytest.fixture
-def client():
-    """Mock client.
-    Considerations when appropriate:
-        * utilize botocore.stub.Stubber
-        * separate runtime client from client
-    """
-    client_mock = Mock()
-    client_mock._client_config.user_agent = (
-        "Boto3/1.14.24 Python/3.8.5 Linux/5.4.0-42-generic Botocore/1.17.24 Resource"
-    )
-    return client_mock
-
-
-@pytest.fixture
-def boto_session(client):
-    role_mock = Mock()
-    type(role_mock).arn = PropertyMock(return_value=ROLE)
-
-    resource_mock = Mock()
-    resource_mock.Role.return_value = role_mock
-
-    session_mock = Mock(region_name=REGION)
-    session_mock.resource.return_value = resource_mock
-    session_mock.client.return_value = client
-
-    return session_mock
-
-
-@pytest.fixture
-def pipeline_session(boto_session, client):
-    return PipelineSession(
-        boto_session=boto_session,
-        sagemaker_client=client,
-        default_bucket=BUCKET,
-    )
+from tests.unit.sagemaker.workflow.conftest import ROLE, INSTANCE_TYPE, IMAGE_URI
 
 
 @pytest.fixture
@@ -159,22 +114,14 @@ def test_tuning_step_with_single_algo_tuner(pipeline_session, training_input, en
         "S3DataSource"
     ]["S3Uri"]
 
-    # trim timestamp so sagemaker_job_name will still match
-    step_args_sm_job_name = step_args["TrainingJobDefinition"]["StaticHyperParameters"][
+    # delete sagemaker_job_name b/c of timestamp collision
+    del step_args["TrainingJobDefinition"]["StaticHyperParameters"]["sagemaker_job_name"]
+    del step_def["Arguments"]["TrainingJobDefinition"]["StaticHyperParameters"][
         "sagemaker_job_name"
     ]
-    step_args["TrainingJobDefinition"]["StaticHyperParameters"][
-        "sagemaker_job_name"
-    ] = step_args_sm_job_name[:-24]
-    step_def_sm_job_name = step_def["Arguments"]["TrainingJobDefinition"]["StaticHyperParameters"][
-        "sagemaker_job_name"
-    ]
-    step_def["Arguments"]["TrainingJobDefinition"]["StaticHyperParameters"][
-        "sagemaker_job_name"
-    ] = step_def_sm_job_name[:-24]
 
-    # delete S3 path assertions for now because job name is included with timestamp. These will be re-enabled once
-    # next PRs are submitted with s3 path updates, removing the job name.
+    # delete S3 path assertions for now because job name is included with timestamp. These will be re-enabled after
+    # caching improvements phase 2.
     del step_args["TrainingJobDefinition"]["StaticHyperParameters"]["sagemaker_submit_directory"]
     del step_def["Arguments"]["TrainingJobDefinition"]["StaticHyperParameters"][
         "sagemaker_submit_directory"
@@ -187,6 +134,16 @@ def test_tuning_step_with_single_algo_tuner(pipeline_session, training_input, en
     }
     adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
     assert adjacency_list == {"MyTuningStep": []}
+
+    # test idempotency
+    step_def2 = json.loads(pipeline.definition())["Steps"][0]
+    del step_def2["Arguments"]["TrainingJobDefinition"]["StaticHyperParameters"][
+        "sagemaker_job_name"
+    ]
+    del step_def2["Arguments"]["TrainingJobDefinition"]["StaticHyperParameters"][
+        "sagemaker_submit_directory"
+    ]
+    assert step_def == step_def2
 
 
 def test_tuning_step_with_multi_algo_tuner(pipeline_session, entry_point):
@@ -249,20 +206,14 @@ def test_tuning_step_with_multi_algo_tuner(pipeline_session, entry_point):
     step_def = json.loads(pipeline.definition())["Steps"][0]
 
     for i, step in enumerate(step_args["TrainingJobDefinitions"]):
-        # trim timestamp so sagemaker_job_name will still match
-        step_args_sm_job_name = step["StaticHyperParameters"]["sagemaker_job_name"]
-        step_args["TrainingJobDefinitions"][i]["StaticHyperParameters"][
+        # delete sagemaker_job_name b/c of timestamp collision
+        del step_args["TrainingJobDefinitions"][i]["StaticHyperParameters"]["sagemaker_job_name"]
+        del step_def["Arguments"]["TrainingJobDefinitions"][i]["StaticHyperParameters"][
             "sagemaker_job_name"
-        ] = step_args_sm_job_name[:-24]
-        step_def_sm_job_name = step_def["Arguments"]["TrainingJobDefinitions"][i][
-            "StaticHyperParameters"
-        ]["sagemaker_job_name"]
-        step_def["Arguments"]["TrainingJobDefinitions"][i]["StaticHyperParameters"][
-            "sagemaker_job_name"
-        ] = step_def_sm_job_name[:-24]
+        ]
 
-        # delete S3 path assertions for now because job name is included with timestamp. These will be re-enabled once
-        # next PRs are submitted with s3 path updates, removing the job name.
+        # delete S3 path assertions for now because job name is included with timestamp. These will be re-enabled after
+        # caching improvements phase 2.
         del step_args["TrainingJobDefinitions"][i]["StaticHyperParameters"][
             "sagemaker_submit_directory"
         ]
@@ -277,6 +228,18 @@ def test_tuning_step_with_multi_algo_tuner(pipeline_session, entry_point):
     }
     adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
     assert adjacency_list == {"MyTuningStep": []}
+
+    # test idempotency
+    step_def2 = json.loads(pipeline.definition())["Steps"][0]
+    for i, step in enumerate(step_def2["Arguments"]["TrainingJobDefinitions"]):
+        del step_def2["Arguments"]["TrainingJobDefinitions"][i]["StaticHyperParameters"][
+            "sagemaker_job_name"
+        ]
+
+        del step_def2["Arguments"]["TrainingJobDefinitions"][i]["StaticHyperParameters"][
+            "sagemaker_submit_directory"
+        ]
+    assert step_def == step_def2
 
 
 @pytest.mark.parametrize(

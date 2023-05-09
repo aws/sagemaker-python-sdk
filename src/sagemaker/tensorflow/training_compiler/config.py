@@ -24,14 +24,11 @@ logger = logging.getLogger(__name__)
 class TrainingCompilerConfig(BaseConfig):
     """The SageMaker Training Compiler configuration class."""
 
-    SUPPORTED_INSTANCE_CLASS_PREFIXES = ["p3", "g4dn", "p4", "g5"]
+    SUPPORTED_INSTANCE_CLASS_PREFIXES = ["p3", "p3dn", "g4dn", "p4d", "g5"]
     MIN_SUPPORTED_VERSION = "2.9"
+    MAX_SUPPORTED_VERSION = "2.11"
 
-    def __init__(
-        self,
-        enabled=True,
-        debug=False,
-    ):
+    def __init__(self, enabled=True, debug=False):
         """This class initializes a ``TrainingCompilerConfig`` instance.
 
         `Amazon SageMaker Training Compiler
@@ -79,14 +76,11 @@ class TrainingCompilerConfig(BaseConfig):
         super(TrainingCompilerConfig, self).__init__(enabled=enabled, debug=debug)
 
     @classmethod
-    def validate(
-        cls,
-        estimator,
-    ):
+    def validate(cls, estimator):
         """Checks if SageMaker Training Compiler is configured correctly.
 
         Args:
-            estimator (str): A estimator object
+            estimator (:class:`sagemaker.tensorflow.estimator.TensorFlow`): A estimator object
                 If SageMaker Training Compiler is enabled, it will validate whether
                 the estimator is configured to be compatible with Training Compiler.
 
@@ -98,14 +92,26 @@ class TrainingCompilerConfig(BaseConfig):
         super(TrainingCompilerConfig, cls).validate(estimator)
 
         if estimator.framework_version:
-            if Version(estimator.framework_version) in SpecifierSet(
-                f"< {cls.MIN_SUPPORTED_VERSION}"
+            if Version(estimator.framework_version) not in SpecifierSet(
+                f">= {cls.MIN_SUPPORTED_VERSION}", f"<= {cls.MAX_SUPPORTED_VERSION}"
             ):
                 error_helper_string = (
                     "SageMaker Training Compiler only supports TensorFlow version "
-                    ">= {} but received {}"
+                    "between {} to {} but received {}"
                 )
                 error_helper_string = error_helper_string.format(
-                    cls.MIN_SUPPORTED_VERSION, estimator.framework_version
+                    cls.MIN_SUPPORTED_VERSION,
+                    cls.MAX_SUPPORTED_VERSION,
+                    estimator.framework_version,
                 )
                 raise ValueError(error_helper_string)
+
+        if estimator.distribution and "multi_worker_mirrored_strategy" in estimator.distribution:
+            mwms_enabled = estimator.distribution.get("multi_worker_mirrored_strategy").get(
+                "enabled", False
+            )
+            if mwms_enabled:
+                raise ValueError(
+                    "Multi Worker Mirrored Strategy distributed training configuration "
+                    "is currently not compatible with SageMaker Training Compiler."
+                )

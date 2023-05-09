@@ -13,7 +13,6 @@
 from __future__ import absolute_import
 
 import json
-from mock import Mock, PropertyMock
 
 import pytest
 import warnings
@@ -24,7 +23,6 @@ from sagemaker import Model, Processor
 from sagemaker.estimator import Estimator
 from sagemaker.parameter import IntegerParameter
 from sagemaker.tuner import HyperparameterTuner
-from sagemaker.workflow.pipeline_context import PipelineSession
 from tests.unit.sagemaker.workflow.helpers import CustomStep, get_step_args_helper
 
 from sagemaker.workflow.steps import TransformStep, TransformInput
@@ -34,57 +32,11 @@ from sagemaker.workflow.functions import Join
 from sagemaker.workflow import is_pipeline_variable
 
 from sagemaker.transformer import Transformer
+from tests.unit.sagemaker.workflow.conftest import IMAGE_URI, ROLE, INSTANCE_TYPE
 
-REGION = "us-west-2"
-ROLE = "DummyRole"
-IMAGE_URI = "fakeimage"
-MODEL_NAME = "gisele"
 DUMMY_S3_SCRIPT_PATH = "s3://dummy-s3/dummy_script.py"
 DUMMY_S3_SOURCE_DIR = "s3://dummy-s3-source-dir/"
-INSTANCE_TYPE = "ml.m4.xlarge"
-BUCKET = "my-bucket"
 custom_step = CustomStep(name="my-custom-step")
-
-
-@pytest.fixture
-def client():
-    """Mock client.
-
-    Considerations when appropriate:
-
-        * utilize botocore.stub.Stubber
-        * separate runtime client from client
-    """
-    client_mock = Mock()
-    client_mock._client_config.user_agent = (
-        "Boto3/1.14.24 Python/3.8.5 Linux/5.4.0-42-generic Botocore/1.17.24 Resource"
-    )
-    client_mock.describe_model.return_value = {"PrimaryContainer": {}, "Containers": {}}
-    return client_mock
-
-
-@pytest.fixture
-def boto_session(client):
-    role_mock = Mock()
-    type(role_mock).arn = PropertyMock(return_value=ROLE)
-
-    resource_mock = Mock()
-    resource_mock.Role.return_value = role_mock
-
-    session_mock = Mock(region_name=REGION)
-    session_mock.resource.return_value = resource_mock
-    session_mock.client.return_value = client
-
-    return session_mock
-
-
-@pytest.fixture
-def pipeline_session(boto_session, client):
-    return PipelineSession(
-        boto_session=boto_session,
-        sagemaker_client=client,
-        default_bucket=BUCKET,
-    )
 
 
 @pytest.mark.parametrize(
@@ -176,6 +128,10 @@ def test_transform_step_with_transformer(model_name, data, output_path, pipeline
         "Arguments": expected_step_arguments,
     }
 
+    # test idempotency
+    step_def2 = json.loads(pipeline.definition())["Steps"][0]
+    assert step_def == step_def2
+
 
 @pytest.mark.parametrize(
     "experiment_config, expected_experiment_config",
@@ -260,6 +216,10 @@ def test_transform_step_with_transformer_experiment_config(
 
     adjacency_list = PipelineGraph.from_pipeline(pipeline).adjacency_list
     assert adjacency_list == {"MyTransformStep": []}
+
+    # test idempotency
+    step_def2 = json.loads(pipeline.definition())["Steps"][0]
+    assert step_def == step_def2
 
 
 @pytest.mark.parametrize(

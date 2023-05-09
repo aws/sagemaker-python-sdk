@@ -72,6 +72,12 @@ HYPERBAND_STRATEGY_CONFIG = "HyperbandStrategyConfig"
 HYPERBAND_MIN_RESOURCE = "MinResource"
 HYPERBAND_MAX_RESOURCE = "MaxResource"
 GRID_SEARCH = "GridSearch"
+MAX_NUMBER_OF_TRAINING_JOBS_NOT_IMPROVING = "MaxNumberOfTrainingJobsNotImproving"
+BEST_OBJECTIVE_NOT_IMPROVING = "BestObjectiveNotImproving"
+CONVERGENCE_DETECTED = "ConvergenceDetected"
+COMPLETE_ON_CONVERGENCE_DETECTED = "CompleteOnConvergence"
+TARGET_OBJECTIVE_METRIC_VALUE = "TargetObjectiveMetricValue"
+MAX_RUNTIME_IN_SECONDS = "MaxRuntimeInSeconds"
 
 logger = logging.getLogger(__name__)
 
@@ -282,8 +288,8 @@ class HyperbandStrategyConfig(object):
 
         Returns:
             sagemaker.tuner.HyperbandStrategyConfig: De-serialized instance of
-            HyperbandStrategyConfig containing the max_resource and min_resource provided as part of
-            ``hyperband_strategy_config``.
+                ``HyperbandStrategyConfig`` containing the max_resource
+                and min_resource provided as part of ``hyperband_strategy_config``.
         """
         return cls(
             min_resource=hyperband_strategy_config[HYPERBAND_MIN_RESOURCE],
@@ -306,7 +312,7 @@ class HyperbandStrategyConfig(object):
 
         Returns:
             dict: Containing the "MaxResource" and
-            "MinResource" as the first class fields.
+                "MinResource" as the first class fields.
         """
         return {
             HYPERBAND_MIN_RESOURCE: self.min_resource,
@@ -330,7 +336,7 @@ class StrategyConfig(object):
 
         Args:
             hyperband_strategy_config (sagemaker.tuner.HyperbandStrategyConfig): The configuration
-            for the object that specifies the Hyperband strategy.
+                for the object that specifies the Hyperband strategy.
                 This parameter is only supported for the Hyperband selection for Strategy within
                 the HyperParameterTuningJobConfig.
         """
@@ -383,6 +389,195 @@ class StrategyConfig(object):
         }
 
 
+class InstanceConfig:
+    """Instance configuration for training jobs started by hyperparameter tuning.
+
+    Contains the configuration(s) for one or more resources for processing hyperparameter jobs.
+    These resources include compute instances and storage volumes to use in model training jobs
+    launched by hyperparameter tuning jobs.
+    """
+
+    def __init__(
+        self,
+        instance_count: Union[int, PipelineVariable] = None,
+        instance_type: Union[str, PipelineVariable] = None,
+        volume_size: Union[int, PipelineVariable] = 30,
+    ):
+        """Creates a ``InstanceConfig`` instance.
+
+        It takes instance configuration information for training
+        jobs that are created as the result of a hyperparameter tuning job.
+
+        Args:
+            * instance_count (str or PipelineVariable): The number of compute instances of type
+            InstanceType to use. For distributed training, select a value greater than 1.
+            * instance_type (str or PipelineVariable):
+            The instance type used to run hyperparameter optimization tuning jobs.
+            * volume_size (int or PipelineVariable): The volume size in GB of the data to be
+            processed for hyperparameter optimization
+        """
+        self.instance_count = instance_count
+        self.instance_type = instance_type
+        self.volume_size = volume_size
+
+    @classmethod
+    def from_job_desc(cls, instance_config):
+        """Creates a ``InstanceConfig`` from an instance configuration response.
+
+        This is the instance configuration from the DescribeTuningJob response.
+
+        Args:
+            instance_config (dict): The expected format of the
+                ``instance_config`` contains one first-class field
+
+        Returns:
+            sagemaker.tuner.InstanceConfig: De-serialized instance of
+            InstanceConfig containing the strategy configuration.
+        """
+        return cls(
+            instance_count=instance_config["InstanceCount"],
+            instance_type=instance_config[" InstanceType "],
+            volume_size=instance_config["VolumeSizeInGB"],
+        )
+
+    def to_input_req(self):
+        """Converts the ``self`` instance to the desired input request format.
+
+        Examples:
+            >>> strategy_config = InstanceConfig(
+                instance_count=1,
+                instance_type='ml.m4.xlarge',
+                volume_size=30
+            )
+            >>> strategy_config.to_input_req()
+            {
+                "InstanceCount":1,
+                "InstanceType":"ml.m4.xlarge",
+                "VolumeSizeInGB":30
+            }
+
+        Returns:
+            dict: Containing the instance configurations.
+        """
+        return {
+            "InstanceCount": self.instance_count,
+            "InstanceType": self.instance_type,
+            "VolumeSizeInGB": self.volume_size,
+        }
+
+
+class TuningJobCompletionCriteriaConfig(object):
+    """The configuration for a job completion criteria."""
+
+    def __init__(
+        self,
+        max_number_of_training_jobs_not_improving: int = None,
+        complete_on_convergence: bool = None,
+        target_objective_metric_value: float = None,
+    ):
+        """Creates a ``TuningJobCompletionCriteriaConfig`` with provided criteria.
+
+        Args:
+            max_number_of_training_jobs_not_improving (int): The number of training jobs that do not
+                improve the best objective after which tuning job will stop.
+            complete_on_convergence (bool): A flag to stop your hyperparameter tuning job if
+                automatic model tuning (AMT) has detected that your model has converged as evaluated
+                against your objective function.
+            target_objective_metric_value (float): The value of the objective metric.
+        """
+
+        self.max_number_of_training_jobs_not_improving = max_number_of_training_jobs_not_improving
+        self.complete_on_convergence = complete_on_convergence
+        self.target_objective_metric_value = target_objective_metric_value
+
+    @classmethod
+    def from_job_desc(cls, completion_criteria_config):
+        """Creates a ``TuningJobCompletionCriteriaConfig`` from a configuration response.
+
+        This is the completion criteria configuration from the DescribeTuningJob response.
+        Args:
+            completion_criteria_config (dict): The expected format of the
+                ``completion_criteria_config`` contains three first-class fields
+
+        Returns:
+            sagemaker.tuner.TuningJobCompletionCriteriaConfig: De-serialized instance of
+            TuningJobCompletionCriteriaConfig containing the completion criteria.
+        """
+        complete_on_convergence = None
+        if CONVERGENCE_DETECTED in completion_criteria_config:
+            if completion_criteria_config[CONVERGENCE_DETECTED][COMPLETE_ON_CONVERGENCE_DETECTED]:
+                complete_on_convergence = bool(
+                    completion_criteria_config[CONVERGENCE_DETECTED][
+                        COMPLETE_ON_CONVERGENCE_DETECTED
+                    ]
+                    == "Enabled"
+                )
+
+        max_number_of_training_jobs_not_improving = None
+        if BEST_OBJECTIVE_NOT_IMPROVING in completion_criteria_config:
+            if completion_criteria_config[BEST_OBJECTIVE_NOT_IMPROVING][
+                MAX_NUMBER_OF_TRAINING_JOBS_NOT_IMPROVING
+            ]:
+                max_number_of_training_jobs_not_improving = completion_criteria_config[
+                    BEST_OBJECTIVE_NOT_IMPROVING
+                ][MAX_NUMBER_OF_TRAINING_JOBS_NOT_IMPROVING]
+
+        target_objective_metric_value = None
+        if TARGET_OBJECTIVE_METRIC_VALUE in completion_criteria_config:
+            target_objective_metric_value = completion_criteria_config[
+                TARGET_OBJECTIVE_METRIC_VALUE
+            ]
+
+        return cls(
+            max_number_of_training_jobs_not_improving=max_number_of_training_jobs_not_improving,
+            complete_on_convergence=complete_on_convergence,
+            target_objective_metric_value=target_objective_metric_value,
+        )
+
+    def to_input_req(self):
+        """Converts the ``self`` instance to the desired input request format.
+
+        Examples:
+            >>> completion_criteria_config = TuningJobCompletionCriteriaConfig(
+                max_number_of_training_jobs_not_improving=5
+                complete_on_convergence = True,
+                target_objective_metric_value = 0.42
+            )
+            >>> completion_criteria_config.to_input_req()
+            {
+                "BestObjectiveNotImproving": {
+                    "MaxNumberOfTrainingJobsNotImproving":5
+                },
+                "ConvergenceDetected": {
+                    "CompleteOnConvergence": "Enabled",
+                },
+                "TargetObjectiveMetricValue": 0.42
+            }
+
+        Returns:
+            dict: Containing the completion criteria configurations.
+        """
+        completion_criteria_config = {}
+        if self.max_number_of_training_jobs_not_improving is not None:
+            completion_criteria_config[BEST_OBJECTIVE_NOT_IMPROVING] = {}
+            completion_criteria_config[BEST_OBJECTIVE_NOT_IMPROVING][
+                MAX_NUMBER_OF_TRAINING_JOBS_NOT_IMPROVING
+            ] = self.max_number_of_training_jobs_not_improving
+
+        if self.target_objective_metric_value is not None:
+            completion_criteria_config[
+                TARGET_OBJECTIVE_METRIC_VALUE
+            ] = self.target_objective_metric_value
+
+        if self.complete_on_convergence is not None:
+            completion_criteria_config[CONVERGENCE_DETECTED] = {}
+            completion_criteria_config[CONVERGENCE_DETECTED][COMPLETE_ON_CONVERGENCE_DETECTED] = (
+                "Enabled" if self.complete_on_convergence else "Disabled"
+            )
+
+        return completion_criteria_config
+
+
 class HyperparameterTuner(object):
     """Defines interaction with Amazon SageMaker hyperparameter tuning jobs.
 
@@ -407,12 +602,15 @@ class HyperparameterTuner(object):
         objective_type: Union[str, PipelineVariable] = "Maximize",
         max_jobs: Union[int, PipelineVariable] = None,
         max_parallel_jobs: Union[int, PipelineVariable] = 1,
+        max_runtime_in_seconds: Optional[Union[int, PipelineVariable]] = None,
         tags: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
         base_tuning_job_name: Optional[str] = None,
         warm_start_config: Optional[WarmStartConfig] = None,
         strategy_config: Optional[StrategyConfig] = None,
+        completion_criteria_config: Optional[TuningJobCompletionCriteriaConfig] = None,
         early_stopping_type: Union[str, PipelineVariable] = "Off",
         estimator_name: Optional[str] = None,
+        random_seed: Optional[int] = None,
     ):
         """Creates a ``HyperparameterTuner`` instance.
 
@@ -449,6 +647,8 @@ class HyperparameterTuner(object):
                 strategy and the default value is 1 for all others strategies (default: None).
             max_parallel_jobs (int or PipelineVariable): Maximum number of parallel training jobs to
                 start (default: 1).
+            max_runtime_in_seconds (int or PipelineVariable): The maximum time in seconds
+                 that a training job launched by a hyperparameter tuning job can run.
             tags (list[dict[str, str] or list[dict[str, PipelineVariable]]): List of tags for
                 labeling the tuning job (default: None). For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
@@ -461,7 +661,9 @@ class HyperparameterTuner(object):
                 ``WarmStartConfig`` object that has been initialized with the
                 configuration defining the nature of warm start tuning job.
             strategy_config (sagemaker.tuner.StrategyConfig): A configuration for "Hyperparameter"
-            tuning job optimisation strategy.
+                tuning job optimisation strategy.
+            completion_criteria_config (sagemaker.tuner.TuningJobCompletionCriteriaConfig): A
+                 configuration for the completion criteria.
             early_stopping_type (str or PipelineVariable): Specifies whether early stopping is
                 enabled for the job. Can be either 'Auto' or 'Off' (default:
                 'Off'). If set to 'Off', early stopping will not be attempted.
@@ -470,6 +672,9 @@ class HyperparameterTuner(object):
             estimator_name (str): A unique name to identify an estimator within the
                 hyperparameter tuning job, when more than one estimator is used with
                 the same tuning job (default: None).
+            random_seed (int): An initial value used to initialize a pseudo-random number generator.
+                Setting a random seed will make the hyperparameter tuning search strategies to
+                produce more consistent configurations for the same tuning job.
         """
         if hyperparameter_ranges is None or len(hyperparameter_ranges) == 0:
             raise ValueError("Need to specify hyperparameter ranges")
@@ -501,6 +706,7 @@ class HyperparameterTuner(object):
 
         self.strategy = strategy
         self.strategy_config = strategy_config
+        self.completion_criteria_config = completion_criteria_config
         self.objective_type = objective_type
         # For the GridSearch strategy we expect the max_jobs equals None and recalculate it later.
         # For all other strategies for the backward compatibility we keep
@@ -509,6 +715,7 @@ class HyperparameterTuner(object):
         if max_jobs is None and strategy is not GRID_SEARCH:
             self.max_jobs = 1
         self.max_parallel_jobs = max_parallel_jobs
+        self.max_runtime_in_seconds = max_runtime_in_seconds
 
         self.tags = tags
         self.base_tuning_job_name = base_tuning_job_name
@@ -516,6 +723,32 @@ class HyperparameterTuner(object):
         self.latest_tuning_job = None
         self.warm_start_config = warm_start_config
         self.early_stopping_type = early_stopping_type
+        self.random_seed = random_seed
+        self.instance_configs_dict = None
+        self.instance_configs = None
+
+    def override_resource_config(
+        self, instance_configs: Union[List[InstanceConfig], Dict[str, List[InstanceConfig]]]
+    ):
+        """Override the instance configuration of the estimators used by the tuner.
+
+        Args:
+            instance_configs (List[InstanceConfig] or Dict[str, List[InstanceConfig]):
+                The InstanceConfigs to use as an override for the instance configuration
+                of the estimator. ``None`` will remove the override.
+        """
+        if isinstance(instance_configs, dict):
+            self._validate_dict_argument(
+                name="instance_configs",
+                value=instance_configs,
+                allowed_keys=list(self.estimator_dict.keys()),
+            )
+            self.instance_configs_dict = instance_configs
+        else:
+            self.instance_configs = instance_configs
+            if self.estimator_dict is not None and self.estimator_dict.keys():
+                estimator_names = list(self.estimator_dict.keys())
+                self.instance_configs_dict = {estimator_names[0]: instance_configs}
 
     def _prepare_for_tuning(self, job_name=None, include_cls_metadata=False):
         """Prepare the tuner instance for tuning (fit)."""
@@ -1222,6 +1455,19 @@ class HyperparameterTuner(object):
             "base_tuning_job_name": base_from_name(job_details["HyperParameterTuningJobName"]),
         }
 
+        if "TuningJobCompletionCriteria" in tuning_config:
+            params["completion_criteria_config"] = TuningJobCompletionCriteriaConfig.from_job_desc(
+                tuning_config["TuningJobCompletionCriteria"]
+            )
+
+        if MAX_RUNTIME_IN_SECONDS in tuning_config["ResourceLimits"]:
+            params["max_runtime_in_seconds"] = tuning_config["ResourceLimits"][
+                MAX_RUNTIME_IN_SECONDS
+            ]
+
+        if "RandomSeed" in tuning_config:
+            params["random_seed"] = tuning_config["RandomSeed"]
+
         if "HyperParameterTuningJobObjective" in tuning_config:
             params["objective_metric_name"] = tuning_config["HyperParameterTuningJobObjective"][
                 "MetricName"
@@ -1476,13 +1722,16 @@ class HyperparameterTuner(object):
                 hyperparameter_ranges=self._hyperparameter_ranges,
                 strategy=self.strategy,
                 strategy_config=self.strategy_config,
+                completion_criteria_config=self.completion_criteria_config,
                 objective_type=self.objective_type,
                 max_jobs=self.max_jobs,
                 max_parallel_jobs=self.max_parallel_jobs,
+                max_runtime_in_seconds=self.max_runtime_in_seconds,
                 warm_start_config=WarmStartConfig(
                     warm_start_type=warm_start_type, parents=all_parents
                 ),
                 early_stopping_type=self.early_stopping_type,
+                random_seed=self.random_seed,
             )
 
         if len(self.estimator_dict) > 1:
@@ -1503,11 +1752,14 @@ class HyperparameterTuner(object):
             metric_definitions_dict=self.metric_definitions_dict,
             strategy=self.strategy,
             strategy_config=self.strategy_config,
+            completion_criteria_config=self.completion_criteria_config,
             objective_type=self.objective_type,
             max_jobs=self.max_jobs,
             max_parallel_jobs=self.max_parallel_jobs,
+            max_runtime_in_seconds=self.max_runtime_in_seconds,
             warm_start_config=WarmStartConfig(warm_start_type=warm_start_type, parents=all_parents),
             early_stopping_type=self.early_stopping_type,
+            random_seed=self.random_seed,
         )
 
     @classmethod
@@ -1520,12 +1772,15 @@ class HyperparameterTuner(object):
         base_tuning_job_name=None,
         strategy="Bayesian",
         strategy_config=None,
+        completion_criteria_config=None,
         objective_type="Maximize",
         max_jobs=None,
         max_parallel_jobs=1,
+        max_runtime_in_seconds=None,
         tags=None,
         warm_start_config=None,
         early_stopping_type="Off",
+        random_seed=None,
     ):
         """Factory method to create a ``HyperparameterTuner`` instance.
 
@@ -1569,7 +1824,8 @@ class HyperparameterTuner(object):
             strategy (str): Strategy to be used for hyperparameter estimations
                 (default: 'Bayesian').
             strategy_config (dict): The configuration for a training job launched by a
-            hyperparameter tuning job.
+                hyperparameter tuning job.
+            completion_criteria_config (dict): The configuration for tuning job completion criteria.
             objective_type (str): The type of the objective metric for evaluating training jobs.
                 This value can be either 'Minimize' or 'Maximize' (default: 'Maximize').
             max_jobs (int): Maximum total number of training jobs to start for the hyperparameter
@@ -1577,6 +1833,8 @@ class HyperparameterTuner(object):
                 and the value is 1 for all others strategies (default: None).
             max_parallel_jobs (int): Maximum number of parallel training jobs to start
                 (default: 1).
+            max_runtime_in_seconds (int): The maximum time in seconds
+                 that a training job launched by a hyperparameter tuning job can run.
             tags (list[dict]): List of tags for labeling the tuning job (default: None). For more,
                 see https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             warm_start_config (sagemaker.tuner.WarmStartConfig): A ``WarmStartConfig`` object that
@@ -1586,6 +1844,9 @@ class HyperparameterTuner(object):
                 Can be either 'Auto' or 'Off' (default: 'Off'). If set to 'Off', early stopping
                 will not be attempted. If set to 'Auto', early stopping of some training jobs may
                 happen, but is not guaranteed to.
+            random_seed (int): An initial value used to initialize a pseudo-random number generator.
+                Setting a random seed will make the hyperparameter tuning search strategies to
+                produce more consistent configurations for the same tuning job.
 
         Returns:
             sagemaker.tuner.HyperparameterTuner: a new ``HyperparameterTuner`` object that can
@@ -1618,12 +1879,15 @@ class HyperparameterTuner(object):
             metric_definitions=metric_definitions,
             strategy=strategy,
             strategy_config=strategy_config,
+            completion_criteria_config=completion_criteria_config,
             objective_type=objective_type,
             max_jobs=max_jobs,
             max_parallel_jobs=max_parallel_jobs,
+            max_runtime_in_seconds=max_runtime_in_seconds,
             tags=tags,
             warm_start_config=warm_start_config,
             early_stopping_type=early_stopping_type,
+            random_seed=random_seed,
         )
 
         for estimator_name in estimator_names[1:]:
@@ -1775,8 +2039,14 @@ class _TuningJob(_Job):
             "early_stopping_type": tuner.early_stopping_type,
         }
 
+        if tuner.max_runtime_in_seconds is not None:
+            tuning_config["max_runtime_in_seconds"] = tuner.max_runtime_in_seconds
+
+        if tuner.random_seed is not None:
+            tuning_config["random_seed"] = tuner.random_seed
+
         if tuner.strategy_config is not None:
-            tuning_config["strategy_config"] = tuner.strategy_config
+            tuning_config["strategy_config"] = tuner.strategy_config.to_input_req()
 
         if tuner.objective_metric_name is not None:
             tuning_config["objective_type"] = tuner.objective_type
@@ -1785,6 +2055,11 @@ class _TuningJob(_Job):
         parameter_ranges = tuner.hyperparameter_ranges()
         if parameter_ranges is not None:
             tuning_config["parameter_ranges"] = parameter_ranges
+
+        if tuner.completion_criteria_config is not None:
+            tuning_config[
+                "completion_criteria_config"
+            ] = tuner.completion_criteria_config.to_input_req()
 
         tuner_args = {
             "job_name": tuner._current_job_name,
@@ -1799,6 +2074,7 @@ class _TuningJob(_Job):
                 estimator=tuner.estimator,
                 static_hyperparameters=tuner.static_hyperparameters,
                 metric_definitions=tuner.metric_definitions,
+                instance_configs=tuner.instance_configs,
             )
 
         if tuner.estimator_dict is not None:
@@ -1812,11 +2088,41 @@ class _TuningJob(_Job):
                     tuner.objective_type,
                     tuner.objective_metric_name_dict[estimator_name],
                     tuner.hyperparameter_ranges_dict()[estimator_name],
+                    tuner.instance_configs_dict.get(estimator_name, None)
+                    if tuner.instance_configs_dict is not None
+                    else None,
                 )
                 for estimator_name in sorted(tuner.estimator_dict.keys())
             ]
 
         return tuner_args
+
+    @staticmethod
+    def _prepare_hp_resource_config(
+        instance_configs: List[InstanceConfig],
+        instance_count: int,
+        instance_type: str,
+        volume_size: int,
+        volume_kms_key: str,
+    ):
+        """Placeholder hpo resource config for one estimator of the tuner."""
+        resource_config = {}
+        if volume_kms_key is not None:
+            resource_config["VolumeKmsKeyId"] = volume_kms_key
+        if instance_configs is None:
+            resource_config["InstanceCount"] = instance_count
+            resource_config["InstanceType"] = instance_type
+            resource_config["VolumeSizeInGB"] = volume_size
+        else:
+            resource_config["InstanceConfigs"] = _TuningJob._prepare_instance_configs(
+                instance_configs
+            )
+        return resource_config
+
+    @staticmethod
+    def _prepare_instance_configs(instance_configs: List[InstanceConfig]):
+        """Prepare instance config for create tuning request."""
+        return [config.to_input_req() for config in instance_configs]
 
     @staticmethod
     def _prepare_training_config(
@@ -1828,9 +2134,19 @@ class _TuningJob(_Job):
         objective_type=None,
         objective_metric_name=None,
         parameter_ranges=None,
+        instance_configs=None,
     ):
         """Prepare training config for one estimator."""
         training_config = _Job._load_config(inputs, estimator)
+
+        del training_config["resource_config"]
+        training_config["hpo_resource_config"] = _TuningJob._prepare_hp_resource_config(
+            instance_configs,
+            estimator.instance_count,
+            estimator.instance_type,
+            estimator.volume_size,
+            estimator.volume_kms_key,
+        )
 
         training_config["input_mode"] = estimator.input_mode
         training_config["metric_definitions"] = metric_definitions
@@ -1873,6 +2189,9 @@ class _TuningJob(_Job):
 
         if estimator.max_retry_attempts is not None:
             training_config["max_retry_attempts"] = estimator.max_retry_attempts
+
+        if estimator.environment is not None:
+            training_config["environment"] = estimator.environment
 
         return training_config
 

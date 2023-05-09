@@ -13,10 +13,14 @@
 """Configuration for collecting system and framework metrics in SageMaker training jobs."""
 from __future__ import absolute_import
 
+import logging
 from typing import Optional, Union
 
 from sagemaker.debugger.framework_profile import FrameworkProfile
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.deprecations import deprecation_warn_base
+
+logger = logging.getLogger(__name__)
 
 
 class ProfilerConfig(object):
@@ -32,6 +36,7 @@ class ProfilerConfig(object):
         s3_output_path: Optional[Union[str, PipelineVariable]] = None,
         system_monitor_interval_millis: Optional[Union[int, PipelineVariable]] = None,
         framework_profile_params: Optional[FrameworkProfile] = None,
+        disable_profiler: Optional[Union[str, PipelineVariable]] = False,
     ):
         """Initialize a ``ProfilerConfig`` instance.
 
@@ -78,6 +83,12 @@ class ProfilerConfig(object):
         self.s3_output_path = s3_output_path
         self.system_monitor_interval_millis = system_monitor_interval_millis
         self.framework_profile_params = framework_profile_params
+        self.disable_profiler = disable_profiler
+
+        if self.framework_profile_params is not None:
+            deprecation_warn_base(
+                "Framework profiling will be deprecated from tensorflow 2.12 and pytorch 2.0"
+            )
 
     def _to_request_dict(self):
         """Generate a request dictionary using the parameters provided when initializing the object.
@@ -88,8 +99,14 @@ class ProfilerConfig(object):
         """
         profiler_config_request = {}
 
-        if self.s3_output_path is not None:
+        if (
+            self.s3_output_path is not None
+            and self.disable_profiler is not None
+            and self.disable_profiler is False
+        ):
             profiler_config_request["S3OutputPath"] = self.s3_output_path
+
+        profiler_config_request["DisableProfiler"] = self.disable_profiler
 
         if self.system_monitor_interval_millis is not None:
             profiler_config_request[

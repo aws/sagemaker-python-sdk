@@ -1,7 +1,7 @@
 Feature Store APIs
 ------------------
 
-Feature group
+Feature Group
 *************
 
 .. autoclass:: sagemaker.feature_store.feature_group.FeatureGroup
@@ -18,7 +18,7 @@ Feature group
     :show-inheritance:
 
 
-Feature definition
+Feature Definition
 ******************
 
 .. autoclass:: sagemaker.feature_store.feature_definition.FeatureDefinition
@@ -70,5 +70,53 @@ Inputs
     :show-inheritance:
 
 .. autoclass:: sagemaker.feature_store.inputs.FeatureValue
+    :members:
+    :show-inheritance:
+
+.. autoclass:: sagemaker.feature_store.inputs.TableFormatEnum
+    :members:
+    :show-inheritance:
+
+.. autoclass:: sagemaker.feature_store.inputs.ResourceEnum
+    :members:
+    :show-inheritance:
+
+.. autoclass:: sagemaker.feature_store.inputs.SearchOperatorEnum
+    :members:
+    :show-inheritance:
+
+.. autoclass:: sagemaker.feature_store.inputs.SortOrderEnum
+    :members:
+    :show-inheritance:
+
+.. autoclass:: sagemaker.feature_store.inputs.FilterOperatorEnum
+    :members:
+    :show-inheritance:
+
+.. autoclass:: sagemaker.feature_store.inputs.Filter
+    :members:
+    :show-inheritance:
+
+.. autoclass:: sagemaker.feature_store.inputs.Identifier
+    :members:
+    :show-inheritance:
+
+.. autoclass:: sagemaker.feature_store.inputs.FeatureParameter
+    :members:
+    :show-inheritance:
+
+
+Dataset Builder
+***************
+
+.. autoclass:: sagemaker.feature_store.dataset_builder.DatasetBuilder
+    :members:
+    :show-inheritance:
+
+
+Feature Store
+*************
+
+.. autoclass:: sagemaker.feature_store.feature_store.FeatureStore
     :members:
     :show-inheritance:

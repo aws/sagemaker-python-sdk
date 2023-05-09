@@ -292,6 +292,13 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "training_dependencies",
         "training_vulnerabilities",
         "deprecated",
+        "default_inference_instance_type",
+        "supported_inference_instance_types",
+        "default_training_instance_type",
+        "supported_training_instance_types",
+        "metrics",
+        "training_prepacked_script_key",
+        "hosting_prepacked_artifact_key",
     ]
 
     def __init__(self, spec: Dict[str, Any]):
@@ -328,6 +335,25 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         self.training_dependencies: List[str] = json_obj["training_dependencies"]
         self.training_vulnerabilities: List[str] = json_obj["training_vulnerabilities"]
         self.deprecated: bool = bool(json_obj["deprecated"])
+        self.default_inference_instance_type: Optional[str] = json_obj.get(
+            "default_inference_instance_type"
+        )
+        self.default_training_instance_type: Optional[str] = json_obj.get(
+            "default_training_instance_type"
+        )
+        self.supported_inference_instance_types: Optional[List[str]] = json_obj.get(
+            "supported_inference_instance_types"
+        )
+        self.supported_training_instance_types: Optional[List[str]] = json_obj.get(
+            "supported_training_instance_types"
+        )
+        self.metrics: Optional[List[Dict[str, str]]] = json_obj.get("metrics", None)
+        self.training_prepacked_script_key: Optional[str] = json_obj.get(
+            "training_prepacked_script_key", None
+        )
+        self.hosting_prepacked_artifact_key: Optional[str] = json_obj.get(
+            "hosting_prepacked_artifact_key", None
+        )
 
         if self.training_supported:
             self.training_ecr_specs: JumpStartECRSpecs = JumpStartECRSpecs(

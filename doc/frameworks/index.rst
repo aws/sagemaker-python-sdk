@@ -16,3 +16,4 @@ The SageMaker Python SDK supports managed training and inference for a variety o
     sparkml/index
     tensorflow/index
     xgboost/index
+    djl/index

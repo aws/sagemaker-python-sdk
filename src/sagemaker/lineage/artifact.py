@@ -29,8 +29,9 @@ from sagemaker.lineage.query import (
     LineageEntityEnum,
     LineageQueryDirectionEnum,
 )
-from sagemaker.lineage._utils import get_module, _disassociate, get_resource_name_from_arn
+from sagemaker.lineage._utils import _disassociate, get_resource_name_from_arn
 from sagemaker.lineage.association import Association
+from sagemaker.utils import get_module
 
 LOGGER = logging.getLogger("sagemaker")
 

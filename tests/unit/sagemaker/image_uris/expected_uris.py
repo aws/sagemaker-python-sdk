@@ -16,6 +16,7 @@ ALTERNATE_DOMAINS = {
     "cn-north-1": "amazonaws.com.cn",
     "cn-northwest-1": "amazonaws.com.cn",
     "us-iso-east-1": "c2s.ic.gov",
+    "us-isob-east-1": "sc2s.sgov.gov",
 }
 DOMAIN = "amazonaws.com"
 IMAGE_URI_FORMAT = "{}.dkr.ecr.{}.{}/{}:{}"
@@ -70,4 +71,16 @@ def graviton_framework_uri(
     domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
     tag = "-".join(x for x in (fw_version, processor, py_version, container_version) if x)
 
+    return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
+
+
+def djl_framework_uri(repo, account, djl_version, primary_framework, region=REGION):
+    domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
+    tag = f"{djl_version}-{primary_framework}"
+    return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
+
+
+def base_python_uri(repo, account, region=REGION):
+    domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
+    tag = "1.0"
     return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
