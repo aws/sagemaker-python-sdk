@@ -185,18 +185,19 @@ class TransformInput(object):
             accept the default value ``$``. For more information on batch transform data processing, 
             input, join, and output, see 
             `Associate Prediction Results with Input Records 
-            <https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform-data-processing.html?>`_.
-            Valid values: ``$``. See `JSONPath Operators 
+            <https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform-data-processing.html?>`_
+            in the *Amazon SageMaker developer guide*.
+            Valid values: ``$``. For more options, see `JSONPath Operators 
             <https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform-data-processing.html#data-processing-operators>`_ 
-            for more options.
+            in the *Amazon SageMaker developer guide*.
             (default: ``$``)
         output_filter (str): A JSONPath expression used to select a portion of the joined dataset to 
             save in the output file for a batch transform job. If you want SageMaker to store the 
             entire input dataset in the output file, leave the default value, $. If you specify 
             indexes that aren't within the dimension size of the joined dataset, you get an error.
-            Valid values: ``$``. See `JSONPath Operators 
+            Valid values: ``$``. For more options, see `JSONPath Operators 
             <https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform-data-processing.html#data-processing-operators>`_ 
-            for more options.
+            in the *Amazon SageMaker developer guide*.
             (default: ``$``)
             join_source (str): Specifies the source of the data to join with the transformed data. The 
             default value is ``None``, which specifies not to join the input with the transformed data. 
@@ -206,7 +207,6 @@ class TransformInput(object):
             (default: None)
         model_client_config (dict): Configures the timeout and maximum number of retries for 
             processing a transform job invocation.
-
                 * ``'InvocationsTimeoutInSeconds'`` (int) - The timeout value in seconds for an 
                     invocation request. The default value is 600.
                 * ``'InvocationsMaxRetries'`` (int) - The maximum number of retries when invocation 
