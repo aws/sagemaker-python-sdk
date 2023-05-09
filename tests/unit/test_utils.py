@@ -14,6 +14,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import copy
 import shutil
 import tarfile
 from datetime import datetime
@@ -30,7 +31,14 @@ from mock import call, patch, Mock, MagicMock, PropertyMock
 import sagemaker
 from sagemaker.experiments._run_context import _RunContext
 from sagemaker.session_settings import SessionSettings
-from sagemaker.utils import retry_with_backoff, check_and_get_run_experiment_config
+from sagemaker.utils import (
+    retry_with_backoff,
+    check_and_get_run_experiment_config,
+    resolve_value_from_config,
+    resolve_class_attribute_from_config,
+    resolve_nested_dict_value_from_config,
+    update_list_of_dicts_with_values_from_config,
+)
 from tests.unit.sagemaker.workflow.helpers import CustomStep
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
 
@@ -55,9 +63,325 @@ def test_get_config_value():
     assert sagemaker.utils.get_config_value("other.key", None) is None
 
 
+def test_get_nested_value():
+    dictionary = {
+        "local": {"region_name": "us-west-2", "port": "123"},
+        "other": {"key": 1},
+        "nest1": {"nest2": {"nest3": {"nest4": {"nest5a": "value", "nest5b": None}}}},
+    }
+
+    # happy cases: keys and values exist
+    assert sagemaker.utils.get_nested_value(dictionary, ["local", "region_name"]) == "us-west-2"
+    assert sagemaker.utils.get_nested_value(dictionary, ["local"]) == {
+        "region_name": "us-west-2",
+        "port": "123",
+    }
+    assert (
+        sagemaker.utils.get_nested_value(dictionary, ["nest1", "nest2", "nest3", "nest4", "nest5a"])
+        == "value"
+    )
+
+    # edge cases: non-existing keys
+    assert sagemaker.utils.get_nested_value(dictionary, ["local", "new_depth_1_key"]) is None
+    assert sagemaker.utils.get_nested_value(dictionary, ["new_depth_0_key"]) is None
+    assert (
+        sagemaker.utils.get_nested_value(dictionary, ["new_depth_0_key", "new_depth_1_key"]) is None
+    )
+    assert (
+        sagemaker.utils.get_nested_value(
+            dictionary, ["nest1", "nest2", "nest3", "nest4", "nest5b", "does_not", "exist"]
+        )
+        is None
+    )
+
+    # edge case: specified nested_keys contradict structure of dict
+    with pytest.raises(ValueError):
+        sagemaker.utils.get_nested_value(
+            dictionary, ["nest1", "nest2", "nest3", "nest4", "nest5a", "does_not", "exist"]
+        )
+
+    # edge cases: non-actionable inputs
+    assert sagemaker.utils.get_nested_value(None, ["other", "key"]) is None
+    assert sagemaker.utils.get_nested_value("not_a_dict", ["other", "key"]) is None
+    assert sagemaker.utils.get_nested_value(dictionary, None) is None
+    assert sagemaker.utils.get_nested_value(dictionary, []) is None
+
+
+@patch("jsonschema.validate")
+def test_update_list_of_dicts_with_values_from_config(mock_json_schema_validation):
+    input_list = [{"a": 1, "b": 2}]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "c": 3,
+        }
+    ]
+    # Using short form for sagemaker_session
+    ss = MagicMock()
+
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    config_path = "DUMMY.CONFIG.PATH"
+    # happy case - both inputs and config have same number of elements
+    update_list_of_dicts_with_values_from_config(input_list, config_path, sagemaker_session=ss)
+    assert input_list == [{"a": 1, "b": 2, "c": 3}]
+    # Case where Input has more entries compared to Config
+    input_list = [
+        {"a": 1, "b": 2},
+        {"a": 5, "b": 6},
+    ]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "c": 3,
+        }
+    ]
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    update_list_of_dicts_with_values_from_config(input_list, config_path, sagemaker_session=ss)
+    assert input_list == [
+        {"a": 1, "b": 2, "c": 3},
+        {"a": 5, "b": 6},
+    ]
+    # Case where Config has more entries when compared to the input
+    input_list = [{"a": 1, "b": 2}]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "c": 3,
+        },
+        {"a": 5, "b": 6},
+    ]
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    update_list_of_dicts_with_values_from_config(input_list, config_path, sagemaker_session=ss)
+    assert input_list == [{"a": 1, "b": 2, "c": 3}]
+    # Testing required parameters. If required parameters are not present, don't do the merge
+    input_list = [{"a": 1, "b": 2}]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "c": 3,
+        },
+    ]
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    update_list_of_dicts_with_values_from_config(
+        input_list, config_path, required_key_paths=["d"], sagemaker_session=ss
+    )
+    # since 'd' is not there , merge shouldn't have happened
+    assert input_list == [{"a": 1, "b": 2}]
+    # Testing required parameters. If required parameters are present, do the merge
+    input_list = [{"a": 1, "b": 2}, {"a": 5, "c": 6}]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "c": 3,
+        },
+        {
+            "a": 7,  # This should not be used. Use values from Input.
+            "b": 8,
+        },
+    ]
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    update_list_of_dicts_with_values_from_config(
+        input_list, config_path, required_key_paths=["c"], sagemaker_session=ss
+    )
+    assert input_list == [
+        {"a": 1, "b": 2, "c": 3},
+        {"a": 5, "b": 8, "c": 6},
+    ]
+    # Testing union parameters: If both parameters are present don't do the merge
+    input_list = [{"a": 1, "b": 2}, {"a": 5, "c": 6}]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "c": 3,
+        },
+        {
+            "a": 7,  # This should not be used. Use values from Input.
+            "d": 8,  # c is present in the original list and d is present in this list.
+        },
+    ]
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    update_list_of_dicts_with_values_from_config(
+        input_list, config_path, union_key_paths=[["c", "d"]], sagemaker_session=ss
+    )
+    assert input_list == [
+        {"a": 1, "b": 2, "c": 3},
+        {"a": 5, "c": 6},  # merge didn't happen
+    ]
+    # Testing union parameters: Happy case
+    input_list = [{"a": 1, "b": 2}, {"a": 5, "c": 6}]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "c": 3,
+        },
+        {
+            "a": 7,  # This should not be used. Use values from Input.
+            "d": 8,
+        },
+    ]
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    update_list_of_dicts_with_values_from_config(
+        input_list, config_path, union_key_paths=[["c", "e"], ["d", "e"]], sagemaker_session=ss
+    )
+    assert input_list == [
+        {"a": 1, "b": 2, "c": 3},
+        {"a": 5, "c": 6, "d": 8},
+    ]
+    # Same happy case with different order of items in union_key_paths
+    input_list = [{"a": 1, "b": 2}, {"a": 5, "c": 6}]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "c": 3,
+        },
+        {
+            "a": 7,  # This should not be used. Use values from Input.
+            "d": 8,
+        },
+    ]
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    update_list_of_dicts_with_values_from_config(
+        input_list, config_path, union_key_paths=[["d", "e"], ["c", "e"]], sagemaker_session=ss
+    )
+    assert input_list == [
+        {"a": 1, "b": 2, "c": 3},
+        {"a": 5, "c": 6, "d": 8},
+    ]
+    # Testing the combination of union parameter and required parameter. i.e. A parameter is both
+    # required and part of Union.
+    input_list = [{"a": 1, "b": 2}, {"a": 5, "c": 6}]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "c": 3,
+        },
+        {
+            "a": 7,  # This should not be used. Use values from Input.
+            "d": 8,
+        },
+    ]
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    update_list_of_dicts_with_values_from_config(
+        input_list,
+        config_path,
+        required_key_paths=["e"],
+        union_key_paths=[["d", "e"], ["c", "e"]],
+        sagemaker_session=ss,
+    )
+    # No merge should happen since 'e' is not present, even though union is obeyed.
+    assert input_list == [{"a": 1, "b": 2}, {"a": 5, "c": 6}]
+    # Same test but the required parameter is present.
+    input_list = [{"a": 1, "e": 2}, {"a": 5, "e": 6}]
+    input_config_list = [
+        {
+            "a": 4,  # This should not be used. Use values from Input.
+            "f": 3,
+        },
+        {
+            "a": 7,  # This should not be used. Use values from Input.
+            "g": 8,
+        },
+    ]
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
+    update_list_of_dicts_with_values_from_config(
+        input_list,
+        config_path,
+        required_key_paths=["e"],
+        union_key_paths=[["d", "e"], ["c", "e"]],
+        sagemaker_session=ss,
+    )
+    assert input_list == [
+        {"a": 1, "e": 2, "f": 3},
+        {"a": 5, "e": 6, "g": 8},
+    ]
+
+
+def test_set_nested_value():
+    dictionary = {
+        "local": {"region_name": "us-west-2", "port": "123"},
+        "other": {"key": 1},
+        "nest1": {"nest2": {"nest3": {"nest4": {"nest5a": "value", "nest5b": None}}}},
+        "existing_depth_0_key": None,
+    }
+    dictionary_copy = copy.deepcopy(dictionary)
+
+    # happy cases: change existing values
+    dictionary_copy["local"]["region_name"] = "region1"
+    assert (
+        sagemaker.utils.set_nested_value(dictionary, ["local", "region_name"], "region1")
+        == dictionary_copy
+    )
+
+    dictionary_copy["existing_depth_0_key"] = {"new_key": "new_value"}
+    assert (
+        sagemaker.utils.set_nested_value(
+            dictionary, ["existing_depth_0_key"], {"new_key": "new_value"}
+        )
+        == dictionary_copy
+    )
+
+    dictionary_copy["nest1"]["nest2"]["nest3"]["nest4"]["nest5a"] = "value2"
+    assert (
+        sagemaker.utils.set_nested_value(
+            dictionary, ["nest1", "nest2", "nest3", "nest4", "nest5a"], "value2"
+        )
+        == dictionary_copy
+    )
+
+    # happy cases: add new keys and values
+    dictionary_copy["local"]["new_depth_1_key"] = "value"
+    assert (
+        sagemaker.utils.set_nested_value(dictionary, ["local", "new_depth_1_key"], "value")
+        == dictionary_copy
+    )
+
+    dictionary_copy["new_depth_0_key"] = "value"
+    assert (
+        sagemaker.utils.set_nested_value(dictionary, ["new_depth_0_key"], "value")
+        == dictionary_copy
+    )
+
+    dictionary_copy["new_depth_0_key_2"] = {"new_depth_1_key_2": "value"}
+    assert (
+        sagemaker.utils.set_nested_value(
+            dictionary, ["new_depth_0_key_2", "new_depth_1_key_2"], "value"
+        )
+        == dictionary_copy
+    )
+
+    dictionary_copy["nest1"]["nest2"]["nest3"]["nest4"]["nest5b"] = {"does_not": {"exist": "value"}}
+    assert (
+        sagemaker.utils.set_nested_value(
+            dictionary, ["nest1", "nest2", "nest3", "nest4", "nest5b", "does_not", "exist"], "value"
+        )
+        == dictionary_copy
+    )
+
+    # edge case: overwrite non-dict value
+    dictionary["nest1"]["nest2"]["nest3"]["nest4"]["nest5a"] = "value2"
+    dictionary_copy["nest1"]["nest2"]["nest3"]["nest4"]["nest5a"] = {"does_not": {"exist": "value"}}
+    assert (
+        sagemaker.utils.set_nested_value(
+            dictionary, ["nest1", "nest2", "nest3", "nest4", "nest5a", "does_not", "exist"], "value"
+        )
+        == dictionary_copy
+    )
+
+    # edge case: dict does not exist
+    assert sagemaker.utils.set_nested_value(None, ["other", "key"], "value") == {
+        "other": {"key": "value"}
+    }
+
+    # edge cases: non-actionable inputs
+    dictionary_copy_2 = copy.deepcopy(dictionary)
+    assert sagemaker.utils.set_nested_value("not_a_dict", ["other", "key"], "value") == "not_a_dict"
+    assert sagemaker.utils.set_nested_value(dictionary, None, "value") == dictionary_copy_2
+    assert sagemaker.utils.set_nested_value(dictionary, [], "value") == dictionary_copy_2
+
+
 def test_get_short_version():
-    assert sagemaker.utils.get_short_version("1.13.1") == "1.13"
-    assert sagemaker.utils.get_short_version("1.13") == "1.13"
+    assert sagemaker.utils.get_short_version("2.0.0") == "2.0"
+    assert sagemaker.utils.get_short_version("2.0") == "2.0"
 
 
 def test_deferred_error():
@@ -130,13 +454,13 @@ def test_base_name_from_image_with_pipeline_param(inputs):
 @patch("sagemaker.utils.sagemaker_timestamp")
 def test_name_from_base(sagemaker_timestamp):
     sagemaker.utils.name_from_base(NAME, short=False)
-    assert sagemaker_timestamp.called_once
+    sagemaker_timestamp.assert_called_once
 
 
 @patch("sagemaker.utils.sagemaker_short_timestamp")
 def test_name_from_base_short(sagemaker_short_timestamp):
     sagemaker.utils.name_from_base(NAME, short=True)
-    assert sagemaker_short_timestamp.called_once
+    sagemaker_short_timestamp.assert_called_once
 
 
 def test_unique_name_from_base():
@@ -849,6 +1173,307 @@ def test_retry_with_backoff(patched_sleep):
     callable_func.side_effect = None
     callable_func.return_value = func_return_val
     assert retry_with_backoff(callable_func, 2) == func_return_val
+
+
+def test_resolve_value_from_config():
+    # using a shorter name for inside the test
+    sagemaker_session = MagicMock()
+    sagemaker_session.sagemaker_config = {"SchemaVersion": "1.0"}
+    config_key_path = "SageMaker.EndpointConfig.KmsKeyId"
+    sagemaker_session.sagemaker_config.update(
+        {"SageMaker": {"EndpointConfig": {"KmsKeyId": "CONFIG_VALUE"}}}
+    )
+
+    # direct_input should be respected
+    assert (
+        resolve_value_from_config("INPUT", config_key_path, "DEFAULT_VALUE", sagemaker_session)
+        == "INPUT"
+    )
+
+    assert resolve_value_from_config("INPUT", config_key_path, None, sagemaker_session) == "INPUT"
+
+    assert (
+        resolve_value_from_config("INPUT", "SageMaker.EndpointConfig.Tags", None, sagemaker_session)
+        == "INPUT"
+    )
+
+    # Config or default values should be returned if no direct_input
+    assert (
+        resolve_value_from_config(None, None, "DEFAULT_VALUE", sagemaker_session) == "DEFAULT_VALUE"
+    )
+
+    assert (
+        resolve_value_from_config(
+            None, "SageMaker.EndpointConfig.Tags", "DEFAULT_VALUE", sagemaker_session
+        )
+        == "DEFAULT_VALUE"
+    )
+
+    assert (
+        resolve_value_from_config(None, config_key_path, "DEFAULT_VALUE", sagemaker_session)
+        == "CONFIG_VALUE"
+    )
+
+    assert resolve_value_from_config(None, None, None, sagemaker_session) is None
+
+    # Different falsy direct_inputs
+    assert resolve_value_from_config("", config_key_path, None, sagemaker_session) == ""
+
+    assert resolve_value_from_config([], config_key_path, None, sagemaker_session) == []
+
+    assert resolve_value_from_config(False, config_key_path, None, sagemaker_session) is False
+
+    assert resolve_value_from_config({}, config_key_path, None, sagemaker_session) == {}
+
+    # Different falsy config_values
+    sagemaker_session.sagemaker_config.update({"SageMaker": {"EndpointConfig": {"KmsKeyId": ""}}})
+    assert resolve_value_from_config(None, config_key_path, None, sagemaker_session) == ""
+
+
+@patch("jsonschema.validate")
+@pytest.mark.parametrize(
+    "existing_value, config_value, default_value",
+    [
+        ("EXISTING_VALUE", "CONFIG_VALUE", "DEFAULT_VALUE"),
+        (False, True, False),
+        (False, False, True),
+        (0, 1, 2),
+    ],
+)
+def test_resolve_class_attribute_from_config(
+    mock_validate, existing_value, config_value, default_value
+):
+    # using a shorter name for inside the test
+    ss = MagicMock()
+
+    class TestClass(object):
+        def __init__(self, test_attribute=None, extra=None):
+            self.test_attribute = test_attribute
+            # the presence of an extra value that is set to None by default helps make sure a brand new
+            # TestClass object is being created only in the right scenarios
+            self.extra_attribute = extra
+
+        def __eq__(self, other):
+            if isinstance(other, self.__class__):
+                return self.__dict__ == other.__dict__
+            else:
+                return False
+
+    dummy_config_path = "DUMMY.CONFIG.PATH"
+
+    # with an existing config value
+
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": config_value}}}
+
+    # instance exists and has value; config has value
+    test_instance = TestClass(test_attribute=existing_value, extra="EXTRA_VALUE")
+    assert resolve_class_attribute_from_config(
+        TestClass, test_instance, "test_attribute", dummy_config_path, sagemaker_session=ss
+    ) == TestClass(test_attribute=existing_value, extra="EXTRA_VALUE")
+
+    # instance exists but doesnt have value; config has value
+    test_instance = TestClass(extra="EXTRA_VALUE")
+    assert resolve_class_attribute_from_config(
+        TestClass, test_instance, "test_attribute", dummy_config_path, sagemaker_session=ss
+    ) == TestClass(test_attribute=config_value, extra="EXTRA_VALUE")
+
+    # instance doesnt exist; config has value
+    test_instance = None
+    assert resolve_class_attribute_from_config(
+        TestClass, test_instance, "test_attribute", dummy_config_path, sagemaker_session=ss
+    ) == TestClass(test_attribute=config_value, extra=None)
+
+    # wrong attribute used
+    test_instance = TestClass()
+    with pytest.raises(TypeError):
+        resolve_class_attribute_from_config(
+            TestClass, test_instance, "other_attribute", dummy_config_path, sagemaker_session=ss
+        )
+
+    # instance doesnt exist; clazz doesnt exist
+    test_instance = None
+    assert (
+        resolve_class_attribute_from_config(
+            None, test_instance, "test_attribute", dummy_config_path, sagemaker_session=ss
+        )
+        is None
+    )
+
+    # instance doesnt exist; clazz isnt a class
+    test_instance = None
+    assert (
+        resolve_class_attribute_from_config(
+            "CLASS", test_instance, "test_attribute", dummy_config_path, sagemaker_session=ss
+        )
+        is None
+    )
+
+    # without an existing config value
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"SOMEOTHERPATH": config_value}}}
+    # instance exists but doesnt have value; config doesnt have value
+    test_instance = TestClass(extra="EXTRA_VALUE")
+    assert resolve_class_attribute_from_config(
+        TestClass, test_instance, "test_attribute", dummy_config_path, sagemaker_session=ss
+    ) == TestClass(test_attribute=None, extra="EXTRA_VALUE")
+
+    # instance exists but doesnt have value; config doesnt have value; default_value passed in
+    test_instance = TestClass(extra="EXTRA_VALUE")
+    assert resolve_class_attribute_from_config(
+        TestClass,
+        test_instance,
+        "test_attribute",
+        dummy_config_path,
+        default_value=default_value,
+        sagemaker_session=ss,
+    ) == TestClass(test_attribute=default_value, extra="EXTRA_VALUE")
+
+    # instance doesnt exist; config doesnt have value
+    test_instance = None
+    assert (
+        resolve_class_attribute_from_config(
+            TestClass, test_instance, "test_attribute", dummy_config_path, sagemaker_session=ss
+        )
+        is None
+    )
+
+    # instance doesnt exist; config doesnt have value; default_value passed in
+    test_instance = None
+    assert resolve_class_attribute_from_config(
+        TestClass,
+        test_instance,
+        "test_attribute",
+        dummy_config_path,
+        default_value=default_value,
+        sagemaker_session=ss,
+    ) == TestClass(test_attribute=default_value, extra=None)
+
+
+@patch("jsonschema.validate")
+def test_resolve_nested_dict_value_from_config(mock_validate):
+    # using a shorter name for inside the test
+    ss = MagicMock()
+
+    dummy_config_path = "DUMMY.CONFIG.PATH"
+    # happy cases: return existing dict with existing values
+    assert resolve_nested_dict_value_from_config(
+        {"local": {"region_name": "us-west-2", "port": "123"}},
+        ["local", "region_name"],
+        dummy_config_path,
+        default_value="DEFAULT_VALUE",
+        sagemaker_session=ss,
+    ) == {"local": {"region_name": "us-west-2", "port": "123"}}
+    assert resolve_nested_dict_value_from_config(
+        {"local": {"region_name": "us-west-2", "port": "123"}},
+        ["local", "region_name"],
+        dummy_config_path,
+        default_value=None,
+        sagemaker_session=ss,
+    ) == {"local": {"region_name": "us-west-2", "port": "123"}}
+
+    # happy case: return dict with config_value when it wasnt set in dict or was None
+
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": "CONFIG_VALUE"}}}
+    assert resolve_nested_dict_value_from_config(
+        {"local": {"port": "123"}},
+        ["local", "region_name"],
+        dummy_config_path,
+        default_value="DEFAULT_VALUE",
+        sagemaker_session=ss,
+    ) == {"local": {"region_name": "CONFIG_VALUE", "port": "123"}}
+    assert resolve_nested_dict_value_from_config(
+        {}, ["local", "region_name"], dummy_config_path, default_value=None, sagemaker_session=ss
+    ) == {"local": {"region_name": "CONFIG_VALUE"}}
+    assert resolve_nested_dict_value_from_config(
+        None, ["local", "region_name"], dummy_config_path, default_value=None, sagemaker_session=ss
+    ) == {"local": {"region_name": "CONFIG_VALUE"}}
+    assert resolve_nested_dict_value_from_config(
+        {
+            "local": {"region_name": "us-west-2", "port": "123"},
+            "other": {"key": 1},
+            "nest1": {"nest2": {"nest3": {"nest4a": "value", "nest4b": None}}},
+        },
+        ["nest1", "nest2", "nest3", "nest4b", "does_not", "exist"],
+        dummy_config_path,
+        default_value="DEFAULT_VALUE",
+        sagemaker_session=ss,
+    ) == {
+        "local": {"region_name": "us-west-2", "port": "123"},
+        "other": {"key": 1},
+        "nest1": {
+            "nest2": {
+                "nest3": {"nest4a": "value", "nest4b": {"does_not": {"exist": "CONFIG_VALUE"}}}
+            }
+        },
+    }
+
+    # edge case: doesnt overwrite non-None and non-dict values
+    dictionary = {
+        "local": {"region_name": "us-west-2", "port": "123"},
+        "other": {"key": 1},
+        "nest1": {"nest2": {"nest3": {"nest4a": "value", "nest4b": None}}},
+    }
+    dictionary_copy = copy.deepcopy(dictionary)
+    assert (
+        resolve_nested_dict_value_from_config(
+            dictionary,
+            ["nest1", "nest2", "nest3", "nest4a", "does_not", "exist"],
+            dummy_config_path,
+            default_value="DEFAULT_VALUE",
+            sagemaker_session=ss,
+        )
+        == dictionary_copy
+    )
+    assert (
+        resolve_nested_dict_value_from_config(
+            dictionary,
+            ["other", "key"],
+            dummy_config_path,
+            default_value="DEFAULT_VALUE",
+            sagemaker_session=ss,
+        )
+        == dictionary_copy
+    )
+
+    # without an existing config value
+    ss.sagemaker_config = {"DUMMY": {"CONFIG": {"ANOTHER_PATH": "CONFIG_VALUE"}}}
+
+    # happy case: return dict with default_value when it wasnt set in dict and in config
+    assert resolve_nested_dict_value_from_config(
+        {"local": {"port": "123"}},
+        ["local", "region_name"],
+        dummy_config_path,
+        default_value="DEFAULT_VALUE",
+        sagemaker_session=ss,
+    ) == {"local": {"region_name": "DEFAULT_VALUE", "port": "123"}}
+
+    # happy case: return dict as-is when value wasnt set in dict, in config, and as default
+    assert resolve_nested_dict_value_from_config(
+        {"local": {"port": "123"}},
+        ["local", "region_name"],
+        dummy_config_path,
+        default_value=None,
+        sagemaker_session=ss,
+    ) == {"local": {"port": "123"}}
+    assert (
+        resolve_nested_dict_value_from_config(
+            {},
+            ["local", "region_name"],
+            dummy_config_path,
+            default_value=None,
+            sagemaker_session=ss,
+        )
+        == {}
+    )
+    assert (
+        resolve_nested_dict_value_from_config(
+            None,
+            ["local", "region_name"],
+            dummy_config_path,
+            default_value=None,
+            sagemaker_session=ss,
+        )
+        is None
+    )
 
 
 def test_check_and_get_run_experiment_config():

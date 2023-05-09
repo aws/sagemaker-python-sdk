@@ -15,8 +15,10 @@ from __future__ import absolute_import
 import logging
 
 import json
+from json import JSONDecodeError
+
 import pytest
-from mock import Mock
+from mock import Mock, MagicMock
 from mock import patch, mock_open
 
 from sagemaker.djl_inference import (
@@ -31,6 +33,7 @@ from sagemaker.session_settings import SessionSettings
 
 VALID_UNCOMPRESSED_MODEL_DATA = "s3://mybucket/model"
 INVALID_UNCOMPRESSED_MODEL_DATA = "s3://mybucket/model.tar.gz"
+HF_MODEL_ID = "hf_hub_model_id"
 ENTRY_POINT = "entrypoint.py"
 SOURCE_DIR = "source_dir/"
 ENV = {"ENV_VAR": "env_value"}
@@ -57,6 +60,9 @@ def sagemaker_session():
         endpoint_from_production_variants=Mock(name="endpoint_from_production_variants"),
     )
     session.default_bucket = Mock(name="default_bucket", return_valie=BUCKET)
+    # For tests which doesn't verify config file injection, operate with empty config
+
+    session.sagemaker_config = {}
     return session
 
 
@@ -70,12 +76,60 @@ def test_create_model_invalid_s3_uri():
         "DJLModel does not support model artifacts in tar.gz"
     )
 
-    with pytest.raises(ValueError) as invalid_s3_data:
+
+@patch("urllib.request.urlopen")
+def test_create_model_valid_hf_hub_model_id(
+    mock_urlopen,
+    sagemaker_session,
+):
+    model_config = {
+        "model_type": "opt",
+        "num_attention_heads": 4,
+    }
+
+    cm = MagicMock()
+    cm.getcode.return_value = 200
+    cm.read.return_value = json.dumps(model_config).encode("utf-8")
+    cm.__enter__.return_value = cm
+    mock_urlopen.return_value = cm
+    model = DJLModel(
+        HF_MODEL_ID,
+        ROLE,
+        sagemaker_session=sagemaker_session,
+        number_of_partitions=4,
+    )
+    assert model.engine == DJLServingEngineEntryPointDefaults.DEEPSPEED
+    expected_url = f"https://huggingface.co/{HF_MODEL_ID}/raw/main/config.json"
+    mock_urlopen.assert_any_call(expected_url)
+
+    serving_properties = model.generate_serving_properties()
+    assert serving_properties["option.model_id"] == HF_MODEL_ID
+    assert "option.s3url" not in serving_properties
+
+
+@patch("json.load")
+@patch("urllib.request.urlopen")
+def test_create_model_invalid_hf_hub_model_id(
+    mock_urlopen,
+    json_load,
+    sagemaker_session,
+):
+    expected_url = f"https://huggingface.co/{HF_MODEL_ID}/raw/main/config.json"
+    with pytest.raises(ValueError) as invalid_model_id:
+        cm = MagicMock()
+        cm.__enter__.return_value = cm
+        mock_urlopen.return_value = cm
+        json_load.side_effect = JSONDecodeError("", "", 0)
         _ = DJLModel(
-            SOURCE_DIR,
+            HF_MODEL_ID,
             ROLE,
+            sagemaker_session=sagemaker_session,
+            number_of_partitions=4,
         )
-    assert str(invalid_s3_data.value).startswith("DJLModel only supports loading model artifacts")
+        mock_urlopen.assert_any_call(expected_url)
+    assert str(invalid_model_id.value).startswith(
+        "Did not find a config.json or model_index.json file in huggingface hub"
+    )
 
 
 @patch("sagemaker.s3.S3Downloader.read_file")
@@ -93,7 +147,7 @@ def test_create_model_automatic_engine_selection(mock_s3_list, mock_read_file, s
         sagemaker_session=sagemaker_session,
         number_of_partitions=4,
     )
-    assert hf_model.engine == DJLServingEngineEntryPointDefaults.HUGGINGFACE_ACCELERATE
+    assert hf_model.engine == DJLServingEngineEntryPointDefaults.FASTER_TRANSFORMER
 
     hf_model_config = {
         "model_type": "gpt2",
@@ -120,6 +174,9 @@ def test_create_model_automatic_engine_selection(mock_s3_list, mock_read_file, s
             sagemaker_session=sagemaker_session,
             number_of_partitions=2,
         )
+        mock_s3_list.assert_any_call(
+            VALID_UNCOMPRESSED_MODEL_DATA, sagemaker_session=sagemaker_session
+        )
         if model_type == defaults.STABLE_DIFFUSION_MODEL_TYPE:
             assert ds_model.engine == DJLServingEngineEntryPointDefaults.STABLE_DIFFUSION
         else:
@@ -142,20 +199,6 @@ def test_create_deepspeed_model(mock_s3_list, mock_read_file, sagemaker_session)
         tensor_parallel_degree=4,
     )
     assert ds_model.engine == DJLServingEngineEntryPointDefaults.DEEPSPEED
-
-    ds_model_config = {
-        "model_type": "t5",
-        "n_head": 12,
-    }
-    mock_read_file.return_value = json.dumps(ds_model_config)
-    with pytest.raises(ValueError) as invalid_model_type:
-        _ = DeepSpeedModel(
-            VALID_UNCOMPRESSED_MODEL_DATA,
-            ROLE,
-            sagemaker_session=sagemaker_session,
-            tensor_parallel_degree=1,
-        )
-    assert str(invalid_model_type.value).startswith("t5 is not supported by DeepSpeed")
 
     ds_model_config = {
         "model_type": "opt",
@@ -294,12 +337,12 @@ def test_generate_huggingface_serving_properties_invalid_configurations(
         VALID_UNCOMPRESSED_MODEL_DATA,
         ROLE,
         sagemaker_session=sagemaker_session,
-        data_type="fp16",
+        dtype="fp16",
         load_in_8bit=True,
     )
     with pytest.raises(ValueError) as invalid_config:
         _ = model.generate_serving_properties()
-    assert str(invalid_config.value).startswith("Set data_type='int8' to use load_in_8bit")
+    assert str(invalid_config.value).startswith("Set dtype='int8' to use load_in_8bit")
 
     model = HuggingFaceAccelerateModel(
         VALID_UNCOMPRESSED_MODEL_DATA,
@@ -334,7 +377,7 @@ def test_generate_serving_properties_with_valid_configurations(
         min_workers=1,
         max_workers=3,
         job_queue_size=4,
-        data_type="fp16",
+        dtype="fp16",
         parallel_loading=True,
         model_loading_timeout=120,
         prediction_timeout=4,
@@ -372,7 +415,7 @@ def test_generate_serving_properties_with_valid_configurations(
         sagemaker_session=sagemaker_session,
         tensor_parallel_degree=1,
         task="text-generation",
-        data_type="bf16",
+        dtype="bf16",
         max_tokens=2048,
         low_cpu_mem_usage=True,
         enable_cuda_graph=True,
@@ -402,7 +445,7 @@ def test_generate_serving_properties_with_valid_configurations(
         number_of_partitions=1,
         device_id=4,
         device_map="balanced",
-        data_type="fp32",
+        dtype="fp32",
         low_cpu_mem_usage=False,
     )
     serving_properties = model.generate_serving_properties()
@@ -456,7 +499,7 @@ def test_deploy_model_no_local_code(
         ROLE,
         sagemaker_session=sagemaker_session,
         number_of_partitions=4,
-        data_type="fp16",
+        dtype="fp16",
         container_log_level=logging.DEBUG,
         env=ENV,
     )

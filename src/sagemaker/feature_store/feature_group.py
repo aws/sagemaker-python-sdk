@@ -41,7 +41,12 @@ import boto3
 from botocore.config import Config
 from pathos.multiprocessing import ProcessingPool
 
-from sagemaker import Session
+from sagemaker.config import (
+    FEATURE_GROUP_ROLE_ARN_PATH,
+    FEATURE_GROUP_OFFLINE_STORE_KMS_KEY_ID_PATH,
+    FEATURE_GROUP_ONLINE_STORE_KMS_KEY_ID_PATH,
+)
+from sagemaker.session import Session
 from sagemaker.feature_store.feature_definition import (
     FeatureDefinition,
     FeatureTypeEnum,
@@ -55,7 +60,9 @@ from sagemaker.feature_store.inputs import (
     FeatureValue,
     FeatureParameter,
     TableFormatEnum,
+    DeletionModeEnum,
 )
+from sagemaker.utils import resolve_value_from_config
 
 logger = logging.getLogger(__name__)
 
@@ -513,7 +520,7 @@ class FeatureGroup:
         s3_uri: Union[str, bool],
         record_identifier_name: str,
         event_time_feature_name: str,
-        role_arn: str,
+        role_arn: str = None,
         online_store_kms_key_id: str = None,
         enable_online_store: bool = False,
         offline_store_kms_key_id: str = None,
@@ -552,6 +559,25 @@ class FeatureGroup:
         Returns:
             Response dict from service.
         """
+        role_arn = resolve_value_from_config(
+            role_arn, FEATURE_GROUP_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
+        )
+        offline_store_kms_key_id = resolve_value_from_config(
+            offline_store_kms_key_id,
+            FEATURE_GROUP_OFFLINE_STORE_KMS_KEY_ID_PATH,
+            sagemaker_session=self.sagemaker_session,
+        )
+        online_store_kms_key_id = resolve_value_from_config(
+            online_store_kms_key_id,
+            FEATURE_GROUP_ONLINE_STORE_KMS_KEY_ID_PATH,
+            sagemaker_session=self.sagemaker_session,
+        )
+        if not role_arn:
+            # Originally IAM role was a required parameter.
+            # Now we marked that as Optional because we can fetch it from SageMakerConfig,
+            # Because of marking that parameter as optional, we should validate if it is None, even
+            # after fetching the config.
+            raise ValueError("An AWS IAM role is required to create a Feature Group.")
         create_feature_store_args = dict(
             feature_group_name=self.name,
             record_identifier_name=record_identifier_name,
@@ -665,6 +691,32 @@ class FeatureGroup:
             feature_group_name=self.name, feature_name=feature_name
         )
 
+    def list_tags(self) -> Sequence[Dict[str, str]]:
+        """List all tags for a feature group.
+
+        Returns:
+            list of key, value pair of the tags.
+        """
+
+        feature_group_arn = self.sagemaker_session.describe_feature_group(
+            feature_group_name=self.name
+        ).get("FeatureGroupArn")
+
+        return self.sagemaker_session.list_tags(resource_arn=feature_group_arn)
+
+    def list_parameters_for_feature_metadata(self, feature_name: str) -> Sequence[Dict[str, str]]:
+        """List all parameters for a feature metadata.
+
+        Args:
+            feature_name (str): name of the feature.
+        Returns:
+            list of key, value pair of the parameters.
+        """
+
+        return self.sagemaker_session.describe_feature_metadata(
+            feature_group_name=self.name, feature_name=feature_name
+        ).get("Parameters")
+
     def load_feature_definitions(
         self,
         data_frame: DataFrame,
@@ -734,6 +786,7 @@ class FeatureGroup:
         self,
         record_identifier_value_as_string: str,
         event_time: str,
+        deletion_mode: DeletionModeEnum = DeletionModeEnum.SOFT_DELETE,
     ):
         """Delete a single record from a FeatureGroup.
 
@@ -742,11 +795,15 @@ class FeatureGroup:
                 a String representing the value of the record identifier.
             event_time (String):
                 a timestamp format String indicating when the deletion event occurred.
+            deletion_mode (DeletionModeEnum):
+                deletion mode for deleting record. (default: DetectionModeEnum.SOFT_DELETE)
         """
+
         return self.sagemaker_session.delete_record(
             feature_group_name=self.name,
             record_identifier_value_as_string=record_identifier_value_as_string,
             event_time=event_time,
+            deletion_mode=deletion_mode.value,
         )
 
     def ingest(

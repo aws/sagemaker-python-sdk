@@ -15,6 +15,8 @@ from __future__ import absolute_import
 
 STABLE_DIFFUSION_MODEL_TYPE = "stable-diffusion"
 
+VALID_MODEL_CONFIG_FILES = ["config.json", "model_index.json"]
+
 DEEPSPEED_RECOMMENDED_ARCHITECTURES = {
     "bloom",
     "opt",
@@ -28,23 +30,28 @@ DEEPSPEED_RECOMMENDED_ARCHITECTURES = {
     STABLE_DIFFUSION_MODEL_TYPE,
 }
 
-DEEPSPEED_SUPPORTED_ARCHITECTURES = {
+FASTER_TRANSFORMER_RECOMMENDED_ARCHITECTURES = {
+    "t5",
+}
+
+FASTER_TRANSFORMER_SUPPORTED_ARCHITECTURES = {
+    "bert",
+    "gpt2",
     "bloom",
     "opt",
-    "gpt_neox",
     "gptj",
+    "gpt_neox",
     "gpt_neo",
-    "gpt2",
-    "xlm-roberta",
-    "roberta",
-    "bert",
-    STABLE_DIFFUSION_MODEL_TYPE,
+    "t5",
 }
 
 ALLOWED_INSTANCE_FAMILIES = {
     "ml.g4dn",
     "ml.g5",
     "ml.p3",
+    "ml.p3dn",
     "ml.p4",
+    "ml.p4d",
+    "ml.p4de",
     "local_gpu",
 }

@@ -50,7 +50,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
 
     def __init__(
         self,
-        role: str,
+        role: Optional[Union[str, PipelineVariable]] = None,
         instance_count: Optional[Union[int, PipelineVariable]] = None,
         instance_type: Optional[Union[str, PipelineVariable]] = None,
         data_location: Optional[str] = None,

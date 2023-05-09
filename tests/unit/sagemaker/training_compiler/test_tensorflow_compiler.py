@@ -57,8 +57,10 @@ EXPERIMENT_CONFIG = {
 
 @pytest.fixture(scope="module", autouse=True)
 def skip_if_incompatible(tensorflow_training_version, request):
-    if version.parse(tensorflow_training_version) < version.parse("2.9"):
-        pytest.skip("Training Compiler only supports TF >= 2.9")
+    if version.parse(tensorflow_training_version) >= version.parse("2.12") or version.parse(
+        tensorflow_training_version
+    ) < version.parse("2.9"):
+        pytest.skip("Training Compiler only supports TF >= 2.9 and < 2.12")
 
 
 @pytest.fixture(scope="module")
@@ -85,6 +87,9 @@ def fixture_sagemaker_session():
     session.sagemaker_client.list_tags = Mock(return_value=LIST_TAGS_RESULT)
     session.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     session.expand_role = Mock(name="expand_role", return_value=ROLE)
+
+    # For tests which doesn't verify config file injection, operate with empty config
+    session.sagemaker_config = {}
     return session
 
 

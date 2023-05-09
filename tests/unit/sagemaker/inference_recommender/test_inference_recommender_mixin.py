@@ -10,6 +10,7 @@ from sagemaker.inference_recommender.inference_recommender_mixin import (
 )
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.serverless import ServerlessInferenceConfig
+from sagemaker.explainer import ExplainerConfig
 
 import pytest
 
@@ -183,6 +184,7 @@ def sagemaker_session():
 
     session.create_inference_recommendations_job.return_value = IR_JOB_NAME
     session.wait_for_inference_recommendations_job.return_value = IR_SAMPLE_INFERENCE_RESPONSE
+    session.sagemaker_config = {}
 
     return session
 
@@ -565,6 +567,7 @@ def test_deploy_right_size_with_model_package_succeeds(
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
         async_inference_config_dict=None,
         data_capture_config_dict=None,
+        explainer_config_dict=None,
         kms_key=None,
         name="ir-endpoint-test",
         production_variants=IR_PRODUCTION_VARIANTS,
@@ -586,6 +589,7 @@ def test_deploy_right_size_with_both_overrides_succeeds(
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
         async_inference_config_dict=None,
         data_capture_config_dict=None,
+        explainer_config_dict=None,
         kms_key=None,
         name="ir-endpoint-test",
         production_variants=IR_OVERRIDDEN_PRODUCTION_VARIANTS,
@@ -638,13 +642,16 @@ def test_deploy_right_size_serverless_override(sagemaker_session, default_right_
         wait=True,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
+        explainer_config_dict=None,
     )
 
 
 @patch("sagemaker.utils.name_from_base", MagicMock(return_value=MODEL_NAME))
 def test_deploy_right_size_async_override(sagemaker_session, default_right_sized_model):
     default_right_sized_model.name = MODEL_NAME
-    async_inference_config = AsyncInferenceConfig(output_path="s3://some-path")
+    async_inference_config = AsyncInferenceConfig(
+        output_path="s3://some-path", failure_path="s3://some-failure-path"
+    )
     default_right_sized_model.deploy(
         instance_type="ml.c5.2xlarge",
         initial_instance_count=1,
@@ -658,7 +665,42 @@ def test_deploy_right_size_async_override(sagemaker_session, default_right_sized
         kms_key=None,
         wait=True,
         data_capture_config_dict=None,
-        async_inference_config_dict={"OutputConfig": {"S3OutputPath": "s3://some-path"}},
+        async_inference_config_dict={
+            "OutputConfig": {
+                "S3OutputPath": "s3://some-path",
+                "S3FailurePath": "s3://some-failure-path",
+            }
+        },
+        explainer_config_dict=None,
+    )
+
+
+@patch("sagemaker.utils.name_from_base", MagicMock(return_value=MODEL_NAME))
+def test_deploy_right_size_explainer_config_override(sagemaker_session, default_right_sized_model):
+    default_right_sized_model.name = MODEL_NAME
+    mock_clarify_explainer_config = MagicMock()
+    mock_clarify_explainer_config_dict = {
+        "EnableExplanations": "`false`",
+    }
+    mock_clarify_explainer_config._to_request_dict.return_value = mock_clarify_explainer_config_dict
+    explainer_config = ExplainerConfig(clarify_explainer_config=mock_clarify_explainer_config)
+    explainer_config_dict = {"ClarifyExplainerConfig": mock_clarify_explainer_config_dict}
+
+    default_right_sized_model.deploy(
+        instance_type="ml.c5.2xlarge",
+        initial_instance_count=1,
+        explainer_config=explainer_config,
+    )
+
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        name=MODEL_NAME,
+        production_variants=[ANY],
+        tags=None,
+        kms_key=None,
+        wait=True,
+        data_capture_config_dict=None,
+        async_inference_config_dict=None,
+        explainer_config_dict=explainer_config_dict,
     )
 
 

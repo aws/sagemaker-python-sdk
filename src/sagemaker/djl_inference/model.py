@@ -16,6 +16,9 @@ from __future__ import absolute_import
 import json
 import logging
 import os.path
+import urllib.request
+from json import JSONDecodeError
+from urllib.error import HTTPError, URLError
 from enum import Enum
 from typing import Optional, Union, Dict, Any
 
@@ -49,6 +52,7 @@ class DJLServingEngineEntryPointDefaults(Enum):
     DEEPSPEED = ("DeepSpeed", "djl_python.deepspeed")
     HUGGINGFACE_ACCELERATE = ("Python", "djl_python.huggingface")
     STABLE_DIFFUSION = ("DeepSpeed", "djl_python.stable-diffusion")
+    FASTER_TRANSFORMER = ("FasterTransformer", "djl_python.fastertransformer")
 
 
 class DJLPredictor(Predictor):
@@ -90,12 +94,14 @@ class DJLPredictor(Predictor):
 def _determine_engine_for_model(model_type: str, num_partitions: int, num_heads: int):
     """Placeholder docstring"""
 
-    # Tensor Parallelism with DeepSpeed is only possible if attention heads can be split evenly
+    # Tensor Parallelism is only possible if attention heads can be split evenly
     # across devices
     if num_heads is not None and num_partitions is not None and num_heads % num_partitions:
         return HuggingFaceAccelerateModel
     if model_type in defaults.DEEPSPEED_RECOMMENDED_ARCHITECTURES:
         return DeepSpeedModel
+    if model_type in defaults.FASTER_TRANSFORMER_RECOMMENDED_ARCHITECTURES:
+        return FasterTransformerModel
     return HuggingFaceAccelerateModel
 
 
@@ -103,16 +109,18 @@ def _validate_engine_for_model_type(cls, model_type: str, num_partitions: int, n
     """Placeholder docstring"""
 
     if cls == DeepSpeedModel:
-        if model_type not in defaults.DEEPSPEED_SUPPORTED_ARCHITECTURES:
-            raise ValueError(
-                f"{model_type} is not supported by DeepSpeed. "
-                f"Supported model_types are {defaults.DEEPSPEED_SUPPORTED_ARCHITECTURES}"
-            )
         if num_heads is not None and num_partitions is not None and num_heads % num_partitions:
             raise ValueError(
                 "The number of attention heads is not evenly divisible by the number of partitions."
                 "Please set the number of partitions such that the number of attention heads can be"
                 "evenly split across the partitions."
+            )
+    if cls == FasterTransformerModel:
+        if model_type not in defaults.FASTER_TRANSFORMER_SUPPORTED_ARCHITECTURES:
+            raise ValueError(
+                f"The model architecture {model_type} is currently not supported by "
+                f"FasterTransformer. Please use a different engine, or use the DJLModel"
+                f"to let SageMaker pick a recommended engine for this model."
             )
     return cls
 
@@ -132,15 +140,17 @@ def _read_existing_serving_properties(directory: str):
     return properties
 
 
-def _get_model_config_properties_from_s3(model_s3_uri: str):
+def _get_model_config_properties_from_s3(model_s3_uri: str, sagemaker_session: Session):
     """Placeholder docstring"""
-    s3_files = s3.S3Downloader.list(model_s3_uri)
-    valid_config_files = ["config.json", "model_index.json"]
+
+    s3_files = s3.S3Downloader.list(model_s3_uri, sagemaker_session=sagemaker_session)
     model_config = None
-    for config in valid_config_files:
+    for config in defaults.VALID_MODEL_CONFIG_FILES:
         config_file = os.path.join(model_s3_uri, config)
         if config_file in s3_files:
-            model_config = json.loads(s3.S3Downloader.read_file(config_file))
+            model_config = json.loads(
+                s3.S3Downloader.read_file(config_file, sagemaker_session=sagemaker_session)
+            )
             break
     if not model_config:
         raise ValueError(
@@ -151,26 +161,54 @@ def _get_model_config_properties_from_s3(model_s3_uri: str):
     return model_config
 
 
+def _get_model_config_properties_from_hf(model_id: str):
+    """Placeholder docstring"""
+
+    config_url_prefix = f"https://huggingface.co/{model_id}/raw/main/"
+    model_config = None
+    for config in defaults.VALID_MODEL_CONFIG_FILES:
+        config_file_url = config_url_prefix + config
+        try:
+            with urllib.request.urlopen(config_file_url) as response:
+                model_config = json.load(response)
+                break
+        except (HTTPError, URLError, TimeoutError, JSONDecodeError) as e:
+            logger.warning(
+                "Exception encountered while trying to read config file %s. " "Details: %s",
+                config_file_url,
+                e,
+            )
+    if not model_config:
+        raise ValueError(
+            f"Did not find a config.json or model_index.json file in huggingface hub for "
+            f"{model_id}. Please make sure a config.json exists (or model_index.json for Stable "
+            f"Diffusion Models) for this model in the huggingface hub"
+        )
+    return model_config
+
+
 class DJLModel(FrameworkModel):
     """A DJL SageMaker ``Model`` that can be deployed to a SageMaker ``Endpoint``."""
 
     def __new__(
         cls,
-        model_s3_uri: str,
+        model_id: str,
         *args,
         **kwargs,
     ):  # pylint: disable=W0613
         """Create a specific subclass of DJLModel for a given engine"""
 
-        if not model_s3_uri.startswith("s3://"):
-            raise ValueError("DJLModel only supports loading model artifacts from s3")
-        if model_s3_uri.endswith("tar.gz"):
+        if model_id.endswith("tar.gz"):
             raise ValueError(
                 "DJLModel does not support model artifacts in tar.gz format."
                 "Please store the model in uncompressed format and provide the s3 uri of the "
                 "containing folder"
             )
-        model_config = _get_model_config_properties_from_s3(model_s3_uri)
+        if model_id.startswith("s3://"):
+            sagemaker_session = kwargs.get("sagemaker_session")
+            model_config = _get_model_config_properties_from_s3(model_id, sagemaker_session)
+        else:
+            model_config = _get_model_config_properties_from_hf(model_id)
         if model_config.get("_class_name") == "StableDiffusionPipeline":
             model_type = defaults.STABLE_DIFFUSION_MODEL_TYPE
             num_heads = 0
@@ -190,17 +228,19 @@ class DJLModel(FrameworkModel):
             instance.engine = DJLServingEngineEntryPointDefaults.STABLE_DIFFUSION
         elif isinstance(instance, DeepSpeedModel):
             instance.engine = DJLServingEngineEntryPointDefaults.DEEPSPEED
+        elif isinstance(instance, FasterTransformerModel):
+            instance.engine = DJLServingEngineEntryPointDefaults.FASTER_TRANSFORMER
         else:
             instance.engine = DJLServingEngineEntryPointDefaults.HUGGINGFACE_ACCELERATE
         return instance
 
     def __init__(
         self,
-        model_s3_uri: str,
+        model_id: str,
         role: str,
         djl_version: Optional[str] = None,
         task: Optional[str] = None,
-        data_type: str = "fp32",
+        dtype: str = "fp32",
         number_of_partitions: Optional[int] = None,
         min_workers: Optional[int] = None,
         max_workers: Optional[int] = None,
@@ -216,8 +256,9 @@ class DJLModel(FrameworkModel):
         """Initialize a DJLModel.
 
         Args:
-            model_s3_uri (str): The Amazon S3 location containing the uncompressed model
-                artifacts. The model artifacts are expected to be in HuggingFace pre-trained model
+            model_id (str): This is either the HuggingFace Hub model_id, or the Amazon S3 location
+                containing the uncompressed model artifacts (i.e. not a tar.gz file).
+                The model artifacts are expected to be in HuggingFace pre-trained model
                 format (i.e. model should be loadable from the huggingface transformers
                 from_pretrained api, and should also include tokenizer configs if applicable).
             role (str): An AWS IAM role specified with either the name or full ARN. The Amazon
@@ -230,7 +271,7 @@ class DJLModel(FrameworkModel):
             task (str): The HuggingFace/NLP task you want to launch this model for. Defaults to
                 None.
                 If not provided, the task will be inferred from the model architecture by DJL.
-            data_type (str): The data type to use for loading your model. Accepted values are
+            dtype (str): The data type to use for loading your model. Accepted values are
                 "fp32", "fp16", "bf16", "int8". Defaults to "fp32".
             number_of_partitions (int): The number of GPUs to partition the model across. The
                 partitioning strategy is determined by the selected backend. If DeepSpeed is
@@ -285,16 +326,23 @@ class DJLModel(FrameworkModel):
         if kwargs.get("model_data"):
             logger.warning(
                 "DJLModels do not use model_data parameter. model_data parameter will be ignored."
-                "You only need to set model_S3_uri and ensure it points to uncompressed model "
-                "artifacts."
+                "You only need to set model_id and ensure it points to uncompressed model "
+                "artifacts in s3, or a valid HuggingFace Hub model_id."
             )
+        data_type = kwargs.pop("data_type", None)
+        if data_type:
+            logger.warning(
+                "data_type is being deprecated in favor of dtype. Please migrate use of data_type"
+                " to dtype. Support for data_type will be removed in a future release"
+            )
+            dtype = dtype or data_type
         super(DJLModel, self).__init__(
             None, image_uri, role, entry_point, predictor_cls=predictor_cls, **kwargs
         )
-        self.model_s3_uri = model_s3_uri
+        self.model_id = model_id
         self.djl_version = djl_version
         self.task = task
-        self.data_type = data_type
+        self.dtype = dtype
         self.number_of_partitions = number_of_partitions
         self.min_workers = min_workers
         self.max_workers = max_workers
@@ -338,7 +386,7 @@ class DJLModel(FrameworkModel):
             "DJLModels do not currently support Batch Transform inference jobs"
         )
 
-    def right_size(self, checkpoint_data_type: str):
+    def right_size(self, **_):
         """Not implemented.
 
         DJLModels do not support SageMaker Inference Recommendation Jobs.
@@ -529,15 +577,18 @@ class DJLModel(FrameworkModel):
             serving_properties = {}
         serving_properties["engine"] = self.engine.value[0]  # pylint: disable=E1101
         serving_properties["option.entryPoint"] = self.engine.value[1]  # pylint: disable=E1101
-        serving_properties["option.s3url"] = self.model_s3_uri
+        if self.model_id.startswith("s3://"):
+            serving_properties["option.s3url"] = self.model_id
+        else:
+            serving_properties["option.model_id"] = self.model_id
         if self.number_of_partitions:
             serving_properties["option.tensor_parallel_degree"] = self.number_of_partitions
         if self.entry_point:
             serving_properties["option.entryPoint"] = self.entry_point
         if self.task:
             serving_properties["option.task"] = self.task
-        if self.data_type:
-            serving_properties["option.dtype"] = self.data_type
+        if self.dtype:
+            serving_properties["option.dtype"] = self.dtype
         if self.min_workers:
             serving_properties["minWorkers"] = self.min_workers
         if self.max_workers:
@@ -562,7 +613,7 @@ class DJLModel(FrameworkModel):
             str: The appropriate image URI based on the given parameters.
         """
         if not self.djl_version:
-            self.djl_version = "0.21.0"
+            self.djl_version = "0.22.1"
 
         return image_uris.retrieve(
             self._framework(),
@@ -593,7 +644,7 @@ class DeepSpeedModel(DJLModel):
 
     def __init__(
         self,
-        model_s3_uri: str,
+        model_id: str,
         role: str,
         tensor_parallel_degree: Optional[int] = None,
         max_tokens: Optional[int] = None,
@@ -606,11 +657,11 @@ class DeepSpeedModel(DJLModel):
         """Initialize a DeepSpeedModel
 
         Args:
-            model_s3_uri (str): The Amazon S3 location containing the uncompressed model
-                artifacts. The model artifacts are expected to be in HuggingFace pre-trained model
+            model_id (str): This is either the HuggingFace Hub model_id, or the Amazon S3 location
+                containing the uncompressed model artifacts (i.e. not a tar.gz file).
+                The model artifacts are expected to be in HuggingFace pre-trained model
                 format (i.e. model should be loadable from the huggingface transformers
-                from_pretrained
-                api, and should also include tokenizer configs if applicable).
+                from_pretrained api, and should also include tokenizer configs if applicable).
             role (str): An AWS IAM role specified with either the name or full ARN. The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker
                 endpoints use this role to access model artifacts. After the endpoint is created,
@@ -647,7 +698,7 @@ class DeepSpeedModel(DJLModel):
         """
 
         super(DeepSpeedModel, self).__init__(
-            model_s3_uri,
+            model_id,
             role,
             **kwargs,
         )
@@ -710,7 +761,7 @@ class HuggingFaceAccelerateModel(DJLModel):
 
     def __init__(
         self,
-        model_s3_uri: str,
+        model_id: str,
         role: str,
         number_of_partitions: Optional[int] = None,
         device_id: Optional[int] = None,
@@ -722,11 +773,11 @@ class HuggingFaceAccelerateModel(DJLModel):
         """Initialize a HuggingFaceAccelerateModel.
 
         Args:
-            model_s3_uri (str): The Amazon S3 location containing the uncompressed model
-                artifacts. The model artifacts are expected to be in HuggingFace pre-trained model
+            model_id (str): This is either the HuggingFace Hub model_id, or the Amazon S3 location
+                containing the uncompressed model artifacts (i.e. not a tar.gz file).
+                The model artifacts are expected to be in HuggingFace pre-trained model
                 format (i.e. model should be loadable from the huggingface transformers
-                from_pretrained
-                method).
+                from_pretrained api, and should also include tokenizer configs if applicable).
             role (str): An AWS IAM role specified with either the name or full ARN. The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker
                 endpoints use this role to access model artifacts. After the endpoint is created,
@@ -742,7 +793,7 @@ class HuggingFaceAccelerateModel(DJLModel):
                 None.
             load_in_8bit (bool): Whether to load the model in int8 precision using bits and bytes
                 quantization. This is only supported for select model architectures.
-                Defaults to False. If ``data_type`` is int8, then this is set to True.
+                Defaults to False. If ``dtype`` is int8, then this is set to True.
             low_cpu_mem_usage (bool): Whether to limit CPU memory usage to 1x model size during
                 model loading. This is an experimental feature in HuggingFace. This is useful when
                 loading multiple instances of your model in parallel. Defaults to False.
@@ -760,7 +811,7 @@ class HuggingFaceAccelerateModel(DJLModel):
         """
 
         super(HuggingFaceAccelerateModel, self).__init__(
-            model_s3_uri,
+            model_id,
             role,
             number_of_partitions=number_of_partitions,
             **kwargs,
@@ -795,10 +846,10 @@ class HuggingFaceAccelerateModel(DJLModel):
         if self.device_map:
             serving_properties["option.device_map"] = self.device_map
         if self.load_in_8bit:
-            if self.data_type != "int8":
-                raise ValueError("Set data_type='int8' to use load_in_8bit")
+            if self.dtype != "int8":
+                raise ValueError("Set dtype='int8' to use load_in_8bit")
             serving_properties["option.load_in_8bit"] = self.load_in_8bit
-        if self.data_type == "int8":
+        if self.dtype == "int8":
             serving_properties["option.load_in_8bit"] = True
         if self.low_cpu_mem_usage:
             serving_properties["option.low_cpu_mem_usage"] = self.low_cpu_mem_usage
@@ -806,9 +857,70 @@ class HuggingFaceAccelerateModel(DJLModel):
         # TODO: This needs to be fixed when new dlc is published
         if (
             serving_properties["option.entryPoint"] == "djl_python.huggingface"
-            and self.data_type
-            and self.data_type != "auto"
+            and self.dtype
+            and self.dtype != "auto"
         ):
             serving_properties["option.dtype"] = "auto"
             serving_properties.pop("option.load_in_8bit", None)
         return serving_properties
+
+
+class FasterTransformerModel(DJLModel):
+    """A DJL FasterTransformer SageMaker ``Model``
+
+    This can be deployed to a SageMaker ``Endpoint``.
+    """
+
+    _framework_name = "djl-fastertransformer"
+
+    def __init__(
+        self,
+        model_id: str,
+        role: str,
+        tensor_parallel_degree: Optional[int] = None,
+        **kwargs,
+    ):
+        """Initialize a FasterTransformerModel.
+
+        Args:
+            model_id (str): This is either the HuggingFace Hub model_id, or the Amazon S3 location
+                containing the uncompressed model artifacts (i.e. not a tar.gz file).
+                The model artifacts are expected to be in HuggingFace pre-trained model
+                format (i.e. model should be loadable from the huggingface transformers
+                from_pretrained api, and should also include tokenizer configs if applicable).
+            role (str): An AWS IAM role specified with either the name or full ARN. The Amazon
+                SageMaker training jobs and APIs that create Amazon SageMaker
+                endpoints use this role to access model artifacts. After the endpoint is created,
+                the inference code
+                might use the IAM role, if it needs to access an AWS resource.
+            tensor_parllel_degree (int): The number of gpus to shard a single instance of the
+                 model across via tensor_parallelism. This should be set to greater than 1 if the
+                 size of the model is larger than the memory available on a single GPU on the
+                 instance. Defaults to None. If not set, no tensor parallel sharding is done.
+            **kwargs: Keyword arguments passed to the superclasses
+                :class:`~sagemaker.djl_inference.DJLModel`,
+                :class:`~sagemaker.model.FrameworkModel`, and
+                :class:`~sagemaker.model.Model`
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.djl_inference.DJLModel`,
+            :class:`~sagemaker.model.FrameworkModel`, and
+            :class:`~sagemaker.model.Model`.
+        """
+
+        super(FasterTransformerModel, self).__init__(
+            model_id,
+            role,
+            **kwargs,
+        )
+        if self.number_of_partitions and tensor_parallel_degree:
+            logger.warning(
+                "Both number_of_partitions and tensor_parallel_degree have been set for "
+                "FasterTransformerModel."
+                "These mean the same thing for FasterTransformerModel. Please only set "
+                "tensor_parallel_degree."
+                "number_of_partitions will be ignored"
+            )
+        self.number_of_partitions = tensor_parallel_degree or self.number_of_partitions

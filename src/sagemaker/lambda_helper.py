@@ -36,6 +36,9 @@ class Lambda:
         timeout: int = 120,
         memory_size: int = 128,
         runtime: str = "python3.8",
+        vpc_config: dict = None,
+        environment: dict = None,
+        layers: list = None,
     ):
         """Constructs a Lambda instance.
 
@@ -66,6 +69,9 @@ class Lambda:
             timeout (int): Timeout of the Lambda function in seconds. Default is 120 seconds.
             memory_size (int): Memory of the Lambda function in megabytes. Default is 128 MB.
             runtime (str): Runtime of the Lambda function. Default is set to python3.8.
+            vpc_config (dict): VPC to deploy the Lambda function to. Default is None.
+            environment (dict): Environment Variables for the Lambda function. Default is None.
+            layers (list): List of Lambda layers for the Lambda function. Default is None.
         """
         self.function_arn = function_arn
         self.function_name = function_name
@@ -78,6 +84,9 @@ class Lambda:
         self.timeout = timeout
         self.memory_size = memory_size
         self.runtime = runtime
+        self.vpc_config = vpc_config or {}
+        self.environment = environment or {}
+        self.layers = layers or []
 
         if function_arn is None and function_name is None:
             raise ValueError("Either function_arn or function_name must be provided.")
@@ -127,6 +136,9 @@ class Lambda:
                 Code=code,
                 Timeout=self.timeout,
                 MemorySize=self.memory_size,
+                VpcConfig=self.vpc_config,
+                Environment=self.environment,
+                Layers=self.layers,
             )
             return response
         except ClientError as e:

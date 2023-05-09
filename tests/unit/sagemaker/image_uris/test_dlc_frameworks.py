@@ -17,6 +17,8 @@ from packaging.version import Version
 from sagemaker import image_uris
 from tests.unit.sagemaker.image_uris import expected_uris
 
+import pytest
+
 INSTANCE_TYPES_AND_PROCESSORS = (("ml.c4.xlarge", "cpu"), ("ml.p2.xlarge", "gpu"))
 RENEWED_PYTORCH_INSTANCE_TYPES_AND_PROCESSORS = (("ml.c4.xlarge", "cpu"), ("ml.g4dn.xlarge", "gpu"))
 REGION = "us-west-2"
@@ -72,7 +74,9 @@ def _test_image_uris(
     }
 
     TYPES_AND_PROCESSORS = INSTANCE_TYPES_AND_PROCESSORS
-    if framework == "pytorch" and Version(fw_version) >= Version("1.13"):
+    if (framework == "pytorch" and Version(fw_version) >= Version("1.13")) or (
+        framework == "tensorflow" and Version(fw_version) >= Version("2.12")
+    ):
         """Handle P2 deprecation"""
         TYPES_AND_PROCESSORS = RENEWED_PYTORCH_INSTANCE_TYPES_AND_PROCESSORS
 
@@ -83,6 +87,14 @@ def _test_image_uris(
         assert expected == uri
 
     for region in SAGEMAKER_ALTERNATE_REGION_ACCOUNTS.keys():
+        if (
+            scope == "training"
+            and framework == "tensorflow"
+            and Version(fw_version) == Version("2.12")
+        ):
+            if region in ["cn-north-1", "cn-northwest-1", "us-iso-east-1", "us-isob-east-1"]:
+                pytest.skip(f"TF 2.12 SM DLC is not available in {region} region")
+
         uri = image_uris.retrieve(region=region, instance_type="ml.c4.xlarge", **base_args)
 
         expected = expected_fn(region=region, **expected_fn_args)

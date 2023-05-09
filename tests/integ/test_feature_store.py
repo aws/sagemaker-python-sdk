@@ -33,12 +33,14 @@ from sagemaker.feature_store.inputs import (
     Filter,
     ResourceEnum,
     Identifier,
+    DeletionModeEnum,
 )
 from sagemaker.feature_store.dataset_builder import (
     JoinTypeEnum,
 )
 from sagemaker.session import get_execution_role, Session
 from tests.integ.timeout import timeout
+from urllib.parse import urlparse
 
 BUCKET_POLICY = {
     "Version": "2012-10-17",
@@ -162,6 +164,15 @@ def pandas_data_frame_without_string():
 
 
 @pytest.fixture
+def historic_record():
+    return [
+        FeatureValue(feature_name="feature1", value_as_string="10.0"),
+        FeatureValue(feature_name="feature2", value_as_string="7"),
+        FeatureValue(feature_name="feature3", value_as_string="2020-10-29T03:43:21Z"),
+    ]
+
+
+@pytest.fixture
 def record():
     return [
         FeatureValue(feature_name="feature1", value_as_string="10.0"),
@@ -206,9 +217,10 @@ def test_create_feature_store_online_only(
             event_time_feature_name="feature3",
             role_arn=role,
             enable_online_store=True,
+            tags=[{"Key": "key1", "Value": "value1"}],
         )
         _wait_for_feature_group_create(feature_group)
-
+        assert feature_group.list_tags() == [{"Key": "key1", "Value": "value1"}]
     assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
 
 
@@ -396,7 +408,7 @@ def test_get_and_batch_get_record(
             assert feature["FeatureName"] is not removed_feature_name
 
 
-def test_delete_record(
+def test_soft_delete_record(
     feature_store_session,
     role,
     feature_group_name,
@@ -433,6 +445,55 @@ def test_delete_record(
             record_identifier_value_as_string=record_identifier_value_as_string,
         )
         assert retrieved_record is None
+
+
+def test_hard_delete_record(
+    feature_store_session,
+    role,
+    feature_group_name,
+    pandas_data_frame,
+    historic_record,
+    record,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+
+    record_identifier_value_as_string = record[0].value_as_string
+    historic_record_identifier_value_as_string = historic_record[0].value_as_string
+    with cleanup_feature_group(feature_group):
+        feature_group.create(
+            s3_uri=False,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+        )
+        _wait_for_feature_group_create(feature_group)
+        # Ingest data
+        feature_group.put_record(record=record)
+        # Retrieve data
+        retrieved_record = feature_group.get_record(
+            record_identifier_value_as_string=record_identifier_value_as_string,
+        )
+        assert retrieved_record is not None
+        # Delete data
+        feature_group.delete_record(
+            record_identifier_value_as_string=record_identifier_value_as_string,
+            event_time=datetime.datetime.now().replace(microsecond=0).isoformat() + "Z",
+            deletion_mode=DeletionModeEnum.HARD_DELETE,
+        )
+        # Retrieve data
+        retrieved_record = feature_group.get_record(
+            record_identifier_value_as_string=record_identifier_value_as_string,
+        )
+        assert retrieved_record is None
+        # Ingest data
+        feature_group.put_record(historic_record)
+        # Retrieve data
+        retrieved_record = feature_group.get_record(
+            record_identifier_value_as_string=historic_record_identifier_value_as_string,
+        )
+        assert retrieved_record is not None
 
 
 def test_update_feature_group(
@@ -519,6 +580,10 @@ def test_feature_metadata(
         print(describe_feature_metadata)
         assert description == describe_feature_metadata.get("Description")
         assert 2 == len(describe_feature_metadata.get("Parameters"))
+        assert [
+            {"Key": "key1", "Value": "value1"},
+            {"Key": "key2", "Value": "value2"},
+        ] == feature_group.list_parameters_for_feature_metadata(feature_name=feature_name)
 
         parameter_removals = ["key1"]
         feature_group.update_feature_metadata(
@@ -529,6 +594,9 @@ def test_feature_metadata(
         )
         assert description == describe_feature_metadata.get("Description")
         assert 1 == len(describe_feature_metadata.get("Parameters"))
+        assert [
+            {"Key": "key2", "Value": "value2"}
+        ] == feature_group.list_parameters_for_feature_metadata(feature_name=feature_name)
 
 
 def test_search(feature_store_session, role, feature_group_name, pandas_data_frame):
@@ -635,8 +703,8 @@ def test_create_dataset_with_feature_group_base(
         )
 
         with timeout(minutes=10) and cleanup_offline_store(
-            base_table_name, feature_store_session
-        ) and cleanup_offline_store(feature_group_table_name, feature_store_session):
+            base, feature_store_session
+        ) and cleanup_offline_store(feature_group, feature_store_session):
             feature_store = FeatureStore(sagemaker_session=feature_store_session)
             df, query_string = (
                 feature_store.create_dataset(base=base, output_path=offline_store_s3_uri)
@@ -663,7 +731,7 @@ def test_create_dataset_with_feature_group_base(
 
             assert sorted_df.equals(expect_df)
             assert (
-                query_string
+                query_string.strip()
                 == "WITH fg_base AS (WITH table_base AS (\n"
                 + "SELECT *\n"
                 + "FROM (\n"
@@ -817,8 +885,8 @@ def test_create_dataset_with_feature_group_base_with_additional_params(
         )
 
         with timeout(minutes=10) and cleanup_offline_store(
-            base_table_name, feature_store_session
-        ) and cleanup_offline_store(feature_group_table_name, feature_store_session):
+            base, feature_store_session
+        ) and cleanup_offline_store(feature_group, feature_store_session):
             feature_store = FeatureStore(sagemaker_session=feature_store_session)
             df, query_string = (
                 feature_store.create_dataset(base=base, output_path=offline_store_s3_uri)
@@ -850,7 +918,7 @@ def test_create_dataset_with_feature_group_base_with_additional_params(
 
             assert sorted_df.equals(expect_df)
             assert (
-                query_string
+                query_string.strip()
                 == "WITH fg_base AS (WITH table_base AS (\n"
                 + "SELECT *\n"
                 + "FROM (\n"
@@ -1068,25 +1136,29 @@ def cleanup_feature_group(feature_group: FeatureGroup):
 
 
 @contextmanager
-def cleanup_offline_store(table_name: str, feature_store_session: Session):
+def cleanup_offline_store(feature_group: FeatureGroup, feature_store_session: Session):
     try:
         yield
     finally:
+        feature_group_metadata = feature_group.describe()
+        feature_group_name = feature_group_metadata["FeatureGroupName"]
         try:
+            s3_uri = feature_group_metadata["OfflineStoreConfig"]["S3StorageConfig"][
+                "ResolvedOutputS3Uri"
+            ]
+            parsed_uri = urlparse(s3_uri)
+            bucket_name, prefix = parsed_uri.netloc, parsed_uri.path
+            prefix = prefix.strip("/")
+            prefix = prefix[:-5] if prefix.endswith("/data") else prefix
             region_name = feature_store_session.boto_session.region_name
             s3_client = feature_store_session.boto_session.client(
                 service_name="s3", region_name=region_name
             )
-            account_id = feature_store_session.account_id()
-            bucket_name = f"sagemaker-test-featurestore-{region_name}-{account_id}"
-            response = s3_client.list_objects_v2(
-                Bucket=bucket_name,
-                Prefix=f"{account_id}/sagemaker/{region_name}/offline-store/{table_name}/",
-            )
+            response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=prefix)
             files_in_folder = response["Contents"]
             files_to_delete = []
             for f in files_in_folder:
                 files_to_delete.append({"Key": f["Key"]})
             s3_client.delete_objects(Bucket=bucket_name, Delete={"Objects": files_to_delete})
-        except Exception:
-            raise RuntimeError(f"Failed to delete data under {table_name}")
+        except Exception as e:
+            raise RuntimeError(f"Failed to delete data for feature_group {feature_group_name}", e)

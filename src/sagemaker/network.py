@@ -29,7 +29,7 @@ class NetworkConfig(object):
 
     def __init__(
         self,
-        enable_network_isolation: Union[bool, PipelineVariable] = False,
+        enable_network_isolation: Union[bool, PipelineVariable] = None,
         security_group_ids: Optional[List[Union[str, PipelineVariable]]] = None,
         subnets: Optional[List[Union[str, PipelineVariable]]] = None,
         encrypt_inter_container_traffic: Optional[Union[bool, PipelineVariable]] = None,
@@ -55,7 +55,11 @@ class NetworkConfig(object):
 
     def _to_request_dict(self):
         """Generates a request dictionary using the parameters provided to the class."""
-        network_config_request = {"EnableNetworkIsolation": self.enable_network_isolation}
+        # Enable Network Isolation should default to False if it is not provided.
+        enable_network_isolation = (
+            False if self.enable_network_isolation is None else self.enable_network_isolation
+        )
+        network_config_request = {"EnableNetworkIsolation": enable_network_isolation}
 
         if self.encrypt_inter_container_traffic is not None:
             network_config_request[

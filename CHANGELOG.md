@@ -1,5 +1,179 @@
 # Changelog
 
+## v2.152.0 (2023-05-04)
+
+### Features
+
+ * add support for lineage visualization using pyvis
+ * Expose Experiment class publicly
+ * PyTorch 1.13 release
+
+### Bug Fixes and Other Changes
+
+ * Change data_type argument to dtype to keep consistent with D…
+ * Skip edge test
+ * make RemoteExecutor context manager non-blocking on pending futures
+ * Add inferentia2 DLC images for djl framework
+ * Fix typo in using_pytorch.rst
+ * Unable to attach estimator to training job when KeepAlivePeriodInSeconds specified
+ * update LMI container image
+ * Update Clarify SHAPConfig baseline to allow JSON structures
+
+### Documentation Changes
+
+ * Fix broken link in DJL SageMaker docs
+ * currency update for the SageMaker data parallelism lib
+ * SM model parallel library v1.15.0 release note
+
+## v2.151.0 (2023-04-27)
+
+### Features
+
+ * Update Transformers 4.26 - TensorFlow 2.11.0 Image URI
+ * Add Extra Parameters to Lambda Function Wrapper
+
+### Bug Fixes and Other Changes
+
+ * Add kms key support for Model registration
+ * Enable inference recommender slow tests
+ * Pass sagemaker session to downstream s3 calls
+ * Add ap-south-1 to no p3 regions
+ * skip test for p2 instance for TF2.12 and above
+
+### Documentation Changes
+
+ * Fix minor misses from the remote function doc release
+
+## v2.150.0 (2023-04-26)
+
+### Features
+
+ * Introduce TensorBoard app class
+
+### Bug Fixes and Other Changes
+
+ * Update data wrangler images
+
+## v2.149.0 (2023-04-25)
+
+### Features
+
+ * Support TF2.12 SageMaker DLC
+
+### Bug Fixes and Other Changes
+
+ * update the doc for Join function
+ * change s3UploadMode of sagemaker clarify processing output for computer vision jobs.
+
+### Documentation Changes
+
+ * Add Remote Function updates
+
+## v2.148.0 (2023-04-20)
+
+### Features
+
+ * [huggingface] Add `torch.distributed` support for Trainium and `torchrun`
+ * Add PyTorch 2.0 to SDK
+
+### Bug Fixes and Other Changes
+
+ * updating batch transform job in monitoring schedule
+
+## v2.147.0 (2023-04-18)
+
+### Features
+
+ * support different types of deletion mode
+
+## v2.146.1 (2023-04-17)
+
+### Bug Fixes and Other Changes
+
+ * skip failing tests temporarily
+ * Added ml.p4d and ml.p4de as supported instances for DeepSpeed
+
+### Documentation Changes
+
+ * Add Model Registry Model Collection
+
+## v2.146.0 (2023-04-13)
+
+### Features
+
+ * Add support for JSON model inputs for Clarify Processor
+
+### Bug Fixes and Other Changes
+
+ * Feature/list collection
+ * improve reliability of Run integration test
+ * Add a comment that smdataparallel lib excludes tf 2.12 support
+
+### Documentation Changes
+
+ * Update reference to load run method in documentation
+
+## v2.145.0 (2023-04-06)
+
+### Features
+
+ * add support for async inline error notifications
+ * Add methods for feature group to list feature metadata parameters and tags
+ * Support huggingface hub model_id for DJL Models
+
+### Bug Fixes and Other Changes
+
+ * load_sagemaker_config should lazy initialize a default S3 resource
+
+## v2.144.0 (2023-04-05)
+
+### Features
+
+ * support create Clarify explainer enabled endpoint for Clarify Online Explainability
+ * Combined inference and training script artifact
+ * jumpstart instance types
+ * Deprecation warning for framework profiling for TF 2.12 and on, PT 2.0 and on
+
+### Bug Fixes and Other Changes
+
+ * always delete temporary directory even during exception
+ * Fixes the completion_criteria_config dict in the to_input_req method
+ * Update CHANGELOG.md
+
+### Documentation Changes
+
+ * Update SageMaker Debugger doc
+
+## v2.143.0 (2023-03-29)
+
+### Features
+
+ * Support for SageMaker SDK Defaults
+
+### Bug Fixes and Other Changes
+
+ * update feature store offline s3 path used in tests
+
+## v2.142.0 (2023-03-27)
+
+### Features
+
+ * combined model + script artifact
+
+## v2.141.0 (2023-03-24)
+
+### Features
+
+ * AutoGluon 0.7.0 image_uris update
+ * Add DJL FasterTransformer image uris
+ * EMR step runtime role support
+ * locations for EMR configuration and Spark dependencies
+ * Adding support for 1P Algorithms in ZAZ, ZRH, HYD, MEL
+
+### Documentation Changes
+
+ * Update FeatureGroup kms key id documentation
+
 ## v2.140.1 (2023-03-21)
 
 ### Bug Fixes and Other Changes

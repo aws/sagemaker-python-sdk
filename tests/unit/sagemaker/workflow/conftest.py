@@ -59,8 +59,12 @@ def mock_boto_session(client):
 
 @pytest.fixture(scope="module")
 def pipeline_session(mock_boto_session, mock_client):
-    return PipelineSession(
+    pipeline_session = PipelineSession(
         boto_session=mock_boto_session,
         sagemaker_client=mock_client,
         default_bucket=BUCKET,
     )
+    # For tests which doesn't verify config file injection, operate with empty config
+
+    pipeline_session.sagemaker_config = {}
+    return pipeline_session

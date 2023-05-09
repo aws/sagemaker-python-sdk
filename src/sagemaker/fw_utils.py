@@ -22,6 +22,7 @@ import shutil
 import tempfile
 from collections import namedtuple
 from typing import Optional, Union, Dict
+from packaging import version
 
 import sagemaker.image_uris
 from sagemaker.session_settings import SessionSettings
@@ -30,6 +31,7 @@ from sagemaker.workflow import is_pipeline_variable
 
 from sagemaker.deprecations import renamed_warning, renamed_kwargs
 from sagemaker.workflow.entities import PipelineVariable
+from sagemaker.deprecations import deprecation_warn_base
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +88,7 @@ SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES = (
     "local_gpu",
 )
 SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
+    # tf 2.12 should not be supported: smdataparallel excludes support for tf 2.12.
     "tensorflow": [
         "2.3",
         "2.3.1",
@@ -132,6 +135,7 @@ SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
         "1.12.0",
         "1.12.1",
         "1.13.1",
+        "2.0.0",
     ],
 }
 
@@ -145,10 +149,11 @@ PYTORCHDDP_SUPPORTED_FRAMEWORK_VERSIONS = [
     "1.12.0",
     "1.12.1",
     "1.13.1",
+    "2.0.0",
 ]
 
 
-TORCH_DISTRIBUTED_GPU_SUPPORTED_FRAMEWORK_VERSIONS = ["1.13.1"]
+TORCH_DISTRIBUTED_GPU_SUPPORTED_FRAMEWORK_VERSIONS = ["1.13.1", "2.0.0"]
 
 TRAINIUM_SUPPORTED_DISTRIBUTION_STRATEGIES = ["torch_distributed"]
 TRAINIUM_SUPPORTED_TORCH_DISTRIBUTED_FRAMEWORK_VERSIONS = [
@@ -158,6 +163,7 @@ TRAINIUM_SUPPORTED_TORCH_DISTRIBUTED_FRAMEWORK_VERSIONS = [
     "1.12.0",
     "1.12.1",
     "1.13.1",
+    "2.0.0",
 ]
 
 SMDISTRIBUTED_SUPPORTED_STRATEGIES = ["dataparallel", "modelparallel"]
@@ -636,6 +642,35 @@ def warn_if_parameter_server_with_multi_gpu(training_instance_type, distribution
 
     if is_multi_gpu_instance and ps_enabled:
         logger.warning(PARAMETER_SERVER_MULTI_GPU_WARNING)
+
+
+def profiler_config_deprecation_warning(
+    profiler_config, image_uri, framework_name, framework_version
+):
+    """Put out a deprecation message for if framework profiling is specified TF >= 2.12 and PT >= 2.0"""
+    if profiler_config is None or profiler_config.framework_profile_params is None:
+        return
+
+    if framework_name not in ("pytorch", "tensorflow"):
+        return
+
+    if framework_version is None:
+        framework_name, _, image_tag, _ = framework_name_from_image(image_uri)
+
+        if image_tag is not None:
+            framework_version = framework_version_from_tag(image_tag)
+
+    if framework_version is not None:
+        framework_profile_thresh = (
+            version.parse("2.0") if framework_name == "pytorch" else version.parse("2.12")
+        )
+        framework_profile = version.parse(framework_version)
+        if framework_profile >= framework_profile_thresh:
+            deprecation_warn_base(
+                f"Framework profiling is deprecated from\
+                 {framework_name} version {framework_version}.\
+                 No framework metrics will be collected"
+            )
 
 
 def validate_smdistributed(

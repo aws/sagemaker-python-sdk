@@ -32,7 +32,7 @@ from sagemaker.experiments._helper import (
 )
 from sagemaker.experiments._environment import _RunEnvironment
 from sagemaker.experiments._run_context import _RunContext
-from sagemaker.experiments.experiment import _Experiment
+from sagemaker.experiments.experiment import Experiment
 from sagemaker.experiments._metrics import _MetricsManager
 from sagemaker.experiments.trial import _Trial
 from sagemaker.experiments.trial_component import _TrialComponent
@@ -166,7 +166,7 @@ class Run(object):
         )
         self.run_group_name = Run._generate_trial_name(self.experiment_name)
 
-        self._experiment = _Experiment._load_or_create(
+        self._experiment = Experiment._load_or_create(
             experiment_name=self.experiment_name,
             display_name=experiment_display_name,
             tags=tags,
@@ -715,6 +715,14 @@ class Run(object):
 
         self.close()
 
+    def __getstate__(self):
+        """Overriding this method to prevent instance of Run from being pickled.
+
+        Raise:
+            NotImplementedError: If attempting to pickle this instance.
+        """
+        raise NotImplementedError("Instance of Run type is not allowed to be pickled.")
+
 
 def load_run(
     run_name: Optional[str] = None,
@@ -787,36 +795,38 @@ def load_run(
     Returns:
         Run: The loaded Run object.
     """
-    sagemaker_session = sagemaker_session or _utils.default_session()
     environment = _RunEnvironment.load()
 
     verify_load_input_names(run_name=run_name, experiment_name=experiment_name)
 
-    if run_name or environment:
-        if run_name:
-            logger.warning(
-                "run_name is explicitly supplied in load_run, "
-                "which will be prioritized to load the Run object. "
-                "In other words, the run name in the experiment config, fetched from the "
-                "job environment or the current run context, will be ignored."
-            )
-        else:
-            exp_config = get_tc_and_exp_config_from_job_env(
-                environment=environment, sagemaker_session=sagemaker_session
-            )
-            run_name = Run._extract_run_name_from_tc_name(
-                trial_component_name=exp_config[RUN_NAME],
-                experiment_name=exp_config[EXPERIMENT_NAME],
-            )
-            experiment_name = exp_config[EXPERIMENT_NAME]
-
+    if run_name:
+        logger.warning(
+            "run_name is explicitly supplied in load_run, "
+            "which will be prioritized to load the Run object. "
+            "In other words, the run name in the experiment config, fetched from the "
+            "job environment or the current run context, will be ignored."
+        )
         run_instance = Run(
             experiment_name=experiment_name,
             run_name=run_name,
-            sagemaker_session=sagemaker_session,
+            sagemaker_session=sagemaker_session or _utils.default_session(),
         )
     elif _RunContext.get_current_run():
         run_instance = _RunContext.get_current_run()
+    elif environment:
+        exp_config = get_tc_and_exp_config_from_job_env(
+            environment=environment, sagemaker_session=sagemaker_session or _utils.default_session()
+        )
+        run_name = Run._extract_run_name_from_tc_name(
+            trial_component_name=exp_config[RUN_NAME],
+            experiment_name=exp_config[EXPERIMENT_NAME],
+        )
+        experiment_name = exp_config[EXPERIMENT_NAME]
+        run_instance = Run(
+            experiment_name=experiment_name,
+            run_name=run_name,
+            sagemaker_session=sagemaker_session or _utils.default_session(),
+        )
     else:
         raise RuntimeError(
             "Failed to load a Run object. "

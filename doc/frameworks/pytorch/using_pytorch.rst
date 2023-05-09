@@ -892,7 +892,7 @@ see `For versions 1.1 and lower <#for-versions-1.1-and-lower>`_.
     |               |--inference.py
     |               |--requirements.txt
 
-Where ``requirments.txt`` is an optional file that specifies dependencies on third-party libraries.
+Where ``requirements.txt`` is an optional file that specifies dependencies on third-party libraries.
 
 Create a ``PyTorchModel`` object
 --------------------------------

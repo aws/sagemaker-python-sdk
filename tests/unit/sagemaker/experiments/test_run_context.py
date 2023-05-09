@@ -18,7 +18,7 @@ import pytest
 
 from sagemaker import Processor
 from sagemaker.estimator import Estimator, _TrainingJob
-from sagemaker.experiments.experiment import _Experiment
+from sagemaker.experiments.experiment import Experiment
 from sagemaker.experiments.run import _RunContext
 from sagemaker.experiments import load_run, Run
 from sagemaker.experiments.trial import _Trial
@@ -62,7 +62,7 @@ def test_auto_pass_in_exp_config_to_train_job(mock_start_job, run_obj, sagemaker
 
 @patch.object(_Trial, "add_trial_component", MagicMock(return_value=None))
 @patch.object(_TrialComponent, "save", MagicMock(return_value=None))
-@patch("sagemaker.experiments.run._Experiment._load_or_create")
+@patch("sagemaker.experiments.run.Experiment._load_or_create")
 @patch("sagemaker.experiments.run._Trial._load_or_create")
 @patch("sagemaker.experiments.run._TrialComponent._load_or_create")
 @patch.object(_TrainingJob, "start_new")
@@ -249,8 +249,8 @@ def test_nested_run_init_context_on_same_run_object(run_obj, sagemaker_session):
 
 
 @patch(
-    "sagemaker.experiments.run._Experiment._load_or_create",
-    MagicMock(return_value=_Experiment(experiment_name=TEST_EXP_NAME)),
+    "sagemaker.experiments.run.Experiment._load_or_create",
+    MagicMock(return_value=Experiment(experiment_name=TEST_EXP_NAME)),
 )
 @patch(
     "sagemaker.experiments.run._Trial._load_or_create",
@@ -305,7 +305,7 @@ def test_nested_run_load_context(run_obj, sagemaker_session):
 
 
 @patch.object(_Trial, "add_trial_component", MagicMock(return_value=None))
-@patch("sagemaker.experiments.run._Experiment._load_or_create")
+@patch("sagemaker.experiments.run.Experiment._load_or_create")
 @patch("sagemaker.experiments.run._Trial._load_or_create")
 @patch("sagemaker.experiments.run._TrialComponent._load_or_create")
 def test_run_init_under_run_load_context(

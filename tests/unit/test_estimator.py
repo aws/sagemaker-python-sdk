@@ -18,6 +18,7 @@ import json
 import os
 import subprocess
 from time import sleep
+
 from sagemaker.fw_utils import UploadedCode
 
 
@@ -57,6 +58,7 @@ from sagemaker.transformer import Transformer
 from sagemaker.workflow.parameters import ParameterString, ParameterBoolean
 from sagemaker.workflow.pipeline_context import PipelineSession, _PipelineConfig
 from sagemaker.xgboost.estimator import XGBoost
+from tests.unit import SAGEMAKER_CONFIG_TRAINING_JOB
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -235,6 +237,9 @@ def sagemaker_session():
     sms.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
     sms.sagemaker_client.list_tags = Mock(return_value=LIST_TAGS_RESULT)
     sms.upload_data = Mock(return_value=OUTPUT_PATH)
+
+    # For tests which doesn't verify config file injection, operate with empty config
+    sms.sagemaker_config = {}
     return sms
 
 
@@ -334,6 +339,118 @@ def test_framework_all_init_args(sagemaker_session):
         "enable_sagemaker_metrics": True,
         "enable_network_isolation": True,
     }
+
+
+def test_framework_without_role_parameter(sagemaker_session):
+    with pytest.raises(ValueError):
+        DummyFramework(
+            entry_point=SCRIPT_PATH,
+            sagemaker_session=sagemaker_session,
+            instance_groups=[
+                InstanceGroup("group1", "ml.c4.xlarge", 1),
+                InstanceGroup("group2", "ml.m4.xlarge", 2),
+            ],
+        )
+
+
+def test_default_value_of_enable_network_isolation(sagemaker_session):
+    framework = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+    )
+    assert framework.enable_network_isolation() is False
+
+
+def test_framework_initialization_with_sagemaker_config_injection(sagemaker_session):
+
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
+
+    framework = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.m4.xlarge", 2),
+        ],
+    )
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "ResourceConfig"
+    ]["VolumeKmsKeyId"]
+    expected_role_arn = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["RoleArn"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "OutputDataConfig"
+    ]["KmsKeyId"]
+    expected_subnets = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["VpcConfig"][
+        "Subnets"
+    ]
+    expected_security_groups = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "VpcConfig"
+    ]["SecurityGroupIds"]
+    expected_enable_network_isolation = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "EnableNetworkIsolation"
+    ]
+    expected_enable_inter_container_traffic_encryption = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"][
+        "TrainingJob"
+    ]["EnableInterContainerTrafficEncryption"]
+    assert framework.role == expected_role_arn
+    assert framework.enable_network_isolation() == expected_enable_network_isolation
+    assert (
+        framework.encrypt_inter_container_traffic
+        == expected_enable_inter_container_traffic_encryption
+    )
+    assert framework.output_kms_key == expected_kms_key_id
+    assert framework.volume_kms_key == expected_volume_kms_key_id
+    assert framework.security_group_ids == expected_security_groups
+    assert framework.subnets == expected_subnets
+
+
+def test_estimator_initialization_with_sagemaker_config_injection(sagemaker_session):
+
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
+
+    estimator = Estimator(
+        image_uri="some-image",
+        instance_groups=[
+            InstanceGroup("group1", "ml.c4.xlarge", 1),
+            InstanceGroup("group2", "ml.p3.16xlarge", 2),
+        ],
+        sagemaker_session=sagemaker_session,
+        base_job_name="base_job_name",
+    )
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "ResourceConfig"
+    ]["VolumeKmsKeyId"]
+    expected_role_arn = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["RoleArn"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "OutputDataConfig"
+    ]["KmsKeyId"]
+    expected_subnets = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["VpcConfig"][
+        "Subnets"
+    ]
+    expected_security_groups = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "VpcConfig"
+    ]["SecurityGroupIds"]
+    expected_enable_network_isolation = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "EnableNetworkIsolation"
+    ]
+    expected_enable_inter_container_traffic_encryption = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"][
+        "TrainingJob"
+    ]["EnableInterContainerTrafficEncryption"]
+    assert estimator.role == expected_role_arn
+    assert estimator.enable_network_isolation() == expected_enable_network_isolation
+    assert (
+        estimator.encrypt_inter_container_traffic
+        == expected_enable_inter_container_traffic_encryption
+    )
+    assert estimator.output_kms_key == expected_kms_key_id
+    assert estimator.volume_kms_key == expected_volume_kms_key_id
+    assert estimator.security_group_ids == expected_security_groups
+    assert estimator.subnets == expected_subnets
 
 
 def test_framework_with_heterogeneous_cluster(sagemaker_session):
@@ -796,6 +913,7 @@ def test_framework_with_no_default_profiler_in_unsupported_region(region):
         s3_resource=None,
         settings=SessionSettings(),
     )
+    sms.sagemaker_config = {}
     f = DummyFramework(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -826,6 +944,7 @@ def test_framework_with_debugger_config_set_up_in_unsupported_region(region):
             s3_resource=None,
             settings=SessionSettings(),
         )
+        sms.sagemaker_config = {}
         f = DummyFramework(
             entry_point=SCRIPT_PATH,
             role=ROLE,
@@ -853,6 +972,7 @@ def test_framework_enable_profiling_in_unsupported_region(region):
             s3_resource=None,
             settings=SessionSettings(),
         )
+        sms.sagemaker_config = {}
         f = DummyFramework(
             entry_point=SCRIPT_PATH,
             role=ROLE,
@@ -880,6 +1000,7 @@ def test_framework_update_profiling_in_unsupported_region(region):
             s3_resource=None,
             settings=SessionSettings(),
         )
+        sms.sagemaker_config = {}
         f = DummyFramework(
             entry_point=SCRIPT_PATH,
             role=ROLE,
@@ -907,6 +1028,7 @@ def test_framework_disable_profiling_in_unsupported_region(region):
             s3_resource=None,
             settings=SessionSettings(),
         )
+        sms.sagemaker_config = {}
         f = DummyFramework(
             entry_point=SCRIPT_PATH,
             role=ROLE,
@@ -1661,6 +1783,8 @@ def test_local_code_location():
         local_mode=True,
         spec=sagemaker.local.LocalSession,
     )
+
+    sms.sagemaker_config = {}
     t = DummyFramework(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -2789,6 +2913,7 @@ def test_fit_deploy_tags_in_estimator(name_from_base, sagemaker_session):
         wait=True,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
+        explainer_config_dict=None,
     )
 
     sagemaker_session.create_model.assert_called_with(
@@ -2839,6 +2964,7 @@ def test_fit_deploy_tags(name_from_base, sagemaker_session):
         wait=True,
         data_capture_config_dict=None,
         async_inference_config_dict=None,
+        explainer_config_dict=None,
     )
 
     sagemaker_session.create_model.assert_called_with(
@@ -3143,11 +3269,14 @@ def test_generic_to_deploy_async(sagemaker_session):
 
     e.fit()
     s3_output_path = "s3://some-s3-path"
+    s3_failure_path = "s3://some-s3-failures-path"
 
     predictor_async = e.deploy(
         INSTANCE_COUNT,
         INSTANCE_TYPE,
-        async_inference_config=AsyncInferenceConfig(output_path=s3_output_path),
+        async_inference_config=AsyncInferenceConfig(
+            output_path=s3_output_path, failure_path=s3_failure_path
+        ),
     )
 
     sagemaker_session.create_model.assert_called_once()
@@ -3186,6 +3315,12 @@ def test_generic_to_deploy_bad_arguments_combination(sagemaker_session):
         match="serverless_inference_config needs to be a ServerlessInferenceConfig object",
     ):
         e.deploy(serverless_inference_config={})
+
+    with pytest.raises(
+        ValueError,
+        match="explainer_config needs to be a ExplainerConfig object",
+    ):
+        e.deploy(explainer_config={})
 
 
 def test_generic_to_deploy_network_isolation(sagemaker_session):
@@ -3243,6 +3378,7 @@ def test_generic_to_deploy_kms(create_model, sagemaker_session):
         model_data_download_timeout=None,
         container_startup_health_check_timeout=None,
         inference_recommendation_id=None,
+        explainer_config=None,
     )
 
 
@@ -3429,6 +3565,7 @@ def test_deploy_with_customized_volume_size_timeout(create_model, sagemaker_sess
         model_data_download_timeout=model_data_download_timeout_sec,
         container_startup_health_check_timeout=startup_health_check_timeout_sec,
         inference_recommendation_id=None,
+        explainer_config=None,
     )
 
 
@@ -3624,8 +3761,12 @@ def test_local_mode(session_class, local_session_class):
     local_session = Mock(spec=sagemaker.local.LocalSession)
     local_session.local_mode = True
 
+    local_session.sagemaker_config = {}
+
     session = Mock()
     session.local_mode = False
+
+    session.sagemaker_config = {}
 
     local_session_class.return_value = local_session
     session_class.return_value = session
@@ -3651,6 +3792,8 @@ def test_local_mode_file_output_path(local_session_class):
     local_session = Mock(spec=sagemaker.local.LocalSession)
     local_session.local_mode = True
     local_session_class.return_value = local_session
+
+    local_session.sagemaker_config = {}
 
     e = Estimator(IMAGE_URI, ROLE, INSTANCE_COUNT, "local", output_path="file:///tmp/model/")
     assert e.output_path == "file:///tmp/model/"
@@ -3877,6 +4020,8 @@ def test_estimator_local_mode_error(sagemaker_session):
 
 
 def test_estimator_local_mode_ok(sagemaker_local_session):
+
+    sagemaker_local_session.sagemaker_config = {}
     # When using instance local with a session which is not LocalSession we should error out
     Estimator(
         image_uri="some-image",
@@ -4002,6 +4147,7 @@ def test_script_mode_estimator_same_calls_as_framework(
         s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
     )
     sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
 
     script_uri = "s3://codebucket/someprefix/sourcedir.tar.gz"
 
@@ -4070,6 +4216,7 @@ def test_script_mode_estimator_tags_jumpstart_estimators_and_models(
         s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
     )
     sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
 
     instance_type = "ml.p2.xlarge"
     instance_count = 1
@@ -4142,6 +4289,7 @@ def test_script_mode_estimator_tags_jumpstart_models(
         s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
     )
     sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
 
     instance_type = "ml.p2.xlarge"
     instance_count = 1
@@ -4201,6 +4349,7 @@ def test_script_mode_estimator_tags_jumpstart_models_with_no_estimator_js_tags(
         s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
     )
     sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
 
     instance_type = "ml.p2.xlarge"
     instance_count = 1
@@ -4258,6 +4407,7 @@ def test_all_framework_estimators_add_jumpstart_tags(
     patched_repack_model, patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
 ):
     sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
     sagemaker_session.sagemaker_client.describe_training_job.return_value = {
         "ModelArtifacts": {"S3ModelArtifacts": "some-uri"}
     }
@@ -4337,6 +4487,7 @@ def test_script_mode_estimator_uses_jumpstart_base_name_with_js_models(
         s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
     )
     sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
 
     instance_type = "ml.p2.xlarge"
     instance_count = 1
@@ -4396,6 +4547,7 @@ def test_all_framework_estimators_add_jumpstart_base_name(
     patched_repack_model, patched_upload_code, patched_tar_and_upload_dir, sagemaker_session
 ):
     sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
     sagemaker_session.sagemaker_client.describe_training_job.return_value = {
         "ModelArtifacts": {"S3ModelArtifacts": "some-uri"}
     }
@@ -4546,6 +4698,7 @@ def test_script_mode_estimator_escapes_hyperparameters_as_json(
         s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
     )
     sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
 
     instance_type = "ml.p2.xlarge"
     instance_count = 1
@@ -4594,6 +4747,7 @@ def test_estimator_local_download_dir(
         s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
     )
     sagemaker_session.boto_region_name = REGION
+    sagemaker_session.sagemaker_config = {}
 
     local_download_dir = "some/download/dir"
 

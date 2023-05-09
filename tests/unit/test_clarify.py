@@ -30,6 +30,8 @@ from sagemaker.clarify import (
     TextConfig,
     ImageConfig,
     _AnalysisConfigGenerator,
+    DatasetType,
+    ProcessingOutputHandler,
 )
 
 JOB_NAME_PREFIX = "my-prefix"
@@ -393,6 +395,9 @@ def test_facet_of_bias_config(facet_name, facet_values_or_threshold, expected_re
         ("text/csv", "application/json"),
         ("application/jsonlines", "application/json"),
         ("application/jsonlines", "text/csv"),
+        ("application/json", "application/json"),
+        ("application/json", "application/jsonlines"),
+        ("application/json", "text/csv"),
         ("image/jpeg", "text/csv"),
         ("image/jpg", "text/csv"),
         ("image/png", "text/csv"),
@@ -406,12 +411,22 @@ def test_valid_model_config(content_type, accept_type):
     custom_attributes = "c000b4f9-df62-4c85-a0bf-7c525f9104a4"
     target_model = "target_model_name"
     accelerator_type = "ml.eia1.medium"
+    content_template = (
+        '{"instances":$features}'
+        if content_type == "application/jsonlines"
+        else "$records"
+        if content_type == "application/json"
+        else None
+    )
+    record_template = "$features_kvp" if content_type == "application/json" else None
     model_config = ModelConfig(
         model_name=model_name,
         instance_type=instance_type,
         instance_count=instance_count,
         accept_type=accept_type,
         content_type=content_type,
+        content_template=content_template,
+        record_template=record_template,
         custom_attributes=custom_attributes,
         accelerator_type=accelerator_type,
         target_model=target_model,
@@ -426,21 +441,79 @@ def test_valid_model_config(content_type, accept_type):
         "accelerator_type": accelerator_type,
         "target_model": target_model,
     }
+    if content_template is not None:
+        expected_config["content_template"] = content_template
+    if record_template is not None:
+        expected_config["record_template"] = record_template
     assert expected_config == model_config.get_predictor_config()
 
 
-def test_invalid_model_config():
-    with pytest.raises(ValueError) as error:
+@pytest.mark.parametrize(
+    ("error", "content_type", "accept_type", "content_template", "record_template"),
+    [
+        (
+            "Invalid accept_type invalid_accept_type. Please choose text/csv or application/jsonlines.",
+            "text/csv",
+            "invalid_accept_type",
+            None,
+            None,
+        ),
+        (
+            "Invalid content_type invalid_content_type. Please choose text/csv or application/jsonlines.",
+            "invalid_content_type",
+            "text/csv",
+            None,
+            None,
+        ),
+        (
+            "content_template field is required for content_type",
+            "application/jsonlines",
+            "text/csv",
+            None,
+            None,
+        ),
+        (
+            "content_template and record_template are required for content_type",
+            "application/json",
+            "text/csv",
+            None,
+            None,
+        ),
+        (
+            "content_template and record_template are required for content_type",
+            "application/json",
+            "text/csv",
+            "$records",
+            None,
+        ),
+        (
+            r"Invalid content_template invalid_content_template. Please include a placeholder \$features.",
+            "application/jsonlines",
+            "text/csv",
+            "invalid_content_template",
+            None,
+        ),
+        (
+            r"Invalid content_template invalid_content_template. Please include either placeholder "
+            r"\$records or \$record.",
+            "application/json",
+            "text/csv",
+            "invalid_content_template",
+            "$features",
+        ),
+    ],
+)
+def test_invalid_model_config(error, content_type, accept_type, content_template, record_template):
+    with pytest.raises(ValueError, match=error):
         ModelConfig(
             model_name="xgboost-model",
             instance_type="ml.c5.xlarge",
             instance_count=1,
-            accept_type="invalid_accept_type",
+            content_type=content_type,
+            accept_type=accept_type,
+            content_template=content_template,
+            record_template=record_template,
         )
-    assert (
-        "Invalid accept_type invalid_accept_type. Please choose text/csv or application/jsonlines."
-        in str(error.value)
-    )
 
 
 def test_invalid_model_config_with_bad_endpoint_name_prefix():
@@ -490,14 +563,20 @@ def test_invalid_model_predicted_label_config():
     )
 
 
-def test_shap_config():
-    baseline = [
-        [
-            0.26124998927116394,
-            0.2824999988079071,
-            0.06875000149011612,
-        ]
-    ]
+@pytest.mark.parametrize(
+    "baseline",
+    [
+        ([[0.26124998927116394, 0.2824999988079071, 0.06875000149011612]]),
+        (
+            {
+                "instances": [
+                    {"features": [0.26124998927116394, 0.2824999988079071, 0.06875000149011612]}
+                ]
+            }
+        ),
+    ],
+)
+def test_valid_shap_config(baseline):
     num_samples = 100
     agg_method = "mean_sq"
     use_logit = True
@@ -713,6 +792,7 @@ def sagemaker_session():
     )
     session_mock.download_data = Mock(name="download_data")
     session_mock.expand_role.return_value = "arn:aws:iam::012345678901:role/SageMakerRole"
+    session_mock.sagemaker_config = {}
     return session_mock
 
 
@@ -1714,3 +1794,15 @@ def test_invalid_analysis_config(data_config, data_bias_config, model_config):
             pre_training_methods="all",
             post_training_methods="all",
         )
+
+
+class TestProcessingOutputHandler:
+    def test_get_s3_upload_mode_image(self):
+        analysis_config = {"dataset_type": DatasetType.IMAGE.value}
+        s3_upload_mode = ProcessingOutputHandler.get_s3_upload_mode(analysis_config)
+        assert s3_upload_mode == ProcessingOutputHandler.S3UploadMode.CONTINUOUS.value
+
+    def test_get_s3_upload_mode_text(self):
+        analysis_config = {"dataset_type": DatasetType.TEXTCSV.value}
+        s3_upload_mode = ProcessingOutputHandler.get_s3_upload_mode(analysis_config)
+        assert s3_upload_mode == ProcessingOutputHandler.S3UploadMode.ENDOFJOB.value

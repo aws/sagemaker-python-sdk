@@ -31,7 +31,9 @@ from sagemaker.feature_store.feature_group import (
     AthenaQuery,
     IngestionError,
 )
-from sagemaker.feature_store.inputs import FeatureParameter
+from sagemaker.feature_store.inputs import FeatureParameter, DeletionModeEnum
+
+from tests.unit import SAGEMAKER_CONFIG_FEATURE_GROUP
 
 
 class PicklableMock(Mock):
@@ -51,7 +53,9 @@ def s3_uri():
 
 @pytest.fixture
 def sagemaker_session_mock():
-    return Mock()
+    sagemaker_session_mock = Mock()
+    sagemaker_session_mock.sagemaker_config = {}
+    return sagemaker_session_mock
 
 
 @pytest.fixture
@@ -84,6 +88,61 @@ def create_table_ddl():
         "  INPUTFORMAT 'parquet.hive.DeprecatedParquetInputFormat'\n"
         "  OUTPUTFORMAT 'parquet.hive.DeprecatedParquetOutputFormat'\n"
         "LOCATION 's3://resolved_output_s3_uri'"
+    )
+
+
+def test_feature_group_create_without_role(
+    sagemaker_session_mock, feature_group_dummy_definitions, s3_uri
+):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    feature_group.feature_definitions = feature_group_dummy_definitions
+    with pytest.raises(ValueError):
+        feature_group.create(
+            s3_uri=s3_uri,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature2",
+            enable_online_store=True,
+        )
+
+
+def test_feature_store_create_with_config_injection(
+    sagemaker_session, role_arn, feature_group_dummy_definitions, s3_uri
+):
+
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_FEATURE_GROUP
+    sagemaker_session.create_feature_group = Mock()
+
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session)
+    feature_group.feature_definitions = feature_group_dummy_definitions
+    feature_group.create(
+        s3_uri=s3_uri,
+        record_identifier_name="feature1",
+        event_time_feature_name="feature2",
+        enable_online_store=True,
+    )
+    expected_offline_store_kms_key_id = SAGEMAKER_CONFIG_FEATURE_GROUP["SageMaker"]["FeatureGroup"][
+        "OfflineStoreConfig"
+    ]["S3StorageConfig"]["KmsKeyId"]
+    expected_role_arn = SAGEMAKER_CONFIG_FEATURE_GROUP["SageMaker"]["FeatureGroup"]["RoleArn"]
+    expected_online_store_kms_key_id = SAGEMAKER_CONFIG_FEATURE_GROUP["SageMaker"]["FeatureGroup"][
+        "OnlineStoreConfig"
+    ]["SecurityConfig"]["KmsKeyId"]
+    sagemaker_session.create_feature_group.assert_called_with(
+        feature_group_name="MyFeatureGroup",
+        record_identifier_name="feature1",
+        event_time_feature_name="feature2",
+        feature_definitions=[fd.to_dict() for fd in feature_group_dummy_definitions],
+        role_arn=expected_role_arn,
+        description=None,
+        tags=None,
+        online_store_config={
+            "EnableOnlineStore": True,
+            "SecurityConfig": {"KmsKeyId": expected_online_store_kms_key_id},
+        },
+        offline_store_config={
+            "DisableGlueTableCreation": False,
+            "S3StorageConfig": {"S3Uri": s3_uri, "KmsKeyId": expected_offline_store_kms_key_id},
+        },
     )
 
 
@@ -237,6 +296,41 @@ def test_delete_record(sagemaker_session_mock):
         feature_group_name="MyFeatureGroup",
         record_identifier_value_as_string=record_identifier_value_as_string,
         event_time=event_time,
+        deletion_mode=DeletionModeEnum.SOFT_DELETE.value,
+    )
+
+
+def test_soft_delete_record(sagemaker_session_mock):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    record_identifier_value_as_string = "1.0"
+    event_time = "2022-09-14"
+    feature_group.delete_record(
+        record_identifier_value_as_string=record_identifier_value_as_string,
+        event_time=event_time,
+        deletion_mode=DeletionModeEnum.SOFT_DELETE,
+    )
+    sagemaker_session_mock.delete_record.assert_called_with(
+        feature_group_name="MyFeatureGroup",
+        record_identifier_value_as_string=record_identifier_value_as_string,
+        event_time=event_time,
+        deletion_mode=DeletionModeEnum.SOFT_DELETE.value,
+    )
+
+
+def test_hard_delete_record(sagemaker_session_mock):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    record_identifier_value_as_string = "1.0"
+    event_time = "2022-09-14"
+    feature_group.delete_record(
+        record_identifier_value_as_string=record_identifier_value_as_string,
+        event_time=event_time,
+        deletion_mode=DeletionModeEnum.HARD_DELETE,
+    )
+    sagemaker_session_mock.delete_record.assert_called_with(
+        feature_group_name="MyFeatureGroup",
+        record_identifier_value_as_string=record_identifier_value_as_string,
+        event_time=event_time,
+        deletion_mode=DeletionModeEnum.HARD_DELETE.value,
     )
 
 
@@ -272,6 +366,25 @@ def test_load_feature_definition_unsupported_types(sagemaker_session_mock):
     with pytest.raises(ValueError) as error:
         feature_group.load_feature_definitions(data_frame=df)
     assert "Failed to infer Feature type based on dtype bool for column bool." in str(error)
+
+
+def test_list_tags(sagemaker_session_mock):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    sagemaker_session_mock.describe_feature_group.return_value = {"FeatureGroupArn": "test-arn"}
+    feature_group.list_tags()
+    sagemaker_session_mock.list_tags.assert_called_with(resource_arn="test-arn")
+
+
+def test_list_parameters_for_feature_metadata(sagemaker_session_mock):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    test_feature_metadata = {"Parameters": [{"Key": "k", "Value": "y"}]}
+    sagemaker_session_mock.describe_feature_metadata.return_value = test_feature_metadata
+    assert feature_group.list_parameters_for_feature_metadata(feature_name="feature") == [
+        {"Key": "k", "Value": "y"}
+    ]
+    sagemaker_session_mock.describe_feature_metadata.assert_called_with(
+        feature_group_name="MyFeatureGroup", feature_name="feature"
+    )
 
 
 def test_ingest_zero_processes():

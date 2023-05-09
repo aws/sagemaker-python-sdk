@@ -36,6 +36,7 @@ XGBOOST_FRAMEWORK = "xgboost"
 SKLEARN_FRAMEWORK = "sklearn"
 TRAINIUM_ALLOWED_FRAMEWORKS = "pytorch"
 INFERENCE_GRAVITON = "inference_graviton"
+DATA_WRANGLER_FRAMEWORK = "data-wrangler"
 
 
 @override_pipeline_parameter_var
@@ -369,16 +370,15 @@ def _config_for_framework_and_scope(framework, image_scope, accelerator_type=Non
 
 def _validate_instance_deprecation(framework, instance_type, version):
     """Check if instance type is deprecated for a certain framework with a certain version"""
-    if (
-        framework == "pytorch"
-        and _get_instance_type_family(instance_type) == "p2"
-        and Version(version) >= Version("1.13")
-    ):
-        raise ValueError(
-            "P2 instances have been deprecated for sagemaker jobs with PyTorch 1.13 and above. "
-            "For information about supported instance types please refer to "
-            "https://aws.amazon.com/sagemaker/pricing/"
-        )
+    if _get_instance_type_family(instance_type) == "p2":
+        if (framework == "pytorch" and Version(version) >= Version("1.13")) or (
+            framework == "tensorflow" and Version(version) >= Version("2.12")
+        ):
+            raise ValueError(
+                "P2 instances have been deprecated for sagemaker jobs starting PyTorch 1.13 and TensorFlow 2.12"
+                "For information about supported instance types please refer to "
+                "https://aws.amazon.com/sagemaker/pricing/"
+            )
 
 
 def _validate_for_suppported_frameworks_and_instance_type(framework, instance_type):
@@ -461,6 +461,9 @@ def _validate_version_and_set_if_needed(version, config, framework):
             logger.info(log_message)
 
         return available_versions[0]
+
+    if version is None and framework in [DATA_WRANGLER_FRAMEWORK]:
+        version = _get_latest_versions(available_versions)
 
     _validate_arg(version, available_versions + aliased_versions, "{} version".format(framework))
     return version
@@ -663,3 +666,29 @@ def get_training_image_uri(
         container_version=container_version,
         training_compiler_config=compiler_config,
     )
+
+
+def get_base_python_image_uri(region, py_version="310") -> str:
+    """Retrieves the image URI for base python image.
+
+    Args:
+        region (str): The AWS region to use for image URI.
+        py_version (str): The python version to use for the image. Can be 310 or 38
+        Default to 310
+
+    Returns:
+        str: The image URI string.
+    """
+
+    framework = "sagemaker-base-python"
+    version = "1.0"
+    hostname = utils._botocore_resolver().construct_endpoint("ecr", region)["hostname"]
+    config = config_for_framework(framework)
+    version_config = config["versions"][_version_for_config(version, config)]
+
+    registry = _registry_from_region(region, version_config["registries"])
+
+    repo = version_config["repository"] + "-" + py_version
+    repo_and_tag = repo + ":" + version
+
+    return ECR_URI_TEMPLATE.format(registry=registry, hostname=hostname, repository=repo_and_tag)
