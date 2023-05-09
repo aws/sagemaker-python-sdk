@@ -14,11 +14,19 @@
 from __future__ import absolute_import
 from typing import List, Optional
 
-from sagemaker.jumpstart.constants import JumpStartScriptScope
+from sagemaker.jumpstart.constants import MODEL_ID_LIST_WEB_URL, JumpStartScriptScope
 
 NO_AVAILABLE_INSTANCES_ERROR_MSG = (
-    "No instances available in {region} that can support model id '{model_id}'. "
+    "No instances available in {region} that can support model ID '{model_id}'. "
     "Please try another region."
+)
+
+INVALID_MODEL_ID_ERROR_MSG = (
+    "Invalid model ID: '{model_id}'. Please visit "
+    f"{MODEL_ID_LIST_WEB_URL} for list of supported model IDs. "
+    "The module `sagemaker.jumpstart.notebook_utils` contains utilities for "
+    "fetching model IDs. We recommend upgrading to the latest version of sagemaker "
+    "to get access to the most models."
 )
 
 
@@ -73,15 +81,17 @@ class VulnerableJumpStartModelError(ValueError):
                 self.message = (
                     f"Version '{version}' of JumpStart model '{model_id}' "  # type: ignore
                     "has at least 1 vulnerable dependency in the inference script. "
-                    "Please try targetting a higher version of the model. "
-                    f"List of vulnerabilities: {', '.join(vulnerabilities)}"  # type: ignore
+                    "Please try targeting a higher version of the model or using a "
+                    "different model. List of vulnerabilities: "
+                    f"{', '.join(vulnerabilities)}"  # type: ignore
                 )
             elif scope == JumpStartScriptScope.TRAINING:
                 self.message = (
                     f"Version '{version}' of JumpStart model '{model_id}' "  # type: ignore
                     "has at least 1 vulnerable dependency in the training script. "
-                    "Please try targetting a higher version of the model. "
-                    f"List of vulnerabilities: {', '.join(vulnerabilities)}"  # type: ignore
+                    "Please try targeting a higher version of the model or using a "
+                    "different model. List of vulnerabilities: "
+                    f"{', '.join(vulnerabilities)}"  # type: ignore
                 )
             else:
                 raise NotImplementedError(
@@ -115,7 +125,8 @@ class DeprecatedJumpStartModelError(ValueError):
                 raise RuntimeError("Must specify `model_id` and `version` arguments.")
             self.message = (
                 f"Version '{version}' of JumpStart model '{model_id}' is deprecated. "
-                "Please try targetting a higher version of the model."
+                "Please try targeting a higher version of the model or using a "
+                "different model."
             )
 
         super().__init__(self.message)

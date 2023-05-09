@@ -14,10 +14,17 @@
 from __future__ import absolute_import
 import logging
 import os
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 from packaging.version import Version
 import sagemaker
+from sagemaker.config.config_schema import (
+    MODEL_ENABLE_NETWORK_ISOLATION_PATH,
+    MODEL_EXECUTION_ROLE_ARN_PATH,
+    TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+    TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
+    TRAINING_JOB_ROLE_ARN_PATH,
+)
 from sagemaker.jumpstart import constants, enums
 from sagemaker.jumpstart import accessors
 from sagemaker.s3 import parse_s3_url
@@ -30,6 +37,8 @@ from sagemaker.jumpstart.types import (
     JumpStartModelSpecs,
     JumpStartVersionedModelId,
 )
+from sagemaker.session import Session
+from sagemaker.utils import resolve_value_from_config
 from sagemaker.workflow import is_pipeline_variable
 
 LOGGER = logging.getLogger(__name__)
@@ -55,7 +64,9 @@ def get_jumpstart_launched_regions_message() -> str:
     return f"JumpStart is available in {formatted_launched_regions_str} regions."
 
 
-def get_jumpstart_content_bucket(region: str) -> str:
+def get_jumpstart_content_bucket(
+    region: str = constants.JUMPSTART_DEFAULT_REGION_NAME,
+) -> str:
     """Returns regionalized content bucket name for JumpStart.
 
     Raises:
@@ -154,7 +165,7 @@ def is_jumpstart_model_input(model_id: Optional[str], version: Optional[str]) ->
     if model_id is not None or version is not None:
         if model_id is None or version is None:
             raise ValueError(
-                "Must specify `model_id` and `model_version` when getting specs for "
+                "Must specify JumpStart `model_id` and `model_version` when getting specs for "
                 "JumpStart models."
             )
         return True
@@ -420,3 +431,141 @@ def verify_model_region_and_return_specs(
         )
 
     return model_specs
+
+
+def update_dict_if_key_not_present(
+    dict_to_update: dict, key_to_add: Any, value_to_add: Any
+) -> dict:
+    """If a key is not present in the dict, add the new (key, value) pair, and return dict."""
+    if key_to_add not in dict_to_update:
+        dict_to_update[key_to_add] = value_to_add
+
+    return dict_to_update
+
+
+def resolve_model_intelligent_default_field(
+    field_name: str,
+    field_val: Optional[Any],
+    sagemaker_session: Session,
+    default_value: Optional[str] = None,
+) -> Any:
+    """Given a field name, checks if there are intelligent defaults to set.
+
+    For the role field, which is customer-supplied, we allow ``field_val`` to take precedence
+    over intelligent defaults. For all other fields, intelligent defaults takes precedence
+    over the JumpStart default fields.
+    """
+
+    # We allow customers to define a role which takes precedence
+    # over intelligent defaults
+    if field_name == "role":
+        return resolve_value_from_config(
+            direct_input=field_val,
+            config_path=MODEL_EXECUTION_ROLE_ARN_PATH,
+            default_value=default_value or sagemaker_session.get_caller_identity_arn(),
+            sagemaker_session=sagemaker_session,
+        )
+
+    # JumpStart Models have certain default field values. We want
+    # intelligent defaults to take priority over the model-specific defaults.
+    if field_name == "enable_network_isolation":
+        resolved_val = resolve_value_from_config(
+            direct_input=None,
+            config_path=MODEL_ENABLE_NETWORK_ISOLATION_PATH,
+            sagemaker_session=sagemaker_session,
+            default_value=default_value,
+        )
+        return resolved_val if resolved_val is not None else field_val
+
+    # field is not covered by intelligent defaults so return as is
+    return field_val
+
+
+def resolve_estimator_intelligent_default_field(
+    field_name: str,
+    field_val: Optional[Any],
+    sagemaker_session: Session,
+    default_value: Optional[str] = None,
+) -> Any:
+    """Given a field name, checks if there are intelligent defaults to set.
+
+    For the role field, which is customer-supplied, we allow ``field_val`` to take precedence
+    over intelligent defaults. For all other fields, intelligent defaults takes precedence
+    over the JumpStart default fields.
+    """
+
+    # We allow customers to define a role which takes precedence
+    # over intelligent defaults
+    if field_name == "role":
+        return resolve_value_from_config(
+            direct_input=field_val,
+            config_path=TRAINING_JOB_ROLE_ARN_PATH,
+            default_value=default_value or sagemaker_session.get_caller_identity_arn(),
+            sagemaker_session=sagemaker_session,
+        )
+
+    # JumpStart Estimators have certain default field values. We want
+    # intelligent defaults to take priority over the model-specific defaults.
+    if field_name == "enable_network_isolation":
+
+        resolved_val = resolve_value_from_config(
+            direct_input=None,
+            config_path=TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+            sagemaker_session=sagemaker_session,
+            default_value=default_value,
+        )
+        return resolved_val if resolved_val is not None else field_val
+
+    if field_name == "encrypt_inter_container_traffic":
+
+        resolved_val = resolve_value_from_config(
+            direct_input=None,
+            config_path=TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
+            sagemaker_session=sagemaker_session,
+            default_value=default_value,
+        )
+        return resolved_val if resolved_val is not None else field_val
+
+    # field is not covered by intelligent defaults so return as is
+    return field_val
+
+
+def stringify_object(obj: Any) -> str:
+    """Returns string representation of object, returning only non-None fields."""
+    non_none_atts = {key: value for key, value in obj.__dict__.items() if value is not None}
+    return f"{type(obj).__name__}: {str(non_none_atts)}"
+
+
+def is_valid_model_id(
+    model_id: Optional[str],
+    region: Optional[str] = None,
+    model_version: Optional[str] = None,
+    script: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
+) -> bool:
+    """Returns True if the model ID is supported for the given script.
+
+    Raises:
+        ValueError: If the script is not supported by JumpStart.
+    """
+    if model_id in {None, ""}:
+        return False
+    if not isinstance(model_id, str):
+        return False
+
+    region = region or constants.JUMPSTART_DEFAULT_REGION_NAME
+    model_version = model_version or "*"
+
+    models_manifest_list = accessors.JumpStartModelsAccessor._get_manifest(region=region)
+    model_id_set = {model.model_id for model in models_manifest_list}
+    if script == enums.JumpStartScriptScope.INFERENCE:
+        return model_id in model_id_set
+    if script == enums.JumpStartScriptScope.TRAINING:
+        return (
+            model_id in model_id_set
+            and accessors.JumpStartModelsAccessor.get_model_specs(
+                region=region,
+                model_id=model_id,
+                version=model_version,
+            ).training_supported
+        )
+    raise ValueError(f"Unsupported script: {script}")

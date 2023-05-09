@@ -15,7 +15,7 @@
 from __future__ import absolute_import
 
 import logging
-from typing import List
+from typing import List, Optional
 
 from sagemaker.jumpstart import utils as jumpstart_utils
 from sagemaker.jumpstart import artifacts
@@ -24,10 +24,10 @@ logger = logging.getLogger(__name__)
 
 
 def retrieve_default(
-    region=None,
-    model_id=None,
-    model_version=None,
-    scope=None,
+    region: Optional[str] = None,
+    model_id: Optional[str] = None,
+    model_version: Optional[str] = None,
+    scope: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
 ) -> str:
@@ -57,7 +57,7 @@ def retrieve_default(
     """
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
         raise ValueError(
-            "Must specify `model_id` and `model_version` when retrieving instance types."
+            "Must specify JumpStart `model_id` and `model_version` when retrieving instance types."
         )
 
     if scope is None:
@@ -74,10 +74,10 @@ def retrieve_default(
 
 
 def retrieve(
-    region=None,
-    model_id=None,
-    model_version=None,
-    scope=None,
+    region: Optional[str] = None,
+    model_id: Optional[str] = None,
+    model_version: Optional[str] = None,
+    scope: Optional[str] = None,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
 ) -> List[str]:
@@ -105,7 +105,7 @@ def retrieve(
     """
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
         raise ValueError(
-            "Must specify `model_id` and `model_version` when retrieving instance types."
+            "Must specify JumpStart `model_id` and `model_version` when retrieving instance types."
         )
 
     if scope is None:
@@ -119,3 +119,22 @@ def retrieve(
         tolerate_vulnerable_model,
         tolerate_deprecated_model,
     )
+
+
+def volume_size_supported(instance_type: str) -> bool:
+    """Returns True if SageMaker allows volume_size to be used for the instance type.
+
+    Raises:
+        ValueError: If the instance type is improperly formatted.
+    """
+    try:
+        parts: List[str] = instance_type.split(".")
+        if len(parts) != 3 or parts[0] != "ml":
+            raise ValueError("Instance type must have 2 periods and start with 'ml'.")
+
+        # Any instance type with a "d" in the instance family (i.e. c5d, p4d, etc) + g5
+        # does not support attaching an EBS volume.
+        family = parts[1]
+        return "d" not in family and not family.startswith("g5")
+    except Exception as e:
+        raise ValueError(f"Failed to parse instance type '{instance_type}': {str(e)}")

@@ -12,10 +12,23 @@
 # language governing permissions and limitations under the License.
 """This module stores constants related to SageMaker JumpStart."""
 from __future__ import absolute_import
-from typing import Set
+from typing import Dict, Set, Type
 import boto3
-from sagemaker.jumpstart.enums import JumpStartScriptScope
+from sagemaker.base_deserializers import BaseDeserializer, JSONDeserializer
+from sagemaker.jumpstart.enums import (
+    JumpStartScriptScope,
+    SerializerType,
+    DeserializerType,
+    MIMEType,
+)
 from sagemaker.jumpstart.types import JumpStartLaunchedRegionInfo
+from sagemaker.base_serializers import (
+    BaseSerializer,
+    CSVSerializer,
+    DataSerializer,
+    IdentitySerializer,
+    JSONSerializer,
+)
 
 
 JUMPSTART_LAUNCHED_REGIONS: Set[JumpStartLaunchedRegionInfo] = set(
@@ -132,3 +145,31 @@ ENV_VARIABLE_JUMPSTART_MANIFEST_LOCAL_ROOT_DIR_OVERRIDE = (
 ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE = "AWS_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE"
 
 JUMPSTART_RESOURCE_BASE_NAME = "sagemaker-jumpstart"
+
+
+CONTENT_TYPE_TO_SERIALIZER_TYPE_MAP: Dict[MIMEType, SerializerType] = {
+    MIMEType.X_IMAGE: SerializerType.RAW_BYTES,
+    MIMEType.LIST_TEXT: SerializerType.JSON,
+    MIMEType.X_TEXT: SerializerType.TEXT,
+    MIMEType.JSON: SerializerType.JSON,
+    MIMEType.CSV: SerializerType.CSV,
+    MIMEType.WAV: SerializerType.RAW_BYTES,
+}
+
+
+ACCEPT_TYPE_TO_DESERIALIZER_TYPE_MAP: Dict[MIMEType, DeserializerType] = {
+    MIMEType.JSON: DeserializerType.JSON,
+}
+
+SERIALIZER_TYPE_TO_CLASS_MAP: Dict[SerializerType, Type[BaseSerializer]] = {
+    SerializerType.RAW_BYTES: DataSerializer,
+    SerializerType.JSON: JSONSerializer,
+    SerializerType.TEXT: IdentitySerializer,
+    SerializerType.CSV: CSVSerializer,
+}
+
+DESERIALIZER_TYPE_TO_CLASS_MAP: Dict[DeserializerType, Type[BaseDeserializer]] = {
+    DeserializerType.JSON: JSONDeserializer,
+}
+
+MODEL_ID_LIST_WEB_URL = "https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html"
