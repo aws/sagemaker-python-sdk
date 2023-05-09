@@ -189,7 +189,12 @@ class StreamDeserializer(SimpleBaseDeserializer):
 
 
 class NumpyDeserializer(SimpleBaseDeserializer):
-    """Deserialize a stream of data in .npy or UTF-8 CSV/JSON format to a numpy array."""
+    """Deserialize a stream of data in .npy, .npz or UTF-8 CSV/JSON format to a numpy array.
+
+    Note that when using application/x-npz archive format, the result will usually be a
+    dictionary-like object containing multiple arrays (as per ``numpy.load()``) - instead of a
+    single array.
+    """
 
     def __init__(self, dtype=None, accept="application/x-npy", allow_pickle=True):
         """Initialize a ``NumpyDeserializer`` instance.
@@ -223,6 +228,11 @@ class NumpyDeserializer(SimpleBaseDeserializer):
                 return np.array(json.load(codecs.getreader("utf-8")(stream)), dtype=self.dtype)
             if content_type == "application/x-npy":
                 return np.load(io.BytesIO(stream.read()), allow_pickle=self.allow_pickle)
+            if content_type == "application/x-npz":
+                try:
+                    return np.load(io.BytesIO(stream.read()), allow_pickle=self.allow_pickle)
+                finally:
+                    stream.close()
         finally:
             stream.close()
 

@@ -134,11 +134,15 @@ def test_run_name_vs_trial_component_name_edge_cases(sagemaker_session, input_na
         ) as run1:
             assert not run1._experiment.tags
             assert not run1._trial.tags
-            is_run_tc = is_run_trial_component(
-                trial_component_name=run1._trial_component.trial_component_name,
-                sagemaker_session=sagemaker_session,
-            )
-            assert is_run_tc
+
+            def verify_is_run():
+                is_run_tc = is_run_trial_component(
+                    trial_component_name=run1._trial_component.trial_component_name,
+                    sagemaker_session=sagemaker_session,
+                )
+                assert is_run_tc
+
+            retry_with_backoff(verify_is_run, 4)
 
         with load_run(
             experiment_name=exp_name,
