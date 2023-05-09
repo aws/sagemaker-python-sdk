@@ -27,6 +27,8 @@ def retrieve_default(
     region: Optional[str] = None,
     model_id: Optional[str] = None,
     model_version: Optional[str] = None,
+    tolerate_vulnerable_model: bool = False,
+    tolerate_deprecated_model: bool = False,
 ) -> Optional[List[Dict[str, str]]]:
     """Retrieves the default training metric definitions for the model matching the given arguments.
 
@@ -37,6 +39,13 @@ def retrieve_default(
             retrieve the default training metric definitions. (Default: None).
         model_version (str): The version of the model for which to retrieve the
             default training metric definitions. (Default: None).
+        tolerate_vulnerable_model (bool): True if vulnerable versions of model
+            specifications should be tolerated (exception not raised). If False, raises an
+            exception if the script used by this version of the model has dependencies with known
+            security vulnerabilities. (Default: False).
+        tolerate_deprecated_model (bool): True if deprecated models should be tolerated
+            (exception not raised). False if these models should raise an exception.
+            (Default: False).
     Returns:
         list: The default metric definitions to use for the model or None.
 
@@ -45,8 +54,10 @@ def retrieve_default(
     """
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
         raise ValueError(
-            "Must specify `model_id` and `model_version` when retrieving default training "
-            "metric definitions."
+            "Must specify JumpStart `model_id` and `model_version` "
+            "when retrieving default training metric definitions."
         )
 
-    return artifacts._retrieve_default_training_metric_definitions(model_id, model_version, region)
+    return artifacts._retrieve_default_training_metric_definitions(
+        model_id, model_version, region, tolerate_vulnerable_model, tolerate_deprecated_model
+    )

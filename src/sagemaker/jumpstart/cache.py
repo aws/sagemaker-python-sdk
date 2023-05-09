@@ -26,6 +26,7 @@ from sagemaker.jumpstart.constants import (
     ENV_VARIABLE_JUMPSTART_SPECS_LOCAL_ROOT_DIR_OVERRIDE,
     JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY,
     JUMPSTART_DEFAULT_REGION_NAME,
+    MODEL_ID_LIST_WEB_URL,
 )
 from sagemaker.jumpstart.parameters import (
     JUMPSTART_DEFAULT_MAX_S3_CACHE_ITEMS,
@@ -218,8 +219,7 @@ class JumpStartModelsCache:
 
         error_msg = f"Unable to find model manifest for '{model_id}' with version '{version}'. "
         error_msg += (
-            "Visit https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html"
-            " for updated list of models. "
+            f"Visit {MODEL_ID_LIST_WEB_URL} for updated list of models. "
         )
 
         other_model_id_version = self._select_version(

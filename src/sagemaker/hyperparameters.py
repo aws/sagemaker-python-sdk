@@ -26,10 +26,10 @@ logger = logging.getLogger(__name__)
 
 
 def retrieve_default(
-    region=None,
-    model_id=None,
-    model_version=None,
-    include_container_hyperparameters=False,
+    region: Optional[str] = None,
+    model_id: Optional[str] = None,
+    model_version: Optional[str] = None,
+    include_container_hyperparameters: bool = False,
     tolerate_vulnerable_model: bool = False,
     tolerate_deprecated_model: bool = False,
 ) -> Dict[str, str]:
@@ -64,7 +64,7 @@ def retrieve_default(
     """
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
         raise ValueError(
-            "Must specify `model_id` and `model_version` when retrieving hyperparameters."
+            "Must specify JumpStart `model_id` and `model_version` when retrieving hyperparameters."
         )
 
     return artifacts._retrieve_default_hyperparameters(
@@ -110,11 +110,11 @@ def validate(
 
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
         raise ValueError(
-            "Must specify `model_id` and `model_version` when validating hyperparameters."
+            "Must specify JumpStart `model_id` and `model_version` when validating hyperparameters."
         )
 
     if model_id is None or model_version is None:
-        raise RuntimeError("Model id and version must both be non-None")
+        raise RuntimeError("Model ID and version must both be non-None")
 
     if hyperparameters is None:
         raise ValueError("Must specify hyperparameters.")

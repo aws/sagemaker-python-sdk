@@ -187,10 +187,9 @@ def test_create_lambda_happycase1(sagemaker_session):
         Code=code,
         Timeout=120,
         MemorySize=128,
-        Architectures=None,
-        VpcConfig=None,
-        Environment=None,
-        Layers=None,
+        VpcConfig={},
+        Environment={},
+        Layers=[],
     )
 
 
@@ -216,10 +215,9 @@ def test_create_lambda_happycase2(sagemaker_session):
         Code=code,
         Timeout=120,
         MemorySize=128,
-        Architectures=None,
-        VpcConfig=None,
-        Environment=None,
-        Layers=None,
+        VpcConfig={},
+        Environment={},
+        Layers=[],
     )
 
 
@@ -231,7 +229,6 @@ def test_create_lambda_happycase3(sagemaker_session):
         script=SCRIPT,
         handler=HANDLER,
         session=sagemaker_session,
-        architectures=["x86_64"],
         environment={"Name": "my-test-lambda"},
         vpc_config={
             "SubnetIds": ["test-subnet-1"],
@@ -251,7 +248,6 @@ def test_create_lambda_happycase3(sagemaker_session):
         Code=code,
         Timeout=120,
         MemorySize=128,
-        Architectures=["x86_64"],
         VpcConfig={"SubnetIds": ["test-subnet-1"], "SecurityGroupIds": ["sec-group-1"]},
         Environment={"Name": "my-test-lambda"},
         Layers=["my-test-layer-1", "my-test-layer-2"],
@@ -314,7 +310,6 @@ def test_update_lambda_happycase1(sagemaker_session):
     sagemaker_session.lambda_client.update_function_code.assert_called_with(
         FunctionName=FUNCTION_NAME,
         ZipFile=ZIPPED_CODE,
-        Architectures=None,
     )
 
 
@@ -335,7 +330,6 @@ def test_update_lambda_happycase2(sagemaker_session):
         FunctionName=LAMBDA_ARN,
         S3Bucket=S3_BUCKET,
         S3Key=S3_KEY,
-        Architectures=None,
     )
 
 
@@ -347,7 +341,6 @@ def test_update_lambda_happycase3(sagemaker_session):
         script=SCRIPT,
         handler=HANDLER,
         session=sagemaker_session,
-        architectures=["x86_64"],
         environment={"Name": "my-test-lambda"},
         vpc_config={
             "SubnetIds": ["test-subnet-1"],
@@ -360,7 +353,6 @@ def test_update_lambda_happycase3(sagemaker_session):
     sagemaker_session.lambda_client.update_function_code.assert_called_with(
         FunctionName=FUNCTION_NAME,
         ZipFile=ZIPPED_CODE,
-        Architectures=["x86_64"],
     )
 
 
@@ -380,7 +372,6 @@ def test_update_lambda_s3bucket_not_provided(s3_upload, sagemaker_session):
         FunctionName=LAMBDA_ARN,
         S3Bucket=sagemaker_session.default_bucket(),
         S3Key=s3_upload.return_value,
-        Architectures=None,
     )
 
 
@@ -425,10 +416,9 @@ def test_upsert_lambda_happycase1(sagemaker_session):
         Code=code,
         Timeout=120,
         MemorySize=128,
-        Architectures=None,
-        VpcConfig=None,
-        Environment=None,
-        Layers=None,
+        VpcConfig={},
+        Environment={},
+        Layers=[],
     )
 
 
@@ -455,7 +445,7 @@ def test_upsert_lambda_happycase2(sagemaker_session):
     lambda_obj.upsert()
 
     sagemaker_session.lambda_client.update_function_code.assert_called_once_with(
-        FunctionName=FUNCTION_NAME, ZipFile=ZIPPED_CODE, Architectures=None
+        FunctionName=FUNCTION_NAME, ZipFile=ZIPPED_CODE
     )
 
 
