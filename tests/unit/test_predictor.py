@@ -594,3 +594,14 @@ def test_list_monitors_unknown_monitoring_type():
     predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
     with pytest.raises(TypeError):
         predictor.list_monitors()
+
+
+def test_setting_serializer_deserializer_atts_changes_content_accept_types():
+    sagemaker_session = empty_sagemaker_session()
+    predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
+    assert predictor.accept == ("*/*",)
+    assert predictor.content_type == "application/octet-stream"
+    predictor.serializer = CSVSerializer()
+    predictor.deserializer = PandasDeserializer()
+    assert predictor.accept == ("text/csv", "application/json")
+    assert predictor.content_type == "text/csv"

@@ -119,8 +119,8 @@ class Predictor(PredictorBase):
         self._endpoint_config_name = None
         self._model_names = None
         self._context = None
-        self._content_type = self.serializer.CONTENT_TYPE
-        self._accept = self.deserializer.ACCEPT
+        self._content_type = None
+        self._accept = None
 
     def predict(
         self,
@@ -543,12 +543,12 @@ class Predictor(PredictorBase):
     @property
     def content_type(self):
         """The MIME type of the data sent to the inference endpoint."""
-        return self._content_type
+        return self._content_type or self.serializer.CONTENT_TYPE
 
     @property
     def accept(self):
         """The content type(s) that are expected from the inference endpoint."""
-        return self._accept
+        return self._accept or self.deserializer.ACCEPT
 
     @content_type.setter
     def content_type(self, val: str):
