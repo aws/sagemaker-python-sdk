@@ -99,6 +99,7 @@ class MultiDataModel(Model):
         self.model = model
         self.container_mode = MULTI_MODEL_CONTAINER_MODE
         self.sagemaker_session = sagemaker_session or Session()
+        self.endpoint_name = None
 
         if self.sagemaker_session.s3_client is None:
             self.s3_client = self.sagemaker_session.boto_session.client(
