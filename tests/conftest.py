@@ -408,13 +408,43 @@ def huggingface_neuron_latest_inference_pytorch_version():
 
 
 @pytest.fixture(scope="module")
+def huggingface_neuronx_latest_inference_pytorch_version():
+    return "1.13"
+
+
+@pytest.fixture(scope="module")
+def huggingface_neuronx_latest_training_pytorch_version():
+    return "1.13"
+
+
+@pytest.fixture(scope="module")
 def huggingface_neuron_latest_inference_transformer_version():
     return "4.12"
 
 
 @pytest.fixture(scope="module")
+def huggingface_neuronx_latest_inference_transformer_version():
+    return "4.28"
+
+
+@pytest.fixture(scope="module")
+def huggingface_neuronx_latest_training_transformer_version():
+    return "4.28"
+
+
+@pytest.fixture(scope="module")
 def huggingface_neuron_latest_inference_py_version():
     return "py37"
+
+
+@pytest.fixture(scope="module")
+def huggingface_neuronx_latest_inference_py_version():
+    return "py38"
+
+
+@pytest.fixture(scope="module")
+def huggingface_neuronx_latest_training_py_version():
+    return "py38"
 
 
 @pytest.fixture(scope="module")
