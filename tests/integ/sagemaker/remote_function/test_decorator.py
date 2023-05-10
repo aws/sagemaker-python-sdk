@@ -20,6 +20,8 @@ import logging
 import random
 import string
 import pandas as pd
+import subprocess
+import shlex
 from sagemaker.experiments.run import Run, load_run
 from tests.integ.sagemaker.experiments.helpers import cleanup_exp_resources
 from sagemaker.experiments.trial_component import _TrialComponent
@@ -596,3 +598,30 @@ def test_decorator_pre_execution_script_error(
     with pytest.raises(RuntimeEnvironmentError) as e:
         get_file_content(["test_file_1", "test_file_2", "test_file_3"])
         assert "line 2: bws: command not found" in str(e)
+
+
+def test_decorator_auto_capture(sagemaker_session, auto_capture_test_container):
+    """
+    This test runs a docker container. The Container invocation will execute a python script
+    with remote function to test auto_capture scenario. The test requires conda to be
+    installed on the client side which is not available in the code build image. Hence we need
+    to run the test in another docker container with conda installed.
+
+    Any assertion is not needed because if remote function execution fails, docker run comand
+    will throw an error thus failing this test.
+    """
+    creds = sagemaker_session.boto_session.get_credentials()
+    region = sagemaker_session.boto_session.region_name
+    env = {
+        "AWS_ACCESS_KEY_ID": str(creds.access_key),
+        "AWS_SECRET_ACCESS_KEY": str(creds.secret_key),
+        "AWS_SESSION_TOKEN": str(creds.token),
+    }
+    cmd = (
+        f"docker run -e AWS_ACCESS_KEY_ID={env['AWS_ACCESS_KEY_ID']} "
+        f"-e AWS_SECRET_ACCESS_KEY={env['AWS_SECRET_ACCESS_KEY']} "
+        f"-e AWS_SESSION_TOKEN={env['AWS_SESSION_TOKEN']} "
+        f"-e AWS_DEFAULT_REGION={region} "
+        f"--rm {auto_capture_test_container}"
+    )
+    subprocess.check_output(shlex.split(cmd), stderr=subprocess.STDOUT).decode("utf-8")
