@@ -177,7 +177,7 @@ class TransformInput(object):
             (default: None)
         split_type (str): The method to use to split the transform job's data files into smaller
             batches.
-        Valid values: ``'Line'``, ``RecordIO``, ``'TFRecord'``, None
+            Valid values: ``'Line'``, ``RecordIO``, ``'TFRecord'``, None
             (default: None)
         input_filter (str): A JSONPath expression used to select a portion of the input data to pass
             to the algorithm. Use the InputFilter parameter to exclude fields, such as an ID column,
@@ -199,18 +199,20 @@ class TransformInput(object):
             <https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform-data-processing.html#data-processing-operators>`_
             in the *Amazon SageMaker developer guide*.
             (default: ``$``)
-        join_source (str): Specifies the source of the data to join with the transformed data. 
-            The default value is ``None``, which specifies not to join the input with the 
-            transformed data. If you want the batch transform job to join the original input data 
-            with the transformed data, set to ``Input``. 
+        join_source (str): Specifies the source of the data to join with the transformed data.
+            The default value is ``None``, which specifies not to join the input with the
+            transformed data. If you want the batch transform job to join the original input data
+            with the transformed data, set to ``Input``.
             Valid values: ``None``, ``Input``
             (default: None)
         model_client_config (dict): Configures the timeout and maximum number of retries for
             processing a transform job invocation.
+            
                 * ``'InvocationsTimeoutInSeconds'`` (int) - The timeout value in seconds for an
                     invocation request. The default value is 600.
                 * ``'InvocationsMaxRetries'`` (int) - The maximum number of retries when invocation
                     requests are failing.
+                    
             (default: ``{'InvocationsTimeoutInSeconds'=600,'InvocationsMaxRetries'=3}``)
         batch_data_capture_config (dict): Specifies configuration related to batch transform job
             data capture for use with Amazon SageMaker Model Monitoring.
