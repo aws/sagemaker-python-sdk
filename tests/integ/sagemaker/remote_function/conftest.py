@@ -18,6 +18,7 @@ import subprocess
 import shutil
 import pytest
 import docker
+import re
 
 from sagemaker.utils import sagemaker_timestamp, _tmpdir, sts_regional_endpoint
 
@@ -57,6 +58,22 @@ DOCKERFILE_TEMPLATE_WITH_CONDA = (
     "ENV SAGEMAKER_JOB_CONDA_ENV=default_env\n"
 )
 
+AUTO_CAPTURE_CLIENT_DOCKER_TEMPLATE = (
+    "FROM public.ecr.aws/docker/library/python:{py_version}-slim\n\n"
+    'SHELL ["/bin/bash", "-c"]\n'
+    "RUN apt-get update -y \
+        && apt-get install -y unzip curl\n\n"
+    "RUN curl -L -O 'https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Linux-x86_64.sh' \
+        && bash Mambaforge-Linux-x86_64.sh -b -p '/opt/conda' \
+        && /opt/conda/bin/conda init bash\n\n"
+    "ENV PATH $PATH:/opt/conda/bin\n"
+    "COPY {source_archive} ./\n"
+    "RUN mamba create -n auto_capture_client python={py_version} -y \
+        && mamba run -n auto_capture_client pip install '{source_archive}' awscli boto3\n"
+    "COPY test_auto_capture.py .\n"
+    'CMD ["mamba", "run", "-n", "auto_capture_client", "python", "test_auto_capture.py"]\n'
+)
+
 CONDA_YML_FILE_TEMPLATE = (
     "name: integ_test_env\n"
     "channels:\n"
@@ -65,17 +82,6 @@ CONDA_YML_FILE_TEMPLATE = (
     "  - scipy=1.7.3\n"
     "  - pip:\n"
     "    - /sagemaker-{sagemaker_version}.tar.gz\n"
-    "prefix: /opt/conda/bin/conda\n"
-)
-
-CONDA_YML_FILE_WITH_SM_FROM_INPUT_CHANNEL = (
-    "name: integ_test_env\n"
-    "channels:\n"
-    "  - defaults\n"
-    "dependencies:\n"
-    "  - scipy=1.7.3\n"
-    "  - pip:\n"
-    "    - sagemaker-2.132.1.dev0-py2.py3-none-any.whl\n"
     "prefix: /opt/conda/bin/conda\n"
 )
 
@@ -100,6 +106,12 @@ def dummy_container_with_conda(sagemaker_session):
 
 
 @pytest.fixture(scope="package")
+def auto_capture_test_container(sagemaker_session):
+    ecr_uri = _build_auto_capture_client_container("3.10", AUTO_CAPTURE_CLIENT_DOCKER_TEMPLATE)
+    return ecr_uri
+
+
+@pytest.fixture(scope="package")
 def conda_env_yml():
     """Write conda yml file needed for tests"""
 
@@ -109,22 +121,6 @@ def conda_env_yml():
     conda_file_path = os.path.join(os.getcwd(), conda_yml_file_name)
     with open(conda_file_path, "w") as yml_file:
         yml_file.writelines(CONDA_YML_FILE_TEMPLATE.format(sagemaker_version=sagemaker_version))
-    yield conda_file_path
-
-    # cleanup
-    if os.path.isfile(conda_yml_file_name):
-        os.remove(conda_yml_file_name)
-
-
-@pytest.fixture(scope="package")
-def conda_yml_file_sm_from_input_channel():
-    """Write conda yml file needed for tests"""
-
-    conda_yml_file_name = "conda_env_sm_from_input_channel.yml"
-    conda_file_path = os.path.join(os.getcwd(), conda_yml_file_name)
-
-    with open(conda_file_path, "w") as yml_file:
-        yml_file.writelines(CONDA_YML_FILE_WITH_SM_FROM_INPUT_CHANNEL)
     yield conda_file_path
 
     # cleanup
@@ -178,6 +174,25 @@ def _build_container(sagemaker_session, py_version, docker_templete):
     return ecr_image
 
 
+def _build_auto_capture_client_container(py_version, docker_templete):
+    """Build a test docker container that will act as a client for auto_capture tests"""
+    with _tmpdir() as tmpdir:
+        print("building docker image locally in ", tmpdir)
+        print("building source archive...")
+        source_archive = _generate_sdk_tar_with_public_version(tmpdir)
+        _move_auto_capture_test_file(tmpdir)
+        with open(os.path.join(tmpdir, "Dockerfile"), "w") as file:
+            file.writelines(
+                docker_templete.format(py_version=py_version, source_archive=source_archive)
+            )
+
+        docker_client = docker.from_env()
+
+        print("building docker image...")
+        image, build_logs = docker_client.images.build(path=tmpdir, tag=REPO_NAME, rm=True)
+        return image.id
+
+
 def _is_repository_exists(ecr_client, repo_name):
     try:
         ecr_client.describe_repositories(repositoryNames=[repo_name])
@@ -212,3 +227,51 @@ def _generate_and_move_sagemaker_sdk_tar(destination_folder):
     shutil.copy2(source_path, destination_path)
 
     return source_archive
+
+
+def _generate_sdk_tar_with_public_version(destination_folder):
+    """
+    This function is used for auto capture integ tests. This test need the sagemaker version
+    that is already published to PyPI. So we manipulate the current local dev version to change
+    latest released SDK version.
+
+    It does the following
+    1. Change the dev version of the SDK to the latest published version
+    2. Generate SDK tar using that version
+    3. Move tar file to the folder when docker file is present
+    3. Update the version back to the dev version
+    """
+    dist_folder_path = "dist"
+
+    with open(os.path.join(os.getcwd(), "VERSION"), "r+") as version_file:
+        dev_sagemaker_version = version_file.readline().strip()
+        public_sagemaker_version = re.sub("1.dev0", "0", dev_sagemaker_version)
+        version_file.seek(0)
+        version_file.write(public_sagemaker_version)
+        version_file.truncate()
+    if os.path.exists(dist_folder_path):
+        shutil.rmtree(dist_folder_path)
+
+    source_archive = _generate_and_move_sagemaker_sdk_tar(destination_folder)
+
+    with open(os.path.join(os.getcwd(), "VERSION"), "r+") as version_file:
+        version_file.seek(0)
+        version_file.write(dev_sagemaker_version)
+        version_file.truncate()
+    if os.path.exists(dist_folder_path):
+        shutil.rmtree(dist_folder_path)
+
+    return source_archive
+
+
+def _move_auto_capture_test_file(destination_folder):
+    """
+    Move the test file for autocapture tests to a temp folder along with the docker file.
+    """
+
+    test_file_name = "test_auto_capture.py"
+    source_path = os.path.join(
+        os.getcwd(), "tests", "integ", "sagemaker", "remote_function", test_file_name
+    )
+    destination_path = os.path.join(destination_folder, test_file_name)
+    shutil.copy2(source_path, destination_path)
