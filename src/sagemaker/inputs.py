@@ -165,7 +165,7 @@ class TransformInput(object):
     """Create a class containing all the parameters.
 
     It can be used when calling ``sagemaker.transformer.Transformer.transform()``
-    
+
     Args:
         data (str): The S3 location of the input data that the model can consume.
         data_type (str): elastic inference accelerator type.
@@ -175,44 +175,44 @@ class TransformInput(object):
         compression_type (str): If your transform data is compressed, specify the compression type.
             Valid values: ``'Gzip'``, ``None``
             (default: None)
-        split_type (str): The method to use to split the transform job's data files into smaller 
+        split_type (str): The method to use to split the transform job's data files into smaller
             batches.
         Valid values: ``'Line'``, ``RecordIO``, ``'TFRecord'``, None
             (default: None)
-        input_filter (str): A JSONPath expression used to select a portion of the input data to pass 
-            to the algorithm. Use the InputFilter parameter to exclude fields, such as an ID column, 
-            from the input. If you want SageMaker to pass the entire input dataset to the algorithm, 
-            accept the default value ``$``. For more information on batch transform data processing, 
-            input, join, and output, see 
-            `Associate Prediction Results with Input Records 
+        input_filter (str): A JSONPath expression used to select a portion of the input data to pass
+            to the algorithm. Use the InputFilter parameter to exclude fields, such as an ID column,
+            from the input. If you want SageMaker to pass the entire input dataset to the algorithm,
+            accept the default value ``$``. For more information on batch transform data processing,
+            input, join, and output, see
+            `Associate Prediction Results with Input Records
             <https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform-data-processing.html?>`_
             in the *Amazon SageMaker developer guide*.
-            Valid values: ``$``. For more options, see `JSONPath Operators 
-            <https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform-data-processing.html#data-processing-operators>`_ 
+            Valid values: ``$``. For more options, see `JSONPath Operators
+            <https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform-data-processing.html#data-processing-operators>`_
             in the *Amazon SageMaker developer guide*.
             (default: ``$``)
-        output_filter (str): A JSONPath expression used to select a portion of the joined dataset to 
-            save in the output file for a batch transform job. If you want SageMaker to store the 
-            entire input dataset in the output file, leave the default value, $. If you specify 
+        output_filter (str): A JSONPath expression used to select a portion of the joined dataset to
+            save in the output file for a batch transform job. If you want SageMaker to store the
+            entire input dataset in the output file, leave the default value, $. If you specify
             indexes that aren't within the dimension size of the joined dataset, you get an error.
-            Valid values: ``$``. For more options, see `JSONPath Operators 
-            <https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform-data-processing.html#data-processing-operators>`_ 
+            Valid values: ``$``. For more options, see `JSONPath Operators
+            <https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform-data-processing.html#data-processing-operators>`_
             in the *Amazon SageMaker developer guide*.
             (default: ``$``)
-            join_source (str): Specifies the source of the data to join with the transformed data. The 
-            default value is ``None``, which specifies not to join the input with the transformed data. 
-            If you want the batch transform job to join the original input data with the transformed 
-            data, set to ``Input``. For more information on 
+        join_source (str): Specifies the source of the data to join with the transformed data. 
+            The default value is ``None``, which specifies not to join the input with the 
+            transformed data. If you want the batch transform job to join the original input data 
+            with the transformed data, set to ``Input``. 
             Valid values: ``None``, ``Input``
             (default: None)
-        model_client_config (dict): Configures the timeout and maximum number of retries for 
+        model_client_config (dict): Configures the timeout and maximum number of retries for
             processing a transform job invocation.
-                * ``'InvocationsTimeoutInSeconds'`` (int) - The timeout value in seconds for an 
+                * ``'InvocationsTimeoutInSeconds'`` (int) - The timeout value in seconds for an
                     invocation request. The default value is 600.
-                * ``'InvocationsMaxRetries'`` (int) - The maximum number of retries when invocation 
+                * ``'InvocationsMaxRetries'`` (int) - The maximum number of retries when invocation
                     requests are failing.
             (default: ``{'InvocationsTimeoutInSeconds'=600,'InvocationsMaxRetries'=3}``)
-        batch_data_capture_config (dict): Specifies configuration related to batch transform job 
+        batch_data_capture_config (dict): Specifies configuration related to batch transform job
             data capture for use with Amazon SageMaker Model Monitoring.
             (default: None)
     """
