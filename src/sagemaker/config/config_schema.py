@@ -54,6 +54,7 @@ INCLUDE_LOCAL_WORKDIR = "IncludeLocalWorkDir"
 INSTANCE_TYPE = "InstanceType"
 S3_KMS_KEY_ID = "S3KmsKeyId"
 S3_ROOT_URI = "S3RootUri"
+S3_OUTPUT_PATH = "S3OutputPath"
 JOB_CONDA_ENV = "JobCondaEnvironment"
 OFFLINE_STORE_CONFIG = "OfflineStoreConfig"
 ONLINE_STORE_CONFIG = "OnlineStoreConfig"
@@ -134,6 +135,9 @@ ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH = _simple_path(
 )
 ENDPOINT_CONFIG_ASYNC_KMS_KEY_ID_PATH = _simple_path(
     SAGEMAKER, ENDPOINT_CONFIG, ASYNC_INFERENCE_CONFIG, OUTPUT_CONFIG, KMS_KEY_ID
+)
+ENDPOINT_CONFIG_ASYNC_S3_OUTPUT_PATH = _simple_path(
+    SAGEMAKER, ENDPOINT_CONFIG, ASYNC_INFERENCE_CONFIG, OUTPUT_CONFIG, S3_OUTPUT_PATH
 )
 ENDPOINT_CONFIG_KMS_KEY_ID_PATH = _simple_path(SAGEMAKER, ENDPOINT_CONFIG, KMS_KEY_ID)
 FEATURE_GROUP_ONLINE_STORE_CONFIG_PATH = _simple_path(SAGEMAKER, FEATURE_GROUP, ONLINE_STORE_CONFIG)
@@ -611,7 +615,10 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                 OUTPUT_CONFIG: {
                                     TYPE: OBJECT,
                                     ADDITIONAL_PROPERTIES: False,
-                                    PROPERTIES: {KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"}},
+                                    PROPERTIES: {
+                                        KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"},
+                                        S3_OUTPUT_PATH: {"$ref": "#/definitions/s3Uri"},
+                                    },
                                 }
                             },
                         },

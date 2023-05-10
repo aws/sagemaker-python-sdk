@@ -37,6 +37,7 @@ from sagemaker.config import (
     MODEL_ENABLE_NETWORK_ISOLATION_PATH,
     MODEL_EXECUTION_ROLE_ARN_PATH,
     ENDPOINT_CONFIG_ASYNC_KMS_KEY_ID_PATH,
+    ENDPOINT_CONFIG_ASYNC_S3_OUTPUT_PATH,
 )
 from sagemaker.session import Session
 from sagemaker.model_metrics import ModelMetrics
@@ -1299,6 +1300,11 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             async_inference_config.kms_key_id = resolve_value_from_config(
                 async_inference_config.kms_key_id,
                 ENDPOINT_CONFIG_ASYNC_KMS_KEY_ID_PATH,
+                sagemaker_session=self.sagemaker_session,
+            )
+            async_inference_config.output_path = resolve_value_from_config(
+                async_inference_config.output_path,
+                ENDPOINT_CONFIG_ASYNC_S3_OUTPUT_PATH,
                 sagemaker_session=self.sagemaker_session,
             )
             async_inference_config_dict = async_inference_config._to_request_dict()
