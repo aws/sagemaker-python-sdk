@@ -205,13 +205,7 @@ def test_invalid_endpoint_config_s3uri_schema(base_config_with_schema):
     config = base_config_with_schema
 
     config["SageMaker"] = {
-        "EndpointConfig": {
-            "AsyncInferenceConfig": {
-                "OutputConfig": {
-                    "S3OutputPath": "bad_regex"
-                    }
-                }
-            }
-        }
+        "EndpointConfig": {"AsyncInferenceConfig": {"OutputConfig": {"S3OutputPath": "bad_regex"}}}
+    }
     with pytest.raises(exceptions.ValidationError):
         validate(config, SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA)
