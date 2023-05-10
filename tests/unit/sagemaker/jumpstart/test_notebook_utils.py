@@ -23,7 +23,7 @@ from sagemaker.jumpstart.notebook_utils import (
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
-@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+@patch("sagemaker.jumpstart.notebook_utils.accessors.JumpStartModelsAccessor.get_model_specs")
 @patch("sagemaker.jumpstart.notebook_utils._generate_jumpstart_model_versions")
 def test_list_jumpstart_scripts(
     patched_generate_jumpstart_models: Mock,

@@ -741,7 +741,7 @@ class FeatureGroup:
         feature_definitions = []
         for column in data_frame:
             feature_type = self.DTYPE_TO_FEATURE_DEFINITION_CLS_MAP.get(
-                str(data_frame[column].dtype), None
+                str(data_frame[column].dtype).lower(), None
             )
             if feature_type:
                 feature_definitions.append(
