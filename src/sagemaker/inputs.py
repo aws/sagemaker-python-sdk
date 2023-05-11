@@ -168,9 +168,9 @@ class TransformInput(object):
 
     Args:
         data (str): The S3 location of the input data that the model can consume.
-        data_type (str): elastic inference accelerator type.
+        data_type (str): The data type for an elastic inference accelerator.
             (default: ``'S3Prefix'``)
-        content_type (str): The multipurpose internet mail extension (MIME) type of the data.
+        content_type (str): The multi-purpose internet email extension (MIME) type of the data.
             (default: None)
         compression_type (str): If your transform data is compressed, specify the compression type.
             Valid values: ``'Gzip'``, ``None``
@@ -179,23 +179,25 @@ class TransformInput(object):
             batches.
             Valid values: ``'Line'``, ``RecordIO``, ``'TFRecord'``, None
             (default: None)
-        input_filter (str): A JSONPath expression used to select a portion of the input data to pass
-            to the algorithm. Use the InputFilter parameter to exclude fields, such as an ID column,
-            from the input. If you want SageMaker to pass the entire input dataset to the algorithm,
-            accept the default value ``$``. For more information on batch transform data processing,
-            input, join, and output, see
+        input_filter (str): A JSONPath expression for selecting a portion of the input data to pass
+            to the algorithm. For example, you can use this parameter to exclude fields, such as an 
+            ID column, from the input. If you want SageMaker to pass the entire input dataset to the 
+            algorithm, accept the default value ``$``. For more information on batch transform data 
+            processing, input, join, and output, see
             `Associate Prediction Results with Input Records
             <https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform-data-processing.html?>`_
             in the *Amazon SageMaker developer guide*.
-            Valid values: ``$``. For more options, see `JSONPath Operators
+            Example value: ``$``. For more information about valid values for this parameter, see 
+            `JSONPath Operators
             <https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform-data-processing.html#data-processing-operators>`_
             in the *Amazon SageMaker developer guide*.
             (default: ``$``)
-        output_filter (str): A JSONPath expression used to select a portion of the joined dataset to
+        output_filter (str): A JSONPath expression for selecting a portion of the joined dataset to
             save in the output file for a batch transform job. If you want SageMaker to store the
             entire input dataset in the output file, leave the default value, $. If you specify
             indexes that aren't within the dimension size of the joined dataset, you get an error.
-            Valid values: ``$``. For more options, see `JSONPath Operators
+            Example value: ``$``. For more information about valid values for this parameter, see 
+            `JSONPath Operators
             <https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform-data-processing.html#data-processing-operators>`_
             in the *Amazon SageMaker developer guide*.
             (default: ``$``)
@@ -213,9 +215,12 @@ class TransformInput(object):
                 * ``'InvocationsMaxRetries'`` (int) - The maximum number of retries when invocation
                   requests are failing.
 
-            (default: ``{'InvocationsTimeoutInSeconds'=600,'InvocationsMaxRetries'=3}``)
+            (default: ``{600,3}``)
         batch_data_capture_config (dict): Specifies configuration related to batch transform job
-            data capture for use with Amazon SageMaker Model Monitoring.
+            data capture for use with Amazon SageMaker Model Monitoring. For more information about
+            batch transform job data capture, see `Capture data from batch transform job
+            <https://docs.aws.amazon.com/sagemaker/latest/dg/model-monitor-data-capture-batch.html>`_
+            in the *Amazon SageMaker developer guide*.
             (default: None)
     """
 
