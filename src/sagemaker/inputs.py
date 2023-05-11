@@ -209,9 +209,9 @@ class TransformInput(object):
             processing a transform job invocation.
 
                 * ``'InvocationsTimeoutInSeconds'`` (int) - The timeout value in seconds for an
-                    invocation request. The default value is 600.
+                  invocation request. The default value is 600.
                 * ``'InvocationsMaxRetries'`` (int) - The maximum number of retries when invocation
-                    requests are failing.
+                  requests are failing.
 
             (default: ``{'InvocationsTimeoutInSeconds'=600,'InvocationsMaxRetries'=3}``)
         batch_data_capture_config (dict): Specifies configuration related to batch transform job
