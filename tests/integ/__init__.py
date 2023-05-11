@@ -55,6 +55,7 @@ HOSTING_NO_P3_REGIONS = [
 TRAINING_NO_P2_REGIONS = [
     "af-south-1",
     "ap-east-1",
+    "ap-south-1",  # not enough capacity
     "ap-southeast-1",
     "ap-southeast-2",
     "ca-central-1",
