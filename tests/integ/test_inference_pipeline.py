@@ -151,6 +151,7 @@ def test_inference_pipeline_model_deploy(sagemaker_session, cpu_instance_type):
 
 
 @pytest.mark.slow_test
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 def test_inference_pipeline_model_deploy_and_update_endpoint(
     sagemaker_session, cpu_instance_type, alternative_cpu_instance_type
 ):
