@@ -168,7 +168,7 @@ class TransformInput(object):
 
     Args:
         data (str): The S3 location of the input data that the model can consume.
-        data_type (str): The data type for an elastic inference accelerator.
+        data_type (str): The data type for a batch transform job.
             (default: ``'S3Prefix'``)
         content_type (str): The multi-purpose internet email extension (MIME) type of the data.
             (default: None)
