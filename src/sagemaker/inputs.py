@@ -211,13 +211,13 @@ class TransformInput(object):
             processing a transform job invocation.
 
                 * ``'InvocationsTimeoutInSeconds'`` (int) - The timeout value in seconds for an
-                    invocation request. The default value is 600.
+                  invocation request. The default value is 600.
                 * ``'InvocationsMaxRetries'`` (int) - The maximum number of retries when invocation
-                    requests are failing.
+                  requests are failing.
 
             (default: ``{600,3}``)
         batch_data_capture_config (dict, an object of `BatchDataCaptureConfig
-        <https://sagemaker.readthedocs.io/en/stable/api/utility/inputs.html#sagemaker.inputs.BatchDataCaptureConfig>`_)
+            <https://sagemaker.readthedocs.io/en/stable/api/utility/inputs.html#sagemaker.inputs.BatchDataCaptureConfig>`_)
             Specifies configuration related to batch transform job
             for use with Amazon SageMaker Model Monitoring. For more information,
             see `Capture data from batch transform job
