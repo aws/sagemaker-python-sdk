@@ -1566,6 +1566,7 @@ class FrameworkProcessor(ScriptProcessor):
             sagemaker_session=self.sagemaker_session,
             debugger_hook_config=False,
             disable_profiler=True,
+            output_kms_key=self.output_kms_key,
         )
 
     def get_run_args(
@@ -1804,7 +1805,10 @@ class FrameworkProcessor(ScriptProcessor):
             raise RuntimeError("S3 source_dir file must be named `sourcedir.tar.gz.`")
 
         script = estimator.uploaded_code.script_name
-        s3_runproc_sh = self._create_and_upload_runproc(script, kms_key, entrypoint_s3_uri)
+        evaluated_kms_key = kms_key if kms_key else self.output_kms_key
+        s3_runproc_sh = self._create_and_upload_runproc(
+            script, evaluated_kms_key, entrypoint_s3_uri
+        )
 
         return s3_runproc_sh, inputs, job_name
 

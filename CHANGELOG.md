@@ -1,5 +1,36 @@
 # Changelog
 
+## v2.154.0 (2023-05-11)
+
+### Features
+
+ * Add integ tests for remote_function, auto_capture functionality
+ * jumpstart model estimator classes
+
+### Bug Fixes and Other Changes
+
+ * integs - pytorch transformer deps and add test retry
+ * adding .lower() so new Pandas dtypes will match the type lookup.
+ * Pass KMS value to create processing job
+
+## v2.153.0 (2023-05-09)
+
+### Features
+
+ * Support npz archives in NumpyDeserializer
+ * Add FasterTransformer DJL support
+ * support for Sample Weights for SageMaker Autopilot
+
+### Bug Fixes and Other Changes
+
+ * retry is_run assertion
+ * Avoid 'AttributeError' for endpoint_name, if deploy() is not yet called
+ * Fix LambdaStep Creation
+ * Fix error when instance_count>1 in remote_function
+ * Remove deprecated update_endpoint from deploy() args in TensorFlowModel
+ * Update DJL deepspeed and fastertransformer DLC image uris
+ * remote_function python version mismatch issue
+
 ## v2.152.0 (2023-05-04)
 
 ### Features
