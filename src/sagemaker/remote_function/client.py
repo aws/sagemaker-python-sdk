@@ -745,7 +745,7 @@ class RemoteExecutor(object):
         futures = map(self.submit, itertools.repeat(func), *iterables)
         return [future.result() for future in futures]
 
-    def shutdown(self, wait=True):
+    def shutdown(self):
         """Prevent more function executions to be submitted to this executor."""
         with self._state_condition:
             self._shutdown = True
@@ -756,7 +756,7 @@ class RemoteExecutor(object):
             self._state_condition.notify_all()
 
         if self._workers is not None:
-            self._workers.shutdown(wait)
+            self._workers.shutdown(wait=True)
 
     def __enter__(self):
         """Create an executor instance and return it"""
@@ -764,7 +764,7 @@ class RemoteExecutor(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Make sure the executor instance is shutdown."""
-        self.shutdown(wait=False)
+        self.shutdown()
         return False
 
     @staticmethod
