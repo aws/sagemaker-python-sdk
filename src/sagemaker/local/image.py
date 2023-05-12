@@ -50,7 +50,11 @@ TRAINING_JOB_NAME_ENV_NAME = "TRAINING_JOB_NAME"
 S3_ENDPOINT_URL_ENV_NAME = "S3_ENDPOINT_URL"
 
 # SELinux Enabled
-SELINUX_ENABLED = os.environ.get("SAGEMAKER_LOCAL_SELINUX_ENABLED", "False").lower() in ["1", "true", "yes"]
+SELINUX_ENABLED = os.environ.get("SAGEMAKER_LOCAL_SELINUX_ENABLED", "False").lower() in [
+    "1",
+    "true",
+    "yes",
+]
 
 logger = logging.getLogger(__name__)
 

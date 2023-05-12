@@ -571,9 +571,7 @@ def test_train_local_intermediate_output(get_data_source_instance, tmpdir, sagem
 
 @patch("platform.system", Mock(return_value="Linux"))
 @patch("sagemaker.local.image.SELINUX_ENABLED", Mock(return_value=True))
-def test_container_selinux_has_label(tmpdir, sagemaker_session):
-    instance_count = 1
-    image = "my-image"
+def test_container_selinux_has_label(tmpdir):
     volume = _Volume(str(tmpdir), "/opt/ml/model")
 
     assert volume.map.endswith(":z")
@@ -581,9 +579,7 @@ def test_container_selinux_has_label(tmpdir, sagemaker_session):
 
 @patch("platform.system", Mock(return_value="Darwin"))
 @patch("sagemaker.local.image.SELINUX_ENABLED", Mock(return_value=True))
-def test_container_has_selinux_no_label(tmpdir, sagemaker_session, monkeypatch):
-    instance_count = 1
-    image = "my-image"
+def test_container_has_selinux_no_label(tmpdir):
     volume = _Volume(str(tmpdir), "/opt/ml/model")
 
     assert not volume.map.endswith(":z")
