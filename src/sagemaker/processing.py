@@ -39,6 +39,7 @@ from sagemaker.config import (
     PROCESSING_JOB_ROLE_ARN_PATH,
     PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
 )
+from sagemaker.fw_utils import UploadedCode
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
 from sagemaker.network import NetworkConfig
@@ -298,7 +299,8 @@ class Processor(object):
             outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
                 the processing job. These can be specified as either path strings or
                 :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
-            code (str): This can be an S3 URI or a local path to a file with the framework
+            code (str or :class:`~sagemaker.processing.fw_utils.UploadedCode`): This can be
+                an S3 URI or a local path to a file with the framework
                 script to run (default: None). A no op in the base class.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
@@ -615,7 +617,7 @@ class ScriptProcessor(Processor):
     @runnable_by_pipeline
     def run(
         self,
-        code: str,
+        code: Union[str, "UploadedCode"],
         inputs: Optional[List["ProcessingInput"]] = None,
         outputs: Optional[List["ProcessingOutput"]] = None,
         arguments: Optional[List[Union[str, PipelineVariable]]] = None,
@@ -628,8 +630,8 @@ class ScriptProcessor(Processor):
         """Runs a processing job.
 
         Args:
-            code (str): This can be an S3 URI or a local path to
-                a file with the framework script to run.
+            code (str or :class:`~sagemaker.processing.fw_utils.UploadedCode`): This can be
+                an S3 URI or a local path to a file with the framework script to run.
             inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
                 the processing job. These must be provided as
                 :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
@@ -683,7 +685,9 @@ class ScriptProcessor(Processor):
         if wait:
             self.latest_job.wait(logs=logs)
 
-    def _include_code_in_inputs(self, inputs, code, kms_key=None):
+    def _include_code_in_inputs(
+        self, inputs: List["ProcessingInput"], code: Union[str, UploadedCode], kms_key=None
+    ):
         """Converts code to appropriate input and includes in input list.
 
         Side effects include:
@@ -694,7 +698,7 @@ class ScriptProcessor(Processor):
             inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
                 the processing job. These must be provided as
                 :class:`~sagemaker.processing.ProcessingInput` objects.
-            code (str): This can be an S3 URI or a local path to a file with the framework
+            code (str or UploadedCode): This can be an S3 URI or a local path to a file with the framework
                 script to run (default: None).
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
@@ -703,10 +707,20 @@ class ScriptProcessor(Processor):
             list[:class:`~sagemaker.processing.ProcessingInput`]: inputs together with the
                 code as `ProcessingInput`.
         """
-        user_code_s3_uri = self._handle_user_code_url(code, kms_key)
-        user_script_name = self._get_user_code_name(code)
-
-        inputs_with_code = self._convert_code_and_add_to_inputs(inputs, user_code_s3_uri)
+        if isinstance(code, UploadedCode):
+            # If the caller supplied an UploadedCode, then that indicates the
+            # code has already been uploaded (presumably via a ProcessingInput)
+            inputs_with_code = inputs or []
+            user_script_name = code.script_name
+            if is_pipeline_variable(user_script_name):
+                raise ValueError(
+                    "code argument destination must be a local file path "
+                    + "rather than a pipeline variable"
+                )
+        else:
+            user_code_s3_uri = self._handle_user_code_url(code, kms_key)
+            user_script_name = self._get_user_code_name(code)
+            inputs_with_code = self._convert_code_and_add_to_inputs(inputs, user_code_s3_uri)
 
         self._set_entrypoint(self.command, user_script_name)
         return inputs_with_code
