@@ -24,6 +24,7 @@ import attr
 
 from sagemaker import Session
 from sagemaker.estimator import EstimatorBase, _TrainingJob
+from sagemaker.fw_utils import UploadedCode
 from sagemaker.inputs import CreateModelInput, TrainingInput, TransformInput, FileSystemInput
 from sagemaker.model import Model
 from sagemaker.pipeline import PipelineModel
@@ -765,7 +766,7 @@ class ProcessingStep(ConfigurableRetryStep):
         inputs: List[ProcessingInput] = None,
         outputs: List[ProcessingOutput] = None,
         job_arguments: List[str] = None,
-        code: str = None,
+        code: Union[str, UploadedCode] = None,
         property_files: List[PropertyFile] = None,
         cache_config: CacheConfig = None,
         depends_on: Optional[List[Union[str, Step, "StepCollection"]]] = None,
@@ -789,7 +790,7 @@ class ProcessingStep(ConfigurableRetryStep):
                 instances. Defaults to `None`.
             job_arguments (List[str]): A list of strings to be passed into the processing job.
                 Defaults to `None`.
-            code (str): This can be an S3 URI or a local path to a file with the framework
+            code (str or ProcessingInput): This can be an S3 URI or a local path to a file with the framework
                 script to run. Defaults to `None`.
             property_files (List[PropertyFile]): A list of property files that workflow looks
                 for and resolves from the configured processing output list.
@@ -835,7 +836,7 @@ class ProcessingStep(ConfigurableRetryStep):
             # arguments attribute. Refactor `Processor.run`, if possible.
             self.processor.arguments = job_arguments
 
-            if code:
+            if code and not isinstance(code, UploadedCode):
                 if is_pipeline_variable(code):
                     raise ValueError(
                         "code argument has to be a valid S3 URI or local file path "

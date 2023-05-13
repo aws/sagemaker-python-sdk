@@ -22,6 +22,7 @@ import warnings
 from copy import deepcopy
 
 from sagemaker.estimator import Estimator
+from sagemaker.fw_utils import UploadedCode
 from sagemaker.parameter import IntegerParameter
 from sagemaker.transformer import Transformer
 from sagemaker.tuner import HyperparameterTuner
@@ -70,6 +71,10 @@ from tests.unit.sagemaker.workflow.conftest import ROLE, BUCKET, IMAGE_URI, INST
 
 DUMMY_S3_SCRIPT_PATH = "s3://dummy-s3/dummy_script.py"
 LOCAL_SCRIPT_PATH = os.path.join(DATA_DIR, "workflow/abalone/preprocessing.py")
+UPLOADED_SCRIPT_INPUT = UploadedCode(
+    s3_prefix=DUMMY_S3_SCRIPT_PATH,
+    script_name="/opt/ml/processing/code/script_from_s3.py",
+)
 SPARK_APP_JAR_PATH = os.path.join(
     DATA_DIR, "spark/code/java/hello-java-spark/HelloJavaSparkApp.jar"
 )
@@ -379,7 +384,9 @@ def test_processing_step_with_processor_and_step_args(
 
 
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
-@pytest.mark.parametrize("code_artifact", [DUMMY_S3_SCRIPT_PATH, LOCAL_SCRIPT_PATH])
+@pytest.mark.parametrize(
+    "code_artifact", [DUMMY_S3_SCRIPT_PATH, LOCAL_SCRIPT_PATH, UPLOADED_SCRIPT_INPUT]
+)
 def test_processing_step_with_script_processor(
     pipeline_session, processing_input, network_config, code_artifact
 ):

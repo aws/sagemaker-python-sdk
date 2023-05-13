@@ -712,11 +712,6 @@ class ScriptProcessor(Processor):
             # code has already been uploaded (presumably via a ProcessingInput)
             inputs_with_code = inputs or []
             user_script_name = code.script_name
-            if is_pipeline_variable(user_script_name):
-                raise ValueError(
-                    "code argument destination must be a local file path "
-                    + "rather than a pipeline variable"
-                )
         else:
             user_code_s3_uri = self._handle_user_code_url(code, kms_key)
             user_script_name = self._get_user_code_name(code)
@@ -1614,7 +1609,7 @@ class FrameworkProcessor(ScriptProcessor):
             code (str): This can be an S3 URI or a local path to a file with the framework
                 script to run. See the ``code`` argument in
                 `sagemaker.processing.FrameworkProcessor.run()`.
-            source_dir (str): Path (absolute, relative, or an S3 URI) to a directory wit
+            source_dir (str): Path (absolute, relative, or an S3 URI) to a directory with
                 any other processing source code dependencies aside from the entrypoint
                 file (default: None). See the ``source_dir`` argument in
                 `sagemaker.processing.FrameworkProcessor.run()`
