@@ -217,7 +217,7 @@ class TransformInput(object):
 
             (default: ``{600,3}``)
         batch_data_capture_config (dict, an object of `BatchDataCaptureConfig
-            <https://sagemaker.readthedocs.io/en/stable/api/utility/inputs.html#sagemaker.inputs.BatchDataCaptureConfig>`_)
+            <https://sagemaker.readthedocs.io/en/stable/api/utility/inputs.html#sagemaker.inputs.BatchDataCaptureConfig>`_):
             Specifies configuration related to batch transform job
             for use with Amazon SageMaker Model Monitoring. For more information,
             see `Capture data from batch transform job
