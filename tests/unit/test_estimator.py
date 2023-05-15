@@ -1819,6 +1819,33 @@ def test_get_instance_type_gpu(sagemaker_session):
     assert "ml.p3.16xlarge" == estimator._get_instance_type()
 
 
+def test_estimator_with_output_compression_disabled(sagemaker_session):
+    estimator = Estimator(
+        image_uri="some-image",
+        role="some_image",
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        sagemaker_session=sagemaker_session,
+        base_job_name="base_job_name",
+        disable_output_compression=True,
+    )
+
+    assert estimator.disable_output_compression
+
+
+def test_estimator_with_output_compression_as_default(sagemaker_session):
+    estimator = Estimator(
+        image_uri="some-image",
+        role="some_image",
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        sagemaker_session=sagemaker_session,
+        base_job_name="base_job_name",
+    )
+
+    assert not estimator.disable_output_compression
+
+
 def test_get_instance_type_cpu(sagemaker_session):
     estimator = Estimator(
         image_uri="some-image",
