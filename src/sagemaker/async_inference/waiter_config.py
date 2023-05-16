@@ -23,8 +23,8 @@ class WaiterConfig(object):
 
     def __init__(
         self,
-        max_attempts=60,
-        delay=15,
+        max_attempts=4,
+        delay=5,
     ):
         """Initialize a WaiterConfig object that provides parameters to control waiting behavior.
 
