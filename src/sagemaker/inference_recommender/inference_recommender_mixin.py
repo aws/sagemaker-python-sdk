@@ -145,10 +145,10 @@ class InferenceRecommenderMixin:
         )
 
         if endpoint_configurations or traffic_pattern or stopping_conditions or resource_limit:
-            LOGGER.info("Advance Job parameters were specified. Running Advanced job...")
+            LOGGER.info("Advanced Job parameters were specified. Running Advanced job...")
             job_type = "Advanced"
         else:
-            LOGGER.info("Advance Job parameters were not specified. Running Default job...")
+            LOGGER.info("Advanced Job parameters were not specified. Running Default job...")
             job_type = "Default"
 
         self._init_sagemaker_session_if_does_not_exist()
