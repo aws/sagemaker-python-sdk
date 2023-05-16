@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import os
 from mock import patch, Mock
 from sagemaker.remote_function import invoke_function
 from sagemaker.remote_function.errors import SerializationError
@@ -20,6 +21,7 @@ TEST_REGION = "us-west-2"
 TEST_S3_BASE_URI = "s3://my-bucket/"
 TEST_S3_KMS_KEY = "my-kms-key"
 TEST_RUN_IN_CONTEXT = '{"experiment_name": "my-exp-name", "run_name": "my-run-name"}'
+TEST_HMAC_KEY = "some-hmac-key"
 
 
 def mock_args():
@@ -55,6 +57,7 @@ def mock_session():
     return_value=mock_session(),
 )
 def test_main_success(_get_sagemaker_session, load_and_invoke, _exit_process, _load_run_object):
+    os.environ["REMOTE_FUNCTION_SECRET_KEY"] = TEST_HMAC_KEY
     invoke_function.main()
 
     _get_sagemaker_session.assert_called_with(TEST_REGION)
@@ -74,6 +77,7 @@ def test_main_success(_get_sagemaker_session, load_and_invoke, _exit_process, _l
 def test_main_success_with_run(
     _get_sagemaker_session, load_and_invoke, _exit_process, _load_run_object
 ):
+    os.environ["REMOTE_FUNCTION_SECRET_KEY"] = TEST_HMAC_KEY
     invoke_function.main()
 
     _get_sagemaker_session.assert_called_with(TEST_REGION)
@@ -94,6 +98,7 @@ def test_main_success_with_run(
 def test_main_failure(
     _get_sagemaker_session, load_and_invoke, _exit_process, handle_error, _load_run_object
 ):
+    os.environ["REMOTE_FUNCTION_SECRET_KEY"] = TEST_HMAC_KEY
     ser_err = SerializationError("some failure reason")
     load_and_invoke.side_effect = ser_err
     handle_error.return_value = 1
@@ -104,6 +109,10 @@ def test_main_failure(
     load_and_invoke.assert_called()
     _load_run_object.assert_not_called()
     handle_error.assert_called_with(
-        ser_err, _get_sagemaker_session(), TEST_S3_BASE_URI, TEST_S3_KMS_KEY
+        error=ser_err,
+        sagemaker_session=_get_sagemaker_session(),
+        s3_base_uri=TEST_S3_BASE_URI,
+        s3_kms_key=TEST_S3_KMS_KEY,
+        hmac_key=TEST_HMAC_KEY,
     )
     _exit_process.assert_called_with(1)

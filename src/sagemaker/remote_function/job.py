@@ -19,6 +19,7 @@ import re
 import shutil
 import sys
 import json
+import secrets
 from typing import Dict, List, Tuple
 
 from sagemaker.config.config_schema import (
@@ -166,6 +167,8 @@ class _JobSettings:
             {"AWS_DEFAULT_REGION": self.sagemaker_session.boto_region_name}
         )
 
+        self.environment_variables.update({"REMOTE_FUNCTION_SECRET_KEY": secrets.token_hex(32)})
+
         _image_uri = resolve_value_from_config(
             direct_input=image_uri,
             config_path=REMOTE_FUNCTION_IMAGE_URI,
@@ -304,11 +307,12 @@ class _JobSettings:
 class _Job:
     """Helper class that interacts with the SageMaker training service."""
 
-    def __init__(self, job_name: str, s3_uri: str, sagemaker_session: Session):
+    def __init__(self, job_name: str, s3_uri: str, sagemaker_session: Session, hmac_key: str):
         """Initialize a _Job object."""
         self.job_name = job_name
         self.s3_uri = s3_uri
         self.sagemaker_session = sagemaker_session
+        self.hmac_key = hmac_key
         self._last_describe_response = None
 
     @staticmethod
@@ -316,7 +320,9 @@ class _Job:
         """Construct a _Job from a describe_training_job_response object."""
         job_name = describe_training_job_response["TrainingJobName"]
         s3_uri = describe_training_job_response["OutputDataConfig"]["S3OutputPath"]
-        job = _Job(job_name, s3_uri, sagemaker_session)
+        hmac_key = describe_training_job_response["Environment"]["REMOTE_FUNCTION_SECRET_KEY"]
+
+        job = _Job(job_name, s3_uri, sagemaker_session, hmac_key)
         job._last_describe_response = describe_training_job_response
         return job
 
@@ -334,6 +340,7 @@ class _Job:
         """
         job_name = _Job._get_job_name(job_settings, func)
         s3_base_uri = s3_path_join(job_settings.s3_root_uri, job_name)
+        hmac_key = job_settings.environment_variables["REMOTE_FUNCTION_SECRET_KEY"]
 
         bootstrap_scripts_s3uri = _prepare_and_upload_runtime_scripts(
             s3_base_uri=s3_base_uri,
@@ -355,6 +362,7 @@ class _Job:
         stored_function = StoredFunction(
             sagemaker_session=job_settings.sagemaker_session,
             s3_base_uri=s3_base_uri,
+            hmac_key=hmac_key,
             s3_kms_key=job_settings.s3_kms_key,
         )
 
@@ -454,13 +462,12 @@ class _Job:
         if job_settings.vpc_config:
             request_dict["VpcConfig"] = job_settings.vpc_config
 
-        if job_settings.environment_variables:
-            request_dict["Environment"] = job_settings.environment_variables
+        request_dict["Environment"] = job_settings.environment_variables
 
         logger.info("Creating job: %s", job_name)
         job_settings.sagemaker_session.sagemaker_client.create_training_job(**request_dict)
 
-        return _Job(job_name, s3_base_uri, job_settings.sagemaker_session)
+        return _Job(job_name, s3_base_uri, job_settings.sagemaker_session, hmac_key)
 
     def describe(self):
         """Describe the underlying sagemaker training job."""
