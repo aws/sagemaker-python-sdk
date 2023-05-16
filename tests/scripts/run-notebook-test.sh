@@ -59,6 +59,7 @@ for env in base /home/ec2-user/anaconda3/envs/*; do
     sudo -u ec2-user -E sh -c 'source /home/ec2-user/anaconda3/bin/activate "$env"'
 
     echo "Updating SageMaker Python SDK..."
+    pip install --upgrade pip
     pip install "$TARBALL_DIRECTORY/sagemaker.tar.gz"
 
     sudo -u ec2-user -E sh -c 'source /home/ec2-user/anaconda3/bin/deactivate'
@@ -76,7 +77,7 @@ EOF
 LIFECYCLE_CONFIG_CONTENT=$((echo "$LIFECYCLE_CONFIG_1$LIFECYCLE_CONFIG_2$LIFECYCLE_CONFIG_3"|| echo "")| base64)
 
 echo "$LIFECYCLE_CONFIG_CONTENT"
-    
+
 }
 
 set -euo pipefail
@@ -120,6 +121,7 @@ echo "set SAGEMAKER_ROLE_ARN=$SAGEMAKER_ROLE_ARN"
 --lifecycle-config-name $LIFECYCLE_CONFIG_NAME \
 --notebook-instance-role-arn $SAGEMAKER_ROLE_ARN \
 --platformIdentifier notebook-al2-v2 \
+--consider-skips-failures \
 ./amazon-sagemaker-examples/sagemaker_processing/spark_distributed_data_processing/sagemaker-spark-processing.ipynb \
 ./amazon-sagemaker-examples/advanced_functionality/kmeans_bring_your_own_model/kmeans_bring_your_own_model.ipynb \
 ./amazon-sagemaker-examples/advanced_functionality/tensorflow_iris_byom/tensorflow_BYOM_iris.ipynb \
