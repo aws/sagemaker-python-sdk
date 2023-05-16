@@ -454,7 +454,7 @@ def test_generate_serving_properties_with_valid_configurations(
         "option.entryPoint": "djl_python.huggingface",
         "option.s3url": VALID_UNCOMPRESSED_MODEL_DATA,
         "option.tensor_parallel_degree": 1,
-        "option.dtype": "auto",
+        "option.dtype": "fp32",
         "option.device_id": 4,
         "option.device_map": "balanced",
     }

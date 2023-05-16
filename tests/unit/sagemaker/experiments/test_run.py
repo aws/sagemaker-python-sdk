@@ -48,6 +48,7 @@ from tests.unit.sagemaker.experiments.helpers import (
     mock_trial_load_or_create_func,
     mock_tc_load_or_create_func,
     TEST_EXP_NAME,
+    TEST_EXP_NAME_MIXED_CASE,
     TEST_RUN_NAME,
     TEST_EXP_DISPLAY_NAME,
     TEST_RUN_DISPLAY_NAME,
@@ -779,7 +780,9 @@ def test_list(mock_tc_search, mock_tc_list, mock_tc_load, run_obj, sagemaker_ses
     ]
     mock_tc_list.return_value = [
         TrialComponentSummary(
-            trial_component_name=Run._generate_trial_component_name("A" + str(i), TEST_EXP_NAME),
+            trial_component_name=Run._generate_trial_component_name(
+                "A" + str(i), TEST_EXP_NAME_MIXED_CASE
+            ),
             trial_component_arn="b" + str(i),
             display_name="C" + str(i),
             source_arn="D" + str(i),
@@ -798,7 +801,7 @@ def test_list(mock_tc_search, mock_tc_list, mock_tc_load, run_obj, sagemaker_ses
         (
             _TrialComponent(
                 trial_component_name=Run._generate_trial_component_name(
-                    "a" + str(i), TEST_EXP_NAME
+                    "a" + str(i), TEST_EXP_NAME_MIXED_CASE
                 ),
                 trial_component_arn="b" + str(i),
                 display_name="C" + str(i),
@@ -818,14 +821,14 @@ def test_list(mock_tc_search, mock_tc_list, mock_tc_load, run_obj, sagemaker_ses
     ]
 
     run_list = list_runs(
-        experiment_name=TEST_EXP_NAME,
+        experiment_name=TEST_EXP_NAME_MIXED_CASE,
         sort_by=SortByType.CREATION_TIME,
         sort_order=SortOrderType.ASCENDING,
         sagemaker_session=sagemaker_session,
     )
 
     mock_tc_list.assert_called_once_with(
-        experiment_name=TEST_EXP_NAME,
+        experiment_name=TEST_EXP_NAME_MIXED_CASE,
         created_before=None,
         created_after=None,
         sort_by="CreationTime",

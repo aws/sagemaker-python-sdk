@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.155.0 (2023-05-15)
+
+### Features
+
+ * Add support for SageMaker Serverless inference Provisioned Concurrency feature
+
+### Bug Fixes and Other Changes
+
+ * Revert "fix: make RemoteExecutor context manager non-blocking on pend…
+ * Add BOM to no No P2 Availability region list
+
 ## v2.154.0 (2023-05-11)
 
 ### Features

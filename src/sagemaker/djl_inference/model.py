@@ -854,11 +854,13 @@ class HuggingFaceAccelerateModel(DJLModel):
         if self.low_cpu_mem_usage:
             serving_properties["option.low_cpu_mem_usage"] = self.low_cpu_mem_usage
         # This is a workaround due to a bug in our built in handler for huggingface
-        # TODO: This needs to be fixed when new dlc is published
+        # TODO: Remove this logic whenever 0.20.0 image is out of service
         if (
             serving_properties["option.entryPoint"] == "djl_python.huggingface"
             and self.dtype
             and self.dtype != "auto"
+            and self.djl_version
+            and int(self.djl_version.split(".")[1]) < 21
         ):
             serving_properties["option.dtype"] = "auto"
             serving_properties.pop("option.load_in_8bit", None)
