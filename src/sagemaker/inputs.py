@@ -216,9 +216,9 @@ class TransformInput(object):
                   requests are failing.
 
             (default: ``{600,3}``)
-        batch_data_capture_config (dict, an object of `BatchDataCaptureConfig
-            <https://sagemaker.readthedocs.io/en/stable/api/utility/inputs.html#sagemaker.inputs.BatchDataCaptureConfig>`_):
-            Specifies configuration related to batch transform job
+        batch_data_capture_config (dict): The dict is an object of `BatchDataCaptureConfig
+            <https://sagemaker.readthedocs.io/en/stable/api/utility/inputs.html#sagemaker.inputs.BatchDataCaptureConfig>`_
+            and specifies configuration related to batch transform job
             for use with Amazon SageMaker Model Monitoring. For more information,
             see `Capture data from batch transform job
             <https://docs.aws.amazon.com/sagemaker/latest/dg/model-monitor-data-capture-batch.html>`_
