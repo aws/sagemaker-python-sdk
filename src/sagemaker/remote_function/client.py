@@ -301,6 +301,7 @@ def remote(
                             s3_uri=s3_path_join(
                                 job_settings.s3_root_uri, job.job_name, EXCEPTION_FOLDER
                             ),
+                            hmac_key=job.hmac_key,
                         )
                     except ServiceError as serr:
                         chained_e = serr.__cause__
@@ -337,6 +338,7 @@ def remote(
                 return serialization.deserialize_obj_from_s3(
                     sagemaker_session=job_settings.sagemaker_session,
                     s3_uri=s3_path_join(job_settings.s3_root_uri, job.job_name, RESULTS_FOLDER),
+                    hmac_key=job.hmac_key,
                 )
 
             if job.describe()["TrainingJobStatus"] == "Stopped":
@@ -861,6 +863,7 @@ class Future(object):
                 job_return = serialization.deserialize_obj_from_s3(
                     sagemaker_session=sagemaker_session,
                     s3_uri=s3_path_join(job.s3_uri, RESULTS_FOLDER),
+                    hmac_key=job.hmac_key,
                 )
             except DeserializationError as e:
                 client_exception = e
@@ -872,6 +875,7 @@ class Future(object):
                 job_exception = serialization.deserialize_exception_from_s3(
                     sagemaker_session=sagemaker_session,
                     s3_uri=s3_path_join(job.s3_uri, EXCEPTION_FOLDER),
+                    hmac_key=job.hmac_key,
                 )
             except ServiceError as serr:
                 chained_e = serr.__cause__
@@ -961,6 +965,7 @@ class Future(object):
                     self._return = serialization.deserialize_obj_from_s3(
                         sagemaker_session=self._job.sagemaker_session,
                         s3_uri=s3_path_join(self._job.s3_uri, RESULTS_FOLDER),
+                        hmac_key=self._job.hmac_key,
                     )
                     self._state = _FINISHED
                     return self._return
@@ -969,6 +974,7 @@ class Future(object):
                         self._exception = serialization.deserialize_exception_from_s3(
                             sagemaker_session=self._job.sagemaker_session,
                             s3_uri=s3_path_join(self._job.s3_uri, EXCEPTION_FOLDER),
+                            hmac_key=self._job.hmac_key,
                         )
                     except ServiceError as serr:
                         chained_e = serr.__cause__

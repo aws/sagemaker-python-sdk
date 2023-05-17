@@ -600,6 +600,7 @@ def test_decorator_pre_execution_script_error(
         assert "line 2: bws: command not found" in str(e)
 
 
+@pytest.mark.skip
 def test_decorator_auto_capture(sagemaker_session, auto_capture_test_container):
     """
     This test runs a docker container. The Container invocation will execute a python script

@@ -41,6 +41,7 @@ DEFAULT_ROLE_ARN = "default_execution_role_arn"
 TEST_REGION = "us-west-2"
 RUNTIME_SCRIPTS_CHANNEL_NAME = "sagemaker_remote_function_bootstrap"
 REMOTE_FUNCTION_WORKSPACE = "sm_rf_user_ws"
+HMAC_KEY = "some-hmac-key"
 
 EXPECTED_FUNCTION_URI = S3_URI + "/function.pkl"
 EXPECTED_OUTPUT_URI = S3_URI + "/output"
@@ -111,22 +112,29 @@ def job_function(a, b=1, *, c, d=3):
     return a * b * c * d
 
 
+@patch("secrets.token_hex", return_value=HMAC_KEY)
 @patch("sagemaker.remote_function.job.Session", return_value=mock_session())
 @patch("sagemaker.remote_function.job.get_execution_role", return_value=DEFAULT_ROLE_ARN)
-def test_sagemaker_config_job_settings(get_execution_role, session):
+def test_sagemaker_config_job_settings(get_execution_role, session, secret_token):
 
     job_settings = _JobSettings(image_uri="image_uri", instance_type="ml.m5.xlarge")
     assert job_settings.image_uri == "image_uri"
     assert job_settings.s3_root_uri == f"s3://{BUCKET}"
     assert job_settings.role == DEFAULT_ROLE_ARN
-    assert job_settings.environment_variables == {"AWS_DEFAULT_REGION": "us-west-2"}
+    assert job_settings.environment_variables == {
+        "AWS_DEFAULT_REGION": "us-west-2",
+        "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY,
+    }
     assert job_settings.include_local_workdir is False
     assert job_settings.instance_type == "ml.m5.xlarge"
 
 
+@patch("secrets.token_hex", return_value=HMAC_KEY)
 @patch("sagemaker.remote_function.job.Session", return_value=mock_session())
 @patch("sagemaker.remote_function.job.get_execution_role", return_value=DEFAULT_ROLE_ARN)
-def test_sagemaker_config_job_settings_with_configuration_file(get_execution_role, session):
+def test_sagemaker_config_job_settings_with_configuration_file(
+    get_execution_role, session, secret_token
+):
     config_tags = [
         {"Key": "someTagKey", "Value": "someTagValue"},
         {"Key": "someTagKey2", "Value": "someTagValue2"},
@@ -146,6 +154,7 @@ def test_sagemaker_config_job_settings_with_configuration_file(get_execution_rol
     assert job_settings.environment_variables == {
         "AWS_DEFAULT_REGION": "us-west-2",
         "EnvVarKey": "EnvVarValue",
+        "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY,
     }
     assert job_settings.job_conda_env == "my_conda_env"
     assert job_settings.include_local_workdir is True
@@ -227,6 +236,7 @@ def test_sagemaker_config_job_settings_studio_image_uri(get_execution_role, sess
 
 
 @patch("sagemaker.experiments._run_context._RunContext.get_current_run", new=mock_get_current_run)
+@patch("secrets.token_hex", return_value=HMAC_KEY)
 @patch("sagemaker.remote_function.job._prepare_and_upload_dependencies", return_value="some_s3_uri")
 @patch(
     "sagemaker.remote_function.job._prepare_and_upload_runtime_scripts", return_value="some_s3_uri"
@@ -235,7 +245,12 @@ def test_sagemaker_config_job_settings_studio_image_uri(get_execution_role, sess
 @patch("sagemaker.remote_function.job.StoredFunction")
 @patch("sagemaker.remote_function.job.Session", return_value=mock_session())
 def test_start(
-    session, mock_stored_function, mock_runtime_manager, mock_script_upload, mock_dependency_upload
+    session,
+    mock_stored_function,
+    mock_runtime_manager,
+    mock_script_upload,
+    mock_dependency_upload,
+    secret_token,
 ):
 
     job_settings = _JobSettings(
@@ -252,7 +267,10 @@ def test_start(
     assert job.job_name.startswith("job-function")
 
     assert mock_stored_function.called_once_with(
-        sagemaker_session=session(), s3_base_uri=f"{S3_URI}/{job.job_name}", s3_kms_key=None
+        sagemaker_session=session(),
+        s3_base_uri=f"{S3_URI}/{job.job_name}",
+        hmac_key=HMAC_KEY,
+        s3_kms_key=None,
     )
 
     local_dependencies_path = mock_runtime_manager().snapshot()
@@ -326,10 +344,11 @@ def test_start(
         ),
         EnableNetworkIsolation=False,
         EnableInterContainerTrafficEncryption=True,
-        Environment={"AWS_DEFAULT_REGION": "us-west-2"},
+        Environment={"AWS_DEFAULT_REGION": "us-west-2", "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY},
     )
 
 
+@patch("secrets.token_hex", return_value=HMAC_KEY)
 @patch("sagemaker.remote_function.job._prepare_and_upload_dependencies", return_value="some_s3_uri")
 @patch(
     "sagemaker.remote_function.job._prepare_and_upload_runtime_scripts", return_value="some_s3_uri"
@@ -338,7 +357,12 @@ def test_start(
 @patch("sagemaker.remote_function.job.StoredFunction")
 @patch("sagemaker.remote_function.job.Session", return_value=mock_session())
 def test_start_with_complete_job_settings(
-    session, mock_stored_function, mock_runtime_manager, mock_script_upload, mock_dependency_upload
+    session,
+    mock_stored_function,
+    mock_runtime_manager,
+    mock_script_upload,
+    mock_dependency_upload,
+    secret_token,
 ):
 
     job_settings = _JobSettings(
@@ -363,7 +387,10 @@ def test_start_with_complete_job_settings(
     assert job.job_name.startswith("job-function")
 
     assert mock_stored_function.called_once_with(
-        sagemaker_session=session(), s3_base_uri=f"{S3_URI}/{job.job_name}", s3_kms_key=None
+        sagemaker_session=session(),
+        s3_base_uri=f"{S3_URI}/{job.job_name}",
+        hmac_key=HMAC_KEY,
+        s3_kms_key=None,
     )
 
     local_dependencies_path = mock_runtime_manager().snapshot()
@@ -441,7 +468,7 @@ def test_start_with_complete_job_settings(
         EnableNetworkIsolation=False,
         EnableInterContainerTrafficEncryption=False,
         VpcConfig=dict(Subnets=["subnet"], SecurityGroupIds=["sg"]),
-        Environment={"AWS_DEFAULT_REGION": "us-west-2"},
+        Environment={"AWS_DEFAULT_REGION": "us-west-2", "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY},
     )
 
 

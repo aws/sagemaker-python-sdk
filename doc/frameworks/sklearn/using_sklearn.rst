@@ -7,7 +7,7 @@ With Scikit-learn Estimators, you can train and host Scikit-learn models on Amaz
 For information about supported versions of Scikit-learn, see the `AWS documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/sklearn.html>`__.
 We recommend that you use the latest supported version because that's where we focus most of our development efforts.
 
-For more information about the framework, see the `Sciket-Learn <https://github.com/scikit-learn/scikit-learn>`_ repository.
+For more information about the framework, see the `Scikit-Learn <https://github.com/scikit-learn/scikit-learn>`_ repository.
 For general information about using the SageMaker Python SDK, see :ref:`overview:Using the SageMaker Python SDK`.
 
 .. contents::
@@ -31,7 +31,7 @@ To train a Scikit-learn model by using the SageMaker Python SDK:
 Prepare a Scikit-learn Training Script
 ======================================
 
-Your Scikit-learn training script must be a Python 3.6 compatible source file.
+Your Scikit-learn training script must be a Python 3.7 compatible source file.
 
 The training script is similar to a training script you might run outside of SageMaker, but you
 can access useful properties about the training environment through various environment variables.
@@ -140,7 +140,7 @@ directories ('train' and 'test').
 
     sklearn_estimator = SKLearn('sklearn-train.py',
                                 instance_type='ml.m4.xlarge',
-                                framework_version='0.20.0',
+                                framework_version='1.0-1',
                                 hyperparameters = {'epochs': 20, 'batch-size': 64, 'learning-rate': 0.1})
     sklearn_estimator.fit({'train': 's3://my-data-bucket/path/to/my/training/data',
                             'test': 's3://my-data-bucket/path/to/my/test/data'})
@@ -204,7 +204,7 @@ operation.
     # Train my estimator
     sklearn_estimator = SKLearn(entry_point='train_and_deploy.py',
                                 instance_type='ml.m4.xlarge',
-                                framework_version='0.20.0')
+                                framework_version='1.0-1')
     sklearn_estimator.fit('s3://my_bucket/my_training_data/')
 
     # Deploy my estimator to a SageMaker Endpoint and get a Predictor
@@ -478,7 +478,7 @@ The following code sample shows how to do this, using the ``SKLearnModel`` class
     sklearn_model = SKLearnModel(model_data="s3://bucket/model.tar.gz",
                                  role="SageMakerRole",
                                  entry_point="transform_script.py",
-                                 framework_version="0.20.0")
+                                 framework_version="1.0-1")
 
     predictor = sklearn_model.deploy(instance_type="ml.c4.xlarge", initial_instance_count=1)
 

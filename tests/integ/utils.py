@@ -19,12 +19,15 @@ from botocore.exceptions import ClientError
 from tests.conftest import NO_P3_REGIONS, NO_M4_REGIONS
 from sagemaker.exceptions import CapacityError
 
+P2_INSTANCES = ["ml.p2.xlarge", "ml.p2.8xlarge", "ml.p2.16xlarge"]
+P3_INSTANCES = ["ml.p3.2xlarge"]
+
 
 def gpu_list(region):
     if region in NO_P3_REGIONS:
-        return ["ml.p2.xlarge"]
+        return P2_INSTANCES
     else:
-        return ["ml.p3.2xlarge", "ml.p2.xlarge"]
+        return [*P2_INSTANCES, *P3_INSTANCES]
 
 
 def cpu_list(region):
