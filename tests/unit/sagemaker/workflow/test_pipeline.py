@@ -35,6 +35,7 @@ from sagemaker.workflow.step_collections import StepCollection
 from tests.unit.sagemaker.workflow.helpers import ordered, CustomStep
 from sagemaker.local.local_session import LocalSession
 from botocore.exceptions import ClientError
+from sagemaker.workflow.selective_execution_config import SelectiveExecutionConfig
 
 
 @pytest.fixture
@@ -422,6 +423,22 @@ def test_pipeline_start(sagemaker_session_mock):
     pipeline.start(parameters=dict(alpha="epsilon"))
     assert sagemaker_session_mock.start_pipeline_execution.called_with(
         PipelineName="MyPipeline", PipelineParameters=[{"Name": "alpha", "Value": "epsilon"}]
+    )
+
+    selective_execution_config = SelectiveExecutionConfig(
+        source_pipeline_execution_arn="foo-arn", selected_steps=["step-1", "step-2", "step-3"]
+    )
+    pipeline.start(selective_execution_config=selective_execution_config)
+    sagemaker_session_mock.sagemaker_client.start_pipeline_execution.assert_called_with(
+        PipelineName="MyPipeline",
+        SelectiveExecutionConfig={
+            "SelectedSteps": [
+                {"StepName": "step-1"},
+                {"StepName": "step-2"},
+                {"StepName": "step-3"},
+            ],
+            "SourcePipelineExecutionArn": "foo-arn",
+        },
     )
 
 

@@ -40,6 +40,7 @@ from sagemaker.workflow.parameters import Parameter
 from sagemaker.workflow.pipeline_experiment_config import PipelineExperimentConfig
 from sagemaker.workflow.parallelism_config import ParallelismConfiguration
 from sagemaker.workflow.properties import Properties
+from sagemaker.workflow.selective_execution_config import SelectiveExecutionConfig
 from sagemaker.workflow.steps import Step, StepTypeEnum
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.condition_step import ConditionStep
@@ -312,6 +313,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         execution_display_name: str = None,
         execution_description: str = None,
         parallelism_config: ParallelismConfiguration = None,
+        selective_execution_config: SelectiveExecutionConfig = None,
     ):
         """Starts a Pipeline execution in the Workflow service.
 
@@ -323,16 +325,22 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             parallelism_config (Optional[ParallelismConfiguration]): Parallelism configuration
                 that is applied to each of the executions of the pipeline. It takes precedence
                 over the parallelism configuration of the parent pipeline.
+            selective_execution_config (SelectiveExecutionConfig): configuration for
+                selective step execution
 
         Returns:
             A `_PipelineExecution` instance, if successful.
         """
+        if selective_execution_config is not None:
+            selective_execution_config = selective_execution_config.to_request()
+
         kwargs = dict(PipelineName=self.name)
         update_args(
             kwargs,
             PipelineExecutionDescription=execution_description,
             PipelineExecutionDisplayName=execution_display_name,
             ParallelismConfiguration=parallelism_config,
+            SelectiveExecutionConfig=selective_execution_config,
         )
         if self.sagemaker_session.local_mode:
             update_args(kwargs, PipelineParameters=parameters)
