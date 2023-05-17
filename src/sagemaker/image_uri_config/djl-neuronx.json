@@ -29,7 +29,7 @@
                 "us-west-2": "763104351884"
             },
             "repository": "djl-inference",
-            "tag_prefix": "0.22.1-neuronx-sdk2.9.0"
+            "tag_prefix": "0.22.1-neuronx-sdk2.10.0"
         }
     }
 }
