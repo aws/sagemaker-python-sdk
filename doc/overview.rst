@@ -749,7 +749,8 @@ You can then run inference with the deployed model using the ``predict`` method.
     response = predictor.predict(question)
     print(response)
 
-You can optionally include specific model versions or instance types. For more information about the JumpStartModel class and its parameters, see JumpStartModel.
+You can optionally include specific model versions or instance types. For more information about the ``JumpStartModel`` class and its parameters, 
+see `JumpStartModel <https://sagemaker.readthedocs.io/en/stable/api/inference/model.html#sagemaker.jumpstart.model.JumpStartModel>`__.
 
 Deploy a Pre-Trained Model Directly to a SageMaker Endpoint
 ============================================================
