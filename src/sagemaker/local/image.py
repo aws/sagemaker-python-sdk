@@ -49,6 +49,13 @@ REGION_ENV_NAME = "AWS_REGION"
 TRAINING_JOB_NAME_ENV_NAME = "TRAINING_JOB_NAME"
 S3_ENDPOINT_URL_ENV_NAME = "S3_ENDPOINT_URL"
 
+# SELinux Enabled
+SELINUX_ENABLED = os.environ.get("SAGEMAKER_LOCAL_SELINUX_ENABLED", "False").lower() in [
+    "1",
+    "true",
+    "yes",
+]
+
 logger = logging.getLogger(__name__)
 
 
@@ -349,6 +356,7 @@ class _SageMakerContainer(object):
         # Gather the artifacts from all nodes into artifacts/model and artifacts/output
         for host in self.hosts:
             volumes = compose_data["services"][str(host)]["volumes"]
+            volumes = [v[:-2] if v.endswith(":z") else v for v in volumes]
             for volume in volumes:
                 if re.search(r"^[A-Za-z]:", volume):
                     unit, host_dir, container_dir = volume.split(":")
@@ -887,10 +895,14 @@ class _Volume(object):
 
         self.container_dir = container_dir if container_dir else "/opt/ml/input/data/" + channel
         self.host_dir = host_dir
+        map_format = "{}:{}"
+        if platform.system() == "Linux" and SELINUX_ENABLED:
+            # Support mounting shared volumes in SELinux enabled hosts
+            map_format += ":z"
         if platform.system() == "Darwin" and host_dir.startswith("/var"):
             self.host_dir = os.path.join("/private", host_dir)
 
-        self.map = "{}:{}".format(self.host_dir, self.container_dir)
+        self.map = map_format.format(self.host_dir, self.container_dir)
 
 
 def _stream_output(process):
