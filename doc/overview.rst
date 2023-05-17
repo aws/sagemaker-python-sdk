@@ -734,6 +734,7 @@ Then, using the model ID, define your model as a JumpStart model. Use the `deplo
 In this example, we use the EQA (extractive question answering) BERT base model (cased) from HuggingFace. 
 
 .. code:: python
+
     from sagemaker.jumpstart.model import JumpStartModel
     model_id = "huggingface-eqa-bert-base-cased"
     my_model = JumpStartModel(model_id=model_id)
@@ -741,6 +742,7 @@ In this example, we use the EQA (extractive question answering) BERT base model 
 
 You can then run inference with the deployed model using the `predict` method. 
 .. code:: python
+    
     question = "What is Southern California often abbreviated as?"
     response = predictor.predict(question)
     print(response)
