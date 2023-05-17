@@ -218,9 +218,7 @@ class AsyncPredictor:
     def _wait_for_output(self, output_path, failure_path, waiter_config):
         """Retrieve output based on the presense of failure_path."""
         if failure_path is not None:
-            return self._check_output_and_failure_paths(
-                output_path, failure_path, waiter_config
-            )
+            return self._check_output_and_failure_paths(output_path, failure_path, waiter_config)
 
         return self._check_output_path(output_path, waiter_config)
 
