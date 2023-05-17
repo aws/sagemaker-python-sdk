@@ -730,19 +730,21 @@ You can deploy a built-in algorithm or pretrained model to a SageMaker endpoint 
 
 First, find the model ID for the model of your choice in the :doc:`Built-in Algorithms with pre-trained Model Table<./doc_utils/pretrainedmodels>`.
 
-Then, using the model ID, define your model as a JumpStart model. Use the `deploy` method to automatically deploy your model for inference. 
+Then, using the model ID, define your model as a JumpStart model. Use the ``deploy`` method to automatically deploy your model for inference. 
 In this example, we use the EQA (extractive question answering) BERT base model (cased) from HuggingFace. 
 
 .. code:: python
 
     from sagemaker.jumpstart.model import JumpStartModel
+
     model_id = "huggingface-eqa-bert-base-cased"
     my_model = JumpStartModel(model_id=model_id)
     predictor = my_model.deploy()
 
-You can then run inference with the deployed model using the `predict` method. 
+You can then run inference with the deployed model using the ``predict`` method. 
+
 .. code:: python
-    
+
     question = "What is Southern California often abbreviated as?"
     response = predictor.predict(question)
     print(response)
