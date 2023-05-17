@@ -1,5 +1,26 @@
 # Changelog
 
+## v2.156.0 (2023-05-17)
+
+### Features
+
+ * Partition support for DJLModel using SM Training job
+ * Update run-notebook-test to consider skips failures
+
+### Bug Fixes and Other Changes
+
+ * Update apache airflow and update test requirements
+ * Perform integrity checks for remote function execution
+ * Add p2 instances to integ tests
+ * Fix typo in logging message within ir mixin
+ * double Run create on load_run
+ * Update dtype logic for huggingface backend for new containers
+
+### Documentation Changes
+
+ * Update container version for SKLearn
+ * Add description for parameters in TransformInput
+
 ## v2.155.0 (2023-05-15)
 
 ### Features
