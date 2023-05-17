@@ -22,3 +22,9 @@ A high level interface for SageMaker training
     :undoc-members:
     :show-inheritance:
     :inherited-members:
+
+.. autoclass:: sagemaker.jumpstart.estimator.JumpStartEstimator
+    :members:
+    :undoc-members:
+    :show-inheritance:
+    :inherited-members:

@@ -579,14 +579,14 @@ Here is an example:
 Use Built-in Algorithms with Pre-trained Models in SageMaker Python SDK
 ***********************************************************************
 
-SageMaker Python SDK provides built-in algorithms with pre-trained models from popular open source model
-hubs, such as TensorFlow Hub, Pytorch Hub, and HuggingFace. Customer can deploy these pre-trained models
+The SageMaker Python SDK provides built-in algorithms with pre-trained models from popular open source model
+hubs, such as TensorFlow Hub, Pytorch Hub, and HuggingFace. You can deploy these pre-trained models
 as-is or first fine-tune them on a custom dataset and then deploy to a SageMaker endpoint for inference.
 
 
-SageMaker SDK built-in algorithms allow customers access pre-trained models using model ids and model
-versions. The ‘pre-trained model’ table below provides list of models with information useful in
-selecting the correct model id and corresponding parameters. These models are also available through
+SageMaker SDK built-in algorithms allow customers to access pre-trained models using model IDs and model
+versions. The ‘pre-trained model’ table below provides a list of models with useful information for 
+selecting the correct model ID and corresponding parameters. These models are also available through
 the `JumpStart UI in SageMaker Studio <https://docs.aws.amazon.com/sagemaker/latest/dg/studio-jumpstart.html>`__.
 
 
@@ -637,8 +637,7 @@ Prerequisites
 
 .. container::
 
-   -  You must set up AWS credentials following the steps
-      in `Quick configuration with aws configure <https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html#cli-configure-quickstart-config>`__.
+   -  You must set up AWS credentials. For more information, see `Configuring the AWS CLI <https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html#cli-configure-quickstart-config>`__.
    -  Your IAM role must allow connection to Amazon SageMaker and
       Amazon S3. For more information about IAM role permissions,
       see `Policies and permissions in IAM <https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html>`__.
@@ -646,8 +645,8 @@ Prerequisites
 Built-in Components
 ===================
 
-The following sections give information about the main built-in
-components and their function.
+The following sections provide information about the main components of built-in algorithms 
+including pretrained models, model scripts, and model images.
 
 Pre-trained models
 ------------------
@@ -656,7 +655,7 @@ SageMaker maintains a model zoo of over 300 models from popular open source mode
 TensorFlow Hub, Pytorch Hub, and HuggingFace. You can use the SageMaker Python SDK to fine-tune
 a model on your own dataset or deploy it directly to a SageMaker endpoint for inference.
 
-Model artifacts are stored as tarballs in a S3 bucket. Each model is versioned and contains a
+Model artifacts are stored as tarballs in an S3 bucket. Each model is versioned and contains a
 unique ID which can be used to retrieve the model URI. The following information describes the
 ``model_id`` and ``model_version`` needed to retrieve the URI.
 
@@ -725,7 +724,30 @@ retrieve the related image as follows.
        instance_type="ml.m5.xlarge",
    )
 
-Deploy a  Pre-Trained Model Directly to a SageMaker Endpoint
+Low-code Deployment
+===================
+You can deploy a built-in algorithm or pretrained model to a SageMaker endpoint in just a few lines of code using the SageMaker Python SDK.
+
+First, find the model ID for the model of your choice in the :doc:`Built-in Algorithms with pre-trained Model Table<./doc_utils/pretrainedmodels>`.
+
+Then, using the model ID, define your model as a JumpStart model. Use the `deploy` method to automatically deploy your model for inference. 
+In this example, we use the EQA (extractive question answering) BERT base model (cased) from HuggingFace. 
+
+.. code:: python
+    from sagemaker.jumpstart.model import JumpStartModel
+    model_id = "huggingface-eqa-bert-base-cased"
+    my_model = JumpStartModel(model_id=model_id)
+    predictor = my_model.deploy()
+
+You can then run inference with the deployed model using the `predict` method. 
+.. code:: python
+    question = "What is Southern California often abbreviated as?"
+    response = predictor.predict(question)
+    print(response)
+
+You can optionally include specific model versions or instance types. For more information about the JumpStartModel class and its parameters, see JumpStartModel.
+
+Deploy a Pre-Trained Model Directly to a SageMaker Endpoint
 ============================================================
 
 In this section, you learn how to take a pre-trained model and deploy

@@ -7,6 +7,11 @@ Model
     :show-inheritance:
     :inherited-members:
 
+.. autoclass:: sagemaker.jumpstart.model.JumpStartModel
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 .. autoclass:: sagemaker.model.FrameworkModel
     :members:
     :undoc-members:
