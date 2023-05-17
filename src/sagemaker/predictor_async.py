@@ -99,7 +99,7 @@ class AsyncPredictor:
         self._input_path = input_path
         response = self._submit_async_request(input_path, initial_args, inference_id)
         output_location = response["OutputLocation"]
-        failure_location = response["FailureLocation"]
+        failure_location = response.get("FailureLocation")
         result = self._wait_for_output(
             output_path=output_location, failure_path=failure_location, waiter_config=waiter_config
         )
@@ -145,7 +145,7 @@ class AsyncPredictor:
         self._input_path = input_path
         response = self._submit_async_request(input_path, initial_args, inference_id)
         output_location = response["OutputLocation"]
-        failure_location = response["FailureLocation"]
+        failure_location = response.get("FailureLocation")
         response_async = AsyncInferenceResponse(
             predictor_async=self,
             output_path=output_location,
@@ -216,6 +216,35 @@ class AsyncPredictor:
         return response
 
     def _wait_for_output(self, output_path, failure_path, waiter_config):
+        """Retrieve output based on the presense of failure_path."""
+        if failure_path is not None:
+            return self._check_output_and_failure_paths(
+                output_path, failure_path, waiter_config
+            )
+
+        return self._check_output_path(output_path, waiter_config)
+
+    def _check_output_path(self, output_path, waiter_config):
+        """Check the Amazon S3 output path for the output.
+
+        Periodically check Amazon S3 output path for async inference result.
+        Timeout automatically after max attempts reached
+        """
+        bucket, key = parse_s3_url(output_path)
+        s3_waiter = self.s3_client.get_waiter("object_exists")
+        try:
+            s3_waiter.wait(Bucket=bucket, Key=key, WaiterConfig=waiter_config._to_request_dict())
+        except WaiterError:
+            raise PollingTimeoutError(
+                message="Inference could still be running",
+                output_path=output_path,
+                seconds=waiter_config.delay * waiter_config.max_attempts,
+            )
+        s3_object = self.s3_client.get_object(Bucket=bucket, Key=key)
+        result = self.predictor._handle_response(response=s3_object)
+        return result
+
+    def _check_output_and_failure_paths(self, output_path, failure_path, waiter_config):
         """Check the Amazon S3 output path for the output.
 
         This method waits for either the output file or the failure file to be found on the
