@@ -74,8 +74,8 @@ from sagemaker.config import (
     SCHEMA_VERSION,
     PYTHON_SDK,
     MODULES,
-    SESSION_DEFAULT_S3_BUCKET,
-    SESSION_DEFAULT_S3_OBJECT_KEY_PREFIX,
+    DEFAULT_S3_BUCKET,
+    DEFAULT_S3_OBJECT_KEY_PREFIX,
     SESSION,
 )
 
@@ -90,8 +90,8 @@ SAGEMAKER_CONFIG_SESSION = {
         PYTHON_SDK: {
             MODULES: {
                 SESSION: {
-                    SESSION_DEFAULT_S3_BUCKET: "sagemaker-config-session-s3-bucket",
-                    SESSION_DEFAULT_S3_OBJECT_KEY_PREFIX: "test-prefix",
+                    DEFAULT_S3_BUCKET: "sagemaker-config-session-s3-bucket",
+                    DEFAULT_S3_OBJECT_KEY_PREFIX: "test-prefix",
                 },
             },
         },

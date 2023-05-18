@@ -214,7 +214,7 @@ def test_invalid_s3uri_schema(base_config_with_schema):
     ],
 )
 def test_session_s3_bucket_schema(base_config_with_schema, bucket_name):
-    config = {"PythonSDK": {"Modules": {"Session": {"SessionDefaultS3Bucket": bucket_name}}}}
+    config = {"PythonSDK": {"Modules": {"Session": {"DefaultS3Bucket": bucket_name}}}}
     _validate_config(base_config_with_schema, config)
 
 
@@ -256,9 +256,7 @@ def test_invalid_session_s3_bucket_schema(base_config_with_schema, invalid_bucke
     ],
 )
 def test_session_s3_object_key_prefix_schema(base_config_with_schema, prefix_name):
-    config = {
-        "PythonSDK": {"Modules": {"Session": {"SessionDefaultS3ObjectKeyPrefix": prefix_name}}}
-    }
+    config = {"PythonSDK": {"Modules": {"Session": {"DefaultS3ObjectKeyPrefix": prefix_name}}}}
     _validate_config(base_config_with_schema, config)
 
 

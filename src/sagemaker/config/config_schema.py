@@ -90,8 +90,8 @@ OBJECT = "object"
 ADDITIONAL_PROPERTIES = "additionalProperties"
 ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION = "EnableInterContainerTrafficEncryption"
 SESSION = "Session"
-SESSION_DEFAULT_S3_BUCKET = "SessionDefaultS3Bucket"
-SESSION_DEFAULT_S3_OBJECT_KEY_PREFIX = "SessionDefaultS3ObjectKeyPrefix"
+DEFAULT_S3_BUCKET = "DefaultS3Bucket"
+DEFAULT_S3_OBJECT_KEY_PREFIX = "DefaultS3ObjectKeyPrefix"
 
 
 def _simple_path(*args: str):
@@ -299,10 +299,10 @@ TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH = _simple_path(
     SAGEMAKER, TRAINING_JOB, ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION
 )
 SESSION_DEFAULT_S3_BUCKET_PATH = _simple_path(
-    SAGEMAKER, PYTHON_SDK, MODULES, SESSION, SESSION_DEFAULT_S3_BUCKET
+    SAGEMAKER, PYTHON_SDK, MODULES, SESSION, DEFAULT_S3_BUCKET
 )
 SESSION_DEFAULT_S3_OBJECT_KEY_PREFIX_PATH = _simple_path(
-    SAGEMAKER, PYTHON_SDK, MODULES, SESSION, SESSION_DEFAULT_S3_OBJECT_KEY_PREFIX
+    SAGEMAKER, PYTHON_SDK, MODULES, SESSION, DEFAULT_S3_OBJECT_KEY_PREFIX
 )
 
 
@@ -497,11 +497,11 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                     TYPE: OBJECT,
                                     ADDITIONAL_PROPERTIES: False,
                                     PROPERTIES: {
-                                        SESSION_DEFAULT_S3_BUCKET: {
+                                        DEFAULT_S3_BUCKET: {
                                             "description": "sets `default_bucket` of Session",
                                             "$ref": "#/definitions/s3Bucket",
                                         },
-                                        SESSION_DEFAULT_S3_OBJECT_KEY_PREFIX: {
+                                        DEFAULT_S3_OBJECT_KEY_PREFIX: {
                                             "description": (
                                                 "sets `default_bucket_prefix` of Session"
                                             ),

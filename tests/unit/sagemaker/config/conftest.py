@@ -40,8 +40,8 @@ def valid_tags():
 @pytest.fixture()
 def valid_session_config():
     return {
-        "SessionDefaultS3Bucket": "sagemaker-python-sdk-test-bucket",
-        "SessionDefaultS3ObjectKeyPrefix": "test-prefix",
+        "DefaultS3Bucket": "sagemaker-python-sdk-test-bucket",
+        "DefaultS3ObjectKeyPrefix": "test-prefix",
     }
 
 

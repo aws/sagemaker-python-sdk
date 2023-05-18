@@ -135,7 +135,7 @@ from sagemaker.config.config_schema import (  # noqa: F401
     SCHEMA_VERSION,
     PYTHON_SDK,
     MODULES,
-    SESSION_DEFAULT_S3_BUCKET,
-    SESSION_DEFAULT_S3_OBJECT_KEY_PREFIX,
+    DEFAULT_S3_BUCKET,
+    DEFAULT_S3_OBJECT_KEY_PREFIX,
     SESSION,
 )

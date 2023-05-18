@@ -342,7 +342,7 @@ def test_default_bucket_with_sagemaker_config(boto_session, client):
     assert (
         session_with_config_bucket.default_bucket()
         == SAGEMAKER_CONFIG_SESSION["SageMaker"]["PythonSDK"]["Modules"]["Session"][
-            "SessionDefaultS3Bucket"
+            "DefaultS3Bucket"
         ]
     )
 
@@ -381,7 +381,7 @@ def test_default_bucket_prefix_with_sagemaker_config(boto_session, client):
     assert (
         session_with_config_prefix.default_bucket_prefix
         == SAGEMAKER_CONFIG_SESSION["SageMaker"]["PythonSDK"]["Modules"]["Session"][
-            "SessionDefaultS3ObjectKeyPrefix"
+            "DefaultS3ObjectKeyPrefix"
         ]
     )
 

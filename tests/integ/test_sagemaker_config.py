@@ -99,7 +99,7 @@ def sagemaker_session_with_dynamically_generated_sagemaker_config(
             "PythonSDK": {
                 "Modules": {
                     "Session": {
-                        "SessionDefaultS3ObjectKeyPrefix": S3_KEY_PREFIX,
+                        "DefaultS3ObjectKeyPrefix": S3_KEY_PREFIX,
                         # S3Bucket is omitted for now, because the tests support one S3 bucket at
                         # the moment and it would be hard to validate injection of this parameter
                         # if we use the same bucket that the rest of the tests are.

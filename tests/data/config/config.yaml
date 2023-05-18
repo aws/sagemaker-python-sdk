@@ -3,8 +3,8 @@ SageMaker:
   PythonSDK:
     Modules:
       Session:
-        SessionDefaultS3Bucket: 'sagemaker-python-sdk-test-bucket'
-        SessionDefaultS3ObjectKeyPrefix: 'test-prefix'
+        DefaultS3Bucket: 'sagemaker-python-sdk-test-bucket'
+        DefaultS3ObjectKeyPrefix: 'test-prefix'
       RemoteFunction:
         Dependencies: "./requirements.txt"
         EnvironmentVariables:
