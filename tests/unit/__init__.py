@@ -314,6 +314,7 @@ def _test_default_bucket_and_prefix_combinations(
         default_bucket=Mock(name="default_bucket", return_value=DEFAULT_S3_BUCKET_NAME),
         default_bucket_prefix=DEFAULT_S3_OBJECT_KEY_PREFIX_NAME,
         config=None,
+        settings=None,
     ),
     session_with_bucket_and_no_prefix=Mock(
         name="sagemaker_session",
@@ -321,6 +322,7 @@ def _test_default_bucket_and_prefix_combinations(
         default_bucket_prefix=None,
         default_bucket=Mock(name="default_bucket", return_value=DEFAULT_S3_BUCKET_NAME),
         config=None,
+        settings=None,
     ),
 ):
     """
