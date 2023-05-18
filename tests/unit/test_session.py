@@ -1633,6 +1633,102 @@ def test_train_with_sagemaker_config_injection(sagemaker_session):
     }
 
 
+def test_train_with_sagemaker_config_injection_no_kms_support(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
+
+    in_config = [
+        {
+            "ChannelName": "training",
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataDistributionType": "FullyReplicated",
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": S3_INPUT_URI,
+                }
+            },
+        }
+    ]
+
+    out_config = {"S3OutputPath": S3_OUTPUT}
+
+    resource_config = {
+        "InstanceCount": INSTANCE_COUNT,
+        "InstanceType": "ml.g5.12xlarge",
+    }
+
+    stop_cond = {"MaxRuntimeInSeconds": MAX_TIME}
+    RETRY_STRATEGY = {"MaximumRetryAttempts": 2}
+    hyperparameters = {"foo": "bar"}
+    TRAINING_IMAGE_CONFIG = {
+        "TrainingRepositoryAccessMode": "Vpc",
+        "TrainingRepositoryAuthConfig": {
+            "TrainingRepositoryCredentialsProviderArn": "arn:aws:lambda:us-west-2:1234567897:function:test"
+        },
+    }
+
+    sagemaker_session.train(
+        image_uri=IMAGE,
+        input_mode="File",
+        input_config=in_config,
+        job_name=JOB_NAME,
+        output_config=out_config,
+        resource_config=resource_config,
+        hyperparameters=hyperparameters,
+        stop_condition=stop_cond,
+        metric_definitions=METRIC_DEFINITONS,
+        use_spot_instances=True,
+        checkpoint_s3_uri="s3://mybucket/checkpoints/",
+        checkpoint_local_path="/tmp/checkpoints",
+        enable_sagemaker_metrics=True,
+        environment=ENV_INPUT,
+        retry_strategy=RETRY_STRATEGY,
+        training_image_config=TRAINING_IMAGE_CONFIG,
+    )
+
+    _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
+
+    expected_role_arn = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["RoleArn"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "OutputDataConfig"
+    ]["KmsKeyId"]
+    expected_vpc_config = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["VpcConfig"]
+    expected_enable_network_isolation = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "EnableNetworkIsolation"
+    ]
+    expected_enable_inter_container_traffic_encryption = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"][
+        "TrainingJob"
+    ]["EnableInterContainerTrafficEncryption"]
+    expected_tags = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["Tags"]
+
+    assert actual_train_args["VpcConfig"] == expected_vpc_config
+    assert actual_train_args["HyperParameters"] == hyperparameters
+    assert actual_train_args["Tags"] == expected_tags
+    assert actual_train_args["AlgorithmSpecification"]["MetricDefinitions"] == METRIC_DEFINITONS
+    assert actual_train_args["AlgorithmSpecification"]["EnableSageMakerMetricsTimeSeries"] is True
+    assert (
+        actual_train_args["EnableInterContainerTrafficEncryption"]
+        == expected_enable_inter_container_traffic_encryption
+    )
+    assert actual_train_args["EnableNetworkIsolation"] == expected_enable_network_isolation
+    assert actual_train_args["EnableManagedSpotTraining"] is True
+    assert actual_train_args["CheckpointConfig"]["S3Uri"] == "s3://mybucket/checkpoints/"
+    assert actual_train_args["CheckpointConfig"]["LocalPath"] == "/tmp/checkpoints"
+    assert actual_train_args["Environment"] == ENV_INPUT
+    assert actual_train_args["RetryStrategy"] == RETRY_STRATEGY
+    assert (
+        actual_train_args["AlgorithmSpecification"]["TrainingImageConfig"] == TRAINING_IMAGE_CONFIG
+    )
+    assert actual_train_args["RoleArn"] == expected_role_arn
+    assert actual_train_args["ResourceConfig"] == {
+        "InstanceCount": INSTANCE_COUNT,
+        "InstanceType": "ml.g5.12xlarge",
+    }
+    assert actual_train_args["OutputDataConfig"] == {
+        "S3OutputPath": S3_OUTPUT,
+        "KmsKeyId": expected_kms_key_id,
+    }
+
+
 def test_train_pack_to_request_with_optional_params(sagemaker_session):
     in_config = [
         {
@@ -2562,7 +2658,7 @@ def test_create_endpoint_config_with_sagemaker_config_injection(sagemaker_sessio
         "endpoint-test",
         "simple-model",
         1,
-        "local",
+        "ml.p2.xlarge",
         data_capture_config_dict=data_capture_config_dict,
     )
     expected_data_capture_kms_key_id = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"][
@@ -2581,7 +2677,7 @@ def test_create_endpoint_config_with_sagemaker_config_injection(sagemaker_sessio
                 "VariantName": "AllTraffic",
                 "InitialVariantWeight": 1,
                 "InitialInstanceCount": 1,
-                "InstanceType": "local",
+                "InstanceType": "ml.p2.xlarge",
             }
         ],
         DataCaptureConfig={
@@ -2589,6 +2685,44 @@ def test_create_endpoint_config_with_sagemaker_config_injection(sagemaker_sessio
             "KmsKeyId": expected_data_capture_kms_key_id,
         },
         KmsKeyId=expected_kms_key_id,
+        Tags=expected_tags,
+    )
+
+
+def test_create_endpoint_config_with_sagemaker_config_injection_no_kms_support(sagemaker_session):
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_ENDPOINT_CONFIG
+
+    data_capture_config_dict = {"DestinationS3Uri": "s3://test"}
+
+    # This method does not support ASYNC_INFERENCE_CONFIG or multiple PRODUCTION_VARIANTS
+    sagemaker_session.create_endpoint_config(
+        "endpoint-test",
+        "simple-model",
+        1,
+        "ml.g5.xlarge",
+        data_capture_config_dict=data_capture_config_dict,
+    )
+    expected_data_capture_kms_key_id = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"][
+        "EndpointConfig"
+    ]["DataCaptureConfig"]["KmsKeyId"]
+
+    expected_tags = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"]["EndpointConfig"]["Tags"]
+
+    sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
+        EndpointConfigName="endpoint-test",
+        ProductionVariants=[
+            {
+                "ModelName": "simple-model",
+                "VariantName": "AllTraffic",
+                "InitialVariantWeight": 1,
+                "InitialInstanceCount": 1,
+                "InstanceType": "ml.g5.xlarge",
+            }
+        ],
+        DataCaptureConfig={
+            "DestinationS3Uri": "s3://test",
+            "KmsKeyId": expected_data_capture_kms_key_id,
+        },
         Tags=expected_tags,
     )
 

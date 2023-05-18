@@ -29,6 +29,7 @@ import botocore
 import botocore.config
 from botocore.exceptions import ClientError
 import six
+from sagemaker.utils import instance_supports_kms
 
 import sagemaker.logs
 from sagemaker import vpc_utils
@@ -820,6 +821,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
         inferred_resource_config = update_nested_dictionary_with_values_from_config(
             resource_config, TRAINING_JOB_RESOURCE_CONFIG_PATH, sagemaker_session=self
         )
+        if (
+            "InstanceType" in inferred_resource_config
+            and not instance_supports_kms(inferred_resource_config["InstanceType"])
+            and "VolumeKmsKeyId" in inferred_resource_config
+        ):
+            del inferred_resource_config["VolumeKmsKeyId"]
         train_request = self._get_train_request(
             input_mode=input_mode,
             input_config=input_config,
@@ -3756,8 +3763,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
         if tags is not None:
             request["Tags"] = tags
-        kms_key = resolve_value_from_config(
-            kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self
+        kms_key = (
+            resolve_value_from_config(
+                kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self
+            )
+            if instance_supports_kms(instance_type)
+            else kms_key
         )
         if kms_key is not None:
             request["KmsKeyId"] = kms_key
@@ -3850,7 +3861,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if new_kms_key is not None or existing_endpoint_config_desc.get("KmsKeyId") is not None:
             request["KmsKeyId"] = new_kms_key or existing_endpoint_config_desc.get("KmsKeyId")
-        if KMS_KEY_ID not in request:
+
+        supports_kms = all(
+            [
+                instance_supports_kms(production_variant["InstanceType"])
+                for production_variant in production_variants
+                if "InstanceType" in production_variant
+            ]
+        )
+
+        if KMS_KEY_ID not in request and supports_kms:
             kms_key_from_config = resolve_value_from_config(
                 config_path=ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self
             )
@@ -4471,6 +4491,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             str: The name of the created ``Endpoint``.
         """
+
+        supports_kms = all(
+            [
+                instance_supports_kms(production_variant["InstanceType"])
+                for production_variant in production_variants
+                if "InstanceType" in production_variant
+            ]
+        )
+
         update_list_of_dicts_with_values_from_config(
             production_variants,
             ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH,
@@ -4478,8 +4507,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
             sagemaker_session=self,
         )
         config_options = {"EndpointConfigName": name, "ProductionVariants": production_variants}
-        kms_key = resolve_value_from_config(
-            kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self
+        kms_key = (
+            resolve_value_from_config(
+                kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self
+            )
+            if supports_kms
+            else kms_key
         )
         tags = _append_project_tags(tags)
         tags = self._append_sagemaker_config_tags(

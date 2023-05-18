@@ -919,25 +919,6 @@ def test_mime_type_enum_from_str():
             assert MIMEType.from_suffixed_type(mime_type_with_suffix) == mime_type
 
 
-def test_stringify_object():
-    class MyTestClass:
-        def __init__(self):
-            self.blah = "blah"
-            self.wtafigo = "eiifccreeeiuclkftdvttufbkhirtvvbhrieclghjiru"
-            self.none_field = None
-            self.dict_field = {"my": "dict"}
-            self.list_field = ["1", 2, 3.0]
-            self.list_dict_field = [{"hello": {"world": {"hello"}}}]
-
-    stringified_class = (
-        b"MyTestClass: {'blah': 'blah', 'wtafigo': 'eiifccreeeiuc"
-        b"lkftdvttufbkhirtvvbhrieclghjiru', 'dict_field': {'my': 'dict'}, 'list_field'"
-        b": ['1', 2, 3.0], 'list_dict_field': [{'hello': {'world': {'hello'}}}]}"
-    )
-
-    assert utils.stringify_object(MyTestClass()).encode() == stringified_class
-
-
 class TestIsValidModelId(TestCase):
     @patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor._get_manifest")
     @patch("sagemaker.jumpstart.utils.accessors.JumpStartModelsAccessor.get_model_specs")

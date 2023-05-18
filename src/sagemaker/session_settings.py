@@ -18,7 +18,12 @@ from __future__ import absolute_import
 class SessionSettings(object):
     """Optional container class for settings to apply to a SageMaker session."""
 
-    def __init__(self, encrypt_repacked_artifacts=True, local_download_dir=None) -> None:
+    def __init__(
+        self,
+        encrypt_repacked_artifacts=True,
+        local_download_dir=None,
+        ignore_intelligent_defaults=False,
+    ) -> None:
         """Initialize the ``SessionSettings`` of a SageMaker ``Session``.
 
         Args:
@@ -27,9 +32,12 @@ class SessionSettings(object):
                 is not provided (Default: True).
             local_download_dir (str): Optional. A path specifying the local directory
                 for downloading artifacts. (Default: None).
+            ignore_intelligent_defaults (bool): Optional. Flag to indicate whether to ignore
+                intelligent default settings. (Default: False).
         """
         self._encrypt_repacked_artifacts = encrypt_repacked_artifacts
         self._local_download_dir = local_download_dir
+        self._ignore_intelligent_defaults = ignore_intelligent_defaults
 
     @property
     def encrypt_repacked_artifacts(self) -> bool:
@@ -40,3 +48,8 @@ class SessionSettings(object):
     def local_download_dir(self) -> str:
         """Return path specifying the local directory for downloading artifacts."""
         return self._local_download_dir
+
+    @property
+    def ignore_intelligent_defaults(self) -> bool:
+        """Return boolean for whether intelligent defaults should be ignored."""
+        return self._ignore_intelligent_defaults
