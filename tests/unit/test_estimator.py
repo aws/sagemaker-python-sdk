@@ -497,6 +497,53 @@ def test_estimator_initialization_with_sagemaker_config_injection_no_kms_support
     assert estimator.subnets == expected_subnets
 
 
+def test_estimator_initialization_with_sagemaker_config_injection_partial_kms_support(
+    sagemaker_session,
+):
+
+    sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
+
+    estimator = Estimator(
+        image_uri="some-image",
+        instance_groups=[
+            InstanceGroup("group1", "ml.p2.xlarge", 1),
+            InstanceGroup("group2", "ml.g5.2xlarge", 2),
+        ],
+        sagemaker_session=sagemaker_session,
+        base_job_name="base_job_name",
+    )
+
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "ResourceConfig"
+    ]["VolumeKmsKeyId"]
+    expected_role_arn = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["RoleArn"]
+    expected_kms_key_id = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "OutputDataConfig"
+    ]["KmsKeyId"]
+    expected_subnets = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"]["VpcConfig"][
+        "Subnets"
+    ]
+    expected_security_groups = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "VpcConfig"
+    ]["SecurityGroupIds"]
+    expected_enable_network_isolation = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"]["TrainingJob"][
+        "EnableNetworkIsolation"
+    ]
+    expected_enable_inter_container_traffic_encryption = SAGEMAKER_CONFIG_TRAINING_JOB["SageMaker"][
+        "TrainingJob"
+    ]["EnableInterContainerTrafficEncryption"]
+    assert estimator.role == expected_role_arn
+    assert estimator.enable_network_isolation() == expected_enable_network_isolation
+    assert (
+        estimator.encrypt_inter_container_traffic
+        == expected_enable_inter_container_traffic_encryption
+    )
+    assert estimator.output_kms_key == expected_kms_key_id
+    assert estimator.volume_kms_key == expected_volume_kms_key_id
+    assert estimator.security_group_ids == expected_security_groups
+    assert estimator.subnets == expected_subnets
+
+
 def test_framework_with_heterogeneous_cluster(sagemaker_session):
     f = DummyFramework(
         entry_point=SCRIPT_PATH,
