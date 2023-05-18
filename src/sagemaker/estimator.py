@@ -618,7 +618,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 instance_type_for_volume_kms and instance_supports_kms(instance_type_for_volume_kms)
             )
             or instance_groups is not None
-            and all(
+            and any(
                 [
                     instance_supports_kms(instance_group.instance_type)
                     for instance_group in instance_groups

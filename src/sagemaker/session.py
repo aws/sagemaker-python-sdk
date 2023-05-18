@@ -3862,7 +3862,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if new_kms_key is not None or existing_endpoint_config_desc.get("KmsKeyId") is not None:
             request["KmsKeyId"] = new_kms_key or existing_endpoint_config_desc.get("KmsKeyId")
 
-        supports_kms = all(
+        supports_kms = any(
             [
                 instance_supports_kms(production_variant["InstanceType"])
                 for production_variant in production_variants
@@ -4492,7 +4492,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             str: The name of the created ``Endpoint``.
         """
 
-        supports_kms = all(
+        supports_kms = any(
             [
                 instance_supports_kms(production_variant["InstanceType"])
                 for production_variant in production_variants
