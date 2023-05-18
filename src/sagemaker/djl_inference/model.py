@@ -503,12 +503,16 @@ class DJLModel(FrameworkModel):
             self.key_prefix, self.name, self.image_uri
         )
         if s3_output_uri is None:
-            bucket = self.bucket or self.sagemaker_session.default_bucket()
-            s3_output_uri = f"s3://{bucket}/{deploy_key_prefix}"
+            bucket, deploy_key_prefix = s3.determine_bucket_and_prefix(
+                bucket=self.bucket,
+                key_prefix=deploy_key_prefix,
+                sagemaker_session=self.sagemaker_session,
+            )
+            s3_output_uri = s3_path_join("s3://", bucket, deploy_key_prefix)
         else:
-            s3_output_uri = f"{s3_output_uri}/{deploy_key_prefix}"
+            s3_output_uri = s3_path_join(s3_output_uri, deploy_key_prefix)
 
-        self.save_mp_checkpoint_path = f"{s3_output_uri}/aot-partitioned-checkpoints"
+        self.save_mp_checkpoint_path = s3_path_join(s3_output_uri, "aot-partitioned-checkpoints")
 
         container_def = self._upload_model_to_s3(upload_as_tar=False)
         estimator = _create_estimator(

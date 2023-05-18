@@ -468,6 +468,7 @@ class Processor(object):
                                 "s3:/",
                                 self.sagemaker_session.default_bucket(),
                                 *(
+                                    # don't include default_bucket_prefix if it is None or ""
                                     [self.sagemaker_session.default_bucket_prefix]
                                     if self.sagemaker_session.default_bucket_prefix
                                     else []

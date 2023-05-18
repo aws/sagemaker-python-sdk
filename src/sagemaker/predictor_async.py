@@ -179,7 +179,7 @@ class AsyncPredictor:
         self.s3_client.put_object(
             Body=data, Bucket=bucket, Key=key, ContentType=self.serializer.CONTENT_TYPE
         )
-        input_path = input_path or "s3://{}/{}".format(self.sagemaker_session.default_bucket(), key)
+        input_path = input_path or "s3://{}/{}".format(bucket, key)
 
         return input_path
 
