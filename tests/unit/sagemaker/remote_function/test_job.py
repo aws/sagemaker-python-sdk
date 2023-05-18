@@ -104,6 +104,7 @@ def mock_session():
     session.boto_region_name = TEST_REGION
     session.sagemaker_config = None
     session._append_sagemaker_config_tags.return_value = []
+    session.default_bucket_prefix = None
 
     return session
 
@@ -266,7 +267,7 @@ def test_start(
 
     assert job.job_name.startswith("job-function")
 
-    assert mock_stored_function.called_once_with(
+    mock_stored_function.assert_called_once_with(
         sagemaker_session=session(),
         s3_base_uri=f"{S3_URI}/{job.job_name}",
         hmac_key=HMAC_KEY,
@@ -386,11 +387,11 @@ def test_start_with_complete_job_settings(
 
     assert job.job_name.startswith("job-function")
 
-    assert mock_stored_function.called_once_with(
+    mock_stored_function.assert_called_once_with(
         sagemaker_session=session(),
         s3_base_uri=f"{S3_URI}/{job.job_name}",
         hmac_key=HMAC_KEY,
-        s3_kms_key=None,
+        s3_kms_key=KMS_KEY_ARN,
     )
 
     local_dependencies_path = mock_runtime_manager().snapshot()

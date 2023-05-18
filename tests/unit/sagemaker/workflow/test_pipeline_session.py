@@ -327,10 +327,11 @@ def test_pipeline_session_context_for_model_step_without_model_package_group_nam
         )
 
 
-def test_default_bucket_with_sagemaker_config(boto_session, client):
+def test_default_bucket_with_sagemaker_config(boto_session_mock, client_mock):
     # common kwargs for Session objects
     session_kwargs = {
-        "boto_session": boto_session,
+        "boto_session": boto_session_mock,
+        "sagemaker_client": client_mock,
     }
 
     # Case 1: Use bucket from sagemaker_config
@@ -366,10 +367,11 @@ def test_default_bucket_with_sagemaker_config(boto_session, client):
     assert session_with_sdk_bucket.default_bucket() == "sagemaker-us-west-2-111111111"
 
 
-def test_default_bucket_prefix_with_sagemaker_config(boto_session, client):
+def test_default_bucket_prefix_with_sagemaker_config(boto_session_mock, client_mock):
     # common kwargs for Session objects
     session_kwargs = {
-        "boto_session": boto_session,
+        "boto_session": boto_session_mock,
+        "sagemaker_client": client_mock,
     }
 
     # Case 1: Use prefix from sagemaker_config
