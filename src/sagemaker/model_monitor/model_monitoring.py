@@ -1287,6 +1287,7 @@ class ModelMonitor(object):
                     s3_uri = s3.s3_path_join(
                         "s3://",
                         self.sagemaker_session.default_bucket(),
+                        self.sagemaker_session.default_bucket_prefix,
                         self.latest_baselining_job_name,
                         file_input.input_name,
                     )
@@ -1312,6 +1313,7 @@ class ModelMonitor(object):
         s3_uri = output_s3_uri or s3.s3_path_join(
             "s3://",
             self.sagemaker_session.default_bucket(),
+            self.sagemaker_session.default_bucket_prefix,
             _MODEL_MONITOR_S3_PATH,
             _BASELINING_S3_PATH,
             self.latest_baselining_job_name,
@@ -1338,6 +1340,7 @@ class ModelMonitor(object):
             s3_uri = s3.s3_path_join(
                 "s3://",
                 self.sagemaker_session.default_bucket(),
+                self.sagemaker_session.default_bucket_prefix,
                 self.latest_baselining_job_name,
                 "output",
             )
@@ -1361,6 +1364,7 @@ class ModelMonitor(object):
         s3_uri = output_s3_uri or s3.s3_path_join(
             "s3://",
             self.sagemaker_session.default_bucket(),
+            self.sagemaker_session.default_bucket_prefix,
             _MODEL_MONITOR_S3_PATH,
             _MONITORING_S3_PATH,
             monitoring_schedule_name,
@@ -1387,6 +1391,7 @@ class ModelMonitor(object):
             output.destination = s3.s3_path_join(
                 "s3://",
                 self.sagemaker_session.default_bucket(),
+                self.sagemaker_session.default_bucket_prefix,
                 self.monitoring_schedule_name,
                 "output",
             )
@@ -1408,6 +1413,7 @@ class ModelMonitor(object):
             s3_uri = s3.s3_path_join(
                 "s3://",
                 self.sagemaker_session.default_bucket(),
+                self.sagemaker_session.default_bucket_prefix,
                 _MODEL_MONITOR_S3_PATH,
                 _MONITORING_S3_PATH,
                 self.monitoring_schedule_name,
@@ -1496,6 +1502,7 @@ class ModelMonitor(object):
             s3_uri = s3.s3_path_join(
                 "s3://",
                 self.sagemaker_session.default_bucket(),
+                self.sagemaker_session.default_bucket_prefix,
                 _MODEL_MONITOR_S3_PATH,
                 _BASELINING_S3_PATH,
                 self.latest_baselining_job_name,

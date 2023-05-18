@@ -176,17 +176,19 @@ class Pipeline(Entity):
         if len(pipeline_definition.encode("utf-8")) < 1024 * 100:
             kwargs["PipelineDefinition"] = pipeline_definition
         else:
-            desired_s3_uri = s3.s3_path_join(
-                "s3://", self.sagemaker_session.default_bucket(), self.name
+            bucket, object_key = s3.determine_bucket_and_prefix(
+                bucket=None, key_prefix=self.name, sagemaker_session=self.sagemaker_session
             )
+
+            desired_s3_uri = s3.s3_path_join("s3://", bucket, object_key)
             s3.S3Uploader.upload_string_as_file_body(
                 body=pipeline_definition,
                 desired_s3_uri=desired_s3_uri,
                 sagemaker_session=self.sagemaker_session,
             )
             kwargs["PipelineDefinitionS3Location"] = {
-                "Bucket": self.sagemaker_session.default_bucket(),
-                "ObjectKey": self.name,
+                "Bucket": bucket,
+                "ObjectKey": object_key,
             }
 
         update_args(

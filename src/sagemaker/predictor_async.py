@@ -16,6 +16,8 @@ import threading
 import time
 import uuid
 from botocore.exceptions import WaiterError
+
+from sagemaker import s3
 from sagemaker.exceptions import PollingTimeoutError, AsyncInferenceModelError
 from sagemaker.async_inference import WaiterConfig, AsyncInferenceResponse
 from sagemaker.s3 import parse_s3_url
@@ -166,17 +168,18 @@ class AsyncPredictor:
             my_uuid = str(uuid.uuid4())
             timestamp = sagemaker_timestamp()
             bucket = self.sagemaker_session.default_bucket()
-            key = "async-endpoint-inputs/{}/{}-{}".format(
+            key = s3.s3_path_join(
+                self.sagemaker_session.default_bucket_prefix,
+                "async-endpoint-inputs",
                 name_from_base(self.name, short=True),
-                timestamp,
-                my_uuid,
+                "{}-{}".format(timestamp, my_uuid),
             )
 
         data = self.serializer.serialize(data)
         self.s3_client.put_object(
             Body=data, Bucket=bucket, Key=key, ContentType=self.serializer.CONTENT_TYPE
         )
-        input_path = input_path or "s3://{}/{}".format(self.sagemaker_session.default_bucket(), key)
+        input_path = input_path or "s3://{}/{}".format(bucket, key)
 
         return input_path
 

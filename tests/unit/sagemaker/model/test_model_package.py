@@ -55,7 +55,9 @@ DESCRIBE_MODEL_PACKAGE_RESPONSE = {
 
 @pytest.fixture
 def sagemaker_session():
-    session = Mock()
+    session = Mock(
+        default_bucket_prefix=None,
+    )
     session.sagemaker_client.describe_model_package = Mock(
         return_value=DESCRIBE_MODEL_PACKAGE_RESPONSE
     )

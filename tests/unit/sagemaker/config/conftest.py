@@ -38,6 +38,14 @@ def valid_tags():
 
 
 @pytest.fixture()
+def valid_session_config():
+    return {
+        "DefaultS3Bucket": "sagemaker-python-sdk-test-bucket",
+        "DefaultS3ObjectKeyPrefix": "test-prefix",
+    }
+
+
+@pytest.fixture()
 def valid_feature_group_config(valid_iam_role_arn):
     security_storage_config = {"KmsKeyId": "kmskeyid1"}
     s3_storage_config = {"KmsKeyId": "kmskeyid2"}
@@ -172,25 +180,24 @@ def valid_monitoring_schedule_config(valid_iam_role_arn, valid_vpc_config):
 @pytest.fixture()
 def valid_remote_function_config(valid_iam_role_arn, valid_tags, valid_vpc_config):
     return {
-        "RemoteFunction": {
-            "Dependencies": "./requirements.txt",
-            "EnvironmentVariables": {"var1": "value1", "var2": "value2"},
-            "ImageUri": "123456789012.dkr.ecr.us-west-2.amazonaws.com/myimage:latest",
-            "IncludeLocalWorkDir": True,
-            "InstanceType": "ml.m5.xlarge",
-            "JobCondaEnvironment": "some_conda_env",
-            "RoleArn": valid_iam_role_arn,
-            "S3KmsKeyId": "kmskeyid1",
-            "S3RootUri": "s3://my-bucket/key",
-            "Tags": valid_tags,
-            "VolumeKmsKeyId": "kmskeyid2",
-            "VpcConfig": valid_vpc_config,
-        }
+        "Dependencies": "./requirements.txt",
+        "EnvironmentVariables": {"var1": "value1", "var2": "value2"},
+        "ImageUri": "123456789012.dkr.ecr.us-west-2.amazonaws.com/myimage:latest",
+        "IncludeLocalWorkDir": True,
+        "InstanceType": "ml.m5.xlarge",
+        "JobCondaEnvironment": "some_conda_env",
+        "RoleArn": valid_iam_role_arn,
+        "S3KmsKeyId": "kmskeyid1",
+        "S3RootUri": "s3://my-bucket/key",
+        "Tags": valid_tags,
+        "VolumeKmsKeyId": "kmskeyid2",
+        "VpcConfig": valid_vpc_config,
     }
 
 
 @pytest.fixture()
 def valid_config_with_all_the_scopes(
+    valid_session_config,
     valid_feature_group_config,
     valid_monitoring_schedule_config,
     valid_endpointconfig_config,
@@ -206,6 +213,12 @@ def valid_config_with_all_the_scopes(
     valid_remote_function_config,
 ):
     return {
+        "PythonSDK": {
+            "Modules": {
+                "RemoteFunction": valid_remote_function_config,
+                "Session": valid_session_config,
+            }
+        },
         "FeatureGroup": valid_feature_group_config,
         "MonitoringSchedule": valid_monitoring_schedule_config,
         "EndpointConfig": valid_endpointconfig_config,
@@ -218,7 +231,6 @@ def valid_config_with_all_the_scopes(
         "ProcessingJob": valid_processing_job_config,
         "TrainingJob": valid_training_job_config,
         "EdgePackagingJob": valid_edge_packaging_config,
-        "PythonSDK": {"Modules": valid_remote_function_config},
     }
 
 

@@ -17,6 +17,8 @@ from io import BytesIO
 import zipfile
 import time
 from botocore.exceptions import ClientError
+
+from sagemaker import s3
 from sagemaker.session import Session
 
 
@@ -118,12 +120,15 @@ class Lambda:
         if self.script is not None:
             code = {"ZipFile": _zip_lambda_code(self.script)}
         else:
-            bucket = self.s3_bucket or self.session.default_bucket()
+            bucket, key_prefix = s3.determine_bucket_and_prefix(
+                bucket=self.s3_bucket, key_prefix=None, sagemaker_session=self.session
+            )
             key = _upload_to_s3(
                 s3_client=_get_s3_client(self.session),
                 function_name=self.function_name,
                 zipped_code_dir=self.zipped_code_dir,
                 s3_bucket=bucket,
+                s3_key_prefix=key_prefix,
             )
             code = {"S3Bucket": bucket, "S3Key": key}
 
@@ -160,7 +165,10 @@ class Lambda:
                         ZipFile=_zip_lambda_code(self.script),
                     )
                 else:
-                    bucket = self.s3_bucket or self.session.default_bucket()
+                    bucket, key_prefix = s3.determine_bucket_and_prefix(
+                        bucket=self.s3_bucket, key_prefix=None, sagemaker_session=self.session
+                    )
+
                     # get function name to be used in S3 upload path
                     if self.function_arn:
                         versioned_function_name = self.function_arn.split("funtion:")[-1]
@@ -179,6 +187,7 @@ class Lambda:
                             function_name=function_name_for_s3,
                             zipped_code_dir=self.zipped_code_dir,
                             s3_bucket=bucket,
+                            s3_key_prefix=key_prefix,
                         ),
                     )
                 return response
@@ -267,7 +276,7 @@ def _get_lambda_client(session):
     return lambda_client
 
 
-def _upload_to_s3(s3_client, function_name, zipped_code_dir, s3_bucket):
+def _upload_to_s3(s3_client, function_name, zipped_code_dir, s3_bucket, s3_key_prefix=None):
     """Upload the zipped code to S3 bucket provided in the Lambda instance.
 
     Lambda instance must have a path to the zipped code folder and a S3 bucket to upload
@@ -276,7 +285,13 @@ def _upload_to_s3(s3_client, function_name, zipped_code_dir, s3_bucket):
 
     Returns: the S3 key where the code is uploaded.
     """
-    key = "{}/{}/{}".format("lambda", function_name, "code")
+
+    key = s3.s3_path_join(
+        s3_key_prefix,
+        "lambda",
+        function_name,
+        "code",
+    )
     s3_client.upload_file(zipped_code_dir, s3_bucket, key)
     return key
 

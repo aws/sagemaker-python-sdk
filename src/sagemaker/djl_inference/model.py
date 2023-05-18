@@ -27,6 +27,7 @@ from sagemaker import s3, Predictor, image_uris, fw_utils
 from sagemaker.deserializers import JSONDeserializer, BaseDeserializer
 from sagemaker.djl_inference import defaults
 from sagemaker.model import FrameworkModel
+from sagemaker.s3_utils import s3_path_join
 from sagemaker.serializers import JSONSerializer, BaseSerializer
 from sagemaker.session import Session
 from sagemaker.utils import _tmpdir, _create_or_update_code_dir
@@ -502,12 +503,16 @@ class DJLModel(FrameworkModel):
             self.key_prefix, self.name, self.image_uri
         )
         if s3_output_uri is None:
-            bucket = self.bucket or self.sagemaker_session.default_bucket()
-            s3_output_uri = f"s3://{bucket}/{deploy_key_prefix}"
+            bucket, deploy_key_prefix = s3.determine_bucket_and_prefix(
+                bucket=self.bucket,
+                key_prefix=deploy_key_prefix,
+                sagemaker_session=self.sagemaker_session,
+            )
+            s3_output_uri = s3_path_join("s3://", bucket, deploy_key_prefix)
         else:
-            s3_output_uri = f"{s3_output_uri}/{deploy_key_prefix}"
+            s3_output_uri = s3_path_join(s3_output_uri, deploy_key_prefix)
 
-        self.save_mp_checkpoint_path = f"{s3_output_uri}/aot-partitioned-checkpoints"
+        self.save_mp_checkpoint_path = s3_path_join(s3_output_uri, "aot-partitioned-checkpoints")
 
         container_def = self._upload_model_to_s3(upload_as_tar=False)
         estimator = _create_estimator(
@@ -673,7 +678,11 @@ class DJLModel(FrameworkModel):
             deploy_key_prefix = fw_utils.model_code_key_prefix(
                 self.key_prefix, self.name, self.image_uri
             )
-            bucket = self.bucket or self.sagemaker_session.default_bucket()
+            bucket, deploy_key_prefix = s3.determine_bucket_and_prefix(
+                bucket=self.bucket,
+                key_prefix=deploy_key_prefix,
+                sagemaker_session=self.sagemaker_session,
+            )
             if upload_as_tar:
                 uploaded_code = fw_utils.tar_and_upload_dir(
                     self.sagemaker_session.boto_session,
@@ -686,10 +695,9 @@ class DJLModel(FrameworkModel):
                 )
                 model_data_url = uploaded_code.s3_prefix
             else:
-                key_prefix = f"{deploy_key_prefix}/aot-model"
                 model_data_url = S3Uploader.upload(
                     tmp_code_dir,
-                    "s3://%s/%s" % (bucket, key_prefix),
+                    s3_path_join("s3://", bucket, deploy_key_prefix, "aot-model"),
                     self.model_kms_key,
                     self.sagemaker_session,
                 )

@@ -19,6 +19,7 @@ import time
 
 import pytest
 
+from tests.conftest import CUSTOM_S3_OBJECT_KEY_PREFIX
 from tests.integ.sagemaker.experiments.conftest import TAGS
 from sagemaker.experiments._api_types import _TrialComponentStatusType
 from sagemaker.experiments._utils import is_run_trial_component
@@ -754,7 +755,7 @@ def _check_run_from_local_end_result(sagemaker_session, tc, is_complete_log=True
     if not is_complete_log:
         return
 
-    s3_prefix = f"s3://{sagemaker_session.default_bucket()}/{_DEFAULT_ARTIFACT_PREFIX}"
+    s3_prefix = f"s3://{sagemaker_session.default_bucket()}/{CUSTOM_S3_OBJECT_KEY_PREFIX}/{_DEFAULT_ARTIFACT_PREFIX}"
     assert s3_prefix in tc.output_artifacts[file_artifact_name].value
     assert "text/plain" == tc.output_artifacts[file_artifact_name].media_type
     assert "s3://Output" == tc.output_artifacts[artifact_name].value

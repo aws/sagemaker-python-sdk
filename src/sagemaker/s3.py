@@ -13,51 +13,20 @@
 """This module contains Enums and helper methods related to S3."""
 from __future__ import print_function, absolute_import
 
-import pathlib
 import logging
 import io
 
 from typing import Union
-from six.moves.urllib.parse import urlparse
 from sagemaker.session import Session
 
+# These were defined inside s3.py initially. Kept here for backward compatibility
+from sagemaker.s3_utils import (  # pylint: disable=unused-import # noqa: F401
+    parse_s3_url,
+    s3_path_join,
+    determine_bucket_and_prefix,
+)
+
 logger = logging.getLogger("sagemaker")
-
-
-def parse_s3_url(url):
-    """Returns an (s3 bucket, key name/prefix) tuple from a url with an s3 scheme.
-
-    Args:
-        url (str):
-
-    Returns:
-        tuple: A tuple containing:
-
-            - str: S3 bucket name
-            - str: S3 key
-    """
-    parsed_url = urlparse(url)
-    if parsed_url.scheme != "s3":
-        raise ValueError("Expecting 's3' scheme, got: {} in {}.".format(parsed_url.scheme, url))
-    return parsed_url.netloc, parsed_url.path.lstrip("/")
-
-
-def s3_path_join(*args):
-    """Returns the arguments joined by a slash ("/"), similarly to ``os.path.join()`` (on Unix).
-
-    If the first argument is "s3://", then that is preserved.
-
-    Args:
-        *args: The strings to join with a slash.
-
-    Returns:
-        str: The joined string.
-    """
-    if args[0].startswith("s3://"):
-        path = str(pathlib.PurePosixPath(*args[1:])).lstrip("/")
-        return str(pathlib.PurePosixPath(args[0], path)).replace("s3:/", "s3://")
-
-    return str(pathlib.PurePosixPath(*args)).lstrip("/")
 
 
 class S3Uploader(object):

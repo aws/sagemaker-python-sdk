@@ -248,7 +248,11 @@ class _JobSettings:
         self.s3_root_uri = resolve_value_from_config(
             direct_input=s3_root_uri,
             config_path=REMOTE_FUNCTION_S3_ROOT_URI,
-            default_value=os.path.join("s3://", self.sagemaker_session.default_bucket()),
+            default_value=s3_path_join(
+                "s3://",
+                self.sagemaker_session.default_bucket(),
+                self.sagemaker_session.default_bucket_prefix,
+            ),
             sagemaker_session=self.sagemaker_session,
         )
 
