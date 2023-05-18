@@ -28,30 +28,11 @@ from sagemaker.workflow.parameters import (
 from sagemaker.workflow.functions import Join, JsonGet
 from tests.unit.sagemaker.workflow.helpers import CustomStep
 
-from botocore.config import Config
-
 from tests.unit import DATA_DIR, SAGEMAKER_CONFIG_SESSION
 
 _REGION = "us-west-2"
 _ROLE = "DummyRole"
 _BUCKET = "my-bucket"
-
-
-def test_pipeline_session_init(sagemaker_client_config, boto_session):
-    sagemaker_client_config.setdefault("config", Config(retries=dict(max_attempts=10)))
-    sagemaker_client = (
-        boto_session.client("sagemaker", **sagemaker_client_config)
-        if sagemaker_client_config
-        else None
-    )
-
-    sess = PipelineSession(
-        boto_session=boto_session,
-        sagemaker_client=sagemaker_client,
-    )
-    assert sess.sagemaker_client is not None
-    assert sess.default_bucket is not None
-    assert sess.context is None
 
 
 @pytest.fixture
@@ -92,6 +73,16 @@ def pipeline_session_mock(boto_session_mock, client_mock):
         sagemaker_client=client_mock,
         default_bucket=_BUCKET,
     )
+
+
+def test_pipeline_session_init(boto_session_mock, client_mock):
+    sess = PipelineSession(
+        boto_session=boto_session_mock,
+        sagemaker_client=client_mock,
+    )
+    assert sess.sagemaker_client is not None
+    assert sess.default_bucket is not None
+    assert sess.context is None
 
 
 def test_pipeline_session_context_for_model_step(pipeline_session_mock):
