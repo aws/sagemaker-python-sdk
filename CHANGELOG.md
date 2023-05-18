@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.157.0 (2023-05-18)
+
+### Features
+
+ * Handle use case where endpoint is created outside of python …
+
+### Bug Fixes and Other Changes
+
+ * Make type annotation of UploadedCode consistent
+ * Add SELinux label to local docker volumes
+
 ## v2.156.0 (2023-05-17)
 
 ### Features
