@@ -526,7 +526,9 @@ def tf_full_py_version(tf_full_version):
         return "py37"
     if version < Version("2.8"):
         return "py38"
-    return "py39"
+    if version < Version("2.12"):
+        return "py39"
+    return "py310"
 
 
 @pytest.fixture(scope="module")
