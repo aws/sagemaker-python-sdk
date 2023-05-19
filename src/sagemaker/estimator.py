@@ -608,7 +608,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         else:
             raise ValueError(f"Bad value for instance type: '{instance_type}'")
 
-        use_config_condition = (
+        # KMS can only be attached to supported instances
+        use_volume_kms_config = (
             (instance_type_for_volume_kms and instance_supports_kms(instance_type_for_volume_kms))
             or instance_groups is not None
             and any(
@@ -625,7 +626,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH,
                 sagemaker_session=self.sagemaker_session,
             )
-            if use_config_condition
+            if use_volume_kms_config
             else volume_kms_key
         )
 

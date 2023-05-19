@@ -2902,7 +2902,7 @@ def test_create_endpoint_config_from_existing_with_sagemaker_config_injection_pa
     expected_inference_kms_key_id = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"]["EndpointConfig"][
         "AsyncInferenceConfig"
     ]["OutputConfig"]["KmsKeyId"]
-    expected_kms_key_id = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"]["EndpointConfig"][
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"]["EndpointConfig"][
         "KmsKeyId"
     ]
     expected_tags = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"]["EndpointConfig"]["Tags"]
@@ -2923,7 +2923,7 @@ def test_create_endpoint_config_from_existing_with_sagemaker_config_injection_pa
             },
             sagemaker.production_variant("C", "ml.p2.xlarge"),
         ],
-        KmsKeyId=expected_kms_key_id,  # from config
+        KmsKeyId=expected_volume_kms_key_id,  # from config
         Tags=expected_tags,  # from config
         AsyncInferenceConfig={"OutputConfig": {"KmsKeyId": expected_inference_kms_key_id}},
     )
@@ -3074,7 +3074,7 @@ def test_endpoint_from_production_variants_with_sagemaker_config_injection_parti
     expected_inference_kms_key_id = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"]["EndpointConfig"][
         "AsyncInferenceConfig"
     ]["OutputConfig"]["KmsKeyId"]
-    expected_kms_key_id = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"]["EndpointConfig"][
+    expected_volume_kms_key_id = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"]["EndpointConfig"][
         "KmsKeyId"
     ]
     expected_tags = SAGEMAKER_CONFIG_ENDPOINT_CONFIG["SageMaker"]["EndpointConfig"]["Tags"]
@@ -3098,7 +3098,7 @@ def test_endpoint_from_production_variants_with_sagemaker_config_injection_parti
         EndpointConfigName="some-endpoint",
         ProductionVariants=expected_pvs,
         Tags=expected_tags,  # from config
-        KmsKeyId=expected_kms_key_id,  # from config
+        KmsKeyId=expected_volume_kms_key_id,  # from config
         AsyncInferenceConfig=expected_async_inference_config_dict,
         DataCaptureConfig={"KmsKeyId": expected_data_capture_kms_key_id},
     )
