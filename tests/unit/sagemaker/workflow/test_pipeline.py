@@ -610,6 +610,31 @@ def test_pipeline_disable_experiment_config():
     )
 
 
+def test_pipeline_list_executions(sagemaker_session_mock):
+    sagemaker_session_mock.sagemaker_client.list_pipeline_executions.return_value = {
+        "PipelineExecutionSummaries": [Mock()],
+        "ResponseMetadata": "metadata",
+    }
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[ParameterString("alpha", "beta"), ParameterString("gamma", "delta")],
+        steps=[],
+        sagemaker_session=sagemaker_session_mock,
+    )
+    executions = pipeline.list_executions()
+    assert len(executions) == 1
+    assert len(executions["PipelineExecutionSummaries"]) == 1
+    sagemaker_session_mock.sagemaker_client.list_pipeline_executions.return_value = {
+        "PipelineExecutionSummaries": [Mock(), Mock()],
+        "NextToken": "token",
+        "ResponseMetadata": "metadata",
+    }
+    executions = pipeline.list_executions()
+    assert len(executions) == 2
+    assert len(executions["PipelineExecutionSummaries"]) == 2
+    assert executions["NextToken"] == "token"
+
+
 def test_pipeline_execution_basics(sagemaker_session_mock):
     sagemaker_session_mock.sagemaker_client.start_pipeline_execution.return_value = {
         "PipelineExecutionArn": "my:arn"

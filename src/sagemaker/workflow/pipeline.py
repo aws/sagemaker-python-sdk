@@ -396,6 +396,46 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
                 )
                 self._interpolate_step_collection_name_in_depends_on(sub_step_requests)
 
+    def list_executions(
+        self,
+        sort_by: str = None,
+        sort_order: str = None,
+        max_results: int = None,
+        next_token: str = None,
+    ) -> Dict[str, Any]:
+        """Lists a pipeline's executions.
+
+        Args:
+            sort_by (str): The field by which to sort results(CreationTime/PipelineExecutionArn).
+            sort_order (str): The sort order for results (Ascending/Descending).
+            max_results (int): The maximum number of pipeline executions to return in the response.
+            next_token (str):  If the result of the previous ListPipelineExecutions request was
+                truncated, the response includes a NextToken. To retrieve the next set of pipeline
+                executions, use the token in the next request.
+
+        Returns:
+            List of Pipeline Execution Summaries. See
+            boto3 client list_pipeline_executions
+            https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker.html#SageMaker.Client.list_pipeline_executions
+        """
+        kwargs = dict(PipelineName=self.name)
+        update_args(
+            kwargs,
+            SortBy=sort_by,
+            SortOrder=sort_order,
+            NextToken=next_token,
+            MaxResults=max_results,
+        )
+        response = self.sagemaker_session.sagemaker_client.list_pipeline_executions(**kwargs)
+
+        # Return only PipelineExecutionSummaries and NextToken from the list_pipeline_executions
+        # response
+        return {
+            key: response[key]
+            for key in ["PipelineExecutionSummaries", "NextToken"]
+            if key in response
+        }
+
 
 def format_start_parameters(parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Formats start parameter overrides as a list of dicts.
