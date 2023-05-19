@@ -19,6 +19,7 @@ import pytest
 from mock import patch, Mock, ANY
 
 from sagemaker.config import load_sagemaker_config
+from sagemaker.session_settings import SessionSettings
 from tests.unit import DATA_DIR
 from sagemaker.remote_function.job import (
     _JobSettings,
@@ -98,7 +99,7 @@ def mock_session():
     session = Mock()
     session.sagemaker_client.create_training_job.return_value = {"TrainingJobArn": TRAINING_JOB_ARN}
     session.sagemaker_client.describe_training_job.return_value = COMPLETED_TRAINING_JOB
-
+    session.settings = SessionSettings()
     session.default_bucket.return_value = BUCKET
     session.expand_role.return_value = ROLE_ARN
     session.boto_region_name = TEST_REGION
