@@ -27,7 +27,7 @@ from six import string_types, with_metaclass
 from six.moves.urllib.parse import urlparse
 
 import sagemaker
-from sagemaker import git_utils, image_uris, vpc_utils
+from sagemaker import git_utils, image_uris, vpc_utils, s3
 from sagemaker.analytics import TrainingJobAnalytics
 from sagemaker.config import (
     TRAINING_JOB_VOLUME_KMS_KEY_ID_PATH,
@@ -696,6 +696,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             enable_network_isolation=self._enable_network_isolation,
         )
 
+        # Internal flag
+        self._is_output_path_set_from_default_bucket_and_prefix = False
+
     @abstractmethod
     def training_image_uri(self):
         """Return the Docker image to use for training.
@@ -796,7 +799,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             if self.sagemaker_session.local_mode and local_code:
                 self.output_path = ""
             else:
-                self.output_path = "s3://{}/".format(self.sagemaker_session.default_bucket())
+                self.output_path = s3.s3_path_join(
+                    "s3://",
+                    self.sagemaker_session.default_bucket(),
+                    self.sagemaker_session.default_bucket_prefix,
+                    with_end_slash=True,
+                )
+                self._is_output_path_set_from_default_bucket_and_prefix = True
 
         if self.git_config:
             updated_paths = git_utils.git_clone_repo(
@@ -871,7 +880,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         if is_pipeline_variable(self.output_path):
             if self.code_location is None:
                 code_bucket = self.sagemaker_session.default_bucket()
-                code_s3_prefix = self._assign_s3_prefix()
+                key_prefix = self.sagemaker_session.default_bucket_prefix
+                code_s3_prefix = self._assign_s3_prefix(key_prefix)
                 kms_key = None
             else:
                 code_bucket, key_prefix = parse_s3_url(self.code_location)
@@ -884,7 +894,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             if local_mode:
                 if self.code_location is None:
                     code_bucket = self.sagemaker_session.default_bucket()
-                    code_s3_prefix = self._assign_s3_prefix()
+                    key_prefix = self.sagemaker_session.default_bucket_prefix
+                    code_s3_prefix = self._assign_s3_prefix(key_prefix)
                     kms_key = None
                 else:
                     code_bucket, key_prefix = parse_s3_url(self.code_location)
@@ -892,8 +903,21 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                     kms_key = None
             else:
                 if self.code_location is None:
-                    code_bucket, _ = parse_s3_url(self.output_path)
-                    code_s3_prefix = self._assign_s3_prefix()
+                    code_bucket, possible_key_prefix = parse_s3_url(self.output_path)
+
+                    if self._is_output_path_set_from_default_bucket_and_prefix:
+                        # Only include possible_key_prefix if the output_path was created from the
+                        # Session's default bucket and prefix. In that scenario, possible_key_prefix
+                        # will either be "" or Session.default_bucket_prefix.
+                        # Note: We cannot do `if (code_bucket == session.default_bucket() and
+                        # key_prefix == session.default_bucket_prefix)` instead because the user
+                        # could have passed in equivalent values themselves to output_path. And
+                        # including the prefix in that case could result in a potentially backwards
+                        # incompatible behavior change for the end user.
+                        code_s3_prefix = self._assign_s3_prefix(possible_key_prefix)
+                    else:
+                        code_s3_prefix = self._assign_s3_prefix()
+
                     kms_key = self.output_kms_key
                 else:
                     code_bucket, key_prefix = parse_s3_url(self.code_location)
@@ -929,18 +953,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         """
         from sagemaker.workflow.utilities import _pipeline_config
 
-        code_s3_prefix = "/".join(filter(None, [key_prefix, self._current_job_name, "source"]))
+        code_s3_prefix = s3.s3_path_join(key_prefix, self._current_job_name, "source")
         if _pipeline_config and _pipeline_config.code_hash:
-            code_s3_prefix = "/".join(
-                filter(
-                    None,
-                    [
-                        key_prefix,
-                        _pipeline_config.pipeline_name,
-                        "code",
-                        _pipeline_config.code_hash,
-                    ],
-                )
+            code_s3_prefix = s3.s3_path_join(
+                key_prefix,
+                _pipeline_config.pipeline_name,
+                "code",
+                _pipeline_config.code_hash,
             )
         return code_s3_prefix
 
@@ -1084,8 +1103,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         if "source_s3_uri" in (rule.rule_parameters or {}):
             parse_result = urlparse(rule.rule_parameters["source_s3_uri"])
             if parse_result.scheme != "s3":
-                desired_s3_uri = os.path.join(
-                    "s3://", self.sagemaker_session.default_bucket(), rule.name, str(uuid.uuid4())
+                desired_s3_uri = s3.s3_path_join(
+                    "s3://",
+                    self.sagemaker_session.default_bucket(),
+                    self.sagemaker_session.default_bucket_prefix,
+                    rule.name,
+                    str(uuid.uuid4()),
                 )
                 s3_uri = S3Uploader.upload(
                     local_path=rule.rule_parameters["source_s3_uri"],

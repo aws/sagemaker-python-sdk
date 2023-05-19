@@ -89,6 +89,9 @@ TYPE = "type"
 OBJECT = "object"
 ADDITIONAL_PROPERTIES = "additionalProperties"
 ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION = "EnableInterContainerTrafficEncryption"
+SESSION = "Session"
+DEFAULT_S3_BUCKET = "DefaultS3Bucket"
+DEFAULT_S3_OBJECT_KEY_PREFIX = "DefaultS3ObjectKeyPrefix"
 
 
 def _simple_path(*args: str):
@@ -96,6 +99,7 @@ def _simple_path(*args: str):
     return ".".join(args)
 
 
+# Paths for reference elsewhere in the code.
 COMPILATION_JOB_VPC_CONFIG_PATH = _simple_path(SAGEMAKER, COMPILATION_JOB, VPC_CONFIG)
 COMPILATION_JOB_KMS_KEY_ID_PATH = _simple_path(
     SAGEMAKER, COMPILATION_JOB, OUTPUT_CONFIG, KMS_KEY_ID
@@ -231,7 +235,6 @@ MODEL_PACKAGE_VALIDATION_ROLE_PATH = _simple_path(
 MODEL_PACKAGE_VALIDATION_PROFILES_PATH = _simple_path(
     SAGEMAKER, MODEL_PACKAGE, VALIDATION_SPECIFICATION, VALIDATION_PROFILES
 )
-
 REMOTE_FUNCTION_DEPENDENCIES = _simple_path(
     SAGEMAKER, PYTHON_SDK, MODULES, REMOTE_FUNCTION, DEPENDENCIES
 )
@@ -274,9 +277,6 @@ REMOTE_FUNCTION_VPC_CONFIG_SECURITY_GROUP_IDS = _simple_path(
 REMOTE_FUNCTION_ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION = _simple_path(
     SAGEMAKER, PYTHON_SDK, MODULES, REMOTE_FUNCTION, ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION
 )
-
-# Paths for reference elsewhere in the SDK.
-# Names include the schema version since the paths could change with other schema versions
 MONITORING_SCHEDULE_INTER_CONTAINER_ENCRYPTION_PATH = _simple_path(
     SAGEMAKER,
     MONITORING_SCHEDULE,
@@ -298,6 +298,13 @@ PROCESSING_JOB_INTER_CONTAINER_ENCRYPTION_PATH = _simple_path(
 TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH = _simple_path(
     SAGEMAKER, TRAINING_JOB, ENABLE_INTER_CONTAINER_TRAFFIC_ENCRYPTION
 )
+SESSION_DEFAULT_S3_BUCKET_PATH = _simple_path(
+    SAGEMAKER, PYTHON_SDK, MODULES, SESSION, DEFAULT_S3_BUCKET
+)
+SESSION_DEFAULT_S3_OBJECT_KEY_PREFIX_PATH = _simple_path(
+    SAGEMAKER, PYTHON_SDK, MODULES, SESSION, DEFAULT_S3_OBJECT_KEY_PREFIX
+)
+
 
 SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -447,6 +454,15 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
         "s3Uri": {TYPE: "string", "pattern": "^(https|s3)://([^/]+)/?(.*)$", "maxLength": 1024},
         # Regex is taken from https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_AlgorithmSpecification.html#sagemaker-Type-AlgorithmSpecification-ContainerEntrypoint
         "preExecutionCommand": {TYPE: "string", "pattern": r".*"},
+        # Regex based on https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_PipelineDefinitionS3Location.html
+        # except with an additional ^ and $ for the beginning and the end to closer align to
+        # https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html
+        "s3Bucket": {
+            TYPE: "string",
+            "pattern": r"^[a-z0-9][\.\-a-z0-9]{1,61}[a-z0-9]$",
+            "minLength": 3,
+            "maxLength": 63,
+        },
     },
     PROPERTIES: {
         SCHEMA_VERSION: {
@@ -477,6 +493,29 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                             TYPE: OBJECT,
                             ADDITIONAL_PROPERTIES: False,
                             PROPERTIES: {
+                                SESSION: {
+                                    TYPE: OBJECT,
+                                    ADDITIONAL_PROPERTIES: False,
+                                    PROPERTIES: {
+                                        DEFAULT_S3_BUCKET: {
+                                            "description": "sets `default_bucket` of Session",
+                                            "$ref": "#/definitions/s3Bucket",
+                                        },
+                                        DEFAULT_S3_OBJECT_KEY_PREFIX: {
+                                            "description": (
+                                                "sets `default_bucket_prefix` of Session"
+                                            ),
+                                            TYPE: "string",
+                                            # S3 guidelines:
+                                            # https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-keys.html
+                                            # Note that the PythonSDK at the time of writing
+                                            # tends to collapse multiple "/" in a row to one "/"
+                                            # (even though S3 allows multiple "/" in a row)
+                                            "minLength": 1,
+                                            "maxLength": 1024,
+                                        },
+                                    },
+                                },
                                 REMOTE_FUNCTION: {
                                     TYPE: OBJECT,
                                     ADDITIONAL_PROPERTIES: False,
@@ -504,9 +543,9 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                         VOLUME_KMS_KEY_ID: {"$ref": "#/definitions/kmsKeyId"},
                                         VPC_CONFIG: {"$ref": "#/definitions/vpcConfig"},
                                     },
-                                }
+                                },
                             },
-                        }
+                        },
                     },
                 },
                 # Feature Group

@@ -456,6 +456,7 @@ class ClarifyCheckStep(Step):
         return s3.s3_path_join(
             "s3://",
             self._model_monitor.sagemaker_session.default_bucket(),
+            self._model_monitor.sagemaker_session.default_bucket_prefix,
             _MODEL_MONITOR_S3_PATH,
             monitoring_cfg_base_name,
         )

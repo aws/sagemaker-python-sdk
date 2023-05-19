@@ -34,7 +34,7 @@ from copy import copy
 
 from typing import Union, List, Dict, Optional
 
-from sagemaker import image_uris
+from sagemaker import image_uris, s3
 from sagemaker.local.image import _ecr_login_if_needed, _pull_image
 from sagemaker.processing import ProcessingInput, ProcessingOutput, ScriptProcessor
 from sagemaker.s3 import S3Uploader
@@ -122,11 +122,11 @@ class _SparkProcessorBase(ScriptProcessor):
             framework_version (str): The version of SageMaker PySpark.
             py_version (str): The version of python.
             container_version (str): The version of spark container.
-            role (str): An AWS IAM role name or ARN. The Amazon SageMaker training jobs
-                and APIs that create Amazon SageMaker endpoints use this role
-                to access training data and model artifacts. After the endpoint
-                is created, the inference code might use the IAM role, if it
-                needs to access an AWS resource.
+            role (str): An AWS IAM role name or ARN. Amazon SageMaker Processing
+                uses this role to access AWS resources, such as
+                data stored in Amazon S3 (default: None).
+                If not specified, the value from the defaults configuration file
+                will be used.
             instance_type (str): Type of EC2 instance to use for
                 processing, for example, 'ml.c4.xlarge'.
             instance_count (int): The number of instances to run
@@ -429,7 +429,11 @@ class _SparkProcessorBase(ScriptProcessor):
             else:
                 s3_prefix_uri = self.configuration_location
         else:
-            s3_prefix_uri = f"s3://{self.sagemaker_session.default_bucket()}"
+            s3_prefix_uri = s3.s3_path_join(
+                "s3://",
+                self.sagemaker_session.default_bucket(),
+                self.sagemaker_session.default_bucket_prefix,
+            )
 
         serialized_configuration = BytesIO(json.dumps(configuration).encode("utf-8"))
 
@@ -524,7 +528,11 @@ class _SparkProcessorBase(ScriptProcessor):
                     else:
                         s3_prefix_uri = self.dependency_location
                 else:
-                    s3_prefix_uri = f"s3://{self.sagemaker_session.default_bucket()}"
+                    s3_prefix_uri = s3.s3_path_join(
+                        "s3://",
+                        self.sagemaker_session.default_bucket(),
+                        self.sagemaker_session.default_bucket_prefix,
+                    )
 
                 if _pipeline_config and _pipeline_config.code_hash:
                     input_channel_s3_uri = (
@@ -733,9 +741,9 @@ class PySparkProcessor(_SparkProcessorBase):
 
     def __init__(
         self,
-        role: str,
-        instance_type: Union[str, PipelineVariable],
-        instance_count: Union[int, PipelineVariable],
+        role: str = None,
+        instance_type: Union[str, PipelineVariable] = None,
+        instance_count: Union[int, PipelineVariable] = None,
         framework_version: Optional[str] = None,
         py_version: Optional[str] = None,
         container_version: Optional[str] = None,
@@ -761,11 +769,11 @@ class PySparkProcessor(_SparkProcessorBase):
             framework_version (str): The version of SageMaker PySpark.
             py_version (str): The version of python.
             container_version (str): The version of spark container.
-            role (str): An AWS IAM role name or ARN. The Amazon SageMaker training jobs
-                and APIs that create Amazon SageMaker endpoints use this role
-                to access training data and model artifacts. After the endpoint
-                is created, the inference code might use the IAM role, if it
-                needs to access an AWS resource.
+            role (str): An AWS IAM role name or ARN. Amazon SageMaker Processing
+                uses this role to access AWS resources, such as
+                data stored in Amazon S3 (default: None).
+                If not specified, the value from the defaults configuration file
+                will be used.
             instance_type (str or PipelineVariable): Type of EC2 instance to use for
                 processing, for example, 'ml.c4.xlarge'.
             instance_count (int or PipelineVariable): The number of instances to run
@@ -1010,9 +1018,9 @@ class SparkJarProcessor(_SparkProcessorBase):
 
     def __init__(
         self,
-        role: str,
-        instance_type: Union[str, PipelineVariable],
-        instance_count: Union[int, PipelineVariable],
+        role: str = None,
+        instance_type: Union[str, PipelineVariable] = None,
+        instance_count: Union[int, PipelineVariable] = None,
         framework_version: Optional[str] = None,
         py_version: Optional[str] = None,
         container_version: Optional[str] = None,
@@ -1038,11 +1046,11 @@ class SparkJarProcessor(_SparkProcessorBase):
             framework_version (str): The version of SageMaker PySpark.
             py_version (str): The version of python.
             container_version (str): The version of spark container.
-            role (str): An AWS IAM role name or ARN. The Amazon SageMaker training jobs
-                and APIs that create Amazon SageMaker endpoints use this role
-                to access training data and model artifacts. After the endpoint
-                is created, the inference code might use the IAM role, if it
-                needs to access an AWS resource.
+            role (str): An AWS IAM role name or ARN. Amazon SageMaker Processing
+                uses this role to access AWS resources, such as
+                data stored in Amazon S3 (default: None).
+                If not specified, the value from the defaults configuration file
+                will be used.
             instance_type (str or PipelineVariable): Type of EC2 instance to use for
                 processing, for example, 'ml.c4.xlarge'.
             instance_count (int or PipelineVariable): The number of instances to run

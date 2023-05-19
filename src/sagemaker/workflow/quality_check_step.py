@@ -338,6 +338,7 @@ class QualityCheckStep(Step):
         s3_uri = self.quality_check_config.output_s3_uri or s3.s3_path_join(
             "s3://",
             self._model_monitor.sagemaker_session.default_bucket(),
+            self._model_monitor.sagemaker_session.default_bucket_prefix,
             _MODEL_MONITOR_S3_PATH,
             _BASELINING_S3_PATH,
             self._model_monitor.latest_baselining_job_name,

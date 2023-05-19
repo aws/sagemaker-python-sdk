@@ -50,6 +50,10 @@ from tests.unit import (
     SAGEMAKER_CONFIG_TRAINING_JOB,
     SAGEMAKER_CONFIG_TRANSFORM_JOB,
     SAGEMAKER_CONFIG_MODEL,
+    SAGEMAKER_CONFIG_SESSION,
+    _test_default_bucket_and_prefix_combinations,
+    DEFAULT_S3_OBJECT_KEY_PREFIX_NAME,
+    DEFAULT_S3_BUCKET_NAME,
 )
 
 STATIC_HPs = {"feature_dim": "784"}
@@ -372,6 +376,87 @@ def test_create_process_with_sagemaker_config_injection(sagemaker_session):
     ] = expected_volume_kms_key_id
 
     sagemaker_session.sagemaker_client.create_processing_job.assert_called_with(**expected_request)
+
+
+def test_default_bucket_with_sagemaker_config(boto_session, client):
+    # common kwargs for Session objects
+    session_kwargs = {
+        "boto_session": boto_session,
+        "sagemaker_client": client,
+        "sagemaker_runtime_client": client,
+        "sagemaker_metrics_client": client,
+    }
+
+    # Case 1: Use bucket from sagemaker_config
+    session_with_config_bucket = Session(
+        default_bucket=None,
+        sagemaker_config=SAGEMAKER_CONFIG_SESSION,
+        **session_kwargs,
+    )
+    assert (
+        session_with_config_bucket.default_bucket()
+        == SAGEMAKER_CONFIG_SESSION["SageMaker"]["PythonSDK"]["Modules"]["Session"][
+            "DefaultS3Bucket"
+        ]
+    )
+
+    # Case 2: Use bucket from user input to Session (even if sagemaker_config has a bucket)
+    session_with_user_bucket = Session(
+        default_bucket="default-bucket",
+        sagemaker_config=SAGEMAKER_CONFIG_SESSION,
+        **session_kwargs,
+    )
+    assert session_with_user_bucket.default_bucket() == "default-bucket"
+
+    # Case 3: Use default bucket of SDK
+    session_with_sdk_bucket = Session(
+        default_bucket=None,
+        sagemaker_config=None,
+        **session_kwargs,
+    )
+    session_with_sdk_bucket.boto_session.client.return_value = Mock(
+        get_caller_identity=Mock(return_value={"Account": "111111111"})
+    )
+    assert session_with_sdk_bucket.default_bucket() == "sagemaker-us-west-2-111111111"
+
+
+def test_default_bucket_prefix_with_sagemaker_config(boto_session, client):
+    # common kwargs for Session objects
+    session_kwargs = {
+        "boto_session": boto_session,
+        "sagemaker_client": client,
+        "sagemaker_runtime_client": client,
+        "sagemaker_metrics_client": client,
+    }
+
+    # Case 1: Use prefix from sagemaker_config
+    session_with_config_prefix = Session(
+        default_bucket_prefix=None,
+        sagemaker_config=SAGEMAKER_CONFIG_SESSION,
+        **session_kwargs,
+    )
+    assert (
+        session_with_config_prefix.default_bucket_prefix
+        == SAGEMAKER_CONFIG_SESSION["SageMaker"]["PythonSDK"]["Modules"]["Session"][
+            "DefaultS3ObjectKeyPrefix"
+        ]
+    )
+
+    # Case 2: Use prefix from user input to Session (even if sagemaker_config has a prefix)
+    session_with_user_prefix = Session(
+        default_bucket_prefix="default-prefix",
+        sagemaker_config=SAGEMAKER_CONFIG_SESSION,
+        **session_kwargs,
+    )
+    assert session_with_user_prefix.default_bucket_prefix == "default-prefix"
+
+    # Case 3: Neither the user input or config has the prefix
+    session_with_no_prefix = Session(
+        default_bucket_prefix=None,
+        sagemaker_config=None,
+        **session_kwargs,
+    )
+    assert session_with_no_prefix.default_bucket_prefix is None
 
 
 def mock_exists(filepath_to_mock, exists_result):
@@ -2255,7 +2340,6 @@ PRIMARY_CONTAINER = {
 
 
 def test_create_model_with_sagemaker_config_injection(sagemaker_session):
-
     sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_MODEL
 
     sagemaker_session.expand_role = Mock(
@@ -4229,7 +4313,6 @@ def feature_group_dummy_definitions():
 def test_feature_group_create_with_sagemaker_config_injection(
     sagemaker_session, feature_group_dummy_definitions
 ):
-
     sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_FEATURE_GROUP
 
     sagemaker_session.create_feature_group(
@@ -5093,3 +5176,108 @@ def test_append_sagemaker_config_tags(sagemaker_session):
             {"Key": "tagkey5", "Value": "000"},
         ]
     )
+
+
+@pytest.mark.parametrize(
+    (
+        "file_path, user_input_params, "
+        "expected__without_user_input__with_default_bucket_and_default_prefix, "
+        "expected__without_user_input__with_default_bucket_only, "
+        "expected__with_user_input__with_default_bucket_and_prefix, "
+        "expected__with_user_input__with_default_bucket_only"
+    ),
+    [
+        # Group with just bucket as user input
+        (
+            "some/local/path/model.gz",
+            {"bucket": "input-bucket"},
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/data/model.gz",
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/data/model.gz",
+            "s3://input-bucket/data/model.gz",
+            "s3://input-bucket/data/model.gz",
+        ),
+        (
+            "some/local/path/dir",
+            {"bucket": "input-bucket"},
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/data/dir",
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/data/dir",
+            "s3://input-bucket/data/dir",
+            "s3://input-bucket/data/dir",
+        ),
+        # Group with both bucket and prefix as user input
+        (
+            "some/local/path/model.gz",
+            {"bucket": "input-bucket", "key_prefix": "input-prefix"},
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/data/model.gz",
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/data/model.gz",
+            "s3://input-bucket/input-prefix/model.gz",
+            "s3://input-bucket/input-prefix/model.gz",
+        ),
+        (
+            "some/local/path/dir",
+            {"bucket": "input-bucket", "key_prefix": "input-prefix"},
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/data/dir",
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/data/dir",
+            "s3://input-bucket/input-prefix/dir",
+            "s3://input-bucket/input-prefix/dir",
+        ),
+        # Group with just prefix as user input
+        (
+            "some/local/path/model.gz",
+            {"key_prefix": "input-prefix"},
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/data/model.gz",
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/data/model.gz",
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/input-prefix/model.gz",
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/input-prefix/model.gz",
+        ),
+        (
+            "some/local/path/dir",
+            {"key_prefix": "input-prefix"},
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/data/dir",
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/data/dir",
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/input-prefix/dir",
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/input-prefix/dir",
+        ),
+        (
+            "some/local/path/dir",
+            {"key_prefix": "input-prefix/longer/path/"},
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/data/dir",
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/data/dir",
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/{DEFAULT_S3_OBJECT_KEY_PREFIX_NAME}/input-prefix/longer/path/dir",
+            f"s3://{DEFAULT_S3_BUCKET_NAME}/input-prefix/longer/path/dir",
+        ),
+    ],
+)
+def test_upload_data_default_bucket_and_prefix_combinations(
+    sagemaker_session,
+    file_path,
+    user_input_params,
+    expected__without_user_input__with_default_bucket_and_default_prefix,
+    expected__without_user_input__with_default_bucket_only,
+    expected__with_user_input__with_default_bucket_and_prefix,
+    expected__with_user_input__with_default_bucket_only,
+):
+    sagemaker_session.s3_resource = Mock()
+    sagemaker_session._default_bucket = DEFAULT_S3_BUCKET_NAME
+
+    session_with_bucket_and_prefix = copy.deepcopy(sagemaker_session)
+    session_with_bucket_and_prefix.default_bucket_prefix = DEFAULT_S3_OBJECT_KEY_PREFIX_NAME
+
+    session_with_bucket_and_no_prefix = copy.deepcopy(sagemaker_session)
+    session_with_bucket_and_no_prefix.default_bucket_prefix = None
+
+    actual, expected = _test_default_bucket_and_prefix_combinations(
+        session_with_bucket_and_prefix=session_with_bucket_and_prefix,
+        session_with_bucket_and_no_prefix=session_with_bucket_and_no_prefix,
+        function_with_user_input=(lambda sess: sess.upload_data(file_path, **user_input_params)),
+        function_without_user_input=(lambda sess: sess.upload_data(file_path)),
+        expected__without_user_input__with_default_bucket_and_default_prefix=(
+            expected__without_user_input__with_default_bucket_and_default_prefix
+        ),
+        expected__without_user_input__with_default_bucket_only=expected__without_user_input__with_default_bucket_only,
+        expected__with_user_input__with_default_bucket_and_prefix=(
+            expected__with_user_input__with_default_bucket_and_prefix
+        ),
+        expected__with_user_input__with_default_bucket_only=expected__with_user_input__with_default_bucket_only,
+    )
+    assert actual == expected

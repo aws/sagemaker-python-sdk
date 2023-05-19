@@ -19,6 +19,7 @@ import os
 
 import botocore
 
+from sagemaker import s3
 from sagemaker.experiments._utils import is_already_exist_error
 
 logger = logging.getLogger(__name__)
@@ -75,8 +76,17 @@ class _ArtifactUploader(object):
             raise ValueError(
                 "{} does not exist or is not a file. Please supply a file path.".format(file_path)
             )
-        if not self.artifact_bucket:
-            self.artifact_bucket = self.sagemaker_session.default_bucket()
+
+        # If self.artifact_bucket is falsy, it will be set to sagemaker_session.default_bucket.
+        # In that case, and if sagemaker_session.default_bucket_prefix exists, self.artifact_prefix
+        # needs to be updated too (because not updating self.artifact_prefix would result in
+        # different behavior the 1st time this method is called vs the 2nd).
+        self.artifact_bucket, self.artifact_prefix = s3.determine_bucket_and_prefix(
+            bucket=self.artifact_bucket,
+            key_prefix=self.artifact_prefix,
+            sagemaker_session=self.sagemaker_session,
+        )
+
         artifact_name = os.path.basename(file_path)
         artifact_s3_key = "{}/{}/{}".format(
             self.artifact_prefix, self.trial_component_name, artifact_name
@@ -96,8 +106,17 @@ class _ArtifactUploader(object):
         Returns:
             str: The s3 URI of the uploaded file and the version of the file.
         """
-        if not self.artifact_bucket:
-            self.artifact_bucket = self.sagemaker_session.default_bucket()
+
+        # If self.artifact_bucket is falsy, it will be set to sagemaker_session.default_bucket.
+        # In that case, and if sagemaker_session.default_bucket_prefix exists, self.artifact_prefix
+        # needs to be updated too (because not updating self.artifact_prefix would result in
+        # different behavior the 1st time this method is called vs the 2nd).
+        self.artifact_bucket, self.artifact_prefix = s3.determine_bucket_and_prefix(
+            bucket=self.artifact_bucket,
+            key_prefix=self.artifact_prefix,
+            sagemaker_session=self.sagemaker_session,
+        )
+
         if file_extension:
             artifact_name = (
                 artifact_name + ("" if file_extension.startswith(".") else ".") + file_extension
