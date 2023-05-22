@@ -69,6 +69,17 @@ NEO_ALLOWED_FRAMEWORKS = set(
 
 NEO_IOC_TARGET_DEVICES = ["ml_c4", "ml_c5", "ml_m4", "ml_m5", "ml_p2", "ml_p3", "ml_g4dn"]
 
+NEO_MULTIVERSION_UNSUPPORTED = [
+    "imx8mplus",
+    "jacinto_tda4vm",
+    "coreml",
+    "sitara_am57x",
+    "amba_cv2",
+    "amba_cv22",
+    "amba_cv25",
+    "lambda",
+]
+
 
 class ModelBase(abc.ABC):
     """An object that encapsulates a trained model.
@@ -836,11 +847,14 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 multi_version_frameworks_support_mapping = {
                     "inferentia": ["pytorch", "tensorflow", "mxnet"],
                     "neo_ioc_targets": ["pytorch", "tensorflow"],
+                    "neo_edge_targets": ["pytorch", "tensorflow"],
                 }
                 if target_instance_type in NEO_IOC_TARGET_DEVICES:
                     return framework in multi_version_frameworks_support_mapping["neo_ioc_targets"]
                 if target_instance_type == "ml_inf1":
                     return framework in multi_version_frameworks_support_mapping["inferentia"]
+                if target_instance_type not in NEO_MULTIVERSION_UNSUPPORTED:
+                    return framework in multi_version_frameworks_support_mapping["neo_edge_targets"]
             return False
 
         if multi_version_compilation_supported(target_instance_type, framework, framework_version):
