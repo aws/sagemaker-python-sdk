@@ -65,7 +65,12 @@ def mock_create_tar_file():
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name="boto_session")
-    session = Mock(name="sagemaker_session", boto_session=boto_mock, local_mode=False)
+    session = Mock(
+        name="sagemaker_session",
+        boto_session=boto_mock,
+        local_mode=False,
+        default_bucket_prefix=None,
+    )
     # For tests which doesn't verify config file injection, operate with empty config
     session.sagemaker_config = {}
     return session

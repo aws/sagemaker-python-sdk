@@ -28,6 +28,7 @@ from sagemaker.workflow.pipeline_context import PipelineSession, LocalPipelineSe
 
 DEFAULT_REGION = "us-west-2"
 CUSTOM_BUCKET_NAME_PREFIX = "sagemaker-custom-bucket"
+CUSTOM_S3_OBJECT_KEY_PREFIX = "session-default-prefix"
 
 NO_M4_REGIONS = [
     "eu-west-3",
@@ -164,6 +165,7 @@ def sagemaker_session(
         sagemaker_runtime_client=runtime_client,
         sagemaker_metrics_client=metrics_client,
         sagemaker_config={},
+        default_bucket_prefix=CUSTOM_S3_OBJECT_KEY_PREFIX,
     )
 
 

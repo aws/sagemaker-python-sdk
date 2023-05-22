@@ -77,7 +77,11 @@ def estimator(sagemaker_session):
 def sagemaker_session():
     boto_mock = Mock(name="boto_session")
     mock_session = Mock(
-        name="sagemaker_session", boto_session=boto_mock, s3_client=None, s3_resource=None
+        name="sagemaker_session",
+        boto_session=boto_mock,
+        s3_client=None,
+        s3_resource=None,
+        default_bucket_prefix=None,
     )
     mock_session.expand_role = Mock(name="expand_role", return_value=ROLE)
     # For tests which doesn't verify config file injection, operate with empty config

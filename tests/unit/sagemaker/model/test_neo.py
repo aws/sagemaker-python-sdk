@@ -34,7 +34,10 @@ DESCRIBE_COMPILATION_JOB_RESPONSE = {
 
 @pytest.fixture
 def sagemaker_session():
-    session = Mock(boto_region_name=REGION)
+    session = Mock(
+        boto_region_name=REGION,
+        default_bucket_prefix=None,
+    )
     # For tests which doesn't verify config file injection, operate with empty config
     session.sagemaker_config = {}
     return session

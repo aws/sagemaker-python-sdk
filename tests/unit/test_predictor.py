@@ -39,7 +39,10 @@ ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"Model
 
 
 def empty_sagemaker_session():
-    ims = Mock(name="sagemaker_session")
+    ims = Mock(
+        name="sagemaker_session",
+        default_bucket_prefix=None,
+    )
     ims.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     ims.sagemaker_runtime_client = Mock(name="sagemaker_runtime")
     ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
@@ -147,7 +150,10 @@ def test_multi_model_predict_call():
 
 
 def json_sagemaker_session():
-    ims = Mock(name="sagemaker_session")
+    ims = Mock(
+        name="sagemaker_session",
+        default_bucket_prefix=None,
+    )
     ims.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     ims.sagemaker_runtime_client = Mock(name="sagemaker_runtime")
     ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
@@ -188,7 +194,10 @@ def test_predict_call_with_json():
 
 
 def ret_csv_sagemaker_session():
-    ims = Mock(name="sagemaker_session")
+    ims = Mock(
+        name="sagemaker_session",
+        default_bucket_prefix=None,
+    )
     ims.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     ims.sagemaker_runtime_client = Mock(name="sagemaker_runtime")
     ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)

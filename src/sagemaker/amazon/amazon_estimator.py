@@ -20,7 +20,7 @@ from typing import Union, Optional, Dict
 
 from six.moves.urllib.parse import urlparse
 
-from sagemaker import image_uris
+from sagemaker import image_uris, s3_utils
 from sagemaker.amazon import validation
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.common import write_numpy_to_dense_tensor
@@ -93,8 +93,15 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             enable_network_isolation=enable_network_isolation,
             **kwargs
         )
-        data_location = data_location or "s3://{}/sagemaker-record-sets/".format(
-            self.sagemaker_session.default_bucket()
+
+        data_location = data_location or (
+            s3_utils.s3_path_join(
+                "s3://",
+                self.sagemaker_session.default_bucket(),
+                self.sagemaker_session.default_bucket_prefix,
+                "sagemaker-record-sets",
+                with_end_slash=True,
+            )
         )
         self._data_location = data_location
 

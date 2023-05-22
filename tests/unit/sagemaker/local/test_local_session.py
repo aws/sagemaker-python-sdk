@@ -17,7 +17,7 @@ import urllib3
 import os
 from botocore.exceptions import ClientError
 from mock import Mock, patch
-from tests.unit import DATA_DIR
+from tests.unit import DATA_DIR, SAGEMAKER_CONFIG_SESSION
 
 import sagemaker
 from sagemaker.workflow.parameters import ParameterString
@@ -956,3 +956,78 @@ def test_start_undefined_pipeline():
     with pytest.raises(ClientError) as e:
         LocalSession().sagemaker_client.start_pipeline_execution("UndefinedPipeline")
     assert "Pipeline UndefinedPipeline does not exist" in str(e.value)
+
+
+def test_default_bucket_with_sagemaker_config(boto_session, client):
+    # common kwargs for Session objects
+    session_kwargs = {
+        "boto_session": boto_session,
+    }
+
+    # Case 1: Use bucket from sagemaker_config
+    session_with_config_bucket = LocalSession(
+        default_bucket=None,
+        sagemaker_config=SAGEMAKER_CONFIG_SESSION,
+        **session_kwargs,
+    )
+    assert (
+        session_with_config_bucket.default_bucket()
+        == SAGEMAKER_CONFIG_SESSION["SageMaker"]["PythonSDK"]["Modules"]["Session"][
+            "DefaultS3Bucket"
+        ]
+    )
+
+    # Case 2: Use bucket from user input to Session (even if sagemaker_config has a bucket)
+    session_with_user_bucket = LocalSession(
+        default_bucket="default-bucket",
+        sagemaker_config=SAGEMAKER_CONFIG_SESSION,
+        **session_kwargs,
+    )
+    assert session_with_user_bucket.default_bucket() == "default-bucket"
+
+    # Case 3: Use default bucket of SDK
+    session_with_sdk_bucket = LocalSession(
+        default_bucket=None,
+        sagemaker_config=None,
+        **session_kwargs,
+    )
+    session_with_sdk_bucket.boto_session.client.return_value = Mock(
+        get_caller_identity=Mock(return_value={"Account": "111111111"})
+    )
+    assert session_with_sdk_bucket.default_bucket() == "sagemaker-us-west-2-111111111"
+
+
+def test_default_bucket_prefix_with_sagemaker_config(boto_session, client):
+    # common kwargs for Session objects
+    session_kwargs = {
+        "boto_session": boto_session,
+    }
+
+    # Case 1: Use prefix from sagemaker_config
+    session_with_config_prefix = LocalSession(
+        default_bucket_prefix=None,
+        sagemaker_config=SAGEMAKER_CONFIG_SESSION,
+        **session_kwargs,
+    )
+    assert (
+        session_with_config_prefix.default_bucket_prefix
+        == SAGEMAKER_CONFIG_SESSION["SageMaker"]["PythonSDK"]["Modules"]["Session"][
+            "DefaultS3ObjectKeyPrefix"
+        ]
+    )
+
+    # Case 2: Use prefix from user input to Session (even if sagemaker_config has a prefix)
+    session_with_user_prefix = LocalSession(
+        default_bucket_prefix="default-prefix",
+        sagemaker_config=SAGEMAKER_CONFIG_SESSION,
+        **session_kwargs,
+    )
+    assert session_with_user_prefix.default_bucket_prefix == "default-prefix"
+
+    # Case 3: Neither the user input or config has the prefix
+    session_with_no_prefix = LocalSession(
+        default_bucket_prefix=None,
+        sagemaker_config=None,
+        **session_kwargs,
+    )
+    assert session_with_no_prefix.default_bucket_prefix is None

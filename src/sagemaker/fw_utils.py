@@ -25,6 +25,7 @@ from typing import Optional, Union, Dict
 from packaging import version
 
 import sagemaker.image_uris
+from sagemaker.s3_utils import s3_path_join
 from sagemaker.session_settings import SessionSettings
 import sagemaker.utils
 from sagemaker.workflow import is_pipeline_variable
@@ -598,7 +599,7 @@ def model_code_key_prefix(code_location_key_prefix, model_name, image):
     name_from_image = f"/model_code/{int(time.time())}"
     if not is_pipeline_variable(image):
         name_from_image = sagemaker.utils.name_from_image(image)
-    return "/".join(filter(None, [code_location_key_prefix, model_name or name_from_image]))
+    return s3_path_join(code_location_key_prefix, model_name or name_from_image)
 
 
 def warn_if_parameter_server_with_multi_gpu(training_instance_type, distribution):
