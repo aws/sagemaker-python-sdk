@@ -185,9 +185,11 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             )
         self.framework_version = framework_version
 
-        ## Inference framework version is being introduced to accomodate the mismatch between tensorflow and tensorflow serving releases,
-        ## wherein the TF and TFS might have different patch versions, but end up hosting the model of same TF version. For eg., the
-        ## upstream TFS-2.12.0 release was a bad release and hence a new TFS-2.12.1 release was made to host models from TF-2.12.0.
+        # Inference framework version is being introduced to accomodate the mismatch between
+        # tensorflow and tensorflow serving releases, wherein the TF and TFS might have different
+        # patch versions, but end up hosting the model of same TF version. For eg., the upstream
+        # TFS-2.12.0 release was a bad release and hence a new TFS-2.12.1 release was made to host
+        # models from TF-2.12.0.
         training_inference_version_mismatch_dict = {"2.12.0": "2.12.1"}
         self.inference_framework_version = training_inference_version_mismatch_dict.get(
             framework_version, framework_version
