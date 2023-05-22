@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.158.0 (2023-05-22)
+
+### Features
+
+ * Enable default role for Spark processors
+ * SDK Defaults - S3 Params for Session
+ * Bump up images for DJL transformers Neuronx DLCs
+
+### Bug Fixes and Other Changes
+
+ * Relax local-mode PyPI requirements on urllib3
+
+### Documentation Changes
+
+ * Fix Tensorflow and PyTorch supported version in HuggingFaceProcessor
+ * Update doc for model_server_workers param in PyTorchModel
+
 ## v2.157.0 (2023-05-18)
 
 ### Features
