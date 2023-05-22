@@ -19,7 +19,7 @@ from sagemaker.workflow.entities import RequestType
 class SelectiveExecutionConfig:
     """Selective execution config config for SageMaker pipeline."""
 
-    def __init__(self, source_pipeline_execution_arn: str, selected_steps: List[str]):
+    def __init__(self, selected_steps: List[str], source_pipeline_execution_arn: str = None):
         """Create a SelectiveExecutionConfig
 
         Args:

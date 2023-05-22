@@ -425,6 +425,19 @@ def test_pipeline_start(sagemaker_session_mock):
         PipelineName="MyPipeline", PipelineParameters=[{"Name": "alpha", "Value": "epsilon"}]
     )
 
+
+def test_pipeline_start_selective_execution(sagemaker_session_mock):
+    sagemaker_session_mock.sagemaker_client.start_pipeline_execution.return_value = {
+        "PipelineExecutionArn": "my:arn"
+    }
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[],
+        steps=[],
+        sagemaker_session=sagemaker_session_mock,
+    )
+
+    # Case 1: Happy path
     selective_execution_config = SelectiveExecutionConfig(
         source_pipeline_execution_arn="foo-arn", selected_steps=["step-1", "step-2", "step-3"]
     )
@@ -438,6 +451,37 @@ def test_pipeline_start(sagemaker_session_mock):
                 {"StepName": "step-3"},
             ],
             "SourcePipelineExecutionArn": "foo-arn",
+        },
+    )
+
+    # Case 2: Start selective execution without SourcePipelineExecutionArn
+    sagemaker_session_mock.sagemaker_client.list_pipeline_executions.return_value = {
+        "PipelineExecutionSummaries": [
+            {
+                "PipelineExecutionArn": "my:latest:execution:arn",
+                "PipelineExecutionDisplayName": "Latest",
+            }
+        ]
+    }
+    selective_execution_config = SelectiveExecutionConfig(
+        selected_steps=["step-1", "step-2", "step-3"]
+    )
+    pipeline.start(selective_execution_config=selective_execution_config)
+    sagemaker_session_mock.sagemaker_client.list_pipeline_executions.assert_called_with(
+        PipelineName="MyPipeline",
+        SortBy="CreationTime",
+        SortOrder="Descending",
+        MaxResults=1,
+    )
+    sagemaker_session_mock.sagemaker_client.start_pipeline_execution.assert_called_with(
+        PipelineName="MyPipeline",
+        SelectiveExecutionConfig={
+            "SelectedSteps": [
+                {"StepName": "step-1"},
+                {"StepName": "step-2"},
+                {"StepName": "step-3"},
+            ],
+            "SourcePipelineExecutionArn": "my:latest:execution:arn",
         },
     )
 

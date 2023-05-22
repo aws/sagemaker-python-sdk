@@ -332,6 +332,10 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             A `_PipelineExecution` instance, if successful.
         """
         if selective_execution_config is not None:
+            if selective_execution_config.source_pipeline_execution_arn is None:
+                selective_execution_config.source_pipeline_execution_arn = (
+                    self._get_latest_execution_arn()
+                )
             selective_execution_config = selective_execution_config.to_request()
 
         kwargs = dict(PipelineName=self.name)
@@ -435,6 +439,17 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             for key in ["PipelineExecutionSummaries", "NextToken"]
             if key in response
         }
+
+    def _get_latest_execution_arn(self):
+        """Retrieves the latest execution of this pipeline"""
+        response = self.list_executions(
+            sort_by="CreationTime",
+            sort_order="Descending",
+            max_results=1,
+        )
+        if response["PipelineExecutionSummaries"]:
+            return response["PipelineExecutionSummaries"][0]["PipelineExecutionArn"]
+        return None
 
 
 def format_start_parameters(parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
