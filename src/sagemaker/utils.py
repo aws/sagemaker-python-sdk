@@ -1066,14 +1066,6 @@ def resolve_value_from_config(
         The value that should be used by the caller
     """
 
-    if (
-        sagemaker_session is not None
-        and sagemaker_session.settings is not None
-        and sagemaker_session.settings.ignore_intelligent_defaults
-    ):
-        logger.info("Ignoring intelligent defaults. Returning direct input.")
-        return direct_input
-
     config_value = (
         get_sagemaker_config_value(sagemaker_session, config_path) if config_path else None
     )
@@ -1101,6 +1093,15 @@ def get_sagemaker_config_value(sagemaker_session, key):
     """
     if not sagemaker_session:
         return None
+
+    if (
+        sagemaker_session is not None
+        and sagemaker_session.settings is not None
+        and sagemaker_session.settings.ignore_sagemaker_config
+    ):
+        logger.info("Ignoring defaults config.")
+        return None
+
     if sagemaker_session.sagemaker_config:
         validate_sagemaker_config(sagemaker_session.sagemaker_config)
     config_value = get_config_value(key, sagemaker_session.sagemaker_config)

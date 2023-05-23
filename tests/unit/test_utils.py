@@ -119,7 +119,7 @@ def test_update_list_of_dicts_with_values_from_config(mock_json_schema_validatio
         }
     ]
     # Using short form for sagemaker_session
-    ss = MagicMock()
+    ss = MagicMock(settings=SessionSettings())
 
     ss.sagemaker_config = {"DUMMY": {"CONFIG": {"PATH": input_config_list}}}
     config_path = "DUMMY.CONFIG.PATH"
@@ -1181,7 +1181,7 @@ def test_retry_with_backoff(patched_sleep):
 def test_resolve_value_from_config(mock_info_logger):
     # using a shorter name for inside the test
     sagemaker_session = MagicMock()
-    sagemaker_session.settings.ignore_intelligent_defaults = False
+    sagemaker_session.settings.ignore_sagemaker_config = False
     sagemaker_session.sagemaker_config = {"SchemaVersion": "1.0"}
     config_key_path = "SageMaker.EndpointConfig.KmsKeyId"
     sagemaker_session.sagemaker_config.update(
@@ -1233,11 +1233,14 @@ def test_resolve_value_from_config(mock_info_logger):
     sagemaker_session.sagemaker_config.update({"SageMaker": {"EndpointConfig": {"KmsKeyId": ""}}})
     assert resolve_value_from_config(None, config_key_path, None, sagemaker_session) == ""
 
-    sagemaker_session.settings.ignore_intelligent_defaults = True
+    sagemaker_session.settings.ignore_sagemaker_config = True
     assert resolve_value_from_config("blah", config_key_path, None, sagemaker_session) == "blah"
-    mock_info_logger.assert_called_once_with(
-        "Ignoring intelligent defaults. Returning direct input."
-    )
+    mock_info_logger.assert_called_once_with("Ignoring defaults config.")
+
+    mock_info_logger.reset_mock()
+
+    assert resolve_value_from_config(None, config_key_path, "blah", sagemaker_session) == "blah"
+    mock_info_logger.assert_called_once_with("Ignoring defaults config.")
 
 
 @patch("jsonschema.validate")
@@ -1254,7 +1257,7 @@ def test_resolve_class_attribute_from_config(
     mock_validate, existing_value, config_value, default_value
 ):
     # using a shorter name for inside the test
-    ss = MagicMock()
+    ss = MagicMock(settings=SessionSettings())
 
     class TestClass(object):
         def __init__(self, test_attribute=None, extra=None):
@@ -1361,7 +1364,7 @@ def test_resolve_class_attribute_from_config(
 @patch("jsonschema.validate")
 def test_resolve_nested_dict_value_from_config(mock_validate):
     # using a shorter name for inside the test
-    ss = MagicMock()
+    ss = MagicMock(settings=SessionSettings())
 
     dummy_config_path = "DUMMY.CONFIG.PATH"
     # happy cases: return existing dict with existing values

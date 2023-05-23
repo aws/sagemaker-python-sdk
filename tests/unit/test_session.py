@@ -1719,6 +1719,8 @@ def test_train_with_sagemaker_config_injection(sagemaker_session):
 
 
 def test_train_with_sagemaker_config_injection_no_kms_support(sagemaker_session):
+    """Tests that when the instance type for train does not support KMS, no KMS key is used."""
+
     sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRAINING_JOB
 
     in_config = [
@@ -2774,6 +2776,8 @@ def test_create_endpoint_config_with_sagemaker_config_injection(sagemaker_sessio
 
 
 def test_create_endpoint_config_with_sagemaker_config_injection_no_kms_support(sagemaker_session):
+    """Tests that when no production variant instance supports KMS, no KMS key is used."""
+
     sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_ENDPOINT_CONFIG
 
     data_capture_config_dict = {"DestinationS3Uri": "s3://test"}
@@ -2873,6 +2877,12 @@ def test_create_endpoint_config_from_existing_with_sagemaker_config_injection(
 def test_create_endpoint_config_from_existing_with_sagemaker_config_injection_partial_kms_support(
     sagemaker_session,
 ):
+    """Tests that when some production variant instances supports KMS, a KMS key is used.
+
+    Note that this will result in an Exception being thrown at runtime. However, this is a preferable
+    experience than not using KMS keys when one could be used, from a security perspective.
+    """
+
     sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_ENDPOINT_CONFIG
 
     pvs = [
@@ -2932,6 +2942,8 @@ def test_create_endpoint_config_from_existing_with_sagemaker_config_injection_pa
 def test_create_endpoint_config_from_existing_with_sagemaker_config_injection_no_kms_support(
     sagemaker_session,
 ):
+    """Tests that when no production variant instance supports KMS, no KMS key is used."""
+
     sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_ENDPOINT_CONFIG
 
     pvs = [
@@ -3050,6 +3062,12 @@ def test_endpoint_from_production_variants_with_sagemaker_config_injection(
 def test_endpoint_from_production_variants_with_sagemaker_config_injection_partial_kms_support(
     sagemaker_session,
 ):
+    """Tests that when some production variants support KMS, a KMS key is applied from config.
+
+    Note that this will result in an Exception being thrown at runtime. However, this is a preferable
+    experience than not using KMS keys when one could be used, from a security perspective.
+    """
+
     sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_ENDPOINT_CONFIG
 
     sagemaker_session.sagemaker_client.describe_endpoint = Mock(
@@ -3112,6 +3130,8 @@ def test_endpoint_from_production_variants_with_sagemaker_config_injection_parti
 def test_endpoint_from_production_variants_with_sagemaker_config_injection_no_kms_support(
     sagemaker_session,
 ):
+    """Tests that when no production variants support KMS, no KMS key is applied from config."""
+
     sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_ENDPOINT_CONFIG
 
     sagemaker_session.sagemaker_client.describe_endpoint = Mock(
