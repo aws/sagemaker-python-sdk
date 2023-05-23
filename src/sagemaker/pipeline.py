@@ -22,6 +22,7 @@ from sagemaker.config import (
     MODEL_VPC_CONFIG_PATH,
     MODEL_ENABLE_NETWORK_ISOLATION_PATH,
     MODEL_EXECUTION_ROLE_ARN_PATH,
+    load_sagemaker_config,
 )
 from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.metadata_properties import MetadataProperties
@@ -90,19 +91,34 @@ class PipelineModel(object):
         self.models = models
         self.predictor_cls = predictor_cls
         self.name = name
-        self.sagemaker_session = sagemaker_session
         self.endpoint_name = None
+        self.sagemaker_session = sagemaker_session
+
+        # Workaround for config injection if sagemaker_session is None, since in
+        # that case sagemaker_session will not be initialized until
+        # `_init_sagemaker_session_if_does_not_exist` is called later
+        self._sagemaker_config = (
+            load_sagemaker_config() if (self.sagemaker_session is None) else None
+        )
+
         self.role = resolve_value_from_config(
-            role, MODEL_EXECUTION_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
+            role,
+            MODEL_EXECUTION_ROLE_ARN_PATH,
+            sagemaker_session=self.sagemaker_session,
+            sagemaker_config=self._sagemaker_config,
         )
         self.vpc_config = resolve_value_from_config(
-            vpc_config, MODEL_VPC_CONFIG_PATH, sagemaker_session=self.sagemaker_session
+            vpc_config,
+            MODEL_VPC_CONFIG_PATH,
+            sagemaker_session=self.sagemaker_session,
+            sagemaker_config=self._sagemaker_config,
         )
         self.enable_network_isolation = resolve_value_from_config(
             direct_input=enable_network_isolation,
             config_path=MODEL_ENABLE_NETWORK_ISOLATION_PATH,
             default_value=False,
             sagemaker_session=self.sagemaker_session,
+            sagemaker_config=self._sagemaker_config,
         )
 
         if not self.role:
@@ -214,7 +230,7 @@ class PipelineModel(object):
             is not None. Otherwise, return None.
         """
         if not self.sagemaker_session:
-            self.sagemaker_session = Session()
+            self.sagemaker_session = Session(sagemaker_config=self._sagemaker_config)
 
         containers = self.pipeline_container_def(instance_type)
 
@@ -303,7 +319,7 @@ class PipelineModel(object):
                 support or not.
         """
         if not self.sagemaker_session:
-            self.sagemaker_session = Session()
+            self.sagemaker_session = Session(sagemaker_config=self._sagemaker_config)
 
         containers = self.pipeline_container_def(instance_type)
 
