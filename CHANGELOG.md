@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.159.0 (2023-05-23)
+
+### Features
+
+ * Add TF Serving 2.12.1 images to the SM PySDK
+
+### Bug Fixes and Other Changes
+
+ * Update the list of extension packages pylint is allowed to load
+
 ## v2.158.0 (2023-05-22)
 
 ### Features
