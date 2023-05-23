@@ -21,6 +21,8 @@ import sys
 import json
 import secrets
 from typing import Dict, List, Tuple
+from urllib.parse import urlparse
+from io import BytesIO
 
 from sagemaker.config.config_schema import (
     REMOTE_FUNCTION_ENVIRONMENT_VARIABLES,
@@ -43,6 +45,7 @@ from sagemaker.config.config_schema import (
 from sagemaker.experiments._run_context import _RunContext
 from sagemaker.experiments.run import Run
 from sagemaker.image_uris import get_base_python_image_uri
+from sagemaker import image_uris
 from sagemaker.session import get_execution_role, _logs_for_job, Session
 from sagemaker.utils import name_from_base, _tmpdir, resolve_value_from_config
 from sagemaker.s3 import s3_path_join, S3Uploader
@@ -52,17 +55,38 @@ from sagemaker.remote_function.runtime_environment.runtime_environment_manager i
     RuntimeEnvironmentManager,
 )
 from sagemaker.remote_function import logging_config
+from sagemaker.remote_function.spark_config import SparkConfig
+from sagemaker.spark import defaults
 
 # runtime script names
 BOOTSTRAP_SCRIPT_NAME = "bootstrap_runtime_environment.py"
 ENTRYPOINT_SCRIPT_NAME = "job_driver.sh"
 PRE_EXECUTION_SCRIPT_NAME = "pre_exec.sh"
 RUNTIME_MANAGER_SCRIPT_NAME = "runtime_environment_manager.py"
+SPARK_APP_SCRIPT_NAME = "spark_app.py"
 
 # training channel names
 RUNTIME_SCRIPTS_CHANNEL_NAME = "sagemaker_remote_function_bootstrap"
 REMOTE_FUNCTION_WORKSPACE = "sm_rf_user_ws"
 JOB_REMOTE_FUNCTION_WORKSPACE = "sagemaker_remote_function_workspace"
+
+# Spark config channel and file name
+SPARK_CONF_CHANNEL_NAME = "conf"
+SPARK_CONF_FILE_NAME = "configuration.json"
+
+# TODO: SageMaker python SDK wheel file and channel name, remove after GA
+SAGEMAKER_WHL_CHANNEL_NAME = "sagemaker_whl_file"
+SAGEMAKER_WHL_FILE_NAME = "sagemaker-2.142.1.dev0-py2.py3-none-any.whl"
+
+# Spark submitted files workspace names on S3
+SPARK_SUBMIT_JARS_WORKSPACE = "sm_rf_spark_jars"
+SPARK_SUBMIT_PY_FILES_WORKSPACE = "sm_rf_spark_py_files"
+SPARK_SUBMIT_FILES_WORKSPACE = "sm_rf_spark_data_files"
+SPARK_CONF_WORKSPACE = "sm_rf_spark_conf"
+
+# default spark version
+DEFAULT_SPARK_VERSION = "3.3"
+DEFAULT_SPARK_CONTAINER_VERSION = "v1"
 
 # run context dictionary keys
 KEY_EXPERIMENT_NAME = "experiment_name"
@@ -72,6 +96,8 @@ JOBS_CONTAINER_ENTRYPOINT = [
     "/bin/bash",
     f"/opt/ml/input/data/{RUNTIME_SCRIPTS_CHANNEL_NAME}/{ENTRYPOINT_SCRIPT_NAME}",
 ]
+
+SPARK_APP_SCRIPT_PATH = f"/opt/ml/input/data/{RUNTIME_SCRIPTS_CHANNEL_NAME}/{SPARK_APP_SCRIPT_NAME}"
 
 ENTRYPOINT_SCRIPT = f"""
 #!/bin/bash
@@ -118,6 +144,24 @@ else
 fi
 """
 
+SPARK_ENTRYPOINT_SCRIPT = f"""
+#!/bin/bash
+
+# Entry point for bootstrapping runtime environment and invoking remote function for Spark
+
+set -eu
+
+printf "INFO: Bootstraping Spark runtime environment.\\n"
+
+python3 /opt/ml/input/data/{RUNTIME_SCRIPTS_CHANNEL_NAME}/{BOOTSTRAP_SCRIPT_NAME} "$@"
+
+# TODO: Remove this installation after GA
+python3 -m pip install /opt/ml/input/data/{SAGEMAKER_WHL_CHANNEL_NAME}/{SAGEMAKER_WHL_FILE_NAME}
+
+# Spark Container entry point script to initiate the spark application
+smspark-submit "$@"
+"""
+
 logger = logging_config.get_logger()
 
 
@@ -153,10 +197,174 @@ class _JobSettings:
         volume_kms_key: str = None,
         volume_size: int = 30,
         encrypt_inter_container_traffic: bool = None,
+        spark_config: SparkConfig = None,
+        # TODO: For dev test purpose only, this will be removed after GA
+        python_sdk_whl_s3_uri: str = None,
     ):
+        """Initialize a _JobSettings instance which configures the remote job.
 
+        Args:
+            dependencies (str): Either the path to a dependencies file or the reserved keyword
+              ``auto_capture``. Defaults to ``None``.
+              If ``dependencies`` is provided, the value must be one of the following:
+
+              * A path to a conda environment.yml file. The following conditions apply.
+
+                * If job_conda_env is set, then the conda environment is updated by installing
+                  dependencies from the yaml file and the function is invoked within that
+                  conda environment. For this to succeed, the specified conda environment must
+                  already exist in the image.
+                * If the environment variable ``SAGEMAKER_JOB_CONDA_ENV`` is set in the image,
+                  then the conda environment is updated by installing dependencies from the
+                  yaml file and the function is invoked within that conda environment. For
+                  this to succeed, the conda environment name must already be set in
+                  ``SAGEMAKER_JOB_CONDA_ENV``, and ``SAGEMAKER_JOB_CONDA_ENV`` must already
+                  exist in the image.
+                * If none of the previous conditions are met, a new conda environment named
+                  ``sagemaker-runtime-env`` is created and the function annotated with the remote
+                  decorator is invoked in that conda environment.
+
+              * A path to a requirements.txt file. The following conditions apply.
+
+                * If ``job_conda_env`` is set in the remote decorator, dependencies are installed
+                  within that conda environment and the function annotated with the remote decorator
+                  is invoked in the same conda environment. For this to succeed, the specified
+                  conda environment must already exist in the image.
+                * If an environment variable ``SAGEMAKER_JOB_CONDA_ENV`` is set in the image,
+                  dependencies are installed within that conda environment and the function
+                  annotated with the remote decorator is invoked in the same. For this to succeed,
+                  the conda environment name must already be set in ``SAGEMAKER_JOB_CONDA_ENV``, and
+                  ``SAGEMAKER_JOB_CONDA_ENV`` must already exist in the image.
+                * If none of the above conditions are met, conda is not used. Dependencies are
+                  installed at the system level, without any virtual environment, and the function
+                  annotated with the remote decorator is invoked using the Python runtime available
+                  in the system path.
+
+              * The parameter dependencies is set to ``auto_capture``. SageMaker will automatically
+                generate an env_snapshot.yml corresponding to the current active conda environment’s
+                snapshot. You do not need to provide a dependencies file. The following conditions
+                apply:
+
+                * You must run the remote function within an active conda environment.
+                * When installing the dependencies on the training job, the same conditions
+                  as when dependencies is set to a path to a conda environment file apply.
+                  These conditions are as follows:
+
+                  * If job_conda_env is set, then the conda environment is updated by installing
+                    dependencies from the yaml file and the function is invoked within that
+                    conda environment. For this to succeed, the specified conda environment must
+                    already exist in the image.
+                  * If the environment variable ``SAGEMAKER_JOB_CONDA_ENV`` is set in the image,
+                    then the conda environment is updated by installing dependencies from the yaml
+                    file and the function is invoked within that conda environment. For this to
+                    succeed, the conda environment name must already be set in
+                    ``SAGEMAKER_JOB_CONDA_ENV``, and ``SAGEMAKER_JOB_CONDA_ENV`` must already exist
+                    in the image.
+                  * If none of the previous conditions are met, a new conda environment with name
+                    ``sagemaker-runtime-env`` is created and the function annotated with the
+                    remote decorator is invoked in that conda environment.
+
+              * ``None``. SageMaker will assume that there are no dependencies to install while
+                executing the remote annotated function in the training job.
+
+            pre_execution_commands (List[str]): List of commands to be executed prior to executing
+              remote function. Only one of ``pre_execution_commands`` or ``pre_execution_script``
+              can be specified at the same time. Defaults to None.
+
+            pre_execution_script (str): Path to script file to be executed prior to executing
+              remote function. Only one of ``pre_execution_commands`` or ``pre_execution_script``
+              can be specified at the same time. Defaults to None.
+
+            environment_variables (Dict): The environment variables used inside the decorator
+              function. Defaults to ``None``.
+
+            image_uri (str): The universal resource identifier (URI) location of a Docker image on
+              Amazon Elastic Container Registry (ECR). Defaults to the following based on where
+              the SDK is running:
+
+                * For users who specify ``spark_config`` and want to run the function in a Spark
+                  application, the ``image_uri`` should be ``None``. A SageMaker Spark image will
+                  be used for training, otherwise a ``ValueError`` is thrown.
+                * For users on SageMaker Studio notebooks, the image used as the kernel image for
+                  the notebook is used.
+                * For other users, it is resolved to base python image with the same python version
+                  as the environment running the local code.
+
+              If no compatible image is found, a ValueError is thrown.
+
+            include_local_workdir (bool): A flag to indicate that the remote function should include
+              local directories. Set to ``True`` if the remote function code imports local modules
+              and methods that are not available via PyPI or conda. Default value is ``False``.
+
+            instance_count (int): The number of instances to use. Defaults to 1.
+
+            instance_type (str): The Amazon Elastic Compute Cloud (EC2) instance type to use to run
+              the SageMaker job. e.g. ml.c4.xlarge. If not provided, a ValueError is thrown.
+
+            job_conda_env (str): The name of the conda environment to activate during job's runtime.
+              Defaults to ``None``.
+
+            job_name_prefix (str): The prefix used used to create the underlying SageMaker job.
+
+            keep_alive_period_in_seconds (int): The duration in seconds to retain and reuse
+              provisioned infrastructure after the completion of a training job, also known as
+              SageMaker managed warm pools. The use of warmpools reduces the latency time spent to
+              provision new resources. The default value for ``keep_alive_period_in_seconds`` is 0.
+              NOTE: Additional charges associated with warm pools may apply. Using this parameter
+              also activates a new persistent cache feature, which will further reduce job start up
+              latency than over using SageMaker managed warm pools alone by caching the package
+              source downloaded in the previous runs.
+
+            max_retry_attempts (int): The max number of times the job is retried on
+              ``InternalServerFailure`` Error from SageMaker service. Defaults to 1.
+
+            max_runtime_in_seconds (int): The upper limit in seconds to be used for training. After
+              this specified amount of time, SageMaker terminates the job regardless of its current
+              status. Defaults to 1 day or (86400 seconds).
+
+            role (str): The IAM role (either name or full ARN) used to run your SageMaker training
+              job. Defaults to:
+
+              * the SageMaker default IAM role if the SDK is running in SageMaker Notebooks or
+                SageMaker Studio Notebooks.
+              * if not above, a ValueError is be thrown.
+
+            s3_kms_key (str): The key used to encrypt the input and output data.
+              Default to ``None``.
+
+            s3_root_uri (str): The root S3 folder to which the code archives and data are
+              uploaded to. Defaults to ``s3://<sagemaker-default-bucket>``.
+
+            sagemaker_session (sagemaker.session.Session): The underlying SageMaker session to
+              which SageMaker service calls are delegated to (default: None). If not provided,
+              one is created using a default configuration chain.
+
+            security_group_ids (List[str): A list of security group IDs. Defaults to ``None`` and
+              the training job is created without VPC config.
+
+            subnets (List[str): A list of subnet IDs. Defaults to ``None`` and the job is created
+              without VPC config.
+
+            tags (List[Tuple[str, str]): A list of tags attached to the job. Defaults to ``None``
+              and the training job is created without tags.
+
+            volume_kms_key (str): An Amazon Key Management Service (KMS) key used to encrypt an
+              Amazon Elastic Block Storage (EBS) volume attached to the training instance.
+              Defaults to ``None``.
+
+            volume_size (int): The size in GB of the storage volume for storing input and output
+              data during training. Defaults to ``30``.
+
+            encrypt_inter_container_traffic (bool): A flag that specifies whether traffic between
+              training containers is encrypted for the training job. Defaults to ``False``.
+
+            spark_config (SparkConfig): Configurations to the Spark application that runs on
+              Spark image. If ``spark_config`` is specified, a SageMaker Spark image uri
+              will be used for training. Note that ``image_uri`` can not be specified at the
+              same time otherwise a ``ValueError`` is thrown. Defaults to ``None``.
+        """
         self.sagemaker_session = sagemaker_session or Session()
-
+        self.python_sdk_whl_s3_uri = python_sdk_whl_s3_uri
         self.environment_variables = resolve_value_from_config(
             direct_input=environment_variables,
             config_path=REMOTE_FUNCTION_ENVIRONMENT_VARIABLES,
@@ -167,6 +375,8 @@ class _JobSettings:
             {"AWS_DEFAULT_REGION": self.sagemaker_session.boto_region_name}
         )
 
+        if spark_config and image_uri:
+            raise ValueError("spark_config and image_uri cannot be specified at the same time!")
         self.environment_variables.update({"REMOTE_FUNCTION_SECRET_KEY": secrets.token_hex(32)})
 
         _image_uri = resolve_value_from_config(
@@ -174,7 +384,15 @@ class _JobSettings:
             config_path=REMOTE_FUNCTION_IMAGE_URI,
             sagemaker_session=self.sagemaker_session,
         )
-        if _image_uri:
+
+        if spark_config:
+            self.image_uri = self._get_default_spark_image(self.sagemaker_session)
+            logger.info(
+                "Set the image uri as %s because value of spark_config is "
+                "indicating this is a remote spark job.",
+                self.image_uri,
+            )
+        elif _image_uri:
             self.image_uri = _image_uri
         else:
             self.image_uri = self._get_default_image(self.sagemaker_session)
@@ -221,6 +439,7 @@ class _JobSettings:
         self.max_runtime_in_seconds = max_runtime_in_seconds
         self.max_retry_attempts = max_retry_attempts
         self.keep_alive_period_in_seconds = keep_alive_period_in_seconds
+        self.spark_config = spark_config
         self.job_conda_env = resolve_value_from_config(
             direct_input=job_conda_env,
             config_path=REMOTE_FUNCTION_JOB_CONDA_ENV,
@@ -286,7 +505,14 @@ class _JobSettings:
 
     @staticmethod
     def _get_default_image(session):
-        """Return Studio notebook image, if in Studio env. Else, base python"""
+        """Return Studio notebook image, if in Studio env. Else, base python.
+
+        Args:
+            session (Session): Boto session.
+
+        Returns:
+            Default SageMaker base python image.
+        """
 
         if (
             "SAGEMAKER_INTERNAL_IMAGE_URI" in os.environ
@@ -307,12 +533,51 @@ class _JobSettings:
 
         return image_uri
 
+    @staticmethod
+    def _get_default_spark_image(session):
+        """Return the Spark image.
+
+        Args:
+            session (Session): Boto session.
+
+        Returns:
+            SageMaker Spark container image uri.
+        """
+
+        region = session.boto_region_name
+
+        py_version = str(sys.version_info[0]) + str(sys.version_info[1])
+
+        if py_version not in ["39"]:
+            raise ValueError(
+                "The SageMaker Spark image for remote job only supports Python version 3.9. "
+            )
+
+        image_uri = image_uris.retrieve(
+            framework=defaults.SPARK_NAME,
+            region=region,
+            version=DEFAULT_SPARK_VERSION,
+            instance_type=None,
+            py_version=f"py{py_version}",
+            container_version=DEFAULT_SPARK_CONTAINER_VERSION,
+        )
+
+        return image_uri
+
 
 class _Job:
     """Helper class that interacts with the SageMaker training service."""
 
     def __init__(self, job_name: str, s3_uri: str, sagemaker_session: Session, hmac_key: str):
-        """Initialize a _Job object."""
+        """Initialize a _Job object.
+
+        Args:
+            job_name (str): The training job name.
+            s3_uri (str): The training job output S3 uri.
+            sagemaker_session (Session): SageMaker boto session.
+            _last_describe_response (Dict): The last describe training job response.
+            hmac_key (str): Remote function secret key.
+        """
         self.job_name = job_name
         self.s3_uri = s3_uri
         self.sagemaker_session = sagemaker_session
@@ -321,7 +586,15 @@ class _Job:
 
     @staticmethod
     def from_describe_response(describe_training_job_response, sagemaker_session):
-        """Construct a _Job from a describe_training_job_response object."""
+        """Construct a _Job from a describe_training_job_response object.
+
+        Args:
+            describe_training_job_response (Dict): Describe training job response.
+            sagemaker_session (Session): SageMaker boto session.
+
+        Returns:
+            the _Job object.
+        """
         job_name = describe_training_job_response["TrainingJobName"]
         s3_uri = describe_training_job_response["OutputDataConfig"]["S3OutputPath"]
         hmac_key = describe_training_job_response["Environment"]["REMOTE_FUNCTION_SECRET_KEY"]
@@ -340,13 +613,17 @@ class _Job:
             func_args: the positional arguments to the function.
             func_kwargs: the keyword arguments to the function
 
-        Returns: the _Job object.
+        Returns:
+            the _Job object.
         """
         job_name = _Job._get_job_name(job_settings, func)
         s3_base_uri = s3_path_join(job_settings.s3_root_uri, job_name)
+        spark_config = job_settings.spark_config
+        jobs_container_entrypoint = JOBS_CONTAINER_ENTRYPOINT[:]
         hmac_key = job_settings.environment_variables["REMOTE_FUNCTION_SECRET_KEY"]
 
         bootstrap_scripts_s3uri = _prepare_and_upload_runtime_scripts(
+            spark_config=spark_config,
             s3_base_uri=s3_base_uri,
             s3_kms_key=job_settings.s3_kms_key,
             sagemaker_session=job_settings.sagemaker_session,
@@ -396,6 +673,19 @@ class _Job:
             )
         ]
 
+        if job_settings.python_sdk_whl_s3_uri:
+            input_data_config.append(
+                dict(
+                    ChannelName=SAGEMAKER_WHL_CHANNEL_NAME,
+                    DataSource={
+                        "S3DataSource": {
+                            "S3Uri": job_settings.python_sdk_whl_s3_uri,
+                            "S3DataType": "S3Prefix",
+                        }
+                    },
+                )
+            )
+
         if user_dependencies_s3uri:
             input_data_config.append(
                 dict(
@@ -437,7 +727,7 @@ class _Job:
         algorithm_spec = dict(
             TrainingImage=job_settings.image_uri,
             TrainingInputMode="File",
-            ContainerEntrypoint=JOBS_CONTAINER_ENTRYPOINT,
+            ContainerEntrypoint=jobs_container_entrypoint,
             ContainerArguments=container_args,
         )
 
@@ -468,13 +758,19 @@ class _Job:
 
         request_dict["Environment"] = job_settings.environment_variables
 
+        extended_request = _extend_spark_config_to_request(request_dict, job_settings, s3_base_uri)
+
         logger.info("Creating job: %s", job_name)
-        job_settings.sagemaker_session.sagemaker_client.create_training_job(**request_dict)
+        job_settings.sagemaker_session.sagemaker_client.create_training_job(**extended_request)
 
         return _Job(job_name, s3_base_uri, job_settings.sagemaker_session, hmac_key)
 
     def describe(self):
-        """Describe the underlying sagemaker training job."""
+        """Describe the underlying sagemaker training job.
+
+        Returns:
+            Dict: Describe training job response.
+        """
         if self._last_describe_response is not None and self._last_describe_response[
             "TrainingJobStatus"
         ] in ["Completed", "Failed", "Stopped"]:
@@ -514,7 +810,15 @@ class _Job:
 
     @staticmethod
     def _get_job_name(job_settings, func):
-        """Get the underlying SageMaker job name from job_name_prefix or func."""
+        """Get the underlying SageMaker job name from job_name_prefix or func.
+
+        Args:
+            job_settings (_JobSettings): the job settings.
+            func: the function to be executed.
+
+        Returns:
+            str : the training job name.
+        """
         job_name_prefix = job_settings.job_name_prefix
         if not job_name_prefix:
             job_name_prefix = func.__name__
@@ -526,16 +830,34 @@ class _Job:
 
 
 def _prepare_and_upload_runtime_scripts(
-    s3_base_uri: str, s3_kms_key: str, sagemaker_session: Session
+    spark_config: SparkConfig, s3_base_uri: str, s3_kms_key: str, sagemaker_session: Session
 ):
-    """Copy runtime scripts to a folder and upload to S3"""
+    """Copy runtime scripts to a folder and upload to S3.
+
+    Args:
+        spark_config (SparkConfig): remote Spark job configurations.
+
+        s3_base_uri (str): S3 location that the runtime scripts will be uploaded to.
+
+        s3_kms_key (str): kms key used to encrypt the files uploaded to S3.
+
+        sagemaker_session (str): SageMaker boto client session.
+    """
 
     with _tmpdir() as bootstrap_scripts:
 
         # write entrypoint script to tmpdir
         entrypoint_script_path = os.path.join(bootstrap_scripts, ENTRYPOINT_SCRIPT_NAME)
+        entry_point_script = ENTRYPOINT_SCRIPT
+        if spark_config:
+            entry_point_script = SPARK_ENTRYPOINT_SCRIPT
+            spark_script_path = os.path.join(
+                os.path.dirname(__file__), "runtime_environment", SPARK_APP_SCRIPT_NAME
+            )
+            shutil.copy2(spark_script_path, bootstrap_scripts)
+
         with open(entrypoint_script_path, "w") as file:
-            file.writelines(ENTRYPOINT_SCRIPT)
+            file.writelines(entry_point_script)
 
         bootstrap_script_path = os.path.join(
             os.path.dirname(__file__), "runtime_environment", BOOTSTRAP_SCRIPT_NAME
@@ -654,6 +976,190 @@ def _filter_non_python_files(path: str, names: List) -> List:
             to_ignore.append(name)
 
     return to_ignore
+
+
+def _prepare_and_upload_spark_dependent_files(
+    spark_config: SparkConfig,
+    s3_base_uri: str,
+    s3_kms_key: str,
+    sagemaker_session: Session,
+) -> Tuple:
+    """Upload the Spark dependencies to S3 if present.
+
+    Args:
+        spark_config (SparkConfig): The remote Spark job configurations.
+        s3_base_uri (str): The S3 location that the Spark dependencies will be uploaded to.
+        s3_kms_key (str): The kms key used to encrypt the files uploaded to S3.
+        sagemaker_session (str): SageMaker boto client session.
+    """
+    if not spark_config:
+        return None, None, None, None
+
+    submit_jars_s3_paths = _upload_spark_submit_deps(
+        spark_config.submit_jars,
+        SPARK_SUBMIT_JARS_WORKSPACE,
+        s3_base_uri,
+        s3_kms_key,
+        sagemaker_session,
+    )
+    submit_py_files_s3_paths = _upload_spark_submit_deps(
+        spark_config.submit_py_files,
+        SPARK_SUBMIT_PY_FILES_WORKSPACE,
+        s3_base_uri,
+        s3_kms_key,
+        sagemaker_session,
+    )
+    submit_files_s3_path = _upload_spark_submit_deps(
+        spark_config.submit_files,
+        SPARK_SUBMIT_FILES_WORKSPACE,
+        s3_base_uri,
+        s3_kms_key,
+        sagemaker_session,
+    )
+    config_file_s3_uri = _upload_serialized_spark_configuration(
+        s3_base_uri, s3_kms_key, spark_config.configuration, sagemaker_session
+    )
+
+    return submit_jars_s3_paths, submit_py_files_s3_paths, submit_files_s3_path, config_file_s3_uri
+
+
+def _upload_spark_submit_deps(
+    submit_deps: List[str],
+    workspace_name: str,
+    s3_base_uri: str,
+    s3_kms_key: str,
+    sagemaker_session: Session,
+) -> str:
+    """Upload the Spark submit dependencies to S3.
+
+    Args:
+        submit_deps (List[str]): A list of path which points to the Spark dependency files.
+          The path can be either a local path or S3 uri. For example ``/local/deps.jar`` or
+          ``s3://<your-bucket>/deps.jar``.
+
+        workspace_name (str): workspace name for Spark dependency.
+        s3_base_uri (str): S3 location that the Spark dependencies will be uploaded to.
+        s3_kms_key (str): kms key used to encrypt the files uploaded to S3.
+        sagemaker_session (str): SageMaker boto client session.
+
+    Returns:
+        str : The concatenated path of all dependencies which will be passed to Spark.
+    """
+    spark_opt_s3_uris = []
+    if not submit_deps:
+        return None
+
+    if not workspace_name or not s3_base_uri:
+        raise ValueError("workspace_name or s3_base_uri may not be empty.")
+
+    for dep_path in submit_deps:
+        dep_url = urlparse(dep_path)
+
+        if dep_url.scheme in ["s3", "s3a"]:
+            spark_opt_s3_uris.append(dep_path)
+        elif not dep_url.scheme or dep_url.scheme == "file":
+            if not os.path.isfile(dep_path):
+                raise ValueError(f"submit_deps path {dep_path} is not a valid local file.")
+
+            upload_path = S3Uploader.upload(
+                local_path=dep_path,
+                desired_s3_uri=s3_path_join(s3_base_uri, workspace_name),
+                kms_key=s3_kms_key,
+                sagemaker_session=sagemaker_session,
+            )
+
+            spark_opt_s3_uris.append(upload_path)
+            logger.info("Uploaded the local file %s to %s", dep_path, upload_path)
+    return str.join(",", spark_opt_s3_uris)
+
+
+def _upload_serialized_spark_configuration(
+    s3_base_uri: str, s3_kms_key: str, configuration: Dict, sagemaker_session: Session
+) -> str:
+    """Upload the Spark configuration json to S3"""
+    if not configuration:
+        return None
+
+    serialized_configuration = BytesIO(json.dumps(configuration).encode("utf-8"))
+    config_file_s3_uri = s3_path_join(s3_base_uri, SPARK_CONF_WORKSPACE, SPARK_CONF_FILE_NAME)
+
+    S3Uploader.upload_string_as_file_body(
+        body=serialized_configuration,
+        desired_s3_uri=config_file_s3_uri,
+        kms_key=s3_kms_key,
+        sagemaker_session=sagemaker_session,
+    )
+
+    logger.info("Uploaded spark configuration json %s to %s", configuration, config_file_s3_uri)
+
+    return config_file_s3_uri
+
+
+def _extend_spark_config_to_request(
+    request_dict: Dict,
+    job_settings: _JobSettings,
+    s3_base_uri: str,
+) -> Dict:
+    """Extend the create training job request with spark configurations.
+
+    Args:
+        request_dict (Dict): create training job request dict.
+        job_settings (_JobSettings): the job settings.
+        s3_base_uri (str): S3 location that the Spark dependencies will be uploaded to.
+    """
+    spark_config = job_settings.spark_config
+
+    if not spark_config:
+        return request_dict
+
+    extended_request = request_dict.copy()
+    container_entrypoint = extended_request["AlgorithmSpecification"]["ContainerEntrypoint"]
+
+    (
+        submit_jars_s3_paths,
+        submit_py_files_s3_paths,
+        submit_files_s3_path,
+        config_file_s3_uri,
+    ) = _prepare_and_upload_spark_dependent_files(
+        spark_config=spark_config,
+        s3_base_uri=s3_base_uri,
+        s3_kms_key=job_settings.s3_kms_key,
+        sagemaker_session=job_settings.sagemaker_session,
+    )
+
+    input_data_config = extended_request["InputDataConfig"]
+
+    if config_file_s3_uri:
+        input_data_config.append(
+            dict(
+                ChannelName=SPARK_CONF_CHANNEL_NAME,
+                DataSource={
+                    "S3DataSource": {
+                        "S3Uri": config_file_s3_uri,
+                        "S3DataType": "S3Prefix",
+                    }
+                },
+            )
+        )
+
+    if spark_config.spark_event_logs_uri:
+        container_entrypoint.extend(
+            ["--spark-event-logs-s3-uri", spark_config.spark_event_logs_uri]
+        )
+
+    if submit_jars_s3_paths:
+        container_entrypoint.extend(["--jars", submit_jars_s3_paths])
+
+    if submit_py_files_s3_paths:
+        container_entrypoint.extend(["--py-files", submit_py_files_s3_paths])
+
+    if submit_files_s3_path:
+        container_entrypoint.extend(["--files", submit_files_s3_path])
+
+    if spark_config:
+        container_entrypoint.extend([SPARK_APP_SCRIPT_PATH])
+
+    return extended_request
 
 
 @dataclasses.dataclass

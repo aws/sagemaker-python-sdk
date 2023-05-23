@@ -60,24 +60,6 @@ class _SparkProcessorBase(ScriptProcessor):
     _conf_container_base_path = "/opt/ml/processing/input/"
     _conf_container_input_name = "conf"
     _conf_file_name = "configuration.json"
-    _valid_configuration_keys = ["Classification", "Properties", "Configurations"]
-    _valid_configuration_classifications = [
-        "core-site",
-        "hadoop-env",
-        "hadoop-log4j",
-        "hive-env",
-        "hive-log4j",
-        "hive-exec-log4j",
-        "hive-site",
-        "spark-defaults",
-        "spark-env",
-        "spark-log4j",
-        "spark-hive-site",
-        "spark-metrics",
-        "yarn-env",
-        "yarn-site",
-        "export",
-    ]
 
     _submit_jars_input_channel_name = "jars"
     _submit_files_input_channel_name = "files"
@@ -296,7 +278,7 @@ class _SparkProcessorBase(ScriptProcessor):
 
         if kwargs.get("spark_event_logs_s3_uri"):
             spark_event_logs_s3_uri = kwargs.get("spark_event_logs_s3_uri")
-            self._validate_s3_uri(spark_event_logs_s3_uri)
+            SparkConfigUtils.validate_s3_uri(spark_event_logs_s3_uri)
 
             self._spark_event_logs_s3_uri = spark_event_logs_s3_uri
             self.command.extend(
@@ -320,7 +302,7 @@ class _SparkProcessorBase(ScriptProcessor):
 
         if kwargs.get("configuration"):
             configuration = kwargs.get("configuration")
-            self._validate_configuration(configuration)
+            SparkConfigUtils.validate_configuration(configuration)
             extended_inputs.append(self._stage_configuration(configuration))
 
         return (
@@ -376,42 +358,6 @@ class _SparkProcessorBase(ScriptProcessor):
             )
 
         return image_uri
-
-    def _validate_configuration(self, configuration):
-        """Validates the user-provided Hadoop/Spark/Hive configuration.
-
-        This ensures that the list or dictionary the user provides will serialize to
-        JSON matching the schema of EMR's application configuration:
-
-        https://docs.aws.amazon.com/emr/latest/ReleaseGuide/emr-configure-apps.html
-        """
-        emr_configure_apps_url = (
-            "https://docs.aws.amazon.com/emr/latest/ReleaseGuide/emr-configure-apps.html"
-        )
-        if isinstance(configuration, dict):
-            keys = configuration.keys()
-            if "Classification" not in keys or "Properties" not in keys:
-                raise ValueError(
-                    f"Missing one or more required keys in configuration dictionary "
-                    f"{configuration} Please see {emr_configure_apps_url} for more information"
-                )
-
-            for key in keys:
-                if key not in self._valid_configuration_keys:
-                    raise ValueError(
-                        f"Invalid key: {key}. Must be one of {self._valid_configuration_keys}. "
-                        f"Please see {emr_configure_apps_url} for more information."
-                    )
-                if key == "Classification":
-                    if configuration[key] not in self._valid_configuration_classifications:
-                        raise ValueError(
-                            f"Invalid classification: {key}. Must be one of "
-                            f"{self._valid_configuration_classifications}"
-                        )
-
-        if isinstance(configuration, list):
-            for item in configuration:
-                self._validate_configuration(item)
 
     def _stage_configuration(self, configuration):
         """Serializes and uploads the user-provided EMR application configuration to S3.
@@ -1345,3 +1291,89 @@ class FileType(Enum):
     JAR = 1
     PYTHON = 2
     FILE = 3
+
+
+class SparkConfigUtils:
+    """Util class for spark configurations"""
+
+    _valid_configuration_keys = ["Classification", "Properties", "Configurations"]
+    _valid_configuration_classifications = [
+        "core-site",
+        "hadoop-env",
+        "hadoop-log4j",
+        "hive-env",
+        "hive-log4j",
+        "hive-exec-log4j",
+        "hive-site",
+        "spark-defaults",
+        "spark-env",
+        "spark-log4j",
+        "spark-hive-site",
+        "spark-metrics",
+        "yarn-env",
+        "yarn-site",
+        "export",
+    ]
+
+    @staticmethod
+    def validate_configuration(configuration: Dict):
+        """Validates the user-provided Hadoop/Spark/Hive configuration.
+
+        This ensures that the list or dictionary the user provides will serialize to
+        JSON matching the schema of EMR's application configuration
+
+        Args:
+            configuration (Dict): A dict that contains the configuration overrides to
+                the default values. For more information, please visit:
+                https://docs.aws.amazon.com/emr/latest/ReleaseGuide/emr-configure-apps.html
+        """
+        emr_configure_apps_url = (
+            "https://docs.aws.amazon.com/emr/latest/ReleaseGuide/emr-configure-apps.html"
+        )
+        if isinstance(configuration, dict):
+            keys = configuration.keys()
+            if "Classification" not in keys or "Properties" not in keys:
+                raise ValueError(
+                    f"Missing one or more required keys in configuration dictionary "
+                    f"{configuration} Please see {emr_configure_apps_url} for more information"
+                )
+
+            for key in keys:
+                if key not in SparkConfigUtils._valid_configuration_keys:
+                    raise ValueError(
+                        f"Invalid key: {key}. "
+                        f"Must be one of {SparkConfigUtils._valid_configuration_keys}. "
+                        f"Please see {emr_configure_apps_url} for more information."
+                    )
+                if key == "Classification":
+                    if (
+                        configuration[key]
+                        not in SparkConfigUtils._valid_configuration_classifications
+                    ):
+                        raise ValueError(
+                            f"Invalid classification: {key}. Must be one of "
+                            f"{SparkConfigUtils._valid_configuration_classifications}"
+                        )
+
+        if isinstance(configuration, list):
+            for item in configuration:
+                SparkConfigUtils.validate_configuration(item)
+
+    # TODO (guoqioa@): method only checks urlparse scheme, need to perform deep s3 validation
+    @staticmethod
+    def validate_s3_uri(spark_output_s3_path):
+        """Validate whether the URI uses an S3 scheme.
+
+        In the future, this validation will perform deeper S3 validation.
+
+        Args:
+            spark_output_s3_path (str): The URI of the Spark output S3 Path.
+        """
+        if is_pipeline_variable(spark_output_s3_path):
+            return
+
+        if urlparse(spark_output_s3_path).scheme != "s3":
+            raise ValueError(
+                f"Invalid s3 path: {spark_output_s3_path}. Please enter something like "
+                "s3://bucket-name/folder-name"
+            )

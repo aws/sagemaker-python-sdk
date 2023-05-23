@@ -38,6 +38,7 @@ from sagemaker.s3 import s3_path_join
 from sagemaker.remote_function.job import _JobSettings, _Job, _RunInfo
 from sagemaker.remote_function import logging_config
 from sagemaker.utils import name_from_base, base_from_name
+from sagemaker.remote_function.spark_config import SparkConfig
 
 _API_CALL_LIMIT = {
     "SubmittingIntervalInSecs": 1,
@@ -81,6 +82,9 @@ def remote(
     volume_kms_key: str = None,
     volume_size: int = 30,
     encrypt_inter_container_traffic: bool = None,
+    spark_config: SparkConfig = None,
+    # TODO: For dev test purpose only, this will be removed after GA
+    python_sdk_whl_s3_uri: str = None,
 ):
     """Decorator for running the annotated function as a SageMaker training job.
 
@@ -173,6 +177,9 @@ def remote(
           Amazon Elastic Container Registry (ECR). Defaults to the following based on where the SDK
           is running:
 
+            * For users who specify ``spark_config`` and want to run the function in a Spark
+              application, the ``image_uri`` should be ``None``. A SageMaker Spark image will
+              be used for training, otherwise a ``ValueError`` is thrown.
             * For users on SageMaker Studio notebooks, the image used as the kernel image for the
               notebook is used.
             * For other users, it is resolved to base python image with the same python version
@@ -246,13 +253,43 @@ def remote(
         encrypt_inter_container_traffic (bool): A flag that specifies whether traffic between
           training containers is encrypted for the training job. Defaults to ``False``.
 
-        enable_network_isolation (bool): A flag that specifies whether container will run in
-          network isolation mode. Defaults to ``False``. Network isolation mode restricts the
-          container access to outside networks (such as the Internet). The container does not
-          make any inbound or outbound network calls. Also known as Internet-free mode.
+        spark_config (SparkConfig): Configurations to the Spark application that runs on
+          Spark image. If ``spark_config`` is specified, a SageMaker Spark image uri
+          will be used for training. Note that ``image_uri`` can not be specified at the
+          same time otherwise a ``ValueError`` is thrown. Defaults to ``None``.
     """
 
     def _remote(func):
+
+        job_settings = _JobSettings(
+            dependencies=dependencies,
+            pre_execution_commands=pre_execution_commands,
+            pre_execution_script=pre_execution_script,
+            environment_variables=environment_variables,
+            image_uri=image_uri,
+            include_local_workdir=include_local_workdir,
+            instance_count=instance_count,
+            instance_type=instance_type,
+            job_conda_env=job_conda_env,
+            job_name_prefix=job_name_prefix,
+            keep_alive_period_in_seconds=keep_alive_period_in_seconds,
+            max_retry_attempts=max_retry_attempts,
+            max_runtime_in_seconds=max_runtime_in_seconds,
+            role=role,
+            s3_kms_key=s3_kms_key,
+            s3_root_uri=s3_root_uri,
+            sagemaker_session=sagemaker_session,
+            security_group_ids=security_group_ids,
+            subnets=subnets,
+            tags=tags,
+            volume_kms_key=volume_kms_key,
+            volume_size=volume_size,
+            encrypt_inter_container_traffic=encrypt_inter_container_traffic,
+            spark_config=spark_config,
+            # TODO: For dev test purpose only, this will be removed after GA
+            python_sdk_whl_s3_uri=python_sdk_whl_s3_uri,
+        )
+
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
 
@@ -264,31 +301,6 @@ def remote(
 
             RemoteExecutor._validate_submit_args(func, *args, **kwargs)
 
-            job_settings = _JobSettings(
-                dependencies=dependencies,
-                pre_execution_commands=pre_execution_commands,
-                pre_execution_script=pre_execution_script,
-                environment_variables=environment_variables,
-                image_uri=image_uri,
-                include_local_workdir=include_local_workdir,
-                instance_count=instance_count,
-                instance_type=instance_type,
-                job_conda_env=job_conda_env,
-                job_name_prefix=job_name_prefix,
-                keep_alive_period_in_seconds=keep_alive_period_in_seconds,
-                max_retry_attempts=max_retry_attempts,
-                max_runtime_in_seconds=max_runtime_in_seconds,
-                role=role,
-                s3_kms_key=s3_kms_key,
-                s3_root_uri=s3_root_uri,
-                sagemaker_session=sagemaker_session,
-                security_group_ids=security_group_ids,
-                subnets=subnets,
-                tags=tags,
-                volume_kms_key=volume_kms_key,
-                volume_size=volume_size,
-                encrypt_inter_container_traffic=encrypt_inter_container_traffic,
-            )
             job = _Job.start(job_settings, func, args, kwargs)
 
             try:
@@ -346,6 +358,8 @@ def remote(
 
             return None
 
+        wrapper.job_settings = job_settings
+        wrapper.wrapped_func = func
         return wrapper
 
     if _func is None:
@@ -481,6 +495,7 @@ class RemoteExecutor(object):
         volume_kms_key: str = None,
         volume_size: int = 30,
         encrypt_inter_container_traffic: bool = None,
+        spark_config: SparkConfig = None,
     ):
         """Constructor for RemoteExecutor
 
@@ -571,6 +586,9 @@ class RemoteExecutor(object):
               Amazon Elastic Container Registry (ECR). Defaults to the following based on where the
               SDK is running:
 
+              * For users who specify ``spark_config`` and want to run the function in a Spark
+                application, the ``image_uri`` should be ``None``. A SageMaker Spark image will
+                be used for training, otherwise a ``ValueError`` is thrown.
               * For users on SageMaker Studio notebooks, the image used as the kernel image for
                 the notebook is used.
               * For other users, it is resolved to base python image with the same python
@@ -651,6 +669,11 @@ class RemoteExecutor(object):
               network isolation mode. Defaults to ``False``. Network isolation mode restricts the
               container access to outside networks (such as the Internet). The container does not
               make any inbound or outbound network calls. Also known as Internet-free mode.
+
+            spark_config (SparkConfig): Configurations to the Spark application that runs on
+              Spark image. If ``spark_config`` is specified, a SageMaker Spark image uri
+              will be used for training. Note that ``image_uri`` can not be specified at the
+              same time otherwise a ``ValueError`` is thrown. Defaults to ``None``.
         """
         self.max_parallel_jobs = max_parallel_jobs
 
@@ -687,6 +710,7 @@ class RemoteExecutor(object):
             volume_kms_key=volume_kms_key,
             volume_size=volume_size,
             encrypt_inter_container_traffic=encrypt_inter_container_traffic,
+            spark_config=spark_config,
         )
 
         self._state_condition = threading.Condition()
