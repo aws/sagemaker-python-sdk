@@ -35,6 +35,7 @@ def get_full_gpu_image_uri(
         container_version="cu110-ubuntu18.04",
     )
 
+
 def get_full_neuronx_image_uri(
     version,
     base_framework_version,
