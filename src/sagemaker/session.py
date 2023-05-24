@@ -96,6 +96,7 @@ from sagemaker.config import (
     SESSION_DEFAULT_S3_BUCKET_PATH,
     SESSION_DEFAULT_S3_OBJECT_KEY_PREFIX_PATH,
 )
+from sagemaker.config.config_utils import _log_sagemaker_config_merge
 from sagemaker.deprecations import deprecated_class
 from sagemaker.inputs import ShuffleConfig, TrainingInput, BatchDataCaptureConfig
 from sagemaker.user_agent import prepend_user_agent
@@ -607,47 +608,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 else:
                     raise
 
-    def _print_message_on_sagemaker_config_usage(
-        self, direct_input, config_value, config_path: str
-    ):
-        """Informs the SDK user whether a config value was present and automatically substituted
-
-        Args:
-            direct_input: the value that would be used if no sagemaker_config or default values
-                          existed. Usually this will be user-provided input to a Class or to a
-                          session.py method, or None if no input was provided.
-            config_value: the value fetched from sagemaker_config. This is usually the value that
-                          will be used if direct_input is None.
-            config_path: a string denoting the path of keys that point to the config value in the
-                         sagemaker_config
-
-        Returns:
-            No output (just prints information)
-        """
-
-        if config_value is not None:
-
-            if direct_input is not None and config_value != direct_input:
-                # Sagemaker Config had a value defined that is NOT going to be used
-                # and the config value has not already been applied earlier
-                print(
-                    "[Sagemaker Config - skipped value]\n",
-                    "config key = {}\n".format(config_path),
-                    "config value = {}\n".format(config_value),
-                    "specified value that will be used = {}\n".format(direct_input),
-                )
-
-            elif direct_input is None:
-                # Sagemaker Config value is going to be used
-                print(
-                    "[Sagemaker Config - applied value]\n",
-                    "config key = {}\n".format(config_path),
-                    "config value that will be used = {}\n".format(config_value),
-                )
-
-        # There is no print statement needed if nothing was specified in the config and nothing is
-        # being automatically applied
-
     def _append_sagemaker_config_tags(self, tags: list, config_path_to_tags: str):
         """Appends tags specified in the sagemaker_config to the given list of tags.
 
@@ -678,12 +638,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 # user-provided tags.
                 all_tags.append(config_tag)
 
-        print(
-            "[Sagemaker Config - applied value]\n",
-            "config key = {}\n".format(config_path_to_tags),
-            "config value = {}\n".format(config_tags),
-            "source value = {}\n".format(tags),
-            "combined value that will be used = {}\n".format(all_tags),
+        _log_sagemaker_config_merge(
+            source_value=tags,
+            config_value=config_tags,
+            merged_source_and_config_value=all_tags,
+            config_key_path=config_path_to_tags,
         )
 
         return all_tags
