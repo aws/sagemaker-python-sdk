@@ -2512,6 +2512,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         random_seed=None,
         environment=None,
         hpo_resource_config=None,
+        autotune=False,
+        auto_parameters=None,
     ):
         """Create an Amazon SageMaker hyperparameter tuning job.
 
@@ -2617,6 +2619,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 * volume_kms_key_id: The AWS Key Management Service (AWS KMS) key
                 that Amazon SageMaker uses to encrypt data on the storage
                 volume attached to the ML compute instance(s) that run the training job.
+            autotune (bool): Whether to turn on autotune (default: False).
+            auto_parameters (dict[str, str]): Dictionary of auto parameters. The keys are names
+                of auto parameters and valeus are example values of auto parameters
+                (default: ``None``).
         """
 
         tune_request = {
@@ -2633,6 +2639,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 random_seed=random_seed,
                 strategy_config=strategy_config,
                 completion_criteria_config=completion_criteria_config,
+                auto_parameters=auto_parameters,
             ),
             "TrainingJobDefinition": self._map_training_config(
                 static_hyperparameters=static_hyperparameters,
@@ -2659,6 +2666,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if warm_start_config is not None:
             tune_request["WarmStartConfig"] = warm_start_config
 
+        if autotune:
+            tune_request["Autotune"] = {"Mode": "Enabled"}
+
         tags = _append_project_tags(tags)
         if tags is not None:
             tune_request["Tags"] = tags
@@ -2675,6 +2685,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         training_config_list=None,
         warm_start_config=None,
         tags=None,
+        autotune=False,
     ):
         """Create an Amazon SageMaker hyperparameter tuning job.
 
@@ -2694,6 +2705,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 other required configurations.
             tags (list[dict]): List of tags for labeling the tuning job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            autotune (bool): whether to turn on autotune.
         """
 
         if training_config is None and training_config_list is None:
@@ -2710,6 +2722,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             training_config_list=training_config_list,
             warm_start_config=warm_start_config,
             tags=tags,
+            autotune=autotune,
         )
 
         def submit(request):
@@ -2727,6 +2740,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         training_config_list=None,
         warm_start_config=None,
         tags=None,
+        autotune=False,
     ):
         """Construct CreateHyperParameterTuningJob request
 
@@ -2742,6 +2756,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 other required configurations.
             tags (list[dict]): List of tags for labeling the tuning job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            autotune (bool): whether to turn on autotune.
         Returns:
             dict: A dictionary for CreateHyperParameterTuningJob request
         """
@@ -2749,6 +2764,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "HyperParameterTuningJobName": job_name,
             "HyperParameterTuningJobConfig": self._map_tuning_config(**tuning_config),
         }
+        if autotune:
+            tune_request["Autotune"] = {"Mode": "Enabled"}
 
         if training_config is not None:
             tune_request["TrainingJobDefinition"] = self._map_training_config(**training_config)
@@ -2794,6 +2811,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         random_seed=None,
         strategy_config=None,
         completion_criteria_config=None,
+        auto_parameters=None,
     ):
         """Construct tuning job configuration dictionary.
 
@@ -2820,6 +2838,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 strategy.
             completion_criteria_config (dict): A configuration
                 for the completion criteria.
+            auto_parameters (dict): Dictionary of auto parameters. The keys are names of auto
+                parameters and valeus are example values of auto parameters.
 
         Returns:
             A dictionary of tuning job configuration. For format details, please refer to
@@ -2848,6 +2868,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if parameter_ranges is not None:
             tuning_config["ParameterRanges"] = parameter_ranges
+            if auto_parameters is not None:
+                tuning_config["ParameterRanges"]["AutoParameters"] = [
+                    {"Name": name, "ValueHint": value} for name, value in auto_parameters.items()
+                ]
 
         if strategy_config is not None:
             tuning_config["StrategyConfig"] = strategy_config
@@ -2910,6 +2934,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         checkpoint_local_path=None,
         max_retry_attempts=None,
         environment=None,
+        auto_parameters=None,
     ):
         """Construct a dictionary of training job configuration from the arguments.
 
@@ -3029,6 +3054,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if parameter_ranges is not None:
             training_job_definition["HyperParameterRanges"] = parameter_ranges
+            if auto_parameters is not None:
+                training_job_definition["HyperParameterRanges"]["AutoParameters"] = [
+                    {"Name": name, "ValueHint": value} for name, value in auto_parameters.items()
+                ]
 
         if max_retry_attempts is not None:
             training_job_definition["RetryStrategy"] = {"MaximumRetryAttempts": max_retry_attempts}
