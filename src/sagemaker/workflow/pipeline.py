@@ -325,8 +325,8 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             parallelism_config (Optional[ParallelismConfiguration]): Parallelism configuration
                 that is applied to each of the executions of the pipeline. It takes precedence
                 over the parallelism configuration of the parent pipeline.
-            selective_execution_config (SelectiveExecutionConfig): configuration for
-                selective step execution
+            selective_execution_config (Optional[SelectiveExecutionConfig]): The configuration for
+                selective step execution.
 
         Returns:
             A `_PipelineExecution` instance, if successful.

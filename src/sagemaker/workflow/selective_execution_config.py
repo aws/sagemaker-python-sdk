@@ -17,29 +17,34 @@ from sagemaker.workflow.entities import RequestType
 
 
 class SelectiveExecutionConfig:
-    """Selective execution config config for SageMaker pipeline."""
+    """The selective execution configuration, which defines a subset of pipeline steps to run in
+
+    another SageMaker pipeline run.
+    """
 
     def __init__(self, selected_steps: List[str], source_pipeline_execution_arn: str = None):
-        """Create a SelectiveExecutionConfig
+        """Create a `SelectiveExecutionConfig`.
 
         Args:
-            source_pipeline_execution_arn (str): ARN of the previously executed pipeline execution.
-                The given arn pipeline execution status can be either Failed or Success.
-            selected_steps (List[str]): List of step names that pipeline users want to run
-                in new subworkflow-execution. The steps must be connected.
+            source_pipeline_execution_arn (str): The ARN from a reference execution of the
+                current pipeline. Used to copy input collaterals needed for the selected
+                steps to run. The execution status of the pipeline can be `Stopped`, `Failed`, or
+                `Succeeded`.
+            selected_steps (List[str]): A list of pipeline steps to run. All step(s) in all
+                path(s) between two selected steps should be included.
         """
         self.source_pipeline_execution_arn = source_pipeline_execution_arn
         self.selected_steps = selected_steps
 
     def _build_selected_steps_from_list(self) -> RequestType:
-        """Get the request structure for list of selected steps"""
+        """Get the request structure for the list of selected steps."""
         selected_step_list = []
         for selected_step in self.selected_steps:
             selected_step_list.append(dict(StepName=selected_step))
         return selected_step_list
 
     def to_request(self) -> RequestType:
-        """Convert SelectiveExecutionConfig object to request dict."""
+        """Convert `SelectiveExecutionConfig` object to request dict."""
         request = {}
 
         if self.source_pipeline_execution_arn is not None:
