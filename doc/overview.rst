@@ -724,13 +724,17 @@ retrieve the related image as follows.
        instance_type="ml.m5.xlarge",
    )
 
-Low-code Deployment
-===================
-You can deploy a built-in algorithm or pretrained model to a SageMaker endpoint in just a few lines of code using the SageMaker Python SDK.
+Deploy a Pre-Trained Model Directly to a SageMaker Endpoint
+============================================================
+
+You can deploy a built-in algorithm or pre-trained model to a SageMaker endpoint in just a few lines of code using the SageMaker Python SDK.
 
 First, find the model ID for the model of your choice in the :doc:`Built-in Algorithms with pre-trained Model Table<./doc_utils/pretrainedmodels>`.
 
-Then, using the model ID, define your model as a JumpStart model. Use the ``deploy`` method to automatically deploy your model for inference. 
+Low-code Deployment with the JumpStartModel class
+-------------------------------------------------
+
+Using the model ID, define your model as a JumpStart model. Use the ``deploy`` method to automatically deploy your model for inference. 
 In this example, we use the EQA (extractive question answering) BERT base model (cased) from HuggingFace. 
 
 .. code:: python
@@ -752,12 +756,12 @@ You can then run inference with the deployed model using the ``predict`` method.
 You can optionally include specific model versions or instance types. For more information about the ``JumpStartModel`` class and its parameters, 
 see `JumpStartModel <https://sagemaker.readthedocs.io/en/stable/api/inference/model.html#sagemaker.jumpstart.model.JumpStartModel>`__.
 
-Deploy a Pre-Trained Model Directly to a SageMaker Endpoint
-============================================================
+Deploy a pre-trained model using the SageMaker Model class
+----------------------------------------------------------
 
 In this section, you learn how to take a pre-trained model and deploy
-it directly to a SageMaker Endpoint. This is the fastest way to start
-machine learning with a pre-trained model. The following
+it directly to a SageMaker Endpoint and understand what happens behind 
+the scenes if you deployed your model as a ``JumpStartModel``. The following
 assumes familiarity with `SageMaker
 models <https://sagemaker.readthedocs.io/en/stable/api/inference/model.html>`__
 and their deploy functions.
@@ -835,9 +839,6 @@ the endpoint, endpoint config and model resources will be prefixed with
 ``sagemaker-jumpstart``. Refer to the model ``Tags`` to inspect the
 model artifacts involved in the model creation.
 
-Perform Inference
------------------
-
 Finally, use the ``predictor`` instance to query your endpoint. For
 ``catboost-classification-model``, for example, the predictor accepts
 a csv. For more information about how to use the predictor, see
@@ -857,8 +858,14 @@ tune the model for your use case with your custom dataset. The following assumes
 familiarity with `SageMaker training jobs and their
 architecture <https://docs.aws.amazon.com/sagemaker/latest/dg/how-it-works-training.html>`__.
 
-Fine-tune a Pre-trained Model on a Custom Dataset
--------------------------------------------------
+Low-code Fine-tuning with the JumpStartEstimator class
+------------------------------------------------------
+
+You can optionally include specific model versions or instance types. For more information about the ``JumpStartEstimator`` class and its parameters, 
+see `JumpStartEstimator <https://sagemaker.readthedocs.io/en/stable/api/inference/model.html#sagemaker.jumpstart.estimator.JumpStartEstimator>`__.
+
+Fine-tune a Pre-trained Model on a Custom Dataset using the SageMaker Estimator class
+-------------------------------------------------------------------------------------
 
 To begin, select a ``model_id`` and ``version`` from the pre-trained
 models table, as well as a model scope. In this case, you begin by
@@ -949,8 +956,7 @@ hyperparameters, dataset, and model you use and can range from 15
 minutes to 12 hours.
 
 Deploy your Trained Model to a SageMaker Endpoint
--------------------------------------------------
-
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Now that you’ve created your training job, use your
 ``estimator`` instance to create a SageMaker Endpoint that you can
@@ -996,7 +1002,7 @@ took your model to train.
    )
 
 Perform Inference on a SageMaker Endpoint
------------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Finally, use the ``predictor`` instance to query your endpoint. For
 ``huggingface-spc-bert-base-cased``, the predictor accepts an array
