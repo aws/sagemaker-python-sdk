@@ -598,6 +598,16 @@ the `JumpStart UI in SageMaker Studio <https://docs.aws.amazon.com/sagemaker/lat
 Example notebooks
 =================
 
+Explore example notebooks to get started with pretrained models using the SageMaker Python SDK.
+
+Example notebooks for foundation models
+---------------------------------------
+All JumpStart foundation models are available to use programmatically with the SageMaker Python SDK. 
+For a list of available example notebooks related to JumpStart foundation models, see 
+`JumpStart foundation models example notebooks <https://docs.aws.amazon.com/sagemaker/latest/dg/jumpstart-foundation-models.html#jumpstart-foundation-models-example-notebooks>`__.
+
+Example notebooks for task-based models
+---------------------------------------
 SageMaker built-in algorithms with pre-trained models support 15 different machine learning problem types.
 Below is a list of all the supported problem types with a link to a Jupyter notebook that provides example usage.
 
@@ -629,9 +639,6 @@ Tabular
     - `Tabular Regression (TabTransformer) <https://github.com/aws/amazon-sagemaker-examples/blob/main/introduction_to_amazon_algorithms/tabtransformer_tabular/Amazon_Tabular_Regression_TabTransformer.ipynb>`__
 
 
-The following topic give you information about JumpStart components,
-as well as how to use the SageMaker Python SDK for these workflows.
-
 Prerequisites
 =============
 
@@ -642,87 +649,6 @@ Prerequisites
       Amazon S3. For more information about IAM role permissions,
       see `Policies and permissions in IAM <https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html>`__.
 
-Built-in Components
-===================
-
-The following sections provide information about the main components of built-in algorithms 
-including pretrained models, model scripts, and model images.
-
-Pre-trained models
-------------------
-
-SageMaker maintains a model zoo of over 300 models from popular open source model hubs, such as
-TensorFlow Hub, Pytorch Hub, and HuggingFace. You can use the SageMaker Python SDK to fine-tune
-a model on your own dataset or deploy it directly to a SageMaker endpoint for inference.
-
-Model artifacts are stored as tarballs in an S3 bucket. Each model is versioned and contains a
-unique ID which can be used to retrieve the model URI. The following information describes the
-``model_id`` and ``model_version`` needed to retrieve the URI.
-
-.. container::
-
-   -  ``model_id``: A unique identifier for the JumpStart model.
-   -  ``model_version``: The version of the specifications for the
-      model. To use the latest version, enter ``"*"``. This is a
-      required parameter.
-
-To retrieve a model, first select a ``model ID`` and ``version`` from
-the :doc:`available models <./doc_utils/pretrainedmodels>`.
-
-.. code:: python
-
-   model_id, model_version = "huggingface-spc-bert-base-cased", "1.0.0"
-   scope = "training" # or "inference"
-
-Then use those values to retrieve the model as follows.
-
-.. code:: python
-
-   from sagemaker import model_uris
-
-   model_uri = model_uris.retrieve(
-       model_id=model_id, model_version=model_version, model_scope=scope
-   )
-
-Model scripts
--------------
-
-To adapt pre-trained models for SageMaker, a custom script is needed to perform training
-or inference. SageMaker maintains a suite of scripts used for each of the models in the
-S3 bucket, which can be accessed using the SageMaker Python SDK Use the ``model_id`` and
-``version`` of the corresponding model to retrieve the related script as follows.
-
-.. code:: python
-
-   from sagemaker import script_uris
-
-   script_uri = script_uris.retrieve(
-       model_id=model_id, model_version=model_version, script_scope=scope
-   )
-
-Model images
--------------
-
-A Docker image is required to perform training or inference on all
-SageMaker models. SageMaker relies on Docker images from the
-following repos https://github.com/aws/deep-learning-containers,
-https://github.com/aws/sagemaker-xgboost-container,
-and https://github.com/aws/sagemaker-scikit-learn-container. Use
-the ``model_id`` and ``version`` of the corresponding model to
-retrieve the related image as follows.
-
-.. code:: python
-
-   from sagemaker import image_uris
-
-   image_uri = image_uris.retrieve(
-       region=None,
-       framework=None,
-       image_scope=scope,
-       model_id=model_id,
-       model_version=model_version,
-       instance_type="ml.m5.xlarge",
-   )
 
 Deploy a Pre-Trained Model Directly to a SageMaker Endpoint
 ============================================================
@@ -731,7 +657,7 @@ You can deploy a built-in algorithm or pre-trained model to a SageMaker endpoint
 
 First, find the model ID for the model of your choice in the :doc:`Built-in Algorithms with pre-trained Model Table<./doc_utils/pretrainedmodels>`.
 
-Low-code Deployment with the JumpStartModel class
+Low-code deployment with the JumpStartModel class
 -------------------------------------------------
 
 Using the model ID, define your model as a JumpStart model. Use the ``deploy`` method to automatically deploy your model for inference. 
@@ -858,13 +784,42 @@ tune the model for your use case with your custom dataset. The following assumes
 familiarity with `SageMaker training jobs and their
 architecture <https://docs.aws.amazon.com/sagemaker/latest/dg/how-it-works-training.html>`__.
 
-Low-code Fine-tuning with the JumpStartEstimator class
+Low-code fine-tuning with the JumpStartEstimator class
 ------------------------------------------------------
+
+You can fine-tune a built-in algorithm or pre-trained model in just a few lines of code using the SageMaker Python SDK.
+
+First, find the model ID for the model of your choice in the :doc:`Built-in Algorithms with pre-trained Model Table<./doc_utils/pretrainedmodels>`.
+
+Using the model ID, define your training job as a JumpStart estimator. Run ``estimator.fit()`` on your model, pointing to the training data to use for fine-tuning. 
+Then, use the ``deploy`` method to automatically deploy your model for inference. In this example, we use the SPC (sentence pair classification) BERT base model (cased) from HuggingFace. 
+
+.. code:: python
+
+    from sagemaker.jumpstart.estimator import JumpStartEstimator
+
+    model_id = "huggingface-spc-bert-base-cased"
+    estimator = JumpStartEstimator(model_id=model_id)
+    estimator.fit(
+        {
+        "training": f"s3://s3_bucket_and_region_name/training_dataset_for_model_and_version
+        }
+    )
+    predictor = estimator.deploy()
+
+You can then run inference with the deployed model using the ``predict`` method. 
+
+.. code:: python
+
+    sentence_1 = "hello"
+    sentence_2 = "world"
+    classification = predictor.predict([sentence_1, sentence_2])
+    print(classification)
 
 You can optionally include specific model versions or instance types. For more information about the ``JumpStartEstimator`` class and its parameters, 
 see `JumpStartEstimator <https://sagemaker.readthedocs.io/en/stable/api/inference/model.html#sagemaker.jumpstart.estimator.JumpStartEstimator>`__.
 
-Fine-tune a Pre-trained Model on a Custom Dataset using the SageMaker Estimator class
+Fine-tune a pre-trained model on a custom dataset using the SageMaker Estimator class
 -------------------------------------------------------------------------------------
 
 To begin, select a ``model_id`` and ``version`` from the pre-trained
@@ -955,7 +910,7 @@ amount of time. The time that it takes varies depending on the
 hyperparameters, dataset, and model you use and can range from 15
 minutes to 12 hours.
 
-Deploy your Trained Model to a SageMaker Endpoint
+Deploy your trained model to a SageMaker Endpoint
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Now that you’ve created your training job, use your
@@ -1001,7 +956,7 @@ took your model to train.
        enable_network_isolation=True,
    )
 
-Perform Inference on a SageMaker Endpoint
+Perform inference on a SageMaker Endpoint
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Finally, use the ``predictor`` instance to query your endpoint. For
@@ -1017,6 +972,88 @@ the
    data = ["this is the best day of my life", "i am tired"]
 
    predictor.predict(json.dumps(data).encode("utf-8"), {"ContentType": "application/list-text"})
+
+Built-in Components
+===================
+
+The following section provides information about the main components of built-in algorithms 
+including pretrained models, model scripts, and model images.
+
+Pre-trained models
+------------------
+
+SageMaker maintains a model zoo of over 600 models from popular open source model hubs, such as
+TensorFlow Hub, Pytorch Hub, and HuggingFace. You can use the SageMaker Python SDK to fine-tune
+a model on your own dataset or deploy it directly to a SageMaker endpoint for inference.
+
+Model artifacts are stored as tarballs in an S3 bucket. Each model is versioned and contains a
+unique ID which can be used to retrieve the model URI. The following information describes the
+``model_id`` and ``model_version`` needed to retrieve the URI.
+
+.. container::
+
+   -  ``model_id``: A unique identifier for the JumpStart model.
+   -  ``model_version``: The version of the specifications for the
+      model. To use the latest version, enter ``"*"``. This is a
+      required parameter.
+
+To retrieve a model, first select a ``model ID`` and ``version`` from
+the :doc:`available models <./doc_utils/pretrainedmodels>`.
+
+.. code:: python
+
+   model_id, model_version = "huggingface-spc-bert-base-cased", "1.0.0"
+   scope = "training" # or "inference"
+
+Then use those values to retrieve the model as follows.
+
+.. code:: python
+
+   from sagemaker import model_uris
+
+   model_uri = model_uris.retrieve(
+       model_id=model_id, model_version=model_version, model_scope=scope
+   )
+
+Model scripts
+-------------
+
+To adapt pre-trained models for SageMaker, a custom script is needed to perform training
+or inference. SageMaker maintains a suite of scripts used for each of the models in the
+S3 bucket, which can be accessed using the SageMaker Python SDK Use the ``model_id`` and
+``version`` of the corresponding model to retrieve the related script as follows.
+
+.. code:: python
+
+   from sagemaker import script_uris
+
+   script_uri = script_uris.retrieve(
+       model_id=model_id, model_version=model_version, script_scope=scope
+   )
+
+Model images
+-------------
+
+A Docker image is required to perform training or inference on all
+SageMaker models. SageMaker relies on Docker images from the
+following repos https://github.com/aws/deep-learning-containers,
+https://github.com/aws/sagemaker-xgboost-container,
+and https://github.com/aws/sagemaker-scikit-learn-container. Use
+the ``model_id`` and ``version`` of the corresponding model to
+retrieve the related image as follows.
+
+.. code:: python
+
+   from sagemaker import image_uris
+
+   image_uri = image_uris.retrieve(
+       region=None,
+       framework=None,
+       image_scope=scope,
+       model_id=model_id,
+       model_version=model_version,
+       instance_type="ml.m5.xlarge",
+   )
 
 Appendix
 ========
