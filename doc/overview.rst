@@ -585,7 +585,7 @@ as-is or first fine-tune them on a custom dataset and then deploy to a SageMaker
 
 
 SageMaker SDK built-in algorithms allow customers to access pre-trained models using model IDs and model
-versions. The ‘pre-trained model’ table below provides a list of models with useful information for 
+versions. The ‘pre-trained model’ table below provides a list of models with useful information for
 selecting the correct model ID and corresponding parameters. These models are also available through
 the `JumpStart UI in SageMaker Studio <https://docs.aws.amazon.com/sagemaker/latest/dg/studio-jumpstart.html>`__.
 
@@ -602,8 +602,8 @@ Explore example notebooks to get started with pretrained models using the SageMa
 
 Example notebooks for foundation models
 ---------------------------------------
-All JumpStart foundation models are available to use programmatically with the SageMaker Python SDK. 
-For a list of available example notebooks related to JumpStart foundation models, see 
+All JumpStart foundation models are available to use programmatically with the SageMaker Python SDK.
+For a list of available example notebooks related to JumpStart foundation models, see
 `JumpStart foundation models example notebooks <https://docs.aws.amazon.com/sagemaker/latest/dg/jumpstart-foundation-models.html#jumpstart-foundation-models-example-notebooks>`__.
 
 Example notebooks for task-based models
@@ -660,8 +660,8 @@ First, find the model ID for the model of your choice in the :doc:`Built-in Algo
 Low-code deployment with the JumpStartModel class
 -------------------------------------------------
 
-Using the model ID, define your model as a JumpStart model. Use the ``deploy`` method to automatically deploy your model for inference. 
-In this example, we use the FLAN-T5 XL model from HuggingFace. 
+Using the model ID, define your model as a JumpStart model. Use the ``deploy`` method to automatically deploy your model for inference.
+In this example, we use the FLAN-T5 XL model from HuggingFace.
 .. code:: python
 
     from sagemaker.jumpstart.model import JumpStartModel
@@ -670,7 +670,7 @@ In this example, we use the FLAN-T5 XL model from HuggingFace.
     my_model = JumpStartModel(model_id=model_id)
     predictor = my_model.deploy()
 
-You can then run inference with the deployed model using the ``predict`` method. 
+You can then run inference with the deployed model using the ``predict`` method.
 
 .. code:: python
 
@@ -678,29 +678,29 @@ You can then run inference with the deployed model using the ``predict`` method.
     response = predictor.predict(question)
     print(response)
 
-For more information about the ``JumpStartModel`` class and its parameters, 
+For more information about the ``JumpStartModel`` class and its parameters,
 see `JumpStartModel <https://sagemaker.readthedocs.io/en/stable/api/inference/model.html#sagemaker.jumpstart.model.JumpStartModel>`__.
 
 Additional low-code deployment utilities
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-You can optionally include specific model versions or instance types when deploying a pretrained model 
-using the ``JumpStartModel`` class. All JumpStart models have a default instance type. 
-Retrieve the default deployment instance type using the following code: 
+You can optionally include specific model versions or instance types when deploying a pretrained model
+using the ``JumpStartModel`` class. All JumpStart models have a default instance type.
+Retrieve the default deployment instance type using the following code:
 
 .. code:: python
 
     from sagemaker import instance_types
 
     instance_type = instance_types.retrieve_default(
-        model_id=model_id, 
-        model_version=model_version, 
+        model_id=model_id,
+        model_version=model_version,
         scope="inference")
     print(instance_type)
 
-See all supported instance types for a given JumpStart model with the ``instance_types.retrieve()`` method. 
+See all supported instance types for a given JumpStart model with the ``instance_types.retrieve()`` method.
 
-To check valid data input and output formats for inference, you can use the ``retrieve_options()`` method 
+To check valid data input and output formats for inference, you can use the ``retrieve_options()`` method
 from the ``Serializers`` and ``Deserializers`` classes.
 
 .. code:: python
@@ -712,7 +712,7 @@ Deploy a pre-trained model using the SageMaker Model class
 ----------------------------------------------------------
 
 In this section, you learn how to take a pre-trained model and deploy
-it directly to a SageMaker Endpoint and understand what happens behind 
+it directly to a SageMaker Endpoint and understand what happens behind
 the scenes if you deployed your model as a ``JumpStartModel``. The following
 assumes familiarity with `SageMaker
 models <https://sagemaker.readthedocs.io/en/stable/api/inference/model.html>`__
@@ -820,54 +820,68 @@ You can fine-tune a built-in algorithm or pre-trained model in just a few lines 
 
 First, find the model ID for the model of your choice in the :doc:`Built-in Algorithms with pre-trained Model Table<./doc_utils/pretrainedmodels>`.
 
-Using the model ID, define your training job as a JumpStart estimator. Run ``estimator.fit()`` on your model, pointing to the training data to use for fine-tuning. 
-Then, use the ``deploy`` method to automatically deploy your model for inference. In this example, we use the SPC (sentence pair classification) BERT base model (cased) from HuggingFace. 
+Using the model ID, define your training job as a JumpStart estimator. Run ``estimator.fit()`` on your model, pointing to the training data to use for fine-tuning.
+Then, use the ``deploy`` method to automatically deploy your model for inference. In this example, we use the GPT-J 6B model from HuggingFace.
 
 .. code:: python
 
     from sagemaker.jumpstart.estimator import JumpStartEstimator
 
-    model_id = "huggingface-spc-bert-base-cased"
+    model_id = "huggingface-textgeneration1-gpt-j-6b"
     estimator = JumpStartEstimator(model_id=model_id)
     estimator.fit(
-        {
-        "training": f"s3://s3_bucket_and_region_name/training_dataset_for_model_and_version
-        }
+        {"train": training_dataset_s3_path, "validation": validation_dataset_s3_path}, logs=True
     )
     predictor = estimator.deploy()
 
-You can then run inference with the deployed model using the ``predict`` method. 
+You can then run inference with the deployed model using the ``predict`` method.
 
 .. code:: python
 
-    sentence_1 = "hello"
-    sentence_2 = "world"
-    classification = predictor.predict([sentence_1, sentence_2])
-    print(classification)
+    question = "What is Southern California often abbreviated as?"
+    response = predictor.predict(question)
+    print(response)
 
-You can optionally include specific model versions or instance types. For more information about the ``JumpStartEstimator`` class and its parameters, 
+You can optionally include specific model versions or instance types. For more information about the ``JumpStartEstimator`` class and its parameters,
 see `JumpStartEstimator <https://sagemaker.readthedocs.io/en/stable/api/inference/model.html#sagemaker.jumpstart.estimator.JumpStartEstimator>`__.
 
 Additional low-code training utilities
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-You can optionally include specific model versions or instance types when fine-tuning a pretrained model 
-using the ``JumpStartEstimator`` class. All JumpStart models have a default instance type. 
-Retrieve the default training instance type using the following code: 
+You can optionally include specific model versions or instance types when fine-tuning a pretrained model
+using the ``JumpStartEstimator`` class. All JumpStart models have a default instance type.
+Retrieve the default training instance type using the following code:
 
 .. code:: python
 
     from sagemaker import instance_types
 
     instance_type = instance_types.retrieve_default(
-        model_id=model_id, 
-        model_version=model_version, 
+        model_id=model_id,
+        model_version=model_version,
         scope="training")
     print(instance_type)
 
-See all supported instance types for a given JumpStart model with the ``instance_types.retrieve()`` method. 
+See all supported instance types for a given JumpStart model with the ``instance_types.retrieve()`` method.
 
+To check the default hyperparameters used for training, you can use the ``retrieve_default()`` method
+from the ``hyperparameters`` class.
 
+.. code:: python
+
+    from sagemaker import hyperparameters
+
+    hyperparameters = hyperparameters.retrieve_default(model_id=model_id, model_version=model_version)
+    print(hyperparameters)
+
+    # Optionally override default hyperparameters for fine-tuning
+    hyperparameters["epoch"] = "3"
+    hyperparameters["per_device_train_batch_size"] = "4"
+
+You can also check the default metrics definitions:
+.. code:: python
+
+    print(estimator.metric_definitions)
 
 Fine-tune a pre-trained model on a custom dataset using the SageMaker Estimator class
 -------------------------------------------------------------------------------------
@@ -1026,7 +1040,7 @@ the
 Built-in Components
 ===================
 
-The following section provides information about the main components of built-in algorithms 
+The following section provides information about the main components of built-in algorithms
 including pretrained models, model scripts, and model images.
 
 Pre-trained models
