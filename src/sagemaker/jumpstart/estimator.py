@@ -339,7 +339,7 @@ class JumpStartEstimator(Estimator):
                 point to a tar.gz file. Structure within this directory is preserved
                 when training on Amazon SageMaker. If 'git_config' is provided,
                 'source_dir' should be a relative location to a directory in the Git
-                repo. 
+                repo.
                 (Default: None).
 
                 .. admonition:: Example
@@ -393,7 +393,7 @@ class JumpStartEstimator(Estimator):
                 the SageMaker Python SDK attempts to use either the CodeCommit
                 credential helper or local credential storage for authentication.
                 (Default: None).
-                
+
                 .. admonition:: Example
                     The following config:
 
@@ -418,7 +418,7 @@ class JumpStartEstimator(Estimator):
                 training. If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
                 If 'git_config' is provided, 'entry_point' should be
-                a relative location to the Python source file in the Git repo. 
+                a relative location to the Python source file in the Git repo.
                 (Default: None).
 
                 .. admonition:: Example
@@ -436,7 +436,7 @@ class JumpStartEstimator(Estimator):
                 copied to SageMaker in the same folder where the entrypoint is
                 copied. If 'git_config' is provided, 'dependencies' should be a
                 list of relative locations to directories with any additional
-                libraries needed in the Git repo. This is not supported with "local code" 
+                libraries needed in the Git repo. This is not supported with "local code"
                 in Local Mode. (Default: None).
 
                 .. admonition:: Example
@@ -835,7 +835,7 @@ class JumpStartEstimator(Estimator):
                 list of relative locations to directories with any additional
                 libraries needed in the Git repo. If the ```source_dir``` points
                 to S3, code will be uploaded and the S3 location will be used
-                instead. 
+                instead.
 
                 .. admonition:: Example
 
