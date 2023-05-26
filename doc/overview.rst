@@ -661,13 +661,12 @@ Low-code deployment with the JumpStartModel class
 -------------------------------------------------
 
 Using the model ID, define your model as a JumpStart model. Use the ``deploy`` method to automatically deploy your model for inference. 
-In this example, we use the EQA (extractive question answering) BERT base model (cased) from HuggingFace. 
-
+In this example, we use the FLAN-T5 XL model from HuggingFace. 
 .. code:: python
 
     from sagemaker.jumpstart.model import JumpStartModel
 
-    model_id = "huggingface-eqa-bert-base-cased"
+    model_id = "huggingface-text2text-flan-t5-xl"
     my_model = JumpStartModel(model_id=model_id)
     predictor = my_model.deploy()
 
@@ -679,8 +678,35 @@ You can then run inference with the deployed model using the ``predict`` method.
     response = predictor.predict(question)
     print(response)
 
-You can optionally include specific model versions or instance types. For more information about the ``JumpStartModel`` class and its parameters, 
+For more information about the ``JumpStartModel`` class and its parameters, 
 see `JumpStartModel <https://sagemaker.readthedocs.io/en/stable/api/inference/model.html#sagemaker.jumpstart.model.JumpStartModel>`__.
+
+Additional low-code deployment utilities
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+You can optionally include specific model versions or instance types when deploying a pretrained model 
+using the ``JumpStartModel`` class. All JumpStart models have a default instance type. 
+Retrieve the default deployment instance type using the following code: 
+
+.. code:: python
+
+    from sagemaker import instance_types
+
+    instance_type = instance_types.retrieve_default(
+        model_id=model_id, 
+        model_version=model_version, 
+        scope="inference")
+    print(instance_type)
+
+See all supported instance types for a given JumpStart model with the ``instance_types.retrieve()`` method. 
+
+To check valid data input and output formats for inference, you can use the ``retrieve_options()`` method 
+from the ``Serializers`` and ``Deserializers`` classes.
+
+.. code:: python
+
+    print(sagemaker.serializers.retrieve_options(model_id=model_id, model_version=model_version))
+    print(sagemaker.deserializers.retrieve_options(model_id=model_id, model_version=model_version))
 
 Deploy a pre-trained model using the SageMaker Model class
 ----------------------------------------------------------
@@ -765,6 +791,9 @@ the endpoint, endpoint config and model resources will be prefixed with
 ``sagemaker-jumpstart``. Refer to the model ``Tags`` to inspect the
 model artifacts involved in the model creation.
 
+Perform inference
+^^^^^^^^^^^^^^^^^
+
 Finally, use the ``predictor`` instance to query your endpoint. For
 ``catboost-classification-model``, for example, the predictor accepts
 a csv. For more information about how to use the predictor, see
@@ -818,6 +847,27 @@ You can then run inference with the deployed model using the ``predict`` method.
 
 You can optionally include specific model versions or instance types. For more information about the ``JumpStartEstimator`` class and its parameters, 
 see `JumpStartEstimator <https://sagemaker.readthedocs.io/en/stable/api/inference/model.html#sagemaker.jumpstart.estimator.JumpStartEstimator>`__.
+
+Additional low-code training utilities
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+You can optionally include specific model versions or instance types when fine-tuning a pretrained model 
+using the ``JumpStartEstimator`` class. All JumpStart models have a default instance type. 
+Retrieve the default training instance type using the following code: 
+
+.. code:: python
+
+    from sagemaker import instance_types
+
+    instance_type = instance_types.retrieve_default(
+        model_id=model_id, 
+        model_version=model_version, 
+        scope="training")
+    print(instance_type)
+
+See all supported instance types for a given JumpStart model with the ``instance_types.retrieve()`` method. 
+
+
 
 Fine-tune a pre-trained model on a custom dataset using the SageMaker Estimator class
 -------------------------------------------------------------------------------------
