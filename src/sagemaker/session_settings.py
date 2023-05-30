@@ -22,7 +22,6 @@ class SessionSettings(object):
         self,
         encrypt_repacked_artifacts=True,
         local_download_dir=None,
-        ignore_sagemaker_config=False,
     ) -> None:
         """Initialize the ``SessionSettings`` of a SageMaker ``Session``.
 
@@ -32,12 +31,9 @@ class SessionSettings(object):
                 is not provided (Default: True).
             local_download_dir (str): Optional. A path specifying the local directory
                 for downloading artifacts. (Default: None).
-            ignore_sagemaker_config (bool): Optional. Flag to indicate whether to ignore
-                sagemaker config settings. (Default: False).
         """
         self._encrypt_repacked_artifacts = encrypt_repacked_artifacts
         self._local_download_dir = local_download_dir
-        self._ignore_sagemaker_config = ignore_sagemaker_config
 
     @property
     def encrypt_repacked_artifacts(self) -> bool:
@@ -48,8 +44,3 @@ class SessionSettings(object):
     def local_download_dir(self) -> str:
         """Return path specifying the local directory for downloading artifacts."""
         return self._local_download_dir
-
-    @property
-    def ignore_sagemaker_config(self) -> bool:
-        """Return boolean for whether intelligent defaults should be ignored."""
-        return self._ignore_sagemaker_config

@@ -41,7 +41,6 @@ from sagemaker.config import validate_sagemaker_config
 from sagemaker.config.config_utils import (
     _log_sagemaker_config_single_substitution,
     _log_sagemaker_config_merge,
-    get_sagemaker_config_logger,
 )
 from sagemaker.session_settings import SessionSettings
 from sagemaker.workflow import is_pipeline_variable, is_pipeline_parameter_string
@@ -1097,16 +1096,6 @@ def get_sagemaker_config_value(sagemaker_session, key):
         object: The corresponding default value in the configuration file.
     """
     if not sagemaker_session:
-        return None
-
-    if (
-        sagemaker_session.settings is not None
-        and sagemaker_session.settings.ignore_sagemaker_config
-    ):
-        get_sagemaker_config_logger().info(
-            "Ignoring defaults config because "
-            "`ignore_sagemaker_config` was set in Session settings."
-        )
         return None
 
     if sagemaker_session.sagemaker_config:

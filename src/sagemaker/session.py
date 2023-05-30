@@ -812,11 +812,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
         inferred_output_config = update_nested_dictionary_with_values_from_config(
             output_config, TRAINING_JOB_OUTPUT_DATA_CONFIG_PATH, sagemaker_session=self
         )
+        customer_supplied_kms_key = "VolumeKmsKeyId" in resource_config
         inferred_resource_config = update_nested_dictionary_with_values_from_config(
             resource_config, TRAINING_JOB_RESOURCE_CONFIG_PATH, sagemaker_session=self
         )
         if (
-            "InstanceType" in inferred_resource_config
+            not customer_supplied_kms_key
+            and "InstanceType" in inferred_resource_config
             and not instance_supports_kms(inferred_resource_config["InstanceType"])
             and "VolumeKmsKeyId" in inferred_resource_config
         ):

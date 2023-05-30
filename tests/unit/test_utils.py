@@ -1177,17 +1177,14 @@ def test_retry_with_backoff(patched_sleep):
     assert retry_with_backoff(callable_func, 2) == func_return_val
 
 
-@patch("sagemaker.utils.get_sagemaker_config_logger")
-def test_resolve_value_from_config(mock_get_sagemaker_config_logger):
+def test_resolve_value_from_config():
 
     mock_config_logger = Mock()
-    mock_get_sagemaker_config_logger.return_value = mock_config_logger
 
     mock_info_logger = Mock()
     mock_config_logger.info = mock_info_logger
     # using a shorter name for inside the test
     sagemaker_session = MagicMock()
-    sagemaker_session.settings.ignore_sagemaker_config = False
     sagemaker_session.sagemaker_config = {"SchemaVersion": "1.0"}
     config_key_path = "SageMaker.EndpointConfig.KmsKeyId"
     sagemaker_session.sagemaker_config.update(
@@ -1239,18 +1236,7 @@ def test_resolve_value_from_config(mock_get_sagemaker_config_logger):
     sagemaker_session.sagemaker_config.update({"SageMaker": {"EndpointConfig": {"KmsKeyId": ""}}})
     assert resolve_value_from_config(None, config_key_path, None, sagemaker_session) == ""
 
-    sagemaker_session.settings.ignore_sagemaker_config = True
-    assert resolve_value_from_config("blah", config_key_path, None, sagemaker_session) == "blah"
-    mock_info_logger.assert_called_once_with(
-        "Ignoring defaults config because `ignore_sagemaker_config` was set in Session settings."
-    )
-
     mock_info_logger.reset_mock()
-
-    assert resolve_value_from_config(None, config_key_path, "blah", sagemaker_session) == "blah"
-    mock_info_logger.assert_called_once_with(
-        "Ignoring defaults config because `ignore_sagemaker_config` was set in Session settings."
-    )
 
 
 @patch("jsonschema.validate")
