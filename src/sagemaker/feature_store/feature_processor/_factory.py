@@ -99,7 +99,6 @@ class UDFWrapperFactory:
             spark_session_factory (SparkSessionFactory): A factory to provide a reference to the
                 SparkSession initialized for the feature_processor wrapped function. The factory
                 lazily loads the SparkSession, i.e. defers to function execution time.
-
         Returns:
             SparkArgProvider: An instance that generates arguments to provide to the
                 feature_processor wrapped function.
@@ -122,7 +121,6 @@ class UDFWrapperFactory:
             feature_store_manager_factory (FeatureStoreManagerFactory): A factory to provide
                 that provides a FeaturStoreManager that handles data ingestion to a Feature Group.
                 The factory lazily loads the FeatureStoreManager.
-
         Returns:
             SparkOutputReceiver: An instance that handles outputs of the wrapped function.
         """

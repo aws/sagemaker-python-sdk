@@ -22,3 +22,11 @@ from sagemaker.feature_store.feature_processor._exceptions import IngestionError
 from sagemaker.feature_store.feature_processor.feature_processor import (  # noqa: F401
     feature_processor,
 )
+from sagemaker.feature_store.feature_processor.feature_scheduler import (  # noqa: F401
+    to_pipeline,
+    schedule,
+    describe,
+    delete_schedule,
+    list_schedules,
+    execute,
+)

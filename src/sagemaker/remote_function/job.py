@@ -76,7 +76,7 @@ SPARK_CONF_FILE_NAME = "configuration.json"
 
 # TODO: SageMaker python SDK wheel file and channel name, remove after GA
 SAGEMAKER_WHL_CHANNEL_NAME = "sagemaker_whl_file"
-SAGEMAKER_WHL_FILE_NAME = "sagemaker-2.142.1.dev0-py2.py3-none-any.whl"
+SAGEMAKER_WHL_FILE_NAME = "sagemaker-2.151.1.dev0-py2.py3-none-any.whl"
 
 # Spark submitted files workspace names on S3
 SPARK_SUBMIT_JARS_WORKSPACE = "sm_rf_spark_jars"
