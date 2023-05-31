@@ -245,10 +245,9 @@ def test_validate_invalid_keep_static_autotune_not_enabled(sagemaker_session):
         tuner.fit(records, mini_batch_size=9999)
 
     assert (
-        "hyperparameters_to_keep_static is set, however Autotune mode is not enabled. "
-        "Either do not set value for hyperparameters_to_keep_static, or enable Autotune "
-        "mode by setting autotune=True."
-        in str(e)
+        "hyperparameters_to_keep_static parameter is set, however Autotune mode is not enabled. "
+        "Either do not set value for hyperparameters_to_keep_static parameter, or enable Autotune "
+        "mode by setting autotune=True." in str(e)
     )
 
 

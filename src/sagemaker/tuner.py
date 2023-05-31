@@ -685,13 +685,13 @@ class HyperparameterTuner(object):
         """
         if hyperparameter_ranges is None or len(hyperparameter_ranges) == 0:
             if not autotune:
-                raise ValueError("Need to specify hyperparameter ranges")
+                raise ValueError("Need to specify hyperparameter ranges or set autotune=True.")
 
         if not autotune and hyperparameters_to_keep_static is not None:
             raise ValueError(
-                "hyperparameters_to_keep_static is set, however Autotune mode is not enabled. "
-                "Either do not set value for hyperparameters_to_keep_static, or enable Autotune "
-                "mode by setting autotune=True."
+                "hyperparameters_to_keep_static parameter is set, however Autotune mode is not "
+                "enabled. Either do not set value for hyperparameters_to_keep_static parameter, "
+                "or enable Autotune mode by setting autotune=True."
             )
 
         if hyperparameters_to_keep_static is not None:
@@ -888,13 +888,13 @@ class HyperparameterTuner(object):
             }
 
             self.static_hyperparameters_dict = {}
-            for estimator_name, (static_hyperparameters, _) in static_auto_parameters_dict.items():
+            self.auto_parameters_dict = {}
+            for estimator_name, (
+                static_hyperparameters,
+                auto_parameters,
+            ) in static_auto_parameters_dict.items():
                 self.static_hyperparameters_dict[estimator_name] = static_hyperparameters
-
-            self.auto_parameters_dict = {
-                estimator_name: auto_parameters
-                for estimator_name, (_, auto_parameters) in static_auto_parameters_dict.items()
-            }
+                self.auto_parameters_dict[estimator_name] = auto_parameters
 
     @classmethod
     def _prepare_static_hyperparameters(
@@ -925,12 +925,14 @@ class HyperparameterTuner(object):
         """Prepare auto parameters for one estimator before tuning."""
         if not self.autotune:
             return static_hyperparameters, None
+
         if hyperparameters_to_keep_static is None:
             hyperparameters_to_keep_static = {}
 
         if not set(hyperparameters_to_keep_static).issubset(set(static_hyperparameters.keys())):
             raise ValueError(
-                "Names in hyperparameters_to_keep_static must be members of estimator's hyperparameters."
+                "Names in hyperparameters_to_keep_static must be members of estimator's "
+                "hyperparameters."
             )
 
         new_static_hyperparameters = {
@@ -1935,11 +1937,12 @@ class HyperparameterTuner(object):
                 produce more consistent configurations for the same tuning job.
             autotune (bool): Whether the parameter ranges or other unset settings of a tuning job
                 should be chosen automatically (default: False).
-            hyperparameters_to_keep_static_dict (dict(str, list[str]]): Dictionary of parameter names to prevent being
-                autotuned when autotune is enabled. The keys are the same set or a subset of
-                estimator names as in estimator_dict, and there must be one entry for each estimator
-                in estimator_dict. Each value is a list of parameter names to prevent being
-                autotuned (default: None).
+            hyperparameters_to_keep_static_dict (dict(str, list[str]]): Dictionary of
+                hyperparameter names that will be kept static. The keys are the same set or a subset
+                of estimator names as in estimator_dict, and there must be one entry for each
+                estimator in estimator_dict. Each value is a list of hyperparameter names that will
+                be kept static and will not be assigned a tunable range with Autotune functionality
+                (default: None).
 
         Returns:
             sagemaker.tuner.HyperparameterTuner: a new ``HyperparameterTuner`` object that can
