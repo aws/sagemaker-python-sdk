@@ -612,7 +612,7 @@ class HyperparameterTuner(object):
         estimator_name: Optional[str] = None,
         random_seed: Optional[int] = None,
         autotune: bool = False,
-        keep_static: Optional[List[str]] = None,
+        hyperparameters_to_keep_static: Optional[List[str]] = None,
     ):
         """Creates a ``HyperparameterTuner`` instance.
 
@@ -677,16 +677,26 @@ class HyperparameterTuner(object):
             random_seed (int): An initial value used to initialize a pseudo-random number generator.
                 Setting a random seed will make the hyperparameter tuning search strategies to
                 produce more consistent configurations for the same tuning job.
-            autotune (bool): Whether to turn on autotune (default: False).
-            keep_static: list[str]: List of parameter names to prevent being autotuned when autotune
-                is enabled (default: None).
+            autotune (bool): Whether the parameter ranges or other unset settings of a tuning job
+                should be chosen automatically (default: False).
+            hyperparameters_to_keep_static: list[str]: Names of hyperparameters that will be kept
+                static and will not be assigned a tunable range with Autotune functionality.
+                (default: None).
         """
         if hyperparameter_ranges is None or len(hyperparameter_ranges) == 0:
             if not autotune:
                 raise ValueError("Need to specify hyperparameter ranges")
 
-        if not autotune and keep_static is not None:
-            raise ValueError("Autotune is not enabled but keep_static is set.")
+        if not autotune and hyperparameters_to_keep_static is not None:
+            raise ValueError(
+                "hyperparameters_to_keep_static is set, however Autotune mode is not enabled. "
+                "Either do not set value for hyperparameters_to_keep_static, or enable Autotune "
+                "mode by setting autotune=True."
+            )
+
+        if hyperparameters_to_keep_static is not None:
+            if len(hyperparameters_to_keep_static) != len(set(hyperparameters_to_keep_static)):
+                raise ValueError("Please remove duplicate names in hyperparameters_to_keep_static.")
 
         if estimator_name is not None:
             self.estimator = None
@@ -702,8 +712,10 @@ class HyperparameterTuner(object):
             self.static_hyperparameters = None
             self.auto_parameters = None
             self.auto_parameters_dict = None
-            self.keep_static = None
-            self.keep_static_dict = {estimator_name: keep_static}
+            self.hyperparameters_to_keep_static = None
+            self.hyperparameters_to_keep_static_dict = {
+                estimator_name: hyperparameters_to_keep_static
+            }
         else:
             self.estimator = estimator
             self.objective_metric_name = objective_metric_name
@@ -716,8 +728,8 @@ class HyperparameterTuner(object):
             self.static_hyperparameters_dict = None
             self.auto_parameters = None
             self.auto_parameters_dict = None
-            self.keep_static = keep_static
-            self.keep_static_dict = None
+            self.hyperparameters_to_keep_static = hyperparameters_to_keep_static
+            self.hyperparameters_to_keep_static_dict = None
 
         self._validate_parameter_ranges(estimator, hyperparameter_ranges)
 
@@ -860,7 +872,7 @@ class HyperparameterTuner(object):
         self.auto_parameters = None
         if self.estimator is not None:
             self.static_hyperparameters, self.auto_parameters = self._prepare_auto_parameters(
-                self.static_hyperparameters, self.keep_static
+                self.static_hyperparameters, self.hyperparameters_to_keep_static
             )
 
         self.auto_parameters_dict = None
@@ -868,19 +880,17 @@ class HyperparameterTuner(object):
             static_auto_parameters_dict = {
                 estimator_name: self._prepare_auto_parameters(
                     self.static_hyperparameters_dict[estimator_name],
-                    self.keep_static_dict.get(estimator_name, None)
-                    if self.keep_static_dict is not None
+                    self.hyperparameters_to_keep_static_dict.get(estimator_name, None)
+                    if self.hyperparameters_to_keep_static_dict
                     else None,
                 )
                 for estimator_name in sorted(self.estimator_dict.keys())
             }
-            self.static_hyperparameters_dict = {
-                estimator_name: static_hyperparameters
-                for estimator_name, (
-                    static_hyperparameters,
-                    _,
-                ) in static_auto_parameters_dict.items()
-            }
+
+            self.static_hyperparameters_dict = {}
+            for estimator_name, (static_hyperparameters, _) in static_auto_parameters_dict.items():
+                self.static_hyperparameters_dict[estimator_name] = static_hyperparameters
+
             self.auto_parameters_dict = {
                 estimator_name: auto_parameters
                 for estimator_name, (_, auto_parameters) in static_auto_parameters_dict.items()
@@ -895,8 +905,9 @@ class HyperparameterTuner(object):
         static_hyperparameters = {
             str(k): to_string(v) for (k, v) in estimator.hyperparameters().items()
         }
-        for hyperparameter_name in hyperparameter_ranges.keys():
-            static_hyperparameters.pop(hyperparameter_name, None)
+        if hyperparameter_ranges is not None:
+            for hyperparameter_name in hyperparameter_ranges.keys():
+                static_hyperparameters.pop(hyperparameter_name, None)
 
         # For attach() to know what estimator to use for frameworks
         # (other algorithms may not accept extra hyperparameters)
@@ -910,20 +921,26 @@ class HyperparameterTuner(object):
 
         return static_hyperparameters
 
-    def _prepare_auto_parameters(self, static_hyperparameters, keep_static):
+    def _prepare_auto_parameters(self, static_hyperparameters, hyperparameters_to_keep_static):
         """Prepare auto parameters for one estimator before tuning."""
         if not self.autotune:
             return static_hyperparameters, None
-        if keep_static is None:
-            keep_static = {}
+        if hyperparameters_to_keep_static is None:
+            hyperparameters_to_keep_static = {}
 
-        if not set(keep_static).issubset(set(static_hyperparameters.keys())):
-            raise ValueError("Names in keep_static must be members of estimator's hyperparameters.")
+        if not set(hyperparameters_to_keep_static).issubset(set(static_hyperparameters.keys())):
+            raise ValueError(
+                "Names in hyperparameters_to_keep_static must be members of estimator's hyperparameters."
+            )
 
         new_static_hyperparameters = {
-            k: v for k, v in static_hyperparameters.items() if k in keep_static
+            k: v for k, v in static_hyperparameters.items() if k in hyperparameters_to_keep_static
         }
-        auto_parameters = {k: v for k, v in static_hyperparameters.items() if k not in keep_static}
+        auto_parameters = {
+            k: v
+            for k, v in static_hyperparameters.items()
+            if k not in hyperparameters_to_keep_static
+        }
 
         return new_static_hyperparameters, auto_parameters
 
@@ -1849,7 +1866,7 @@ class HyperparameterTuner(object):
         early_stopping_type="Off",
         random_seed=None,
         autotune=False,
-        keep_static_dict=None,
+        hyperparameters_to_keep_static_dict=None,
     ):
         """Factory method to create a ``HyperparameterTuner`` instance.
 
@@ -1916,8 +1933,9 @@ class HyperparameterTuner(object):
             random_seed (int): An initial value used to initialize a pseudo-random number generator.
                 Setting a random seed will make the hyperparameter tuning search strategies to
                 produce more consistent configurations for the same tuning job.
-            autotune (bool): Whether to turn on autotune (default: False).
-            keep_static_dict (dict(str, list[str]]): Dictionary of parameter names to prevent being
+            autotune (bool): Whether the parameter ranges or other unset settings of a tuning job
+                should be chosen automatically (default: False).
+            hyperparameters_to_keep_static_dict (dict(str, list[str]]): Dictionary of parameter names to prevent being
                 autotuned when autotune is enabled. The keys are the same set or a subset of
                 estimator names as in estimator_dict, and there must be one entry for each estimator
                 in estimator_dict. Each value is a list of parameter names to prevent being
@@ -1934,7 +1952,7 @@ class HyperparameterTuner(object):
             objective_metric_name_dict,
             hyperparameter_ranges_dict,
             metric_definitions_dict,
-            keep_static_dict,
+            hyperparameters_to_keep_static_dict,
         )
 
         estimator_names = sorted(estimator_dict.keys())
@@ -1946,9 +1964,9 @@ class HyperparameterTuner(object):
             else None
         )
 
-        keep_static = (
-            keep_static_dict.get(first_estimator_name, None)
-            if keep_static_dict is not None
+        hyperparameters_to_keep_static = (
+            hyperparameters_to_keep_static_dict.get(first_estimator_name, None)
+            if hyperparameters_to_keep_static_dict is not None
             else None
         )
 
@@ -1971,7 +1989,7 @@ class HyperparameterTuner(object):
             early_stopping_type=early_stopping_type,
             random_seed=random_seed,
             autotune=autotune,
-            keep_static=keep_static,
+            hyperparameters_to_keep_static=hyperparameters_to_keep_static,
         )
 
         for estimator_name in estimator_names[1:]:
@@ -1980,8 +1998,10 @@ class HyperparameterTuner(object):
                 if metric_definitions_dict is not None
                 else None
             )
-            keep_static = (
-                keep_static_dict.get(estimator_name, None) if keep_static_dict is not None else None
+            hyperparameters_to_keep_static = (
+                hyperparameters_to_keep_static_dict.get(estimator_name, None)
+                if hyperparameters_to_keep_static_dict is not None
+                else None
             )
             tuner._add_estimator(
                 estimator_name=estimator_name,
@@ -1989,7 +2009,7 @@ class HyperparameterTuner(object):
                 objective_metric_name=objective_metric_name_dict[estimator_name],
                 hyperparameter_ranges=hyperparameter_ranges_dict[estimator_name],
                 metric_definitions=metric_definitions,
-                keep_static=keep_static,
+                hyperparameters_to_keep_static=hyperparameters_to_keep_static,
             )
         return tuner
 
@@ -2000,7 +2020,7 @@ class HyperparameterTuner(object):
         objective_metric_name_dict,
         hyperparameter_ranges_dict,
         metric_definitions_dict=None,
-        keep_static_dict=None,
+        hyperparameters_to_keep_static_dict=None,
     ):
         """Validate inputs for ``HyperparameterTuner.create()``"""
         cls._validate_estimator_dict(estimator_dict)
@@ -2025,8 +2045,8 @@ class HyperparameterTuner(object):
             allowed_keys=estimator_names,
         )
         cls._validate_dict_argument(
-            name="keep_static_dict",
-            value=keep_static_dict,
+            name="hyperparameters_to_keep_static_dict",
+            value=hyperparameters_to_keep_static_dict,
             allowed_keys=estimator_names,
         )
 
@@ -2069,7 +2089,7 @@ class HyperparameterTuner(object):
         objective_metric_name,
         hyperparameter_ranges,
         metric_definitions=None,
-        keep_static=None,
+        hyperparameters_to_keep_static=None,
     ):
         """Add an estimator with corresponding attributes, if applicable.
 
@@ -2079,8 +2099,10 @@ class HyperparameterTuner(object):
         self.estimator_dict[estimator_name] = estimator
         self.objective_metric_name_dict[estimator_name] = objective_metric_name
         self._hyperparameter_ranges_dict[estimator_name] = hyperparameter_ranges
-        if keep_static is not None:
-            self.keep_static_dict[estimator_name] = keep_static
+        if hyperparameters_to_keep_static is not None:
+            self.hyperparameters_to_keep_static_dict[
+                estimator_name
+            ] = hyperparameters_to_keep_static
         if metric_definitions is not None:
             self.metric_definitions_dict[estimator_name] = metric_definitions
 

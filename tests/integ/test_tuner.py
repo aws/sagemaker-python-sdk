@@ -100,7 +100,7 @@ def _tune_and_deploy(
     early_stopping_type="Off",
     instance_configs=None,
     autotune=False,
-    keep_static=None,
+    hyperparameters_to_keep_static=None,
 ):
     tuner = _tune(
         kmeans_estimator,
@@ -111,7 +111,7 @@ def _tune_and_deploy(
         early_stopping_type=early_stopping_type,
         instance_configs=instance_configs,
         autotune=autotune,
-        keep_static=keep_static,
+        hyperparameters_to_keep_static=hyperparameters_to_keep_static,
     )
     _deploy(kmeans_train_set, sagemaker_session, tuner, early_stopping_type, cpu_instance_type)
 
@@ -143,7 +143,7 @@ def _tune(
     early_stopping_type="Off",
     instance_configs=None,
     autotune=False,
-    keep_static=None,
+    hyperparameters_to_keep_static=None,
 ):
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
 
@@ -158,7 +158,7 @@ def _tune(
                 warm_start_config=warm_start_config,
                 early_stopping_type=early_stopping_type,
                 autotune=autotune,
-                keep_static=keep_static,
+                hyperparameters_to_keep_static=hyperparameters_to_keep_static,
             )
         tuner.override_resource_config(instance_configs=instance_configs)
         records = kmeans_estimator.record_set(kmeans_train_set[0][:100])
@@ -197,7 +197,7 @@ def test_tuning_kmeans_autotune(
         hyperparameter_ranges=hyperparameter_ranges,
         job_name=job_name,
         autotune=True,
-        keep_static=[
+        hyperparameters_to_keep_static=[
             "local_lloyd_init_method",
             "local_lloyd_num_trials",
             "local_lloyd_tol",
@@ -664,7 +664,7 @@ def test_tuning_mxnet_autotune(
             max_jobs=4,
             max_parallel_jobs=2,
             autotune=True,
-            keep_static=None,
+            hyperparameters_to_keep_static=None,
         )
 
         train_input = estimator.sagemaker_session.upload_data(

@@ -2619,9 +2619,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 * volume_kms_key_id: The AWS Key Management Service (AWS KMS) key
                 that Amazon SageMaker uses to encrypt data on the storage
                 volume attached to the ML compute instance(s) that run the training job.
-            autotune (bool): Whether to turn on autotune (default: False).
+            autotune (bool): Whether the parameter ranges or other unset settings of a tuning job
+                should be chosen automatically (default: False).
             auto_parameters (dict[str, str]): Dictionary of auto parameters. The keys are names
-                of auto parameters and valeus are example values of auto parameters
+                of auto parameters and values are example values of auto parameters
                 (default: ``None``).
         """
 
@@ -2705,7 +2706,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 other required configurations.
             tags (list[dict]): List of tags for labeling the tuning job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
-            autotune (bool): whether to turn on autotune.
+            autotune (bool): Whether the parameter ranges or other unset settings of a tuning job
+                should be chosen automatically.
         """
 
         if training_config is None and training_config_list is None:
@@ -2756,7 +2758,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 other required configurations.
             tags (list[dict]): List of tags for labeling the tuning job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
-            autotune (bool): whether to turn on autotune.
+            autotune (bool): Whether the parameter ranges or other unset settings of a tuning job
+                should be chosen automatically.
         Returns:
             dict: A dictionary for CreateHyperParameterTuningJob request
         """
@@ -2868,10 +2871,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if parameter_ranges is not None:
             tuning_config["ParameterRanges"] = parameter_ranges
-            if auto_parameters is not None:
-                tuning_config["ParameterRanges"]["AutoParameters"] = [
-                    {"Name": name, "ValueHint": value} for name, value in auto_parameters.items()
-                ]
+
+        if auto_parameters is not None:
+            if parameter_ranges is None:
+                tuning_config["ParameterRanges"] = {}
+            tuning_config["ParameterRanges"]["AutoParameters"] = [
+                {"Name": name, "ValueHint": value} for name, value in auto_parameters.items()
+            ]
 
         if strategy_config is not None:
             tuning_config["StrategyConfig"] = strategy_config
@@ -3054,10 +3060,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if parameter_ranges is not None:
             training_job_definition["HyperParameterRanges"] = parameter_ranges
-            if auto_parameters is not None:
-                training_job_definition["HyperParameterRanges"]["AutoParameters"] = [
-                    {"Name": name, "ValueHint": value} for name, value in auto_parameters.items()
-                ]
+
+        if auto_parameters is not None:
+            if parameter_ranges is None:
+                training_job_definition["HyperParameterRanges"] = {}
+            training_job_definition["HyperParameterRanges"]["AutoParameters"] = [
+                {"Name": name, "ValueHint": value} for name, value in auto_parameters.items()
+            ]
 
         if max_retry_attempts is not None:
             training_job_definition["RetryStrategy"] = {"MaximumRetryAttempts": max_retry_attempts}

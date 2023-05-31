@@ -239,12 +239,45 @@ def test_validate_invalid_keep_static_autotune_not_enabled(sagemaker_session):
             hyperparameter_ranges=HYPERPARAMETER_RANGES_TWO,
             metric_definitions=METRIC_DEFINITIONS,
             autotune=autotune,
-            keep_static=invalid_keep_static,
+            hyperparameters_to_keep_static=invalid_keep_static,
         )
         records = RecordSet(s3_data=INPUTS, num_records=1, feature_dim=1)
         tuner.fit(records, mini_batch_size=9999)
 
-    assert "Autotune is not enabled but keep_static is set." in str(e)
+    assert (
+        "hyperparameters_to_keep_static is set, however Autotune mode is not enabled. "
+        "Either do not set value for hyperparameters_to_keep_static, or enable Autotune "
+        "mode by setting autotune=True."
+        in str(e)
+    )
+
+
+def test_validate_invalid_keep_static_duplicate_autotune_enabled(sagemaker_session):
+    pca = PCA(
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        NUM_COMPONENTS,
+        base_job_name="pca",
+        sagemaker_session=sagemaker_session,
+    )
+
+    autotune = True
+    invalid_keep_static = ["feature_dim", "feature_dim"]
+
+    with pytest.raises(ValueError) as e:
+        HyperparameterTuner(
+            estimator=pca,
+            objective_metric_name=OBJECTIVE_METRIC_NAME,
+            hyperparameter_ranges=HYPERPARAMETER_RANGES_TWO,
+            metric_definitions=METRIC_DEFINITIONS,
+            autotune=autotune,
+            hyperparameters_to_keep_static=invalid_keep_static,
+        )
+        records = RecordSet(s3_data=INPUTS, num_records=1, feature_dim=1)
+        tuner.fit(records, mini_batch_size=9999)
+
+    assert "Please remove duplicate names in hyperparameters_to_keep_static." in str(e)
 
 
 def test_validate_invalid_keep_static_autotune_enabled(sagemaker_session, tuner):
@@ -261,12 +294,15 @@ def test_validate_invalid_keep_static_autotune_enabled(sagemaker_session, tuner)
         tuner.estimator = pca
         tuner._hyperparameter_ranges = HYPERPARAMETER_RANGES_TWO
         tuner.autotune = True
-        tuner.keep_static = ["unknown_static_parameter"]
+        tuner.hyperparameters_to_keep_static = ["unknown_static_parameter"]
 
         records = RecordSet(s3_data=INPUTS, num_records=1, feature_dim=1)
         tuner.fit(records, mini_batch_size=9999)
 
-    assert "Names in keep_static must be members of estimator's hyperparameters." in str(e)
+    assert (
+        "Names in hyperparameters_to_keep_static must be members of estimator's hyperparameters."
+        in str(e)
+    )
 
 
 def test_fit_pca(sagemaker_session, tuner):
@@ -328,7 +364,7 @@ def test_fit_pca_with_autotune(sagemaker_session, tuner):
 
     tuner.estimator = pca
     tuner.autotune = True
-    tuner.keep_static = ["feature_dim"]
+    tuner.hyperparameters_to_keep_static = ["feature_dim"]
 
     records = RecordSet(s3_data=INPUTS, num_records=1, feature_dim=1)
     tuner.fit(records, mini_batch_size=9999)
@@ -336,7 +372,39 @@ def test_fit_pca_with_autotune(sagemaker_session, tuner):
     _, _, tune_kwargs = sagemaker_session.create_tuning_job.mock_calls[0]
 
     assert tune_kwargs["autotune"] is True
-    assert tuner.keep_static_dict is None
+    assert tuner.hyperparameters_to_keep_static_dict is None
+    assert tuner.auto_parameters_dict is None
+    assert len(tune_kwargs["tuning_config"]["auto_parameters"]) == 2
+    assert "mini_batch_size" in tune_kwargs["tuning_config"]["auto_parameters"]
+    assert "num_components" in tune_kwargs["tuning_config"]["auto_parameters"]
+
+    assert len(tune_kwargs["training_config"]["static_hyperparameters"]) == 1
+    assert "feature_dim" in tune_kwargs["training_config"]["static_hyperparameters"]
+
+
+def test_fit_pca_with_autotune_no_hyperparameterranges(sagemaker_session):
+    pca = PCA(
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        NUM_COMPONENTS,
+        base_job_name="pca",
+        sagemaker_session=sagemaker_session,
+    )
+
+    tuner = HyperparameterTuner(
+        estimator, OBJECTIVE_METRIC_NAME, None, METRIC_DEFINITIONS, autotune=True
+    )
+    tuner.estimator = pca
+    tuner.hyperparameters_to_keep_static = ["feature_dim"]
+
+    records = RecordSet(s3_data=INPUTS, num_records=1, feature_dim=1)
+    tuner.fit(records, mini_batch_size=9999)
+
+    _, _, tune_kwargs = sagemaker_session.create_tuning_job.mock_calls[0]
+
+    assert tune_kwargs["autotune"] is True
+    assert tuner.hyperparameters_to_keep_static_dict is None
     assert tuner.auto_parameters_dict is None
     assert len(tune_kwargs["tuning_config"]["auto_parameters"]) == 2
     assert "mini_batch_size" in tune_kwargs["tuning_config"]["auto_parameters"]
@@ -665,7 +733,7 @@ def test_fit_multi_estimators(sagemaker_session):
 def test_fit_multi_estimators_autotune(sagemaker_session):
     (tuner, estimator_one, estimator_two) = _create_multi_estimator_tuner(sagemaker_session)
     tuner.autotune = True
-    tuner.keep_static_dict = {
+    tuner.hyperparameters_to_keep_static_dict = {
         ESTIMATOR_NAME_TWO: ["feature_dim"],
     }
 
@@ -678,7 +746,7 @@ def test_fit_multi_estimators_autotune(sagemaker_session):
     _, _, tune_kwargs = sagemaker_session.create_tuning_job.mock_calls[0]
 
     assert tune_kwargs["autotune"] is True
-    assert tuner.keep_static is None
+    assert tuner.hyperparameters_to_keep_static is None
     assert tuner.auto_parameters is None
 
     assert "tuning_objective" not in tune_kwargs["tuning_config"]

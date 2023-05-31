@@ -147,7 +147,7 @@ def test_multi_estimator_tuning_autotune(
         max_parallel_jobs=MAX_PARALLEL_JOBS,
         tags=TAGS,
         autotune=True,
-        keep_static_dict={
+        hyperparameters_to_keep_static_dict={
             ESTIMATOR_FM: ["num_factors", "predictor_type"],
             ESTIMATOR_KNN: ["predictor_type", "mini_batch_size"],
         },
