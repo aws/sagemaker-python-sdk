@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.160.0 (2023-05-31)
+
+### Features
+
+ * PyTorch 2.0 release
+ * Add TFS 2.12.1 Graviton image
+
+### Bug Fixes and Other Changes
+
+ * Fix failing integ test
+ * remove unnecessary log messages for loading existing experiment runs
+ * build(deps): bump requests from 2.27.1 to 2.31.0 in /requirements/extras
+ * SDK Defaults - switch from config printing to logging
+
 ## v2.159.0 (2023-05-23)
 
 ### Features
