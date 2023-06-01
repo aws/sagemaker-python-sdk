@@ -629,7 +629,6 @@ def test_tuning_mxnet(
 
 
 @pytest.mark.slow_test
-@pytest.mark.release
 def test_tuning_mxnet_autotune(
     sagemaker_session,
     mxnet_training_latest_version,
