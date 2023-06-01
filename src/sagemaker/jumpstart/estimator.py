@@ -36,7 +36,7 @@ from sagemaker.jumpstart.utils import (
     is_valid_model_id,
     resolve_model_intelligent_default_field,
 )
-from sagemaker.jumpstart.utils import stringify_object
+from sagemaker.utils import stringify_object
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
 from sagemaker.predictor import PredictorBase
 

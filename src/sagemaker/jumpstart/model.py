@@ -28,7 +28,7 @@ from sagemaker.jumpstart.factory.model import (
     get_init_kwargs,
 )
 from sagemaker.jumpstart.utils import is_valid_model_id
-from sagemaker.jumpstart.utils import stringify_object
+from sagemaker.utils import stringify_object
 from sagemaker.model import Model
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig
 from sagemaker.predictor import PredictorBase

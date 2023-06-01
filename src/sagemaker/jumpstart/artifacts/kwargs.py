@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 from copy import deepcopy
 from typing import Optional
-from sagemaker.instance_types import volume_size_supported
+from sagemaker.utils import volume_size_supported
 from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_REGION_NAME,
 )

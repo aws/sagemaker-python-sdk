@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 import pytest
 from mock import MagicMock, Mock, patch, PropertyMock
+from sagemaker.session_settings import SessionSettings
 
 from sagemaker.transformer import _TransformJob, Transformer
 from sagemaker.workflow.pipeline_context import PipelineSession, _PipelineConfig
@@ -110,6 +111,8 @@ def transformer(sagemaker_session):
 @patch("sagemaker.transformer._TransformJob.start_new")
 def test_transform_with_sagemaker_config_injection(start_new_job, sagemaker_session):
     sagemaker_session.sagemaker_config = SAGEMAKER_CONFIG_TRANSFORM_JOB
+
+    sagemaker_session.settings = SessionSettings()
 
     transformer = Transformer(
         MODEL_NAME,

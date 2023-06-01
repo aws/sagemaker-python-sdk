@@ -20,6 +20,7 @@ import pytest
 from mock import Mock, patch
 
 from sagemaker import s3
+from sagemaker.session_settings import SessionSettings
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.conditions import ConditionEquals
 from sagemaker.workflow.execution_variables import ExecutionVariables
@@ -79,6 +80,7 @@ def test_pipeline_create_and_update_with_config_injection(sagemaker_session_mock
     sagemaker_session_mock.sagemaker_client.describe_pipeline.return_value = {
         "PipelineArn": "pipeline-arn"
     }
+    sagemaker_session_mock.settings = SessionSettings()
     pipeline = Pipeline(
         name="MyPipeline",
         parameters=[],

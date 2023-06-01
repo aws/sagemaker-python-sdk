@@ -119,22 +119,3 @@ def retrieve(
         tolerate_vulnerable_model,
         tolerate_deprecated_model,
     )
-
-
-def volume_size_supported(instance_type: str) -> bool:
-    """Returns True if SageMaker allows volume_size to be used for the instance type.
-
-    Raises:
-        ValueError: If the instance type is improperly formatted.
-    """
-    try:
-        parts: List[str] = instance_type.split(".")
-        if len(parts) != 3 or parts[0] != "ml":
-            raise ValueError("Instance type must have 2 periods and start with 'ml'.")
-
-        # Any instance type with a "d" in the instance family (i.e. c5d, p4d, etc) + g5
-        # does not support attaching an EBS volume.
-        family = parts[1]
-        return "d" not in family and not family.startswith("g5")
-    except Exception as e:
-        raise ValueError(f"Failed to parse instance type '{instance_type}': {str(e)}")
