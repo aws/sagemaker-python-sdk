@@ -908,8 +908,7 @@ You can also check the default metric definitions:
 
     print(metric_definitions.retrieve_default(model_id=model_id, model_version=model_version))
 
-For more information about inference and utilities, see
-`Inference APIs <https://sagemaker.readthedocs.io/en/stable/api/inference/index.html>__`
+For more information about inference and utilities, see `Inference APIs <https://sagemaker.readthedocs.io/en/stable/api/inference/index.html>`__
 and `Utility APIs <https://sagemaker.readthedocs.io/en/stable/api/utility/index.html>`__.
 
 Fine-tune a pre-trained model on a custom dataset using the SageMaker Estimator class
