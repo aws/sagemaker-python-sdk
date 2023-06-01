@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 ECR_URI_TEMPLATE = "{registry}.dkr.{hostname}/{repository}"
 HUGGING_FACE_FRAMEWORK = "huggingface"
+HUGGING_FACE_LLM_FRAMEWORK = "huggingface-llm"
 XGBOOST_FRAMEWORK = "xgboost"
 SKLEARN_FRAMEWORK = "sklearn"
 TRAINIUM_ALLOWED_FRAMEWORKS = "pytorch"
@@ -462,7 +463,7 @@ def _validate_version_and_set_if_needed(version, config, framework):
 
         return available_versions[0]
 
-    if version is None and framework in [DATA_WRANGLER_FRAMEWORK]:
+    if version is None and framework in [DATA_WRANGLER_FRAMEWORK, HUGGING_FACE_LLM_FRAMEWORK]:
         version = _get_latest_versions(available_versions)
 
     _validate_arg(version, available_versions + aliased_versions, "{} version".format(framework))
