@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.161.0 (2023-06-01)
+
+### Features
+
+ * Add huggingface-llm 0.6.0 dlc images
+ * Add autotune for HyperparameterTuner
+
+### Bug Fixes and Other Changes
+
+ * Remove release tag from non-global test
+ * SDK defaults for volume size, JS Estimator image uri region, Predictor str method
+
 ## v2.160.0 (2023-05-31)
 
 ### Features
