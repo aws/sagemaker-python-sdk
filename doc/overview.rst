@@ -662,6 +662,7 @@ Low-code deployment with the JumpStartModel class
 
 Using the model ID, define your model as a JumpStart model. Use the ``deploy`` method to automatically deploy your model for inference.
 In this example, we use the FLAN-T5 XL model from HuggingFace.
+
 .. code:: python
 
     from sagemaker.jumpstart.model import JumpStartModel
@@ -677,6 +678,11 @@ You can then run inference with the deployed model using the ``predict`` method.
     question = "What is Southern California often abbreviated as?"
     response = predictor.predict(question)
     print(response)
+
+.. note::
+   This example uses the foundation model FLAN-T5 XL, which is suitable for a wide range of text generation use cases including question answering,
+   summarization, chatbot creation, and more. For more information about model use cases, see
+   `Choose a foundation model <https://docs.aws.amazon.com/en_us/sagemaker/latest/dg/jumpstart-foundation-models-choose.html>`__ in the *Amazon SageMaker Developer Guide*.
 
 For more information about the ``JumpStartModel`` class and its parameters,
 see `JumpStartModel <https://sagemaker.readthedocs.io/en/stable/api/inference/model.html#sagemaker.jumpstart.model.JumpStartModel>`__.
@@ -852,6 +858,11 @@ You can then run inference with the deployed model using the ``predict`` method.
     response = predictor.predict(question)
     print(response)
 
+.. note::
+   This example uses the foundation model GPT-J 6B, which is suitable for a wide range of text generation use cases including question answering,
+   named entity recognition, summarization, and more. For more information about model use cases, see
+   `Choose a foundation model <https://docs.aws.amazon.com/en_us/sagemaker/latest/dg/jumpstart-foundation-models-choose.html>`__ in the *Amazon SageMaker Developer Guide*.
+
 You can optionally specify model versions or instance types when creating your ``JumpStartEstimator``. For more information about the ``JumpStartEstimator`` class and its parameters,
 see `JumpStartEstimator <https://sagemaker.readthedocs.io/en/stable/api/inference/model.html#sagemaker.jumpstart.estimator.JumpStartEstimator>`__.
 
@@ -881,19 +892,25 @@ from the ``hyperparameters`` class.
 
     from sagemaker import hyperparameters
 
-    hyperparameters = hyperparameters.retrieve_default(model_id=model_id, model_version=model_version)
-    print(hyperparameters)
+    my_hyperparameters = hyperparameters.retrieve_default(model_id=model_id, model_version=model_version)
+    print(my_hyperparameters)
 
     # Optionally override default hyperparameters for fine-tuning
-    hyperparameters["epoch"] = "3"
-    hyperparameters["per_device_train_batch_size"] = "4"
+    my_hyperparameters["epoch"] = "3"
+    my_hyperparameters["per_device_train_batch_size"] = "4"
 
-You can also check the default metrics definitions:
+    # Optionally validate hyperparameters for the model
+    hyperparameters.validate(model_id=model_id, model_version=model_version, hyperparameters=my_hyperparameters)
+
+You can also check the default metric definitions:
+
 .. code:: python
 
-    print(estimator.metric_definitions)
+    print(metric_definitions.retrieve_default(model_id=model_id, model_version=model_version))
 
-For more information about utilities, see `Utility APIs <https://sagemaker.readthedocs.io/en/stable/api/utility/index.html>`__.
+For more information about inference and utilities, see
+`Inference APIs <https://sagemaker.readthedocs.io/en/stable/api/inference/index.html>__`
+and `Utility APIs <https://sagemaker.readthedocs.io/en/stable/api/utility/index.html>`__.
 
 Fine-tune a pre-trained model on a custom dataset using the SageMaker Estimator class
 -------------------------------------------------------------------------------------
@@ -1116,20 +1133,27 @@ following repos https://github.com/aws/deep-learning-containers,
 https://github.com/aws/sagemaker-xgboost-container,
 and https://github.com/aws/sagemaker-scikit-learn-container. Use
 the ``model_id`` and ``version`` of the corresponding model to
-retrieve the related image as follows.
+retrieve the related image as follows. You can also use the ``instance_types``
+utility to retrieve and use the default instance type for the model.
 
 .. code:: python
 
-   from sagemaker import image_uris
+   from sagemaker import image_uris, instance_types
 
-   image_uri = image_uris.retrieve(
-       region=None,
-       framework=None,
-       image_scope=scope,
-       model_id=model_id,
-       model_version=model_version,
-       instance_type="ml.m5.xlarge",
-   )
+    instance_type = instance_types.retrieve_default(
+        model_id=model_id,
+        model_version=model_version,
+        scope=scope
+    )
+
+    image_uri = image_uris.retrieve(
+       region=None,
+       framework=None,
+       image_scope=scope,
+       model_id=model_id,
+       model_version=model_version,
+       instance_type=instance_type,
+    )
 
 Appendix
 ========
