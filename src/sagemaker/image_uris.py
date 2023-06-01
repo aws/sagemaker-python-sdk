@@ -104,7 +104,7 @@ def retrieve(
         sdk_version (str): the version of python-sdk that will be used in the image retrieval.
             (default: None).
         inference_tool (str): the tool that will be used to aid in the inference.
-            Valid values: "neuron, None"
+            Valid values: "neuron, neuronx, None"
             (default: None).
         serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
             Specifies configuration related to serverless endpoint. Instance type is
@@ -158,7 +158,7 @@ def retrieve(
         _framework = framework
         if framework == HUGGING_FACE_FRAMEWORK or framework in TRAINIUM_ALLOWED_FRAMEWORKS:
             inference_tool = _get_inference_tool(inference_tool, instance_type)
-            if inference_tool == "neuron":
+            if inference_tool == "neuron" or inference_tool == "neuronx":
                 _framework = f"{framework}-{inference_tool}"
         final_image_scope = _get_final_image_scope(framework, instance_type, image_scope)
         _validate_for_suppported_frameworks_and_instance_type(framework, instance_type)

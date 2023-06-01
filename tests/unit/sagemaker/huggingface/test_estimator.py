@@ -269,7 +269,7 @@ def test_huggingface_neuron(
         pytorch_version=huggingface_neuron_latest_inference_pytorch_version,
         py_version=huggingface_neuron_latest_inference_py_version,
     )
-    container = huggingface_model.prepare_container_def("ml.inf1.xlarge")
+    container = huggingface_model.prepare_container_def("ml.inf1.xlarge", inference_tool="neuron")
     assert container["Image"]
 
 
@@ -289,7 +289,7 @@ def test_huggingface_neuronx(
         pytorch_version=huggingface_neuronx_latest_inference_pytorch_version,
         py_version=huggingface_neuronx_latest_inference_py_version,
     )
-    container = huggingface_model.prepare_container_def("ml.inf2.xlarge")
+    container = huggingface_model.prepare_container_def("ml.inf2.xlarge", inference_tool="neuronx")
     assert container["Image"]
 
 

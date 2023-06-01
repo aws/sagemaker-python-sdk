@@ -50,4 +50,5 @@ def get_full_neuronx_image_uri(
         image_scope="training",
         base_framework_version=base_framework_version,
         container_version="cu110-ubuntu18.04",
+        inference_tool="neuronx",
     )
