@@ -708,6 +708,16 @@ from the ``Serializers`` and ``Deserializers`` classes.
     print(sagemaker.serializers.retrieve_options(model_id=model_id, model_version=model_version))
     print(sagemaker.deserializers.retrieve_options(model_id=model_id, model_version=model_version))
 
+Similarly, you can use the ``retrieve_options()`` method
+to check the supported content and accept types for a model.
+
+.. code:: python
+
+    print(sagemaker.content_types.retrieve_options(model_id=model_id, model_version=model_version))
+    print(sagemaker.accept_types.retrieve_options(model_id=model_id, model_version=model_version))
+
+For more information about utilities, see `Utility APIs <https://sagemaker.readthedocs.io/en/stable/api/utility/index.html>`__.
+
 Deploy a pre-trained model using the SageMaker Model class
 ----------------------------------------------------------
 
@@ -830,7 +840,7 @@ Then, use the ``deploy`` method to automatically deploy your model for inference
     model_id = "huggingface-textgeneration1-gpt-j-6b"
     estimator = JumpStartEstimator(model_id=model_id)
     estimator.fit(
-        {"train": training_dataset_s3_path, "validation": validation_dataset_s3_path}, logs=True
+        {"train": training_dataset_s3_path, "validation": validation_dataset_s3_path}
     )
     predictor = estimator.deploy()
 
@@ -842,7 +852,7 @@ You can then run inference with the deployed model using the ``predict`` method.
     response = predictor.predict(question)
     print(response)
 
-You can optionally include specific model versions or instance types. For more information about the ``JumpStartEstimator`` class and its parameters,
+You can optionally specify model versions or instance types when creating your ``JumpStartEstimator``. For more information about the ``JumpStartEstimator`` class and its parameters,
 see `JumpStartEstimator <https://sagemaker.readthedocs.io/en/stable/api/inference/model.html#sagemaker.jumpstart.estimator.JumpStartEstimator>`__.
 
 Additional low-code training utilities
@@ -882,6 +892,8 @@ You can also check the default metrics definitions:
 .. code:: python
 
     print(estimator.metric_definitions)
+
+For more information about utilities, see `Utility APIs <https://sagemaker.readthedocs.io/en/stable/api/utility/index.html>`__.
 
 Fine-tune a pre-trained model on a custom dataset using the SageMaker Estimator class
 -------------------------------------------------------------------------------------
