@@ -310,7 +310,7 @@ class InferenceRecommenderMixin:
         initial_instance_count = self.inference_recommendations[0]["EndpointConfiguration"][
             "InitialInstanceCount"
         ]
-        return (instance_type, initial_instance_count, "PythonSDK-RightSize")
+        return (instance_type, initial_instance_count, RIGHT_SIZE_TAG)
 
     def _update_params_for_recommendation_id(
         self,
