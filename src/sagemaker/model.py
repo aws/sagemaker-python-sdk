@@ -1251,7 +1251,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
             inference_recommendation_id is not None
             or self.inference_recommender_job_results is not None
         ):
-            instance_type, initial_instance_count = self._update_params(
+            instance_type, initial_instance_count, tags = self._update_params(
                 instance_type=instance_type,
                 initial_instance_count=initial_instance_count,
                 accelerator_type=accelerator_type,
@@ -1260,6 +1260,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
                 explainer_config=explainer_config,
                 inference_recommendation_id=inference_recommendation_id,
                 inference_recommender_job_results=self.inference_recommender_job_results,
+                tags=tags,
             )
 
         is_async = async_inference_config is not None
@@ -1754,7 +1755,7 @@ class ModelPackage(Model):
 
         Args:
             args: Positional arguments coming from the caller. This class does not require
-                any so they are ignored.
+                any but will specifically look for Tags (3rd arg positionally) if specified
 
             kwargs: Keyword arguments coming from the caller. This class does not require
                 any so they are ignored.
@@ -1785,6 +1786,7 @@ class ModelPackage(Model):
             container_def,
             vpc_config=self.vpc_config,
             enable_network_isolation=self.enable_network_isolation(),
+            tags=args[2],
         )
 
     def _ensure_base_name_if_needed(self, base_name):
