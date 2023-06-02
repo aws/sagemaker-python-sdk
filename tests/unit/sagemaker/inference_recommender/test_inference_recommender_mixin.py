@@ -177,6 +177,17 @@ IR_SERVERLESS_PRODUCTION_VARIANTS = [
     }
 ]
 
+IR_MODEL_PACKAGE_CONTAINER_DEF = {
+    "ModelPackageName": MODEL_PACKAGE_ARN,
+}
+
+IR_TAGS = [
+    {
+        "Key": "ClientType",
+        "Value": "PythonSDK-RightSize",
+    }
+]
+
 
 @pytest.fixture()
 def sagemaker_session():
@@ -371,6 +382,8 @@ def test_right_size_default_with_model_package_successful(sagemaker_session, mod
         framework=IR_SAMPLE_FRAMEWORK,
     )
 
+    sagemaker_session.create_model.assert_not_called()
+
     # assert that the create api has been called with default parameters
     sagemaker_session.create_inference_recommendations_job.assert_called_with(
         role=IR_ROLE_ARN,
@@ -425,6 +438,8 @@ def test_right_size_advanced_list_instances_model_package_successful(
         max_tests=5,
         max_parallel_tests=5,
     )
+
+    sagemaker_session.create_model.assert_not_called()
 
     # assert that the create api has been called with advanced parameters
     sagemaker_session.create_inference_recommendations_job.assert_called_with(
@@ -481,6 +496,8 @@ def test_right_size_advanced_single_instances_model_package_successful(
         max_parallel_tests=5,
     )
 
+    sagemaker_session.create_model.assert_not_called()
+
     # assert that the create api has been called with advanced parameters
     sagemaker_session.create_inference_recommendations_job.assert_called_with(
         role=IR_ROLE_ARN,
@@ -516,6 +533,8 @@ def test_right_size_advanced_model_package_partial_params_successful(
         max_invocations=100,
         model_latency_thresholds=IR_SAMPLE_MODEL_LATENCY_THRESHOLDS,
     )
+
+    sagemaker_session.create_model.assert_not_called()
 
     # assert that the create api has been called with advanced parameters
     sagemaker_session.create_inference_recommendations_job.assert_called_with(
@@ -567,6 +586,15 @@ def test_deploy_right_size_with_model_package_succeeds(
     default_right_sized_model.name = MODEL_NAME
     default_right_sized_model.deploy(endpoint_name=IR_DEPLOY_ENDPOINT_NAME)
 
+    sagemaker_session.create_model.assert_called_with(
+        MODEL_NAME,
+        IR_ROLE_ARN,
+        IR_MODEL_PACKAGE_CONTAINER_DEF,
+        vpc_config=None,
+        enable_network_isolation=False,
+        tags=IR_TAGS,
+    )
+
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
         async_inference_config_dict=None,
         data_capture_config_dict=None,
@@ -574,7 +602,7 @@ def test_deploy_right_size_with_model_package_succeeds(
         kms_key=None,
         name="ir-endpoint-test",
         production_variants=IR_PRODUCTION_VARIANTS,
-        tags=None,
+        tags=IR_TAGS,
         wait=True,
     )
 
@@ -587,6 +615,15 @@ def test_deploy_right_size_with_both_overrides_succeeds(
         instance_type="ml.c5.2xlarge",
         initial_instance_count=5,
         endpoint_name=IR_DEPLOY_ENDPOINT_NAME,
+    )
+
+    sagemaker_session.create_model.assert_called_with(
+        MODEL_NAME,
+        IR_ROLE_ARN,
+        IR_MODEL_PACKAGE_CONTAINER_DEF,
+        vpc_config=None,
+        enable_network_isolation=False,
+        tags=None,
     )
 
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
@@ -637,6 +674,15 @@ def test_deploy_right_size_serverless_override(sagemaker_session, default_right_
     serverless_inference_config = ServerlessInferenceConfig()
     default_right_sized_model.deploy(serverless_inference_config=serverless_inference_config)
 
+    sagemaker_session.create_model.assert_called_with(
+        MODEL_NAME,
+        IR_ROLE_ARN,
+        IR_MODEL_PACKAGE_CONTAINER_DEF,
+        vpc_config=None,
+        enable_network_isolation=False,
+        tags=None,
+    )
+
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
         name=MODEL_NAME,
         production_variants=IR_SERVERLESS_PRODUCTION_VARIANTS,
@@ -659,6 +705,15 @@ def test_deploy_right_size_async_override(sagemaker_session, default_right_sized
         instance_type="ml.c5.2xlarge",
         initial_instance_count=1,
         async_inference_config=async_inference_config,
+    )
+
+    sagemaker_session.create_model.assert_called_with(
+        MODEL_NAME,
+        IR_ROLE_ARN,
+        IR_MODEL_PACKAGE_CONTAINER_DEF,
+        vpc_config=None,
+        enable_network_isolation=False,
+        tags=None,
     )
 
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
@@ -693,6 +748,15 @@ def test_deploy_right_size_explainer_config_override(sagemaker_session, default_
         instance_type="ml.c5.2xlarge",
         initial_instance_count=1,
         explainer_config=explainer_config,
+    )
+
+    sagemaker_session.create_model.assert_called_with(
+        MODEL_NAME,
+        IR_ROLE_ARN,
+        IR_MODEL_PACKAGE_CONTAINER_DEF,
+        vpc_config=None,
+        enable_network_isolation=False,
+        tags=None,
     )
 
     sagemaker_session.endpoint_from_production_variants.assert_called_with(

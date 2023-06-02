@@ -152,3 +152,44 @@ DESCRIBE_COMPILATION_JOB_RESPONSE = {
     "ModelArtifacts": {"S3ModelArtifacts": IR_COMPILATION_MODEL_DATA},
     "InferenceImage": IR_COMPILATION_IMAGE,
 }
+
+IR_CONTAINER_DEF = {
+    "Image": IR_IMAGE,
+    "Environment": IR_ENV,
+    "ModelDataUrl": IR_MODEL_DATA,
+}
+
+DEPLOYMENT_RECOMMENDATION_CONTAINER_DEF = {
+    "Image": IR_IMAGE,
+    "Environment": MODEL_RECOMMENDATION_ENV,
+    "ModelDataUrl": IR_MODEL_DATA,
+}
+
+IR_COMPILATION_CONTAINER_DEF = {
+    "Image": IR_COMPILATION_IMAGE,
+    "Environment": {},
+    "ModelDataUrl": IR_COMPILATION_MODEL_DATA,
+}
+
+IR_MODEL_PACKAGE_CONTAINER_DEF = {
+    "ModelPackageName": IR_MODEL_PACKAGE_VERSION_ARN,
+    "Environment": IR_ENV,
+}
+
+IR_COMPILATION_MODEL_PACKAGE_CONTAINER_DEF = {
+    "ModelPackageName": IR_MODEL_PACKAGE_VERSION_ARN,
+}
+
+IR_TAGS = [
+    {
+        "Key": "ClientType",
+        "Value": "PythonSDK-RightSize",
+    }
+]
+
+DEPLOYMENT_RECOMMENDATION_TAGS = [
+    {
+        "Key": "ClientType",
+        "Value": "PythonSDK-DeploymentRecommendation",
+    }
+]

@@ -303,6 +303,30 @@ def default_right_sized_unregistered_base_model(sagemaker_session, cpu_instance_
             sagemaker_session.delete_model(ModelName=model.name)
 
 
+@pytest.fixture(scope="module")
+def created_base_model(sagemaker_session, cpu_instance_type):
+    model_data = sagemaker_session.upload_data(path=IR_SKLEARN_MODEL)
+    region = sagemaker_session._region_name
+    image_uri = image_uris.retrieve(
+        framework="sklearn", region=region, version="1.0-1", image_scope="inference"
+    )
+
+    iam_client = sagemaker_session.boto_session.client("iam")
+    role_arn = iam_client.get_role(RoleName="SageMakerRole")["Role"]["Arn"]
+
+    model = Model(
+        model_data=model_data,
+        role=role_arn,
+        entry_point=IR_SKLEARN_ENTRY_POINT,
+        image_uri=image_uri,
+        sagemaker_session=sagemaker_session,
+    )
+
+    model.create(instance_type=cpu_instance_type)
+
+    return model
+            
+
 @pytest.mark.slow_test
 def test_default_right_size_and_deploy_registered_model_sklearn(
     default_right_sized_model, sagemaker_session
@@ -453,3 +477,48 @@ def test_deploy_inference_recommendation_id_with_registered_model_sklearn(
             )
             predictor.delete_model()
             predictor.delete_endpoint()
+
+
+@pytest.mark.slow_test
+def test_deploy_deployment_recommendation_id_with_model(created_base_model, sagemaker_session):
+    with timeout(minutes=20):
+        try:
+            deployment_recommendation = poll_for_deployment_recommendation(created_base_model, sagemaker_session)
+
+            assert deployment_recommendation != None
+
+            real_time_recommendations = deployment_recommendation.get("RealTimeInferenceRecommendations")
+            recommendation_id = real_time_recommendations[0].get('RecommendationId')
+            
+            endpoint_name = unique_name_from_base("test-rec-id-deployment-default-sklearn")
+            created_base_model.predictor_cls = SKLearnPredictor
+            predictor = created_base_model.deploy(
+                inference_recommendation_id=recommendation_id, initial_instance_count=1, endpoint_name=endpoint_name
+            )
+
+            payload = pd.read_csv(IR_SKLEARN_DATA, header=None)
+
+            inference = predictor.predict(payload)
+            assert inference is not None
+            assert 26 == len(inference)
+        finally:
+            predictor.delete_model()
+            predictor.delete_endpoint()            
+
+
+def poll_for_deployment_recommendation(created_base_model, sagemaker_session):
+    with timeout(minutes=1):
+        try:
+            completed = False
+            while not completed:
+                describe_model_response = sagemaker_session.sagemaker_client.describe_model(ModelName=created_base_model.name)
+                deployment_recommendation = describe_model_response.get("DeploymentRecommendation")
+
+                completed = (
+                    deployment_recommendation is not None
+                    and "COMPLETED" == deployment_recommendation.get("RecommendationStatus")
+                )
+            return deployment_recommendation
+        except Exception as e:
+            created_base_model.delete_model()
+            raise e

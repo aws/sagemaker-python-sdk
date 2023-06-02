@@ -18,7 +18,7 @@ import pytest
 from mock import Mock, patch
 
 import sagemaker
-from sagemaker.model import Model
+from sagemaker.model import Model, ModelPackage
 from sagemaker.async_inference import AsyncInferenceConfig
 from sagemaker.serverless import ServerlessInferenceConfig
 from sagemaker.explainer import ExplainerConfig
@@ -40,6 +40,13 @@ from tests.unit.sagemaker.inference_recommender.constants import (
     NOT_EXISTED_MODEL_RECOMMENDATION_ID,
     RECOMMENDATION_ID,
     NOT_EXISTED_RECOMMENDATION_ID,
+    IR_CONTAINER_DEF,
+    DEPLOYMENT_RECOMMENDATION_CONTAINER_DEF,
+    IR_COMPILATION_CONTAINER_DEF,
+    IR_MODEL_PACKAGE_CONTAINER_DEF,
+    IR_COMPILATION_MODEL_PACKAGE_CONTAINER_DEF,
+    IR_TAGS,
+    DEPLOYMENT_RECOMMENDATION_TAGS,
 )
 from tests.unit.sagemaker.inference_recommender.constructs import (
     create_inference_recommendations_job_default_with_model_name,
@@ -616,7 +623,8 @@ def mock_describe_model_package(ModelPackageName):
         return DESCRIBE_MODEL_PACKAGE_RESPONSE
 
 
-def test_deploy_with_recommendation_id_with_model_pkg_arn(sagemaker_session):
+@patch("sagemaker.utils.name_from_base", return_value=IR_IMAGE)
+def test_deploy_with_recommendation_id_with_model_pkg_arn(name_from_base, sagemaker_session):
     sagemaker_session.sagemaker_client.describe_inference_recommendations_job.return_value = (
         create_inference_recommendations_job_default_with_model_package_arn()
     )
@@ -625,15 +633,27 @@ def test_deploy_with_recommendation_id_with_model_pkg_arn(sagemaker_session):
     )
     sagemaker_session.sagemaker_client.describe_model.return_value = None
 
-    model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session, role=ROLE)
+    model_package = ModelPackage(role=ROLE, model_data=IR_MODEL_DATA, model_package_arn=IR_MODEL_PACKAGE_VERSION_ARN)
 
-    model.deploy(
+    model_package.sagemaker_session = sagemaker_session
+
+    model_package.deploy(
         inference_recommendation_id=RECOMMENDATION_ID,
     )
 
-    assert model.model_data == IR_MODEL_DATA
-    assert model.image_uri == IR_IMAGE
-    assert model.env == IR_ENV
+    sagemaker_session.create_model.assert_called_with(
+        IR_IMAGE,
+        ROLE,
+        IR_MODEL_PACKAGE_CONTAINER_DEF,
+        vpc_config=None,
+        enable_network_isolation=False,
+        tags=IR_TAGS,
+    )
+
+    assert model_package.model_package_arn == IR_MODEL_PACKAGE_VERSION_ARN
+    assert model_package.model_data == IR_MODEL_DATA
+    assert model_package.image_uri == IR_IMAGE
+    assert model_package.env == IR_ENV
 
 
 def mock_describe_model(ModelName):
@@ -641,7 +661,9 @@ def mock_describe_model(ModelName):
         return DESCRIBE_MODEL_RESPONSE
 
 
-def test_deploy_with_recommendation_id_with_model_name(sagemaker_session):
+
+@patch("sagemaker.utils.name_from_base", return_value=MODEL_IMAGE)
+def test_deploy_with_recommendation_id_with_model_name(name_from_base, sagemaker_session):
     sagemaker_session.sagemaker_client.describe_inference_recommendations_job.return_value = (
         create_inference_recommendations_job_default_with_model_name()
     )
@@ -653,12 +675,22 @@ def test_deploy_with_recommendation_id_with_model_name(sagemaker_session):
         inference_recommendation_id=RECOMMENDATION_ID,
     )
 
+    sagemaker_session.create_model.assert_called_with(
+        name=MODEL_IMAGE,
+        role=ROLE,
+        container_defs=IR_CONTAINER_DEF,
+        vpc_config=None,
+        enable_network_isolation=False,
+        tags=IR_TAGS,
+    )
+
     assert model.model_data == IR_MODEL_DATA
     assert model.image_uri == IR_IMAGE
     assert model.env == IR_ENV
 
 
-def test_deploy_with_recommendation_id_with_model_pkg_arn_and_compilation(sagemaker_session):
+@patch("sagemaker.utils.name_from_base", return_value=IR_COMPILATION_IMAGE)
+def test_deploy_with_recommendation_id_with_model_pkg_arn_and_compilation(name_from_base, sagemaker_session):
     sagemaker_session.sagemaker_client.describe_inference_recommendations_job.return_value = (
         create_inference_recommendations_job_default_with_model_package_arn_and_compilation()
     )
@@ -667,17 +699,29 @@ def test_deploy_with_recommendation_id_with_model_pkg_arn_and_compilation(sagema
     )
     sagemaker_session.sagemaker_client.describe_model.return_value = None
 
-    model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session, role=ROLE)
+    model_package = ModelPackage(role=ROLE, model_data=MODEL_DATA, model_package_arn=IR_MODEL_PACKAGE_VERSION_ARN)
 
-    model.deploy(
+    model_package.sagemaker_session = sagemaker_session
+
+    model_package.deploy(
         inference_recommendation_id=RECOMMENDATION_ID,
     )
 
-    assert model.model_data == IR_COMPILATION_MODEL_DATA
-    assert model.image_uri == IR_COMPILATION_IMAGE
+    sagemaker_session.create_model.assert_called_with(
+        IR_COMPILATION_IMAGE,
+        ROLE,
+        IR_COMPILATION_MODEL_PACKAGE_CONTAINER_DEF,
+        vpc_config=None,
+        enable_network_isolation=False,
+        tags=IR_TAGS,
+    )
+
+    assert model_package.model_data == IR_COMPILATION_MODEL_DATA
+    assert model_package.image_uri == IR_COMPILATION_IMAGE
 
 
-def test_deploy_with_recommendation_id_with_model_name_and_compilation(sagemaker_session):
+@patch("sagemaker.utils.name_from_base", return_value=MODEL_IMAGE)
+def test_deploy_with_recommendation_id_with_model_name_and_compilation(name_from_base, sagemaker_session):
     def mock_describe_compilation_job(CompilationJobName):
         if CompilationJobName == IR_COMPILATION_JOB_NAME:
             return DESCRIBE_COMPILATION_JOB_RESPONSE
@@ -694,6 +738,15 @@ def test_deploy_with_recommendation_id_with_model_name_and_compilation(sagemaker
 
     model.deploy(
         inference_recommendation_id=RECOMMENDATION_ID,
+    )
+
+    sagemaker_session.create_model.assert_called_with(
+        name=MODEL_IMAGE,
+        role=ROLE,
+        container_defs=IR_COMPILATION_CONTAINER_DEF,
+        vpc_config=None,
+        enable_network_isolation=False,
+        tags=IR_TAGS,
     )
 
     assert model.model_data == IR_COMPILATION_MODEL_DATA
@@ -735,18 +788,28 @@ def test_deploy_with_invalid_model_recommendation_id(sagemaker_session):
         )
 
 
-def test_deploy_with_valid_model_recommendation_id(sagemaker_session):
+@patch("sagemaker.utils.name_from_base", return_value=IR_IMAGE)
+def test_deploy_with_valid_model_recommendation_id(name_from_base, sagemaker_session):
     sagemaker_session.sagemaker_client.describe_inference_recommendations_job.return_value = None
     sagemaker_session.sagemaker_client.describe_model.side_effect = mock_describe_model
 
-    model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session, role=ROLE)
+    model = Model(IR_IMAGE, IR_MODEL_DATA, sagemaker_session=sagemaker_session, role=ROLE)
     model.deploy(
         inference_recommendation_id=MODEL_RECOMMENDATION_ID,
         initial_instance_count=INSTANCE_COUNT,
     )
 
-    assert model.model_data == MODEL_DATA
-    assert model.image_uri == MODEL_IMAGE
+    sagemaker_session.create_model.assert_called_with(
+        name=IR_IMAGE,
+        role=ROLE,
+        container_defs=DEPLOYMENT_RECOMMENDATION_CONTAINER_DEF,
+        vpc_config=None,
+        enable_network_isolation=False,
+        tags=DEPLOYMENT_RECOMMENDATION_TAGS,
+    )
+
+    assert model.model_data == IR_MODEL_DATA
+    assert model.image_uri == IR_IMAGE
     assert model.env == MODEL_RECOMMENDATION_ENV
 
 
